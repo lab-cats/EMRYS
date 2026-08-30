@@ -17,13 +17,16 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.scientific_evidence import step08
 from emrys.libraries.references.contigs import (
     ReferenceContigError,
     parse_fasta_lines,
 )
+from emrys.libraries.validation.tsv import tsv_bytes
 from emrys.orchestration.local_pilot.normalization import (
     ProjectAdmission,
     admit_project,
+    validate_authored_path,
 )
 from emrys.stages.gtf_to_bed12 import converter as gtf_converter
 
@@ -53,6 +56,10 @@ PATH_TOOL_COMMANDS = {
     "infer_experiment": "infer_experiment.py",
     "gunzip": "gunzip",
 }
+FASTQ_PAIR_NAME = re.compile(
+    r"^(?P<sample>[A-Za-z0-9][A-Za-z0-9._-]*)_R(?P<mate>[12])"
+    r"(?P<suffix>\.(?:fastq|fq)(?:\.gz)?)$"
+)
 
 
 class OnboardingError(RuntimeError):
@@ -374,6 +381,185 @@ def init_from_args(arguments: argparse.Namespace) -> int:
         print(f"Published matched local-pilot starter set: {output}")
         return 0
     except (OSError, OnboardingError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+
+
+def _admit_supplied_file(value: str | Path, label: str) -> Path:
+    path = Path(value)
+    admitted = _admit_explicit_file(
+        path if path.is_absolute() else Path.cwd() / path, label
+    )
+    emitted = str(admitted)
+    if any(character in emitted for character in ('"', "\t", "\r", "\n")):
+        raise OnboardingError(f"{label} cannot be represented in a raw TSV field")
+    validate_authored_path(emitted, label)
+    return admitted
+
+
+def _indexed_values(
+    rows: Sequence[Sequence[str]], label: str
+) -> dict[str, tuple[str, ...]]:
+    indexed: dict[str, tuple[str, ...]] = {}
+    for key, *values in rows:
+        if key in indexed:
+            raise OnboardingError(f"duplicate {label}: {key}")
+        indexed[key] = tuple(values)
+    return indexed
+
+
+def _draft_manifest_members(
+    fastqs: Sequence[Path],
+    samples: Sequence[Sequence[str]],
+    regions_files: Sequence[Sequence[str]],
+) -> dict[str, tuple[bytes, int]]:
+    """Render validated manifest drafts from explicit paths and biology."""
+
+    pairs: dict[str, dict[str, tuple[Path, bool]]] = {}
+    file_roles: dict[tuple[int, int], str] = {}
+    for value in fastqs:
+        admitted_path = _admit_supplied_file(value, "supplied FASTQ")
+        match = FASTQ_PAIR_NAME.fullmatch(admitted_path.name)
+        if match is None:
+            raise OnboardingError(
+                "FASTQ names must end in <sample>_R1 or _R2 followed by "
+                f".fastq/.fq and optional .gz: {admitted_path}"
+            )
+        sample_id, mate = match["sample"], match["mate"]
+        role = f"sample {sample_id} R{mate}"
+        state = admitted_path.stat()
+        identity = (state.st_dev, state.st_ino)
+        if previous := file_roles.get(identity):
+            raise OnboardingError(f"one FASTQ file is reused as {previous} and {role}")
+        file_roles[identity] = role
+        pair = pairs.setdefault(sample_id, {})
+        if mate in pair:
+            raise OnboardingError(f"duplicate R{mate} FASTQ for sample {sample_id}")
+        pair[mate] = (admitted_path, match["suffix"].endswith(".gz"))
+
+    admitted: dict[str, tuple[Path, Path]] = {}
+    for sample_id, pair in pairs.items():
+        if set(pair) != {"1", "2"}:
+            raise OnboardingError(f"unpaired FASTQ sample: {sample_id}")
+        (r1, r1_gzip), (r2, r2_gzip) = pair["1"], pair["2"]
+        if r1_gzip != r2_gzip:
+            raise OnboardingError(
+                f"R1 and R2 FASTQs use different compression for sample {sample_id}"
+            )
+        admitted[sample_id] = (r1, r2)
+
+    assignments = _indexed_values(samples, "--sample assignment")
+    unexpected = sorted(assignments.keys() - admitted.keys())
+    if unexpected:
+        raise OnboardingError(
+            "--sample assignments have no supplied FASTQ pair: "
+            + ", ".join(unexpected)
+        )
+    missing = sorted(admitted.keys() - assignments.keys())
+    if missing:
+        flags = "\n".join(
+            f"  --sample {key} CONDITION REPLICATE STRANDEDNESS" for key in missing
+        )
+        raise OnboardingError(f"biological assignments are required:\n{flags}")
+    for sample_id, assignment in assignments.items():
+        step08.validate_safe_id(f"sample {sample_id} condition", assignment[0])
+
+    sample_rows = [
+        {
+            "sample_id": sample_id,
+            "r1_fastq": str(admitted[sample_id][0]),
+            "r2_fastq": str(admitted[sample_id][1]),
+            "condition": assignments[sample_id][0],
+            "replicate": assignments[sample_id][1],
+            "strandedness": assignments[sample_id][2],
+        }
+        for sample_id in sorted(admitted)
+    ]
+    sample_bytes = tsv_bytes(step08.SAMPLE_MANIFEST_REQUIRED, sample_rows)
+    step08.validate_sample_manifest_bytes(sample_bytes, "samples.tsv")
+    members = {"samples.tsv": (sample_bytes, 0o644)}
+    if regions_files:
+        partitions = _indexed_values(regions_files, "--regions-file")
+        rows = [
+            {
+                "partition_id": partition_id,
+                "selector_type": "regions_file",
+                "selector_value": str(
+                    _admit_supplied_file(
+                        partitions[partition_id][0],
+                        f"partition {partition_id} regions file",
+                    )
+                ),
+            }
+            for partition_id in sorted(partitions)
+        ]
+        partition_bytes = tsv_bytes(step08.PARTITION_MANIFEST_HEADER, rows)
+        step08.validate_partition_manifest_bytes(partition_bytes, "partitions.tsv")
+        members["partitions.tsv"] = (partition_bytes, 0o644)
+    return members
+
+
+def configure_manifest_init_parser(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--output-dir", required=True, type=Path, help="Absolute absent draft directory."
+    )
+    parser.add_argument(
+        "--fastq", required=True, action="extend", nargs="+", type=Path,
+        help="Existing FASTQs using the closed <sample>_R1/_R2 naming convention."
+    )
+    parser.add_argument(
+        "--sample",
+        action="append",
+        nargs=4,
+        default=[],
+        metavar=("SAMPLE_ID", "CONDITION", "REPLICATE", "STRANDEDNESS"),
+        help="Explicit biology for one inferred pair; repeat for every sample.",
+    )
+    parser.add_argument(
+        "--regions-file",
+        action="append",
+        nargs=2,
+        default=[],
+        metavar=("PARTITION_ID", "PATH"),
+        help="Optional existing region file; repeat for additional partitions.",
+    )
+    parser.add_argument(
+        "--execute", action="store_true", help="Publish; omission is a no-write plan."
+    )
+    parser.set_defaults(_command_parser=parser)
+
+
+def init_manifests_from_args(arguments: argparse.Namespace) -> int:
+    """Discover, validate, and optionally publish structural manifest drafts."""
+
+    try:
+        output = _require_external_absent_output(arguments.output_dir, source_root())
+        members = _draft_manifest_members(
+            arguments.fastq,
+            arguments.sample,
+            arguments.regions_file,
+        )
+        print(f"Output directory: {output}")
+        print("Draft manifests: " + ", ".join(sorted(members)))
+        print("Publication policy: create-absent; no file will be replaced or adopted.")
+        if not arguments.execute:
+            print("Dry-run complete; no files were written.")
+            return 0
+        sample_bytes, _ = members["samples.tsv"]
+        publish_create_absent_tree(
+            output,
+            {name: member for name, member in members.items() if name != "samples.tsv"},
+            completion_name="samples.tsv",
+            completion_bytes=sample_bytes,
+        )
+        print(f"Published validated manifest drafts: {output}")
+        return 0
+    except (
+        OSError,
+        OnboardingError,
+        orchestration_contracts.ContractValidationError,
+        step08.ContractError,
+    ) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
 
@@ -855,9 +1041,11 @@ __all__ = (
     "OnboardingError",
     "ProjectValidation",
     "configure_init_parser",
+    "configure_manifest_init_parser",
     "configure_runtime_parser",
     "configure_validation_parser",
     "init_from_args",
+    "init_manifests_from_args",
     "prepare_runtime_from_args",
     "publish_create_absent_tree",
     "render_runtime_profile",

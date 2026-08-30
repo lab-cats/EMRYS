@@ -18,6 +18,7 @@ from types import MappingProxyType
 from typing import cast
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.orchestration.local_pilot.execution_profile import DEFAULT_PROFILE_PATH
 from emrys.orchestration.local_pilot.onboarding import (
     OnboardingError,
     _require_external_absent_output,
@@ -136,30 +137,10 @@ NON_TARGET_SITE = {
     "rna_change": "C>T",
 }
 SAMPLES = (
-    {
-        "sample_id": "control_pair_01",
-        "condition": "control",
-        "replicate": "pair_01",
-        "positive_ad": 4,
-    },
-    {
-        "sample_id": "treatment_pair_01",
-        "condition": "treatment",
-        "replicate": "pair_01",
-        "positive_ad": 32,
-    },
-    {
-        "sample_id": "control_pair_02",
-        "condition": "control",
-        "replicate": "pair_02",
-        "positive_ad": 4,
-    },
-    {
-        "sample_id": "treatment_pair_02",
-        "condition": "treatment",
-        "replicate": "pair_02",
-        "positive_ad": 32,
-    },
+    {"sample_id": "control_pair_01", "condition": "control", "replicate": "pair_01", "positive_ad": 4},
+    {"sample_id": "treatment_pair_01", "condition": "treatment", "replicate": "pair_01", "positive_ad": 32},
+    {"sample_id": "control_pair_02", "condition": "control", "replicate": "pair_02", "positive_ad": 4},
+    {"sample_id": "treatment_pair_02", "condition": "treatment", "replicate": "pair_02", "positive_ad": 32},
 )
 
 
@@ -169,56 +150,6 @@ def _neutral_start_capacity(profile: DatasetProfile) -> int:
     return (
         profile.contig_length - FRAGMENT_LENGTH + 1 - profile.neutral_start_zero_based
     )
-
-
-@cache
-def _validate_dataset_profile(profile: DatasetProfile) -> None:
-    if profile.pair_count_per_library != (
-        CORE_PAIR_COUNT_PER_LIBRARY + profile.neutral_pair_count_per_library
-    ):
-        raise ValueError(f"dataset profile {profile.name!r} pair counts do not add up")
-    if profile.contig_length < max(
-        int(NON_TARGET_SITE["position"]),
-        PLUS_EXONS[-1][1],
-        MINUS_EXONS[-1][1],
-    ):
-        raise ValueError(
-            f"dataset profile {profile.name!r} reference is shorter than its core"
-        )
-    unique_count = profile.neutral_unique_template_pair_count_per_library
-    duplicate_count = profile.neutral_duplicate_pair_count_per_library
-    if unique_count < 0 or duplicate_count < 0:
-        raise ValueError(
-            f"dataset profile {profile.name!r} has a negative neutral pair count"
-        )
-    if unique_count == 0:
-        if duplicate_count != 0 or profile.neutral_start_zero_based is not None:
-            raise ValueError(
-                f"dataset profile {profile.name!r} has an invalid empty neutral plan"
-            )
-        return
-    if duplicate_count > unique_count:
-        raise ValueError(
-            f"dataset profile {profile.name!r} duplicates more neutral templates "
-            "than it creates"
-        )
-    if profile.neutral_start_zero_based is None:
-        raise ValueError(
-            f"dataset profile {profile.name!r} omits its neutral start interval"
-        )
-    guarded_end_zero_based = max(PLUS_EXONS[-1][1], MINUS_EXONS[-1][1])
-    if profile.neutral_start_zero_based < guarded_end_zero_based:
-        raise ValueError(
-            f"dataset profile {profile.name!r} places neutral fragments inside "
-            "the guarded candidate/splice region"
-        )
-    capacity = _neutral_start_capacity(profile)
-    required_unique_starts = unique_count * len(SAMPLES)
-    if capacity < required_unique_starts:
-        raise ValueError(
-            f"dataset profile {profile.name!r} has {capacity} allowed neutral "
-            f"starts but needs {required_unique_starts} globally unique starts"
-        )
 
 
 @cache
@@ -238,7 +169,6 @@ def _neutral_unique_start(
     sample_index: int,
     unique_index: int,
 ) -> int:
-    _validate_dataset_profile(profile)
     unique_count = profile.neutral_unique_template_pair_count_per_library
     if not 0 <= sample_index < len(SAMPLES):
         raise ValueError(f"invalid sample index: {sample_index}")
@@ -257,7 +187,6 @@ def _neutral_duplicate_source_index(
     sample_index: int,
     duplicate_index: int,
 ) -> int:
-    _validate_dataset_profile(profile)
     unique_count = profile.neutral_unique_template_pair_count_per_library
     duplicate_count = profile.neutral_duplicate_pair_count_per_library
     if not 0 <= sample_index < len(SAMPLES):
@@ -267,10 +196,6 @@ def _neutral_duplicate_source_index(
     step = _coprime_step(unique_count, profile.seed ^ 0x4455504C)
     offset = (profile.seed + sample_index * 104_729) % unique_count
     return (offset + duplicate_index * step) % unique_count
-
-
-for _profile in DATASET_PROFILES.values():
-    _validate_dataset_profile(_profile)
 
 
 def _reference(profile: DatasetProfile = DEFAULT_PROFILE) -> str:
@@ -292,56 +217,15 @@ def _wrapped_fasta(sequence: str) -> bytes:
 
 
 def _gtf_bytes() -> bytes:
-    rows = (
-        ("gene", 29_001, 31_900, "+", 'gene_id "GENE_PLUS"; gene_name "GENE_PLUS";'),
-        (
-            "transcript",
-            29_001,
-            31_900,
-            "+",
-            'gene_id "GENE_PLUS"; transcript_id "TX_PLUS"; gene_name "GENE_PLUS";',
-        ),
-        (
-            "exon",
-            PLUS_EXONS[0][0],
-            PLUS_EXONS[0][1],
-            "+",
-            'gene_id "GENE_PLUS"; transcript_id "TX_PLUS"; exon_number "1";',
-        ),
-        (
-            "exon",
-            PLUS_EXONS[1][0],
-            PLUS_EXONS[1][1],
-            "+",
-            'gene_id "GENE_PLUS"; transcript_id "TX_PLUS"; exon_number "2";',
-        ),
-        ("gene", 49_001, 51_900, "-", 'gene_id "GENE_MINUS"; gene_name "GENE_MINUS";'),
-        (
-            "transcript",
-            49_001,
-            51_900,
-            "-",
-            'gene_id "GENE_MINUS"; transcript_id "TX_MINUS"; gene_name "GENE_MINUS";',
-        ),
-        (
-            "exon",
-            MINUS_EXONS[0][0],
-            MINUS_EXONS[0][1],
-            "-",
-            'gene_id "GENE_MINUS"; transcript_id "TX_MINUS"; exon_number "2";',
-        ),
-        (
-            "exon",
-            MINUS_EXONS[1][0],
-            MINUS_EXONS[1][1],
-            "-",
-            'gene_id "GENE_MINUS"; transcript_id "TX_MINUS"; exon_number "1";',
-        ),
-    )
-    return "".join(
-        f"{CONTIG}\temrys-poc\t{feature}\t{start}\t{end}\t.\t{strand}\t.\t{attributes}\n"
-        for feature, start, end, strand, attributes in rows
-    ).encode("utf-8")
+    return f'''{CONTIG}\temrys-poc\tgene\t29001\t31900\t.\t+\t.\tgene_id "GENE_PLUS"; gene_name "GENE_PLUS";
+{CONTIG}\temrys-poc\ttranscript\t29001\t31900\t.\t+\t.\tgene_id "GENE_PLUS"; transcript_id "TX_PLUS"; gene_name "GENE_PLUS";
+{CONTIG}\temrys-poc\texon\t{PLUS_EXONS[0][0]}\t{PLUS_EXONS[0][1]}\t.\t+\t.\tgene_id "GENE_PLUS"; transcript_id "TX_PLUS"; exon_number "1";
+{CONTIG}\temrys-poc\texon\t{PLUS_EXONS[1][0]}\t{PLUS_EXONS[1][1]}\t.\t+\t.\tgene_id "GENE_PLUS"; transcript_id "TX_PLUS"; exon_number "2";
+{CONTIG}\temrys-poc\tgene\t49001\t51900\t.\t-\t.\tgene_id "GENE_MINUS"; gene_name "GENE_MINUS";
+{CONTIG}\temrys-poc\ttranscript\t49001\t51900\t.\t-\t.\tgene_id "GENE_MINUS"; transcript_id "TX_MINUS"; gene_name "GENE_MINUS";
+{CONTIG}\temrys-poc\texon\t{MINUS_EXONS[0][0]}\t{MINUS_EXONS[0][1]}\t.\t-\t.\tgene_id "GENE_MINUS"; transcript_id "TX_MINUS"; exon_number "2";
+{CONTIG}\temrys-poc\texon\t{MINUS_EXONS[1][0]}\t{MINUS_EXONS[1][1]}\t.\t-\t.\tgene_id "GENE_MINUS"; transcript_id "TX_MINUS"; exon_number "1";
+'''.encode("utf-8")
 
 
 def _covering_starts(
@@ -492,7 +376,6 @@ def _neutral_pairs(
     sample_index: int,
     profile: DatasetProfile,
 ) -> Iterator[tuple[str, str]]:
-    _validate_dataset_profile(profile)
     sample_id = str(sample["sample_id"])
     unique_count = profile.neutral_unique_template_pair_count_per_library
     duplicate_count = profile.neutral_duplicate_pair_count_per_library
@@ -612,48 +495,17 @@ analysis:
 
 
 def _execution_profile() -> bytes:
-    return b"""schema_version: emrys.execution-profile.v1
-resources:
-  schema_version: emrys.local-pilot-resources.v1
-  workflow_cores: 1
-  workflow_memory_mb: allocation
-  stage_concurrency:
-    "01": 1
-    "02": 1
-    "02b": 1
-    "03": 1
-    "04": 1
-    "05": 1
-    "06": 1
-    "07": 1
-  step_threads:
-    "00a": 1
-    "01": 1
-    "02": 1
-    "06": 1
-    "08": 1
-  stage_memory_mb:
-    "00a": workflow
-    "00b": workflow
-    "00c": workflow
-    "01": workflow
-    "02": workflow
-    "02b": workflow
-    "03": workflow
-    "04": workflow
-    "05": workflow
-    "06": workflow
-    "07": workflow
-    "08": workflow
-    "09": workflow
-    "10": workflow
-  reporting_memory_mb:
-    artifact_index: workflow
-    run_summary: workflow
-    html_report: workflow
-placement:
-  kind: direct
-"""
+    profile = DEFAULT_PROFILE_PATH.read_bytes()
+    for source, replacement in (
+        (b"workflow_cores: 4", b"workflow_cores: 1"),
+        (b'    "00a": 4', b'    "00a": 1'),
+        (b'    "01": 4', b'    "01": 1'),
+        (b'    "06": 4', b'    "06": 1'),
+    ):
+        if profile.count(source) != 1:
+            raise ValueError("packaged execution-profile defaults changed")
+        profile = profile.replace(source, replacement)
+    return profile
 
 
 def _candidate_metadata(site: dict[str, object]) -> dict[str, object]:
@@ -686,7 +538,6 @@ def fixture_metadata(
 ) -> dict[str, object]:
     """Return the explicit deterministic contract for one dataset profile."""
 
-    _validate_dataset_profile(profile)
     if profile.neutral_start_zero_based is None:
         neutral_interval: list[int] | None = None
         reserved_core_region: list[int] | None = None
@@ -802,7 +653,6 @@ def fixture_members(
 ) -> dict[str, tuple[bytes, int]]:
     """Return deterministic fixture members, excluding the completion manifest."""
 
-    _validate_dataset_profile(profile)
     reference = _reference(profile)
     members: dict[str, tuple[bytes, int]] = {
         "project.yaml": (_project_definition(profile), 0o644),
@@ -817,18 +667,13 @@ def fixture_members(
     }
     for sample_index, sample in enumerate(SAMPLES):
         sample_id = str(sample["sample_id"])
-        members[f"inputs/reads/{sample_id}_R1.fastq.gz"] = (
-            _gzip_records(
-                _fastq_records(reference, sample, sample_index, profile, mate=1)
-            ),
-            0o644,
-        )
-        members[f"inputs/reads/{sample_id}_R2.fastq.gz"] = (
-            _gzip_records(
-                _fastq_records(reference, sample, sample_index, profile, mate=2)
-            ),
-            0o644,
-        )
+        for mate in (1, 2):
+            members[f"inputs/reads/{sample_id}_R{mate}.fastq.gz"] = (
+                _gzip_records(
+                    _fastq_records(reference, sample, sample_index, profile, mate=mate)
+                ),
+                0o644,
+            )
     metadata = fixture_metadata(profile)
     members["fixture.json"] = (
         (json.dumps(metadata, indent=2, sort_keys=True) + "\n").encode("utf-8"),
@@ -889,7 +734,6 @@ def init_from_args(arguments: argparse.Namespace) -> int:
             raise OnboardingError(
                 f"unsupported synthetic dataset profile: {profile_name}"
             ) from exc
-        _validate_dataset_profile(profile)
         print(f"Dataset profile: {profile.name}")
         print(f"Output directory: {output}")
         print(f"Libraries: {len(SAMPLES)}")

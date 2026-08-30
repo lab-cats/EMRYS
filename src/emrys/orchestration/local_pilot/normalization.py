@@ -281,7 +281,9 @@ def _regular_file_snapshot(path: Path, label: str) -> tuple[Path, dict[str, Any]
     }
 
 
-def _validate_authored_path(value: str, label: str) -> None:
+def validate_authored_path(value: str, label: str) -> None:
+    """Reject path spellings that Project authors cannot declare literally."""
+
     if not value or value != value.strip():
         raise orchestration_contracts.ContractValidationError(
             f"{label} must be a nonempty path without surrounding whitespace: {value}"
@@ -314,7 +316,7 @@ def _validate_authored_path(value: str, label: str) -> None:
 
 
 def _resolve_authored_path(value: str, base: Path, label: str) -> tuple[Path, bytes]:
-    _validate_authored_path(value, label)
+    validate_authored_path(value, label)
     candidate = Path(value)
     if not candidate.is_absolute():
         candidate = base / candidate
@@ -326,7 +328,7 @@ def _resolve_authored_snapshot(
     base: Path,
     label: str,
 ) -> tuple[Path, dict[str, Any]]:
-    _validate_authored_path(value, label)
+    validate_authored_path(value, label)
     candidate = Path(value)
     if not candidate.is_absolute():
         candidate = base / candidate
@@ -362,7 +364,7 @@ def _load_profile(profile: Mapping[str, Any] | str | Path) -> dict[str, Any]:
         value = dict(profile)
     else:
         authored_profile = os.fspath(profile)
-        _validate_authored_path(authored_profile, "Profile")
+        validate_authored_path(authored_profile, "Profile")
         profile_path = Path(authored_profile)
         if not profile_path.is_absolute():
             profile_path = Path.cwd() / profile_path
@@ -473,7 +475,7 @@ def admit_project(
     """Admit one Project without writing through the current request-v3 adapter."""
 
     authored_project_value = os.fspath(project_path)
-    _validate_authored_path(authored_project_value, "Project definition")
+    validate_authored_path(authored_project_value, "Project definition")
     authored_project = Path(authored_project_value)
     if not authored_project.is_absolute():
         authored_project = Path.cwd() / authored_project
@@ -563,4 +565,5 @@ def admit_project(
 __all__ = (
     "ProjectAdmission",
     "admit_project",
+    "validate_authored_path",
 )

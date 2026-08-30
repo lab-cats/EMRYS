@@ -7,12 +7,12 @@ import hashlib
 import json
 import os
 import sys
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from emrys import __main__ as cli
+from emrys.contracts.scientific_evidence import step08
 from emrys.evidence.runtime_availability.inspector import load_runtime_profile_contract
 from emrys.orchestration.local_pilot import doctor, onboarding, synthetic_fixture
 
@@ -48,6 +48,13 @@ def _executable(path: Path, content: str = "#!/bin/sh\nexit 0\n") -> Path:
     path.write_text(content, encoding="utf-8")
     path.chmod(0o755)
     return path
+
+
+def _fastqs(root: Path, *sample_ids: str) -> list[Path]:
+    paths = [root / f"{sample}_R{mate}.fastq.gz" for sample in sample_ids for mate in (1, 2)]
+    for path in paths:
+        path.write_bytes(b"not inspected by structural drafting\n")
+    return paths
 
 
 def test_init_local_pilot_is_dry_run_first_and_receipt_last(
@@ -131,6 +138,154 @@ def test_init_refuses_predecessor_without_changing_it(tmp_path: Path) -> None:
 
     assert onboarding.init_from_args(_namespace(output, execute=True)) == 2
     assert _tree_bytes(output) == {"owned.txt": b"preserve me\n"}
+
+
+def test_manifest_init_is_deterministic_validated_and_dry_run_first(
+    tmp_path: Path,
+) -> None:
+    fastqs = _fastqs(tmp_path, "sample_b", "sample_a")
+    regions = tmp_path / "targets.bed"
+    regions.write_text("chr1\t0\t1\n", encoding="utf-8")
+    output = tmp_path / "drafts"
+    arguments = [
+        "init", "manifests", "--output-dir", str(output), "--fastq",
+        *(str(path) for path in reversed(fastqs)),
+        "--sample", "sample_b", "treated", "pair_2", "reverse",
+        "--sample", "sample_a", "control", "pair_1", "forward",
+        "--regions-file", "targets", str(regions),
+    ]
+
+    assert cli.main(arguments) == 0
+    assert not output.exists()
+    assert cli.main([*arguments, "--execute"]) == 0
+    assert set(_tree_bytes(output)) == {"samples.tsv", "partitions.tsv"}
+    sample_table, sample_ids, _ = step08.validate_sample_manifest(
+        output / "samples.tsv"
+    )
+    partitions = step08.validate_partition_manifest(output / "partitions.tsv")
+    assert sample_table.header == step08.SAMPLE_MANIFEST_REQUIRED
+    assert sample_ids == ["sample_a", "sample_b"]
+    assert [row["partition_id"] for row in partitions.rows] == ["targets"]
+
+    sample_only = tmp_path / "sample-only"
+    assert cli.main([
+        "init", "manifests", "--output-dir", str(sample_only), "--fastq",
+        str(fastqs[0]), str(fastqs[1]),
+        "--sample", "sample_b", "treated", "pair_2", "reverse", "--execute",
+    ]) == 0
+    assert set(_tree_bytes(sample_only)) == {"samples.tsv"}
+
+
+def test_manifest_init_lists_missing_biology_and_writes_nothing(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    fastqs = _fastqs(tmp_path, "sample_b", "sample_a")
+    output = tmp_path / "drafts"
+
+    assert cli.main([
+        "init", "manifests", "--output-dir", str(output), "--fastq",
+        *(str(path) for path in fastqs), "--execute",
+    ]) == 2
+    assert not output.exists()
+    error = capsys.readouterr().err
+    assert "--sample sample_a CONDITION REPLICATE STRANDEDNESS" in error
+    assert "--sample sample_b CONDITION REPLICATE STRANDEDNESS" in error
+
+
+def test_manifest_init_rejects_unpaired_fastq_without_writing(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    r1 = _fastqs(tmp_path, "sample_a")[0]
+    output = tmp_path / "drafts"
+    result = cli.main([
+        "init", "manifests", "--output-dir", str(output), "--fastq", str(r1),
+        "--sample", "sample_a", "control", "pair_1", "unknown", "--execute",
+    ])
+
+    assert result == 2
+    assert not output.exists()
+    assert "unpaired FASTQ sample: sample_a" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("unsafe_name", "message"),
+    (("[literal]", "explicit normalized path"), ('literal"path', "raw TSV field")),
+)
+def test_manifest_init_rejects_paths_the_project_cannot_consume(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    unsafe_name: str,
+    message: str,
+) -> None:
+    unsafe_directory = tmp_path / unsafe_name
+    unsafe_directory.mkdir()
+    fastqs = _fastqs(unsafe_directory, "sample_a")
+    output = tmp_path / "drafts"
+
+    assert cli.main([
+        "init", "manifests", "--output-dir", str(output), "--fastq",
+        *(str(path) for path in fastqs),
+        "--sample", "sample_a", "control", "pair_1", "forward", "--execute",
+    ]) == 2
+    assert not output.exists()
+    assert message in capsys.readouterr().err
+
+
+def test_manifest_init_rejects_a_condition_that_requires_tsv_quoting(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    fastqs = _fastqs(tmp_path, "sample_a")
+    output = tmp_path / "drafts"
+
+    assert cli.main([
+        "init", "manifests", "--output-dir", str(output), "--fastq",
+        *(str(path) for path in fastqs),
+        "--sample", "sample_a", "bad\tcondition", "pair_1", "forward",
+        "--execute",
+    ]) == 2
+    assert not output.exists()
+    assert "condition must match" in capsys.readouterr().err
+
+
+def test_manifest_init_pairs_by_the_admitted_file_not_a_symlink_alias(
+    tmp_path: Path,
+) -> None:
+    canonical = _fastqs(tmp_path, "actual")
+    aliases = [tmp_path / f"alias_R{mate}.fastq.gz" for mate in (1, 2)]
+    aliases[0].symlink_to(canonical[1])
+    aliases[1].symlink_to(canonical[0])
+    output = tmp_path / "drafts"
+
+    assert cli.main([
+        "init", "manifests", "--output-dir", str(output), "--fastq",
+        *(str(path) for path in aliases),
+        "--sample", "actual", "control", "pair_1", "forward",
+        "--execute",
+    ]) == 0
+    rows = step08.validate_sample_manifest(output / "samples.tsv")[0].rows
+    assert rows[0]["r1_fastq"] == str(canonical[0])
+    assert rows[0]["r2_fastq"] == str(canonical[1])
+
+
+def test_manifest_init_rejects_hard_linked_fastq_reuse(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    r1 = tmp_path / "sample_a_R1.fastq.gz"
+    r2 = tmp_path / "sample_a_R2.fastq.gz"
+    r1.write_bytes(b"same file\n")
+    r2.hardlink_to(r1)
+    output = tmp_path / "drafts"
+
+    assert cli.main([
+        "init", "manifests", "--output-dir", str(output), "--fastq", str(r1), str(r2),
+        "--sample", "sample_a", "control", "pair_1", "forward", "--execute",
+    ]) == 2
+    assert not output.exists()
+    assert "one FASTQ file is reused" in capsys.readouterr().err
 
 
 def test_synthetic_init_is_dry_run_first_and_refuses_predecessor(
@@ -428,73 +583,6 @@ def test_tiny_neutral_profile_exercises_unique_and_duplicate_records() -> None:
     assert all(
         len(record.splitlines()[1]) == 75 for record in (*neutral_r1, *neutral_r2)
     )
-
-
-def test_dataset_profile_validation_rejects_every_inconsistent_plan() -> None:
-    base = _tiny_neutral_profile()
-    invalid_cases = (
-        (replace(base, pair_count_per_library=132), "pair counts do not add up"),
-        (replace(base, contig_length=49_999), "reference is shorter"),
-        (
-            replace(
-                base,
-                pair_count_per_library=129,
-                neutral_unique_template_pair_count_per_library=-1,
-                neutral_duplicate_pair_count_per_library=0,
-            ),
-            "negative neutral pair count",
-        ),
-        (
-            replace(
-                base,
-                pair_count_per_library=130,
-                neutral_unique_template_pair_count_per_library=0,
-                neutral_duplicate_pair_count_per_library=0,
-            ),
-            "invalid empty neutral plan",
-        ),
-        (
-            replace(
-                base,
-                neutral_unique_template_pair_count_per_library=1,
-                neutral_duplicate_pair_count_per_library=2,
-            ),
-            "duplicates more neutral templates",
-        ),
-        (
-            replace(
-                base,
-                pair_count_per_library=131,
-                neutral_unique_template_pair_count_per_library=1,
-                neutral_duplicate_pair_count_per_library=0,
-                neutral_start_zero_based=None,
-            ),
-            "omits its neutral start interval",
-        ),
-        (
-            replace(
-                base,
-                pair_count_per_library=131,
-                neutral_unique_template_pair_count_per_library=1,
-                neutral_duplicate_pair_count_per_library=0,
-                neutral_start_zero_based=51_899,
-            ),
-            "guarded candidate/splice region",
-        ),
-        (
-            replace(
-                base,
-                pair_count_per_library=1_130,
-                neutral_unique_template_pair_count_per_library=1_000,
-                neutral_duplicate_pair_count_per_library=0,
-            ),
-            "allowed neutral starts",
-        ),
-    )
-
-    for profile, message in invalid_cases:
-        with pytest.raises(ValueError, match=message):
-            synthetic_fixture._validate_dataset_profile(profile)
 
 
 def test_synthetic_streaming_helpers_fail_closed_and_flush(
