@@ -341,10 +341,15 @@ def _patch_run_control(
     )
     real_build = control.build_attempt_plan
     plans = []
+
+    def diagnose(*_args, **kwargs):
+        assert kwargs == {"storage_requirement": "direct"}
+        return readiness
+
     monkeypatch.setattr(
         control.doctor,
         "diagnose_project",
-        lambda *_args: readiness,
+        diagnose,
     )
     monkeypatch.setattr(
         control.capacity,
@@ -1354,7 +1359,7 @@ def test_post_binding_interruption_completes_the_exact_pristine_run(
     monkeypatch.setattr(
         control.doctor,
         "diagnose_project",
-        lambda *_args: plan.readiness,
+        lambda *_args, **_kwargs: plan.readiness,
     )
     monkeypatch.setattr(
         control.capacity,
@@ -1470,7 +1475,9 @@ def _patch_resume_control(
         _project: Path,
         _workspace: Path,
         runtime_profile: Path,
+        **_kwargs: object,
     ) -> doctor.DoctorResult:
+        assert _kwargs == {"storage_requirement": "direct"}
         selected.append(runtime_profile)
         return readiness
 
@@ -1680,7 +1687,9 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         _request: Path,
         _workspace: Path,
         runtime_profile: Path,
+        **_kwargs: object,
     ) -> doctor.DoctorResult:
+        assert _kwargs == {"storage_requirement": "slurm"}
         selected_runtime_profiles.append(runtime_profile)
         return readiness_two
 
@@ -2198,7 +2207,7 @@ def test_public_execute_logs_and_terminalizes_doctor_failure_before_run_state(
         opened.append(attempt)
         return attempt
 
-    def reject_readiness(*_args):
+    def reject_readiness(*_args, **_kwargs):
         log_paths = list((workspace / "logs/application").rglob("*.jsonl"))
         assert len(log_paths) == 1
         records = [json.loads(line) for line in log_paths[0].read_text().splitlines()]
@@ -2378,6 +2387,51 @@ def _slurm_profile(tmp_path: Path) -> Path:
     return profile
 
 
+def test_new_run_doctor_storage_requirement_tracks_execution_placement(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    readiness, _project, _resources, project_path, _workspace = _readiness(tmp_path)
+    requirements: list[str] = []
+
+    def diagnose(_project_path: Path, *, storage_requirement: str):
+        requirements.append(storage_requirement)
+        return readiness
+
+    monkeypatch.setattr(control.doctor, "diagnose_project", diagnose)
+    monkeypatch.setattr(
+        control.capacity,
+        "observe_allocation",
+        lambda: AllocationCapacity(
+            cores=4,
+            memory_mb=16_384,
+            source="placement test allocation",
+        ),
+    )
+
+    direct = load_execution_profile(project_path)
+    slurm = load_execution_profile(
+        project_path,
+        config_path=_slurm_profile(tmp_path),
+    )
+    assert (
+        control._plan_run(
+            project_path,
+            execution_profile=direct,
+        ).attempt_record["placement"]["kind"]
+        == "direct"
+    )
+    assert (
+        control._plan_run(
+            project_path,
+            execution_profile=slurm,
+            scheduler_job_id="700123",
+        ).attempt_record["placement"]["kind"]
+        == "slurm"
+    )
+    assert requirements == ["direct", "slurm"]
+
+
 def _scheduled_run_arguments(tmp_path: Path, *, execute: bool) -> argparse.Namespace:
     return argparse.Namespace(
         project=tmp_path / "project.yaml",
@@ -2407,7 +2461,7 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
     monkeypatch.setattr(
         control.doctor,
         "inspect_local_pilot",
-        lambda *_args: pytest.fail(
+        lambda *_args, **_kwargs: pytest.fail(
             "submit host performed compute-allocation readiness"
         ),
     )
@@ -2471,7 +2525,7 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     monkeypatch.setattr(
         control.doctor,
         "inspect_local_pilot",
-        lambda *_args: pytest.fail(
+        lambda *_args, **_kwargs: pytest.fail(
             "submit host performed compute-allocation readiness"
         ),
     )
@@ -2505,7 +2559,7 @@ def test_private_slurm_delegate_rejects_profile_drift_before_readiness(
     monkeypatch.setattr(
         control.doctor,
         "inspect_local_pilot",
-        lambda *_args: pytest.fail("digest drift reached compute readiness"),
+        lambda *_args, **_kwargs: pytest.fail("digest drift reached compute readiness"),
     )
 
     assert control.run_from_args(arguments) == 2
@@ -2993,8 +3047,8 @@ def test_public_help_routes() -> None:
         (("run", "--help"), "usage: emrys run"),
         (("resume", "--help"), "usage: emrys resume"),
         (
-            ("inspect", "local-pilot-run", "--help"),
-            "usage: emrys inspect local-pilot-run",
+            ("inspect", "run", "--help"),
+            "usage: emrys inspect run",
         ),
     ):
         result = subprocess.run(
@@ -3103,12 +3157,12 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     monkeypatch.setattr(
         control.doctor,
         "inspect_local_pilot",
-        lambda *_args: readiness,
+        lambda *_args, **_kwargs: readiness,
     )
     monkeypatch.setattr(
         control.doctor,
         "diagnose_project",
-        lambda *_args: readiness,
+        lambda *_args, **_kwargs: readiness,
     )
     monkeypatch.setattr(
         control.capacity,

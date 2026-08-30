@@ -202,8 +202,8 @@ def _add_onboarding_commands(command_parsers: _SubparserCollection) -> None:
         _command_handler=local_pilot_onboarding_command.init_manifests_from_args
     )
     synthetic_parser = init_parsers.add_parser(
-        "synthetic-local-pilot",
-        help="Create a deterministic four-library synthetic science fixture.",
+        "synthetic",
+        help="Create a deterministic four-library synthetic Project.",
         description=local_pilot_synthetic_fixture_command.DESCRIPTION,
     )
     local_pilot_synthetic_fixture_command.configure_parser(synthetic_parser)
@@ -290,7 +290,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     resume_parser = command_parsers.add_parser(
         "resume",
-        help="Plan or resume one failed/interrupted local-pilot run.",
+        help="Plan or resume one failed or interrupted Run.",
         description=local_pilot_control_command.RESUME_DESCRIPTION,
     )
     local_pilot_control_command.configure_resume_parser(resume_parser)
@@ -359,8 +359,8 @@ def build_parser() -> argparse.ArgumentParser:
     _add_storage_inventory_inspection_command(inspection_parsers)
     _add_storage_qualification_inspection_command(inspection_parsers)
     local_run_parser = inspection_parsers.add_parser(
-        "local-pilot-run",
-        help="Derive one local-pilot run state without repair.",
+        "run",
+        help="Derive one Run state without repair.",
         description=local_pilot_control_command.INSPECT_DESCRIPTION,
     )
     local_pilot_control_command.configure_inspect_parser(local_run_parser)

@@ -31,6 +31,8 @@ from emrys.libraries.application_logging import (
     resolve_log_controls,
 )
 from emrys.libraries.source_authority import SourceCheckout
+from emrys.libraries.validation.errors import ValidationError
+from emrys.libraries.validation.inputs import read_bytes
 from emrys.orchestration.local_pilot import (
     capacity,
     doctor,
@@ -71,8 +73,7 @@ from emrys.orchestration.local_pilot import slurm_submission
 RUN_DESCRIPTION = "Plan an immutable Run; confirm or use --execute. Installs nothing."
 RESUME_DESCRIPTION = "Plan a safe resume, then confirm or use --execute for automation."
 INSPECT_DESCRIPTION = (
-    "Derive one local-pilot run state from immutable EMRYS records without "
-    "reading or repairing Snakemake metadata."
+    "Derive one Run state from immutable EMRYS records without reading or repairing Snakemake metadata."
 )
 REPORT_DESCRIPTION = (
     "Plan, generate, or reuse the fixed reports for one completed immutable Run. "
@@ -129,7 +130,10 @@ def _plan_run(
 
     workspace = _absolute(project_path).parent
     try:
-        readiness = doctor.diagnose_project(project_path)
+        readiness = doctor.diagnose_project(
+            project_path,
+            storage_requirement=execution_profile.placement.kind,
+        )
         _require_ready(readiness)
         project = readiness.project
         policy = execution_profile.resource_policy
@@ -161,9 +165,11 @@ def _load_config_reference(
 ) -> dict[str, Any]:
     reference = attempt["workflow_config"]
     path = run_root / str(reference["path"])
-    if path.is_symlink() or not path.is_file():
-        raise ControlError(f"Prior workflow config is unavailable: {path}")
-    data = path.read_bytes()
+    try:
+        data = read_bytes(path, "prior workflow config")
+    except ValidationError as exc:
+        raise ControlError(f"Prior workflow config is unavailable: {path}") from exc
+
     if hashlib.sha256(data).hexdigest() != reference["sha256"]:
         raise ControlError("Prior workflow config differs from its attempt reference")
     try:
@@ -196,9 +202,11 @@ def _retained_dispatches(
         if not isinstance(reference, dict) or set(reference) != {"path", "sha256"}:
             raise ControlError("Prior reusable dispatch reference is malformed")
         path = Path(str(reference["path"]))
-        if path.is_symlink() or not path.is_file():
-            raise ControlError(f"Reusable dispatch is unavailable: {path}")
-        if hashlib.sha256(path.read_bytes()).hexdigest() != reference["sha256"]:
+        try:
+            data = read_bytes(path, "reusable dispatch")
+        except ValidationError as exc:
+            raise ControlError(f"Reusable dispatch is unavailable: {path}") from exc
+        if hashlib.sha256(data).hexdigest() != reference["sha256"]:
             raise ControlError(f"Reusable dispatch bytes changed: {path}")
         retained[(task.expected.machine_key, task.expected.scope_id)] = dict(reference)
     return retained
@@ -209,25 +217,17 @@ def _retained_runtime_profile_path(
 ) -> Path:
     """Re-admit the predecessor's one exact retained runtime profile binding."""
 
-    retained = tuple(
-        identity
-        for identity in predecessor["required_tools"]
-        if identity["name"] == "runtime_profile"
-    )
+    retained = tuple(identity for identity in predecessor["required_tools"] if identity["name"] == "runtime_profile")
     if len(retained) != 1:
-        raise ControlError(
-            "Predecessor attempt does not bind one retained runtime profile"
-        )
+        raise ControlError("Predecessor attempt does not bind one retained runtime profile")
     identity = retained[0]
     path = Path(str(identity["path"]))
     resolved = Path(str(identity["resolved_path"]))
     try:
-        data = path.read_bytes()
+        data = read_bytes(path, "retained runtime profile")
         observed = path.resolve(strict=True)
-    except OSError as exc:
-        raise ControlError(
-            f"Retained runtime profile is unavailable: {path}: {exc}"
-        ) from exc
+    except (OSError, ValidationError) as exc:
+        raise ControlError(f"Retained runtime profile is unavailable: {path}: {exc}") from exc
     digest = hashlib.sha256(data).hexdigest()
     if (
         not path.is_absolute()
@@ -269,11 +269,7 @@ def _plan_resume(
     previous = observed.latest_attempt
     project_path = Path(str(previous["authored_paths"]["request"]))
     workspace = Path(str(previous["workspace"]))
-    retained_runtime_profile = (
-        _retained_runtime_profile_path(previous)
-        if observed.authority is None
-        else None
-    )
+    retained_runtime_profile = _retained_runtime_profile_path(previous) if observed.authority is None else None
     runtime_profile = onboarding.runtime_profile_path(project_path)
     if not os.path.lexists(runtime_profile):
         runtime_profile = (
@@ -286,6 +282,7 @@ def _plan_resume(
             project_path,
             workspace,
             runtime_profile,
+            storage_requirement=execution_profile.placement.kind,
         )
         _require_ready(readiness)
         project = readiness.project
@@ -309,10 +306,7 @@ def _plan_resume(
                     resource_policy=policy,
                 )
             candidate = build_run_candidate(project, readiness, policy.declaration)
-            if (
-                candidate.run_binding.canonical_bytes
-                != observed.authority.run_binding.canonical_bytes
-            ):
+            if candidate.run_binding.canonical_bytes != observed.authority.run_binding.canonical_bytes:
                 raise ControlError("Current inputs resolve to a different Run")
             run = candidate
             resources = resolve_resource_policy(policy, capacity.observe_allocation())
@@ -385,10 +379,7 @@ def _verified_report_location_lines(
     labels = ("Scientific report", "Evidence report")
     return (
         "Results:",
-        *(
-            f"  {label}: {path}"
-            for label, (_, path) in zip(labels, locations, strict=True)
-        ),
+        *(f"  {label}: {path}" for label, (_, path) in zip(labels, locations, strict=True)),
     )
 
 
@@ -412,10 +403,7 @@ def _next_supported_action(observed: inspection.RunInspection) -> str:
     if observed.results_status == "complete":
         if observed.reporting_status == "complete":
             return "Review the verified Results and report paths."
-        return (
-            "Generate reports with emrys report --run-root "
-            f"{observed.run_root} --execute."
-        )
+        return f"Generate reports with emrys report --run-root {observed.run_root} --execute."
     return "Preserve this Run; review retained evidence. Do not resume."
 
 
@@ -435,9 +423,7 @@ def _private_delegate_digest() -> str | None:
     if values[slurm_submission.DELEGATE_MARKER_ENV] != slurm_submission.DELEGATE_MARKER:
         raise ControlError("Private Slurm delegate marker is invalid")
     if values[slurm_submission.SUBMIT_UID_ENV] != str(os.getuid()):
-        raise ControlError(
-            "Private Slurm delegate UID differs from the current process"
-        )
+        raise ControlError("Private Slurm delegate UID differs from the current process")
     return values[slurm_submission.PROFILE_SHA256_ENV]
 
 
@@ -450,12 +436,7 @@ def _delegate_job_id(
     if not isinstance(profile.placement, SlurmPlacement):
         raise ControlError("A private Slurm delegate requires Slurm placement")
     job_id = os.environ.get("SLURM_JOB_ID")
-    if (
-        job_id is None
-        or not job_id.isascii()
-        or not job_id.isdecimal()
-        or not job_id.strip("0")
-    ):
+    if job_id is None or not job_id.isascii() or not job_id.isdecimal() or not job_id.strip("0"):
         raise ControlError("A private Slurm delegate requires one positive job ID")
     return job_id
 
@@ -478,18 +459,14 @@ def _resolve_controls(arguments: argparse.Namespace, workspace: Path) -> LogCont
 def _resume_workspace(run_root: Path) -> Path:
     root = _absolute(run_root)
     if root.parent.name != "runs" or root.parent.parent == Path("/"):
-        raise ControlError(
-            "Run root must use the canonical <workspace>/runs/<run-id> layout"
-        )
+        raise ControlError("Run root must use the canonical <workspace>/runs/<run-id> layout")
     return root.parent.parent
 
 
 def _admit_workspace_location(workspace: Path) -> None:
     source_root = _absolute(Path(__file__).resolve().parents[4])
     try:
-        blockers, remediations = doctor.workspace_location_blockers(
-            _absolute(workspace), source_root
-        )
+        blockers, remediations = doctor.workspace_location_blockers(_absolute(workspace), source_root)
     except doctor.DoctorInputError as exc:
         raise ControlError(str(exc)) from exc
     if blockers:
@@ -543,9 +520,7 @@ def _prepare_scheduler_log_dir(workspace: Path) -> Path:
     root = _absolute(workspace)
     log_dir = root / "logs"
     if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
-        raise ControlError(
-            "Scheduler log directory creation requires symbolic-link protection"
-        )
+        raise ControlError("Scheduler log directory creation requires symbolic-link protection")
     flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
     flags |= os.O_DIRECTORY
     descriptor: int | None = None
@@ -560,9 +535,7 @@ def _prepare_scheduler_log_dir(workspace: Path) -> Path:
             os.close(descriptor)
             descriptor = child
     except OSError as exc:
-        raise ControlError(
-            f"Could not securely create scheduler log directory: {log_dir}"
-        ) from exc
+        raise ControlError(f"Could not securely create scheduler log directory: {log_dir}") from exc
     finally:
         if descriptor is not None:
             os.close(descriptor)
@@ -582,10 +555,7 @@ def _owned_failure_paths(
         owned["lock"] = lock_path
     recovery_paths = (
         *((released_lock_path,) if released_lock_path is not None else ()),
-        plan.run_root
-        / "attempts"
-        / plan.workflow_attempt_id
-        / "released-run-lock.json",
+        plan.run_root / "attempts" / plan.workflow_attempt_id / "released-run-lock.json",
         plan.run_root / "locks" / f"released-{plan.workflow_attempt_id}-run-lock.json",
     )
     for path in recovery_paths:
@@ -688,9 +658,7 @@ def _execute_plan(
                 scope=f"run:{scope_id}",
                 execution_attempt_id=execution_attempt_id,
                 log_path=None,
-                next_action=(
-                    "Correct the application-log path or permissions, then retry."
-                ),
+                next_action=("Correct the application-log path or permissions, then retry."),
             ),
             end="",
             file=sys.stderr,
@@ -725,11 +693,7 @@ def _execute_plan(
     try:
         plan = plan_source() if callable(plan_source) else plan_source
     except KeyboardInterrupt:
-        log_best_effort(
-            lambda: attempt.interrupt_best_effort(
-                message="Analysis preflight interrupted."
-            )
-        )
+        log_best_effort(lambda: attempt.interrupt_best_effort(message="Analysis preflight interrupted."))
         print(
             render_failure_summary(
                 entrypoint=entrypoint,
@@ -790,16 +754,10 @@ def _execute_plan(
     def observe_application_event(event_name: str) -> None:
         nonlocal receipt_ready
         if event_name == "analysis_started":
-            log_best_effort(
-                lambda: logger.info(
-                    "Running analysis.", extra=event("analysis_started")
-                )
-            )
+            log_best_effort(lambda: logger.info("Running analysis.", extra=event("analysis_started")))
         elif event_name == "publication_ready":
             receipt_ready = log_best_effort(
-                lambda: attempt.publication_ready(
-                    message="Analysis finished; finalizing evidence."
-                )
+                lambda: attempt.publication_ready(message="Analysis finished; finalizing evidence.")
             )
 
     try:
@@ -809,20 +767,14 @@ def _execute_plan(
         )
         if plan.operation == "execute":
             admit_run(plan, ops=ops)
-        outcome = lifecycle.run_materialized_attempt(
-            plan.preparation, lambda: publish_attempt(plan, ops=ops), ops=ops
-        )
+        outcome = lifecycle.run_materialized_attempt(plan.preparation, lambda: publish_attempt(plan, ops=ops), ops=ops)
     except (
         MaterializationError,
         lifecycle.LifecycleError,
         OSError,
     ) as exc:
         if receipt_ready:
-            log_best_effort(
-                lambda: attempt.receipt_failed(
-                    message="Attempt receipt publication failed."
-                )
-            )
+            log_best_effort(lambda: attempt.receipt_failed(message="Attempt receipt publication failed."))
             log_best_effort(
                 lambda: attempt.terminal(
                     event_name="execution_incomplete",
@@ -830,11 +782,7 @@ def _execute_plan(
                 )
             )
         else:
-            log_best_effort(
-                lambda: attempt.fail(
-                    phase="execute", message="Analysis execution failed."
-                )
-            )
+            log_best_effort(lambda: attempt.fail(phase="execute", message="Analysis execution failed."))
         print(f"emrys: error: {exc}", file=sys.stderr)
         print(
             render_failure_summary(
@@ -847,10 +795,7 @@ def _execute_plan(
                 owned_paths=_owned_failure_paths(plan),
                 recent_events=attempt.recent_console_events,
                 durable_only_count=attempt.durable_only_count,
-                next_action=(
-                    "Inspect the Run with emrys inspect local-pilot-run --run-root "
-                    f"{plan.run_root}"
-                ),
+                next_action=(f"Inspect the Run with emrys inspect run --run-root {plan.run_root}"),
             ),
             end="",
             file=sys.stderr,
@@ -897,9 +842,7 @@ def _execute_plan(
     if status == "succeeded":
         print(f"Evidence: {outcome.receipt_path}", file=sys.stderr)
         if not report_enabled:
-            observe_reporting(
-                "reporting_skipped", "Reporting was disabled for this execution."
-            )
+            observe_reporting("reporting_skipped", "Reporting was disabled for this execution.")
             close_log_best_effort()
             print("Reporting: skipped (--no-report)", file=sys.stderr)
             return 0
@@ -914,8 +857,7 @@ def _execute_plan(
             )
             close_log_best_effort()
             print(
-                "emrys: error: Reporting failed after scientific Results completed: "
-                f"{exc}",
+                f"emrys: error: Reporting failed after scientific Results completed: {exc}",
                 file=sys.stderr,
             )
             print(
@@ -944,9 +886,7 @@ def _execute_plan(
             {"reporting_status": field(reported.status)},
         )
         close_log_best_effort()
-        result_lines = _verified_report_location_lines(
-            reported.verified_report_locations
-        )
+        result_lines = _verified_report_location_lines(reported.verified_report_locations)
         for line in result_lines:
             print(line, file=sys.stderr)
         return 0
@@ -965,10 +905,7 @@ def _execute_plan(
             ),
             recent_events=attempt.recent_console_events,
             durable_only_count=attempt.durable_only_count,
-            next_action=(
-                "Inspect the Run with emrys inspect local-pilot-run --run-root "
-                f"{plan.run_root}"
-            ),
+            next_action=(f"Inspect the Run with emrys inspect run --run-root {plan.run_root}"),
         ),
         end="",
         file=sys.stderr,
@@ -976,25 +913,16 @@ def _execute_plan(
     return 1
 
 
-def _print_plan(
-    plan: AttemptPlan, *, level: LogLevel, report_enabled: bool = True
-) -> None:
+def _print_plan(plan: AttemptPlan, *, level: LogLevel, report_enabled: bool = True) -> None:
     new_dispatches = plan.new_dispatch_files
     reused = plan.dispatch_count - len(new_dispatches)
     resources = plan.resources
-    project_label = (
-        plan.run.project.definition.get("label") or plan.run.project.source_path.name
-    )
+    project_label = plan.run.project.definition.get("label") or plan.run.project.source_path.name
     print(f"Project: {project_label!a}", file=sys.stderr)
     print(f"Run ID: {plan.run.run_id}", file=sys.stderr)
     print(f"Work: {len(new_dispatches)} pending, {reused} reusable", file=sys.stderr)
     print(
-        "Reporting: "
-        + (
-            "automatic after scientific work"
-            if report_enabled
-            else "disabled for this execution"
-        ),
+        "Reporting: " + ("automatic after scientific work" if report_enabled else "disabled for this execution"),
         file=sys.stderr,
     )
     if level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
@@ -1009,8 +937,7 @@ def _print_plan(
             )
         print(f"Run root: {plan.run_root}", file=sys.stderr)
         print(
-            f"Resources: {resources.workflow_cores} cores, "
-            f"{resources.workflow_memory_mb} MiB",
+            f"Resources: {resources.workflow_cores} cores, {resources.workflow_memory_mb} MiB",
             file=sys.stderr,
         )
         print("Step thread allocations:", file=sys.stderr)
@@ -1025,9 +952,7 @@ def _print_plan(
             file=sys.stderr,
         )
         for item in new_dispatches:
-            record = orchestration_contracts.load_json_object_bytes(
-                item.data, item.path
-            )
+            record = orchestration_contracts.load_json_object_bytes(item.data, item.path)
             print(
                 f"TASK {record['machine_key']}/{record['scope']['scope_id']} producer: "
                 + shlex.join(record["producer_argv"]),
@@ -1093,12 +1018,8 @@ def _finish_control(
 
 
 def _add_execution_arguments(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--no-report", action="store_true", help="Skip reporting after Results."
-    )
-    parser.add_argument(
-        "--execute", action="store_true", help="Execute noninteractively."
-    )
+    parser.add_argument("--no-report", action="store_true", help="Skip reporting after Results.")
+    parser.add_argument("--execute", action="store_true", help="Execute noninteractively.")
 
 
 def configure_run_parser(parser: argparse.ArgumentParser) -> None:
@@ -1118,10 +1039,7 @@ def configure_resume_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--execution-profile",
         type=Path,
-        help=(
-            "Optional placement profile. Without one, reuse prior computational "
-            "resources and execute directly."
-        ),
+        help=("Optional placement profile. Without one, reuse prior computational resources and execute directly."),
     )
     add_resource_override_arguments(parser)
     add_log_arguments(parser)
@@ -1164,9 +1082,7 @@ def _milestone_progress(
     known_steps = {step for _label, steps in _MILESTONE_STEPS for step in steps}
     unknown = sorted({task.expected.step_id for task in tasks} - known_steps)
     if unknown:
-        raise ControlError(
-            "Inspected task Steps have no public milestone: " + ", ".join(unknown)
-        )
+        raise ControlError("Inspected task Steps have no public milestone: " + ", ".join(unknown))
     result = []
     for label, steps in _MILESTONE_STEPS:
         members = tuple(task for task in tasks if task.expected.step_id in steps)
@@ -1189,15 +1105,11 @@ def _attempt_elapsed_line(
         return "Attempt elapsed: unavailable — no Attempt"
     label = "Current" if observed.attempt_outcome == "running" else "Latest"
     try:
-        started = datetime.fromisoformat(
-            str(attempt["created_at"]).replace("Z", "+00:00")
-        )
+        started = datetime.fromisoformat(str(attempt["created_at"]).replace("Z", "+00:00"))
         if observed.attempt_outcome == "running":
             finished = datetime.now(UTC)
         elif observed.latest_receipt is not None:
-            finished = datetime.fromisoformat(
-                str(observed.latest_receipt["finished_at"]).replace("Z", "+00:00")
-            )
+            finished = datetime.fromisoformat(str(observed.latest_receipt["finished_at"]).replace("Z", "+00:00"))
         else:
             return f"{label} Attempt elapsed: unavailable — no terminal receipt"
         if finished < started:
@@ -1269,9 +1181,7 @@ def resume_from_args(
             _plan_resume,
             arguments.run_root,
             execution_profile=profile,
-            profile_resources_explicit=(
-                profile.resource_policy.config_path is not None
-            ),
+            profile_resources_explicit=(profile.resource_policy.config_path is not None),
             resource_overrides=overrides,
             scheduler_job_id=scheduler_job_id,
         )
@@ -1371,8 +1281,7 @@ def report_from_args(
         close_log_best_effort()
         print(f"emrys: error: {exc}", file=sys.stderr)
         print(
-            "Scientific Results remain complete; reporting state was preserved "
-            "for inspection.",
+            "Scientific Results remain complete; reporting state was preserved for inspection.",
             file=sys.stderr,
         )
         return 1
@@ -1401,9 +1310,7 @@ def inspect_from_args(
         detail = getattr(arguments, "detail", "normal")
         milestones = _milestone_progress(observed.tasks)
         elapsed = _attempt_elapsed_line(observed)
-        result_lines = _verified_report_location_lines(
-            observed.verified_report_locations
-        )
+        result_lines = _verified_report_location_lines(observed.verified_report_locations)
     except (OSError, inspection.InspectionError, ControlError) as exc:
         _print_safe(f"emrys: error: {exc}", file=sys.stderr)
         return 2
@@ -1432,12 +1339,8 @@ def inspect_from_args(
         print(f"Attempt ID: {attempt_id}")
         if latest is not None:
             placement = latest.get("placement")
-            placement_kind = (
-                "legacy/unrecorded" if placement is None else placement["kind"]
-            )
-            scheduler_job_id = (
-                "none" if placement is None else placement["scheduler_job_id"] or "none"
-            )
+            placement_kind = "legacy/unrecorded" if placement is None else placement["kind"]
+            scheduler_job_id = "none" if placement is None else placement["scheduler_job_id"] or "none"
             _print_safe(
                 f"Execution: {latest['executor']}/{latest['execution_mode']} "
                 f"placement={placement_kind} scheduler_job_id={scheduler_job_id}"
@@ -1455,10 +1358,7 @@ def inspect_from_args(
     if detail == "debug":
         authority = observed.authority
         if authority is None:
-            _print_safe(
-                "Historical authority record: "
-                f"{observed.run_root / 'contract/normalized.json'}"
-            )
+            _print_safe(f"Historical authority record: {observed.run_root / 'contract/normalized.json'}")
         else:
             print("Run authority records:")
             for label, name, record in (
@@ -1480,9 +1380,7 @@ def inspect_from_args(
         if latest is not None:
             attempt_id = str(latest["workflow_attempt_id"])
             attempt_root = observed.run_root / "attempts" / attempt_id
-            receipt_path = (
-                "none" if receipt is None else attempt_root / "attempt-receipt.json"
-            )
+            receipt_path = "none" if receipt is None else attempt_root / "attempt-receipt.json"
             _print_safe(f"Attempt receipt: {receipt_path}")
             _print_safe(f"Engine command: {shlex.join(latest['snakemake_argv'])}")
             if receipt is not None:
@@ -1497,9 +1395,7 @@ def inspect_from_args(
             identity = f"{task.expected.machine_key}/{task.expected.scope_id}"
             task_detail = f"  TASK {identity}: {task.state}"
             if task.record_reference is not None:
-                task_detail += (
-                    f"; verified={observed.run_root / task.record_reference['path']}"
-                )
+                task_detail += f"; verified={observed.run_root / task.record_reference['path']}"
             if task.record is not None:
                 attempt_reference = task.record["task_attempt_record"]
                 attempt_path = observed.run_root / attempt_reference["path"]

@@ -106,6 +106,7 @@ def test_storage_readmission_uses_normalized_reference_identity(
         },
         {"reference": {"fasta": {"path": str(normalized_fasta)}}},
         inspect_storage=inspect_storage,
+        inspect_direct_storage=inspect_storage,
     )
 
     assert calls == [(workspace, normalized_fasta)]
@@ -116,6 +117,87 @@ def test_storage_readmission_uses_normalized_reference_identity(
         sha256=hashlib.sha256(receipt_bytes).hexdigest(),
         observed="b" * 64,
     )
+
+
+def test_direct_storage_readmission_uses_the_bound_receipt_class(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    reference = tmp_path / "reference.fa"
+    receipt = tmp_path / "storage.direct-qualified.json"
+    receipt_bytes = b"direct storage\n"
+    receipt.write_bytes(receipt_bytes)
+    calls: list[str] = []
+
+    def reject_site(
+        _workspace: Path,
+        _reference: Path,
+    ) -> storage_qualification.QualifiedStorage:
+        calls.append("site")
+        raise storage_qualification.StorageQualificationError("wrong receipt class")
+
+    def admit_direct(
+        observed_workspace: Path,
+        observed_reference: Path,
+    ) -> storage_qualification.QualifiedStorage:
+        assert (observed_workspace, observed_reference) == (workspace, reference)
+        calls.append("direct")
+        return storage_qualification.QualifiedStorage(
+            receipt_path=receipt,
+            receipt_sha256=hashlib.sha256(receipt_bytes).hexdigest(),
+            qualification_id="d" * 64,
+        )
+
+    binding = lifecycle._readmit_storage_runtime_binding(
+        {
+            "execution_mode": "local-science-tools",
+            "workspace": str(workspace),
+            "placement": {"kind": "direct"},
+            "required_tools": (
+                {"name": "storage_qualification", "path": str(receipt)},
+            ),
+        },
+        {"reference": {"fasta": {"path": str(reference)}}},
+        inspect_storage=reject_site,
+        inspect_direct_storage=admit_direct,
+    )
+
+    assert calls == ["direct"]
+    assert binding is not None and binding.path == receipt
+
+
+def test_slurm_storage_readmission_never_accepts_direct_evidence(
+    tmp_path: Path,
+) -> None:
+    direct_receipt = tmp_path / "storage.direct-qualified.json"
+
+    def reject_site(
+        _workspace: Path,
+        _reference: Path,
+    ) -> storage_qualification.QualifiedStorage:
+        raise storage_qualification.StorageQualificationError(
+            "site evidence is required"
+        )
+
+    with pytest.raises(lifecycle.LifecycleError, match="site evidence is required"):
+        lifecycle._readmit_storage_runtime_binding(
+            {
+                "execution_mode": "local-science-tools",
+                "workspace": str(tmp_path / "workspace"),
+                "placement": {"kind": "slurm"},
+                "required_tools": (
+                    {
+                        "name": "storage_qualification",
+                        "path": str(direct_receipt),
+                    },
+                ),
+            },
+            {"reference": {"fasta": {"path": str(tmp_path / "reference.fa")}}},
+            inspect_storage=reject_site,
+            inspect_direct_storage=lambda *_args: pytest.fail(
+                "Slurm admitted direct-only storage evidence"
+            ),
+        )
 
 
 @pytest.mark.parametrize("relative_reference", (False, True))
@@ -143,14 +225,13 @@ def test_successor_storage_readmission_resolves_authored_reference_from_request(
                 "authored_paths": {
                     "request": str(request),
                     "reference_fasta": (
-                        "reference/genome.fa"
-                        if relative_reference
-                        else str(reference)
+                        "reference/genome.fa" if relative_reference else str(reference)
                     ),
                 },
             },
             {"schema_version": "emrys.run-binding.v1"},
             inspect_storage=inspect_storage,
+            inspect_direct_storage=inspect_storage,
         )
 
     assert calls == [(workspace, reference)]
@@ -174,6 +255,7 @@ def test_storage_readmission_failure_is_a_lifecycle_error(tmp_path: Path) -> Non
             },
             {"reference": {"fasta": {"path": str(tmp_path / "reference.fa")}}},
             inspect_storage=reject_storage,
+            inspect_direct_storage=reject_storage,
         )
 
 
@@ -185,6 +267,10 @@ def test_default_lifecycle_ops_bind_semantic_storage_admission() -> None:
     assert (
         admission.keywords["inspect_storage"]
         is storage_qualification.admit_final_qualification
+    )
+    assert (
+        admission.keywords["inspect_direct_storage"]
+        is storage_qualification.admit_direct_qualification
     )
 
 
@@ -1422,15 +1508,11 @@ def test_success_publishes_receipt_last_and_inspection_ignores_engine_metadata(
         f"publish:{outcome.receipt_path.relative_to(built.built.run_root)}",
     ]
     runtime_admissions = [
-        index
-        for index, event in enumerate(built.events)
-        if event == "runtime-admitted"
+        index for index, event in enumerate(built.events) if event == "runtime-admitted"
     ]
     assert len(runtime_admissions) == 2
     storage_admissions = [
-        index
-        for index, event in enumerate(built.events)
-        if event == "storage-admitted"
+        index for index, event in enumerate(built.events) if event == "storage-admitted"
     ]
     assert len(storage_admissions) == 2
     workflow_index = built.events.index("workflow")
@@ -1848,8 +1930,7 @@ def test_post_child_storage_qualification_change_blocks(tmp_path: Path) -> None:
     assert "workflow" in built.events
     assert outcome.receipt["status"] == "blocked"
     assert any(
-        "post-child fixture drift" in item
-        for item in outcome.receipt["blockers"]
+        "post-child fixture drift" in item for item in outcome.receipt["blockers"]
     )
     assert not outcome.lock_path.exists()
     assert outcome.receipt_path.is_file()
@@ -1974,11 +2055,7 @@ def test_retained_pre_attempt_release_evidence_requires_reconciliation(
 ) -> None:
     built = _build_harness(tmp_path)
     identifier = "workflow-20260812T170000Z-" + "a" * 32
-    retained = (
-        built.built.run_root
-        / "locks"
-        / f"released-{identifier}-run-lock.json"
-    )
+    retained = built.built.run_root / "locks" / f"released-{identifier}-run-lock.json"
     retained.write_bytes(b"retained pre-attempt evidence\n")
 
     blockers = inspection.lock_tree_blockers(
@@ -2676,16 +2753,14 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
     first_outcome = lifecycle.run_attempt(first.request, ops=first.ops())
     assert first_outcome.receipt["status"] == "failed"
     assert len(first_outcome.receipt["preentry_task_attempt_records"]) == 1
-    assert (
-        inspection.inspect_run(
-            first.built.run_root,
-            ops=inspection.InspectionOps(
-                lambda: "fixture-host",
-                lambda _pid: True,
-                first.validate_reporting,
-            ),
-        ).recovery_available
-    )
+    assert inspection.inspect_run(
+        first.built.run_root,
+        ops=inspection.InspectionOps(
+            lambda: "fixture-host",
+            lambda _pid: True,
+            first.validate_reporting,
+        ),
+    ).recovery_available
 
     first_id = str(first.request.attempt_record["workflow_attempt_id"])
     second_id = "workflow-20260812T140500Z-" + "a" * 32
@@ -2767,8 +2842,7 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
     assert forged_observation.integrity == "blocked"
     assert forged_observation.results_status == "blocked"
     assert any(
-        "cumulative task starts" in blocker
-        for blocker in forged_observation.blockers
+        "cumulative task starts" in blocker for blocker in forged_observation.blockers
     )
     assert any(
         "Superseded workflow attempt is not resumable" in blocker

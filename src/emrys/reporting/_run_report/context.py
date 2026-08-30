@@ -108,9 +108,9 @@ def _inspect_command(source_root: Path, output_root: Path) -> str:
         source_root / "products" / "report",
     )
     if output_root not in canonical_roots:
-        return "emrys inspect local-pilot-run --run-root <run-root>"
+        return "emrys inspect run --run-root <run-root>"
     return shlex.join(
-        ("emrys", "inspect", "local-pilot-run", "--run-root", str(source_root))
+        ("emrys", "inspect", "run", "--run-root", str(source_root))
     )
 
 

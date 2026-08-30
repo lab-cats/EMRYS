@@ -31,7 +31,7 @@ checks the clean checkout, controlled Python/Snakemake, exact science tools,
 Picard jar, guarded `renv`, and Step `08` namespaces without mutation. The
 production materializer projects the fixed profile to public owner commands,
 publishes attempt-specific state only under the aggregate lock, and exposes
-dry-run-first `emrys run`, `emrys resume`, and `emrys inspect local-pilot-run`.
+dry-run-first `emrys run`, `emrys resume`, and `emrys inspect run`.
 
 ## Evidence boundary
 

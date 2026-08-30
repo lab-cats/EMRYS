@@ -788,9 +788,9 @@ def test_two_html_views_separate_science_from_operational_evidence(
         assert 'href="http:' not in content
         assert 'href="https:' not in content
         assert 'href="/' not in content
-    assert "emrys inspect local-pilot-run --run-root" not in scientific
+    assert "emrys inspect run --run-root" not in scientific
     assert (
-        "Inspect this Run: emrys inspect local-pilot-run --run-root &lt;run-root&gt;"
+        "Inspect this Run: emrys inspect run --run-root &lt;run-root&gt;"
         in evidence
     )
     assert "CMH-ranked candidates" in scientific

@@ -54,17 +54,34 @@ def stable_text(path: Path, label: str) -> tuple[str, Snapshot]:
 
 def read_bytes(path: Path, label: str) -> bytes:
     """Read exact bytes through a stable, no-follow descriptor binding."""
-    return _read_bytes(path, label, limit=None)
+    return read_bytes_with_identity(path, label)[0]
+
+
+def read_bytes_with_identity(
+    path: Path,
+    label: str,
+    *,
+    nonempty: bool = True,
+) -> tuple[bytes, os.stat_result]:
+    """Read stable bytes and return the bound descriptor identity."""
+
+    return _read_bytes(path, label, limit=None, nonempty=nonempty)
 
 
 def read_prefix(path: Path, label: str, length: int) -> bytes:
     """Read at most ``length`` bytes through a stable, no-follow binding."""
     if isinstance(length, bool) or not isinstance(length, int) or length < 1:
         raise ValueError("prefix length must be a positive integer")
-    return _read_bytes(path, label, limit=length)
+    return _read_bytes(path, label, limit=length, nonempty=True)[0]
 
 
-def _read_bytes(path: Path, label: str, *, limit: int | None) -> bytes:
+def _read_bytes(
+    path: Path,
+    label: str,
+    *,
+    limit: int | None,
+    nonempty: bool,
+) -> tuple[bytes, os.stat_result]:
     """Read a stable complete file or fixed prefix from one bound descriptor."""
 
     no_follow = getattr(os, "O_NOFOLLOW", None)
@@ -78,7 +95,7 @@ def _read_bytes(path: Path, label: str, *, limit: int | None) -> bytes:
         before = os.fstat(descriptor)
         if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):
             fail(f"{label} must be a regular non-symlink file: {path}")
-        if before.st_size == 0:
+        if nonempty and before.st_size == 0:
             fail(f"{label} must be nonempty: {path}")
         _require_descriptor_path_binding(path, before, label)
         chunks: list[bytes] = []
@@ -111,7 +128,7 @@ def _read_bytes(path: Path, label: str, *, limit: int | None) -> bytes:
         or len(data) != expected_size
     ):
         fail(f"{label} changed while read: {path}")
-    return data
+    return data, after
 
 
 def _stable_file_state(value: os.stat_result) -> tuple[int, ...]:

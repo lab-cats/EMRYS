@@ -153,8 +153,8 @@ trusted raw boundary. Validated SVG bytes are base64 data URIs in ordinary
 autoescaped image attributes. There are no scripts, remote assets, sidecars,
 network access, format selection, or report PDF.
 
-Focused protection is `make report-test`; `make demo-report` creates an ignored
-synthetic two-view HTML demonstration beneath `results/demo-report-jinja/`.
+Focused protection is `make report-test`. The supported synthetic Project path
+exercises automatic reporting through the ordinary Run journey.
 Recovery routes are in
 [`TROUBLESHOOTING`](../../../docs/operations/TROUBLESHOOTING.md).
 

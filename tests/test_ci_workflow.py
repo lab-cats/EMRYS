@@ -23,7 +23,7 @@ ORDINARY_JOB_IDS = (
     "shell-slurm",
     "guarded-r",
     "managed-runtime-userspace",
-    "fresh-clone-e2e",
+    "managed-golden-path",
     "python314-coverage-shards",
     "python314-coverage",
     "python311-smoke",
@@ -293,6 +293,39 @@ def test_managed_runtime_userspace_matrix_proves_the_same_lock() -> None:
     verify = _named_step(job, "Verify locked tools in this container userspace")
     assert "src/emrys/resources/runtime/pixi.lock" in verify["run"]
     assert 'pixi list --locked --manifest-path "${PIXI_MANIFEST}"' in verify["run"]
+
+
+def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
+    job = _workflow_jobs()["managed-golden-path"]
+    assert job["runs-on"] == "ubuntu-24.04"
+    assert job["timeout-minutes"] == 180
+    setup = _named_step(job, "Install Pixi without provisioning the scientific runtime")
+    assert setup["uses"] == (
+        "prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e"
+    )
+    assert setup["with"]["run-install"] is False
+    path = _named_step(job, "Exercise the supported managed golden path")["run"]
+    for command in (
+        "init synthetic",
+        "doctor",
+        "--repair --execute",
+        "run",
+        "inspect run",
+    ):
+        assert command in path
+    for retired in (
+        "storage-qualification",
+        "runtime discover",
+        "execution-profile",
+        "synthetic-local-pilot",
+        "local-pilot-run",
+        "test_fresh_clone_e2e.py",
+    ):
+        assert retired not in path
+    upload = _named_step(job, "Upload managed golden-path evidence")
+    assert _expression(upload["if"]) == "always()"
+    assert upload["with"]["include-hidden-files"] is True
+    assert upload["with"]["if-no-files-found"] == "error"
 
 
 def test_synthetic_evidence_is_always_uploaded_with_hidden_state() -> None:

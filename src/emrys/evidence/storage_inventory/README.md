@@ -11,12 +11,18 @@ private [`inspector.py`](inspector.py) coordinates private owners for:
   and deterministic evidence rendering;
 - [`_storage_publication.py`](_storage_publication.py), locked receipt-last
   publication and rollback; and
-- [`qualification.py`](qualification.py), two-phase site-semantic probing and
-  final receipt admission.
+- [`qualification.py`](qualification.py), single-host direct probing plus
+  two-phase site-semantic probing and receipt admission.
+
+Doctor's explicit repair owns the create-absent direct receipt used by ordinary
+single-host placement. It probes hard links, advisory `flock`, atomic rename,
+and fsync at the exact Project/reference roots under the current host and
+numeric identity, then removes only its private probe directories. It makes no
+cross-node, head/compute-consistency, or post-allocation durability claim.
 
 The sibling grouped command
-`python -I -m emrys inspect storage-qualification` owns the narrow,
-two-phase site check consumed by the local-pilot doctor. Its compute phase
+`python -I -m emrys inspect storage-qualification` owns the narrow two-phase
+site check required for Slurm. Its compute phase
 creates private probes in the workflow parent and Step `00c` sidecar parent;
 its head-node finalize phase re-admits those probes after the allocation,
 publishes one content-bound qualification receipt, and removes only the exact
@@ -72,14 +78,15 @@ python -I -m emrys inspect storage-qualification \
   --phase finalize --execute
 ```
 
-The receipt path is derived from the two canonical storage roots, so doctor
-needs no ambient selector. Network storage is supported only after this exact
-check passes. Node-local storage that is not visible and durable on the head
-node cannot finalize and therefore cannot report ready; this owner does not
-copy or stage data around that failure. The local-pilot lifecycle semantically
-re-admits this receipt and both qualified roots before delegation and after the
-workflow child terminates; the attempt is blocked if either
-observation differs from its immutable storage identity.
+The receipt path is derived from the two canonical storage roots, so Run needs
+no ambient selector. Network storage is supported for Slurm only after this
+exact check passes. Node-local storage that is not visible and durable on the
+head node cannot finalize and therefore cannot admit Slurm; this owner does not
+copy or stage data around that failure. Lifecycle semantically re-admits the
+placement-appropriate receipt and both qualified roots before delegation and
+after the workflow child terminates; the Attempt is blocked if either
+observation differs from its immutable storage identity. Historical Attempts
+without placement retain the two-phase requirement.
 
 Dry-run, execute, and focused test are:
 

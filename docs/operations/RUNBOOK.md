@@ -54,7 +54,6 @@ owner-local `.slurm` entry points. Ordinary wrappers use `TMPDIR=/tmp`; the Step
 | Runtime, reference, storage, and QC evidence | [`evidence`](../../src/emrys/evidence/README.md); runtime `inspect runtime-availability`; storage `inspect storage-inventory` and `inspect storage-qualification`; reference `reconcile reference-provenance` |
 | Artifact schemas | [`artifact contracts`](../../src/emrys/contracts/artifacts/README.md); installed route `python -I -m emrys validate artifact-contracts` |
 | Artifact index, run summary, and reports | [`reporting`](../../src/emrys/reporting/README.md); the public independent route is `emrys report --run-root ...`, while low-level builders are private implementation and developer-fixture surfaces |
-| Synthetic demonstration | [`demo`](../demo/README.md) |
 
 Each owner README supplies supported help, dry-run, execute, scheduler, focused
 test, diagnostics, and recovery routes when those surfaces exist. Its adjacent
@@ -96,19 +95,22 @@ Accepted Slurm submission prints exact `JOB_ID`, `OUT`, and `ERR` values. Setup
 creates `runs/`, `logs/`, and `runtime/` beneath the `project.yaml` parent;
 scheduler and application logs use its `logs/` tree. Run, resume, and Doctor
 derive the admitted `runtime/runtime.tsv` from that Project. Only the advanced
-`inspect storage-qualification --workspace PROJECT_ROOT ...` probe retains an
-explicit storage target; run and Doctor derive it.
+`inspect storage-qualification --workspace PROJECT_ROOT ...` retains the
+explicit two-phase Slurm/site probe; run and Doctor derive the target. Direct
+placement instead consumes Doctor's Project-owned single-host receipt.
 
 `emrys doctor --project /absolute/path/to/project.yaml` is the top-level
 readiness route. Diagnosis is side-effect-free; `--log-level verbose` and
 `--log-level debug` reveal progressively more retained operational evidence. A
-missing or incomplete EMRYS-managed runtime can be previewed with `--repair`.
-Terminal confirmation or explicit noninteractive `--repair --execute` delegates
-locked installation to `uv`, Pixi, and `renv`, writes only the active
-checkout-owned `.venv` and Project-owned `runtime/managed`, owns one maintenance
-log, and requalifies. It does not migrate site/user profiles, alter inputs, or
-repair workflow outputs. Managed repair currently targets Linux x86-64; use
-`runtime discover` for an institution-provided environment.
+missing direct-storage admission or incomplete EMRYS-managed runtime can be
+previewed with `--repair`. Terminal confirmation or explicit noninteractive
+`--repair --execute` publishes only the Project-owned direct receipt and, when
+needed, delegates locked installation to `uv`, Pixi, and `renv` within the
+active checkout-owned `.venv` and Project-owned `runtime/managed`. One
+maintenance log spans mutation and requalification. Repair preserves a ready
+site/user runtime profile, declared inputs, and workflow outputs. Managed
+runtime repair currently targets Linux x86-64; use `runtime discover` for an
+institution-provided environment.
 Reporting runs automatically after scientific work and remains a separate,
 receipt-last transaction rather than a scientific stage. The scientific
 Attempt ends at `cohort_slice` before reporting begins. `--no-report` disables
@@ -125,7 +127,7 @@ Inspect state from EMRYS's admitted records rather than `.snakemake` metadata:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
-  local-pilot-run \
+  run \
   --run-root /absolute/project/runs/run-DIGEST
 ```
 
@@ -365,9 +367,10 @@ slow R restore or shell lane cannot serialize the Python suite:
   submission contracts.
 - `Guarded R fixtures` restores the exact R 4.6.1 environment and runs the
   guarded R owner.
-- `Fresh-clone E2E (Python 3.14)` creates a separate ordinary clone, performs
-  locked setup, and enables the deterministic no-science
-  failure/resume/output proof.
+- `Managed golden path (Python 3.14)` creates a separate ordinary clone, lets
+  Doctor provision the locked Project runtime, and runs the real `smoke-v1`
+  Project through complete direct Results and automatic reports. Focused
+  lifecycle tests retain the injected failure/resume proof.
 - `Workflow lint` verifies the tracked Actions workflows with a
   checksum-verified `actionlint` binary. Its external ShellCheck and Pyflakes
   integrations remain disabled because Phase 1 does not establish either as a
@@ -386,12 +389,12 @@ all three downstream transactions and both HTML reports.
 The workflow bootstrap may download explicitly selected dependencies, but the
 ordinary validation commands themselves remain non-restoring. A green ordinary
 Phase 1 run establishes clean GitHub-hosted Ubuntu engineering evidence,
-guarded fixture R evidence in its dedicated lane, and deterministic no-science
-fresh-clone evidence. A green selected synthetic lane additionally establishes
-the named locked real-tool, single-node Slurm, synthetic workflow result on that
-hosted runner. Neither establishes CSU or distributed-filesystem behavior,
-production-data execution, scientific review, biological validation, or
-biological interpretation.
+guarded fixture R evidence in its dedicated lane, and a fresh-clone,
+Doctor-managed, real-tool direct synthetic result. A green selected synthetic
+lane additionally establishes the named locked real-tool, single-node Slurm
+synthetic workflow result on that hosted runner. Neither establishes CSU or
+distributed-filesystem behavior, production-data execution, scientific review,
+biological validation, or biological interpretation.
 
 ## Dependency maintenance
 
@@ -463,7 +466,7 @@ using the exact run root printed by the control stream:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
-  local-pilot-run \
+  run \
   --run-root /absolute/project/runs/run-DIGEST
 ```
 

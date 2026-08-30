@@ -147,9 +147,9 @@ handoff, or stale roadmap authority.
 | `docs/architecture/FUTURE_ARCHITECTURE.md` | Retired by completed `DOC-03` | The section trace below routes durable principles and accepted outcomes to live owners, preserves two still-open alternatives in the campaign, and leaves the final architecture-document set unsettled. |
 | `docs/architecture/README.md` | Retain and refresh routes | Architecture entry point remains necessary after future-document retirement. |
 | `docs/architecture/diagrams/README.md` | Retain and refresh routes | Owns the four retained current-system diagrams after the two future projections retire. |
-| `docs/demo/DEMO_WALKTHROUGH.md` | Rehome or retire under `CLEAN-01` | Preserve only a neutral supported synthetic path and evidence-safe presentation guidance. |
-| `docs/demo/PI_DEMO_REPORT.md` | Rehome or retire under `CLEAN-01` | Same demo-surface decision; it is not current evidence authority. |
-| `docs/demo/README.md` | Rehome or retire under `CLEAN-01` | Demo terminology and public surface remain independently unsettled. |
+| `docs/demo/DEMO_WALKTHROUGH.md` | Retired by `CLEAN-01`; exact-head verification pending | The supported neutral synthetic journey and evidence ceiling now live in `quickstart.md`; advanced placement and recovery remain in the runbook. |
+| `docs/demo/PI_DEMO_REPORT.md` | Retired by `CLEAN-01`; exact-head verification pending | Receipt-bound scientific and evidence/operations reports remain the only product reports; neutral reporting fixtures and exact independent goldens retain validation value. |
+| `docs/demo/README.md` | Retired by `CLEAN-01`; exact-head verification pending | Inbound navigation now routes directly to the supported quickstart and reporting owners; no separate demo authority remains. |
 | `docs/design/DECISIONS.md` | Retain and refresh routes | Durable rationale index; it now records this audit and no longer delegates current state to legacy sources. |
 | `docs/design/LOGGING_CONTRACT.md` | Retain | Accepted logging behavior and adoption boundary remain current. |
 | `docs/design/ORCHESTRATION_CONTRACT.md` | Retain and refresh routes | Durable lifecycle, safety, identity, recovery, and evidence contract remains current. |
@@ -185,6 +185,15 @@ handoff, or stale roadmap authority.
 | `docs/architecture/diagrams/local_pilot_orchestration.mmd` | Retain | Current non-authoritative local-pilot projection. |
 | `docs/architecture/diagrams/pipeline.mmd` | Retain | Current non-authoritative scientific pipeline projection. |
 | `docs/architecture/diagrams/reliability.mmd` | Retain | Current non-authoritative validation/publication boundary projection. |
+
+### `CLEAN-01` demo-surface trace (2026-08-30)
+
+| Retired surface | Surviving value and owner |
+|---|---|
+| `docs/demo/` | The 177-line root quickstart owns the neutral synthetic Project-to-Results journey and its evidence ceiling; the runbook owns Slurm/site/recovery detail. |
+| `make demo-report` and `scripts/make_reporting.mk` | `make report-test` remains under the consolidated quality Make owner; reporting fixtures, transaction tests, renderer tests, and independent HTML goldens remain unchanged except for the reviewed public inspect-command hash. |
+| Fake-tool fresh-clone harness | Focused lifecycle tests retain failure/resume defenses; the replacement ordinary CI job is configured to prove a clean-clone, Doctor-managed, real-tool direct Run and retain its inputs, receipts, logs, Results, and reports. Exact-head execution remains pending. |
+| Public synthetic/inspection spellings | `emrys init synthetic` and `emrys inspect run` replace the historically coupled names directly; the internal fixture schema remains historical compatibility metadata, not a public command. |
 
 ### `DOC-03` source-to-destination trace (2026-08-25)
 

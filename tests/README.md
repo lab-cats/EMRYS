@@ -12,7 +12,8 @@ are in the [operations runbook](../docs/operations/RUNBOOK.md).
   their matching functional owners.
 - `orchestration/local_pilot/` protects Project admission, readiness, fixed
   graph materialization, task/reporting records, lifecycle, inspection, resume,
-  and no-science fresh-clone execution for the local-pilot application owner.
+  and focused failure/resume behavior for the application owner. The tracked
+  CI workflow owns the clean-clone, real-tool managed golden path.
 - `contracts/` and `contract_integration/` protect shared and independent
   public contracts.
 - `libraries/`, `documentation/`, `shell/`, and `data_checks/` own

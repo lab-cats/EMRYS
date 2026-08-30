@@ -15,12 +15,12 @@ emrys init manifests \
 emrys init project
 
 # Generate the default 130-pair deterministic science fixture the same way.
-emrys init synthetic-local-pilot \
+emrys init synthetic \
   --output-dir /absolute/outside-checkout/synthetic-smoke \
   --dataset-profile smoke-v1
 
 # Select the closed 100,000-pair-per-library, 5 Mb profile explicitly.
-emrys init synthetic-local-pilot \
+emrys init synthetic \
   --output-dir /absolute/outside-checkout/synthetic-production-like \
   --dataset-profile production-like-v1
 
@@ -99,7 +99,7 @@ benchmark policy. See the
 [runbook](../../../../docs/operations/RUNBOOK.md#live-whole-run-dashboard) for
 the supported preview commands and explicit override rules.
 
-`init synthetic-local-pilot` has two closed dataset profiles. The default
+`init synthetic` has two closed dataset profiles. The default
 `smoke-v1` publishes a deterministic 100-kb reference, GTF, and four paired
 130-read libraries across two control/treatment strata. The explicit
 `production-like-v1` profile retains the same engineered core and oracle, adds
@@ -142,8 +142,9 @@ The underlying narrow read-only admission APIs are:
 - `doctor.inspect_local_pilot(...)` admits one Project plus the fixed profile,
   checks its external Project root, exact clean source checkout, controlled
   Python/Snakemake, science-tool paths and versions, Picard jar, guarded
-  `renv`, Step `08` namespaces, and the exact final storage qualification. It
-  remains the read-only internal readiness capability used by Run and resume.
+  `renv`, Step `08` namespaces, and the placement-appropriate storage
+  qualification. It remains the read-only internal readiness capability used
+  by Run and resume.
 
 The Project-aware public command is top-level:
 
@@ -164,7 +165,8 @@ refusal, EOF, and interruption before repair authority write nothing and open
 no log. `--log-level verbose` adds source/runtime observations and
 `--log-level debug` adds exact path/hash bindings.
 
-An absent or incomplete EMRYS-managed runtime has one explicit repair path:
+A missing direct-storage receipt or absent/incomplete EMRYS-managed runtime has
+one explicit repair path:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys doctor \
@@ -172,14 +174,15 @@ An absent or incomplete EMRYS-managed runtime has one explicit repair path:
 ```
 
 On a terminal, Doctor prints and confirms the exact plan. Noninteractive
-mutation requires `--repair --execute`; `--execute` alone is invalid. Managed
-repair currently supports Linux x86-64 and requires the active
-checkout-owned `.venv`. It delegates the locked Python environment to `uv`,
+mutation requires `--repair --execute`; `--execute` alone is invalid. Doctor
+may publish one Project-owned single-host storage receipt. When runtime repair
+is also needed, it currently supports Linux x86-64, requires the active
+checkout-owned `.venv`, and delegates the locked Python environment to `uv`,
 the packaged native/R lock to Pixi, and the R library to `renv`; only `.venv`,
 `<project-root>/runtime/managed`, a create-absent canonical runtime profile,
-and one maintenance log are writable. It then reruns complete Project
-readiness. Declared inputs and admitted site/user profiles are preserved rather
-than modified or silently migrated.
+the direct receipt/probes, and one maintenance log are writable. It then reruns
+complete Project readiness. Declared input files and ready site/user profiles
+are preserved rather than modified, repaired, or silently migrated.
 
 B5 adds the source-checkout-bound public control surface. Every mutating route
 requires the controlled Python runtime, is dry-run-first, and delegates owner
@@ -191,7 +194,7 @@ work only through the accepted fixed profile:
   --execution-profile /absolute/path/to/emrys.execution.yaml
 
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
-  local-pilot-run --run-root /absolute/project/runs/run-DIGEST
+  run --run-root /absolute/project/runs/run-DIGEST
 
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume \
   --run-root /absolute/project/runs/run-DIGEST \
@@ -215,7 +218,7 @@ changing Results. `report` independently validates a completed Run and plans
 without writes, then generates with `--execute` or reuses an exact complete
 report transaction. Verbose output adds the Run root,
 resources/allocation, execution profile, and scheduler streams; debug output
-adds exact engine, scheduler, and task commands. `inspect local-pilot-run` is
+adds exact engine, scheduler, and task commands. `inspect run` is
 always read-only. With no execution profile, `run` uses the built-in direct
 default; `resume` reuses its predecessor's symbolic computational resources and
 places the new Attempt directly. An explicit profile may select Slurm for either
@@ -230,9 +233,12 @@ durable application log. Logging failure never changes reporting admission or
 publication. Normal human output keeps raw Snakemake/task commands in the
 evidence and debug surfaces rather than the primary control stream.
 Execution re-admits the normalized reference/Project-root storage qualification
-before delegation and after the child terminates. A missing, changed, or
-semantically invalid receipt blocks the attempt; the immutable attempt cannot
-accept its own declared storage identity as proof.
+before delegation and after the child terminates. Direct Attempts accept the
+Doctor-owned single-host receipt or a stronger two-phase receipt; Slurm and
+historical unplaced Attempts require the two-phase site receipt. A missing,
+changed, or semantically invalid receipt
+blocks the Attempt; the immutable Attempt cannot accept its own declared
+storage identity as proof.
 The grouped CLI is the supported control surface. Its private planning helpers
 delegate to the single production owner `materialization.build_attempt_plan`;
 tests pass explicit collaborators rather than monkeypatching module globals.
@@ -244,14 +250,16 @@ The neutral
 reproduces the exact legacy reporting contract and deterministic artifact
 inventory without depending on the local-pilot application owner.
 
-This local pilot requires one final two-phase storage-qualification receipt for
-the workflow parent and Step `00c` sidecar parent before doctor can report
-ready. The receipt proves the required hard-link, advisory-`flock`, atomic
-rename, fsync, numeric-identity, mount, cross-node visibility, and
-post-allocation durability checks for those exact roots. NFS and other
-network/distributed filesystems remain unsupported until that site check
-finalizes; node-local storage that is not durably visible to the head node
-cannot finalize. The qualification owner never stages or copies data.
+Direct readiness accepts one Doctor-owned single-host receipt or the stronger
+site receipt for the Project root and Step `00c` sidecar parent. The narrow
+receipt proves hard-link, advisory-`flock`,
+atomic-rename, and fsync behavior only on the current host and current numeric
+identity. Slurm readiness requires the separate final two-phase receipt, which
+adds compute/head access, mount, cross-node visibility, and post-allocation
+durability checks for those exact roots. NFS and other network/distributed
+filesystems remain unsupported for Slurm until that site check finalizes;
+node-local storage that is not durably visible to the head node cannot finalize.
+The qualification owner never stages or copies data.
 
 Inspection's shared read-side admission rejects symlinks, unstable or
 noncanonical schema records. Lifecycle, task, and reporting reuse it for

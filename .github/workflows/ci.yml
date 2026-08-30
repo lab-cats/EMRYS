@@ -374,11 +374,11 @@ jobs:
           pixi list --locked --manifest-path "${PIXI_MANIFEST}" \
             --environment r --json > /dev/null
 
-  fresh-clone-e2e:
-    name: Fresh-clone E2E (Python 3.14)
+  managed-golden-path:
+    name: Managed golden path (Python 3.14)
     if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 180
     steps:
       - name: Check out the triggering commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -398,32 +398,101 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
 
-      - name: Prepare an ordinary clean clone and locked environment
-        id: fresh-clone
+      - name: Install Pixi without provisioning the scientific runtime
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: ${{ env.PIXI_VERSION }}
+          run-install: false
+          cache: false
+
+      - name: Prepare an ordinary clean clone and locked Python environment
+        id: golden
         shell: bash
         run: |
           set -euo pipefail
-          fresh_clone="${RUNNER_TEMP}/emrys-fresh-clone"
-          git clone --no-hardlinks "${GITHUB_WORKSPACE}" "${fresh_clone}"
-          git -C "${fresh_clone}" checkout --detach "${GITHUB_SHA}"
+          clean_clone="${RUNNER_TEMP}/emrys-golden-clone"
+          evidence_root="${RUNNER_TEMP}/emrys-managed-golden"
+          install -d -m 0700 "${evidence_root}"
+          git clone --no-hardlinks "${GITHUB_WORKSPACE}" "${clean_clone}"
+          git -C "${clean_clone}" checkout --detach "${GITHUB_SHA}"
           uv sync \
-            --project "${fresh_clone}" \
+            --project "${clean_clone}" \
             --locked \
             --group workflow \
             --python python
-          printf 'path=%s\n' "${fresh_clone}" >> "${GITHUB_OUTPUT}"
+          printf 'clone=%s\n' "${clean_clone}" >> "${GITHUB_OUTPUT}"
+          printf 'evidence=%s\n' "${evidence_root}" >> "${GITHUB_OUTPUT}"
 
-      - name: Run opt-in clean-clone failure and resume proof
+      - name: Exercise the supported managed golden path
         shell: bash
-        env:
-          EMRYS_FRESH_CLONE_E2E: "1"
-          EMRYS_FRESH_CLONE_E2E_SOURCE_ROOT: ${{ github.workspace }}
         run: |
           set -euo pipefail
-          fresh_clone="${{ steps.fresh-clone.outputs.path }}"
-          cd "${fresh_clone}"
-          .venv/bin/python -m pytest -q --tb=short \
-            tests/orchestration/local_pilot/test_fresh_clone_e2e.py
+          clean_clone="${{ steps.golden.outputs.clone }}"
+          evidence_root="${{ steps.golden.outputs.evidence }}"
+          project_root="${evidence_root}/project"
+          emrys=("${clean_clone}/.venv/bin/python" -X pycache_prefix=/dev/null -I -m emrys)
+
+          "${emrys[@]}" init synthetic \
+            --output-dir "${project_root}" --execute \
+            2>&1 | tee "${evidence_root}/01-init.log"
+          "${emrys[@]}" doctor \
+            --project "${project_root}/project.yaml" --repair --execute \
+            2>&1 | tee "${evidence_root}/02-doctor.log"
+          "${emrys[@]}" run \
+            --project "${project_root}/project.yaml" --execute \
+            2>&1 | tee "${evidence_root}/03-run.log"
+
+          mapfile -d '' -t run_roots < <(
+            find "${project_root}/runs" -mindepth 1 -maxdepth 1 \
+              -type d -name 'run-*' -print0
+          )
+          test "${#run_roots[@]}" -eq 1
+          run_root="${run_roots[0]}"
+          printf '%s\n' "${run_root}" > "${evidence_root}/run-root.txt"
+          "${emrys[@]}" inspect run --run-root "${run_root}" \
+            | tee "${evidence_root}/04-inspect.log"
+          grep --fixed-strings --line-regexp 'Run integrity: valid' \
+            "${evidence_root}/04-inspect.log"
+          grep --fixed-strings --line-regexp 'Attempt outcome: succeeded' \
+            "${evidence_root}/04-inspect.log"
+          grep --fixed-strings --line-regexp 'Scientific Results: complete' \
+            "${evidence_root}/04-inspect.log"
+          grep --fixed-strings --line-regexp 'Reporting: complete' \
+            "${evidence_root}/04-inspect.log"
+          test "$(find "${run_root}/results/reports" -type f -name '*.html' | wc -l)" -eq 2
+
+      - name: Require the clean clone to remain unchanged
+        if: always() && steps.golden.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git -C "${{ steps.golden.outputs.clone }}" status \
+            --porcelain=v1 --untracked-files=all \
+            > "${{ steps.golden.outputs.evidence }}/checkout-after.tsv"
+          test ! -s "${{ steps.golden.outputs.evidence }}/checkout-after.tsv"
+
+      - name: Upload managed golden-path evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: emrys-managed-golden-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/emrys-managed-golden/*.log
+            ${{ runner.temp }}/emrys-managed-golden/*.txt
+            ${{ runner.temp }}/emrys-managed-golden/*.tsv
+            ${{ runner.temp }}/emrys-managed-golden/project/project.yaml
+            ${{ runner.temp }}/emrys-managed-golden/project/samples.tsv
+            ${{ runner.temp }}/emrys-managed-golden/project/partitions.tsv
+            ${{ runner.temp }}/emrys-managed-golden/project/fixture.json
+            ${{ runner.temp }}/emrys-managed-golden/project/fixture.manifest.json
+            ${{ runner.temp }}/emrys-managed-golden/project/inputs
+            ${{ runner.temp }}/emrys-managed-golden/project/logs
+            ${{ runner.temp }}/emrys-managed-golden/project/runs
+            ${{ runner.temp }}/emrys-managed-golden/project/runtime/runtime.tsv
+            ${{ runner.temp }}/emrys-managed-golden/project/runtime/.emrys-storage-qualification
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
 
   python314-coverage-shards:
     name: Python 3.14 tests + coverage (shard ${{ matrix.shard }})

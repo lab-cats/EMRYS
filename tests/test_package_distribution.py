@@ -332,8 +332,8 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         ),
         (("init", "manifests", "--help"), "usage: emrys init manifests"),
         (
-            ("init", "synthetic-local-pilot", "--help"),
-            "usage: emrys init synthetic-local-pilot",
+            ("init", "synthetic", "--help"),
+            "usage: emrys init synthetic",
         ),
         (
             ("runtime", "discover", "--help"),
@@ -347,8 +347,8 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         (("resume", "--help"), "usage: emrys resume"),
         (("report", "--help"), "usage: emrys report"),
         (
-            ("inspect", "local-pilot-run", "--help"),
-            "usage: emrys inspect local-pilot-run",
+            ("inspect", "run", "--help"),
+            "usage: emrys inspect run",
         ),
     ):
         public_help = run_command(

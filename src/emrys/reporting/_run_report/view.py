@@ -1248,7 +1248,7 @@ def build_evidence_view(
     scientific_context_results: ScientificContextResults | None = None,
     scientific_context_unavailable_reason: str | None = None,
     result_links: tuple[dict[str, str], ...] = (),
-    inspect_command: str = "emrys inspect local-pilot-run --run-root <run-root>",
+    inspect_command: str = "emrys inspect run --run-root <run-root>",
 ) -> dict[str, Any]:
     """Build the evidence and operations view without candidate rows."""
 
