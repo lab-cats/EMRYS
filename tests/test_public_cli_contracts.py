@@ -39,7 +39,7 @@ EMRYS_COMMANDS = (
         "usage: emrys init synthetic-local-pilot",
     ),
     (("runtime", "discover"), "usage: emrys runtime discover"),
-    (("doctor", "local-pilot"), "usage: emrys doctor local-pilot"),
+    (("doctor",), "usage: emrys doctor"),
     (("run",), "usage: emrys run"),
     (("resume",), "usage: emrys resume"),
     (("report",), "usage: emrys report"),
@@ -579,7 +579,7 @@ def test_installed_emrys_commands_are_isolated_and_cwd_independent(
     (
         ("runtime", "discover"),
         ("validate", "project"),
-        ("doctor", "local-pilot"),
+        ("doctor",),
         ("run",),
     ),
 )
@@ -600,7 +600,7 @@ def test_project_is_the_only_active_intake_spelling(
 
 @pytest.mark.parametrize(
     "command",
-    (("doctor", "local-pilot"), ("run",), ("resume",)),
+    (("doctor",), ("run",), ("resume",)),
 )
 def test_runtime_profile_is_project_owned_not_public_path_glue(
     command: tuple[str, ...],

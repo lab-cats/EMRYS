@@ -180,8 +180,12 @@ emrys runtime discover --project /absolute/project/project.yaml --execute
 path; users do not author the TSV or pass it to those commands. Any existing
 profile is preserved and rejected, including byte-identical content.
 Discovery does not install software or load modules. A missing or ambiguous
-installation fails without silent selection, so load the approved site environment first
-and rerun discovery there. Commands come from the active `PATH`. Select the
+site installation fails without silent selection, so load the approved site environment first
+and rerun discovery there. For the supported EMRYS-managed alternative, run
+`emrys doctor --project /absolute/project/project.yaml --repair` to preview the
+exact repair, then confirm it on a terminal or add `--execute` for deliberate
+noninteractive mutation. Doctor preserves any site- or user-owned admitted
+profile rather than migrating it. Commands come from the active `PATH`. Select the
 Picard jar and R library with `EMRYS_PICARD_JAR` and
 `EMRYS_RENV_LIBRARY`. `EMRYS_RSCRIPT` can select Rscript directly, and
 `JAVA_HOME` must agree with the Java on `PATH`. The advanced
@@ -207,8 +211,13 @@ The accepted tool versions are:
 
 The exact Step `08` R namespace versions remain in the internal runtime policy.
 The discovered R project is the exact clean EMRYS checkout and its library must
-pass the guarded `r-check`. Discovery, Doctor, and execution never install,
-download, restore, load modules, or repair a missing runtime.
+pass the guarded `r-check`. Discovery and execution never install, download,
+restore, load modules, or repair a missing runtime. Doctor diagnosis is also
+read-only; only its explicit managed repair delegates a locked Python sync to
+`uv`, the packaged Linux x86-64 native/R lock to Pixi, and R-library restore to
+`renv`. It writes only the checkout-owned `.venv`, Project-owned
+`runtime/managed`, the create-absent Project runtime profile, and one
+maintenance log under Project `logs/application`, then re-runs readiness.
 
 On a module-based cluster, declare the exact initializer and module roster in
 the execution profile. EMRYS loads that roster inside the allocation before

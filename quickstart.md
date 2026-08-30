@@ -151,8 +151,11 @@ RENV_LIBRARY=/absolute/path/to/canonical/renv-library \
   RSCRIPT_BIN=/absolute/path/to/Rscript make r-check
 ```
 
-Doctor and execution never restore, bootstrap, install, download, or repair a
-runtime.
+These are the explicit site/user-runtime preparation commands. Execution never
+restores, bootstraps, installs, downloads, or repairs a runtime. Doctor
+diagnosis is also read-only; its separately authorized managed repair uses the
+Project-owned path described in Step 6 rather than altering this site/user
+library.
 
 ## 3. Initialize and ingest synthetic or real inputs
 
@@ -347,27 +350,46 @@ Doctor rejects missing, failed, stale, or mismatched final qualification. A
 node-local Project root is not supported unless the same qualification establishes
 its durable retention path.
 
-## 6. Require full runtime `READY`
+## 6. Diagnose readiness and optionally repair the managed runtime
 
 The doctor derives the Project root from `project.yaml` and safely re-admits
 the source files, checkout, locked workflow, tools, jar, R project/library, and
 namespaces:
 
 ```sh
-emrys doctor local-pilot \
-  --project "$EMRYS_PROJECT_PATH"
+emrys doctor --project "$EMRYS_PROJECT_PATH"
 ```
 
 Continue only after:
 
 ```text
-READY: local-pilot prerequisites passed.
+EMRYS is ready.
 ```
 
 Exit `1` prints one or more `BLOCKER` and `REMEDIATION` entries. Exit `2`
 means the authored Project, profile, or path boundary is malformed or unsafe.
-Doctor does not execute Snakemake or scientific tools, load modules, or alter
-an input.
+Diagnosis, `--help`, refusal, EOF, and interruption write nothing and open no
+application log. `--log-level verbose` adds paths and per-tool observations;
+`--log-level debug` adds exact retained bindings. Confirmed repair also honors
+the shared `--log-root` and `EMRYS_LOG_*` controls.
+
+When the profile is absent or an already managed runtime is incomplete, preview
+the bounded repair:
+
+```sh
+emrys doctor --project "$EMRYS_PROJECT_PATH" --repair
+```
+
+On a terminal, Doctor displays the exact plan and asks before mutation. For
+deliberate noninteractive automation, use `--repair --execute`; `--execute`
+without `--repair` is invalid. The current managed repair supports Linux
+x86-64, requires the active checkout-owned `.venv`, and writes only that
+environment plus `$EMRYS_PROJECT_ROOT/runtime/managed`, a create-absent runtime
+profile, and one maintenance log under `$EMRYS_PROJECT_ROOT/logs/application`.
+It delegates locked dependency solving and installation to `uv`, Pixi, and
+`renv`, then reruns the complete Doctor. Declared inputs and site- or user-owned
+runtime profiles are never modified or silently migrated. Use site runtime
+discovery instead when those bounds do not apply.
 
 ## 7. Review and confirm one immutable plan
 

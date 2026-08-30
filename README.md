@@ -80,13 +80,17 @@ Read this before installing:
   checkout-local exceptions; an already provisioned R library may instead be
   selected explicitly. The doctor requires tracked checkout content to be clean
   and binds its exact commit and installed package bytes.
-- EMRYS does not download data, install tools, restore R packages, estimate
-  runtime, force retries, delete locks, or repair outputs. Direct placement
-  uses the prepared environment; Slurm placement may load only the exact
-  modules declared in its execution profile and uses a private temporary
-  directory. EMRYS observes the CPU affinity and memory capacity available to
-  its local executor so an impossible resource policy fails before workflow
-  entry.
+- EMRYS never downloads data, force-retries work, deletes locks, repairs
+  outputs, or mutates declared scientific inputs. `emrys doctor` is read-only
+  by default. Its separately authorized `--repair` action can restore only the
+  active checkout-owned `.venv` and `<project-root>/runtime/managed`, delegating
+  dependency solving and installation to `uv`, Pixi, and `renv`, then
+  requalifying the Project. Site- or user-owned runtime profiles are preserved,
+  not migrated or overwritten. Direct placement uses the admitted environment;
+  Slurm placement may load only the exact modules declared in its execution
+  profile and uses a private temporary directory. EMRYS observes the CPU
+  affinity and memory capacity available to its local executor so an impossible
+  resource policy fails before workflow entry.
 
 Scheduler streams are created automatically under `<project-root>/logs` and the
 default application-log root is `<project-root>/logs/application`. Reporting runs automatically after scientific

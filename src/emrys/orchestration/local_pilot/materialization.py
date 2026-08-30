@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-import platform
 import socket
 import sys
 import uuid
@@ -58,7 +57,6 @@ from emrys.libraries.process_environment import (
 )
 
 Operation = Literal["execute", "resume"]
-PROFILE_RELATIVE = Path("workflow/contracts/local_cmh_v2.json")
 
 
 class MaterializationError(RuntimeError):
@@ -158,10 +156,10 @@ class AttemptPlan:
     workspace: Path
     run_root: Path
     workflow_attempt_id: str
-    supersedes_workflow_attempt_id: str | None
     attempt_record_bytes: bytes
     fixed_files: tuple[PlannedFile, ...]
     attempt_files: tuple[PlannedFile, ...]
+    new_dispatch_files: tuple[PlannedFile, ...]
     directories: tuple[Path, ...]
     dispatch_count: int
 
@@ -203,33 +201,6 @@ class AttemptPlan:
     def profile_path(self) -> Path:
         return self.run_root / "contract" / "profile.json"
 
-    @property
-    def new_dispatch_files(self) -> tuple[PlannedFile, ...]:
-        """Return only task-dispatch records published by this attempt."""
-
-        dispatches: list[PlannedFile] = []
-        for item in self.attempt_files:
-            try:
-                record = orchestration_contracts.load_json_object_bytes(
-                    item.data, item.path
-                )
-            except orchestration_contracts.ContractValidationError:
-                continue
-            if record.get("schema_version") == "emrys.local-task-dispatch.v1":
-                dispatches.append(item)
-        return tuple(dispatches)
-
-
-def _timestamp(value: datetime) -> tuple[str, str]:
-    if value.tzinfo is None:
-        raise MaterializationError("Attempt clock must be timezone-aware")
-    utc = value.astimezone(UTC).replace(microsecond=0)
-    return (
-        utc.strftime("%Y%m%dT%H%M%SZ"),
-        utc.isoformat(timespec="seconds").replace("+00:00", "Z"),
-    )
-
-
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -245,48 +216,29 @@ def build_run_candidate(
 ) -> RunCandidate:
     """Construct the complete Run before allocation or Attempt identity exists."""
 
-    if not readiness.ready:
-        raise MaterializationError("Local-pilot readiness has unresolved blockers")
-    if readiness.source_commit is None:
-        raise MaterializationError("Doctor did not admit one exact source commit")
-    try:
-        required_tools = doctor.required_tool_identities(
-            readiness.inspection,
-            bindings=readiness.bindings,
-            python_executable=Path(sys.executable),
-        )
-    except doctor.DoctorInputError as exc:
-        raise MaterializationError(
-            f"Doctor runtime identities are not Run-bindable: {exc}"
-        ) from exc
+    required_tools = doctor.required_tool_identities(
+        readiness.inspection,
+        bindings=readiness.bindings,
+        python_executable=Path(sys.executable),
+    )
     try:
         implementation_sha256 = implementation_identity(readiness.source_root)
         backend_sha256 = backend_semantics_identity(readiness.source_root)
     except RunImplementationError as exc:
         raise MaterializationError(str(exc)) from exc
     source = project.construction
-    try:
-        plan = build_execution_plan(
-            functional_specification=functional_specification_from_profile(
-                project.profile
-            ),
-            scientific_stopping_owner_keys=project.profile["required_owner_keys"],
-            implementation_content_sha256=implementation_sha256,
-            toolchain=toolchain_from_required_tools(required_tools),
-            backend="local",
-            engine="snakemake",
-            backend_semantics_sha256=backend_sha256,
-            star_index=source["reference"]["star_index"],
-            computational_resources=declaration.identity_document(),
-        )
-        run = bind_run(project.analysis, plan)
-        return RunCandidate(
-            project=project,
-            execution_plan=plan,
-            run_binding=run,
-        )
-    except orchestration_contracts.ContractValidationError as exc:
-        raise MaterializationError(f"Could not bind immutable Run: {exc}") from exc
+    plan = build_execution_plan(
+        functional_specification=functional_specification_from_profile(project.profile),
+        scientific_stopping_owner_keys=project.profile["required_owner_keys"],
+        implementation_content_sha256=implementation_sha256,
+        toolchain=toolchain_from_required_tools(required_tools),
+        backend="local",
+        engine="snakemake",
+        backend_semantics_sha256=backend_sha256,
+        star_index=source["reference"]["star_index"],
+        computational_resources=declaration.identity_document(),
+    )
+    return RunCandidate(project, plan, bind_run(project.analysis, plan))
 
 
 def _construction_source(run: MaterializedRun) -> dict[str, Any]:
@@ -311,39 +263,8 @@ def _within(path: Path, root: Path, label: str) -> None:
         raise MaterializationError(f"{label} must be beneath run_root: {path}") from exc
 
 
-def _runtime_observations(
-    readiness: doctor.DoctorResult,
-) -> dict[str, Any]:
-    return {item.check.check_id: item for item in readiness.inspection.observations}
-
-
 def _runtime_path(observations: Mapping[str, Any], name: str) -> str:
-    try:
-        value = observations[name].check.target
-    except KeyError as exc:
-        raise MaterializationError(f"Runtime profile has no {name} binding") from exc
-    if not Path(value).is_absolute():
-        raise MaterializationError(f"Runtime binding must be absolute: {name}: {value}")
-    return str(value)
-
-
-def _resolved_inventory_path(run_root: Path, raw: str) -> Path:
-    path = Path(raw)
-    return path if path.is_absolute() else run_root / path
-
-
-def _artifact_rows(
-    source: Mapping[str, Any],
-    profile: Mapping[str, Any],
-    run_root: Path,
-    analysis: AnalysisRevision | None,
-) -> dict[tuple[str, str], tuple[dict[str, Any], ...]]:
-    grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
-    for row in artifact_inventory.project_rows(source, profile, analysis):
-        item = dict(row)
-        item["path"] = _resolved_inventory_path(run_root, str(row["source_path"]))
-        grouped.setdefault((str(row["step_id"]), str(row["scope_id"])), []).append(item)
-    return {key: tuple(value) for key, value in grouped.items()}
+    return str(observations[name].check.target)
 
 
 def _one(paths: Mapping[str, list[Path]], adapter: str) -> Path:
@@ -394,28 +315,6 @@ def _r_owner_command(
         bootstrap,
         "emrys-r",
         *(selected[name] for name in names),
-        *command,
-    )
-
-
-def _owner_environment_command(
-    bash: str,
-    sha256_python: str,
-    owner_run_token: str,
-    command: Sequence[str],
-) -> tuple[str, ...]:
-    bootstrap = (
-        'export EMRYS_RUN_TOKEN="$1" EMRYS_SHA256_PYTHON="$2" '
-        "EMRYS_REQUIRE_BOUND_SHA256=1; "
-        'shift 2; exec "$@"'
-    )
-    return (
-        bash,
-        "-c",
-        bootstrap,
-        "emrys-owner",
-        owner_run_token,
-        sha256_python,
         *command,
     )
 
@@ -1276,14 +1175,21 @@ def _dispatches(
     source = _construction_source(run)
     analysis_revision = run.project.analysis if successor else None
     profile = run.project.profile
-    inventory = _artifact_rows(source, profile, run_root, analysis_revision)
+    inventory: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for row in artifact_inventory.project_rows(source, profile, analysis_revision):
+        item = dict(row)
+        path = Path(str(row["source_path"]))
+        item["path"] = path if path.is_absolute() else run_root / path
+        inventory.setdefault((str(row["step_id"]), str(row["scope_id"])), []).append(item)
     paths_by_scope: dict[tuple[str, str], dict[str, list[Path]]] = {}
     for key, rows in inventory.items():
         adapters: dict[str, list[Path]] = {}
         for row in rows:
             adapters.setdefault(str(row["adapter"]), []).append(row["path"])
         paths_by_scope[key] = adapters
-    runtime = _runtime_observations(readiness)
+    runtime = {
+        item.check.check_id: item for item in readiness.inspection.observations
+    }
     planned: list[PlannedFile] = []
     references: dict[str, dict[str, dict[str, str]]] = {}
     directories: set[Path] = set()
@@ -1340,11 +1246,14 @@ def _dispatches(
         owner_run_token = f"owner-{suffix}"
         if step_id == "00b":
             producer = (*producer, "--run-token", owner_run_token)
-        producer = _owner_environment_command(
-            _runtime_path(runtime, "bash"),
-            _runtime_path(runtime, "sha256_python"),
+        producer = (
+            _runtime_path(runtime, "bash"), "-c",
+            'export EMRYS_RUN_TOKEN="$1" EMRYS_SHA256_PYTHON="$2" '
+            'EMRYS_REQUIRE_BOUND_SHA256=1; shift 2; exec "$@"',
+            "emrys-owner",
             owner_run_token,
-            producer,
+            _runtime_path(runtime, "sha256_python"),
+            *producer,
         )
         task_id = f"task-{compact_time}-{suffix}"
         task_root = (
@@ -1438,10 +1347,6 @@ def build_attempt_plan(
     resources: ResourcePlan,
     operation: Operation,
     placement: Mapping[str, Any] | None = None,
-    now: datetime | None = None,
-    token: str | None = None,
-    host: str | None = None,
-    process_id: int | None = None,
     supersedes_workflow_attempt_id: str | None = None,
     retained_dispatches: Mapping[tuple[str, str], dict[str, str]] | None = None,
     retained_runtime_profile_path: Path | None = None,
@@ -1460,31 +1365,16 @@ def build_attempt_plan(
         run.run_binding.canonical_bytes if successor else run.execution_projection_bytes
     )
     resource_policy_record = resources.policy_record()
-    if not readiness.ready:
-        raise MaterializationError("Local-pilot readiness has unresolved blockers")
     workflow_cores = resources.workflow_cores
-    if readiness.source_commit is None:
-        raise MaterializationError("Doctor did not admit one exact source commit")
-    if operation == "execute" and supersedes_workflow_attempt_id is not None:
-        raise MaterializationError("Initial execution may not supersede an attempt")
-    if operation == "resume" and supersedes_workflow_attempt_id is None:
-        raise MaterializationError("Resume requires its exact predecessor attempt")
-    compact, created_at = _timestamp(datetime.now(UTC) if now is None else now)
-    suffix = (uuid.uuid4().hex if token is None else token).lower()
-    if len(suffix) != 32 or any(value not in "0123456789abcdef" for value in suffix):
-        raise MaterializationError(
-            "Attempt token must contain exactly 32 hex characters"
-        )
+    now = datetime.now(UTC).replace(microsecond=0)
+    compact = now.strftime("%Y%m%dT%H%M%SZ")
+    created_at = now.isoformat(timespec="seconds").replace("+00:00", "Z")
+    suffix = uuid.uuid4().hex
     attempt_id = f"workflow-{compact}-{suffix}"
     owner_token = f"workflow-owner-{suffix}"
     workspace_path = _absolute(workspace)
     run_root = workspace_path / "runs" / run.run_id
     source_root = readiness.source_root
-    fixed_profile = source_root / PROFILE_RELATIVE
-    if project.profile != orchestration_contracts.load_json_object(fixed_profile):
-        raise MaterializationError(
-            "Project admission did not use the fixed source profile"
-        )
     if retained_runtime_profile_path is not None:
         if successor or operation != "resume":
             raise MaterializationError(
@@ -1495,25 +1385,12 @@ def build_attempt_plan(
         runtime_profile_path = (
             run_root / "contract" / "runtime-profiles" / f"{attempt_id}.tsv"
         )
-    storage_binding_count = sum(
-        binding.check_id == "storage_qualification" for binding in readiness.bindings
+    required_tools = doctor.required_tool_identities(
+        readiness.inspection,
+        bindings=readiness.bindings,
+        python_executable=Path(sys.executable),
+        runtime_profile_path=runtime_profile_path,
     )
-    if storage_binding_count != 1:
-        raise MaterializationError(
-            "Local-pilot readiness must contain exactly one storage qualification "
-            "binding"
-        )
-    try:
-        required_tools = doctor.required_tool_identities(
-            readiness.inspection,
-            bindings=readiness.bindings,
-            python_executable=Path(sys.executable),
-            runtime_profile_path=runtime_profile_path,
-        )
-    except doctor.DoctorInputError as exc:
-        raise MaterializationError(
-            f"Doctor runtime identities are not materializable: {exc}"
-        ) from exc
     python_identity = next(item for item in required_tools if item["name"] == "python")
     normalizer_identity = {
         **python_identity,
@@ -1621,8 +1498,8 @@ def build_attempt_plan(
             "path": config_path.relative_to(run_root).as_posix(),
             "sha256": _sha256(config_data),
         },
-        "host": socket.gethostname() if host is None else host,
-        "process_id": os.getpid() if process_id is None else process_id,
+        "host": socket.gethostname(),
+        "process_id": os.getpid(),
         "owner_token": owner_token,
         "cores": workflow_cores,
         "required_tools": list(required_tools),
@@ -1682,10 +1559,10 @@ def build_attempt_plan(
         workspace=workspace_path,
         run_root=run_root,
         workflow_attempt_id=attempt_id,
-        supersedes_workflow_attempt_id=supersedes_workflow_attempt_id,
         attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
         fixed_files=tuple(fixed_files),
         attempt_files=tuple(attempt_files),
+        new_dispatch_files=tuple(dispatch_files),
         directories=tuple(sorted(directories)),
         dispatch_count=sum(len(scopes) for scopes in dispatch_references.values()),
     )

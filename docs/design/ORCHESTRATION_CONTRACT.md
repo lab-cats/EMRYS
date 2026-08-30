@@ -9,7 +9,8 @@ verified records. B4 implements the three downstream reporting transactions and 
 internal durable producer-entry, immutable-attempt, terminal-receipt,
 between-task-resume, and
 read-only-inspection APIs for an already materialized run. B5 implements the
-read-only doctor, fixed-profile production materializer, and public dry-run-
+read-only-by-default Project Doctor with separately authorized managed-runtime
+repair, fixed-profile production materializer, and public dry-run-
 first `run`, `resume`, `report`, and `inspect local-pilot-run` adapter. No real science-
 tool execution has been proven. Current
 scientific behavior remains with the
@@ -446,9 +447,19 @@ doctor, Run planning, or lifecycle mutation. It owns the single application
 log for the executing Attempt.
 
 The B5 adapter owns that exact planning and materialization boundary; direct
-manual Snakemake invocation is unsupported. A doctor is a distinct read-only
-readiness report and never installs or repairs dependencies. Neither planning
-nor doctor invokes owner producers or validators.
+manual Snakemake invocation is unsupported. `emrys doctor` is a distinct
+Project-aware readiness report that derives Project, input, storage, runtime,
+and execution status. Diagnosis, detail projection, help, preview, refusal,
+EOF, and interruption before repair authority write nothing and open no log.
+Its separate `--repair` operation is limited to the active checkout-owned
+`.venv` and Project-owned `runtime/managed`, delegates locked dependency work
+to `uv`, Pixi, and `renv`, records one maintenance application attempt, and
+re-runs the full readiness report. It cannot alter declared inputs or silently
+migrate an admitted site/user runtime profile; ambient and Project-local Pixi
+configuration cannot redirect installation outside the owned root. The currently supported managed
+target is Linux x86-64; advanced runtime/storage probes remain independently
+available. Neither planning nor Doctor invokes scientific owner producers or
+validators.
 
 ## Workflow task boundary
 

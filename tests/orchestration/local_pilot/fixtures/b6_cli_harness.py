@@ -15,26 +15,15 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from emrys import __main__ as emrys_cli  # noqa: E402
 from emrys.orchestration.local_pilot import control, lifecycle  # noqa: E402
-from emrys.orchestration.local_pilot.materialization import (  # noqa: E402
-    AttemptPlan,
-    admit_run,
-    publish_attempt,
-)
 from tests.orchestration.local_pilot.fixtures.b5_doubles import (  # noqa: E402
     with_owner_doubles,
 )
 
-
-def _execute(
-    plan: AttemptPlan,
-    observe_application_event,
+def _lifecycle_ops(
+    base: lifecycle.LifecycleOps,
     *,
     stop_after_target: str | None,
-) -> lifecycle.LifecycleOutcome:
-    base = replace(
-        lifecycle.default_lifecycle_ops(),
-        observe_application_event=observe_application_event,
-    )
+) -> lifecycle.LifecycleOps:
 
     def run_workflow(
         argv: tuple[str, ...],
@@ -62,26 +51,18 @@ def _execute(
             message=completed.stdout if completed.returncode else None,
         )
 
-    lifecycle_ops = replace(base, run_workflow=run_workflow)
-    if plan.operation == "execute":
-        admit_run(plan, ops=lifecycle_ops)
-    return lifecycle.run_materialized_attempt(
-        plan.preparation,
-        lambda: publish_attempt(plan, ops=lifecycle_ops),
-        ops=lifecycle_ops,
-    )
+    return replace(base, run_workflow=run_workflow)
 
 
-def _control_ops(mode: str) -> control.ControlOps:
+def _install_control_doubles(mode: str) -> None:
     stop_after_target = "one_sample_slice" if mode == "failure" else None
-    return replace(
-        control.DEFAULT_CONTROL_OPS,
-        execute_plan=lambda plan, observe: _execute(
-            plan,
-            observe,
-            stop_after_target=stop_after_target,
-        ),
-        transform_plan=with_owner_doubles,
+    real_build = control.build_attempt_plan
+    real_ops = control.lifecycle.default_lifecycle_ops
+    control.build_attempt_plan = lambda *args, **kwargs: with_owner_doubles(
+        real_build(*args, **kwargs)
+    )
+    control.lifecycle.default_lifecycle_ops = lambda: _lifecycle_ops(
+        real_ops(), stop_after_target=stop_after_target
     )
 
 
@@ -96,10 +77,8 @@ def main() -> int:
     arguments, command = parser.parse_known_args()
     if not command:
         parser.error("one EMRYS command is required after mode")
-    return emrys_cli.main(
-        command,
-        local_pilot_control_ops=_control_ops(arguments.mode),
-    )
+    _install_control_doubles(arguments.mode)
+    return emrys_cli.main(command)
 
 
 if __name__ == "__main__":

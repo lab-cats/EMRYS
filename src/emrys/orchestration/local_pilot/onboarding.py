@@ -1103,7 +1103,9 @@ def _runtime_profile_bytes(
     return tsv_bytes(PROFILE_HEADER, rows), renv_library
 
 
-def _project_runtime_directory(project: ProjectAdmission) -> Path:
+def project_runtime_directory(project: ProjectAdmission) -> Path:
+    """Admit the canonical Project-owned runtime directory."""
+
     directory = project.source_path.parent / "runtime"
     try:
         state = directory.lstat()
@@ -1135,7 +1137,7 @@ def discover_runtime_profile(
 
     checkout = _absolute(source_root() if root is None else root)
     admitted = validate_project(project, root=checkout).project
-    destination = _project_runtime_directory(admitted) / "runtime.tsv"
+    destination = project_runtime_directory(admitted) / "runtime.tsv"
     selected_environment = os.environ if environment is None else environment
     profile_bytes, renv_library = _runtime_profile_bytes(
         selected_environment,
@@ -1155,7 +1157,7 @@ def discover_runtime_profile(
     )
 
 
-def _publish_runtime_profile(inspection: RuntimeInspection) -> None:
+def publish_runtime_profile(inspection: RuntimeInspection) -> None:
     destination = inspection.profile_path
     publish_exclusive(
         destination,
@@ -1198,7 +1200,7 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
         if not arguments.execute:
             print("Dry-run complete; no files were written.")
             return 0
-        _publish_runtime_profile(inspection)
+        publish_runtime_profile(inspection)
         print("Runtime profile admitted.")
         return 0
     except RuntimeDiscoveryError as exc:
@@ -1227,7 +1229,9 @@ __all__ = (
     "discover_runtime_profile",
     "init_manifests_from_args",
     "init_project_from_args",
+    "project_runtime_directory",
     "publish_create_absent_tree",
+    "publish_runtime_profile",
     "runtime_policy_path",
     "runtime_profile_path",
     "validate_from_args",

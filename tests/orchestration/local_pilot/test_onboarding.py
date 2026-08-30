@@ -1072,6 +1072,6 @@ def test_runtime_publication_rejects_a_swapped_project_parent(
     monkeypatch.setattr(exclusive_publication.os, "link", swap_parent)
 
     with pytest.raises(onboarding.OnboardingError, match="changed during publication"):
-        onboarding._publish_runtime_profile(inspection)
+        onboarding.publish_runtime_profile(inspection)
 
     assert not (redirected / "runtime.tsv").exists()

@@ -40,14 +40,15 @@ checkout selected for the attempt; changing them is not recovery.
 The table spells out command intent compactly. Invoke every `run`, `resume`,
 and `inspect` route with the controlled checkout interpreter shown in the root
 journey: `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys` followed by
-the displayed subcommand and arguments. The doctor uses the same controlled
-prefix: `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys doctor
-local-pilot ...`.
+the displayed subcommand and arguments. Doctor uses the same controlled prefix:
+`.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys doctor ...`.
 
 | Observed state or symptom | Public route and safe response |
 | --- | --- |
-| Doctor prints `NOT READY` | Read every `BLOCKER` and `REMEDIATION` from `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys doctor local-pilot ...`. Correct the declared input, checkout, Project root, or runtime outside the doctor, then rerun it. Do not start `emrys run`. |
-| Doctor exits `2` | The Project definition, discovered runtime, or path boundary is malformed or unsafe. Correct the Project or active environment and rerun `emrys runtime discover --project ... --execute`; do not edit `runtime/runtime.tsv` or manufacture `READY`. |
+| Doctor prints `EMRYS is not ready.` | Read every `BLOCKER` and `REMEDIATION` from `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys doctor --project ...`. Correct declared inputs, storage, checkout, or a site/user runtime outside Doctor. For an absent or incomplete managed runtime, preview `emrys doctor --project ... --repair`; confirm only after reviewing the bounded plan. Do not start `emrys run`. |
+| Doctor exits `2` | The Project definition, discovered runtime, or path boundary is malformed or unsafe, or `--execute` was supplied without `--repair`. Correct the Project/active environment or invocation and rerun; do not edit `runtime/runtime.tsv` or manufacture readiness. |
+| Doctor repair is blocked because a profile is site- or user-owned | The admitted profile points outside the active checkout-owned `.venv` or Project-owned managed runtime. | Repair that environment through site policy and rediscover it, or explicitly admit a replacement. Doctor intentionally refuses silent migration or overwrite. |
+| Doctor repair needs a package manager or unsupported platform | Managed repair currently requires `uv` and Pixi on Linux x86-64. | Install those managers through site policy or use an institution-provided runtime with `emrys runtime discover`; EMRYS does not implement its own solver or package manager. |
 | Readiness passed, but execution has not started | Run `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run ...` once on a terminal. For direct placement, review the complete Run plan; for Slurm placement, review the submission summary, with Run planning continuing inside the allocation. Confirm once; refusal, EOF, or interruption writes nothing. Use `--execute` only for deliberate noninteractive automation. |
 | An initial run fails or its state is uncertain | Run `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect local-pilot-run --run-root /absolute/run/root`. Do not submit another initial run against the existing run root. |
 | Inspection prints incomplete scientific Results, a failed or interrupted Attempt, and `Recovery available: yes` | Run `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume --run-root ...` once. It derives the admitted runtime from the Run's Project. Direct placement shows reusable and pending jobs before confirmation; Slurm confirms submission first and shows that work inside the allocation. EMRYS re-admits completed work before reuse. Use `--execute` only for noninteractive automation. |
