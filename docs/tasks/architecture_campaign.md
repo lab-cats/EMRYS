@@ -2736,6 +2736,12 @@ untouched.
 | Retirement and compression | The production `test-double` storage/runtime admission branches, 34 side-manifest inputs, manifest CLI mode, dead fault selector, and duplicate artifact publisher retire. One bounded inline-payload mode remains in the existing test task double. Version-one `test-double` vocabulary remains schema-reader compatibility only; current materialization and executable harness fixtures do not emit it. Exact category accounting lives in the findings matrix. |
 | Protections, evidence, mutation, and logging | Exact replacement-invariance, lifecycle re-admission, create-exclusive/fsynced publication, receipts, failure/recovery, and byte-preserving resume remain. No retained evidence is deleted. The harness mutates only isolated test workspaces, changes no public operation output or durable diagnostic, and adds no `LOG-05`, shell, mutable Run, schema, backend, or compatibility path. Its controlled proof remains no-science/no-real-runtime engineering evidence. |
 
+### 13.17 Bounded slice record: golden-path admission compression
+
+| Surface/category | Selected implementation and boundary |
+|---|---|
+| Runtime admission | Immediate noninteractive `run`/`resume --execute` reuses the runtime inspection that constructed the immutable plan, then retains the full post-workflow probe. A terminal-confirmed plan still performs a fresh execution-time probe because confirmation may introduce delay. Exact tool bytes, profile bytes and hash, fixed policy, source, storage, and Attempt identities are re-admitted before publication in every path. Public behavior, schemas, evidence, logging, and retained files change by zero. |
+
 ## 14. Measurement plan
 
 Measurement is required so the campaign does not merely move complexity.
