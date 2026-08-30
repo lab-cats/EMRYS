@@ -317,12 +317,30 @@ def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
         "prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e"
     )
     assert setup["with"]["run-install"] is False
-    path = _named_step(job, "Exercise the supported managed golden path")["run"]
-    assert path.index('cd "${clean_clone}"') < path.index(
+    assert setup["with"]["cache"] is False
+
+    prepare = _named_step(job, "Prepare a clean clone, environment, and synthetic Project")
+    cache = _named_step(job, "Cache managed golden-path R packages")
+    journey = _named_step(job, "Repair and exercise the supported managed golden path")
+    step_names = [step.get("name") for step in job["steps"]]
+    assert step_names.index(prepare["name"]) < step_names.index(cache["name"])
+    assert step_names.index(cache["name"]) < step_names.index(journey["name"])
+
+    assert prepare["run"].index('cd "${clean_clone}"') < prepare["run"].index(
         '"${emrys[@]}" init synthetic'
     )
+    assert cache["uses"] == (
+        "actions/cache@caa296126883cff596d87d8935842f9db880ef25"
+    )
+    assert cache["with"]["path"] == (
+        "${{ runner.temp }}/emrys-managed-golden/project/runtime/managed/renv/cache"
+    )
+    assert "renv.lock" in cache["with"]["key"]
+    assert "src/emrys/resources/runtime/pixi.lock" in cache["with"]["key"]
+
+    path = journey["run"]
+    assert "init synthetic" not in path
     for command in (
-        "init synthetic",
         "doctor",
         "--repair --execute",
         "run",

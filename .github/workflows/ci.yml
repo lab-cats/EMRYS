@@ -412,7 +412,7 @@ jobs:
           run-install: false
           cache: false
 
-      - name: Prepare an ordinary clean clone and locked Python environment
+      - name: Prepare a clean clone, environment, and synthetic Project
         id: golden
         shell: bash
         run: |
@@ -427,10 +427,23 @@ jobs:
             --locked \
             --group workflow \
             --python python
+          project_root="${evidence_root}/project"
+          emrys=("${clean_clone}/.venv/bin/python" -X pycache_prefix=/dev/null -I -m emrys)
+          cd "${clean_clone}"
+          "${emrys[@]}" init synthetic \
+            --output-dir "${project_root}" --execute \
+            2>&1 | tee "${evidence_root}/01-init.log"
           printf 'clone=%s\n' "${clean_clone}" >> "${GITHUB_OUTPUT}"
           printf 'evidence=%s\n' "${evidence_root}" >> "${GITHUB_OUTPUT}"
 
-      - name: Exercise the supported managed golden path
+      - name: Cache managed golden-path R packages
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ${{ runner.temp }}/emrys-managed-golden/project/runtime/managed/renv/cache
+          key: >-
+            emrys-managed-golden-renv-v1-${{ runner.os }}-${{ runner.arch }}-R-${{ env.R_VERSION }}-${{ hashFiles('renv.lock', 'src/emrys/resources/runtime/pixi.lock') }}
+
+      - name: Repair and exercise the supported managed golden path
         shell: bash
         run: |
           set -euo pipefail
@@ -440,9 +453,6 @@ jobs:
           emrys=("${clean_clone}/.venv/bin/python" -X pycache_prefix=/dev/null -I -m emrys)
           cd "${clean_clone}"
 
-          "${emrys[@]}" init synthetic \
-            --output-dir "${project_root}" --execute \
-            2>&1 | tee "${evidence_root}/01-init.log"
           "${emrys[@]}" doctor \
             --project "${project_root}/project.yaml" --repair --execute \
             2>&1 | tee "${evidence_root}/02-doctor.log"
