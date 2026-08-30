@@ -131,7 +131,7 @@ is called out rather than hidden inside a group disposition.
 | Operational workspace roots (`data/`, `logs/`, `refs/`, `renv/`, `results/`) | 7 | Retain as current storage, fixture, runtime, logging, and result-location conventions. Accepted setup, filesystem, results, logging, and runtime work owns later changes. |
 | Repository tooling (`scripts/README.md`, `scripts/documentation/README.md`) | 2 | Retain as the current tooling index and documentation-gate owner. |
 | Source implementation and contract documentation (`src/`) | 68 | Retain the 51 owner/index/resource/schema READMEs, 15 adjacent contracts, `STAGE_MAP.md`, and `SOURCE_TOPOLOGY.md`. Exact behavior remains owner-local; `DOC-01` and `OPS-04` own later journey and terminology refreshes. |
-| Test documentation (`tests/`) | 46 | Retain 45 active owner, fixture, oracle, baseline, and support READMEs. `tests/pending/README.md` and its duplicate non-runnable Step 04 scaffold are selected for trace-and-retirement under `CLEAN-02`. |
+| Test documentation (`tests/`) | 46 at audit | Retained 45 active owner, fixture, oracle, baseline, and support READMEs. Completed `CLEAN-02` retired the duplicate non-runnable Step 04 planning README and scaffold after mapping every intent to the active owner suite. |
 | Workflow documentation (`workflow/`) | 4 | Retain as the current workflow, profile, and contract owner set; accepted architecture and naming changes must update these owners with their behavior. |
 
 No retained source in these partitions acts as a second backlog, rolling
@@ -289,6 +289,6 @@ deployment state; Git retains the deleted bytes.
 This audit performs the bounded authority and routing cutover, records
 dispositions, marks transition sources, and guards them against premature
 deletion. Completed `DOC-03` owns the trace and retirement recorded above;
-`DOC-04`, `DOC-05`, `CLEAN-01`, and `CLEAN-02` own the remaining separately
-reviewable migrations and deletions. `DOC-01` owns the later
+`DOC-04` and `DOC-05` own the remaining separately reviewable documentation
+migrations and deletions. `DOC-01` owns the later
 scientist/operator/developer journey rewrite.

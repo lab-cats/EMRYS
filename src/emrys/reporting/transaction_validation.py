@@ -69,6 +69,14 @@ class ReceiptValidationOps:
 DEFAULT_RECEIPT_VALIDATION_OPS = ReceiptValidationOps()
 
 
+def _predecessor_receipt_ops(ops: ReceiptValidationOps) -> ReceiptValidationOps:
+    """Preserve source identity without applying an outer transaction fault."""
+
+    return ReceiptValidationOps(
+        matching_clean_checkout_head_commit=(ops.matching_clean_checkout_head_commit),
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class _ReceiptSnapshot:
     path: Path
@@ -1159,7 +1167,7 @@ def validate_run_summary_transaction(
             run_contract=context.run_contract_path,
             inventory=context.inventory_path,
             output_root=output_root,
-            receipt_ops=receipt_ops,
+            receipt_ops=_predecessor_receipt_ops(receipt_ops),
         )
     recheck_run_summary_inputs(context)
     for path, expected, label in (
@@ -1243,7 +1251,7 @@ def validate_report_transaction(
             run_id=run_id,
             artifact_receipt=artifact_receipt,
             output_root=artifact_receipt.parent.parent,
-            receipt_ops=receipt_ops,
+            receipt_ops=_predecessor_receipt_ops(receipt_ops),
         )
     admitted_snapshot = context.previous_snapshots.get(context.output_receipt)
     if admitted_snapshot is None or (
@@ -1519,7 +1527,7 @@ def _validate_historical_report_transaction(
             recorded_producer_commit=str(summary["provenance"]["git_commit"]),
             expected_run_contract=expected_run_contract,
             expected_inventory=expected_inventory,
-            receipt_ops=receipt_ops,
+            receipt_ops=_predecessor_receipt_ops(receipt_ops),
         )
     locations = tuple(
         (str(output["output_id"]), Path(str(output["path"])))
@@ -1613,21 +1621,15 @@ def validate_receipt(
         "run_summary": "artifact_index",
         "html_report": "run_summary",
     }.get(kind)
-    if predecessor_kind is not None:
-        predecessor = validated_predecessor or validate_receipt(
-            predecessor_kind,
-            receipts[predecessor_kind],
-            run_root,
-            execution,
-            profile,
-            attempt,
-            config,
-            historical_read=historical_read,
-        )
+    reuse_predecessor = (
+        predecessor_kind is not None and validated_predecessor is not None
+    )
+    if reuse_predecessor:
+        assert validated_predecessor is not None
         predecessor_receipt = _snapshot_receipt(receipts[predecessor_kind])
         if (
-            predecessor.receipt_path != predecessor_receipt.path
-            or predecessor.receipt_sha256 != predecessor_receipt.sha256
+            validated_predecessor.receipt_path != predecessor_receipt.path
+            or validated_predecessor.receipt_sha256 != predecessor_receipt.sha256
         ):
             raise ReportingTransactionError(
                 "Previously validated reporting predecessor no longer matches"
@@ -1679,7 +1681,7 @@ def validate_receipt(
                     run_contract if historical_transaction else None
                 ),
                 expected_inventory=(inventory if historical_transaction else None),
-                validate_upstream=False,
+                validate_upstream=not reuse_predecessor,
             )
         elif historical_transaction:
             result = _validate_historical_report_transaction(
@@ -1691,7 +1693,7 @@ def validate_receipt(
                 expected_source_commit=str(declared_checkout["commit"]),
                 expected_run_contract=run_contract,
                 expected_inventory=inventory,
-                validate_upstream=False,
+                validate_upstream=not reuse_predecessor,
             )
         else:
             result = validate_report_transaction(
@@ -1699,7 +1701,7 @@ def validate_receipt(
                 artifact_source_root=run_root,
                 run_summary=artifact_root / run_id / f"{run_id}.run_summary.json",
                 output_root=html_report_root,
-                validate_upstream=False,
+                validate_upstream=not reuse_predecessor,
             )
     except ReportingTransactionError:
         raise

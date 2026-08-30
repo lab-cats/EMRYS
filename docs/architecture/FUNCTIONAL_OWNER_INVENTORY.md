@@ -103,7 +103,6 @@ Only dispositions that remain deferred or exceptional are repeated here:
 | --- | --- |
 | `tests/test_slurm_wrapper_contracts.py` | `RETAIN_ROOT`; permanent cross-owner protection for the owner-local scheduler wrappers. |
 | `tests/data_checks/validate_step05_outputs.sh` | `RETAIN_ROOT`; permanent repository-level Step `05` operational inspection utility with behavior distinct from the owner-local validator. |
-| `tests/pending/test_step_04_mark_duplicates.sh` | `RETAIN_ROOT`; intentional non-runnable pending-plan scaffold. |
 
 Root `jobs/` is absent and scheduler assets remain owner-local.
 
