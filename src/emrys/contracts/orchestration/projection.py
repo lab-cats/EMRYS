@@ -6,6 +6,7 @@ import csv
 import io
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from emrys.contracts.artifacts import api as artifact_contracts
@@ -84,6 +85,7 @@ def build_reporting_bundle(
     source: Mapping[str, Any],
     profile: Mapping[str, Any],
     analysis: AnalysisRevision | None = None,
+    processing_source_root: Path | None = None,
 ) -> ReportingBundle:
     """Build exact reporting inputs before the execution contract is finalized."""
 
@@ -118,7 +120,12 @@ def build_reporting_bundle(
     artifact_contracts.validate_run_contract(
         reporting_run_contract, "projected reporting"
     )
-    rows = artifact_inventory.project_rows(source, profile, analysis)
+    rows = artifact_inventory.project_rows(
+        source,
+        profile,
+        analysis,
+        processing_source_root,
+    )
     return ReportingBundle(
         reference_contract=reference_contract,
         primary_analysis_policy=primary_analysis_policy,

@@ -91,8 +91,24 @@ The command above retains the full default Analysis. The semantic
 all-sample processing boundary, selecting the evidence-complete Steps `00`–`06`
 closure: 31 owner tasks for the four-sample synthetic fixture. A successful
 processing Run is complete and refuses resume, and reporting is not applicable.
-A future downstream Analysis would be a new Run, but no compatible cross-Run
-reuse or downstream launch route is implemented yet.
+Launch a separately identified downstream Analysis from that exact source with:
+
+```bash
+.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
+  --project /absolute/path/to/project.yaml \
+  --analysis ANALYSIS_NAME \
+  --from-processing-run RUN_ID \
+  --execution-profile /absolute/path/to/emrys.execution.yaml
+```
+
+The source must be a valid, successful, complete processing Run beneath the
+same Project. Samples, Reference, and the entire Execution Plan identity except
+the source/stopping fields must match; the selected Analysis may change
+partitions or scientific policy. EMRYS reads
+the source artifacts in place, executes only Steps `07`–`10` in the new Run,
+and generates that Run's normal Results and reports. It never copies or adopts
+the source Run's task evidence. Use `--execute` for noninteractive execution;
+without it the ordinary no-write planning/confirmation behavior is retained.
 
 The public model is `Project -> named Analysis -> immutable Run -> Results`.
 Project validation, runtime discovery, and Doctor validate all named Analyses;

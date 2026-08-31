@@ -8,7 +8,10 @@ from typing import Any
 
 from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.orchestration.application_model import AnalysisRevision
+from emrys.contracts.orchestration.application_model import (
+    PROCESSING_STEP_IDS,
+    AnalysisRevision,
+)
 
 
 def report_output_root(run_root: Path, profile: Mapping[str, Any]) -> Path:
@@ -143,6 +146,7 @@ def project_rows(
     source: Mapping[str, Any],
     profile: Mapping[str, Any],
     analysis: AnalysisRevision | None = None,
+    processing_source_root: Path | None = None,
 ) -> tuple[dict[str, str], ...]:
     """Expand the fixed artifact templates into their admitted inventory rows."""
 
@@ -182,6 +186,12 @@ def project_rows(
                     context,
                     "source_path_template",
                 )
+                if (
+                    processing_source_root is not None
+                    and str(template["step_id"]) in PROCESSING_STEP_IDS
+                    and not Path(source_path).is_absolute()
+                ):
+                    source_path = str(processing_source_root / source_path)
                 rows.append(
                     {
                         "artifact_id": artifact_id,

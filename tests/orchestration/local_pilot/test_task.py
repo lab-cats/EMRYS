@@ -857,6 +857,69 @@ def test_input_mutation_blocks_verified_publication(tmp_path: Path) -> None:
     assert not Path(built.dispatch["verified_task_path"]).exists()
 
 
+def test_processing_source_input_must_match_its_admitted_snapshot(
+    tmp_path: Path,
+) -> None:
+    built = _task_fixture(tmp_path)
+    original = built.mutable_input.read_bytes()
+    built.dispatch["inputs"][0].update(
+        {
+            "size_bytes": len(original),
+            "sha256": hashlib.sha256(original).hexdigest(),
+        }
+    )
+    built.mutable_input.write_bytes(b"changed after source admission\n")
+    _rewrite_dispatch(built)
+
+    with pytest.raises(
+        task.TaskBoundaryError,
+        match="differs from its processing-source binding",
+    ):
+        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+
+    attempt = _record(built.dispatch["task_attempt_path"])
+    assert attempt["status"] == "failed"
+    assert attempt["producer"] is None
+    assert attempt["task_start_record"] is None
+    assert not Path(built.dispatch["task_start_path"]).exists()
+    assert not Path(built.dispatch["verified_task_path"]).exists()
+
+
+@pytest.mark.parametrize(
+    ("collection", "field", "value", "message"),
+    (
+        ("inputs", "size_bytes", None, "size_bytes must be a nonnegative integer"),
+        ("inputs", "sha256", None, "sha256 must be 64 lowercase hex"),
+        (
+            "outputs",
+            "size_bytes",
+            0,
+            r"outputs\[0\] is not closed: unknown sha256, size_bytes",
+        ),
+    ),
+)
+def test_processing_source_binding_is_closed_and_input_only(
+    tmp_path: Path,
+    collection: str,
+    field: str,
+    value: object,
+    message: str,
+) -> None:
+    built = _task_fixture(tmp_path)
+    original = built.mutable_input.read_bytes()
+    declaration = built.dispatch[collection][0]
+    declaration.update(
+        {"size_bytes": len(original), "sha256": hashlib.sha256(original).hexdigest()}
+    )
+    declaration[field] = value
+    _rewrite_dispatch(built)
+
+    with pytest.raises(task.TaskBoundaryError, match=message):
+        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+    assert not Path(built.dispatch["task_attempt_path"]).exists()
+    assert not Path(built.dispatch["task_start_path"]).exists()
+
+
 def test_successful_dispatch_rerun_refuses_immutable_predecessor(
     tmp_path: Path,
 ) -> None:

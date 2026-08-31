@@ -66,6 +66,11 @@ _ARTIFACT_FIELDS = (
 )
 _TOOL_FIELDS = ("kind", "logical_name", "content_sha256")
 _IMPLEMENTATION_FIELDS = ("role", "logical_name", "content_sha256")
+_PROCESSING_SOURCE_FIELDS = (
+    "source_run_id",
+    "workflow_attempt_id",
+    "attempt_receipt_sha256",
+)
 _NON_RUN_TOOL_NAMES = {
     "runtime_profile",
     "storage_qualification",
@@ -519,6 +524,7 @@ def build_execution_plan(
     backend_semantics_sha256: str,
     star_index: Mapping[str, Any],
     computational_resources: Mapping[str, Any],
+    processing_source: Mapping[str, Any] | None = None,
 ) -> ExecutionPlan:
     """Build the exact pre-allocation, reporting-neutral Execution Plan."""
 
@@ -564,6 +570,12 @@ def build_execution_plan(
         ),
         "computational_resources": resources,
     }
+    if processing_source is not None:
+        identity["processing_source"] = _closed_copy(
+            processing_source,
+            _PROCESSING_SOURCE_FIELDS,
+            "processing source",
+        )
     digest = canonical_sha256(identity)
     return ExecutionPlan.from_record(
         {
@@ -612,6 +624,16 @@ def execution_plan_boundary(plan: ExecutionPlan) -> Literal["analysis", "process
     if selected == tuple(functional["required_owner_keys"]):
         return "analysis"
     return "processing" if selected == processing_stopping_owner_keys(functional) else "partial"
+
+
+def execution_owner_keys(plan: ExecutionPlan) -> tuple[str, ...]:
+    """Return owners executed inside this Run rather than admitted from a source Run."""
+
+    identity = plan.record["identity"]
+    selected = set(identity["scientific_stopping_owner_keys"])
+    if "processing_source" in identity:
+        selected -= set(processing_stopping_owner_keys(identity["functional_specification"]))
+    return tuple(sorted(selected))
 
 
 def read_application_record(
@@ -1070,6 +1092,12 @@ def _validate_plan_semantics(record: Mapping[str, Any]) -> None:
             "scientific_stopping_owner_keys must be predecessor-closed; missing "
             + ", ".join(missing_predecessors)
         )
+    if "processing_source" in identity and stopping != set(
+        functional["required_owner_keys"]
+    ):
+        raise ContractValidationError(
+            "A processing source is valid only for a complete downstream Analysis plan"
+        )
     _require_unique(
         (row["artifact_id_template"] for row in artifacts),
         "artifact_id_template",
@@ -1120,6 +1148,7 @@ __all__ = (
     "functional_specification_from_profile",
     "implementation_content_sha256",
     "execution_plan_boundary",
+    "execution_owner_keys",
     "processing_stopping_owner_keys",
     "read_application_record",
     "toolchain_from_required_tools",

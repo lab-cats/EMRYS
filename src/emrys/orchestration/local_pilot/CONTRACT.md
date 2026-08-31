@@ -174,9 +174,17 @@ evidence-complete, all-sample Steps `00`–`06` closure. The fixed four-sample
 fixture expands this closure to 31 owner tasks. The default remains the full Steps
 `00`–`10` Analysis. Reporting is not applicable to a processing-boundary Run;
 successful completion is terminal and not resumable. This slice establishes
-only the processing/future-reuse boundary. A future downstream Analysis would
-require a new Run, but compatible cross-Run reuse and downstream launch remain
-unimplemented ANALYSIS-01 work.
+the reusable processing authority. `run --from-processing-run RUN_ID` admits one
+exact successful processing Run from the same Project and creates a distinct
+complete downstream Run. The target plan binds the source Run, successful
+workflow Attempt, and receipt; normalized samples, Reference, and execution
+semantics must match exactly except the plan's source/stopping fields. Source
+Steps `00`–`06` artifacts remain stationary and
+content-bound, while the target executes and owns only Steps `07`–`10`, its
+evidence, Results, reports, and log. Resume preserves the immutable source
+relationship. No source task record is copied or adopted, and no Artifact Store
+or second manifest authority is introduced. Authored subsets and generalized
+modular downstream analyses remain ANALYSIS-01/ANALYSIS-02 work.
 `run` and `resume` require the controlled Python invocation. With direct
 placement, a terminal builds and prints one frozen Run
 plan, asks once, and executes that same object only after confirmation. Slurm

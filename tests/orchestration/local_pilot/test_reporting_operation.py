@@ -40,6 +40,7 @@ def _state(
             for kind in ("artifact_index", "run_summary", "html_report")
         },
         verified_report_locations=(),
+        processing_source=None,
     )
 
 
@@ -83,6 +84,74 @@ def _install_admission(
         "_admit_identity",
         lambda **_kwargs: identity,
     )
+
+
+def _processing_source(
+    tmp_path: Path,
+    *,
+    relocate_reference: bool = False,
+    validation_sha256: str = "b" * 64,
+) -> tuple[SimpleNamespace, SimpleNamespace]:
+    source_root = (tmp_path / "source").resolve()
+    output = source_root / "output.bam"
+    validation = source_root / "validation.tsv"
+    reference = (tmp_path / "source-reference.fa").resolve()
+    prepared_reference = (
+        (tmp_path / "relocated-reference.fa").resolve()
+        if relocate_reference
+        else reference
+    )
+    source = SimpleNamespace(
+        root=source_root,
+        binding={"source_run_id": "source-run"},
+        state=SimpleNamespace(
+            tasks=(
+                SimpleNamespace(
+                    record={
+                        "inputs": [
+                            {
+                                "path": str(reference),
+                                "size_bytes": 11,
+                                "sha256": "c" * 64,
+                            }
+                        ],
+                        "outputs": [
+                            {
+                                "path": str(output),
+                                "size_bytes": 17,
+                                "sha256": "a" * 64,
+                            }
+                        ],
+                        "validation_report": {
+                            "path": "validation.tsv",
+                            "sha256": "b" * 64,
+                        },
+                        "native_receipt": None,
+                    }
+                ),
+            )
+        ),
+        artifact_snapshots=(
+            {"path": str(output), "size_bytes": 17, "sha256": "a" * 64},
+        ),
+    )
+    context = SimpleNamespace(
+        inspections=tuple(
+            SimpleNamespace(
+                row={"step_id": "00c"},
+                resolved_path=path,
+                snapshot=SimpleNamespace(
+                    status="present", size_bytes=size, sha256=sha256
+                ),
+            )
+            for path, size, sha256 in (
+                (output, 17, "a" * 64),
+                (validation, 23, validation_sha256),
+                (prepared_reference, 11, "c" * 64),
+            )
+        )
+    )
+    return source, context
 
 
 def test_complete_historical_reporting_is_reused_read_only(
@@ -174,6 +243,35 @@ def test_dry_run_validates_first_producer_without_publishing(
     assert capsys.readouterr() == ("", "")
 
 
+def test_processing_source_mismatch_fails_before_reporting_start(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = (tmp_path / "run-source-mismatch").resolve()
+    root.mkdir()
+    source, context = _processing_source(tmp_path, validation_sha256="d" * 64)
+    state = _state(root)
+    state.processing_source = source
+    identity = _identity(root, state)
+    _install_admission(monkeypatch, state, identity)
+    monkeypatch.setattr(
+        reporting_operation,
+        "_prepare_transaction",
+        lambda *_args: context,
+    )
+    monkeypatch.setattr(
+        reporting_operation.reporting_boundary,
+        "publish_start",
+        lambda **_kwargs: pytest.fail("mismatched source published a start"),
+    )
+
+    with pytest.raises(
+        reporting_operation.ReportingOperationError,
+        match="Prepared artifact index differs from processing source",
+    ):
+        reporting_operation.run_reporting(root, execute=True)
+
+
 def test_execute_prepares_and_publishes_each_fixed_transaction_once(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -181,6 +279,8 @@ def test_execute_prepares_and_publishes_each_fixed_transaction_once(
     root = (tmp_path / "run-execute").resolve()
     root.mkdir()
     initial = _state(root)
+    source, context = _processing_source(tmp_path, relocate_reference=True)
+    initial.processing_source = source
     locations = (
         ("scientific-report-html", root / "results" / "scientific.html"),
         ("evidence-report-html", root / "results" / "evidence.html"),
@@ -202,7 +302,7 @@ def test_execute_prepares_and_publishes_each_fixed_transaction_once(
     def prepare(kind: str, _arguments: Any) -> object:
         preparations[kind] = preparations.get(kind, 0) + 1
         observed.append(f"prepare:{kind}:{preparations[kind]}")
-        return object()
+        return context if kind == "artifact_index" else object()
 
     def publish(kind: str, _context: object) -> Path:
         observed.append(f"publish:{kind}")
@@ -211,13 +311,26 @@ def test_execute_prepares_and_publishes_each_fixed_transaction_once(
     def start(*, kind: str, **_kwargs: Any) -> None:
         observed.append(f"start:{kind}")
 
-    def verified(*, kind: str, **_kwargs: Any) -> tuple[tuple[str, Path], ...]:
+    def verified(
+        *, kind: str, before_publication: Any = None, **_kwargs: Any
+    ) -> tuple[tuple[str, Path], ...]:
+        if before_publication is not None:
+            before_publication()
         observed.append(f"verified:{kind}")
         return locations if kind == "html_report" else ()
+
+    def admit_source(*_args: Any) -> SimpleNamespace:
+        observed.append("recheck:artifact_index")
+        return source
 
     monkeypatch.setattr(reporting_operation, "_prepare_transaction", prepare)
     monkeypatch.setattr(reporting_operation, "_publish_prepared", publish)
     monkeypatch.setattr(reporting_operation.reporting_boundary, "publish_start", start)
+    monkeypatch.setattr(
+        reporting_operation.inspection,
+        "admit_bound_processing_source",
+        admit_source,
+    )
     monkeypatch.setattr(
         reporting_operation.reporting_boundary,
         "publish_verified",
@@ -232,6 +345,7 @@ def test_execute_prepares_and_publishes_each_fixed_transaction_once(
         "prepare:artifact_index:1",
         "start:artifact_index",
         "publish:artifact_index",
+        "recheck:artifact_index",
         "verified:artifact_index",
         "prepare:run_summary:1",
         "start:run_summary",

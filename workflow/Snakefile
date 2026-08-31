@@ -9,6 +9,9 @@ from pathlib import Path
 
 import emrys
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.application_model import (
+    processing_stopping_owner_keys,
+)
 from emrys.libraries.source_authority import (
     SourceCheckoutError,
     attest_source_checkout,
@@ -43,7 +46,6 @@ CONFIG_KEYS = {
     "profile_path",
     "workflow_attempt_id",
     "source_checkout",
-    "artifact_source_root",
     "reference_contract_path",
     "primary_analysis_policy_path",
     "reporting_run_contract_path",
@@ -72,7 +74,6 @@ CONFIGURED_PYTHON = _absolute_config_path("python_executable")
 EXECUTION_PATH = _absolute_config_path("execution_path")
 PROFILE_SNAPSHOT_PATH = _absolute_config_path("profile_path")
 SOURCE_CHECKOUT = _absolute_config_path("source_checkout")
-ARTIFACT_SOURCE_ROOT = _absolute_config_path("artifact_source_root")
 STAGE_IDS = {
     "00a", "00b", "00c", "01", "02", "02b", "03", "04", "05", "06",
     "07", "08", "09", "10",
@@ -160,8 +161,6 @@ if PROFILE_SNAPSHOT_PATH.read_bytes() != orchestration_contracts.canonical_json_
     PROFILE_SNAPSHOT
 ):
     raise WorkflowError("Run profile snapshot must use canonical JSON bytes")
-if ARTIFACT_SOURCE_ROOT != RUN_ROOT:
-    raise WorkflowError("Fixed local workflow artifact_source_root must equal run_root")
 if not SOURCE_CHECKOUT.is_dir() or SOURCE_CHECKOUT.is_symlink():
     raise WorkflowError(f"source_checkout must be a real directory: {SOURCE_CHECKOUT}")
 EXECUTION, _EXECUTION_DATA, SUCCESSOR_AUTHORITY = admit_execution_path(
@@ -186,35 +185,6 @@ def _require_run_file(path, label):
 _require_run_file(EXECUTION_PATH, "execution_path")
 _require_run_file(PROFILE_SNAPSHOT_PATH, "profile_path")
 _require_run_file(WORKFLOW_ATTEMPT_PATH, "workflow_attempt_path")
-
-PROJECTION_CONFIG = {
-    "reference_contract": "reference_contract_path",
-    "primary_analysis_policy": "primary_analysis_policy_path",
-}
-for projection_name, config_key in PROJECTION_CONFIG.items():
-    if SUCCESSOR_AUTHORITY is None:
-        projection_path = _absolute_config_path(config_key)
-        reference = EXECUTION["reporting_projection"][projection_name]
-    else:
-        reference = config.get(config_key)
-        if not isinstance(reference, dict) or set(reference) != {"path", "sha256"}:
-            raise WorkflowError(
-                f"Workflow config {config_key!r} must be one exact reference"
-            )
-        projection_path = RUN_ROOT / reference["path"]
-    expected_path = RUN_ROOT / reference["path"]
-    if projection_path != expected_path:
-        raise WorkflowError(
-            f"{config_key} does not match normalized reporting projection"
-        )
-    _require_run_file(projection_path, config_key)
-    payload = projection_path.read_bytes()
-    if hashlib.sha256(payload).hexdigest() != reference["sha256"]:
-        raise WorkflowError(f"{config_key} does not match its projected SHA-256")
-    if projection_path.suffix == ".json":
-        document = orchestration_contracts.load_json_object(projection_path)
-        if payload != orchestration_contracts.canonical_json_bytes(document):
-            raise WorkflowError(f"{config_key} must use canonical JSON bytes")
 
 WORKFLOW_ATTEMPT = orchestration_contracts.load_json_object(WORKFLOW_ATTEMPT_PATH)
 orchestration_contracts.validate_record("workflow-attempt", WORKFLOW_ATTEMPT)
@@ -272,6 +242,16 @@ if (
     raise WorkflowError("workflow attempt required tools do not bind python_executable")
 
 EXPECTED_TASKS = expected_tasks(SUCCESSOR_AUTHORITY or EXECUTION, PROFILE)
+PROCESSING_SOURCE_ROOT = None
+PROCESSING_OWNER_KEYS = set()
+if SUCCESSOR_AUTHORITY is not None:
+    plan_identity = SUCCESSOR_AUTHORITY.execution_plan.record["identity"]
+    processing_source = plan_identity.get("processing_source")
+    if processing_source is not None:
+        PROCESSING_SOURCE_ROOT = RUN_ROOT.parent / processing_source["source_run_id"]
+        PROCESSING_OWNER_KEYS = set(
+            processing_stopping_owner_keys(plan_identity["functional_specification"])
+        )
 
 if SUCCESSOR_AUTHORITY is None:
     REFERENCE_ID = str(EXECUTION["reference"]["reference_id"])
@@ -359,7 +339,12 @@ _DISPATCH_CACHE = {}
 
 
 def _verified(machine_key, scope_id):
-    return str(RUN_ROOT / "state" / "verified" / machine_key / f"{scope_id}.json")
+    root = (
+        PROCESSING_SOURCE_ROOT
+        if machine_key in PROCESSING_OWNER_KEYS
+        else RUN_ROOT
+    )
+    return str(root / "state" / "verified" / machine_key / f"{scope_id}.json")
 
 
 def _sample_verified(machine_key):
@@ -368,6 +353,20 @@ def _sample_verified(machine_key):
 
 def _partition_verified(machine_key):
     return _verified(machine_key, "{partition_scope}")
+
+
+def _produced_verified(machine_key, scope_id):
+    return str(
+        RUN_ROOT / "state" / "verified" / machine_key / f"{scope_id}.json"
+    )
+
+
+def _sample_produced_verified(machine_key):
+    return _produced_verified(machine_key, "{sample_id}")
+
+
+def _partition_produced_verified(machine_key):
+    return _produced_verified(machine_key, "{partition_scope}")
 
 
 def _dispatch_reference(machine_key, scope_id):
@@ -610,7 +609,7 @@ rule cohort_slice:
 
 rule construct_STAR_index:
     output:
-        _verified(_owner("construct_STAR_index"), REFERENCE_ID)
+        _produced_verified(_owner("construct_STAR_index"), REFERENCE_ID)
     params:
         task_argv=_task_argv(_owner("construct_STAR_index"), REFERENCE_ID)
     threads:
@@ -623,7 +622,7 @@ rule construct_STAR_index:
 
 rule convert_GTF_to_BED12:
     output:
-        _verified(_owner("convert_GTF_to_BED12"), REFERENCE_ID)
+        _produced_verified(_owner("convert_GTF_to_BED12"), REFERENCE_ID)
     params:
         task_argv=_task_argv(_owner("convert_GTF_to_BED12"), REFERENCE_ID)
     resources:
@@ -634,7 +633,7 @@ rule convert_GTF_to_BED12:
 
 rule construct_FASTA_sidecars:
     output:
-        _verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
+        _produced_verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
     params:
         task_argv=_task_argv(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
     resources:
@@ -647,7 +646,7 @@ rule align_RNA_reads_with_STAR:
     input:
         star_index=_verified(_owner("construct_STAR_index"), REFERENCE_ID)
     output:
-        _sample_verified(_owner("align_RNA_reads_with_STAR"))
+        _sample_produced_verified(_owner("align_RNA_reads_with_STAR"))
     params:
         task_argv=_task_argv(_owner("align_RNA_reads_with_STAR"), wildcard="sample_id")
     threads:
@@ -663,7 +662,7 @@ rule construct_canonical_BAM:
     input:
         star_bam=_sample_verified(_owner("align_RNA_reads_with_STAR"))
     output:
-        _sample_verified(_owner("construct_canonical_BAM"))
+        _sample_produced_verified(_owner("construct_canonical_BAM"))
     params:
         task_argv=_task_argv(_owner("construct_canonical_BAM"), wildcard="sample_id")
     threads:
@@ -679,7 +678,7 @@ rule collect_canonical_BAM_QC_evidence:
     input:
         canonical_bam=_sample_verified(_owner("construct_canonical_BAM"))
     output:
-        _sample_verified(_owner("collect_canonical_BAM_QC_evidence"))
+        _sample_produced_verified(_owner("collect_canonical_BAM_QC_evidence"))
     params:
         task_argv=_task_argv(_owner("collect_canonical_BAM_QC_evidence"), wildcard="sample_id")
     resources:
@@ -694,7 +693,7 @@ rule collect_RSeQC_paired_orientation_evidence:
         canonical_bam=_sample_verified(_owner("construct_canonical_BAM")),
         bed12=_verified(_owner("convert_GTF_to_BED12"), REFERENCE_ID)
     output:
-        _sample_verified(_owner("collect_RSeQC_paired_orientation_evidence"))
+        _sample_produced_verified(_owner("collect_RSeQC_paired_orientation_evidence"))
     params:
         task_argv=_task_argv(_owner("collect_RSeQC_paired_orientation_evidence"), wildcard="sample_id")
     resources:
@@ -708,7 +707,7 @@ rule mark_BAM_duplicates_with_Picard:
     input:
         canonical_bam=_sample_verified(_owner("construct_canonical_BAM"))
     output:
-        _sample_verified(_owner("mark_BAM_duplicates_with_Picard"))
+        _sample_produced_verified(_owner("mark_BAM_duplicates_with_Picard"))
     params:
         task_argv=_task_argv(_owner("mark_BAM_duplicates_with_Picard"), wildcard="sample_id")
     resources:
@@ -723,7 +722,7 @@ rule split_N_cigar_reads_with_GATK:
         marked_bam=_sample_verified(_owner("mark_BAM_duplicates_with_Picard")),
         reference_sidecars=_verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
     output:
-        _sample_verified(_owner("split_N_cigar_reads_with_GATK"))
+        _sample_produced_verified(_owner("split_N_cigar_reads_with_GATK"))
     params:
         task_argv=_task_argv(_owner("split_N_cigar_reads_with_GATK"), wildcard="sample_id")
     resources:
@@ -737,7 +736,7 @@ rule partition_BAM_by_mechanical_read_orientation:
     input:
         split_bam=_sample_verified(_owner("split_N_cigar_reads_with_GATK"))
     output:
-        _sample_verified(_owner("partition_BAM_by_mechanical_read_orientation"))
+        _sample_produced_verified(_owner("partition_BAM_by_mechanical_read_orientation"))
     params:
         task_argv=_task_argv(_owner("partition_BAM_by_mechanical_read_orientation"), wildcard="sample_id")
     threads:
@@ -757,7 +756,7 @@ rule generate_partitioned_cohort_mpileup_VCFs:
         ),
         reference_sidecars=_verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
     output:
-        _partition_verified(_owner("generate_partitioned_cohort_mpileup_VCFs"))
+        _partition_produced_verified(_owner("generate_partitioned_cohort_mpileup_VCFs"))
     params:
         task_argv=_task_argv(
             _owner("generate_partitioned_cohort_mpileup_VCFs"),
@@ -777,7 +776,7 @@ rule preprocess_and_annotate_cohort_candidates:
             partition_scope=PARTITION_SCOPES,
         )
     output:
-        _verified(_owner("preprocess_and_annotate_cohort_candidates"), COHORT_ID)
+        _produced_verified(_owner("preprocess_and_annotate_cohort_candidates"), COHORT_ID)
     params:
         task_argv=_task_argv(_owner("preprocess_and_annotate_cohort_candidates"), COHORT_ID)
     threads:
@@ -792,7 +791,7 @@ rule rank_cohort_candidates_with_paired_CMH:
     input:
         cohort_candidates=_verified(_owner("preprocess_and_annotate_cohort_candidates"), COHORT_ID)
     output:
-        _verified(_owner("rank_cohort_candidates_with_paired_CMH"), ANALYSIS_ID)
+        _produced_verified(_owner("rank_cohort_candidates_with_paired_CMH"), ANALYSIS_ID)
     params:
         task_argv=_task_argv(_owner("rank_cohort_candidates_with_paired_CMH"), ANALYSIS_ID)
     resources:
@@ -806,7 +805,7 @@ rule project_candidate_scientific_context:
         candidate_ranking=_verified(_owner("rank_cohort_candidates_with_paired_CMH"), ANALYSIS_ID),
         reference_sidecars=_verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
     output:
-        _verified(_owner("project_candidate_scientific_context"), ANALYSIS_ID)
+        _produced_verified(_owner("project_candidate_scientific_context"), ANALYSIS_ID)
     params:
         task_argv=_task_argv(_owner("project_candidate_scientific_context"), ANALYSIS_ID)
     resources:

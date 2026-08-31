@@ -67,6 +67,7 @@ _DISPATCH_FIELDS = frozenset(
     }
 )
 _DECLARATION_FIELDS = frozenset({"role", "path"})
+_BOUND_DECLARATION_FIELDS = frozenset({"role", "path", "size_bytes", "sha256"})
 _SCOPE_FIELDS = frozenset({"scope_type", "scope_id"})
 _SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _STREAM_CHUNK_BYTES = 1024 * 1024
@@ -84,6 +85,7 @@ class FileDeclaration:
 
     role: str
     path: Path
+    expected_binding: tuple[int, str] | None = None
 
 
 _FileIdentity = tuple[int, int, int, int, int]
@@ -232,16 +234,24 @@ def _command(value: Any, label: str) -> tuple[str, ...]:
     return command
 
 
-def _declarations(value: Any, label: str) -> tuple[FileDeclaration, ...]:
+def _declarations(
+    value: Any,
+    label: str,
+    *,
+    allow_binding: bool = False,
+) -> tuple[FileDeclaration, ...]:
     if not isinstance(value, list) or not value:
         raise TaskBoundaryError(f"{label} must be a nonempty declaration array")
     declarations: list[FileDeclaration] = []
     roles: set[str] = set()
     paths: set[Path] = set()
     for index, raw in enumerate(value):
+        observed = frozenset(raw) if isinstance(raw, Mapping) else frozenset()
+        bound = allow_binding and observed == _BOUND_DECLARATION_FIELDS
+        fields = _BOUND_DECLARATION_FIELDS if bound else _DECLARATION_FIELDS
         item = _closed_object(
             raw,
-            fields=_DECLARATION_FIELDS,
+            fields=fields,
             label=f"{label}[{index}]",
         )
         role = _safe_id(item["role"], f"{label}[{index}].role")
@@ -252,7 +262,28 @@ def _declarations(value: Any, label: str) -> tuple[FileDeclaration, ...]:
             raise TaskBoundaryError(f"{label} repeats path: {path}")
         roles.add(role)
         paths.add(path)
-        declarations.append(FileDeclaration(role=role, path=path))
+        expected_size = item.get("size_bytes")
+        expected_sha256 = item.get("sha256")
+        if bound and (
+            isinstance(expected_size, bool)
+            or not isinstance(expected_size, int)
+            or expected_size < 0
+        ):
+            raise TaskBoundaryError(
+                f"{label}[{index}].size_bytes must be a nonnegative integer"
+            )
+        if bound and (
+            not isinstance(expected_sha256, str)
+            or re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is None
+        ):
+            raise TaskBoundaryError(f"{label}[{index}].sha256 must be 64 lowercase hex")
+        declarations.append(
+            FileDeclaration(
+                role=role,
+                path=path,
+                expected_binding=(expected_size, expected_sha256) if bound else None,
+            )
+        )
     return tuple(declarations)
 
 
@@ -346,7 +377,7 @@ def load_dispatch(path: Path, *, expected_sha256: str) -> TaskDispatch:
             producer_argv=_command(record["producer_argv"], "producer_argv"),
             validator_argv=_command(record["validator_argv"], "validator_argv"),
         ),
-        inputs=_declarations(record["inputs"], "inputs"),
+        inputs=_declarations(record["inputs"], "inputs", allow_binding=True),
         outputs=_declarations(record["outputs"], "outputs"),
         validation_report_path=_absolute_path(
             record["validation_report_path"], "validation_report_path"
@@ -506,13 +537,18 @@ def _hash_bound_file(path: Path, label: str) -> tuple[str, os.stat_result]:
 
 def _bound_snapshot(declaration: FileDeclaration) -> _BoundFileSnapshot:
     digest, state = _hash_bound_file(declaration.path, declaration.role)
+    record = {
+        "role": declaration.role,
+        "path": str(declaration.path),
+        "size_bytes": state.st_size,
+        "sha256": digest,
+    }
+    if declaration.expected_binding not in (None, (state.st_size, digest)):
+        raise TaskBoundaryError(
+            f"Task input differs from its processing-source binding: {declaration.path}"
+        )
     return _BoundFileSnapshot(
-        record={
-            "role": declaration.role,
-            "path": str(declaration.path),
-            "size_bytes": state.st_size,
-            "sha256": digest,
-        },
+        record=record,
         identity=_file_identity(state),
     )
 

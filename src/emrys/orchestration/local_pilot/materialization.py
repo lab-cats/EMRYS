@@ -172,6 +172,7 @@ def build_run_candidate(
     declaration: ComputationalResourceDeclaration,
     *,
     scientific_stopping_owner_keys: Sequence[str] | None = None,
+    processing_source: Mapping[str, Any] | None = None,
 ) -> RunCandidate:
     """Construct the complete Run before allocation or Attempt identity exists."""
 
@@ -203,6 +204,7 @@ def build_run_candidate(
         backend_semantics_sha256=backend_sha256,
         star_index=source["reference"]["star_index"],
         computational_resources=declaration.identity_document(),
+        processing_source=processing_source,
     )
     return RunCandidate(analysis, plan, bind_run(analysis.revision, plan))
 
@@ -1132,6 +1134,8 @@ def _dispatches(
     compact_time: str,
     retained: Mapping[tuple[str, str], dict[str, str]],
     resources: ResourcePlan,
+    processing_source_root: Path | None,
+    processing_snapshots: Mapping[Path, Mapping[str, Any]],
 ) -> tuple[
     tuple[PlannedFile, ...], dict[str, dict[str, dict[str, str]]], tuple[Path, ...]
 ]:
@@ -1140,7 +1144,12 @@ def _dispatches(
     analysis_revision = run.analysis.revision if successor else None
     profile = run.analysis.profile
     inventory: dict[tuple[str, str], list[dict[str, Any]]] = {}
-    for row in artifact_inventory.project_rows(source, profile, analysis_revision):
+    for row in artifact_inventory.project_rows(
+        source,
+        profile,
+        analysis_revision,
+        processing_source_root,
+    ):
         item = dict(row)
         path = Path(str(row["source_path"]))
         item["path"] = path if path.is_absolute() else run_root / path
@@ -1236,6 +1245,29 @@ def _dispatches(
             / task.machine_key
             / f"{task.scope_id}.json"
         )
+        input_declarations = []
+        for input_index, path in enumerate(inputs, start=1):
+            declaration = {
+                "role": f"input_{input_index:03d}",
+                "path": str(path),
+            }
+            snapshot = processing_snapshots.get(path)
+            if (
+                processing_source_root is not None
+                and path.is_relative_to(processing_source_root)
+                and snapshot is None
+            ):
+                raise MaterializationError(
+                    f"Reused processing input lacks an admitted source snapshot: {path}"
+                )
+            if snapshot is not None:
+                declaration.update(
+                    {
+                        "size_bytes": int(snapshot["size_bytes"]),
+                        "sha256": str(snapshot["sha256"]),
+                    }
+                )
+            input_declarations.append(declaration)
         record = {
             "schema_version": "emrys.local-task-dispatch.v1",
             "run_root": str(run_root),
@@ -1248,10 +1280,7 @@ def _dispatches(
             "scope": task.scope,
             "producer_argv": list(producer),
             "validator_argv": list(validator),
-            "inputs": [
-                {"role": f"input_{input_index:03d}", "path": str(path)}
-                for input_index, path in enumerate(inputs, start=1)
-            ],
+            "inputs": input_declarations,
             "outputs": [
                 {"role": f"output_{output_index:03d}", "path": str(path)}
                 for output_index, path in enumerate(outputs, start=1)
@@ -1314,6 +1343,7 @@ def build_attempt_plan(
     supersedes_workflow_attempt_id: str | None = None,
     retained_dispatches: Mapping[tuple[str, str], dict[str, str]] | None = None,
     retained_runtime_profile_path: Path | None = None,
+    processing_source: inspection.ProcessingSourceAdmission | None = None,
 ) -> AttemptPlan:
     """Build one complete attempt without touching the filesystem."""
 
@@ -1338,6 +1368,26 @@ def build_attempt_plan(
     owner_token = f"workflow-owner-{suffix}"
     workspace_path = _absolute(workspace)
     run_root = workspace_path / "runs" / run.run_id
+    plan_source = (
+        run.execution_plan.record["identity"].get("processing_source")
+        if isinstance(run, RunCandidate)
+        else None
+    )
+    if (plan_source is None) != (processing_source is None) or (
+        processing_source is not None and processing_source.binding != plan_source
+    ):
+        raise MaterializationError(
+            "Attempt processing-source admission differs from its immutable Run"
+        )
+    processing_source_root = (
+        None if processing_source is None else processing_source.root
+    )
+    processing_snapshots = {
+        Path(str(snapshot["path"])): snapshot
+        for snapshot in (
+            () if processing_source is None else processing_source.artifact_snapshots
+        )
+    }
     source_root = readiness.source_root
     if retained_runtime_profile_path is not None:
         if successor or operation != "resume":
@@ -1370,6 +1420,8 @@ def build_attempt_plan(
         compact,
         retained,
         resources,
+        processing_source_root,
+        processing_snapshots,
     )
     reporting_files, reporting_config, reporting_directories = (
         reporting_boundary._attempt_reporting_materialization(
@@ -1378,6 +1430,7 @@ def build_attempt_plan(
             run_root,
             analysis=(analysis.revision if successor else None),
             attempt_id=(attempt_id if successor else None),
+            processing_source_root=processing_source_root,
         )
     )
     fixed_files = [
@@ -1403,7 +1456,6 @@ def build_attempt_plan(
         "profile_path": str(run_root / "contract/profile.json"),
         "workflow_attempt_id": attempt_id,
         "source_checkout": str(source_root),
-        "artifact_source_root": str(run_root),
         **reporting_config,
         "resource_policy": resource_policy_record,
         "dispatch_paths": dispatch_references,

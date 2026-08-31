@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import re
 import shlex
 import sys
 import uuid
@@ -17,7 +18,10 @@ from pathlib import Path
 from typing import Any, TextIO
 
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.orchestration.application_model import execution_plan_boundary
+from emrys.contracts.orchestration.application_model import (
+    PROCESSING_STEP_IDS,
+    execution_plan_boundary,
+)
 from emrys.libraries.application_logging import (
     ApplicationLogError,
     AttemptIdentity,
@@ -129,6 +133,7 @@ def _plan_run(
     execution_profile: ExecutionProfile,
     analysis_name: str | None = None,
     through: str = "analysis",
+    processing_source_run_id: str | None = None,
     scheduler_job_id: str | None = None,
 ) -> AttemptPlan:
     """Plan a new run without writing any workspace state."""
@@ -142,6 +147,17 @@ def _plan_run(
         )
         _require_ready(readiness)
         policy = execution_profile.resource_policy
+        processing_source = None
+        if processing_source_run_id is not None:
+            if through != "analysis":
+                raise ControlError(
+                    "--from-processing-run cannot be combined with --through processing"
+                )
+            if re.fullmatch(r"run-[0-9a-f]{64}", processing_source_run_id) is None:
+                raise ControlError("--from-processing-run must name one exact Run ID")
+            processing_source = inspection.admit_processing_source(
+                workspace / "runs" / processing_source_run_id
+            )
         run = build_run_candidate(
             readiness.analysis,
             readiness,
@@ -151,7 +167,16 @@ def _plan_run(
                 if through == "analysis"
                 else processing_stopping_owner_keys(readiness.analysis.profile)
             ),
+            processing_source=(
+                None if processing_source is None else processing_source.binding
+            ),
         )
+        if processing_source is not None:
+            inspection.validate_processing_source(
+                processing_source,
+                target_analysis=readiness.analysis.revision,
+                target_plan=run.execution_plan,
+            )
         resources = resolve_resource_policy(policy, capacity.observe_allocation())
         plan = build_attempt_plan(
             run,
@@ -160,10 +185,12 @@ def _plan_run(
             resources=resources,
             operation="execute",
             placement=execution_profile.attempt_placement(scheduler_job_id),
+            processing_source=processing_source,
         )
         validate_run_destination(plan.run_root, candidate=plan.run)
     except (
         doctor.DoctorInputError,
+        inspection.InspectionError,
         MaterializationError,
         ResourceConfigError,
         ExecutionProfileError,
@@ -379,6 +406,7 @@ def _plan_resume(
                 execution_profile,
                 resource_policy=policy,
             )
+        processing_source = observed.processing_source
         if observed.authority is not None:
             candidate = build_run_candidate(
                 analysis,
@@ -387,6 +415,9 @@ def _plan_resume(
                 scientific_stopping_owner_keys=observed.authority.execution_plan.record[
                     "identity"
                 ]["scientific_stopping_owner_keys"],
+                processing_source=(
+                    None if processing_source is None else processing_source.binding
+                ),
             )
             if candidate.run_binding.canonical_bytes != observed.authority.run_binding.canonical_bytes:
                 raise ControlError("Current inputs resolve to a different Run")
@@ -418,9 +449,11 @@ def _plan_resume(
             retained_dispatches=_retained_dispatches(observed, predecessor_config),
             retained_runtime_profile_path=retained_runtime_profile,
             placement=execution_profile.attempt_placement(scheduler_job_id),
+            processing_source=processing_source,
         )
     except (
         doctor.DoctorInputError,
+        inspection.InspectionError,
         MaterializationError,
         ResourceConfigError,
         ExecutionProfileError,
@@ -567,6 +600,10 @@ def _delegate_argv(
             argv.extend(("--analysis", analysis_name))
         if getattr(arguments, "through", "analysis") != "analysis":
             argv.extend(("--through", arguments.through))
+        if (
+            source_run_id := getattr(arguments, "from_processing_run", None)
+        ) is not None:
+            argv.extend(("--from-processing-run", source_run_id))
     else:
         argv.extend(("--run-root", str(_absolute(arguments.run_root))))
     argv.extend(
@@ -1035,6 +1072,19 @@ def _print_plan(plan: AttemptPlan, *, level: LogLevel, report_enabled: bool = Tr
     else:
         reporting = "disabled for this execution"
     print(f"Scientific boundary: {boundary}", file=sys.stderr)
+    if (
+        not isinstance(plan.run, HistoricalRun)
+        and (
+            processing_source := plan.run.execution_plan.record["identity"].get(
+                "processing_source"
+            )
+        )
+        is not None
+    ):
+        print(
+            f"Processing source: {processing_source['source_run_id']}",
+            file=sys.stderr,
+        )
     print(f"Work: {len(new_dispatches)} pending, {reused} reusable", file=sys.stderr)
     print(f"Reporting: {reporting}", file=sys.stderr)
     if level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
@@ -1152,6 +1202,13 @@ def configure_run_parser(parser: argparse.ArgumentParser) -> None:
         ),
     )
     parser.add_argument(
+        "--from-processing-run",
+        help=(
+            "Reuse one exact successful processing Run from this Project and "
+            "execute only the selected Analysis's downstream work."
+        ),
+    )
+    parser.add_argument(
         "--execution-profile",
         type=Path,
         help="Optional combined resource and placement profile; direct is the default.",
@@ -1205,6 +1262,8 @@ def _progress_state(tasks: tuple[inspection.TaskInspection, ...]) -> str:
 
 def _milestone_progress(
     tasks: tuple[inspection.TaskInspection, ...],
+    *,
+    processing_source_state: str | None = None,
 ) -> tuple[tuple[str, str, int, int], ...]:
     known_steps = {step for _label, steps in _MILESTONE_STEPS for step in steps}
     unknown = sorted({task.expected.step_id for task in tasks} - known_steps)
@@ -1213,10 +1272,17 @@ def _milestone_progress(
     result = []
     for label, steps in _MILESTONE_STEPS:
         members = tuple(task for task in tasks if task.expected.step_id in steps)
+        state = (
+            processing_source_state
+            if processing_source_state is not None
+            and not members
+            and set(steps).issubset(PROCESSING_STEP_IDS)
+            else _progress_state(members)
+        )
         result.append(
             (
                 label,
-                _progress_state(members),
+                state,
                 sum(task.state == "verified" for task in members),
                 len(members),
             )
@@ -1274,6 +1340,11 @@ def run_from_args(
             execution_profile=profile,
             analysis_name=getattr(arguments, "analysis", None),
             through=getattr(arguments, "through", "analysis"),
+            processing_source_run_id=getattr(
+                arguments,
+                "from_processing_run",
+                None,
+            ),
             scheduler_job_id=scheduler_job_id,
         )
         return _finish_control(
@@ -1454,7 +1525,16 @@ def inspect_from_args(
     try:
         observed = inspection.inspect_run(_absolute(arguments.run_root))
         detail = getattr(arguments, "detail", "normal")
-        milestones = _milestone_progress(observed.tasks)
+        milestones = _milestone_progress(
+            observed.tasks,
+            processing_source_state=(
+                None
+                if observed.processing_source_run_id is None
+                else "reused"
+                if observed.processing_source is not None
+                else "blocked"
+            ),
+        )
         elapsed = _attempt_elapsed_line(observed)
         result_lines = _verified_report_location_lines(observed.verified_report_locations)
     except (OSError, inspection.InspectionError, ControlError) as exc:
@@ -1464,11 +1544,17 @@ def inspect_from_args(
     print(f"Run integrity: {observed.integrity}")
     print(f"Attempt outcome: {observed.attempt_outcome}")
     print(elapsed)
+    if observed.processing_source_run_id is not None:
+        source_state = "admitted" if observed.processing_source is not None else "blocked"
+        print(
+            f"Processing source: {observed.processing_source_run_id} ({source_state})"
+        )
     print("Scientific milestones:")
     for label, state, verified, total in milestones:
         print(f"  {label}: {state}")
         if detail != "normal":
-            print(f"    Verified tasks: {verified}/{total}")
+            if observed.processing_source_run_id is None or total:
+                print(f"    Verified tasks: {verified}/{total}")
     print(f"Scientific Results: {observed.results_status}")
     print(f"Reporting: {observed.reporting_status}")
     latest = observed.latest_attempt
