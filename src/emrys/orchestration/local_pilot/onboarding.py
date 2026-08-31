@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import gzip
-import hashlib
 import json
 import os
 import re
@@ -13,6 +12,8 @@ import sys
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+
+import yaml
 
 from emrys import __version__
 from emrys.contracts.orchestration import api as orchestration_contracts
@@ -29,6 +30,11 @@ from emrys.libraries.process_environment import guarded_r_environment
 from emrys.libraries.references.contigs import (
     ReferenceContigError,
     parse_fasta_lines,
+)
+from emrys.libraries.validation.errors import ValidationError
+from emrys.libraries.validation.inputs import (
+    read_bytes_with_identity,
+    sha256_with_identity,
 )
 from emrys.libraries.validation.tsv import tsv_bytes
 from emrys.orchestration.local_pilot.normalization import (
@@ -79,8 +85,6 @@ class ProjectValidation:
     fasta_contigs: tuple[tuple[str, int], ...]
     transcript_count: int
     sample_count: int
-    pair_count: int
-    partition_count: int
     gtf_warnings: tuple[str, ...]
 
 
@@ -196,13 +200,19 @@ def _re_admit_published_tree(
     expected_members[completion_name] = (completion_bytes, 0o644)
     for relative, (expected_bytes, expected_mode) in expected_members.items():
         path = output / relative
-        state = path.lstat()
+        try:
+            data, state = read_bytes_with_identity(
+                path,
+                f"published member {relative}",
+                nonempty=False,
+            )
+        except ValidationError as exc:
+            raise OnboardingError(str(exc)) from exc
         if stat.S_IMODE(state.st_mode) != expected_mode:
             raise OnboardingError(
                 f"published member mode changed: {relative}: "
                 f"{stat.S_IMODE(state.st_mode):04o}"
             )
-        data = path.read_bytes()
         if data != expected_bytes or state.st_size != len(expected_bytes):
             raise OnboardingError(f"published member bytes changed: {relative}")
 
@@ -281,9 +291,9 @@ def publish_create_absent_tree(
         ) from exc
 
 
-_PROJECT_FIELDS = """output_dir sample_manifest partition_manifest reference_id
-reference_fasta reference_gtf sjdb_overhang genome_sa_index_nbases cohort_id
-analysis_id control_condition treatment_condition target_change min_sample_dp
+_PROJECT_FIELDS = """output_dir sample_manifest partition_manifest
+reference_fasta reference_gtf sjdb_overhang genome_sa_index_nbases
+control_condition treatment_condition target_change min_sample_dp
 mean_dp_threshold fdr_threshold common_or_threshold absolute_difference_threshold
 background_max_fraction""".split()
 _PROJECT_TYPES = {
@@ -316,7 +326,9 @@ def configure_project_init_parser(parser: argparse.ArgumentParser) -> None:
         help="Optional background condition; omission means no background cohort.",
     )
     parser.add_argument(
-        "--label", help="Optional display label; the Project directory name is used."
+        "--analysis-name",
+        default="primary",
+        help="Human name for the initial Analysis; default: primary.",
     )
     parser.add_argument(
         "--execute", action="store_true", help="Create; omission is a no-write plan."
@@ -364,40 +376,38 @@ def _project_yaml(answers: Mapping[str, object]) -> bytes:
     match = re.fullmatch(r"([ACGT])>([ACGT])", target)
     if match is None or match[1] == match[2]:
         raise OnboardingError("target RNA change must name two different bases, like A>G")
-    rendered = {
-        key: json.dumps(
-            str(value) if isinstance(value, Path) else value,
-            separators=(",", ":"),
-        )
-        for key, value in answers.items()
+    analysis = {
+        "partitions": str(answers["partition_manifest"]),
+        **{
+            key: answers[key]
+            for key in (
+                "control_condition",
+                "treatment_condition",
+                "min_sample_dp",
+                "mean_dp_threshold",
+                "fdr_threshold",
+                "common_or_threshold",
+                "absolute_difference_threshold",
+                "background_condition",
+                "background_max_fraction",
+            )
+        },
+        "target_change": target,
     }
-    return f"""schema_version: emrys.request.v3
-label: {rendered["label"]}
-profile: emrys.profile.local_cmh.v2
-sample_manifest: {rendered["sample_manifest"]}
-partition_manifest: {rendered["partition_manifest"]}
-reference:
-  id: {rendered["reference_id"]}
-  fasta: {rendered["reference_fasta"]}
-  gtf: {rendered["reference_gtf"]}
-  star_index:
-    sjdb_overhang: {rendered["sjdb_overhang"]}
-    genome_sa_index_nbases: {rendered["genome_sa_index_nbases"]}
-cohort_id: {rendered["cohort_id"]}
-analysis:
-  id: {rendered["analysis_id"]}
-  control_condition: {rendered["control_condition"]}
-  treatment_condition: {rendered["treatment_condition"]}
-  rna_ref: {match[1]}
-  rna_alt: {match[2]}
-  min_sample_dp: {rendered["min_sample_dp"]}
-  mean_dp_threshold: {rendered["mean_dp_threshold"]}
-  fdr_threshold: {rendered["fdr_threshold"]}
-  common_or_threshold: {rendered["common_or_threshold"]}
-  absolute_difference_threshold: {rendered["absolute_difference_threshold"]}
-  background_condition: {rendered["background_condition"]}
-  background_max_fraction: {rendered["background_max_fraction"]}
-""".encode("utf-8")
+    document = {
+        "schema_version": "emrys.project.v1",
+        "dataset": {"samples": str(answers["sample_manifest"])},
+        "reference": {
+            "fasta": str(answers["reference_fasta"]),
+            "gtf": str(answers["reference_gtf"]),
+            "star_index": {
+                "sjdb_overhang": answers["sjdb_overhang"],
+                "genome_sa_index_nbases": answers["genome_sa_index_nbases"],
+            },
+        },
+        "analyses": {str(answers["analysis_name"]): analysis},
+    }
+    return yaml.safe_dump(document, sort_keys=False).encode("utf-8")
 
 
 def init_project_from_args(arguments: argparse.Namespace) -> int:
@@ -408,16 +418,9 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
         output = _require_external_absent_output(
             Path(answers["output_dir"]), source_root()
         )
-        for field in (
-            "sample_manifest",
-            "partition_manifest",
-            "reference_fasta",
-            "reference_gtf",
-        ):
-            answers[field] = _admit_explicit_file(
-                Path(answers[field]), field.replace("_", " ")
-            )
-        answers["label"] = arguments.label or output.name
+        for field in _PROJECT_FIELDS[1:5]:
+            answers[field] = _absolute(Path(answers[field])).resolve(strict=True)
+        answers["analysis_name"] = arguments.analysis_name
         answers["background_condition"] = arguments.background_condition
         project_bytes = _project_yaml(answers)
         preview = _admit_project_data(
@@ -454,7 +457,7 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
 
 def _admit_supplied_file(value: str | Path, label: str) -> Path:
     path = Path(value)
-    admitted = _admit_explicit_file(
+    admitted = _admit_existing_path(
         path if path.is_absolute() else Path.cwd() / path, label
     )
     emitted = str(admitted)
@@ -631,26 +634,13 @@ def init_manifests_from_args(arguments: argparse.Namespace) -> int:
         return 2
 
 
-def _sha256_and_size(path: Path) -> tuple[str, int]:
-    digest = hashlib.sha256()
-    size = 0
-    with path.open("rb") as handle:
-        while chunk := handle.read(1024 * 1024):
-            digest.update(chunk)
-            size += len(chunk)
-    return digest.hexdigest(), size
-
-
 def _require_snapshot(snapshot: Mapping[str, object], label: str) -> Path:
     path = Path(str(snapshot["path"]))
     try:
-        state = path.lstat()
-    except OSError as exc:
+        digest, state = sha256_with_identity(path, label)
+    except ValidationError as exc:
         raise OnboardingError(f"could not re-admit {label}: {path}: {exc}") from exc
-    if stat.S_ISLNK(state.st_mode) or not stat.S_ISREG(state.st_mode):
-        raise OnboardingError(f"{label} must remain a real regular file: {path}")
-    digest, size = _sha256_and_size(path)
-    if digest != snapshot["sha256"] or size != snapshot["size_bytes"]:
+    if digest != snapshot["sha256"] or state.st_size != snapshot["size_bytes"]:
         raise OnboardingError(f"{label} changed after Project admission: {path}")
     return path
 
@@ -770,11 +760,16 @@ def validate_project(
     project: str | Path,
     *,
     root: Path | None = None,
+    allow_legacy: bool = False,
 ) -> ProjectValidation:
     """Admit and compatibility-check one Project without runtime probes."""
 
     checkout = source_root() if root is None else root
-    admission = admit_project(project, checkout / PROFILE_RELATIVE_PATH)
+    admission = admit_project(
+        project,
+        checkout / PROFILE_RELATIVE_PATH,
+        allow_legacy=allow_legacy,
+    )
     return validate_project_admission(admission)
 
 
@@ -783,7 +778,7 @@ def validate_project_admission(
 ) -> ProjectValidation:
     """Compatibility-check one already admitted Project without re-admitting it."""
 
-    source = project.construction
+    source = project.analyses[0].workflow_inputs
     reference = source["reference"]
     fasta_snapshot = reference["fasta"]
     gtf_snapshot = reference["gtf"]
@@ -820,34 +815,30 @@ def validate_project_admission(
                 f"{transcript.name} ends at {transcript.chrom_end}; "
                 f"{transcript.chrom} length is {lengths[transcript.chrom]}"
             )
-    for partition in source["partitions"]["rows"]:
-        if partition["selector_type"] == "region":
-            _validate_region_selector(str(partition["selector_value"]), lengths)
-        else:
-            selector_snapshot = partition["selector_file"]
-            if not isinstance(selector_snapshot, Mapping):
-                raise OnboardingError(
-                    "regions_file partition has no admitted file snapshot"
-                )
-            selector_path = _require_snapshot(
-                selector_snapshot, "partition regions file"
-            )
-            _validate_regions_file(selector_path, lengths)
-            _require_snapshot(selector_snapshot, "partition regions file")
     _require_snapshot(fasta_snapshot, "reference FASTA")
     _require_snapshot(gtf_snapshot, "reference GTF")
     samples = source["samples"]["rows"]
-    control = source["analysis"]["policy"]["control_condition"]
-    pair_count = len(
-        {row["replicate"] for row in samples if row["condition"] == control}
-    )
+    for analysis in project.analyses:
+        analysis_source = analysis.workflow_inputs
+        for partition in analysis_source["partitions"]["rows"]:
+            if partition["selector_type"] == "region":
+                _validate_region_selector(str(partition["selector_value"]), lengths)
+            else:
+                selector_snapshot = partition["selector_file"]
+                if not isinstance(selector_snapshot, Mapping):
+                    raise OnboardingError(
+                        "regions_file partition has no admitted file snapshot"
+                    )
+                selector_path = _require_snapshot(
+                    selector_snapshot, "partition regions file"
+                )
+                _validate_regions_file(selector_path, lengths)
+                _require_snapshot(selector_snapshot, "partition regions file")
     return ProjectValidation(
         project=project,
         fasta_contigs=fasta_contigs,
         transcript_count=len(transcripts),
         sample_count=len(samples),
-        pair_count=pair_count,
-        partition_count=len(source["partitions"]["rows"]),
         gtf_warnings=tuple(warnings),
     )
 
@@ -868,12 +859,26 @@ def validate_from_args(arguments: argparse.Namespace) -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
     project = result.project
-    reference = project.construction["reference"]
+    reference = project.analyses[0].workflow_inputs["reference"]
     print("Project validation: PASS")
     print(f"  Project: {project.source_path}")
     print(f"  Project SHA-256: {project.source_sha256}")
-    print(f"  Samples / paired strata: {result.sample_count} / {result.pair_count}")
-    print(f"  Partitions: {result.partition_count}")
+    print(f"  Samples: {result.sample_count}")
+    print(f"  Analyses: {len(project.analyses)}")
+    for analysis in project.analyses:
+        source = analysis.workflow_inputs
+        control = source["analysis"]["policy"]["control_condition"]
+        pair_count = len(
+            {
+                row["replicate"]
+                for row in source["samples"]["rows"]
+                if row["condition"] == control
+            }
+        )
+        print(
+            f"    {analysis.name}: {pair_count} paired strata, "
+            f"{len(source['partitions']['rows'])} partitions"
+        )
     print(
         f"  FASTA contigs / GTF transcripts: {len(result.fasta_contigs)} / {result.transcript_count}"
     )
@@ -888,41 +893,42 @@ def validate_from_args(arguments: argparse.Namespace) -> int:
     return 0
 
 
-def _admit_explicit_file(
+def _admit_existing_path(
     value: str | Path,
     label: str,
     *,
+    directory: bool = False,
     executable: bool = False,
+    writable: bool = False,
+    canonical: bool = False,
+    retain_path: bool = False,
 ) -> Path:
     path = _absolute(value)
     try:
-        path.lstat()
+        authored = path.lstat()
         resolved = path.resolve(strict=True)
         state = resolved.stat()
     except OSError as exc:
         raise OnboardingError(f"could not inspect {label}: {path}: {exc}") from exc
-    if not stat.S_ISREG(state.st_mode):
-        raise OnboardingError(f"{label} must resolve to a real file: {path}")
-    if state.st_size == 0 or not os.access(path, os.R_OK):
-        raise OnboardingError(f"{label} must be nonempty and readable: {path}")
-    if executable and not os.access(path, os.X_OK):
-        raise OnboardingError(f"{label} must be executable: {path}")
-    return resolved
-
-
-def _admit_explicit_directory(value: str | Path, label: str) -> Path:
-    path = _absolute(value)
-    try:
-        path.lstat()
-        resolved = path.resolve(strict=True)
-        state = resolved.stat()
-    except OSError as exc:
-        raise OnboardingError(f"could not inspect {label}: {path}: {exc}") from exc
-    if not stat.S_ISDIR(state.st_mode):
-        raise OnboardingError(f"{label} must resolve to a real directory: {path}")
-    if not os.access(path, os.R_OK | os.X_OK):
-        raise OnboardingError(f"{label} must be readable and searchable: {path}")
-    return resolved
+    kind, predicate = (
+        ("directory", stat.S_ISDIR) if directory else ("file", stat.S_ISREG)
+    )
+    if not predicate(state.st_mode):
+        raise OnboardingError(f"{label} must resolve to a real {kind}: {path}")
+    if canonical and (stat.S_ISLNK(authored.st_mode) or resolved != path):
+        raise OnboardingError(f"{label} must be canonical: {path}")
+    required = os.R_OK | (os.X_OK if directory or executable else 0)
+    required |= os.W_OK if writable else 0
+    if (not directory and state.st_size == 0) or not os.access(path, required):
+        access = (
+            "readable, writable, and searchable"
+            if writable
+            else "readable and searchable"
+            if directory
+            else "nonempty and readable"
+        )
+        raise OnboardingError(f"{label} must be {access}: {path}")
+    return path if retain_path else resolved
 
 
 def runtime_policy_path() -> Path:
@@ -967,7 +973,7 @@ def _selected_tool(
     selector: str | None = None,
 ) -> Path:
     if selector and environment.get(selector):
-        return _admit_explicit_file(
+        return _admit_existing_path(
             environment[selector],
             selector,
             executable=True,
@@ -981,7 +987,7 @@ def _selected_tool(
             sorted(
                 {
                     *candidates,
-                    _admit_explicit_file(
+                    _admit_existing_path(
                         java_home / "bin/java",
                         "JAVA_HOME launcher",
                         executable=True,
@@ -1013,23 +1019,7 @@ def _selected_environment_path(
         raise RuntimeDiscoveryError(
             f"{label} is not selected; set {name} in the active environment"
         )
-    return (
-        _admit_explicit_directory(value, name)
-        if directory
-        else _admit_explicit_file(value, name)
-    )
-
-
-def _workflow_python(path: Path) -> Path:
-    if not path.is_absolute():
-        raise OnboardingError(f"workflow Python must be absolute: {path}")
-    try:
-        state = path.stat()
-    except OSError as exc:
-        raise OnboardingError(f"could not inspect workflow Python {path}: {exc}") from exc
-    if not stat.S_ISREG(state.st_mode) or not os.access(path, os.R_OK | os.X_OK):
-        raise OnboardingError(f"workflow Python must be an executable file: {path}")
-    return path
+    return _admit_existing_path(value, name, directory=directory)
 
 
 def _runtime_profile_bytes(
@@ -1062,7 +1052,12 @@ def _runtime_profile_bytes(
         "renv library",
         directory=True,
     )
-    python = _workflow_python(python_executable)
+    python = _admit_existing_path(
+        python_executable,
+        "workflow Python",
+        executable=True,
+        retain_path=True,
+    )
     rows: list[dict[str, str]] = []
     for check in policy:
         target = check.target
@@ -1108,22 +1103,17 @@ def project_runtime_directory(project: ProjectAdmission) -> Path:
 
     directory = project.source_path.parent / "runtime"
     try:
-        state = directory.lstat()
-        resolved = directory.resolve(strict=True)
-    except OSError as exc:
+        return _admit_existing_path(
+            directory,
+            "Project runtime directory",
+            directory=True,
+            writable=True,
+            canonical=True,
+        )
+    except OnboardingError as exc:
         raise OnboardingError(
             f"Project runtime directory is unavailable; run `emrys init project`: {exc}"
         ) from exc
-    if (
-        stat.S_ISLNK(state.st_mode)
-        or not stat.S_ISDIR(state.st_mode)
-        or resolved != directory
-        or not os.access(directory, os.R_OK | os.W_OK | os.X_OK)
-    ):
-        raise OnboardingError(
-            f"Project runtime directory must be canonical and writable: {directory}"
-        )
-    return directory
 
 
 def discover_runtime_profile(

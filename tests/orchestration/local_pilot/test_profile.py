@@ -310,15 +310,17 @@ def test_profile_expands_to_exact_formula_and_contiguous_scopes(
     tmp_path: Path,
     profile: dict[str, object],
 ) -> None:
-    request = build(tmp_path)
-    execution, _execution_bytes = admit_project(
-        request,
+    analysis = admit_project(build(tmp_path), profile).select_analysis()
+    source = analysis.workflow_inputs
+    source["run_id"] = f"run-{'0' * 64}"
+    bundle = build_reporting_bundle(
+        source,
         profile,
-    ).historical_execution_v1()
-    bundle = build_reporting_bundle(execution, profile)
+        analysis.revision,
+    )
     rows = bundle.artifact_inventory_rows
-    sample_count = len(execution["samples"]["rows"])
-    partition_count = len(execution["partitions"]["rows"])
+    sample_count = len(source["samples"]["rows"])
+    partition_count = len(source["partitions"]["rows"])
     assert len(rows) == 39 + (27 * sample_count) + (4 * partition_count)
 
     inventory_path = tmp_path / "artifact_inventory.tsv"

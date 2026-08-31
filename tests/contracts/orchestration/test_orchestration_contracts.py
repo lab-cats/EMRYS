@@ -71,6 +71,36 @@ def request() -> dict[str, Any]:
     }
 
 
+def project() -> dict[str, Any]:
+    return {
+        "schema_version": "emrys.project.v1",
+        "dataset": {"samples": "samples.tsv"},
+        "reference": {
+            "fasta": "reference/genome.fa",
+            "gtf": "reference/genome.gtf",
+            "star_index": {
+                "sjdb_overhang": 149,
+                "genome_sa_index_nbases": 14,
+            },
+        },
+        "analyses": {
+            "primary": {
+                "partitions": "partitions.tsv",
+                "control_condition": "EV",
+                "treatment_condition": "PUM1",
+                "target_change": "A>G",
+                "min_sample_dp": 1,
+                "mean_dp_threshold": 50,
+                "fdr_threshold": 0.05,
+                "common_or_threshold": 1.2,
+                "absolute_difference_threshold": 0.005,
+                "background_condition": None,
+                "background_max_fraction": 0.01,
+            }
+        },
+    }
+
+
 def resource_config() -> dict[str, Any]:
     return {
         "schema_version": "emrys.local-pilot-resources.v1",
@@ -494,14 +524,23 @@ def test_registry_is_closed_and_every_schema_is_draft_2020_12() -> None:
                 stack.extend(value)
 
 
-def test_execution_profile_schema_is_registered_as_v3() -> None:
-    assert "execution-profile" in orchestration.SCHEMA_NAMES
-    assert orchestration.SCHEMA_PATHS["execution-profile"].name == (
-        "execution_profile.schema.json"
-    )
-    assert orchestration.SCHEMA_PATHS["execution-profile"].parent.name == "v3"
-    assert orchestration.SCHEMA_IDS["execution-profile"] == (
-        "urn:emrys:schema:orchestration:execution-profile:v1"
+@pytest.mark.parametrize(
+    ("name", "directory", "identifier_version"),
+    (
+        ("execution-profile", "v3", "v1"),
+        ("project", "v1", "v1"),
+        ("request", "v3", "v3"),
+    ),
+)
+def test_versioned_schema_registration_is_exact(
+    name: str,
+    directory: str,
+    identifier_version: str,
+) -> None:
+    assert orchestration.SCHEMA_PATHS[name].name == f"{name.replace('-', '_')}.schema.json"
+    assert orchestration.SCHEMA_PATHS[name].parent.name == directory
+    assert orchestration.SCHEMA_IDS[name] == (
+        f"urn:emrys:schema:orchestration:{name}:{identifier_version}"
     )
 
 
@@ -523,9 +562,9 @@ def test_unknown_schema_selector_and_nonstandard_json_constant_are_rejected(
         orchestration.load_json_object(record_path)
 
 
-def test_request_resource_execution_profile_and_run_records_pass() -> None:
+def test_project_resource_execution_profile_and_run_records_pass() -> None:
     records = {
-        "request": request(),
+        "project": project(),
         "resource-config": resource_config(),
         "execution-profile": execution_profile(),
         "profile": profile(),
@@ -540,9 +579,21 @@ def test_request_resource_execution_profile_and_run_records_pass() -> None:
             profile=profile() if name == "execution" else None,
         )
 
-    request_without_background = request()
-    request_without_background["analysis"].pop("background_condition")
-    orchestration.validate_record("request", request_without_background)
+    project_without_background = project()
+    project_without_background["analyses"]["primary"].pop("background_condition")
+    project_without_background["analyses"]["secondary"] = {
+        **project_without_background["analyses"]["primary"],
+        "target_change": "C>T",
+    }
+    orchestration.validate_record("project", project_without_background)
+
+
+def test_request_v3_remains_valid_only_as_an_exact_historical_contract() -> None:
+    historical = request()
+    orchestration.validate_record("request", historical)
+
+    historical["analysis"].pop("background_condition")
+    orchestration.validate_record("request", historical)
 
 
 def test_lifecycle_and_verified_records_pass() -> None:
@@ -618,9 +669,28 @@ def test_workflow_attempt_rejects_noncanonical_scheduler_job_ids(
     ("name", "mutate", "message"),
     [
         (
-            "request",
+            "project",
             lambda record: record.__setitem__("unknown", True),
             "Additional properties",
+        ),
+        (
+            "project",
+            lambda record: record["analyses"]["primary"].__setitem__(
+                "target_change", "A>A"
+            ),
+            "rna_ref and rna_alt",
+        ),
+        (
+            "project",
+            lambda record: record["reference"].__setitem__("id", "retired-alias"),
+            "Additional properties",
+        ),
+        (
+            "project",
+            lambda record: record["analyses"].__setitem__(
+                "unsafe name", record["analyses"].pop("primary")
+            ),
+            "does not match",
         ),
         (
             "profile",
@@ -644,7 +714,7 @@ def test_closed_and_semantic_record_mutations_fail(
     mutate: Any,
     message: str,
 ) -> None:
-    base = {"request": request(), "profile": profile(), **lifecycle_records()}[name]
+    base = {"project": project(), "profile": profile(), **lifecycle_records()}[name]
     mutate(base)
     with pytest.raises(orchestration.ContractValidationError, match=message):
         orchestration.validate_record(name, base)
@@ -675,9 +745,9 @@ def test_step09_threshold_boundaries_match_owner_semantics(
     field: str,
     value: int,
 ) -> None:
-    records = {"request": request(), "policy": policy()}
+    records = {"project": project(), "policy": policy()}
     for name, record in records.items():
-        target = record["analysis"] if name == "request" else record
+        target = record["analyses"]["primary"] if name == "project" else record
         target[field] = value
         with pytest.raises(orchestration.ContractValidationError, match=field):
             orchestration.validate_record(name, record)

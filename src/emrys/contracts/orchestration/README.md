@@ -1,9 +1,9 @@
 # Orchestration contracts
 
-This neutral package owns the closed, versioned machine records for the B0
-local-pilot lifecycle, immutable successor Analysis/Execution-Plan/Run
+This neutral package owns the closed, versioned machine records for the
+orchestration lifecycle, immutable successor Analysis/Execution-Plan/Run
 authorities, historical execution compatibility, and deterministic reporting
-projections. It does not normalize YAML requests, execute
+projections. It does not normalize Project YAML, select a named Analysis, execute
 workflow jobs, infer state, publish records, or implement a CLI.
 
 The deliberate public Python API is `emrys.contracts.orchestration`. It loads
@@ -13,6 +13,14 @@ cross-field invariants that JSON Schema cannot express. Successor Run admission
 binds the exact Analysis revision, Execution Plan, Run record, and profile;
 historical `emrys.execution.v1` validation retains its exact profile-bound
 reporting projection.
+
+`emrys.project.v1` is the sole active scientist-authored schema. It defines one
+shared Dataset and Reference plus one or more named Analyses, each with its own
+partition manifest and scientific policy. The application layer validates all
+Analyses and selects one for `run`; the human mapping key is not part of the
+content-derived Analysis identity. The request-v3 schema remains registered
+only for private, exact historical-Run re-admission. It is not accepted by
+active Project commands.
 
 The `execution-profile` selector validates the combined public authored profile:
 its resource projection is Run-bound and its placement projection is
@@ -30,6 +38,11 @@ scientific Attempt only; receipt v1 remains exactly readable with its historical
 reporting/completion fields. The public
 `load_json_object_bytes` parser exists so a caller can parse already admitted
 descriptor bytes without reopening a pathname.
+
+Both new and historical Runs retain the exact `emrys.workflow-attempt.v1`
+record. Its request-era fields and bound `request.yaml` source snapshot are
+unchanged evidence metadata; they do not expose request-v3 as a current public
+configuration.
 
 Workflow attempts bind an ordered exact required-tool roster. Each file-backed
 identity records its name, observed version, authored path, canonical resolved

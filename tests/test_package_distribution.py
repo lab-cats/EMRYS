@@ -39,6 +39,7 @@ RESOURCE_PATHS = (
     "emrys/contracts/schemas/artifacts/v2/run_summary.schema.json",
     "emrys/contracts/schemas/artifacts/v3/report_receipt.schema.json",
     "emrys/contracts/schemas/artifacts/v4/report_receipt.schema.json",
+    "emrys/contracts/schemas/orchestration/v1/project.schema.json",
     "emrys/contracts/schemas/orchestration/v2/profile.schema.json",
     "emrys/contracts/schemas/orchestration/v2/request.schema.json",
     "emrys/contracts/schemas/orchestration/v3/request.schema.json",

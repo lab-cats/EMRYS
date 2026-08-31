@@ -592,6 +592,32 @@ def test_project_is_the_only_active_intake_spelling(
 
 
 @pytest.mark.parametrize(
+    ("command", "selects_analysis"),
+    (
+        (("doctor",), True),
+        (("run",), True),
+        (("runtime", "discover"), False),
+        (("validate", "project"), False),
+        (("resume",), False),
+        (("inspect", "run"), False),
+        (("report",), False),
+    ),
+)
+def test_analysis_selection_exists_only_where_readiness_or_run_is_selected(
+    command: tuple[str, ...],
+    selects_analysis: bool,
+    tmp_path: Path,
+) -> None:
+    result = run_command(
+        [sys.executable, "-I", "-m", "emrys", *command, "--help"],
+        cwd=tmp_path,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert ("--analysis" in result.stdout) is selects_analysis
+
+
+@pytest.mark.parametrize(
     "command",
     (("doctor",), ("run",), ("resume",)),
 )

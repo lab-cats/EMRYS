@@ -82,8 +82,18 @@ Slurm allocation; it is not a distributed executor:
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
   --project /absolute/path/to/project.yaml \
+  --analysis ANALYSIS_NAME \
   --execution-profile /absolute/path/to/emrys.execution.yaml
 ```
+
+The public model is `Project -> named Analysis -> immutable Run -> Results`.
+Project validation, runtime discovery, and Doctor validate all named Analyses;
+Doctor and `run` select exactly one readiness/execution context. `--analysis`
+may be omitted only when the Project defines one Analysis. Its human name
+selects the Analysis but does not enter the content-derived Analysis revision
+or Run identity. Resume starts from an
+existing Run root, so it reuses the selected Analysis recorded by that Run and
+does not accept a new Analysis choice.
 
 On a terminal, direct placement prints one frozen Run plan and asks whether to
 execute it. Slurm placement instead prints its placement summary and asks
@@ -112,8 +122,9 @@ runtime repair currently targets Linux x86-64; use `runtime discover` for an
 institution-provided environment.
 Reporting runs automatically after scientific work and remains a separate,
 receipt-last transaction rather than a scientific stage. The scientific
-Attempt ends at `cohort_slice` before reporting begins. `--no-report` disables
-only downstream reporting and leaves the scientific Attempt unchanged.
+Attempt ends before reporting begins. `--no-report` disables only downstream
+reporting and leaves the scientific Attempt unchanged. `emrys report` can
+regenerate or reuse reporting independently from a completed scientific Run.
 
 Owner-local scheduler entry points are retired. Standalone owner commands
 remain expert direct routes and never create or adopt an orchestrated Run;

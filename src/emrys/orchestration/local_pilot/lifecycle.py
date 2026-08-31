@@ -1298,7 +1298,7 @@ def _admit_request(
     execution_path = _canonical_file(request.execution_path, "execution contract")
     profile_path = _canonical_file(request.profile_path, "profile snapshot")
     config_path = _canonical_file(request.workflow_config_path, "workflow config")
-    request_source_path = _canonical_file(request.request_source_path, "authored request source")
+    request_source_path = _canonical_file(request.request_source_path, "authored source")
     _within(config_path, root, "workflow config")
     snakefile = _canonical_file(request.snakefile, "Snakefile")
     workflow_profile = _canonical_file(request.workflow_profile, "workflow profile")
@@ -1314,7 +1314,7 @@ def _admit_request(
     if execution_path != expected_execution_path:
         raise LifecycleError("Lifecycle execution path differs from Run authority")
     config_data = _read_stable(config_path, root, "workflow config")
-    request_source_data = _read_external_stable(request_source_path, "authored request source")
+    request_source_data = _read_external_stable(request_source_path, "authored source")
     try:
         config_document = orchestration_contracts.load_json_object_bytes(config_data, f"workflow config {config_path}")
     except orchestration_contracts.ContractValidationError as exc:
@@ -1389,14 +1389,14 @@ def _admit_request(
     if str(python_executable) != sys.executable:
         raise LifecycleError("Workflow Python runtime must equal lexical sys.executable")
     if Path(str(attempt["authored_paths"]["request"])) != request_source_path:
-        raise LifecycleError("Workflow attempt does not name its authored request source")
+        raise LifecycleError("Workflow attempt does not name its authored source")
     request_snapshot_path = root / "attempts" / identifier / "request.yaml"
     if attempt["request"] != {
         "path": str(request_snapshot_path),
         "size_bytes": len(request_source_data),
         "sha256": hashlib.sha256(request_source_data).hexdigest(),
     }:
-        raise LifecycleError("Workflow attempt does not bind authored request source")
+        raise LifecycleError("Workflow attempt does not bind its authored source")
     storage_binding = ops.admit_storage_context(attempt, execution)
     ops.admit_runtime_context(attempt, request, storage_binding, initial_runtime_inspection)
     if successor is not None:
@@ -1684,9 +1684,9 @@ def _run_attempt_locked(
         for binding_path, label, expected_sha256 in pre_spawn_bindings:
             if _reference(binding_path, root, label)["sha256"] != expected_sha256:
                 raise LifecycleError(f"{label} changed before attempt publication")
-        request_source_after = _read_external_stable(request.request_source_path, "authored request source")
+        request_source_after = _read_external_stable(request.request_source_path, "authored source")
         if request_source_after != request_source_data:
-            raise LifecycleError("Authored request changed before attempt publication")
+            raise LifecycleError("Authored source changed before attempt publication")
         _admit_python_launcher(request.python_executable)
         _observe_phase(active_ops, "before_attempt_directory")
         _refuse_pre_attempt_signal(signals, "before attempt publication")

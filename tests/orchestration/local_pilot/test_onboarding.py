@@ -67,30 +67,29 @@ def _project_arguments(
     tmp_path: Path, output: Path, *, execute: bool
 ) -> argparse.Namespace:
     source = tmp_path / "source"
-    request = build(source)
-    definition = yaml.safe_load(request.read_text(encoding="utf-8"))
+    project = build(source)
+    definition = yaml.safe_load(project.read_text(encoding="utf-8"))
     table, _sample_ids, rows = step08.validate_sample_manifest(source / "samples.tsv")
     for row in rows:
         row["r1_fastq"] = str((source / row["r1_fastq"]).resolve())
         row["r2_fastq"] = str((source / row["r2_fastq"]).resolve())
     sample_manifest = tmp_path / "samples.absolute.tsv"
     sample_manifest.write_bytes(tsv_bytes(table.header, rows))
-    analysis = definition["analysis"]
+    analysis_name = "guided-analysis"
+    analysis = definition["analyses"]["primary"]
     reference = definition["reference"]
     return argparse.Namespace(
         output_dir=output,
         sample_manifest=sample_manifest,
         partition_manifest=source / "partitions.tsv",
-        reference_id=reference["id"],
         reference_fasta=(source / reference["fasta"]).resolve(),
         reference_gtf=(source / reference["gtf"]).resolve(),
         sjdb_overhang=reference["star_index"]["sjdb_overhang"],
         genome_sa_index_nbases=reference["star_index"]["genome_sa_index_nbases"],
-        cohort_id=definition["cohort_id"],
-        analysis_id=analysis["id"],
+        analysis_name=analysis_name,
         control_condition=analysis["control_condition"],
         treatment_condition=analysis["treatment_condition"],
-        target_change=f"{analysis['rna_ref']}>{analysis['rna_alt']}",
+        target_change=analysis["target_change"],
         min_sample_dp=analysis["min_sample_dp"],
         mean_dp_threshold=analysis["mean_dp_threshold"],
         fdr_threshold=analysis["fdr_threshold"],
@@ -98,7 +97,6 @@ def _project_arguments(
         absolute_difference_threshold=analysis["absolute_difference_threshold"],
         background_condition=analysis["background_condition"],
         background_max_fraction=analysis["background_max_fraction"],
-        label="guided-project",
         execute=execute,
     )
 
@@ -123,11 +121,13 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
         for name in directories
     )
     definition = yaml.safe_load((output / "project.yaml").read_text(encoding="utf-8"))
-    assert definition["sample_manifest"] == str(arguments.sample_manifest.resolve())
-    assert definition["partition_manifest"] == str(
+    assert definition["schema_version"] == "emrys.project.v1"
+    assert definition["dataset"]["samples"] == str(arguments.sample_manifest.resolve())
+    assert definition["analyses"][arguments.analysis_name]["partitions"] == str(
         arguments.partition_manifest.resolve()
     )
     assert Path(definition["reference"]["fasta"]).is_absolute()
+    assert definition["analyses"][arguments.analysis_name]["target_change"] == "A>G"
     assert not list(output.rglob("*.fastq"))
     assert onboarding.validate_project(output / "project.yaml").sample_count == 4
 
@@ -437,12 +437,22 @@ def test_synthetic_fixture_is_deterministic_complete_and_normalizable(
         for name in onboarding.PROJECT_DIRECTORIES
     )
     assert not (first / "emrys.execution.yaml").exists()
-    result = onboarding.validate_project(first / "project.yaml")
-    assert result.sample_count == 4
-    assert result.pair_count == 2
-    assert result.partition_count == 1
-    assert result.fasta_contigs == (("chrSynthetic", 100_000),)
-    assert result.transcript_count == 2
+    validation = onboarding.validate_project(first / "project.yaml")
+    analysis = validation.project.select_analysis()
+    source = analysis.workflow_inputs
+    control = source["analysis"]["policy"]["control_condition"]
+    assert validation.sample_count == 4
+    assert analysis.name == "primary"
+    assert len(
+        {
+            row["replicate"]
+            for row in source["samples"]["rows"]
+            if row["condition"] == control
+        }
+    ) == 2
+    assert len(source["partitions"]["rows"]) == 1
+    assert validation.fasta_contigs == (("chrSynthetic", 100_000),)
+    assert validation.transcript_count == 2
     metadata = json.loads((first / "fixture.json").read_text(encoding="utf-8"))
     assert metadata["schema_version"] == "emrys.synthetic-local-pilot.v2"
     assert metadata["dataset_profile"] == "smoke-v1"
@@ -542,12 +552,12 @@ def test_production_like_profile_is_explicit_and_dry_run_skips_generation(
     assert metadata["expected_terminal_workflow"]["last_scientific_step"] == "10"
     assert metadata["expected_terminal_workflow"]["scientific_results_complete"] is True
     assert metadata["expected_terminal_workflow"]["reporting_complete"] is True
-    request = synthetic_fixture._project_definition(profile).decode("utf-8")
-    assert 'label: "deterministic-production-like-v1"' in request
-    assert 'id: "synthetic-production-like-v1"' in request
-    assert 'cohort_id: "synthetic-production-like-v1"' in request
-    assert 'id: "synthetic-production-like-cmh-v1"' in request
-    assert "genome_sa_index_nbases: 10" in request
+    project = yaml.safe_load(synthetic_fixture._project_definition(profile))
+    assert project["schema_version"] == "emrys.project.v1"
+    assert project["dataset"] == {"samples": "samples.tsv"}
+    assert project["reference"]["star_index"]["genome_sa_index_nbases"] == 10
+    assert project["analyses"]["primary"]["partitions"] == "partitions.tsv"
+    assert project["analyses"]["primary"]["target_change"] == "A>G"
 
 
 def test_production_like_neutral_plan_is_globally_disjoint_and_guarded() -> None:
@@ -598,9 +608,6 @@ def _tiny_neutral_profile() -> synthetic_fixture.DatasetProfile:
     return synthetic_fixture.DatasetProfile(
         name="test-neutral-v1",
         fixture_id="test-neutral-v1",
-        reference_id="test-neutral-v1",
-        cohort_id="test-neutral-v1",
-        analysis_id="test-neutral-v1",
         seed=17,
         contig_length=52_500,
         pair_count_per_library=133,
@@ -761,7 +768,7 @@ def test_project_validation_is_read_only(tmp_path: Path) -> None:
     assert _tree_bytes(output) == before
 
 
-def test_project_validation_reports_invalid_request(
+def test_project_validation_reports_invalid_project(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -773,7 +780,7 @@ def test_project_validation_reports_invalid_request(
     assert "ERROR:" in capsys.readouterr().err
 
 
-def test_public_cli_routes_synthetic_init_and_request_validation(
+def test_public_cli_routes_synthetic_init_and_project_validation(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -853,7 +860,9 @@ def test_project_validation_checks_regions_file_against_fasta(tmp_path: Path) ->
         encoding="utf-8",
     )
     result = onboarding.validate_project(output / "project.yaml")
-    assert result.partition_count == 1
+    assert len(
+        result.project.select_analysis().workflow_inputs["partitions"]["rows"]
+    ) == 1
 
     regions.write_text("chrAbsent\t1\t2\n", encoding="utf-8")
     with pytest.raises(onboarding.OnboardingError, match="absent from FASTA"):
@@ -877,7 +886,9 @@ def test_project_validation_streams_gzip_regions_file(tmp_path: Path) -> None:
 
     result = onboarding.validate_project(output / "project.yaml")
 
-    assert result.partition_count == 1
+    assert len(
+        result.project.select_analysis().workflow_inputs["partitions"]["rows"]
+    ) == 1
 
 
 def _runtime_environment(tmp_path: Path) -> tuple[dict[str, str], Path]:

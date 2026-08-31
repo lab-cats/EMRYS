@@ -57,6 +57,7 @@ from emrys.orchestration.local_pilot.materialization import (
     publish_attempt,
     validate_run_destination,
 )
+from emrys.orchestration.local_pilot.normalization import _historical_execution_v1
 from emrys.orchestration.local_pilot.resource_policy import (
     ResourceConfigError,
     ResourceOverrides,
@@ -124,6 +125,7 @@ def _plan_run(
     project_path: Path,
     *,
     execution_profile: ExecutionProfile,
+    analysis_name: str | None = None,
     scheduler_job_id: str | None = None,
 ) -> AttemptPlan:
     """Plan a new run without writing any workspace state."""
@@ -133,11 +135,11 @@ def _plan_run(
         readiness = doctor.diagnose_project(
             project_path,
             storage_requirement=execution_profile.placement.kind,
+            analysis_name=analysis_name,
         )
         _require_ready(readiness)
-        project = readiness.project
         policy = execution_profile.resource_policy
-        run = build_run_candidate(project, readiness, policy.declaration)
+        run = build_run_candidate(readiness.analysis, readiness, policy.declaration)
         resources = resolve_resource_policy(policy, capacity.observe_allocation())
         plan = build_attempt_plan(
             run,
@@ -289,6 +291,31 @@ def _retained_runtime_profile_path(
     return path
 
 
+def _predecessor_source_schema(
+    root: Path,
+    predecessor: Mapping[str, Any],
+) -> str:
+    identifier = str(predecessor["workflow_attempt_id"])
+    path = root / "attempts" / identifier / "request.yaml"
+    try:
+        data = read_bytes(path, "predecessor Project snapshot")
+        reference = predecessor["request"]
+        identity = (len(data), hashlib.sha256(data).hexdigest())
+        if identity != (reference["size_bytes"], reference["sha256"]):
+            raise ControlError("Predecessor Project snapshot differs from its binding")
+        schema = orchestration_contracts.load_yaml_object_bytes(data)["schema_version"]
+    except (
+        KeyError,
+        TypeError,
+        ValidationError,
+        orchestration_contracts.ContractValidationError,
+    ) as exc:
+        raise ControlError(f"Could not admit predecessor Project snapshot: {exc}") from exc
+    if schema not in ("emrys.project.v1", "emrys.request.v3"):
+        raise ControlError(f"Unsupported predecessor Project schema: {schema!r}")
+    return schema
+
+
 def _plan_resume(
     run_root: Path,
     *,
@@ -301,6 +328,8 @@ def _plan_resume(
 
     root = _absolute(run_root)
     observed, previous, predecessor_config = _admit_resume_predecessor(root)
+    predecessor_schema = _predecessor_source_schema(root, previous)
+    legacy_source = predecessor_schema == "emrys.request.v3"
     project_path = Path(str(previous["authored_paths"]["request"]))
     workspace = Path(str(previous["workspace"]))
     retained_runtime_profile = _retained_runtime_profile_path(previous) if observed.authority is None else None
@@ -317,9 +346,16 @@ def _plan_resume(
             workspace,
             runtime_profile,
             storage_requirement=execution_profile.placement.kind,
+            analysis_name=None if legacy_source else previous.get("request_label"),
+            expected_analysis_revision=(
+                None
+                if observed.authority is None
+                else observed.authority.analysis_revision
+            ),
+            allow_legacy=legacy_source,
         )
         _require_ready(readiness)
-        project = readiness.project
+        analysis = readiness.analysis
         policy = execution_profile.resource_policy
         if not profile_resources_explicit:
             policy = _resume_predecessor_policy(
@@ -332,12 +368,12 @@ def _plan_resume(
                 resource_policy=policy,
             )
         if observed.authority is not None:
-            candidate = build_run_candidate(project, readiness, policy.declaration)
+            candidate = build_run_candidate(analysis, readiness, policy.declaration)
             if candidate.run_binding.canonical_bytes != observed.authority.run_binding.canonical_bytes:
                 raise ControlError("Current inputs resolve to a different Run")
             run = candidate
         else:
-            legacy_execution, legacy_bytes = project.historical_execution_v1()
+            legacy_execution, legacy_bytes = _historical_execution_v1(analysis)
             fixed_execution = root / "contract/normalized.json"
             if legacy_execution["run_id"] != observed.run_id:
                 raise ControlError("Current Project resolves to a different Run")
@@ -348,7 +384,7 @@ def _plan_resume(
             ):
                 raise ControlError("Current Project differs from immutable Run bytes")
             run = HistoricalRun(
-                project=project,
+                analysis=analysis,
                 run_id=observed.run_id,
                 execution_projection_bytes=legacy_bytes,
             )
@@ -506,6 +542,8 @@ def _delegate_argv(
                 str(_absolute(arguments.project)),
             )
         )
+        if (analysis_name := getattr(arguments, "analysis", None)) is not None:
+            argv.extend(("--analysis", analysis_name))
     else:
         argv.extend(("--run-root", str(_absolute(arguments.run_root))))
     argv.extend(
@@ -942,8 +980,9 @@ def _print_plan(plan: AttemptPlan, *, level: LogLevel, report_enabled: bool = Tr
     new_dispatches = plan.new_dispatch_files
     reused = plan.dispatch_count - len(new_dispatches)
     resources = plan.resources
-    project_label = plan.run.project.definition.get("label") or plan.run.project.source_path.name
+    project_label = plan.run.analysis.source_path.parent.name
     print(f"Project: {project_label!a}", file=sys.stderr)
+    print(f"Analysis: {plan.run.analysis.name!a}", file=sys.stderr)
     print(f"Run ID: {plan.run.run_id}", file=sys.stderr)
     print(f"Work: {len(new_dispatches)} pending, {reused} reusable", file=sys.stderr)
     print(
@@ -952,7 +991,7 @@ def _print_plan(plan: AttemptPlan, *, level: LogLevel, report_enabled: bool = Tr
     )
     if level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
         print(
-            f"Analysis ID: {plan.run.project.analysis.analysis_revision_id}",
+            f"Analysis revision: {plan.run.analysis.revision.analysis_revision_id}",
             file=sys.stderr,
         )
         if not isinstance(plan.run, HistoricalRun):
@@ -1051,6 +1090,10 @@ def _add_execution_arguments(parser: argparse.ArgumentParser) -> None:
 
 def configure_run_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--project", default=Path("project.yaml"), type=Path)
+    parser.add_argument(
+        "--analysis",
+        help="Named Analysis; required only when the Project defines more than one.",
+    )
     parser.add_argument(
         "--execution-profile",
         type=Path,
@@ -1172,6 +1215,7 @@ def run_from_args(
             _plan_run,
             arguments.project,
             execution_profile=profile,
+            analysis_name=getattr(arguments, "analysis", None),
             scheduler_job_id=scheduler_job_id,
         )
         return _finish_control(

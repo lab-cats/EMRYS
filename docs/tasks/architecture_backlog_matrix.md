@@ -47,12 +47,16 @@ and inspection through the current local-pilot path. Historical
 `emrys.execution.v1` read/resume remains supported through a version-aware
 reader. Successor workflow/task consumers now admit exact `run.json` authority,
 and reporting consumes exact Attempt-owned inputs bound by the origin workflow
-config; the temporary successor execution projection is retired. This product
-boundary does not rerank or complete `AC-SLICE-03`: public Project and Results
-realization, role-aware APIs/CLI, and remaining public/campaign migrations
-remain Open. Generalized-backend evaluation remains a required near-closure
-checkpoint, while its implementation and any shared-policy layer remain
-conditional on concrete extension or net-reduction evidence.
+config; the temporary successor execution projection is retired. A subsequent
+public-model cut adds closed `emrys.project.v1`, shared Dataset/Reference
+sections, and named Analyses; validation admits all Analyses, while Run and
+Doctor select one. New work rejects request-v3, whose exact reconstruction is
+isolated to historical resume. Attempt-v1 evidence and the existing
+Results/reporting authority remain unchanged. Final compression accounting and
+focused verification complete `AC-SLICE-03`. Generalized storage and package
+APIs remain separately Open, and
+generalized-backend implementation stays conditional on concrete extension or
+net-reduction evidence.
 
 A subsequent execution-configuration cut implements one admitted
 `emrys.execution-profile.v1` document and optional `--execution-profile`
@@ -133,7 +137,7 @@ implementation order, dependencies, or approval.
 |---|---|---:|---:|---|---|---|
 | `AC-SLICE-01` | Foundations | `5` | `3` | Ratified an architectural-invariants constitution against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` remains Open | Original provisional ranking retained for traceability |
 | `AC-SLICE-02` | Foundations | `5` | `3` | Ratified responsibility clusters, three graph semantics, forbidden authority transfers, and fast source-boundary enforcement over exact current CLI seams and transitional imports | Completed as `ARCH-LAYER-01`; broad `ARCH-01` remains Open | Original provisional ranking retained for traceability |
-| `AC-SLICE-03` | Public model | `5` | `4` | Establish the compact public application model and introduce it only after exact field, identity, authority, recovery, compatibility, and retirement decisions | Audit, model/boundary, and semantic decisions completed as `ARCH-MODEL-AUDIT-01`, `ARCH-MODEL-DECISION-01`, and `ARCH-MODEL-FIELDS-01`; successor Run authority, projection retirement, separated read-only status, grouped Run control, Execution-Plan-derived Attempt provenance, the first Project vertical, and the downstream Run-oriented reporting boundary are implemented; card remains Open | `project.yaml`/`--project` admits immutable `ProjectAdmission.analysis` into Analysis/Execution-Plan/Run/Results. Scientific Attempts now close independently of reporting, while default/disabled/independent reporting creates no Run or Attempt. Final Project nesting/persistence, broader public Analysis/Results APIs and role disclosure, and remaining migrations remain Open. Generalized-backend evaluation remains required near closure, while implementation and shared-policy layers are conditional. |
+| `AC-SLICE-03` | Public model | `5` | `4` | **Complete.** Closed project-v1 persists shared Dataset/Reference inputs and named Analyses; validation admits all, while Run and Doctor select one. The selected immutable Analysis flows through the existing Execution Plan, Run, Attempt, and read-only Results authorities. New work rejects request-v3; exact historical resume retains it. | Attempt-v1 and Results/report semantics are unchanged; no evidence is deleted. Active request-v3 intake, duplicate readers/projections, and user-facing request-era setup retire with a meaningful maintained-product reduction. Generalized storage, package APIs, named execution profiles, and near-closure backend evaluation remain separately owned. |
 | `AC-SLICE-04` | Scientific boundary | `3` | `4` | **Complete.** Retain private `TaskDispatch`; do not add a universal Stage/Operation representation. Step `08` now uses one owner-local Python coordinator while native R science and independent validation remain. | Completed; broad `ANALYSIS-02` and `ARCH-01` remain Open | Transformation, scientific-analysis, and evidence owners mapped; reporting correctly remained separate. Caller, Slurm, provenance, docs, and tests migrated without a compatibility wrapper. |
 | `AC-SLICE-05` | Execution | `4` | `5` | Complete the declared guarantee and parity contract across direct and Slurm placement of the current backend, then evaluate the generalized-backend boundary near campaign closure | One file-bound profile and grouped `run`/`resume` route select direct or whole-Run Slurm around the same one-host Snakemake backend. The private transport submits once and records Attempt-local placement. Controlled planning/materialization parity and successful hosted disposable-Slurm outcome parity are proven at 130 pairs: immutable authority, Attempt common fields/task roster, path-neutral science, and symbolic resources match; each side separately admits successful receipt/reporting and one application log; effective resources and scheduler provenance remain placement-sensitive. Institutional-site/module, multi-node/production, and failure/recovery parity remain Open with `OPS-02`. | Evaluation is required; implementation remains conditional on a concrete extension or compression case, parity, and no duplicate authority |
 | `AC-SLICE-06` | Policy ownership | `3` | `3` | Inventory duplicated policy decisions and centralize only candidates that pass the resolved equivalent-two-production-owner, caller-complete, net-negative gate | Conditional inventory; supports `ARCH-01` | May close with no shared layer; distinct trust-boundary re-admission is not duplication |

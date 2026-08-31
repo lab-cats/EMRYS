@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import subprocess
 import sys
@@ -29,8 +30,14 @@ def _read_prefix(path: Path, label: str) -> bytes:
     return INPUTS.read_prefix(path, label, 4)
 
 
+def _read_sha256(path: Path, label: str) -> bytes:
+    return INPUTS.sha256_with_identity(path, label)[0].encode()
+
+
 READERS = pytest.mark.parametrize(
-    "reader", (_read_all, _read_prefix), ids=("all-bytes", "prefix")
+    "reader",
+    (_read_all, _read_prefix, _read_sha256),
+    ids=("all-bytes", "prefix", "sha256"),
 )
 
 
@@ -51,6 +58,27 @@ def test_read_bytes_with_identity_returns_bound_file_and_allows_declared_empty(
         source.stat().st_dev,
         source.stat().st_ino,
     )
+
+
+def test_sha256_with_identity_streams_bound_file_and_allows_declared_empty(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "input.bin"
+    source.write_bytes(b"fixture")
+
+    digest, identity = INPUTS.sha256_with_identity(source, "Input")
+
+    assert digest == hashlib.sha256(b"fixture").hexdigest()
+    assert identity.st_size == len(b"fixture")
+
+    source.write_bytes(b"")
+    digest, identity = INPUTS.sha256_with_identity(
+        source,
+        "Empty input",
+        nonempty=False,
+    )
+    assert digest == hashlib.sha256(b"").hexdigest()
+    assert identity.st_size == 0
 
 
 def test_require_executable_rejects_non_executable_file(tmp_path: Path) -> None:

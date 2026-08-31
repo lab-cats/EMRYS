@@ -26,13 +26,13 @@ that root and do not accept a separate workspace. Scientist-facing Results
 remain under `runs/<run-id>/results`, including reports beneath
 `results/reports/<run-id>`.
 
-Setup records the admitted absolute sample and partition manifest paths in
-`project.yaml`; manifests and FASTQ, FASTA, GTF, and regions-file data all
-remain in place. `emrys init manifests` produces the required portable form
-without inventing biological assignments. No execution or runtime profile is
-generated or selected. Without `--execution-profile`, execution remains direct
-with the built-in resource policy. Runtime discovery separately admits the
-Project-owned `runtime/runtime.tsv`.
+Setup records the admitted absolute sample and initial Analysis-partition
+manifest paths in `project.yaml`; manifests and FASTQ, FASTA, GTF, and
+regions-file data all remain in place. `emrys init manifests` produces the
+required portable form without inventing biological assignments. No execution
+or runtime profile is generated or selected. Without `--execution-profile`,
+execution remains direct with the built-in resource policy. Runtime discovery
+separately admits the Project-owned `runtime/runtime.tsv`.
 
 Keep the Project and every referenced input for the life of its Runs. Changing
 scientific inputs or computational policy is not a way to repair an entered
@@ -73,13 +73,50 @@ or environment.
 
 ## Project definition and analysis
 
-Setup generates closed request-v3 `project.yaml` adapter bytes; scientists do
-not assemble that internal shape. Its prompts collect stable Project,
-reference, cohort, and analysis IDs, the existing manifests and reference,
-STAR index parameters, paired conditions, target RNA change, and analysis
-thresholds. The FASTA parent must be writable for Step `00c` sidecars. Safe IDs
-begin with an ASCII letter or digit and then contain only letters, digits,
-`.`, `_`, or `-`.
+The public definition is the closed `emrys.project.v1` shape. A Project owns
+one shared Dataset and Reference plus one or more named Analyses:
+
+```yaml
+schema_version: emrys.project.v1
+dataset:
+  samples: samples.tsv
+reference:
+  fasta: reference/genome.fa
+  gtf: reference/genes.gtf
+  star_index:
+    sjdb_overhang: 149
+    genome_sa_index_nbases: 14
+analyses:
+  primary:
+    partitions: partitions.tsv
+    control_condition: EV
+    treatment_condition: PUM1
+    target_change: A>G
+    min_sample_dp: 1
+    mean_dp_threshold: 50
+    fdr_threshold: 0.05
+    common_or_threshold: 1.2
+    absolute_difference_threshold: 0.005
+    background_condition: null
+    background_max_fraction: 0.01
+```
+
+`emrys init project` creates one initial Analysis, named `primary` by default
+or selected with `--analysis-name`. Additional Analyses may reuse the Dataset,
+Reference, and even the same partition manifest while changing their own
+partition selection or scientific policy. `emrys validate project`, runtime
+discovery, and Doctor admit and validate every named Analysis. `emrys run` and
+Doctor select the Analysis whose execution readiness is being evaluated with
+`--analysis NAME`; omission is accepted only when the Project contains exactly
+one. The mapping key is a human selector and retained Attempt
+metadata, not part of immutable Analysis identity. Analysis identity is
+derived from its admitted scientific content.
+
+The FASTA parent must be writable for Step `00c` sidecars. Analysis names and
+other safe identifiers begin with an ASCII letter or digit and then contain
+only letters, digits, `.`, `_`, or `-`. Unknown fields and request-v3 input are
+rejected by active Project commands. Request-v3 is retained privately only so
+an exact historical Run can be re-admitted during resume.
 
 Execution resources remain separate. Packaged defaults apply first, an
 explicit `--execution-profile` may replace them, and owner-defined CLI
@@ -94,10 +131,11 @@ one global Benjamini-Hochberg correction. Threshold comparisons are strict.
 
 | Field | Meaning | Call behavior |
 | --- | --- | --- |
-| `analysis.id` | Stable identity for this policy and result set. | Becomes the Step `09` output directory and filename prefix. |
+| Analysis mapping key | Human name used by `emrys run --analysis NAME`. | Selects an Analysis but does not enter its content-derived immutable identity. |
+| `partitions` | Partition manifest for this Analysis. | May be shared by multiple Analyses. Raw bytes and row order remain source provenance; identity binds canonical partition semantics and referenced content. |
 | `control_condition` | Condition used as control in every paired stratum. | Must differ from treatment and match manifest rows exactly. |
 | `treatment_condition` | Condition compared with control. | Must have the same replicate set as control. |
-| `rna_ref`, `rna_alt` | Target canonical RNA-base change. | Each is one of `A`, `C`, `G`, or `T`, and they must differ. Other changes remain in the all-sites table as `not_target_change`. |
+| `target_change` | Target canonical RNA-base change, such as `A>G`. | Both bases are one of `A`, `C`, `G`, or `T` and must differ. Other changes remain in the all-sites table as `not_target_change`. |
 | `min_sample_dp` | Minimum depth in every analysis sample. | A target candidate with any analysis-sample DP below this value is not tested. |
 | `mean_dp_threshold` | Minimum mean depth across paired analysis samples. | A tested candidate must have mean DP **greater than** this value to advance. |
 | `fdr_threshold` | Maximum global BH-adjusted p-value. | A tested candidate must have FDR **less than** this value to advance. |
@@ -143,8 +181,8 @@ Do not use technical lanes as independent biological strata unless that is the
 declared experimental design. Merge or model lanes according to an approved
 upstream policy before authoring this manifest.
 
-EMRYS checks the declared FASTQ files and binds their bytes, but the temporary
-Project adapter contract does not prove sample provenance or complete record-level pairing.
+EMRYS checks the declared FASTQ files and binds their bytes, but Project
+admission does not prove sample provenance or complete record-level pairing.
 Confirm checksums from the sequencing provider and use the paired-FASTQ
 diagnostic described in the [ingestion owner](../src/emrys/ingestion/sample_manifest_admission/README.md)
 when appropriate.
@@ -255,8 +293,9 @@ Before doctor, run the tool-free compatibility validator on the execution host:
 emrys validate project --project /absolute/project/project.yaml
 ```
 
-It streams and binds declared inputs, checks paired strata, reconciles
-FASTA/GTF contigs and bounds, and checks every region/regions-file selector.
+It streams and binds declared inputs, checks paired strata for every named
+Analysis, reconciles FASTA/GTF contigs and bounds, and checks every
+region/regions-file selector.
 It writes nothing and establishes no runtime or scientific evidence.
 
 ## Other configuration assets

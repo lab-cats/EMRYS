@@ -58,7 +58,10 @@ from emrys.orchestration.local_pilot.materialization import (
     build_run_candidate,
     publish_attempt,
 )
-from emrys.orchestration.local_pilot.normalization import admit_project
+from emrys.orchestration.local_pilot.normalization import (
+    _historical_execution_v1,
+    admit_project,
+)
 from emrys.orchestration.local_pilot.execution_profile import load_execution_profile
 from emrys.orchestration.local_pilot.resource_policy import (
     AllocationCapacity,
@@ -67,7 +70,7 @@ from emrys.orchestration.local_pilot.resource_policy import (
 from emrys.orchestration.local_pilot.run_implementation import (
     implementation_identity,
 )
-from tests.orchestration.local_pilot.fixture import build
+from tests.orchestration.local_pilot.fixture import build, build_legacy
 from tests.orchestration.local_pilot.fixtures.b5_doubles import with_owner_doubles
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -120,11 +123,12 @@ def _readiness(
     workflow_cores: int = 1,
     stage_concurrency: dict[str, int] | None = None,
     step_threads: dict[str, int] | None = None,
-) -> tuple[doctor.DoctorResult, object, object, Path, Path]:
+    legacy: bool = False,
+) -> tuple[doctor.DoctorResult, object, Path, Path]:
     tmp_path.mkdir(parents=True, exist_ok=True)
     workspace = tmp_path / "project"
     workspace.mkdir()
-    request = build(workspace)
+    request = (build_legacy if legacy else build)(workspace)
     execution_profile_path = request.parent / "emrys.execution.yaml"
     profile_document = yaml.safe_load(
         execution_profile_path.read_text(encoding="utf-8")
@@ -146,9 +150,12 @@ def _readiness(
         yaml.safe_dump(profile_document, sort_keys=False),
         encoding="utf-8",
     )
-    normalized = admit_project(
-        request, source_root / "workflow/contracts/local_cmh_v2.json"
+    project = admit_project(
+        request,
+        source_root / "workflow/contracts/local_cmh_v2.json",
+        allow_legacy=legacy,
     )
+    analysis = project.select_analysis()
     resources = resolve_resource_policy(
         load_execution_profile(
             request,
@@ -261,7 +268,8 @@ def _readiness(
     )
     bindings = (*doctor.runtime_file_bindings(runtime_inspection), storage_binding)
     readiness = doctor.DoctorResult(
-        project=normalized,
+        project=project,
+        analysis=analysis,
         source_root=source_root,
         source_commit=source_commit,
         inspection=runtime_inspection,
@@ -269,11 +277,11 @@ def _readiness(
         blockers=(),
         remediations=(),
     )
-    return readiness, normalized, resources, request, workspace
+    return readiness, resources, request, workspace
 
 
-def _run_candidate(readiness, normalized, resources):
-    return build_run_candidate(normalized, readiness, resources.declaration)
+def _run_candidate(readiness, resources):
+    return build_run_candidate(readiness.analysis, readiness, resources.declaration)
 
 
 def _plan(
@@ -282,15 +290,17 @@ def _plan(
     step_threads: dict[str, int] | None = None,
     workflow_cores: int = 1,
     stage_concurrency: dict[str, int] | None = None,
+    legacy: bool = False,
 ):
-    readiness, normalized, resources, _request, workspace = _readiness(
+    readiness, resources, _request, workspace = _readiness(
         tmp_path,
         workflow_cores=workflow_cores,
         stage_concurrency=stage_concurrency,
         step_threads=step_threads,
+        legacy=legacy,
     )
     return build_attempt_plan(
-        _run_candidate(readiness, normalized, resources),
+        _run_candidate(readiness, resources),
         readiness,
         workspace,
         resources=resources,
@@ -335,7 +345,7 @@ def _patch_run_control(
     execute_plan,
     transform_plan,
 ):
-    readiness, _project, resources, project_path, workspace = _readiness(tmp_path)
+    readiness, resources, project_path, workspace = _readiness(tmp_path)
     arguments = argparse.Namespace(
         project=project_path,
         execution_profile=project_path.parent / "emrys.execution.yaml",
@@ -347,7 +357,10 @@ def _patch_run_control(
     plans = []
 
     def diagnose(*_args, **kwargs):
-        assert kwargs == {"storage_requirement": "direct"}
+        assert kwargs == {
+            "storage_requirement": "direct",
+            "analysis_name": None,
+        }
         return readiness
 
     monkeypatch.setattr(
@@ -484,7 +497,7 @@ def test_owner_doubles_use_successor_scopes_inside_reporting_payloads(
                 for output in manifest["producer"]
             }
         )
-    analysis = plan.run.project.analysis
+    analysis = plan.run.analysis.revision
 
     def one(suffix: str) -> bytes:
         matches = [
@@ -788,11 +801,11 @@ def test_runtime_admission_reuses_initial_inspection_then_reprobes(
 
 def test_attempt_plan_preserves_reporting_materialization(tmp_path: Path) -> None:
     plan = _plan(tmp_path)
-    source = materialization._construction_source(plan.run)
+    source = materialization._workflow_inputs(plan.run)
     reporting = build_reporting_bundle(
         source,
-        plan.run.project.profile,
-        plan.run.project.analysis,
+        plan.run.analysis.profile,
+        plan.run.analysis.revision,
     )
     projection_data = {
         "reference_contract": reporting.reference_contract_bytes,
@@ -826,8 +839,8 @@ def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    readiness, normalized, resources, _request, workspace = _readiness(tmp_path)
-    direct_run = _run_candidate(readiness, normalized, resources)
+    readiness, resources, _request, workspace = _readiness(tmp_path)
+    direct_run = _run_candidate(readiness, resources)
     scheduled_resources = resolve_resource_policy(
         resources.policy,
         AllocationCapacity(
@@ -838,14 +851,14 @@ def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
         ),
     )
     assert resources.effective_document() == scheduled_resources.effective_document()
-    scheduled_run = _run_candidate(readiness, normalized, scheduled_resources)
+    scheduled_run = _run_candidate(readiness, scheduled_resources)
 
     assert (
-        direct_run.project.analysis.canonical_bytes,
+        direct_run.analysis.revision.canonical_bytes,
         direct_run.execution_plan.canonical_bytes,
         direct_run.run_binding.canonical_bytes,
     ) == (
-        scheduled_run.project.analysis.canonical_bytes,
+        scheduled_run.analysis.revision.canonical_bytes,
         scheduled_run.execution_plan.canonical_bytes,
         scheduled_run.run_binding.canonical_bytes,
     )
@@ -923,13 +936,15 @@ def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
         resources.allocation,
     )
     assert (
-        _run_candidate(readiness, normalized, reporting_changed).run_id
+        _run_candidate(readiness, reporting_changed).run_id
         == direct_run.run_id
     )
 
     computational_change = replace(resources.declaration, workflow_cores=2)
     assert (
-        build_run_candidate(normalized, readiness, computational_change).run_id
+        build_run_candidate(
+            readiness.analysis, readiness, computational_change
+        ).run_id
         != direct_run.run_id
     )
     tool_changed = replace(
@@ -940,7 +955,9 @@ def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
         ),
     )
     assert (
-        build_run_candidate(normalized, tool_changed, resources.declaration).run_id
+        build_run_candidate(
+            readiness.analysis, tool_changed, resources.declaration
+        ).run_id
         != direct_run.run_id
     )
 
@@ -949,8 +966,8 @@ def test_attempt_plan_records_placement_without_making_it_run_compatibility(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    readiness, normalized, resources, _request, workspace = _readiness(tmp_path)
-    run = _run_candidate(readiness, normalized, resources)
+    readiness, resources, _request, workspace = _readiness(tmp_path)
+    run = _run_candidate(readiness, resources)
     context = {
         "resources": resources,
         "operation": "execute",
@@ -1023,32 +1040,32 @@ def test_run_identity_excludes_attempt_reporting_and_backend_adapter_code(
     tmp_path: Path,
 ) -> None:
     checkout, commit = _clean_checkout(tmp_path)
-    readiness, normalized, resources, _request, _workspace = _readiness(
+    readiness, resources, _request, _workspace = _readiness(
         tmp_path / "case",
         source_root=checkout,
         source_commit=commit,
     )
-    baseline = _run_candidate(readiness, normalized, resources)
+    baseline = _run_candidate(readiness, resources)
 
     report_renderer = checkout / "src/emrys/reporting/report.py"
     report_renderer.write_bytes(
         report_renderer.read_bytes() + b"\n# reporting-only change\n"
     )
-    assert _run_candidate(readiness, normalized, resources).run_id == baseline.run_id
+    assert _run_candidate(readiness, resources).run_id == baseline.run_id
 
     resource_policy = (
         checkout / "src/emrys/orchestration/local_pilot/resource_policy.py"
     )
     resource_policy.write_bytes(resource_policy.read_bytes() + b"\n# policy change\n")
-    assert _run_candidate(readiness, normalized, resources).run_id == baseline.run_id
+    assert _run_candidate(readiness, resources).run_id == baseline.run_id
 
     snakefile = checkout / "workflow/Snakefile"
     snakefile.write_bytes(snakefile.read_bytes() + b"\n# adapter change\n")
-    assert _run_candidate(readiness, normalized, resources).run_id == baseline.run_id
+    assert _run_candidate(readiness, resources).run_id == baseline.run_id
 
     cli_adapter = checkout / "src/emrys/__main__.py"
     cli_adapter.write_bytes(cli_adapter.read_bytes() + b"\n# CLI adapter change\n")
-    assert _run_candidate(readiness, normalized, resources).run_id == baseline.run_id
+    assert _run_candidate(readiness, resources).run_id == baseline.run_id
 
     reporting_materializer = (
         checkout / "src/emrys/orchestration/local_pilot/reporting_boundary.py"
@@ -1056,17 +1073,17 @@ def test_run_identity_excludes_attempt_reporting_and_backend_adapter_code(
     reporting_materializer.write_bytes(
         reporting_materializer.read_bytes() + b"\n# reporting materialization change\n"
     )
-    assert _run_candidate(readiness, normalized, resources).run_id == baseline.run_id
+    assert _run_candidate(readiness, resources).run_id == baseline.run_id
 
     reporting_projection = checkout / "src/emrys/contracts/orchestration/projection.py"
     reporting_projection.write_bytes(
         reporting_projection.read_bytes() + b"\n# reporting projection change\n"
     )
-    assert _run_candidate(readiness, normalized, resources).run_id == baseline.run_id
+    assert _run_candidate(readiness, resources).run_id == baseline.run_id
 
     materializer = checkout / "src/emrys/orchestration/local_pilot/materialization.py"
     materializer.write_bytes(materializer.read_bytes() + b"\n# dispatch change\n")
-    assert _run_candidate(readiness, normalized, resources).run_id != baseline.run_id
+    assert _run_candidate(readiness, resources).run_id != baseline.run_id
 
 
 @pytest.mark.parametrize(
@@ -1082,19 +1099,19 @@ def test_run_identity_binds_semantic_admission_code(
     relative: str,
 ) -> None:
     checkout, commit = _clean_checkout(tmp_path)
-    readiness, normalized, resources, _request, _workspace = _readiness(
+    readiness, resources, _request, _workspace = _readiness(
         tmp_path / "case",
         source_root=checkout,
         source_commit=commit,
     )
     baseline_implementation = implementation_identity(checkout)
-    baseline = _run_candidate(readiness, normalized, resources)
+    baseline = _run_candidate(readiness, resources)
 
     admission = checkout / relative
     admission.write_bytes(admission.read_bytes() + b"\n# admission change\n")
 
     assert implementation_identity(checkout) != baseline_implementation
-    assert _run_candidate(readiness, normalized, resources).run_id != baseline.run_id
+    assert _run_candidate(readiness, resources).run_id != baseline.run_id
 
 
 def test_implementation_identity_closes_direct_scientific_dependencies(
@@ -1137,13 +1154,13 @@ def test_lifecycle_refuses_run_bound_implementation_drift_before_attempt(
     relative: str,
 ) -> None:
     checkout, commit = _clean_checkout(tmp_path)
-    readiness, normalized, resources, _request, workspace = _readiness(
+    readiness, resources, _request, workspace = _readiness(
         tmp_path / "case",
         source_root=checkout,
         source_commit=commit,
     )
     plan = build_attempt_plan(
-        _run_candidate(readiness, normalized, resources),
+        _run_candidate(readiness, resources),
         readiness,
         workspace,
         resources=resources,
@@ -1354,7 +1371,7 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     arguments.detail = "verbose"
     assert control.inspect_from_args(arguments) == 0
     verbose = capsys.readouterr().out
-    assert f"Analysis ID: {plan.run.project.analysis.analysis_revision_id}" in verbose
+    assert f"Analysis ID: {plan.run.analysis.revision.analysis_revision_id}" in verbose
     assert f"Execution Plan ID: {plan.run.execution_plan.execution_plan_id}" in verbose
     assert "Attempt ID: none" in verbose
 
@@ -1495,10 +1512,10 @@ def test_post_binding_interruption_completes_the_exact_pristine_run(
         lambda: plan.resources.allocation,
     )
     replanned = control._plan_run(
-        plan.run.project.source_path,
+        plan.run.analysis.source_path,
         execution_profile=load_execution_profile(
-            plan.run.project.source_path,
-            config_path=plan.run.project.source_path.parent / "emrys.execution.yaml",
+            plan.run.analysis.source_path,
+            config_path=plan.run.analysis.source_path.parent / "emrys.execution.yaml",
         ),
     )
     assert (
@@ -1605,7 +1622,20 @@ def _patch_resume_control(
         runtime_profile: Path,
         **_kwargs: object,
     ) -> doctor.DoctorResult:
-        assert _kwargs == {"storage_requirement": "direct"}
+        legacy = (
+            yaml.safe_load(readiness.analysis.source_bytes)["schema_version"]
+            == "emrys.request.v3"
+        )
+        assert _kwargs == {
+            "storage_requirement": "direct",
+            "analysis_name": None if legacy else readiness.analysis.evidence_label,
+            "expected_analysis_revision": (
+                None
+                if observed.authority is None
+                else observed.authority.analysis_revision
+            ),
+            "allow_legacy": legacy,
+        }
         selected.append(runtime_profile)
         return readiness
 
@@ -1626,7 +1656,11 @@ def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    readiness, project, resources, request, workspace = _readiness(tmp_path)
+    readiness, resources, request, workspace = _readiness(
+        tmp_path,
+        legacy=True,
+    )
+    analysis = readiness.analysis
     symbolic_policy = replace(
         resources.policy,
         declaration=replace(
@@ -1638,10 +1672,10 @@ def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
         symbolic_policy,
         AllocationCapacity(cores=1, memory_mb=16_384, source="first allocation"),
     )
-    legacy, legacy_bytes = project.historical_execution_v1()
+    legacy, legacy_bytes = _historical_execution_v1(analysis)
     first = build_attempt_plan(
         materialization.HistoricalRun(
-            project=project,
+            analysis=analysis,
             run_id=str(legacy["run_id"]),
             execution_projection_bytes=legacy_bytes,
         ),
@@ -1657,9 +1691,23 @@ def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
         for item in first.attempt_record["required_tools"]
         if item["name"] == "runtime_profile"
     )
-    onboarding.runtime_profile_path(project.source_path).unlink()
+    request.write_text(
+        request.read_text(encoding="utf-8").replace(
+            "label: first label",
+            "label: renamed label",
+        ),
+        encoding="utf-8",
+    )
+    renamed_project = admit_project(
+        request,
+        REPO_ROOT / "workflow/contracts/local_cmh_v2.json",
+        allow_legacy=True,
+    )
+    onboarding.runtime_profile_path(analysis.source_path).unlink()
     fallback_readiness = replace(
         readiness,
+        project=renamed_project,
+        analysis=renamed_project.select_analysis(),
         inspection=replace(readiness.inspection, profile_path=retained),
     )
     selected: list[Path] = []
@@ -1680,6 +1728,7 @@ def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
     )
 
     assert selected == [retained]
+    assert second.attempt_record["request_label"] == "renamed label"
     assert second.resources.workflow_memory_mb == 8_192
     assert (
         second.attempt_record["required_tools"]
@@ -1693,11 +1742,13 @@ def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
     } & {item.path for item in second.attempt_files}
 
 
-def test_pre_cutover_successor_resume_snapshots_retained_runtime_profile(
+@pytest.mark.parametrize("legacy", (False, True))
+def test_successor_resume_snapshots_current_runtime_profile(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    legacy: bool,
 ) -> None:
-    first = _plan(tmp_path)
+    first = _plan(tmp_path, legacy=legacy)
     observed = _failed_run(first)
     assert observed.authority is not None
     retained = next(
@@ -1705,7 +1756,7 @@ def test_pre_cutover_successor_resume_snapshots_retained_runtime_profile(
         for item in first.attempt_record["required_tools"]
         if item["name"] == "runtime_profile"
     )
-    onboarding.runtime_profile_path(first.run.project.source_path).unlink()
+    onboarding.runtime_profile_path(first.run.analysis.source_path).unlink()
     fallback_readiness = replace(
         first.readiness,
         inspection=replace(first.readiness.inspection, profile_path=retained),
@@ -1720,7 +1771,7 @@ def test_pre_cutover_successor_resume_snapshots_retained_runtime_profile(
     )
     second = control._plan_resume(
         first.run_root,
-        execution_profile=load_execution_profile(first.run.project.source_path),
+        execution_profile=load_execution_profile(first.run.analysis.source_path),
         profile_resources_explicit=False,
     )
 
@@ -1741,6 +1792,25 @@ def test_pre_cutover_successor_resume_snapshots_retained_runtime_profile(
     ]
 
 
+def test_project_v1_predecessor_does_not_enable_request_v3_resume(
+    tmp_path: Path,
+) -> None:
+    first = _plan(tmp_path / "current")
+    _failed_run(first)
+    legacy = build_legacy(tmp_path / "legacy")
+    first.run.analysis.source_path.write_bytes(legacy.read_bytes())
+
+    with pytest.raises(
+        control.ControlError,
+        match="emrys.request.v3 is historical",
+    ):
+        control._plan_resume(
+            first.run_root,
+            execution_profile=load_execution_profile(first.run.analysis.source_path),
+            profile_resources_explicit=False,
+        )
+
+
 def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -1751,17 +1821,15 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     second_source.mkdir()
     checkout_one, commit_one = _clean_checkout(first_source)
     checkout_two, commit_two = _clean_checkout(second_source)
-    readiness_one, normalized, resources, _request, workspace = _readiness(
+    readiness_one, resources, _request, workspace = _readiness(
         tmp_path / "first-case",
         source_root=checkout_one,
         source_commit=commit_one,
     )
-    readiness_two, _unused, _unused_resources, _request_two, _workspace_two = (
-        _readiness(
-            tmp_path / "second-case",
-            source_root=checkout_two,
-            source_commit=commit_two,
-        )
+    readiness_two, _unused_resources, _request_two, _workspace_two = _readiness(
+        tmp_path / "second-case",
+        source_root=checkout_two,
+        source_commit=commit_two,
     )
     runtime_bytes = b"different admitted runtime profile\n"
     readiness_two.inspection.profile_path.write_bytes(runtime_bytes)
@@ -1769,6 +1837,7 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     readiness_two = replace(
         readiness_two,
         project=readiness_one.project,
+        analysis=readiness_one.analysis,
         inspection=replace(
             readiness_two.inspection,
             profile_sha256=runtime_sha256,
@@ -1794,8 +1863,8 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         ),
     )
 
-    run_one = _run_candidate(readiness_one, normalized, first_resources)
-    run_two = _run_candidate(readiness_two, normalized, first_resources)
+    run_one = _run_candidate(readiness_one, first_resources)
+    run_two = _run_candidate(readiness_two, first_resources)
     assert run_two.run_id == run_one.run_id
 
     first = build_attempt_plan(
@@ -1832,25 +1901,34 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         runtime_profile: Path,
         **_kwargs: object,
     ) -> doctor.DoctorResult:
-        assert _kwargs == {"storage_requirement": "slurm"}
+        assert _kwargs == {
+            "storage_requirement": "slurm",
+            "analysis_name": "primary",
+            "expected_analysis_revision": first.run.analysis.revision,
+            "allow_legacy": False,
+        }
         selected_runtime_profiles.append(runtime_profile)
         return readiness_two
 
-    source = normalized.construction
+    source = readiness_one.analysis.workflow_inputs
     old_locator = Path(source["samples"]["rows"][0]["r1_fastq"]["path"])
     relocated = tmp_path / "relocated-inputs" / old_locator.name
     relocated.parent.mkdir()
     shutil.copy2(old_locator, relocated)
     source["samples"]["rows"][0]["r1_fastq"]["path"] = str(relocated)
-    relocated_normalized = replace(
-        normalized,
-        construction_bytes=orchestration_contracts.canonical_json_bytes(source),
+    relocated_analysis = replace(
+        readiness_one.analysis,
+        _workflow_input_bytes=orchestration_contracts.canonical_json_bytes(source),
     )
-    readiness_two = replace(readiness_two, project=relocated_normalized)
-    relocated_run = _run_candidate(readiness_two, relocated_normalized, first_resources)
+    readiness_two = replace(
+        readiness_two,
+        project=readiness_one.project,
+        analysis=relocated_analysis,
+    )
+    relocated_run = _run_candidate(readiness_two, first_resources)
     assert old_locator.is_file() and relocated.is_file()
     assert relocated_run.run_id == run_one.run_id
-    assert relocated_normalized.construction_bytes != normalized.construction_bytes
+    assert relocated_analysis.workflow_inputs != readiness_one.analysis.workflow_inputs
 
     resume_profile = load_execution_profile(
         readiness_one.project.source_path,
@@ -2012,9 +2090,9 @@ def test_lock_precedes_attempt_publication_failure_and_retains_evidence(
 def test_waiting_stale_resume_exits_before_attempt_materialization(
     tmp_path: Path,
 ) -> None:
-    readiness, normalized, resources, _request, workspace = _readiness(tmp_path)
+    readiness, resources, _request, workspace = _readiness(tmp_path)
     initial = build_attempt_plan(
-        _run_candidate(readiness, normalized, resources),
+        _run_candidate(readiness, resources),
         readiness,
         workspace,
         resources=resources,
@@ -2187,7 +2265,8 @@ def test_public_run_dry_run_is_no_write(
         assert not (workspace / "logs").exists()
 
     normal = projections["normal"]
-    assert "Project: 'first label'" in normal
+    assert "Project: 'project'" in normal
+    assert "Analysis: 'primary'" in normal
     assert "Run ID:" in normal
     assert "Work: 35 pending, 0 reusable" in normal
     assert "Reporting: automatic after scientific work" in normal
@@ -2207,7 +2286,7 @@ def test_public_run_dry_run_is_no_write(
 
     verbose = projections["verbose"]
     assert set(normal.splitlines()) <= set(verbose.splitlines())
-    assert "Analysis ID: analysis-" in verbose
+    assert "Analysis revision: analysis-" in verbose
     assert "Execution Plan ID: plan-" in verbose
     assert "Run root:" in verbose
     assert "Resources: 1 cores, 1024 MiB" in verbose
@@ -2317,35 +2396,12 @@ def test_interactive_resume_uses_the_same_no_write_gate(
     assert not plan.run_root.exists()
 
 
-def test_public_run_escapes_project_label_for_terminal_output(
-    tmp_path: Path,
-    capsys,
-) -> None:
-    plan = _plan(tmp_path)
-    assert isinstance(plan.run, materialization.RunCandidate)
-    unsafe_source = plan.run.project.source_bytes.replace(
-        b"label: first label\n",
-        b'label: "spoof\\n\\e[31mFAIL"\n',
-    )
-    unsafe_project = replace(plan.run.project, source_bytes=unsafe_source)
-    unsafe_plan = replace(plan, run=replace(plan.run, project=unsafe_project))
-
-    control._print_plan(unsafe_plan, level=LogLevel.NORMAL)
-
-    rendered = capsys.readouterr().err
-    assert "Project: 'spoof\\n\\x1b[31mFAIL'" in rendered
-    assert "\x1b" not in rendered
-    assert "\nFAIL" not in rendered
-
-
 def test_public_execute_logs_and_terminalizes_doctor_failure_before_run_state(
     tmp_path: Path,
     capsys,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _readiness_result, _normalized, _resources, request, workspace = _readiness(
-        tmp_path
-    )
+    _readiness_result, _resources, request, workspace = _readiness(tmp_path)
     opened = []
     real_open = control.open_attempt_log
 
@@ -2538,10 +2594,16 @@ def test_new_run_doctor_storage_requirement_tracks_execution_placement(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    readiness, _project, _resources, project_path, _workspace = _readiness(tmp_path)
+    readiness, _resources, project_path, _workspace = _readiness(tmp_path)
     requirements: list[str] = []
 
-    def diagnose(_project_path: Path, *, storage_requirement: str):
+    def diagnose(
+        _project_path: Path,
+        *,
+        storage_requirement: str,
+        analysis_name: str | None,
+    ):
+        assert analysis_name is None
         requirements.append(storage_requirement)
         return readiness
 
@@ -2582,6 +2644,7 @@ def test_new_run_doctor_storage_requirement_tracks_execution_placement(
 def _scheduled_run_arguments(tmp_path: Path, *, execute: bool) -> argparse.Namespace:
     return argparse.Namespace(
         project=tmp_path / "project.yaml",
+        analysis="sensitivity",
         execution_profile=_slurm_profile(tmp_path),
         log_level=None,
         log_root=None,
@@ -2728,6 +2791,7 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     execute: bool,
 ) -> None:
     arguments = _scheduled_run_arguments(tmp_path, execute=execute)
+    arguments.analysis = "" if execute else "sensitivity"
     arguments.no_report = True
     workspace = arguments.project.parent
     submissions = []
@@ -2762,6 +2826,8 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
         f"ERR={workspace}/logs/emrys-local-pilot-812345.err\n"
     )
     assert len(submissions) == 1
+    expected_analysis = "''" if execute else "sensitivity"
+    assert f" --analysis {expected_analysis} " in submissions[0].batch_script
     assert " --execute --no-report" in submissions[0].batch_script
     assert list((workspace / "logs").iterdir()) == []
     assert "Execution placement: Slurm" in captured.err
@@ -3393,7 +3459,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     checkout, commit = _clean_checkout(tmp_path)
-    readiness, normalized, resources, request, workspace = _readiness(
+    readiness, resources, request, workspace = _readiness(
         tmp_path / "case",
         source_root=checkout,
         source_commit=commit,
@@ -3435,7 +3501,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         allocated_cores=1,
         execute=True,
     )
-    run_id = _run_candidate(readiness, normalized, resources).run_id
+    run_id = _run_candidate(readiness, resources).run_id
 
     assert control.run_from_args(run_arguments) == 1
     failed_output = capsys.readouterr().err

@@ -6,15 +6,14 @@ import copy
 import hashlib
 import os
 import re
-import stat
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
-import yaml
-
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.libraries.validation.errors import ValidationError
+from emrys.libraries.validation.inputs import read_bytes
 from emrys.orchestration.local_pilot.resource_policy import (
     ResourceConfigError,
     ResourceOverrides,
@@ -31,32 +30,6 @@ _POSITIVE_DECIMAL = re.compile(r"^[1-9][0-9]*$")
 
 class ExecutionProfileError(ValueError):
     """One execution-profile source or resolved value is inadmissible."""
-
-
-class _ClosedSafeLoader(yaml.SafeLoader):
-    """Safe YAML loader rejecting merge and duplicate mapping keys."""
-
-    def flatten_mapping(self, node: yaml.MappingNode) -> None:
-        for key_node, _ in node.value:
-            if key_node.tag == "tag:yaml.org,2002:merge":
-                raise ExecutionProfileError("YAML merge keys are not allowed")
-        super().flatten_mapping(node)
-
-    def construct_mapping(
-        self,
-        node: yaml.MappingNode,
-        deep: bool = False,
-    ) -> dict[str, Any]:
-        self.flatten_mapping(node)
-        result: dict[str, Any] = {}
-        for key_node, value_node in node.value:
-            key = self.construct_object(key_node, deep=deep)
-            if not isinstance(key, str):
-                raise ExecutionProfileError("Every YAML mapping key must be a string")
-            if key in result:
-                raise ExecutionProfileError(f"Duplicate YAML mapping key: {key}")
-            result[key] = self.construct_object(value_node, deep=deep)
-        return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,67 +137,17 @@ class ExecutionProfile:
         }
 
 
-def _stable_file_state(value: os.stat_result) -> tuple[int, ...]:
-    return (
-        value.st_dev,
-        value.st_ino,
-        value.st_mode,
-        value.st_uid,
-        value.st_gid,
-        value.st_size,
-        value.st_mtime_ns,
-        value.st_ctime_ns,
-    )
-
-
 def _read_admitted_regular_file(path: Path, label: str) -> tuple[Path, bytes]:
-    if not hasattr(os, "O_NOFOLLOW"):
-        raise ExecutionProfileError(
-            f"{label} cannot be admitted without symbolic-link protection"
-        )
     authored = Path(os.path.abspath(path))
     try:
         resolved = authored.resolve(strict=True)
-    except OSError as exc:
-        raise ExecutionProfileError(f"Could not read {label}: {authored}") from exc
-    if resolved != authored:
-        raise ExecutionProfileError(f"{label} must be canonical and nonsymlink")
-
-    flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
-    flags |= getattr(os, "O_NONBLOCK", 0)
-    descriptor: int | None = None
-    chunks: list[bytes] = []
-    try:
-        descriptor = os.open(authored, flags)
-        before = os.fstat(descriptor)
-        if not stat.S_ISREG(before.st_mode):
-            raise ExecutionProfileError(f"{label} must be one real regular file")
-        bound_before = os.stat(authored, follow_symlinks=False)
-        if (bound_before.st_dev, bound_before.st_ino) != (
-            before.st_dev,
-            before.st_ino,
-        ):
-            raise ExecutionProfileError(f"{label} changed during admission")
-        while block := os.read(descriptor, 1024 * 1024):
-            chunks.append(block)
-        after = os.fstat(descriptor)
-        bound_after = os.stat(authored, follow_symlinks=False)
-    except OSError as exc:
-        raise ExecutionProfileError(f"Could not read {label}: {authored}") from exc
-    finally:
-        if descriptor is not None:
-            os.close(descriptor)
-
-    data = b"".join(chunks)
-    if (
-        _stable_file_state(before) != _stable_file_state(after)
-        or len(data) != before.st_size
-        or (bound_after.st_dev, bound_after.st_ino) != (after.st_dev, after.st_ino)
-    ):
-        raise ExecutionProfileError(f"{label} changed while read")
-    if not data:
-        raise ExecutionProfileError(f"{label} must be nonempty")
-    return resolved, data
+        if resolved != authored:
+            raise ExecutionProfileError(f"{label} must be canonical and nonsymlink")
+        return resolved, read_bytes(authored, label)
+    except (OSError, ValidationError) as exc:
+        raise ExecutionProfileError(
+            f"Could not read {label}: {authored}: {exc}"
+        ) from exc
 
 
 def _validate_profile(document: Mapping[str, Any]) -> None:
@@ -237,11 +160,11 @@ def _validate_profile(document: Mapping[str, Any]) -> None:
 def _read_profile(path: Path, label: str) -> tuple[Path, bytes, dict[str, Any]]:
     resolved, data = _read_admitted_regular_file(path, label)
     try:
-        value = yaml.load(data, Loader=_ClosedSafeLoader)
-    except (UnicodeDecodeError, yaml.YAMLError) as exc:
-        raise ExecutionProfileError(f"Could not parse {label}: {resolved}") from exc
-    if not isinstance(value, dict):
-        raise ExecutionProfileError(f"{label} must contain one YAML mapping")
+        value = orchestration_contracts.load_yaml_object_bytes(data, label)
+    except orchestration_contracts.ContractValidationError as exc:
+        raise ExecutionProfileError(
+            f"Could not parse {label} {resolved}: {exc}"
+        ) from exc
     _validate_profile(value)
     return resolved, data, value
 
@@ -334,8 +257,6 @@ def load_execution_profile(
         DEFAULT_PROFILE_PATH,
         "built-in execution profile",
     )
-    if set(default) != {"schema_version", "resources", "placement"}:
-        raise ExecutionProfileError("Built-in execution profile is incomplete")
     document = copy.deepcopy(default)
     selected_path: Path | None = None
     selected_data: bytes | None = None
