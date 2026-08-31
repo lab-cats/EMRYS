@@ -84,6 +84,40 @@ def sha256_with_identity(
     return digest, state
 
 
+def directory_entries_with_identity(
+    path: Path,
+    label: str,
+) -> tuple[tuple[str, ...], os.stat_result]:
+    """List one stable real directory through a no-follow descriptor."""
+
+    no_follow = getattr(os, "O_NOFOLLOW", None)
+    if no_follow is None:
+        fail(f"{label} cannot be admitted without symbolic-link protection: {path}")
+    flags = os.O_RDONLY | no_follow | getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_DIRECTORY", 0)
+    descriptor: int | None = None
+    try:
+        descriptor = os.open(path, flags)
+        before = os.fstat(descriptor)
+        if stat.S_ISLNK(before.st_mode) or not stat.S_ISDIR(before.st_mode):
+            fail(f"{label} must be a real directory: {path}")
+        entries = tuple(sorted(os.listdir(descriptor)))
+        after = os.fstat(descriptor)
+        current = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        fail(f"{label} is unavailable: {path}: {exc}")
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+    if not (
+        _stable_directory_state(before)
+        == _stable_directory_state(after)
+        == _stable_directory_state(current)
+    ):
+        fail(f"{label} changed while inspected: {path}")
+    return entries, after
+
+
 def read_prefix(path: Path, label: str, length: int) -> bytes:
     """Read at most ``length`` bytes through a stable, no-follow binding."""
     if isinstance(length, bool) or not isinstance(length, int) or length < 1:
@@ -161,6 +195,16 @@ def _stable_file_state(value: os.stat_result) -> tuple[int, ...]:
         value.st_ino,
         value.st_mode,
         value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
+
+
+def _stable_directory_state(value: os.stat_result) -> tuple[int, ...]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
         value.st_mtime_ns,
         value.st_ctime_ns,
     )

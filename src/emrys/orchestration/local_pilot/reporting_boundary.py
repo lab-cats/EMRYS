@@ -28,8 +28,11 @@ from emrys.libraries.source_authority import (
     attest_source_checkout,
 )
 from emrys.libraries.validation.errors import ValidationError
-from emrys.libraries.validation.inputs import read_bytes_with_identity
-from emrys.orchestration.local_pilot.inspection import (
+from emrys.libraries.validation.inputs import (
+    directory_entries_with_identity,
+    read_bytes_with_identity,
+)
+from emrys.orchestration.local_pilot._inspection_admission import (
     InspectionError,
     admit_attempt_run_lock,
     admit_canonical_record,
@@ -440,48 +443,17 @@ def _ensure_ledger_root(
 def _admit_ledger_root(paths: ReportingLedgerPaths) -> None:
     """Admit the stable, closed membership of one fixed ledger directory."""
 
-    if not hasattr(os, "O_NOFOLLOW"):
-        raise ReportingBoundaryError(
-            "This platform lacks required O_NOFOLLOW reporting admission"
-        )
-    flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
-    flags |= getattr(os, "O_DIRECTORY", 0)
     try:
-        descriptor = os.open(paths.root, flags)
-    except OSError as exc:
+        entries = set(
+            directory_entries_with_identity(
+                paths.root,
+                "Reporting ledger directory",
+            )[0]
+        )
+    except ValidationError as exc:
         raise ReportingBoundaryError(
             f"Could not admit reporting ledger directory: {paths.root}: {exc}"
         ) from exc
-    try:
-        before = os.fstat(descriptor)
-        if not stat.S_ISDIR(before.st_mode):
-            raise ReportingBoundaryError(
-                f"Reporting ledger path is not a real directory: {paths.root}"
-            )
-        entries = set(os.listdir(descriptor))
-        after = os.fstat(descriptor)
-    finally:
-        os.close(descriptor)
-    try:
-        current = paths.root.stat(follow_symlinks=False)
-    except OSError as exc:
-        raise ReportingBoundaryError(
-            f"Reporting ledger directory changed during admission: {paths.root}"
-        ) from exc
-
-    def identity(value: os.stat_result) -> tuple[int, ...]:
-        return (
-            value.st_dev,
-            value.st_ino,
-            value.st_mode,
-            value.st_mtime_ns,
-            value.st_ctime_ns,
-        )
-
-    if identity(before) != identity(after) or identity(after) != identity(current):
-        raise ReportingBoundaryError(
-            f"Reporting ledger directory changed during admission: {paths.root}"
-        )
     unexpected = entries - {"start.json", "verified.json"}
     if unexpected:
         raise ReportingBoundaryError(

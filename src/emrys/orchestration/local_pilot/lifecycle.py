@@ -50,6 +50,7 @@ from emrys.libraries.installed_package_identity import (
 from emrys.libraries.exclusive_publication import publish_exclusive
 from emrys.libraries.process_environment import (
     guarded_r_environment,
+    process_is_alive,
     sanitized_subprocess_environment,
 )
 from emrys.libraries.source_authority import controlled_python_argv
@@ -932,16 +933,6 @@ def _run_process_group(
     return WorkflowResult(return_code, None, None)
 
 
-def _process_is_alive(process_id: int) -> bool:
-    try:
-        os.kill(process_id, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
-
-
 def _admit_required_tool_identity(identity: Mapping[str, Any]) -> None:
     """Re-admit one authored path against its canonical content digest."""
 
@@ -1183,7 +1174,7 @@ def default_lifecycle_ops() -> LifecycleOps:
         now=lambda: datetime.now(UTC),
         host_name=socket.gethostname,
         process_id=os.getpid,
-        process_is_alive=_process_is_alive,
+        process_is_alive=process_is_alive,
         validate_reporting_receipt=transaction_validation.validate_receipt,
         admit_storage_context=partial(
             _readmit_storage_runtime_binding,
@@ -1643,16 +1634,7 @@ def _run_attempt_locked(
     lock_path = locks_root / "run.lock"
     released_lock_path = attempt_root / "released-run-lock.json"
 
-    lock_record = {
-        "schema_version": "emrys.run-lock.v1",
-        "run_id": attempt["run_id"],
-        "workflow_attempt_id": identifier,
-        "attempt_record_path": f"attempts/{identifier}/attempt.json",
-        "owner_token": attempt["owner_token"],
-        "process_id": attempt["process_id"],
-        "host": attempt["host"],
-        "created_at": attempt["created_at"],
-    }
+    lock_record = orchestration_contracts.run_lock_record(attempt)
     orchestration_contracts.validate_record("run-lock", lock_record)
     lock_bytes = orchestration_contracts.canonical_json_bytes(lock_record)
     if _owned_lock is None:
@@ -2090,16 +2072,7 @@ def run_materialized_attempt(
             _observe_phase(active_ops, "before_run_lock")
             _refuse_pre_attempt_signal(signals, "before run-lock publication")
             lock_path = locks_root / "run.lock"
-            lock_record = {
-                "schema_version": "emrys.run-lock.v1",
-                "run_id": preparation.run_id,
-                "workflow_attempt_id": preparation.workflow_attempt_id,
-                "attempt_record_path": (f"attempts/{preparation.workflow_attempt_id}/attempt.json"),
-                "owner_token": preparation.owner_token,
-                "process_id": preparation.process_id,
-                "host": preparation.host,
-                "created_at": preparation.created_at,
-            }
+            lock_record = orchestration_contracts.run_lock_record(prepared_attempt)
             orchestration_contracts.validate_record("run-lock", lock_record)
             lock_bytes = orchestration_contracts.canonical_json_bytes(lock_record)
             active_ops.publish_bytes(lock_path, lock_bytes)

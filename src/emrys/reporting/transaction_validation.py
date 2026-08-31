@@ -35,6 +35,11 @@ from emrys.libraries.source_authority import (
     attest_source_checkout,
     matching_clean_checkout_head_commit,
 )
+from emrys.libraries.validation.errors import ValidationError
+from emrys.libraries.validation.inputs import (
+    directory_entries_with_identity,
+    read_bytes_with_identity,
+)
 
 TransactionKind = Literal["artifact_index", "run_summary", "html_report"]
 
@@ -123,68 +128,30 @@ class _BoundRosterSnapshot:
 def _snapshot_receipt(path: Path) -> _ReceiptSnapshot:
     if not path.is_absolute():
         raise ReportingTransactionError(f"Reporting receipt must be absolute: {path}")
-    if not hasattr(os, "O_NOFOLLOW"):
-        raise ReportingTransactionError(
-            "This platform lacks required O_NOFOLLOW receipt admission"
-        )
     try:
         if path.resolve(strict=True) != path:
             raise ReportingTransactionError(
                 f"Reporting receipt must be canonical and nonsymlink: {path}"
             )
-        descriptor = os.open(
+        payload, before = read_bytes_with_identity(
             path,
-            os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
+            "Reporting receipt",
+            nonempty=False,
         )
-    except OSError as exc:
+    except (OSError, ValidationError) as exc:
         raise ReportingTransactionError(
             f"Could not admit reporting receipt {path}: {exc}"
         ) from exc
-    try:
-        before = os.fstat(descriptor)
-        if not stat.S_ISREG(before.st_mode):
-            raise ReportingTransactionError(
-                f"Reporting receipt is not a regular file: {path}"
-            )
-        digest = hashlib.sha256()
-        payload = bytearray()
-        while block := os.read(descriptor, 1024 * 1024):
-            digest.update(block)
-            payload.extend(block)
-        after = os.fstat(descriptor)
-    finally:
-        os.close(descriptor)
-    try:
-        current = path.stat(follow_symlinks=False)
-    except OSError as exc:
-        raise ReportingTransactionError(
-            f"Reporting receipt changed while it was admitted: {path}"
-        ) from exc
-
-    def identity(value: os.stat_result) -> tuple[int, ...]:
-        return (
-            value.st_dev,
-            value.st_ino,
-            value.st_mode,
-            value.st_size,
-            value.st_mtime_ns,
-            value.st_ctime_ns,
-        )
-
-    if identity(before) != identity(after) or identity(after) != identity(current):
-        raise ReportingTransactionError(
-            f"Reporting receipt changed while it was admitted: {path}"
-        )
     return _ReceiptSnapshot(
         path=path,
-        payload=bytes(payload),
+        payload=payload,
         device=before.st_dev,
         inode=before.st_ino,
         mode=before.st_mode,
         size_bytes=before.st_size,
         mtime_ns=before.st_mtime_ns,
         ctime_ns=before.st_ctime_ns,
-        sha256=digest.hexdigest(),
+        sha256=hashlib.sha256(payload).hexdigest(),
     )
 
 
@@ -336,40 +303,15 @@ def _snapshot_bound_file(
 def _snapshot_bound_directory(path: Path) -> _BoundDirectorySnapshot:
     if not path.is_absolute():
         raise ReportingTransactionError(f"Bound directory must be absolute: {path}")
-    if not hasattr(os, "O_NOFOLLOW"):
-        raise ReportingTransactionError(
-            "This platform lacks required O_NOFOLLOW transaction admission"
-        )
-    flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
-    flags |= getattr(os, "O_DIRECTORY", 0)
     try:
-        descriptor = os.open(path, flags)
-    except OSError as exc:
+        entries, before = directory_entries_with_identity(
+            path,
+            "Bound transaction directory",
+        )
+    except ValidationError as exc:
         raise ReportingTransactionError(
             f"Could not admit bound transaction directory {path}: {exc}"
         ) from exc
-    try:
-        before = os.fstat(descriptor)
-        if not stat.S_ISDIR(before.st_mode):
-            raise ReportingTransactionError(
-                f"Bound transaction directory is not real: {path}"
-            )
-        entries = tuple(sorted(os.listdir(descriptor)))
-        after = os.fstat(descriptor)
-    finally:
-        os.close(descriptor)
-    try:
-        current = path.stat(follow_symlinks=False)
-    except OSError as exc:
-        raise ReportingTransactionError(
-            f"Bound transaction directory changed while admitted: {path}"
-        ) from exc
-    if _stat_identity(before) != _stat_identity(after) or _stat_identity(after) != (
-        _stat_identity(current)
-    ):
-        raise ReportingTransactionError(
-            f"Bound transaction directory changed while admitted: {path}"
-        )
     return _BoundDirectorySnapshot(
         path=path,
         device=before.st_dev,

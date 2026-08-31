@@ -29,6 +29,7 @@ from emrys.contracts.orchestration.application_model import (
     RUN_BINDING_SCHEMA_VERSION,
 )
 from emrys.libraries.exclusive_publication import publish_exclusive
+from emrys.libraries.process_environment import sanitized_subprocess_environment
 from emrys.libraries.source_authority import (
     SourceCheckoutError,
     attest_source_checkout as _attest_source_checkout,
@@ -41,9 +42,13 @@ from emrys.libraries.validation.inputs import (
     read_bytes_with_identity,
     sha256_with_identity,
 )
-from emrys.orchestration.local_pilot import inspection
-from emrys.libraries.process_environment import (
-    sanitized_subprocess_environment,
+from emrys.orchestration.local_pilot._inspection_admission import (
+    InspectionError,
+    SuccessorRunAuthority,
+    admit_attempt_run_lock,
+    admit_canonical_record,
+    admit_execution_path,
+    expected_tasks,
 )
 
 DISPATCH_SCHEMA_VERSION = "emrys.local-task-dispatch.v1"
@@ -491,12 +496,12 @@ def _read_bound_record(path: Path, root: Path, label: str) -> bytes:
 
 
 _admit_record = partial(
-    inspection.admit_canonical_record,
+    admit_canonical_record,
     read_bytes=_read_bound_record,
     error_type=TaskBoundaryError,
 )
 _admit_execution = partial(
-    inspection.admit_execution_path,
+    admit_execution_path,
     read_bytes=_read_bound_record,
     error_type=TaskBoundaryError,
 )
@@ -958,11 +963,11 @@ def _expected_scope_ids(
     task: Mapping[str, Any],
     execution: Mapping[str, Any],
     profile: Mapping[str, Any],
-    authority: inspection.SuccessorRunAuthority | None,
+    authority: SuccessorRunAuthority | None,
 ) -> set[str]:
     return {
         item.scope_id
-        for item in inspection.expected_tasks(authority or execution, profile)
+        for item in expected_tasks(authority or execution, profile)
         if item.machine_key == task["machine_key"]
     }
 
@@ -1308,12 +1313,12 @@ def _admit_start_origins(
     if attempt_after != expected_attempt:
         raise TaskBoundaryError("Workflow attempt changed during task admission")
     try:
-        run_lock_reference = inspection.admit_attempt_run_lock(
+        run_lock_reference = admit_attempt_run_lock(
             dispatch.run_root,
             attempt,
             require_active=require_active_attempt,
         )
-    except inspection.InspectionError as exc:
+    except InspectionError as exc:
         raise TaskBoundaryError(f"Could not admit workflow run lock: {exc}") from exc
     return expected_attempt, dict(attempt["workflow_config"]), run_lock_reference
 

@@ -81,6 +81,25 @@ def test_sha256_with_identity_streams_bound_file_and_allows_declared_empty(
     assert identity.st_size == 0
 
 
+def test_directory_entries_with_identity_lists_one_real_stable_directory(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "b").touch()
+    (tmp_path / "a").touch()
+
+    entries, identity = INPUTS.directory_entries_with_identity(tmp_path, "Directory")
+
+    assert entries == ("a", "b")
+    assert (identity.st_dev, identity.st_ino) == (
+        tmp_path.stat().st_dev,
+        tmp_path.stat().st_ino,
+    )
+    alias = tmp_path.with_name("directory-alias")
+    alias.symlink_to(tmp_path, target_is_directory=True)
+    with pytest.raises(REPORT.ValidationError, match="is unavailable"):
+        INPUTS.directory_entries_with_identity(alias, "Directory")
+
+
 def test_require_executable_rejects_non_executable_file(tmp_path: Path) -> None:
     tool = tmp_path / "not_executable.sh"
     tool.write_text("#!/usr/bin/env bash\n")

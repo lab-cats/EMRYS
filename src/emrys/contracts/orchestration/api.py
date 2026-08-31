@@ -183,6 +183,22 @@ def canonical_sha256(value: Any) -> str:
     return hashlib.sha256(canonical_json_bytes(value)).hexdigest()
 
 
+def run_lock_record(attempt: Mapping[str, Any]) -> dict[str, Any]:
+    """Project the one run-lock record bound to a workflow Attempt."""
+
+    identifier = str(attempt["workflow_attempt_id"])
+    return {
+        "schema_version": "emrys.run-lock.v1",
+        "run_id": attempt["run_id"],
+        "workflow_attempt_id": identifier,
+        "attempt_record_path": f"attempts/{identifier}/attempt.json",
+        "owner_token": attempt["owner_token"],
+        "process_id": attempt["process_id"],
+        "host": attempt["host"],
+        "created_at": attempt["created_at"],
+    }
+
+
 def load_schema_registry() -> tuple[dict[str, dict[str, Any]], Registry]:
     """Load and validate the complete closed local orchestration registry."""
 
