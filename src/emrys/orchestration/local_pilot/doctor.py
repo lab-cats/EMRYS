@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Literal
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.application_model import AnalysisRevision
 from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
     RuntimeInspection,
@@ -55,7 +56,10 @@ from emrys.libraries.source_authority import (
     inspect_source_checkout,
 )
 from emrys.orchestration.local_pilot import onboarding
-from emrys.orchestration.local_pilot.normalization import ProjectAdmission
+from emrys.orchestration.local_pilot.normalization import (
+    AnalysisAdmission,
+    ProjectAdmission,
+)
 
 DESCRIPTION = (
     "Diagnose one Project across inputs, storage, runtime, and execution. "
@@ -91,6 +95,7 @@ class DoctorResult:
     """Immutable readiness result consumed by Run planning."""
 
     project: ProjectAdmission
+    analysis: AnalysisAdmission
     source_root: Path
     source_commit: str | None
     inspection: RuntimeInspection | None
@@ -320,6 +325,9 @@ def _inspect_foundations(
     workspace: str | Path,
     *,
     storage_requirement: StorageRequirement = "direct",
+    analysis_name: str | None = None,
+    expected_analysis_revision: AnalysisRevision | None = None,
+    allow_legacy: bool = False,
 ) -> DoctorResult:
     root = _absolute_path(onboarding.source_root())
     workspace_path = _absolute_path(workspace)
@@ -331,14 +339,22 @@ def _inspect_foundations(
         blockers.append(f"source checkout is not ready: {exc}")
         remediations.append("Use the clean reviewed EMRYS checkout and workflow environment.")
     try:
-        project = onboarding.validate_project(project_path, root=root).project
+        project = onboarding.validate_project(
+            project_path,
+            root=root,
+            allow_legacy=allow_legacy,
+        ).project
+        analysis = project.select_analysis(
+            analysis_name,
+            expected_revision=expected_analysis_revision,
+        )
     except (
         onboarding.OnboardingError,
         orchestration_contracts.ContractValidationError,
         OSError,
     ) as exc:
         raise DoctorInputError(str(exc)) from exc
-    fasta = Path(str(project.construction["reference"]["fasta"]["path"]))
+    fasta = Path(str(analysis.workflow_inputs["reference"]["fasta"]["path"]))
     if storage_requirement == "direct":
         admit_storage = storage_qualification.admit_direct_requirement
         storage_label = "single-host storage is not qualified"
@@ -359,6 +375,7 @@ def _inspect_foundations(
         remediations.append(remediation)
     return DoctorResult(
         project=project,
+        analysis=analysis,
         source_root=root,
         source_commit=source_commit,
         inspection=None,
@@ -376,6 +393,9 @@ def inspect_local_pilot(
     runtime_profile: str | Path,
     *,
     storage_requirement: StorageRequirement = "direct",
+    analysis_name: str | None = None,
+    expected_analysis_revision: AnalysisRevision | None = None,
+    allow_legacy: bool = False,
 ) -> DoctorResult:
     """Inspect one Project and runtime without writing anything."""
 
@@ -383,6 +403,9 @@ def inspect_local_pilot(
         project_path,
         workspace,
         storage_requirement=storage_requirement,
+        analysis_name=analysis_name,
+        expected_analysis_revision=expected_analysis_revision,
+        allow_legacy=allow_legacy,
     )
     profile_path = _absolute_path(runtime_profile)
     try:
@@ -411,15 +434,12 @@ def inspect_local_pilot(
             "re-admit the selected site environment without editing runtime.tsv."
         )
     bindings = (*runtime_file_bindings(inspection), *foundations.bindings)
-    return DoctorResult(
-        project=foundations.project,
-        source_root=foundations.source_root,
-        source_commit=foundations.source_commit,
+    return replace(
+        foundations,
         inspection=inspection,
         bindings=bindings,
         blockers=tuple(blockers),
         remediations=tuple(dict.fromkeys(remediations)),
-        storage_ready=foundations.storage_ready,
         runtime_ready=python_ready and not failed,
     )
 
@@ -428,6 +448,7 @@ def diagnose_project(
     project_path: str | Path,
     *,
     storage_requirement: StorageRequirement = "direct",
+    analysis_name: str | None = None,
 ) -> DoctorResult:
     """Diagnose the canonical Project runtime, including an absent profile."""
 
@@ -439,11 +460,13 @@ def diagnose_project(
             project.parent,
             profile,
             storage_requirement=storage_requirement,
+            analysis_name=analysis_name,
         )
     foundations = _inspect_foundations(
         project,
         project.parent,
         storage_requirement=storage_requirement,
+        analysis_name=analysis_name,
     )
     remediation = (
         "Run `emrys doctor --repair`, or admit a complete site runtime with `emrys runtime discover --execute`."
@@ -459,9 +482,6 @@ def diagnose_project(
 class _ManagedRuntimePlan:
     source_root: Path
     managed_root: Path
-    native: Path
-    r: Path
-    renv: Path
     profile: Path
     uv: Path
     pixi: Path
@@ -475,6 +495,7 @@ class _ManagedRuntimePlan:
 @dataclass(frozen=True, slots=True)
 class _RepairPlan:
     project: ProjectAdmission
+    analysis_name: str
     source_root: Path
     source_commit: str
     storage: storage_qualification.DirectQualificationPlan | None
@@ -532,7 +553,7 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
     if result.source_commit is None:
         raise DoctorRepairError("repair requires a clean reviewed EMRYS checkout")
     project = result.project
-    fasta = Path(str(project.construction["reference"]["fasta"]["path"]))
+    fasta = Path(str(result.analysis.workflow_inputs["reference"]["fasta"]["path"]))
     try:
         storage = (
             None
@@ -547,6 +568,7 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
     if result.runtime_ready:
         return _RepairPlan(
             project=project,
+            analysis_name=result.analysis.name,
             source_root=result.source_root,
             source_commit=result.source_commit,
             storage=storage,
@@ -580,9 +602,6 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
     managed_plan = _ManagedRuntimePlan(
         source_root=result.source_root,
         managed_root=managed,
-        native=managed / ".pixi/envs/native",
-        r=managed / ".pixi/envs/r",
-        renv=managed / "renv/library",
         profile=runtime / "runtime.tsv",
         uv=uv,
         pixi=pixi,
@@ -601,6 +620,7 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
             )
     return _RepairPlan(
         project=project,
+        analysis_name=result.analysis.name,
         source_root=result.source_root,
         source_commit=result.source_commit,
         storage=storage,
@@ -739,7 +759,7 @@ def _repair_actions(
             "EMRYS_USE_RENV": "1",
             "EMRYS_LOCAL_PILOT_R": "0",
             "RENV_PROJECT": str(plan.source_root),
-            "RENV_PATHS_LIBRARY": str(runtime.renv),
+            "RENV_PATHS_LIBRARY": str(runtime.managed_root / "renv/library"),
             "RENV_PATHS_CACHE": str(runtime.managed_root / "renv/cache"),
             "RENV_CONFIG_SANDBOX_ENABLED": "FALSE",
             "RENV_CONFIG_AUTO_SNAPSHOT": "FALSE",
@@ -748,7 +768,7 @@ def _repair_actions(
     )
     manifest = str(runtime.managed_root / "pixi.toml")
     restore_argv = guarded_rscript_argv(
-        str(runtime.r / "bin/Rscript"),
+        str(runtime.managed_root / ".pixi/envs/r/bin/Rscript"),
         (str(plan.source_root / "scripts/restore_r_environment.R"),),
     )
     return (
@@ -801,13 +821,19 @@ def _managed_discovery_environment(plan: _RepairPlan) -> dict[str, str]:
         raise DoctorRepairError("managed runtime repair was not planned")
     jars = tuple(
         path
-        for path in (runtime.native / "share").glob("picard-slim-3.1.1-*/picard.jar")
+        for path in (runtime.managed_root / ".pixi/envs/native/share").glob(
+            "picard-slim-3.1.1-*/picard.jar"
+        )
         if path.is_file() and not path.is_symlink()
     )
     if len(jars) != 1:
         raise DoctorRepairError("locked runtime must contain one Picard 3.1.1 jar")
     libraries = tuple(
-        description.parents[1] for description in runtime.renv.rglob("renv/DESCRIPTION") if description.is_file()
+        description.parents[1]
+        for description in (runtime.managed_root / "renv/library").rglob(
+            "renv/DESCRIPTION"
+        )
+        if description.is_file()
     )
     if len(libraries) != 1:
         raise DoctorRepairError("managed renv restore must produce one qualified library")
@@ -821,8 +847,10 @@ def _managed_discovery_environment(plan: _RepairPlan) -> dict[str, str]:
     environment.pop("JAVA_HOME", None)
     environment.update(
         {
-            "PATH": str(runtime.native / "bin"),
-            "EMRYS_RSCRIPT": str(runtime.r / "bin/Rscript"),
+            "PATH": str(runtime.managed_root / ".pixi/envs/native/bin"),
+            "EMRYS_RSCRIPT": str(
+                runtime.managed_root / ".pixi/envs/r/bin/Rscript"
+            ),
             "EMRYS_PICARD_JAR": str(jars[0]),
             "EMRYS_RENV_LIBRARY": str(library),
         }
@@ -837,6 +865,7 @@ def _stderr(message: str) -> None:
 def _print_result(result: DoctorResult, detail: LogLevel) -> None:
     _stderr("EMRYS Doctor")
     _stderr(f"  Project    PASS  {result.project.source_path.parent}")
+    _stderr(f"  Analysis   PASS  {result.analysis.name}")
     _stderr("  Inputs     PASS")
     for label, ready in (
         ("Storage", result.storage_ready),
@@ -1032,7 +1061,10 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                     or existing != candidate.profile_bytes
                 ):
                     raise DoctorRepairError("existing managed profile differs and was preserved")
-        final = diagnose_project(plan.project.source_path)
+        final = diagnose_project(
+            plan.project.source_path,
+            analysis_name=plan.analysis_name,
+        )
         if not final.ready:
             raise DoctorRepairError("Project remained not ready after repair requalification")
         record(
@@ -1074,6 +1106,10 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--project", default=Path("project.yaml"), type=Path)
+    parser.add_argument(
+        "--analysis",
+        help="Named Analysis; required only when the Project defines more than one.",
+    )
     add_log_arguments(parser)
     parser.add_argument(
         "--repair",
@@ -1093,7 +1129,10 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
         print("emrys: error: --execute requires --repair", file=sys.stderr)
         return 2
     try:
-        result = diagnose_project(arguments.project)
+        result = diagnose_project(
+            arguments.project,
+            analysis_name=arguments.analysis,
+        )
         controls = resolve_log_controls(
             source_checkout=SourceCheckout(result.source_root),
             cli_level=arguments.log_level,

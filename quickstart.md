@@ -4,6 +4,10 @@ This is the shortest supported path through the real EMRYS workflow. It creates
 a deterministic synthetic Project, admits a managed runtime, executes one
 immutable Run, generates reports, and inspects the retained result.
 
+The public model is `Project -> named Analysis -> immutable Run -> Results`.
+The synthetic Project contains one Analysis named `primary`; a Project may
+contain more, but each `run` executes exactly one selected Analysis.
+
 Use an intended Linux compute host, a clean EMRYS checkout, and durable storage
 outside that checkout. Do not run scientific work on a cluster login node.
 
@@ -101,8 +105,9 @@ requirements are documented in the [runbook](docs/operations/RUNBOOK.md).
 
 ## 5. Validate data compatibility without scientific tools
 
-An optional early check admits and validates the Project definition and its
-declared files without running scientific tools or writing workflow output:
+An optional early check admits and validates the Project definition, every
+named Analysis, and their declared files without running scientific tools or
+writing workflow output:
 
 ```sh
 emrys validate project --project "$EMRYS_PROJECT_PATH"
@@ -138,13 +143,20 @@ Doctor reports a blocker, stop and use the
 For explicit noninteractive execution, run:
 
 ```sh
-emrys run --project "$EMRYS_PROJECT_PATH" --execute
+emrys run \
+  --project "$EMRYS_PROJECT_PATH" \
+  --analysis primary \
+  --execute
 ```
 
-EMRYS prints the immutable Run plan before executing it. On a terminal, omit
-`--execute` to review the same plan and answer one confirmation prompt. Refusal,
-EOF, or interruption before confirmation writes nothing, submits nothing, and
-opens no application log.
+Because the synthetic Project has exactly one Analysis, `--analysis primary`
+may be omitted. For a Project with multiple Analyses it is required.
+
+The Analysis name selects human intent but does not enter the content-derived
+immutable Analysis identity. EMRYS prints the resulting immutable Run plan
+before executing it. On a terminal, omit `--execute` to review the same plan
+and answer one confirmation prompt. Refusal, EOF, or interruption before
+confirmation writes nothing, submits nothing, and opens no application log.
 
 Reporting runs automatically after successful scientific work. Add
 `--no-report` only when reporting should be skipped; this does not change the

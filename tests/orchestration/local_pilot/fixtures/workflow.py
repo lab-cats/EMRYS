@@ -24,14 +24,13 @@ from emrys.contracts.scientific_evidence import scientific_context, step08, step
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.orchestration.local_pilot import inspection
 from emrys.orchestration.local_pilot.lifecycle import build_snakemake_argv
-from emrys.orchestration.local_pilot.normalization import admit_project
 from emrys.reporting._artifact_index.registry import ADAPTER_REGISTRY
 from tests.reporting.fixtures.artifact_adapters_v1.build_fixture import (
     minimal_bai_bytes,
     minimal_bam_bytes,
     minimal_pdf_bytes,
 )
-from tests.orchestration.local_pilot.fixture import build as build_intake
+from tests.orchestration.local_pilot.fixture import build_legacy_execution
 from tests.scientific_context_test_support import build_transaction
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -997,10 +996,10 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
     root = root.resolve(strict=True)
     intake_root = root / "intake"
     intake_root.mkdir()
-    request_path = build_intake(intake_root)
     profile = orchestration_contracts.load_json_object(PROFILE_PATH)
-    normalized = admit_project(request_path, profile)
-    execution, execution_bytes = normalized.historical_execution_v1()
+    request_path, execution, execution_bytes = build_legacy_execution(
+        intake_root, profile
+    )
 
     run_root = (root / "run").resolve()
     contract_root = run_root / "contract"

@@ -11,7 +11,8 @@ emrys init manifests \
   --sample control_1 control pair_1 forward
 
 # Collect the remaining scientific answers and plan an absent Project root.
-# Omitted answers are prompted on a terminal; add --execute after review.
+# Omitted answers are prompted on a terminal; the first Analysis defaults to
+# "primary". Add --execute after review.
 emrys init project
 
 # Generate the default 130-pair deterministic science fixture the same way.
@@ -37,9 +38,19 @@ emrys runtime discover --project /absolute/path/to/project.yaml --execute
 paths and requires every biological assignment explicitly. `init project`
 validates them, records their admitted absolute paths without copying manifests
 or raw data, creates mode-`0700` `runs/`, `logs/`, and `runtime/`, and publishes
-request-v3 `project.yaml` last. Its canonical parent is the Project root used by
-run and Doctor; Results remain under `runs/<run-id>/results`. Setup creates no
-execution or runtime profile, Run, Attempt, Results, or application log.
+`emrys.project.v1` `project.yaml` last. Its canonical parent is the Project root
+used by run and Doctor; Results remain under `runs/<run-id>/results`. Setup
+creates one initial named Analysis (`primary` unless `--analysis-name` is
+supplied) and creates no execution or runtime profile, Run, Attempt, Results,
+or application log.
+
+The public model is `Project -> named Analysis -> immutable Run -> Results`.
+A Project shares one Dataset and Reference across one or more named Analyses;
+each Analysis owns its partition manifest and scientific policy. Project
+validation, runtime discovery, and Doctor admit every Analysis. `emrys run` and
+Doctor select one with `--analysis NAME`, and omission is accepted only for a
+single-Analysis Project. The name is human selection metadata, not part of the
+content-derived Analysis identity.
 
 Runtime discovery probes the active environment without installing or loading
 modules. Missing or ambiguous identities fail closed. `--execute` publishes
@@ -137,12 +148,15 @@ they are not inferred from static validation.
 The underlying narrow read-only admission APIs are:
 
 - `normalization.admit_project(project_path, profile)` safely admits one
-  YAML Project definition plus its ordered TSV manifests and returns an
-  immutable Analysis revision without writing a Run. Its no-follow,
-  descriptor-bound admission makes the exact read bytes the only parse and
-  identity authority. `ProjectAdmission` retains immutable source, profile,
-  and construction bytes plus that Analysis; mapping access returns fresh
-  disposable views that cannot mutate that authority;
+  mutable project-v1 definition plus its TSV manifests and returns one
+  immutable `ProjectAdmission` snapshot containing all named Analysis
+  revisions without writing a Run. `ProjectAdmission.select_analysis()`
+  selects one Analysis. No-follow, descriptor-bound admission makes exact
+  source bytes the parse and provenance authority; canonical normalized
+  scientific content, not formatting or row order, determines Analysis
+  identity. Shared Dataset and Reference inputs are admitted once, repeated
+  partition-manifest spellings are cached, and every Analysis remains
+  immutable;
 - `all_pass.require_all_pass(...)` checks the meaning of one owner-validation
   report rather than trusting its process exit;
 - `doctor.inspect_local_pilot(...)` admits one Project plus the fixed profile,
@@ -190,13 +204,14 @@ the direct receipt/probes, and one maintenance log are writable. It then reruns
 complete Project readiness. Declared input files and ready site/user profiles
 are preserved rather than modified, repaired, or silently migrated.
 
-B5 adds the source-checkout-bound public control surface. Every mutating route
-requires the controlled Python runtime, is dry-run-first, and delegates owner
+The source-checkout-bound public control surface requires every mutating route
+to use the controlled Python runtime, remain dry-run-first, and delegate owner
 work only through the accepted fixed profile:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
   --project /absolute/path/to/project.yaml \
+  --analysis ANALYSIS_NAME \
   --execution-profile /absolute/path/to/emrys.execution.yaml
 
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
@@ -286,14 +301,14 @@ validators may publish failed rows while exiting zero. It prints the report
 hash, row count, and ordered check IDs on success and creates no files.
 
 The internal `python -X pycache_prefix=/dev/null -I -m
-emrys.orchestration.local_pilot.task --dispatch ...` module is the B3 one-owner
-job boundary. It runs the exact admitted public producer and validator,
+emrys.orchestration.local_pilot.task --dispatch ...` module is the one-owner
+task boundary. It runs the exact admitted public producer and validator,
 performs semantic all-pass and stable-content checks, preserves failure
 evidence, and publishes a verified-task record only after complete success.
 The fixed profile and local Snakemake graph live under
 [`workflow/`](../../../../workflow/README.md).
 
-B4 supplies the internal lifecycle authorities used by the B5 public adapter:
+The public control surface uses these internal lifecycle authorities:
 
 - `lifecycle.run_attempt(...)` owns serialization, locks, attempts, receipts,
   processes, recovery policy, and state transitions while consuming admitted
@@ -322,7 +337,7 @@ latter is an internal engine-admission flag used only after EMRYS independently
 proves that every entered scope is verified and every remaining scope never
 crossed producer entry. It never unlocks, cleans metadata, forces work, or
 invokes owner recovery.
-Blocked attempt receipts are deliberately not resumable in B4; an explicit
+Blocked attempt receipts are deliberately not resumable; an explicit
 future reconciliation record is required to turn historical ambiguity into a
 safe automatic boundary. A pre-attempt establishment failure retains its owned
 lock under `locks/released-<workflow-attempt-id>-run-lock.json`; inspection
@@ -340,15 +355,21 @@ SIGKILL, power loss, and descendants that deliberately escape the delegated
 session/process group remain outside automatic signal recovery.
 
 The adjacent neutral [machine contracts](../../contracts/orchestration/README.md)
-define the temporary Project-adapter request schema, profile, successor Analysis/Execution-Plan/Run or historical
-normalized execution, lock, attempt, receipt,
+define project-v1, the fixed profile, successor Analysis/Execution-Plan/Run or
+historical normalized execution, lock, Attempt, receipt,
 task-start/task-attempt/verified-task, and reporting-ledger record shapes. No
-automatic owner-recovery mechanism is implemented. B5 materializes only the
-fixed source-checkout profile and public owner commands. B6 adds Project and
-manifest initialization plus a clean fresh-clone no-science E2E covering
+automatic owner-recovery mechanism is implemented. Materialization uses only
+the fixed source-checkout profile and public owner commands. Request-v3 remains a
+private compatibility schema used only to re-admit exact historical Runs. New
+and historical Attempts retain the exact `emrys.workflow-attempt.v1` shape and
+its `attempts/<attempt-id>/request.yaml` source snapshot; those evidence names
+do not make request-v3 a public input. Project and manifest initialization plus
+the clean fresh-clone no-science E2E cover
 readiness, no-write planning, separate clean success, controlled
 between-task failure, byte-preserving resume, inspection, reporting, and
 completed-run refusal. The E2E supplies explicit repository-only collaborators;
-the shipped command has no fake mode or engine escape hatch. Real-tool, VM,
-SLURM, CSU, scientific-review, and biological evidence remain unclaimed.
+the shipped command has no fake mode or engine escape hatch. Hosted
+real-synthetic direct and disposable single-node Slurm success is recorded
+separately; CSU/site, multi-node, production-data, scientific-review, and
+biological evidence remain unclaimed.
 See [`CONTRACT.md`](CONTRACT.md) for the exact boundary.

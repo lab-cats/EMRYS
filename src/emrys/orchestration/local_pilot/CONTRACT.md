@@ -6,7 +6,7 @@
 one absent external root beneath a canonical writable/searchable parent. It
 validates supplied strict manifests and referenced data, records the manifests'
 admitted absolute paths without copying inputs, creates mode-`0700` `runs/`,
-`logs/`, and `runtime/`, publishes generated request-v3 `project.yaml` last,
+`logs/`, and `runtime/`, publishes generated `emrys.project.v1` `project.yaml` last,
 then re-admits exact tree types, modes, sizes, and bytes before full Project
 validation. No execution/runtime profile, Results, Run, Attempt, or log is
 created. Failure
@@ -16,7 +16,8 @@ The canonical `project.yaml` parent is the Project root derived by ordinary
 run and Doctor routes. Results exist only under `runs/<run-id>/results`.
 
 `emrys validate project --project FILE` calls the canonical Project admission
-with the tracked `emrys.profile.local_cmh.v2` contract, then reuses
+with the tracked `emrys.profile.local_cmh.v2` contract, validates every named
+Analysis, then reuses
 the reference-contig and GTF-to-BED12 owners to require nonempty FASTA contigs,
 usable exon transcript models, matching contig names, in-bounds transcript
 coordinates, and in-bounds `region` or `regions_file` partition selectors. It
@@ -97,19 +98,27 @@ points are retired; the private whole-Run batch bootstrap remains.
 ## Project admission and execution
 
 `normalization.admit_project` is a read-only public Python boundary. It
+admits the mutable authored file into an immutable `ProjectAdmission` snapshot,
 uses the closed safe YAML loader, resolves paths against the Project directory,
 reuses the public Step `08`/`09` manifest contracts, requires at least two
 exact control/treatment strata, requires each paired FASTQ row to use one
 matching compression mode, snapshots declared regular non-symlink inputs, and
-validates the canonical execution contract. Duplicate keys, custom tags, merge
+validates the closed project-v1 contract. Shared Dataset and Reference inputs
+are admitted once; every named Analysis separately binds its partition
+semantics and policy, with repeated partition-manifest spellings cached during
+that admission. Exact Project and manifest bytes remain parse/provenance
+snapshots; canonical normalized scientific content is the order-neutral
+Analysis identity authority. Duplicate keys, custom tags, merge
 keys, globs, templates, environment/home interpolation, unknown fields, and
-ambiguous paths fail admission. Project formatting and the optional human
-label do not enter Analysis identity. `ProjectAdmission` retains immutable
-source, canonical profile, and canonical construction bytes plus the canonical
-Analysis revision. Its definition, profile, and construction mappings are fresh
-disposable views and cannot mutate identity or historical compatibility bytes.
+ambiguous paths fail admission. The Analysis mapping key is a human selector
+and retained Attempt metadata; it does not enter the content-derived Analysis
+identity. `ProjectAdmission` retains the immutable admitted source snapshot and all
+immutable Analysis revisions; `ProjectAdmission.select_analysis()` selects by
+name and permits omission only when exactly one Analysis exists. Active Project
+commands reject request-v3. Its schema and admission path remain private solely
+for exact historical resume compatibility.
 
-`doctor.inspect_local_pilot` is the read-only internal B5 setup capability used
+`doctor.inspect_local_pilot` is the read-only internal readiness capability used
 by Run and resume. The top-level `emrys doctor` route composes it into one
 Project-aware readiness and explicit managed-repair boundary. They derive
 `<project-root>/runtime/runtime.tsv`, reuse Project admission plus the runtime-
@@ -155,8 +164,12 @@ canonical package-tree binding agree on its target.
 The grouped `emrys run`, `emrys resume`, `emrys report`, and
 `emrys inspect run`
 routes are the supported control surface; their planning helpers are private
-implementation details. `run` and `resume` require the controlled Python
-invocation. With direct placement, a terminal builds and prints one frozen Run
+implementation details. Their public model is
+`Project -> named Analysis -> immutable Run -> Results`. `run --analysis NAME`
+selects exactly one Analysis, with omission allowed only for a single-Analysis
+Project. Resume takes an existing Run root and cannot change that selection.
+`run` and `resume` require the controlled Python invocation. With direct
+placement, a terminal builds and prints one frozen Run
 plan, asks once, and executes that same object only after confirmation. Slurm
 placement instead confirms the frozen submission plan described above; Run
 planning occurs later inside the allocation. Refusal, EOF, or interruption
@@ -357,7 +370,7 @@ failure may remain in an earlier attempt. Independent reporting state does not
 gate scientific resume. Its fixed Snakemake arguments add
 `--rerun-triggers input --ignore-incomplete`; this accepts already-admitted
 EMRYS evidence despite engine metadata, but does not rerun or repair incomplete
-owner state. Blocked attempts remain blocked: B4 defines no reconciliation
+owner state. Blocked attempts remain blocked: the lifecycle defines no reconciliation
 record that can supersede their historical ambiguity.
 
 The contract package owns JSON parsing, validation, and canonical bytes;
@@ -411,10 +424,17 @@ than today's producer registry, while the current checkout acts only as the
 reader; current-profile validation and all publication paths retain strict
 current-checkout attestation.
 
-The B6 proof extends the B5 adapter evidence to a clean fresh clone with the
-locked workflow environment. It exercises the top-level parser using explicit
-repository-only no-science collaborators and leaves the shipped command default
-unchanged, with no fake mode or raw-engine option. Separate clean-success and
+Every new or historical Attempt retains the exact
+`emrys.workflow-attempt.v1` record shape. Its
+`attempts/<workflow-attempt-id>/request.yaml` member stores the exact admitted
+Project source under the established historical evidence name; the record's
+request-era field names likewise remain evidence metadata rather than a public
+request-v3 interface.
+
+The clean fresh-clone proof exercises public control with the locked workflow
+environment and explicit repository-only no-science collaborators. It leaves
+the shipped command default unchanged, with no fake mode or raw-engine option.
+Separate clean-success and
 controlled between-task failure/resume paths cover all 35 owner jobs, the three
 downstream reporting transactions, byte-preserving reuse, final inspection, and
 completed-run refusal. These are local structural/no-science workflow facts,

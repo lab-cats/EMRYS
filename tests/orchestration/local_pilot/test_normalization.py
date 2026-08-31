@@ -16,78 +16,75 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 LOCAL_PROFILE = REPO_ROOT / "workflow/contracts/local_cmh_v2.json"
 
 
-def test_admitted_intake_views_cannot_mutate_analysis_authority(
+def test_analysis_revision_is_path_and_name_neutral(
     tmp_path: Path,
 ) -> None:
-    request = fixture.build(tmp_path / "request-root")
-    normalized = admit_project(request, fixture.profile())
-    expected_request = normalized.definition
-    expected_profile = normalized.profile
-    expected_projection = normalized.construction
-    expected_request_sha256 = normalized.source_sha256
-    expected_analysis_id = normalized.analysis.analysis_revision_id
-    expected_analysis_bytes = normalized.analysis.canonical_bytes
-    _, expected_historical_bytes = normalized.historical_execution_v1()
-
-    normalized.definition["analysis"]["min_sample_dp"] = 999
-    normalized.profile["profile_id"] = "mutated"
-    normalized.construction["analysis"]["cohort_id"] = "mutated"
-
-    assert normalized.definition == expected_request
-    assert normalized.profile == expected_profile
-    assert normalized.construction == expected_projection
-    assert normalized.source_sha256 == expected_request_sha256
-    assert normalized.analysis.analysis_revision_id == expected_analysis_id
-    assert normalized.analysis.canonical_bytes == expected_analysis_bytes
-    assert normalized.historical_execution_v1()[1] == expected_historical_bytes
-
-
-def test_analysis_revision_is_deterministic_path_neutral_and_label_independent(
-    tmp_path: Path,
-) -> None:
-    request = fixture.build(tmp_path / "request-root")
-    first = admit_project(request, fixture.profile())
+    project_path = fixture.build(tmp_path / "project-root")
+    first_project = admit_project(project_path, fixture.profile())
+    first = first_project.select_analysis()
     elsewhere = tmp_path / "elsewhere"
     elsewhere.mkdir()
     previous = Path.cwd()
     try:
         os.chdir(elsewhere)
-        second = admit_project(request, fixture.profile())
+        second = admit_project(project_path, fixture.profile()).select_analysis()
     finally:
         os.chdir(previous)
 
     relocated = admit_project(
-        fixture.build(tmp_path / "relocated-request-root"),
+        fixture.build(tmp_path / "relocated-project-root"),
         fixture.profile(),
-    )
-    assert first.analysis.analysis_revision_id == (second.analysis.analysis_revision_id)
-    assert first.analysis.canonical_bytes == (second.analysis.canonical_bytes)
-    assert first.analysis.analysis_revision_id == (
-        relocated.analysis.analysis_revision_id
-    )
-    assert first.analysis.canonical_bytes == (relocated.analysis.canonical_bytes)
-    assert first.construction_bytes != relocated.construction_bytes
-    original_request_hash = first.source_sha256
-    request.write_text(
-        request.read_text(encoding="utf-8")
-        .replace("label: first label\n", "label: reformatted label\n")
-        .replace("schema_version:", "schema_version: "),
+    ).select_analysis()
+    assert first.revision.canonical_bytes == second.revision.canonical_bytes
+    assert first.revision.canonical_bytes == relocated.revision.canonical_bytes
+
+    original_project_hash = first_project.source_sha256
+    project_path.write_text(
+        project_path.read_text(encoding="utf-8").replace(
+            "  primary:\n", "  renamed:\n"
+        ),
         encoding="utf-8",
     )
-    relabeled = admit_project(request, fixture.profile())
-    assert relabeled.source_sha256 != original_request_hash
-    assert relabeled.analysis.analysis_revision_id == (
-        first.analysis.analysis_revision_id
+    renamed_project = admit_project(project_path, fixture.profile())
+    renamed = renamed_project.select_analysis()
+    assert renamed.name == "renamed"
+    assert renamed_project.source_sha256 != original_project_hash
+    assert renamed.revision.canonical_bytes == first.revision.canonical_bytes
+    assert (
+        renamed_project.select_analysis(
+            "primary",
+            expected_revision=first.revision,
+        ).name
+        == "renamed"
     )
-    assert relabeled.analysis.canonical_bytes == (first.analysis.canonical_bytes)
-    assert relabeled.construction_bytes == first.construction_bytes
-    assert "label" not in first.analysis.canonical_bytes.decode("utf-8")
-    contracts.validate_record("application-model", first.analysis.record)
+    contracts.validate_record("application-model", first.revision.record)
 
-    historical, historical_bytes = first.historical_execution_v1()
-    contracts.validate_record("execution", historical, profile=fixture.profile())
-    assert historical_bytes == contracts.canonical_json_bytes(historical)
-    assert historical["run_id"] == (f"run-{historical['identity_envelope_sha256']}")
+
+def test_named_analysis_selection_is_closed_and_content_bound(tmp_path: Path) -> None:
+    project_path = fixture.build(tmp_path / "project-root")
+    definition = project_path.read_text(encoding="utf-8")
+    second = definition.split("analyses:\n", 1)[1].replace(
+        "  primary:\n", "  sensitivity:\n", 1
+    ).replace("    min_sample_dp: 1\n", "    min_sample_dp: 2\n", 1)
+    project_path.write_text(definition + second, encoding="utf-8")
+
+    project = admit_project(project_path, fixture.profile())
+    assert tuple(analysis.name for analysis in project.analyses) == (
+        "primary",
+        "sensitivity",
+    )
+    with pytest.raises(contracts.ContractValidationError, match="--analysis"):
+        project.select_analysis()
+    with pytest.raises(contracts.ContractValidationError, match="Unknown Analysis"):
+        project.select_analysis("missing")
+    primary = project.select_analysis("primary")
+    sensitivity = project.select_analysis("sensitivity")
+    assert primary.revision.canonical_bytes != sensitivity.revision.canonical_bytes
+
+    primary.workflow_inputs["analysis"]["cohort_id"] = "mutated"
+    primary.profile["profile_id"] = "mutated"
+    assert project.select_analysis("primary").revision == primary.revision
+    assert primary.workflow_inputs["analysis"]["cohort_id"].startswith("scope-cohort-")
 
 
 def test_regions_file_resolves_from_nested_partition_manifest(
@@ -106,15 +103,15 @@ def test_regions_file_resolves_from_nested_partition_manifest(
     selector.write_text("chrSynthetic\t0\t100\n", encoding="utf-8")
     request.write_text(
         request.read_text(encoding="utf-8").replace(
-            "partition_manifest: partitions.tsv",
-            "partition_manifest: manifests/partitions.tsv",
+            "    partitions: partitions.tsv",
+            "    partitions: manifests/partitions.tsv",
         ),
         encoding="utf-8",
     )
 
-    row = admit_project(request, fixture.profile()).construction["partitions"]["rows"][
-        0
-    ]
+    row = admit_project(request, fixture.profile()).select_analysis().workflow_inputs[
+        "partitions"
+    ]["rows"][0]
 
     assert row["selector_value"] == str(selector)
     assert row["selector_file"] == {
@@ -124,30 +121,6 @@ def test_regions_file_resolves_from_nested_partition_manifest(
     }
 
 
-def test_execution_profile_does_not_change_analysis_revision(
-    tmp_path: Path,
-) -> None:
-    request = fixture.build(tmp_path / "request-root")
-    baseline = admit_project(request, fixture.profile())
-    execution_profile = request.parent / "emrys.execution.yaml"
-    execution_profile.write_text(
-        execution_profile.read_text(encoding="utf-8")
-        .replace("  workflow_cores: 1\n", "  workflow_cores: 4\n")
-        .replace('    "00a": 1\n', '    "00a": 4\n')
-        .replace('    "01": 1\n', '    "01": 4\n'),
-        encoding="utf-8",
-    )
-
-    tuned = admit_project(request, fixture.profile())
-
-    assert tuned.source_sha256 == baseline.source_sha256
-    assert tuned.analysis.analysis_revision_id == (
-        baseline.analysis.analysis_revision_id
-    )
-    assert tuned.analysis.canonical_bytes == (baseline.analysis.canonical_bytes)
-    assert tuned.construction_bytes == baseline.construction_bytes
-
-
 def test_bound_input_change_creates_a_new_analysis_revision(tmp_path: Path) -> None:
     request = fixture.build(tmp_path / "request-root")
     before = admit_project(request, fixture.profile())
@@ -155,8 +128,7 @@ def test_bound_input_change_creates_a_new_analysis_revision(tmp_path: Path) -> N
     changed.write_text("@changed/1\nGGGG\n+\nIIII\n", encoding="utf-8")
     after = admit_project(request, fixture.profile())
 
-    assert after.analysis.analysis_revision_id != (before.analysis.analysis_revision_id)
-    assert after.analysis.canonical_bytes != (before.analysis.canonical_bytes)
+    assert after.select_analysis().revision != before.select_analysis().revision
 
 
 def test_large_input_identities_are_streamed_without_byte_capture(
@@ -181,9 +153,9 @@ def test_large_input_identities_are_streamed_without_byte_capture(
     assert captured_labels == [
         "Project definition",
         "Sample manifest",
-        "Partition manifest",
+        "Analysis primary partition manifest",
     ]
-    source = normalized.construction
+    source = normalized.select_analysis().workflow_inputs
     reference = source["reference"]
     for key in ("fasta", "gtf"):
         path = Path(reference[key]["path"])
@@ -245,10 +217,7 @@ def test_admission_rejects_deterministic_pathname_replacement_after_open(
 
     monkeypatch.setattr(normalization.os, "open", open_then_replace)
 
-    expected = (
-        "must not be a symlink" if replacement_kind == "symlink" else "pathname changed"
-    )
-    with pytest.raises(contracts.ContractValidationError, match=expected):
+    with pytest.raises(contracts.ContractValidationError, match="pathname changed"):
         admit_project(request, fixture.profile())
 
 
@@ -306,7 +275,7 @@ def test_manifest_parsing_uses_admitted_bytes_across_an_aba_path_swap(
     normalized = admit_project(request, fixture.profile())
 
     assert state == {"opens": 1, "path_checks": 2, "swapped": True}
-    source = normalized.construction
+    source = normalized.select_analysis().workflow_inputs
     if manifest_name == "samples.tsv":
         assert [row["sample_id"] for row in source["samples"]["rows"]] == [
             "EV_1",
@@ -327,31 +296,34 @@ def test_absent_optional_background_normalizes_to_explicit_null(
     explicit = admit_project(request, fixture.profile())
     request.write_text(
         request.read_text(encoding="utf-8").replace(
-            "  background_condition: null\n", ""
+            "    background_condition: null\n", ""
         ),
         encoding="utf-8",
     )
     omitted = admit_project(request, fixture.profile())
 
-    assert omitted.analysis.analysis_revision_id == (
-        explicit.analysis.analysis_revision_id
+    assert omitted.select_analysis().revision == explicit.select_analysis().revision
+    assert (
+        omitted.select_analysis().workflow_inputs["analysis"]["policy"][
+            "background_condition"
+        ]
+        is None
     )
-    assert omitted.construction["analysis"]["policy"]["background_condition"] is None
 
 
 def test_declared_background_requires_at_least_one_sample(tmp_path: Path) -> None:
     request = fixture.build(tmp_path / "request-root")
     request.write_text(
         request.read_text(encoding="utf-8").replace(
-            "  background_condition: null",
-            "  background_condition: no_dox",
+            "    background_condition: null",
+            "    background_condition: no_dox",
         ),
         encoding="utf-8",
     )
 
     with pytest.raises(
         contracts.ContractValidationError,
-        match="background_condition has no sample rows",
+        match="policy conditions must exist",
     ):
         admit_project(request, fixture.profile())
 
@@ -374,8 +346,8 @@ def test_normalization_rejects_step09_threshold_boundaries(
     request = fixture.build(tmp_path / "request-root")
     request.write_text(
         request.read_text(encoding="utf-8").replace(
-            f"  {field}: {accepted}\n",
-            f"  {field}: {rejected}\n",
+            f"    {field}: {accepted}\n",
+            f"    {field}: {rejected}\n",
         ),
         encoding="utf-8",
     )
@@ -388,14 +360,14 @@ def test_normalization_rejects_step09_threshold_boundaries(
     ("replacement", "message"),
     [
         (
-            "schema_version: emrys.request.v3\nschema_version: emrys.request.v3\n",
+            "schema_version: emrys.project.v1\nschema_version: emrys.project.v1\n",
             "Duplicate YAML mapping key",
         ),
         (
             "defaults: &defaults\n  id: synthetic_ref\nreference:\n  <<: *defaults\n",
             "merge keys are not allowed",
         ),
-        ("schema_version: !custom emrys.request.v3\n", "could not determine"),
+        ("schema_version: !custom emrys.project.v1\n", "could not determine"),
     ],
 )
 def test_yaml_extensions_are_rejected(
@@ -482,7 +454,7 @@ def test_path_profile_is_parsed_from_strict_admitted_json_bytes(
 
     normalized = admit_project(request, profile_path)
 
-    assert normalized.profile == fixture.profile()
+    assert normalized.select_analysis().profile == fixture.profile()
 
 
 def test_path_profile_rejects_duplicate_json_keys(tmp_path: Path) -> None:
@@ -504,9 +476,7 @@ def test_symlinked_fastq_is_rejected(tmp_path: Path) -> None:
     source.rename(target)
     source.symlink_to(target.name)
 
-    with pytest.raises(
-        contracts.ContractValidationError, match="must not be a symlink"
-    ):
+    with pytest.raises(contracts.ContractValidationError, match="non-symlink"):
         admit_project(request, fixture.profile())
 
 
@@ -518,6 +488,6 @@ def test_incomplete_paired_strata_are_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(
         contracts.ContractValidationError,
-        match="exactly one control and one treatment",
+        match="exactly one control and treatment",
     ):
         admit_project(request, fixture.profile())

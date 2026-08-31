@@ -54,9 +54,6 @@ class DatasetProfile:
 
     name: str
     fixture_id: str
-    reference_id: str
-    cohort_id: str
-    analysis_id: str
     seed: int
     contig_length: int
     pair_count_per_library: int
@@ -78,9 +75,6 @@ DATASET_PROFILES: Mapping[str, DatasetProfile] = MappingProxyType(
         DEFAULT_DATASET_PROFILE: DatasetProfile(
             name=DEFAULT_DATASET_PROFILE,
             fixture_id="deterministic-science-smoke-v1",
-            reference_id="synthetic-smoke-v1",
-            cohort_id="synthetic-smoke-v1",
-            analysis_id="synthetic-smoke-cmh-v1",
             seed=20260814,
             contig_length=100_000,
             pair_count_per_library=CORE_PAIR_COUNT_PER_LIBRARY,
@@ -92,9 +86,6 @@ DATASET_PROFILES: Mapping[str, DatasetProfile] = MappingProxyType(
         PRODUCTION_LIKE_DATASET_PROFILE: DatasetProfile(
             name=PRODUCTION_LIKE_DATASET_PROFILE,
             fixture_id="deterministic-production-like-v1",
-            reference_id="synthetic-production-like-v1",
-            cohort_id="synthetic-production-like-v1",
-            analysis_id="synthetic-production-like-cmh-v1",
             seed=20260814,
             contig_length=5_000_000,
             pair_count_per_library=100_000,
@@ -468,16 +459,13 @@ def _sample_manifest() -> bytes:
 def _project_definition(profile: DatasetProfile = DEFAULT_PROFILE) -> bytes:
     return _project_yaml(
         {
-            "label": profile.fixture_id,
+            "analysis_name": "primary",
             "sample_manifest": Path("samples.tsv"),
             "partition_manifest": Path("partitions.tsv"),
-            "reference_id": profile.reference_id,
             "reference_fasta": Path("inputs/reference/reference.fa"),
             "reference_gtf": Path("inputs/reference/genes.gtf"),
             "sjdb_overhang": READ_LENGTH - 1,
             "genome_sa_index_nbases": profile.genome_sa_index_nbases,
-            "cohort_id": profile.cohort_id,
-            "analysis_id": profile.analysis_id,
             "control_condition": "control",
             "treatment_condition": "treatment",
             "target_change": "A>G",

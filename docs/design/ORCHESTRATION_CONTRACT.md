@@ -1,23 +1,19 @@
 # Local-pilot orchestration contract
 
-This document is the binding architecture for EMRYS's first local Snakemake
-pilot. B2 implements its closed machine schemas, read-only Project admission,
-reporting projection, and semantic all-pass checker. B3 implements the fixed
-local-CMH profile, static fourteen-scientific-owner-rule Snakemake graph, local executor profile,
-and generic task boundary that publishes task attempts and content-bound
-verified records. B4 implements the three downstream reporting transactions and the
-internal durable producer-entry, immutable-attempt, terminal-receipt,
-between-task-resume, and
-read-only-inspection APIs for an already materialized run. B5 implements the
-read-only-by-default Project Doctor with separately authorized managed-runtime
-repair, fixed-profile production materializer, and public dry-run-
-first `run`, `resume`, `report`, and `inspect run` adapter. No real science-
-tool execution has been proven. Current
-scientific behavior remains with the
-applicable functional owner, and exact semantic identities and artifact edges remain in
+This document is the binding architecture for EMRYS's current local Snakemake
+backend. The orchestration contract package owns closed machine schemas,
+canonical identities, reporting projection, and semantic all-pass admission.
+The fixed local-CMH profile and static fourteen-scientific-owner graph delegate
+each task through one boundary that publishes task-attempt and content-bound
+verified records. Lifecycle and reporting owners publish durable entry,
+Attempt, receipt, reporting, recovery, and read-only inspection evidence.
+Project-aware Doctor, fixed-profile materialization, and the dry-run-first
+`run`, `resume`, `report`, and `inspect run` commands form the public control
+surface. Scientific behavior remains with the applicable functional owner, and
+exact semantic identities and artifact edges remain in
 [`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md).
 
-B4 assumes a single-user, cooperative POSIX local workspace with working
+The transaction layer assumes a single-user, cooperative POSIX local workspace with working
 advisory `flock` and same-filesystem hard links. It rejects admitted symlink
 components, observed leaf substitution, late leaf collisions, unstable bytes,
 and open rosters. All sanctioned lifecycle writers hold the acquisition mutex.
@@ -40,10 +36,11 @@ control plane remain later decisions.
 
 The local pilot has one explicit path:
 
-1. A scientist authors one YAML Project definition that references ordered TSV manifests
-   and stationary FASTQ/reference inputs.
-2. EMRYS validates and admits those inputs, then binds one immutable
-   Analysis revision and one immutable Execution Plan.
+1. A scientist authors one YAML Project definition containing a shared Dataset
+   and Reference plus one or more named Analyses that reference ordered TSV
+   manifests and stationary FASTQ/reference inputs.
+2. EMRYS validates every named Analysis. `run` selects exactly one, then binds
+   its immutable Analysis revision and one immutable Execution Plan.
 3. A canonical Run binding commits those authorities and determines the
    successor `run_id`; existing `emrys.execution.v1` Runs retain their exact
    historical identity and bytes.
@@ -78,7 +75,7 @@ automatic recovery subsystem in version 1.
 | Scientific owner identity and direct artifact edges | [`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md) | Snakemake rule names, filenames, numeric aliases, and narrative order |
 | Producer, validator, output, transaction, and recovery behavior | Applicable owner `README.md` and `CONTRACT.md` | Workflow rules and lifecycle records |
 | Scientist intent | Admitted YAML Project definition plus referenced ordered TSV manifests | Caller working directory, environment discovery, filename inference, and globs |
-| Immutable local-run identity | Successor Analysis-revision and Execution-Plan digests, including the computational resource declaration, committed by the canonical Run binding; exact `emrys.execution.v1` bytes for historical Runs | Project formatting, human label, Attempt placement/realization, workspace, host, reporting, scheduler identity, or Snakemake state |
+| Immutable local-run identity | Successor Analysis-revision and Execution-Plan digests, including the computational resource declaration, committed by the canonical Run binding; exact `emrys.execution.v1` bytes for historical Runs | Project formatting, human Analysis name, Attempt placement/realization, workspace, host, reporting, scheduler identity, or Snakemake state |
 | Fixed pilot membership and scope expansion | Versioned local CMH workflow profile | A generic registry or automatic owner discovery |
 | Scheduling | Attempt-local direct or whole-Run Slurm placement around Snakemake's local executor and static rule graph | A second scientific backend, distributed execution, scientific completion, recovery authority, or evidence promotion |
 | Reusable task completion | EMRYS verified task record after owner validation and semantic all-pass gating | Process exit alone, output presence, timestamps, or `.snakemake/` metadata |
@@ -121,46 +118,48 @@ execution is outside this version.
 
 ### Authored inputs
 
-The authored YAML Project definition carries only scientific intent and explicit references:
+The authored `emrys.project.v1` YAML carries only scientific intent and
+explicit references:
 
-- temporary adapter schema version and an optional human label;
-- fixed workflow profile identity;
-- sample-manifest and partition-manifest paths;
-- reference FASTA and GTF paths;
-- cohort and primary-analysis identities;
-- the complete inline Step `09` analysis policy.
+- one shared sample manifest;
+- one shared reference FASTA, GTF, and STAR-index policy; and
+- one or more human-named Analyses, each with its partition manifest and
+  complete inline Step `09` analysis policy.
 
-The current Project adapter uses this closed version-3 top-level shape, encoded
-by the retained request schema without adding discovery or extension fields:
+The public shape is:
 
 ```yaml
-schema_version: emrys.request.v3
-label: optional-human-label
-profile: emrys.profile.local_cmh.v2
-sample_manifest: samples.tsv
-partition_manifest: partitions.tsv
+schema_version: emrys.project.v1
+dataset:
+  samples: samples.tsv
 reference:
-  id: declared-reference-id
   fasta: reference/genome.fa
   gtf: reference/genome.gtf
   star_index:
     sjdb_overhang: 149
     genome_sa_index_nbases: 14
-cohort_id: declared-cohort-id
-analysis:
-  id: declared-analysis-id
-  control_condition: EV
-  treatment_condition: PUM1
-  rna_ref: A
-  rna_alt: G
-  min_sample_dp: 1
-  mean_dp_threshold: 50
-  fdr_threshold: 0.05
-  common_or_threshold: 1.2
-  absolute_difference_threshold: 0.005
-  background_condition: null
-  background_max_fraction: 0.01
+analyses:
+  primary:
+    partitions: partitions.tsv
+    control_condition: EV
+    treatment_condition: PUM1
+    target_change: A>G
+    min_sample_dp: 1
+    mean_dp_threshold: 50
+    fdr_threshold: 0.05
+    common_or_threshold: 1.2
+    absolute_difference_threshold: 0.005
+    background_condition: null
+    background_max_fraction: 0.01
 ```
+
+Project validation, runtime discovery, and Doctor admit all named Analyses.
+`emrys run --analysis NAME` selects one; omission is valid only when exactly
+one exists. The mapping name is human selection metadata, not immutable
+Analysis identity. Shared Dataset and Reference inputs are admitted once, and
+repeated partition-manifest spellings are reused within the Project admission.
+The retained request-v3 schema is private compatibility authority only for
+exact historical resume; active Project commands reject it.
 
 Execution uses one optional explicit `emrys.execution-profile.v1` fragment.
 The built-in base supplies conservative resources and direct placement. The
@@ -175,7 +174,7 @@ and therefore Run identity. Profile source, reporting memory, placement,
 observed allocation, and scheduler job ID remain Attempt context. Changing
 placement alone does not create a different Run.
 
-Every field except `label` and `background_condition` is required. Unknown
+Every project-v1 field except `background_condition` is required. Unknown
 fields fail admission. The implementation may expose a schema-preserving
 starter, but it may not supply hidden scientific defaults during admission;
 the Project definition records the selected policy explicitly.
@@ -206,19 +205,20 @@ Project admission must:
 Content hashing is the minimum integrity needed for immutable identity and safe
 resume. It is not a general acquisition or provenance program.
 
-### Run authority and historical execution contract
+### Run authority and historical execution compatibility
 
-The canonical JSON contract contains at least:
+A successor Run has exactly three canonical authority records:
 
-| Component | Bound content |
+| Record | Bound content |
 | --- | --- |
-| Contract | Schema identifier and version |
-| Profile | Profile ID, version, and digest that binds its rule/owner-contract projection |
-| Samples | Ordered normalized rows, resolved mate paths, sizes, and content hashes |
-| Partitions | Ordered normalized selectors and manifest hash |
-| Reference | Resolved FASTA/GTF paths, sizes, hashes, declared reference identity, and explicit STAR-index parameters |
-| Analysis | Cohort ID, primary-analysis ID, and complete policy digest |
-| Identity envelope | The exact versioned identity fields above and their canonical digest |
+| Analysis revision | Canonical, order-neutral sample and partition semantics; referenced-content hashes; and complete scientific policy |
+| Execution Plan | Functional specification, implementation and tool identities, backend semantics, STAR-index policy, and pre-allocation computational-resource declaration |
+| Run binding | The domain-separated binding of that Analysis revision to that Execution Plan |
+
+Project formatting, Analysis names, authored locators, raw manifest bytes and
+ordering, file sizes, and admission-time snapshots remain source or Attempt
+provenance. They do not enter successor Run identity. Exact
+`emrys.execution.v1` bytes remain authority only for historical Runs.
 
 New-format Runs persist canonical `analysis.json`, `execution-plan.json`, and
 `run.json`; the Run binding is committed last and is the sole successor Run
@@ -234,11 +234,11 @@ historical Attempts.
 Historical `normalized.json` contains deterministic normalized run content and
 its explicit identity envelope and remains byte-for-byte readable and
 resumable. Non-identity admission metadata—the original
-Project-source hash and bytes, human label, authored path strings, resolved
+Project-source hash and bytes, selected human Analysis name, authored path strings, resolved
 reporting-resource policy and execution-profile source provenance, placement,
 observed outer allocation, and normalization tool identity—belongs to the
 immutable workflow-attempt/config records. Reformatting an otherwise
-equivalent Project definition, changing its label, or changing placement therefore does
+equivalent Project definition, renaming an Analysis, or changing placement therefore does
 not create a new scientific Run or demand different bytes at the same
 canonical contract path.
 
@@ -246,7 +246,7 @@ Canonical authorities use UTF-8 JSON, sorted object keys, no insignificant
 whitespace, no NaN/infinity, and SHA-256. Successor identity uses the
 domain-separated Run composition over canonical Analysis-revision and
 Execution-Plan digests; historical identity retains its existing envelope.
-The human label never selects or overwrites a Run.
+The human Analysis name selects intent but never identifies or overwrites a Run.
 
 Workspace, output root, source-checkout path and commit, placement, host,
 resource resolution, reporting resources, scratch, exact required-tool
@@ -286,15 +286,24 @@ attempt, config, dispatch, task-attempt, and verified-record identities therefor
 form one explicit chain; neither a pathname nor mutable Snakemake parameters can
 substitute for it.
 
+New and historical Runs both retain the exact
+`emrys.workflow-attempt.v1` record. Its request-era fields and the exact
+`attempts/<workflow-attempt-id>/request.yaml` source snapshot remain unchanged
+evidence metadata. For project-v1 that file contains the admitted Project
+bytes; neither its filename nor those field names make request-v3 public.
+
 On resume, a completed task keeps the exact predecessor dispatch reference
 already bound in its verified record; only pending tasks receive new-attempt
 dispatches. Changing producer, validator, input, output, or other dispatch
 semantics invalidates reuse instead of asking Snakemake to infer compatibility.
 
-The same identity envelope maps idempotently to the same Run. Non-identity
-admission metadata may differ without changing that mapping. A changed bound
-input, manifest order, reference, scientific policy, workflow-profile digest,
-or computational resource declaration creates a different Run.
+The same canonical Analysis revision and Execution Plan map idempotently to the
+same Run binding. Non-identity admission metadata may differ without changing
+that mapping. A changed bound input content, reference content, scientific
+policy, normalized workflow semantics, or computational resource declaration
+creates a different Run. Formatting and sample/partition row order are
+identity-neutral because admitted semantic rows are canonicalized before
+identity is derived.
 
 ## Reporting projection
 
@@ -393,7 +402,7 @@ The canonical `project.yaml` parent contains immutable run directories:
   products/native/               nonfinal native and validation outputs
   products/artifact-summary/     artifact index and run summary
   attempts/<workflow-attempt-id>/
-    request.yaml                 exact Project source; historical evidence name
+    request.yaml                 exact admitted source snapshot: project-v1 for current Runs, request-v3 for historical Runs
     attempt.json
     tasks/<machine-key>/<scope-id>/
       task-attempt.json
@@ -450,7 +459,7 @@ delegate re-admits its profile digest, UID, marker, and scheduler job ID before
 doctor, Run planning, or lifecycle mutation. It owns the single application
 log for the executing Attempt.
 
-The B5 adapter owns that exact planning and materialization boundary; direct
+The public control surface owns that exact planning and materialization boundary; direct
 manual Snakemake invocation is unsupported. `emrys doctor` is a distinct
 Project-aware readiness report that derives Project, input, storage, runtime,
 and execution status. Diagnosis, detail projection, help, preview, refusal,
@@ -700,7 +709,7 @@ readiness.
 
 ## Explicit deferrals
 
-B0 makes no decision or implementation commitment for:
+This contract makes no decision or implementation commitment for:
 
 - a distinct Slurm scientific backend, multi-node execution, local Linux VM,
   CSU portability proof, scheduler accounting integration, or cluster runs;

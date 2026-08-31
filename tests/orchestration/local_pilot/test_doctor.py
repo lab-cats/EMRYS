@@ -4,16 +4,14 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import sys
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 
 import pytest
 
-from emrys.contracts.orchestration.application_model import AnalysisRevision
 from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
     RuntimeInspection,
@@ -26,26 +24,19 @@ from emrys.libraries.application_logging import (
     LogLevel,
 )
 from emrys.orchestration.local_pilot import doctor
-from emrys.orchestration.local_pilot.normalization import ProjectAdmission
+from emrys.orchestration.local_pilot.normalization import (
+    ProjectAdmission,
+    admit_project,
+)
+from tests.orchestration.local_pilot import fixture
 
 
 def _project(tmp_path: Path) -> ProjectAdmission:
     root = tmp_path / "project"
-    root.mkdir()
+    source = fixture.build(root)
     for name in ("logs", "runs", "runtime"):
         (root / name).mkdir()
-    source = root / "project.yaml"
-    source.write_bytes(b"schema_version: emrys.request.v3\n")
-    fasta = root / "reference.fa"
-    fasta.write_bytes(b">chr1\nA\n")
-    construction = {"reference": {"fasta": {"path": str(fasta)}}}
-    return ProjectAdmission(
-        source_path=source,
-        source_bytes=source.read_bytes(),
-        _profile_bytes=b"{}",
-        analysis=cast(AnalysisRevision, object()),
-        construction_bytes=json.dumps(construction).encode(),
-    )
+    return admit_project(source, fixture.profile())
 
 
 def _result(
@@ -58,6 +49,7 @@ def _result(
     source_root.mkdir(exist_ok=True)
     return doctor.DoctorResult(
         project=project,
+        analysis=project.select_analysis(),
         source_root=source_root,
         source_commit="a" * 40,
         inspection=inspection,
@@ -115,15 +107,13 @@ def _plan(project: ProjectAdmission) -> doctor._RepairPlan:
     managed = project.source_path.parent / "runtime/managed"
     return doctor._RepairPlan(
         project=project,
+        analysis_name=project.select_analysis().name,
         source_root=project.source_path.parent / "source",
         source_commit="a" * 40,
         storage=None,
         runtime=doctor._ManagedRuntimePlan(
             source_root=project.source_path.parent / "source",
             managed_root=managed,
-            native=managed / ".pixi/envs/native",
-            r=managed / ".pixi/envs/r",
-            renv=managed / "renv/library",
             profile=project.source_path.parent / "runtime/runtime.tsv",
             uv=Path("/managers/uv"),
             pixi=Path("/managers/pixi"),
@@ -265,6 +255,7 @@ def test_absent_runtime_diagnosis_is_read_only_and_opens_no_log(
     )
     foundations = doctor.DoctorResult(
         project=project,
+        analysis=project.select_analysis(),
         source_root=project.source_path.parent / "source",
         source_commit="a" * 40,
         inspection=None,
@@ -326,6 +317,7 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
     status = doctor.doctor_from_args(
         argparse.Namespace(
             project=project.source_path,
+            analysis=None,
             log_level=None,
             log_root=None,
             repair=repair,
@@ -359,6 +351,7 @@ def test_diagnosis_resolves_shared_log_controls_without_opening_a_log(
     status = doctor.doctor_from_args(
         argparse.Namespace(
             project=project.source_path,
+            analysis=None,
             log_level="verbose",
             log_root=tmp_path / "selected-logs",
             repair=False,
@@ -415,6 +408,7 @@ def test_storage_only_repair_preserves_ready_site_runtime_and_skips_managers(
     )
     blocked = doctor.DoctorResult(
         project=project,
+        analysis=project.select_analysis(),
         source_root=project.source_path.parent / "source",
         source_commit="a" * 40,
         inspection=inspection,
@@ -461,7 +455,13 @@ def test_storage_only_repair_preserves_ready_site_runtime_and_skips_managers(
         assert profile.read_bytes() == b"site runtime\n"
         qualification.admit_direct_qualification(
             project.source_path.parent,
-            Path(str(project.construction["reference"]["fasta"]["path"])),
+            Path(
+                str(
+                    project.select_analysis().workflow_inputs["reference"]["fasta"][
+                        "path"
+                    ]
+                )
+            ),
         )
         return ready
 
@@ -655,7 +655,13 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
         _plan(project),
         storage=qualification.plan_direct_qualification(
             project.source_path.parent,
-            Path(str(project.construction["reference"]["fasta"]["path"])),
+            Path(
+                str(
+                    project.select_analysis().workflow_inputs["reference"]["fasta"][
+                        "path"
+                    ]
+                )
+            ),
         ),
     )
     runtime = _runtime(plan)
@@ -669,14 +675,20 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
             return real_subprocess_run(argv, **_kwargs)
         commands.append(tuple(argv))
         if Path(argv[0]).name == "pixi" and "install" in argv:
-            jar = runtime.native / "share/picard-slim-3.1.1-0/picard.jar"
+            jar = (
+                runtime.managed_root
+                / ".pixi/envs/native/share/picard-slim-3.1.1-0/picard.jar"
+            )
             jar.parent.mkdir(parents=True)
             jar.write_bytes(b"jar\n")
-            rscript = runtime.r / "bin/Rscript"
+            rscript = runtime.managed_root / ".pixi/envs/r/bin/Rscript"
             rscript.parent.mkdir(parents=True)
             rscript.write_bytes(b"rscript\n")
         if "run" in argv:
-            renv = runtime.renv / "R-4.6/x86_64-pc-linux-gnu/renv/DESCRIPTION"
+            renv = (
+                runtime.managed_root
+                / "renv/library/R-4.6/x86_64-pc-linux-gnu/renv/DESCRIPTION"
+            )
             renv.parent.mkdir(parents=True)
             renv.write_bytes(b"Package: renv\nVersion: 1.2.3\n")
         return SimpleNamespace(returncode=0)
@@ -835,6 +847,7 @@ def test_malformed_project_is_a_usage_error(
     status = doctor.doctor_from_args(
         argparse.Namespace(
             project=project.source_path,
+            analysis=None,
             log_level=None,
             log_root=None,
             repair=False,

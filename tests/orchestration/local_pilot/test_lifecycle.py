@@ -1924,7 +1924,7 @@ def test_authored_request_change_before_publication_fails_cleanly(
     built = _build_harness(tmp_path)
     built.mutate_request_on_first_admission = True
     identifier = str(built.request.attempt_record["workflow_attempt_id"])
-    with pytest.raises(lifecycle.LifecycleError, match="Authored request changed"):
+    with pytest.raises(lifecycle.LifecycleError, match="Authored source changed"):
         lifecycle.run_attempt(built.request, ops=built.ops())
     assert not (built.built.run_root / "attempts" / identifier).exists()
     assert not (built.built.run_root / "locks" / "run.lock").exists()

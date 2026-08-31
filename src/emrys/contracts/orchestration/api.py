@@ -14,11 +14,13 @@ from typing import Any
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError
 from referencing import Registry, Resource
+import yaml
 
 from emrys.libraries.source_authority import controlled_python_argv
 
 SCHEMA_ROOT = Path(__file__).resolve().parents[1] / "schemas" / "orchestration" / "v1"
 SCHEMA_NAMES = (
+    "project",
     "request",
     "resource-config",
     "execution-profile",
@@ -70,18 +72,42 @@ class ContractValidationError(ValueError):
     """Raised when an orchestration schema or record is invalid."""
 
 
+class _ClosedSafeLoader(yaml.SafeLoader):
+    pass
+
+
 _ATTEMPT_TIMESTAMP_RE = re.compile(
     r"^(?:workflow|task)-(?P<timestamp>[0-9]{8}T[0-9]{6}Z)-[0-9a-f]{32}$"
 )
 
 
-def _reject_duplicate_keys(pairs: Iterable[tuple[str, Any]]) -> dict[str, Any]:
+def _reject_duplicate_keys(
+    pairs: Iterable[tuple[str, Any]], kind: str = "JSON object"
+) -> dict[str, Any]:
     value: dict[str, Any] = {}
     for key, item in pairs:
         if key in value:
-            raise ContractValidationError(f"Duplicate JSON object key: {key}")
+            raise ContractValidationError(f"Duplicate {kind} key: {key}")
         value[key] = item
     return value
+
+
+def _closed_yaml_mapping(
+    loader: _ClosedSafeLoader,
+    node: yaml.MappingNode,
+) -> dict[str, Any]:
+    if any(key.tag == "tag:yaml.org,2002:merge" for key, _value in node.value):
+        raise ContractValidationError("YAML merge keys are not allowed")
+    pairs = loader.construct_pairs(node, deep=True)
+    if any(not isinstance(key, str) for key, _value in pairs):
+        raise ContractValidationError("Every YAML mapping key must be a string")
+    return _reject_duplicate_keys(pairs, "YAML mapping")
+
+
+_ClosedSafeLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    _closed_yaml_mapping,
+)
 
 
 def _reject_nonstandard_constant(value: str) -> None:
@@ -99,12 +125,22 @@ def load_json_object_bytes(data: bytes, label: str = "JSON record") -> dict[str,
             object_pairs_hook=_reject_duplicate_keys,
             parse_constant=_reject_nonstandard_constant,
         )
-    except ContractValidationError:
-        raise
     except (UnicodeError, json.JSONDecodeError) as exc:
         raise ContractValidationError(f"Could not parse {label}: {exc}") from exc
     if not isinstance(value, dict):
         raise ContractValidationError(f"{label} must contain one object")
+    return value
+
+
+def load_yaml_object_bytes(data: bytes, label: str = "YAML record") -> dict[str, Any]:
+    """Load one closed YAML mapping without merge or duplicate keys."""
+
+    try:
+        value = yaml.load(data.decode("utf-8"), Loader=_ClosedSafeLoader)
+    except (UnicodeError, yaml.YAMLError) as exc:
+        raise ContractValidationError(f"Could not parse {label}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise ContractValidationError(f"{label} must contain one mapping object")
     return value
 
 
@@ -388,12 +424,13 @@ def _validate_policy(record: Mapping[str, Any]) -> None:
         raise ContractValidationError(
             "Analysis background_condition must differ from primary conditions"
         )
-    if record["rna_ref"] == record["rna_alt"]:
+    ref, alt = (
+        str(record["target_change"]).split(">")
+        if "target_change" in record
+        else (record["rna_ref"], record["rna_alt"])
+    )
+    if ref == alt:
         raise ContractValidationError("Analysis rna_ref and rna_alt must differ")
-
-
-def _validate_request(record: Mapping[str, Any]) -> None:
-    _validate_policy(record["analysis"])
 
 
 def _validate_execution(record: Mapping[str, Any]) -> None:
@@ -751,8 +788,12 @@ def _validate_record_uncached(
     assert isinstance(record, Mapping)
     if name == "profile":
         _validate_profile(record)
-    elif name == "request":
-        _validate_request(record)
+    elif name in {"project", "request"}:
+        analyses = (
+            record["analyses"].values() if name == "project" else (record["analysis"],)
+        )
+        for analysis in analyses:
+            _validate_policy(analysis)
     elif name == "policy":
         _validate_policy(record)
     elif name == "execution":
@@ -841,6 +882,7 @@ __all__ = (
     "canonical_sha256",
     "load_json_object",
     "load_json_object_bytes",
+    "load_yaml_object_bytes",
     "load_record",
     "load_schema_registry",
     "schema_errors",

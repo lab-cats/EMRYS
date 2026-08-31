@@ -24,7 +24,7 @@ from emrys.libraries.source_authority import (
     SourceCheckoutAttestation,
     controlled_python_argv,
 )
-from emrys.orchestration.local_pilot import normalization, task
+from emrys.orchestration.local_pilot import task
 
 from tests.orchestration.local_pilot import fixture
 from tests.orchestration.local_pilot.fixtures import workflow as workflow_fixture
@@ -73,10 +73,10 @@ def _materialize_active_lock(run_root: Path, attempt_path: Path) -> Path:
 def _task_fixture(tmp_path: Path) -> TaskFixture:
     intake = tmp_path / "intake"
     intake.mkdir(parents=True)
-    request = fixture.build(intake)
     profile = fixture.profile()
-    normalized = normalization.admit_project(request, profile=profile)
-    execution, execution_bytes = normalized.historical_execution_v1()
+    _request, execution, execution_bytes = fixture.build_legacy_execution(
+        intake, profile
+    )
 
     run_root = tmp_path / "run"
     contract = run_root / "contract"

@@ -20,11 +20,11 @@ from tests.orchestration.local_pilot.fixtures import workflow
 def with_owner_doubles(plan: AttemptPlan) -> AttemptPlan:
     """Replace only owner command effects in an otherwise unchanged plan."""
 
-    source = materialization._construction_source(plan.run)
+    source = materialization._workflow_inputs(plan.run)
     reporting = build_reporting_bundle(
         source,
-        plan.run.project.profile,
-        plan.run.project.analysis,
+        plan.run.analysis.profile,
+        plan.run.analysis.revision,
     )
     rows = tuple(dict(row) for row in reporting.artifact_inventory_rows)
     raw_payloads = workflow.artifact_payloads(
@@ -116,6 +116,3 @@ def with_owner_doubles(plan: AttemptPlan) -> AttemptPlan:
             item for item in replacement_files if item.path in dispatch_paths
         ),
     )
-
-
-__all__ = ("with_owner_doubles",)
