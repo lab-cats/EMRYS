@@ -19,7 +19,6 @@ from emrys.libraries.source_authority import (
 )
 from emrys.orchestration.local_pilot.task import (
     TaskBoundaryError,
-    validate_task_start,
     validate_verified_task,
 )
 from emrys.orchestration.local_pilot.inspection import (
@@ -27,6 +26,7 @@ from emrys.orchestration.local_pilot.inspection import (
     expected_tasks,
     state_tree_blockers,
     task_start_tree_blockers,
+    verified_tree_blockers,
 )
 
 try:
@@ -475,36 +475,11 @@ def _task_argv(machine_key, scope_id=None, *, wildcard=None):
 
 
 def _admit_reusable_markers():
-    verified_root = RUN_ROOT / "state" / "verified"
-    expected = {
-        Path(_verified(item.machine_key, item.scope_id)) for item in EXPECTED_TASKS
-    }
-    if verified_root.exists() or verified_root.is_symlink():
-        if verified_root.is_symlink() or not verified_root.is_dir():
-            raise WorkflowError(
-                f"Verified-task root must be a real directory: {verified_root}"
-            )
-        expected_directories = {path.parent for path in expected}
-        observed_directories = set()
-        observed_files = set()
-        for owner_path in verified_root.iterdir():
-            if owner_path.is_symlink() or not owner_path.is_dir():
-                raise WorkflowError(
-                    f"Unexpected verified-task root entry: {owner_path}"
-                )
-            observed_directories.add(owner_path)
-            for marker in owner_path.iterdir():
-                if marker.is_symlink() or not marker.is_file():
-                    raise WorkflowError(
-                        f"Unexpected verified-task owner entry: {marker}"
-                    )
-                observed_files.add(marker)
-        if not observed_directories.issubset(expected_directories):
-            unexpected = sorted(observed_directories - expected_directories)[0]
-            raise WorkflowError(f"Unexpected verified-task owner directory: {unexpected}")
-        if not observed_files.issubset(expected):
-            unexpected = sorted(observed_files - expected)[0]
-            raise WorkflowError(f"Unexpected verified-task marker: {unexpected}")
+    blockers = verified_tree_blockers(RUN_ROOT, EXPECTED_TASKS)
+    if blockers:
+        raise WorkflowError(
+            "Could not close verified-task state: " + "; ".join(blockers)
+        )
     for item in EXPECTED_TASKS:
         machine_key, scope_id = item.machine_key, item.scope_id
         path = Path(_verified(machine_key, scope_id))
@@ -565,19 +540,6 @@ def _admit_state_namespace():
         )
         if not start_path.exists() and not start_path.is_symlink():
             continue
-        try:
-            validate_task_start(
-                start_path,
-                run_root=RUN_ROOT,
-                execution=EXECUTION,
-                profile=PROFILE,
-                machine_key=item.machine_key,
-                scope=item.scope,
-            )
-        except (OSError, TaskBoundaryError) as exc:
-            raise WorkflowError(
-                f"Could not admit task-start state {start_path}: {exc}"
-            ) from exc
         verified_path = Path(_verified(item.machine_key, item.scope_id))
         if not verified_path.exists() and not verified_path.is_symlink():
             raise WorkflowError(

@@ -1312,6 +1312,9 @@ def test_run_identity_excludes_attempt_reporting_and_cli_adapter_code(
 @pytest.mark.parametrize(
     "relative",
     (
+        "src/emrys/orchestration/local_pilot/_inspection_admission.py",
+        "src/emrys/orchestration/local_pilot/_inspection_attempts.py",
+        "src/emrys/orchestration/local_pilot/_inspection_evidence.py",
         "src/emrys/orchestration/local_pilot/all_pass.py",
         "src/emrys/contracts/orchestration/artifact_inventory.py",
         "src/emrys/contracts/schemas/orchestration/v2/attempt_receipt.schema.json",

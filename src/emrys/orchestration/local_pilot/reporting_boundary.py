@@ -27,7 +27,12 @@ from emrys.libraries.source_authority import (
     SourceCheckoutError,
     attest_source_checkout,
 )
-from emrys.orchestration.local_pilot.inspection import (
+from emrys.libraries.validation.errors import ValidationError
+from emrys.libraries.validation.inputs import (
+    directory_entries_with_identity,
+    read_bytes_with_identity,
+)
+from emrys.orchestration.local_pilot._inspection_admission import (
     InspectionError,
     admit_attempt_run_lock,
     admit_canonical_record,
@@ -101,6 +106,16 @@ class ReportingLedgerPaths:
     verified: Path
 
 
+@dataclass(frozen=True, slots=True)
+class ReportingLedgerAdmission:
+    """Already-admitted reporting records and semantic result locations."""
+
+    origin_workflow_attempt_id: str
+    start_reference: dict[str, str]
+    verified_reference: dict[str, str] | None = None
+    verified_report_locations: tuple[tuple[str, Path], ...] = ()
+
+
 BytesPublisher = Callable[[Path, bytes], None]
 
 
@@ -153,7 +168,8 @@ def _validate_semantic_receipt(
         config,
         historical_read=(
             read
-            and report_output_root(run_root, profile) == run_root / "products" / "report"
+            and report_output_root(run_root, profile)
+            == run_root / "products" / "report"
         ),
         validated_predecessor=validated_predecessor,
     )
@@ -227,52 +243,18 @@ def _read_bound(path: Path, root: Path, label: str) -> bytes:
     if not path.is_absolute():
         raise ReportingBoundaryError(f"{label} must be absolute: {path}")
     _within(path, root, label)
-    if not hasattr(os, "O_NOFOLLOW"):
-        raise ReportingBoundaryError(
-            "This platform lacks required O_NOFOLLOW reporting admission"
-        )
     try:
         if path.resolve(strict=True) != path:
             raise ReportingBoundaryError(
                 f"{label} must be a canonical regular file: {path}"
             )
-        descriptor = os.open(
+        return read_bytes_with_identity(
             path,
-            os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
-        )
-    except OSError as exc:
+            label,
+            nonempty=False,
+        )[0]
+    except (OSError, ValidationError) as exc:
         raise ReportingBoundaryError(f"Could not admit {label}: {path}: {exc}") from exc
-    try:
-        before = os.fstat(descriptor)
-        if not stat.S_ISREG(before.st_mode):
-            raise ReportingBoundaryError(f"{label} is not a regular file: {path}")
-        chunks: list[bytes] = []
-        while chunk := os.read(descriptor, 1024 * 1024):
-            chunks.append(chunk)
-        after = os.fstat(descriptor)
-    finally:
-        os.close(descriptor)
-    try:
-        current = path.stat(follow_symlinks=False)
-    except OSError as exc:
-        raise ReportingBoundaryError(f"{label} changed while admitted: {path}") from exc
-
-    def identity(value: os.stat_result) -> tuple[int, ...]:
-        return (
-            value.st_dev,
-            value.st_ino,
-            value.st_mode,
-            value.st_size,
-            value.st_mtime_ns,
-            value.st_ctime_ns,
-        )
-
-    if identity(before) != identity(after) or identity(after) != identity(current):
-        raise ReportingBoundaryError(f"{label} changed while admitted: {path}")
-    data = b"".join(chunks)
-    if len(data) != before.st_size:
-        raise ReportingBoundaryError(f"{label} size changed while admitted: {path}")
-    return data
 
 
 _admit_record = partial(
@@ -470,48 +452,17 @@ def _ensure_ledger_root(
 def _admit_ledger_root(paths: ReportingLedgerPaths) -> None:
     """Admit the stable, closed membership of one fixed ledger directory."""
 
-    if not hasattr(os, "O_NOFOLLOW"):
-        raise ReportingBoundaryError(
-            "This platform lacks required O_NOFOLLOW reporting admission"
-        )
-    flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
-    flags |= getattr(os, "O_DIRECTORY", 0)
     try:
-        descriptor = os.open(paths.root, flags)
-    except OSError as exc:
+        entries = set(
+            directory_entries_with_identity(
+                paths.root,
+                "Reporting ledger directory",
+            )[0]
+        )
+    except ValidationError as exc:
         raise ReportingBoundaryError(
             f"Could not admit reporting ledger directory: {paths.root}: {exc}"
         ) from exc
-    try:
-        before = os.fstat(descriptor)
-        if not stat.S_ISDIR(before.st_mode):
-            raise ReportingBoundaryError(
-                f"Reporting ledger path is not a real directory: {paths.root}"
-            )
-        entries = set(os.listdir(descriptor))
-        after = os.fstat(descriptor)
-    finally:
-        os.close(descriptor)
-    try:
-        current = paths.root.stat(follow_symlinks=False)
-    except OSError as exc:
-        raise ReportingBoundaryError(
-            f"Reporting ledger directory changed during admission: {paths.root}"
-        ) from exc
-
-    def identity(value: os.stat_result) -> tuple[int, ...]:
-        return (
-            value.st_dev,
-            value.st_ino,
-            value.st_mode,
-            value.st_mtime_ns,
-            value.st_ctime_ns,
-        )
-
-    if identity(before) != identity(after) or identity(after) != identity(current):
-        raise ReportingBoundaryError(
-            f"Reporting ledger directory changed during admission: {paths.root}"
-        )
     unexpected = entries - {"start.json", "verified.json"}
     if unexpected:
         raise ReportingBoundaryError(
@@ -937,17 +888,19 @@ def validate_start(
     run_root: Path,
     execution: Mapping[str, Any],
     profile: Mapping[str, Any],
-) -> str:
-    """Read-only validation of an entered reporting scope against its origin."""
+) -> ReportingLedgerAdmission:
+    """Admit an entered reporting scope and retain its immutable reference."""
 
     admitted_kind = _kind(kind)
-    identity, _start, _reference_value = _identity_from_origin(
+    identity, _start, start_reference = _identity_from_origin(
         admitted_kind,
         run_root,
         execution,
         profile,
     )
-    return str(identity.attempt["workflow_attempt_id"])
+    return ReportingLedgerAdmission(
+        str(identity.attempt["workflow_attempt_id"]), start_reference
+    )
 
 
 def validate_verified(
@@ -957,8 +910,8 @@ def validate_verified(
     profile: Mapping[str, Any],
     *,
     semantic_validator: SemanticValidator = validate_read_semantic_receipt,
-) -> tuple[Path, tuple[tuple[str, Path], ...]]:
-    """Read-only revalidation of a verified ledger and full semantic transaction."""
+) -> ReportingLedgerAdmission:
+    """Admit a verified ledger and retain its immutable references."""
 
     admitted_kind = _kind(kind)
     identity, start, start_reference = _identity_from_origin(
@@ -1040,7 +993,12 @@ def validate_verified(
         raise ReportingBoundaryError(
             "Verified reporting record changed during semantic validation"
         )
-    return receipt_path, verified_report_locations
+    return ReportingLedgerAdmission(
+        str(identity.attempt["workflow_attempt_id"]),
+        start_reference,
+        _reference(paths.verified, identity.root, verified_data),
+        verified_report_locations,
+    )
 
 
 __all__ = (
@@ -1049,6 +1007,7 @@ __all__ = (
     "ReportingBoundaryError",
     "ReportingBoundaryOps",
     "ReportingKind",
+    "ReportingLedgerAdmission",
     "ReportingLedgerPaths",
     "SemanticTransaction",
     "SemanticValidator",

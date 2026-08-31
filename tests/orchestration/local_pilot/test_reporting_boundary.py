@@ -311,6 +311,29 @@ def test_shared_record_admission_preserves_reporting_error_boundary(
         )
 
 
+def test_bound_read_preserves_empty_and_canonical_file_semantics(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path.resolve()
+    empty = root / "empty"
+    empty.write_bytes(b"")
+
+    assert reporting_boundary._read_bound(empty, root, "empty input") == b""
+    with pytest.raises(
+        reporting_boundary.ReportingBoundaryError,
+        match="Could not admit directory input",
+    ):
+        reporting_boundary._read_bound(root, root, "directory input")
+
+    alias = root / "alias"
+    alias.symlink_to(empty)
+    with pytest.raises(
+        reporting_boundary.ReportingBoundaryError,
+        match="must be a canonical regular file",
+    ):
+        reporting_boundary._read_bound(alias, root, "alias input")
+
+
 def test_start_and_completion_publish_fixed_closed_records(
     tmp_path: Path,
 ) -> None:
@@ -371,14 +394,19 @@ def test_start_and_completion_publish_fixed_closed_records(
         orchestration_contracts.canonical_json_bytes(verified)
     )
 
-    semantic_receipt, _locations = reporting_boundary.validate_verified(
+    admitted = reporting_boundary.validate_verified(
         "artifact_index",
         built.run_root,
         built.execution,
         built.profile,
         semantic_validator=ops.validate_semantic_receipt,
     )
-    assert semantic_receipt == built.artifact_receipt
+    assert isinstance(admitted, reporting_boundary.ReportingLedgerAdmission)
+    assert admitted == reporting_boundary.ReportingLedgerAdmission(
+        origin_workflow_attempt_id=str(start["origin_workflow_attempt_id"]),
+        start_reference=_reference(paths.start, built.run_root),
+        verified_reference=_reference(paths.verified, built.run_root),
+    )
 
     def mutate_start(*_arguments: Any) -> _SemanticResult:
         changed = orchestration_contracts.load_record(
@@ -424,13 +452,13 @@ def test_successor_boundary_uses_run_authority_and_exact_config_references(
         start["execution_contract_sha256"]
         == hashlib.sha256(identity["execution_path"].read_bytes()).hexdigest()
     )
-    admitted_origin = reporting_boundary.validate_start(
+    admitted = reporting_boundary.validate_start(
         "artifact_index",
         identity["run_root"],
         orchestration_contracts.load_json_object(identity["execution_path"]),
         orchestration_contracts.load_json_object(identity["profile_path"]),
     )
-    assert admitted_origin == start["origin_workflow_attempt_id"]
+    assert admitted.origin_workflow_attempt_id == start["origin_workflow_attempt_id"]
 
 
 @pytest.mark.parametrize(
@@ -509,14 +537,15 @@ def test_verified_boundary_carries_admitted_report_locations_unchanged(
         **_identity_paths(built),
         ops=ops,
     )
-    _receipt_path, observed_locations = reporting_boundary.validate_verified(
+    admitted = reporting_boundary.validate_verified(
         "html_report",
         built.run_root,
         built.execution,
         built.profile,
         semantic_validator=validate,
     )
-    assert observed_locations == locations
+    assert isinstance(admitted, reporting_boundary.ReportingLedgerAdmission)
+    assert admitted.verified_report_locations == locations
 
 
 def test_only_html_semantic_results_require_verified_locations() -> None:

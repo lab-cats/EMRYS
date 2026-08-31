@@ -731,7 +731,7 @@ def test_verified_state_roster_rejects_every_unexpected_entry(
     if entry_kind == "root_symlink":
         failed = _snakemake(built, "--dry-run", "--", "reference_slice", check=False)
         assert failed.returncode != 0
-        assert "Unexpected verified-task" in failed.stdout
+        assert "Unexpected verified task" in failed.stdout
 
 
 def test_resume_reuses_completed_scientific_work_without_engine_metadata(

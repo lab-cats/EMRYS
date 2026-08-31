@@ -1347,7 +1347,7 @@ def test_read_only_verified_admission_rechecks_task_log_hashes(
         _validate_verified(built)
 
 
-def test_task_log_hashing_and_revalidation_are_chunked_without_full_log_reads(
+def test_task_log_hashing_uses_shared_streaming_hasher_without_full_log_reads(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1357,23 +1357,19 @@ def test_task_log_hashing_and_revalidation_are_chunked_without_full_log_reads(
         Path(built.dispatch["stdout_path"]),
         Path(built.dispatch["stderr_path"]),
     }
-    chunks: dict[Path, list[int]] = {path: [] for path in log_paths}
-    original_consume = task._consume_bound_file
+    hashed_paths: list[Path] = []
+    original_hash = task.sha256_with_identity
     original_read = task._read_bound_file
 
-    def tracked_consume(
+    def tracked_hash(
         path: Path,
         label: str,
-        consume: Callable[[bytes], object],
-    ) -> os.stat_result:
-        if path not in log_paths:
-            return original_consume(path, label, consume)
-
-        def track_chunk(chunk: bytes) -> object:
-            chunks[path].append(len(chunk))
-            return consume(chunk)
-
-        return original_consume(path, label, track_chunk)
+        *,
+        nonempty: bool = True,
+    ) -> tuple[str, os.stat_result]:
+        if path in log_paths:
+            hashed_paths.append(path)
+        return original_hash(path, label, nonempty=nonempty)
 
     def reject_full_log_read(path: Path, label: str) -> tuple[bytes, os.stat_result]:
         if path in log_paths:
@@ -1400,7 +1396,7 @@ def test_task_log_hashing_and_revalidation_are_chunked_without_full_log_reads(
             stderr_descriptor,
         )
 
-    monkeypatch.setattr(task, "_consume_bound_file", tracked_consume)
+    monkeypatch.setattr(task, "sha256_with_identity", tracked_hash)
     monkeypatch.setattr(task, "_read_bound_file", reject_full_log_read)
     _execute_dispatch(
         built.dispatch_path,
@@ -1408,9 +1404,7 @@ def test_task_log_hashing_and_revalidation_are_chunked_without_full_log_reads(
     )
     _validate_verified(built)
 
-    stdout_chunks = chunks[Path(built.dispatch["stdout_path"])]
-    assert len(stdout_chunks) > 2
-    assert max(stdout_chunks) <= 1024 * 1024
+    assert set(hashed_paths) == log_paths
     with Path(built.dispatch["stdout_path"]).open("ab") as stream:
         stream.write(b"mutation")
     with pytest.raises(task.TaskBoundaryError, match="SHA-256 no longer matches"):
