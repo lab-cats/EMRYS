@@ -168,6 +168,15 @@ implementation details. Their public model is
 `Project -> named Analysis -> immutable Run -> Results`. `run --analysis NAME`
 selects exactly one Analysis, with omission allowed only for a single-Analysis
 Project. Resume takes an existing Run root and cannot change that selection.
+`emrys run --through processing` creates a distinct immutable Execution Plan
+and Run whose nonempty predecessor-closed stopping roster selects the
+evidence-complete, all-sample Steps `00`–`06` closure. The fixed four-sample
+fixture expands this closure to 31 owner tasks. The default remains the full Steps
+`00`–`10` Analysis. Reporting is not applicable to a processing-boundary Run;
+successful completion is terminal and not resumable. This slice establishes
+only the processing/future-reuse boundary. A future downstream Analysis would
+require a new Run, but compatible cross-Run reuse and downstream launch remain
+unimplemented ANALYSIS-01 work.
 `run` and `resume` require the controlled Python invocation. With direct
 placement, a terminal builds and prints one frozen Run
 plan, asks once, and executes that same object only after confirmation. Slurm
@@ -177,8 +186,8 @@ mutates nothing and opens no log; noninteractive omission of `--execute`
 remains no-write, while `--execute` is the explicit automation path. Direct
 planning reruns the Doctor, admits the authored Project again, derives the
 deterministic Run identity, and prints concise Run identity, combined
-pending/reusable work, and reporting information. Verbose output adds the Run
-root, admitted Analysis and Execution-Plan identity, and
+pending/reusable work within that Run, and reporting information. Verbose output
+adds the Run root, admitted Analysis and Execution-Plan identity, and
 resources/allocation; debug output adds exact engine and task commands.
 Slurm submission output instead adds placement detail, profile and stream paths
 at verbose level, and the scheduler command at debug level.
@@ -187,8 +196,9 @@ primary Run ID, verbose adds admitted Analysis, Execution Plan, and Attempt
 identity plus effective execution facts, and debug adds canonical authority
 paths/digests, verified output bindings, receipts, and task evidence.
 Historical Runs are labeled and never receive fabricated successor identities.
-The fixed four-sample, one-partition synthetic fixture expands to 35 owner jobs; other
-admitted sample/partition counts expand according to the fixed profile. The
+The fixed four-sample, one-partition synthetic fixture expands to 35 owner jobs
+for the default full Run and 31 for the processing boundary; other admitted
+sample/partition counts expand according to the fixed profile. The
 control surface exposes no raw Snakemake flags, force, unlock, cleanup, retry,
 plugin, or alternate-profile escape hatch.
 
@@ -202,12 +212,13 @@ unconfirmed plan own none. The log records publication readiness
 before the authoritative Attempt receipt and observes the receipt only after
 its durable commit. After initialization, log degradation cannot alter
 lifecycle, receipt, recovery, or exit; the log is never completion authority.
-After every required scientific/evidence task is verified, lifecycle releases
-the Run lock and publishes the v2 Attempt receipt. Reporting then runs
-automatically unless `run` or `resume` receives `--no-report`; it is separately
-receipt-bound, creates no Run or Attempt, and cannot change the scientific
-receipt. `emrys report --run-root RUN_ROOT` plans independently without writes
-and generates only with `--execute`. Successful default run/resume reporting,
+After every selected scientific/evidence task is verified, lifecycle releases
+the Run lock and publishes the v2 Attempt receipt. For a full Run, reporting
+then runs automatically unless `run` or `resume` receives `--no-report`; it is
+separately receipt-bound, creates no Run or Attempt, and cannot change the
+scientific receipt. A processing Run has no applicable reporting transaction.
+`emrys report --run-root RUN_ROOT` plans independently without writes and
+generates only with `--execute`. Successful default run/resume reporting,
 successful independent generation or reuse, and completed final inspection
 print a short `Results:` block with the scientific report first and evidence
 report second. Those absolute locations are carried from the fully revalidated
@@ -293,8 +304,9 @@ success.
 
 Snakemake schedules only verified-task records. Native artifacts, validation
 reports, receipts, logs, and recovery evidence are never disposable workflow
-outputs. Existing verified records are reusable only after read-only schema,
-identity, content, attempt, receipt, and semantic-report revalidation.
+outputs. Within the same Run, existing verified records are reusable only after
+read-only schema, identity, content, attempt, receipt, and semantic-report
+revalidation.
 
 The internal lifecycle owns aggregate serialization before Snakemake. It holds
 the admitted advisory mutex from stale-attempt revalidation through receipt or
@@ -361,8 +373,10 @@ evidence is never auto-deleted; inspection treats it, the partial attempt
 directory, or both as blocked state requiring explicit reconciliation.
 The retained filename alone never proves reconciliation.
 
-Only failed/interrupted scientific between-task boundaries are automatically resumable. Resume
-requires the same run, profile, execution, source commit, executor, execution
+Only failed/interrupted scientific between-task boundaries are automatically
+resumable. A successful processing-boundary Run is complete and cannot be
+resumed into downstream work; that work requires a new Run. Resume requires
+the same run, profile, execution, source commit, executor, execution
 mode, and ordered tool identities. The closed task-start ledger must prove that
 every entered scope has a succeeded task-attempt and verified-task chain; an
 unverified scope must have no start, though an exact receipt-bound pre-entry
@@ -398,7 +412,7 @@ completed EMRYS run.
 | `results/editing/` | Step `09` candidate tables, summary, mutation spectrum, and diagnostic PDFs. |
 | `results/scientific_context/` | Step `10` candidate context, motif, population, enrichment, and receipt. |
 | `results/reports/<run-id>/` | Self-contained scientific and evidence-and-operations reports, renderer summary TSV, and the report receipt published last. |
-| `products/native/` | Nonfinal native workflow artifacts and owner QC/validation outputs required for evidence, reuse, and downstream computation. |
+| `products/native/` | Nonfinal native workflow artifacts and owner QC/validation outputs required for evidence, same-Run resume, and selected downstream computation. |
 | `products/artifact-summary/<run-id>/records/` | Canonical records for every declared artifact, including explicit incomplete or unavailable state. |
 | `products/artifact-summary/<run-id>/<run-id>.artifacts.tsv` | Deterministic artifact index. |
 | `products/artifact-summary/<run-id>/<run-id>.artifact_receipt.tsv` | Artifact-index receipt, published last for that transaction. |

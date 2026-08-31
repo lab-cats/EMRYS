@@ -23,6 +23,7 @@ import pytest
 import yaml
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.application_model import PROCESSING_STEP_IDS
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.evidence.runtime_availability import inspector as runtime_inspector
 from emrys.evidence.runtime_availability.inspector import (
@@ -68,6 +69,7 @@ from emrys.orchestration.local_pilot.resource_policy import (
     resolve_resource_policy,
 )
 from emrys.orchestration.local_pilot.run_implementation import (
+    backend_semantics_identity,
     implementation_identity,
 )
 from tests.orchestration.local_pilot.fixture import build, build_legacy
@@ -280,8 +282,18 @@ def _readiness(
     return readiness, resources, request, workspace
 
 
-def _run_candidate(readiness, resources):
-    return build_run_candidate(readiness.analysis, readiness, resources.declaration)
+def _run_candidate(readiness, resources, *, through: str = "analysis"):
+    stopping = (
+        None
+        if through == "analysis"
+        else materialization.processing_stopping_owner_keys(readiness.analysis.profile)
+    )
+    return build_run_candidate(
+        readiness.analysis,
+        readiness,
+        resources.declaration,
+        scientific_stopping_owner_keys=stopping,
+    )
 
 
 def _plan(
@@ -291,6 +303,7 @@ def _plan(
     workflow_cores: int = 1,
     stage_concurrency: dict[str, int] | None = None,
     legacy: bool = False,
+    through: str = "analysis",
 ):
     readiness, resources, _request, workspace = _readiness(
         tmp_path,
@@ -300,7 +313,7 @@ def _plan(
         legacy=legacy,
     )
     return build_attempt_plan(
-        _run_candidate(readiness, resources),
+        _run_candidate(readiness, resources, through=through),
         readiness,
         workspace,
         resources=resources,
@@ -431,12 +444,15 @@ def test_owner_doubles_preserve_immutable_run_toolchain(tmp_path: Path) -> None:
 
     doubled = with_owner_doubles(plan)
 
-    assert replace(
-        doubled,
-        attempt_record_bytes=plan.attempt_record_bytes,
-        attempt_files=plan.attempt_files,
-        new_dispatch_files=plan.new_dispatch_files,
-    ) == plan
+    assert (
+        replace(
+            doubled,
+            attempt_record_bytes=plan.attempt_record_bytes,
+            attempt_files=plan.attempt_files,
+            new_dispatch_files=plan.new_dispatch_files,
+        )
+        == plan
+    )
     attempt = doubled.attempt_record
     assert attempt["execution_mode"] == "local-science-tools"
     original_attempt = plan.attempt_record
@@ -488,9 +504,7 @@ def test_owner_doubles_use_successor_scopes_inside_reporting_payloads(
     for record in _dispatch_records(doubled):
         argv = record["producer_argv"]
         encoded = argv[argv.index("--payload-base64") + 1]
-        manifest = json.loads(
-            zlib.decompress(base64.b64decode(encoded, validate=True))
-        )
+        manifest = json.loads(zlib.decompress(base64.b64decode(encoded, validate=True)))
         payloads.update(
             {
                 Path(output["path"]): base64.b64decode(output["data_base64"])
@@ -725,6 +739,45 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     )
 
 
+def test_processing_plan_is_a_distinct_closed_31_task_run(tmp_path: Path) -> None:
+    readiness, resources, _project, workspace = _readiness(tmp_path)
+    full = _run_candidate(readiness, resources)
+    processing = _run_candidate(readiness, resources, through="processing")
+    plan = build_attempt_plan(
+        processing,
+        readiness,
+        workspace,
+        resources=resources,
+        operation="execute",
+    )
+    owners = {
+        str(item["machine_key"]): str(item["step_id"])
+        for item in readiness.analysis.profile["owner_tasks"]
+    }
+    records = _dispatch_records(plan)
+
+    assert processing.run_id != full.run_id
+    assert (
+        processing.analysis.revision.canonical_bytes
+        == full.analysis.revision.canonical_bytes
+    )
+    assert processing.execution_plan.record["identity"][
+        "scientific_stopping_owner_keys"
+    ] == list(
+        materialization.processing_stopping_owner_keys(readiness.analysis.profile)
+    )
+    assert plan.dispatch_count == len(records) == 31
+    assert {owners[str(record["machine_key"])] for record in records} == set(
+        PROCESSING_STEP_IDS
+    )
+    assert len({record["machine_key"] for record in records}) == 10
+    assert not any(
+        Path(output["path"]).is_relative_to(plan.run_root / "results")
+        for record in records
+        for output in record["outputs"]
+    )
+
+
 def _runtime_admission_fixture(
     plan: materialization.AttemptPlan,
     monkeypatch: pytest.MonkeyPatch,
@@ -835,12 +888,14 @@ def test_attempt_plan_preserves_reporting_materialization(tmp_path: Path) -> Non
     } <= set(plan.directories)
 
 
+@pytest.mark.parametrize("through", ("analysis", "processing"))
 def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    through: str,
 ) -> None:
     readiness, resources, _request, workspace = _readiness(tmp_path)
-    direct_run = _run_candidate(readiness, resources)
+    direct_run = _run_candidate(readiness, resources, through=through)
     scheduled_resources = resolve_resource_policy(
         resources.policy,
         AllocationCapacity(
@@ -851,7 +906,11 @@ def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
         ),
     )
     assert resources.effective_document() == scheduled_resources.effective_document()
-    scheduled_run = _run_candidate(readiness, scheduled_resources)
+    scheduled_run = _run_candidate(
+        readiness,
+        scheduled_resources,
+        through=through,
+    )
 
     assert (
         direct_run.analysis.revision.canonical_bytes,
@@ -936,14 +995,22 @@ def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
         resources.allocation,
     )
     assert (
-        _run_candidate(readiness, reporting_changed).run_id
+        _run_candidate(readiness, reporting_changed, through=through).run_id
         == direct_run.run_id
     )
 
     computational_change = replace(resources.declaration, workflow_cores=2)
+    stopping = (
+        None
+        if through == "analysis"
+        else materialization.processing_stopping_owner_keys(readiness.analysis.profile)
+    )
     assert (
         build_run_candidate(
-            readiness.analysis, readiness, computational_change
+            readiness.analysis,
+            readiness,
+            computational_change,
+            scientific_stopping_owner_keys=stopping,
         ).run_id
         != direct_run.run_id
     )
@@ -956,7 +1023,10 @@ def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
     )
     assert (
         build_run_candidate(
-            readiness.analysis, tool_changed, resources.declaration
+            readiness.analysis,
+            tool_changed,
+            resources.declaration,
+            scientific_stopping_owner_keys=stopping,
         ).run_id
         != direct_run.run_id
     )
@@ -1036,7 +1106,7 @@ def test_attempt_plan_records_placement_without_making_it_run_compatibility(
     }
 
 
-def test_run_identity_excludes_attempt_reporting_and_backend_adapter_code(
+def test_run_identity_excludes_attempt_reporting_and_cli_adapter_code(
     tmp_path: Path,
 ) -> None:
     checkout, commit = _clean_checkout(tmp_path)
@@ -1046,6 +1116,7 @@ def test_run_identity_excludes_attempt_reporting_and_backend_adapter_code(
         source_commit=commit,
     )
     baseline = _run_candidate(readiness, resources)
+    baseline_backend = backend_semantics_identity(checkout)
 
     report_renderer = checkout / "src/emrys/reporting/report.py"
     report_renderer.write_bytes(
@@ -1060,8 +1131,11 @@ def test_run_identity_excludes_attempt_reporting_and_backend_adapter_code(
     assert _run_candidate(readiness, resources).run_id == baseline.run_id
 
     snakefile = checkout / "workflow/Snakefile"
-    snakefile.write_bytes(snakefile.read_bytes() + b"\n# adapter change\n")
-    assert _run_candidate(readiness, resources).run_id == baseline.run_id
+    snakefile_bytes = snakefile.read_bytes()
+    snakefile.write_bytes(snakefile_bytes + b"\n# adapter change\n")
+    assert backend_semantics_identity(checkout) != baseline_backend
+    assert _run_candidate(readiness, resources).run_id != baseline.run_id
+    snakefile.write_bytes(snakefile_bytes)
 
     cli_adapter = checkout / "src/emrys/__main__.py"
     cli_adapter.write_bytes(cli_adapter.read_bytes() + b"\n# CLI adapter change\n")
@@ -1126,7 +1200,6 @@ def test_implementation_identity_closes_direct_scientific_dependencies(
         "src/emrys/libraries/file_checks.sh",
         "src/emrys/libraries/gatk_invocation.sh",
         "src/emrys/libraries/input_contract.R",
-        "src/emrys/libraries/orientation.sh",
         "src/emrys/libraries/signal_traps.sh",
         "src/emrys/analyses/scientific_context_projection/resources/pum_motifs_v1.tsv",
     )
@@ -1142,16 +1215,24 @@ def test_implementation_identity_closes_direct_scientific_dependencies(
 
 
 @pytest.mark.parametrize(
-    "relative",
+    ("relative", "error"),
     (
-        "src/emrys/orchestration/local_pilot/materialization.py",
-        "src/emrys/orchestration/local_pilot/all_pass.py",
-        "src/emrys/contracts/orchestration/artifact_inventory.py",
+        (
+            "src/emrys/orchestration/local_pilot/materialization.py",
+            "implementation content",
+        ),
+        ("src/emrys/orchestration/local_pilot/all_pass.py", "implementation content"),
+        (
+            "src/emrys/contracts/orchestration/artifact_inventory.py",
+            "implementation content",
+        ),
+        ("workflow/Snakefile", "backend semantics"),
     ),
 )
 def test_lifecycle_refuses_run_bound_implementation_drift_before_attempt(
     tmp_path: Path,
     relative: str,
+    error: str,
 ) -> None:
     checkout, commit = _clean_checkout(tmp_path)
     readiness, resources, _request, workspace = _readiness(
@@ -1180,7 +1261,7 @@ def test_lifecycle_refuses_run_bound_implementation_drift_before_attempt(
     implementation = checkout / relative
     implementation.write_bytes(implementation.read_bytes() + b"\n# Run-bound drift\n")
 
-    with pytest.raises(lifecycle.LifecycleError, match="implementation content"):
+    with pytest.raises(lifecycle.LifecycleError, match=error):
         lifecycle.run_materialized_attempt(
             plan.preparation,
             lambda: publish_attempt(plan, ops=ops),
@@ -1743,12 +1824,14 @@ def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
 
 
 @pytest.mark.parametrize("legacy", (False, True))
+@pytest.mark.parametrize("through", ("analysis", "processing"))
 def test_successor_resume_snapshots_current_runtime_profile(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     legacy: bool,
+    through: str,
 ) -> None:
-    first = _plan(tmp_path, legacy=legacy)
+    first = _plan(tmp_path, legacy=legacy, through=through)
     observed = _failed_run(first)
     assert observed.authority is not None
     retained = next(
@@ -1790,6 +1873,10 @@ def test_successor_resume_snapshots_current_runtime_profile(
     assert [item.data for item in second.attempt_files if item.path == new_profile] == [
         first.readiness.inspection.profile_bytes
     ]
+    assert (
+        second.run.execution_plan.canonical_bytes
+        == first.run.execution_plan.canonical_bytes
+    )
 
 
 def test_project_v1_predecessor_does_not_enable_request_v3_resume(
@@ -2268,6 +2355,7 @@ def test_public_run_dry_run_is_no_write(
     assert "Project: 'project'" in normal
     assert "Analysis: 'primary'" in normal
     assert "Run ID:" in normal
+    assert "Scientific boundary: complete analysis" in normal
     assert "Work: 35 pending, 0 reusable" in normal
     assert "Reporting: automatic after scientific work" in normal
     assert "Evidence boundary:" in normal
@@ -2299,6 +2387,37 @@ def test_public_run_dry_run_is_no_write(
     assert "Snakemake command:" in debug
     assert "TASK " in debug
     assert executed == []
+
+
+def test_processing_run_dry_run_is_no_write_and_truthfully_scoped(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    arguments, workspace = _patch_run_control(
+        tmp_path,
+        monkeypatch,
+        execute_plan=lambda *_args: pytest.fail("dry-run executed processing"),
+        transform_plan=lambda plan: plan,
+    )
+    arguments.through = "processing"
+    monkeypatch.setattr(
+        control.sys,
+        "stdin",
+        _InputStream(AssertionError("nonterminal input was read"), terminal=False),
+    )
+
+    assert control.run_from_args(arguments) == 0
+
+    rendered = capsys.readouterr().err
+    assert (
+        "Scientific boundary: sample processing (through Step 06)" in rendered
+    )
+    assert "Work: 31 pending, 0 reusable" in rendered
+    assert "Reporting: not applicable to this partial scientific Run" in rendered
+    assert "Dry-run complete; no workspace state was written." in rendered
+    assert not (workspace / "runs").exists()
+    assert not (workspace / "logs").exists()
 
 
 @pytest.mark.parametrize(
@@ -2792,6 +2911,7 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
 ) -> None:
     arguments = _scheduled_run_arguments(tmp_path, execute=execute)
     arguments.analysis = "" if execute else "sensitivity"
+    arguments.through = "processing"
     arguments.no_report = True
     workspace = arguments.project.parent
     submissions = []
@@ -2828,6 +2948,7 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     assert len(submissions) == 1
     expected_analysis = "''" if execute else "sensitivity"
     assert f" --analysis {expected_analysis} " in submissions[0].batch_script
+    assert " --through processing " in submissions[0].batch_script
     assert " --execute --no-report" in submissions[0].batch_script
     assert list((workspace / "logs").iterdir()) == []
     assert "Execution placement: Slurm" in captured.err
@@ -3225,6 +3346,9 @@ def test_next_supported_action_uses_separated_status_domains() -> None:
     assert action(reporting="incomplete") == (
         "Generate reports with emrys report --run-root /run --execute."
     )
+    assert action(reporting="not applicable") == (
+        "Inspect this Run's verified scientific artifacts with --detail debug."
+    )
 
 
 def _status_task(
@@ -3351,6 +3475,10 @@ def test_public_help_routes() -> None:
         )
         assert result.returncode == 0
         assert expected in result.stdout
+        if command[0] == "run":
+            assert "--through {analysis,processing}" in result.stdout
+        if command[0] == "resume":
+            assert "--through" not in result.stdout
 
 
 def _clean_checkout(tmp_path: Path) -> tuple[Path, str]:
@@ -3390,11 +3518,17 @@ def _clean_checkout(tmp_path: Path) -> tuple[Path, str]:
 def _doubled_lifecycle_ops(
     base: lifecycle.LifecycleOps,
     *,
-    stop_after_target: str | None = None,
+    fail_after_rule: str | None = None,
 ) -> lifecycle.LifecycleOps:
-
-    def run_workflow(argv: tuple[str, ...], cwd: Path) -> lifecycle.WorkflowResult:
-        invoked = (*argv[:-1], stop_after_target) if stop_after_target else argv
+    def run_workflow(
+        argv: tuple[str, ...], cwd: Path
+    ) -> lifecycle.WorkflowResult:
+        separator = argv.index("--")
+        invoked = (
+            (*argv[:separator], "--until", fail_after_rule, *argv[separator:])
+            if fail_after_rule is not None
+            else argv
+        )
         completed = subprocess.run(
             invoked,
             cwd=cwd,
@@ -3404,20 +3538,14 @@ def _doubled_lifecycle_ops(
             text=True,
             check=False,
         )
-        exit_code = (
-            23
-            if stop_after_target and completed.returncode == 0
-            else completed.returncode
-        )
+        injected = fail_after_rule is not None and completed.returncode == 0
         return lifecycle.WorkflowResult(
-            exit_code=exit_code,
+            exit_code=23 if injected else completed.returncode,
             termination_signal=None,
             message=(
                 "controlled failure between owner tasks"
-                if exit_code == 23
-                else completed.stdout
-                if completed.returncode
-                else None
+                if injected
+                else completed.stdout if completed.returncode else None
             ),
         )
 
@@ -3466,7 +3594,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     )
     real_build = control.build_attempt_plan
     real_ops = control.lifecycle.default_lifecycle_ops
-    stop_after_target = ["one_sample_slice"]
+    fail_after_rule: list[str | None] = ["construct_canonical_BAM"]
     monkeypatch.setattr(
         control.doctor,
         "inspect_local_pilot",
@@ -3492,7 +3620,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         "default_lifecycle_ops",
         lambda: _doubled_lifecycle_ops(
             real_ops(),
-            stop_after_target=stop_after_target[0],
+            fail_after_rule=fail_after_rule[0],
         ),
     )
     run_arguments = argparse.Namespace(
@@ -3513,7 +3641,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     before = _verified_snapshot(run_root)
     assert 0 < len(before) < 35
 
-    stop_after_target[0] = None
+    fail_after_rule[0] = None
     resume_arguments = argparse.Namespace(
         run_root=run_root,
         allocated_cores=1,
@@ -3622,3 +3750,85 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     resume_arguments.execute = False
     assert control.resume_from_args(resume_arguments) == 2
     assert "Results are complete" in capsys.readouterr().err
+
+
+def test_public_processing_run_completes_without_reports_or_resume(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    checkout, commit = _clean_checkout(tmp_path)
+    readiness, resources, project, workspace = _readiness(
+        tmp_path / "case",
+        source_root=checkout,
+        source_commit=commit,
+    )
+    real_build = control.build_attempt_plan
+    real_ops = control.lifecycle.default_lifecycle_ops
+    monkeypatch.setattr(
+        control.doctor,
+        "diagnose_project",
+        lambda *_args, **_kwargs: readiness,
+    )
+    monkeypatch.setattr(
+        control.capacity,
+        "observe_allocation",
+        lambda: resources.allocation,
+    )
+    monkeypatch.setattr(
+        control,
+        "build_attempt_plan",
+        lambda *args, **kwargs: with_owner_doubles(real_build(*args, **kwargs)),
+    )
+    monkeypatch.setattr(
+        control.lifecycle,
+        "default_lifecycle_ops",
+        lambda: _doubled_lifecycle_ops(real_ops()),
+    )
+    monkeypatch.setattr(
+        reporting_operation,
+        "run_reporting",
+        lambda *_args, **_kwargs: pytest.fail("processing entered reporting"),
+    )
+    arguments = argparse.Namespace(
+        project=project,
+        execution_profile=project.parent / "emrys.execution.yaml",
+        through="processing",
+        execute=True,
+    )
+    run_id = _run_candidate(readiness, resources, through="processing").run_id
+
+    assert control.run_from_args(arguments) == 0
+
+    run_root = workspace / "runs" / run_id
+    observed = inspection.inspect_run(run_root)
+    events = [
+        json.loads(line)["event"]
+        for line in next((workspace / "logs").rglob("*.jsonl")).read_text().splitlines()
+    ]
+    assert events[-1] == "reporting_not_applicable"
+    assert (
+        observed.integrity,
+        observed.attempt_outcome,
+        observed.results_status,
+        observed.reporting_status,
+        observed.recovery_available,
+    ) == ("valid", "succeeded", "complete", "not applicable", False)
+    assert len(observed.tasks) == 31
+    assert all(task.state == "verified" for task in observed.tasks)
+    assert observed.verified_report_locations == ()
+    assert not any(
+        records["start"] is not None or records["verified"] is not None
+        for records in observed.reporting_completion_records.values()
+    )
+    with pytest.raises(control.ControlError, match="Results are complete"):
+        control._admit_resume_predecessor(run_root)
+
+    inspect_arguments = argparse.Namespace(run_root=run_root, detail="normal")
+    assert control.inspect_from_args(inspect_arguments) == 0
+    rendered = capsys.readouterr()
+    assert "Reporting: not applicable" in rendered.out
+    assert "Candidate evidence: not applicable" in rendered.out
+    assert "Statistical/context processing: not applicable" in rendered.out
+    assert "Inspect this Run's verified scientific artifacts" in rendered.out
+    assert "Reporting: not applicable (partial scientific Run)" in rendered.err

@@ -191,7 +191,6 @@ PROJECTION_CONFIG = {
     "reference_contract": "reference_contract_path",
     "primary_analysis_policy": "primary_analysis_policy_path",
 }
-PROJECTION_PATHS = {}
 for projection_name, config_key in PROJECTION_CONFIG.items():
     if SUCCESSOR_AUTHORITY is None:
         projection_path = _absolute_config_path(config_key)
@@ -216,7 +215,6 @@ for projection_name, config_key in PROJECTION_CONFIG.items():
         document = orchestration_contracts.load_json_object(projection_path)
         if payload != orchestration_contracts.canonical_json_bytes(document):
             raise WorkflowError(f"{config_key} must use canonical JSON bytes")
-    PROJECTION_PATHS[projection_name] = projection_path
 
 WORKFLOW_ATTEMPT = orchestration_contracts.load_json_object(WORKFLOW_ATTEMPT_PATH)
 orchestration_contracts.validate_record("workflow-attempt", WORKFLOW_ATTEMPT)
@@ -250,7 +248,7 @@ for attempt_field, expected_value in (
 if Path(WORKFLOW_ATTEMPT["source_checkout"]["path"]) != SOURCE_CHECKOUT:
     raise WorkflowError("workflow attempt does not bind configured source_checkout")
 try:
-    SOURCE_ATTESTATION = attest_source_checkout(
+    attest_source_checkout(
         root=SOURCE_CHECKOUT,
         package_root=Path(emrys.__file__).resolve().parent,
         expected_commit=WORKFLOW_ATTEMPT["source_checkout"]["commit"],
@@ -275,160 +273,87 @@ if (
 
 EXPECTED_TASKS = expected_tasks(SUCCESSOR_AUTHORITY or EXECUTION, PROFILE)
 
+if SUCCESSOR_AUTHORITY is None:
+    REFERENCE_ID = str(EXECUTION["reference"]["reference_id"])
+    SAMPLE_IDS = tuple(str(row["sample_id"]) for row in EXECUTION["samples"]["rows"])
+    COHORT_ID = str(EXECUTION["analysis"]["cohort_id"])
+    PARTITION_SCOPES = tuple(
+        f"{COHORT_ID}__{row['partition_id']}" for row in EXECUTION["partitions"]["rows"]
+    )
+    ANALYSIS_ID = str(EXECUTION["analysis"]["primary_analysis_id"])
+else:
+    ANALYSIS_REVISION = SUCCESSOR_AUTHORITY.analysis_revision
+    ANALYSIS_IDENTITY = ANALYSIS_REVISION.record["identity"]
+    REFERENCE_ID = ANALYSIS_REVISION.scope_id("reference")
+    SAMPLE_IDS = tuple(str(row["sample_id"]) for row in ANALYSIS_IDENTITY["samples"])
+    PARTITION_SCOPES = tuple(
+        ANALYSIS_REVISION.scope_id("cohort_partition", str(row["partition_id"]))
+        for row in ANALYSIS_IDENTITY["partitions"]
+    )
+    COHORT_ID = ANALYSIS_REVISION.scope_id("cohort")
+    ANALYSIS_ID = ANALYSIS_REVISION.scope_id("analysis")
 
-def _scopes(scope_type):
-    return tuple(dict.fromkeys(
-        item.scope_id for item in EXPECTED_TASKS if item.scope_type == scope_type
-    ))
-
-
-REFERENCE_ID, = _scopes("reference")
-SAMPLE_IDS = _scopes("sample")
-PARTITION_SCOPES = _scopes("cohort_partition")
-COHORT_ID, = _scopes("cohort")
-ANALYSIS_ID, = _scopes("analysis")
-FIRST_SAMPLE_ID = SAMPLE_IDS[0]
-RUN_ID = EXECUTION["run_id"]
-
-OWNER_TASKS = {
-    task["rule_name"]: task
-    for task in PROFILE["owner_tasks"]
+STATIC_RULE_PROJECTION = dict(
+    row.split()
+    for row in """construct_STAR_index emrys.stage.construct_STAR_index.v1|reference|reference
+convert_GTF_to_BED12 emrys.stage.convert_GTF_to_BED12.v1|reference|reference
+construct_FASTA_sidecars emrys.stage.construct_FASTA_sidecars.v1|reference|reference
+align_RNA_reads_with_STAR emrys.stage.align_RNA_reads_with_STAR.v1|sample|samples
+construct_canonical_BAM emrys.stage.construct_canonical_BAM.v1|sample|samples
+collect_canonical_BAM_QC_evidence emrys.evidence.collect_canonical_BAM_QC_evidence.v1|sample|samples
+collect_RSeQC_paired_orientation_evidence emrys.evidence.collect_RSeQC_paired_orientation_evidence.v1|sample|samples
+mark_BAM_duplicates_with_Picard emrys.stage.mark_BAM_duplicates_with_Picard.v1|sample|samples
+split_N_cigar_reads_with_GATK emrys.stage.split_N_cigar_reads_with_GATK.v1|sample|samples
+partition_BAM_by_mechanical_read_orientation emrys.stage.partition_BAM_by_mechanical_read_orientation.v1|sample|samples
+generate_partitioned_cohort_mpileup_VCFs emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1|cohort_partition|partitions
+preprocess_and_annotate_cohort_candidates emrys.stage.preprocess_and_annotate_cohort_candidates.v1|cohort|cohort
+rank_cohort_candidates_with_paired_CMH emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1|analysis|analysis
+project_candidate_scientific_context emrys.analysis.project_candidate_scientific_context.v1|analysis|analysis""".splitlines()
+)
+OWNER_TASKS = {str(task["rule_name"]): task for task in PROFILE["owner_tasks"]}
+OWNER_TASKS_BY_KEY = {
+    str(task["machine_key"]): task for task in PROFILE["owner_tasks"]
 }
-AUTOMATIC_TASKS = {
-    "construct_STAR_index": (
-        "emrys.stage.construct_STAR_index.v1",
-        "reference",
-        "reference",
-    ),
-    "convert_GTF_to_BED12": (
-        "emrys.stage.convert_GTF_to_BED12.v1",
-        "reference",
-        "reference",
-    ),
-    "construct_FASTA_sidecars": (
-        "emrys.stage.construct_FASTA_sidecars.v1",
-        "reference",
-        "reference",
-    ),
-    "align_RNA_reads_with_STAR": (
-        "emrys.stage.align_RNA_reads_with_STAR.v1",
-        "sample",
-        "samples",
-    ),
-    "construct_canonical_BAM": (
-        "emrys.stage.construct_canonical_BAM.v1",
-        "sample",
-        "samples",
-    ),
-    "collect_canonical_BAM_QC_evidence": (
-        "emrys.evidence.collect_canonical_BAM_QC_evidence.v1",
-        "sample",
-        "samples",
-    ),
-    "collect_RSeQC_paired_orientation_evidence": (
-        "emrys.evidence.collect_RSeQC_paired_orientation_evidence.v1",
-        "sample",
-        "samples",
-    ),
-    "mark_BAM_duplicates_with_Picard": (
-        "emrys.stage.mark_BAM_duplicates_with_Picard.v1",
-        "sample",
-        "samples",
-    ),
-    "split_N_cigar_reads_with_GATK": (
-        "emrys.stage.split_N_cigar_reads_with_GATK.v1",
-        "sample",
-        "samples",
-    ),
-    "partition_BAM_by_mechanical_read_orientation": (
-        "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1",
-        "sample",
-        "samples",
-    ),
-    "generate_partitioned_cohort_mpileup_VCFs": (
-        "emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
-        "cohort_partition",
-        "partitions",
-    ),
-    "preprocess_and_annotate_cohort_candidates": (
-        "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
-        "cohort",
-        "cohort",
-    ),
-    "rank_cohort_candidates_with_paired_CMH": (
-        "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
-        "analysis",
-        "analysis",
-    ),
-    "project_candidate_scientific_context": (
-        "emrys.analysis.project_candidate_scientific_context.v1",
-        "analysis",
-        "analysis",
-    ),
+observed_rule_projection = {
+    rule_name: "|".join(
+        str(task[field]) for field in ("machine_key", "scope_type", "scope_selector")
+    )
+    for rule_name, task in OWNER_TASKS.items()
 }
+if (
+    len(OWNER_TASKS) != len(PROFILE["owner_tasks"])
+    or observed_rule_projection != STATIC_RULE_PROJECTION
+):
+    raise WorkflowError("Fixed profile owner tasks do not match the static graph")
+if len(OWNER_TASKS_BY_KEY) != len(OWNER_TASKS) or set(
+    PROFILE["required_owner_keys"]
+) != set(OWNER_TASKS_BY_KEY):
+    raise WorkflowError("Fixed profile required owner roster is inconsistent")
 
 
-def _require_profile_projection():
-    automatic_keys = {identity[0] for identity in AUTOMATIC_TASKS.values()}
-    if set(PROFILE["required_owner_keys"]) != automatic_keys:
-        raise WorkflowError(
-            "Fixed profile required_owner_keys do not match the static automatic graph"
-        )
-    if set(OWNER_TASKS) != set(AUTOMATIC_TASKS):
-        raise WorkflowError("Fixed profile owner task roster does not match STAGE_MAP")
-    for rule_name, expected in AUTOMATIC_TASKS.items():
-        task = OWNER_TASKS[rule_name]
-        observed = (
-            task["machine_key"],
-            task["scope_type"],
-            task["scope_selector"],
-        )
-        if observed != expected:
-            raise WorkflowError(
-                f"Fixed profile task {rule_name!r} does not match the static graph"
-            )
+def _owner(rule_name):
+    return str(OWNER_TASKS[rule_name]["machine_key"])
 
 
-_require_profile_projection()
+EXPECTED_SCOPES_BY_OWNER = {}
+for item in EXPECTED_TASKS:
+    EXPECTED_SCOPES_BY_OWNER.setdefault(item.machine_key, set()).add(item.scope_id)
 
 DISPATCH_PATHS = config.get("dispatch_paths")
 if not isinstance(DISPATCH_PATHS, dict):
     raise WorkflowError("Workflow config 'dispatch_paths' must be an object")
 
 
-def _expected_scopes(selector):
-    if selector == "reference":
-        return (REFERENCE_ID,)
-    if selector == "samples":
-        return SAMPLE_IDS
-    if selector == "partitions":
-        return PARTITION_SCOPES
-    if selector == "cohort":
-        return (COHORT_ID,)
-    if selector == "analysis":
-        return (ANALYSIS_ID,)
-    raise WorkflowError(f"Unsupported automatic scope selector: {selector}")
-
-
-def _require_closed_dispatch_map():
-    expected_owners = {
-        identity[0] for identity in AUTOMATIC_TASKS.values()
-    }
-    if set(DISPATCH_PATHS) != expected_owners:
+if set(DISPATCH_PATHS) != set(EXPECTED_SCOPES_BY_OWNER):
+    raise WorkflowError(
+        "Workflow dispatch_paths owner keys do not exactly match the current plan"
+    )
+for machine_key, expected_scopes in EXPECTED_SCOPES_BY_OWNER.items():
+    by_scope = DISPATCH_PATHS[machine_key]
+    if not isinstance(by_scope, dict) or set(by_scope) != expected_scopes:
         raise WorkflowError(
-            "Workflow dispatch_paths owner keys do not exactly match the automatic profile"
+            f"Dispatch scopes do not exactly match the current plan for {machine_key}"
         )
-    for machine_key, _, selector in AUTOMATIC_TASKS.values():
-        by_scope = DISPATCH_PATHS[machine_key]
-        if not isinstance(by_scope, dict) or set(by_scope) != set(
-            _expected_scopes(selector)
-        ):
-            raise WorkflowError(
-                f"Dispatch scopes do not exactly match {machine_key}/{selector}"
-            )
-
-
-_require_closed_dispatch_map()
 
 _DISPATCH_CACHE = {}
 
@@ -487,11 +412,7 @@ def _dispatch_reference(machine_key, scope_id):
         "profile_path": str(PROFILE_SNAPSHOT_PATH),
         "machine_key": machine_key,
         "scope": {
-            "scope_type": next(
-                scope_type
-                for owner, scope_type, _ in AUTOMATIC_TASKS.values()
-                if owner == machine_key
-            ),
+            "scope_type": str(OWNER_TASKS_BY_KEY[machine_key]["scope_type"]),
             "scope_id": scope_id,
         },
         "verified_task_path": _verified(machine_key, scope_id),
@@ -532,53 +453,32 @@ def _dispatch_reference(machine_key, scope_id):
     return result
 
 
-def _dispatch(machine_key, scope_id):
-    return _dispatch_reference(machine_key, scope_id)[0]
+TASK_ARGV_PREFIX = (
+    PYTHON,
+    "-X",
+    "pycache_prefix=/dev/null",
+    "-I",
+    "-m",
+    "emrys.orchestration.local_pilot.task",
+)
+TASK_SHELL = "{params.task_argv:q}"
 
 
-def _dispatch_sha256(machine_key, scope_id):
-    return _dispatch_reference(machine_key, scope_id)[1]
+def _task_argv(machine_key, scope_id=None, *, wildcard=None):
+    def resolve(wildcards):
+        admitted_scope = getattr(wildcards, wildcard) if wildcard else scope_id
+        dispatch, digest, _attempt_id = _dispatch_reference(
+            machine_key, admitted_scope
+        )
+        return (*TASK_ARGV_PREFIX, "--dispatch", dispatch, "--dispatch-sha256", digest)
 
-
-def _sample_dispatch(machine_key):
-    return lambda wildcards: _dispatch(machine_key, wildcards.sample_id)
-
-
-def _sample_dispatch_sha256(machine_key):
-    return lambda wildcards: _dispatch_sha256(machine_key, wildcards.sample_id)
-
-
-def _partition_dispatch(machine_key):
-    return lambda wildcards: _dispatch(machine_key, wildcards.partition_scope)
-
-
-def _partition_dispatch_sha256(machine_key):
-    return lambda wildcards: _dispatch_sha256(machine_key, wildcards.partition_scope)
-
-
-def _all_owner_outputs():
-    outputs = []
-    for rule_name, (machine_key, _, selector) in AUTOMATIC_TASKS.items():
-        if selector == "reference":
-            scopes = (REFERENCE_ID,)
-        elif selector == "samples":
-            scopes = SAMPLE_IDS
-        elif selector == "partitions":
-            scopes = PARTITION_SCOPES
-        elif selector == "cohort":
-            scopes = (COHORT_ID,)
-        else:
-            scopes = (ANALYSIS_ID,)
-        outputs.extend(_verified(machine_key, scope) for scope in scopes)
-    return outputs
+    return resolve
 
 
 def _admit_reusable_markers():
     verified_root = RUN_ROOT / "state" / "verified"
     expected = {
-        Path(_verified(machine_key, scope_id))
-        for machine_key, _, selector in AUTOMATIC_TASKS.values()
-        for scope_id in _expected_scopes(selector)
+        Path(_verified(item.machine_key, item.scope_id)) for item in EXPECTED_TASKS
     }
     if verified_root.exists() or verified_root.is_symlink():
         if verified_root.is_symlink() or not verified_root.is_dir():
@@ -606,47 +506,47 @@ def _admit_reusable_markers():
         if not observed_files.issubset(expected):
             unexpected = sorted(observed_files - expected)[0]
             raise WorkflowError(f"Unexpected verified-task marker: {unexpected}")
-    for machine_key, scope_type, selector in AUTOMATIC_TASKS.values():
-        for scope_id in _expected_scopes(selector):
-            path = Path(_verified(machine_key, scope_id))
-            if path.exists() or path.is_symlink():
-                try:
-                    record = validate_verified_task(
-                        path,
-                        run_root=RUN_ROOT,
-                        execution=EXECUTION,
-                        profile=PROFILE,
-                        machine_key=machine_key,
-                        scope={"scope_type": scope_type, "scope_id": scope_id},
-                    )
-                    expected_dispatch = _dispatch_reference(machine_key, scope_id)
-                    bound_dispatches = [
-                        item
-                        for item in record["inputs"]
-                        if item["role"] == "task_dispatch"
-                    ]
-                    if len(bound_dispatches) != 1 or bound_dispatches[0] != {
-                        "role": "task_dispatch",
-                        "path": expected_dispatch[0],
-                        "size_bytes": Path(expected_dispatch[0]).stat().st_size,
-                        "sha256": expected_dispatch[1],
-                    }:
-                        raise TaskBoundaryError(
-                            "Verified task dispatch does not match current workflow config"
-                        )
-                except (
-                    OSError,
-                    orchestration_contracts.ContractValidationError,
-                    TaskBoundaryError,
-                ) as exc:
-                    raise WorkflowError(
-                        f"Could not admit reusable verified task {path}: {exc}"
-                    ) from exc
-            elif _dispatch_reference(machine_key, scope_id)[2] != WORKFLOW_ATTEMPT_ID:
-                raise WorkflowError(
-                    f"Pending dispatch for {machine_key}/{scope_id} does not bind "
-                    "the current workflow attempt"
+    for item in EXPECTED_TASKS:
+        machine_key, scope_id = item.machine_key, item.scope_id
+        path = Path(_verified(machine_key, scope_id))
+        if path.exists() or path.is_symlink():
+            try:
+                record = validate_verified_task(
+                    path,
+                    run_root=RUN_ROOT,
+                    execution=EXECUTION,
+                    profile=PROFILE,
+                    machine_key=machine_key,
+                    scope=item.scope,
                 )
+                expected_dispatch = _dispatch_reference(machine_key, scope_id)
+                bound_dispatches = [
+                    value
+                    for value in record["inputs"]
+                    if value["role"] == "task_dispatch"
+                ]
+                if len(bound_dispatches) != 1 or bound_dispatches[0] != {
+                    "role": "task_dispatch",
+                    "path": expected_dispatch[0],
+                    "size_bytes": Path(expected_dispatch[0]).stat().st_size,
+                    "sha256": expected_dispatch[1],
+                }:
+                    raise TaskBoundaryError(
+                        "Verified task dispatch does not match current workflow config"
+                    )
+            except (
+                OSError,
+                orchestration_contracts.ContractValidationError,
+                TaskBoundaryError,
+            ) as exc:
+                raise WorkflowError(
+                    f"Could not admit reusable verified task {path}: {exc}"
+                ) from exc
+        elif _dispatch_reference(machine_key, scope_id)[2] != WORKFLOW_ATTEMPT_ID:
+            raise WorkflowError(
+                f"Pending dispatch for {machine_key}/{scope_id} does not bind "
+                "the current workflow attempt"
+            )
 
 
 def _admit_state_namespace():
@@ -697,276 +597,219 @@ wildcard_constraints:
 
 rule reference_slice:
     input:
-        _verified(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID),
-        _verified(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID),
-        _verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
-
-
-rule one_sample_slice:
-    input:
-        _verified(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID),
-        _verified(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID),
-        _verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID),
-        _verified(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0], FIRST_SAMPLE_ID),
-        _verified(AUTOMATIC_TASKS["construct_canonical_BAM"][0], FIRST_SAMPLE_ID),
-        _verified(AUTOMATIC_TASKS["collect_canonical_BAM_QC_evidence"][0], FIRST_SAMPLE_ID),
-        _verified(AUTOMATIC_TASKS["collect_RSeQC_paired_orientation_evidence"][0], FIRST_SAMPLE_ID),
-        _verified(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0], FIRST_SAMPLE_ID),
-        _verified(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0], FIRST_SAMPLE_ID),
-        _verified(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0], FIRST_SAMPLE_ID)
+        _verified(_owner("construct_STAR_index"), REFERENCE_ID),
+        _verified(_owner("convert_GTF_to_BED12"), REFERENCE_ID),
+        _verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
 
 
 rule cohort_slice:
     input:
-        _all_owner_outputs()
+        tuple(_verified(item.machine_key, item.scope_id) for item in EXPECTED_TASKS)
     default_target: True
 
 
 rule construct_STAR_index:
     output:
-        _verified(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID)
+        _verified(_owner("construct_STAR_index"), REFERENCE_ID)
     params:
-        python=PYTHON,
-        dispatch=_dispatch(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID),
-        dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID)
+        task_argv=_task_argv(_owner("construct_STAR_index"), REFERENCE_ID)
     threads:
         STEP_THREADS["00a"]
     resources:
         mem_mb=STAGE_MEMORY_MB["00a"]
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        TASK_SHELL
 
 
 rule convert_GTF_to_BED12:
     output:
-        _verified(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID)
+        _verified(_owner("convert_GTF_to_BED12"), REFERENCE_ID)
     params:
-        python=PYTHON,
-        dispatch=_dispatch(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID),
-        dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID)
-    threads:
-        1
+        task_argv=_task_argv(_owner("convert_GTF_to_BED12"), REFERENCE_ID)
     resources:
         mem_mb=STAGE_MEMORY_MB["00b"]
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        TASK_SHELL
 
 
 rule construct_FASTA_sidecars:
     output:
-        _verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
+        _verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
     params:
-        python=PYTHON,
-        dispatch=_dispatch(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID),
-        dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
-    threads:
-        1
+        task_argv=_task_argv(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
     resources:
         mem_mb=STAGE_MEMORY_MB["00c"]
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        TASK_SHELL
 
 
 rule align_RNA_reads_with_STAR:
     input:
-        star_index=_verified(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID)
+        star_index=_verified(_owner("construct_STAR_index"), REFERENCE_ID)
     output:
-        _sample_verified(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0])
+        _sample_verified(_owner("align_RNA_reads_with_STAR"))
     params:
-        python=PYTHON,
-        dispatch=_sample_dispatch(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0]),
-        dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0])
+        task_argv=_task_argv(_owner("align_RNA_reads_with_STAR"), wildcard="sample_id")
     threads:
         STEP_THREADS["01"]
     resources:
         mem_mb=STAGE_MEMORY_MB["01"],
         stage_01_slots=1
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        TASK_SHELL
 
 
 rule construct_canonical_BAM:
     input:
-        star_bam=_sample_verified(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0])
+        star_bam=_sample_verified(_owner("align_RNA_reads_with_STAR"))
     output:
-        _sample_verified(AUTOMATIC_TASKS["construct_canonical_BAM"][0])
+        _sample_verified(_owner("construct_canonical_BAM"))
     params:
-        python=PYTHON,
-        dispatch=_sample_dispatch(AUTOMATIC_TASKS["construct_canonical_BAM"][0]),
-        dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["construct_canonical_BAM"][0])
+        task_argv=_task_argv(_owner("construct_canonical_BAM"), wildcard="sample_id")
     threads:
         STEP_THREADS["02"]
     resources:
         mem_mb=STAGE_MEMORY_MB["02"],
         stage_02_slots=1
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        TASK_SHELL
 
 
 rule collect_canonical_BAM_QC_evidence:
     input:
-        canonical_bam=_sample_verified(AUTOMATIC_TASKS["construct_canonical_BAM"][0])
+        canonical_bam=_sample_verified(_owner("construct_canonical_BAM"))
     output:
-        _sample_verified(AUTOMATIC_TASKS["collect_canonical_BAM_QC_evidence"][0])
+        _sample_verified(_owner("collect_canonical_BAM_QC_evidence"))
     params:
-        python=PYTHON,
-        dispatch=_sample_dispatch(AUTOMATIC_TASKS["collect_canonical_BAM_QC_evidence"][0]),
-        dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["collect_canonical_BAM_QC_evidence"][0])
-    threads:
-        1
+        task_argv=_task_argv(_owner("collect_canonical_BAM_QC_evidence"), wildcard="sample_id")
     resources:
         mem_mb=STAGE_MEMORY_MB["02b"],
         stage_02b_slots=1
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        TASK_SHELL
 
 
 rule collect_RSeQC_paired_orientation_evidence:
     input:
-        canonical_bam=_sample_verified(AUTOMATIC_TASKS["construct_canonical_BAM"][0]),
-        bed12=_verified(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID)
+        canonical_bam=_sample_verified(_owner("construct_canonical_BAM")),
+        bed12=_verified(_owner("convert_GTF_to_BED12"), REFERENCE_ID)
     output:
-        _sample_verified(AUTOMATIC_TASKS["collect_RSeQC_paired_orientation_evidence"][0])
+        _sample_verified(_owner("collect_RSeQC_paired_orientation_evidence"))
     params:
-        python=PYTHON,
-        dispatch=_sample_dispatch(AUTOMATIC_TASKS["collect_RSeQC_paired_orientation_evidence"][0]),
-        dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["collect_RSeQC_paired_orientation_evidence"][0])
-    threads:
-        1
+        task_argv=_task_argv(_owner("collect_RSeQC_paired_orientation_evidence"), wildcard="sample_id")
     resources:
         mem_mb=STAGE_MEMORY_MB["03"],
         stage_03_slots=1
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        TASK_SHELL
 
 
 rule mark_BAM_duplicates_with_Picard:
     input:
-        canonical_bam=_sample_verified(AUTOMATIC_TASKS["construct_canonical_BAM"][0])
+        canonical_bam=_sample_verified(_owner("construct_canonical_BAM"))
     output:
-        _sample_verified(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0])
+        _sample_verified(_owner("mark_BAM_duplicates_with_Picard"))
     params:
-        python=PYTHON,
-        dispatch=_sample_dispatch(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0]),
-        dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0])
-    threads:
-        1
+        task_argv=_task_argv(_owner("mark_BAM_duplicates_with_Picard"), wildcard="sample_id")
     resources:
         mem_mb=STAGE_MEMORY_MB["04"],
         stage_04_slots=1
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        TASK_SHELL
 
 
 rule split_N_cigar_reads_with_GATK:
     input:
-        marked_bam=_sample_verified(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0]),
-        reference_sidecars=_verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
+        marked_bam=_sample_verified(_owner("mark_BAM_duplicates_with_Picard")),
+        reference_sidecars=_verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
     output:
-        _sample_verified(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0])
+        _sample_verified(_owner("split_N_cigar_reads_with_GATK"))
     params:
-        python=PYTHON,
-        dispatch=_sample_dispatch(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0]),
-        dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0])
-    threads:
-        1
+        task_argv=_task_argv(_owner("split_N_cigar_reads_with_GATK"), wildcard="sample_id")
     resources:
         mem_mb=STAGE_MEMORY_MB["05"],
         stage_05_slots=1
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        TASK_SHELL
 
 
 rule partition_BAM_by_mechanical_read_orientation:
     input:
-        split_bam=_sample_verified(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0])
+        split_bam=_sample_verified(_owner("split_N_cigar_reads_with_GATK"))
     output:
-        _sample_verified(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0])
+        _sample_verified(_owner("partition_BAM_by_mechanical_read_orientation"))
     params:
-        python=PYTHON,
-        dispatch=_sample_dispatch(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0]),
-        dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0])
+        task_argv=_task_argv(_owner("partition_BAM_by_mechanical_read_orientation"), wildcard="sample_id")
     threads:
         STEP_THREADS["06"]
     resources:
         mem_mb=STAGE_MEMORY_MB["06"],
         stage_06_slots=1
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        TASK_SHELL
 
 
 rule generate_partitioned_cohort_mpileup_VCFs:
     input:
         partitioned_bams=expand(
-            _sample_verified(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0]),
+            _sample_verified(_owner("partition_BAM_by_mechanical_read_orientation")),
             sample_id=SAMPLE_IDS,
         ),
-        reference_sidecars=_verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
+        reference_sidecars=_verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
     output:
-        _partition_verified(AUTOMATIC_TASKS["generate_partitioned_cohort_mpileup_VCFs"][0])
+        _partition_verified(_owner("generate_partitioned_cohort_mpileup_VCFs"))
     params:
-        python=PYTHON,
-        dispatch=_partition_dispatch(AUTOMATIC_TASKS["generate_partitioned_cohort_mpileup_VCFs"][0]),
-        dispatch_sha256=_partition_dispatch_sha256(AUTOMATIC_TASKS["generate_partitioned_cohort_mpileup_VCFs"][0])
-    threads:
-        1
+        task_argv=_task_argv(
+            _owner("generate_partitioned_cohort_mpileup_VCFs"),
+            wildcard="partition_scope",
+        )
     resources:
         mem_mb=STAGE_MEMORY_MB["07"],
         stage_07_slots=1
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        TASK_SHELL
 
 
 rule preprocess_and_annotate_cohort_candidates:
     input:
         partition_vcfs=expand(
-            _partition_verified(AUTOMATIC_TASKS["generate_partitioned_cohort_mpileup_VCFs"][0]),
+            _partition_verified(_owner("generate_partitioned_cohort_mpileup_VCFs")),
             partition_scope=PARTITION_SCOPES,
         )
     output:
-        _verified(AUTOMATIC_TASKS["preprocess_and_annotate_cohort_candidates"][0], COHORT_ID)
+        _verified(_owner("preprocess_and_annotate_cohort_candidates"), COHORT_ID)
     params:
-        python=PYTHON,
-        dispatch=_dispatch(AUTOMATIC_TASKS["preprocess_and_annotate_cohort_candidates"][0], COHORT_ID),
-        dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["preprocess_and_annotate_cohort_candidates"][0], COHORT_ID)
+        task_argv=_task_argv(_owner("preprocess_and_annotate_cohort_candidates"), COHORT_ID)
     threads:
         STEP_THREADS["08"]
     resources:
         mem_mb=STAGE_MEMORY_MB["08"]
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        TASK_SHELL
 
 
 rule rank_cohort_candidates_with_paired_CMH:
     input:
-        cohort_candidates=_verified(AUTOMATIC_TASKS["preprocess_and_annotate_cohort_candidates"][0], COHORT_ID)
+        cohort_candidates=_verified(_owner("preprocess_and_annotate_cohort_candidates"), COHORT_ID)
     output:
-        _verified(AUTOMATIC_TASKS["rank_cohort_candidates_with_paired_CMH"][0], ANALYSIS_ID)
+        _verified(_owner("rank_cohort_candidates_with_paired_CMH"), ANALYSIS_ID)
     params:
-        python=PYTHON,
-        dispatch=_dispatch(AUTOMATIC_TASKS["rank_cohort_candidates_with_paired_CMH"][0], ANALYSIS_ID),
-        dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["rank_cohort_candidates_with_paired_CMH"][0], ANALYSIS_ID)
-    threads:
-        1
+        task_argv=_task_argv(_owner("rank_cohort_candidates_with_paired_CMH"), ANALYSIS_ID)
     resources:
         mem_mb=STAGE_MEMORY_MB["09"]
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        TASK_SHELL
 
 
 rule project_candidate_scientific_context:
     input:
-        candidate_ranking=_verified(AUTOMATIC_TASKS["rank_cohort_candidates_with_paired_CMH"][0], ANALYSIS_ID),
-        reference_sidecars=_verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
+        candidate_ranking=_verified(_owner("rank_cohort_candidates_with_paired_CMH"), ANALYSIS_ID),
+        reference_sidecars=_verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
     output:
-        _verified(AUTOMATIC_TASKS["project_candidate_scientific_context"][0], ANALYSIS_ID)
+        _verified(_owner("project_candidate_scientific_context"), ANALYSIS_ID)
     params:
-        python=PYTHON,
-        dispatch=_dispatch(AUTOMATIC_TASKS["project_candidate_scientific_context"][0], ANALYSIS_ID),
-        dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["project_candidate_scientific_context"][0], ANALYSIS_ID)
-    threads:
-        1
+        task_argv=_task_argv(_owner("project_candidate_scientific_context"), ANALYSIS_ID)
     resources:
         mem_mb=STAGE_MEMORY_MB["10"]
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        TASK_SHELL

@@ -33,7 +33,6 @@ _SCIENTIFIC_ROOTS = (
     "src/emrys/libraries/file_checks.sh",
     "src/emrys/libraries/gatk_invocation.sh",
     "src/emrys/libraries/input_contract.R",
-    "src/emrys/libraries/orientation.sh",
     "src/emrys/libraries/quality",
     "src/emrys/libraries/references",
     "src/emrys/libraries/signal_traps.sh",
@@ -190,10 +189,12 @@ def backend_semantics_identity(source_root: Path) -> str:
         raise RunImplementationError(
             "Local-pilot workflow profile must use local executor"
         )
+    snakefile = _identity_file(source_root / SNAKEFILE_RELATIVE, source_root)
     return orchestration_contracts.canonical_sha256(
         {
             "identity_domain": "emrys.snakemake-backend-semantics.v1",
             **semantics,
+            "snakefile_sha256": snakefile["sha256"],
             "target": BACKEND_TARGET,
             "fixed_flags": ["--nocolor"],
             "operation_flags": {

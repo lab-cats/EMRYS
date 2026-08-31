@@ -19,8 +19,12 @@ import pytest
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.libraries.source_authority import controlled_python_argv
-from emrys.orchestration.local_pilot import inspection
+from emrys.orchestration.local_pilot import inspection, lifecycle, materialization
 from tests.orchestration.local_pilot.fixtures import workflow as workflow_fixture
+from tests.orchestration.local_pilot.test_materialization import (
+    _readiness,
+    _run_candidate,
+)
 
 EXECUTABLE_RULES = {
     "construct_STAR_index",
@@ -38,7 +42,7 @@ EXECUTABLE_RULES = {
     "rank_cohort_candidates_with_paired_CMH",
     "project_candidate_scientific_context",
 }
-SLICE_RULES = {"reference_slice", "one_sample_slice", "cohort_slice"}
+SLICE_RULES = {"reference_slice", "cohort_slice"}
 SCIENTIFIC_BINARIES = {
     "STAR",
     "gatk",
@@ -53,16 +57,19 @@ SCIENTIFIC_BINARIES = {
 
 def _create_clean_source_checkout(checkout: Path) -> tuple[Path, str]:
     checkout.mkdir()
-    shutil.copy2(workflow_fixture.REPO_ROOT / "pyproject.toml", checkout)
+    for name in (".Rprofile", "pyproject.toml", "renv.lock", "uv.lock"):
+        shutil.copy2(workflow_fixture.REPO_ROOT / name, checkout)
     shutil.copytree(
         workflow_fixture.REPO_ROOT / "src" / "emrys",
         checkout / "src" / "emrys",
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"),
     )
-    subprocess.run(["git", "init", "--quiet"], cwd=checkout, check=True)
-    subprocess.run(
-        ["git", "add", "pyproject.toml", "src/emrys"], cwd=checkout, check=True
+    shutil.copytree(
+        workflow_fixture.REPO_ROOT / "workflow",
+        checkout / "workflow",
     )
+    subprocess.run(["git", "init", "--quiet"], cwd=checkout, check=True)
+    subprocess.run(["git", "add", "--all"], cwd=checkout, check=True)
     subprocess.run(
         [
             "git",
@@ -134,6 +141,7 @@ def _snakemake(
     *arguments: str,
     check: bool = True,
     metadata_name: str = "snakemake-metadata",
+    snakefile: Path = workflow_fixture.SNAKEFILE,
 ) -> subprocess.CompletedProcess[str]:
     metadata = built.root / metadata_name
     cache = built.root / "cache"
@@ -145,7 +153,7 @@ def _snakemake(
         "-m",
         "snakemake",
         "--snakefile",
-        str(workflow_fixture.SNAKEFILE),
+        str(snakefile),
         "--workflow-profile",
         "local",
         "--runtime-source-cache-path",
@@ -314,7 +322,7 @@ def _leave_real_incomplete_marker(
 
 @pytest.mark.parametrize(
     ("target", "expected_jobs"),
-    (("reference_slice", 3), ("one_sample_slice", 10), ("cohort_slice", 35)),
+    (("reference_slice", 3), ("cohort_slice", 35)),
 )
 def test_real_snakemake_dry_run_has_exact_owner_job_counts(
     built: workflow_fixture.WorkflowFixture,
@@ -404,7 +412,6 @@ def test_real_snakemake_dry_run_has_exact_owner_job_counts(
             ): 1,
         }
     )
-
     evidence = {
         node_id
         for node_id, label in nodes.items()
@@ -416,6 +423,62 @@ def test_real_snakemake_dry_run_has_exact_owner_job_counts(
     }
     assert evidence
     assert not any(source in evidence for source, _ in owner_edges), output
+
+
+def test_real_processing_plan_dry_run_closes_at_step_06(
+    tmp_path: Path,
+    clean_source_checkout: tuple[Path, str],
+) -> None:
+    checkout, commit = clean_source_checkout
+    readiness, resources, _request, workspace = _readiness(
+        tmp_path / "processing-plan",
+        source_root=checkout,
+        source_commit=commit,
+    )
+    plan = materialization.build_attempt_plan(
+        _run_candidate(readiness, resources, through="processing"),
+        readiness,
+        workspace,
+        resources=resources,
+        operation="execute",
+    )
+    ops = lifecycle.default_lifecycle_ops()
+    materialization.admit_run(plan, ops=ops)
+    materialization.publish_attempt(plan, ops=ops)
+    attempt_root = plan.run_root / "attempts" / plan.workflow_attempt_id
+    attempt_root.mkdir(mode=0o700)
+    (attempt_root / "request.yaml").write_bytes(plan.run.analysis.source_bytes)
+    attempt_path = attempt_root / "attempt.json"
+    attempt_path.write_bytes(plan.attempt_record_bytes)
+    config = orchestration_contracts.load_json_object(plan.config_path)
+    built = workflow_fixture.WorkflowFixture(
+        root=tmp_path / "processing-plan-workflow",
+        run_root=plan.run_root,
+        config_path=plan.config_path,
+        execution=plan.run.run_binding.record,
+        profile=plan.run.analysis.profile,
+        dispatch_paths={
+            machine_key: {
+                scope_id: str(reference["path"])
+                for scope_id, reference in by_scope.items()
+            }
+            for machine_key, by_scope in config["dispatch_paths"].items()
+        },
+        workflow_attempt_path=attempt_path,
+    )
+    built.root.mkdir()
+    workflow_fixture.materialize_active_run_lock(built)
+
+    nodes, _edges, output = _dag(built, "cohort_slice")
+    owners = [label for label in nodes.values() if label in EXECUTABLE_RULES]
+
+    assert plan.dispatch_count == len(owners) == 31, output
+    assert not {
+        "generate_partitioned_cohort_mpileup_VCFs",
+        "preprocess_and_annotate_cohort_candidates",
+        "rank_cohort_candidates_with_paired_CMH",
+        "project_candidate_scientific_context",
+    }.intersection(owners)
 
 
 def test_backend_projection_accepts_successor_resource_policy_record(
@@ -468,6 +531,61 @@ def test_profile_and_rule_rosters_are_exact_and_output_only_verified_state(
     assert built.artifact_receipt not in declared
     assert built.run_summary_receipt not in declared
     assert built.report_receipt not in declared
+
+
+def test_static_graph_rejects_schema_valid_owner_reassignment(tmp_path: Path) -> None:
+    checkout, _commit = _create_clean_source_checkout(tmp_path / "owner-swap-source")
+    profile_path = checkout / "workflow" / "contracts" / "local_cmh_v2.json"
+    profile = orchestration_contracts.load_json_object(profile_path)
+    by_rule = {str(task["rule_name"]): task for task in profile["owner_tasks"]}
+    alignment = by_rule["align_RNA_reads_with_STAR"]
+    canonical_bam = by_rule["construct_canonical_BAM"]
+    alignment["machine_key"], canonical_bam["machine_key"] = (
+        canonical_bam["machine_key"],
+        alignment["machine_key"],
+    )
+    orchestration_contracts.validate_record("profile", profile)
+    profile_path.write_bytes(orchestration_contracts.canonical_json_bytes(profile))
+    subprocess.run(["git", "add", str(profile_path)], cwd=checkout, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=EMRYS Fixture",
+            "-c",
+            "user.email=emrys-fixture@example.invalid",
+            "commit",
+            "--quiet",
+            "-m",
+            "reassign schema-valid owners",
+        ],
+        cwd=checkout,
+        check=True,
+    )
+    commit = subprocess.run(
+        ["git", "rev-parse", "--verify", "HEAD"],
+        cwd=checkout,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    rebuilt = workflow_fixture.build(
+        tmp_path / "owner-swap-fixture", profile_override=profile
+    )
+    _bind_source_checkout(rebuilt, (checkout, commit))
+    workflow_fixture.materialize_active_run_lock(rebuilt)
+
+    failed = _snakemake(
+        rebuilt,
+        "--dry-run",
+        "--",
+        "reference_slice",
+        check=False,
+        snakefile=checkout / "workflow" / "Snakefile",
+    )
+
+    assert failed.returncode != 0
+    assert "Fixed profile owner tasks do not match the static graph" in failed.stdout
 
 
 def test_real_cohort_slice_validates_all_scientific_outputs(

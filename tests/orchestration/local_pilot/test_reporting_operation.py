@@ -113,6 +113,36 @@ def test_complete_historical_reporting_is_reused_read_only(
     assert outcome.verified_report_locations == locations
 
 
+@pytest.mark.parametrize("execute", (False, True))
+def test_processing_only_run_refuses_reporting_without_writes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    execute: bool,
+) -> None:
+    root = (tmp_path / "run-processing-only").resolve()
+    root.mkdir()
+    state = _state(root, reporting_status="not applicable")
+    monkeypatch.setattr(
+        reporting_operation.inspection,
+        "inspect_run",
+        lambda _root: state,
+    )
+    monkeypatch.setattr(
+        reporting_operation,
+        "_prepare_transaction",
+        lambda *_args: pytest.fail("processing-only Run entered a report producer"),
+    )
+    before = tuple(root.rglob("*"))
+
+    with pytest.raises(
+        reporting_operation.ReportingOperationError,
+        match="not applicable to this partial scientific Run",
+    ):
+        reporting_operation.run_reporting(root, execute=execute)
+
+    assert tuple(root.rglob("*")) == before
+
+
 def test_dry_run_validates_first_producer_without_publishing(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

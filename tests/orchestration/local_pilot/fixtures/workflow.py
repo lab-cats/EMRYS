@@ -989,14 +989,23 @@ def _write_dispatch(
     return record
 
 
-def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
+def build(
+    root: Path,
+    *,
+    materialize_attempt: bool = True,
+    profile_override: dict[str, Any] | None = None,
+) -> WorkflowFixture:
     """Build an immutable normalized contract plus pre-materialized dispatches."""
 
     root.mkdir(parents=True, exist_ok=True)
     root = root.resolve(strict=True)
     intake_root = root / "intake"
     intake_root.mkdir()
-    profile = orchestration_contracts.load_json_object(PROFILE_PATH)
+    profile = (
+        orchestration_contracts.load_json_object(PROFILE_PATH)
+        if profile_override is None
+        else profile_override
+    )
     request_path, execution, execution_bytes = build_legacy_execution(
         intake_root, profile
     )

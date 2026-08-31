@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, TextIO
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.application_model import execution_plan_boundary
 from emrys.libraries.application_logging import (
     ApplicationLogError,
     AttemptIdentity,
@@ -54,6 +55,7 @@ from emrys.orchestration.local_pilot.materialization import (
     admit_run,
     build_attempt_plan,
     build_run_candidate,
+    processing_stopping_owner_keys,
     publish_attempt,
     validate_run_destination,
 )
@@ -126,6 +128,7 @@ def _plan_run(
     *,
     execution_profile: ExecutionProfile,
     analysis_name: str | None = None,
+    through: str = "analysis",
     scheduler_job_id: str | None = None,
 ) -> AttemptPlan:
     """Plan a new run without writing any workspace state."""
@@ -139,7 +142,16 @@ def _plan_run(
         )
         _require_ready(readiness)
         policy = execution_profile.resource_policy
-        run = build_run_candidate(readiness.analysis, readiness, policy.declaration)
+        run = build_run_candidate(
+            readiness.analysis,
+            readiness,
+            policy.declaration,
+            scientific_stopping_owner_keys=(
+                None
+                if through == "analysis"
+                else processing_stopping_owner_keys(readiness.analysis.profile)
+            ),
+        )
         resources = resolve_resource_policy(policy, capacity.observe_allocation())
         plan = build_attempt_plan(
             run,
@@ -368,7 +380,14 @@ def _plan_resume(
                 resource_policy=policy,
             )
         if observed.authority is not None:
-            candidate = build_run_candidate(analysis, readiness, policy.declaration)
+            candidate = build_run_candidate(
+                analysis,
+                readiness,
+                policy.declaration,
+                scientific_stopping_owner_keys=observed.authority.execution_plan.record[
+                    "identity"
+                ]["scientific_stopping_owner_keys"],
+            )
             if candidate.run_binding.canonical_bytes != observed.authority.run_binding.canonical_bytes:
                 raise ControlError("Current inputs resolve to a different Run")
             run = candidate
@@ -446,6 +465,8 @@ def _next_supported_action(observed: inspection.RunInspection) -> str:
     if observed.recovery_available:
         return "Use emrys resume for this Run; review and confirm the plan."
     if observed.results_status == "complete":
+        if observed.reporting_status == "not applicable":
+            return "Inspect this Run's verified scientific artifacts with --detail debug."
         if observed.reporting_status == "complete":
             return "Review the verified Results and report paths."
         return f"Generate reports with emrys report --run-root {observed.run_root} --execute."
@@ -544,6 +565,8 @@ def _delegate_argv(
         )
         if (analysis_name := getattr(arguments, "analysis", None)) is not None:
             argv.extend(("--analysis", analysis_name))
+        if getattr(arguments, "through", "analysis") != "analysis":
+            argv.extend(("--through", arguments.through))
     else:
         argv.extend(("--run-root", str(_absolute(arguments.run_root))))
     argv.extend(
@@ -904,6 +927,14 @@ def _execute_plan(
 
     if status == "succeeded":
         print(f"Evidence: {outcome.receipt_path}", file=sys.stderr)
+        if not _reporting_applicable(plan):
+            observe_reporting(
+                "reporting_not_applicable",
+                "Reporting is not applicable to this partial scientific Run.",
+            )
+            close_log_best_effort()
+            print("Reporting: not applicable (partial scientific Run)", file=sys.stderr)
+            return 0
         if not report_enabled:
             observe_reporting("reporting_skipped", "Reporting was disabled for this execution.")
             close_log_best_effort()
@@ -976,6 +1007,12 @@ def _execute_plan(
     return 1
 
 
+def _reporting_applicable(plan: AttemptPlan) -> bool:
+    return isinstance(plan.run, HistoricalRun) or (
+        execution_plan_boundary(plan.run.execution_plan) == "analysis"
+    )
+
+
 def _print_plan(plan: AttemptPlan, *, level: LogLevel, report_enabled: bool = True) -> None:
     new_dispatches = plan.new_dispatch_files
     reused = plan.dispatch_count - len(new_dispatches)
@@ -984,11 +1021,22 @@ def _print_plan(plan: AttemptPlan, *, level: LogLevel, report_enabled: bool = Tr
     print(f"Project: {project_label!a}", file=sys.stderr)
     print(f"Analysis: {plan.run.analysis.name!a}", file=sys.stderr)
     print(f"Run ID: {plan.run.run_id}", file=sys.stderr)
+    full_analysis = _reporting_applicable(plan)
+    if full_analysis:
+        boundary = "complete analysis"
+    elif execution_plan_boundary(plan.run.execution_plan) == "processing":
+        boundary = "sample processing (through Step 06)"
+    else:
+        boundary = "partial scientific plan"
+    if not full_analysis:
+        reporting = "not applicable to this partial scientific Run"
+    elif report_enabled:
+        reporting = "automatic after scientific work"
+    else:
+        reporting = "disabled for this execution"
+    print(f"Scientific boundary: {boundary}", file=sys.stderr)
     print(f"Work: {len(new_dispatches)} pending, {reused} reusable", file=sys.stderr)
-    print(
-        "Reporting: " + ("automatic after scientific work" if report_enabled else "disabled for this execution"),
-        file=sys.stderr,
-    )
+    print(f"Reporting: {reporting}", file=sys.stderr)
     if level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
         print(
             f"Analysis revision: {plan.run.analysis.revision.analysis_revision_id}",
@@ -1093,6 +1141,15 @@ def configure_run_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--analysis",
         help="Named Analysis; required only when the Project defines more than one.",
+    )
+    parser.add_argument(
+        "--through",
+        choices=("analysis", "processing"),
+        default="analysis",
+        help=(
+            "Run a complete analysis (default) or stop after per-sample "
+            "processing through Step 06."
+        ),
     )
     parser.add_argument(
         "--execution-profile",
@@ -1216,6 +1273,7 @@ def run_from_args(
             arguments.project,
             execution_profile=profile,
             analysis_name=getattr(arguments, "analysis", None),
+            through=getattr(arguments, "through", "analysis"),
             scheduler_job_id=scheduler_job_id,
         )
         return _finish_control(
@@ -1433,16 +1491,17 @@ def inspect_from_args(
                 f"Execution: {latest['executor']}/{latest['execution_mode']} "
                 f"placement={placement_kind} scheduler_job_id={scheduler_job_id}"
             )
-        print("Reporting transactions:")
-        for kind, records in observed.reporting_completion_records.items():
-            state = (
-                "complete"
-                if records["verified"] is not None
-                else "incomplete"
-                if records["start"] is not None
-                else "pending"
-            )
-            print(f"  {kind}: {state}")
+        if observed.reporting_status != "not applicable":
+            print("Reporting transactions:")
+            for kind, records in observed.reporting_completion_records.items():
+                state = (
+                    "complete"
+                    if records["verified"] is not None
+                    else "incomplete"
+                    if records["start"] is not None
+                    else "pending"
+                )
+                print(f"  {kind}: {state}")
     if detail == "debug":
         authority = observed.authority
         if authority is None:

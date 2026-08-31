@@ -149,6 +149,24 @@ emrys run \
   --execute
 ```
 
+That command retains the full default Analysis through Step `10`. To create a
+distinct Run that stops after evidence-complete processing for every sample,
+use the semantic boundary explicitly:
+
+```sh
+emrys run \
+  --project "$EMRYS_PROJECT_PATH" \
+  --analysis primary \
+  --through processing \
+  --execute
+```
+
+The semantic `emrys run --through processing` form selects 31 owner tasks
+across Steps `00`–`06` for this four-sample fixture. A successful processing
+Run is complete and not resumable; reporting is not applicable. Later
+downstream work would require a new immutable Run, but no compatible cross-Run
+reuse or downstream launch path is implemented yet.
+
 Because the synthetic Project has exactly one Analysis, `--analysis primary`
 may be omitted. For a Project with multiple Analyses it is required.
 
@@ -158,7 +176,7 @@ before executing it. On a terminal, omit `--execute` to review the same plan
 and answer one confirmation prompt. Refusal, EOF, or interruption before
 confirmation writes nothing, submits nothing, and opens no application log.
 
-Reporting runs automatically after successful scientific work. Add
+Reporting runs automatically after successful full scientific work. Add
 `--no-report` only when reporting should be skipped; this does not change the
 scientific Run or its Results. An explicit execution profile may place the same
 one-host workflow in one Slurm allocation; follow the [runbook](docs/operations/RUNBOOK.md)

@@ -92,9 +92,9 @@ Owner-local scheduler entry points are retired; the private whole-Run batch
 bootstrap remains the sole Slurm delegation boundary.
 
 An executing Run Attempt owns one application log, by default beneath
-`<project-root>/logs/application`. Reporting is invoked automatically after
-scientific work, publishes its transaction receipts last, and is not a
-scientific stage.
+`<project-root>/logs/application`. For a full Run, reporting is invoked
+automatically after scientific work, publishes its transaction receipts last,
+and is not a scientific stage. Reporting does not apply to a processing Run.
 
 The adjacent `dashboard.py` owns a read-only live view over one wrapper job's
 Slurm metadata and append-only stdout/stderr streams. The repository-level
@@ -214,6 +214,11 @@ work only through the accepted fixed profile:
   --analysis ANALYSIS_NAME \
   --execution-profile /absolute/path/to/emrys.execution.yaml
 
+.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
+  --project /absolute/path/to/project.yaml \
+  --analysis ANALYSIS_NAME \
+  --through processing
+
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
   run --run-root /absolute/project/runs/run-DIGEST
 
@@ -225,15 +230,24 @@ work only through the accepted fixed profile:
   --run-root /absolute/project/runs/run-DIGEST
 ```
 
+The first `run` command retains the full default Analysis. The semantic
+`emrys run --through processing` form creates a distinct immutable Run
+selecting the evidence-complete, all-sample Steps `00`–`06` closure. The
+four-sample synthetic fixture expands that closure to 31 owner tasks. A
+successful processing Run is complete and not resumable, and reporting is not
+applicable. This is only the processing/future-reuse boundary. A future
+downstream Analysis would require a new Run, while compatible cross-Run reuse
+and downstream launch remain unimplemented ANALYSIS-01 work.
+
 With direct placement, `run` and `resume` print concise Run identity, combined
-pending/reusable work, and reporting information; a terminal asks once before
-executing that exact plan. With Slurm placement, EMRYS constructs one frozen
+pending/reusable work within that Run, and reporting information; a terminal
+asks once before executing that exact plan. With Slurm placement, EMRYS constructs one frozen
 submission plan, prints its placement summary, and after confirmation submits
 that same object once; Run planning occurs inside the allocation. Refusal, EOF,
 or interruption opens no application log and writes nothing. Noninteractive
 omission of `--execute` retains the no-write/no-submit behavior, while
-`--execute` remains the explicit automation path. After successful scientific
-execution they generate the fixed reports by
+`--execute` remains the explicit automation path. After successful full
+scientific execution they generate the fixed reports by
 default; `--no-report` stops after the successful v2 Attempt receipt without
 changing Results. `report` independently validates a completed Run and plans
 without writes, then generates with `--execute` or reuses an exact complete
@@ -321,9 +335,10 @@ The public control surface uses these internal lifecycle authorities:
 
 Each science scope publishes
 `state/task-starts/<machine>/<scope>.json` immediately before producer entry.
-An entered scope is reusable only with its succeeded task attempt and exact
-verified record. A failed pre-entry diagnostic has no start record, remains
-bound in terminal receipts, and may be retried by a later attempt. Reporting is
+Within the same Run, an entered scope is reusable only with its succeeded task
+attempt and exact verified record. A failed pre-entry diagnostic has no start
+record, remains bound in terminal receipts, and may be retried by a later
+attempt. Reporting is
 downstream of the released scientific Attempt and uses the fixed
 `state/reporting/<kind>/{start,verified}.json` ledger with full semantic receipt
 revalidation. New generation requires completely empty reporting ledgers and
