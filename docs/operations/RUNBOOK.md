@@ -38,11 +38,10 @@ module list 2>&1 || true
 
 The login node is for Git, small transfers, editing, inspection, submission,
 and small smoke checks. Never confirm or explicitly execute a directly placed
-Run, STAR, BAM processing, mpileup, or R analysis there. Whole-Run Slurm
-submission is allowed because the scientific work runs inside one approved
-compute-node allocation; individual owner operations may instead use the
-owner-local `.slurm` entry points. Ordinary wrappers use `TMPDIR=/tmp`; the Step
-`05` owner requires its documented project-storage temporary directory.
+Run, STAR, BAM processing, mpileup, or R analysis there. The supported
+scheduler path is whole-Run Slurm placement, which runs scientific work inside
+one approved compute-node allocation and retains owner-specific temporary-space
+policy inside the workflow.
 
 ## Owner command routes
 
@@ -116,10 +115,10 @@ receipt-last transaction rather than a scientific stage. The scientific
 Attempt ends at `cohort_slice` before reporting begins. `--no-report` disables
 only downstream reporting and leaves the scientific Attempt unchanged.
 
-All 16 owner-local stage/utility `.slurm` files remain separate scheduler entry
-points. The Step `07`–`09` wrappers delegate to their Python owners; the other
-13 retain their prior forms. They publish only their owner's native
-outputs and validation evidence and never create or adopt an orchestrated Run.
+Owner-local scheduler entry points are retired. Standalone owner commands
+remain expert direct routes and never create or adopt an orchestrated Run;
+supported scheduled scientific execution uses grouped whole-Run Slurm
+placement.
 
 ### Recurring inspection and resume
 
@@ -267,7 +266,7 @@ uv sync --locked --check
 .venv/bin/python -m pytest -q tests/test_package_distribution.py
 ```
 
-For shell and SLURM behavior without replaying Python validator suites:
+For direct shell-owner behavior without replaying Python validator suites:
 
 ```bash
 make -s shell-test
@@ -294,10 +293,10 @@ RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks VALIDATION_ARGS=--verbose
 The assembled gate has five evidence lanes. Static preflight runs first and
 owns configuration, documentation, syntax, compilation, and manifest checks.
 Python coverage then owns Python behavior, branch/subprocess coverage, and
-Jinja HTML reporting while excluding the isolated-wheel and scheduler-wrapper
-suites. The wheel lane owns installed-package integrity. The shell/SLURM lane
-owns shell behavior, owner-local scheduler wrappers, and whole-Run submission
-transport contracts. Guarded real R remains
+Jinja HTML reporting while excluding the isolated-wheel suite. The wheel lane
+owns installed-package integrity. The shell lane owns direct shell-owner
+behavior. Python coverage owns whole-Run submission and transport contracts,
+and selected real-synthetic lanes supply hosted scheduler evidence. Guarded real R remains
 separate because Python and shell substitutes do not execute R semantics.
 Independent lanes run with bounded concurrency after preflight; `--serial`
 selects one top-level lane and one Python worker.
@@ -334,12 +333,13 @@ settled; rerun it only for a concrete failure-driven reason.
 The tracked [Phase 1 workflow](../../.github/workflows/ci.yml) runs its ordinary
 lanes for pull requests targeting `master`, pushes to `master`, and merge-queue
 candidates. Its long lanes run separately: the complete Python 3.11 suite and
-the 130-pair real synthetic E2E run nightly, and the 100,000-pair real synthetic
-E2E joins them weekly. Manual dispatch exposes three independent boolean
-selectors for those same lanes and rejects an empty selection. The workflow
-token has read-only repository access and every external action is pinned to an
-immutable commit. Superseded ordinary runs for the same ref are cancelled;
-scheduled and manually selected long runs have unique, non-cancelling groups.
+the 130-pair real synthetic E2E run nightly. The 100,000-pair profile is a
+weekly or explicitly selected scale gate, not a per-change architecture gate.
+Manual dispatch selects the maintained long lanes and rejects an empty
+selection. The workflow token has read-only repository access and every
+external action is pinned to an immutable commit. Superseded ordinary runs for
+the same ref are cancelled; scheduled and manually selected long runs have
+unique, non-cancelling groups.
 
 Python 3.14 is the primary development and pull-request runtime. Every pull
 request runs the complete behavioral inventory under branch coverage as four
@@ -363,8 +363,7 @@ slow R restore or shell lane cannot serialize the Python suite:
   owner.
 - `Python 3.14 complete suite and coverage policy` aggregates the four
   complete-suite coverage shards and the isolated subprocess probes.
-- `Shell and Slurm contracts` runs shell, owner-local wrapper, and whole-Run
-  submission contracts.
+- `Shell owner contracts` runs direct shell owners; Python and selected real-synthetic lanes cover whole-Run submission and parity.
 - `Guarded R fixtures` restores the exact R 4.6.1 environment and runs the
   guarded R owner.
 - `Managed golden path (Python 3.14)` creates a separate ordinary clone, lets
@@ -521,11 +520,10 @@ sacct -X -j "$job_id" \
   --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,NodeList
 ```
 
-Owner-local stage scheduler entry points use their owner-documented stream
-paths rather than the whole-run naming above. In every case, bind checkout,
-command, inputs, job ID, accounting, streams, native outputs, validation
-record, and evidence ceiling to the same attempt. Empty stderr, `COMPLETED
-0:0`, or visible output alone is not validation.
+For every whole-Run job, bind checkout, command, inputs, job ID, accounting,
+streams, native outputs, validation record, and evidence ceiling to the same
+attempt. Empty stderr, `COMPLETED 0:0`, or visible output alone is not
+validation.
 
 ## Cluster execution and promotion
 

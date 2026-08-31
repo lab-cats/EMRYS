@@ -60,7 +60,7 @@ changes scientific, transaction, recovery, or exit semantics.
 
 `helpers.py` contains the small pure mechanisms for classified command and
 selected-environment capture, exact invalid-byte diagnostics, bounded failure
-summaries, and explicit SLURM correlation. Production command and wrapper
+summaries, and explicit SLURM correlation. Retained production-operation
 adoption belongs to `LOG-05`; this package does not configure a root logger,
 capture unrelated namespaces, rotate or delete logs, or claim cluster,
 scientific, or biological evidence.

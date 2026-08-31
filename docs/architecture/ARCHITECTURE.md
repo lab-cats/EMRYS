@@ -25,9 +25,10 @@ reference/runtime/storage evidence occupy separate cross-cutting owners.
 Numeric step labels are historical aliases rather than a complete execution
 order.
 
-EMRYS currently exposes owner-local commands, SLURM entry points, read-only
-local-pilot admission, dry-run-first public run/resume/report/inspection commands, and
-one fixed source-checkout-bound Snakemake graph for local execution. The static
+EMRYS currently exposes owner-local commands, read-only local-pilot admission,
+dry-run-first public run/resume/report/inspection commands, one private
+whole-Run Slurm transport, and one fixed source-checkout-bound Snakemake graph
+for one-host execution. The static
 graph invokes public owners through hash-bound closed dispatch records,
 schedules only content-bound verified-task records, and stops at the complete
 scientific/evidence owner closure. After its v2 Attempt receipt, public control
@@ -37,13 +38,16 @@ filesystem-first lifecycle owns the run lock, immutable workflow attempts,
 terminal receipts, durable producer-entry ledgers, between-task resume, and
 read-only state inspection. The production materializer projects the fixed
 profile to the exact public owner commands and publishes attempt state only
-under the aggregate lifecycle lock. Real science-tool and cluster execution
-remain outside the proven boundary.
+under the aggregate lifecycle lock. Hosted 130-pair real-tool
+direct/disposable-single-node-Slurm outcome parity is proven; 100,000-pair,
+institutional site/module, failure/recovery, multi-node, production,
+scientific-review, and biological-validation evidence remain outside that
+boundary.
 
 | Component group | Implemented owners | Principal inputs | Principal outputs |
 | --- | --- | --- | --- |
 | Input admission | `src/emrys/ingestion/sample_manifest_admission/` | Explicit sample manifest and optional declared FASTQ paths | Schema/admission result and paired-FASTQ diagnostics |
-| Local-pilot orchestration | `src/emrys/orchestration/local_pilot/`, `src/emrys/contracts/orchestration/`, and `workflow/` | Explicit YAML request, ordered TSV manifests, exact runtime profile, reviewed fixed-profile record, canonical execution/config snapshots, and hash-bound task dispatches | Dry-run plans, create-absent run/attempt materialization, canonical execution/reporting identity, semantic all-pass evidence, durable task/reporting start records, task-attempt and verified records, immutable workflow attempts, public derived inspection, and between-task resume; no real-tool or cluster proof |
+| Local-pilot orchestration | `src/emrys/orchestration/local_pilot/`, `src/emrys/contracts/orchestration/`, and `workflow/` | Explicit YAML request, ordered TSV manifests, exact runtime profile, reviewed fixed-profile record, canonical execution/config snapshots, and hash-bound task dispatches | Dry-run plans, create-absent run/attempt materialization, canonical execution/reporting identity, semantic all-pass evidence, durable task/reporting start records, task-attempt and verified records, immutable workflow attempts, public derived inspection, between-task resume, and hosted 130-pair direct/disposable-single-node-Slurm successful-outcome parity; no 100,000-pair, institutional site/module, failure/recovery, multi-node, production, scientific-review, or biological-validation proof |
 | Reference preparation | Owners `00a`, `00b`, and `00c` under `src/emrys/stages/` | Reference FASTA, GTF, and tool parameters | STAR index, BED12, and FASTA sidecars |
 | Per-sample processing and evidence | Owners `01`–`06` under `src/emrys/stages/` plus evidence owners `02b` and `03` | Declared reads, references, and preceding owner artifacts | Aligned/canonical/duplicate-marked/split BAMs plus QC and orientation evidence |
 | Cohort transformation and analysis | Stage owners `07` and `08`, then analysis owners `09` and `10` | Declared partitions, sample order, reference context, registered PUM motif, and upstream receipts | Cohort VCFs, annotated candidates, paired-CMH ranked candidates, and hash-bound sequence/motif context projections |
@@ -51,7 +55,7 @@ remain outside the proven boundary.
 | Neutral contracts and libraries | `src/emrys/contracts/` and `src/emrys/libraries/` | Owner-declared records or values | Shared schemas, vocabularies, validation, and narrowly reviewed primitives |
 | Operational evidence | Runtime-availability inspection (`runtime_availability`), reference provenance, and storage inventory under `src/emrys/evidence/` | Explicit profiles, reference inventories, storage roots, and retention declarations | Bounded operational observations and receipts |
 
-Exact files, scheduler wrappers, validators, and direct tests are linked from
+Exact files, direct execution surfaces, validators, and tests are linked from
 the [functional-owner inventory](FUNCTIONAL_OWNER_INVENTORY.md).
 
 ## Current-to-target responsibility crosswalk
@@ -71,7 +75,7 @@ not selected a representation. No status authorizes a source move.
 | `contracts/` | Closed schemas, vocabularies, identity facts, and cross-owner records | Import and artifact/evidence contracts | Transitional | The neutral role is aligned, but exact upward imports into shared implementation are ratcheted in `SOURCE_TOPOLOGY.md`; `AC-SLICE-03`, `AC-SLICE-04`, and `AC-SLICE-07` must resolve or permanently justify them. |
 | `libraries/` | Narrow implementation shared only across demonstrated consumers | Import | Aligned | Every seam stays independently justified and acyclic. `AC-SLICE-06` may consolidate repeated decisions only after inventory proves net reduction. |
 | Semantic behavior under `stages/`, `analyses/`, and `evidence/` | Recognizable transformation, analysis, and evidence semantics with adjacent contracts and tests | Import, invocation, and semantic artifact/evidence flow | Aligned | `AC-SLICE-04` and `ANALYSIS-02` may select a thin operation/module representation without erasing owner kinds or scientific visibility. |
-| Owner-local cross-cutting mechanics under `stages/`, `analyses/`, and `evidence/` | Current shell/SLURM wrappers, runtime resolution, filesystem operations, and publication transactions adjacent to the semantic owner | Import and runtime/control invocation | Transitional | `AC-SLICE-04` through `AC-SLICE-07` must inventory these mechanics and move only demonstrated repeated responsibilities behind an owned boundary, with caller migration and equal-or-stronger protection. |
+| Owner-local cross-cutting mechanics under `stages/`, `analyses/`, and `evidence/` | Current shell producers, runtime resolution, filesystem operations, and publication transactions adjacent to the semantic owner | Import and runtime/control invocation | Transitional | `AC-SLICE-04` through `AC-SLICE-07` must inventory these mechanics and move only demonstrated repeated responsibilities behind an owned boundary, with caller migration and equal-or-stronger protection. |
 | Runtime, reference, and storage evidence owners | Explicit operational observations that do not become computation or admission authority | Import and invocation | Transitional | Current application code imports named public modules directly. `AC-SLICE-03`, `AC-SLICE-05`, and the runtime/storage slices select the final capability boundary without broadening these edges by analogy. |
 | `orchestration/local_pilot/` and `contracts/orchestration/` | Request normalization, planning, current application coordination, fixed-profile materialization, execution/reuse admission, lifecycle, inspection, and resource decisions | Import and invocation | Transitional | It remains the current behavior oracle, not a future Run god object. `AC-SLICE-03`, `AC-SLICE-05`, `AC-SLICE-06`, and `AC-SLICE-07` assign final application, execution, policy, and lifecycle interfaces. |
 | `reporting/` | Read-only artifact adaptation, canonical summary, static views, and receipt-last report publication | Import and artifact/evidence flow | Aligned | Reporting is default-on but disable-able, independently regenerable through one Run-oriented operation, and separate from scientific Attempt authority; exact receipt-v1 reports remain read-only compatible. |

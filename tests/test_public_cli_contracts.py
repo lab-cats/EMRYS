@@ -194,7 +194,6 @@ MAKE_TARGET_DECISIONS = {
     "documentation-check": "local_gate",
     "shell-test": "local_gate",
     "validation-shell-contracts": "local_gate",
-    "validation-shell-slurm": "internal_lane",
     "validation-wheel-smoke": "internal_lane",
     "real-r-test": "local_gate",
     "r-restore": "operator_mutation",

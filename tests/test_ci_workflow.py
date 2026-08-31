@@ -20,7 +20,7 @@ ACTION_RECEIPT_ROOT = "${{ runner.temp }}/emrys-python311-test-shards"
 ORDINARY_JOB_IDS = (
     "workflow-lint",
     "static-wheel",
-    "shell-slurm",
+    "shell-contracts",
     "guarded-r",
     "managed-runtime-userspace",
     "managed-golden-path",

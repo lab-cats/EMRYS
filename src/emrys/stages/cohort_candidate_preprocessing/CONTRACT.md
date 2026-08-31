@@ -3,8 +3,7 @@
 This is the observed contract of historical Step `08`, now implemented in this
 native owner directory. The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug and owns the shell/R producer, validator, and scheduler
-assets.
+uses that public slug and owns the shell/R producer and validator.
 
 ## Responsibility and execution dependencies
 
@@ -122,13 +121,6 @@ them into the existing program environment. The producer's `--r-script` option a
 diagnostics; they do not override private modules independently, so a
 replacement owns its complete implementation and dependency behavior.
 
-[`step_08_vcf_preprocessing.slurm`](step_08_vcf_preprocessing.slurm)
-requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving its repository-owned helper, producer, or optional repository-local R
-environment, so SLURM's spool copy is never checkout authority. It owns
-explicit dataset/runtime binding, module-state logging, execution gating,
-delegation, and final path checks.
-
 ## Validation interface
 
 The grouped `python -I -m emrys validate cohort-candidate-preprocessing` route,
@@ -173,8 +165,8 @@ peer-stage implementation dependencies are not supported interfaces.
 - Direct producer, R, and Python validator suites protect the cohort barrier,
   schema, allele/count rules, annotation, policy, dry-run, locks, replacement,
   rollback, and independent validation boundary.
-- Wrapper, roster, publication-fault, public-CLI, artifact, report, coverage,
-  and Step `09` consumer tests protect cross-boundary behavior.
+- Roster, publication-fault, public-CLI, artifact, report, coverage, and Step
+  `09` consumer tests protect cross-boundary behavior.
 
 The guarded real-R fixtures compare exact candidate order and byte equality
 across worker counts. The Python producer fault fixtures prove structural and
@@ -208,6 +200,4 @@ production, cluster, scientific-review, or biological evidence.
   parameters.
 - The orientation policy mixes compatibility behavior with preprocessing and
   remains explicitly provisional.
-- Policy/schema ownership and recovery design remain deferred. The scheduler's
-  warning-only R preflight, submit-CWD/log effects, and stale-three-output false
-  success remain characterized defects, not guarantees.
+- Policy/schema ownership and recovery design remain deferred.

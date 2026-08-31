@@ -227,8 +227,9 @@ contracts, and direct tests. It does not require future `project`, `run`,
 
 ## Public-interface and future boundary
 
-Owner-specific public shell, Python, R, and SLURM entry points remain with their
-functional owner. The unreleased internal Python distribution packages only
+Owner-specific public shell, Python, and R entry points remain with their
+functional owner. Slurm placement belongs only to the private whole-Run
+transport; owner-local scheduler entry points are retired. The unreleased internal Python distribution packages only
 explicitly migrated import owners and their named resources; it does not imply
 portable repository-root semantics. Its installed `python -I -m emrys` module
 interface contains explicitly migrated owner routes, the read-only semantic

@@ -11,7 +11,10 @@ change with that layout.
 - producer: [`step_05_split_n_cigar_reads.sh`](step_05_split_n_cigar_reads.sh)
 - validator: grouped route `python -I -m emrys validate split-n-cigar`,
   implemented by private [`validator.py`](validator.py)
-- scheduler: [`step_05_split_n_cigar_reads.slurm`](step_05_split_n_cigar_reads.slurm)
+
+For Slurm execution, use the complete immutable Run through `emrys run` or
+`emrys resume` as documented in the
+[runbook](../../../../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes).
 
 ## Operate
 
@@ -62,22 +65,6 @@ transform or bind outputs to one input/tool attempt. Do not execute private
 `validator.py` directly, add `PYTHONPATH`, or restore the retired validator
 path to bypass package selection.
 
-```bash
-cd /absolute/path/to/emrys
-mkdir -p logs
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,EMRYS_SHA256_PYTHON=/absolute/path/to/python,JAVA_BIN_OVERRIDE=/absolute/java-home/bin/java,SAMPLE_ID=ABE_EV_2,INPUT_BAM=/absolute/results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam,REFERENCE_FASTA=/absolute/refs/novogene_ref/genome.fa,OUTPUT_DIR=/absolute/results/split_ncigar/ABE_EV_2 \
-  src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm
-```
-
-The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving repository-owned helpers or the producer; an executed spool copy does
-not become checkout authority.
-
-Change only `EXECUTE=1` after review. Use explicit tool overrides when needed.
-The wrapper validates controlled Python only for execute mode and delegates
-the GATK probe to the producer. Stale finals can make a zero-output child look
-successful.
-
 ## Diagnose and verify
 
 Preserve every final, temporary, backup, alternate index, GATK temp, lock,
@@ -89,7 +76,6 @@ isolated directory for an authorized diagnostic retry.
 bash tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh
 .venv/bin/python -m pytest -q \
   tests/stages/split_n_cigar/test_validate_step_05_split_ncigar.py
-.venv/bin/python -m pytest -q tests/test_slurm_wrapper_contracts.py -k step_05
 ```
 
 This is local fixture/mock evidence only, not real GATK/Java/samtools,

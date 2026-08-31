@@ -78,15 +78,16 @@ owner. Root `scripts/` remains repository-control tooling.
 
 ## Dry-run and execution
 
-New or changed workflow producers and mature SLURM entry points are
-dry-run-first unless an owner-local contract explicitly records a protected
-current exception. For conforming script interfaces, omitting `--execute`
-validates and prints while `--execute` publishes. Conforming SLURM interfaces
-use `EXECUTE=0` for dry-run and `EXECUTE=1` for execution; every other value
-fails. Dry-run must not publish final artifacts and should avoid creating output
-directories when that could confuse validation. Any currently characterized
-dry-run directory or logging side effect remains current truth until separately
-changed.
+New or changed direct producers and public Run operations are dry-run-first
+unless an owner-local contract explicitly records a protected current
+exception. For conforming owner scripts, omitting `--execute` validates and
+prints while `--execute` publishes. Grouped `emrys run`/`resume` displays an
+immutable plan before terminal confirmation; noninteractive execution requires
+`--execute`. Slurm is placement for that same grouped operation, not a second
+owner interface. Dry-run must not publish final artifacts and should avoid
+creating output directories when that could confuse validation. Any currently
+characterized dry-run directory or logging side effect remains current truth
+until separately changed.
 
 See the [dry-run decision](../design/decisions/execution-evidence-and-reporting.md#default-to-dry-run), the
 [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md),
@@ -140,14 +141,12 @@ owns the rationale; setup and restoration commands remain in the
 
 ## SLURM interfaces
 
-Mature owner-specific SLURM entry points delegate to their functional
-implementation, use strict shell behavior, validate execution control, record
-job context plus resolved inputs and outputs in logs, and load required modules
-inside the job. The current
-[inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md#numbered-workflow-and-evidence-owners)
-and owner-local contracts explicitly preserve jobs that embed a producer, act
-as probes or scaffolding, create dry-run directories, or otherwise depart from
-this convention.
+Slurm placement uses one private whole-Run transport around the same workflow
+backend as direct execution. Its batch bootstrap uses strict shell behavior,
+re-admits execution authority, records scheduler provenance and streams, loads
+the declared modules, owns private scratch, and delegates once to grouped Run
+control. Owner-local scheduler entry points are retired; do not add another
+without a separately reviewed execution boundary and parity case.
 
 Record the loaded module state as part of the cross-cutting
 [cluster procedure](RUNBOOK.md#cluster-execution-and-promotion). Do not add an

@@ -5,7 +5,7 @@
 # default. Passing --execute runs STAR with the same validated parameters.
 set -euo pipefail
 
-# Print the command-line contract used by local smoke tests and SLURM wrappers.
+# Print the command-line contract used by local smoke tests and orchestration.
 usage() {
     cat <<'USAGE'
 Usage:
@@ -39,7 +39,7 @@ Options:
   --gunzip-bin    gunzip executable or path used for paired .gz inputs.
                   Defaults to gunzip on PATH and is ignored for uncompressed mates.
   --no-clobber    Explicitly request the default owned, staged, create-exclusive
-                  publication transaction. Accepted for wrapper clarity; there
+                  publication transaction. Accepted as explicit affirmation; there
                   is no clobbering execution mode.
   --execute       Execute STAR after validation. Without this, dry-run only.
   -h, --help      Show this help message and exit.
@@ -391,7 +391,7 @@ done
 require_no_owner_residue \
     "Step 01" "$output_dir" ".${sample_id}.step01.*"
 
-# Dry-run mode is the default safety path for local development and wrapper tests.
+# Dry-run mode is the default safety path for local development and owner tests.
 if [[ "$execute" != true ]]; then
     report_declared_output_collisions
     printf 'Dry-run only. Add --execute to run STAR.\n'

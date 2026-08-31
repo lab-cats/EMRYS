@@ -4,10 +4,9 @@ This is the observed contract of historical Step `06`, now implemented in this
 native owner directory. The exact public identity and historical alias are
 owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is the lowercase physical owner for that public slug and owns the producer,
-validator, and scheduler assets. Its Python validator is installed only
-through the grouped command; the shell producer and scheduler remain explicit
-repository-path interfaces.
+is the lowercase physical owner for that public slug and owns the producer and
+validator. Its Python validator is installed only through the grouped command;
+the shell producer remains an explicit repository-path interface.
 
 ## Responsibility and execution dependencies
 
@@ -81,13 +80,6 @@ receipt. Rollback restore moves are best-effort and cleanup can delete backups
 after a failed restoration, leaving the same unprotected recovery boundary as
 other BAM transactions.
 
-[`step_06_split_bam_by_read_orientation.slurm`](step_06_split_bam_by_read_orientation.slurm)
-requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving repository-owned helpers or the producer, so SLURM's spool copy is
-never checkout authority. It owns cluster defaults, samtools loading, execution
-gating, delegation, and post-execute path checks. It has the characterized Bash
-3.2 empty-array dry-run defect.
-
 ## Validation interface
 
 The grouped `python -I -m emrys validate mechanical-orientation` route,
@@ -131,7 +123,7 @@ failures exit `2`.
   protects flags, counts, dry-run, locks, stale paths, validation, zero-group
   failures, cleanup, complete-set replacement, and ordinary rollback.
 - [`test_validate_step_06_orientation_outputs.py`](../../../../tests/stages/mechanical_orientation/test_validate_step_06_orientation_outputs.py),
-  wrapper, roster, publication-fault, public-CLI, artifact, report, and coverage
+  roster, publication-fault, public-CLI, artifact, report, and coverage
   tests protect the recorded independent evidence boundary.
 
 This is local fixture/mock characterization, not new runtime, cluster,
@@ -156,7 +148,3 @@ scientific-review, or biological evidence.
 - The producer does not reconcile flag-subcounts against merged-BAM counts;
   the independent validator may publish failed rows with exit `0` and neither
   quickchecks nor recounts BAM records.
-- Scheduler Bash `3.2`, warning-only samtools preflight, one-CPU versus
-  independently configured threads, dry-run log mutation, version-command,
-  and stale-five-file success remain characterized defects rather than
-  guarantees.

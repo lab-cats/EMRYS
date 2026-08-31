@@ -10,10 +10,12 @@ six-output transaction, validation, consumer, and evidence semantics.
 - repository statistical coordinator: [`step_09_cmh_editing_site_calling.R`](step_09_cmh_editing_site_calling.R)
 - grouped validator: `python -I -m emrys validate paired-cmh-candidate-ranking`,
   implemented by private [`validator.py`](validator.py)
-- repository scheduler: [`step_09_cmh_editing_site_calling.slurm`](step_09_cmh_editing_site_calling.slurm)
 
 Private R modules sit behind the public coordinator; the historical REMORA
 script is an algorithm reference, not a runtime dependency or parity proof.
+For Slurm execution, use the complete immutable Run through `emrys run` or
+`emrys resume` as documented in the
+[runbook](../../../../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes).
 
 ## Operate
 
@@ -67,26 +69,12 @@ Create the report parent and add `--execute`. Exit `0` permits failed rows.
 from reported p-values but does not independently recompute CMH statistics;
 the real-R fixture and independent oracle protect that separate boundary.
 
-```bash
-cd /absolute/path/to/emrys
-mkdir -p logs
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,RSCRIPT_BIN_OVERRIDE=/usr/local/bin/Rscript \
-  src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm
-```
-
-The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving repository-owned helpers, the producer, or its dependency environment;
-an executed spool copy does not become checkout authority.
-
-Change only `EXECUTE=1` after review. Six stale outputs can produce false
-scheduler success.
-
 ## Diagnose and verify
 
 Preserve all six finals, scratch/backups, lock, manifests, Step `08` inputs, R
 program/runtime/library/hashes, streams, job identity, and unrelated bytes.
 Never combine attempts or trust summary visibility, names, hashes, timestamps,
-or stale scheduler success. Use a fresh root for an authorized diagnostic run.
+or scheduler success alone. Use a fresh root for an authorized diagnostic run.
 
 ```bash
 .venv/bin/python -m pytest -q \
@@ -97,7 +85,6 @@ or stale scheduler success. Use a fresh root for an authorized diagnostic run.
   tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_oracle.py
 RSCRIPT_BIN=/usr/local/bin/Rscript \
   bash tests/analyses/paired_cmh_candidate_ranking/run_step_09_cmh_tests.sh
-.venv/bin/python -m pytest -q tests/test_slurm_wrapper_contracts.py -k step_09_cmh
 ```
 
 This is local Python/R/fixture evidence only.

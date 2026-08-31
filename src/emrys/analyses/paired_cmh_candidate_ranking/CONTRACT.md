@@ -100,14 +100,6 @@ The summary becomes visible before final post-publication checks and does not
 hash its five sibling outputs, so presence alone is not independent proof that
 the producer returned success or that the current set is immutable.
 
-[`step_09_cmh_editing_site_calling.slurm`](step_09_cmh_editing_site_calling.slurm)
-requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving its repository-owned helper, producer, or dependency environment, so
-SLURM's spool copy is never checkout authority. It owns cluster defaults,
-execution gating, delegation, and final path checks; it does not own statistical
-behavior. Unlike the public script, the wrapper currently creates its `logs/`
-directory even in dry-run.
-
 ## Validation interface
 
 The grouped `python -I -m emrys validate paired-cmh-candidate-ranking` route,
@@ -151,8 +143,8 @@ publication failures exit `2`.
   thresholds, method metadata, dry-run, transaction, rollback, plots, and the
   independent validation boundary.
 - Independent Python-oracle and real-R corpus comparisons protect CMH/BH
-  behavior; wrapper, roster, publication-fault, public-CLI, artifact, report,
-  and coverage tests protect cross-boundary behavior.
+  behavior; roster, publication-fault, public-CLI, artifact, report, and
+  coverage tests protect cross-boundary behavior.
 
 This is local fixture and guarded real-R/oracle evidence, not production,
 cluster, completed scientific review, or biological interpretation readiness.

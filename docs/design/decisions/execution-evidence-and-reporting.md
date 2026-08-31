@@ -10,7 +10,7 @@ functional owners; this file retains the reasons and non-negotiable boundaries.
 
 Public workflow execution requires an explicit execute action. Operators must
 be able to inspect resolved inputs, outputs, tools, and commands before
-publication; wrapper-specific controls remain part of each public contract.
+publication; owner-specific controls remain part of each public contract.
 
 ### Publish validated transactions
 

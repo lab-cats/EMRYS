@@ -6,7 +6,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SCRIPT="$REPO_ROOT/src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh"
-JOB="$REPO_ROOT/src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm"
 unset EMRYS_RUN_TOKEN
 export EMRYS_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
@@ -485,7 +484,6 @@ write_input_bam_pair "$input_bam"
 
 printf 'Running syntax checks...\n'
 bash -n "$SCRIPT"
-bash -n "$JOB"
 
 printf 'Running help check...\n'
 help_output="$tmp_dir/help.out"
@@ -1208,7 +1206,7 @@ assert_no_step06_attempt_marker "$collision_b_dir" "$collision_qc"
 
 printf 'Running stale Step 05 path checks...\n'
 stale_path_output="$tmp_dir/stale_paths.out"
-if grep -E "sorted\\.md|splitncigar" "$SCRIPT" "$JOB" >"$stale_path_output"; then
+if grep -E "sorted\\.md|splitncigar" "$SCRIPT" >"$stale_path_output"; then
     cat "$stale_path_output" >&2
     fail "Step 06 files should not use stale sorted.md or splitncigar paths"
 fi

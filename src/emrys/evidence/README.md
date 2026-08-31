@@ -21,16 +21,17 @@ evidence tools are cross-cutting checks, not additional stages.
 ## Operational role classification
 
 - **Pipeline evidence owners:** Steps `02b` and `03` are required graph
-  operations and remain owner-local producers, validators, and scheduler entry
-  points.
+  operations and remain owner-local producers and validators. Slurm placement
+  belongs to the complete immutable Run rather than an evidence-owner entry
+  point.
 - **Required readiness:** Doctor consumes the admitted runtime plus a
   single-host direct receipt or stronger final two-phase site receipt. Slurm
   and historical unplaced Attempts require the stronger receipt. These protect
   execution authority without becoming workflow jobs.
 - **Optional operator diagnostics:** reference-provenance reconciliation,
-  standalone runtime-availability publication, storage inventory, and the
-  manual module/tool probe remain available for inspection. Their results do
-  not by themselves grant doctor readiness or workflow completion.
+  standalone runtime-availability publication, and storage inventory remain
+  available for inspection. Their results do not by themselves grant doctor
+  readiness or workflow completion.
 
 One physical owner may expose both a required direct API and an optional
 operator route; those roles do not make their evidence states interchangeable.

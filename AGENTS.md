@@ -49,7 +49,8 @@ take priority over speed or convenience.
   exits, receipts, locks, rollback, recovery, and scientific semantics unless
   an approved change explicitly replaces them.
 - Use tiny safe fixtures locally. Heavy alignment, sorting, mpileup, and
-  analysis run only through the applicable owner-local SLURM entry point.
+  analysis run only inside an approved compute allocation through the grouped
+  whole-Run SLURM path.
 - Never commit production reads, BAM/CRAM/VCF data, large results, logs,
   credentials, private data, restored tools, runtime libraries, or caches.
 - Do not delete, repair, move, compress, overwrite, or adopt shared or

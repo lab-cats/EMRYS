@@ -12,8 +12,7 @@ referencing the sample TSV.
 ### Local development, SLURM production
 
 Editing, fixtures, mocks, and syntax checks run locally. Heavy production
-computation runs through owner-local SLURM entry points, never on the login
-node.
+computation uses grouped whole-Run SLURM placement, never the login node.
 
 ### Programs stay out of Markdown
 

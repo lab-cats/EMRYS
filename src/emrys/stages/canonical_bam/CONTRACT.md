@@ -4,8 +4,8 @@ This document records the observed current contract of historical Step `02`.
 The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
 is the lowercase physical owner for that frozen semantic identity. Its shell
-producer and scheduler remain repository-path interfaces, while its private
-Python validator is exposed only through the grouped package command. The
+producer remains a repository-path interface, while its private Python
+validator is exposed only through the grouped package command. The
 adjacent [owner README](README.md) routes supported commands, diagnostics, and
 rollback; this contract remains the detailed behavior owner.
 
@@ -50,9 +50,7 @@ The producer accepts:
 The current producer checks that the input path is a file but relies on
 samtools to establish its content contract. The orchestration-safe
 `--no-clobber` route validates sample-identifier path safety and binds input
-stability; the legacy replaceable route does neither. The scheduler entrypoint
-supplies repository- and sample-specific defaults and loads samtools `1.19.2`;
-those are current bindings, not approved future interface defaults.
+stability; the legacy replaceable route does neither.
 
 ## Outputs
 
@@ -125,17 +123,6 @@ diagnostics but leaves only the prior BAI at its canonical path: the canonical
 BAM, both backups, owned lock, and run-token scratch are absent. This lockless
 partial pair and lost prior BAM are an unresolved ambiguous/data-loss defect,
 not failure-atomicity, successful rollback, or authority to clean or retry.
-
-[`step_02_sort_index_bam.slurm`](step_02_sort_index_bam.slurm)
-delegates to the shell producer, maps `EXECUTE=0` to dry-run and `EXECUTE=1` to
-`--execute`, rejects other values, and checks the pair after execution. The
-wrapper creates its log and output directories even in dry-run mode. On Bash
-3.2, expansion of its empty execution-argument array can prevent the default
-dry-run from reaching the producer. It requires literal `SLURM_SUBMIT_DIR` and
-changes into the submitted checkout before resolving the repository-owned
-helper or producer, so SLURM's spool copy never becomes checkout authority. The
-dry-run directory creation and Bash 3.2 behavior remain characterized current
-contracts, not target behavior.
 
 ## Validation interface
 
@@ -214,9 +201,6 @@ their functional ownership.
 - [`test_validate_step_02_canonical_bam.py`](../../../../tests/stages/canonical_bam/test_validate_step_02_canonical_bam.py)
   protects dry-run, the five checks, mismatch evidence, fail-closed missing
   input, publication, and foreign-lock preservation.
-- [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
-  protects delegation, execution control, module behavior, current dry-run
-  directory creation, the Bash 3.2 defect, and exit propagation with mocks.
 - [`test_validation_check_rosters.py`](../../../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py)
   protects the exact validator inventory and check identities.
 - [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py)
@@ -227,7 +211,7 @@ their functional ownership.
   and [`test_python_coverage_baseline.py`](../../../../tests/test_python_coverage_baseline.py)
   protect the recorded public-CLI and coverage boundaries.
 
-These are local fixture and mocked-wrapper contracts. They do not establish a
+These are local fixture contracts. They do not establish a
 new real-runtime, cluster, production, scientific-review, or biological-
 evidence result. Current evidence status remains owned by the canonical
 roadmap and handoff.
@@ -244,9 +228,6 @@ roadmap and handoff.
   requirements.
 - Cross-cutting BAM parsing and validation-publication helpers live in neutral
   package modules.
-- The scheduler wrapper owns cluster module loading and dry-run directory side
-  effects around a side-effect-free producer.
-
 This inventory records those boundaries without selecting future owners or
 changing behavior.
 
