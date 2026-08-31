@@ -237,16 +237,19 @@ work only through the accepted fixed profile:
 
 The first `run` command retains the full default Analysis. The semantic
 `emrys run --through processing` form creates a distinct immutable Run
-selecting the evidence-complete, all-sample Steps `00`–`06` closure. The
+selecting the evidence-complete Steps `00`–`06` closure for that Analysis. The
 four-sample synthetic fixture expands that closure to 31 owner tasks. A
 successful processing Run is complete and not resumable, and reporting is not
 applicable. The `--from-processing-run` form admits that exact successful Run
-from the same Project and creates a distinct complete downstream Run. Samples,
-Reference, and the entire Execution Plan identity except its source/stopping
-fields must match; partitions and scientific policy may differ. Source
+from the same Project and creates a distinct complete downstream Run. Target
+samples must be an exact subset of the source Analysis; Reference and the
+entire Execution Plan identity except its source/stopping fields must match.
+Partitions and scientific policy may differ. Source
 artifacts stay in place and content-bound;
 the target owns only Steps `07`–`10`, its evidence, Results, reports, and log.
-Authored subsets and generalized modular analyses remain ANALYSIS-01/02 work.
+A proper subset is projected to one private Attempt-bound TSV for the fixed
+backend; it is not another scientist-authored manifest. Generalized modular
+analyses remain ANALYSIS-02 work.
 
 With direct placement, `run` and `resume` print concise Run identity, combined
 pending/reusable work within that Run, and reporting information; a terminal

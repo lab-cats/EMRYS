@@ -101,6 +101,18 @@ analyses:
     background_max_fraction: 0.01
 ```
 
+Each Analysis may add `sample_ids`, a nonempty unique list of IDs from the
+shared Dataset. Omission selects every Dataset sample. EMRYS preserves Dataset
+manifest order, validates the selected cohort as a complete scientific design,
+and gives a proper subset its own content-derived Analysis and Run identities:
+
+```yaml
+analyses:
+  leave_one_pair_out:
+    sample_ids: [EV_2, PUM1_2, EV_3, PUM1_3]
+    # partitions, comparison, target change, and thresholds are also required
+```
+
 `emrys init project` creates one initial Analysis, named `primary` by default
 or selected with `--analysis-name`. Additional Analyses may reuse the Dataset,
 Reference, and even the same partition manifest while changing their own

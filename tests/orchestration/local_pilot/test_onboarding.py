@@ -489,6 +489,27 @@ def test_synthetic_fixture_is_deterministic_complete_and_normalizable(
         assert record["sha256"] == hashlib.sha256(data).hexdigest()
 
 
+def test_project_validation_reports_dataset_size_before_analysis_subset(
+    tmp_path: Path,
+) -> None:
+    project_path = build(tmp_path / "project", replicate_count=3)
+    definition = yaml.safe_load(project_path.read_text(encoding="utf-8"))
+    definition["analyses"]["a-subset"] = {
+        **definition["analyses"].pop("primary"),
+        "sample_ids": ["EV_2", "PUM1_2", "EV_3", "PUM1_3"],
+    }
+    project_path.write_text(
+        yaml.safe_dump(definition, sort_keys=False),
+        encoding="utf-8",
+    )
+
+    result = onboarding.validate_project(project_path, root=REPO_ROOT)
+
+    assert result.sample_count == 6
+    selected_rows = result.project.select_analysis().workflow_inputs["samples"]["rows"]
+    assert len(selected_rows) == 4
+
+
 def test_production_like_profile_is_explicit_and_dry_run_skips_generation(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

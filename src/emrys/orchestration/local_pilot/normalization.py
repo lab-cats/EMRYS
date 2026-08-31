@@ -19,6 +19,7 @@ from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.contracts.scientific_evidence import step08
 from emrys.libraries.validation.errors import ValidationError
 from emrys.libraries.validation.inputs import read_bytes, sha256_with_identity
+from emrys.libraries.validation.tsv import tsv_bytes
 
 
 def _json_object(data: bytes, label: str) -> dict[str, Any]:
@@ -37,6 +38,7 @@ class AnalysisAdmission:
     _workflow_input_bytes: bytes
     _authored_path_bytes: bytes
     evidence_label: str | None
+    selected_sample_manifest_bytes: bytes | None = None
 
     @property
     def profile(self) -> dict[str, Any]:
@@ -64,6 +66,7 @@ class ProjectAdmission:
     source_path: Path
     source_bytes: bytes
     analyses: tuple[AnalysisAdmission, ...]
+    dataset_sample_count: int
 
     @property
     def source_sha256(self) -> str:
@@ -216,7 +219,7 @@ def _normalize_samples(
     manifest_path: Path,
     manifest_data: bytes,
     project_dir: Path,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], step08.Table]:
     try:
         table, _, rows = step08.validate_sample_manifest_bytes(
             manifest_data, manifest_path
@@ -251,10 +254,13 @@ def _normalize_samples(
         if "notes" in table.header:
             normalized["notes"] = row["notes"]
         normalized_rows.append(normalized)
-    return {
-        "manifest": _snapshot(manifest_path, manifest_data),
-        "rows": normalized_rows,
-    }
+    return (
+        {
+            "manifest": _snapshot(manifest_path, manifest_data),
+            "rows": normalized_rows,
+        },
+        table,
+    )
 
 
 def _normalize_partitions(
@@ -354,7 +360,12 @@ def _admit_project_data(
     sample_path, sample_data = _resolve_authored_path(
         sample_manifest, project_dir, "Sample manifest"
     )
-    samples = _normalize_samples(sample_path, sample_data, project_dir)
+    samples, sample_table = _normalize_samples(
+        sample_path,
+        sample_data,
+        project_dir,
+    )
+    dataset_sample_ids = {str(row["sample_id"]) for row in samples["rows"]}
 
     _fasta_path, fasta_snapshot = _resolve_authored_snapshot(
         reference_definition["fasta"], project_dir, "Reference FASTA"
@@ -376,6 +387,33 @@ def _admit_project_data(
         legacy_ids,
         label,
     ) in analysis_specs:
+        selected_sample_manifest_bytes = None
+        selected_samples = samples
+        declared_sample_ids = analysis_definition.get("sample_ids")
+        if declared_sample_ids is not None:
+            selected_ids = {str(sample_id) for sample_id in declared_sample_ids}
+            unknown = sorted(selected_ids - dataset_sample_ids)
+            if unknown:
+                raise orchestration_contracts.ContractValidationError(
+                    f"Analysis {name} selects unknown sample IDs: {', '.join(unknown)}"
+                )
+            if selected_ids != dataset_sample_ids:
+                selected_samples = {
+                    **samples,
+                    "rows": [
+                        row
+                        for row in samples["rows"]
+                        if row["sample_id"] in selected_ids
+                    ],
+                }
+                selected_sample_manifest_bytes = tsv_bytes(
+                    sample_table.header,
+                    (
+                        row
+                        for row in sample_table.rows
+                        if row["sample_id"] in selected_ids
+                    ),
+                )
         authored_partition = str(partition_manifest)
         partitions = partition_cache.get(authored_partition)
         if partitions is None:
@@ -389,6 +427,7 @@ def _admit_project_data(
         scientific_policy = dict(analysis_definition)
         scientific_policy.pop("id", None)
         scientific_policy.pop("partitions", None)
+        scientific_policy.pop("sample_ids", None)
         if "target_change" in scientific_policy:
             target = str(scientific_policy.pop("target_change"))
             scientific_policy["rna_ref"], scientific_policy["rna_alt"] = target.split(
@@ -397,7 +436,7 @@ def _admit_project_data(
         scientific_policy.setdefault("background_condition", None)
         revision = analysis_revision_from_execution_fields(
             {
-                "samples": samples,
+                "samples": selected_samples,
                 "partitions": partitions,
                 "reference": reference_input,
                 "analysis": {"policy": scientific_policy},
@@ -425,7 +464,7 @@ def _admit_project_data(
         orchestration_contracts.validate_record("reference", reference)
         workflow_inputs = {
             "profile": profile_identity,
-            "samples": samples,
+            "samples": selected_samples,
             "partitions": partitions,
             "reference": reference,
             "analysis": {
@@ -456,12 +495,14 @@ def _admit_project_data(
                     authored_paths
                 ),
                 evidence_label=label,
+                selected_sample_manifest_bytes=selected_sample_manifest_bytes,
             )
         )
     return ProjectAdmission(
         source_path=resolved_project,
         source_bytes=project_data,
         analyses=tuple(analyses),
+        dataset_sample_count=len(samples["rows"]),
     )
 
 

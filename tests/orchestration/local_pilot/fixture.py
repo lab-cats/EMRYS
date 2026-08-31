@@ -91,12 +91,17 @@ def profile() -> dict[str, Any]:
     }
 
 
-def build(root: Path) -> Path:
+def build(root: Path, *, replicate_count: int = 2) -> Path:
     reads = root / "reads"
     reference = root / "reference"
     reads.mkdir(parents=True)
     reference.mkdir()
-    for sample in ("EV_1", "PUM1_1", "EV_2", "PUM1_2"):
+    samples = tuple(
+        f"{condition}_{replicate}"
+        for replicate in range(1, replicate_count + 1)
+        for condition in ("EV", "PUM1")
+    )
+    for sample in samples:
         (reads / f"{sample}_R1.fastq").write_text(
             f"@{sample}/1\nACGT\n+\nIIII\n", encoding="utf-8"
         )
@@ -113,10 +118,11 @@ def build(root: Path) -> Path:
     )
     (root / "samples.tsv").write_text(
         "sample_id\tr1_fastq\tr2_fastq\tstrandedness\tcondition\treplicate\n"
-        "EV_1\treads/EV_1_R1.fastq\treads/EV_1_R2.fastq\treverse\tEV\t1\n"
-        "PUM1_1\treads/PUM1_1_R1.fastq\treads/PUM1_1_R2.fastq\treverse\tPUM1\t1\n"
-        "EV_2\treads/EV_2_R1.fastq\treads/EV_2_R2.fastq\treverse\tEV\t2\n"
-        "PUM1_2\treads/PUM1_2_R1.fastq\treads/PUM1_2_R2.fastq\treverse\tPUM1\t2\n",
+        + "".join(
+            f"{sample}\treads/{sample}_R1.fastq\treads/{sample}_R2.fastq\t"
+            f"reverse\t{sample.rsplit('_', 1)[0]}\t{sample.rsplit('_', 1)[1]}\n"
+            for sample in samples
+        ),
         encoding="utf-8",
     )
     (root / "partitions.tsv").write_text(

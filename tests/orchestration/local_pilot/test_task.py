@@ -873,7 +873,7 @@ def test_processing_source_input_must_match_its_admitted_snapshot(
 
     with pytest.raises(
         task.TaskBoundaryError,
-        match="differs from its processing-source binding",
+        match="differs from its immutable binding",
     ):
         _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
 

@@ -554,7 +554,7 @@ def validate_processing_source(
     target_analysis: AnalysisRevision,
     target_plan: ExecutionPlan,
 ) -> None:
-    """Require exact v1 processing compatibility with one target Analysis Run."""
+    """Require exact subset-compatible processing for one target Analysis Run."""
 
     authority = source.state.authority
     assert authority is not None
@@ -564,8 +564,16 @@ def validate_processing_source(
         raise InspectionError(
             "Processing source and target reference identities differ"
         )
-    if source_analysis["samples"] != target_identity["samples"]:
-        raise InspectionError("Processing source and target sample identities differ")
+    source_samples = {
+        str(row["sample_id"]): row for row in source_analysis["samples"]
+    }
+    if any(
+        source_samples.get(str(row["sample_id"])) != row
+        for row in target_identity["samples"]
+    ):
+        raise InspectionError(
+            "Target samples are not an exact subset of the processing source"
+        )
 
     source_plan = authority.execution_plan.record["identity"]
     target_plan_identity = target_plan.record["identity"]

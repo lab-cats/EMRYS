@@ -817,7 +817,6 @@ def validate_project_admission(
             )
     _require_snapshot(fasta_snapshot, "reference FASTA")
     _require_snapshot(gtf_snapshot, "reference GTF")
-    samples = source["samples"]["rows"]
     for analysis in project.analyses:
         analysis_source = analysis.workflow_inputs
         for partition in analysis_source["partitions"]["rows"]:
@@ -838,7 +837,7 @@ def validate_project_admission(
         project=project,
         fasta_contigs=fasta_contigs,
         transcript_count=len(transcripts),
-        sample_count=len(samples),
+        sample_count=project.dataset_sample_count,
         gtf_warnings=tuple(warnings),
     )
 

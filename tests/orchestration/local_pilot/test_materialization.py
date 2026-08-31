@@ -28,6 +28,7 @@ from emrys.contracts.orchestration.application_model import (
     build_analysis_revision,
 )
 from emrys.contracts.orchestration.projection import build_reporting_bundle
+from emrys.contracts.scientific_evidence import step08
 from emrys.evidence.runtime_availability import inspector as runtime_inspector
 from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
@@ -130,11 +131,24 @@ def _readiness(
     stage_concurrency: dict[str, int] | None = None,
     step_threads: dict[str, int] | None = None,
     legacy: bool = False,
+    replicate_count: int = 2,
+    sample_ids: list[str] | None = None,
 ) -> tuple[doctor.DoctorResult, object, Path, Path]:
     tmp_path.mkdir(parents=True, exist_ok=True)
     workspace = tmp_path / "project"
     workspace.mkdir()
-    request = (build_legacy if legacy else build)(workspace)
+    request = (
+        build_legacy(workspace)
+        if legacy
+        else build(workspace, replicate_count=replicate_count)
+    )
+    if sample_ids is not None:
+        definition = yaml.safe_load(request.read_text(encoding="utf-8"))
+        definition["analyses"]["primary"]["sample_ids"] = sample_ids
+        request.write_text(
+            yaml.safe_dump(definition, sort_keys=False),
+            encoding="utf-8",
+        )
     execution_profile_path = request.parent / "emrys.execution.yaml"
     profile_document = yaml.safe_load(
         execution_profile_path.read_text(encoding="utf-8")
@@ -782,6 +796,76 @@ def test_processing_plan_is_a_distinct_closed_31_task_run(tmp_path: Path) -> Non
     )
 
 
+def test_subset_plan_materializes_one_bound_analysis_sample_manifest(
+    tmp_path: Path,
+) -> None:
+    readiness, resources, _project_path, workspace = _readiness(
+        tmp_path,
+        replicate_count=3,
+        sample_ids=["PUM1_3", "EV_2", "PUM1_2", "EV_3"],
+    )
+    plan = build_attempt_plan(
+        _run_candidate(readiness, resources),
+        readiness,
+        workspace,
+        resources=resources,
+        operation="execute",
+    )
+
+    manifest = (
+        plan.run_root
+        / "contract"
+        / "workflow-inputs"
+        / plan.workflow_attempt_id
+        / "samples.tsv"
+    )
+    selected_bytes = readiness.analysis.selected_sample_manifest_bytes
+    assert selected_bytes is not None
+    assert (
+        {item.path: item.data for item in plan.attempt_files}[manifest]
+        == selected_bytes
+    )
+    manifest_binding = {
+        "path": str(manifest),
+        "size_bytes": len(selected_bytes),
+        "sha256": hashlib.sha256(selected_bytes).hexdigest(),
+    }
+    owners = {
+        str(item["machine_key"]): str(item["step_id"])
+        for item in readiness.analysis.profile["owner_tasks"]
+    }
+    records = _dispatch_records(plan)
+    downstream = [
+        record
+        for record in records
+        if owners[str(record["machine_key"])] in {"07", "08", "09"}
+    ]
+    assert downstream
+    for record in downstream:
+        assert str(manifest) in record["producer_argv"]
+        assert str(manifest) in record["validator_argv"]
+        assert any(
+            all(item[key] == value for key, value in manifest_binding.items())
+            for item in record["inputs"]
+        )
+    assert {
+        str(record["scope"]["scope_id"])
+        for record in records
+        if record["scope"]["scope_type"] == "sample"
+    } == {"EV_2", "PUM1_2", "EV_3", "PUM1_3"}
+
+    processing = build_attempt_plan(
+        _run_candidate(readiness, resources, through="processing"),
+        readiness,
+        workspace,
+        resources=resources,
+        operation="execute",
+    )
+    assert not any(
+        "workflow-inputs" in item.path.parts for item in processing.attempt_files
+    )
+
+
 @pytest.mark.parametrize(
     ("through", "message"),
     [
@@ -817,11 +901,24 @@ def test_processing_source_rejects_every_incompatible_target_dimension(
         resources.declaration,
         processing_source=binding,
     )
+    identity = target.analysis.revision.record["identity"]
+    source_samples = [dict(row) for row in identity["samples"]]
+    for condition in ("EV", "PUM1"):
+        row = next(item for item in source_samples if item["condition"] == condition)
+        source_samples.append(
+            {**row, "sample_id": f"{condition}_3", "replicate": "3"}
+        )
+    source_analysis = build_analysis_revision(
+        samples=source_samples,
+        partitions=identity["partitions"],
+        reference=identity["reference"],
+        scientific_policy=identity["scientific_policy"],
+    )
     source = inspection.ProcessingSourceAdmission(
         root=workspace / "runs" / source_run.run_id,
         state=SimpleNamespace(
             authority=SimpleNamespace(
-                analysis_revision=source_run.analysis.revision,
+                analysis_revision=source_analysis,
                 execution_plan=source_run.execution_plan,
             )
         ),
@@ -834,7 +931,6 @@ def test_processing_source_rejects_every_incompatible_target_dimension(
         target_plan=target.execution_plan,
     )
 
-    identity = target.analysis.revision.record["identity"]
     samples = [dict(row) for row in identity["samples"]]
     samples[0]["r1_fastq_sha256"] = "3" * 64
     sample_changed = build_analysis_revision(
@@ -868,7 +964,7 @@ def test_processing_source_rejects_every_incompatible_target_dimension(
 
     for analysis, plan, message in (
         (reference_changed, target.execution_plan, "reference identities differ"),
-        (sample_changed, target.execution_plan, "sample identities differ"),
+        (sample_changed, target.execution_plan, "not an exact subset"),
         (
             target.analysis.revision,
             binding_changed.execution_plan,
@@ -1003,7 +1099,7 @@ def test_runtime_admission_reuses_initial_inspection_then_reprobes(
 
 def test_attempt_plan_preserves_reporting_materialization(tmp_path: Path) -> None:
     plan = _plan(tmp_path)
-    source = materialization._workflow_inputs(plan.run)
+    source = {**plan.run.analysis.workflow_inputs, "run_id": plan.run.run_id}
     reporting = build_reporting_bundle(
         source,
         plan.run.analysis.profile,
@@ -1037,13 +1133,26 @@ def test_attempt_plan_preserves_reporting_materialization(tmp_path: Path) -> Non
     } <= set(plan.directories)
 
 
-@pytest.mark.parametrize("through", ("analysis", "processing"))
+@pytest.mark.parametrize(
+    ("through", "sample_ids"),
+    (
+        ("analysis", None),
+        ("processing", None),
+        ("analysis", ["EV_2", "PUM1_2", "EV_3", "PUM1_3"]),
+    ),
+    ids=("analysis", "processing", "subset-analysis"),
+)
 def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     through: str,
+    sample_ids: list[str] | None,
 ) -> None:
-    readiness, resources, _request, workspace = _readiness(tmp_path)
+    readiness, resources, _request, workspace = _readiness(
+        tmp_path,
+        replicate_count=3 if sample_ids is not None else 2,
+        sample_ids=sample_ids,
+    )
     direct_run = _run_candidate(readiness, resources, through=through)
     scheduled_resources = resolve_resource_policy(
         resources.policy,
@@ -3936,14 +4045,16 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         tmp_path / "case",
         source_root=checkout,
         source_commit=commit,
+        replicate_count=3,
     )
     authored = yaml.safe_load(project.read_text(encoding="utf-8"))
     authored["analyses"]["sensitivity"] = {
         **authored["analyses"]["primary"],
         "fdr_threshold": 0.01,
+        "sample_ids": ["EV_2", "PUM1_2", "EV_3", "PUM1_3"],
     }
     authored["analyses"]["source-drift"] = {
-        **authored["analyses"]["primary"],
+        **authored["analyses"]["sensitivity"],
         "fdr_threshold": 0.02,
     }
     project.write_text(yaml.safe_dump(authored, sort_keys=False), encoding="utf-8")
@@ -3967,6 +4078,8 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         primary.analysis.revision.canonical_bytes
         != sensitivity.analysis.revision.canonical_bytes
     )
+    assert len(primary.analysis.workflow_inputs["samples"]["rows"]) == 6
+    assert len(sensitivity.analysis.workflow_inputs["samples"]["rows"]) == 4
 
     def diagnose(*_args, **kwargs):
         selected = kwargs.get("analysis_name")
@@ -4028,7 +4141,7 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
 
     monkeypatch.setattr(task, "validate_verified_task", count_admission)
     source = inspection.admit_processing_source(source_root)
-    assert len(admitted_records) == 31
+    assert len(admitted_records) == len(source.state.tasks)
     monkeypatch.setattr(task, "validate_verified_task", validate_verified)
     with pytest.raises(control.ControlError, match="Results are complete"):
         control._admit_resume_predecessor(source_root)
@@ -4092,6 +4205,23 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     ) == ("valid", "succeeded", "complete", "complete")
     assert len(completed.tasks) == 4
     assert all(task.state == "verified" for task in completed.tasks)
+    selected_ids = ["EV_2", "PUM1_2", "EV_3", "PUM1_3"]
+    selected_manifests = tuple(
+        target_root.glob("contract/workflow-inputs/*/samples.tsv")
+    )
+    assert len(selected_manifests) == 2
+    assert all(
+        step08.validate_sample_manifest(path)[1] == selected_ids
+        for path in selected_manifests
+    )
+    orientation_root = source_root / "products" / "native" / "orientation"
+    consumed_orientation_samples = {
+        Path(str(item["path"])).relative_to(orientation_root).parts[0]
+        for dispatch_path in target_root.glob("contract/dispatch/*/*/*.json")
+        for item in orchestration_contracts.load_json_object(dispatch_path)["inputs"]
+        if Path(str(item["path"])).is_relative_to(orientation_root)
+    }
+    assert consumed_orientation_samples == set(selected_ids)
     assert _verified_snapshot(source_root) == source_verified
     assert all(
         path.read_bytes() == data and path.stat().st_mtime_ns == modified

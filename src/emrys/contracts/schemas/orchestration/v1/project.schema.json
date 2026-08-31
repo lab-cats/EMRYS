@@ -74,6 +74,14 @@
         "background_max_fraction"
       ],
       "properties": {
+        "sample_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+          }
+        },
         "partitions": {
           "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/authored_path"
         },
