@@ -86,6 +86,14 @@ Slurm allocation; it is not a distributed executor:
   --execution-profile /absolute/path/to/emrys.execution.yaml
 ```
 
+The command above retains the full default Analysis. The semantic
+`emrys run --through processing` form creates a distinct immutable Run at the
+all-sample processing boundary, selecting the evidence-complete Steps `00`–`06`
+closure: 31 owner tasks for the four-sample synthetic fixture. A successful
+processing Run is complete and refuses resume, and reporting is not applicable.
+A future downstream Analysis would be a new Run, but no compatible cross-Run
+reuse or downstream launch route is implemented yet.
+
 The public model is `Project -> named Analysis -> immutable Run -> Results`.
 Project validation, runtime discovery, and Doctor validate all named Analyses;
 Doctor and `run` select exactly one readiness/execution context. `--analysis`
@@ -120,11 +128,12 @@ maintenance log spans mutation and requalification. Repair preserves a ready
 site/user runtime profile, declared inputs, and workflow outputs. Managed
 runtime repair currently targets Linux x86-64; use `runtime discover` for an
 institution-provided environment.
-Reporting runs automatically after scientific work and remains a separate,
-receipt-last transaction rather than a scientific stage. The scientific
-Attempt ends before reporting begins. `--no-report` disables only downstream
-reporting and leaves the scientific Attempt unchanged. `emrys report` can
-regenerate or reuse reporting independently from a completed scientific Run.
+For a full Run, reporting runs automatically after scientific work and remains
+a separate, receipt-last transaction rather than a scientific stage. The
+scientific Attempt ends before reporting begins. `--no-report` disables only
+downstream reporting and leaves the scientific Attempt unchanged.
+`emrys report` can regenerate or reuse reporting independently from a completed
+full scientific Run. Reporting does not apply to a processing-boundary Run.
 
 Owner-local scheduler entry points are retired. Standalone owner commands
 remain expert direct routes and never create or adopt an orchestrated Run;
@@ -163,6 +172,7 @@ an explicit profile to request Slurm placement. Resource CLI overrides have
 highest precedence. Direct placement displays reusable and pending work, then
 asks once before execution. Slurm placement confirms the submission first;
 reusable and pending work is displayed later inside the allocation.
+That reuse is confined to a later Attempt of the same Run.
 `--execute` skips only the applicable prompt for automation. A scope that
 crossed producer entry without verified completion remains blocked rather than
 being retried or cleaned. A complete run refuses resume, and the public

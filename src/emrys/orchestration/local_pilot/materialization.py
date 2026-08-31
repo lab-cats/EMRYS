@@ -23,6 +23,7 @@ from emrys.contracts.orchestration.application_model import (
     bind_run,
     build_execution_plan,
     functional_specification_from_profile,
+    processing_stopping_owner_keys,
     toolchain_from_required_tools,
     validate_successor_run,
 )
@@ -156,6 +157,7 @@ class AttemptPlan:
     def profile_path(self) -> Path:
         return self.run_root / "contract" / "profile.json"
 
+
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -168,6 +170,8 @@ def build_run_candidate(
     analysis: AnalysisAdmission,
     readiness: doctor.DoctorResult,
     declaration: ComputationalResourceDeclaration,
+    *,
+    scientific_stopping_owner_keys: Sequence[str] | None = None,
 ) -> RunCandidate:
     """Construct the complete Run before allocation or Attempt identity exists."""
 
@@ -182,9 +186,16 @@ def build_run_candidate(
     except RunImplementationError as exc:
         raise MaterializationError(str(exc)) from exc
     source = analysis.workflow_inputs
+    stopping_owner_keys = (
+        analysis.profile["required_owner_keys"]
+        if scientific_stopping_owner_keys is None
+        else scientific_stopping_owner_keys
+    )
     plan = build_execution_plan(
-        functional_specification=functional_specification_from_profile(analysis.profile),
-        scientific_stopping_owner_keys=analysis.profile["required_owner_keys"],
+        functional_specification=functional_specification_from_profile(
+            analysis.profile
+        ),
+        scientific_stopping_owner_keys=stopping_owner_keys,
         implementation_content_sha256=implementation_sha256,
         toolchain=toolchain_from_required_tools(required_tools),
         backend="local",
@@ -1762,6 +1773,7 @@ __all__ = (
     "admit_run",
     "build_attempt_plan",
     "build_run_candidate",
+    "processing_stopping_owner_keys",
     "publish_attempt",
     "validate_run_destination",
 )

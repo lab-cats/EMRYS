@@ -199,14 +199,10 @@ def successor_run_fixture() -> tuple[
         "stage_memory_mb": {"00a": "workflow", "02b": 1024},
     }
     plan = model.build_execution_plan(
-        functional_specification=(
-            model.functional_specification_from_profile(profile)
-        ),
+        functional_specification=(model.functional_specification_from_profile(profile)),
         scientific_stopping_owner_keys=profile["required_owner_keys"],
         implementation_content_sha256=implementation_digest(),
-        toolchain=model.toolchain_from_required_tools(
-            attempt["required_tools"]
-        ),
+        toolchain=model.toolchain_from_required_tools(attempt["required_tools"]),
         backend="local",
         engine="snakemake",
         backend_semantics_sha256=ZERO_HASH,
@@ -307,6 +303,84 @@ def test_execution_plan_canonicalizes_sets_graphs_tools_and_resource_maps() -> N
     assert first.canonical_bytes == second.canonical_bytes
 
 
+def test_execution_plan_admits_only_predecessor_closed_stopping_owners() -> None:
+    full = execution_plan()
+    assert model.execution_plan_boundary(full) == "analysis"
+
+    partial_record = full.record
+    partial_record["identity"]["scientific_stopping_owner_keys"] = ["star_index"]
+    partial_record["execution_plan_id"] = "plan-" + contracts.canonical_sha256(
+        partial_record["identity"]
+    )
+    partial = model.ExecutionPlan.from_record(partial_record)
+    assert model.execution_plan_boundary(partial) == "partial"
+
+    missing_predecessor = full.record
+    missing_predecessor["identity"]["scientific_stopping_owner_keys"] = ["bam_qc"]
+    missing_predecessor["execution_plan_id"] = "plan-" + contracts.canonical_sha256(
+        missing_predecessor["identity"]
+    )
+    with pytest.raises(
+        contracts.ContractValidationError,
+        match="predecessor-closed; missing star_index",
+    ):
+        model.ExecutionPlan.from_record(missing_predecessor)
+
+    empty = full.record
+    empty["identity"]["scientific_stopping_owner_keys"] = []
+    empty["execution_plan_id"] = "plan-" + contracts.canonical_sha256(empty["identity"])
+    with pytest.raises(contracts.ContractValidationError):
+        model.ExecutionPlan.from_record(empty)
+
+    not_required = full.record
+    not_required["identity"]["functional_specification"]["required_owner_keys"] = [
+        "star_index"
+    ]
+    not_required["identity"]["functional_specification"]["evidence_owner_keys"] = []
+    not_required["execution_plan_id"] = "plan-" + contracts.canonical_sha256(
+        not_required["identity"]
+    )
+    with pytest.raises(
+        contracts.ContractValidationError,
+        match="must reference required owners",
+    ):
+        model.ExecutionPlan.from_record(not_required)
+
+
+def test_processing_boundary_requires_the_exact_processing_step_roster() -> None:
+    identity = execution_plan().record["identity"]
+
+    def partial(sample_step: str) -> model.ExecutionPlan:
+        functional = copy.deepcopy(identity["functional_specification"])
+        functional["owner_tasks"][0]["step_id"] = sample_step
+        functional["owner_tasks"].append(
+            {"machine_key": "downstream", "step_id": "07", "scope_type": "cohort"}
+        )
+        functional["direct_edges"].append(
+            {
+                "producer": "bam_qc",
+                "consumer": "downstream",
+                "artifact": "sample evidence",
+                "semantics": "cohort input",
+            }
+        )
+        functional["required_owner_keys"].append("downstream")
+        return model.build_execution_plan(
+            functional_specification=functional,
+            scientific_stopping_owner_keys=["bam_qc", "star_index"],
+            implementation_content_sha256=identity["implementation_content_sha256"],
+            toolchain=identity["toolchain"],
+            backend="local",
+            engine="snakemake",
+            backend_semantics_sha256=ZERO_HASH,
+            star_index=identity["star_index"],
+            computational_resources=identity["computational_resources"],
+        )
+
+    assert model.execution_plan_boundary(partial("06")) == "processing"
+    assert model.execution_plan_boundary(partial("07")) == "partial"
+
+
 def test_plan_contract_excludes_adapter_reporting_and_realization_fields() -> None:
     with pytest.raises(contracts.ContractValidationError, match="Implementation role"):
         model.implementation_content_sha256(
@@ -382,7 +456,9 @@ def test_version_aware_reader_preserves_historical_execution_bytes() -> None:
 
 
 @pytest.mark.parametrize("version", (None, [], {}))
-def test_version_aware_reader_rejects_non_string_schema_versions(version: object) -> None:
+def test_version_aware_reader_rejects_non_string_schema_versions(
+    version: object,
+) -> None:
     with pytest.raises(
         contracts.ContractValidationError,
         match="schema_version must be a string",
@@ -467,17 +543,15 @@ def test_plan_admission_rejects_rehashed_noncanonical_functional_lists() -> None
     for field in ("owner_tasks", "direct_edges", "artifact_templates"):
         tampered = plan.record
         tampered["identity"]["functional_specification"][field].reverse()
-        tampered["execution_plan_id"] = (
-            "plan-" + contracts.canonical_sha256(tampered["identity"])
+        tampered["execution_plan_id"] = "plan-" + contracts.canonical_sha256(
+            tampered["identity"]
         )
         with pytest.raises(contracts.ContractValidationError, match=field):
             model.ExecutionPlan.from_record(tampered)
 
 
 def test_successor_run_proves_authority_and_optional_attempt_observations() -> None:
-    analysis, plan, run, profile, attempt, resource_policy = (
-        successor_run_fixture()
-    )
+    analysis, plan, run, profile, attempt, resource_policy = successor_run_fixture()
     model.validate_successor_run(
         analysis=analysis,
         plan=plan,
@@ -554,9 +628,7 @@ def test_successor_run_rejects_invalid_resource_resolution(
     rehash: str | None,
     message: str,
 ) -> None:
-    analysis, plan, run, profile, _, resource_policy = (
-        successor_run_fixture()
-    )
+    analysis, plan, run, profile, _, resource_policy = successor_run_fixture()
     changed = copy.deepcopy(resource_policy)
     target = changed
     for key in path[:-1]:
@@ -574,7 +646,7 @@ def test_successor_run_rejects_invalid_resource_resolution(
         )
 
 
-def test_successor_run_rejects_binding_profile_and_stopping_drift() -> None:
+def test_successor_run_rejects_binding_and_profile_drift_but_admits_partial() -> None:
     analysis, plan, run, profile, _, _ = successor_run_fixture()
     mismatched_run = model.bind_run(analysis_revision(), plan)
     with pytest.raises(contracts.ContractValidationError, match="Run binding differs"):
@@ -589,8 +661,8 @@ def test_successor_run_rejects_binding_profile_and_stopping_drift() -> None:
     changed_plan_record["identity"]["functional_specification"][
         "evidence_owner_keys"
     ] = []
-    changed_plan_record["execution_plan_id"] = (
-        "plan-" + contracts.canonical_sha256(changed_plan_record["identity"])
+    changed_plan_record["execution_plan_id"] = "plan-" + contracts.canonical_sha256(
+        changed_plan_record["identity"]
     )
     changed_plan = model.ExecutionPlan.from_record(changed_plan_record)
     changed_run = model.bind_run(analysis, changed_plan)
@@ -603,25 +675,22 @@ def test_successor_run_rejects_binding_profile_and_stopping_drift() -> None:
         )
 
     changed_plan_record = plan.record
-    changed_plan_record["identity"]["scientific_stopping_owner_keys"] = ["bam_qc"]
-    changed_plan_record["execution_plan_id"] = (
-        "plan-" + contracts.canonical_sha256(changed_plan_record["identity"])
+    changed_plan_record["identity"]["scientific_stopping_owner_keys"] = ["star_index"]
+    changed_plan_record["execution_plan_id"] = "plan-" + contracts.canonical_sha256(
+        changed_plan_record["identity"]
     )
     changed_plan = model.ExecutionPlan.from_record(changed_plan_record)
     changed_run = model.bind_run(analysis, changed_plan)
-    with pytest.raises(contracts.ContractValidationError, match="stopping owners"):
-        model.validate_successor_run(
-            analysis=analysis,
-            plan=changed_plan,
-            run=changed_run,
-            profile=profile,
-        )
+    model.validate_successor_run(
+        analysis=analysis,
+        plan=changed_plan,
+        run=changed_run,
+        profile=profile,
+    )
 
 
 def test_successor_run_rejects_attempt_resource_and_observed_digest_drift() -> None:
-    analysis, plan, run, profile, attempt, resource_policy = (
-        successor_run_fixture()
-    )
+    analysis, plan, run, profile, attempt, resource_policy = successor_run_fixture()
     for field, value, message in (
         ("run_id", f"run-{TWO_HASH}", "Attempt Run ID"),
         ("profile_sha256", TWO_HASH, "Attempt profile digest"),
@@ -731,8 +800,8 @@ def test_successor_run_rejects_attempt_resource_and_observed_digest_drift() -> N
 
     changed_plan_record = plan.record
     changed_plan_record["identity"]["backend"]["backend"] = "slurm"
-    changed_plan_record["execution_plan_id"] = (
-        "plan-" + contracts.canonical_sha256(changed_plan_record["identity"])
+    changed_plan_record["execution_plan_id"] = "plan-" + contracts.canonical_sha256(
+        changed_plan_record["identity"]
     )
     changed_plan = model.ExecutionPlan.from_record(changed_plan_record)
     changed_run = model.bind_run(analysis, changed_plan)

@@ -25,13 +25,22 @@ with each stage, analysis, or evidence owner.
 The supported flow is:
 
 ```text
-emrys run / emrys resume
+emrys run [--through processing] / emrys resume
   -> Project admission and lifecycle materialization
   -> fixed Snakefile plus checkout-bound local engine profile
-  -> public owner producers and validators through cohort_slice
+  -> plan-selected public owner producers and validators through cohort_slice
   -> terminal scientific Attempt receipt and released Run lock
-  -> downstream reporting by default, unless --no-report was selected
+  -> downstream reporting for a full Run; not applicable to a processing Run
 ```
+
+The default `emrys run` behavior remains the complete Steps `00`–`10` Analysis.
+`emrys run --through processing` instead creates a distinct immutable Run whose
+successful boundary is the evidence-complete, all-sample Steps `00`–`06`
+closure. That closure is 31 owner tasks for the four-sample synthetic fixture.
+Reporting is not applicable, and the successful Run is complete rather than
+resumable. This slice establishes only the processing/future-reuse boundary.
+A future downstream Analysis would require a new Run, but compatible cross-Run
+reuse and downstream launch remain unimplemented ANALYSIS-01 work.
 
 The lifecycle materializes an immutable attempt-specific configuration and
 dispatch for every expected owner/scope pair. The Snakefile invokes those
@@ -39,8 +48,9 @@ bound public owners and declares only their verified records. Native scientific
 outputs, locks, receipts, and rollback remain owner-controlled rather than
 becoming generic Snakemake outputs.
 
-Verified task records are reusable only after EMRYS re-admits their canonical
-identities and bound evidence. Reporting is a separate post-Attempt operation:
+Within one Run's Attempt chain, verified task records are reusable only after
+EMRYS re-admits their canonical identities and bound evidence. Reporting is a
+separate post-Attempt operation:
 it reuses only a fully validated report set, generates only into exactly empty
 reporting state, and fails closed on partial or ambiguous state. A path,
 timestamp, process exit, `.snakemake` entry, or receipt name alone is not
@@ -63,16 +73,17 @@ the Snakefile separately checks that it matches the supported static graph.
 
 ## Reviewable targets
 
-Three bounded review slices expose smaller input-only closures without changing
+Two bounded review slices expose selected closures without changing
 owner dependencies:
 
 - `reference_slice`: reference preparation;
-- `one_sample_slice`: reference preparation plus one declared sample; and
-- `cohort_slice`: the complete scientific/evidence owner graph and default
-  backend target.
+- `cohort_slice`: the plan-selected scientific/evidence owner graph and default
+  backend target. Without `--through processing`, it remains the complete graph.
 
 These targets support review and deterministic tests; they are not alternate
-scientific profiles. The former composite `local_pipeline_slice` is retired.
+scientific profiles. The public processing boundary is selected through the
+immutable Execution Plan, not by invoking a raw target. The former composite
+`local_pipeline_slice` is retired.
 
 ## Execution boundary
 

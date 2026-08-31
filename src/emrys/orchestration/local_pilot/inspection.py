@@ -27,6 +27,7 @@ from emrys.contracts.orchestration.application_model import (
     ExecutionPlan,
     RunBinding,
     bind_run,
+    execution_plan_boundary,
     read_application_record,
     validate_execution_view,
     validate_successor_run,
@@ -42,7 +43,7 @@ AttemptOutcome = Literal[
 ]
 RunIntegrity = Literal["valid", "blocked"]
 ResultsStatus = Literal["incomplete", "complete", "blocked"]
-ReportingStatus = Literal["incomplete", "complete", "blocked"]
+ReportingStatus = Literal["not applicable", "incomplete", "complete", "blocked"]
 TaskState = Literal["pending", "verified", "blocked"]
 _WORKFLOW_ATTEMPT_NAME_RE = re.compile(r"^workflow-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{32}$")
 _ATTEMPT_CHILD_NAMES = frozenset(
@@ -187,6 +188,10 @@ class RunInspection:
 
         if self.reporting_blockers:
             return "blocked"
+        if self.authority is not None and execution_plan_boundary(
+            self.authority.execution_plan
+        ) != "analysis":
+            return "not applicable"
         if self.reporting_completion_records and all(
             records["start"] is not None and records["verified"] is not None
             for records in self.reporting_completion_records.values()
@@ -527,8 +532,9 @@ def admit_execution_path(
 def _successor_expected_tasks(
     authority: SuccessorRunAuthority,
 ) -> tuple[ExpectedTask, ...]:
-    functional = authority.execution_plan.record["identity"]["functional_specification"]
-    required = set(functional["required_owner_keys"])
+    plan_identity = authority.execution_plan.record["identity"]
+    functional = plan_identity["functional_specification"]
+    required = set(plan_identity["scientific_stopping_owner_keys"])
     analysis = authority.analysis_revision
     identity = analysis.record["identity"]
     scope_ids = {

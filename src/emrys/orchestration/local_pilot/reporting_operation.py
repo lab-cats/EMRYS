@@ -205,6 +205,10 @@ def run_reporting(
     try:
         state = inspection.inspect_run(run_root)
         _require_successful_results(state)
+        if state.reporting_status == "not applicable":
+            raise ReportingOperationError(
+                "Reporting is not applicable to this partial scientific Run"
+            )
         if state.reporting_status == "complete":
             return ReportingOperationOutcome(
                 status="reused",

@@ -29,6 +29,9 @@ ANALYSIS_IDENTITY_DOMAIN = "emrys.analysis-revision-identity.v1"
 EXECUTION_PLAN_IDENTITY_DOMAIN = "emrys.execution-plan-identity.v1"
 RUN_IDENTITY_DOMAIN = "emrys.run-identity.v1"
 IMPLEMENTATION_IDENTITY_DOMAIN = "emrys.implementation-content-identity.v1"
+PROCESSING_STEP_IDS = frozenset(
+    {"00a", "00b", "00c", "01", "02", "02b", "03", "04", "05", "06"}
+)
 
 _POLICY_FIELDS = (
     "control_condition",
@@ -588,6 +591,29 @@ def bind_run(analysis: AnalysisRevision, plan: ExecutionPlan) -> RunBinding:
     )
 
 
+def processing_stopping_owner_keys(functional: Mapping[str, Any]) -> tuple[str, ...]:
+    """Return the fixed evidence-complete processing owner roster."""
+
+    required = set(map(str, functional["required_owner_keys"]))
+    return tuple(sorted(
+        str(owner["machine_key"])
+        for owner in functional["owner_tasks"]
+        if str(owner["step_id"]) in PROCESSING_STEP_IDS
+        and str(owner["machine_key"]) in required
+    ))
+
+
+def execution_plan_boundary(plan: ExecutionPlan) -> Literal["analysis", "processing", "partial"]:
+    """Classify the immutable scientific stopping roster."""
+
+    identity = plan.record["identity"]
+    selected = tuple(identity["scientific_stopping_owner_keys"])
+    functional = identity["functional_specification"]
+    if selected == tuple(functional["required_owner_keys"]):
+        return "analysis"
+    return "processing" if selected == processing_stopping_owner_keys(functional) else "partial"
+
+
 def read_application_record(
     data: bytes,
     *,
@@ -837,13 +863,6 @@ def validate_successor_run(
         raise ContractValidationError(
             "Profile functional specification differs from the Execution Plan"
         )
-    if (
-        plan_identity["scientific_stopping_owner_keys"]
-        != plan_identity["functional_specification"]["required_owner_keys"]
-    ):
-        raise ContractValidationError(
-            "Scientific stopping owners differ from required functional owners"
-        )
 
     if attempt is not None:
         validate_record("workflow-attempt", attempt)
@@ -1036,6 +1055,21 @@ def _validate_plan_semantics(record: Mapping[str, Any]) -> None:
     ):
         raise ContractValidationError("Evidence owners must also be required")
     _validate_graph(edges, owners)
+    stopping = set(identity["scientific_stopping_owner_keys"])
+    if not stopping <= set(functional["required_owner_keys"]):
+        raise ContractValidationError(
+            "scientific_stopping_owner_keys must reference required owners"
+        )
+    missing_predecessors = sorted(
+        str(edge["producer"])
+        for edge in edges
+        if str(edge["consumer"]) in stopping and str(edge["producer"]) not in stopping
+    )
+    if missing_predecessors:
+        raise ContractValidationError(
+            "scientific_stopping_owner_keys must be predecessor-closed; missing "
+            + ", ".join(missing_predecessors)
+        )
     _require_unique(
         (row["artifact_id_template"] for row in artifacts),
         "artifact_id_template",
@@ -1085,6 +1119,8 @@ __all__ = (
     "build_execution_plan",
     "functional_specification_from_profile",
     "implementation_content_sha256",
+    "execution_plan_boundary",
+    "processing_stopping_owner_keys",
     "read_application_record",
     "toolchain_from_required_tools",
     "validate_execution_view",
