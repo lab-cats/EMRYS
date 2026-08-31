@@ -106,6 +106,16 @@ class ReportingLedgerPaths:
     verified: Path
 
 
+@dataclass(frozen=True, slots=True)
+class ReportingLedgerAdmission:
+    """Already-admitted reporting records and semantic result locations."""
+
+    origin_workflow_attempt_id: str
+    start_reference: dict[str, str]
+    verified_reference: dict[str, str] | None = None
+    verified_report_locations: tuple[tuple[str, Path], ...] = ()
+
+
 BytesPublisher = Callable[[Path, bytes], None]
 
 
@@ -158,7 +168,8 @@ def _validate_semantic_receipt(
         config,
         historical_read=(
             read
-            and report_output_root(run_root, profile) == run_root / "products" / "report"
+            and report_output_root(run_root, profile)
+            == run_root / "products" / "report"
         ),
         validated_predecessor=validated_predecessor,
     )
@@ -243,9 +254,7 @@ def _read_bound(path: Path, root: Path, label: str) -> bytes:
             nonempty=False,
         )[0]
     except (OSError, ValidationError) as exc:
-        raise ReportingBoundaryError(
-            f"Could not admit {label}: {path}: {exc}"
-        ) from exc
+        raise ReportingBoundaryError(f"Could not admit {label}: {path}: {exc}") from exc
 
 
 _admit_record = partial(
@@ -879,17 +888,19 @@ def validate_start(
     run_root: Path,
     execution: Mapping[str, Any],
     profile: Mapping[str, Any],
-) -> str:
-    """Read-only validation of an entered reporting scope against its origin."""
+) -> ReportingLedgerAdmission:
+    """Admit an entered reporting scope and retain its immutable reference."""
 
     admitted_kind = _kind(kind)
-    identity, _start, _reference_value = _identity_from_origin(
+    identity, _start, start_reference = _identity_from_origin(
         admitted_kind,
         run_root,
         execution,
         profile,
     )
-    return str(identity.attempt["workflow_attempt_id"])
+    return ReportingLedgerAdmission(
+        str(identity.attempt["workflow_attempt_id"]), start_reference
+    )
 
 
 def validate_verified(
@@ -899,8 +910,8 @@ def validate_verified(
     profile: Mapping[str, Any],
     *,
     semantic_validator: SemanticValidator = validate_read_semantic_receipt,
-) -> tuple[Path, tuple[tuple[str, Path], ...]]:
-    """Read-only revalidation of a verified ledger and full semantic transaction."""
+) -> ReportingLedgerAdmission:
+    """Admit a verified ledger and retain its immutable references."""
 
     admitted_kind = _kind(kind)
     identity, start, start_reference = _identity_from_origin(
@@ -982,7 +993,12 @@ def validate_verified(
         raise ReportingBoundaryError(
             "Verified reporting record changed during semantic validation"
         )
-    return receipt_path, verified_report_locations
+    return ReportingLedgerAdmission(
+        str(identity.attempt["workflow_attempt_id"]),
+        start_reference,
+        _reference(paths.verified, identity.root, verified_data),
+        verified_report_locations,
+    )
 
 
 __all__ = (
@@ -991,6 +1007,7 @@ __all__ = (
     "ReportingBoundaryError",
     "ReportingBoundaryOps",
     "ReportingKind",
+    "ReportingLedgerAdmission",
     "ReportingLedgerPaths",
     "SemanticTransaction",
     "SemanticValidator",

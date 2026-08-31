@@ -1152,7 +1152,10 @@ def _admit_identity(
         profile,
     )
     profile_sha256 = hashlib.sha256(profile_data).hexdigest()
-    if "profile" in execution and execution["profile"]["profile_sha256"] != profile_sha256:
+    if (
+        "profile" in execution
+        and execution["profile"]["profile_sha256"] != profile_sha256
+    ):
         raise TaskBoundaryError("Execution does not bind the admitted profile")
     tasks = [
         task
@@ -1360,6 +1363,41 @@ def _build_task_start(
     return record, orchestration_contracts.canonical_json_bytes(record)
 
 
+def _task_admission_context(
+    run_root: Path,
+    machine_key: str,
+    scope: Mapping[str, str],
+) -> tuple[Path, str, dict[str, str]]:
+    canonical_root = _absolute_path(str(run_root), "run_root")
+    if canonical_root.resolve(strict=True) != canonical_root:
+        raise TaskBoundaryError("run_root must already be canonical")
+    return (
+        canonical_root,
+        _safe_id(machine_key, "machine_key"),
+        {
+            field: _safe_id(scope.get(field), f"scope.{field}")
+            for field in ("scope_type", "scope_id")
+        },
+    )
+
+
+def _task_identity(
+    execution: Mapping[str, Any],
+    profile: Mapping[str, Any],
+    machine_key: str,
+    scope: Mapping[str, str],
+) -> dict[str, Any]:
+    return {
+        "run_id": execution["run_id"],
+        "execution_contract_sha256": orchestration_contracts.canonical_sha256(
+            execution
+        ),
+        "profile_sha256": orchestration_contracts.canonical_sha256(profile),
+        "machine_key": machine_key,
+        "scope": dict(scope),
+    }
+
+
 def validate_task_start(
     path: Path,
     *,
@@ -1371,19 +1409,15 @@ def validate_task_start(
 ) -> dict[str, Any]:
     """Fail closed unless one producer-entry record remains content-bound."""
 
-    canonical_root = _absolute_path(str(run_root), "run_root")
-    if canonical_root.resolve(strict=True) != canonical_root:
-        raise TaskBoundaryError("run_root must already be canonical")
-    expected_scope = {
-        "scope_type": _safe_id(scope.get("scope_type"), "scope.scope_type"),
-        "scope_id": _safe_id(scope.get("scope_id"), "scope.scope_id"),
-    }
+    canonical_root, owner_key, expected_scope = _task_admission_context(
+        run_root, machine_key, scope
+    )
     start_path = _absolute_path(str(path), "task-start path")
     expected_path = (
         canonical_root
         / "state"
         / "task-starts"
-        / _safe_id(machine_key, "machine_key")
+        / owner_key
         / f"{expected_scope['scope_id']}.json"
     )
     if start_path != expected_path:
@@ -1391,15 +1425,7 @@ def validate_task_start(
     _safe_in_run_destination(start_path, canonical_root, "task-start path")
     orchestration_contracts.validate_record("profile", profile)
     record, start_data = _admit_record(start_path, canonical_root, "task-start")
-    identity = {
-        "run_id": execution["run_id"],
-        "execution_contract_sha256": hashlib.sha256(
-            orchestration_contracts.canonical_json_bytes(execution)
-        ).hexdigest(),
-        "profile_sha256": orchestration_contracts.canonical_sha256(profile),
-        "machine_key": machine_key,
-        "scope": expected_scope,
-    }
+    identity = _task_identity(execution, profile, owner_key, expected_scope)
     for field, expected in identity.items():
         if record[field] != expected:
             raise TaskBoundaryError(f"Task-start {field} does not match")
@@ -1476,6 +1502,74 @@ def _verify_reference(
     return path
 
 
+def _admit_task_attempt(
+    *,
+    run_root: Path,
+    execution: Mapping[str, Any],
+    profile: Mapping[str, Any],
+    workflow_attempt_id: str,
+    machine_key: str,
+    scope: Mapping[str, str],
+) -> tuple[dict[str, Any], dict[str, str]]:
+    """Admit one terminal owner attempt at its exact task-tree boundary."""
+
+    canonical_root, owner_key, expected_scope = _task_admission_context(
+        run_root, machine_key, scope
+    )
+    identifier = _safe_id(workflow_attempt_id, "workflow_attempt_id")
+    attempt_path = (
+        canonical_root
+        / "attempts"
+        / identifier
+        / "tasks"
+        / owner_key
+        / expected_scope["scope_id"]
+        / "task-attempt.json"
+    )
+    record, data = _admit_record(attempt_path, canonical_root, "task-attempt")
+    reference = {
+        "path": _relative(attempt_path, canonical_root),
+        "sha256": hashlib.sha256(data).hexdigest(),
+    }
+    identity = _task_identity(execution, profile, owner_key, expected_scope)
+    identity["workflow_attempt_id"] = identifier
+    for field, expected in identity.items():
+        if record[field] != expected:
+            raise TaskBoundaryError(f"Task attempt {field} does not match")
+    for field, file_name in (
+        ("stdout_log", "stdout.log"),
+        ("stderr_log", "stderr.log"),
+    ):
+        if _verify_reference(
+            record[field],
+            run_root=canonical_root,
+            label=field.replace("_", " "),
+        ) != attempt_path.with_name(file_name):
+            raise TaskBoundaryError(f"Task attempt binds a different {field}")
+    start_reference = record["task_start_record"]
+    if start_reference is None:
+        if record["status"] != "failed":
+            raise TaskBoundaryError("Preentry task attempt must be failed")
+    else:
+        start_path = (
+            canonical_root
+            / "state"
+            / "task-starts"
+            / owner_key
+            / f"{expected_scope['scope_id']}.json"
+        )
+        if (
+            _verify_reference(
+                start_reference,
+                run_root=canonical_root,
+                label="task-start record",
+            )
+            != start_path
+        ):
+            raise TaskBoundaryError("Task attempt does not bind its exact start")
+    return record, reference
+
+
 def validate_verified_task(
     path: Path,
     *,
@@ -1491,35 +1585,22 @@ def validate_verified_task(
     neither Snakemake metadata nor mere marker presence.
     """
 
-    canonical_root = _absolute_path(str(run_root), "run_root")
-    if canonical_root.resolve(strict=True) != canonical_root:
-        raise TaskBoundaryError("run_root must already be canonical")
+    canonical_root, owner_key, expected_scope = _task_admission_context(
+        run_root, machine_key, scope
+    )
     verified_path = _absolute_path(str(path), "verified task path")
     _safe_in_run_destination(verified_path, canonical_root, "verified task path")
     orchestration_contracts.validate_record("profile", profile)
-    expected_scope = {
-        "scope_type": _safe_id(scope.get("scope_type"), "scope.scope_type"),
-        "scope_id": _safe_id(scope.get("scope_id"), "scope.scope_id"),
-    }
     record, _ = _admit_record(verified_path, canonical_root, "verified-task")
     profile_tasks = [
-        item for item in profile["owner_tasks"] if item["machine_key"] == machine_key
+        item for item in profile["owner_tasks"] if item["machine_key"] == owner_key
     ]
-    if len(profile_tasks) != 1 or machine_key not in profile["required_owner_keys"]:
+    if len(profile_tasks) != 1 or owner_key not in profile["required_owner_keys"]:
         raise TaskBoundaryError("Verified task owner is not one required profile owner")
     owner = profile_tasks[0]
     if owner["scope_type"] != expected_scope["scope_type"]:
         raise TaskBoundaryError("Verified task scope_type does not match profile owner")
-    execution_sha256 = hashlib.sha256(
-        orchestration_contracts.canonical_json_bytes(execution)
-    ).hexdigest()
-    identity = {
-        "run_id": execution["run_id"],
-        "execution_contract_sha256": execution_sha256,
-        "profile_sha256": orchestration_contracts.canonical_sha256(profile),
-        "machine_key": machine_key,
-        "scope": expected_scope,
-    }
+    identity = _task_identity(execution, profile, owner_key, expected_scope)
     for field, expected in identity.items():
         if record[field] != expected:
             raise TaskBoundaryError(f"Verified task {field} does not match")
@@ -1538,20 +1619,19 @@ def validate_verified_task(
             paths.add(file_path)
             _bound_file_matches(bound, f"verified {group}[{index}]")
 
-    attempt_path, attempt = _referenced_record(
-        record["task_attempt_record"],
+    attempt_reference = record["task_attempt_record"]
+    attempt, admitted_attempt_reference = _admit_task_attempt(
         run_root=canonical_root,
-        label="task-attempt record",
+        execution=execution,
+        profile=profile,
+        workflow_attempt_id=str(record["workflow_attempt_id"]),
+        machine_key=owner_key,
+        scope=expected_scope,
     )
-    orchestration_contracts.validate_record("task-attempt", attempt)
+    if admitted_attempt_reference != attempt_reference:
+        raise TaskBoundaryError("Task-attempt record reference no longer matches")
     for field in (
-        "run_id",
-        "execution_contract_sha256",
-        "profile_sha256",
-        "workflow_attempt_id",
         "task_attempt_id",
-        "machine_key",
-        "scope",
         "owner_run_token",
     ):
         if attempt[field] != record[field]:
@@ -1562,33 +1642,19 @@ def validate_verified_task(
         raise TaskBoundaryError("Referenced task attempt is not successful")
     if attempt["task_start_record"] != record["task_start_record"]:
         raise TaskBoundaryError("Task attempt and verified task disagree on task start")
-    for field, file_name in (
-        ("stdout_log", "stdout.log"),
-        ("stderr_log", "stderr.log"),
-    ):
-        expected_log_path = attempt_path.with_name(file_name)
-        expected_log_reference = {
-            "path": _relative(expected_log_path, canonical_root),
-            "sha256": attempt[field]["sha256"],
-        }
-        if attempt[field] != expected_log_reference:
-            raise TaskBoundaryError(f"Task attempt binds a different {field}")
-        _verify_reference(
-            attempt[field],
-            run_root=canonical_root,
-            label=field.replace("_", " "),
-        )
-    start_path = _verify_reference(
-        record["task_start_record"],
-        run_root=canonical_root,
-        label="task-start record",
+    start_path = (
+        canonical_root
+        / "state"
+        / "task-starts"
+        / owner_key
+        / f"{expected_scope['scope_id']}.json"
     )
     start = validate_task_start(
         start_path,
         run_root=canonical_root,
         execution=execution,
         profile=profile,
-        machine_key=machine_key,
+        machine_key=owner_key,
         scope=expected_scope,
     )
     for field in (
@@ -1637,8 +1703,6 @@ def validate_verified_task(
             run_root=canonical_root,
             label="native receipt",
         )
-    if not attempt_path.is_file():
-        raise TaskBoundaryError("Referenced task attempt disappeared")
     return record
 
 

@@ -99,24 +99,6 @@ def _read_bytes(path: Path, root: Path, label: str) -> bytes:
     return data
 
 
-def _stable_file_reference(path: Path, root: Path, label: str) -> dict[str, str]:
-    """Hash one stable descriptor snapshot without retaining its contents."""
-
-    _require_stable_file_path(path, root, label)
-    try:
-        digest, _identity = validation_inputs.sha256_with_identity(
-            path,
-            label,
-            nonempty=False,
-        )
-    except ValidationError as exc:
-        raise InspectionError(str(exc)) from exc
-    return {
-        "path": path.relative_to(root).as_posix(),
-        "sha256": digest,
-    }
-
-
 def _stable_directory_entries(path: Path, root: Path, label: str) -> tuple[str, ...]:
     """List one real directory through a stable descriptor-bound snapshot."""
 

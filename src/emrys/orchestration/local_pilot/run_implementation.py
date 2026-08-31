@@ -66,6 +66,8 @@ _ADMISSION_ROOTS = (
     "src/emrys/contracts/scientific_evidence",
     "src/emrys/libraries/source_authority.py",
     "src/emrys/orchestration/local_pilot/_inspection_admission.py",
+    "src/emrys/orchestration/local_pilot/_inspection_attempts.py",
+    "src/emrys/orchestration/local_pilot/_inspection_evidence.py",
     "src/emrys/orchestration/local_pilot/all_pass.py",
     "src/emrys/orchestration/local_pilot/inspection.py",
     "src/emrys/orchestration/local_pilot/lifecycle.py",
@@ -173,7 +175,9 @@ def backend_semantics_identity(source_root: Path) -> str:
     try:
         value = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, yaml.YAMLError) as exc:
-        raise RunImplementationError(f"Could not admit workflow profile: {path}") from exc
+        raise RunImplementationError(
+            f"Could not admit workflow profile: {path}"
+        ) from exc
     if not isinstance(value, dict):
         raise RunImplementationError("Workflow profile must contain one mapping")
     required = {"executor", "cores", "scheduler", "retries", "keep-incomplete"}

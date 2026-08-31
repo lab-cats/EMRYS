@@ -26,6 +26,7 @@ from emrys.evidence.storage_inventory import qualification as storage_qualificat
 from emrys.libraries.installed_package_identity import installed_package_tree_identity
 from emrys.libraries.validation import inputs as validation_inputs
 from emrys.orchestration.local_pilot import (
+    _inspection_attempts,
     doctor,
     inspection,
     lifecycle,
@@ -2256,7 +2257,7 @@ def test_inspection_blocks_empty_or_foreign_attempt_state(tmp_path: Path) -> Non
         ),
     )
     assert observed.integrity == "blocked"
-    assert any("no immutable attempt" in item for item in observed.blockers)
+    assert any(str(empty / "attempt.json") in item for item in observed.blockers)
 
 
 @pytest.mark.parametrize("root_state", ("missing", "symlink"))
@@ -2512,39 +2513,6 @@ def test_historical_task_tree_is_recursively_closed(
     assert any("task" in blocker.lower() for blocker in observed.blockers)
 
 
-def test_stable_file_reference_rejects_same_byte_replacement_during_hash(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    path = tmp_path / "stdout.log"
-    payload = b"x" * (2 * 1024 * 1024 + 17)
-    path.write_bytes(payload)
-    original_state = path.stat(follow_symlinks=False)
-    original_read = inspection.os.read
-    replaced = False
-
-    def replace_after_first_chunk(descriptor: int, size: int) -> bytes:
-        nonlocal replaced
-        data = original_read(descriptor, size)
-        state = os.fstat(descriptor)
-        if (
-            not replaced
-            and data
-            and (state.st_dev, state.st_ino)
-            == (original_state.st_dev, original_state.st_ino)
-        ):
-            replaced = True
-            path.rename(tmp_path / "original.log")
-            path.write_bytes(payload)
-        return data
-
-    monkeypatch.setattr(inspection.os, "read", replace_after_first_chunk)
-
-    with pytest.raises(inspection.InspectionError, match="changed while.*read"):
-        inspection._stable_file_reference(path, tmp_path, "stdout log")
-    assert replaced
-
-
 def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -2570,10 +2538,8 @@ def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
     for path in log_paths:
         state = path.stat(follow_symlinks=False)
         log_identities[path] = (state.st_dev, state.st_ino)
-    stable_calls: list[Path] = []
     original_os_read = validation_inputs.os.read
-    original_read_bytes = inspection._read_bytes
-    original_stable_reference = inspection._stable_file_reference
+    original_read_bytes = _inspection_attempts._read_bytes
 
     def track_os_read(descriptor: int, size: int) -> bytes:
         data = original_os_read(descriptor, size)
@@ -2589,13 +2555,8 @@ def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
             raise AssertionError(f"task log was fully read: {label}")
         return original_read_bytes(path, root, label)
 
-    def track_stable_reference(path: Path, root: Path, label: str) -> dict[str, str]:
-        stable_calls.append(path)
-        return original_stable_reference(path, root, label)
-
     monkeypatch.setattr(validation_inputs.os, "read", track_os_read)
-    monkeypatch.setattr(inspection, "_read_bytes", reject_full_log_read)
-    monkeypatch.setattr(inspection, "_stable_file_reference", track_stable_reference)
+    monkeypatch.setattr(_inspection_attempts, "_read_bytes", reject_full_log_read)
     inspect_ops = inspection.InspectionOps(
         lambda: "fixture-host",
         lambda _pid: True,
@@ -2604,7 +2565,6 @@ def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
 
     observed = inspection.inspect_run(first.built.run_root, ops=inspect_ops)
     assert observed.recovery_available
-    assert stable_calls == [stdout_path, stderr_path]
     for path, expected_size in (
         (stdout_path, len(stdout_data)),
         (stderr_path, len(stderr_data)),
@@ -2613,7 +2573,6 @@ def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
         assert len(chunk_lengths[path]) > 2
         assert max(chunk_lengths[path]) <= 1024 * 1024
 
-    stable_calls.clear()
     original_inspect_run = inspection.inspect_run
     resume_inspections: list[tuple[str, tuple[Path, ...]]] = []
 
@@ -2623,7 +2582,7 @@ def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
         ops: inspection.InspectionOps | None = None,
         allowed_next_attempt: Mapping[str, Any] | None = None,
     ) -> inspection.RunInspection:
-        before = len(stable_calls)
+        before = {path: len(chunks) for path, chunks in chunk_lengths.items()}
         result = original_inspect_run(
             run_root,
             ops=ops,
@@ -2632,7 +2591,11 @@ def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
         resume_inspections.append(
             (
                 "under-lock" if allowed_next_attempt is not None else "outer",
-                tuple(stable_calls[before:]),
+                tuple(
+                    path
+                    for path in (stdout_path, stderr_path)
+                    if len(chunk_lengths[path]) > before[path]
+                ),
             )
         )
         return result
@@ -2687,7 +2650,7 @@ def test_task_log_mutation_blocks_completed_run_inspection(
     )
     assert observed.results_status == "blocked"
     assert any(
-        "binds different" in blocker and file_name.split(".")[0] in blocker
+        "SHA-256 no longer matches" in blocker and file_name.split(".")[0] in blocker
         for blocker in observed.blockers
     )
 
@@ -2724,7 +2687,7 @@ def test_preentry_task_log_mutation_blocks_resume(
     assert observed.results_status == "blocked"
     assert observed.recovery_available is False
     assert any(
-        "binds different" in blocker and file_name.split(".")[0] in blocker
+        "SHA-256 no longer matches" in blocker and file_name.split(".")[0] in blocker
         for blocker in observed.blockers
     )
 
