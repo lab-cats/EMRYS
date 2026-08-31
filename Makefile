@@ -14,7 +14,7 @@ PYTHON_TEST_SHARD_RECEIPT ?= $(PYTHON_COVERAGE_ROOT)/python-test-shard-$(PYTHON_
 VALIDATION_JOBS ?= 3
 VALIDATION_PYTHON_WORKERS ?= 2
 VALIDATION_ARGS ?=
-.PHONY: test documentation-check shell-test validation-shell-contracts validation-shell-slurm validation-wheel-smoke real-r-test r-restore r-check local-real-r-test report-test dashboard python-coverage-shard python-coverage-finalize python-coverage-measure python-coverage-enforce python-coverage-check python-coverage-baseline-update validation-guarded-r validation-static validate smoke lint all-checks
+.PHONY: test documentation-check shell-test validation-shell-contracts validation-wheel-smoke real-r-test r-restore r-check local-real-r-test report-test dashboard python-coverage-shard python-coverage-finalize python-coverage-measure python-coverage-enforce python-coverage-check python-coverage-baseline-update validation-guarded-r validation-static validate smoke lint all-checks
 
 test:
 	"$(REPORT_PYTHON_BIN)" -m pytest

@@ -83,7 +83,7 @@ Slurm node may be that host, but this is not a distributed or Slurm-executor
 profile.
 
 Operators use `emrys run` and `emrys resume`; bare Snakemake invocation and ad
-hoc configs are unsupported. Standalone stage execution remains supported
-through each functional owner's direct command and owner-local scheduler entry
-point. See the [Runbook](../docs/operations/RUNBOOK.md) for cross-cutting
+hoc configs are unsupported. Standalone owner commands remain expert direct
+routes, while supported scheduler placement belongs to the grouped whole-Run
+transport. See the [Runbook](../docs/operations/RUNBOOK.md) for cross-cutting
 operator routes.

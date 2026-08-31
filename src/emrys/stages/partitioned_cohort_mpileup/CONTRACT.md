@@ -4,10 +4,10 @@ This is the observed contract of historical Step `07`, now implemented in this
 native owner directory. The exact public identity and historical alias are
 owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is the lowercase physical owner for that public slug and owns the producer,
-validator, and scheduler assets. Its Python validator is installed only through
-the grouped command; the private Python producer is invoked by orchestration or
-the repository-owned scheduler wrapper rather than exposed as a public command.
+is the lowercase physical owner for that public slug and owns the producer and
+validator. Its Python validator is installed only through the grouped command;
+the private Python producer is invoked by orchestration rather than exposed as
+a public command.
 
 ## Responsibility and execution dependencies
 
@@ -101,13 +101,6 @@ manifests only: BAMs, reference, FAI, regions file, tool identity, depth, and
 filter are not durable receipt provenance. The receipt also does not hash
 either output VCF.
 
-[`step_07_bcftools_mpileup_by_chrom_and_strand.slurm`](step_07_bcftools_mpileup_by_chrom_and_strand.slurm)
-requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving its repository-owned helper or producer, so SLURM's spool copy is
-never checkout authority. It owns explicit dataset/tool binding, execution
-gating, delegation, module-state logging, and final path checks; it does not own pileup or publication
-logic.
-
 ## Validation interface
 
 The grouped `python -I -m emrys validate partitioned-cohort-mpileup` route,
@@ -156,7 +149,7 @@ controlled exit-`2` boundary.
   locking, stale paths, child failures, transaction ordering, replacement,
   rollback failures, signals, mutation gaps, and provenance omissions.
 - [`test_validate_step_07_mpileup_outputs.py`](../../../../tests/stages/partitioned_cohort_mpileup/test_validate_step_07_mpileup_outputs.py)
-  plus wrapper, roster, publication-fault, public-CLI, artifact, report, and
+  plus roster, publication-fault, public-CLI, artifact, report, and
   coverage tests protect the independent evidence boundary.
 
 This is local mocked-runtime/fixture characterization, not real-runtime,
@@ -181,7 +174,3 @@ cluster, scientific-review, or biological evidence.
   publish failed rows with exit `0`, does not
   invoke bcftools, and does not prove selector-bound coordinates, VCF semantic
   fields, filter compliance, immutable inputs, or current-attempt identity.
-- The scheduler retains warning-only unusable-tool preflight, submit-CWD and
-  body-level log mutations, version-command failure, one-CPU defaults, and
-  stale-three-file false success as characterized defects rather than
-  guarantees.

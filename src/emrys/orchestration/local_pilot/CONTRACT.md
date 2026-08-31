@@ -84,13 +84,15 @@ CPU and memory capacity.
 
 Placement source/digest, Project source, and scheduler job ID are Attempt provenance,
 not Run identity or completion authority. Direct and Slurm use one scientific
-backend and one materialization/lifecycle contract. Focused equivalence with
-fixed resources does not establish real scheduler/site execution,
-allocation-sensitive parity, runtime/module portability, failure/recovery
-parity, or report-publication parity. Per-owner Slurm scheduling, multi-node
-execution, and all 16 stage/utility `.slurm` entry points remain available;
-Steps `07`–`09` delegate to Python owners and the other 13 retain their
-prior forms.
+backend and one materialization/lifecycle contract. Hosted 130-pair
+direct/disposable-single-node-Slurm execution proves matching immutable
+authority, Attempt common fields/task roster, path-neutral science, and
+symbolic resources. Each placement separately admits successful
+receipt/reporting and one application log; effective allocation and scheduler
+streams differ as intended. It does not establish the 100,000-pair case, institutional site/module
+portability, failure/recovery parity, multi-node or production execution,
+scientific review, or biological validation. Owner-local scheduler entry
+points are retired; the private whole-Run batch bootstrap remains.
 
 ## Project admission and execution
 

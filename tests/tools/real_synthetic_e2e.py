@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run one retained real-tool synthetic EMRYS E2E through single-node Slurm."""
+"""Prove retained real-tool direct/Slurm parity on one synthetic EMRYS Run."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-SUMMARY_SCHEMA = "emrys.ci-real-synthetic-e2e-summary.v2"
+SUMMARY_SCHEMA = "emrys.ci-real-synthetic-e2e-summary.v3"
 PROFILE_DATASETS = {"130": "smoke-v1", "100000": "production-like-v1"}
 DISCOVERY_UTILITIES = ("basename", "dirname", "grep", "rm", "uname")
 TERMINAL_STATES = frozenset(
@@ -42,6 +42,25 @@ OUT = re.compile(r"^OUT=(/.+)$", re.MULTILINE)
 ERR = re.compile(r"^ERR=(/.+)$", re.MULTILINE)
 STATE = re.compile(r"(?:^| )JobState=([A-Z_]+)")
 EXIT = re.compile(r"(?:^| )ExitCode=([0-9]+:[0-9]+)")
+# The Step09 summary is excluded because it carries Project-local locator evidence.
+SCIENTIFIC_RESULT_SUFFIXES = (
+    ".cmh_all_sites.tsv",
+    ".cmh_significant_sites.tsv",
+    ".mutation_spectrum.tsv",
+    ".candidate_context.tsv",
+    ".motif_hits.tsv",
+    ".sequence_logo.tsv",
+    ".motif_statistics.tsv",
+)
+APPLICATION_EVENTS = (
+    "attempt_opened",
+    "analysis_prepared",
+    "analysis_started",
+    "publication_ready",
+    "attempt_receipt_observed",
+    "reporting_started",
+    "reporting_completed",
+)
 
 
 class DriverError(RuntimeError):
@@ -55,10 +74,10 @@ class DriverError(RuntimeError):
 @dataclass(frozen=True, slots=True)
 class Paths:
     root: Path
-    workspace: Path
+    direct_workspace: Path
+    slurm_workspace: Path
     scratch: Path
     execution_profile: Path
-    runtime_profile: Path
     adapters: Path
     transcripts: Path
 
@@ -188,13 +207,12 @@ def require_operator_root(operator_root: Path, repo_root: Path) -> Paths:
         )
     if not os.access(root, os.R_OK | os.W_OK | os.X_OK):
         raise DriverError("preflight", "operator root is not usable")
-    workspace = root / "synthetic-inputs"
     return Paths(
         root,
-        workspace,
+        root / "direct",
+        root / "slurm",
         root / "scratch",
         root / "emrys.execution.slurm.json",
-        workspace / "runtime/runtime.tsv",
         root / "runtime-adapters",
         root / "driver-transcripts",
     )
@@ -617,10 +635,15 @@ def validate_step09_oracle(
     }
 
 
-def assert_completed_run(run_root: Path, fixture: dict[str, Any]) -> dict[str, Any]:
+def assert_completed_run(
+    run_root: Path,
+    fixture: dict[str, Any],
+    *,
+    observed: Any | None = None,
+) -> dict[str, Any]:
     from emrys.orchestration.local_pilot import inspection
 
-    observed = inspection.inspect_run(run_root)
+    observed = inspection.inspect_run(run_root) if observed is None else observed
     if (
         (
             observed.integrity,
@@ -649,6 +672,261 @@ def assert_completed_run(run_root: Path, fixture: dict[str, Any]) -> dict[str, A
         "run_root": str(run_root),
         "step09_oracle": oracle,
         "reports": {name: _artifact(path) for name, path in reports.items()},
+    }
+
+
+def _scientific_result_hashes(run_root: Path) -> dict[str, dict[str, Any]]:
+    results = run_root / "results"
+    selected: dict[str, dict[str, Any]] = {}
+    for suffix in SCIENTIFIC_RESULT_SUFFIXES:
+        matches = tuple(results.rglob(f"*{suffix}"))
+        if len(matches) != 1:
+            raise DriverError(
+                "assert-parity",
+                f"expected one terminal scientific result ending {suffix}; "
+                f"observed {len(matches)}",
+            )
+        artifact = _artifact(matches[0])
+        selected[matches[0].relative_to(results).as_posix()] = {
+            "size_bytes": artifact["size_bytes"],
+            "sha256": artifact["sha256"],
+        }
+    return selected
+
+
+def _resource_snapshot(
+    run_root: Path,
+    attempt: dict[str, Any],
+) -> dict[str, Any]:
+    from emrys.orchestration.local_pilot.resource_policy import (
+        admit_resource_policy_record,
+    )
+
+    reference = attempt.get("workflow_config")
+    if not isinstance(reference, dict):
+        raise DriverError("assert-parity", "Attempt workflow-config reference is absent")
+    path = run_root / str(reference.get("path", ""))
+    artifact = _artifact(path)
+    if artifact["sha256"] != reference.get("sha256"):
+        raise DriverError("assert-parity", "Attempt workflow-config digest differs")
+    try:
+        document = json.loads(path.read_bytes())
+        plan = admit_resource_policy_record(
+            document["resource_policy"],
+            require_symbolic=True,
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise DriverError(
+            "assert-parity",
+            f"Attempt resource policy is malformed: {exc}",
+        ) from exc
+    allocation = plan.allocation
+    return {
+        "symbolic": plan.policy.document(),
+        "effective": plan.effective_document(),
+        "allocation": {
+            "cores": allocation.cores,
+            "memory_mb": allocation.memory_mb,
+            "source": allocation.source,
+            "slurm_job_id": allocation.slurm_job_id,
+        },
+    }
+
+
+def _application_log_snapshot(
+    workspace: Path,
+    *,
+    run_id: str,
+    attempt_id: str,
+    scheduler_job_id: str | None,
+) -> dict[str, Any]:
+    logs = tuple((workspace / "logs/application").rglob("*.jsonl"))
+    if len(logs) != 1:
+        raise DriverError(
+            "assert-parity",
+            f"expected one Run application log; observed {len(logs)}",
+        )
+    artifact = _artifact(logs[0])
+    try:
+        records = [json.loads(line) for line in logs[0].read_text().splitlines()]
+    except (OSError, json.JSONDecodeError) as exc:
+        raise DriverError("assert-parity", f"Application log is malformed: {exc}") from exc
+    if not records or [record.get("sequence") for record in records] != list(
+        range(1, len(records) + 1)
+    ):
+        raise DriverError("assert-parity", "Application-log sequence is not contiguous")
+    if any(record.get("scope_kind") != "run" for record in records) or len(
+        {record.get("scope_id") for record in records}
+    ) != 1:
+        raise DriverError("assert-parity", "Application log scope is inconsistent")
+    events = [str(record.get("event")) for record in records]
+    cursor = -1
+    for event_name in APPLICATION_EVENTS:
+        try:
+            cursor = events.index(event_name, cursor + 1)
+        except ValueError as exc:
+            raise DriverError(
+                "assert-parity",
+                f"Application log omitted ordered event {event_name}",
+            ) from exc
+    opened = records[events.index("attempt_opened")]
+    prepared = records[events.index("analysis_prepared")]
+    if prepared.get("fields") != {
+        "run_id": run_id,
+        "workflow_attempt_id": attempt_id,
+    }:
+        raise DriverError("assert-parity", "Application log does not bind the Attempt")
+    opening_fields = opened.get("fields")
+    if not isinstance(opening_fields, dict):
+        raise DriverError("assert-parity", "Application-log opening fields are malformed")
+    observed_job = opening_fields.get("slurm_job_id")
+    if observed_job != scheduler_job_id:
+        raise DriverError("assert-parity", "Application-log scheduler identity differs")
+    return {
+        "path": artifact,
+        "event_count": len(events),
+        "required_events": list(APPLICATION_EVENTS),
+        "scope_id": records[0]["scope_id"],
+        "scheduler_job_id": observed_job,
+    }
+
+
+def _admitted_completion(
+    run_root: Path,
+    fixture: dict[str, Any],
+    *,
+    job: Job | None,
+) -> dict[str, Any]:
+    from emrys.orchestration.local_pilot import inspection
+
+    observed = inspection.inspect_run(run_root)
+    completion = assert_completed_run(run_root, fixture, observed=observed)
+    authority = observed.authority
+    attempt = observed.latest_attempt
+    receipt = observed.latest_receipt
+    if authority is None or attempt is None or receipt is None:
+        raise DriverError("assert-parity", "Completed Run lacks successor authority")
+    attempt_id = str(attempt["workflow_attempt_id"])
+    if (
+        receipt.get("schema_version") != "emrys.attempt-receipt.v2"
+        or receipt.get("status") != "succeeded"
+        or receipt.get("snakemake_exit_code") != 0
+        or receipt.get("termination_signal") is not None
+        or receipt.get("blockers")
+        or receipt.get("message") is not None
+    ):
+        raise DriverError("assert-parity", "Terminal Attempt receipt differs")
+    reporting = observed.reporting_completion_records
+    if set(reporting) != {"artifact_index", "run_summary", "html_report"} or any(
+        state.get("start") is None or state.get("verified") is None
+        for state in reporting.values()
+    ):
+        raise DriverError("assert-parity", "Reporting transaction roster differs")
+
+    scheduler_job_id = None if job is None else job.job_id
+    placement = attempt.get("placement")
+    expected_kind = "direct" if job is None else "slurm"
+    if (
+        not isinstance(placement, dict)
+        or placement.get("kind") != expected_kind
+        or placement.get("scheduler_job_id") != scheduler_job_id
+        or not isinstance(placement.get("request"), dict)
+        or placement["request"].get("kind") != expected_kind
+    ):
+        raise DriverError("assert-parity", "Attempt placement provenance differs")
+    resources = _resource_snapshot(run_root, attempt)
+    if resources["allocation"]["slurm_job_id"] != scheduler_job_id:
+        raise DriverError("assert-parity", "Resource allocation scheduler identity differs")
+
+    workspace = run_root.parent.parent
+    scheduler_streams = tuple(workspace.glob("logs/emrys-local-pilot-*"))
+    expected_streams = set() if job is None else {job.stdout, job.stderr}
+    if set(scheduler_streams) != expected_streams:
+        raise DriverError("assert-parity", "Scheduler stream ownership differs")
+    application_log = _application_log_snapshot(
+        workspace,
+        run_id=observed.run_id,
+        attempt_id=attempt_id,
+        scheduler_job_id=scheduler_job_id,
+    )
+
+    common_fields = inspection.attempt_fields(True)
+    task_roster = [
+        {
+            "machine_key": task.expected.machine_key,
+            "step_id": task.expected.step_id,
+            "scope_type": task.expected.scope_type,
+            "scope_id": task.expected.scope_id,
+            "state": task.state,
+        }
+        for task in observed.tasks
+    ]
+    receipt_path = run_root / "attempts" / attempt_id / "attempt-receipt.json"
+    return {
+        **completion,
+        "authority": {
+            "analysis": {
+                "id": authority.analysis_revision.analysis_revision_id,
+                "sha256": authority.analysis_revision.record_sha256,
+            },
+            "execution_plan": {
+                "id": authority.execution_plan.execution_plan_id,
+                "sha256": authority.execution_plan.record_sha256,
+            },
+            "run": {
+                "id": authority.run_binding.run_id,
+                "sha256": authority.run_binding.record_sha256,
+            },
+        },
+        "authority_bytes": {
+            "analysis": authority.analysis_revision.canonical_bytes,
+            "execution_plan": authority.execution_plan.canonical_bytes,
+            "run": authority.run_binding.canonical_bytes,
+        },
+        "attempt": {
+            "id": attempt_id,
+            "common_fields": {name: attempt[name] for name in common_fields},
+            "placement": placement,
+            "receipt": _artifact(receipt_path),
+            "task_roster": task_roster,
+        },
+        "resources": resources,
+        "scientific_results": _scientific_result_hashes(run_root),
+        "application_log": application_log,
+    }
+
+
+def _assert_direct_slurm_parity(
+    direct: dict[str, Any],
+    scheduled: dict[str, Any],
+) -> dict[str, Any]:
+    if direct["authority_bytes"] != scheduled["authority_bytes"]:
+        raise DriverError("assert-parity", "Immutable Run authority differs by placement")
+    if direct["attempt"]["id"] == scheduled["attempt"]["id"]:
+        raise DriverError("assert-parity", "Direct and Slurm Attempts share an identity")
+    for key in ("common_fields", "task_roster"):
+        if direct["attempt"][key] != scheduled["attempt"][key]:
+            raise DriverError("assert-parity", f"Attempt {key} differs by placement")
+    if direct["scientific_results"] != scheduled["scientific_results"]:
+        raise DriverError("assert-parity", "Terminal scientific Results differ by placement")
+    if direct["resources"]["symbolic"] != scheduled["resources"]["symbolic"]:
+        raise DriverError("assert-parity", "Run-bound resource declaration differs")
+    if direct["resources"]["effective"] == scheduled["resources"]["effective"]:
+        raise DriverError(
+            "assert-parity",
+            "Hosted proof did not exercise allocation-sensitive resource resolution",
+        )
+    return {
+        "immutable_authority": direct["authority"],
+        "attempt_ids_distinct": True,
+        "attempt_common_fields": direct["attempt"]["common_fields"],
+        "task_roster": direct["attempt"]["task_roster"],
+        "scientific_results": direct["scientific_results"],
+        "symbolic_resources": direct["resources"]["symbolic"],
+        "direct_effective_resources": direct["resources"]["effective"],
+        "slurm_effective_resources": scheduled["resources"]["effective"],
+        "report_kinds": sorted(direct["reports"]),
+        "single_application_log_per_operation": True,
     }
 
 
@@ -689,16 +967,32 @@ def run_driver(
     for name, data in adapters.items():
         _write(paths.adapters / name, data, mode=0o700)
 
+    environment = runtime_environment(paths, runtime)
     profile = str(arguments.profile)
     dataset = PROFILE_DATASETS[profile]
-    init = _emrys(python, "init", "synthetic", "--output-dir", str(paths.workspace), "--dataset-profile", dataset)
-    transcripts.run("init-plan", init, cwd=repo)
-    transcripts.run("init", [*init, "--execute"], cwd=repo)
-    project = paths.workspace / "project.yaml"
+    workspaces = {
+        "direct": paths.direct_workspace,
+        "slurm": paths.slurm_workspace,
+    }
+    projects: dict[str, Path] = {}
+    for label, workspace in workspaces.items():
+        init = _emrys(
+            python,
+            "init",
+            "synthetic",
+            "--output-dir",
+            str(workspace),
+            "--dataset-profile",
+            dataset,
+        )
+        transcripts.run(f"{label}-init-plan", init, cwd=repo)
+        transcripts.run(f"{label}-init", [*init, "--execute"], cwd=repo)
+        projects[label] = workspace / "project.yaml"
+
     _write(
         paths.execution_profile,
         slurm_execution_profile_bytes(
-            project,
+            projects["slurm"],
             account=arguments.slurm_account,
             partition=arguments.slurm_partition,
             qos=arguments.slurm_qos,
@@ -709,56 +1003,126 @@ def run_driver(
             scratch_parent=paths.scratch,
         ),
     )
-    discover = _emrys(python, "runtime", "discover", "--project", str(project))
-    environment = runtime_environment(paths, runtime)
-    transcripts.run("runtime-plan", discover, cwd=repo, environment=environment)
-    if paths.runtime_profile.exists():
-        raise DriverError("runtime-plan", "runtime dry-run published a profile")
-    transcripts.run(
-        "runtime-admit",
-        [*discover, "--execute"],
-        cwd=repo,
-        environment=environment,
-    )
-    transcripts.run(
-        "validate",
-        _emrys(python, "validate", "project", "--project", str(project)),
-        cwd=repo,
-    )
-
-    fasta = paths.workspace / "inputs/reference/reference.fa"
-    storage = _emrys(python, "inspect", "storage-qualification", "--workspace", str(paths.workspace), "--reference-fasta", str(fasta))
-    for phase in ("compute", "finalize"):
-        command = [*storage, "--phase", phase]
-        transcripts.run(f"storage-{phase}-plan", command, cwd=repo)
-        prefix = launcher if phase == "compute" else ()
-        transcripts.run(f"storage-{phase}", [*prefix, *command, "--execute"], cwd=repo)
     from emrys.evidence.storage_inventory import qualification
 
-    qualified = qualification.admit_final_qualification(paths.workspace, fasta)
-    transcripts.run("doctor", _emrys(python, "doctor", "--project", str(project)), cwd=repo)
+    qualifications: dict[str, Any] = {}
+    for label, workspace in workspaces.items():
+        project = projects[label]
+        runtime_profile = workspace / "runtime/runtime.tsv"
+        discover = _emrys(python, "runtime", "discover", "--project", str(project))
+        transcripts.run(
+            f"{label}-runtime-plan",
+            discover,
+            cwd=repo,
+            environment=environment,
+        )
+        if runtime_profile.exists():
+            raise DriverError(
+                f"{label}-runtime-plan",
+                "runtime dry-run published a profile",
+            )
+        transcripts.run(
+            f"{label}-runtime-admit",
+            [*discover, "--execute"],
+            cwd=repo,
+            environment=environment,
+        )
+        transcripts.run(
+            f"{label}-validate",
+            _emrys(python, "validate", "project", "--project", str(project)),
+            cwd=repo,
+        )
 
-    direct = _emrys(python, "run", "--project", str(project), "--log-level", "verbose")
+        fasta = workspace / "inputs/reference/reference.fa"
+        storage = _emrys(
+            python,
+            "inspect",
+            "storage-qualification",
+            "--workspace",
+            str(workspace),
+            "--reference-fasta",
+            str(fasta),
+        )
+        for phase in ("compute", "finalize"):
+            command = [*storage, "--phase", phase]
+            transcripts.run(f"{label}-storage-{phase}-plan", command, cwd=repo)
+            prefix = launcher if phase == "compute" else ()
+            transcripts.run(
+                f"{label}-storage-{phase}",
+                [*prefix, *command, "--execute"],
+                cwd=repo,
+            )
+        qualifications[label] = qualification.admit_final_qualification(
+            workspace,
+            fasta,
+        )
+        transcripts.run(
+            f"{label}-doctor",
+            _emrys(python, "doctor", "--project", str(project)),
+            cwd=repo,
+        )
+
+    direct = _emrys(
+        python,
+        "run",
+        "--project",
+        str(projects["direct"]),
+        "--log-level",
+        "verbose",
+    )
     planned = transcripts.run("run-plan", direct, cwd=repo)
-    run_root = parse_run_plan(planned.stderr, paths.workspace, no_write=True)
-    if planned.stdout or any(any((paths.workspace / name).iterdir()) for name in ("runs", "logs")):
+    direct_run_root = parse_run_plan(
+        planned.stderr,
+        paths.direct_workspace,
+        no_write=True,
+    )
+    if planned.stdout or any(
+        any((paths.direct_workspace / name).iterdir()) for name in ("runs", "logs")
+    ):
         raise DriverError("run-plan", "direct dry-run wrote state")
-    scheduled = _emrys(python, "run", "--project", str(project), "--execution-profile", str(paths.execution_profile), "--log-level", "verbose")
+    scheduled = _emrys(
+        python,
+        "run",
+        "--project",
+        str(projects["slurm"]),
+        "--execution-profile",
+        str(paths.execution_profile),
+        "--log-level",
+        "verbose",
+    )
     scheduler_plan = transcripts.run("slurm-plan", scheduled, cwd=repo)
     if (
         scheduler_plan.stdout
         or "Dry-run complete; no scheduler or workspace state was written."
         not in scheduler_plan.stderr
-        or any(any((paths.workspace / name).iterdir()) for name in ("runs", "logs"))
+        or any(
+            any((paths.slurm_workspace / name).iterdir())
+            for name in ("runs", "logs")
+        )
     ):
         raise DriverError("slurm-plan", "scheduler dry-run wrote or submitted")
+
+    direct_execution = transcripts.run(
+        "direct-execute",
+        [*direct, "--execute"],
+        cwd=repo,
+    )
+    if (
+        parse_run_plan(
+            direct_execution.stderr,
+            paths.direct_workspace,
+            no_write=False,
+        )
+        != direct_run_root
+    ):
+        raise DriverError("direct-execute", "Direct execution selected a different Run")
     submission = transcripts.run(
         "slurm-submit",
         [*scheduled, "--execute"],
         cwd=repo,
     )
     job = wait_for_job(
-        parse_submission(submission.stdout, paths.workspace / "logs"),
+        parse_submission(submission.stdout, paths.slurm_workspace / "logs"),
         scontrol=scontrol,
         scancel=scancel,
         cwd=repo,
@@ -766,42 +1130,93 @@ def run_driver(
         poll_seconds=arguments.poll_seconds,
     )
     execution_stderr = _stream(job.stderr)
-    if parse_run_plan(execution_stderr, paths.workspace, no_write=False) != run_root:
-        raise DriverError("slurm-execute", "compute selected a different Run")
+    slurm_run_root = parse_run_plan(
+        execution_stderr,
+        paths.slurm_workspace,
+        no_write=False,
+    )
+    if direct_run_root.name != slurm_run_root.name:
+        raise DriverError("plan-parity", "Direct and Slurm selected different Runs")
 
-    inspected = transcripts.run("inspect", _emrys(python, "inspect", "run", "--run-root", str(run_root)), cwd=repo)
-    if any(
-        value not in inspected.stdout
-        for value in (
-            "Attempt outcome: succeeded",
-            "Scientific Results: complete",
-            "Reporting: complete",
-        )
+    for label, run_root in (
+        ("direct", direct_run_root),
+        ("slurm", slurm_run_root),
     ):
-        raise DriverError("inspect", "public Run inspection is incomplete")
-    fixture = json.loads((paths.workspace / "fixture.json").read_text())
-    if (
+        inspected = transcripts.run(
+            f"{label}-inspect",
+            _emrys(python, "inspect", "run", "--run-root", str(run_root)),
+            cwd=repo,
+        )
+        if any(
+            value not in inspected.stdout
+            for value in (
+                "Attempt outcome: succeeded",
+                "Scientific Results: complete",
+                "Reporting: complete",
+            )
+        ):
+            raise DriverError(
+                f"{label}-inspect",
+                "public Run inspection is incomplete",
+            )
+
+    fixtures = {
+        label: json.loads((workspace / "fixture.json").read_text())
+        for label, workspace in workspaces.items()
+    }
+    if fixtures["direct"] != fixtures["slurm"] or any(
         fixture.get("dataset_profile") != dataset
         or fixture.get("read_pairs_per_library") != int(profile)
+        for fixture in fixtures.values()
     ):
-        raise DriverError("assert-results", "fixture scale differs")
-    completion = assert_completed_run(run_root, fixture)
+        raise DriverError("assert-results", "synthetic fixture identity or scale differs")
+    direct_completion = _admitted_completion(
+        direct_run_root,
+        fixtures["direct"],
+        job=None,
+    )
+    slurm_completion = _admitted_completion(
+        slurm_run_root,
+        fixtures["slurm"],
+        job=job,
+    )
+    parity = _assert_direct_slurm_parity(direct_completion, slurm_completion)
+    direct_summary = {
+        key: value
+        for key, value in direct_completion.items()
+        if key != "authority_bytes"
+    }
+    slurm_summary = {
+        key: value
+        for key, value in slurm_completion.items()
+        if key != "authority_bytes"
+    }
     return {
         "schema_version": SUMMARY_SCHEMA,
         "status": "passed",
         "profile": profile,
         "dataset_profile": dataset,
-        "fixture_id": fixture.get("fixture_id"),
+        "fixture_id": fixtures["direct"].get("fixture_id"),
         "operator_root": str(paths.root),
-        "runtime_profile": _artifact(paths.runtime_profile),
+        "runtime_profiles": {
+            label: _artifact(workspace / "runtime/runtime.tsv")
+            for label, workspace in workspaces.items()
+        },
         "execution_profile": _artifact(paths.execution_profile),
         "runtime_adapters": {
             name: _artifact(paths.adapters / name) for name in adapters
         },
         "storage_compute_launcher": list(launcher),
-        "storage_qualification": {
-            "qualification_id": qualified.qualification_id,
-            "final_receipt": _artifact(qualified.receipt_path),
+        "storage_qualifications": {
+            label: {
+                "qualification_id": qualified.qualification_id,
+                "final_receipt": _artifact(qualified.receipt_path),
+            }
+            for label, qualified in qualifications.items()
+        },
+        "direct": {
+            "dry_run": {"submitted": False, "wrote_state": False},
+            "completion": direct_summary,
         },
         "slurm": {
             "partition": arguments.slurm_partition,
@@ -813,13 +1228,14 @@ def run_driver(
                 "stdout": _artifact(job.stdout),
                 "stderr": _artifact(job.stderr),
             },
+            "completion": slurm_summary,
         },
-        "completion": completion,
+        "parity": parity,
         "commands": transcripts.records,
         "retention": "complete operator root retained; no cleanup or repair performed",
         "evidence_boundary": (
-            "real-tool single-node Slurm synthetic evidence only; no production, "
-            "scientific-review, or biological claim"
+            "real-tool hosted direct and disposable single-node Slurm synthetic "
+            "evidence only; no production, scientific-review, or biological claim"
         ),
         "biological_interpretation_claimed": False,
     }

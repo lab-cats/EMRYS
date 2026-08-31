@@ -10,9 +10,9 @@ cores, sample concurrency, and thread counts for capable owners. Those resource
 values do not change scientific identity.
 
 “Local” means every Snakemake job runs on the same host or allocation. This is
-not a Slurm submission profile. Full-pipeline scheduled execution enters
-through the lifecycle-generated one-allocation wrapper; standalone scientific
-stages retain their owner-local scheduler entry points.
+not a Slurm executor profile. Scheduled execution enters through EMRYS's
+private whole-Run transport and re-enters this same one-host profile inside the
+allocation; there are no standalone owner-local scheduler entry points.
 
 Materialization selects this exact checkout file and lifecycle passes it to
 Snakemake. Operators should use `emrys run` and `emrys resume`, not invoke the

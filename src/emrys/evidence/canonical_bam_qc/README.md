@@ -9,7 +9,10 @@ evidence meaning.
 - producer: [`step_02b_bam_qc.sh`](step_02b_bam_qc.sh)
 - validator: grouped route `python -I -m emrys validate canonical-bam-qc`,
   implemented by private [`validator.py`](validator.py)
-- scheduler: [`step_02b_bam_qc.slurm`](step_02b_bam_qc.slurm)
+
+For Slurm execution, use the complete immutable Run through `emrys run` or
+`emrys resume` as documented in the
+[runbook](../../../../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes).
 
 ## Operate
 
@@ -48,29 +51,17 @@ direct repository entry point. Validator exit `0` means the report rendered
 or published; rows may still have `status=fail`. This remains a non-gating
 evidence branch.
 
-```bash
-cd /absolute/path/to/emrys
-SAMPLE_ID=ABE_EV_2 BAM=/absolute/results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
-OUTPUT_DIR=/absolute/results/qc/bam EXECUTE=0 \
-  sbatch src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.slurm
-```
-
-Change only `EXECUTE=1` after dry-run review. The wrapper strictly loads
-samtools `1.19.2` and checks only that both named files exist; stale files can
-make a zero-output child look successful.
-
 ## Diagnose and verify
 
-Preserve both evidence files, unrelated directory bytes, producer/scheduler
-streams, and job identity before deciding attempt ownership. Do not delete,
-adopt, or retry because one file looks current or scheduler exit is zero.
+Preserve both evidence files, unrelated directory bytes, whole-Run application
+and scheduler streams, and job identity before deciding attempt ownership. Do
+not delete, adopt, or retry because one file looks current or scheduler exit is
+zero.
 
 ```bash
 bash tests/evidence/canonical_bam_qc/test_step_02b_bam_qc.sh
 .venv/bin/python -m pytest -q \
   tests/evidence/canonical_bam_qc/test_validate_step_02b_bam_qc.py
-.venv/bin/python -m pytest -q \
-  tests/test_slurm_wrapper_contracts.py -k step_02b_bam_qc
 ```
 
 Local fixture/mock evidence is not real samtools, scheduler, cluster,

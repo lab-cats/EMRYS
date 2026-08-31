@@ -11,7 +11,10 @@ labels, artifact names, and historical alias do not change with that layout.
 - producer: [`step_06_split_bam_by_read_orientation.sh`](step_06_split_bam_by_read_orientation.sh)
 - validator: grouped route `python -I -m emrys validate mechanical-orientation`,
   implemented by private [`validator.py`](validator.py)
-- scheduler: [`step_06_split_bam_by_read_orientation.slurm`](step_06_split_bam_by_read_orientation.slurm)
+
+For Slurm execution, use the complete immutable Run through `emrys run` or
+`emrys resume` as documented in the
+[runbook](../../../../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes).
 
 ## Operate
 
@@ -57,20 +60,6 @@ magic, not BAM quickcheck, BAM/BAI correspondence, flags, sort, or read groups.
 Do not execute private `validator.py` directly, add `PYTHONPATH`, or restore the
 retired validator path to bypass package selection.
 
-```bash
-cd /absolute/path/to/emrys
-mkdir -p logs
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,SAMPLE_ID=ABE_EV_2,INPUT_BAM=/absolute/results/split_ncigar/ABE_EV_2/ABE_EV_2.split_ncigar.bam,OUTPUT_DIR=/absolute/results/orientation/ABE_EV_2,QC_DIR=/absolute/results/qc/orientation,THREADS=1 \
-  src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm
-```
-
-The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving repository-owned helpers or the producer; an executed spool copy does
-not become checkout authority.
-
-Change only `EXECUTE=1` after review. A zero-output child can rediscover stale
-finals; scheduler success is not current-attempt proof.
-
 ## Diagnose and verify
 
 Preserve all finals, scratch, backups, lock, input pair, streams, job identity,
@@ -81,8 +70,6 @@ lock, trust the counts file as a receipt, or reuse ambiguous paths.
 bash tests/stages/mechanical_orientation/test_step_06_split_bam_by_read_orientation.sh
 .venv/bin/python -m pytest -q \
   tests/stages/mechanical_orientation/test_validate_step_06_orientation_outputs.py
-.venv/bin/python -m pytest -q \
-  tests/test_slurm_wrapper_contracts.py -k step_06_split_bam_by_read_orientation
 ```
 
 This is local fixture/fake-tool evidence only.

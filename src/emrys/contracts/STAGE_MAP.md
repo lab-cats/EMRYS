@@ -58,8 +58,8 @@ functional owner and are not DAG nodes.
 - A typed external input enters one or more owners without creating a producer
   stage in this DAG.
 - Current operational coupling is recorded separately and never promoted to a
-  permanent semantic dependency merely because one wrapper materializes a
-  shared input today.
+  permanent semantic dependency merely because one execution path
+  materializes a shared input.
 
 Parallelism follows from the absence of a required edge; numeric aliases,
 filename order, narrative order, shared directories, and validator imports do
@@ -103,12 +103,12 @@ supported default workflow.
 
 ## Current operational coupling that is not a semantic edge
 
-Historical Step `00a` currently decompresses and materializes the shared FASTA
-and GTF used by historical Steps `00b` and `00c`. That wrapper behavior is
-reference-materialization coupling; neither downstream owner consumes the STAR
-index, and the coupling does not create `00a -> 00b` or `00a -> 00c` DAG edges.
-The materialized FASTA and GTF remain typed external inputs rather than a new
-reference-preparation stage.
+The retired Step `00a` scheduler wrapper formerly decompressed and materialized
+the shared FASTA and GTF used by historical Steps `00b` and `00c`. That
+reference-materialization coupling never created `00a -> 00b` or `00a -> 00c`
+DAG edges because neither downstream owner consumes the STAR index. The
+current workflow admits the FASTA and GTF as typed external inputs rather than
+as outputs of a new reference-preparation stage.
 
 ## Concise DAG
 

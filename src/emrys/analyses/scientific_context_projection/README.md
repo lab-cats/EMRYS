@@ -16,7 +16,10 @@ failure semantics.
 - R computation: [`scientific_context_projection.R`](scientific_context_projection.R)
 - known-motif policy: [`resources/pum_motifs_v1.tsv`](resources/pum_motifs_v1.tsv)
 - grouped validator: `python -I -m emrys validate scientific-context-projection`
-- scheduler: [`scientific_context_projection.slurm`](scientific_context_projection.slurm)
+
+For Slurm execution, use the complete immutable Run through `emrys run` or
+`emrys resume` as documented in the
+[runbook](../../../../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes).
 
 ## Operate
 
@@ -60,10 +63,6 @@ Validate a completed receipt:
 Create the report parent and add `--execute` to publish the one-row validation
 report. Exit `0` permits a reported `fail`; the common `all-pass` gate owns the
 semantic pass requirement.
-
-The scheduler wrapper requires `SLURM_SUBMIT_DIR`, enters that exact checkout,
-defaults to `EXECUTE=0`, and always delegates with `--no-clobber`. It is the
-supported owner-local route for executing this analysis alone.
 
 ## Diagnose and verify
 

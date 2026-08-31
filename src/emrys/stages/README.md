@@ -26,39 +26,16 @@ live under [`evidence/`](../evidence/README.md); analysis `09` lives under
 
 ## Owner convention
 
-Each child directory owns its declared producer, owner-local scheduler entry
-point when one exists, validator, native outputs, publication/recovery behavior, and known
-limitations. Its adjacent `CONTRACT.md` is the canonical interface and
-evidence boundary; its `README.md` provides local operator orientation. Direct
-tests mirror the owner under [`tests/stages/`](../../../tests/stages/), while
-cross-owner contract tests retain their own neutral or repository-level
-ownership.
+Each child directory owns its declared producer, validator, native outputs,
+publication/recovery behavior, and known limitations. Its adjacent
+`CONTRACT.md` is the canonical interface and evidence boundary; its `README.md`
+provides local operator orientation. Direct tests mirror the owner under
+[`tests/stages/`](../../../tests/stages/), while cross-owner contract tests
+retain their own neutral or repository-level ownership.
 
-For `00a`, the SLURM file embeds the producer rather than delegating to a
-separate shell or Python producer, while its validator is exposed as
-`python -I -m emrys validate star-index`. Step `00b` exposes its migrated
-producer and validator through the grouped module interface. Step `00c` keeps
-its shell producer and scheduler as repository-path interfaces while exposing
-its validator as `python -I -m emrys validate fasta-sidecars`. Step `01`
-likewise keeps its shell producer and scheduler as repository-path interfaces
-while exposing its private validator as
-`python -I -m emrys validate star-alignment`. Step `02` keeps its shell
-producer and scheduler as repository-path interfaces while exposing its
-private validator as `python -I -m emrys validate canonical-bam`. Step `04`
-keeps its shell producer and scheduler as repository-path interfaces while
-exposing its private validator as
-`python -I -m emrys validate duplicate-marking`. Step `05` likewise keeps its
-shell producer and scheduler as repository-path interfaces while exposing its
-private validator as `python -I -m emrys validate split-n-cigar`. Step `06`
-keeps its shell producer and scheduler as repository-path interfaces while
-exposing its private validator as
-`python -I -m emrys validate mechanical-orientation`. Step `07` likewise keeps
-its shell producer and scheduler as repository-path
-interfaces while exposing its private validator as
-`python -I -m emrys validate partitioned-cohort-mpileup`. Step `08` keeps its
-shell producer, R implementation, and scheduler as repository-path interfaces
-while exposing its private validator as
-`python -I -m emrys validate cohort-candidate-preprocessing`.
+Slurm placement belongs to the complete immutable Run through `emrys run` or
+`emrys resume`, not to individual stage entry points. See the
+[runbook](../../../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes).
 
 Each owner declares and governs the outputs produced through its interfaces,
 normally under ignored `results/` or declared reference storage. A file,

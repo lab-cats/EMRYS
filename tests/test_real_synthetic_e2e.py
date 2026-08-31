@@ -1,4 +1,4 @@
-"""Focused boundaries for the retained real-tool Slurm E2E driver."""
+"""Focused boundaries for the retained real-tool direct/Slurm E2E driver."""
 
 from __future__ import annotations
 
@@ -65,6 +65,8 @@ def test_operator_root_is_external_empty_and_never_adopts_contents(tmp_path: Pat
     operator.mkdir()
     admitted = driver.require_operator_root(operator, repo)
     assert admitted.root == operator.resolve()
+    assert admitted.direct_workspace == operator.resolve() / "direct"
+    assert admitted.slurm_workspace == operator.resolve() / "slurm"
     assert not any(operator.iterdir())
     marker = operator / "keep.txt"
     marker.write_text("keep\n", encoding="utf-8")
@@ -244,6 +246,78 @@ def test_completed_results_use_inspection_reports_and_direct_step09_oracle(
         "scientific-report-html",
         "evidence-report-html",
     }
+
+
+def _completion(attempt_id: str, memory_mb: int) -> dict[str, object]:
+    return {
+        "authority": {"run": {"id": "run-1", "sha256": "a" * 64}},
+        "authority_bytes": {
+            "analysis": b"analysis\n",
+            "execution_plan": b"plan\n",
+            "run": b"run\n",
+        },
+        "attempt": {
+            "id": attempt_id,
+            "common_fields": {"run_id": "run-1", "executor": "snakemake"},
+            "task_roster": [{"machine_key": "owner", "state": "verified"}],
+        },
+        "scientific_results": {"result.tsv": {"sha256": "b" * 64}},
+        "resources": {
+            "symbolic": {"workflow_memory_mb": "allocation"},
+            "effective": {"workflow_memory_mb": memory_mb},
+        },
+        "reports": {
+            "scientific-report-html": {},
+            "evidence-report-html": {},
+        },
+    }
+
+
+def test_direct_slurm_parity_separates_run_authority_from_attempt_resources() -> None:
+    direct = _completion("attempt-direct", 8192)
+    scheduled = _completion("attempt-slurm", 6144)
+
+    parity = driver._assert_direct_slurm_parity(direct, scheduled)
+
+    assert parity["attempt_ids_distinct"] is True
+    assert parity["direct_effective_resources"] != parity["slurm_effective_resources"]
+    scheduled["scientific_results"] = {"result.tsv": {"sha256": "c" * 64}}
+    with pytest.raises(driver.DriverError, match="scientific Results differ"):
+        driver._assert_direct_slurm_parity(direct, scheduled)
+
+
+def test_application_log_snapshot_binds_run_attempt_and_scheduler(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "logs/application/run-pending/application-1/emrys-run.jsonl"
+    path.parent.mkdir(parents=True)
+    records = []
+    for sequence, event in enumerate(driver.APPLICATION_EVENTS, start=1):
+        fields = {}
+        if event == "attempt_opened":
+            fields["slurm_job_id"] = "42"
+        elif event == "analysis_prepared":
+            fields = {"run_id": "run-1", "workflow_attempt_id": "attempt-1"}
+        records.append(
+            {
+                "sequence": sequence,
+                "scope_kind": "run",
+                "scope_id": "pending",
+                "event": event,
+                "fields": fields,
+            }
+        )
+    path.write_text("".join(json.dumps(record) + "\n" for record in records))
+
+    observed = driver._application_log_snapshot(
+        tmp_path,
+        run_id="run-1",
+        attempt_id="attempt-1",
+        scheduler_job_id="42",
+    )
+
+    assert observed["scope_id"] == "pending"
+    assert observed["scheduler_job_id"] == "42"
 
 
 def test_transcripts_and_failure_summary_retain_streams(tmp_path: Path) -> None:

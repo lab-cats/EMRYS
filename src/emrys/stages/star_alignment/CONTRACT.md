@@ -4,9 +4,9 @@ This document records the observed current contract of historical Step `01`.
 The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
 is now the implemented native owner and an installed Python package for its
-private validator. The shell producer and scheduler remain exact
-repository-path surfaces. Supported commands and diagnostics are adjacent in
-the [owner README](README.md).
+private validator. The shell producer remains an exact repository-path surface.
+Supported commands and diagnostics are adjacent in the
+[owner README](README.md).
 
 ## Responsibility
 
@@ -47,10 +47,7 @@ The producer accepts:
 The current producer checks path types, matching compression suffixes,
 sample-identifier path safety, FASTQ byte stability, and a deterministic
 snapshot of every top-level STAR-index member. It does not validate FASTQ
-content or biological pairing. The current scheduler entrypoint supplies
-test-fixture defaults, loads STAR `2.7.11b`, and binds hashing to one admitted
-absolute Python executable; those are current bindings, not approved future
-interface defaults.
+content or biological pairing.
 
 ## Outputs
 
@@ -75,11 +72,10 @@ alignments.
 
 ## Orchestration-safe producer boundary
 
-Every direct and scheduled invocation uses the no-clobber transaction.
-`--no-clobber` remains an accepted explicit spelling so wrappers can record
-that invariant, but omitting it does not select a direct-final or overwrite
-path. The transaction is dry-run-visible and side-effect-free until paired
-with `--execute`. Execute requires all five
+Every producer invocation uses the no-clobber transaction. `--no-clobber`
+remains an accepted explicit spelling of that invariant, but omitting it does
+not select a direct-final or overwrite path. The transaction is dry-run-visible
+and side-effect-free until paired with `--execute`. Execute requires all five
 declared outputs to be absent, holds an owned per-sample lock, directs STAR to
 a run-token staging directory, requires every declared artifact to be nonempty,
 and rechecks the admitted FASTQ hashes before create-exclusive publication. It
@@ -114,23 +110,6 @@ public producer entrypoint. It:
   passes that executable to `--readFilesCommand ... -c`;
 - asks STAR for a coordinate-sorted BAM; and
 - always uses the staged create-exclusive transaction above.
-
-[`step_01_star_align.slurm`](step_01_star_align.slurm) is the
-scheduler entrypoint. It delegates to the shell producer, maps `EXECUTE=0` to
-dry-run and `EXECUTE=1` to `--execute`, always passes explicit `--no-clobber`,
-rejects other values, loads the STAR module, and derives threads from the
-allocation. Its default dry-run mode creates placeholder FASTQ files and a
-minimal nonempty index fixture before delegation and refuses execution with
-those placeholder bindings. Before any helper lookup, module load, fixture
-creation, or repository-relative path resolution, it requires
-`SLURM_SUBMIT_DIR` and changes to that submitted checkout rather than executing
-from SLURM's spool copy. Immediately after helper binding it defaults
-`EMRYS_SHA256_PYTHON` to the absolute submitted-checkout `.venv/bin/python`, or
-preserves one explicit absolute executable override; a relative or
-nonexecutable binding fails before modules or fixture mutation. The wrapper
-exports the selected launcher with `EMRYS_REQUIRE_BOUND_SHA256=1`, so every
-owner hash uses controlled `-X pycache_prefix=/dev/null -I` execution. It
-performs no independent output validation after delegation.
 
 ## Validation interface
 
@@ -188,18 +167,11 @@ No downstream stage should depend on this stage's implementation module.
   failures, deterministic STAR-index admission and mutation rejection, and
   orchestration-safe staging/no-clobber behavior, including deterministic late
   appearance and replacement races, with local tool mocks.
-- [`test_step_01_star_align_slurm.py`](../../../../tests/stages/star_alignment/test_step_01_star_align_slurm.py)
-  protects submitted-checkout and explicit-override hash-launcher binding,
-  controlled real-owner hash invocation, and side-effect-free rejection of
-  relative or nonexecutable launchers through a local wrapper harness.
 - [`test_validate_step_01_star_alignment.py`](../../../../tests/stages/star_alignment/test_validate_step_01_star_alignment.py)
   protects dry-run, the five checks, failed mapping and splice-junction
   evidence, fail-closed missing inputs, publication, and foreign-lock
   preservation, including deterministic execute/repeat behavior from a
   non-repository CWD.
-- [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
-  protects wrapper delegation, execution control, module behavior, current
-  default-fixture mutation, and exit propagation with local mocks.
 - [`test_validation_check_rosters.py`](../../../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py)
   protects the exact validator inventory and check identities.
 - [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py)
@@ -208,7 +180,7 @@ No downstream stage should depend on this stage's implementation module.
   and [`test_python_coverage_baseline.py`](../../../../tests/test_python_coverage_baseline.py)
   protect the recorded public-CLI and coverage boundaries.
 
-These are local fixture and mocked-wrapper contracts. They do not establish a
+These are local fixture contracts. They do not establish a
 new real-runtime, cluster, production, scientific-review, or biological-
 evidence result. Current evidence status remains owned by the canonical
 roadmap and handoff.
@@ -225,9 +197,6 @@ roadmap and handoff.
   retags noncanonical inputs.
 - Cross-cutting validation-publication code is owned by the neutral shared
   library under `src/emrys/libraries/`.
-- The scheduler wrapper owns cluster module loading and mutable local fixture
-  setup around the parameterized producer.
-
 This inventory records those current boundaries without changing behavior.
 
 ## Deferred decisions
@@ -238,5 +207,3 @@ This inventory records those current boundaries without changing behavior.
   verified-task record remains the wider input/output/tool binding authority.
 - Whether canonical-BAM construction remains a distinct stage when its
   remaining ownership is validation, indexing, publication, and recovery.
-- Whether a later scheduler package changes caller-CWD dependence, mutable
-  placeholder setup, module policy, or delegate-only output validation.

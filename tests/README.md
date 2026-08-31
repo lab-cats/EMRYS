@@ -22,6 +22,7 @@ are in the [operations runbook](../docs/operations/RUNBOOK.md).
   comparator state, and test-only runners.
 
 The files directly under this directory protect cross-cutting public CLI,
-SLURM-wrapper, validation-runner, coverage-policy, package, and grouped-CLI behavior.
+whole-Run Slurm transport/parity, validation-runner, coverage-policy, package,
+and grouped-CLI behavior.
 All results remain local engineering evidence unless a separate canonical
 owner explicitly establishes a higher evidence state.

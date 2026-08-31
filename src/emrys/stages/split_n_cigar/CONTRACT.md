@@ -4,10 +4,9 @@ This is the observed contract of historical Step `05`, now implemented in this
 native owner directory. The exact public identity and historical alias are
 owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is the lowercase physical owner for that public slug and owns the producer,
-validator, and scheduler assets. Its Python validator is installed only
-through the grouped command; the shell producer and scheduler remain explicit
-repository-path interfaces.
+is the lowercase physical owner for that public slug and owns the producer and
+validator. Its Python validator is installed only through the grouped command;
+the shell producer remains an explicit repository-path interface.
 
 ## Responsibility and execution dependencies
 
@@ -69,14 +68,6 @@ can remove backups and the lock. Ordinary backup/publication rollback is
 tested, but a failure inside restoration can lose predecessor and recovery
 evidence. The lock is output-directory-wide rather than sample-scoped.
 
-[`step_05_split_n_cigar_reads.slurm`](step_05_split_n_cigar_reads.slurm)
-requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving repository-owned helpers or the producer, so SLURM's spool copy is
-never checkout authority. It owns cluster defaults, module/tool/Java resolution,
-delegation, and final existence checks. The shell entrypoint is currently
-interpreter-only, and the wrapper has the characterized Bash 3.2 empty-array
-dry-run defect.
-
 ## Validation interface
 
 The grouped `python -I -m emrys validate split-n-cigar` route, implemented by
@@ -131,7 +122,7 @@ failures, and report-publication failures exit `2`.
   protects dry-run, tools/Java, reference prerequisites, locks, temp cleanup,
   staged validation, complete-pair rules, and ordinary rollback fault paths.
 - [`test_validate_step_05_split_ncigar.py`](../../../../tests/stages/split_n_cigar/test_validate_step_05_split_ncigar.py),
-  wrapper, roster, publication-fault, public-CLI, artifact, report, data-check,
+  roster, publication-fault, public-CLI, artifact, report, data-check,
   and coverage tests protect the recorded boundaries.
 
 This is local fixture/mock characterization, not new runtime, cluster,
@@ -148,5 +139,3 @@ scientific-review, or biological evidence.
   admitted BAM, BAI, FASTA, FAI, and DICT but still lacks a native receipt and
   wider verified-task binding.
 - Producer and validator prove structure but not the GATK-specific transform.
-- Scheduler Bash `3.2`, warning-only tool preflight, dry-run log mutation, and
-  stale-pair success remain characterized defects rather than guarantees.

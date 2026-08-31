@@ -9,7 +9,10 @@ and evidence semantics.
 - producer: [`step_04_mark_duplicates.sh`](step_04_mark_duplicates.sh)
 - grouped validator: `python -I -m emrys validate duplicate-marking`, implemented
   by private [`validator.py`](validator.py)
-- scheduler: [`step_04_mark_duplicates.slurm`](step_04_mark_duplicates.slurm)
+
+For Slurm execution, use the complete immutable Run through `emrys run` or
+`emrys resume` as documented in the
+[runbook](../../../../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes).
 
 ## Operate
 
@@ -50,21 +53,6 @@ Validator dry-run:
 Create the output parent and add `--execute`. Exit `0` means valid rendering or
 publication; rows may still fail.
 
-```bash
-cd /absolute/path/to/emrys
-mkdir -p logs
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,SAMPLE_ID=ABE_EV_2,INPUT_BAM=/absolute/results/bam/ABE_EV_2/ABE_EV_2.sorted.bam,OUTPUT_DIR=/absolute/results/markdup/ABE_EV_2,METRICS_DIR=/absolute/results/qc/markdup \
-  src/emrys/stages/duplicate_marking/step_04_mark_duplicates.slurm
-```
-
-The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving repository-owned helpers or the producer; an executed spool copy does
-not become checkout authority.
-
-Change only `EXECUTE=1` after review. The wrapper loads Picard `3.1.1` and
-samtools `1.19.2`, enforces Java 17, and checks only the named final files;
-stale finals can produce false success.
-
 ## Diagnose and verify
 
 Before recovery, preserve the triplet, input pair, all streams and job data,
@@ -76,8 +64,6 @@ or delete a mixed final set.
 bash tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh
 .venv/bin/python -m pytest -q \
   tests/stages/duplicate_marking/test_validate_step_04_mark_duplicates.py
-.venv/bin/python -m pytest -q \
-  tests/test_slurm_wrapper_contracts.py -k step_04_mark_duplicates
 ```
 
 This is local fixture/mock evidence only, not real Picard/Java/samtools,

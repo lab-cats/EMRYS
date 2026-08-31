@@ -53,7 +53,7 @@ def test_interface_bounds_and_lane_partition(tmp_path: Path) -> None:
     assert "PYTHON_COVERAGE_WORKERS=4" in parallel[0].command
     assert "python-coverage-check" in serial[0].command
     assert "validation-wheel-smoke" in serial[1].command
-    assert "validation-shell-slurm" in serial[2].command
+    assert "validation-shell-contracts" in serial[2].command
     assert "validation-guarded-r" in serial[3].command
 
 
@@ -96,7 +96,6 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
         "python-coverage-check:",
         "python-coverage-enforce:",
         "validation-shell-contracts:",
-        "validation-shell-slurm:",
         "validation-wheel-smoke:",
         "validation-guarded-r:",
         "validation-static:",
@@ -112,9 +111,8 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
         REPO_ROOT / "tests" / "tools" / "python_test_shards.py"
     ).read_text(encoding="utf-8")
     assert '"tests/test_package_distribution.py"' in shard_tool
-    assert '"tests/test_slurm_wrapper_contracts.py"' in shard_tool
     assert "--dist=worksteal" in shard_tool
-    assert "shell-test: validation-shell-slurm" in quality_makefile
+    assert "shell-test: validation-shell-contracts" in quality_makefile
     assert "validation-static: lint documentation-check" in quality_makefile
     assert 'version("ruff")' not in quality_makefile
     assert 'version("vulture")' not in quality_makefile

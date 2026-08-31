@@ -70,9 +70,15 @@ not alter the admitted Project.
 The effective resource declaration must fit the observed CPU and memory
 allocation. Placement request, profile source/digest, observed allocation, and
 scheduler job ID are Attempt provenance and do not make scheduler success
-workflow completion. Per-owner Slurm scheduling, multi-node execution, and the
-16 existing stage/utility `.slurm` files are unchanged by this whole-Run
-cutover.
+workflow completion. Hosted 130-pair direct/disposable-single-node-Slurm
+execution proves matching immutable authority, Attempt common fields/task
+roster, path-neutral science, and symbolic resources. Each placement separately
+admits successful receipt/reporting and one application log; effective
+allocation and scheduler streams differ as intended. It does not establish the
+100,000-pair case, institutional site/module portability, failure/recovery,
+multi-node, production, scientific-review, or biological-validation evidence.
+Owner-local scheduler entry points are retired; the private whole-Run batch
+bootstrap remains the sole Slurm delegation boundary.
 
 An executing Run Attempt owns one application log, by default beneath
 `<project-root>/logs/application`. Reporting is invoked automatically after

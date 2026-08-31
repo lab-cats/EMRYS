@@ -149,15 +149,14 @@ archived entry-point matrices.
 | Surface or risk | Current regression route |
 | --- | --- |
 | Python, shell, R, file mode, arbitrary CWD, and Make entry points | [`test_public_cli_contracts.py`](../../tests/test_public_cli_contracts.py) plus the applicable direct owner |
-| Owner-local stage/utility SLURM directives, modes, CWD, arguments, outputs, and exits | [`test_slurm_wrapper_contracts.py`](../../tests/test_slurm_wrapper_contracts.py) plus the delegated functional owner |
-| Whole-Run execution profile, direct/Slurm placement, modules, private scratch, scheduler receipt, and grouped control | [`test_execution_profile.py`](../../tests/orchestration/local_pilot/test_execution_profile.py), [`test_slurm_submission.py`](../../tests/orchestration/local_pilot/test_slurm_submission.py), and the affected control/materialization/lifecycle tests |
+| Whole-Run execution profile, direct/Slurm placement, modules, private scratch, scheduler receipt, grouped control, and hosted successful-outcome parity | [`test_execution_profile.py`](../../tests/orchestration/local_pilot/test_execution_profile.py), [`test_slurm_submission.py`](../../tests/orchestration/local_pilot/test_slurm_submission.py), [`test_real_synthetic_e2e.py`](../../tests/test_real_synthetic_e2e.py), the retained [`real_synthetic_e2e.py`](../../tests/tools/real_synthetic_e2e.py) driver, and affected control/materialization/lifecycle tests |
 | Exact validation check rosters | [`validation_roster_expectations.py`](../../tests/contract_integration/validation_rosters/validation_roster_expectations.py) and [`test_validation_check_rosters.py`](../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py) |
 | Validation publication and neutral BAM/reference/executable-resolution helpers | [`test_validation_report.py`](../../tests/libraries/test_validation_report.py), [`test_bam_validation.py`](../../tests/libraries/test_bam_validation.py), [`test_reference_contigs.py`](../../tests/libraries/test_reference_contigs.py), [`test_executable_resolution.py`](../../tests/libraries/test_executable_resolution.py), and affected consumer transaction suites |
 | Public schemas, headers, deterministic bytes, and computational statuses | Contract-owner tests under `tests/contracts/` plus [independent contract goldens](../../tests/contract_integration/independent_contract_goldens/README.md) and affected producer suites |
 | Step `09` statistic, p-value, odds-ratio, and estimability behavior | [independent CMH oracle](../../tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_oracle.py), fixed owner corpus, and guarded real-R comparison |
 | Python non-regression measurement | Tracked snapshot, comparison implementation, and direct policy tests named above |
 
-Local mocks, wrapper stubs, guarded R fixtures, and pinned report rendering do
+Local mocks, transport stubs, guarded R fixtures, and pinned report rendering do
 not establish scheduler, production, scientific-review, or biological
 evidence. Real R remains a separate mandatory gate because Python coverage does
 not measure R source.
@@ -172,10 +171,10 @@ authoritative deterministic fallback:
 
 | Lane | What it validates | Deliberate exclusions |
 | --- | --- | --- |
-| Static preflight | Ruff and dead-code configuration, documentation structure, `git diff --check`, shell and SLURM syntax, Python compilation, and the example-manifest contract. | No behavior suite and no dependency restoration. |
-| Python coverage | The Python behavior suite with branch and traced-subprocess coverage, including pure-Python Jinja report rendering and publication. Local `make all-checks` runs the complete inventory in one process group; CI runs the same inventory as four receipt-verified shards. The two route-specific subprocess probes remain focused measurements inside this lane. | The isolated-wheel and SLURM-wrapper suites, which run in their owning lanes. |
+| Static preflight | Ruff and dead-code configuration, documentation structure, `git diff --check`, shell syntax, Python compilation, and the example-manifest contract. | No behavior suite and no dependency restoration. |
+| Python coverage | The Python behavior suite with branch and traced-subprocess coverage, including pure-Python Jinja report rendering and publication. Local `make all-checks` runs the complete inventory in one process group; CI runs the same inventory as four receipt-verified shards. The two route-specific subprocess probes remain focused measurements inside this lane. | The isolated-wheel suite, which runs in its owning lane. |
 | Installed wheel | One offline wheel build, clean locked installation, packaged-schema/template/CSS checks, installed grouped CLI/resource probes, representative manifest validation, and installed Jinja rendering. | No replay of repository owner suites. |
-| Shell and SLURM | Shell behavior contracts, the repository-local R-selection shell contract, and SLURM wrapper directives, delegation, arguments, CWD, modules, outputs, and exits. | No general Python validator or reporting suite. |
+| Shell owners | Direct shell-owner behavior contracts and the repository-local R-selection shell contract. | Whole-Run Slurm submission and transport, which are exercised by Python and selected real-synthetic lanes; no general Python validator or reporting suite. |
 | Guarded real R | Locked-environment checks plus the Step `08` and Step `09` real-R contract suites. | No Python, reporting, shell, or wheel replay. |
 
 `report-test`, `shell-test`, the package-distribution test, and direct owner
@@ -237,7 +236,7 @@ boundaries are:
 | Schemas, headers, deterministic bytes, and statuses | Preserve independent canonical JSON/TSV/receipt expectations plus broader contract and producer tests; do not infer evidence promotion from a shared status word. |
 | Hashes, mutation, links, signals, and filesystem identity | Recheck stable-input detection, same-size/restored-mtime gaps, symlink/hardlink/directory substitution, cleanup, and recovery through the applicable fault-injection and transaction owner. |
 | Computational and external interpretation boundaries | Keep local, runtime, cluster, and computational claims distinct; candidate review, adjudication, and biological interpretation remain external work-process records rather than test-owned pipeline states. |
-| Direct execution, arbitrary CWD, and SLURM | Preserve file-mode, Bash 3.2, dry-run side-effect, CWD, module, delegation, and output-check exceptions through public-CLI, wrapper, and owner suites; real scheduler/module behavior remains deferred. |
+| Direct execution, arbitrary CWD, and SLURM | Preserve file-mode, Bash 3.2, dry-run side-effect, CWD, module, delegation, and output-check exceptions through public-CLI, direct-owner, whole-Run transport, and real-synthetic suites. Hosted 130-pair direct/disposable-single-node-Slurm successful-outcome parity is proven; 100,000-pair, institutional site/module, failure/recovery, multi-node, and production behavior remain open. |
 | Step `09` CMH semantics | Preserve the independent count-derived oracle and guarded real-R comparison; production-validator non-recomputation remains a characterized defect. |
 
 ## Fixture independence
