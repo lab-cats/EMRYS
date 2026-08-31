@@ -22,6 +22,7 @@ from emrys.contracts.orchestration.application_model import (
     RunBinding,
     bind_run,
     build_execution_plan,
+    execution_plan_boundary,
     functional_specification_from_profile,
     processing_stopping_owner_keys,
     toolchain_from_required_tools,
@@ -207,16 +208,6 @@ def build_run_candidate(
         processing_source=processing_source,
     )
     return RunCandidate(analysis, plan, bind_run(analysis.revision, plan))
-
-
-def _workflow_inputs(run: MaterializedRun) -> dict[str, Any]:
-    """Return private backend inputs; never persisted Run authority."""
-
-    if isinstance(run, HistoricalRun):
-        return run.execution_projection
-    source = run.analysis.workflow_inputs
-    source["run_id"] = run.run_id
-    return source
 
 
 def _execution_path(run: MaterializedRun, root: Path) -> Path:
@@ -1128,6 +1119,7 @@ def _task_commands(
 
 def _dispatches(
     run: MaterializedRun,
+    source: Mapping[str, Any],
     readiness: doctor.DoctorResult,
     run_root: Path,
     attempt_id: str,
@@ -1135,12 +1127,11 @@ def _dispatches(
     retained: Mapping[tuple[str, str], dict[str, str]],
     resources: ResourcePlan,
     processing_source_root: Path | None,
-    processing_snapshots: Mapping[Path, Mapping[str, Any]],
+    bound_input_snapshots: Mapping[Path, Mapping[str, Any]],
 ) -> tuple[
     tuple[PlannedFile, ...], dict[str, dict[str, dict[str, str]]], tuple[Path, ...]
 ]:
     successor = isinstance(run, RunCandidate)
-    source = _workflow_inputs(run)
     analysis_revision = run.analysis.revision if successor else None
     profile = run.analysis.profile
     inventory: dict[tuple[str, str], list[dict[str, Any]]] = {}
@@ -1251,7 +1242,7 @@ def _dispatches(
                 "role": f"input_{input_index:03d}",
                 "path": str(path),
             }
-            snapshot = processing_snapshots.get(path)
+            snapshot = bound_input_snapshots.get(path)
             if (
                 processing_source_root is not None
                 and path.is_relative_to(processing_source_root)
@@ -1354,7 +1345,6 @@ def build_attempt_plan(
         if successor
         else "local"
     )
-    source = _workflow_inputs(run)
     execution_bytes = (
         run.run_binding.canonical_bytes if successor else run.execution_projection_bytes
     )
@@ -1368,6 +1358,40 @@ def build_attempt_plan(
     owner_token = f"workflow-owner-{suffix}"
     workspace_path = _absolute(workspace)
     run_root = workspace_path / "runs" / run.run_id
+    source = (
+        run.execution_projection
+        if isinstance(run, HistoricalRun)
+        else {**run.analysis.workflow_inputs, "run_id": run.run_id}
+    )
+    selected_sample_manifest = analysis.selected_sample_manifest_bytes
+    selected_sample_file = None
+    if (
+        successor
+        and selected_sample_manifest is not None
+        and execution_plan_boundary(run.execution_plan) == "analysis"
+    ):
+        selected_sample_path = (
+            run_root
+            / "contract"
+            / "workflow-inputs"
+            / attempt_id
+            / "samples.tsv"
+        )
+        source = {
+            **source,
+            "samples": {
+                **source["samples"],
+                "manifest": {
+                    "path": str(selected_sample_path),
+                    "size_bytes": len(selected_sample_manifest),
+                    "sha256": _sha256(selected_sample_manifest),
+                },
+            },
+        }
+        selected_sample_file = PlannedFile(
+            selected_sample_path,
+            selected_sample_manifest,
+        )
     plan_source = (
         run.execution_plan.record["identity"].get("processing_source")
         if isinstance(run, RunCandidate)
@@ -1382,12 +1406,16 @@ def build_attempt_plan(
     processing_source_root = (
         None if processing_source is None else processing_source.root
     )
-    processing_snapshots = {
+    bound_input_snapshots = {
         Path(str(snapshot["path"])): snapshot
         for snapshot in (
             () if processing_source is None else processing_source.artifact_snapshots
         )
     }
+    if selected_sample_file is not None:
+        bound_input_snapshots[selected_sample_file.path] = source["samples"][
+            "manifest"
+        ]
     source_root = readiness.source_root
     if retained_runtime_profile_path is not None:
         if successor or operation != "resume":
@@ -1414,6 +1442,7 @@ def build_attempt_plan(
     retained = {} if retained_dispatches is None else dict(retained_dispatches)
     dispatch_files, dispatch_references, dispatch_directories = _dispatches(
         run,
+        source,
         readiness,
         run_root,
         attempt_id,
@@ -1421,7 +1450,7 @@ def build_attempt_plan(
         retained,
         resources,
         processing_source_root,
-        processing_snapshots,
+        bound_input_snapshots,
     )
     reporting_files, reporting_config, reporting_directories = (
         reporting_boundary._attempt_reporting_materialization(
@@ -1550,6 +1579,7 @@ def build_attempt_plan(
     attempt_files = (
         *dispatch_files,
         *(PlannedFile(path, data) for path, data in reporting_files if successor),
+        *((selected_sample_file,) if selected_sample_file is not None else ()),
         PlannedFile(config_path, config_data),
         *runtime_profile_files,
     )

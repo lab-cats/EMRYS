@@ -525,7 +525,7 @@ def _bound_snapshot(declaration: FileDeclaration) -> _BoundFileSnapshot:
     }
     if declaration.expected_binding not in (None, (state.st_size, digest)):
         raise TaskBoundaryError(
-            f"Task input differs from its processing-source binding: {declaration.path}"
+            f"Task input differs from its immutable binding: {declaration.path}"
         )
     return _BoundFileSnapshot(
         record=record,

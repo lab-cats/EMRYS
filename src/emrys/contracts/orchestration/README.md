@@ -16,9 +16,11 @@ reporting projection.
 
 `emrys.project.v1` is the sole active scientist-authored schema. It defines one
 shared Dataset and Reference plus one or more named Analyses, each with its own
-partition manifest and scientific policy. The application layer validates all
-Analyses and selects one for `run`; the human mapping key is not part of the
-content-derived Analysis identity. The request-v3 schema remains registered
+partition manifest and scientific policy. An Analysis may select a nonempty
+set of Dataset samples by ID; omission selects the complete Dataset. The
+application layer validates all Analyses and selects one for `run`; the human
+mapping key and authored selection order are not part of the content-derived
+Analysis identity. The request-v3 schema remains registered
 only for private, exact historical-Run re-admission. It is not accepted by
 active Project commands.
 

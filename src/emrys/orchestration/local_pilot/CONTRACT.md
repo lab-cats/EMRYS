@@ -170,7 +170,7 @@ selects exactly one Analysis, with omission allowed only for a single-Analysis
 Project. Resume takes an existing Run root and cannot change that selection.
 `emrys run --through processing` creates a distinct immutable Execution Plan
 and Run whose nonempty predecessor-closed stopping roster selects the
-evidence-complete, all-sample Steps `00`–`06` closure. The fixed four-sample
+evidence-complete Steps `00`–`06` closure for its selected Analysis. The fixed four-sample
 fixture expands this closure to 31 owner tasks. The default remains the full Steps
 `00`–`10` Analysis. Reporting is not applicable to a processing-boundary Run;
 successful completion is terminal and not resumable. This slice establishes
@@ -178,13 +178,15 @@ the reusable processing authority. `run --from-processing-run RUN_ID` admits one
 exact successful processing Run from the same Project and creates a distinct
 complete downstream Run. The target plan binds the source Run, successful
 workflow Attempt, and receipt; normalized samples, Reference, and execution
-semantics must match exactly except the plan's source/stopping fields. Source
+semantics must match exactly except that target samples may be an exact subset
+of the source Analysis and the plan's source/stopping fields differ. Source
 Steps `00`–`06` artifacts remain stationary and
 content-bound, while the target executes and owns only Steps `07`–`10`, its
 evidence, Results, reports, and log. Resume preserves the immutable source
 relationship. No source task record is copied or adopted, and no Artifact Store
-or second manifest authority is introduced. Authored subsets and generalized
-modular downstream analyses remain ANALYSIS-01/ANALYSIS-02 work.
+or second scientist-authored manifest authority is introduced. A proper subset
+uses one private Attempt-bound TSV projection for the unchanged backend;
+generalized collaborator-extensible analyses remain ANALYSIS-02 work.
 `run` and `resume` require the controlled Python invocation. With direct
 placement, a terminal builds and prints one frozen Run
 plan, asks once, and executes that same object only after confirmation. Slurm

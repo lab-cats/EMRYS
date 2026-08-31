@@ -12,7 +12,6 @@ from pathlib import Path
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.libraries.source_authority import controlled_python_argv
-from emrys.orchestration.local_pilot import materialization
 from emrys.orchestration.local_pilot.materialization import AttemptPlan
 from tests.orchestration.local_pilot.fixtures import workflow
 
@@ -20,7 +19,7 @@ from tests.orchestration.local_pilot.fixtures import workflow
 def with_owner_doubles(plan: AttemptPlan) -> AttemptPlan:
     """Replace only owner command effects in an otherwise unchanged plan."""
 
-    source = materialization._workflow_inputs(plan.run)
+    source = {**plan.run.analysis.workflow_inputs, "run_id": plan.run.run_id}
     reporting = build_reporting_bundle(
         source,
         plan.run.analysis.profile,

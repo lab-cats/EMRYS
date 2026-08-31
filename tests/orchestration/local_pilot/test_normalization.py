@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 import pytest
+import yaml
 
 from emrys.contracts.orchestration import api as contracts
 from emrys.orchestration.local_pilot import normalization
@@ -85,6 +86,90 @@ def test_named_analysis_selection_is_closed_and_content_bound(tmp_path: Path) ->
     primary.profile["profile_id"] = "mutated"
     assert project.select_analysis("primary").revision == primary.revision
     assert primary.workflow_inputs["analysis"]["cohort_id"].startswith("scope-cohort-")
+
+
+def test_named_analysis_sample_selection_is_explicit_and_order_neutral(
+    tmp_path: Path,
+) -> None:
+    project_path = fixture.build(tmp_path / "project-root", replicate_count=3)
+    definition = yaml.safe_load(project_path.read_text(encoding="utf-8"))
+    primary = definition["analyses"]["primary"]
+    definition["analyses"]["subset"] = {
+        **primary,
+        "sample_ids": ["PUM1_3", "EV_2", "PUM1_2", "EV_3"],
+    }
+    definition["analyses"]["explicit-all"] = {
+        **primary,
+        "sample_ids": ["PUM1_3", "EV_3", "PUM1_2", "EV_2", "PUM1_1", "EV_1"],
+    }
+    project_path.write_text(
+        yaml.safe_dump(definition, sort_keys=False),
+        encoding="utf-8",
+    )
+
+    project = admit_project(project_path, fixture.profile())
+    full = project.select_analysis("primary")
+    subset = project.select_analysis("subset")
+    explicit_all = project.select_analysis("explicit-all")
+
+    assert project.dataset_sample_count == 6
+    assert [
+        row["sample_id"] for row in subset.workflow_inputs["samples"]["rows"]
+    ] == ["EV_2", "PUM1_2", "EV_3", "PUM1_3"]
+    assert [
+        row["sample_id"] for row in subset.revision.record["identity"]["samples"]
+    ] == ["EV_2", "EV_3", "PUM1_2", "PUM1_3"]
+    assert subset.revision != full.revision
+    assert subset.selected_sample_manifest_bytes is not None
+    assert explicit_all.revision == full.revision
+    assert explicit_all.workflow_inputs == full.workflow_inputs
+    assert explicit_all.selected_sample_manifest_bytes is None
+
+    definition["analyses"]["subset"]["sample_ids"].reverse()
+    project_path.write_text(
+        yaml.safe_dump(definition, sort_keys=False),
+        encoding="utf-8",
+    )
+    reordered = admit_project(project_path, fixture.profile()).select_analysis("subset")
+    assert reordered.revision == subset.revision
+    assert reordered.workflow_inputs == subset.workflow_inputs
+    assert (
+        reordered.selected_sample_manifest_bytes
+        == subset.selected_sample_manifest_bytes
+    )
+
+
+def test_named_analysis_sample_selection_rejects_unknown_or_incomplete_cohorts(
+    tmp_path: Path,
+) -> None:
+    project_path = fixture.build(tmp_path / "project-root", replicate_count=3)
+    definition = yaml.safe_load(project_path.read_text(encoding="utf-8"))
+    primary = definition["analyses"]["primary"]
+    definition["analyses"]["primary"] = {
+        **primary,
+        "sample_ids": ["EV_1", "PUM1_1", "EV_2", "missing"],
+    }
+    project_path.write_text(
+        yaml.safe_dump(definition, sort_keys=False),
+        encoding="utf-8",
+    )
+    with pytest.raises(contracts.ContractValidationError, match="unknown sample IDs"):
+        admit_project(project_path, fixture.profile())
+
+    definition["analyses"]["primary"]["sample_ids"] = [
+        "EV_1",
+        "PUM1_1",
+        "EV_2",
+    ]
+    project_path.write_text(
+        yaml.safe_dump(definition, sort_keys=False),
+        encoding="utf-8",
+    )
+    with pytest.raises(
+        contracts.ContractValidationError,
+        match="exactly one control and treatment",
+    ):
+        admit_project(project_path, fixture.profile())
 
 
 def test_regions_file_resolves_from_nested_partition_manifest(

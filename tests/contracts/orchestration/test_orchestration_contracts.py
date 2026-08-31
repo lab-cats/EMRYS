@@ -584,8 +584,23 @@ def test_project_resource_execution_profile_and_run_records_pass() -> None:
     project_without_background["analyses"]["secondary"] = {
         **project_without_background["analyses"]["primary"],
         "target_change": "C>T",
+        "sample_ids": ["EV-1", "PUM1-1", "EV-2", "PUM1-2"],
     }
     orchestration.validate_record("project", project_without_background)
+
+
+@pytest.mark.parametrize(
+    "sample_ids",
+    ([], ["EV-1", "EV-1"], ["unsafe sample"], [1]),
+)
+def test_project_rejects_invalid_analysis_sample_ids(
+    sample_ids: list[object],
+) -> None:
+    record = project()
+    record["analyses"]["primary"]["sample_ids"] = sample_ids
+
+    with pytest.raises(orchestration.ContractValidationError):
+        orchestration.validate_record("project", record)
 
 
 def test_request_v3_remains_valid_only_as_an_exact_historical_contract() -> None:
