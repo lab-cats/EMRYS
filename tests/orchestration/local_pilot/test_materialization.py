@@ -13,7 +13,7 @@ import subprocess
 import sys
 import threading
 import zlib
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -3690,7 +3690,6 @@ def _doubled_lifecycle_ops(
     base: lifecycle.LifecycleOps,
     *,
     fail_after_rule: str | None = None,
-    after_workflow: Callable[[], None] | None = None,
 ) -> lifecycle.LifecycleOps:
     def run_workflow(
         argv: tuple[str, ...], cwd: Path
@@ -3710,8 +3709,6 @@ def _doubled_lifecycle_ops(
             text=True,
             check=False,
         )
-        if after_workflow is not None:
-            after_workflow()
         injected = fail_after_rule is not None and completed.returncode == 0
         return lifecycle.WorkflowResult(
             exit_code=23 if injected else completed.returncode,
@@ -3942,6 +3939,10 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         **authored["analyses"]["primary"],
         "fdr_threshold": 0.01,
     }
+    authored["analyses"]["source-drift"] = {
+        **authored["analyses"]["primary"],
+        "fdr_threshold": 0.02,
+    }
     project.write_text(yaml.safe_dump(authored, sort_keys=False), encoding="utf-8")
     admitted_project = admit_project(project, readiness.analysis.profile)
     primary = replace(
@@ -3954,6 +3955,11 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         project=admitted_project,
         analysis=admitted_project.select_analysis("sensitivity"),
     )
+    source_drift = replace(
+        readiness,
+        project=admitted_project,
+        analysis=admitted_project.select_analysis("source-drift"),
+    )
     assert (
         primary.analysis.revision.canonical_bytes
         != sensitivity.analysis.revision.canonical_bytes
@@ -3961,12 +3967,15 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
 
     def diagnose(*_args, **kwargs):
         selected = kwargs.get("analysis_name")
-        return sensitivity if selected == "sensitivity" else primary
+        return {
+            "primary": primary,
+            "sensitivity": sensitivity,
+            "source-drift": source_drift,
+        }[selected or "primary"]
 
     real_build = control.build_attempt_plan
     real_ops = control.lifecycle.default_lifecycle_ops
     fail_after_rule: list[str | None] = [None]
-    after_workflow: list[Callable[[], None] | None] = [None]
     monkeypatch.setattr(control.doctor, "diagnose_project", diagnose)
     monkeypatch.setattr(
         control.doctor,
@@ -3989,7 +3998,6 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         lambda: _doubled_lifecycle_ops(
             real_ops(),
             fail_after_rule=fail_after_rule[0],
-            after_workflow=after_workflow[0],
         ),
     )
 
@@ -4031,32 +4039,7 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         if (path := Path(str(snapshot["path"]))).is_file()
     }
 
-    mutated_source: list[tuple[Path, bytes, int]] = []
-
-    def mutate_unconsumed_source() -> None:
-        target_root = next(
-            path
-            for path in (workspace / "runs").iterdir()
-            if path.name != source_run_id
-        )
-        consumed = {
-            Path(str(item["path"]))
-            for dispatch_path in target_root.glob("contract/dispatch/*/*/*.json")
-            for item in orchestration_contracts.load_json_object(dispatch_path)[
-                "inputs"
-            ]
-        }
-        path = next(
-            candidate
-            for candidate in source_artifacts
-            if candidate.is_relative_to(source_root) and candidate not in consumed
-        )
-        data, modified = source_artifacts[path]
-        mutated_source.append((path, data, modified))
-        path.write_bytes(b"mutated after downstream workflow\n")
-
     fail_after_rule[0] = "generate_partitioned_cohort_mpileup_VCFs"
-    after_workflow[0] = mutate_unconsumed_source
     target_arguments = argparse.Namespace(
         project=project,
         analysis="sensitivity",
@@ -4068,7 +4051,6 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     assert control.run_from_args(target_arguments) == 1
     capsys.readouterr()
     fail_after_rule[0] = None
-    after_workflow[0] = None
 
     target_roots = tuple(
         path for path in (workspace / "runs").iterdir() if path.name != source_run_id
@@ -4081,19 +4063,8 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         "attempt-receipt",
     )
     assert failed_receipt["status"] == "failed"
-    assert any(
-        "Processing source changed during workflow execution" in blocker
-        for blocker in failed_receipt["blockers"]
-    )
+    assert failed_receipt["blockers"] == []
     assert not tuple((target_root / "state/reporting").glob("*/start.json"))
-    assert len(mutated_source) == 1
-    mutated_path, original_data, original_mtime = mutated_source[0]
-    mutated_path.write_bytes(original_data)
-    os.utime(
-        mutated_path,
-        ns=(mutated_path.stat().st_atime_ns, original_mtime),
-    )
-    inspection.admit_processing_source(source_root)
     failed = inspection.inspect_run(target_root)
     assert failed.recovery_available
 
@@ -4146,3 +4117,91 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     assert "Alignment and sample processing: reused" in inspect_output
     assert "QC evidence: reused" in inspect_output
     assert f"Processing source: {source_run_id} (admitted)" in inspect_output
+
+    mutated_source: list[tuple[Path, bytes, int]] = []
+
+    def drift_workflow(
+        _argv: tuple[str, ...],
+        _cwd: Path,
+    ) -> lifecycle.WorkflowResult:
+        drift_root = next(
+            path
+            for path in (workspace / "runs").iterdir()
+            if path not in {source_root, target_root}
+        )
+        consumed = {
+            Path(str(item["path"]))
+            for dispatch_path in drift_root.glob("contract/dispatch/*/*/*.json")
+            for item in orchestration_contracts.load_json_object(dispatch_path)[
+                "inputs"
+            ]
+        }
+        path = next(
+            candidate
+            for candidate in source_artifacts
+            if candidate.is_relative_to(source_root) and candidate not in consumed
+        )
+        data, modified = source_artifacts[path]
+        mutated_source.append((path, data, modified))
+        path.write_bytes(b"mutated after downstream workflow\n")
+        return lifecycle.WorkflowResult(23, None, "controlled failure")
+
+    drift_ops = replace(
+        _doubled_lifecycle_ops(real_ops()),
+        run_workflow=drift_workflow,
+    )
+    monkeypatch.setattr(
+        control.lifecycle,
+        "default_lifecycle_ops",
+        lambda: drift_ops,
+    )
+    assert (
+        control.run_from_args(
+            argparse.Namespace(
+                project=project,
+                analysis="source-drift",
+                execution_profile=project.parent / "emrys.execution.yaml",
+                through="analysis",
+                from_processing_run=source_run_id,
+                execute=True,
+            )
+        )
+        == 1
+    )
+    capsys.readouterr()
+    drift_roots = tuple(
+        path
+        for path in (workspace / "runs").iterdir()
+        if path not in {source_root, target_root}
+    )
+    assert len(drift_roots) == 1
+    drift_root = drift_roots[0]
+    drift_receipt = orchestration_contracts.load_record(
+        next(drift_root.glob("attempts/*/attempt-receipt.json")),
+        "attempt-receipt",
+    )
+    assert drift_receipt["status"] == "blocked"
+    assert any(
+        "Processing source changed during workflow execution" in blocker
+        for blocker in drift_receipt["blockers"]
+    )
+    assert len(mutated_source) == 1
+    mutated_path, original_data, original_mtime = mutated_source[0]
+    mutated_path.write_bytes(original_data)
+    os.utime(
+        mutated_path,
+        ns=(mutated_path.stat().st_atime_ns, original_mtime),
+    )
+    inspection.admit_processing_source(source_root)
+    assert not inspection.inspect_run(drift_root).recovery_available
+    assert (
+        control.resume_from_args(
+            argparse.Namespace(
+                run_root=drift_root,
+                allocated_cores=1,
+                execute=True,
+            )
+        )
+        == 2
+    )
+    assert "not at an admissible between-task resume boundary" in capsys.readouterr().err

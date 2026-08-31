@@ -20,6 +20,10 @@ take priority over speed or convenience.
   Implementation defaults to net-negative maintained product code and no
   product-file growth; any quantified exception requires explicit user
   approval.
+- Before implementing any slice, search the touched code and adjacent
+  production owners for duplicate mechanics and existing abstractions, record
+  concrete consolidation or retirement candidates, and prefer caller-complete
+  reuse or removal over parallel logic.
 - long running checks should be run in CI, with quick targeted checks
   being run locally
 - Before adding owned machinery, evaluate the existing repository authority,

@@ -355,6 +355,20 @@ def _partition_verified(machine_key):
     return _verified(machine_key, "{partition_scope}")
 
 
+def _produced_verified(machine_key, scope_id):
+    return str(
+        RUN_ROOT / "state" / "verified" / machine_key / f"{scope_id}.json"
+    )
+
+
+def _sample_produced_verified(machine_key):
+    return _produced_verified(machine_key, "{sample_id}")
+
+
+def _partition_produced_verified(machine_key):
+    return _produced_verified(machine_key, "{partition_scope}")
+
+
 def _dispatch_reference(machine_key, scope_id):
     cache_key = (machine_key, scope_id)
     if cache_key in _DISPATCH_CACHE:
@@ -595,7 +609,7 @@ rule cohort_slice:
 
 rule construct_STAR_index:
     output:
-        _verified(_owner("construct_STAR_index"), REFERENCE_ID)
+        _produced_verified(_owner("construct_STAR_index"), REFERENCE_ID)
     params:
         task_argv=_task_argv(_owner("construct_STAR_index"), REFERENCE_ID)
     threads:
@@ -608,7 +622,7 @@ rule construct_STAR_index:
 
 rule convert_GTF_to_BED12:
     output:
-        _verified(_owner("convert_GTF_to_BED12"), REFERENCE_ID)
+        _produced_verified(_owner("convert_GTF_to_BED12"), REFERENCE_ID)
     params:
         task_argv=_task_argv(_owner("convert_GTF_to_BED12"), REFERENCE_ID)
     resources:
@@ -619,7 +633,7 @@ rule convert_GTF_to_BED12:
 
 rule construct_FASTA_sidecars:
     output:
-        _verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
+        _produced_verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
     params:
         task_argv=_task_argv(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
     resources:
@@ -632,7 +646,7 @@ rule align_RNA_reads_with_STAR:
     input:
         star_index=_verified(_owner("construct_STAR_index"), REFERENCE_ID)
     output:
-        _sample_verified(_owner("align_RNA_reads_with_STAR"))
+        _sample_produced_verified(_owner("align_RNA_reads_with_STAR"))
     params:
         task_argv=_task_argv(_owner("align_RNA_reads_with_STAR"), wildcard="sample_id")
     threads:
@@ -648,7 +662,7 @@ rule construct_canonical_BAM:
     input:
         star_bam=_sample_verified(_owner("align_RNA_reads_with_STAR"))
     output:
-        _sample_verified(_owner("construct_canonical_BAM"))
+        _sample_produced_verified(_owner("construct_canonical_BAM"))
     params:
         task_argv=_task_argv(_owner("construct_canonical_BAM"), wildcard="sample_id")
     threads:
@@ -664,7 +678,7 @@ rule collect_canonical_BAM_QC_evidence:
     input:
         canonical_bam=_sample_verified(_owner("construct_canonical_BAM"))
     output:
-        _sample_verified(_owner("collect_canonical_BAM_QC_evidence"))
+        _sample_produced_verified(_owner("collect_canonical_BAM_QC_evidence"))
     params:
         task_argv=_task_argv(_owner("collect_canonical_BAM_QC_evidence"), wildcard="sample_id")
     resources:
@@ -679,7 +693,7 @@ rule collect_RSeQC_paired_orientation_evidence:
         canonical_bam=_sample_verified(_owner("construct_canonical_BAM")),
         bed12=_verified(_owner("convert_GTF_to_BED12"), REFERENCE_ID)
     output:
-        _sample_verified(_owner("collect_RSeQC_paired_orientation_evidence"))
+        _sample_produced_verified(_owner("collect_RSeQC_paired_orientation_evidence"))
     params:
         task_argv=_task_argv(_owner("collect_RSeQC_paired_orientation_evidence"), wildcard="sample_id")
     resources:
@@ -693,7 +707,7 @@ rule mark_BAM_duplicates_with_Picard:
     input:
         canonical_bam=_sample_verified(_owner("construct_canonical_BAM"))
     output:
-        _sample_verified(_owner("mark_BAM_duplicates_with_Picard"))
+        _sample_produced_verified(_owner("mark_BAM_duplicates_with_Picard"))
     params:
         task_argv=_task_argv(_owner("mark_BAM_duplicates_with_Picard"), wildcard="sample_id")
     resources:
@@ -708,7 +722,7 @@ rule split_N_cigar_reads_with_GATK:
         marked_bam=_sample_verified(_owner("mark_BAM_duplicates_with_Picard")),
         reference_sidecars=_verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
     output:
-        _sample_verified(_owner("split_N_cigar_reads_with_GATK"))
+        _sample_produced_verified(_owner("split_N_cigar_reads_with_GATK"))
     params:
         task_argv=_task_argv(_owner("split_N_cigar_reads_with_GATK"), wildcard="sample_id")
     resources:
@@ -722,7 +736,7 @@ rule partition_BAM_by_mechanical_read_orientation:
     input:
         split_bam=_sample_verified(_owner("split_N_cigar_reads_with_GATK"))
     output:
-        _sample_verified(_owner("partition_BAM_by_mechanical_read_orientation"))
+        _sample_produced_verified(_owner("partition_BAM_by_mechanical_read_orientation"))
     params:
         task_argv=_task_argv(_owner("partition_BAM_by_mechanical_read_orientation"), wildcard="sample_id")
     threads:
@@ -742,7 +756,7 @@ rule generate_partitioned_cohort_mpileup_VCFs:
         ),
         reference_sidecars=_verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
     output:
-        _partition_verified(_owner("generate_partitioned_cohort_mpileup_VCFs"))
+        _partition_produced_verified(_owner("generate_partitioned_cohort_mpileup_VCFs"))
     params:
         task_argv=_task_argv(
             _owner("generate_partitioned_cohort_mpileup_VCFs"),
@@ -762,7 +776,7 @@ rule preprocess_and_annotate_cohort_candidates:
             partition_scope=PARTITION_SCOPES,
         )
     output:
-        _verified(_owner("preprocess_and_annotate_cohort_candidates"), COHORT_ID)
+        _produced_verified(_owner("preprocess_and_annotate_cohort_candidates"), COHORT_ID)
     params:
         task_argv=_task_argv(_owner("preprocess_and_annotate_cohort_candidates"), COHORT_ID)
     threads:
@@ -777,7 +791,7 @@ rule rank_cohort_candidates_with_paired_CMH:
     input:
         cohort_candidates=_verified(_owner("preprocess_and_annotate_cohort_candidates"), COHORT_ID)
     output:
-        _verified(_owner("rank_cohort_candidates_with_paired_CMH"), ANALYSIS_ID)
+        _produced_verified(_owner("rank_cohort_candidates_with_paired_CMH"), ANALYSIS_ID)
     params:
         task_argv=_task_argv(_owner("rank_cohort_candidates_with_paired_CMH"), ANALYSIS_ID)
     resources:
@@ -791,7 +805,7 @@ rule project_candidate_scientific_context:
         candidate_ranking=_verified(_owner("rank_cohort_candidates_with_paired_CMH"), ANALYSIS_ID),
         reference_sidecars=_verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
     output:
-        _verified(_owner("project_candidate_scientific_context"), ANALYSIS_ID)
+        _produced_verified(_owner("project_candidate_scientific_context"), ANALYSIS_ID)
     params:
         task_argv=_task_argv(_owner("project_candidate_scientific_context"), ANALYSIS_ID)
     resources:
