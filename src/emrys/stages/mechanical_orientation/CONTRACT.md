@@ -111,7 +111,7 @@ failures exit `2`.
 - Artifact adapters register both pairs, counts, and
   `step06_validation_report_v1`; summaries/reports consume them without
   rerunning samtools.
-- [`test_producer.py`](../../../../tests/stages/mechanical_orientation/test_producer.py)
+- [`test_mechanical_orientation_producer.py`](../../../../tests/stages/mechanical_orientation/test_mechanical_orientation_producer.py)
   protects exact commands and counts, locks, stale paths, input stability,
   child failures, signals, validation, create-exclusive collisions,
   counts-last publication, rollback, and ambiguous-residue preservation.
