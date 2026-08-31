@@ -886,7 +886,7 @@ def _execute_plan(
         if plan.operation == "execute":
             admit_run(plan, ops=ops)
         outcome = lifecycle.run_materialized_attempt(
-            plan.preparation,
+            plan.lifecycle_request,
             lambda: publish_attempt(plan, ops=ops),
             ops=ops,
             initial_runtime_inspection=plan.readiness.inspection if reuse_runtime_inspection else None,

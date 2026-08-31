@@ -336,9 +336,9 @@ The fixed profile and local Snakemake graph live under
 
 The public control surface uses these internal lifecycle authorities:
 
-- `lifecycle.run_attempt(...)` owns serialization, locks, attempts, receipts,
-  processes, recovery policy, and state transitions while consuming admitted
-  state;
+- `lifecycle.run_materialized_attempt(...)` owns serialization, locked
+  materialization, attempts, receipts, processes, recovery policy, and state
+  transitions while consuming one exact immutable Attempt request;
 - `inspection.admit_canonical_record(...)` owns direct-path schema admission;
   `inspect_run(...)` derives state without `.snakemake/` metadata;
 - `reporting_boundary` owns reporting transaction publication and semantic
