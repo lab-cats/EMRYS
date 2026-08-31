@@ -16,7 +16,6 @@ import selectors
 import stat
 import subprocess
 import sys
-import uuid
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -29,12 +28,18 @@ from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
     RUN_BINDING_SCHEMA_VERSION,
 )
+from emrys.libraries.exclusive_publication import publish_exclusive
 from emrys.libraries.source_authority import (
     SourceCheckoutError,
     attest_source_checkout as _attest_source_checkout,
     controlled_python_argv,
     is_controlled_python_argv,
     require_controlled_python_runtime,
+)
+from emrys.libraries.validation.errors import ValidationError
+from emrys.libraries.validation.inputs import (
+    read_bytes_with_identity,
+    sha256_with_identity,
 )
 from emrys.orchestration.local_pilot import inspection
 from emrys.libraries.process_environment import (
@@ -462,11 +467,7 @@ def load_dispatch(path: Path, *, expected_sha256: str) -> TaskDispatch:
     return result
 
 
-def _consume_bound_file(
-    path: Path,
-    label: str,
-    consume: Callable[[bytes], object],
-) -> os.stat_result:
+def _require_canonical_bound_path(path: Path, label: str) -> None:
     if not hasattr(os, "O_NOFOLLOW"):
         raise TaskBoundaryError("This platform lacks required O_NOFOLLOW admission")
     try:
@@ -474,42 +475,14 @@ def _consume_bound_file(
             raise TaskBoundaryError(f"{label} path is not canonical: {path}")
     except OSError as exc:
         raise TaskBoundaryError(f"Could not resolve {label}: {path}: {exc}") from exc
-    flags = os.O_RDONLY
-    flags |= getattr(os, "O_CLOEXEC", 0)
-    flags |= os.O_NOFOLLOW
-    flags |= getattr(os, "O_NONBLOCK", 0)
-    try:
-        descriptor = os.open(path, flags)
-    except OSError as exc:
-        raise TaskBoundaryError(f"Could not admit {label}: {path}: {exc}") from exc
-    try:
-        before = os.fstat(descriptor)
-        if not stat.S_ISREG(before.st_mode):
-            raise TaskBoundaryError(f"{label} is not a regular file: {path}")
-        while True:
-            chunk = os.read(descriptor, _STREAM_CHUNK_BYTES)
-            if not chunk:
-                break
-            consume(chunk)
-        after = os.fstat(descriptor)
-    finally:
-        os.close(descriptor)
-    try:
-        path_state = path.stat(follow_symlinks=False)
-    except OSError as exc:
-        raise TaskBoundaryError(f"Could not restat {label}: {path}: {exc}") from exc
-    identity = _file_identity(before)
-    if identity != _file_identity(after):
-        raise TaskBoundaryError(f"{label} changed while it was read: {path}")
-    if identity != _file_identity(path_state):
-        raise TaskBoundaryError(f"{label} path changed while it was read: {path}")
-    return after
 
 
 def _read_bound_file(path: Path, label: str) -> tuple[bytes, os.stat_result]:
-    data = bytearray()
-    state = _consume_bound_file(path, label, data.extend)
-    return bytes(data), state
+    _require_canonical_bound_path(path, label)
+    try:
+        return read_bytes_with_identity(path, label, nonempty=False)
+    except ValidationError as exc:
+        raise TaskBoundaryError(str(exc)) from exc
 
 
 def _read_bound_record(path: Path, root: Path, label: str) -> bytes:
@@ -530,9 +503,11 @@ _admit_execution = partial(
 
 
 def _hash_bound_file(path: Path, label: str) -> tuple[str, os.stat_result]:
-    digest = hashlib.sha256()
-    state = _consume_bound_file(path, label, digest.update)
-    return digest.hexdigest(), state
+    _require_canonical_bound_path(path, label)
+    try:
+        return sha256_with_identity(path, label, nonempty=False)
+    except ValidationError as exc:
+        raise TaskBoundaryError(str(exc)) from exc
 
 
 def _bound_snapshot(declaration: FileDeclaration) -> _BoundFileSnapshot:
@@ -871,50 +846,7 @@ def _default_run_command(
 
 def _publish_bytes(path: Path, data: bytes) -> None:
     """Durably publish bytes at an absent final path without replacement."""
-
-    parent = path.parent
-    if not parent.is_dir() or parent.is_symlink():
-        raise TaskBoundaryError(
-            f"Publication parent must be a real directory: {parent}"
-        )
-    staging = parent / f".{path.name}.{uuid.uuid4().hex}.emrys-stage"
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
-    flags |= getattr(os, "O_CLOEXEC", 0)
-    flags |= getattr(os, "O_NOFOLLOW", 0)
-    descriptor = -1
-    try:
-        descriptor = os.open(staging, flags, 0o600)
-        view = memoryview(data)
-        while view:
-            written = os.write(descriptor, view)
-            view = view[written:]
-        os.fsync(descriptor)
-        os.close(descriptor)
-        descriptor = -1
-        os.link(staging, path, follow_symlinks=False)
-        staged = staging.stat(follow_symlinks=False)
-        final = path.stat(follow_symlinks=False)
-        if (staged.st_dev, staged.st_ino) != (final.st_dev, final.st_ino):
-            raise TaskBoundaryError(
-                f"Create-exclusive publication lost staged inode: {path}"
-            )
-        staging.unlink()
-        directory = os.open(parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
-        try:
-            os.fsync(directory)
-        finally:
-            os.close(directory)
-    except FileExistsError as exc:
-        raise TaskBoundaryError(f"Refusing to replace existing file: {path}") from exc
-    except OSError as exc:
-        raise TaskBoundaryError(f"Could not publish {path}: {exc}") from exc
-    finally:
-        if descriptor >= 0:
-            os.close(descriptor)
-        try:
-            staging.unlink()
-        except FileNotFoundError:
-            pass
+    publish_exclusive(path, data, TaskBoundaryError)
 
 
 def default_task_ops() -> TaskOps:

@@ -24,6 +24,7 @@ from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.evidence.runtime_availability.inspector import RuntimeInspection
 from emrys.evidence.storage_inventory import qualification as storage_qualification
 from emrys.libraries.installed_package_identity import installed_package_tree_identity
+from emrys.libraries.validation import inputs as validation_inputs
 from emrys.orchestration.local_pilot import (
     doctor,
     inspection,
@@ -2539,7 +2540,7 @@ def test_stable_file_reference_rejects_same_byte_replacement_during_hash(
 
     monkeypatch.setattr(inspection.os, "read", replace_after_first_chunk)
 
-    with pytest.raises(inspection.InspectionError, match="changed while it was read"):
+    with pytest.raises(inspection.InspectionError, match="changed while.*read"):
         inspection._stable_file_reference(path, tmp_path, "stdout log")
     assert replaced
 
@@ -2565,23 +2566,23 @@ def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
     stderr_path = task_attempt.with_name("stderr.log")
     log_paths = {stdout_path, stderr_path}
     chunk_lengths: dict[Path, list[int]] = {path: [] for path in log_paths}
+    log_identities: dict[Path, tuple[int, int]] = {}
+    for path in log_paths:
+        state = path.stat(follow_symlinks=False)
+        log_identities[path] = (state.st_dev, state.st_ino)
     stable_calls: list[Path] = []
-    original_consume = inspection._consume_stable_file
+    original_os_read = validation_inputs.os.read
     original_read_bytes = inspection._read_bytes
     original_stable_reference = inspection._stable_file_reference
 
-    def track_consume(
-        path: Path,
-        root: Path,
-        label: str,
-        consume: Callable[[bytes], object],
-    ) -> None:
-        def consume_chunk(chunk: bytes) -> object:
-            if path in log_paths:
-                chunk_lengths[path].append(len(chunk))
-            return consume(chunk)
-
-        original_consume(path, root, label, consume_chunk)
+    def track_os_read(descriptor: int, size: int) -> bytes:
+        data = original_os_read(descriptor, size)
+        state = os.fstat(descriptor)
+        identity = (state.st_dev, state.st_ino)
+        for path, expected in log_identities.items():
+            if identity == expected and data:
+                chunk_lengths[path].append(len(data))
+        return data
 
     def reject_full_log_read(path: Path, root: Path, label: str) -> bytes:
         if path in log_paths:
@@ -2592,7 +2593,7 @@ def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
         stable_calls.append(path)
         return original_stable_reference(path, root, label)
 
-    monkeypatch.setattr(inspection, "_consume_stable_file", track_consume)
+    monkeypatch.setattr(validation_inputs.os, "read", track_os_read)
     monkeypatch.setattr(inspection, "_read_bytes", reject_full_log_read)
     monkeypatch.setattr(inspection, "_stable_file_reference", track_stable_reference)
     inspect_ops = inspection.InspectionOps(

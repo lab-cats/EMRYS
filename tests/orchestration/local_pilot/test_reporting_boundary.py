@@ -311,6 +311,29 @@ def test_shared_record_admission_preserves_reporting_error_boundary(
         )
 
 
+def test_bound_read_preserves_empty_and_canonical_file_semantics(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path.resolve()
+    empty = root / "empty"
+    empty.write_bytes(b"")
+
+    assert reporting_boundary._read_bound(empty, root, "empty input") == b""
+    with pytest.raises(
+        reporting_boundary.ReportingBoundaryError,
+        match="Could not admit directory input",
+    ):
+        reporting_boundary._read_bound(root, root, "directory input")
+
+    alias = root / "alias"
+    alias.symlink_to(empty)
+    with pytest.raises(
+        reporting_boundary.ReportingBoundaryError,
+        match="must be a canonical regular file",
+    ):
+        reporting_boundary._read_bound(alias, root, "alias input")
+
+
 def test_start_and_completion_publish_fixed_closed_records(
     tmp_path: Path,
 ) -> None:

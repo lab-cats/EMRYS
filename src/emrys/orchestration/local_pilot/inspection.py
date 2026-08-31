@@ -33,6 +33,8 @@ from emrys.contracts.orchestration.application_model import (
     validate_execution_view,
     validate_successor_run,
 )
+from emrys.libraries.validation import inputs as validation_inputs
+from emrys.libraries.validation.errors import ValidationError
 
 AttemptOutcome = Literal[
     "not_started",
@@ -338,72 +340,45 @@ def _within(path: Path, root: Path, label: str) -> None:
         raise InspectionError(f"{label} must be beneath run_root: {path}") from exc
 
 
-def _consume_stable_file(
-    path: Path,
-    root: Path,
-    label: str,
-    consume: Callable[[bytes], object],
-) -> None:
+def _require_stable_file_path(path: Path, root: Path, label: str) -> None:
+    """Require one canonical in-Run path before shared descriptor admission."""
+
     _within(path, root, label)
-    if not hasattr(os, "O_NOFOLLOW"):
-        raise InspectionError("This platform lacks required O_NOFOLLOW admission")
     try:
         if path.resolve(strict=True) != path:
             raise InspectionError(f"{label} must be a canonical regular file: {path}")
-        descriptor = os.open(
-            path,
-            os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
-        )
     except OSError as exc:
         raise InspectionError(f"Could not read {label}: {path}: {exc}") from exc
-    try:
-        before = os.fstat(descriptor)
-        if not stat.S_ISREG(before.st_mode):
-            raise InspectionError(f"{label} is not a regular file: {path}")
-        size = 0
-        while chunk := os.read(descriptor, 1024 * 1024):
-            consume(chunk)
-            size += len(chunk)
-        after = os.fstat(descriptor)
-    finally:
-        os.close(descriptor)
-    try:
-        path_state = path.stat(follow_symlinks=False)
-    except OSError as exc:
-        raise InspectionError(f"Could not restat {label}: {path}: {exc}") from exc
-
-    def identity(value: os.stat_result) -> tuple[int, ...]:
-        return (
-            value.st_dev,
-            value.st_ino,
-            value.st_mode,
-            value.st_size,
-            value.st_mtime_ns,
-            value.st_ctime_ns,
-        )
-
-    if (
-        identity(before) != identity(after)
-        or identity(after) != identity(path_state)
-        or size != before.st_size
-    ):
-        raise InspectionError(f"{label} changed while it was read: {path}")
 
 
 def _read_bytes(path: Path, root: Path, label: str) -> bytes:
-    chunks: list[bytes] = []
-    _consume_stable_file(path, root, label, chunks.append)
-    return b"".join(chunks)
+    _require_stable_file_path(path, root, label)
+    try:
+        data, _identity = validation_inputs.read_bytes_with_identity(
+            path,
+            label,
+            nonempty=False,
+        )
+    except ValidationError as exc:
+        raise InspectionError(str(exc)) from exc
+    return data
 
 
 def _stable_file_reference(path: Path, root: Path, label: str) -> dict[str, str]:
     """Hash one stable descriptor snapshot without retaining its contents."""
 
-    digest = hashlib.sha256()
-    _consume_stable_file(path, root, label, digest.update)
+    _require_stable_file_path(path, root, label)
+    try:
+        digest, _identity = validation_inputs.sha256_with_identity(
+            path,
+            label,
+            nonempty=False,
+        )
+    except ValidationError as exc:
+        raise InspectionError(str(exc)) from exc
     return {
         "path": path.relative_to(root).as_posix(),
-        "sha256": digest.hexdigest(),
+        "sha256": digest,
     }
 
 
@@ -629,35 +604,14 @@ def verified_tree_blockers(
 ) -> tuple[str, ...]:
     """Require the verified-marker tree to be an exact closed real-file roster."""
 
-    verified_root = root / "state" / "verified"
-    if not verified_root.exists() and not verified_root.is_symlink():
-        return ()
-    if verified_root.is_symlink() or not verified_root.is_dir():
-        return (f"Verified task root is not a real directory: {verified_root}",)
-    expected_by_owner: dict[str, set[str]] = {}
-    for item in expected:
-        expected_by_owner.setdefault(item.machine_key, set()).add(
-            f"{item.scope_id}.json"
-        )
-    blockers: list[str] = []
-    for child in verified_root.iterdir():
-        expected_names = expected_by_owner.get(child.name)
-        if expected_names is None:
-            blockers.append(f"Unexpected verified task owner state: {child}")
-            continue
-        if child.is_symlink() or not child.is_dir():
-            blockers.append(
-                f"Verified task owner state is not a real directory: {child}"
-            )
-            continue
-        observed_names: set[str] = set()
-        for marker in child.iterdir():
-            observed_names.add(marker.name)
-            if marker.name not in expected_names:
-                blockers.append(f"Unexpected verified task state path: {marker}")
-            elif marker.is_symlink() or not marker.is_file():
-                blockers.append(f"Verified task marker is not a real file: {marker}")
-    return tuple(blockers)
+    return _exact_scope_tree_blockers(
+        root / "state" / "verified",
+        expected,
+        file_name=lambda item: f"{item.scope_id}.json",
+        label="verified task",
+        sentence_label="Verified task",
+        record_label="Verified task marker",
+    )
 
 
 def _exact_scope_tree_blockers(
@@ -666,16 +620,20 @@ def _exact_scope_tree_blockers(
     *,
     file_name: Callable[[ExpectedTask], str],
     label: str,
+    sentence_label: str | None = None,
+    record_label: str | None = None,
 ) -> tuple[str, ...]:
     """Close one optional owner/scope tree against the execution roster."""
 
+    sentence_label = sentence_label or label
+    record_label = record_label or f"{label} record"
     if not root_path.exists() and not root_path.is_symlink():
         return ()
     if root_path.is_symlink() or not root_path.is_dir():
-        return (f"{label} root is not a real directory: {root_path}",)
-    expected_by_owner: dict[str, dict[str, ExpectedTask]] = {}
+        return (f"{sentence_label} root is not a real directory: {root_path}",)
+    expected_by_owner: dict[str, set[str]] = {}
     for item in expected:
-        expected_by_owner.setdefault(item.machine_key, {})[file_name(item)] = item
+        expected_by_owner.setdefault(item.machine_key, set()).add(file_name(item))
     blockers: list[str] = []
     for owner_path in root_path.iterdir():
         expected_names = expected_by_owner.get(owner_path.name)
@@ -684,14 +642,14 @@ def _exact_scope_tree_blockers(
             continue
         if owner_path.is_symlink() or not owner_path.is_dir():
             blockers.append(
-                f"{label} owner state is not a real directory: {owner_path}"
+                f"{sentence_label} owner state is not a real directory: {owner_path}"
             )
             continue
         for record_path in owner_path.iterdir():
             if record_path.name not in expected_names:
                 blockers.append(f"Unexpected {label} state path: {record_path}")
             elif record_path.is_symlink() or not record_path.is_file():
-                blockers.append(f"{label} record is not a real file: {record_path}")
+                blockers.append(f"{record_label} is not a real file: {record_path}")
     return tuple(blockers)
 
 

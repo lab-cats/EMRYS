@@ -27,6 +27,8 @@ from emrys.libraries.source_authority import (
     SourceCheckoutError,
     attest_source_checkout,
 )
+from emrys.libraries.validation.errors import ValidationError
+from emrys.libraries.validation.inputs import read_bytes_with_identity
 from emrys.orchestration.local_pilot.inspection import (
     InspectionError,
     admit_attempt_run_lock,
@@ -227,52 +229,20 @@ def _read_bound(path: Path, root: Path, label: str) -> bytes:
     if not path.is_absolute():
         raise ReportingBoundaryError(f"{label} must be absolute: {path}")
     _within(path, root, label)
-    if not hasattr(os, "O_NOFOLLOW"):
-        raise ReportingBoundaryError(
-            "This platform lacks required O_NOFOLLOW reporting admission"
-        )
     try:
         if path.resolve(strict=True) != path:
             raise ReportingBoundaryError(
                 f"{label} must be a canonical regular file: {path}"
             )
-        descriptor = os.open(
+        return read_bytes_with_identity(
             path,
-            os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
-        )
-    except OSError as exc:
-        raise ReportingBoundaryError(f"Could not admit {label}: {path}: {exc}") from exc
-    try:
-        before = os.fstat(descriptor)
-        if not stat.S_ISREG(before.st_mode):
-            raise ReportingBoundaryError(f"{label} is not a regular file: {path}")
-        chunks: list[bytes] = []
-        while chunk := os.read(descriptor, 1024 * 1024):
-            chunks.append(chunk)
-        after = os.fstat(descriptor)
-    finally:
-        os.close(descriptor)
-    try:
-        current = path.stat(follow_symlinks=False)
-    except OSError as exc:
-        raise ReportingBoundaryError(f"{label} changed while admitted: {path}") from exc
-
-    def identity(value: os.stat_result) -> tuple[int, ...]:
-        return (
-            value.st_dev,
-            value.st_ino,
-            value.st_mode,
-            value.st_size,
-            value.st_mtime_ns,
-            value.st_ctime_ns,
-        )
-
-    if identity(before) != identity(after) or identity(after) != identity(current):
-        raise ReportingBoundaryError(f"{label} changed while admitted: {path}")
-    data = b"".join(chunks)
-    if len(data) != before.st_size:
-        raise ReportingBoundaryError(f"{label} size changed while admitted: {path}")
-    return data
+            label,
+            nonempty=False,
+        )[0]
+    except (OSError, ValidationError) as exc:
+        raise ReportingBoundaryError(
+            f"Could not admit {label}: {path}: {exc}"
+        ) from exc
 
 
 _admit_record = partial(
