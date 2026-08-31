@@ -134,20 +134,21 @@ class AttemptPlan:
         return self.run_root / str(self.attempt_record["workflow_config"]["path"])
 
     @property
-    def preparation(self) -> lifecycle.AttemptPreparation:
-        """Freeze the plan's current exact attempt record for serialized entry."""
+    def lifecycle_request(self) -> lifecycle.LifecycleRequest:
+        """Project the exact immutable Attempt into the lifecycle owner."""
 
-        attempt = self.attempt_record
-        return lifecycle.AttemptPreparation(
+        return lifecycle.LifecycleRequest(
             run_root=self.run_root,
-            run_id=str(attempt["run_id"]),
-            workflow_attempt_id=str(attempt["workflow_attempt_id"]),
-            owner_token=str(attempt["owner_token"]),
-            host=str(attempt["host"]),
-            process_id=int(attempt["process_id"]),
-            created_at=str(attempt["created_at"]),
+            execution_path=self.execution_path,
+            profile_path=self.profile_path,
+            workflow_config_path=self.config_path,
+            snakefile=self.readiness.source_root / SNAKEFILE_RELATIVE,
+            python_executable=Path(sys.executable),
+            workflow_profile=self.readiness.source_root / WORKFLOW_PROFILE_RELATIVE,
+            target=BACKEND_TARGET,
             operation=self.operation,
             attempt_record_bytes=self.attempt_record_bytes,
+            request_source_path=self.run.analysis.source_path,
         )
 
     @property
@@ -1815,7 +1816,7 @@ def publish_attempt(
     plan: AttemptPlan,
     *,
     ops: lifecycle.LifecycleOps,
-) -> lifecycle.LifecycleRequest:
+) -> None:
     """Publish the plan under an already-owned lifecycle run lock."""
 
     for directory in plan.directories:
@@ -1831,19 +1832,6 @@ def publish_attempt(
                 f"Attempt-specific path already exists: {item.path}"
             )
         ops.publish_bytes(item.path, item.data)
-    return lifecycle.LifecycleRequest(
-        run_root=plan.run_root,
-        execution_path=plan.execution_path,
-        profile_path=plan.profile_path,
-        workflow_config_path=plan.config_path,
-        snakefile=plan.readiness.source_root / SNAKEFILE_RELATIVE,
-        python_executable=Path(sys.executable),
-        workflow_profile=plan.readiness.source_root / WORKFLOW_PROFILE_RELATIVE,
-        target=BACKEND_TARGET,
-        operation=plan.operation,
-        attempt_record=plan.attempt_record,
-        request_source_path=plan.run.analysis.source_path,
-    )
 
 
 __all__ = (

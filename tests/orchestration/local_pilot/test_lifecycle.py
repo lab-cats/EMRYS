@@ -43,6 +43,18 @@ def _raise_signal_on_lifecycle_thread(signum: int) -> None:
     signal.raise_signal(signum)
 
 
+def _attempt_record(request: lifecycle.LifecycleRequest) -> dict[str, Any]:
+    return json.loads(request.attempt_record_bytes)
+
+
+def _run_attempt(
+    request: lifecycle.LifecycleRequest,
+    *,
+    ops: lifecycle.LifecycleOps,
+) -> lifecycle.LifecycleOutcome:
+    return lifecycle.run_materialized_attempt(request, lambda: None, ops=ops)
+
+
 def test_successor_lifecycle_requires_symbolic_resource_policy() -> None:
     config = {"resource_policy": workflow_fixture._resource_policy()}
 
@@ -439,11 +451,12 @@ class Harness:
         self, argv: tuple[str, ...], _cwd: Path
     ) -> lifecycle.WorkflowResult:
         self.events.append("workflow")
-        assert list(argv) == self.request.attempt_record["snakemake_argv"]
+        attempt = _attempt_record(self.request)
+        assert list(argv) == attempt["snakemake_argv"]
         attempt_path = (
             self.built.run_root
             / "attempts"
-            / str(self.request.attempt_record["workflow_attempt_id"])
+            / str(attempt["workflow_attempt_id"])
             / "attempt.json"
         )
         if self.materialize_preentry_failure:
@@ -702,10 +715,10 @@ def test_process_group_ambiguity_retains_public_lock_without_receipt(
             OSError("fixture group signal failure")
         ),
     )
-    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
 
     with pytest.raises(lifecycle.ProcessGroupAmbiguity):
-        lifecycle.run_attempt(
+        _run_attempt(
             built.request,
             ops=replace(
                 built.ops(),
@@ -757,12 +770,12 @@ def test_signal_before_run_lock_aborts_without_attempt_evidence(
             os.kill(os.getpid(), signal.SIGTERM)
 
     with pytest.raises(lifecycle.LifecycleError, match="interrupted"):
-        lifecycle.run_attempt(
+        _run_attempt(
             built.request,
             ops=replace(built.ops(), observe_phase=interrupt),
         )
 
-    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
     assert not (built.built.run_root / "locks/run.lock").exists()
     assert not (built.built.run_root / "attempts" / identifier).exists()
     assert not list((built.built.run_root / "locks").glob("released-*.json"))
@@ -780,9 +793,9 @@ def test_signal_after_run_lock_retains_aggregate_recovery_evidence(
         if phase == "after_run_lock":
             os.kill(os.getpid(), signal.SIGINT)
 
-    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
     with pytest.raises(lifecycle.LifecycleError, match="after run-lock"):
-        lifecycle.run_attempt(
+        _run_attempt(
             built.request,
             ops=replace(built.ops(), observe_phase=interrupt),
         )
@@ -813,7 +826,7 @@ def test_signal_after_attempt_terminalizes_interrupted_receipt(
         if observed == phase:
             os.kill(os.getpid(), signal.SIGTERM)
 
-    outcome = lifecycle.run_attempt(
+    outcome = _run_attempt(
         built.request,
         ops=replace(built.ops(), observe_phase=interrupt),
     )
@@ -831,7 +844,7 @@ def test_signal_during_receipt_commit_reaches_ambient_handler_after_commit(
     built = _build_harness(tmp_path)
     defaults = built.ops()
     ambient_observations: list[bool] = []
-    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
     receipt_path = (
         built.built.run_root / "attempts" / identifier / "attempt-receipt.json"
     )
@@ -847,7 +860,7 @@ def test_signal_during_receipt_commit_reaches_ambient_handler_after_commit(
 
     signal.signal(signal.SIGTERM, ambient)
     try:
-        outcome = lifecycle.run_attempt(
+        outcome = _run_attempt(
             built.request,
             ops=replace(defaults, publish_bytes=publish),
         )
@@ -866,7 +879,7 @@ def test_signal_during_mutex_cleanup_is_delivered_after_unlock(
 ) -> None:
     built = _build_harness(tmp_path)
     defaults = built.ops()
-    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
     receipt_path = (
         built.built.run_root / "attempts" / identifier / "attempt-receipt.json"
     )
@@ -892,7 +905,7 @@ def test_signal_during_mutex_cleanup_is_delivered_after_unlock(
 
     signal.signal(signal.SIGTERM, ambient)
     try:
-        outcome = lifecycle.run_attempt(
+        outcome = _run_attempt(
             built.request,
             ops=replace(defaults, observe_mutex=observe),
         )
@@ -909,7 +922,7 @@ def test_signal_and_failure_during_receipt_commit_restore_controller_state(
 ) -> None:
     built = _build_harness(tmp_path)
     defaults = built.ops()
-    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
     receipt_path = (
         built.built.run_root / "attempts" / identifier / "attempt-receipt.json"
     )
@@ -924,12 +937,17 @@ def test_signal_and_failure_during_receipt_commit_restore_controller_state(
             raise OSError("fixture receipt publication failure")
         defaults.publish_bytes(path, data)
 
-    with pytest.raises(OSError, match="receipt publication failure"):
-        lifecycle.run_attempt(
+    with pytest.raises(
+        lifecycle.LifecycleError,
+        match="Could not materialize immutable workflow attempt",
+    ) as observed:
+        _run_attempt(
             built.request,
             ops=replace(defaults, publish_bytes=publish),
         )
 
+    assert isinstance(observed.value.__cause__, OSError)
+    assert "receipt publication failure" in str(observed.value.__cause__)
     assert not receipt_path.exists()
     assert (
         built.built.run_root / "attempts" / identifier / "released-run-lock.json"
@@ -947,7 +965,7 @@ def test_preblocked_ordinary_signal_is_refused_without_run_evidence(
     prior_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGTERM})
     try:
         with pytest.raises(lifecycle.LifecycleError, match="ambient mask"):
-            lifecycle.run_attempt(built.request, ops=built.ops())
+            _run_attempt(built.request, ops=built.ops())
         assert not (built.built.run_root / "locks/run.lock").exists()
         assert not list((built.built.run_root / "attempts").iterdir())
         assert signal.SIGTERM in signal.pthread_sigmask(signal.SIG_BLOCK, set())
@@ -1416,7 +1434,7 @@ def _build_harness(
         ).resolve(),
         target="cohort_slice",
         operation=operation,
-        attempt_record=attempt,
+        attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
         request_source_path=(built.root / "intake" / "request.yaml").resolve(),
     )
     return Harness(
@@ -1457,7 +1475,7 @@ def _resume_request(
             harness.request,
             workflow_config_path=config,
             operation="resume",
-            attempt_record=attempt,
+            attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
         ),
         attempt,
     )
@@ -1468,7 +1486,7 @@ def test_success_publishes_receipt_last_and_inspection_ignores_engine_metadata(
 ) -> None:
     built = _build_harness(tmp_path)
     built.materialize_complete = True
-    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    outcome = _run_attempt(built.request, ops=built.ops())
 
     assert outcome.receipt["status"] == "succeeded"
     assert outcome.receipt["schema_version"] == "emrys.attempt-receipt.v2"
@@ -1529,7 +1547,7 @@ def test_application_event_observer_exceptions_cannot_alter_receipt(
         observed_events.append(event_name)
         raise RuntimeError("injected diagnostic observer failure")
 
-    outcome = lifecycle.run_attempt(
+    outcome = _run_attempt(
         built.request,
         ops=replace(built.ops(), observe_application_event=reject_event),
     )
@@ -1546,7 +1564,7 @@ def test_application_event_observer_exceptions_cannot_alter_receipt(
 
 def test_workflow_argv_binds_reviewed_absolute_source_files(tmp_path: Path) -> None:
     built = _build_harness(tmp_path)
-    argv = list(built.request.attempt_record["snakemake_argv"])
+    argv = list(_attempt_record(built.request)["snakemake_argv"])
     assert argv[:6] == [
         sys.executable,
         "-X",
@@ -1572,30 +1590,16 @@ def test_workflow_argv_binds_reviewed_absolute_source_files(tmp_path: Path) -> N
     assert str(injected) not in argv
 
 
-def test_foreign_python_runtime_is_rejected_before_mutation(tmp_path: Path) -> None:
+def test_foreign_python_runtime_is_rejected_before_attempt_publication(
+    tmp_path: Path,
+) -> None:
     built = _build_harness(tmp_path)
-    attempt = copy.deepcopy(built.request.attempt_record)
     foreign = Path("/usr/bin/python3")
-    attempt["normalizer"]["path"] = str(foreign)
-    for tool in attempt["required_tools"]:
-        if tool["name"] in {"python", "snakemake"}:
-            tool["path"] = str(foreign)
-    request = lifecycle.LifecycleRequest(
-        run_root=built.request.run_root,
-        execution_path=built.request.execution_path,
-        profile_path=built.request.profile_path,
-        workflow_config_path=built.request.workflow_config_path,
-        snakefile=built.request.snakefile,
-        python_executable=foreign,
-        workflow_profile=built.request.workflow_profile,
-        target=built.request.target,
-        operation=built.request.operation,
-        attempt_record=attempt,
-        request_source_path=built.request.request_source_path,
-    )
+    request = replace(built.request, python_executable=foreign)
     with pytest.raises(lifecycle.LifecycleError, match="lexical sys.executable"):
-        lifecycle.run_attempt(request, ops=built.ops())
-    assert built.events == []
+        _run_attempt(request, ops=built.ops())
+    assert built.events == ["publish:locks/run.lock", "release"]
+    assert not list((built.built.run_root / "attempts").iterdir())
 
 
 def test_required_tool_same_path_and_version_rejects_byte_mutation(
@@ -1632,7 +1636,8 @@ def test_r_package_byte_mutation_before_workflow_retains_ambiguous_lock(
         encoding="utf-8",
     )
     package_identity = installed_package_tree_identity(package)
-    built.request.attempt_record["required_tools"].insert(
+    attempt = _attempt_record(built.request)
+    attempt["required_tools"].insert(
         1,
         {
             "name": "r_variant_annotation",
@@ -1642,17 +1647,21 @@ def test_r_package_byte_mutation_before_workflow_retains_ambiguous_lock(
             "sha256": package_identity.sha256,
         },
     )
+    built.request = replace(
+        built.request,
+        attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
+    )
 
     def mutate(phase: str) -> None:
         if phase == "before_workflow":
             database.write_bytes(b"package-db-v2\n")
 
-    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
     with pytest.raises(
         lifecycle.LifecycleError,
         match="runner failed without a terminal child observation",
     ) as observed:
-        lifecycle.run_attempt(
+        _run_attempt(
             built.request,
             ops=replace(built.ops(), observe_phase=mutate),
         )
@@ -1667,40 +1676,16 @@ def test_r_package_byte_mutation_before_workflow_retains_ambiguous_lock(
     assert not (attempt_root / "attempt-receipt.json").exists()
 
 
-def test_alternate_checkout_snakefile_is_rejected_before_mutation(
+def test_alternate_checkout_snakefile_is_rejected_before_attempt_publication(
     tmp_path: Path,
 ) -> None:
     built = _build_harness(tmp_path)
     alternate = workflow_fixture.REPO_ROOT / "workflow" / "README.md"
-    argv = lifecycle.build_snakemake_argv(
-        python_executable=built.request.python_executable,
-        snakefile=alternate,
-        workflow_profile=built.request.workflow_profile,
-        configfile=built.request.workflow_config_path,
-        run_root=built.request.run_root,
-        target=built.request.target,
-        operation=built.request.operation,
-        cores=1,
-        resource_limits=workflow_fixture._resource_limits(),
-    )
-    attempt = copy.deepcopy(built.request.attempt_record)
-    attempt["snakemake_argv"] = list(argv)
-    request = lifecycle.LifecycleRequest(
-        run_root=built.request.run_root,
-        execution_path=built.request.execution_path,
-        profile_path=built.request.profile_path,
-        workflow_config_path=built.request.workflow_config_path,
-        snakefile=alternate,
-        python_executable=built.request.python_executable,
-        workflow_profile=built.request.workflow_profile,
-        target=built.request.target,
-        operation=built.request.operation,
-        attempt_record=attempt,
-        request_source_path=built.request.request_source_path,
-    )
+    request = replace(built.request, snakefile=alternate)
     with pytest.raises(lifecycle.LifecycleError, match="reviewed workflow/Snakefile"):
-        lifecycle.run_attempt(request, ops=built.ops())
-    assert built.events == []
+        _run_attempt(request, ops=built.ops())
+    assert built.events == ["publish:locks/run.lock", "release"]
+    assert not list((built.built.run_root / "attempts").iterdir())
 
 
 @pytest.mark.parametrize(
@@ -1716,7 +1701,7 @@ def test_clean_failure_and_interruption_are_resume_available(
     expected: str,
 ) -> None:
     built = _build_harness(tmp_path, result=result)
-    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    outcome = _run_attempt(built.request, ops=built.ops())
     assert outcome.receipt["status"] == expected
     observed = inspection.inspect_run(
         built.built.run_root,
@@ -1742,7 +1727,7 @@ def test_reporting_residue_does_not_gate_failed_science_recovery(
     residue = built.built.run_root / "state" / "reporting" / "foreign"
     residue.mkdir(parents=True)
 
-    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    outcome = _run_attempt(built.request, ops=built.ops())
     observed = inspection.inspect_run(
         built.built.run_root,
         ops=inspection.InspectionOps(
@@ -1765,7 +1750,7 @@ def test_complete_results_survive_failed_scientific_receipt(
         tmp_path, result=lifecycle.WorkflowResult(23, None, "late failure")
     )
     built.materialize_complete = True
-    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    outcome = _run_attempt(built.request, ops=built.ops())
     observed = inspection.inspect_run(
         built.built.run_root,
         ops=inspection.InspectionOps(
@@ -1790,8 +1775,8 @@ def test_resume_creates_attempt_with_content_bound_rerun_policy(
         tmp_path, result=lifecycle.WorkflowResult(23, None, "preentry failure")
     )
     built.materialize_preentry_failure = True
-    first_outcome = lifecycle.run_attempt(built.request, ops=built.ops())
-    first_id = str(built.request.attempt_record["workflow_attempt_id"])
+    first_outcome = _run_attempt(built.request, ops=built.ops())
+    first_id = str(_attempt_record(built.request)["workflow_attempt_id"])
 
     built.request, second_attempt = _resume_request(
         built,
@@ -1802,7 +1787,7 @@ def test_resume_creates_attempt_with_content_bound_rerun_policy(
     built.result = lifecycle.WorkflowResult(0, None)
     built.materialize_preentry_failure = False
     built.materialize_complete = True
-    second_outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    second_outcome = _run_attempt(built.request, ops=built.ops())
 
     assert first_outcome.receipt["status"] == "failed"
     assert second_outcome.receipt["status"] == "succeeded"
@@ -1815,7 +1800,7 @@ def test_verified_mutation_blocks(tmp_path: Path) -> None:
     mutation = _build_harness(tmp_path / "mutation")
     mutation.materialize_complete = True
     mutation.mutate_verified = True
-    outcome = lifecycle.run_attempt(mutation.request, ops=mutation.ops())
+    outcome = _run_attempt(mutation.request, ops=mutation.ops())
     assert outcome.receipt["status"] == "blocked"
     assert any("content binding" in item for item in outcome.receipt["blockers"])
 
@@ -1844,7 +1829,7 @@ def test_verified_tree_residue_blocks_lifecycle_and_inspection(
         residue.parent.mkdir(parents=True, exist_ok=True)
         residue.symlink_to(built.request.request_source_path)
 
-    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    outcome = _run_attempt(built.request, ops=built.ops())
     assert outcome.receipt["status"] == "blocked"
     assert any(
         "verified task" in value.lower() for value in outcome.receipt["blockers"]
@@ -1865,7 +1850,7 @@ def test_post_child_runtime_identity_change_blocks(tmp_path: Path) -> None:
     built = _build_harness(tmp_path)
     built.materialize_complete = True
     built.fail_second_runtime_admission = True
-    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    outcome = _run_attempt(built.request, ops=built.ops())
     assert outcome.receipt["status"] == "blocked"
     assert any(
         "Runtime identity changed" in item for item in outcome.receipt["blockers"]
@@ -1894,12 +1879,12 @@ def test_initial_storage_qualification_failure_prevents_workflow(
         lifecycle.LifecycleError,
         match="initial fixture drift",
     ):
-        lifecycle.run_attempt(built.request, ops=built.ops())
+        _run_attempt(built.request, ops=built.ops())
 
     assert built.storage_admissions == 1
     assert "workflow" not in built.events
     assert not (built.built.run_root / "locks" / "run.lock").exists()
-    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
     assert not (built.built.run_root / "attempts" / identifier).exists()
 
 
@@ -1908,7 +1893,7 @@ def test_post_child_storage_qualification_change_blocks(tmp_path: Path) -> None:
     built.materialize_complete = True
     built.fail_second_storage_admission = True
 
-    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    outcome = _run_attempt(built.request, ops=built.ops())
 
     assert built.storage_admissions == 2
     assert "workflow" in built.events
@@ -1925,9 +1910,9 @@ def test_authored_request_change_before_publication_fails_cleanly(
 ) -> None:
     built = _build_harness(tmp_path)
     built.mutate_request_on_first_admission = True
-    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
     with pytest.raises(lifecycle.LifecycleError, match="Authored source changed"):
-        lifecycle.run_attempt(built.request, ops=built.ops())
+        _run_attempt(built.request, ops=built.ops())
     assert not (built.built.run_root / "attempts" / identifier).exists()
     assert not (built.built.run_root / "locks" / "run.lock").exists()
     assert built.events[-1] == "release"
@@ -1938,12 +1923,12 @@ def test_attempt_directory_sync_failure_precedes_child_record_publication(
 ) -> None:
     built = _build_harness(tmp_path)
     built.fail_attempt_directory_sync = True
-    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
 
     with pytest.raises(
         lifecycle.LifecycleError, match="attempt-directory sync failure"
     ):
-        lifecycle.run_attempt(built.request, ops=built.ops())
+        _run_attempt(built.request, ops=built.ops())
 
     attempt_root = built.built.run_root / "attempts" / identifier
     assert attempt_root.is_dir()
@@ -1966,7 +1951,7 @@ def test_malformed_workflow_observation_terminalizes_as_blocked(
         tmp_path,
         result=lifecycle.WorkflowResult(9, 15, "contradictory fixture result"),
     )
-    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    outcome = _run_attempt(built.request, ops=built.ops())
     assert outcome.receipt["status"] == "blocked"
     assert outcome.receipt["snakemake_exit_code"] is None
     assert outcome.receipt["termination_signal"] is None
@@ -1980,10 +1965,10 @@ def test_foreign_attempt_directory_race_is_refused_after_lock_acquisition(
     tmp_path: Path,
 ) -> None:
     built = _build_harness(tmp_path)
-    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
     built.inject_attempt_entry_after_lock = True
     with pytest.raises(lifecycle.LifecycleError, match="establish immutable"):
-        lifecycle.run_attempt(built.request, ops=built.ops())
+        _run_attempt(built.request, ops=built.ops())
     assert "publish:locks/run.lock" in built.events
     assert built.events[-1] == "release"
     assert not (built.built.run_root / "locks" / "run.lock").exists()
@@ -2006,8 +1991,8 @@ def test_existing_lock_serializes_attempt_creation(tmp_path: Path) -> None:
     lock = built.built.run_root / "locks" / "run.lock"
     lock.write_text("foreign\n", encoding="utf-8")
     with pytest.raises(lifecycle.LifecycleError, match="Unexpected aggregate run lock"):
-        lifecycle.run_attempt(built.request, ops=built.ops())
-    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+        _run_attempt(built.request, ops=built.ops())
+    identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
     assert not (built.built.run_root / "attempts" / identifier).exists()
 
 
@@ -2070,7 +2055,7 @@ def test_foreign_aggregate_state_blocks_before_lock_acquisition(tmp_path: Path) 
     (built.built.run_root / "state" / "foreign").mkdir()
 
     with pytest.raises(lifecycle.LifecycleError, match="Unexpected aggregate state"):
-        lifecycle.run_attempt(built.request, ops=built.ops())
+        _run_attempt(built.request, ops=built.ops())
 
     assert not (built.built.run_root / "locks" / "run.lock").exists()
 
@@ -2082,7 +2067,7 @@ def test_late_state_and_lock_namespace_drift_are_receipt_bound_blockers(
         tmp_path / "state", result=lifecycle.WorkflowResult(7, None)
     )
     state_case.inject_state_entry_after_child = True
-    state_outcome = lifecycle.run_attempt(state_case.request, ops=state_case.ops())
+    state_outcome = _run_attempt(state_case.request, ops=state_case.ops())
     assert state_outcome.receipt["status"] == "blocked"
     assert any(
         "Unexpected aggregate state path" in item
@@ -2093,7 +2078,7 @@ def test_late_state_and_lock_namespace_drift_are_receipt_bound_blockers(
         tmp_path / "lock", result=lifecycle.WorkflowResult(7, None)
     )
     lock_case.inject_lock_entry_on_release = True
-    lock_outcome = lifecycle.run_attempt(lock_case.request, ops=lock_case.ops())
+    lock_outcome = _run_attempt(lock_case.request, ops=lock_case.ops())
     assert lock_outcome.receipt["status"] == "blocked"
     assert any(
         "Unexpected retained aggregate lock state" in item
@@ -2131,8 +2116,8 @@ def test_release_hook_cannot_substitute_equal_bytes_on_a_new_inode(
         sync_directory=defaults.sync_directory,
     )
     with pytest.raises(lifecycle.LifecycleError, match="descriptor identity"):
-        lifecycle.run_attempt(built.request, ops=ops)
-    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+        _run_attempt(built.request, ops=ops)
+    identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
     assert not (
         built.built.run_root / "attempts" / identifier / "attempt-receipt.json"
     ).exists()
@@ -2222,7 +2207,7 @@ def test_initial_and_resume_argv_never_contain_recovery_bypasses(
     tmp_path: Path,
 ) -> None:
     built = _build_harness(tmp_path)
-    initial = list(built.request.attempt_record["snakemake_argv"])
+    initial = list(_attempt_record(built.request)["snakemake_argv"])
     assert "--rerun-triggers" not in initial
     assert "--ignore-incomplete" not in initial
     forbidden = {
@@ -2234,7 +2219,7 @@ def test_initial_and_resume_argv_never_contain_recovery_bypasses(
     }
     assert forbidden.isdisjoint(initial)
 
-    record = copy.deepcopy(built.request.attempt_record)
+    record = copy.deepcopy(_attempt_record(built.request))
     record["snakemake_argv"].insert(-2, "--unlock")
     with pytest.raises(
         orchestration_contracts.ContractValidationError, match="forbidden"
@@ -2285,8 +2270,11 @@ def test_attempts_root_must_be_pre_materialized_and_real(
     assert observed.integrity == "blocked"
     assert any("attempts root" in item for item in observed.blockers)
 
-    with pytest.raises(lifecycle.LifecycleError, match="Aggregate attempt state"):
-        lifecycle.run_attempt(built.request, ops=built.ops())
+    with pytest.raises(
+        lifecycle.LifecycleError,
+        match="Lifecycle parent must be pre-materialized and real",
+    ):
+        _run_attempt(built.request, ops=built.ops())
     assert not any(event == "publish:locks/run.lock" for event in built.events)
 
 
@@ -2318,11 +2306,13 @@ def test_nonattempt_entry_and_unexpected_attempt_child_block_before_lock(
     )
 
     with pytest.raises(lifecycle.LifecycleError, match="Aggregate attempt state"):
-        lifecycle.run_attempt(built.request, ops=built.ops())
+        _run_attempt(built.request, ops=built.ops())
     assert not any(event == "publish:locks/run.lock" for event in built.events)
 
 
-def test_lying_runtime_authority_fails_before_mutation(tmp_path: Path) -> None:
+def test_lying_runtime_authority_fails_before_attempt_publication(
+    tmp_path: Path,
+) -> None:
     built = _build_harness(tmp_path)
 
     def reject(
@@ -2348,8 +2338,13 @@ def test_lying_runtime_authority_fails_before_mutation(tmp_path: Path) -> None:
         sync_directory=ops.sync_directory,
     )
     with pytest.raises(lifecycle.LifecycleError, match="checkout differs"):
-        lifecycle.run_attempt(built.request, ops=lying)
-    assert built.events == ["storage-admitted"]
+        _run_attempt(built.request, ops=lying)
+    assert built.events == [
+        "publish:locks/run.lock",
+        "storage-admitted",
+        "release",
+    ]
+    assert not list((built.built.run_root / "attempts").iterdir())
 
 
 def test_success_receipt_with_verified_subset_is_blocked_on_inspection(
@@ -2357,7 +2352,7 @@ def test_success_receipt_with_verified_subset_is_blocked_on_inspection(
 ) -> None:
     built = _build_harness(tmp_path)
     built.materialize_complete = True
-    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    outcome = _run_attempt(built.request, ops=built.ops())
     receipt = orchestration_contracts.load_record(
         outcome.receipt_path, "attempt-receipt"
     )
@@ -2385,11 +2380,11 @@ def test_success_receipt_with_verified_subset_is_blocked_on_inspection(
 def test_completed_run_refuses_rerun_and_resume(tmp_path: Path) -> None:
     built = _build_harness(tmp_path)
     built.materialize_complete = True
-    lifecycle.run_attempt(built.request, ops=built.ops())
+    _run_attempt(built.request, ops=built.ops())
     with pytest.raises(lifecycle.LifecycleError, match="prior attempts"):
-        lifecycle.run_attempt(built.request, ops=built.ops())
+        _run_attempt(built.request, ops=built.ops())
 
-    first_id = str(built.request.attempt_record["workflow_attempt_id"])
+    first_id = str(_attempt_record(built.request)["workflow_attempt_id"])
     resume_id = "workflow-20260812T160000Z-" + "f" * 32
     config = _materialize_workflow_config(built.built, resume_id)
     argv = lifecycle.build_snakemake_argv(
@@ -2410,21 +2405,14 @@ def test_completed_run_refuses_rerun_and_resume(tmp_path: Path) -> None:
         supersedes=first_id,
         argv=argv,
     )
-    resumed = lifecycle.LifecycleRequest(
-        run_root=built.request.run_root,
-        execution_path=built.request.execution_path,
-        profile_path=built.request.profile_path,
+    resumed = replace(
+        built.request,
         workflow_config_path=config,
-        snakefile=built.request.snakefile,
-        python_executable=built.request.python_executable,
-        workflow_profile=built.request.workflow_profile,
-        target="cohort_slice",
         operation="resume",
-        attempt_record=attempt,
-        request_source_path=built.request.request_source_path,
+        attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
     )
     with pytest.raises(lifecycle.LifecycleError, match="Results are complete"):
-        lifecycle.run_attempt(resumed, ops=built.ops())
+        _run_attempt(resumed, ops=built.ops())
 
 
 def test_live_owned_incomplete_start_is_running_then_terminally_blocked(
@@ -2434,7 +2422,7 @@ def test_live_owned_incomplete_start_is_running_then_terminally_blocked(
         tmp_path, result=lifecycle.WorkflowResult(9, None, "fixture stop")
     )
     built.inspect_live_transient = True
-    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    outcome = _run_attempt(built.request, ops=built.ops())
 
     assert built.live_observation is not None
     assert built.live_observation.attempt_outcome == "running"
@@ -2458,7 +2446,7 @@ def test_task_start_crash_and_deletion_remain_blocked(tmp_path: Path) -> None:
         tmp_path, result=lifecycle.WorkflowResult(17, None, "fixture crash")
     )
     built.materialize_start_only = True
-    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    outcome = _run_attempt(built.request, ops=built.ops())
     assert outcome.receipt["status"] == "blocked"
     start = (
         built.built.run_root
@@ -2485,7 +2473,7 @@ def test_historical_task_tree_is_recursively_closed(
 ) -> None:
     built = _build_harness(tmp_path)
     built.materialize_complete = True
-    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    outcome = _run_attempt(built.request, ops=built.ops())
     task_root = outcome.attempt_path.parent / "tasks"
     scope_root = next(path for path in task_root.glob("*/*") if path.is_dir())
     if tamper == "extra":
@@ -2525,7 +2513,7 @@ def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
     first.materialize_preentry_failure = True
     first.preentry_stdout = stdout_data
     first.preentry_stderr = stderr_data
-    first_outcome = lifecycle.run_attempt(first.request, ops=first.ops())
+    first_outcome = _run_attempt(first.request, ops=first.ops())
     assert first_outcome.receipt["status"] == "failed"
     task_attempt = next(
         first_outcome.attempt_path.parent.glob("tasks/*/*/task-attempt.json")
@@ -2601,7 +2589,7 @@ def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
         return result
 
     monkeypatch.setattr(inspection, "inspect_run", track_inspect_run)
-    first_id = str(first.request.attempt_record["workflow_attempt_id"])
+    first_id = str(_attempt_record(first.request)["workflow_attempt_id"])
     second_id = "workflow-20260812T140500Z-" + "e" * 32
     first.request, _ = _resume_request(
         first,
@@ -2613,7 +2601,7 @@ def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
     first.materialize_preentry_failure = False
     first.materialize_complete = True
 
-    second_outcome = lifecycle.run_attempt(first.request, ops=first.ops())
+    second_outcome = _run_attempt(first.request, ops=first.ops())
     assert second_outcome.receipt["status"] == "succeeded"
     expected_log_pass = (stdout_path, stderr_path)
     assert resume_inspections == [
@@ -2631,7 +2619,7 @@ def test_task_log_mutation_blocks_completed_run_inspection(
 ) -> None:
     built = _build_harness(tmp_path)
     built.materialize_complete = True
-    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    outcome = _run_attempt(built.request, ops=built.ops())
     task_root = outcome.attempt_path.parent / "tasks"
     log_path = next(task_root.glob(f"*/*/{file_name}"))
     if tamper == "append":
@@ -2667,7 +2655,7 @@ def test_preentry_task_log_mutation_blocks_resume(
         result=lifecycle.WorkflowResult(23, None, "preentry failure"),
     )
     built.materialize_preentry_failure = True
-    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    outcome = _run_attempt(built.request, ops=built.ops())
     assert outcome.receipt["status"] == "failed"
     log_path = next(outcome.attempt_path.parent.glob(f"tasks/*/*/{file_name}"))
     if tamper == "append":
@@ -2697,7 +2685,7 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
         tmp_path, result=lifecycle.WorkflowResult(23, None, "preentry failure")
     )
     first.materialize_preentry_failure = True
-    first_outcome = lifecycle.run_attempt(first.request, ops=first.ops())
+    first_outcome = _run_attempt(first.request, ops=first.ops())
     assert first_outcome.receipt["status"] == "failed"
     assert len(first_outcome.receipt["preentry_task_attempt_records"]) == 1
     assert inspection.inspect_run(
@@ -2709,7 +2697,7 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
         ),
     ).recovery_available
 
-    first_id = str(first.request.attempt_record["workflow_attempt_id"])
+    first_id = str(_attempt_record(first.request)["workflow_attempt_id"])
     second_id = "workflow-20260812T140500Z-" + "a" * 32
     first.request, _ = _resume_request(
         first,
@@ -2720,7 +2708,7 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
     first.result = lifecycle.WorkflowResult(0, None)
     first.materialize_preentry_failure = False
     first.materialize_complete = True
-    second_outcome = lifecycle.run_attempt(first.request, ops=first.ops())
+    second_outcome = _run_attempt(first.request, ops=first.ops())
     assert second_outcome.receipt["status"] == "succeeded"
     assert len(second_outcome.receipt["preentry_task_attempt_records"]) == 1
     complete_observation = inspection.inspect_run(

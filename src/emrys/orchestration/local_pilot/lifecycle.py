@@ -118,7 +118,7 @@ RuntimeContextAdmission = Callable[
 ]
 DirectorySynchronizer = Callable[[Path, str], None]
 PythonLauncherIdentity = tuple[str, str, int, int]
-AttemptMaterializer = Callable[[], "LifecycleRequest"]
+AttemptMaterializer = Callable[[], None]
 MutexObserver = Callable[[str, Path], None]
 LifecyclePhaseObserver = Callable[[str], None]
 ApplicationEventObserver = Callable[[str], None]
@@ -392,7 +392,7 @@ class LifecycleOps:
 
 @dataclass(frozen=True, slots=True)
 class LifecycleRequest:
-    """One already-materialized direct workflow invocation."""
+    """One exact immutable workflow invocation crossing into lifecycle."""
 
     run_root: Path
     execution_path: Path
@@ -403,29 +403,13 @@ class LifecycleRequest:
     workflow_profile: Path
     target: str
     operation: Operation
-    attempt_record: Mapping[str, Any]
-    request_source_path: Path
-
-
-@dataclass(frozen=True, slots=True)
-class AttemptPreparation:
-    """Immutable attempt identity admitted before any attempt publication."""
-
-    run_root: Path
-    run_id: str
-    workflow_attempt_id: str
-    owner_token: str
-    host: str
-    process_id: int
-    created_at: str
-    operation: Operation
     attempt_record_bytes: bytes
+    request_source_path: Path
 
 
 @dataclass(frozen=True, slots=True)
 class _OwnedRunLock:
     path: Path
-    record: dict[str, Any]
     data: bytes
     inode: tuple[int, int]
 
@@ -1271,6 +1255,7 @@ _admit_execution = partial(
 
 def _admit_request(
     request: LifecycleRequest,
+    attempt: dict[str, Any],
     ops: LifecycleOps,
     initial_runtime_inspection: "RuntimeInspection | None" = None,
 ) -> tuple[
@@ -1317,8 +1302,6 @@ def _admit_request(
         "path": config_path.relative_to(root).as_posix(),
         "sha256": hashlib.sha256(config_data).hexdigest(),
     }
-    attempt = dict(request.attempt_record)
-    orchestration_contracts.validate_record("workflow-attempt", attempt)
     resources = _resource_plan_from_workflow_config(
         config_document,
         require_symbolic=successor is not None,
@@ -1604,10 +1587,11 @@ def _refuse_pre_attempt_signal(
 
 def _run_attempt_locked(
     request: LifecycleRequest,
+    attempt: dict[str, Any],
     *,
     active_ops: LifecycleOps,
     signals: TransactionSignalController,
-    _owned_lock: _OwnedRunLock | None = None,
+    owned_lock: _OwnedRunLock,
     initial_runtime_inspection: "RuntimeInspection | None" = None,
 ) -> LifecycleOutcome:
     """Execute one immutable local attempt while the fixed mutex is held."""
@@ -1620,9 +1604,12 @@ def _run_attempt_locked(
         argv,
         config_reference,
         request_source_data,
-    ) = _admit_request(request, active_ops, initial_runtime_inspection)
-    if _owned_lock is None:
-        _operation_preflight(request.operation, root, attempt, active_ops)
+    ) = _admit_request(
+        request,
+        attempt,
+        active_ops,
+        initial_runtime_inspection,
+    )
     identifier = str(attempt["workflow_attempt_id"])
     attempt_root = root / "attempts" / identifier
     locks_root = root / "locks"
@@ -1637,20 +1624,12 @@ def _run_attempt_locked(
     lock_record = orchestration_contracts.run_lock_record(attempt)
     orchestration_contracts.validate_record("run-lock", lock_record)
     lock_bytes = orchestration_contracts.canonical_json_bytes(lock_record)
-    if _owned_lock is None:
-        _observe_phase(active_ops, "before_run_lock")
-        _refuse_pre_attempt_signal(signals, "before run-lock publication")
-        active_ops.publish_bytes(lock_path, lock_bytes)
-        lock_state = lock_path.stat(follow_symlinks=False)
-        lock_inode = (lock_state.st_dev, lock_state.st_ino)
-    else:
-        if _owned_lock.path != lock_path or _owned_lock.record != lock_record or _owned_lock.data != lock_bytes:
-            raise LifecycleError("Pre-materialization run lock does not bind the lifecycle request")
-        lock_state = lock_path.stat(follow_symlinks=False)
-        lock_inode = (lock_state.st_dev, lock_state.st_ino)
-        if lock_inode != _owned_lock.inode:
-            raise LifecycleError("Pre-materialization run lock identity changed before admission")
-    attempt_root_created = False
+    if owned_lock.path != lock_path or owned_lock.data != lock_bytes:
+        raise LifecycleError("Pre-materialization run lock does not bind the lifecycle request")
+    lock_state = lock_path.stat(follow_symlinks=False)
+    lock_inode = (lock_state.st_dev, lock_state.st_ino)
+    if lock_inode != owned_lock.inode:
+        raise LifecycleError("Pre-materialization run lock identity changed before admission")
     try:
         _observe_phase(active_ops, "after_run_lock")
         _refuse_pre_attempt_signal(signals, "after run-lock publication")
@@ -1675,16 +1654,12 @@ def _run_attempt_locked(
         _observe_phase(active_ops, "before_attempt_directory")
         _refuse_pre_attempt_signal(signals, "before attempt publication")
         attempt_root.mkdir(mode=0o700)
-        attempt_root_created = True
         if attempt_root.is_symlink() or not attempt_root.is_dir():
             raise LifecycleError(f"Attempt directory must be real: {attempt_root}")
         active_ops.sync_directory(attempt_root, "new workflow-attempt directory")
         active_ops.sync_directory(attempt_root.parent, "aggregate attempts directory")
         active_ops.publish_bytes(attempt_root / "request.yaml", request_source_data)
-        active_ops.publish_bytes(
-            attempt_path,
-            orchestration_contracts.canonical_json_bytes(attempt),
-        )
+        active_ops.publish_bytes(attempt_path, request.attempt_record_bytes)
         _observe_phase(active_ops, "after_attempt_publication")
     except Exception as exc:
         failure_evidence_path = (
@@ -1801,7 +1776,7 @@ def _run_attempt_locked(
             attempt_reference = _reference(attempt_path, root, "workflow-attempt")
             expected_attempt_reference = {
                 "path": attempt_path.relative_to(root).as_posix(),
-                "sha256": hashlib.sha256(orchestration_contracts.canonical_json_bytes(attempt)).hexdigest(),
+                "sha256": hashlib.sha256(request.attempt_record_bytes).hexdigest(),
             }
             if attempt_reference != expected_attempt_reference:
                 raise LifecycleError("Workflow attempt changed during execution")
@@ -1965,75 +1940,30 @@ def _run_attempt_locked(
     )
 
 
-def run_attempt(
-    request: LifecycleRequest,
-    *,
-    ops: LifecycleOps | None = None,
-) -> LifecycleOutcome:
-    """Execute through the fixed signal authority and advisory mutex."""
+def _admit_lifecycle_request(request: LifecycleRequest) -> dict[str, Any]:
+    """Admit the exact Attempt bytes before any lifecycle mutation."""
 
-    active_ops = default_lifecycle_ops() if ops is None else ops
-    with TransactionSignalController(
-        DEFAULT_SIGNAL_OPS,
-        active_ops.process_group_ops,
-    ) as signals:
-        root = _canonical_root(request.run_root)
-        try:
-            prepared_run_id = str(request.attempt_record["run_id"])
-        except KeyError as exc:
-            raise LifecycleError("Lifecycle request has no Run ID") from exc
-        _admit_run_before_attempt(root, prepared_run_id)
-        _observe_phase(active_ops, "before_mutex")
-        _refuse_pre_attempt_signal(signals, "before mutex acquisition")
-        with _acquire_attempt_mutex(
-            root,
-            observe=active_ops.observe_mutex,
-            interrupted=lambda: signals.first_signal is not None,
-        ):
-            _observe_phase(active_ops, "after_mutex")
-            _refuse_pre_attempt_signal(signals, "at mutex acquisition")
-            return _run_attempt_locked(
-                request,
-                active_ops=active_ops,
-                signals=signals,
-            )
-
-
-def _admit_attempt_preparation(
-    preparation: AttemptPreparation,
-) -> dict[str, Any]:
-    """Admit the exact no-write attempt record used at the mutex boundary."""
-
-    if type(preparation.attempt_record_bytes) is not bytes:
+    if type(request.attempt_record_bytes) is not bytes:
         raise LifecycleError("Prepared workflow attempt must be exact immutable bytes")
     try:
         attempt = orchestration_contracts.load_json_object_bytes(
-            preparation.attempt_record_bytes,
+            request.attempt_record_bytes,
             "prepared workflow attempt",
         )
         orchestration_contracts.validate_record("workflow-attempt", attempt)
     except orchestration_contracts.ContractValidationError as exc:
         raise LifecycleError(f"Invalid prepared workflow attempt: {exc}") from exc
-    if orchestration_contracts.canonical_json_bytes(attempt) != preparation.attempt_record_bytes:
+    if orchestration_contracts.canonical_json_bytes(attempt) != request.attempt_record_bytes:
         raise LifecycleError("Prepared workflow attempt must use canonical JSON bytes")
-    if preparation.operation not in {"execute", "resume"}:
-        raise LifecycleError(f"Unsupported prepared lifecycle operation: {preparation.operation}")
-    for field, expected in (
-        ("run_id", preparation.run_id),
-        ("workflow_attempt_id", preparation.workflow_attempt_id),
-        ("owner_token", preparation.owner_token),
-        ("host", preparation.host),
-        ("process_id", preparation.process_id),
-        ("created_at", preparation.created_at),
-        ("operation", preparation.operation),
-    ):
-        if attempt.get(field) != expected:
-            raise LifecycleError(f"Prepared workflow attempt does not bind prepared {field}")
+    if request.operation not in {"execute", "resume"}:
+        raise LifecycleError(f"Unsupported prepared lifecycle operation: {request.operation}")
+    if attempt["operation"] != request.operation:
+        raise LifecycleError("Prepared workflow attempt does not bind lifecycle operation")
     return attempt
 
 
 def run_materialized_attempt(
-    preparation: AttemptPreparation,
+    request: LifecycleRequest,
     materialize: AttemptMaterializer,
     *,
     ops: LifecycleOps | None = None,
@@ -2046,14 +1976,16 @@ def run_materialized_attempt(
         DEFAULT_SIGNAL_OPS,
         active_ops.process_group_ops,
     ) as signals:
-        root = _canonical_root(preparation.run_root)
+        root = _canonical_root(request.run_root)
         locks_root = root / "locks"
         attempts_root = root / "attempts"
         for directory in (locks_root, attempts_root):
             if directory.is_symlink() or not directory.is_dir():
                 raise LifecycleError(f"Lifecycle parent must be pre-materialized and real: {directory}")
-        prepared_attempt = _admit_attempt_preparation(preparation)
-        _admit_run_before_attempt(root, preparation.run_id)
+        prepared_attempt = _admit_lifecycle_request(request)
+        run_id = str(prepared_attempt["run_id"])
+        identifier = str(prepared_attempt["workflow_attempt_id"])
+        _admit_run_before_attempt(root, run_id)
         _observe_phase(active_ops, "before_mutex")
         _refuse_pre_attempt_signal(signals, "before mutex acquisition")
         with _acquire_attempt_mutex(
@@ -2064,7 +1996,7 @@ def run_materialized_attempt(
             _observe_phase(active_ops, "after_mutex")
             _refuse_pre_attempt_signal(signals, "at mutex acquisition")
             _operation_preflight(
-                preparation.operation,
+                request.operation,
                 root,
                 prepared_attempt,
                 active_ops,
@@ -2079,7 +2011,6 @@ def run_materialized_attempt(
             lock_state = lock_path.stat(follow_symlinks=False)
             owned = _OwnedRunLock(
                 path=lock_path,
-                record=lock_record,
                 data=lock_bytes,
                 inode=(lock_state.st_dev, lock_state.st_ino),
             )
@@ -2088,33 +2019,22 @@ def run_materialized_attempt(
                 _refuse_pre_attempt_signal(signals, "after run-lock publication")
                 _observe_phase(active_ops, "before_materialization")
                 _refuse_pre_attempt_signal(signals, "before materialization")
-                request = materialize()
+                materialize()
                 _observe_phase(active_ops, "after_materialization")
                 _refuse_pre_attempt_signal(signals, "during materialization")
-                if request.run_root != root:
-                    raise LifecycleError("Materialized request changed the prepared run root")
-                if request.operation != preparation.operation:
-                    raise LifecycleError("Materialized request changed the prepared lifecycle operation")
-                try:
-                    materialized_attempt_bytes = orchestration_contracts.canonical_json_bytes(
-                        dict(request.attempt_record)
-                    )
-                except (TypeError, ValueError) as exc:
-                    raise LifecycleError("Materialized workflow attempt is not canonical JSON") from exc
-                if materialized_attempt_bytes != preparation.attempt_record_bytes:
-                    raise LifecycleError("Materialized workflow attempt differs from prepared exact bytes")
                 return _run_attempt_locked(
                     request,
+                    prepared_attempt,
                     active_ops=active_ops,
                     signals=signals,
-                    _owned_lock=owned,
+                    owned_lock=owned,
                     initial_runtime_inspection=initial_runtime_inspection,
                 )
             except Exception as exc:
-                attempt_path = attempts_root / preparation.workflow_attempt_id / "attempt.json"
+                attempt_path = attempts_root / identifier / "attempt.json"
                 if not attempt_path.exists() and not attempt_path.is_symlink():
                     if lock_path.exists() and not lock_path.is_symlink():
-                        evidence = locks_root / (f"released-{preparation.workflow_attempt_id}-run-lock.json")
+                        evidence = locks_root / f"released-{identifier}-run-lock.json"
                         active_ops.release_lock(
                             lock_path,
                             evidence,
@@ -2127,7 +2047,6 @@ def run_materialized_attempt(
 
 
 __all__ = (
-    "AttemptPreparation",
     "LifecycleError",
     "LifecycleOps",
     "LifecycleOutcome",
@@ -2137,6 +2056,5 @@ __all__ = (
     "WorkflowResult",
     "build_snakemake_argv",
     "default_lifecycle_ops",
-    "run_attempt",
     "run_materialized_attempt",
 )

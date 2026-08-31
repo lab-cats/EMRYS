@@ -553,8 +553,8 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
 
     assert not (plan.workspace / "runs").exists()
     assert not (plan.workspace / "logs").exists()
-    assert plan.preparation.operation == "execute"
-    assert json.loads(plan.preparation.attempt_record_bytes) == plan.attempt_record
+    assert plan.lifecycle_request.operation == "execute"
+    assert json.loads(plan.lifecycle_request.attempt_record_bytes) == plan.attempt_record
     assert (
         plan.attempt_record["executor"]
         == plan.run.execution_plan.record["identity"]["backend"]["backend"]
@@ -1029,7 +1029,8 @@ def _runtime_admission_fixture(
 ) -> tuple[lifecycle.LifecycleRequest, doctor.RuntimeBinding]:
     ops = lifecycle.default_lifecycle_ops()
     admit_run(plan, ops=ops)
-    request = publish_attempt(plan, ops=ops)
+    request = plan.lifecycle_request
+    publish_attempt(plan, ops=ops)
     monkeypatch.setattr(
         source_authority,
         "inspect_source_checkout",
@@ -1524,7 +1525,7 @@ def test_lifecycle_refuses_run_bound_implementation_drift_before_attempt(
 
     with pytest.raises(lifecycle.LifecycleError, match=error):
         lifecycle.run_materialized_attempt(
-            plan.preparation,
+            plan.lifecycle_request,
             lambda: publish_attempt(plan, ops=ops),
             ops=ops,
         )
@@ -1786,12 +1787,12 @@ def test_attempt_refuses_incomplete_run_authority_before_mutex_or_materializatio
     admit_run(plan, ops=ops)
     (plan.run_root / "contract" / "run.json").unlink()
 
-    def unexpected_materialization() -> lifecycle.LifecycleRequest:
+    def unexpected_materialization() -> None:
         raise AssertionError("materialization must remain unreachable")
 
     with pytest.raises(lifecycle.LifecycleError, match="successor Run"):
         lifecycle.run_materialized_attempt(
-            plan.preparation,
+            plan.lifecycle_request,
             unexpected_materialization,
             ops=ops,
         )
@@ -1919,7 +1920,7 @@ def test_locked_publication_terminalizes_failure_and_refuses_repeat(
 
     admit_run(plan, ops=ops)
     outcome = lifecycle.run_materialized_attempt(
-        plan.preparation,
+        plan.lifecycle_request,
         lambda: publish_attempt(plan, ops=ops),
         ops=ops,
     )
@@ -1953,7 +1954,7 @@ def _failed_run(plan):
     else:
         admit_run(plan, ops=ops)
     outcome = lifecycle.run_materialized_attempt(
-        plan.preparation,
+        plan.lifecycle_request,
         lambda: publish_attempt(plan, ops=ops),
         ops=ops,
     )
@@ -2247,7 +2248,7 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     )
     admit_run(first, ops=first_ops)
     first_outcome = lifecycle.run_materialized_attempt(
-        first.preparation,
+        first.lifecycle_request,
         lambda: publish_attempt(first, ops=first_ops),
         ops=first_ops,
     )
@@ -2335,7 +2336,7 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         admit_runtime_context=lambda _attempt, _request, _storage, _inspection: None,
     )
     second_outcome = lifecycle.run_materialized_attempt(
-        second.preparation,
+        second.lifecycle_request,
         lambda: publish_attempt(second, ops=second_ops),
         ops=second_ops,
     )
@@ -2403,7 +2404,7 @@ def test_attempt_publication_leaves_star_index_directory_for_owner(
 
     admit_run(plan, ops=ops)
     outcome = lifecycle.run_materialized_attempt(
-        plan.preparation,
+        plan.lifecycle_request,
         lambda: publish_attempt(plan, ops=ops),
         ops=ops,
     )
@@ -2433,7 +2434,7 @@ def test_lock_precedes_attempt_publication_failure_and_retains_evidence(
 
     with pytest.raises(lifecycle.LifecycleError, match="materialize"):
         lifecycle.run_materialized_attempt(
-            plan.preparation,
+            plan.lifecycle_request,
             lambda: publish_attempt(plan, ops=ops),
             ops=ops,
         )
@@ -2475,7 +2476,7 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
     )
     admit_run(initial, ops=initial_ops)
     first = lifecycle.run_materialized_attempt(
-        initial.preparation,
+        initial.lifecycle_request,
         lambda: publish_attempt(initial, ops=initial_ops),
         ops=initial_ops,
     )
@@ -2537,7 +2538,7 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
     def run_winner() -> None:
         try:
             outcome = lifecycle.run_materialized_attempt(
-                winner.preparation,
+                winner.lifecycle_request,
                 lambda: publish_attempt(winner, ops=winner_ops),
                 ops=winner_ops,
             )
@@ -2545,10 +2546,10 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
         except BaseException as exc:  # pragma: no cover - asserted below
             winner_result.put(("error", repr(exc)))
 
-    def materialize_stale() -> lifecycle.LifecycleRequest:
+    def materialize_stale() -> None:
         nonlocal stale_materialized
         stale_materialized = True
-        return publish_attempt(stale, ops=stale_ops)
+        publish_attempt(stale, ops=stale_ops)
 
     winner_process = context.Process(target=run_winner)
     winner_process.start()
@@ -2559,7 +2560,7 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
     try:
         with pytest.raises(lifecycle.LifecycleError) as stale_error:
             lifecycle.run_materialized_attempt(
-                stale.preparation,
+                stale.lifecycle_request,
                 materialize_stale,
                 ops=stale_ops,
             )
