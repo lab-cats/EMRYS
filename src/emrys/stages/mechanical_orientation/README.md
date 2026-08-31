@@ -8,7 +8,7 @@ labels, artifact names, and historical alias do not change with that layout.
 
 ## Entry points
 
-- producer: [`step_06_split_bam_by_read_orientation.sh`](step_06_split_bam_by_read_orientation.sh)
+- private workflow producer: [`producer.py`](producer.py)
 - validator: grouped route `python -I -m emrys validate mechanical-orientation`,
   implemented by private [`validator.py`](validator.py)
 
@@ -18,28 +18,14 @@ For Slurm execution, use the complete immutable Run through `emrys run` or
 
 ## Operate
 
-Producer no-write dry-run:
-
-```bash
-src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh \
-  --sample-id ABE_EV_2 \
-  --input-bam results/split_ncigar/ABE_EV_2/ABE_EV_2.split_ncigar.bam \
-  --output-dir results/orientation/ABE_EV_2 \
-  --qc-dir results/qc/orientation \
-  --threads 1 \
-  --samtools-bin /absolute/path/to/samtools
-```
-
-Add `--execute` after inspection. `FWD_like` combines flags 99 and 147;
-`REV_like` combines 83 and 163. These are mechanical groups, not transcript
-strand, strandedness, sense, or antisense, and reads may remain unassigned.
-
-The orchestration-safe invocation adds `--no-clobber --execute`. That mode
-refuses any member of a pre-existing final set, hashes and rechecks the input
-BAM/BAI, retains the per-sample lock through validation, and publishes two
-BAM/BAI pairs plus the counts TSV last. Execute without `--no-clobber`
-preserves the existing replaceable-set transaction; failed restoration there
-can still lose backups. The TSV remains native QC evidence, not a receipt.
+Run this owner only through the immutable Project/Analysis Run journey. The
+private producer has one production mode: an admitted runtime supplies an
+absolute `samtools` path, and the task executes a create-absent transaction.
+It does not expose the retired standalone dry-run or replace-existing modes.
+`FWD_like` combines flags 99 and 147; `REV_like` combines 83 and 163. These are
+mechanical groups, not transcript strand, strandedness, sense, or antisense,
+and reads may remain unassigned. The counts TSV remains native QC evidence,
+not a receipt.
 
 Validator dry-run:
 
@@ -62,14 +48,12 @@ retired validator path to bypass package selection.
 
 ## Diagnose and verify
 
-Preserve all finals, scratch, backups, lock, input pair, streams, job identity,
+Preserve all finals, scratch, lock, input pair, streams, job identity,
 tool version, and unrelated bytes. Do not combine attempts, delete a foreign
 lock, trust the counts file as a receipt, or reuse ambiguous paths.
 
 ```bash
-bash tests/stages/mechanical_orientation/test_step_06_split_bam_by_read_orientation.sh
-.venv/bin/python -m pytest -q \
-  tests/stages/mechanical_orientation/test_validate_step_06_orientation_outputs.py
+.venv/bin/python -m pytest -q tests/stages/mechanical_orientation
 ```
 
 This is local fixture/fake-tool evidence only.

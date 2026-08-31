@@ -69,6 +69,9 @@ PUBLIC_ONBOARDING_MODULES = {
     "emrys/orchestration/local_pilot/onboarding.py",
     "emrys/orchestration/local_pilot/synthetic_fixture.py",
 }
+PRIVATE_RUNTIME_MODULES = {
+    "emrys/stages/mechanical_orientation/producer.py",
+}
 LICENSE_EXPRESSION = "LicenseRef-EMRYS-Source-Available-1.0"
 LICENSE_FILES = {
     "LICENSE": REPO_ROOT / "LICENSE",
@@ -190,6 +193,7 @@ def inspect_wheel(wheel: Path) -> None:
         assert "emrys = emrys.__main__:main" in entry_points
         assert set(RESOURCE_PATHS) <= members
         assert PUBLIC_ONBOARDING_MODULES <= members
+        assert PRIVATE_RUNTIME_MODULES <= members
         for resource in RESOURCE_PATHS:
             assert archive.read(resource) == (REPO_ROOT / "src" / resource).read_bytes()
         license_root = metadata_member.removesuffix("METADATA") + "licenses/"
@@ -326,6 +330,19 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     )
     require_success(module_help)
     assert "usage: emrys" in module_help.stdout
+    producer_help = run_command(
+        [
+            str(environment_python),
+            "-I",
+            "-m",
+            "emrys.stages.mechanical_orientation.producer",
+            "--help",
+        ],
+        cwd=arbitrary_cwd,
+        hostile_pythonpath=True,
+    )
+    require_success(producer_help)
+    assert "Produce one create-absent Step 06" in producer_help.stdout
     for command, usage in (
         (
             ("init", "project", "--help"),

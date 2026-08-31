@@ -604,6 +604,28 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
             == artifact_path(record, suffix).parents[parent_index]
         )
 
+    step06 = next(
+        record
+        for record in records
+        if record["machine_key"]
+        == "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1"
+    )
+    step06_prefix = controlled_python_argv(
+        sys.executable,
+        "-m",
+        "emrys.stages.mechanical_orientation.producer",
+    )
+    producer_argv = tuple(step06["producer_argv"])
+    assert any(
+        producer_argv[index : index + len(step06_prefix)] == step06_prefix
+        for index in range(len(producer_argv) - len(step06_prefix) + 1)
+    )
+    assert "step_06_split_bam_by_read_orientation.sh" not in " ".join(
+        step06["producer_argv"]
+    )
+    assert_root(step06, "--output-dir", ".FWD_like.bam", 0)
+    assert_root(step06, "--qc-dir", ".orientation_counts.tsv", 0)
+
     step07 = next(
         record
         for record in records

@@ -111,10 +111,7 @@ STEP_PRODUCERS = {
     ),
     "04": "src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh",
     "05": ("src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"),
-    "06": (
-        "src/emrys/stages/mechanical_orientation/"
-        "step_06_split_bam_by_read_orientation.sh"
-    ),
+    "06": "src/emrys/stages/mechanical_orientation/producer.py",
     "07": (
         "src/emrys/stages/partitioned_cohort_mpileup/"
         "producer.py"
