@@ -100,6 +100,38 @@ def test_directory_entries_with_identity_lists_one_real_stable_directory(
         INPUTS.directory_entries_with_identity(alias, "Directory")
 
 
+def test_directory_entries_requires_no_follow_support(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(INPUTS.os, "O_NOFOLLOW", None)
+
+    with pytest.raises(REPORT.ValidationError, match="symbolic-link protection"):
+        INPUTS.directory_entries_with_identity(tmp_path, "Directory")
+
+
+def test_directory_entries_rejects_path_replacement_during_inspection(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    directory = tmp_path / "directory"
+    held = tmp_path / "held"
+    directory.mkdir()
+    (directory / "entry").touch()
+    real_listdir = INPUTS.os.listdir
+
+    def list_then_replace(descriptor: int) -> list[str]:
+        entries = real_listdir(descriptor)
+        directory.rename(held)
+        directory.mkdir()
+        return entries
+
+    monkeypatch.setattr(INPUTS.os, "listdir", list_then_replace)
+
+    with pytest.raises(REPORT.ValidationError, match="changed while inspected"):
+        INPUTS.directory_entries_with_identity(directory, "Directory")
+
+
 def test_require_executable_rejects_non_executable_file(tmp_path: Path) -> None:
     tool = tmp_path / "not_executable.sh"
     tool.write_text("#!/usr/bin/env bash\n")
