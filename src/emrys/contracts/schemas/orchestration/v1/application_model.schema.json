@@ -261,7 +261,17 @@
             "genome_sa_index_nbases": { "type": "integer", "minimum": 1 }
           }
         },
-        "computational_resources": { "$ref": "#/$defs/computational_resources" }
+        "computational_resources": { "$ref": "#/$defs/computational_resources" },
+        "processing_source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source_run_id", "workflow_attempt_id", "attempt_receipt_sha256"],
+          "properties": {
+            "source_run_id": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/run_id" },
+            "workflow_attempt_id": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/workflow_attempt_id" },
+            "attempt_receipt_sha256": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256" }
+          }
+        }
       }
     },
     "execution_plan": {

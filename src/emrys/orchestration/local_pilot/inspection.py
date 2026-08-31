@@ -27,6 +27,7 @@ from emrys.contracts.orchestration.application_model import (
     ExecutionPlan,
     RunBinding,
     bind_run,
+    execution_owner_keys,
     execution_plan_boundary,
     read_application_record,
     validate_execution_view,
@@ -161,6 +162,18 @@ class RunInspection:
     reporting_blockers: tuple[str, ...]
     verified_report_locations: tuple[tuple[str, Path], ...] = ()
     authority: SuccessorRunAuthority | None = None
+    processing_source: ProcessingSourceAdmission | None = None
+
+    @property
+    def processing_source_run_id(self) -> str | None:
+        """Return the source ID derived from immutable Execution-Plan authority."""
+
+        if self.authority is None:
+            return None
+        source = self.authority.execution_plan.record["identity"].get(
+            "processing_source"
+        )
+        return None if source is None else str(source["source_run_id"])
 
     @property
     def integrity(self) -> RunIntegrity:
@@ -238,6 +251,16 @@ class RunInspection:
             and self.results_status == "incomplete"
             and self.attempt_outcome in {"failed", "interrupted"}
         )
+
+
+@dataclass(frozen=True, slots=True)
+class ProcessingSourceAdmission:
+    """One successful processing Run admitted as immutable downstream input."""
+
+    root: Path
+    state: RunInspection
+    binding: dict[str, str]
+    artifact_snapshots: tuple[dict[str, Any], ...]
 
 
 def _default_process_is_alive(process_id: int) -> bool:
@@ -534,7 +557,7 @@ def _successor_expected_tasks(
 ) -> tuple[ExpectedTask, ...]:
     plan_identity = authority.execution_plan.record["identity"]
     functional = plan_identity["functional_specification"]
-    required = set(plan_identity["scientific_stopping_owner_keys"])
+    required = set(execution_owner_keys(authority.execution_plan))
     analysis = authority.analysis_revision
     identity = analysis.record["identity"]
     scope_ids = {
@@ -1522,14 +1545,7 @@ def _inspect_task_ledger(
             )
             if verified_reference_before != inspected.record_reference:
                 raise InspectionError("Verified task changed after semantic admission")
-            verified = task.validate_verified_task(
-                verified_path,
-                run_root=root,
-                execution=execution,
-                profile=profile,
-                machine_key=item.machine_key,
-                scope=item.scope,
-            )
+            verified = inspected.record
             if (
                 _record_reference(verified_path, root, "verified task record")
                 != verified_reference_before
@@ -2088,6 +2104,7 @@ def inspect_run(
     integrity_blockers = list(state_integrity)
     results_blockers = list(state_results)
     reporting_blockers = list(state_reporting)
+    processing_source = None
     if authority is not None:
         execution = authority.run_binding.record
         execution_data = authority.run_binding.canonical_bytes
@@ -2104,6 +2121,10 @@ def inspect_run(
             )
         except orchestration_contracts.ContractValidationError as exc:
             integrity_blockers.append(f"Profile differs from immutable Run: {exc}")
+        try:
+            processing_source = admit_bound_processing_source(root, authority)
+        except (OSError, InspectionError) as exc:
+            results_blockers.append(f"Processing source is not admissible: {exc}")
     else:
         execution, execution_data = admit_canonical_record(
             legacy_execution_path,
@@ -2219,13 +2240,117 @@ def inspect_run(
         reporting_blockers=tuple(dict.fromkeys(reporting_blockers)),
         verified_report_locations=evidence.verified_report_locations,
         authority=authority,
+        processing_source=processing_source,
     )
+
+
+def admit_processing_source(run_root: Path) -> ProcessingSourceAdmission:
+    """Admit one exact, successful processing-only Run without mutating it."""
+
+    state = inspect_run(run_root)
+    authority = state.authority
+    receipt = state.latest_receipt
+    attempt = state.latest_attempt
+    if authority is None:
+        raise InspectionError("A processing source must use successor Run authority")
+    if execution_plan_boundary(authority.execution_plan) != "processing":
+        raise InspectionError(
+            "A processing source must stop at the exact Step 06 boundary"
+        )
+    if (
+        state.integrity != "valid"
+        or state.attempt_outcome != "succeeded"
+        or state.results_status != "complete"
+        or state.reporting_status != "not applicable"
+        or receipt is None
+        or attempt is None
+        or receipt.get("schema_version") != "emrys.attempt-receipt.v2"
+        or receipt.get("status") != "succeeded"
+    ):
+        raise InspectionError(
+            "A processing source requires valid, complete, successful Step 00-06 evidence"
+        )
+    return ProcessingSourceAdmission(
+        root=state.run_root,
+        state=state,
+        binding={
+            "source_run_id": state.run_id,
+            "workflow_attempt_id": str(attempt["workflow_attempt_id"]),
+            "attempt_receipt_sha256": orchestration_contracts.canonical_sha256(receipt),
+        },
+        artifact_snapshots=tuple(
+            {
+                "path": str(output["path"]),
+                "size_bytes": int(output["size_bytes"]),
+                "sha256": str(output["sha256"]),
+            }
+            for task_state in state.tasks
+            if task_state.record is not None
+            for output in task_state.record["outputs"]
+        ),
+    )
+
+
+def validate_processing_source(
+    source: ProcessingSourceAdmission,
+    *,
+    target_analysis: AnalysisRevision,
+    target_plan: ExecutionPlan,
+) -> None:
+    """Require exact v1 processing compatibility with one target Analysis Run."""
+
+    authority = source.state.authority
+    assert authority is not None
+    source_analysis = authority.analysis_revision.record["identity"]
+    target_identity = target_analysis.record["identity"]
+    if source_analysis["reference"] != target_identity["reference"]:
+        raise InspectionError(
+            "Processing source and target reference identities differ"
+        )
+    if source_analysis["samples"] != target_identity["samples"]:
+        raise InspectionError("Processing source and target sample identities differ")
+
+    source_plan = authority.execution_plan.record["identity"]
+    target_plan_identity = target_plan.record["identity"]
+    if target_plan_identity.get("processing_source") != source.binding:
+        raise InspectionError(
+            "Target Execution Plan binds a different processing source"
+        )
+    if {
+        key: value
+        for key, value in source_plan.items()
+        if key != "scientific_stopping_owner_keys"
+    } != {
+        key: value
+        for key, value in target_plan_identity.items()
+        if key not in {"scientific_stopping_owner_keys", "processing_source"}
+    }:
+        raise InspectionError("Processing source and target execution semantics differ")
+
+
+def admit_bound_processing_source(
+    run_root: Path,
+    authority: SuccessorRunAuthority,
+) -> ProcessingSourceAdmission | None:
+    """Resolve and admit the immutable same-Project processing relationship."""
+
+    binding = authority.execution_plan.record["identity"].get("processing_source")
+    if binding is None:
+        return None
+    source = admit_processing_source(run_root.parent / str(binding["source_run_id"]))
+    validate_processing_source(
+        source,
+        target_analysis=authority.analysis_revision,
+        target_plan=authority.execution_plan,
+    )
+    return source
 
 
 __all__ = (
     "ExpectedTask",
     "InspectionError",
     "InspectionOps",
+    "ProcessingSourceAdmission",
     "RunInspection",
     "ReportingReceiptValidator",
     "SuccessorRunAuthority",
@@ -2235,6 +2360,8 @@ __all__ = (
     "admit_execution_path",
     "admit_successor_run",
     "admit_attempt_run_lock",
+    "admit_bound_processing_source",
+    "admit_processing_source",
     "attempt_fields",
     "default_inspection_ops",
     "expected_tasks",
@@ -2246,4 +2373,5 @@ __all__ = (
     "state_tree_blockers",
     "task_start_tree_blockers",
     "verified_tree_blockers",
+    "validate_processing_source",
 )

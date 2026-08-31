@@ -219,6 +219,11 @@ work only through the accepted fixed profile:
   --analysis ANALYSIS_NAME \
   --through processing
 
+.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
+  --project /absolute/path/to/project.yaml \
+  --analysis ANALYSIS_NAME \
+  --from-processing-run run-DIGEST
+
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
   run --run-root /absolute/project/runs/run-DIGEST
 
@@ -235,9 +240,13 @@ The first `run` command retains the full default Analysis. The semantic
 selecting the evidence-complete, all-sample Steps `00`–`06` closure. The
 four-sample synthetic fixture expands that closure to 31 owner tasks. A
 successful processing Run is complete and not resumable, and reporting is not
-applicable. This is only the processing/future-reuse boundary. A future
-downstream Analysis would require a new Run, while compatible cross-Run reuse
-and downstream launch remain unimplemented ANALYSIS-01 work.
+applicable. The `--from-processing-run` form admits that exact successful Run
+from the same Project and creates a distinct complete downstream Run. Samples,
+Reference, and the entire Execution Plan identity except its source/stopping
+fields must match; partitions and scientific policy may differ. Source
+artifacts stay in place and content-bound;
+the target owns only Steps `07`–`10`, its evidence, Results, reports, and log.
+Authored subsets and generalized modular analyses remain ANALYSIS-01/02 work.
 
 With direct placement, `run` and `resume` print concise Run identity, combined
 pending/reusable work within that Run, and reporting information; a terminal

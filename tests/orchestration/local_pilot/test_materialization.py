@@ -13,7 +13,7 @@ import subprocess
 import sys
 import threading
 import zlib
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -23,7 +23,10 @@ import pytest
 import yaml
 
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.orchestration.application_model import PROCESSING_STEP_IDS
+from emrys.contracts.orchestration.application_model import (
+    PROCESSING_STEP_IDS,
+    build_analysis_revision,
+)
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.evidence.runtime_availability import inspector as runtime_inspector
 from emrys.evidence.runtime_availability.inspector import (
@@ -51,6 +54,7 @@ from emrys.orchestration.local_pilot import (
     materialization,
     onboarding,
     reporting_operation,
+    task,
 )
 from emrys.orchestration.local_pilot.materialization import (
     MaterializationError,
@@ -778,6 +782,151 @@ def test_processing_plan_is_a_distinct_closed_31_task_run(tmp_path: Path) -> Non
     )
 
 
+@pytest.mark.parametrize(
+    ("through", "message"),
+    [
+        ("analysis", "must stop at the exact Step 06 boundary"),
+        ("processing", "requires valid, complete, successful Step 00-06 evidence"),
+    ],
+)
+def test_processing_source_requires_an_exact_successful_processing_run(
+    tmp_path: Path,
+    through: str,
+    message: str,
+) -> None:
+    plan = _plan(tmp_path, through=through)
+    admit_run(plan, ops=lifecycle.default_lifecycle_ops())
+
+    with pytest.raises(inspection.InspectionError, match=message):
+        inspection.admit_processing_source(plan.run_root)
+
+
+def test_processing_source_rejects_every_incompatible_target_dimension(
+    tmp_path: Path,
+) -> None:
+    readiness, resources, _project, workspace = _readiness(tmp_path)
+    source_run = _run_candidate(readiness, resources, through="processing")
+    binding = {
+        "source_run_id": source_run.run_id,
+        "workflow_attempt_id": "workflow-20260831T120000Z-" + "1" * 32,
+        "attempt_receipt_sha256": "2" * 64,
+    }
+    target = build_run_candidate(
+        readiness.analysis,
+        readiness,
+        resources.declaration,
+        processing_source=binding,
+    )
+    source = inspection.ProcessingSourceAdmission(
+        root=workspace / "runs" / source_run.run_id,
+        state=SimpleNamespace(
+            authority=SimpleNamespace(
+                analysis_revision=source_run.analysis.revision,
+                execution_plan=source_run.execution_plan,
+            )
+        ),
+        binding=binding,
+        artifact_snapshots=(),
+    )
+    inspection.validate_processing_source(
+        source,
+        target_analysis=target.analysis.revision,
+        target_plan=target.execution_plan,
+    )
+
+    identity = target.analysis.revision.record["identity"]
+    samples = [dict(row) for row in identity["samples"]]
+    samples[0]["r1_fastq_sha256"] = "3" * 64
+    sample_changed = build_analysis_revision(
+        samples=samples,
+        partitions=identity["partitions"],
+        reference=identity["reference"],
+        scientific_policy=identity["scientific_policy"],
+    )
+    reference_changed = build_analysis_revision(
+        samples=identity["samples"],
+        partitions=identity["partitions"],
+        reference={**identity["reference"], "fasta_sha256": "4" * 64},
+        scientific_policy=identity["scientific_policy"],
+    )
+    different_binding = {**binding, "attempt_receipt_sha256": "5" * 64}
+    binding_changed = build_run_candidate(
+        readiness.analysis,
+        readiness,
+        resources.declaration,
+        processing_source=different_binding,
+    )
+    resources_changed = build_run_candidate(
+        readiness.analysis,
+        readiness,
+        replace(
+            resources.declaration,
+            workflow_cores=resources.declaration.workflow_cores + 1,
+        ),
+        processing_source=binding,
+    )
+
+    for analysis, plan, message in (
+        (reference_changed, target.execution_plan, "reference identities differ"),
+        (sample_changed, target.execution_plan, "sample identities differ"),
+        (
+            target.analysis.revision,
+            binding_changed.execution_plan,
+            "binds a different processing source",
+        ),
+        (
+            target.analysis.revision,
+            resources_changed.execution_plan,
+            "execution semantics differ",
+        ),
+    ):
+        with pytest.raises(inspection.InspectionError, match=message):
+            inspection.validate_processing_source(
+                source,
+                target_analysis=analysis,
+                target_plan=plan,
+            )
+
+
+def test_downstream_plan_rejects_an_unbound_reused_input(tmp_path: Path) -> None:
+    readiness, resources, _project, workspace = _readiness(tmp_path)
+    source_run_id = _run_candidate(
+        readiness,
+        resources,
+        through="processing",
+    ).run_id
+    binding = {
+        "source_run_id": source_run_id,
+        "workflow_attempt_id": "workflow-20260831T120000Z-" + "1" * 32,
+        "attempt_receipt_sha256": "2" * 64,
+    }
+    target = build_run_candidate(
+        readiness.analysis,
+        readiness,
+        resources.declaration,
+        processing_source=binding,
+    )
+    source = inspection.ProcessingSourceAdmission(
+        root=workspace / "runs" / source_run_id,
+        state=SimpleNamespace(),
+        binding=binding,
+        artifact_snapshots=(),
+    )
+
+    with pytest.raises(
+        MaterializationError,
+        match="Reused processing input lacks an admitted source snapshot",
+    ):
+        build_attempt_plan(
+            target,
+            readiness,
+            workspace,
+            resources=resources,
+            operation="execute",
+            processing_source=source,
+        )
+
+
 def _runtime_admission_fixture(
     plan: materialization.AttemptPlan,
     monkeypatch: pytest.MonkeyPatch,
@@ -1456,7 +1605,19 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     assert f"Execution Plan ID: {plan.run.execution_plan.execution_plan_id}" in verbose
     assert "Attempt ID: none" in verbose
 
+    blocked = replace(
+        observed,
+        tasks=(_status_task("02b", "blocked"),),
+        results_blockers=("blocked task",),
+    )
+    monkeypatch.setattr(control.inspection, "inspect_run", lambda _root: blocked)
+    assert control.inspect_from_args(arguments) == 0
+    blocked_output = capsys.readouterr().out
+    assert "QC evidence: blocked" in blocked_output
+    assert "Verified tasks: 0/1" in blocked_output
+
     arguments.detail = "debug"
+    monkeypatch.setattr(control.inspection, "inspect_run", lambda _root: observed)
     assert control.inspect_from_args(arguments) == 0
     debug = capsys.readouterr().out
     assert "Run authority records:" in debug
@@ -2911,7 +3072,8 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
 ) -> None:
     arguments = _scheduled_run_arguments(tmp_path, execute=execute)
     arguments.analysis = "" if execute else "sensitivity"
-    arguments.through = "processing"
+    arguments.through = "analysis" if execute else "processing"
+    arguments.from_processing_run = "run-" + "a" * 64 if execute else None
     arguments.no_report = True
     workspace = arguments.project.parent
     submissions = []
@@ -2948,7 +3110,15 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     assert len(submissions) == 1
     expected_analysis = "''" if execute else "sensitivity"
     assert f" --analysis {expected_analysis} " in submissions[0].batch_script
-    assert " --through processing " in submissions[0].batch_script
+    if execute:
+        assert " --through processing " not in submissions[0].batch_script
+        assert (
+            " --from-processing-run run-" + "a" * 64 + " "
+            in submissions[0].batch_script
+        )
+    else:
+        assert " --through processing " in submissions[0].batch_script
+        assert " --from-processing-run " not in submissions[0].batch_script
     assert " --execute --no-report" in submissions[0].batch_script
     assert list((workspace / "logs").iterdir()) == []
     assert "Execution placement: Slurm" in captured.err
@@ -3477,6 +3647,7 @@ def test_public_help_routes() -> None:
         assert expected in result.stdout
         if command[0] == "run":
             assert "--through {analysis,processing}" in result.stdout
+            assert "--from-processing-run" in result.stdout
         if command[0] == "resume":
             assert "--through" not in result.stdout
 
@@ -3519,6 +3690,7 @@ def _doubled_lifecycle_ops(
     base: lifecycle.LifecycleOps,
     *,
     fail_after_rule: str | None = None,
+    after_workflow: Callable[[], None] | None = None,
 ) -> lifecycle.LifecycleOps:
     def run_workflow(
         argv: tuple[str, ...], cwd: Path
@@ -3538,6 +3710,8 @@ def _doubled_lifecycle_ops(
             text=True,
             check=False,
         )
+        if after_workflow is not None:
+            after_workflow()
         injected = fail_after_rule is not None and completed.returncode == 0
         return lifecycle.WorkflowResult(
             exit_code=23 if injected else completed.returncode,
@@ -3752,7 +3926,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert "Results are complete" in capsys.readouterr().err
 
 
-def test_public_processing_run_completes_without_reports_or_resume(
+def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     tmp_path: Path,
     capsys,
     monkeypatch: pytest.MonkeyPatch,
@@ -3763,12 +3937,41 @@ def test_public_processing_run_completes_without_reports_or_resume(
         source_root=checkout,
         source_commit=commit,
     )
+    authored = yaml.safe_load(project.read_text(encoding="utf-8"))
+    authored["analyses"]["sensitivity"] = {
+        **authored["analyses"]["primary"],
+        "fdr_threshold": 0.01,
+    }
+    project.write_text(yaml.safe_dump(authored, sort_keys=False), encoding="utf-8")
+    admitted_project = admit_project(project, readiness.analysis.profile)
+    primary = replace(
+        readiness,
+        project=admitted_project,
+        analysis=admitted_project.select_analysis("primary"),
+    )
+    sensitivity = replace(
+        readiness,
+        project=admitted_project,
+        analysis=admitted_project.select_analysis("sensitivity"),
+    )
+    assert (
+        primary.analysis.revision.canonical_bytes
+        != sensitivity.analysis.revision.canonical_bytes
+    )
+
+    def diagnose(*_args, **kwargs):
+        selected = kwargs.get("analysis_name")
+        return sensitivity if selected == "sensitivity" else primary
+
     real_build = control.build_attempt_plan
     real_ops = control.lifecycle.default_lifecycle_ops
+    fail_after_rule: list[str | None] = [None]
+    after_workflow: list[Callable[[], None] | None] = [None]
+    monkeypatch.setattr(control.doctor, "diagnose_project", diagnose)
     monkeypatch.setattr(
         control.doctor,
-        "diagnose_project",
-        lambda *_args, **_kwargs: readiness,
+        "inspect_local_pilot",
+        lambda *_args, **_kwargs: sensitivity,
     )
     monkeypatch.setattr(
         control.capacity,
@@ -3783,52 +3986,163 @@ def test_public_processing_run_completes_without_reports_or_resume(
     monkeypatch.setattr(
         control.lifecycle,
         "default_lifecycle_ops",
-        lambda: _doubled_lifecycle_ops(real_ops()),
+        lambda: _doubled_lifecycle_ops(
+            real_ops(),
+            fail_after_rule=fail_after_rule[0],
+            after_workflow=after_workflow[0],
+        ),
     )
-    monkeypatch.setattr(
-        reporting_operation,
-        "run_reporting",
-        lambda *_args, **_kwargs: pytest.fail("processing entered reporting"),
-    )
-    arguments = argparse.Namespace(
+
+    source_arguments = argparse.Namespace(
         project=project,
+        analysis="primary",
         execution_profile=project.parent / "emrys.execution.yaml",
         through="processing",
         execute=True,
     )
-    run_id = _run_candidate(readiness, resources, through="processing").run_id
+    source_run_id = _run_candidate(
+        primary,
+        resources,
+        through="processing",
+    ).run_id
+    assert control.run_from_args(source_arguments) == 0
 
-    assert control.run_from_args(arguments) == 0
+    source_root = workspace / "runs" / source_run_id
+    validate_verified = task.validate_verified_task
+    admitted_records: list[Path] = []
 
-    run_root = workspace / "runs" / run_id
-    observed = inspection.inspect_run(run_root)
-    events = [
-        json.loads(line)["event"]
-        for line in next((workspace / "logs").rglob("*.jsonl")).read_text().splitlines()
-    ]
-    assert events[-1] == "reporting_not_applicable"
-    assert (
-        observed.integrity,
-        observed.attempt_outcome,
-        observed.results_status,
-        observed.reporting_status,
-        observed.recovery_available,
-    ) == ("valid", "succeeded", "complete", "not applicable", False)
-    assert len(observed.tasks) == 31
-    assert all(task.state == "verified" for task in observed.tasks)
-    assert observed.verified_report_locations == ()
-    assert not any(
-        records["start"] is not None or records["verified"] is not None
-        for records in observed.reporting_completion_records.values()
-    )
+    def count_admission(path: Path, **kwargs):
+        admitted_records.append(path)
+        return validate_verified(path, **kwargs)
+
+    monkeypatch.setattr(task, "validate_verified_task", count_admission)
+    source = inspection.admit_processing_source(source_root)
+    assert len(admitted_records) == 31
+    monkeypatch.setattr(task, "validate_verified_task", validate_verified)
     with pytest.raises(control.ControlError, match="Results are complete"):
-        control._admit_resume_predecessor(run_root)
+        control._admit_resume_predecessor(source_root)
+    rendered_source = capsys.readouterr()
+    assert "Reporting: not applicable" in rendered_source.err
 
-    inspect_arguments = argparse.Namespace(run_root=run_root, detail="normal")
-    assert control.inspect_from_args(inspect_arguments) == 0
-    rendered = capsys.readouterr()
-    assert "Reporting: not applicable" in rendered.out
-    assert "Candidate evidence: not applicable" in rendered.out
-    assert "Statistical/context processing: not applicable" in rendered.out
-    assert "Inspect this Run's verified scientific artifacts" in rendered.out
-    assert "Reporting: not applicable (partial scientific Run)" in rendered.err
+    source_verified = _verified_snapshot(source_root)
+    source_artifacts = {
+        path: (path.read_bytes(), path.stat().st_mtime_ns)
+        for snapshot in source.artifact_snapshots
+        if (path := Path(str(snapshot["path"]))).is_file()
+    }
+
+    mutated_source: list[tuple[Path, bytes, int]] = []
+
+    def mutate_unconsumed_source() -> None:
+        target_root = next(
+            path
+            for path in (workspace / "runs").iterdir()
+            if path.name != source_run_id
+        )
+        consumed = {
+            Path(str(item["path"]))
+            for dispatch_path in target_root.glob("contract/dispatch/*/*/*.json")
+            for item in orchestration_contracts.load_json_object(dispatch_path)[
+                "inputs"
+            ]
+        }
+        path = next(
+            candidate
+            for candidate in source_artifacts
+            if candidate.is_relative_to(source_root) and candidate not in consumed
+        )
+        data, modified = source_artifacts[path]
+        mutated_source.append((path, data, modified))
+        path.write_bytes(b"mutated after downstream workflow\n")
+
+    fail_after_rule[0] = "generate_partitioned_cohort_mpileup_VCFs"
+    after_workflow[0] = mutate_unconsumed_source
+    target_arguments = argparse.Namespace(
+        project=project,
+        analysis="sensitivity",
+        execution_profile=project.parent / "emrys.execution.yaml",
+        through="analysis",
+        from_processing_run=source_run_id,
+        execute=True,
+    )
+    assert control.run_from_args(target_arguments) == 1
+    capsys.readouterr()
+    fail_after_rule[0] = None
+    after_workflow[0] = None
+
+    target_roots = tuple(
+        path for path in (workspace / "runs").iterdir() if path.name != source_run_id
+    )
+    assert len(target_roots) == 1
+    target_root = target_roots[0]
+    receipt_path = next(target_root.glob("attempts/*/attempt-receipt.json"))
+    failed_receipt = orchestration_contracts.load_record(
+        receipt_path,
+        "attempt-receipt",
+    )
+    assert failed_receipt["status"] == "failed"
+    assert any(
+        "Processing source changed during workflow execution" in blocker
+        for blocker in failed_receipt["blockers"]
+    )
+    assert not tuple((target_root / "state/reporting").glob("*/start.json"))
+    assert len(mutated_source) == 1
+    mutated_path, original_data, original_mtime = mutated_source[0]
+    mutated_path.write_bytes(original_data)
+    os.utime(
+        mutated_path,
+        ns=(mutated_path.stat().st_atime_ns, original_mtime),
+    )
+    inspection.admit_processing_source(source_root)
+    failed = inspection.inspect_run(target_root)
+    assert failed.recovery_available
+
+    assert (
+        control.resume_from_args(
+            argparse.Namespace(
+                run_root=target_root,
+                allocated_cores=1,
+                execute=True,
+            )
+        )
+        == 0
+    )
+    capsys.readouterr()
+
+    completed = inspection.inspect_run(target_root)
+    assert (
+        completed.integrity,
+        completed.attempt_outcome,
+        completed.results_status,
+        completed.reporting_status,
+    ) == ("valid", "succeeded", "complete", "complete")
+    assert len(completed.tasks) == 4
+    assert all(task.state == "verified" for task in completed.tasks)
+    assert _verified_snapshot(source_root) == source_verified
+    assert all(
+        path.read_bytes() == data and path.stat().st_mtime_ns == modified
+        for path, (data, modified) in source_artifacts.items()
+    )
+
+    source_snapshots = {
+        str(snapshot["path"]): snapshot for snapshot in source.artifact_snapshots
+    }
+    assert any(
+        item.get("size_bytes") == source_snapshots[item["path"]]["size_bytes"]
+        and item.get("sha256") == source_snapshots[item["path"]]["sha256"]
+        for dispatch_path in target_root.glob("contract/dispatch/*/*/*.json")
+        for item in orchestration_contracts.load_json_object(dispatch_path)["inputs"]
+        if item["path"] in source_snapshots
+    )
+
+    assert (
+        control.inspect_from_args(
+            argparse.Namespace(run_root=target_root, detail="verbose")
+        )
+        == 0
+    )
+    inspect_output = capsys.readouterr().out
+    assert "Preparation: reused" in inspect_output
+    assert "Alignment and sample processing: reused" in inspect_output
+    assert "QC evidence: reused" in inspect_output
+    assert f"Processing source: {source_run_id} (admitted)" in inspect_output

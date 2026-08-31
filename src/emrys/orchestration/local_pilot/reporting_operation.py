@@ -11,6 +11,7 @@ from typing import Any, Literal, NamedTuple
 
 from emrys.contracts.artifacts.api import ContractValidationError
 from emrys.contracts.orchestration.artifact_inventory import report_output_root
+from emrys.contracts.orchestration.application_model import PROCESSING_STEP_IDS
 from emrys.libraries.source_authority import (
     ArtifactSourceRootError,
     SourceCheckoutError,
@@ -194,6 +195,92 @@ def _admit_generation(state: inspection.RunInspection) -> Any:
     )
 
 
+def _require_prepared_processing_source(
+    state: inspection.RunInspection,
+    context: Any,
+) -> None:
+    """Bind the prepared artifact index to the already-admitted source bytes."""
+
+    source = state.processing_source
+    if source is None:
+        return
+    expected: dict[Path, tuple[int | None, str]] = {}
+    for task in source.state.tasks:
+        if task.record is None:
+            raise ReportingOperationError("Processing source task evidence is incomplete")
+        references = [*task.record["inputs"], *task.record["outputs"]]
+        references.append(task.record["validation_report"])
+        if task.record["native_receipt"] is not None:
+            references.append(task.record["native_receipt"])
+        for reference in references:
+            path = Path(str(reference["path"]))
+            if not path.is_absolute():
+                path = source.root / path
+            binding = (reference.get("size_bytes"), str(reference["sha256"]))
+            if path in expected and expected[path] != binding:
+                raise ReportingOperationError(
+                    f"Processing source evidence disagrees for artifact: {path}"
+                )
+            expected[path] = binding
+    external = tuple(
+        binding for path, binding in expected.items() if not path.is_relative_to(source.root)
+    )
+
+    def matches(
+        required: tuple[int | None, str] | None,
+        observed: tuple[int | None, str] | None,
+    ) -> bool:
+        return bool(
+            required
+            and observed
+            and required[1] == observed[1]
+            and (required[0] is None or required[0] == observed[0])
+        )
+
+    for item in context.inspections:
+        if str(item.row["step_id"]) not in PROCESSING_STEP_IDS:
+            continue
+        path = Path(item.resolved_path)
+        snapshot = item.snapshot
+        binding = (snapshot.size_bytes, snapshot.sha256) if snapshot is not None else None
+        required = expected.get(path)
+        if (
+            snapshot is None
+            or snapshot.status != "present"
+            or (
+                not matches(required, binding)
+                and (
+                    path.is_relative_to(source.root)
+                    or not any(matches(item, binding) for item in external)
+                )
+            )
+        ):
+            raise ReportingOperationError(
+                f"Prepared artifact index differs from processing source: {path}"
+            )
+
+
+def _recheck_processing_source(state: inspection.RunInspection) -> None:
+    """Re-admit one source immediately before artifact-index verification."""
+
+    if state.processing_source is None:
+        return
+    assert state.authority is not None
+    try:
+        confirmed = inspection.admit_bound_processing_source(
+            state.run_root,
+            state.authority,
+        )
+    except (OSError, inspection.InspectionError) as exc:
+        raise ReportingOperationError(
+            f"Processing source changed during artifact-index publication: {exc}"
+        ) from exc
+    if confirmed is None:
+        raise ReportingOperationError(
+            "Processing source changed during artifact-index publication"
+        )
+
+
 def run_reporting(
     run_root: Path,
     *,
@@ -224,9 +311,10 @@ def run_reporting(
 
         if not execute:
             try:
-                _prepare_transaction(
+                context = _prepare_transaction(
                     "artifact_index", _arguments(identity, "artifact_index")
                 )
+                _require_prepared_processing_source(state, context)
             except _PRODUCER_ERRORS as exc:
                 raise _producer_error("artifact_index", "dry-run failed", exc) from exc
             return ReportingOperationOutcome(
@@ -255,6 +343,8 @@ def run_reporting(
         for kind in reporting_boundary.REPORTING_KINDS:
             try:
                 context = _prepare_transaction(kind, _arguments(identity, kind))
+                if kind == "artifact_index":
+                    _require_prepared_processing_source(state, context)
             except _PRODUCER_ERRORS as exc:
                 raise _producer_error(
                     kind, "preflight failed before ledger entry", exc
@@ -280,6 +370,11 @@ def run_reporting(
                 receipt_path=receipt_path,
                 **identity_paths,
                 ops=publish_ops,
+                before_publication=(
+                    (lambda: _recheck_processing_source(state))
+                    if kind == "artifact_index" and state.processing_source is not None
+                    else None
+                ),
             )
         return ReportingOperationOutcome(
             status="generated",

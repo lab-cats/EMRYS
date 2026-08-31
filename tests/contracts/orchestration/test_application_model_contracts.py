@@ -350,7 +350,12 @@ def test_execution_plan_admits_only_predecessor_closed_stopping_owners() -> None
 def test_processing_boundary_requires_the_exact_processing_step_roster() -> None:
     identity = execution_plan().record["identity"]
 
-    def partial(sample_step: str) -> model.ExecutionPlan:
+    def plan(
+        sample_step: str,
+        *,
+        processing_source: dict[str, str] | None = None,
+        complete: bool = False,
+    ) -> model.ExecutionPlan:
         functional = copy.deepcopy(identity["functional_specification"])
         functional["owner_tasks"][0]["step_id"] = sample_step
         functional["owner_tasks"].append(
@@ -367,7 +372,11 @@ def test_processing_boundary_requires_the_exact_processing_step_roster() -> None
         functional["required_owner_keys"].append("downstream")
         return model.build_execution_plan(
             functional_specification=functional,
-            scientific_stopping_owner_keys=["bam_qc", "star_index"],
+            scientific_stopping_owner_keys=(
+                functional["required_owner_keys"]
+                if complete
+                else ["bam_qc", "star_index"]
+            ),
             implementation_content_sha256=identity["implementation_content_sha256"],
             toolchain=identity["toolchain"],
             backend="local",
@@ -375,10 +384,26 @@ def test_processing_boundary_requires_the_exact_processing_step_roster() -> None
             backend_semantics_sha256=ZERO_HASH,
             star_index=identity["star_index"],
             computational_resources=identity["computational_resources"],
+            processing_source=processing_source,
         )
 
-    assert model.execution_plan_boundary(partial("06")) == "processing"
-    assert model.execution_plan_boundary(partial("07")) == "partial"
+    assert model.execution_plan_boundary(plan("06")) == "processing"
+    assert model.execution_plan_boundary(plan("07")) == "partial"
+
+    source = {
+        "source_run_id": "run-" + ZERO_HASH,
+        "workflow_attempt_id": "workflow-20260831T120000Z-" + "1" * 32,
+        "attempt_receipt_sha256": TWO_HASH,
+    }
+    downstream = plan("06", processing_source=source, complete=True)
+    assert downstream.record["identity"]["processing_source"] == source
+    assert model.execution_owner_keys(downstream) == ("downstream",)
+    assert downstream.execution_plan_id != plan("06", complete=True).execution_plan_id
+    with pytest.raises(
+        contracts.ContractValidationError,
+        match="only for a complete downstream Analysis plan",
+    ):
+        plan("06", processing_source=source)
 
 
 def test_plan_contract_excludes_adapter_reporting_and_realization_fields() -> None:

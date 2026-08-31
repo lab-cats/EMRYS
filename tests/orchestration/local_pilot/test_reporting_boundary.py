@@ -169,7 +169,6 @@ def _build_successor(root: Path) -> tuple[dict[str, Path], dict[str, Any]]:
         "profile_path": str(contract / "profile.json"),
         "workflow_attempt_id": identifier,
         "source_checkout": str(attempt["source_checkout"]["path"]),
-        "artifact_source_root": str(run_root),
         **reporting_config,
         "resource_policy": resource_policy,
     }
@@ -634,6 +633,43 @@ def test_completion_rechecks_projection_after_semantic_validation(
             **identity,
             ops=_ops(mutate_projection),
         )
+
+
+def test_completion_guard_runs_after_validation_before_verified_publication(
+    tmp_path: Path,
+) -> None:
+    built = _build(tmp_path / "fixture")
+    identity = _identity_paths(built)
+    observed: list[str] = []
+
+    def validate(*_arguments: Any) -> _SemanticResult:
+        observed.append("semantic-validation")
+        return _semantic_result(built.artifact_receipt)
+
+    ops = _ops(validate)
+    reporting_boundary.publish_start(kind="artifact_index", **identity, ops=ops)
+    built.artifact_receipt.parent.mkdir(parents=True, exist_ok=True)
+    built.artifact_receipt.write_bytes(b"semantic artifact receipt\n")
+    verified = reporting_boundary.ledger_paths(
+        built.run_root, "artifact_index"
+    ).verified
+
+    def reject() -> None:
+        observed.append("final-guard")
+        assert not verified.exists()
+        raise RuntimeError("source changed")
+
+    with pytest.raises(RuntimeError, match="source changed"):
+        reporting_boundary.publish_verified(
+            kind="artifact_index",
+            receipt_path=built.artifact_receipt,
+            **identity,
+            ops=ops,
+            before_publication=reject,
+        )
+
+    assert observed == ["semantic-validation", "final-guard"]
+    assert not verified.exists()
 
 
 def test_new_reporting_ledger_directories_are_durably_linked(

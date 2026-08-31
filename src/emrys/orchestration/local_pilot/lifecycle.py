@@ -1411,8 +1411,10 @@ def _admit_request(
                 observed_implementation_content_sha256=implementation_identity(source_root),
                 observed_backend_semantics_sha256=backend_semantics_identity(source_root),
             )
+            inspection.admit_bound_processing_source(root, successor)
         except (
             KeyError,
+            inspection.InspectionError,
             RunImplementationError,
             orchestration_contracts.ContractValidationError,
         ) as exc:
@@ -1829,6 +1831,13 @@ def _run_attempt_locked(
                 raise LifecycleError("Attempt request snapshot changed during execution")
         except Exception as exc:
             runtime_blockers.append(str(exc))
+        if authority is not None:
+            try:
+                inspection.admit_bound_processing_source(root, authority)
+            except (OSError, inspection.InspectionError) as exc:
+                runtime_blockers.append(
+                    f"Processing source changed during workflow execution: {exc}"
+                )
         attempts, receipts, chain_blockers = inspection.inspect_attempt_chain(root)
         evidence = inspection.inspect_evidence(
             root,

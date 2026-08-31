@@ -381,6 +381,7 @@ def _attempt_reporting_materialization(
     *,
     analysis: AnalysisRevision | None = None,
     attempt_id: str | None = None,
+    processing_source_root: Path | None = None,
 ) -> tuple[
     tuple[tuple[Path, bytes], ...],
     dict[str, Any],
@@ -388,7 +389,12 @@ def _attempt_reporting_materialization(
 ]:
     """Project identity-neutral reporting inputs for one Attempt adapter."""
 
-    reporting = build_reporting_bundle(source, profile, analysis)
+    reporting = build_reporting_bundle(
+        source,
+        profile,
+        analysis,
+        processing_source_root,
+    )
     projection_data = {
         "reference_contract": reporting.reference_contract_bytes,
         "primary_analysis_policy": reporting.primary_analysis_policy_bytes,
@@ -618,10 +624,6 @@ def _admit_identity(
         raise ReportingBoundaryError(
             "Workflow config does not bind the attempt source checkout"
         )
-    if config.get("artifact_source_root") != str(root):
-        raise ReportingBoundaryError(
-            "Workflow config artifact_source_root must equal run_root"
-        )
     if require_publishable_attempt:
         try:
             attest_source(
@@ -791,6 +793,7 @@ def publish_verified(
     workflow_attempt_path: Path,
     workflow_config_path: Path,
     ops: ReportingBoundaryOps = DEFAULT_REPORTING_BOUNDARY_OPS,
+    before_publication: Callable[[], None] | None = None,
 ) -> tuple[tuple[str, Path], ...]:
     """Semantically validate a completed transaction and publish proof last."""
 
@@ -882,6 +885,8 @@ def publish_verified(
         raise ReportingBoundaryError(
             "Reporting run-lock identity changed before completion publication"
         )
+    if before_publication is not None:
+        before_publication()
     ops.publish_bytes(
         paths.verified, orchestration_contracts.canonical_json_bytes(record)
     )

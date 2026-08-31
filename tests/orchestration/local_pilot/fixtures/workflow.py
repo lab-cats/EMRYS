@@ -1130,7 +1130,6 @@ def build(
         "profile_path": str(profile_snapshot),
         "workflow_attempt_id": workflow_attempt_id,
         "source_checkout": str(REPO_ROOT.resolve(strict=True)),
-        "artifact_source_root": str(run_root),
         "reference_contract_path": str(projection_paths["reference_contract"]),
         "primary_analysis_policy_path": str(
             projection_paths["primary_analysis_policy"]
