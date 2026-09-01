@@ -144,7 +144,7 @@ SHELL_ENTRYPOINT_PATHS = {
         "src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
     ),
     "scientific_context_projection.sh": Path(
-        "src/emrys/analyses/scientific_context_projection/"
+        "src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/"
         "scientific_context_projection.sh"
     ),
 }
@@ -169,7 +169,7 @@ R_ENTRYPOINT_PATHS = {
         "step_09_cmh_editing_site_calling.R"
     ),
     "scientific_context_projection.R": Path(
-        "src/emrys/analyses/scientific_context_projection/"
+        "src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/"
         "scientific_context_projection.R"
     ),
 }

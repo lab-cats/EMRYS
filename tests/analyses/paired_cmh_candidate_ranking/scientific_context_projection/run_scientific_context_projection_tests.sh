@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
 cd "$repo_root"
 
 rscript_request="${SCIENTIFIC_CONTEXT_TEST_RSCRIPT_BIN:-${RSCRIPT_BIN_OVERRIDE:-Rscript}}"
@@ -32,7 +32,7 @@ case "$fake_contract" in
             exit 1
         }
         "$rscript_bin" \
-            src/emrys/analyses/scientific_context_projection/scientific_context_projection.R \
+            src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.R \
             --help >/dev/null
         printf 'SKIP: explicit fake-R contract logged one Step 10 invocation.\n'
         exit 0
@@ -65,4 +65,4 @@ python_bin="${REPORT_PYTHON_BIN:-$repo_root/.venv/bin/python}"
 
 RSCRIPT_BIN_OVERRIDE="$rscript_bin" \
     "$python_bin" -m pytest -q \
-    tests/analyses/scientific_context_projection/test_real_r_projection.py
+    tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_real_r_projection.py

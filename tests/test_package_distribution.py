@@ -37,8 +37,10 @@ RESOURCE_PATHS = (
     "emrys/contracts/schemas/artifacts/v2/artifact_record.schema.json",
     "emrys/contracts/schemas/artifacts/v1/common.schema.json",
     "emrys/contracts/schemas/artifacts/v2/run_summary.schema.json",
+    "emrys/contracts/schemas/artifacts/v3/run_summary.schema.json",
     "emrys/contracts/schemas/artifacts/v3/report_receipt.schema.json",
     "emrys/contracts/schemas/artifacts/v4/report_receipt.schema.json",
+    "emrys/contracts/schemas/artifacts/v5/report_receipt.schema.json",
     "emrys/contracts/schemas/orchestration/v1/project.schema.json",
     "emrys/contracts/schemas/orchestration/v2/profile.schema.json",
     "emrys/contracts/schemas/orchestration/v2/request.schema.json",
@@ -49,6 +51,18 @@ RESOURCE_PATHS = (
     "emrys/resources/runtime/runtime_policy.tsv",
     "emrys/resources/runtime/pixi.toml",
     "emrys/resources/runtime/pixi.lock",
+    "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_common.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_evaluation.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_output.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_validation.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh",
+    "emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/resources/pum_motifs_v1.tsv",
+    "emrys/libraries/argument_parsing.sh",
+    "emrys/libraries/executable_resolution.sh",
+    "emrys/libraries/file_checks.sh",
+    "emrys/libraries/input_contract.R",
     "emrys/contracts/schemas/orchestration/v1/execution.schema.json",
     "emrys/contracts/schemas/orchestration/v1/reference.schema.json",
     "emrys/contracts/schemas/orchestration/v1/policy.schema.json",
@@ -191,6 +205,20 @@ def inspect_wheel(wheel: Path) -> None:
         }
         entry_points = archive.read(entry_points_member).decode().splitlines()
         assert "emrys = emrys.__main__:main" in entry_points
+        module_entry_point = (
+            "emrys.paired-cmh = "
+            "emrys.analyses.paired_cmh_candidate_ranking:analysis_module_v1"
+        )
+        reporter_entry_point = (
+            "emrys.paired-cmh = "
+            "emrys.analyses.paired_cmh_candidate_ranking_report:render_scientific_report"
+        )
+        assert entry_points[entry_points.index(module_entry_point) - 1] == (
+            "[emrys.analysis_modules]"
+        )
+        assert entry_points[entry_points.index(reporter_entry_point) - 1] == (
+            "[emrys.analysis_reporters]"
+        )
         assert set(RESOURCE_PATHS) <= members
         assert PUBLIC_ONBOARDING_MODULES <= members
         assert PRIVATE_RUNTIME_MODULES <= members
@@ -294,6 +322,80 @@ def installed_probe(environment_python: Path, cwd: Path) -> dict[str, object]:
     return json.loads(probe.stdout)
 
 
+def installed_analysis_probe(environment_python: Path, cwd: Path) -> dict[str, object]:
+    program = """
+import json
+from pathlib import Path
+
+from emrys import analyses
+
+loaded = analyses.load_analysis_module("emrys.paired-cmh")
+configuration = {
+    "control_condition": "EV",
+    "treatment_condition": "PUM1",
+    "background_condition": None,
+    "rna_ref": "A",
+    "rna_alt": "G",
+    "min_sample_dp": 1,
+    "mean_dp_threshold": 50,
+    "fdr_threshold": 0.05,
+    "common_or_threshold": 1.2,
+    "absolute_difference_threshold": 0.005,
+    "background_max_fraction": 0.01,
+}
+context = analyses.TaskPlanningContextV1(
+    reference_id="reference-1",
+    cohort_id="cohort-1",
+    analysis_id="analysis-1",
+    sample_manifest=Path("/inputs/samples.tsv"),
+    partition_manifest=Path("/inputs/partitions.tsv"),
+    reference_fasta=Path("/inputs/reference.fa"),
+    reference_gtf=Path("/inputs/reference.gtf"),
+    source_commit="a" * 40,
+    configuration=configuration,
+    output_path=lambda adapter: Path("/outputs") / adapter,
+    artifact_path=lambda step, scope, adapter: (
+        Path("/inputs") / step / scope / adapter
+    ),
+    runtime_path=lambda check_id: f"/runtime/{check_id}",
+    python_command=lambda command: ("python", *command),
+    r_owner_command=lambda command: command,
+    validator_command=lambda command: ("emrys", "validate", *command),
+)
+plans = [task.plan(context) for task in loaded.descriptor.tasks]
+step09_r = plans[0].producer_argv[plans[0].producer_argv.index("--r-script") + 1]
+step10_shell = next(
+    value for value in plans[1].producer_argv
+    if value.endswith("scientific_context_projection.sh")
+)
+step10_r = plans[1].producer_argv[plans[1].producer_argv.index("--r-script") + 1]
+motif = next(
+    str(path) for path in plans[1].input_paths if path.name == "pum_motifs_v1.tsv"
+)
+print(json.dumps({
+    "implementation_root": str(loaded.provider.package.root),
+    "selected_files": [step09_r, step10_shell, step10_r, motif],
+    "step10_source_commit": plans[1].producer_argv[
+        plans[1].producer_argv.index("--git-commit") + 1
+    ],
+}))
+"""
+    probe = run_command(
+        [
+            str(environment_python),
+            "-X",
+            "pycache_prefix=/dev/null",
+            "-I",
+            "-c",
+            program,
+        ],
+        cwd=cwd,
+        hostile_pythonpath=True,
+    )
+    require_success(probe)
+    return json.loads(probe.stdout)
+
+
 def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -> None:
     fixture = FIXTURE.build_fixture(tmp_path / "report-fixture")
     FIXTURE.publish_run_summary(fixture)
@@ -323,6 +425,35 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     assert str((REPO_ROOT / "src").resolve()) not in {
         str(Path(entry).resolve()) for entry in observed["sys_path"] if entry
     }
+    analysis = installed_analysis_probe(environment_python, arbitrary_cwd)
+    implementation_root = Path(str(analysis["implementation_root"])).resolve()
+    selected_files = tuple(
+        Path(str(value)).resolve() for value in analysis["selected_files"]
+    )
+    assert implementation_root.is_relative_to(environment_python.parents[1].resolve())
+    assert not implementation_root.is_relative_to(REPO_ROOT.resolve())
+    assert all(
+        path.is_file() and path.is_relative_to(implementation_root)
+        for path in selected_files
+    )
+    assert {path.name for path in selected_files} == {
+        "step_09_cmh_editing_site_calling.R",
+        "scientific_context_projection.R",
+        "scientific_context_projection.sh",
+        "pum_motifs_v1.tsv",
+    }
+    assert analysis["step10_source_commit"] == "a" * 40
+    step10_help = run_command(
+        [
+            "/bin/bash",
+            str(next(path for path in selected_files if path.suffix == ".sh")),
+            "--help",
+        ],
+        cwd=arbitrary_cwd,
+        hostile_pythonpath=True,
+    )
+    require_success(step10_help)
+    assert "--git-commit COMMIT" in step10_help.stdout
     module_help = run_command(
         [str(environment_python), "-I", "-m", "emrys", "--help"],
         cwd=arbitrary_cwd,

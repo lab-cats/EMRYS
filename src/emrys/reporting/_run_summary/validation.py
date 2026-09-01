@@ -13,7 +13,7 @@ from emrys.reporting._artifact_index import api as adapter
 
 from .inputs import _fail, _require_regular_file
 from .models import (
-    INTERPRETATION_BOUNDARY,
+    HISTORICAL_RUN_SUMMARY_SCHEMA_VERSION,
     PRODUCER,
     PRODUCER_VERSION,
     QC_SUMMARY_HEADER,
@@ -38,7 +38,13 @@ def _validate_document(
     *,
     source_root: Path,
 ) -> None:
-    errors = contracts.schema_errors("run-summary", document)
+    version = str(document.get("schema_version", ""))
+    errors = sorted(
+        contracts.schema_validator("run-summary", version).iter_errors(
+            document
+        ),
+        key=lambda error: tuple(str(part) for part in error.absolute_path),
+    )
     if errors:
         details = "\n".join(
             f"- {contracts.format_json_path(error.absolute_path)}: {error.message}"
@@ -103,7 +109,6 @@ def _validate_existing_summary(
         _fail("Existing run-summary receipt is not complete")
     for field, expected in (
         ("producer", PRODUCER),
-        ("run_summary_schema_version", RUN_SUMMARY_SCHEMA_VERSION),
         ("run_summary_tsv_schema_version", RUN_SUMMARY_TSV_SCHEMA_VERSION),
         ("qc_summary_tsv_schema_version", QC_SUMMARY_TSV_SCHEMA_VERSION),
         (
@@ -113,7 +118,17 @@ def _validate_existing_summary(
     ):
         if receipt[field] != expected:
             _fail(f"Existing run-summary receipt field is invalid: {field}")
-    if receipt["producer_version"] != PRODUCER_VERSION:
+    if receipt["run_summary_schema_version"] not in {
+        HISTORICAL_RUN_SUMMARY_SCHEMA_VERSION,
+        RUN_SUMMARY_SCHEMA_VERSION,
+    }:
+        _fail(
+            "Existing run-summary receipt field is invalid: run_summary_schema_version"
+        )
+    if receipt["producer_version"] not in {
+        HISTORICAL_RUN_SUMMARY_SCHEMA_VERSION,
+        PRODUCER_VERSION,
+    }:
         _fail("Existing run-summary receipt field is invalid: producer_version")
     _parse_history(
         receipt,
@@ -164,7 +179,9 @@ def _validate_existing_summary(
     if paths.summary_json.read_bytes() != adapter.canonical_json_bytes(document):
         _fail("Existing run-summary JSON is not canonical")
     schema_errors = list(
-        contracts.schema_validator("run-summary").iter_errors(document)
+        contracts.schema_validator(
+            "run-summary", str(document.get("schema_version", ""))
+        ).iter_errors(document)
     )
     if schema_errors:
         _fail("Existing run-summary JSON fails its schema")
@@ -180,6 +197,8 @@ def _validate_existing_summary(
             "Existing run-summary receipt Git commit differs from its "
             "canonical JSON provenance"
         )
+    if receipt["run_summary_schema_version"] != document["schema_version"]:
+        _fail("Existing run-summary receipt schema differs from its canonical JSON")
     if (
         receipt["producer"] != document["provenance"]["producer"]
         or receipt["producer_version"] != document["provenance"]["producer_version"]
@@ -252,7 +271,8 @@ def _validate_existing_summary(
         if not adapter.SHA256_RE.fullmatch(receipt[field]):
             _fail(f"Existing run-summary receipt hash is invalid: {field}")
     if receipt["summary_state"] != document["summary_state"] or (
-        receipt["interpretation_boundary"] != document["interpretation_boundary"]
+        receipt["interpretation_boundary"]
+        != str(document.get("interpretation_boundary", ""))
     ):
         _fail("Existing run-summary receipt status differs from JSON")
     return document
@@ -299,7 +319,7 @@ def _build_receipt_row(
         "artifacts_index_sha256": artifacts_sha256,
         "artifact_record_count": len(document["artifacts"]),
         "record_set_sha256": artifact_receipt["record_set_sha256"],
-        "run_summary_schema_version": RUN_SUMMARY_SCHEMA_VERSION,
+        "run_summary_schema_version": document["schema_version"],
         "run_summary_tsv_schema_version": RUN_SUMMARY_TSV_SCHEMA_VERSION,
         "qc_summary_tsv_schema_version": QC_SUMMARY_TSV_SCHEMA_VERSION,
         "run_summary_receipt_schema_version": (RUN_SUMMARY_RECEIPT_SCHEMA_VERSION),
@@ -313,7 +333,7 @@ def _build_receipt_row(
         "qc_summary_tsv_sha256": adapter.sha256_bytes(qc_summary_bytes),
         "qc_summary_tsv_row_count": qc_summary_row_count,
         "summary_state": document["summary_state"],
-        "interpretation_boundary": INTERPRETATION_BOUNDARY,
+        "interpretation_boundary": document.get("interpretation_boundary", ""),
         "published_output_count": 4,
         "run_summary_attempt_id": attempt_id,
         "supersedes_run_summary_attempt_id": previous_attempt_id or "",
@@ -321,7 +341,7 @@ def _build_receipt_row(
             [*previous_attempt_history, attempt_id]
         ),
         "producer": PRODUCER,
-        "producer_version": PRODUCER_VERSION,
+        "producer_version": document["provenance"]["producer_version"],
         "git_commit": git_commit,
         "started_at": started_at,
         "finished_at": finished_at,

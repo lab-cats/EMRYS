@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
+import importlib.resources
+import inspect
 import os
+import re
 import stat
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -12,7 +17,11 @@ from typing import Protocol
 # The renamed package namespace starts a new digest domain. A v2 EMRYS digest
 # cannot be mistaken for a pre-cutover installed-package identity.
 _DIGEST_DOMAIN = b"emrys-installed-package-tree-v2\0"
+_PYTHON_DIGEST_DOMAIN = b"emrys-installed-python-package-tree-v1\0"
 _READ_CHUNK_BYTES = 1024 * 1024
+_PROVIDER_RE = re.compile(
+    r"(?P<package>[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*):(?P<name>[A-Za-z_][A-Za-z0-9_]*)"
+)
 
 
 class InstalledPackageIdentityError(RuntimeError):
@@ -29,6 +38,35 @@ class InstalledPackageTreeIdentity:
 
     root: Path
     sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class InstalledProviderV1:
+    """One exact callable entry point and its installed package identity."""
+
+    provider: Callable[..., object]
+    entry_point_value: str
+    distribution_name: str
+    distribution_version: str
+    package: InstalledPackageTreeIdentity
+
+    def require_callables(self, *values: Callable[..., object], label: str) -> None:
+        """Require additional callable implementations inside this package."""
+
+        for value in (self.provider, *values):
+            try:
+                source = inspect.getsourcefile(value)
+                path = None if source is None else Path(source).resolve(strict=True)
+            except (OSError, TypeError):
+                path = None
+            if (
+                path is None
+                or not path.is_file()
+                or not path.is_relative_to(self.package.root)
+            ):
+                raise InstalledPackageIdentityError(
+                    f"{label} callable is outside its admitted package"
+                )
 
 
 def _metadata_identity(value: os.stat_result) -> tuple[int, ...]:
@@ -116,6 +154,8 @@ def _digest_directory(
     root: Path,
     directory: Path,
     digest: _Digest,
+    *,
+    ignore_python_cache: bool = False,
 ) -> None:
     try:
         before = directory.stat(follow_symlinks=False)
@@ -145,6 +185,8 @@ def _digest_directory(
     )
     for entry in entries:
         path = Path(entry.path)
+        if ignore_python_cache and entry.name == "__pycache__":
+            continue
         relative = (
             path.relative_to(root).as_posix().encode("utf-8", errors="surrogateescape")
         )
@@ -159,7 +201,12 @@ def _digest_directory(
                 f"Installed package tree contains a symbolic link: {path}"
             )
         if stat.S_ISDIR(admitted.st_mode):
-            _digest_directory(root, path, digest)
+            _digest_directory(
+                root,
+                path,
+                digest,
+                ignore_python_cache=ignore_python_cache,
+            )
         elif stat.S_ISREG(admitted.st_mode):
             data = _read_regular_file(path, admitted)
             _entry_frame(
@@ -185,14 +232,9 @@ def _digest_directory(
         )
 
 
-def installed_package_tree_identity(root: Path) -> InstalledPackageTreeIdentity:
-    """Bind an exact canonical tree by kind, path, mode, size, and file bytes.
-
-    Traversal order and filesystem timestamps do not enter the digest. Symbolic
-    links and non-regular, non-directory entries are rejected rather than
-    followed or silently omitted.
-    """
-
+def _tree_identity(
+    root: Path, *, digest_domain: bytes, ignore_python_cache: bool = False
+) -> InstalledPackageTreeIdentity:
     if not root.is_absolute():
         raise InstalledPackageIdentityError(
             f"Installed package root must be absolute: {root}"
@@ -212,13 +254,91 @@ def installed_package_tree_identity(root: Path) -> InstalledPackageTreeIdentity:
         raise InstalledPackageIdentityError(
             f"Installed package root must be one canonical real directory: {root}"
         )
-    digest = hashlib.sha256(_DIGEST_DOMAIN)
-    _digest_directory(root, root, digest)
+    digest = hashlib.sha256(digest_domain)
+    _digest_directory(
+        root,
+        root,
+        digest,
+        ignore_python_cache=ignore_python_cache,
+    )
     return InstalledPackageTreeIdentity(root=root, sha256=digest.hexdigest())
+
+
+def installed_package_tree_identity(root: Path) -> InstalledPackageTreeIdentity:
+    """Bind an exact canonical tree by kind, path, mode, size, and file bytes.
+
+    Traversal order and filesystem timestamps do not enter the digest. Symbolic
+    links and non-regular, non-directory entries are rejected rather than
+    followed or silently omitted.
+    """
+
+    return _tree_identity(root, digest_domain=_DIGEST_DOMAIN)
+
+
+def installed_python_package_identity(root: Path) -> InstalledPackageTreeIdentity:
+    """Bind installed Python package content while ignoring interpreter caches."""
+
+    return _tree_identity(
+        root,
+        digest_domain=_PYTHON_DIGEST_DOMAIN,
+        ignore_python_cache=True,
+    )
+
+
+def admit_installed_provider(
+    group: str, name: str, *, label: str
+) -> InstalledProviderV1:
+    """Admit one package-level callable entry point and its exact provenance."""
+
+    matches = tuple(
+        item
+        for item in importlib.metadata.entry_points(group=group)
+        if item.name == name
+    )
+    if len(matches) != 1:
+        detail = "not installed" if not matches else "selection is ambiguous"
+        raise InstalledPackageIdentityError(f"{label} {detail}: {name!r}")
+    entry_point = matches[0]
+    matched = _PROVIDER_RE.fullmatch(entry_point.value)
+    if matched is None:
+        raise InstalledPackageIdentityError(f"{label} provider must be package-level")
+    try:
+        provider = entry_point.load()
+        if not callable(provider):
+            raise TypeError("entry point is not callable")
+        root = Path(
+            os.path.abspath(os.fspath(importlib.resources.files(matched["package"])))
+        )
+        package = installed_python_package_identity(root)
+    except Exception as exc:
+        raise InstalledPackageIdentityError(
+            f"{label} provider could not be loaded: {name!r}"
+        ) from exc
+    distribution = getattr(entry_point, "dist", None)
+    distribution_name = getattr(distribution, "name", None) or (
+        distribution.metadata.get("Name") if distribution is not None else None
+    )
+    distribution_version = getattr(distribution, "version", None)
+    if distribution_name is None or distribution_version is None:
+        raise InstalledPackageIdentityError(
+            f"{label} entry point has no distribution provenance"
+        )
+    admitted = InstalledProviderV1(
+        provider,
+        entry_point.value,
+        str(distribution_name),
+        str(distribution_version),
+        package,
+    )
+    admitted.require_callables(label=label)
+    return admitted
 
 
 __all__ = (
     "InstalledPackageIdentityError",
     "InstalledPackageTreeIdentity",
+    "InstalledProviderV1",
+    "admit_installed_provider",
     "installed_package_tree_identity",
+    "installed_python_package_identity",
 )

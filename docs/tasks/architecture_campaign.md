@@ -2292,16 +2292,34 @@ Operational simplification must not distract from scientific architecture.
 - Compatible per-sample work through Step 06 should be reusable for separately
   identified cohort, subset, sensitivity, or downstream analyses beginning at
   the cohort-dependent boundary.
-- A collaborator-extensible analysis library may support differential or other
-  analyses through typed inputs/outputs, provenance, validation, trust level,
-  resources, failure semantics, and report integration.
-- The proposal that scientific modules should not require editing unrelated
-  owners or turn EMRYS into a generic workflow framework remains an exact
-  module-design choice for `ANALYSIS-02` and `ARCH-01`.
+- The completed `ANALYSIS-02` v1 boundary admits one explicitly selected
+  installed `emrys.analysis_modules` entry point. Its closed descriptor owns
+  configuration admission and one or two downstream Step 09/10 tasks with
+  typed predecessor inputs, result and validation outputs, dependencies,
+  planning/failure boundaries, minimum memory, admitted runtime needs, and one
+  review-relevant implementation package. Fixed processing through Step 08,
+  immutable Analysis/Run identity, private `TaskDispatch`, the existing
+  backend, and evidence admission remain EMRYS-owned. The paired-CMH Step 09
+  and Step 10 implementations and assets now live inside that package, while
+  the external-provider fixture proves the same extension boundary without a
+  built-in/external behavior split.
+- Scientific reporting is selected separately at report time through the exact
+  installed `emrys.analysis_reporters` entry point keyed by module ID. The
+  reporter package and content hash are receipt identity only; they do not
+  enter Analysis, Execution Plan, or immutable Run identity. Each reporter
+  renders bespoke scientific HTML from one admitted artifact/input roster and
+  declares its interpretation boundary. Fixed `emrys.reporting` separately
+  owns the generic evidence-and-operations view, common self-contained HTML
+  support, validation, default invocation, opt-out, independent regeneration,
+  and receipt-last publication. Current publication writes only run-summary v3
+  and report-receipt v5; exact v2/v4 readers remain read-only historical paths.
+  No generic report schema, customizable-section DSL, or retained-evidence
+  migration is introduced.
 - The algorithms, parameters, assumptions, interpretation boundaries, and
   implementation needed for scientific review must remain recognizable and
-  inspectable under binding `AC-GUARD-002`; the exact module API and placement
-  remain open.
+  inspectable under binding `AC-GUARD-002`; the v1 entry-point and task-centric
+  module boundary is selected without a universal Stage hierarchy, workflow
+  language, second scheduler, or auto-installation mechanism.
 
 The intake separately recommends a scientific audit of Steps 07–09, with
 particular attention to:
@@ -2856,6 +2874,18 @@ untouched.
 | Retirement | The production-dead direct dry-run, replace/backup route, implicit executable and token fallbacks, public shell path, and shell-only suite retire without a compatibility wrapper. Materialization is the sole production caller and now invokes the private module through the existing controlled Python boundary. No retained evidence is moved, rewritten, or deleted; unfinished historical Runs remain bound to their recorded checkout. |
 | Compression and verification | The exact category accounting and hosted evidence are recorded in the findings matrix. One product file replaces one product file, while the 740-line shell owner and 1,216-line shell suite retire. `AC-SLICE-17` remains Open for other separately approved reductions. |
 
+### 13.26 Bounded slice record: collaborator analysis and reporting cutover
+
+| Surface/category | Selected implementation and boundary |
+|---|---|
+| Module and immutable computation identity | One exact installed `emrys.analysis_modules` provider owns a closed v1 descriptor and one implementation package for its Step 09/10 computation. The built-in paired-CMH Step 10 producer, R program, motif catalog, validator, and contracts move under that package caller-completely. Module distribution, entry point, descriptor/configuration, and implementation content are admitted and re-admitted as computation identity. There is no `trust == external` field or behavior gate. Run remains the immutable plan. |
+| Report and evidence ownership | A separate installed `emrys.analysis_reporters` entry point, keyed by module ID and loaded only at report time, owns bespoke scientific rendering. Its provider/package identity is written only to report-receipt v5 and cannot change Run identity. The paired scientific renderer and candidate/figure/context helpers move to the sibling report-provider package; generic `emrys.reporting` retains one core evidence-and-operations renderer, public immutable report contracts/support, generic safety/accessibility/self-contained validation, and receipt-last publication. Receipt attribution separately names the computation module, scientific report provider plus core rendering support, and fixed evidence renderer. Default reporting after a full Run, `--no-report`, independent regeneration, and report failure without scientific invalidation remain unchanged. |
+| Current and historical contracts | Run-summary v3 and report-receipt v5 are the sole current writers. Run-summary v2 and report-receipt v4 remain exact read-only historical readers and are never rewritten or adopted by the current publisher. Current section identity is module-neutral (`analysis-sources-section`); no current compatibility alias, built-in/static Step 09/10 routing, or parallel report route remains. |
+| Protection parity | The sole admitted artifact roster enforces required/present/complete status, exact descriptor Step/scope/path/suffix/media identity, unique adapters, stable snapshots, and report-provider returned-input closure. Extra provider inputs must be exact admitted artifacts, module/reporter package content, immutable Run-contract hashes, or receipt-bound paths; arbitrary Run-root reads fail. Receipt-last rechecks, source attestation, untrusted-provider failure, no-follow publication, recovery, and historical validation remain. Generic evidence HTML rejects scientific sections, figures, and candidate records. The paired provider retains exact figure roster/panel/SVG/guide checks, nested-figure rejection, selected-candidate count/index/record binding, candidate evidence groups, static/accessibility limits, and scientific terminology. Evidence still carries per-figure hashes/bytes, Matplotlib/Logomaker/policy versions, sample/reference/partition and Step 10 receipt-bound input identities, failed expected scopes, result links, and explicit Jinja2/core-renderer identity. |
+| Duplicate, impossible-state, compatibility, and deletion audit | Reporting-local module selection and entry-point/distribution/package hashing retire in favor of analysis readmission and one shared installed-provider admission owner. Reporter-side artifact reselection and identity reconstruction, paired-versus-module view/validation branches, flattened provider identity mirrors, static built-in renderer attribution, redundant report-attempt computation-hash input, and paired scientific helpers in generic reporting retire caller-completely. The obsolete parallel artifact-roster owner and transition `SRC-TRANS-013` retire; v2/v4 survive only as exact historical readers. No generated/configuration wrapper, dense god module, second artifact owner, or retained evidence is used to offset growth. Low-risk same-process mirrors retire only where the immutable admitted object is the surviving authority; user-facing and evidence protections keep the mapped owners above. |
+| Shell, logging, and mutation disposition | The Step 10 scientific-context shell is `KEEP`: it remains the native cross-language R invocation and multi-output lock/staging/rollback/durability/receipt-last transaction owner. A Python translation would retain the R computation and add another boundary without demonstrated product reduction; conversion requires its own caller-complete net-reductive slice. Reporting continues through the existing Run or standalone-report `LOG-05` operation and adds no log authority. Reporter selection and receipt publication add no mutable Run field. |
+| Accounting, evidence, and non-goals | Against baseline `2856d0ed`, maintained product code is `+4803/-3516`, net `+1287`, within the explicitly approved `+1300` exception ceiling, with zero net product-file growth. Protection/test code is `+2824/-533`, net `+2291`, with two net test files; it is reported separately and does not offset product growth. Configuration/schema/tooling is `+310/-243`, net `+67`; documentation is `+143/-29`, net `+114`; retained evidence is unchanged. Final local reporting evidence is `198/198` (197 integrated reporting cases plus one isolated installed-wheel case); artifact-schema contracts are `46/46`; source/dependency and documentation gates are `77/77`; complementary public/package/orchestration gates are 438 passed with four intentional skips; core contracts/provider/package gates are 182 passed with one deselected. The materialization selection produced 99 unchanged passes before exposing two report-boundary failures; after their bounded fixes, both exact nodes passed in 288.31 seconds and eight direct status/security protections passed. A fresh stable rerun of the nine previously source-drifted or environment-blocked workflow nodes passed 9/9. Targeted Ruff, Python compilation, and diff checks pass. This is local engineering evidence, not institutional/site, multi-node, production, failure/recovery, scientific-review, or biological proof. The slice does not touch the stale dashboard, begin `DOC-05`, select a Run Bundle, add an Artifact Store, or perform generalized-backend work. |
+
 ## 14. Measurement plan
 
 Measurement is required so the campaign does not merely move complexity.
@@ -3073,7 +3103,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `OBS-01` | **Complete.** Grouped Run control now keeps Run/work/reporting, meaningful phases, Results/evidence, warnings/failures, and the log path normal; operational paths/resources/profile/streams are verbose; exact engine/scheduler/task commands are debug. Durable evidence and machine output are unchanged. |
 | `OBS-02` | High-level scientific progress, public run status, elapsed time, completion/failure, and links to recovery/inspection |
 | `ANALYSIS-01` | **Complete.** Named Analyses may select Dataset samples explicitly or default to all samples, stop at the immutable Step 06 boundary, and launch a separately identified exact-subset downstream Run from one stationary successful processing Run. The private selected TSV is Attempt-bound backend projection, not another authored/evidence authority. Generalized collaborator modules remain `ANALYSIS-02`. |
-| `ANALYSIS-02` | Collaborator-extensible modules with typed scientific contracts; scientific algorithms, assumptions, interpretation, and review-relevant implementation remain visible. The lightweight extension mechanism is open within the binding prohibition on a mandatory universal Stage hierarchy, registry, workflow language, or second scheduler |
+| `ANALYSIS-02` | **Complete.** One exact installed v1 analysis-module provider declares configuration admission, one or two downstream Step 09/10 tasks, typed dependencies/artifacts, validation, failure/resource/runtime needs, and one computation package. The built-in paired-CMH Step 09/10 owners and assets are inside that package; an external fixture proves the same boundary without a trust-based behavior split. A separate report-time provider owns bespoke scientific rendering without entering Run identity, while fixed EMRYS reporting owns the generic evidence-and-operations view, validation, default/disabled/independent operation, and receipt-last publication. Current v3/v5 writers and exact historical v2/v4 readers are distinct. The approved product-growth exception closes at `+1287` against baseline `2856d0ed`, below the `+1300` ceiling, with zero product-file growth and no retained-evidence deletion. No universal Stage hierarchy, workflow language, second scheduler, auto-installation, generic report schema, customizable-section DSL, Artifact Store, Run Bundle, dashboard, `DOC-05`, or generalized backend is introduced. |
 | `ARCH-01` | Consumes the completed prerequisites and current vertical cutovers. Sections 13.6, 13.19, and 13.20 leave one execution-profile owner, one private whole-Run Slurm transport/bootstrap, one closed project-v1/named-Analysis source, and grouped control while retiring split configuration, the generated wrapper, all sixteen owner-local scheduler routes, and active request-v3 intake. Run remains immutable, placement/diagnostics remain Attempt-local, Attempt-v1 evidence and Results authority remain unchanged, and no second backend, scheduler, facade, Artifact Store, or evidence deletion is introduced. Broader package, generalized storage, remaining caller migration, and only demonstrated policy/artifact consolidations stay Open under the existing-tool-first protocol. Generalized-backend evaluation remains required near closure. |
 | `REPORT-03` | Primary-scientific-findings hierarchy with evidence and operational detail progressively disclosed |
 | `REPORT-04` | Preserve the requested ability to render nine A-through-I selections when the admitted result warrants them |

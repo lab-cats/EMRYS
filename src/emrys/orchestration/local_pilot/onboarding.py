@@ -377,8 +377,9 @@ def _project_yaml(answers: Mapping[str, object]) -> bytes:
     if match is None or match[1] == match[2]:
         raise OnboardingError("target RNA change must name two different bases, like A>G")
     analysis = {
+        "module": "emrys.paired-cmh",
         "partitions": str(answers["partition_manifest"]),
-        **{
+        "config": {
             key: answers[key]
             for key in (
                 "control_condition",
@@ -392,8 +393,8 @@ def _project_yaml(answers: Mapping[str, object]) -> bytes:
                 "background_max_fraction",
             )
         },
-        "target_change": target,
     }
+    analysis["config"]["target_change"] = target
     document = {
         "schema_version": "emrys.project.v1",
         "dataset": {"samples": str(answers["sample_manifest"])},
@@ -866,16 +867,10 @@ def validate_from_args(arguments: argparse.Namespace) -> int:
     print(f"  Analyses: {len(project.analyses)}")
     for analysis in project.analyses:
         source = analysis.workflow_inputs
-        control = source["analysis"]["policy"]["control_condition"]
-        pair_count = len(
-            {
-                row["replicate"]
-                for row in source["samples"]["rows"]
-                if row["condition"] == control
-            }
-        )
+        descriptor = analysis.module.descriptor
         print(
-            f"    {analysis.name}: {pair_count} paired strata, "
+            f"    {analysis.name}: {descriptor.module_id}@{descriptor.module_version}, "
+            f"{len(source['samples']['rows'])} samples, "
             f"{len(source['partitions']['rows'])} partitions"
         )
     print(

@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
+
+from emrys.contracts.artifacts import (
+    INVENTORY_HEADER,
+    SAFE_ID_RE,
+    ContractValidationError,
+    scope_key,
+)
 
 _MODULE_PATH = Path(__file__).resolve()
 
@@ -15,16 +21,18 @@ SCHEMA_FILES = {
     "run-summary": SCHEMA_ROOT / "v2" / "run_summary.schema.json",
     "report-receipt": SCHEMA_ROOT / "v4" / "report_receipt.schema.json",
 }
-INVENTORY_HEADER = (
-    "artifact_id",
-    "step_id",
-    "scope_type",
-    "scope_id",
-    "adapter",
-    "source_path",
-    "required",
-)
-SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+VERSIONED_SCHEMA_FILES = {
+    ("run-summary", "3.0.0"): SCHEMA_ROOT / "v3" / "run_summary.schema.json",
+    ("report-receipt", "5.0.0"): SCHEMA_ROOT / "v5" / "report_receipt.schema.json",
+}
+CROSS_SCHEMA_FILES = {
+    "orchestration-common": (
+        SCHEMA_ROOT.parent / "orchestration" / "v1" / "common.schema.json"
+    ),
+    "analysis-policy": (
+        SCHEMA_ROOT.parent / "orchestration" / "v1" / "policy.schema.json"
+    ),
+}
 BOOLEAN_VALUES = {"true", "false"}
 SCOPE_TYPES = {
     "reference",
@@ -66,7 +74,3 @@ CLUSTER_VALIDATION_REQUIREMENTS = (
     ("failed cluster proof", "proof_status", {"failed"}, {"cluster_log"}),
 )
 CLUSTER_VALIDATION_TRIGGER_STATUSES = {"passed", "failed", "proven"}
-
-
-class ContractValidationError(RuntimeError):
-    """Raised when a schema, record, or inventory contract is invalid."""

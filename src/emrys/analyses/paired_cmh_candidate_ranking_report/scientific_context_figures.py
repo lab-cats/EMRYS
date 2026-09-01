@@ -24,14 +24,15 @@ from .figures import (
     _render_svg,
     _short_candidate_id,
 )
-from .models import (
-    ComputationalTable,
-    ReportRenderError,
+from emrys.reporting import ReportProviderError as ReportRenderError
+
+from .computational import ComputationalTable
+from .figures import (
     SCIENTIFIC_FIGURE_LABELS,
-    ScientificContextResults,
     ScientificFigure,
     ScientificFigurePanel,
 )
+from .scientific_context import ScientificContextResults
 
 _BASES = ("A", "C", "G", "T")
 _BASE_COLORS = {

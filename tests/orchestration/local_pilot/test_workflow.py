@@ -1,4 +1,4 @@
-"""Real Snakemake tests for the static local-CMH workflow projection."""
+"""Real Snakemake tests for static processing and admitted analysis owners."""
 
 from __future__ import annotations
 
@@ -13,10 +13,12 @@ import subprocess
 import time
 from collections import Counter
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pytest
 
+from emrys import analyses
+from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.orchestration.local_pilot import inspection, lifecycle, materialization
@@ -39,8 +41,8 @@ EXECUTABLE_RULES = {
     "partition_BAM_by_mechanical_read_orientation",
     "generate_partitioned_cohort_mpileup_VCFs",
     "preprocess_and_annotate_cohort_candidates",
-    "rank_cohort_candidates_with_paired_CMH",
-    "project_candidate_scientific_context",
+    "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+    "emrys.analysis.project_candidate_scientific_context.v1",
 }
 SLICE_RULES = {"reference_slice", "cohort_slice"}
 SCIENTIFIC_BINARIES = {
@@ -201,10 +203,16 @@ def _publish_config(
 def _dag(
     built: workflow_fixture.WorkflowFixture,
     target: str,
+    *,
+    snakefile: Path = workflow_fixture.SNAKEFILE,
 ) -> tuple[dict[int, str], set[tuple[int, int]], str]:
-    completed = _snakemake(built, "--dag", "dot", "--", target)
+    completed = _snakemake(built, "--dag", "dot", "--", target, snakefile=snakefile)
     nodes = {
-        int(node_id): label.split("\\n", 1)[0]
+        int(node_id): (
+            label.split("\\n", 1)[1].removeprefix("analysis_owner: ")
+            if label.startswith("analysis_owner\\n")
+            else label.split("\\n", 1)[0]
+        )
         for node_id, label in re.findall(
             r'^\s*(\d+)\[label = "([^"]+)"',
             completed.stdout,
@@ -400,15 +408,15 @@ def test_real_snakemake_dry_run_has_exact_owner_job_counts(
             ): partition_count,
             (
                 "preprocess_and_annotate_cohort_candidates",
-                "rank_cohort_candidates_with_paired_CMH",
+                "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
             ): 1,
             (
-                "rank_cohort_candidates_with_paired_CMH",
-                "project_candidate_scientific_context",
+                "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+                "emrys.analysis.project_candidate_scientific_context.v1",
             ): 1,
             (
                 "construct_FASTA_sidecars",
-                "project_candidate_scientific_context",
+                "emrys.analysis.project_candidate_scientific_context.v1",
             ): 1,
         }
     )
@@ -476,8 +484,8 @@ def test_real_processing_plan_dry_run_closes_at_step_06(
     assert not {
         "generate_partitioned_cohort_mpileup_VCFs",
         "preprocess_and_annotate_cohort_candidates",
-        "rank_cohort_candidates_with_paired_CMH",
-        "project_candidate_scientific_context",
+        "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+        "emrys.analysis.project_candidate_scientific_context.v1",
     }.intersection(owners)
 
 
@@ -512,7 +520,13 @@ def test_profile_and_rule_rosters_are_exact_and_output_only_verified_state(
     built: workflow_fixture.WorkflowFixture,
 ) -> None:
     listed = _snakemake(built, "--list-rules").stdout.splitlines()
-    expected = EXECUTABLE_RULES | SLICE_RULES
+    expected = (
+        EXECUTABLE_RULES
+        - {
+            "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+            "emrys.analysis.project_candidate_scientific_context.v1",
+        }
+    ) | {"analysis_owner", *SLICE_RULES}
     observed = {line.strip() for line in listed if line.strip() in expected}
     assert observed == expected
 
@@ -533,17 +547,17 @@ def test_profile_and_rule_rosters_are_exact_and_output_only_verified_state(
     assert built.report_receipt not in declared
 
 
-def test_static_graph_rejects_schema_valid_owner_reassignment(tmp_path: Path) -> None:
-    checkout, _commit = _create_clean_source_checkout(tmp_path / "owner-swap-source")
+def _profile_checkout(
+    root: Path,
+    mutate: Callable[[dict[str, Any]], None],
+) -> tuple[Path, str, dict[str, Any]]:
+    checkout, _commit = _create_clean_source_checkout(root)
     profile_path = checkout / "workflow" / "contracts" / "local_cmh_v2.json"
-    profile = orchestration_contracts.load_json_object(profile_path)
-    by_rule = {str(task["rule_name"]): task for task in profile["owner_tasks"]}
-    alignment = by_rule["align_RNA_reads_with_STAR"]
-    canonical_bam = by_rule["construct_canonical_BAM"]
-    alignment["machine_key"], canonical_bam["machine_key"] = (
-        canonical_bam["machine_key"],
-        alignment["machine_key"],
+    profile = analyses.compose_profile(
+        orchestration_contracts.load_json_object(profile_path),
+        analysis_module_v1(),
     )
+    mutate(profile)
     orchestration_contracts.validate_record("profile", profile)
     profile_path.write_bytes(orchestration_contracts.canonical_json_bytes(profile))
     subprocess.run(["git", "add", str(profile_path)], cwd=checkout, check=True)
@@ -557,7 +571,7 @@ def test_static_graph_rejects_schema_valid_owner_reassignment(tmp_path: Path) ->
             "commit",
             "--quiet",
             "-m",
-            "reassign schema-valid owners",
+            "change workflow profile",
         ],
         cwd=checkout,
         check=True,
@@ -569,6 +583,22 @@ def test_static_graph_rejects_schema_valid_owner_reassignment(tmp_path: Path) ->
         capture_output=True,
         text=True,
     ).stdout.strip()
+    return checkout, commit, profile
+
+
+def test_static_graph_rejects_schema_valid_owner_reassignment(tmp_path: Path) -> None:
+    def swap_base_owners(profile: dict[str, Any]) -> None:
+        by_rule = {str(task["rule_name"]): task for task in profile["owner_tasks"]}
+        alignment = by_rule["align_RNA_reads_with_STAR"]
+        canonical_bam = by_rule["construct_canonical_BAM"]
+        alignment["machine_key"], canonical_bam["machine_key"] = (
+            canonical_bam["machine_key"],
+            alignment["machine_key"],
+        )
+
+    checkout, commit, profile = _profile_checkout(
+        tmp_path / "owner-swap-source", swap_base_owners
+    )
     rebuilt = workflow_fixture.build(
         tmp_path / "owner-swap-fixture", profile_override=profile
     )
@@ -585,7 +615,62 @@ def test_static_graph_rejects_schema_valid_owner_reassignment(tmp_path: Path) ->
     )
 
     assert failed.returncode != 0
-    assert "Fixed profile owner tasks do not match the static graph" in failed.stdout
+    assert "Processing owner tasks do not match the static base graph" in failed.stdout
+
+
+def test_analysis_rule_projects_an_alternative_admitted_owner_graph(
+    tmp_path: Path,
+) -> None:
+    old_rank = "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1"
+    old_context = "emrys.analysis.project_candidate_scientific_context.v1"
+    rank = "emrys.analysis.alternative_rank.v1"
+    context = "emrys.analysis.alternative_context.v1"
+    replacements = {old_rank: rank, old_context: context}
+
+    def replace_analysis_graph(profile: dict[str, Any]) -> None:
+        for field in ("semantic_owner_keys", "required_owner_keys"):
+            profile[field] = [replacements.get(key, key) for key in profile[field]]
+        for task in profile["owner_tasks"]:
+            original = task["machine_key"]
+            task["machine_key"] = replacements.get(original, original)
+        for edge in profile["direct_edges"]:
+            edge["producer"] = replacements.get(edge["producer"], edge["producer"])
+            edge["consumer"] = replacements.get(edge["consumer"], edge["consumer"])
+
+    checkout, commit, profile = _profile_checkout(
+        tmp_path / "alternative-analysis-source", replace_analysis_graph
+    )
+    rebuilt = workflow_fixture.build(
+        tmp_path / "alternative-analysis-fixture", profile_override=profile
+    )
+    _bind_source_checkout(rebuilt, (checkout, commit))
+    workflow_fixture.materialize_active_run_lock(rebuilt)
+
+    nodes, edges, output = _dag(
+        rebuilt, "cohort_slice", snakefile=checkout / "workflow" / "Snakefile"
+    )
+    node_for = {
+        label: node_id
+        for node_id, label in nodes.items()
+        if label
+        in {
+            "construct_FASTA_sidecars",
+            "preprocess_and_annotate_cohort_candidates",
+            rank,
+            context,
+        }
+    }
+    assert set(node_for) == {
+        "construct_FASTA_sidecars",
+        "preprocess_and_annotate_cohort_candidates",
+        rank,
+        context,
+    }, output
+    assert {
+        (node_for["preprocess_and_annotate_cohort_candidates"], node_for[rank]),
+        (node_for[rank], node_for[context]),
+        (node_for["construct_FASTA_sidecars"], node_for[context]),
+    } <= edges
 
 
 def test_real_cohort_slice_validates_all_scientific_outputs(

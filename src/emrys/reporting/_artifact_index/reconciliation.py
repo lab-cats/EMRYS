@@ -45,22 +45,21 @@ def reconcile_native_transactions(
         by_path={inspection.resolved_path: inspection for inspection in inspections},
     )
     grouped = _group_by_scope(inspections)
-    marker_adapters = {
-        "00c": "step00c_reference_dict_v1",
-        "06": "step06_orientation_counts_v1",
-        "07": "step07_mpileup_receipt_v1",
-        "08": "step08_inputs_v1",
-        "09": "step09_cmh_summary_v1",
-        "10": "step10_context_receipt_v1",
+    registered = {
+        "00c": ("step00c_reference_dict_v1", reconcile_step00c),
+        "06": ("step06_orientation_counts_v1", reconcile_step06),
+        "07": ("step07_mpileup_receipt_v1", partial(reconcile_step07, sources=sources)),
+        "08": ("step08_inputs_v1", partial(reconcile_step08, sources=sources)),
+        "09": ("step09_cmh_summary_v1", partial(reconcile_step09, sources=sources)),
+        "10": ("step10_context_receipt_v1", partial(reconcile_step10, sources=sources)),
     }
-    validators = {
-        "00c": reconcile_step00c,
-        "06": reconcile_step06,
-        "07": partial(reconcile_step07, sources=sources),
-        "08": partial(reconcile_step08, sources=sources),
-        "09": partial(reconcile_step09, sources=sources),
-        "10": partial(reconcile_step10, sources=sources),
+    declared_adapters = {item.row["adapter"] for item in inspections}
+    active = {
+        step: value
+        for step, value in registered.items()
+        if value[0] in declared_adapters
     }
+    validators = {step: value[1] for step, value in active.items()}
     dependency_order = dict(zip(validators, range(len(validators)), strict=True))
     ordered_scopes = sorted(
         grouped,
@@ -83,7 +82,7 @@ def reconcile_native_transactions(
         except ArtifactIndexError as exc:
             mark_native_transaction_failed(
                 members,
-                marker_adapters[step_id],
+                active[step_id][0],
                 f"Scope {scope!r}: {exc}",
             )
             # Propagate this scope failure before validating downstream

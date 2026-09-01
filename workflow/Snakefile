@@ -1,4 +1,4 @@
-"""Static local-CMH projection of EMRYS's public scientific owner graph."""
+"""Static processing and admitted analysis projection of EMRYS's owner graph."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from pathlib import Path
 import emrys
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
+    functional_specification_from_profile,
     processing_stopping_owner_keys,
 )
 from emrys.libraries.source_authority import (
@@ -36,9 +37,6 @@ except SourceCheckoutError as exc:
 
 
 WORKFLOW_ROOT = Path(workflow.basedir).resolve()
-PROFILE_PATH = (WORKFLOW_ROOT / "contracts" / "local_cmh_v2.json").resolve()
-PROFILE = orchestration_contracts.load_json_object(PROFILE_PATH)
-orchestration_contracts.validate_record("profile", PROFILE)
 CONFIG_KEYS = {
     "run_root",
     "python_executable",
@@ -154,11 +152,10 @@ if not isinstance(WORKFLOW_ATTEMPT_ID, str) or re.fullmatch(
 WORKFLOW_ATTEMPT_PATH = (
     RUN_ROOT / "attempts" / WORKFLOW_ATTEMPT_ID / "attempt.json"
 )
-PROFILE_SNAPSHOT = orchestration_contracts.load_json_object(PROFILE_SNAPSHOT_PATH)
-if PROFILE_SNAPSHOT != PROFILE:
-    raise WorkflowError("Run profile snapshot does not match the reviewed source profile")
+PROFILE = orchestration_contracts.load_json_object(PROFILE_SNAPSHOT_PATH)
+orchestration_contracts.validate_record("profile", PROFILE)
 if PROFILE_SNAPSHOT_PATH.read_bytes() != orchestration_contracts.canonical_json_bytes(
-    PROFILE_SNAPSHOT
+    PROFILE
 ):
     raise WorkflowError("Run profile snapshot must use canonical JSON bytes")
 if not SOURCE_CHECKOUT.is_dir() or SOURCE_CHECKOUT.is_symlink():
@@ -273,7 +270,7 @@ else:
     COHORT_ID = ANALYSIS_REVISION.scope_id("cohort")
     ANALYSIS_ID = ANALYSIS_REVISION.scope_id("analysis")
 
-STATIC_RULE_PROJECTION = dict(
+BASE_RULE_PROJECTION = dict(
     row.split()
     for row in """construct_STAR_index emrys.stage.construct_STAR_index.v1|reference|reference
 convert_GTF_to_BED12 emrys.stage.convert_GTF_to_BED12.v1|reference|reference
@@ -286,39 +283,40 @@ mark_BAM_duplicates_with_Picard emrys.stage.mark_BAM_duplicates_with_Picard.v1|s
 split_N_cigar_reads_with_GATK emrys.stage.split_N_cigar_reads_with_GATK.v1|sample|samples
 partition_BAM_by_mechanical_read_orientation emrys.stage.partition_BAM_by_mechanical_read_orientation.v1|sample|samples
 generate_partitioned_cohort_mpileup_VCFs emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1|cohort_partition|partitions
-preprocess_and_annotate_cohort_candidates emrys.stage.preprocess_and_annotate_cohort_candidates.v1|cohort|cohort
-rank_cohort_candidates_with_paired_CMH emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1|analysis|analysis
-project_candidate_scientific_context emrys.analysis.project_candidate_scientific_context.v1|analysis|analysis""".splitlines()
+preprocess_and_annotate_cohort_candidates emrys.stage.preprocess_and_annotate_cohort_candidates.v1|cohort|cohort""".splitlines()
 )
-OWNER_TASKS = {str(task["rule_name"]): task for task in PROFILE["owner_tasks"]}
+FUNCTIONAL_SPECIFICATION = functional_specification_from_profile(PROFILE)
 OWNER_TASKS_BY_KEY = {
     str(task["machine_key"]): task for task in PROFILE["owner_tasks"]
 }
-observed_rule_projection = {
-    rule_name: "|".join(
+base_projection = {
+    str(task["rule_name"]): "|".join(
         str(task[field]) for field in ("machine_key", "scope_type", "scope_selector")
     )
-    for rule_name, task in OWNER_TASKS.items()
+    for task in PROFILE["owner_tasks"]
+    if task["rule_name"] in BASE_RULE_PROJECTION
 }
-if (
-    len(OWNER_TASKS) != len(PROFILE["owner_tasks"])
-    or observed_rule_projection != STATIC_RULE_PROJECTION
-):
-    raise WorkflowError("Fixed profile owner tasks do not match the static graph")
-if len(OWNER_TASKS_BY_KEY) != len(OWNER_TASKS) or set(
-    PROFILE["required_owner_keys"]
-) != set(OWNER_TASKS_BY_KEY):
-    raise WorkflowError("Fixed profile required owner roster is inconsistent")
+if base_projection != BASE_RULE_PROJECTION:
+    raise WorkflowError("Processing owner tasks do not match the static base graph")
+BASE_OWNER_KEYS = {value.split("|", 1)[0] for value in BASE_RULE_PROJECTION.values()}
+ANALYSIS_OWNER_KEYS = set(OWNER_TASKS_BY_KEY).difference(BASE_OWNER_KEYS)
 
 
 def _owner(rule_name):
-    return str(OWNER_TASKS[rule_name]["machine_key"])
+    return BASE_RULE_PROJECTION[rule_name].split("|", 1)[0]
 
 
 EXPECTED_SCOPES_BY_OWNER = {}
 for item in EXPECTED_TASKS:
     EXPECTED_SCOPES_BY_OWNER.setdefault(item.machine_key, set()).add(item.scope_id)
 
+SCOPES_BY_TYPE = {
+    "reference": (REFERENCE_ID,),
+    "sample": SAMPLE_IDS,
+    "cohort_partition": PARTITION_SCOPES,
+    "cohort": (COHORT_ID,),
+    "analysis": (ANALYSIS_ID,),
+}
 DISPATCH_PATHS = config.get("dispatch_paths")
 if not isinstance(DISPATCH_PATHS, dict):
     raise WorkflowError("Workflow config 'dispatch_paths' must be an object")
@@ -347,26 +345,10 @@ def _verified(machine_key, scope_id):
     return str(root / "state" / "verified" / machine_key / f"{scope_id}.json")
 
 
-def _sample_verified(machine_key):
-    return _verified(machine_key, "{sample_id}")
-
-
-def _partition_verified(machine_key):
-    return _verified(machine_key, "{partition_scope}")
-
-
 def _produced_verified(machine_key, scope_id):
     return str(
         RUN_ROOT / "state" / "verified" / machine_key / f"{scope_id}.json"
     )
-
-
-def _sample_produced_verified(machine_key):
-    return _produced_verified(machine_key, "{sample_id}")
-
-
-def _partition_produced_verified(machine_key):
-    return _produced_verified(machine_key, "{partition_scope}")
 
 
 def _dispatch_reference(machine_key, scope_id):
@@ -465,13 +447,24 @@ TASK_SHELL = "{params.task_argv:q}"
 
 def _task_argv(machine_key, scope_id=None, *, wildcard=None):
     def resolve(wildcards):
+        admitted_machine_key = machine_key(wildcards) if callable(machine_key) else machine_key
         admitted_scope = getattr(wildcards, wildcard) if wildcard else scope_id
         dispatch, digest, _attempt_id = _dispatch_reference(
-            machine_key, admitted_scope
+            admitted_machine_key, admitted_scope
         )
         return (*TASK_ARGV_PREFIX, "--dispatch", dispatch, "--dispatch-sha256", digest)
 
     return resolve
+
+
+def _analysis_inputs(wildcards):
+    return tuple(
+        _verified(producer, scope_id)
+        for edge in FUNCTIONAL_SPECIFICATION["direct_edges"]
+        if str(edge["consumer"]) == str(wildcards.analysis_owner)
+        for producer in (str(edge["producer"]),)
+        for scope_id in SCOPES_BY_TYPE[str(OWNER_TASKS_BY_KEY[producer]["scope_type"])]
+    )
 
 
 def _admit_reusable_markers():
@@ -553,7 +546,16 @@ _admit_reusable_markers()
 
 wildcard_constraints:
     sample_id="(?:" + "|".join(re.escape(value) for value in SAMPLE_IDS) + ")",
-    partition_scope="(?:" + "|".join(re.escape(value) for value in PARTITION_SCOPES) + ")"
+    partition_scope="(?:" + "|".join(re.escape(value) for value in PARTITION_SCOPES) + ")",
+    analysis_owner="(?:"
+    + (
+        "|".join(
+            re.escape(value)
+            for value in sorted(ANALYSIS_OWNER_KEYS & set(EXPECTED_SCOPES_BY_OWNER))
+        )
+        or "(?!)"
+    )
+    + ")"
 
 
 rule reference_slice:
@@ -608,7 +610,7 @@ rule align_RNA_reads_with_STAR:
     input:
         star_index=_verified(_owner("construct_STAR_index"), REFERENCE_ID)
     output:
-        _sample_produced_verified(_owner("align_RNA_reads_with_STAR"))
+        _produced_verified(_owner("align_RNA_reads_with_STAR"), "{sample_id}")
     params:
         task_argv=_task_argv(_owner("align_RNA_reads_with_STAR"), wildcard="sample_id")
     threads:
@@ -622,9 +624,9 @@ rule align_RNA_reads_with_STAR:
 
 rule construct_canonical_BAM:
     input:
-        star_bam=_sample_verified(_owner("align_RNA_reads_with_STAR"))
+        star_bam=_verified(_owner("align_RNA_reads_with_STAR"), "{sample_id}")
     output:
-        _sample_produced_verified(_owner("construct_canonical_BAM"))
+        _produced_verified(_owner("construct_canonical_BAM"), "{sample_id}")
     params:
         task_argv=_task_argv(_owner("construct_canonical_BAM"), wildcard="sample_id")
     threads:
@@ -638,9 +640,9 @@ rule construct_canonical_BAM:
 
 rule collect_canonical_BAM_QC_evidence:
     input:
-        canonical_bam=_sample_verified(_owner("construct_canonical_BAM"))
+        canonical_bam=_verified(_owner("construct_canonical_BAM"), "{sample_id}")
     output:
-        _sample_produced_verified(_owner("collect_canonical_BAM_QC_evidence"))
+        _produced_verified(_owner("collect_canonical_BAM_QC_evidence"), "{sample_id}")
     params:
         task_argv=_task_argv(_owner("collect_canonical_BAM_QC_evidence"), wildcard="sample_id")
     resources:
@@ -652,10 +654,10 @@ rule collect_canonical_BAM_QC_evidence:
 
 rule collect_RSeQC_paired_orientation_evidence:
     input:
-        canonical_bam=_sample_verified(_owner("construct_canonical_BAM")),
+        canonical_bam=_verified(_owner("construct_canonical_BAM"), "{sample_id}"),
         bed12=_verified(_owner("convert_GTF_to_BED12"), REFERENCE_ID)
     output:
-        _sample_produced_verified(_owner("collect_RSeQC_paired_orientation_evidence"))
+        _produced_verified(_owner("collect_RSeQC_paired_orientation_evidence"), "{sample_id}")
     params:
         task_argv=_task_argv(_owner("collect_RSeQC_paired_orientation_evidence"), wildcard="sample_id")
     resources:
@@ -667,9 +669,9 @@ rule collect_RSeQC_paired_orientation_evidence:
 
 rule mark_BAM_duplicates_with_Picard:
     input:
-        canonical_bam=_sample_verified(_owner("construct_canonical_BAM"))
+        canonical_bam=_verified(_owner("construct_canonical_BAM"), "{sample_id}")
     output:
-        _sample_produced_verified(_owner("mark_BAM_duplicates_with_Picard"))
+        _produced_verified(_owner("mark_BAM_duplicates_with_Picard"), "{sample_id}")
     params:
         task_argv=_task_argv(_owner("mark_BAM_duplicates_with_Picard"), wildcard="sample_id")
     resources:
@@ -681,10 +683,10 @@ rule mark_BAM_duplicates_with_Picard:
 
 rule split_N_cigar_reads_with_GATK:
     input:
-        marked_bam=_sample_verified(_owner("mark_BAM_duplicates_with_Picard")),
+        marked_bam=_verified(_owner("mark_BAM_duplicates_with_Picard"), "{sample_id}"),
         reference_sidecars=_verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
     output:
-        _sample_produced_verified(_owner("split_N_cigar_reads_with_GATK"))
+        _produced_verified(_owner("split_N_cigar_reads_with_GATK"), "{sample_id}")
     params:
         task_argv=_task_argv(_owner("split_N_cigar_reads_with_GATK"), wildcard="sample_id")
     resources:
@@ -696,9 +698,9 @@ rule split_N_cigar_reads_with_GATK:
 
 rule partition_BAM_by_mechanical_read_orientation:
     input:
-        split_bam=_sample_verified(_owner("split_N_cigar_reads_with_GATK"))
+        split_bam=_verified(_owner("split_N_cigar_reads_with_GATK"), "{sample_id}")
     output:
-        _sample_produced_verified(_owner("partition_BAM_by_mechanical_read_orientation"))
+        _produced_verified(_owner("partition_BAM_by_mechanical_read_orientation"), "{sample_id}")
     params:
         task_argv=_task_argv(_owner("partition_BAM_by_mechanical_read_orientation"), wildcard="sample_id")
     threads:
@@ -713,12 +715,12 @@ rule partition_BAM_by_mechanical_read_orientation:
 rule generate_partitioned_cohort_mpileup_VCFs:
     input:
         partitioned_bams=expand(
-            _sample_verified(_owner("partition_BAM_by_mechanical_read_orientation")),
+            _verified(_owner("partition_BAM_by_mechanical_read_orientation"), "{sample_id}"),
             sample_id=SAMPLE_IDS,
         ),
         reference_sidecars=_verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
     output:
-        _partition_produced_verified(_owner("generate_partitioned_cohort_mpileup_VCFs"))
+        _produced_verified(_owner("generate_partitioned_cohort_mpileup_VCFs"), "{partition_scope}")
     params:
         task_argv=_task_argv(
             _owner("generate_partitioned_cohort_mpileup_VCFs"),
@@ -734,7 +736,7 @@ rule generate_partitioned_cohort_mpileup_VCFs:
 rule preprocess_and_annotate_cohort_candidates:
     input:
         partition_vcfs=expand(
-            _partition_verified(_owner("generate_partitioned_cohort_mpileup_VCFs")),
+            _verified(_owner("generate_partitioned_cohort_mpileup_VCFs"), "{partition_scope}"),
             partition_scope=PARTITION_SCOPES,
         )
     output:
@@ -749,28 +751,18 @@ rule preprocess_and_annotate_cohort_candidates:
         TASK_SHELL
 
 
-rule rank_cohort_candidates_with_paired_CMH:
+rule analysis_owner:
     input:
-        cohort_candidates=_verified(_owner("preprocess_and_annotate_cohort_candidates"), COHORT_ID)
+        _analysis_inputs
     output:
-        _produced_verified(_owner("rank_cohort_candidates_with_paired_CMH"), ANALYSIS_ID)
+        _produced_verified("{analysis_owner}", ANALYSIS_ID)
     params:
-        task_argv=_task_argv(_owner("rank_cohort_candidates_with_paired_CMH"), ANALYSIS_ID)
+        task_argv=_task_argv(
+            lambda wildcards: str(wildcards.analysis_owner), ANALYSIS_ID
+        )
     resources:
-        mem_mb=STAGE_MEMORY_MB["09"]
-    shell:
-        TASK_SHELL
-
-
-rule project_candidate_scientific_context:
-    input:
-        candidate_ranking=_verified(_owner("rank_cohort_candidates_with_paired_CMH"), ANALYSIS_ID),
-        reference_sidecars=_verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
-    output:
-        _produced_verified(_owner("project_candidate_scientific_context"), ANALYSIS_ID)
-    params:
-        task_argv=_task_argv(_owner("project_candidate_scientific_context"), ANALYSIS_ID)
-    resources:
-        mem_mb=STAGE_MEMORY_MB["10"]
+        mem_mb=lambda wildcards: STAGE_MEMORY_MB[
+            str(OWNER_TASKS_BY_KEY[str(wildcards.analysis_owner)]["step_id"])
+        ]
     shell:
         TASK_SHELL

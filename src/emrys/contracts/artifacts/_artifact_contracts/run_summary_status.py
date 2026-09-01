@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
-from .definitions import ContractValidationError
+from .definitions import ContractValidationError, scope_key
 
 RUN_SUMMARY_STATUS_FIELDS = (
     "implementation_status",
@@ -58,7 +58,3 @@ def artifact_status_dimensions(artifact: dict[str, Any]) -> dict[str, str]:
         "cluster_dry_run_status": artifact["cluster_validation"]["dry_run_status"],
         "cluster_proof_status": artifact["cluster_validation"]["proof_status"],
     }
-
-
-def scope_key(scope: dict[str, Any]) -> tuple[str, str, str]:
-    return scope["step_id"], scope["scope_type"], scope["scope_id"]

@@ -108,6 +108,56 @@ def test_exact_public_reporting_seam_is_allowed(tmp_path: Path) -> None:
     assert inspect(repository) == ()
 
 
+def test_exact_analysis_report_provider_public_seam_is_allowed(tmp_path: Path) -> None:
+    repository = write_repository(
+        tmp_path,
+        {
+            "src/emrys/analyses/paired_cmh_candidate_ranking_report/view.py": (
+                "from emrys.reporting import AnalysisReportContextV1\n"
+            ),
+            "src/emrys/reporting/__init__.py": "AnalysisReportContextV1 = object\n",
+        },
+    )
+
+    assert inspect(repository) == ()
+
+
+@pytest.mark.parametrize(
+    ("target", "target_path", "rule_id"),
+    (
+        (
+            "emrys.reporting.report",
+            "src/emrys/reporting/report.py",
+            TOOL.RULE_FUNCTIONAL_OWNER,
+        ),
+        (
+            "emrys.reporting._run_report.context",
+            "src/emrys/reporting/_run_report/context.py",
+            TOOL.RULE_PRIVATE_OWNER,
+        ),
+    ),
+)
+def test_analysis_report_provider_seam_rejects_reporting_submodules(
+    tmp_path: Path,
+    target: str,
+    target_path: str,
+    rule_id: str,
+) -> None:
+    repository = write_repository(
+        tmp_path,
+        {
+            "src/emrys/analyses/paired_cmh_candidate_ranking_report/view.py": (
+                f"import {target}\n"
+            ),
+            target_path: "",
+        },
+    )
+
+    problems = inspect(repository)
+    assert len(problems) == 1
+    assert problems[0].rule_id == rule_id
+
+
 @pytest.mark.parametrize(
     ("statement", "target_path"),
     (

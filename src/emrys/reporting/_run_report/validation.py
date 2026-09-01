@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import base64
-import binascii
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
@@ -22,16 +20,19 @@ from jinja2 import (
 from .inputs import _assert_snapshot, _fail, _snapshot_regular
 from .models import (
     ACTIVE_RESOURCE_ATTRIBUTES,
-    CANDIDATE_TERMINOLOGY,
     CSS_RESOURCE_RE,
-    PRIMARY_SCIENTIFIC_FIGURE_IDS,
+    EVIDENCE_REPORT_SECTION_IDS,
     REMOTE_URI_RE,
-    REPORT_SECTION_IDS_BY_VIEW,
-    SUPPORTING_SCIENTIFIC_FIGURE_IDS,
     ReportRenderError,
 )
 
-_SVG_DATA_URI_PREFIX = "data:image/svg+xml;base64,"
+SCIENTIFIC_PRESENTATION_SECTION_IDS = {
+    "scientific-summary-section",
+    "primary-scientific-figures-section",
+    "supporting-scientific-figures-section",
+    "figure-guide-section",
+    "methods-data-note-section",
+}
 
 
 def build_environment() -> Environment:
@@ -91,21 +92,6 @@ def render_html(view: Mapping[str, Any], css: str) -> bytes:
     return rendered.encode("utf-8")
 
 
-def _scientific_svg_data_uri_error(source: str, figure_id: str) -> str | None:
-    if not source.startswith(_SVG_DATA_URI_PREFIX):
-        return (
-            f"scientific figure {figure_id!r} must use an exact embedded SVG data URI"
-        )
-    payload = source[len(_SVG_DATA_URI_PREFIX) :]
-    try:
-        decoded = base64.b64decode(payload, validate=True)
-    except (binascii.Error, ValueError):
-        return f"scientific figure {figure_id!r} has invalid base64 SVG data"
-    if not decoded or re.search(rb"<svg(?:\s|>)", decoded, re.IGNORECASE) is None:
-        return f"scientific figure {figure_id!r} data URI is not an SVG document"
-    return None
-
-
 class ReportHTMLInspector(HTMLParser):
     """Collect structural, accessibility, and active-resource facts."""
 
@@ -138,18 +124,7 @@ class ReportHTMLInspector(HTMLParser):
         self.style_text: list[str] = []
         self.meta_refreshes: list[str] = []
         self.image_errors: list[str] = []
-        self.details_count = 0
-        self.wide_table_wraps = 0
-        self.section_stack: list[str] = []
-        self.scientific_figures: list[dict[str, Any]] = []
-        self.current_scientific_figure: dict[str, Any] | None = None
-        self.figure_guides: list[dict[str, Any]] = []
-        self.current_figure_guide: dict[str, Any] | None = None
-        self.candidate_index_count = 0
-        self.candidate_index_ids: list[str] = []
-        self.candidate_records: list[dict[str, Any]] = []
-        self.current_candidate_record: dict[str, Any] | None = None
-        self.scientific_figure_errors: list[str] = []
+        self.scientific_presentations = 0
 
     @staticmethod
     def _classes(attributes: Mapping[str, str | None]) -> set[str]:
@@ -181,8 +156,6 @@ class ReportHTMLInspector(HTMLParser):
             self.title_depth += 1
         if tag == "base":
             self.base_count += 1
-        if tag == "details":
-            self.details_count += 1
         if tag == "script":
             self.active_resource_errors.append("<script> is not permitted")
         if tag in {"iframe", "object", "embed"}:
@@ -209,83 +182,13 @@ class ReportHTMLInspector(HTMLParser):
             self.heading_levels.append(int(tag[1]))
 
         classes = self._classes(attributes)
-        if "emrys-table-wrap-wide" in classes:
-            self.wide_table_wraps += 1
-        if "candidate-index-block" in classes:
-            self.candidate_index_count += 1
-        if "candidate-index-record" in classes and attributes.get(
-            "data-candidate-id"
-        ):
-            self.candidate_index_ids.append(str(attributes["data-candidate-id"]))
-        if tag == "article" and "candidate-evidence-record" in classes:
-            record = {
-                "id": attributes.get("id"),
-                "candidate_id": attributes.get("data-candidate-id"),
-                "rank": attributes.get("data-candidate-rank"),
-                "groups": set(),
-            }
-            self.candidate_records.append(record)
-            self.current_candidate_record = record
-        if (
-            self.current_candidate_record is not None
-            and "candidate-evidence-group" in classes
-            and attributes.get("data-evidence-group")
-        ):
-            self.current_candidate_record["groups"].add(
-                str(attributes["data-evidence-group"])
-            )
-        if tag == "section":
-            self.section_stack.append(element_id or "")
-        if tag == "article" and "figure-guide-entry" in classes:
-            record = {
-                "id": attributes.get("id"),
-                "figure_id": attributes.get("data-figure-id"),
-                "question": 0,
-                "reading": 0,
-                "inputs": 0,
-                "population": 0,
-                "limitations": 0,
-            }
-            self.figure_guides.append(record)
-            self.current_figure_guide = record
-        if self.current_figure_guide is not None:
-            for class_name, field in (
-                ("figure-guide-question", "question"),
-                ("figure-guide-reading", "reading"),
-                ("figure-guide-inputs", "inputs"),
-                ("figure-guide-population", "population"),
-                ("figure-guide-limitations", "limitations"),
-            ):
-                if class_name in classes:
-                    self.current_figure_guide[field] += 1
-        if tag == "figure":
-            if self.current_scientific_figure is not None:
-                self.scientific_figure_errors.append(
-                    "scientific figures may not contain nested figures"
-                )
-            if "scientific-figure" in classes:
-                record = {
-                    "id": attributes.get("id"),
-                    "status": attributes.get("data-figure-status"),
-                    "section_id": (
-                        self.section_stack[-1] if self.section_stack else None
-                    ),
-                    "images": [],
-                    "captions": 0,
-                    "summaries": 0,
-                    "unavailable_messages": 0,
-                }
-                self.scientific_figures.append(record)
-                self.current_scientific_figure = record
-        if self.current_scientific_figure is not None:
-            if tag == "img":
-                self.current_scientific_figure["images"].append(attributes)
-            if tag == "figcaption":
-                self.current_scientific_figure["captions"] += 1
-            if "figure-summary" in classes:
-                self.current_scientific_figure["summaries"] += 1
-            if "figure-unavailable" in classes:
-                self.current_scientific_figure["unavailable_messages"] += 1
+        if classes & {
+            "scientific-figure",
+            "candidate-index-block",
+            "candidate-index-record",
+            "candidate-evidence-record",
+        }:
+            self.scientific_presentations += 1
         if tag == "table" and "emrys-table" in classes:
             self.emrys_table_depth = 1
             self.emrys_tables += 1
@@ -344,14 +247,6 @@ class ReportHTMLInspector(HTMLParser):
         self.handle_endtag(tag)
 
     def handle_endtag(self, tag: str) -> None:
-        if tag == "figure" and self.current_scientific_figure is not None:
-            self.current_scientific_figure = None
-        if tag == "article" and self.current_figure_guide is not None:
-            self.current_figure_guide = None
-        if tag == "article" and self.current_candidate_record is not None:
-            self.current_candidate_record = None
-        if tag == "section" and self.section_stack:
-            self.section_stack.pop()
         if tag == "main" and self.main_depth:
             self.main_depth -= 1
         if self.emrys_table_depth:
@@ -392,10 +287,11 @@ def validate_rendered_html(
     *,
     expected_banner: str,
     expected_identity: Mapping[str, str],
-    expected_candidate_ids: Sequence[str] = (),
 ) -> None:
+    """Validate every provider's safe shell and the fixed evidence view."""
+
     report_view = expected_identity.get("data-report-view")
-    if report_view not in REPORT_SECTION_IDS_BY_VIEW:
+    if report_view not in {"scientific", "evidence"}:
         _fail(f"Rendered report has an unknown expected view: {report_view!r}")
     snapshot = _snapshot_regular(path, "rendered HTML report")
     if snapshot.size_bytes == 0:
@@ -419,7 +315,8 @@ def validate_rendered_html(
         _fail("Rendered report must contain exactly one non-empty document title")
     if inspector.main_count != 1:
         _fail(
-            f"Rendered report must contain exactly one main landmark; found {inspector.main_count}"
+            "Rendered report must contain exactly one main landmark; "
+            f"found {inspector.main_count}"
         )
     if not inspector.heading_levels or inspector.heading_levels[0] != 1:
         _fail("Rendered report must begin its main heading sequence with h1")
@@ -445,209 +342,35 @@ def validate_rendered_html(
             "Rendered report image accessibility failed: "
             + "; ".join(inspector.image_errors)
         )
-    if inspector.current_scientific_figure is not None:
-        inspector.scientific_figure_errors.append(
-            "scientific figure lacks a closing figure element"
-        )
-    if report_view == "scientific":
-        expected_figure_ids = (
-            *PRIMARY_SCIENTIFIC_FIGURE_IDS,
-            *SUPPORTING_SCIENTIFIC_FIGURE_IDS,
-        )
-        observed_figure_ids = tuple(
-            str(figure["id"] or "") for figure in inspector.scientific_figures
-        )
-        if observed_figure_ids != expected_figure_ids:
-            inspector.scientific_figure_errors.append(
-                "scientific figure roster must be exactly "
-                + ", ".join(expected_figure_ids)
-            )
-        observed_primary = tuple(
-            str(figure["id"] or "")
-            for figure in inspector.scientific_figures
-            if figure["section_id"] == "primary-scientific-figures-section"
-        )
-        observed_supporting = tuple(
-            str(figure["id"] or "")
-            for figure in inspector.scientific_figures
-            if figure["section_id"] == "supporting-scientific-figures-section"
-        )
-        if observed_primary != PRIMARY_SCIENTIFIC_FIGURE_IDS:
-            inspector.scientific_figure_errors.append(
-                "primary scientific figure grouping must be exactly "
-                + ", ".join(PRIMARY_SCIENTIFIC_FIGURE_IDS)
-            )
-        if observed_supporting != SUPPORTING_SCIENTIFIC_FIGURE_IDS:
-            inspector.scientific_figure_errors.append(
-                "supporting scientific figure grouping must be exactly "
-                + ", ".join(SUPPORTING_SCIENTIFIC_FIGURE_IDS)
-            )
-        misplaced = [
-            str(figure["id"] or "<missing>")
-            for figure in inspector.scientific_figures
-            if figure["section_id"]
-            not in {
-                "primary-scientific-figures-section",
-                "supporting-scientific-figures-section",
-            }
-        ]
-        if misplaced:
-            inspector.scientific_figure_errors.append(
-                "scientific figures are outside their owned sections: "
-                + ", ".join(misplaced)
-            )
-        for figure in inspector.scientific_figures:
-            figure_id = str(figure["id"] or "<missing>")
-            status = figure["status"]
-            images = figure["images"]
-            if figure["captions"] != 1 or figure["summaries"] != 1:
-                inspector.scientific_figure_errors.append(
-                    f"scientific figure {figure_id!r} must have one caption and "
-                    "one visible text summary"
-                )
-            if status == "available":
-                if not images:
-                    inspector.scientific_figure_errors.append(
-                        f"scientific figure {figure_id!r} with status {status!r} "
-                        "must have at least one image"
-                    )
-                else:
-                    for index, image in enumerate(images, start=1):
-                        if image.get("id") != f"{figure_id}-image-{index}":
-                            inspector.scientific_figure_errors.append(
-                                f"scientific figure {figure_id!r} image {index} "
-                                "has the wrong ID"
-                            )
-                        source = image.get("src") or ""
-                        if error := _scientific_svg_data_uri_error(
-                            source, f"{figure_id} panel {index}"
-                        ):
-                            inspector.scientific_figure_errors.append(error)
-                if figure["unavailable_messages"]:
-                    inspector.scientific_figure_errors.append(
-                        f"scientific figure {figure_id!r} has an unavailable message "
-                        f"with status {status!r}"
-                    )
-            elif status == "unavailable":
-                if images:
-                    inspector.scientific_figure_errors.append(
-                        f"unavailable scientific figure {figure_id!r} must not "
-                        "contain an image"
-                    )
-                if figure["unavailable_messages"] != 1:
-                    inspector.scientific_figure_errors.append(
-                        f"unavailable scientific figure {figure_id!r} must have "
-                        "one unavailable message"
-                    )
-            else:
-                inspector.scientific_figure_errors.append(
-                    f"scientific figure {figure_id!r} has unknown status {status!r}"
-                )
-        if inspector.svg_count:
-            inspector.scientific_figure_errors.append(
-                "scientific report must not contain raw SVG markup"
-            )
-        if inspector.details_count:
-            inspector.scientific_figure_errors.append(
-                "scientific report must not contain collapsible details content"
-            )
-        if inspector.wide_table_wraps:
-            inspector.scientific_figure_errors.append(
-                "scientific report must not contain horizontally scrollable tables"
-            )
-        observed_guides = tuple(
-            str(guide["figure_id"] or "") for guide in inspector.figure_guides
-        )
-        if observed_guides != expected_figure_ids:
-            inspector.scientific_figure_errors.append(
-                "scientific figure guide roster must be exactly "
-                + ", ".join(expected_figure_ids)
-            )
-        for guide in inspector.figure_guides:
-            figure_id = str(guide["figure_id"] or "<missing>")
-            if any(
-                guide[field] != 1
-                for field in (
-                    "question",
-                    "reading",
-                    "inputs",
-                    "population",
-                    "limitations",
-                )
-            ):
-                inspector.scientific_figure_errors.append(
-                    f"scientific figure guide {figure_id!r} must show one question, "
-                    "reading guide, input roster, population, and limitations statement"
-                )
-        expected_candidates = tuple(expected_candidate_ids)
-        observed_record_ids = tuple(
-            str(record["candidate_id"] or "") for record in inspector.candidate_records
-        )
-        observed_ranks = tuple(
-            str(record["rank"] or "") for record in inspector.candidate_records
-        )
-        if expected_candidates:
-            if inspector.candidate_index_count != 1:
-                inspector.scientific_figure_errors.append(
-                    "scientific report must contain one selected-candidate index"
-                )
-            if tuple(inspector.candidate_index_ids) != expected_candidates:
-                inspector.scientific_figure_errors.append(
-                    "selected-candidate index differs from the expected roster"
-                )
-            if observed_record_ids != expected_candidates:
-                inspector.scientific_figure_errors.append(
-                    "candidate evidence records differ from the expected roster"
-                )
-            if observed_ranks != tuple(
-                str(index) for index in range(1, len(expected_candidates) + 1)
-            ):
-                inspector.scientific_figure_errors.append(
-                    "candidate evidence record ranks are not contiguous from one"
-                )
-            required_groups = {"editing-rate", "location", "nearby-motifs"}
-            for record in inspector.candidate_records:
-                if not required_groups <= record["groups"]:
-                    inspector.scientific_figure_errors.append(
-                        "candidate evidence record lacks Editing rate, Location, or "
-                        "Nearby motifs"
-                    )
-        elif (
-            inspector.candidate_index_count
-            or inspector.candidate_index_ids
-            or inspector.candidate_records
-        ):
-            inspector.scientific_figure_errors.append(
-                "scientific report contains unexpected selected-candidate content"
-            )
-    else:
-        if inspector.scientific_figures:
-            inspector.scientific_figure_errors.append(
-                "evidence report must not contain scientific figure images"
-            )
-        if (
-            inspector.candidate_index_count
-            or inspector.candidate_index_ids
-            or inspector.candidate_records
-        ):
-            inspector.scientific_figure_errors.append(
-                "evidence report must not contain selected-candidate presentation "
-                "content"
-            )
-    if inspector.scientific_figure_errors:
-        _fail(
-            "Rendered report scientific-figure validation failed: "
-            + "; ".join(inspector.scientific_figure_errors)
-        )
-    if inspector.table_errors or (
-        report_view == "evidence" and inspector.emrys_tables == 0
-    ):
+    if inspector.table_errors:
         _fail(
             "Rendered report table accessibility failed: "
-            + "; ".join(inspector.table_errors or ["no EMRYS tables found"])
+            + "; ".join(inspector.table_errors)
         )
-    if report_view == "evidence" and inspector.accessible_svgs < 1:
-        _fail("Rendered report lacks an accessible embedded figure")
+    if report_view == "evidence":
+        if inspector.emrys_tables == 0:
+            _fail("Rendered evidence report contains no EMRYS tables")
+        if inspector.accessible_svgs < 1:
+            _fail("Rendered evidence report lacks an accessible embedded figure")
+        missing = EVIDENCE_REPORT_SECTION_IDS - inspector.ids
+        if missing:
+            _fail(
+                "Rendered evidence report lacks required sections: "
+                + ", ".join(sorted(missing))
+            )
+        unexpected = SCIENTIFIC_PRESENTATION_SECTION_IDS & inspector.ids
+        if unexpected or inspector.scientific_presentations:
+            _fail(
+                "Rendered evidence report contains scientific or selected-candidate "
+                "presentation content"
+            )
+    else:
+        unexpected = EVIDENCE_REPORT_SECTION_IDS & inspector.ids
+        if unexpected:
+            _fail(
+                "Rendered scientific report contains core evidence sections: "
+                + ", ".join(sorted(unexpected))
+            )
     observed_banner = " ".join("".join(inspector.banner_text).split())
     if inspector.banner_count != 1 or observed_banner != " ".join(
         expected_banner.split()
@@ -655,42 +378,20 @@ def validate_rendered_html(
         _fail(
             f"Rendered report does not contain the required state banner: {expected_banner}"
         )
-    required_sections = REPORT_SECTION_IDS_BY_VIEW[report_view]
-    missing_sections = required_sections - inspector.ids
-    if missing_sections:
-        _fail(
-            "Rendered report lacks required sections: "
-            + ", ".join(sorted(missing_sections))
-        )
-    other_sections = set().union(
-        *(
-            section_ids
-            for view_name, section_ids in REPORT_SECTION_IDS_BY_VIEW.items()
-            if view_name != report_view
-        )
-    )
-    unexpected_sections = other_sections & inspector.ids
-    if unexpected_sections:
-        _fail(
-            f"Rendered {report_view} report contains sections owned by another "
-            "view: " + ", ".join(sorted(unexpected_sections))
-        )
-    if report_view == "scientific" and CANDIDATE_TERMINOLOGY not in content:
-        _fail(f"Rendered report lacks fixed terminology: {CANDIDATE_TERMINOLOGY}")
     main_attributes = inspector.main_attributes[0]
-    scientific_forbidden_attributes = {
-        "data-css-sha256",
-        "data-jinja-version",
-        "data-renderer-version",
-        "data-run-summary-sha256",
-        "data-template-sha256",
-    }
     if report_view == "scientific":
-        observed_forbidden = scientific_forbidden_attributes & main_attributes.keys()
-        if observed_forbidden:
+        forbidden = {
+            "data-css-sha256",
+            "data-jinja-version",
+            "data-renderer-version",
+            "data-run-summary-sha256",
+            "data-template-sha256",
+        }
+        observed = forbidden & main_attributes.keys()
+        if observed:
             _fail(
-                "Rendered scientific report exposes renderer provenance: "
-                + ", ".join(sorted(observed_forbidden))
+                "Rendered scientific report exposes core renderer provenance: "
+                + ", ".join(sorted(observed))
             )
     for attribute, expected in expected_identity.items():
         if main_attributes.get(attribute) != expected:

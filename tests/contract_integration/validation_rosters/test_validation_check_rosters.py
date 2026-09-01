@@ -34,7 +34,10 @@ VALIDATOR_PATHS = {
     "07": Path("src/emrys/stages/partitioned_cohort_mpileup/validator.py"),
     "08": Path("src/emrys/stages/cohort_candidate_preprocessing/validator.py"),
     "09": Path("src/emrys/analyses/paired_cmh_candidate_ranking/validator.py"),
-    "10": Path("src/emrys/analyses/scientific_context_projection/validator.py"),
+    "10": Path(
+        "src/emrys/analyses/paired_cmh_candidate_ranking/"
+        "scientific_context_projection/validator.py"
+    ),
 }
 VALIDATION_HEADER = (
     "step_id",

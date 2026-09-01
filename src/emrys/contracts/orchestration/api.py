@@ -315,7 +315,7 @@ def _require_attempt_time(identifier: str, timestamp: str, label: str) -> None:
 
 
 def _validate_direct_edges(edges: list[Mapping[str, Any]], owners: set[str]) -> None:
-    pairs: list[tuple[str, str]] = []
+    identities: set[tuple[str, str, str]] = set()
     adjacency = {owner: set() for owner in owners}
     for edge in edges:
         producer = str(edge["producer"])
@@ -324,13 +324,13 @@ def _validate_direct_edges(edges: list[Mapping[str, Any]], owners: set[str]) -> 
             raise ContractValidationError(
                 "Profile edges must reference semantic_owner_keys"
             )
-        pair = producer, consumer
-        if pair in pairs:
+        identity = producer, consumer, str(edge["artifact"])
+        if identity in identities:
             raise ContractValidationError(
-                "Profile direct_edges must not repeat a producer/consumer pair: "
-                f"{producer} -> {consumer}"
+                "Profile direct_edges must not repeat an artifact edge: "
+                f"{producer} -> {consumer} ({identity[2]})"
             )
-        pairs.append(pair)
+        identities.add(identity)
         adjacency[producer].add(consumer)
 
     complete: set[str] = set()
@@ -384,7 +384,8 @@ def _validate_artifact_template_groups(
 
 def _validate_profile(record: Mapping[str, Any]) -> None:
     owners = set(record["semantic_owner_keys"])
-    task_keys = [task["machine_key"] for task in record["owner_tasks"]]
+    owner_tasks = record["owner_tasks"]
+    task_keys = [task["machine_key"] for task in owner_tasks]
     if len(task_keys) != len(set(task_keys)) or set(task_keys) != owners:
         raise ContractValidationError(
             "Profile must define exactly one owner_task per semantic_owner_key"
@@ -403,13 +404,14 @@ def _validate_profile(record: Mapping[str, Any]) -> None:
         raise ContractValidationError(
             "Every semantic owner must be required for profile completion"
         )
-    rule_names = [task["rule_name"] for task in record["owner_tasks"]]
+    rule_names = [task["rule_name"] for task in owner_tasks]
     if len(rule_names) != len(set(rule_names)):
         raise ContractValidationError(
             "Profile owner_task rule_name values must be unique"
         )
     _validate_direct_edges(record["direct_edges"], owners)
-    templates = [item["artifact_id_template"] for item in record["artifact_templates"]]
+    artifact_templates = record["artifact_templates"]
+    templates = [item["artifact_id_template"] for item in artifact_templates]
     if len(templates) != len(set(templates)):
         raise ContractValidationError(
             "Profile artifact_id_template values must be unique"
@@ -421,13 +423,37 @@ def _validate_profile(record: Mapping[str, Any]) -> None:
         "cohort": "cohort",
         "analysis": "analysis",
     }
-    for task in record["owner_tasks"]:
+    for task in owner_tasks:
         expected_selector = scope_selectors[task["scope_type"]]
         if task["scope_selector"] != expected_selector:
             raise ContractValidationError(
                 "Profile owner_task scope_selector must match its scope_type"
             )
-    _validate_artifact_template_groups(record["artifact_templates"], scope_selectors)
+    _validate_artifact_template_groups(artifact_templates, scope_selectors)
+    task_by_key = {task["machine_key"]: task for task in owner_tasks}
+    owner_by_step = {task["step_id"]: task["machine_key"] for task in owner_tasks}
+    if len(owner_by_step) != len(owner_tasks):
+        raise ContractValidationError("Profile owner step_id values must be unique")
+    adapter_owners = {
+        (item["adapter"], owner_by_step[item["step_id"]])
+        for item in artifact_templates
+    }
+    if len({adapter for adapter, _owner in adapter_owners}) != len(adapter_owners):
+        raise ContractValidationError("Profile artifact adapters collide")
+    available = {
+        (owner, template["adapter"])
+        for owner, task in task_by_key.items()
+        for template in artifact_templates
+        if template["step_id"] == task["step_id"]
+    }
+    if any(
+        task_by_key[edge["consumer"]]["scope_type"] == "analysis"
+        and (edge["producer"], edge["artifact"]) not in available
+        for edge in record["direct_edges"]
+    ):
+        raise ContractValidationError(
+            "Analysis direct edge must name an admitted producer adapter"
+        )
 
 
 def _validate_policy(record: Mapping[str, Any]) -> None:
@@ -459,7 +485,6 @@ def _validate_execution(record: Mapping[str, Any]) -> None:
 
     analysis = record["analysis"]
     policy = analysis["policy"]
-    _validate_policy(policy)
     if analysis["primary_analysis_id"] != policy["analysis_id"]:
         raise ContractValidationError(
             "Execution primary_analysis_id must equal policy.analysis_id"
@@ -468,23 +493,25 @@ def _validate_execution(record: Mapping[str, Any]) -> None:
         raise ContractValidationError(
             "Execution policy_sha256 does not match canonical policy content"
         )
-    controls: dict[str, int] = {}
-    treatments: dict[str, int] = {}
-    for sample in record["samples"]["rows"]:
-        replicate = sample["replicate"]
-        if sample["condition"] == policy["control_condition"]:
-            controls[replicate] = controls.get(replicate, 0) + 1
-        if sample["condition"] == policy["treatment_condition"]:
-            treatments[replicate] = treatments.get(replicate, 0) + 1
-    if (
-        set(controls) != set(treatments)
-        or len(controls) < 2
-        or any(count != 1 for count in (*controls.values(), *treatments.values()))
-    ):
-        raise ContractValidationError(
-            "Execution samples must define exactly one control and treatment "
-            "for each of at least two complete replicate strata"
-        )
+    if policy["schema_version"] == "emrys.analysis-policy.v1":
+        _validate_policy(policy)
+        controls: dict[str, int] = {}
+        treatments: dict[str, int] = {}
+        for sample in record["samples"]["rows"]:
+            replicate = sample["replicate"]
+            if sample["condition"] == policy["control_condition"]:
+                controls[replicate] = controls.get(replicate, 0) + 1
+            if sample["condition"] == policy["treatment_condition"]:
+                treatments[replicate] = treatments.get(replicate, 0) + 1
+        if (
+            set(controls) != set(treatments)
+            or len(controls) < 2
+            or any(count != 1 for count in (*controls.values(), *treatments.values()))
+        ):
+            raise ContractValidationError(
+                "Execution samples must define exactly one control and treatment "
+                "for each of at least two complete replicate strata"
+            )
 
     envelope = record["identity_envelope"]
     expected_envelope = {
@@ -809,8 +836,9 @@ def _validate_record_uncached(
             record["analyses"].values() if name == "project" else (record["analysis"],)
         )
         for analysis in analyses:
-            _validate_policy(analysis)
-    elif name == "policy":
+            if "module" not in analysis:
+                _validate_policy(analysis)
+    elif name == "policy" and record["schema_version"] == "emrys.analysis-policy.v1":
         _validate_policy(record)
     elif name == "execution":
         _validate_execution(record)

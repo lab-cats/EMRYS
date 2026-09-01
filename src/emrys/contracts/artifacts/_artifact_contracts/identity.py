@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-import glob
 import hashlib
 import json
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from emrys.contracts.artifacts import validate_resolved_path
 
 from .definitions import (
     REPO_ROOT,
@@ -36,33 +37,6 @@ def validate_run_contract(run_contract: dict[str, Any], label: str) -> None:
             f"{label} run_contract_sha256 does not match the canonical "
             f"component contract; observed {observed}, expected {expected}"
         )
-
-
-def validate_resolved_path(value: str, label: str) -> None:
-    if not value or value.strip() != value:
-        raise ContractValidationError(
-            f"{label} must be non-empty and have no surrounding whitespace"
-        )
-    if "\x00" in value or "\n" in value or "\r" in value:
-        raise ContractValidationError(f"{label} contains an invalid control character")
-    if glob.has_magic(value):
-        raise ContractValidationError(
-            f"{label} must be explicit and must not contain glob syntax: {value}"
-        )
-    if any(token in value for token in ("${", "{{", "}}")):
-        raise ContractValidationError(
-            f"{label} must be resolved, not templated: {value}"
-        )
-    if "//" in value:
-        raise ContractValidationError(
-            f"{label} must not contain redundant path separators: {value}"
-        )
-    path = Path(value)
-    if any(part in {".", ".."} for part in path.parts):
-        raise ContractValidationError(
-            f"{label} must be normalized without '.' or '..' components: {value}"
-        )
-
 
 def validate_document_paths(value: Any, location: str = "$") -> None:
     if isinstance(value, dict):

@@ -103,7 +103,7 @@ imported across peers.
 | CLI composition | The exact owner-declared current composition roster plus the exact transitions below | supported grouped public routes over those owner modules | every target outside the two explicit rosters; no seam becomes a general import API |
 | `contracts/` | standard/external libraries and other contracts; only the exact transitions below may reach implementation | none | every other EMRYS implementation dependency |
 | `libraries/` | `contracts/` and lower neutral libraries in an acyclic chain | none | functional, ingestion, application, or reporting owners |
-| `stages/`, `analyses/`, `evidence/` | `contracts/`, approved `libraries/`, owner-local code | owner-local tools and peer artifacts through contracts | peer implementation, ingestion, or reporting implementation |
+| `stages/`, `analyses/`, `evidence/` | `contracts/`, approved `libraries/`, owner-local code; the built-in `paired_cmh_candidate_ranking_report` provider may import only the public `emrys.reporting` package root | owner-local tools and peer artifacts through contracts | peer implementation, ingestion, or reporting implementation, including every `emrys.reporting` submodule |
 | `ingestion/` | `contracts/`, approved `libraries/`, ingestion-local code | external inputs; emitted validated declarations | functional-owner implementation or execution |
 | `orchestration/` | `contracts/`, approved `libraries/`, orchestration-local code, and the exact reporting seams and transitions below | public owner commands/capabilities and declared artifacts | peer-private implementation, ingestion, or scientific logic outside a named seam or transition |
 | `reporting/` | `contracts/`, approved `libraries/`, reporting-local code | explicit public artifacts and summaries | functional-owner implementation, input discovery, or analysis execution |
@@ -133,7 +133,7 @@ composition are reviewed together.
 | ID | Exact current target | Current grouped-CLI purpose |
 |---|---|---|
 | `CLI-SEAM-001` | `emrys.analyses.paired_cmh_candidate_ranking.validator` | Owner validation command |
-| `CLI-SEAM-002` | `emrys.analyses.scientific_context_projection.validator` | Owner validation command |
+| `CLI-SEAM-002` | `emrys.analyses.paired_cmh_candidate_ranking.scientific_context_projection.validator` | Owner validation command |
 | `CLI-SEAM-003` | `emrys.contracts.artifacts.validator` | Artifact-contract validation command |
 | `CLI-SEAM-004` | `emrys.evidence.canonical_bam_qc.validator` | Owner validation command |
 | `CLI-SEAM-005` | `emrys.evidence.reference_provenance.reconciler` | Reference-provenance reconciliation command |
@@ -204,7 +204,6 @@ explicit permanent justification in the durable owner.
 | `SRC-TRANS-010` | `orchestration/local_pilot/lifecycle.py` → `emrys.evidence.storage_inventory.qualification` | Storage re-admission before execution/reuse | `AC-SLICE-05` and `AC-SLICE-06`: preserve fail-closed qualification and recovery while selecting the final boundary. |
 | `SRC-TRANS-011` | `orchestration/local_pilot/onboarding.py` → `emrys.stages.gtf_to_bed12.converter` | Reference GTF/FASTA compatibility using the current normalization implementation | `AC-SLICE-03` and `AC-SLICE-04`: select a public capability/contract boundary without duplicating GTF semantics. |
 | `SRC-TRANS-012` | `orchestration/local_pilot/onboarding.py` → `emrys.evidence.runtime_availability.inspector` | Project runtime discovery and admission through the public inspection capability | `AC-SLICE-08` and `RUNTIME-01`: preserve one runtime-inspection authority while Project orchestration owns admission. |
-
 ### Automated import projection
 
 [`tests/tools/source_dependencies.py`](../../../tests/tools/source_dependencies.py)

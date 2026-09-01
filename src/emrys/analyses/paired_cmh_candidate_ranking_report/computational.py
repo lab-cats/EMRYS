@@ -5,27 +5,98 @@ from __future__ import annotations
 import csv
 import hashlib
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from emrys.contracts.scientific_evidence import step08, step09
 from emrys.libraries import validation as owner_validation
 
-from .inputs import (
-    _assert_snapshot,
-    _fail,
-    _resolve_contract_file,
-    _snapshot_regular,
+from emrys.reporting import (
+    AnalysisReportArtifactV1,
+    ReportInputSnapshot as FileSnapshot,
+    ReportProviderError as ReportRenderError,
+    admit_report_input as _snapshot_regular,
+    fail_report_provider as _fail,
+    recheck_report_input as _assert_snapshot,
+    resolve_report_input as _resolve_contract_file,
 )
-from .models import (
-    COMPUTATIONAL_ALL_SITES_DISPLAY_LIMIT,
-    COMPUTATIONAL_SIGNIFICANT_DISPLAY_LIMIT,
-    ComputationalSampleManifest,
-    ComputationalResults,
-    ComputationalTable,
-    ReportRenderError,
-    SamplePair,
-)
+
+COMPUTATIONAL_ALL_SITES_DISPLAY_LIMIT = 0
+COMPUTATIONAL_SIGNIFICANT_DISPLAY_LIMIT = 0
+
+
+@dataclass(frozen=True)
+class ComputationalTable:
+    role: str
+    table_id: str
+    artifact_id: str
+    title: str
+    path: Path
+    sha256: str
+    size_bytes: int
+    row_count: int
+    display_row_limit: int
+    header: tuple[str, ...]
+    display_rows: tuple[tuple[str, ...], ...]
+    snapshot: FileSnapshot
+
+    @property
+    def displayed_row_count(self) -> int:
+        return len(self.display_rows)
+
+    @property
+    def truncated(self) -> bool:
+        return self.displayed_row_count < self.row_count
+
+
+@dataclass(frozen=True)
+class SamplePair:
+    replicate: str
+    control_sample_id: str
+    treatment_sample_id: str
+
+
+@dataclass(frozen=True)
+class ComputationalSampleManifest:
+    role: str
+    path: Path
+    sha256: str
+    size_bytes: int
+    sample_ids: tuple[str, ...]
+    control_condition: str
+    treatment_condition: str
+    pairs: tuple[SamplePair, ...]
+    snapshot: FileSnapshot
+
+
+@dataclass(frozen=True)
+class ComputationalResults:
+    analysis_id: str
+    sample_ids: tuple[str, ...]
+    validation: ComputationalTable
+    all_sites: ComputationalTable
+    significant_sites: ComputationalTable
+    summary: ComputationalTable
+    mutation_spectrum: ComputationalTable
+    sample_manifest: ComputationalSampleManifest
+
+    @property
+    def tables(self) -> tuple[ComputationalTable, ...]:
+        return (
+            self.validation,
+            self.all_sites,
+            self.significant_sites,
+            self.summary,
+            self.mutation_spectrum,
+        )
+
+    @property
+    def input_snapshots(self) -> tuple[FileSnapshot, ...]:
+        return (
+            *(table.snapshot for table in self.tables),
+            self.sample_manifest.snapshot,
+        )
 
 
 _VALIDATION_ADAPTER = "step09_validation_report_v1"
@@ -74,139 +145,46 @@ _ROLE_SPECS = (
 )
 
 
-def _record_identity(
-    record: Mapping[str, Any],
-    *,
-    analysis_id: str,
-    adapter: str,
-) -> None:
-    if record["adapter"] != adapter:
-        _fail(
-            f"Primary Step 09 artifact {record['artifact_id']!r} uses the wrong "
-            f"adapter: {record['adapter']!r}"
-        )
-    expected_scope = {
-        "step_id": "09",
-        "scope_type": "analysis",
-        "scope_id": analysis_id,
+def _select_artifacts(
+    artifacts: Mapping[str, AnalysisReportArtifactV1],
+) -> tuple[dict[str, AnalysisReportArtifactV1], str | None]:
+    selected = {
+        role: artifacts[adapter]
+        for role, _table_id, adapter, _suffix, _title, _limit in _ROLE_SPECS
+        if adapter in artifacts
     }
-    if record["scope"] != expected_scope:
-        _fail(
-            f"Primary Step 09 artifact {record['artifact_id']!r} uses the wrong "
-            f"scope: {record['scope']!r}"
+    if _VALIDATION_ADAPTER in artifacts:
+        selected["validation"] = artifacts[_VALIDATION_ADAPTER]
+    missing = [
+        adapter
+        for adapter in (
+            *(spec[2] for spec in _ROLE_SPECS),
+            _VALIDATION_ADAPTER,
         )
-    if record["expectation"]["required"] is not True:
-        _fail(f"Primary Step 09 artifact {record['artifact_id']!r} must be required")
-    recorded_analysis_id = record["parameters"].get("analysis_id")
-    source_is_complete = (
-        record["availability_status"] == "present"
-        and record["completion_status"] == "complete"
-        and record["source"] is not None
-    )
-    if recorded_analysis_id not in {None, analysis_id} or (
-        source_is_complete and recorded_analysis_id != analysis_id
-    ):
-        _fail(
-            f"Primary Step 09 artifact {record['artifact_id']!r} has a mismatched "
-            "analysis_id parameter"
-        )
-
-
-def _select_records(
-    summary: Mapping[str, Any],
-) -> tuple[dict[str, Mapping[str, Any]], str | None]:
-    analysis_id = summary["run_contract"]["primary_analysis_id"]
-    selected: dict[str, Mapping[str, Any]] = {}
-    unavailable: list[str] = []
-    for role, _table_id, adapter, _artifact_suffix, _title, _limit in _ROLE_SPECS:
-        identity_matches = [
-            artifact
-            for artifact in summary["artifacts"]
-            if artifact["adapter"] == adapter
-            and artifact["scope"]
-            == {
-                "step_id": "09",
-                "scope_type": "analysis",
-                "scope_id": analysis_id,
-            }
-        ]
-        if len(identity_matches) != 1:
-            _fail(
-                "Run summary must declare exactly one primary Step 09 artifact "
-                f"using adapter {adapter!r}; observed {len(identity_matches)}"
-            )
-        record = identity_matches[0]
-        _record_identity(
-            record,
-            analysis_id=analysis_id,
-            adapter=adapter,
-        )
-        selected[role] = record
-        if not (
-            record["availability_status"] == "present"
-            and record["completion_status"] == "complete"
-            and record["source"] is not None
-        ):
-            unavailable.append(
-                f"{record['artifact_id']} "
-                f"({record['availability_status']}/{record['completion_status']})"
-            )
-    validation_matches = [
-        artifact
-        for artifact in summary["artifacts"]
-        if artifact["adapter"] == _VALIDATION_ADAPTER
-        and artifact["scope"]
-        == {
-            "step_id": "09",
-            "scope_type": "analysis",
-            "scope_id": analysis_id,
-        }
+        if adapter not in artifacts
     ]
-    if len(validation_matches) != 1:
-        _fail(
-            "Run summary must declare exactly one primary Step 09 owner-validation "
-            f"artifact; observed {len(validation_matches)}"
-        )
-    validation_record = validation_matches[0]
-    if validation_record["expectation"]["required"] is not True:
-        _fail("Primary Step 09 owner-validation artifact must be required")
-    selected["validation"] = validation_record
-    if not (
-        validation_record["availability_status"] == "present"
-        and validation_record["completion_status"] == "complete"
-        and validation_record["source"] is not None
-    ):
-        unavailable.append(
-            f"{validation_record['artifact_id']} "
-            f"({validation_record['availability_status']}/"
-            f"{validation_record['completion_status']})"
-        )
-    reason = None
-    if unavailable:
-        reason = (
-            "The exact primary-analysis Step 09 result trio, mutation spectrum, "
-            "and owner-validation artifact are not complete, so no computational "
-            "candidate rows were opened or displayed: " + "; ".join(unavailable) + "."
-        )
+    reason = (
+        "The exact primary-analysis Step 09 result trio, mutation spectrum, "
+        "and owner-validation artifact are not complete, so no computational "
+        "candidate rows were opened or displayed: " + ", ".join(missing) + "."
+        if missing
+        else None
+    )
     return selected, reason
 
 
 def _inspect_validation(
-    record: Mapping[str, Any],
+    record: AnalysisReportArtifactV1,
     *,
-    source_root: Path,
     analysis_id: str,
 ) -> ComputationalTable:
     path, snapshot, header, rows, observed_row_count = _source_table(
         record,
-        source_root=source_root,
         display_limit=len(_VALIDATION_CHECK_IDS),
         expected_header=owner_validation.HEADER,
     )
-    source = record["source"]
-    assert isinstance(source, Mapping)
     if (
-        source["row_count"] != len(_VALIDATION_CHECK_IDS)
+        record.row_count != len(_VALIDATION_CHECK_IDS)
         or observed_row_count != len(_VALIDATION_CHECK_IDS)
         or len(rows) != len(_VALIDATION_CHECK_IDS)
     ):
@@ -237,7 +215,7 @@ def _inspect_validation(
     return ComputationalTable(
         role="validation",
         table_id="computational_validation",
-        artifact_id=record["artifact_id"],
+        artifact_id=record.artifact_id,
         title="Step 09 owner-validation report",
         path=path,
         sha256=snapshot.sha256,
@@ -251,53 +229,36 @@ def _inspect_validation(
 
 
 def _admit_source_identity(
-    record: Mapping[str, Any],
-    *,
-    source_root: Path,
+    record: AnalysisReportArtifactV1,
 ) -> tuple[Path, Any]:
-    source = record["source"]
-    if not isinstance(source, Mapping):
-        _fail(f"Computational result {record['artifact_id']!r} has no source record")
-    if source["media_type"] != "text/tab-separated-values":
-        _fail(f"Computational result {record['artifact_id']!r} must be a TSV source")
-    if source["path"] != record["expectation"]["source_path"]:
-        _fail(
-            f"Computational result {record['artifact_id']!r} source path differs "
-            "from its expectation"
-        )
-    path = _resolve_contract_file(
-        source["path"],
-        f"computational result {record['artifact_id']!r}",
-        source_root=source_root,
-    )
+    if record.media_type != "text/tab-separated-values":
+        _fail(f"Computational result {record.artifact_id!r} must be a TSV source")
+    path = record.path
     snapshot = _snapshot_regular(
         path,
-        f"computational result {record['artifact_id']!r}",
+        f"computational result {record.artifact_id!r}",
     )
-    if snapshot.sha256 != source["sha256"]:
+    if snapshot.sha256 != record.sha256:
         _fail(
-            f"Computational result {record['artifact_id']!r} SHA-256 mismatch: "
-            f"observed {snapshot.sha256}; expected {source['sha256']}"
+            f"Computational result {record.artifact_id!r} SHA-256 mismatch: "
+            f"observed {snapshot.sha256}; expected {record.sha256}"
         )
-    if snapshot.size_bytes != source["size_bytes"]:
+    if snapshot.size_bytes != record.size_bytes:
         _fail(
-            f"Computational result {record['artifact_id']!r} size mismatch: "
-            f"observed {snapshot.size_bytes}; expected {source['size_bytes']}"
+            f"Computational result {record.artifact_id!r} size mismatch: "
+            f"observed {snapshot.size_bytes}; expected {record.size_bytes}"
         )
     return path, snapshot
 
 
 def _source_table(
-    record: Mapping[str, Any],
+    record: AnalysisReportArtifactV1,
     *,
-    source_root: Path,
     display_limit: int,
     expected_header: Sequence[str] | None = None,
     admitted_source: tuple[Path, Any] | None = None,
 ) -> tuple[Path, Any, tuple[str, ...], list[tuple[str, ...]], int]:
-    path, snapshot = admitted_source or _admit_source_identity(
-        record, source_root=source_root
-    )
+    path, snapshot = admitted_source or _admit_source_identity(record)
 
     header: tuple[str, ...] | None = None
     displayed: list[tuple[str, ...]] = []
@@ -308,31 +269,30 @@ def _source_table(
             try:
                 header = tuple(next(reader))
             except StopIteration:
-                _fail(f"Computational result {record['artifact_id']!r} is empty")
+                _fail(f"Computational result {record.artifact_id!r} is empty")
             if not header or any(not column for column in header):
                 _fail(
-                    f"Computational result {record['artifact_id']!r} has a blank "
+                    f"Computational result {record.artifact_id!r} has a blank "
                     "header column"
                 )
             if len(header) != len(set(header)):
                 _fail(
-                    f"Computational result {record['artifact_id']!r} has duplicate "
+                    f"Computational result {record.artifact_id!r} has duplicate "
                     "header columns"
                 )
             if expected_header is not None and header != tuple(expected_header):
                 _fail(
-                    f"Computational result {record['artifact_id']!r} has the wrong "
-                    "header"
+                    f"Computational result {record.artifact_id!r} has the wrong header"
                 )
             for row_number, row in enumerate(reader, start=2):
                 if not row or all(value == "" for value in row):
                     _fail(
-                        f"Computational result {record['artifact_id']!r} row "
+                        f"Computational result {record.artifact_id!r} row "
                         f"{row_number} is blank"
                     )
                 if len(row) != len(header):
                     _fail(
-                        f"Computational result {record['artifact_id']!r} row "
+                        f"Computational result {record.artifact_id!r} row "
                         f"{row_number} has {len(row)} fields; expected {len(header)}"
                     )
                 if len(displayed) < display_limit:
@@ -341,19 +301,18 @@ def _source_table(
     except ReportRenderError:
         raise
     except (OSError, UnicodeError, csv.Error) as exc:
-        _fail(f"Could not parse computational result {record['artifact_id']!r}: {exc}")
+        _fail(f"Could not parse computational result {record.artifact_id!r}: {exc}")
     assert header is not None
-    _assert_snapshot(snapshot, f"computational result {record['artifact_id']!r}")
+    _assert_snapshot(snapshot, f"computational result {record.artifact_id!r}")
     return path, snapshot, header, displayed, observed_row_count
 
 
 def _projection_table(
-    record: Mapping[str, Any],
+    record: AnalysisReportArtifactV1,
     *,
     role: str,
     table_id: str,
     title: str,
-    source_root: Path,
     display_limit: int,
     admitted_source: tuple[Path, Any],
     canonical_path: Path,
@@ -362,32 +321,29 @@ def _projection_table(
 ) -> ComputationalTable:
     path, snapshot, header, displayed, observed_row_count = _source_table(
         record,
-        source_root=source_root,
         display_limit=display_limit,
         expected_header=canonical_header,
         admitted_source=admitted_source,
     )
-    source = record["source"]
-    assert isinstance(source, Mapping)
     if canonical_path != path:
         _fail(
             f"Canonical Step 09 projection selected a different source for "
-            f"{record['artifact_id']!r}"
+            f"{record.artifact_id!r}"
         )
     if observed_row_count != canonical_row_count:
         _fail(
-            f"Computational result {record['artifact_id']!r} row count differs "
+            f"Computational result {record.artifact_id!r} row count differs "
             "from the canonical Step 09 projection"
         )
-    if observed_row_count != source["row_count"]:
+    if observed_row_count != record.row_count:
         _fail(
-            f"Computational result {record['artifact_id']!r} row-count mismatch: "
-            f"observed {observed_row_count}; expected {source['row_count']}"
+            f"Computational result {record.artifact_id!r} row-count mismatch: "
+            f"observed {observed_row_count}; expected {record.row_count}"
         )
     return ComputationalTable(
         role=role,
         table_id=table_id,
-        artifact_id=record["artifact_id"],
+        artifact_id=record.artifact_id,
         title=title,
         path=path,
         sha256=snapshot.sha256,
@@ -486,22 +442,22 @@ def _admit_sample_manifest(
 
 def admit_computational_results(
     summary: Mapping[str, Any],
+    artifacts: Mapping[str, AnalysisReportArtifactV1],
     *,
     source_root: Path,
 ) -> tuple[ComputationalResults | None, str | None]:
     """Admit the exact primary Step 09 report sources or disclose unavailability."""
 
-    records, unavailable_reason = _select_records(summary)
+    records, unavailable_reason = _select_artifacts(artifacts)
     if unavailable_reason is not None:
         return None, unavailable_reason
     analysis_id = summary["run_contract"]["primary_analysis_id"]
     validation = _inspect_validation(
         records["validation"],
-        source_root=source_root,
         analysis_id=analysis_id,
     )
     admitted = {
-        role: _admit_source_identity(records[role], source_root=source_root)
+        role: _admit_source_identity(records[role])
         for role in (
             "all_sites",
             "significant_sites",
@@ -552,7 +508,6 @@ def admit_computational_results(
             role=role,
             table_id=table_id,
             title=title,
-            source_root=source_root,
             display_limit=display_limit,
             admitted_source=admitted[role],
             canonical_path=canonical_path,
@@ -562,7 +517,7 @@ def admit_computational_results(
     for role, table in tables.items():
         _assert_snapshot(
             table.snapshot,
-            f"computational result {records[role]['artifact_id']!r}",
+            f"computational result {records[role].artifact_id!r}",
         )
     sample_manifest = _admit_sample_manifest(
         summary,

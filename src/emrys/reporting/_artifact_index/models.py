@@ -15,6 +15,7 @@ from emrys.libraries.validation.mpileup import RECEIPT_HEADER as STEP07_RECEIPT_
 from emrys.libraries.validation.report import HEADER as VALIDATION_REPORT_HEADER
 
 if TYPE_CHECKING:
+    from emrys.analyses import LoadedAnalysisModuleV1
     from emrys.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
 
 PRODUCER = "build_artifact_index"
@@ -105,6 +106,7 @@ class AdapterSpec:
     scope_type: str
     kind: str
     media_type: str
+    source_path_template: str | None = None
     suffixes: tuple[str, ...] = ()
     basenames: tuple[str, ...] = ()
     expected_header: tuple[str, ...] | None = None
@@ -159,6 +161,9 @@ class BuildContext:
     run_contract_path: Path
     run_contract: dict[str, Any]
     run_contract_file_sha256: str
+    analysis_policy_path: Path | None
+    analysis_policy_sha256: str | None
+    analysis_module: LoadedAnalysisModuleV1
     inventory_path: Path
     inventory_sha256: str
     inventory_rows: list[dict[str, str]]

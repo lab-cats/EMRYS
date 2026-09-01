@@ -1,4 +1,4 @@
-"""Deterministic report-summary and v4 receipt projection."""
+"""Deterministic report-summary and versioned receipt projection."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from emrys.contracts.artifacts import api as contracts
 from .inputs import _assert_snapshot, _fail, _snapshot_regular
 from .models import (
     CSS_RESOURCE,
-    INTERPRETATION_BOUNDARY,
+    HISTORICAL_REPORT_RECEIPT_SCHEMA_VERSION,
     JINJA_VERSION,
     PRODUCER,
     PRODUCER_VERSION,
@@ -28,7 +28,13 @@ from .models import (
 
 
 def validate_receipt(document: Mapping[str, Any]) -> None:
-    validator = contracts.schema_validator("report-receipt")
+    version = str(document.get("schema_version", ""))
+    if version not in {
+        HISTORICAL_REPORT_RECEIPT_SCHEMA_VERSION,
+        REPORT_RECEIPT_SCHEMA_VERSION,
+    }:
+        _fail(f"Unsupported report receipt schema version: {version!r}")
+    validator = contracts.schema_validator("report-receipt", version)
     errors = sorted(validator.iter_errors(document), key=lambda error: list(error.path))
     if errors:
         first = errors[0]
@@ -48,7 +54,7 @@ def summary_tsv_bytes(context: ReportContext) -> bytes:
         rows.append(
             (
                 summary["run_id"],
-                summary["interpretation_boundary"],
+                context.interpretation_boundary,
                 scope["step_id"],
                 scope["scope_type"],
                 scope["scope_id"],
@@ -79,11 +85,7 @@ def validate_summary_tsv(path: Path, context: ReportContext) -> None:
 
 
 def _truncations(context: ReportContext) -> list[dict[str, Any]]:
-    # The scientific view no longer renders prefixes of the native candidate
-    # tables. Complete Step 09 TSVs remain admitted inputs and are bound in the
-    # evidence view; selected-candidate records are an explicit display
-    # projection, not a truncated table. The v4 field therefore remains an
-    # empty roster rather than describing rows that were never rendered.
+    del context
     return []
 
 
@@ -109,22 +111,26 @@ def receipt_document(
         if kind in {"scientific_html", "evidence_html"}:
             descriptor["self_contained"] = True
         descriptors.append(descriptor)
-    identity = hashlib.sha256(
+    input_identity = "\0".join(snapshot.sha256 for snapshot in context.input_snapshots)
+    identity_payload = "\0".join(
         (
-            "\0".join(snapshot.sha256 for snapshot in context.input_snapshots)
-            + "\0"
-            + JINJA_VERSION
-            + "\0"
-            + context.render_metadata["figure_renderer_version"]
-            + "\0"
-            + context.render_metadata["logo_renderer_version"]
-            + "\0"
-            + context.render_metadata["figure_policy_version"]
-            + "\0"
-            + PRODUCER_VERSION
-        ).encode("utf-8")
-    ).hexdigest()[:20]
+            input_identity,
+            context.scientific_renderer["content_sha256"],
+            context.render_metadata["renderer_package_sha256"],
+            JINJA_VERSION,
+            PRODUCER_VERSION,
+        )
+    )
+    identity = hashlib.sha256(identity_payload.encode("utf-8")).hexdigest()[:20]
     summary = context.summary
+    core_renderer = {
+        "producer": PRODUCER,
+        "producer_version": PRODUCER_VERSION,
+        "package": "emrys.reporting",
+        "content_sha256": context.render_metadata["renderer_package_sha256"],
+        "template_engine": "Jinja2",
+        "template_engine_version": JINJA_VERSION,
+    }
     document = {
         "schema_name": "emrys.report_receipt",
         "schema_version": REPORT_RECEIPT_SCHEMA_VERSION,
@@ -134,14 +140,19 @@ def receipt_document(
         "generated_at": summary["generated_at"],
         "publication_state": "complete",
         "transaction_state": "complete",
-        "interpretation_boundary": INTERPRETATION_BOUNDARY,
+        "interpretation_boundary": context.interpretation_boundary,
         "input_run_summary": {
             "path": str(context.run_summary_path),
             "sha256": context.run_summary_snapshot.sha256,
             "schema_name": summary["schema_name"],
             "schema_version": summary["schema_version"],
         },
-        "renderer": {"name": "Jinja2", "version": JINJA_VERSION},
+        "scientific_renderer": {
+            **context.scientific_renderer,
+            "module_version": context.analysis_module.descriptor.module_version,
+            "core_support": core_renderer,
+        },
+        "evidence_renderer": core_renderer,
         "template": {
             "path": f"emrys.reporting/{TEMPLATE_RESOURCE}",
             "sha256": context.template_snapshot.sha256,
@@ -155,7 +166,7 @@ def receipt_document(
         "truncations": _truncations(context),
         "schema_versions": {
             "artifact_record": "2.0.0",
-            "run_summary": "2.0.0",
+            "run_summary": summary["schema_version"],
             "report_receipt": REPORT_RECEIPT_SCHEMA_VERSION,
         },
         "analysis_execution_performed": False,
@@ -212,7 +223,7 @@ def read_receipt_tsv(path: Path) -> dict[str, Any]:
         with path.open("r", encoding="utf-8", newline="") as stream:
             reader = csv.DictReader(stream, delimiter="\t")
             if tuple(reader.fieldnames or ()) != RECEIPT_HEADER:
-                _fail("Existing report receipt is not the v4 receipt header")
+                _fail("Existing report receipt does not use the supported TSV header")
             rows = list(reader)
     except (OSError, UnicodeError, csv.Error) as exc:
         _fail(f"Could not read existing report receipt: {exc}")

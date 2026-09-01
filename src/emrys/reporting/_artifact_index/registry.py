@@ -1,11 +1,13 @@
-"""Declarative artifact-adapter registry."""
+"""Processing adapters plus the one analysis module selected by a Run."""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from functools import partial
 
-from emrys.contracts.scientific_evidence import scientific_context, step08, step09
+from emrys import analyses
+from emrys.reporting import ANALYSIS_MEDIA_TYPE_BY_KIND
+from emrys.contracts.scientific_evidence import step08
 from emrys.libraries.alignments import orientation as alignment_orientation
 
 from .models import (
@@ -14,9 +16,11 @@ from .models import (
     STEP07_RECEIPT_HEADER,
     VALIDATION_REPORT_HEADER,
     AdapterSpec,
+    ArtifactIndexError,
 )
 
 MEDIA_TYPE_BY_KIND = {
+    **ANALYSIS_MEDIA_TYPE_BY_KIND,
     "bai": "application/octet-stream",
     "bam": "application/x-bam",
     "bed12": "text/bed",
@@ -24,17 +28,13 @@ MEDIA_TYPE_BY_KIND = {
     "fai": "text/tab-separated-values",
     "fasta": "text/x-fasta",
     "flagstat": "text/plain",
-    "pdf": "application/pdf",
     "picard_metrics": "text/plain",
     "quickcheck": "text/plain",
     "rseqc": "text/plain",
-    "sample_blocks_tsv": "text/tab-separated-values",
     "star_index": "application/octet-stream",
     "star_log_final": "text/plain",
     "star_sj": "text/plain",
     "text": "text/plain",
-    "tsv": "text/tab-separated-values",
-    "validation_report": "text/tab-separated-values",
     "vcf": "text/vcf",
 }
 
@@ -90,13 +90,40 @@ def add_validation_report(
     )
 
 
-def build_adapter_registry() -> dict[str, AdapterSpec]:
+def _add_analysis_adapters(
+    registry: dict[str, AdapterSpec],
+    descriptor: analyses.AnalysisModuleDescriptorV1,
+) -> None:
+    for task in descriptor.tasks:
+        for item in task.outputs:
+            expected_media_type = ANALYSIS_MEDIA_TYPE_BY_KIND.get(item.kind)
+            if item.adapter in registry or expected_media_type is None:
+                raise ArtifactIndexError(
+                    "Analysis module adapter collides or is unsupported: "
+                    f"{item.adapter!r}"
+                )
+            registry[item.adapter] = AdapterSpec(
+                adapter_id=item.adapter,
+                step_id=task.step_id,
+                scope_type="analysis",
+                kind=item.kind,
+                media_type=expected_media_type,
+                source_path_template=item.source_path_template,
+                suffixes=(item.source_path_template.rsplit("}", 1)[-1],),
+                expected_header=item.expected_header,
+                exact_data_rows=item.exact_data_rows,
+                allow_header_only=item.allow_header_only,
+            )
+
+
+def build_adapter_registry(
+    descriptor: analyses.AnalysisModuleDescriptorV1,
+) -> dict[str, AdapterSpec]:
     registry: dict[str, AdapterSpec] = {}
     add_reference = partial(add_spec, registry, "reference")
     add_sample = partial(add_spec, registry, "sample")
     add_partition = partial(add_spec, registry, "cohort_partition")
     add_cohort = partial(add_spec, registry, "cohort")
-    add_analysis = partial(add_spec, registry, "analysis")
     add_reference(
         "step00a_star_index_v1",
         "00a",
@@ -104,12 +131,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         basenames=STEP00A_BASENAMES,
     )
     add_validation_report(registry, "00a", "reference", exact_data_rows=6)
-    add_reference(
-        "step00b_bed12_v1",
-        "00b",
-        "bed12",
-        suffixes=(".bed",),
-    )
+    add_reference("step00b_bed12_v1", "00b", "bed12", suffixes=(".bed",))
     add_validation_report(registry, "00b", "reference")
     add_reference(
         "step00c_reference_fasta_v1",
@@ -117,74 +139,37 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "fasta",
         suffixes=(".fa", ".fasta"),
     )
+    add_reference("step00c_reference_fai_v1", "00c", "fai", suffixes=(".fai",))
     add_reference(
-        "step00c_reference_fai_v1",
-        "00c",
-        "fai",
-        suffixes=(".fai",),
-    )
-    add_reference(
-        "step00c_reference_dict_v1",
-        "00c",
-        "dict",
-        suffixes=(".dict",),
+        "step00c_reference_dict_v1", "00c", "dict", suffixes=(".dict",)
     )
     add_validation_report(registry, "00c", "reference")
-    add_sample(
-        "step01_star_bam_v1",
-        "01",
-        "bam",
-        suffixes=(".bam",),
-    )
+    add_sample("step01_star_bam_v1", "01", "bam", suffixes=(".bam",))
     for adapter_id, suffix, kind in (
         ("step01_star_log_final_v1", ".Log.final.out", "star_log_final"),
         ("step01_star_log_v1", ".Log.out", "text"),
         ("step01_star_log_progress_v1", ".Log.progress.out", "text"),
         ("step01_star_sj_v1", ".SJ.out.tab", "star_sj"),
     ):
-        add_sample(
-            adapter_id,
-            "01",
-            kind,
-            suffixes=(suffix,),
-        )
+        add_sample(adapter_id, "01", kind, suffixes=(suffix,))
     add_validation_report(registry, "01", "sample")
     for step_id, bam_adapter, bai_adapter, bam_suffix in (
         ("02", "step02_canonical_bam_v1", "step02_canonical_bai_v1", ".sorted.bam"),
         ("04", "step04_markdup_bam_v1", "step04_markdup_bai_v1", ".markdup.bam"),
         ("05", "step05_split_bam_v1", "step05_split_bai_v1", ".split_ncigar.bam"),
     ):
-        add_sample(
-            bam_adapter,
-            step_id,
-            "bam",
-            suffixes=(bam_suffix,),
-        )
-        add_sample(
-            bai_adapter,
-            step_id,
-            "bai",
-            suffixes=(f"{bam_suffix}.bai",),
-        )
+        add_sample(bam_adapter, step_id, "bam", suffixes=(bam_suffix,))
+        add_sample(bai_adapter, step_id, "bai", suffixes=(f"{bam_suffix}.bai",))
     add_validation_report(registry, "02", "sample")
     add_sample(
-        "step02b_quickcheck_v1",
-        "02b",
-        "quickcheck",
-        suffixes=(".quickcheck.txt",),
+        "step02b_quickcheck_v1", "02b", "quickcheck", suffixes=(".quickcheck.txt",)
     )
     add_sample(
-        "step02b_flagstat_v1",
-        "02b",
-        "flagstat",
-        suffixes=(".flagstat.txt",),
+        "step02b_flagstat_v1", "02b", "flagstat", suffixes=(".flagstat.txt",)
     )
     add_validation_report(registry, "02b", "sample")
     add_sample(
-        "step03_rseqc_infer_v1",
-        "03",
-        "rseqc",
-        suffixes=(".infer_experiment.txt",),
+        "step03_rseqc_infer_v1", "03", "rseqc", suffixes=(".infer_experiment.txt",)
     )
     add_validation_report(registry, "03", "sample")
     add_sample(
@@ -193,9 +178,8 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "picard_metrics",
         suffixes=(".markdup.metrics.txt",),
     )
-    add_validation_report(registry, "04", "sample")
-    add_validation_report(registry, "05", "sample")
-    add_validation_report(registry, "06", "sample")
+    for step in ("04", "05", "06"):
+        add_validation_report(registry, step, "sample")
     for orientation, adapter_prefix in zip(
         alignment_orientation.ORIENTATIONS,
         alignment_orientation.ORIENTATION_PREFIXES,
@@ -222,10 +206,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         allow_header_only=False,
     )
     add_partition(
-        "step07_mpileup_vcf_v1",
-        "07",
-        "vcf",
-        suffixes=(".mpileup.vcf",),
+        "step07_mpileup_vcf_v1", "07", "vcf", suffixes=(".mpileup.vcf",)
     )
     add_partition(
         "step07_mpileup_receipt_v1",
@@ -262,84 +243,5 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         allow_header_only=False,
     )
     add_validation_report(registry, "08", "cohort")
-    for adapter_id, suffix in (
-        ("step09_cmh_all_sites_v1", ".cmh_all_sites.tsv"),
-        ("step09_cmh_significant_sites_v1", ".cmh_significant_sites.tsv"),
-    ):
-        add_analysis(
-            adapter_id,
-            "09",
-            "sample_blocks_tsv",
-            suffixes=(suffix,),
-            expected_header=step09.STEP09_RESULT_HEADER,
-        )
-    add_analysis(
-        "step09_cmh_summary_v1",
-        "09",
-        "tsv",
-        suffixes=(".cmh_summary.tsv",),
-        expected_header=step09.STEP09_SUMMARY_HEADER,
-        exact_data_rows=1,
-        allow_header_only=False,
-    )
-    add_analysis(
-        "step09_mutation_spectrum_tsv_v1",
-        "09",
-        "tsv",
-        suffixes=(".mutation_spectrum.tsv",),
-        expected_header=step09.STEP09_MUTATION_HEADER,
-    )
-    for adapter_id, suffix in (
-        ("step09_mutation_spectrum_pdf_v1", ".mutation_spectrum.pdf"),
-        ("step09_depth_delta_pdf_v1", ".depth_delta.pdf"),
-    ):
-        add_analysis(
-            adapter_id,
-            "09",
-            "pdf",
-            suffixes=(suffix,),
-        )
-    add_validation_report(registry, "09", "analysis", exact_data_rows=7)
-    for adapter_id, suffix, header in (
-        (
-            "step10_candidate_context_v1",
-            ".candidate_context.tsv",
-            scientific_context.CANDIDATE_CONTEXT_HEADER,
-        ),
-        (
-            "step10_motif_hits_v1",
-            ".motif_hits.tsv",
-            scientific_context.MOTIF_HITS_HEADER,
-        ),
-        (
-            "step10_sequence_logo_v1",
-            ".sequence_logo.tsv",
-            scientific_context.SEQUENCE_LOGO_HEADER,
-        ),
-        (
-            "step10_motif_statistics_v1",
-            ".motif_statistics.tsv",
-            scientific_context.MOTIF_STATISTICS_HEADER,
-        ),
-    ):
-        add_analysis(
-            adapter_id,
-            "10",
-            "tsv",
-            suffixes=(suffix,),
-            expected_header=header,
-        )
-    add_analysis(
-        "step10_context_receipt_v1",
-        "10",
-        "tsv",
-        suffixes=(".context_receipt.tsv",),
-        expected_header=scientific_context.SCIENTIFIC_CONTEXT_RECEIPT_HEADER,
-        exact_data_rows=1,
-        allow_header_only=False,
-    )
-    add_validation_report(registry, "10", "analysis", exact_data_rows=1)
+    _add_analysis_adapters(registry, descriptor)
     return registry
-
-
-ADAPTER_REGISTRY = build_adapter_registry()

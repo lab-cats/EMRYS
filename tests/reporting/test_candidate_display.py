@@ -10,16 +10,20 @@ from pathlib import Path
 import pytest
 
 from emrys.contracts.scientific_evidence import scientific_context, step09
-from emrys.reporting._run_report.candidate_display import build_candidate_display
-from emrys.reporting._run_report.inputs import _snapshot_regular
-from emrys.reporting._run_report.models import (
+from emrys.analyses.paired_cmh_candidate_ranking_report.candidate_display import (
+    build_candidate_display,
+)
+from emrys.analyses.paired_cmh_candidate_ranking_report.computational import (
     ComputationalResults,
     ComputationalSampleManifest,
     ComputationalTable,
-    ReportRenderError,
     SamplePair,
+)
+from emrys.analyses.paired_cmh_candidate_ranking_report.scientific_context import (
     ScientificContextResults,
 )
+from emrys.reporting._run_report.inputs import _snapshot_regular
+from emrys.reporting._run_report.models import ReportRenderError
 
 
 SAMPLES = ("EV_1", "PUM1_1", "EV_2", "PUM1_2")

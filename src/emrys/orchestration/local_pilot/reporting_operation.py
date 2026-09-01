@@ -82,17 +82,26 @@ def _arguments(identity: Any, kind: str) -> argparse.Namespace:
     source_checkout = Path(str(identity.attempt["source_checkout"]["path"]))
     authority = {"source_checkout": source_checkout, "artifact_source_root": root}
     run_contract = root / str(identity.config["reporting_run_contract_path"]["path"])
+    policy_reference = identity.config.get("primary_analysis_policy_path")
+    analysis_policy = (
+        None
+        if policy_reference is None
+        else root / str(policy_reference["path"])
+    )
     inventory = root / str(identity.config["artifact_inventory_path"]["path"])
     values = {
         "artifact_index": {
             "run_id": run_id,
             "run_contract": run_contract,
+            "analysis_policy": analysis_policy,
+            "profile": identity.profile,
             "inventory": inventory,
             "output_root": artifact_root,
         },
         "run_summary": {
             "run_id": run_id,
             "artifact_receipt": artifact_run_root / f"{run_id}.artifact_receipt.tsv",
+            "analysis_policy": analysis_policy,
             "output_root": artifact_root,
             "expected_run_contract_path": run_contract,
             "expected_inventory_path": inventory,
@@ -111,11 +120,16 @@ def _producer_error(kind: str, phase: str, error: Exception) -> ReportingOperati
     return ReportingOperationError(f"{kind} {phase}{': ' + detail if detail else ''}")
 
 
-def _prepare_transaction(kind: str, arguments: argparse.Namespace) -> Any:
+def _prepare_transaction(
+    kind: str,
+    arguments: argparse.Namespace,
+    *,
+    analysis_module: Any | None = None,
+) -> Any:
     if kind == "html_report":
         from emrys.reporting import report  # noqa: PLC0415
 
-        return report.prepare_report(arguments)
+        return report.prepare_report(arguments, analysis_module=analysis_module)
 
     source_checkout = admit_source_checkout(
         root=arguments.source_checkout,
@@ -340,10 +354,16 @@ def run_reporting(
             / str(identity.attempt["workflow_config"]["path"]),
         }
         locations: tuple[tuple[str, Path], ...] = ()
+        analysis_module = None
         for kind in reporting_boundary.REPORTING_KINDS:
             try:
-                context = _prepare_transaction(kind, _arguments(identity, kind))
+                context = _prepare_transaction(
+                    kind,
+                    _arguments(identity, kind),
+                    analysis_module=analysis_module,
+                )
                 if kind == "artifact_index":
+                    analysis_module = context.analysis_module
                     _require_prepared_processing_source(state, context)
             except _PRODUCER_ERRORS as exc:
                 raise _producer_error(

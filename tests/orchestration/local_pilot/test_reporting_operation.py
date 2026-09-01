@@ -136,6 +136,7 @@ def _processing_source(
         ),
     )
     context = SimpleNamespace(
+        analysis_module=object(),
         inspections=tuple(
             SimpleNamespace(
                 row={"step_id": "00c"},
@@ -152,6 +153,24 @@ def _processing_source(
         )
     )
     return source, context
+
+
+def test_fixed_arguments_carry_the_admitted_analysis_policy(tmp_path: Path) -> None:
+    root = (tmp_path / "run").resolve()
+    state = _state(root)
+    identity = _identity(root, state)
+    relative = "contract/reporting-inputs/attempt/primary-analysis-policy.json"
+    identity.config["primary_analysis_policy_path"] = {
+        "path": relative,
+        "sha256": "e" * 64,
+    }
+
+    artifact = reporting_operation._arguments(identity, "artifact_index")
+    summary = reporting_operation._arguments(identity, "run_summary")
+
+    assert artifact.analysis_policy == root / relative
+    assert artifact.profile is identity.profile
+    assert summary.analysis_policy == root / relative
 
 
 def test_complete_historical_reporting_is_reused_read_only(
@@ -257,7 +276,7 @@ def test_processing_source_mismatch_fails_before_reporting_start(
     monkeypatch.setattr(
         reporting_operation,
         "_prepare_transaction",
-        lambda *_args: context,
+        lambda *_args, **_kwargs: context,
     )
     monkeypatch.setattr(
         reporting_operation.reporting_boundary,
@@ -299,7 +318,15 @@ def test_execute_prepares_and_publishes_each_fixed_transaction_once(
     observed: list[str] = []
     preparations: dict[str, int] = {}
 
-    def prepare(kind: str, _arguments: Any) -> object:
+    def prepare(
+        kind: str,
+        _arguments: Any,
+        *,
+        analysis_module: object | None,
+    ) -> object:
+        assert analysis_module is (
+            None if kind == "artifact_index" else context.analysis_module
+        )
         preparations[kind] = preparations.get(kind, 0) + 1
         observed.append(f"prepare:{kind}:{preparations[kind]}")
         return context if kind == "artifact_index" else object()
@@ -378,11 +405,22 @@ def test_generation_observer_runs_only_after_first_published_start(
     )
     observed: list[str] = []
     preparations: dict[str, int] = {}
+    module = object()
 
-    def prepare(kind: str, _arguments: Any) -> object:
+    def prepare(
+        kind: str,
+        _arguments: Any,
+        *,
+        analysis_module: object | None,
+    ) -> object:
+        assert analysis_module is (None if kind == "artifact_index" else module)
         preparations[kind] = preparations.get(kind, 0) + 1
         observed.append(f"prepare:{kind}:{preparations[kind]}")
-        return object()
+        return (
+            SimpleNamespace(analysis_module=module)
+            if kind == "artifact_index"
+            else object()
+        )
 
     def publish(kind: str, _context: object) -> Path:
         observed.append(f"publish:{kind}")
@@ -578,7 +616,7 @@ def test_producer_failure_stops_after_immutable_start(
     monkeypatch.setattr(
         reporting_operation,
         "_prepare_transaction",
-        lambda _kind, _arguments: object(),
+        lambda _kind, _arguments, **_kwargs: SimpleNamespace(analysis_module=object()),
     )
     monkeypatch.setattr(
         reporting_operation,
@@ -610,7 +648,7 @@ def test_preflight_failure_publishes_no_ledger(
     monkeypatch.setattr(
         reporting_operation,
         "_prepare_transaction",
-        lambda _kind, _arguments: (_ for _ in ()).throw(
+        lambda _kind, _arguments, **_kwargs: (_ for _ in ()).throw(
             ArtifactIndexError("bounded preflight failure")
         ),
     )

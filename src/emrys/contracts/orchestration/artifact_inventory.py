@@ -6,7 +6,12 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from emrys.contracts.artifacts import api as artifact_contracts
+from emrys.contracts.artifacts import (
+    INVENTORY_HEADER,
+    SAFE_ID_RE,
+    scope_key,
+    validate_resolved_path,
+)
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
     PROCESSING_STEP_IDS,
@@ -114,14 +119,12 @@ def _validate_rows(rows: Sequence[Mapping[str, str]]) -> None:
     closed_scopes: set[tuple[str, str, str]] = set()
     active_scope: tuple[str, str, str] | None = None
     for row in rows:
-        for field in artifact_contracts.INVENTORY_HEADER[:-2]:
-            if not artifact_contracts.SAFE_ID_RE.fullmatch(row[field]):
+        for field in INVENTORY_HEADER[:-2]:
+            if not SAFE_ID_RE.fullmatch(row[field]):
                 raise orchestration_contracts.ContractValidationError(
                     f"Projected inventory {field} is not a safe ID: {row[field]}"
                 )
-        artifact_contracts.validate_resolved_path(
-            row["source_path"], "Projected inventory source_path"
-        )
+        validate_resolved_path(row["source_path"], "Projected inventory source_path")
         for field, seen in seen_values.items():
             value = row[field]
             if value in seen:
@@ -129,7 +132,7 @@ def _validate_rows(rows: Sequence[Mapping[str, str]]) -> None:
                     f"Projected artifact inventory contains duplicate {field} values"
                 )
             seen.add(value)
-        scope = artifact_contracts.scope_key(dict(row))
+        scope = scope_key(dict(row))
         if active_scope is None:
             active_scope = scope
         elif scope != active_scope:

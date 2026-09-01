@@ -83,11 +83,22 @@ ORCHESTRATION_REPORTING_SEAMS = frozenset(
         ),
     }
 )
+ANALYSIS_REPORTING_SEAMS = frozenset(
+    {
+        (
+            "emrys.analyses.paired_cmh_candidate_ranking_report",
+            "emrys.reporting",
+        ),
+    }
+)
 
 # (documented ID, exact target); descriptive current behavior, not target APIs.
 COMPOSITION_SEAMS: tuple[tuple[str, str], ...] = (
     ("CLI-SEAM-001", "emrys.analyses.paired_cmh_candidate_ranking.validator"),
-    ("CLI-SEAM-002", "emrys.analyses.scientific_context_projection.validator"),
+    (
+        "CLI-SEAM-002",
+        "emrys.analyses.paired_cmh_candidate_ranking.scientific_context_projection.validator",
+    ),
     ("CLI-SEAM-003", "emrys.contracts.artifacts.validator"),
     ("CLI-SEAM-004", "emrys.evidence.canonical_bam_qc.validator"),
     ("CLI-SEAM-005", "emrys.evidence.reference_provenance.reconciler"),
@@ -312,6 +323,10 @@ def owner(module: str) -> tuple[str, str]:
         return "root", "emrys"
     if module == "emrys.__main__" or module.startswith("emrys.__main__."):
         return "composition", "emrys.__main__"
+    if module == "emrys.analyses":
+        # The namespace root is the public extension boundary; concrete
+        # analysis packages beneath it remain independent functional owners.
+        return "libraries", module
     parts = module.split(".")
     domain = parts[1] if len(parts) > 1 else ""
     if domain in {"stages", "analyses", "evidence"}:
@@ -333,6 +348,10 @@ def forbidden_rule(
         edge.source_module,
         edge.target_module,
     ) in ORCHESTRATION_REPORTING_SEAMS
+    declared_analysis_reporting_seam = (
+        source_owner,
+        edge.target_module,
+    ) in ANALYSIS_REPORTING_SEAMS
     if target_kind == "unclassified":
         return RULE_SOURCE_CLASSIFICATION, "target belongs to an unclassified domain"
     if source_kind == "root" and target_kind != "root":
@@ -356,7 +375,7 @@ def forbidden_rule(
     if source_kind == "functional" and (
         (target_kind == "functional" and source_owner != target_owner)
         or target_kind in {"ingestion", "orchestration", "reporting", "composition"}
-    ):
+    ) and not declared_analysis_reporting_seam:
         return RULE_FUNCTIONAL_OWNER, "functional owners cannot import peer/product owners"
     blocked = {
         "ingestion": {"functional", "orchestration", "reporting", "composition"},

@@ -20,12 +20,17 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from emrys import analyses
+from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
+from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.scientific_evidence import step09
 from emrys.contracts.scientific_evidence import scientific_context
-from emrys.reporting._artifact_index.registry import ADAPTER_REGISTRY
+from emrys.reporting._artifact_index.registry import build_adapter_registry
 from tests.scientific_context_test_support import (
     build_transaction as build_scientific_context_transaction,
 )
+
+ADAPTER_REGISTRY = build_adapter_registry(analysis_module_v1())
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 INVENTORY_TEMPLATE = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
@@ -53,7 +58,6 @@ SAMPLE_MANIFEST_SHA256 = hashlib.sha256(
 REFERENCE_CONTRACT_SHA256 = "2" * 64
 PARTITION_MANIFEST_SHA256 = "3" * 64
 PRIMARY_ANALYSIS_ID = "synthetic_analysis"
-PRIMARY_ANALYSIS_POLICY_SHA256 = "4" * 64
 COHORT_ID = "synthetic_cohort"
 CANONICAL_BGZF_EOF_BLOCK = bytes.fromhex(
     "1f8b08040000000000ff0600424302001b0003000000000000000000"
@@ -67,6 +71,7 @@ class FixturePaths:
     root: Path
     run_id: str
     run_contract: Path
+    analysis_policy: Path
     inventory: Path
     source_root: Path
     output_root: Path
@@ -103,6 +108,8 @@ class FixturePaths:
             self.run_id,
             "--run-contract",
             str(self.run_contract),
+            "--analysis-policy",
+            str(self.analysis_policy),
             "--inventory",
             str(self.inventory),
             "--output-root",
@@ -126,13 +133,13 @@ def canonical_run_contract_sha256(components: Mapping[str, str]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def build_run_contract() -> dict[str, str]:
+def build_run_contract(policy_sha256: str) -> dict[str, str]:
     components = {
         "sample_manifest_sha256": SAMPLE_MANIFEST_SHA256,
         "reference_contract_sha256": REFERENCE_CONTRACT_SHA256,
         "partition_manifest_sha256": PARTITION_MANIFEST_SHA256,
         "primary_analysis_id": PRIMARY_ANALYSIS_ID,
-        "primary_analysis_policy_sha256": PRIMARY_ANALYSIS_POLICY_SHA256,
+        "primary_analysis_policy_sha256": policy_sha256,
     }
     return {
         "run_contract_sha256": canonical_run_contract_sha256(components),
@@ -932,6 +939,7 @@ def build_fixture(root: Path, *, run_id: str = RUN_ID) -> FixturePaths:
     source_root = root / "source"
     inventory_path = root / "artifact_inventory.tsv"
     run_contract_path = root / "run_contract.json"
+    analysis_policy_path = root / "analysis_policy.json"
     output_root = root / "artifacts"
     sample_manifest_path = root / "sample_manifest.tsv"
     sample_manifest_path.write_text(
@@ -940,6 +948,12 @@ def build_fixture(root: Path, *, run_id: str = RUN_ID) -> FixturePaths:
     )
 
     template_rows = read_inventory_template()
+    module = analyses.load_analysis_module(analyses.BUILTIN_PAIRED_CMH_MODULE_ID)
+    analysis_paths = {
+        output.adapter: output.source_path_template
+        for task in module.descriptor.tasks
+        for output in task.outputs
+    }
     rewritten_rows: list[dict[str, str]] = []
     source_paths: dict[str, Path] = {}
     source_marker = "tests/fixtures/artifact_schema_v1/source/"
@@ -947,7 +961,11 @@ def build_fixture(root: Path, *, run_id: str = RUN_ID) -> FixturePaths:
         relative = template_row["source_path"]
         if not relative.startswith(source_marker):
             raise RuntimeError(f"Unexpected tracked fixture source path: {relative}")
-        source_path = source_root / relative.removeprefix(source_marker)
+        source_path = root / analysis_paths[template_row["adapter"]].replace(
+            "{analysis_id}", template_row["scope_id"]
+        ) if template_row["adapter"] in analysis_paths else (
+            source_root / relative.removeprefix(source_marker)
+        )
         rewritten = {**template_row, "source_path": str(source_path)}
         rewritten_rows.append(rewritten)
         source_paths[rewritten["artifact_id"]] = source_path
@@ -962,14 +980,37 @@ def build_fixture(root: Path, *, run_id: str = RUN_ID) -> FixturePaths:
     write_scientific_context_transaction(root, rewritten_rows, source_paths)
 
     write_tsv(inventory_path, INVENTORY_HEADER, rewritten_rows)
-    run_contract_path.write_text(
-        json.dumps(build_run_contract(), ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
+    policy = {
+        "schema_version": "emrys.analysis-module-policy.v1",
+        "analysis_id": PRIMARY_ANALYSIS_ID,
+        "module": analyses.module_identity_record(module),
+        "configuration": {
+            "control_condition": "control",
+            "treatment_condition": "treatment",
+            "background_condition": None,
+            "rna_ref": "A",
+            "rna_alt": "G",
+            "min_sample_dp": 1,
+            "mean_dp_threshold": 0,
+            "fdr_threshold": 0.05,
+            "common_or_threshold": 1.2,
+            "absolute_difference_threshold": 0.005,
+            "background_max_fraction": 0.01,
+        },
+    }
+    analysis_policy_path.write_bytes(
+        orchestration_contracts.canonical_json_bytes(policy)
+    )
+    run_contract_path.write_bytes(
+        orchestration_contracts.canonical_json_bytes(
+            build_run_contract(orchestration_contracts.canonical_sha256(policy))
+        )
     )
     return FixturePaths(
         root=root,
         run_id=run_id,
         run_contract=run_contract_path,
+        analysis_policy=analysis_policy_path,
         inventory=inventory_path,
         source_root=source_root,
         output_root=output_root,

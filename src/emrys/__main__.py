@@ -13,7 +13,7 @@ from typing import Protocol, cast
 from emrys.analyses.paired_cmh_candidate_ranking import (
     validator as paired_cmh_candidate_ranking_validation_command,
 )
-from emrys.analyses.scientific_context_projection import (
+from emrys.analyses.paired_cmh_candidate_ranking.scientific_context_projection import (
     validator as scientific_context_projection_validation_command,
 )
 from emrys.contracts.artifacts import (

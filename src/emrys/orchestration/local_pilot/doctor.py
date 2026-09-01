@@ -428,19 +428,39 @@ def inspect_local_pilot(
         remediations.append("Activate the Python environment admitted by the Project runtime, then rerun Doctor.")
     failed = [item for item in inspection.observations if item.check.required and item.status != "pass"]
     blockers.extend(f"{item.check.check_id}: {item.status} ({item.observed})" for item in failed)
-    if failed:
+    runtime_bindings = runtime_file_bindings(inspection)
+    observations = {
+        item.check.check_id: item for item in inspection.observations
+    }
+    bound_runtime = {item.check_id for item in runtime_bindings}
+    unavailable_analysis_runtime = tuple(
+        check_id
+        for check_id in foundations.analysis.module.descriptor.required_runtime_checks
+        if check_id not in observations
+        or observations[check_id].status != "pass"
+        or (
+            check_id not in {"renv_project", "renv_library"}
+            and check_id not in bound_runtime
+        )
+    )
+    if unavailable_analysis_runtime:
+        blockers.append(
+            "Analysis module runtime is not admitted: "
+            + ", ".join(unavailable_analysis_runtime)
+        )
+    if failed or unavailable_analysis_runtime:
         remediations.append(
             "Run `emrys doctor --repair` for an EMRYS-managed runtime, or repair and "
             "re-admit the selected site environment without editing runtime.tsv."
         )
-    bindings = (*runtime_file_bindings(inspection), *foundations.bindings)
+    bindings = (*runtime_bindings, *foundations.bindings)
     return replace(
         foundations,
         inspection=inspection,
         bindings=bindings,
         blockers=tuple(blockers),
         remediations=tuple(dict.fromkeys(remediations)),
-        runtime_ready=python_ready and not failed,
+        runtime_ready=python_ready and not failed and not unavailable_analysis_runtime,
     )
 
 

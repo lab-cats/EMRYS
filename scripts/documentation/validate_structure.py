@@ -75,7 +75,7 @@ SOURCE_OWNER_DIRECTORY_NAMES = {
     (
         "analysis",
         "project_candidate_scientific_context",
-    ): "scientific_context_projection",
+    ): "paired_cmh_candidate_ranking/scientific_context_projection",
     ("evidence", "collect_canonical_BAM_QC_evidence"): "canonical_bam_qc",
     ("evidence", "collect_RSeQC_paired_orientation_evidence"): "rseqc_orientation",
     ("stage", "align_RNA_reads_with_STAR"): "star_alignment",

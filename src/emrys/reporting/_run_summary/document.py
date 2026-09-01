@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 from emrys.reporting._run_summary.models import (
-    INTERPRETATION_BOUNDARY,
     PRODUCER,
     PRODUCER_VERSION,
     RUN_SUMMARY_SCHEMA_VERSION,
@@ -38,6 +37,10 @@ def _build_document(
     artifacts: list[dict[str, Any]],
     generated_at: str,
     git_commit: str,
+    analysis_policy_path: Path,
+    analysis_policy_sha256: str,
+    analysis_policy_size_bytes: int,
+    analysis_policy: dict[str, Any],
 ) -> tuple[dict[str, Any], dict[str, int]]:
     expected_scopes, artifact_scope_order = _build_expected_scopes(artifacts)
     attempts, superseded_attempt_ids = _build_attempts(artifacts)
@@ -103,8 +106,12 @@ def _build_document(
         "parameters": parameters,
         "qc_metrics": qc_metrics,
         "limitations": _build_limitations(artifacts=artifacts),
-        "candidate_terminology": "CMH-ranked candidates",
-        "interpretation_boundary": INTERPRETATION_BOUNDARY,
+        "analysis_policy": {
+            "path": str(analysis_policy_path),
+            "sha256": analysis_policy_sha256,
+            "size_bytes": analysis_policy_size_bytes,
+            "record": analysis_policy,
+        },
         "warnings": _stable_unique(warnings),
         "errors": errors,
         "provenance": {

@@ -17,6 +17,8 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
+from emrys import analyses
+from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.projection import build_reporting_bundle
@@ -24,7 +26,7 @@ from emrys.contracts.scientific_evidence import scientific_context, step08, step
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.orchestration.local_pilot import inspection
 from emrys.orchestration.local_pilot.lifecycle import build_snakemake_argv
-from emrys.reporting._artifact_index.registry import ADAPTER_REGISTRY
+from emrys.reporting._artifact_index.registry import build_adapter_registry
 from tests.reporting.fixtures.artifact_adapters_v1.build_fixture import (
     minimal_bai_bytes,
     minimal_bam_bytes,
@@ -39,6 +41,7 @@ SNAKEFILE = REPO_ROOT / "workflow" / "Snakefile"
 WORKFLOW_PROFILE = REPO_ROOT / "workflow" / "profiles" / "local" / "profile.v9+.yaml"
 TASK_DOUBLE = Path(__file__).with_name("task_double.py").resolve()
 _MAX_INLINE_PAYLOAD_CHARS = 64 * 1024
+ADAPTER_REGISTRY = build_adapter_registry(analysis_module_v1())
 
 
 def _resource_policy() -> dict[str, Any]:
@@ -509,7 +512,8 @@ def artifact_payloads(
     partition_id = str(execution["partitions"]["rows"][0]["partition_id"])
     sample_hash = str(execution["samples"]["manifest"]["sha256"])
     partition_hash = str(execution["partitions"]["manifest"]["sha256"])
-    policy = execution["analysis"]["policy"]
+    policy_record = execution["analysis"]["policy"]
+    policy = policy_record.get("configuration", policy_record)
     by_adapter: dict[str, list[dict[str, str]]] = {}
     payloads: dict[str, bytes] = {}
     for row in rows:
@@ -796,7 +800,8 @@ def artifact_payloads(
         temporary_fai.write_bytes(payloads[str(reference_fai_row["source_path"])])
         motif_catalog = (
             REPO_ROOT
-            / "src/emrys/analyses/scientific_context_projection/resources/pum_motifs_v1.tsv"
+            / "src/emrys/analyses/paired_cmh_candidate_ranking/"
+            "scientific_context_projection/resources/pum_motifs_v1.tsv"
         )
         context_fixture = build_transaction(
             temporary_root / "context",
@@ -1001,13 +1006,16 @@ def build(
     root = root.resolve(strict=True)
     intake_root = root / "intake"
     intake_root.mkdir()
+    core_profile = orchestration_contracts.load_json_object(PROFILE_PATH)
     profile = (
-        orchestration_contracts.load_json_object(PROFILE_PATH)
+        analyses.compose_profile(core_profile, analysis_module_v1())
         if profile_override is None
         else profile_override
     )
     request_path, execution, execution_bytes = build_legacy_execution(
-        intake_root, profile
+        intake_root,
+        core_profile,
+        execution_profile=profile if profile_override is not None else None,
     )
 
     run_root = (root / "run").resolve()

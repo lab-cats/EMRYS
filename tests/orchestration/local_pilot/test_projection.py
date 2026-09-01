@@ -46,7 +46,7 @@ def test_execution_rejects_profile_identity_that_only_matches_digest(
 ) -> None:
     profile = fixture.profile()
     _request, execution, _execution_bytes = fixture.build_legacy_execution(
-        tmp_path / "request-root", profile
+        tmp_path / "request-root"
     )
     mutated = json.loads(json.dumps(execution))
     mutated["profile"]["profile_id"] = "wrong.profile"
@@ -81,15 +81,14 @@ def test_inventory_expansion_keeps_each_logical_scope_contiguous(
         inventory, source_root=tmp_path / "run-root"
     )
     sample_rows = [row for row in rows if row["scope_type"] == "sample"]
+    sample_artifact_count = sum(
+        template["scope_type"] == "sample"
+        for template in fixture.profile()["artifact_templates"]
+    )
     assert [row["scope_id"] for row in sample_rows] == [
-        "EV_1",
-        "EV_1",
-        "PUM1_1",
-        "PUM1_1",
-        "EV_2",
-        "EV_2",
-        "PUM1_2",
-        "PUM1_2",
+        sample_id
+        for sample_id in ("EV_1", "PUM1_1", "EV_2", "PUM1_2")
+        for _ in range(sample_artifact_count)
     ]
     assert len({row["artifact_id"] for row in rows}) == len(rows)
     assert (
@@ -129,36 +128,14 @@ def test_reference_sidecar_templates_can_bind_stationary_external_paths(
     tmp_path: Path,
 ) -> None:
     profile = fixture.profile()
-    profile["artifact_templates"].extend(
-        [
-            {
-                "artifact_id_template": "ref.{reference_id}.fasta",
-                "step_id": "00c",
-                "scope_type": "reference",
-                "scope_selector": "reference",
-                "adapter": "step00c_reference_fasta_v1",
-                "source_path_template": "{reference_fasta_path}",
-                "required": True,
-            },
-            {
-                "artifact_id_template": "ref.{reference_id}.dict",
-                "step_id": "00c",
-                "scope_type": "reference",
-                "scope_selector": "reference",
-                "adapter": "step00c_reference_dict_v1",
-                "source_path_template": "{reference_dict_path}",
-                "required": True,
-            },
-        ]
-    )
     request, execution, _execution_bytes = fixture.build_legacy_execution(
-        tmp_path / "request-root", profile
+        tmp_path / "request-root"
     )
     bundle = project_reporting(execution, profile)
     by_id = {row["artifact_id"]: row for row in bundle.artifact_inventory_rows}
 
     fasta = request.parent / "reference" / "genome.fa"
-    assert by_id["ref.synthetic_ref.fasta"]["source_path"] == str(fasta)
-    assert by_id["ref.synthetic_ref.dict"]["source_path"] == str(
+    assert by_id["ref.fasta"]["source_path"] == str(fasta)
+    assert by_id["ref.dict"]["source_path"] == str(
         fasta.with_name("genome.dict")
     )

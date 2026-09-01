@@ -20,6 +20,26 @@ def with_owner_doubles(plan: AttemptPlan) -> AttemptPlan:
     """Replace only owner command effects in an otherwise unchanged plan."""
 
     source = {**plan.run.analysis.workflow_inputs, "run_id": plan.run.run_id}
+    selected_sample_path = (
+        plan.run_root
+        / "contract"
+        / "workflow-inputs"
+        / plan.workflow_attempt_id
+        / "samples.tsv"
+    )
+    selected_sample = next(
+        (item for item in plan.attempt_files if item.path == selected_sample_path),
+        None,
+    )
+    if selected_sample is not None:
+        source["samples"] = {
+            **source["samples"],
+            "manifest": {
+                "path": str(selected_sample.path),
+                "size_bytes": len(selected_sample.data),
+                "sha256": hashlib.sha256(selected_sample.data).hexdigest(),
+            },
+        }
     reporting = build_reporting_bundle(
         source,
         plan.run.analysis.profile,

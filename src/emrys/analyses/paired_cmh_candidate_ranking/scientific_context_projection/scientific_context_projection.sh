@@ -4,19 +4,18 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd "$script_dir/../../../.." && pwd)"
 
-# shellcheck source=../../libraries/argument_parsing.sh
-source "$script_dir/../../libraries/argument_parsing.sh"
-# shellcheck source=../../libraries/executable_resolution.sh
-source "$script_dir/../../libraries/executable_resolution.sh"
-# shellcheck source=../../libraries/file_checks.sh
-source "$script_dir/../../libraries/file_checks.sh"
+# shellcheck source=../../../libraries/argument_parsing.sh
+source "$script_dir/../../../libraries/argument_parsing.sh"
+# shellcheck source=../../../libraries/executable_resolution.sh
+source "$script_dir/../../../libraries/executable_resolution.sh"
+# shellcheck source=../../../libraries/file_checks.sh
+source "$script_dir/../../../libraries/file_checks.sh"
 
 usage() {
     cat <<'USAGE'
 Usage:
-  src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh \
+  src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh \
     --analysis-id ANALYSIS_ID \
     --step09-all-sites STEP09_ALL_SITES \
     --step09-significant-sites STEP09_SIGNIFICANT_SITES \
@@ -24,6 +23,7 @@ Usage:
     --reference-fasta REFERENCE_FASTA \
     --reference-fai REFERENCE_FAI \
     --output-root OUTPUT_ROOT \
+    --git-commit COMMIT \
     [--motif-catalog MOTIF_CATALOG] \
     [--rscript-bin RSCRIPT_BIN] \
     [--r-script R_SCRIPT] \
@@ -47,6 +47,7 @@ step09_summary=""
 reference_fasta=""
 reference_fai=""
 output_root=""
+git_commit=""
 motif_catalog="$script_dir/resources/pum_motifs_v1.tsv"
 rscript_bin_arg=""
 r_script="${SCIENTIFIC_CONTEXT_R_SCRIPT:-$script_dir/scientific_context_projection.R}"
@@ -62,6 +63,7 @@ while [[ "$#" -gt 0 ]]; do
         --reference-fasta) require_value "$1" "${2:-}"; reference_fasta="$2"; shift 2 ;;
         --reference-fai) require_value "$1" "${2:-}"; reference_fai="$2"; shift 2 ;;
         --output-root) require_value "$1" "${2:-}"; output_root="$2"; shift 2 ;;
+        --git-commit) require_value "$1" "${2:-}"; git_commit="$2"; shift 2 ;;
         --motif-catalog) require_value "$1" "${2:-}"; motif_catalog="$2"; shift 2 ;;
         --rscript-bin) require_value "$1" "${2:-}"; rscript_bin_arg="$2"; shift 2 ;;
         --r-script) require_value "$1" "${2:-}"; r_script="$2"; shift 2 ;;
@@ -74,7 +76,7 @@ done
 
 for required in \
     analysis_id step09_all_sites step09_significant_sites step09_summary \
-    reference_fasta reference_fai output_root
+    reference_fasta reference_fai output_root git_commit
 do
     [[ -n "${!required}" ]] || die "Missing required argument: --${required//_/-}"
 done
@@ -86,13 +88,11 @@ validate_nonempty_file "Reference FASTA" "$reference_fasta"
 validate_nonempty_file "Reference FAI" "$reference_fai"
 validate_nonempty_file "PUM motif catalog" "$motif_catalog"
 validate_nonempty_file "Scientific-context R program" "$r_script"
+[[ "$git_commit" =~ ^[0-9a-f]{40}([0-9a-f]{24})?$ ]] ||
+    die "Source commit is not a full 40- or 64-character digest: $git_commit"
 
 rscript_value="${rscript_bin_arg:-${RSCRIPT_BIN_OVERRIDE:-Rscript}}"
 rscript_bin="$(resolve_executable_value "Rscript" "$rscript_value" "Rscript")"
-git_commit="$(git -C "$repo_root" rev-parse --verify 'HEAD^{commit}')" ||
-    die "Could not resolve the submitted repository commit."
-[[ "$git_commit" =~ ^[0-9a-f]{40}([0-9a-f]{24})?$ ]] ||
-    die "Repository HEAD is not a full 40- or 64-character commit: $git_commit"
 
 step09_all_sites_sha256="$(sha256_file "$step09_all_sites")"
 step09_significant_sites_sha256="$(sha256_file "$step09_significant_sites")"

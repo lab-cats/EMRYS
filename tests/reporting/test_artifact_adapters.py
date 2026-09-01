@@ -17,6 +17,8 @@ from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
+from emrys import analyses
+from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys.contracts.artifacts import api as ARTIFACT_CONTRACTS
 from emrys.contracts.scientific_evidence import step08, step09
 from tests.contract_integration.validation_rosters.validation_roster_expectations import (
@@ -25,6 +27,13 @@ from tests.contract_integration.validation_rosters.validation_roster_expectation
 from tests.reporting.fixtures.artifact_adapters_v1 import build_fixture as FIXTURE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+PROFILE = analyses.compose_profile(
+    json.loads(
+        (REPO_ROOT / "workflow/contracts/local_cmh_v2.json").read_text(encoding="utf-8")
+    ),
+    analysis_module_v1(),
+)
+BUILTIN_MODULE = analyses.load_analysis_module(analyses.BUILTIN_PAIRED_CMH_MODULE_ID)
 FIXED_EPOCH = "1700000000"
 GIT_ROUTING_VARIABLES = (
     "GIT_ALTERNATE_OBJECT_DIRECTORIES",
@@ -52,11 +61,6 @@ EXPECTED_PRODUCER_PATHS = {
     "06": "src/emrys/stages/mechanical_orientation/producer.py",
     "07": ("src/emrys/stages/partitioned_cohort_mpileup/producer.py"),
     "08": ("src/emrys/stages/cohort_candidate_preprocessing/producer.py"),
-    "09": ("src/emrys/analyses/paired_cmh_candidate_ranking/producer.py"),
-    "10": (
-        "src/emrys/analyses/scientific_context_projection/"
-        "scientific_context_projection.sh"
-    ),
 }
 VALIDATION_ARTIFACT_STEPS = {
     "ref.star_index.validation": "00a",
@@ -90,7 +94,7 @@ ARTIFACT_PUBLICATION = importlib.import_module(
 )
 ARTIFACT_RECORDS = importlib.import_module("emrys.reporting._artifact_index.records")
 ARTIFACT_REGISTRY = importlib.import_module("emrys.reporting._artifact_index.registry")
-ARTIFACT_ROSTERS = importlib.import_module("emrys.reporting._artifact_index.rosters")
+BUILTIN_REGISTRY = ARTIFACT_REGISTRY.build_adapter_registry(BUILTIN_MODULE.descriptor)
 ARTIFACT_NATIVE = importlib.import_module(
     "emrys.reporting._artifact_index.reconcile_native"
 )
@@ -122,6 +126,8 @@ def artifact_index_arguments(
         artifact_source_root=fixture.root,
         run_id=fixture.run_id,
         run_contract=fixture.run_contract,
+        analysis_policy=fixture.analysis_policy,
+        profile=PROFILE,
         inventory=fixture.inventory,
         output_root=fixture.output_root,
         execute=execute,
@@ -221,6 +227,8 @@ def context_for(fixture: Any) -> Any:
         argparse.Namespace(
             run_id=fixture.run_id,
             run_contract=fixture.run_contract,
+            analysis_policy=fixture.analysis_policy,
+            profile=PROFILE,
             inventory=fixture.inventory,
             output_root=fixture.output_root,
             execute=True,
@@ -294,19 +302,140 @@ def test_fixture_covers_exact_tracked_inventory_and_adapter_registry(
     assert [row["artifact_id"] for row in rows] == [
         row["artifact_id"] for row in FIXTURE.read_inventory_template()
     ]
-    assert {row["adapter"] for row in rows} == set(ARTIFACT_REGISTRY.ADAPTER_REGISTRY)
+    assert {row["adapter"] for row in rows} == set(BUILTIN_REGISTRY)
     assert len(artifact_fixture.source_paths) == 74
     assert all(path.is_file() for path in artifact_fixture.source_paths.values())
     assert not artifact_fixture.output_root.exists()
 
 
+def _external_module() -> tuple[
+    analyses.AnalysisModuleDescriptorV1,
+    analyses.LoadedAnalysisModuleV1,
+    dict[str, object],
+]:
+    artifact = analyses.AnalysisArtifactV1(
+        artifact_name="differential",
+        adapter="collaborator_differential_table_v1",
+        source_path_template=(
+            "results/differential/{analysis_id}/{analysis_id}.differential.tsv"
+        ),
+        kind="tsv",
+        expected_header=("feature_id", "effect"),
+    )
+    validation_artifact = analyses.AnalysisArtifactV1(
+        artifact_name="differential_validation",
+        adapter="collaborator_differential_validation_v1",
+        source_path_template=(
+            "products/native/qc/validation/09/{analysis_id}.validation.tsv"
+        ),
+        kind="validation_report",
+        expected_header=ARTIFACT_MODELS.VALIDATION_REPORT_HEADER,
+        exact_data_rows=1,
+    )
+    builtin = analysis_module_v1()
+
+    descriptor = dataclasses.replace(
+        builtin,
+        module_id="collaborator.differential",
+        module_version="1.0.0",
+        tasks=(
+            analyses.AnalysisTaskV1(
+                owner_key="collaborator.analysis.differential.v1",
+                step_id="09",
+                stage_memory_mb="workflow",
+                inputs=(),
+                outputs=(artifact, validation_artifact),
+                plan=builtin.tasks[0].plan,
+            ),
+        ),
+    )
+    builtin_loaded = analyses.load_analysis_module(
+        analyses.BUILTIN_PAIRED_CMH_MODULE_ID
+    )
+    loaded = dataclasses.replace(
+        builtin_loaded,
+        descriptor=descriptor,
+        provider=dataclasses.replace(
+            builtin_loaded.provider,
+            distribution_name="collaborator-analysis",
+            distribution_version="1.0.0",
+            entry_point_value="collaborator_analysis:analysis_module_v1",
+            package=dataclasses.replace(
+                builtin_loaded.provider.package, sha256="c" * 64
+            ),
+        ),
+    )
+    policy = {
+        "schema_version": "emrys.analysis-module-policy.v1",
+        "analysis_id": "analysis-external",
+        "configuration": {},
+        "module": analyses.module_identity_record(loaded),
+    }
+    return descriptor, loaded, policy
+
+
+def test_selected_external_module_contributes_adapters_and_roster(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    descriptor, loaded, policy = _external_module()
+    monkeypatch.setattr(
+        ARTIFACT_REGISTRY.analyses,
+        "load_analysis_module",
+        lambda module_id: loaded,
+    )
+
+    admitted = analyses.readmit_analysis_module(policy)
+    descriptor = admitted.descriptor
+    registry = ARTIFACT_REGISTRY.build_adapter_registry(descriptor)
+    rosters = ARTIFACT_CORE.scope_adapter_rosters(
+        analyses.module_profile_record(descriptor)["artifact_templates"]
+    )
+
+    adapter_id = descriptor.tasks[0].outputs[0].adapter
+    spec = registry[adapter_id]
+    assert adapter_id not in BUILTIN_REGISTRY
+    assert spec.step_id == "09"
+    assert (
+        spec.source_path_template == descriptor.tasks[0].outputs[0].source_path_template
+    )
+    assert spec.suffixes == (".differential.tsv",)
+    assert rosters["09"] == Counter(
+        {
+            adapter_id: 1,
+            "collaborator_differential_validation_v1": 1,
+        }
+    )
+
+    with pytest.raises(ARTIFACT_MODELS.ArtifactIndexError, match="module-declared"):
+        ARTIFACT_CORE.validate_inventory_registry(
+            [
+                {
+                    "adapter": adapter_id,
+                    "step_id": "09",
+                    "scope_type": "analysis",
+                    "scope_id": "analysis-external",
+                    "source_path": (
+                        "/tmp/results/other/analysis-external/"
+                        "analysis-external.differential.tsv"
+                    ),
+                }
+            ],
+            source_root=Path("/tmp"),
+            adapter_registry=registry,
+            scope_rosters=rosters,
+        )
+
+
 def test_migrated_implementation_evidence_uses_final_paths_and_current_bytes() -> None:
     git_commit = "a" * 40
 
-    evidence = ARTIFACT_RECORDS.producer_evidence(git_commit)
+    evidence = ARTIFACT_RECORDS.producer_evidence(
+        git_commit,
+        analysis_module=BUILTIN_MODULE,
+    )
 
-    assert tuple(evidence) == tuple(EXPECTED_PRODUCER_PATHS)
-    assert ARTIFACT_ROSTERS.STEP_PRODUCERS == EXPECTED_PRODUCER_PATHS
+    assert tuple(evidence) == (*EXPECTED_PRODUCER_PATHS, "09", "10")
+    assert ARTIFACT_RECORDS.STEP_PRODUCERS == EXPECTED_PRODUCER_PATHS
     for step_id, expected_path in EXPECTED_PRODUCER_PATHS.items():
         record = evidence[step_id]
         assert record["status"] == "implemented"
@@ -321,6 +450,40 @@ def test_migrated_implementation_evidence_uses_final_paths_and_current_bytes() -
             (REPO_ROOT / expected_path).read_bytes()
         ).hexdigest()
         assert row["sha256"] == expected_sha256
+    for step_id in ("09", "10"):
+        assert evidence[step_id]["evidence"] == [
+            {
+                "evidence_id": "implementation_module",
+                "role": "implementation",
+                "path": (
+                    f"{BUILTIN_MODULE.provider.distribution_name}@"
+                    f"{BUILTIN_MODULE.provider.distribution_version}/"
+                    f"{BUILTIN_MODULE.provider.entry_point_value}"
+                ),
+                "sha256": BUILTIN_MODULE.provider.package.sha256,
+            }
+        ]
+
+
+def test_external_producer_evidence_uses_admitted_module_identity() -> None:
+    _descriptor, loaded, _policy = _external_module()
+
+    evidence = ARTIFACT_RECORDS.producer_evidence(
+        "a" * 40,
+        analysis_module=loaded,
+    )
+
+    assert "10" not in evidence
+    assert evidence["09"]["evidence"] == [
+        {
+            "evidence_id": "implementation_module",
+            "role": "implementation",
+            "path": (
+                "collaborator-analysis@1.0.0/collaborator_analysis:analysis_module_v1"
+            ),
+            "sha256": "c" * 64,
+        }
+    ]
 
 
 def test_git_commit_routing_sanitization_is_explicit_and_complete(
@@ -402,10 +565,16 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
         git_commit: str,
         *,
         source_root: Path,
+        analysis_module: analyses.LoadedAnalysisModuleV1,
     ) -> dict[str, dict[str, Any]]:
         assert source_root == source_checkout.root
+        assert analysis_module.descriptor is analysis_module_v1()
         root_calls["producers"] += 1
-        return real_producer_evidence(git_commit, source_root=source_root)
+        return real_producer_evidence(
+            git_commit,
+            source_root=source_root,
+            analysis_module=analysis_module,
+        )
 
     def declared_contract_path(value: str, *, source_root: Path) -> Path:
         assert source_root == artifact_source_root.root
@@ -437,6 +606,8 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
         argparse.Namespace(
             run_id=artifact_fixture.run_id,
             run_contract=artifact_fixture.run_contract,
+            analysis_policy=artifact_fixture.analysis_policy,
+            profile=PROFILE,
             inventory=artifact_fixture.inventory,
             output_root=artifact_fixture.output_root,
             execute=False,
@@ -467,6 +638,8 @@ def test_prepare_context_rejects_unattributable_dirty_checkout(
             argparse.Namespace(
                 run_id=artifact_fixture.run_id,
                 run_contract=artifact_fixture.run_contract,
+                analysis_policy=artifact_fixture.analysis_policy,
+                profile=PROFILE,
                 inventory=artifact_fixture.inventory,
                 output_root=artifact_fixture.output_root,
                 execute=False,
@@ -794,7 +967,9 @@ def test_same_run_id_rejects_changed_run_contract_without_touching_outputs(
     collision = run_builder(artifact_fixture, execute=True)
 
     assert collision.returncode != 0
-    assert "different immutable run contract" in collision.stderr
+    assert "Analysis policy does not match the reporting run contract" in (
+        collision.stderr
+    )
     assert owned_snapshot(artifact_fixture) == before
     assert not artifact_fixture.lock_path.exists()
 

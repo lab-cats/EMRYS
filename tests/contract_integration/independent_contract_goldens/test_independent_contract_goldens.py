@@ -31,7 +31,9 @@ ARTIFACT_INDEX_RECORDS = importlib.import_module(
 RUN_SUMMARY = importlib.import_module("emrys.reporting._run_summary.models")
 REPORT_MODELS = importlib.import_module("emrys.reporting._run_report.models")
 REPORT_RECEIPT = importlib.import_module("emrys.reporting._run_report.receipt")
-REPORT_FIGURES = importlib.import_module("emrys.reporting._run_report.figures")
+REPORT_FIGURES = importlib.import_module(
+    "emrys.analyses.paired_cmh_candidate_ranking_report.figures"
+)
 REPORT_VALIDATION = importlib.import_module("emrys.reporting._run_report.validation")
 REPORT_VIEW = importlib.import_module("emrys.reporting._run_report.view")
 

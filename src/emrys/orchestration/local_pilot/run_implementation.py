@@ -7,6 +7,12 @@ from pathlib import Path
 
 import yaml
 
+from emrys.analyses import (
+    AnalysisModuleLoadError,
+    LoadedAnalysisModuleV1,
+    load_analysis_module,
+    module_admission_record,
+)
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
     implementation_content_sha256,
@@ -22,7 +28,6 @@ BACKEND_OPERATION_FLAGS = {
 
 _SCIENTIFIC_ROOTS = (
     ".Rprofile",
-    "src/emrys/analyses",
     "src/emrys/evidence/canonical_bam_qc",
     "src/emrys/evidence/rseqc_orientation",
     "src/emrys/ingestion",
@@ -40,12 +45,12 @@ _SCIENTIFIC_ROOTS = (
     "src/emrys/libraries/process_environment.py",
     "src/emrys/orchestration/local_pilot/materialization.py",
     "src/emrys/stages",
-    "pyproject.toml",
     "uv.lock",
     "renv.lock",
 )
 _ADMISSION_ROOTS = (
-    "src/emrys/contracts/artifacts",
+    "src/emrys/analyses/__init__.py",
+    "src/emrys/contracts/artifacts/__init__.py",
     "src/emrys/contracts/orchestration/api.py",
     "src/emrys/contracts/orchestration/application_model.py",
     "src/emrys/contracts/orchestration/artifact_inventory.py",
@@ -64,6 +69,7 @@ _ADMISSION_ROOTS = (
     "src/emrys/contracts/schemas/orchestration/v2/profile.schema.json",
     "src/emrys/contracts/schemas/orchestration/v3/resource_config.schema.json",
     "src/emrys/contracts/scientific_evidence",
+    "src/emrys/libraries/installed_package_identity.py",
     "src/emrys/libraries/source_authority.py",
     "src/emrys/orchestration/local_pilot/_inspection_admission.py",
     "src/emrys/orchestration/local_pilot/_inspection_attempts.py",
@@ -139,19 +145,49 @@ def _component(source_root: Path, roots: tuple[str, ...], domain: str) -> str:
     )
 
 
-def implementation_identity(source_root: Path) -> str:
+def _analysis_module_component(
+    module: LoadedAnalysisModuleV1,
+) -> str:
+    return orchestration_contracts.canonical_sha256(
+        {
+            "identity_domain": "emrys.selected-analysis-module.v1",
+            "admission": module_admission_record(module),
+        }
+    )
+
+
+def implementation_identity(
+    source_root: Path,
+    module_id: str,
+    *,
+    loaded_module: LoadedAnalysisModuleV1 | None = None,
+) -> str:
     """Identify executable scientific and artifact-admission content."""
+
+    try:
+        module = loaded_module or load_analysis_module(module_id)
+    except AnalysisModuleLoadError as exc:
+        raise RunImplementationError(str(exc)) from exc
+    if module.descriptor.module_id != module_id:
+        raise RunImplementationError(
+            f"Loaded analysis module differs from selection: {module_id}"
+        )
 
     return implementation_content_sha256(
         (
             {
                 "role": "scientific_computation",
-                "logical_name": "local-cmh-computation-v1",
+                "logical_name": "local-shared-computation-v1",
                 "content_sha256": _component(
                     source_root,
                     _SCIENTIFIC_ROOTS,
-                    "emrys.local-cmh-scientific-content.v1",
+                    "emrys.local-shared-scientific-content.v1",
                 ),
+            },
+            {
+                "role": "scientific_computation",
+                "logical_name": f"selected-analysis-module:{module_id}",
+                "content_sha256": _analysis_module_component(module),
             },
             {
                 "role": "artifact_admission",

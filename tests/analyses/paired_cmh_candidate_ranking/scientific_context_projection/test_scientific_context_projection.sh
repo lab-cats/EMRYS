@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-producer="$repo_root/src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
+producer="$repo_root/src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-export REAL_SHA256_PYTHON="$repo_root/.venv/bin/python"
+export REAL_SHA256_PYTHON="${REPORT_PYTHON_BIN:-$repo_root/.venv/bin/python}"
 export FSYNC_LOG="$tmp/fsync.log"
 python_wrapper="$tmp/python-wrapper"
 cat >"$python_wrapper" <<'PYTHON_WRAPPER'
@@ -111,6 +111,7 @@ base_command=(
     --reference-fasta "$tmp/inputs/reference.fa"
     --reference-fai "$tmp/inputs/reference.fa.fai"
     --output-root "$tmp/output"
+    --git-commit aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     --rscript-bin "$fake_r"
     --no-clobber
 )

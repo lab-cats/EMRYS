@@ -15,9 +15,11 @@ from pathlib import Path
 
 import pytest
 
-from emrys.reporting._run_report import figures
-from emrys.reporting._run_report import scientific_context_figures as context_figures
-from emrys.reporting._run_report.candidate_display import (
+from emrys.analyses.paired_cmh_candidate_ranking_report import figures
+from emrys.analyses.paired_cmh_candidate_ranking_report import (
+    scientific_context_figures as context_figures,
+)
+from emrys.analyses.paired_cmh_candidate_ranking_report.candidate_display import (
     CandidateLocation,
     CandidateMotifEvidence,
     CandidateMotifHit,
@@ -27,14 +29,18 @@ from emrys.reporting._run_report.candidate_display import (
     SelectedCandidate,
     SelectedCandidateProjection,
 )
-from emrys.reporting._run_report.inputs import _snapshot_regular
-from emrys.reporting._run_report.models import (
-    SCIENTIFIC_FIGURE_IDS,
+from emrys.analyses.paired_cmh_candidate_ranking_report.computational import (
     ComputationalTable,
-    ReportRenderError,
-    ScientificContextResults,
+)
+from emrys.analyses.paired_cmh_candidate_ranking_report.figures import (
+    SCIENTIFIC_FIGURE_IDS,
     ScientificFigurePanel,
 )
+from emrys.analyses.paired_cmh_candidate_ranking_report.scientific_context import (
+    ScientificContextResults,
+)
+from emrys.reporting._run_report.inputs import _snapshot_regular
+from emrys.reporting._run_report.models import ReportRenderError
 from tests import scientific_context_test_support as CONTEXT_FIXTURE
 
 
@@ -207,7 +213,12 @@ def test_matplotlib_bootstrap_is_clean_and_deterministic_across_processes(
     script = """
 import json
 import os
-from emrys.reporting._run_report.figures import _matplotlib_api, _render_svg
+import sys
+sys.path.insert(0, __SOURCE_ROOT__)
+from emrys.analyses.paired_cmh_candidate_ranking_report.figures import (
+    _matplotlib_api,
+    _render_svg,
+)
 
 keys = ("MPLBACKEND", "MPLCONFIGDIR", "MPL_IGNORE_SYSTEM_FONTS")
 before = {key: os.environ.get(key) for key in keys}
@@ -225,7 +236,7 @@ print(json.dumps({
     "version": matplotlib.__version__,
     "logomaker_loaded": "logomaker" in __import__("sys").modules,
 }, sort_keys=True))
-"""
+""".replace("__SOURCE_ROOT__", repr(str(Path(__file__).parents[2] / "src")))
     probes: list[dict[str, object]] = []
     for index in range(2):
         root = tmp_path / f"process-{index}"
