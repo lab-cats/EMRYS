@@ -53,14 +53,16 @@ last, and then re-admits the complete transaction. The metadata's expected
     deterministic synthetic expectations, not production
 data, scientific review, or biological interpretation.
 
-`emrys run` and `emrys resume` accept at most one explicitly selected closed
-`emrys.execution-profile.v1` YAML fragment. The built-in base supplies
-conservative resources and direct placement. An explicit fragment may replace
-the Run-bound computational declaration and select Attempt-local direct or
-Slurm placement; resource CLI flags have highest precedence. There is no
-adjacent discovery or environment interpolation. Retired adjacent
+`emrys run` and `emrys resume` accept at most one selected closed
+`emrys.execution-profile.v1` YAML fragment. `--profile NAME` resolves one safe
+name exactly to `<project-root>/emrys.execution.NAME.yaml`; the mutually
+exclusive `--execution-profile PATH` remains supported. The built-in base
+supplies conservative resources and direct placement. A selected fragment may
+replace the Run-bound computational declaration and select Attempt-local direct
+or Slurm placement; resource CLI flags have highest precedence. The name is not
+identity, a registry, automatic search, or a runtime mode. Retired adjacent
 `emrys.resources.yaml` or `emrys.launcher.yaml` files therefore fail closed
-when no execution profile is selected.
+when neither selector is used.
 
 Slurm placement submits the whole Run as exactly one node/task/allocation and
 delegates back to the same grouped control path inside it. EMRYS constructs one

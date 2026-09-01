@@ -161,13 +161,16 @@ repeated partition-manifest spellings are reused within the Project admission.
 The retained request-v3 schema is private compatibility authority only for
 exact historical resume; active Project commands reject it.
 
-Execution uses one optional explicit `emrys.execution-profile.v1` fragment.
-The built-in base supplies conservative resources and direct placement. The
-profile combines workflow-wide cores/memory, per-stage concurrency, threads,
-and computational/reporting memory with an Attempt-local direct or Slurm
-placement request. CLI resource overrides have highest precedence. EMRYS does
-not discover adjacent configuration; retired adjacent resource/launcher files
-fail closed when no explicit profile is selected.
+Execution uses one optional selected `emrys.execution-profile.v1` fragment.
+`--profile NAME` resolves one safe name exactly to
+`<project-root>/emrys.execution.NAME.yaml`; the mutually exclusive
+`--execution-profile PATH` remains supported. The built-in base supplies
+conservative resources and direct placement. The profile combines workflow-wide
+cores/memory, per-stage concurrency, threads, and computational/reporting memory
+with an Attempt-local direct or Slurm placement request. CLI resource overrides
+have highest precedence. The selector name is not identity or a registry, and
+EMRYS performs no automatic scan; retired adjacent resource/launcher files fail
+closed when neither selector is used.
 
 The effective computational declaration enters the successor Execution Plan
 and therefore Run identity. Profile source, reporting memory, placement,

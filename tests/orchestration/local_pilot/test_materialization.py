@@ -2325,7 +2325,6 @@ def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
     second = control._plan_resume(
         first.run_root,
         execution_profile=load_execution_profile(request),
-        profile_resources_explicit=False,
     )
 
     assert selected == [retained]
@@ -2375,7 +2374,6 @@ def test_successor_resume_snapshots_current_runtime_profile(
     second = control._plan_resume(
         first.run_root,
         execution_profile=load_execution_profile(first.run.analysis.source_path),
-        profile_resources_explicit=False,
     )
 
     new_profile = next(
@@ -2414,7 +2412,6 @@ def test_project_v1_predecessor_does_not_enable_request_v3_resume(
         control._plan_resume(
             first.run_root,
             execution_profile=load_execution_profile(first.run.analysis.source_path),
-            profile_resources_explicit=False,
         )
 
 
@@ -2555,7 +2552,6 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     second = control._plan_resume(
         first.run_root,
         execution_profile=resume_profile,
-        profile_resources_explicit=False,
         scheduler_job_id="700123",
     )
     assert selected_runtime_profiles == [
@@ -2909,6 +2905,85 @@ def test_public_run_dry_run_is_no_write(
     assert executed == []
 
 
+def test_public_run_selects_one_project_local_named_profile(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    arguments, workspace = _patch_run_control(
+        tmp_path,
+        monkeypatch,
+        execute_plan=lambda *_args: pytest.fail("named-profile dry-run executed"),
+        transform_plan=lambda plan: plan,
+    )
+    named = workspace / "emrys.execution.ci.yaml"
+    shutil.copy2(arguments.execution_profile, named)
+    arguments.execution_profile = None
+    arguments.profile = "ci"
+    arguments.log_level = "verbose"
+    selected: list[Path | None] = []
+    load_profile = control.load_execution_profile
+
+    def capture_profile(*args: object, **kwargs: object):
+        selected.append(kwargs.get("config_path"))
+        return load_profile(*args, **kwargs)
+
+    monkeypatch.setattr(control, "load_execution_profile", capture_profile)
+    monkeypatch.setattr(
+        control.sys,
+        "stdin",
+        _InputStream(AssertionError("nonterminal input was read"), terminal=False),
+    )
+
+    assert control.run_from_args(arguments) == 0
+
+    rendered = capsys.readouterr().err
+    assert selected == [named]
+    assert "Dry-run complete; no workspace state was written." in rendered
+    assert not (workspace / "runs").exists()
+    assert not (workspace / "logs").exists()
+
+
+@pytest.mark.parametrize("name", ("../escape", ".hidden", "bad/name", "bad\nname"))
+def test_public_run_rejects_unsafe_named_profile(
+    tmp_path: Path,
+    name: str,
+) -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-m",
+            "emrys",
+            "run",
+            "--project",
+            str(tmp_path / "project.yaml"),
+            "--profile",
+            name,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 2
+    assert "must match [A-Za-z0-9][A-Za-z0-9._-]*" in result.stderr
+
+
+def test_public_run_reports_missing_named_profile(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    arguments = argparse.Namespace(
+        project=tmp_path / "project.yaml",
+        profile="missing",
+        execution_profile=None,
+    )
+
+    assert control.run_from_args(arguments) == 2
+    assert "emrys.execution.missing.yaml" in capsys.readouterr().err
+
+
 def test_processing_run_dry_run_is_no_write_and_truthfully_scoped(
     tmp_path: Path,
     capsys,
@@ -3030,6 +3105,41 @@ def test_interactive_resume_uses_the_same_no_write_gate(
     rendered = capsys.readouterr().err
     assert "Execute this plan? [y/N]" in rendered
     assert "Dry-run complete; no resume state was written." in rendered
+    assert not plan.run_root.exists()
+
+
+def test_public_resume_selects_named_profile_from_run_workspace(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plan = _plan(tmp_path)
+    named = plan.workspace / "emrys.execution.resume-ci.yaml"
+    shutil.copy2(plan.run.analysis.source_path.parent / "emrys.execution.yaml", named)
+
+    def plan_resume(
+        *_args: object,
+        execution_profile,
+        **_kwargs: object,
+    ):
+        assert execution_profile.source_path == named
+        return plan
+
+    monkeypatch.setattr(control, "_plan_resume", plan_resume)
+    monkeypatch.setattr(control.sys, "stdin", _InputStream("no\n"))
+    monkeypatch.setattr(control.sys, "stderr", _TerminalOutput(control.sys.stderr))
+    arguments = argparse.Namespace(
+        run_root=plan.run_root,
+        profile="resume-ci",
+        execution_profile=None,
+        log_level=None,
+        log_root=None,
+        execute=False,
+    )
+
+    assert control.resume_from_args(arguments) == 0
+
+    assert "Dry-run complete; no resume state was written." in capsys.readouterr().err
     assert not plan.run_root.exists()
 
 
@@ -4005,8 +4115,34 @@ def test_public_help_routes() -> None:
         if command[0] == "run":
             assert "--through {analysis,processing}" in result.stdout
             assert "--from-processing-run" in result.stdout
+            assert "--profile NAME" in result.stdout
+            assert "--execution-profile PATH" in result.stdout
         if command[0] == "resume":
             assert "--through" not in result.stdout
+            assert "--profile NAME" in result.stdout
+            assert "--execution-profile PATH" in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("configure", "required"),
+    (
+        (control.configure_run_parser, ()),
+        (control.configure_resume_parser, ("--run-root", "/tmp/run-id")),
+    ),
+)
+def test_profile_name_and_explicit_path_are_mutually_exclusive(
+    configure,
+    required: tuple[str, ...],
+) -> None:
+    parser = argparse.ArgumentParser()
+    configure(parser)
+
+    with pytest.raises(SystemExit) as caught:
+        parser.parse_args(
+            [*required, "--profile", "ci", "--execution-profile", "/tmp/site.yaml"]
+        )
+
+    assert caught.value.code == 2
 
 
 def _clean_checkout(tmp_path: Path) -> tuple[Path, str]:

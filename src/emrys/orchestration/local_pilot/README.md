@@ -59,11 +59,14 @@ run, resume, and Doctor derive it. The generic `inspect runtime-availability`
 route remains available for advanced profile-driven evidence. Use an exact
 historical checkout for an entered historical Run.
 
-`emrys run` and `emrys resume` accept one optional explicit
-`--execution-profile`. Without it, EMRYS uses its built-in conservative
-resources and executes directly. The profile combines the Run-bound
-computational declaration with Attempt-local direct or Slurm placement; CLI
-resource flags have highest precedence. EMRYS performs no adjacent discovery.
+`emrys run` and `emrys resume` accept one optional execution-profile selector.
+`--profile NAME` resolves exactly
+`<project-root>/emrys.execution.NAME.yaml`; the mutually exclusive
+`--execution-profile PATH` remains supported. Without either, EMRYS uses its
+built-in conservative resources and executes directly. The profile combines
+the Run-bound computational declaration with Attempt-local direct or Slurm
+placement; CLI resource flags have highest precedence. EMRYS performs no scan,
+registry lookup, site/global search, or runtime acquisition through this name.
 
 Slurm placement is a transport around the same one-host workflow, not another
 scientific backend. On a terminal, EMRYS prints concise placement and asks
@@ -212,7 +215,7 @@ work only through the accepted fixed profile:
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
   --project /absolute/path/to/project.yaml \
   --analysis ANALYSIS_NAME \
-  --execution-profile /absolute/path/to/emrys.execution.yaml
+  --profile site
 
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
   --project /absolute/path/to/project.yaml \
@@ -229,7 +232,7 @@ work only through the accepted fixed profile:
 
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume \
   --run-root /absolute/project/runs/run-DIGEST \
-  --execution-profile /absolute/path/to/emrys.execution.yaml
+  --profile site
 
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys report \
   --run-root /absolute/project/runs/run-DIGEST
@@ -269,7 +272,10 @@ adds exact engine, scheduler, and task commands. `inspect run` is
 always read-only. With no execution profile, `run` uses the built-in direct
 default; `resume` reuses its predecessor's symbolic computational resources and
 places the new Attempt directly. An explicit profile may select Slurm for either
-command. Explicit resource CLI flags override the selected or inherited policy.
+command. A Project-local `site` selection above requires
+`<project-root>/emrys.execution.site.yaml`; use `--execution-profile PATH`
+instead for an arbitrary admitted path. Explicit resource CLI flags override
+the selected or inherited policy.
 
 Direct execution writes its application log beneath the selected root, which
 defaults to `<project-root>/logs/application`. Slurm submission writes scheduler

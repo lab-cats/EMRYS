@@ -67,6 +67,9 @@ def test_operator_root_is_external_empty_and_never_adopts_contents(tmp_path: Pat
     assert admitted.root == operator.resolve()
     assert admitted.direct_workspace == operator.resolve() / "direct"
     assert admitted.slurm_workspace == operator.resolve() / "slurm"
+    assert admitted.execution_profile == (
+        operator.resolve() / "slurm/emrys.execution.ci.yaml"
+    )
     assert not any(operator.iterdir())
     marker = operator / "keep.txt"
     marker.write_text("keep\n", encoding="utf-8")
@@ -99,7 +102,6 @@ def test_launcher_adapters_and_default_resource_projection(tmp_path: Path) -> No
     project = tmp_path / "project.yaml"
     project.write_text("fixture\n", encoding="utf-8")
     rendered = driver.slurm_execution_profile_bytes(
-        project,
         account=None,
         partition="emrys-ci",
         qos=None,
@@ -109,6 +111,7 @@ def test_launcher_adapters_and_default_resource_projection(tmp_path: Path) -> No
         nodelist=None,
         scratch_parent=tmp_path / "scratch",
     )
+    assert "resources" not in json.loads(rendered)
     profile = tmp_path / "slurm.json"
     profile.write_bytes(rendered)
     assert load_execution_profile(

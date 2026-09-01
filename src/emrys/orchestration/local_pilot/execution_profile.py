@@ -169,26 +169,16 @@ def _read_profile(path: Path, label: str) -> tuple[Path, bytes, dict[str, Any]]:
     return resolved, data, value
 
 
-def _merge_resource_fragment(
-    target: dict[str, Any], fragment: Mapping[str, Any]
-) -> None:
-    for key, value in fragment.items():
-        if key == "schema_version":
-            continue
-        if isinstance(value, Mapping):
-            selected = target.get(key)
-            if not isinstance(selected, dict):
-                selected = {}
-                target[key] = selected
-            selected.update(copy.deepcopy(dict(value)))
-        else:
-            target[key] = copy.deepcopy(value)
-
-
 def _merge_profile(target: dict[str, Any], fragment: Mapping[str, Any]) -> None:
     resources = fragment.get("resources")
     if isinstance(resources, Mapping):
-        _merge_resource_fragment(target["resources"], resources)
+        for key, value in resources.items():
+            if key == "schema_version":
+                continue
+            if isinstance(value, Mapping):
+                target["resources"][key].update(copy.deepcopy(dict(value)))
+            else:
+                target["resources"][key] = copy.deepcopy(value)
     if "placement" in fragment:
         target["placement"] = copy.deepcopy(fragment["placement"])
 
