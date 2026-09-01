@@ -741,12 +741,10 @@ def _task_commands(
         rev = _one(paths, "step06_rev_bam_v1")
         rev_bai = _one(paths, "step06_rev_bai_v1")
         counts = _one(paths, "step06_orientation_counts_v1")
-        producer = (
-            bash,
-            str(
-                source_root
-                / "src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh"
-            ),
+        producer = controlled_python_argv(
+            sys.executable,
+            "-m",
+            "emrys.stages.mechanical_orientation.producer",
             "--sample-id",
             scope_id,
             "--input-bam",

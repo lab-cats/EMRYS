@@ -143,10 +143,6 @@ SHELL_ENTRYPOINT_PATHS = {
     "step_05_split_n_cigar_reads.sh": Path(
         "src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
     ),
-    "step_06_split_bam_by_read_orientation.sh": Path(
-        "src/emrys/stages/mechanical_orientation/"
-        "step_06_split_bam_by_read_orientation.sh"
-    ),
     "scientific_context_projection.sh": Path(
         "src/emrys/analyses/scientific_context_projection/"
         "scientific_context_projection.sh"

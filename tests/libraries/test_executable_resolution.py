@@ -34,12 +34,6 @@ CONSUMERS = {
     ),
     "stages/duplicate_marking/step_04_mark_duplicates.sh": (0o644, 2, 0, 1),
     "stages/split_n_cigar/step_05_split_n_cigar_reads.sh": (0o644, 0, 3, 1),
-    "stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh": (
-        0o755,
-        0,
-        1,
-        1,
-    ),
     "analyses/scientific_context_projection/scientific_context_projection.sh": (
         0o755,
         1,
