@@ -33,7 +33,6 @@ CANONICAL_DOCUMENTS = {
 }
 
 LEGACY_TRANSITION_DOCUMENTS = {
-    "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
     "docs/operations/HANDOFF.md": "# Project handoff",
 }
 
@@ -44,6 +43,7 @@ RETIRED_DOCUMENTS = (
     "docs/design/PIPELINE_PLAN.md",
     "docs/design/QUESTIONS.md",
     "docs/design/REFACTOR_AUDIT.md",
+    "docs/design/ORCHESTRATION_READINESS.md",
     "docs/operations/CONCURRENT_WORK.md",
     "docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md",
     "docs/operations/TASK_DELIVERY.md",

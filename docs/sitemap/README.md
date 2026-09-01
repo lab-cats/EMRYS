@@ -8,11 +8,10 @@ the routes below explain the human boundaries.
 
 - [Architecture](../architecture/) — current structure, contracts, owner
   inventory, and diagrams.
-- [Design](../design/) — decisions, application contracts, test policy, and one
-  visibly marked legacy readiness source pending `DOC-05`.
+- [Design](../design/) — decisions, application contracts, and test policy.
 - [Operations](../operations/) — workflow, cross-cutting commands,
-  troubleshooting, and visibly marked legacy evidence/test-plan sources
-  pending `DOC-04`/`DOC-05`.
+  troubleshooting, and the visibly marked legacy handoff source pending
+  `DOC-04`.
 - [Reference](../reference/) — terminology that routes back to canonical
   subject owners.
 - [Tasks](../tasks/README.md) — canonical planning matrix, temporary unsliced

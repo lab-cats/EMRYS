@@ -112,9 +112,10 @@ The audit establishes these current authority routes:
 
 `HANDOFF.md` and `PIPELINE_PLAN.md` therefore ceased to be current authority at
 the audit cutover. Completed `DOC-03` has since reconciled and retired three of
-the six legacy pages plus both future diagrams, and the partial `DOC-05` cut
-has since retired the launcher transition plan. The remaining two pages stay
-visibly marked until `DOC-04`/`DOC-05` preserve their durable value.
+the six legacy pages plus both future diagrams. Completed `DOC-05` has since
+reconciled and retired the launcher transition plan and orchestration-readiness
+source. The remaining handoff stays visibly marked until `DOC-04` preserves
+its durable value.
 
 ### Owner-local and repository-support disposition
 
@@ -152,7 +153,7 @@ handoff, or stale roadmap authority.
 | `docs/design/DECISIONS.md` | Retain and refresh routes | Durable rationale index; it now records this audit and no longer delegates current state to legacy sources. |
 | `docs/design/LOGGING_CONTRACT.md` | Retain | Accepted logging behavior and adoption boundary remain current. |
 | `docs/design/ORCHESTRATION_CONTRACT.md` | Retain and refresh routes | Durable lifecycle, safety, identity, recovery, and evidence contract remains current. |
-| `docs/design/ORCHESTRATION_READINESS.md` | Consolidate, then retire under `DOC-05` | Shared admission invariants move to the orchestration contract/test policy; exact owner behavior stays owner-local and profile membership stays with the workflow/stage map/tests. |
+| `docs/design/ORCHESTRATION_READINESS.md` | Retired by completed `DOC-05` | The trace below confirms that shared admission invariants already live in the orchestration contract/test policy, exact owner behavior stays owner-local, and profile membership stays with the workflow/stage map/tests. |
 | `docs/design/PIPELINE_PLAN.md` | Retired by completed `DOC-03` | The section trace below confirms that Git owns completed package chronology and current contracts, policy, tests, and the matrix already own every durable rule. |
 | `docs/design/QUESTIONS.md` | Retired by completed `DOC-03` | The item trace below separates durable platform outcomes from obsolete mutable site/run questions so the question index cannot become another backlog. |
 | `docs/design/README.md` | Retain and refresh routes | Necessary design index; legacy-source authority claims are removed now. |
@@ -193,6 +194,29 @@ handoff, or stale roadmap authority.
 | `make demo-report` and `scripts/make_reporting.mk` | `make report-test` remains under the consolidated quality Make owner; reporting fixtures, transaction tests, renderer tests, and independent HTML goldens remain unchanged except for the reviewed public inspect-command hash. |
 | Fake-tool fresh-clone harness | Focused lifecycle tests retain failure/resume defenses; the replacement ordinary CI job is configured to prove a clean-clone, Doctor-managed, real-tool direct Run and retain its inputs, receipts, logs, Results, and reports. Exact-head execution remains pending. |
 | Public synthetic/inspection spellings | `emrys init synthetic` and `emrys inspect run` replace the historically coupled names directly; the internal fixture schema remains historical compatibility metadata, not a public command. |
+
+### `DOC-05` orchestration-readiness trace (2026-09-01)
+
+The retired readiness source was a Campaign B transition matrix, not a live
+admission owner. This trace preserves each durable safeguard in its current
+authority and discards duplicated chronology and disposition vocabulary. Git
+history retains the deleted source bytes.
+
+| Retired content | Current owner or explicit disposition |
+|---|---|
+| Fixed semantic owner roster, membership, direct edges, fan-out, barriers, and required/evidence roles | [`STAGE_MAP.md`](../../../src/emrys/contracts/STAGE_MAP.md), the versioned workflow profile, and their exact projection tests remain authoritative. The former `ready`/`harden` snapshot is discarded. |
+| Producer, validator, declared-output, transaction, residue, rollback, and recovery behavior | Each semantic owner's colocated `README.md`, `CONTRACT.md`, and direct tests remain authoritative; the transition matrix never supplied permission to change an owner. |
+| Producer exit, validator exit, semantic all-pass status, and content-bound verified-task publication | [`ORCHESTRATION_CONTRACT.md`](../ORCHESTRATION_CONTRACT.md#workflow-task-boundary) owns the ordered boundary; [`TEST_BASELINE.md`](../TEST_BASELINE.md#python-entry-points) routes validation-roster and owner checks. |
+| Deterministic pre-compute artifact inventory, explicit output rosters, and rejection of filesystem discovery as completion | The [reporting projection](../ORCHESTRATION_CONTRACT.md#reporting-projection), workflow task boundary, materialization tests, and owner transaction tests retain these safeguards. |
+| Zero automatic retry, immutable task/Attempt evidence, exact reuse re-admission, blocked ambiguous state, and between-task resume | The orchestration [lifecycle and resume contract](../ORCHESTRATION_CONTRACT.md#lifecycle-and-state) plus lifecycle, materialization, and selected end-to-end tests retain the complete boundary. |
+| Explicit locked R environment selection for Steps `08` and `09` | Runtime admission in the orchestration contract, the applicable Step owner contracts, the guarded R lane, and runtime/materialization tests retain the exact project/library identity checks. |
+| Retired owner-wrapper submitted-checkout rule and current scheduler evidence ceiling | The sixteen owner-local `.slurm` wrappers and their `SLURM_SUBMIT_DIR` condition retired together. Current whole-Run transport binds the selected profile and digest, invokes the exact selected interpreter, and retains its bootstrap/placement checks in the transport contract and tests. The runbook, functional-owner inventory, CI contract, and exact-commit artifacts own current claims; static or disposable single-node Slurm evidence does not become institutional-site, multi-node, production, scientific-review, or biological proof. |
+| B0 through B5 chronology, transitional owner descriptions, and generic `ready`/`harden` vocabulary | Discarded as stale implementation history and duplicate authority. Git history preserves it without keeping a second admission matrix in current documentation. |
+
+This retirement changes no product implementation, configuration, schema,
+workflow, public interface, mutable authority, retained evidence, or scientific
+behavior. The documentation validator now rejects restoration of either
+completed `DOC-05` transition source.
 
 ### `DOC-03` source-to-destination trace (2026-08-25)
 
@@ -288,6 +312,6 @@ deployment state; Git retains the deleted bytes.
 This audit performs the bounded authority and routing cutover, records
 dispositions, marks transition sources, and guards them against premature
 deletion. Completed `DOC-03` owns the trace and retirement recorded above;
-`DOC-04` and `DOC-05` own the remaining separately reviewable documentation
-migrations and deletions. `DOC-01` owns the later
+completed `DOC-05` owns its two guarded retirements; `DOC-04` owns the remaining
+separately reviewable handoff migration and deletion. `DOC-01` owns the later
 scientist/operator/developer journey rewrite.
