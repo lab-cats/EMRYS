@@ -39,8 +39,7 @@ EXECUTABLE_RULES = {
     "partition_BAM_by_mechanical_read_orientation",
     "generate_partitioned_cohort_mpileup_VCFs",
     "preprocess_and_annotate_cohort_candidates",
-    "rank_cohort_candidates_with_paired_CMH",
-    "project_candidate_scientific_context",
+    "analysis_owner",
 }
 SLICE_RULES = {"reference_slice", "cohort_slice"}
 SCIENTIFIC_BINARIES = {
@@ -400,15 +399,12 @@ def test_real_snakemake_dry_run_has_exact_owner_job_counts(
             ): partition_count,
             (
                 "preprocess_and_annotate_cohort_candidates",
-                "rank_cohort_candidates_with_paired_CMH",
+                "analysis_owner",
             ): 1,
-            (
-                "rank_cohort_candidates_with_paired_CMH",
-                "project_candidate_scientific_context",
-            ): 1,
+            ("analysis_owner", "analysis_owner"): 1,
             (
                 "construct_FASTA_sidecars",
-                "project_candidate_scientific_context",
+                "analysis_owner",
             ): 1,
         }
     )
@@ -476,8 +472,7 @@ def test_real_processing_plan_dry_run_closes_at_step_06(
     assert not {
         "generate_partitioned_cohort_mpileup_VCFs",
         "preprocess_and_annotate_cohort_candidates",
-        "rank_cohort_candidates_with_paired_CMH",
-        "project_candidate_scientific_context",
+        "analysis_owner",
     }.intersection(owners)
 
 

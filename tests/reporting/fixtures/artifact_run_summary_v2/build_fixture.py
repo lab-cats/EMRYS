@@ -96,6 +96,7 @@ def publish_adapter_fixture(fixture: Any) -> None:
                 run_contract=fixture.run_contract,
                 inventory=fixture.inventory,
                 output_root=fixture.output_root,
+                profile=ADAPTER_FIXTURE.analysis_profile_v1(),
                 execute=True,
             ),
             source_checkout=SourceCheckout(root=REPO_ROOT),
@@ -114,10 +115,10 @@ def publish_adapter_fixture(fixture: Any) -> None:
         restore_epoch(previous)
 
 
-def _fixture_from_adapter(root: Path, adapter_fixture: Any) -> RunSummaryFixture:
+def _fixture_from_adapter(adapter_fixture: Any) -> RunSummaryFixture:
     publish_adapter_fixture(adapter_fixture)
     return RunSummaryFixture(
-        root=root,
+        root=adapter_fixture.root,
         run_id=adapter_fixture.run_id,
         artifact_receipt=adapter_fixture.receipt_path,
         output_root=adapter_fixture.output_root,
@@ -134,8 +135,7 @@ def build_fixture(
 
     root = root.resolve()
     return _fixture_from_adapter(
-        root,
-        ADAPTER_FIXTURE.build_fixture(root / "adapter_fixture", run_id=run_id),
+        ADAPTER_FIXTURE.build_fixture(root / "adapter_fixture", run_id=run_id)
     )
 
 
@@ -165,7 +165,7 @@ def build_failed_fixture(
         ARTIFACT_MODELS.VALIDATION_REPORT_HEADER,
         validation_rows,
     )
-    return _fixture_from_adapter(root, adapter_fixture)
+    return _fixture_from_adapter(adapter_fixture)
 
 
 def build_missing_fixture(
@@ -182,7 +182,7 @@ def build_missing_fixture(
         run_id=run_id,
     )
     adapter_fixture.source_for(artifact_id).unlink()
-    return _fixture_from_adapter(root, adapter_fixture)
+    return _fixture_from_adapter(adapter_fixture)
 
 
 def publish_run_summary(fixture: RunSummaryFixture) -> Path:

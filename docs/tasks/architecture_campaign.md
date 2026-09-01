@@ -2284,16 +2284,28 @@ Operational simplification must not distract from scientific architecture.
 - Compatible per-sample work through Step 06 should be reusable for separately
   identified cohort, subset, sensitivity, or downstream analyses beginning at
   the cohort-dependent boundary.
-- A collaborator-extensible analysis library may support differential or other
-  analyses through typed inputs/outputs, provenance, validation, trust level,
-  resources, failure semantics, and report integration.
-- The proposal that scientific modules should not require editing unrelated
-  owners or turn EMRYS into a generic workflow framework remains an exact
-  module-design choice for `ANALYSIS-02` and `ARCH-01`.
+- The bounded v1 collaborator interface loads an explicitly selected installed
+  provider through `emrys.analysis_modules`. The provider owns closed
+  configuration normalization, typed artifact inputs and outputs, one Step
+  `09` task, an optional Step `10` task, existing runtime-check requirements,
+  minimum memory, and producer/validator plans. Existing dispatch, failure,
+  validation, publication, recovery, and logging owners remain authoritative.
+- Bespoke scientific reporting is selected separately through
+  `emrys.analysis_reporters`; its provider identity is report-receipt metadata,
+  not Analysis or Run identity. Artifact indexing derives its roster from the
+  admitted module profile rather than a fixed Step `09`/`10` table.
+- The v1 boundary deliberately does not add a universal Stage hierarchy,
+  workflow language, second scheduler, trust/failure DSL, generic report DSL,
+  Artifact Store, or public mutable registry. Existing flat paired-CMH
+  Analyses remain supported.
+- `ANALYSIS-02` remains open because module-specific Python, R, native, and
+  outside-resource dependencies are not yet discovered, provisioned, or
+  independently identity-bound, and v1 resource declaration is limited to
+  single-core minimum memory plus existing runtime-check IDs.
 - The algorithms, parameters, assumptions, interpretation boundaries, and
   implementation needed for scientific review must remain recognizable and
-  inspectable under binding `AC-GUARD-002`; the exact module API and placement
-  remain open.
+  inspectable under binding `AC-GUARD-002`; later dependency, resource, and
+  distribution work may extend the bounded API without weakening that rule.
 
 The intake separately recommends a scientific audit of Steps 07–09, with
 particular attention to:
@@ -2864,6 +2876,16 @@ the selected hosted 130-pair lane. The 100,000-pair lane is not required. This
 can establish disposable single-node synthetic Slurm engineering evidence, not
 site/global, multi-node, production, failure/recovery, scientific, or biological proof.
 
+### 13.27 Bounded slice record: collaborator analysis module v1
+
+| Surface/category | Selected implementation and boundary |
+|---|---|
+| Public model and provider admission | A Project Analysis may keep the existing flat paired-CMH form or explicitly select an installed `emrys.analysis_modules` provider with module-owned closed configuration. Explicit selection authorizes that in-process provider. The descriptor contributes typed artifact inputs/outputs, one Step `09` task, optional Step `10`, required existing runtime-check IDs, minimum memory, and producer/validator plans to the immutable Run profile. It does not introduce a mandatory Stage hierarchy, workflow language, scheduler, or public mutable registry. |
+| Fixed v1 trust, failure, and resource semantics | Existing `TaskDispatch`, validation, receipt-last publication, lock/rollback/recovery, process-signal, failure, and `LOG-05` owners apply unchanged; a module cannot replace them with self-attested trust or failure policy. V1 execution is single-core, accepts only the supported artifact kinds, and uses existing runtime-check IDs plus stage minimum memory. A selected provider must already be installed and self-contained. Module-specific Python/R/native dependencies, outside resources, richer resources, and their independent identity/provisioning remain open, so `ANALYSIS-02` stays Open. |
+| Profile, artifact indexing, and processing reuse | The checked-in processing profile owns the common graph through Step `08`; planning composes an immutable selected-module tail. Artifact indexing derives the expected roster, producer evidence, and paths from that admitted profile instead of fixed Step `09`/`10` tables. This is dynamic indexing of the existing artifact transaction, not an Artifact Store, database, service, or second authored manifest. Processing compatibility binds Steps `00`–`06` independently of the selected downstream module, so compatible stationary source artifacts may feed a different admitted module without copy or mutation. |
+| Reporting and schema identity | The computation provider's exact implementation digest is Run-bound. `emrys.analysis_reporters` separately selects one bespoke scientific reporter by module ID while fixed EMRYS reporting retains evidence/operations rendering, HTML safety, transaction ordering, and default/disabled/independent invocation. The reporter package and core-renderer identities are bound in report receipt v5 and never change Analysis or Run identity. Explicit-module work uses Analysis revision v2, run-summary v3, and report-receipt v5; existing flat paired-CMH work retains Analysis revision v1, run-summary v2, and report-receipt v4. No generic report DSL is added. |
+| Compression, mutation, evidence, and remaining scope | The fixed artifact roster, paired-CMH coupling in the reporting core, unused provider injection, duplicate artifact declarations, pseudo-whitelist, and redundant shape/status checks retire; one descriptor-derived path and separately owned built-in computation/report providers survive. This is the approved permanent collaborator-extension exception, not a net-negative refactor: maintained product is 55 paths, `+5066/-3270`, net `+1796`, with six additions, one deletion, ten renames, and five net-new product files. Its permanent owners are the `emrys.analyses` computation-provider boundary and `emrys.reporting` reporter-provider boundary, so there is no temporary owner or retirement condition. Protections/tests are 27 paths, `+959/-333`, net `+626`; configuration/schema/workflow/tooling is 11 paths, `+400/-344`, net `+56`; documentation is 30 paths, `+586/-325`, net `+261`; the whole slice is 123 paths, `+7011/-4272`, net `+2739`. The public extension is exactly two installed-provider entry-point groups plus the explicit Project Analysis `{module, config}` form; commands, flags, backends, schedulers, Artifact Stores, Results authorities, mutable authorities, and log owners change by zero. Existing flat paired-CMH compatibility remains intentionally supported. The touched Step `10` shell owner is `KEEP`; no wrapper or second implementation is added. `LOG-05` behavior is unchanged because no durable-output or diagnostic owner changes. Run and retained evidence remain immutable; no retained evidence is moved, rewritten, or deleted. Focused local evidence passes 36 processing/application tests, 139 reporting tests, all 23 transaction cases across the repaired suite and its targeted rerun, one 231-second real cross-Run reuse journey, 27 installed-identity/module tests, four explicit regressions, 156 documentation/public-CLI tests with three environment skips, 35 source-boundary tests, and one isolated-wheel test. Documentation structure passes at 163 Markdown documents/four Mermaid sources; repository Ruff lint and `git diff --check` pass. Independent review found no remaining P1/P2 blocker. Exact-head hosted CI remains pending publication. Institutional-site, production-data, scientific-review, and biological proof are not claimed here. |
+
 ## 14. Measurement plan
 
 Measurement is required so the campaign does not merely move complexity.
@@ -3081,11 +3103,11 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `OBS-01` | **Complete.** Grouped Run control now keeps Run/work/reporting, meaningful phases, Results/evidence, warnings/failures, and the log path normal; operational paths/resources/profile/streams are verbose; exact engine/scheduler/task commands are debug. Durable evidence and machine output are unchanged. |
 | `OBS-02` | High-level scientific progress, public run status, elapsed time, completion/failure, and links to recovery/inspection |
 | `ANALYSIS-01` | **Complete.** Named Analyses may select Dataset samples explicitly or default to all samples, stop at the immutable Step 06 boundary, and launch a separately identified exact-subset downstream Run from one stationary successful processing Run. The private selected TSV is Attempt-bound backend projection, not another authored/evidence authority. Generalized collaborator modules remain `ANALYSIS-02`. |
-| `ANALYSIS-02` | Collaborator-extensible modules with typed scientific contracts; scientific algorithms, assumptions, interpretation, and review-relevant implementation remain visible. The lightweight extension mechanism is open within the binding prohibition on a mandatory universal Stage hierarchy, registry, workflow language, or second scheduler |
+| `ANALYSIS-02` | **Open after the bounded v1 vertical.** Explicit installed providers now supply closed configuration, typed artifact inputs/outputs, one Step `09` task, optional Step `10`, existing runtime checks, minimum memory, and producer/validator plans; a separate provider owns bespoke scientific reporting. Existing task, failure, publication, recovery, logging, Run, and Results authorities remain fixed. Dynamic artifact indexing derives the roster from the immutable selected profile, and compatible stationary processing outputs may feed another admitted module. Remaining scope is module-specific dependency/resource discovery, provisioning, and independent identity binding; no universal Stage hierarchy, workflow language, second scheduler, generic report DSL, Artifact Store, or mutable registry is selected. |
 | `ARCH-01` | Consumes the completed prerequisites and current vertical cutovers. Sections 13.6, 13.19, and 13.20 leave one execution-profile owner, one private whole-Run Slurm transport/bootstrap, one closed project-v1/named-Analysis source, and grouped control while retiring split configuration, the generated wrapper, all sixteen owner-local scheduler routes, and active request-v3 intake. Run remains immutable, placement/diagnostics remain Attempt-local, Attempt-v1 evidence and Results authority remain unchanged, and no second backend, scheduler, facade, Artifact Store, or evidence deletion is introduced. Broader package, generalized storage, remaining caller migration, and only demonstrated policy/artifact consolidations stay Open under the existing-tool-first protocol. Generalized-backend evaluation remains required near closure. |
 | `REPORT-03` | Primary-scientific-findings hierarchy with evidence and operational detail progressively disclosed |
 | `REPORT-04` | Preserve the requested ability to render nine A-through-I selections when the admitted result warrants them |
-| `RESULTS-01` | **Complete.** Current Runs expose only editing results, scientific context, and receipt-bound reports beneath `results`; nonfinal/QC artifacts live beneath `products/native`; both reports link to admitted primary result tables; no copy, symlink, new manifest/index, or competing current report root exists. Exact legacy-profile report ledgers remain readable as historical evidence, while old-layout Runs are not automatically resumable under the changed current profile. |
+| `RESULTS-01` | **Complete.** The built-in paired-CMH module exposes editing results, scientific context, and receipt-bound reports beneath `results`; collaborator modules may declare different final paths beneath that same canonical Results authority, while nonfinal/QC artifacts remain beneath `products/native`. Reports link to the admitted module outputs; no copy, symlink, authored artifact index, or competing current report root exists. Exact legacy-profile report ledgers remain readable as historical evidence, while old-layout Runs are not automatically resumable under a changed current profile. |
 | `DOC-01` | Role- and journey-based scientist/operator/developer documentation that does not assume campaign history |
 | `DOC-02` | Completed repository-wide documentation disposition and authority cutover; bounded documentation migration and retirement now remain under completed `DOC-03` and open `DOC-04`–`DOC-05`; `CLEAN-01` is Verification pending and `CLEAN-02` is complete |
 | `DOC-03` | Completed source reconciliation and retirement of the stale future-architecture, pipeline-plan, question-index, and future-diagram surfaces without settling the final architecture-document set; the [durable trace](../design/decisions/repository-and-delivery.md#doc-03-source-to-destination-trace-2026-08-25) lives in the repository-and-delivery decision record |

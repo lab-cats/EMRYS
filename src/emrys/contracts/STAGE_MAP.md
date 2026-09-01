@@ -11,6 +11,12 @@ that every future assay has one universal sequence, and it does not define
 preprocessing profiles, optional-stage policy, ingestion, orchestration, or
 archival behavior.
 
+The identities below remain the built-in paired-CMH map. For an explicit
+collaborator module, the immutable admitted module descriptor owns the
+Run-specific Step `09` and optional Step `10` tail composed onto the common
+processing profile. This document is neither the installed-provider registry
+nor a universal Stage hierarchy.
+
 ## Identity rules
 
 - Every functional owner has exactly one kind: `stage`, `analysis`, or

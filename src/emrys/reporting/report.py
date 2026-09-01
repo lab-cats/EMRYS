@@ -76,9 +76,7 @@ def _admit_source_authorities(
         raise ReportRenderError(str(exc)) from exc
 
 
-def prepare_report(
-    arguments: argparse.Namespace,
-) -> Any:
+def prepare_report(arguments: argparse.Namespace) -> Any:
     """Prepare and validate one report context without durable output state."""
 
     from emrys.reporting._run_report.context import prepare_context

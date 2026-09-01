@@ -18,18 +18,20 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any
 
+from emrys.reporting import (
+    ReportProviderError as ReportRenderError,
+    recheck_report_input as _assert_snapshot,
+)
+
 from .candidate_display import SelectedCandidateProjection
-from .inputs import _assert_snapshot
-from .models import (
+from .computational import ComputationalResults, ComputationalTable
+from .figure_models import (
     FIGURE_POLICY_VERSION,
     LOGOMAKER_VERSION,
     MATPLOTLIB_VERSION,
-    ComputationalResults,
-    ComputationalTable,
-    ReportRenderError,
-    ScientificContextResults,
     ScientificFigure,
 )
+from .scientific_context import ScientificContextResults
 
 _SVG_DATA_URI_PREFIX = "data:image/svg+xml;base64,"
 _MATPLOTLIB_CONFIG_PREFIX = "emrys-matplotlib-"

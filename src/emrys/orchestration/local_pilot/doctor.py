@@ -328,6 +328,7 @@ def _inspect_foundations(
     analysis_name: str | None = None,
     expected_analysis_revision: AnalysisRevision | None = None,
     allow_legacy: bool = False,
+    require_reporter: bool = True,
 ) -> DoctorResult:
     root = _absolute_path(onboarding.source_root())
     workspace_path = _absolute_path(workspace)
@@ -354,6 +355,19 @@ def _inspect_foundations(
         OSError,
     ) as exc:
         raise DoctorInputError(str(exc)) from exc
+    if require_reporter:
+        from emrys import reporting  # noqa: PLC0415
+
+        try:
+            reporting.admit_analysis_reporter(
+                analysis.module.descriptor.module_id
+            )
+        except reporting.ReportProviderError as exc:
+            blockers.append(f"analysis reporter is not ready: {exc}")
+            remediations.append(
+                "Install exactly one matching analysis reporter, or run with "
+                "--no-report and generate reporting after it is installed."
+            )
     fasta = Path(str(analysis.workflow_inputs["reference"]["fasta"]["path"]))
     if storage_requirement == "direct":
         admit_storage = storage_qualification.admit_direct_requirement
@@ -396,6 +410,7 @@ def inspect_local_pilot(
     analysis_name: str | None = None,
     expected_analysis_revision: AnalysisRevision | None = None,
     allow_legacy: bool = False,
+    require_reporter: bool = True,
 ) -> DoctorResult:
     """Inspect one Project and runtime without writing anything."""
 
@@ -406,6 +421,7 @@ def inspect_local_pilot(
         analysis_name=analysis_name,
         expected_analysis_revision=expected_analysis_revision,
         allow_legacy=allow_legacy,
+        require_reporter=require_reporter,
     )
     profile_path = _absolute_path(runtime_profile)
     try:
@@ -428,19 +444,39 @@ def inspect_local_pilot(
         remediations.append("Activate the Python environment admitted by the Project runtime, then rerun Doctor.")
     failed = [item for item in inspection.observations if item.check.required and item.status != "pass"]
     blockers.extend(f"{item.check.check_id}: {item.status} ({item.observed})" for item in failed)
-    if failed:
+    runtime_bindings = runtime_file_bindings(inspection)
+    observations = {
+        item.check.check_id: item for item in inspection.observations
+    }
+    bound_runtime = {item.check_id for item in runtime_bindings}
+    unavailable_analysis_runtime = tuple(
+        check_id
+        for check_id in foundations.analysis.module.descriptor.required_runtime_checks
+        if check_id not in observations
+        or observations[check_id].status != "pass"
+        or (
+            check_id not in {"renv_project", "renv_library"}
+            and check_id not in bound_runtime
+        )
+    )
+    if unavailable_analysis_runtime:
+        blockers.append(
+            "Analysis module runtime is not admitted: "
+            + ", ".join(unavailable_analysis_runtime)
+        )
+    if failed or unavailable_analysis_runtime:
         remediations.append(
             "Run `emrys doctor --repair` for an EMRYS-managed runtime, or repair and "
             "re-admit the selected site environment without editing runtime.tsv."
         )
-    bindings = (*runtime_file_bindings(inspection), *foundations.bindings)
+    bindings = (*runtime_bindings, *foundations.bindings)
     return replace(
         foundations,
         inspection=inspection,
         bindings=bindings,
         blockers=tuple(blockers),
         remediations=tuple(dict.fromkeys(remediations)),
-        runtime_ready=python_ready and not failed,
+        runtime_ready=python_ready and not failed and not unavailable_analysis_runtime,
     )
 
 
@@ -449,6 +485,7 @@ def diagnose_project(
     *,
     storage_requirement: StorageRequirement = "direct",
     analysis_name: str | None = None,
+    require_reporter: bool = True,
 ) -> DoctorResult:
     """Diagnose the canonical Project runtime, including an absent profile."""
 
@@ -461,12 +498,14 @@ def diagnose_project(
             profile,
             storage_requirement=storage_requirement,
             analysis_name=analysis_name,
+            require_reporter=require_reporter,
         )
     foundations = _inspect_foundations(
         project,
         project.parent,
         storage_requirement=storage_requirement,
         analysis_name=analysis_name,
+        require_reporter=require_reporter,
     )
     remediation = (
         "Run `emrys doctor --repair`, or admit a complete site runtime with `emrys runtime discover --execute`."

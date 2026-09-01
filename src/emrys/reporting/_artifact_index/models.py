@@ -105,6 +105,7 @@ class AdapterSpec:
     scope_type: str
     kind: str
     media_type: str
+    source_path_template: str | None = None
     suffixes: tuple[str, ...] = ()
     basenames: tuple[str, ...] = ()
     expected_header: tuple[str, ...] | None = None
@@ -159,6 +160,8 @@ class BuildContext:
     run_contract_path: Path
     run_contract: dict[str, Any]
     run_contract_file_sha256: str
+    analysis_policy_path: Path | None
+    analysis_policy_sha256: str | None
     inventory_path: Path
     inventory_sha256: str
     inventory_rows: list[dict[str, str]]

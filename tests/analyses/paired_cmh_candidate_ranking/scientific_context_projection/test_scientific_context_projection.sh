@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-producer="$repo_root/src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
+producer="$repo_root/src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 export REAL_SHA256_PYTHON="$repo_root/.venv/bin/python"

@@ -148,6 +148,7 @@ def _plan_run(
     through: str = "analysis",
     processing_source_run_id: str | None = None,
     scheduler_job_id: str | None = None,
+    report_enabled: bool = True,
 ) -> AttemptPlan:
     """Plan a new run without writing any workspace state."""
 
@@ -157,6 +158,7 @@ def _plan_run(
             project_path,
             storage_requirement=execution_profile.placement.kind,
             analysis_name=analysis_name,
+            require_reporter=report_enabled and through == "analysis",
         )
         _require_ready(readiness)
         policy = execution_profile.resource_policy
@@ -377,6 +379,7 @@ def _plan_resume(
     execution_profile: ExecutionProfile,
     resource_overrides: ResourceOverrides = ResourceOverrides(),
     scheduler_job_id: str | None = None,
+    report_enabled: bool = True,
 ) -> AttemptPlan:
     """Plan a safe between-task resume without writing run state."""
 
@@ -407,6 +410,14 @@ def _plan_resume(
                 else observed.authority.analysis_revision
             ),
             allow_legacy=legacy_source,
+            require_reporter=report_enabled
+            and (
+                observed.authority is None
+                or execution_plan_boundary(
+                    observed.authority.execution_plan
+                )
+                == "analysis"
+            ),
         )
         _require_ready(readiness)
         analysis = readiness.analysis
@@ -1355,6 +1366,7 @@ def run_from_args(
                 None,
             ),
             scheduler_job_id=scheduler_job_id,
+            report_enabled=not getattr(arguments, "no_report", False),
         )
         return _finish_control(
             arguments,
@@ -1406,6 +1418,7 @@ def resume_from_args(
             execution_profile=profile,
             resource_overrides=overrides,
             scheduler_job_id=scheduler_job_id,
+            report_enabled=not getattr(arguments, "no_report", False),
         )
         return _finish_control(
             arguments,

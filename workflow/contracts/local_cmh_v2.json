@@ -14,9 +14,7 @@
     "emrys.stage.split_N_cigar_reads_with_GATK.v1",
     "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1",
     "emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
-    "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
-    "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
-    "emrys.analysis.project_candidate_scientific_context.v1"
+    "emrys.stage.preprocess_and_annotate_cohort_candidates.v1"
   ],
   "owner_tasks": [
     {
@@ -102,20 +100,6 @@
       "step_id": "08",
       "scope_type": "cohort",
       "scope_selector": "cohort"
-    },
-    {
-      "machine_key": "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
-      "rule_name": "rank_cohort_candidates_with_paired_CMH",
-      "step_id": "09",
-      "scope_type": "analysis",
-      "scope_selector": "analysis"
-    },
-    {
-      "machine_key": "emrys.analysis.project_candidate_scientific_context.v1",
-      "rule_name": "project_candidate_scientific_context",
-      "step_id": "10",
-      "scope_type": "analysis",
-      "scope_selector": "analysis"
     }
   ],
   "direct_edges": [
@@ -190,24 +174,6 @@
       "consumer": "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
       "artifact": "receipt and both orientation VCFs for every declared partition",
       "semantics": "required artifact; declared-partition-and-orientation barrier"
-    },
-    {
-      "producer": "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
-      "consumer": "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
-      "artifact": "sites table and Step 08 input receipt",
-      "semantics": "required artifact"
-    },
-    {
-      "producer": "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
-      "consumer": "emrys.analysis.project_candidate_scientific_context.v1",
-      "artifact": "all-sites, significant-sites, and summary tables",
-      "semantics": "required artifact; complete Step 09 transaction barrier"
-    },
-    {
-      "producer": "emrys.stage.construct_FASTA_sidecars.v1",
-      "consumer": "emrys.analysis.project_candidate_scientific_context.v1",
-      "artifact": "reference FAI paired with the external reference FASTA",
-      "semantics": "required artifact; fan-in"
     }
   ],
   "required_owner_keys": [
@@ -222,9 +188,7 @@
     "emrys.stage.split_N_cigar_reads_with_GATK.v1",
     "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1",
     "emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
-    "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
-    "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
-    "emrys.analysis.project_candidate_scientific_context.v1"
+    "emrys.stage.preprocess_and_annotate_cohort_candidates.v1"
   ],
   "evidence_owner_keys": [
     "emrys.evidence.collect_canonical_BAM_QC_evidence.v1",
@@ -742,123 +706,6 @@
       "scope_selector": "cohort",
       "adapter": "step08_validation_report_v1",
       "source_path_template": "products/native/qc/validation/08/{cohort_id}.validation.tsv",
-      "required": true
-    },
-    {
-      "artifact_id_template": "analysis.{analysis_id}.cmh_all_sites",
-      "step_id": "09",
-      "scope_type": "analysis",
-      "scope_selector": "analysis",
-      "adapter": "step09_cmh_all_sites_v1",
-      "source_path_template": "results/editing/{analysis_id}/{analysis_id}.cmh_all_sites.tsv",
-      "required": true
-    },
-    {
-      "artifact_id_template": "analysis.{analysis_id}.cmh_significant_sites",
-      "step_id": "09",
-      "scope_type": "analysis",
-      "scope_selector": "analysis",
-      "adapter": "step09_cmh_significant_sites_v1",
-      "source_path_template": "results/editing/{analysis_id}/{analysis_id}.cmh_significant_sites.tsv",
-      "required": true
-    },
-    {
-      "artifact_id_template": "analysis.{analysis_id}.cmh_summary",
-      "step_id": "09",
-      "scope_type": "analysis",
-      "scope_selector": "analysis",
-      "adapter": "step09_cmh_summary_v1",
-      "source_path_template": "results/editing/{analysis_id}/{analysis_id}.cmh_summary.tsv",
-      "required": true
-    },
-    {
-      "artifact_id_template": "analysis.{analysis_id}.mutation_spectrum_tsv",
-      "step_id": "09",
-      "scope_type": "analysis",
-      "scope_selector": "analysis",
-      "adapter": "step09_mutation_spectrum_tsv_v1",
-      "source_path_template": "results/editing/{analysis_id}/{analysis_id}.mutation_spectrum.tsv",
-      "required": true
-    },
-    {
-      "artifact_id_template": "analysis.{analysis_id}.mutation_spectrum_pdf",
-      "step_id": "09",
-      "scope_type": "analysis",
-      "scope_selector": "analysis",
-      "adapter": "step09_mutation_spectrum_pdf_v1",
-      "source_path_template": "results/editing/{analysis_id}/{analysis_id}.mutation_spectrum.pdf",
-      "required": true
-    },
-    {
-      "artifact_id_template": "analysis.{analysis_id}.depth_delta_pdf",
-      "step_id": "09",
-      "scope_type": "analysis",
-      "scope_selector": "analysis",
-      "adapter": "step09_depth_delta_pdf_v1",
-      "source_path_template": "results/editing/{analysis_id}/{analysis_id}.depth_delta.pdf",
-      "required": true
-    },
-    {
-      "artifact_id_template": "analysis.{analysis_id}.cmh_validation",
-      "step_id": "09",
-      "scope_type": "analysis",
-      "scope_selector": "analysis",
-      "adapter": "step09_validation_report_v1",
-      "source_path_template": "products/native/qc/validation/09/{analysis_id}.validation.tsv",
-      "required": true
-    },
-    {
-      "artifact_id_template": "analysis.{analysis_id}.candidate_context",
-      "step_id": "10",
-      "scope_type": "analysis",
-      "scope_selector": "analysis",
-      "adapter": "step10_candidate_context_v1",
-      "source_path_template": "results/scientific_context/{analysis_id}/{analysis_id}.candidate_context.tsv",
-      "required": true
-    },
-    {
-      "artifact_id_template": "analysis.{analysis_id}.motif_hits",
-      "step_id": "10",
-      "scope_type": "analysis",
-      "scope_selector": "analysis",
-      "adapter": "step10_motif_hits_v1",
-      "source_path_template": "results/scientific_context/{analysis_id}/{analysis_id}.motif_hits.tsv",
-      "required": true
-    },
-    {
-      "artifact_id_template": "analysis.{analysis_id}.sequence_logo",
-      "step_id": "10",
-      "scope_type": "analysis",
-      "scope_selector": "analysis",
-      "adapter": "step10_sequence_logo_v1",
-      "source_path_template": "results/scientific_context/{analysis_id}/{analysis_id}.sequence_logo.tsv",
-      "required": true
-    },
-    {
-      "artifact_id_template": "analysis.{analysis_id}.motif_statistics",
-      "step_id": "10",
-      "scope_type": "analysis",
-      "scope_selector": "analysis",
-      "adapter": "step10_motif_statistics_v1",
-      "source_path_template": "results/scientific_context/{analysis_id}/{analysis_id}.motif_statistics.tsv",
-      "required": true
-    },
-    {
-      "artifact_id_template": "analysis.{analysis_id}.context_receipt",
-      "step_id": "10",
-      "scope_type": "analysis",
-      "scope_selector": "analysis",
-      "adapter": "step10_context_receipt_v1",
-      "source_path_template": "results/scientific_context/{analysis_id}/{analysis_id}.context_receipt.tsv",
-      "required": true
-    },
-    {
-      "artifact_id_template": "analysis.{analysis_id}.context_validation",
-      "step_id": "10",
-      "scope_type": "analysis",
-      "scope_selector": "analysis",
-      "adapter": "step10_validation_report_v1",
-      "source_path_template": "products/native/qc/validation/10/{analysis_id}.validation.tsv",
       "required": true
     }
   ]

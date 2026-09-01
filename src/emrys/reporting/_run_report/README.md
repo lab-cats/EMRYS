@@ -1,119 +1,46 @@
-# Run-report implementation owners
+# Run-report core owners
 
-This private package implements the HTML transaction used by the Run-level
-reporting coordinator and developer fixtures through [`report.py`](../report.py).
-It has no installed public command or operator recovery route.
+This private package implements the fixed HTML-report transaction used by the
+Run-level reporting coordinator through [`report.py`](../report.py). It has no
+installed public command, generic report DSL, or operator recovery route.
 
-| Module | Responsibility |
+| Module | Core responsibility |
 | --- | --- |
-| [`models.py`](models.py) | Immutable v4 contract constants, figure values, and two-view context values. |
-| [`inputs.py`](inputs.py) | Explicit run-summary admission with stable snapshots. |
-| [`computational.py`](computational.py) | Exact primary-analysis Step 09 trio, mutation spectrum, all-pass owner validation, and summary-bound sample-manifest admission; source identity/snapshots; and canonical admission without materializing wide HTML-table prefixes. |
-| [`scientific_context.py`](scientific_context.py) | Exact primary-analysis Step 10 selection, canonical receipt-transaction admission, record reconciliation, and stable snapshots of all outputs and receipt-bound inputs. |
-| [`candidate_display.py`](candidate_display.py) | One immutable selected-candidate roster joining admitted Step 09 evidence to admitted Step 10 display ranks, contexts, and registered-motif hits without rescanning or reranking. |
-| [`figures.py`](figures.py) | Shared controlled Matplotlib/Logomaker SVG boundary plus deterministic candidate, mutation, concordance, paired-profile, and location figures. |
-| [`scientific_context_figures.py`](scientific_context_figures.py) | Presentation-only observed/registered logos, motif-position/enrichment, and multi-panel selected candidate-centered context views from admitted values. |
-| [`context.py`](context.py) | Resource, output, predecessor, portable admitted-result link, and Run-inspection guidance preparation without durable output state; cleaned temporary renderer initialization is explicit. |
-| [`view.py`](view.py) | Separate structured scientific and evidence-and-operations projections, including role navigation, the print-oriented hierarchy, figure guide, and vertical candidate records, without HTML construction. |
-| [`validation.py`](validation.py) | Autoescaped strict Jinja environment plus CSS, security, per-view semantic HTML, and accessibility validation. |
-| [`receipt.py`](receipt.py) | Deterministic summary TSV and v4 two-view receipt projection/validation. |
-| [`publication.py`](publication.py) | One receipt-last two-HTML transaction using injected immutable fault operations. |
-| [`transaction.py`](transaction.py) | Lock, snapshot, durability, staging, and recovery primitives. |
+| [`models.py`](models.py) | Immutable report-contract, provider, output, and two-view context values. |
+| [`inputs.py`](inputs.py) | Explicit run-summary and installed-provider admission with stable snapshots. |
+| [`context.py`](context.py) | Source/artifact roots, provider selection, outputs, predecessor state, portable result links, and cleaned renderer initialization. |
+| [`view.py`](view.py) | Fixed evidence-and-operations projection and composition with the provider-owned scientific view. |
+| [`validation.py`](validation.py) | Autoescaped strict Jinja environment plus CSS, security, semantic HTML, and accessibility validation. |
+| [`receipt.py`](receipt.py) | Deterministic summary TSV and v4/v5 report-receipt projection/validation. |
+| [`publication.py`](publication.py) | One receipt-last two-HTML transaction using immutable injected fault operations. |
+| [`transaction.py`](transaction.py) | Lock, snapshot, durability, staging, rollback, and recovery primitives. |
 
-The Run-level coordinator supplies the admitted absolute canonical source
-checkout and independent artifact source root before reading report inputs.
-The artifact root governs contract-relative paths recorded in the run summary;
-the checkout governs renderer Git identity. Private owners infer neither root
-from the working directory or run-summary location and do not re-admit during
-publication.
+The selected `emrys.analysis_reporters` provider owns bespoke scientific HTML
+and its interpretation boundary. The built-in paired-CMH implementation lives
+in
+[`paired_cmh_candidate_ranking_report/`](../paired_cmh_candidate_ranking_report/)
+and retains its computational/context admission, candidate display, figures,
+and scientific projection. Those details are deliberately not duplicated in
+this core package.
 
-When the canonical run summary declares a complete primary Step 09 trio
-(`cmh_all_sites`, `cmh_significant_sites`, and `cmh_summary`) and its exact
-mutation-spectrum TSV and all-pass owner-validation report, reporting opens
-only those artifact-record paths. It retains primary-analysis/adapter
-selection; artifact-root, media type, expected path, SHA-256, size, and
-row-count checks; roster admission; stable snapshots; unavailable handling;
-and display limits. It delegates intrinsic trio and mutation-spectrum admission
-to `step09.validate_step09_projection` and never searches for native outputs.
-It separately admits the exact sample manifest recorded by the Step 09 summary,
-requires its hash to match both that summary and the immutable run contract,
-reuses canonical manifest and pairing validation, and requires exact result-
-column sample order. The manifest snapshot participates in every input recheck
-and report-receipt attempt identity.
+The core owns the Evidence and operations view, role navigation, HTML safety,
+fixed output names, default/disabled/independent reporting semantics, stable
+input rechecks, and receipt-last publication. Reporter/provider package
+identity is bound to report-receipt v5 for explicit modules but never enters
+Analysis or Run identity. Existing flat paired-CMH Runs retain run-summary v2
+and report-receipt v4; explicit modules use run-summary v3 and report-receipt
+v5.
 
-The all-pass owner-validation artifact, not rendering, carries upstream Step
-08, paired-sample CMH, global BH, PDF, and publication checks. Reporting
-reimplements neither mutation-spectrum reconciliation, shell/R producer, nor
-independent oracle; it discloses an incomplete source bundle without opening or
-inferring candidate rows.
-
-When all six primary-analysis Step 10 artifact records are complete, reporting
-requires its one-check owner validation to pass and reuses
-`validate_scientific_context_transaction(...)` as the sole semantic admission.
-It reconciles every output artifact record with that receipt-last transaction,
-snapshots the receipt plus all four outputs and six bound inputs, and requires
-the receipt-bound Step 09 trio to be the same trio admitted for the report. A
-run with no Step 10 records is treated as historical: the population-level
-context figures are unavailable, while selected candidate panels remain and
-label motif context unavailable. A partial or incomplete declared transaction
-is disclosed without opening it; a present hash, path, row, schema, validation,
-or semantic mismatch fails the report closed.
-
-The scientific view labels all candidates **computational results — not
-scientifically adjudicated**. It is a static, print-oriented hierarchy: concise
-summary, four primary figures, four supporting figures, visible figure-reading
-guide, and visible methods/data note. It does not render the wide all-sites or
-significant-sites TSVs. Instead, it uses their complete admitted populations for
-the relevant summaries and figures, then presents up to eight selected
-candidates as a narrow ranked-card index plus vertically structured records.
-Primary display labels are `Figure 1`–`Figure 4`; supporting appendix labels are
-`Figure S1`–`Figure S4`. Stable internal figure IDs remain unchanged.
-
-One shared projection supplies the selected index, paired-profile figure, and
-candidate-centered context panels. It preserves Step 10 display ranks when
-available or uses the fixed FDR/effect/candidate-ID historical fallback. Each
-record exposes named-condition editing rates, treatment-minus-control percentage
-points, paired AF/AD/DP support, 1-based coordinates, genomic and RNA changes,
-workflow orientation, orientation policy, annotation strand, nonexclusive
-region memberships, and every admitted registered-motif hit with explicit
-availability semantics. The candidate panels show a bounded ±25-nt slice but
-the adjacent record retains hits elsewhere in the admitted ±100-nt context.
-This is mechanically oriented candidate context, not a report-selected
-transcript locus or inferred biological strand.
-
-The renderer consumes Step 10's admitted frequency matrix, registered PUM
-catalog, fixed nearest-hit bins and Fisher result, and upstream-ranked contexts.
-It does not reopen the FASTA, scan motifs, count bases or hits, reconstruct
-populations, run enrichment, smooth profiles, choose an isoform, or rerank
-candidates. Paths, hashes, attempts, artifacts, tools, renderer provenance, and
-the artifact-availability figure are excluded from this view.
-
-Both HTML files provide relative destinations for the scientific report,
-evidence and provenance, and operations. The combined **Evidence and
-operations** view contains no candidate rows. Both views also link directly to
-the admitted all-sites, threshold-passing, and candidate-context TSVs through
-portable relative paths; absent inputs produce no link. The existing inspect
-command appears only under Operations. Its evidence category owns
-artifact QC, the artifact appendix, tools/issues, renderer provenance, the
-scientific source records; its retained Run overview owns identity, status,
-limitations, expected scopes, and the accessible artifact-availability figure;
-its operations category owns attempt lineage. Its compact six-record Step 09 source table
-preserves exact path, hash, size, and row-count orientation for the validation,
-all-sites, significant-sites, summary, mutation-spectrum, and summary-bound
-sample-manifest inputs. A separate Step 10 table records its validation,
-receipt, four outputs, and every receipt-bound input; the adjacent policy table
-keeps the orientation, windows, motif, populations, minima, Fisher policy, and
-owner software in the evidence view. The existing provenance section records
-the fixed figure roster, status, mappings, populations, every SVG panel
-hash/size, Matplotlib and Logomaker versions, and figure-policy version without
-duplicating the images. The complete native candidate TSVs remain evidence-
-bound artifacts; no human-facing table prefix or truncation is produced.
-Candidate review, adjudication, and biological interpretation remain external
-research activities.
+The Run-level coordinator supplies the admitted absolute source checkout,
+independent artifact source root, completed Run, and selected provider before
+inputs are read. The artifact root governs contract-relative paths; admitted
+checkout/provider identities govern implementation evidence. Neither root is
+inferred from the working directory or run-summary location.
 
 The transaction retains input rechecks, lock ownership, predecessor identity,
 backup/rollback, recovery markers, foreign-state preservation, staged
 validation, receipt-last publication, and characterized interruption behavior.
-Tests inject a frozen `ReportPublicationOps` value rather than patching module
-globals. The renderer producer is `5.2.0`; run-summary `2.0.0` and
-report-receipt `4.0.0` are clean breaking contracts with no compatibility shim.
+Complete state is revalidated and reused; generation requires empty owned
+state; ambiguous state is preserved and fails closed. Rendering does not rerun
+analysis, discover native outputs, change scientific evidence, or establish
+scientific review or biological validity.

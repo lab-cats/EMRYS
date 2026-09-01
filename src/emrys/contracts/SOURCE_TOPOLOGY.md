@@ -19,9 +19,9 @@ owns exact public programs, jobs, validators, and tests.
 | `contracts/` | Neutral schemas, shared scientific-evidence contracts, identities, and topology contracts. |
 | `libraries/` | Narrow shared implementation proven across named consumers; never a generic utility bucket. |
 | `stages/` | Preprocessing and transformation owners keyed by the slugs in `STAGE_MAP.md`. |
-| `analyses/` | Scientific analysis owners distinct from preprocessing stages. |
+| `analyses/` | Public computation-provider contract/admission facade plus scientific analysis owners distinct from preprocessing stages; provider-private code remains owner-local. |
 | `evidence/` | Operational and mechanical evidence collection that does not become peer computation. |
-| `reporting/` | Artifact adaptation, canonical run summaries, projections, templates, styles, and static rendering. |
+| `reporting/` | Public report-provider contract/admission facade, artifact adaptation, canonical run summaries, and static rendering; bespoke scientific views remain with their report provider. |
 | `ingestion/` | External-input admission and diagnostics; no implemented orchestration runner. |
 | `orchestration/` | Local-pilot request normalization, reporting projection, content-bound task execution/reuse admission, and lifecycle application policy; no scientific implementation. Static scheduling assets live at root `workflow/`. |
 
@@ -78,7 +78,7 @@ coherent semantic package, not a mixture of old and final owners.
 | Source and artifact-root authority | `libraries/source_authority.py` | Reporting and the local lifecycle share canonical source-checkout/package identity plus a distinct artifact-source root. Git cleanliness is lifecycle attempt policy, not a reporting-transaction success claim. |
 | Controlled child startup | `libraries/process_environment.py` | Runtime-availability evidence and local orchestration share removal of inherited shell startup hooks, exact guarded R startup/environment selectors, and the selected-Java environment used for GATK. The R seam selects an existing library and never installs, restores, bootstraps, or downloads dependencies; the Java seam selects canonical `<JAVA_HOME>/bin/java` and removes ambient JVM/GATK selectors without owning tool versions or scientific commands. |
 | Selected-Java GATK bridge | `libraries/gatk_invocation.sh` | Step `00c` and Step `05` share only the bound Python handoff into the controlled Java/GATK environment. Each stage retains executable precedence, minimum-version policy, arguments, transaction, validation, and scientific command ownership. |
-| Installed R-package identity | `libraries/installed_package_identity.py` | Local-pilot doctor and lifecycle share deterministic no-follow identity for exact canonical installed-package trees. Namespace/version policy remains in runtime admission; symlinks and special entries fail closed. |
+| Installed provider identity | `libraries/installed_package_identity.py` | Runtime admission plus computation and report providers share deterministic no-follow identity for exact canonical installed package trees. Namespace/version and entry-point policy remain with each admitting owner; symlinks, special entries, and ambiguous providers fail closed. |
 | Application logging | `libraries/application_logging/` | This neutral, stage-independent two-sink foundation owns resolved controls, attempt records, protected persistence, projection, and redaction primitives. Grouped local-pilot `run`/`resume` control is the first production adopter: an execute owns exactly one compute-side application attempt, while scheduler submission transport and valid dry-run own none. Confirmed `emrys doctor --repair` is the bounded maintenance adopter; diagnosis, preview, refusal, and pre-authority interruption own no log. Application logs default to `<project-root>/logs/application`; scheduler OUT/ERR remain separate under `<project-root>/logs`. Each adopter retains its own computation, rollback, recovery, streams, and exit authority. The packaged-Python production-import roster is mechanically guarded. |
 
 These are the complete approved neutral implementation seams. Similar names or
@@ -103,10 +103,10 @@ imported across peers.
 | CLI composition | The exact owner-declared current composition roster plus the exact transitions below | supported grouped public routes over those owner modules | every target outside the two explicit rosters; no seam becomes a general import API |
 | `contracts/` | standard/external libraries and other contracts; only the exact transitions below may reach implementation | none | every other EMRYS implementation dependency |
 | `libraries/` | `contracts/` and lower neutral libraries in an acyclic chain | none | functional, ingestion, application, or reporting owners |
-| `stages/`, `analyses/`, `evidence/` | `contracts/`, approved `libraries/`, owner-local code | owner-local tools and peer artifacts through contracts | peer implementation, ingestion, or reporting implementation |
+| `stages/`, `analyses/`, `evidence/` | `contracts/`, approved `libraries/`, owner-local code, and the exact analysis-module facade seam below | owner-local tools and peer artifacts through contracts | peer-private implementation, ingestion, or reporting implementation |
 | `ingestion/` | `contracts/`, approved `libraries/`, ingestion-local code | external inputs; emitted validated declarations | functional-owner implementation or execution |
-| `orchestration/` | `contracts/`, approved `libraries/`, orchestration-local code, and the exact reporting seams and transitions below | public owner commands/capabilities and declared artifacts | peer-private implementation, ingestion, or scientific logic outside a named seam or transition |
-| `reporting/` | `contracts/`, approved `libraries/`, reporting-local code | explicit public artifacts and summaries | functional-owner implementation, input discovery, or analysis execution |
+| `orchestration/` | `contracts/`, approved `libraries/`, orchestration-local code, and the exact capability seams and transitions below | public owner commands/capabilities and declared artifacts | peer-private implementation, ingestion, or scientific logic outside a named seam or transition |
+| `reporting/` | `contracts/`, approved `libraries/`, reporting-local code, and the exact analysis-module facade seam below | explicit public artifacts and summaries | provider-private implementation, input discovery, or analysis execution |
 
 Scientific functional-owner data flow follows the explicit semantic DAG edges
 in `STAGE_MAP.md`; lifecycle, admission, reporting, and orchestration flows
@@ -133,7 +133,7 @@ composition are reviewed together.
 | ID | Exact current target | Current grouped-CLI purpose |
 |---|---|---|
 | `CLI-SEAM-001` | `emrys.analyses.paired_cmh_candidate_ranking.validator` | Owner validation command |
-| `CLI-SEAM-002` | `emrys.analyses.scientific_context_projection.validator` | Owner validation command |
+| `CLI-SEAM-002` | `emrys.analyses.paired_cmh_candidate_ranking.scientific_context_projection.validator` | Owner validation command |
 | `CLI-SEAM-003` | `emrys.contracts.artifacts.validator` | Artifact-contract validation command |
 | `CLI-SEAM-004` | `emrys.evidence.canonical_bam_qc.validator` | Owner validation command |
 | `CLI-SEAM-005` | `emrys.evidence.reference_provenance.reconciler` | Reference-provenance reconciliation command |
@@ -160,6 +160,23 @@ composition are reviewed together.
 | `CLI-SEAM-027` | `emrys.stages.star_alignment.validator` | Owner validation command |
 | `CLI-SEAM-028` | `emrys.stages.star_index.validator` | Owner validation command |
 
+### Analysis-module capability seam
+
+Standard Python entry points select the exact installed computation and report
+providers named by an admitted Project Analysis. They are runtime-selected
+capabilities, not an EMRYS registry service, a permission to import
+provider-private code, or a second workflow language. Analysis providers,
+orchestration, and reporting may import only the public `emrys.analyses`
+facade; contracts, libraries, ingestion, and every provider-private target
+remain prohibited.
+
+The built-in provider consumes the same public descriptor contract offered to
+collaborator packages. Orchestration admits and freezes the selected provider
+into the immutable Run. Reporting consumes only that admitted descriptor and
+declared artifacts; it never invokes the computation provider. Doctor alone
+may import the public `emrys.reporting` facade to establish reporter readiness
+before a reporting-enabled execution.
+
 ### Fixed orchestration-to-reporting seams
 
 The local-pilot application may cross into reporting only through these exact
@@ -169,6 +186,7 @@ No functional owner or grouped command imports reporting internals directly.
 
 | Exact source | Exact target | Purpose |
 |---|---|---|
+| `emrys.orchestration.local_pilot.doctor` | `emrys.reporting` | Admit the same-ID report provider required by a reporting-enabled run |
 | `emrys.orchestration.local_pilot.lifecycle` | `emrys.reporting.transaction_validation` | Historical receipt validation during Attempt inspection |
 | `emrys.orchestration.local_pilot.reporting_boundary` | `emrys.reporting.transaction_validation` | Semantic validation before immutable reporting completion |
 | `emrys.orchestration.local_pilot.reporting_operation` | `emrys.reporting._artifact_index.context` | Prepare the first fixed reporting transaction |

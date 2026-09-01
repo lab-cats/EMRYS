@@ -33,9 +33,9 @@ SHELL_SYNTAX_PATHS := \
 	src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh \
 	src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh \
 	src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh \
-	src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh \
-	tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh \
-	tests/analyses/scientific_context_projection/test_scientific_context_projection.sh
+	src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh \
+	tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh \
+	tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh
 
 documentation-check:
 	./scripts/documentation/validate_structure.py --repo "$(CURDIR)"
@@ -49,7 +49,7 @@ validation-shell-contracts:
 	bash tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh
 	bash tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh
 	bash tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh
-	bash tests/analyses/scientific_context_projection/test_scientific_context_projection.sh
+	bash tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh
 	bash tests/shell/test_local_r_environment.sh
 
 shell-test: validation-shell-contracts
@@ -61,7 +61,7 @@ validation-wheel-smoke:
 real-r-test:
 	bash tests/stages/cohort_candidate_preprocessing/run_step_08_vcf_preprocessing_tests.sh
 	bash tests/analyses/paired_cmh_candidate_ranking/run_step_09_cmh_tests.sh
-	bash tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh
+	bash tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh
 
 r-restore:
 	EMRYS_USE_RENV=1 EMRYS_LOCAL_PILOT_R=0 \

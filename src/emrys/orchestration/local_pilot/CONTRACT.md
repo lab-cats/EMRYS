@@ -15,9 +15,9 @@ preserves the partial root and never overwrites or adopts it.
 The canonical `project.yaml` parent is the Project root derived by ordinary
 run and Doctor routes. Results exist only under `runs/<run-id>/results`.
 
-`emrys validate project --project FILE` calls the canonical Project admission
-with the tracked `emrys.profile.local_cmh.v2` contract, validates every named
-Analysis, then reuses
+`emrys validate project --project FILE` calls canonical Project admission with
+the tracked processing-profile base and each explicitly selected installed
+analysis-module descriptor, validates every named Analysis, then reuses
 the reference-contig and GTF-to-BED12 owners to require nonempty FASTA contigs,
 usable exon transcript models, matching contig names, in-bounds transcript
 coordinates, and in-bounds `region` or `regions_file` partition selectors. It
@@ -174,22 +174,28 @@ Project. Resume takes an existing Run root and cannot change that selection.
 `emrys run --through processing` creates a distinct immutable Execution Plan
 and Run whose nonempty predecessor-closed stopping roster selects the
 evidence-complete Steps `00`–`06` closure for its selected Analysis. The fixed four-sample
-fixture expands this closure to 31 owner tasks. The default remains the full Steps
-`00`–`10` Analysis. Reporting is not applicable to a processing-boundary Run;
+fixture expands this closure to 31 owner tasks. The default full Run contains
+the common path through Step `08` plus the selected module's Step `09` and
+optional Step `10`. Reporting is not applicable to a processing-boundary Run;
 successful completion is terminal and not resumable. This slice establishes
 the reusable processing authority. `run --from-processing-run RUN_ID` admits one
 exact successful processing Run from the same Project and creates a distinct
 complete downstream Run. The target plan binds the source Run, successful
 workflow Attempt, and receipt; normalized samples, Reference, and execution
-semantics must match exactly except that target samples may be an exact subset
-of the source Analysis and the plan's source/stopping fields differ. Source
+processing semantics must match exactly except that target samples may be an
+exact subset of the source Analysis and the plan's source/stopping fields
+differ; the selected downstream module and unrelated whole-workflow caps may
+differ. Source
 Steps `00`–`06` artifacts remain stationary and
-content-bound, while the target executes and owns only Steps `07`–`10`, its
-evidence, Results, reports, and log. Resume preserves the immutable source
+content-bound, while the target executes and owns fixed Steps `07`–`08`, its
+selected Step `09`/optional Step `10`, evidence, Results, reports, and log.
+Resume preserves the immutable source
 relationship. No source task record is copied or adopted, and no Artifact Store
 or second scientist-authored manifest authority is introduced. A proper subset
-uses one private Attempt-bound TSV projection for the unchanged backend;
-generalized collaborator-extensible analyses remain ANALYSIS-02 work.
+uses one private Attempt-bound TSV projection for the unchanged backend. The
+bounded collaborator-module v1 inherits existing task, publication, failure,
+recovery, and logging semantics; module-specific dependency/resource
+provisioning remains `ANALYSIS-02` work.
 `run` and `resume` require the controlled Python invocation. With direct
 placement, a terminal builds and prints one frozen Run
 plan, asks once, and executes that same object only after confirmation. Slurm
@@ -211,7 +217,8 @@ paths/digests, verified output bindings, receipts, and task evidence.
 Historical Runs are labeled and never receive fabricated successor identities.
 The fixed four-sample, one-partition synthetic fixture expands to 35 owner jobs
 for the default full Run and 31 for the processing boundary; other admitted
-sample/partition counts expand according to the fixed profile. The
+sample/partition counts expand according to the common profile and selected
+module descriptor. The
 control surface exposes no raw Snakemake flags, force, unlock, cleanup, retry,
 plugin, or alternate-profile escape hatch.
 
@@ -242,7 +249,7 @@ domains; blocked evidence is preserved and never presented as resumable. The
 dashboard does not derive or display result locations or recovery guidance.
 
 `materialization.build_attempt_plan` is the sole production projection from
-the fixed profile to owner commands, declared inputs/outputs, validation
+the composed processing/module profile to owner commands, declared inputs/outputs, validation
 reports, immutable task dispatches, reporting projections, workflow config,
 and workflow-attempt record. Initial run skeleton creation is create-absent.
 For successor Runs, the Attempt executor value comes from the admitted
@@ -265,11 +272,14 @@ and partition TSV parsing consume those admitted bytes without reopening the
 pathname.
 
 The neutral `emrys.contracts.orchestration.projection.project_reporting` API
-deterministically derives the existing six-field artifact run contract and
-explicit inventory bytes. Generated paths are run-root-relative; stationary
+deterministically derives the applicable artifact run contract and explicit
+inventory bytes from the immutable selected profile. The built-in flat path
+retains its paired-CMH projection; explicit modules use the module-neutral
+run-summary v3 projection. Generated paths are run-root-relative; stationary
 Step `00c` FASTA and sidecar paths may be absolute normalized external paths.
-The projection does not discover files or promote reporting identity into
-workflow identity.
+The projection does not discover files or promote reporter identity into
+Analysis, Run, or workflow identity. Deriving the roster from the profile is
+dynamic artifact indexing, not a store or second manifest authority.
 
 The public `python -I -m emrys validate all-pass` route reads one explicit
 owner-validation report and writes nothing. It requires the exact shared
@@ -339,8 +349,8 @@ the terminal receipt published after release.
 The attempt binds canonical
 execution, profile, and attempt-local workflow-config bytes; the config
 transitively binds each dispatch. The executor argument binds the exact reviewed
-`workflow/Snakefile` and absolute checked-in local workflow profile beneath the
-declared clean checkout, preventing run-directory profile shadowing. It invokes
+`workflow/Snakefile`, absolute checked-in processing-profile base, and exact
+immutable composed-profile bytes, preventing run-directory profile shadowing. It invokes
 Snakemake only as `<bound-python> -X pycache_prefix=/dev/null -I -m snakemake`;
 the exact lexical venv
 launcher, its stable executable target, Python version, Snakemake module
@@ -416,14 +426,14 @@ completed EMRYS run.
 
 | Location | Durable contents |
 | --- | --- |
-| `contract/` | Successor Analysis, Execution Plan, and Run records (or historical normalized execution), fixed profile, admitted runtime snapshot, reporting inputs, workflow configs, and task dispatches. |
+| `contract/` | Successor Analysis, Execution Plan, and Run records (or historical normalized execution), immutable composed profile, admitted runtime snapshot, reporting inputs, workflow configs, and task dispatches. |
 | `attempts/<workflow-attempt-id>/` | Attempt record, owner-task attempts and terminal logs, and the attempt receipt published last. |
 | `state/task-starts/` | Immutable producer-entry records. |
 | `state/verified/` | Hash-bound successful owner-task records. |
 | `state/reporting/` | Start and verified records for artifact index, run summary, and report publication. |
-| `results/` | Scientist-facing results only. Current Runs contain `editing/`, `scientific_context/`, and `reports/`; scratch and nonfinal workflow products do not belong here. |
-| `results/editing/` | Step `09` candidate tables, summary, mutation spectrum, and diagnostic PDFs. |
-| `results/scientific_context/` | Step `10` candidate context, motif, population, enrichment, and receipt. |
+| `results/` | The sole scientist-facing Results authority. Modules declare final paths beneath it; scratch and nonfinal workflow products do not belong here. |
+| `results/editing/` | Built-in paired-CMH Step `09` candidate tables, summary, mutation spectrum, and diagnostic PDFs. |
+| `results/scientific_context/` | Built-in paired-CMH Step `10` candidate context, motif, population, enrichment, and receipt. |
 | `results/reports/<run-id>/` | Self-contained scientific and evidence-and-operations reports, renderer summary TSV, and the report receipt published last. |
 | `products/native/` | Nonfinal native workflow artifacts and owner QC/validation outputs required for evidence, same-Run resume, and selected downstream computation. |
 | `products/artifact-summary/<run-id>/records/` | Canonical records for every declared artifact, including explicit incomplete or unavailable state. |
@@ -442,7 +452,7 @@ members and their receipt semantics belong to the
 
 An exactly bound historical profile may retain a verified report transaction at
 `products/report/<run-id>/`; that location is read-only historical evidence, not
-a second current publication root. The changed fixed-profile bytes deliberately
+a second current publication root. Changed composed-profile bytes deliberately
 produce new Run identities. Historical Runs remain inspectable, but current
 Project admission does not make an old-layout Run automatically resumable. During
 that read-only inspection, artifact-index, run-summary, and report ledgers use

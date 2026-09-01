@@ -3,12 +3,20 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 import yaml
 
+import emrys.analyses as analysis_modules
+from emrys.analyses import LoadedAnalysisModuleV1
+from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys.contracts.orchestration import api as contracts
+from emrys.libraries.installed_package_identity import (
+    InstalledPackageTreeIdentity,
+    InstalledProviderV1,
+)
 from emrys.orchestration.local_pilot import normalization
 from emrys.orchestration.local_pilot.normalization import admit_project
 from tests.orchestration.local_pilot import fixture
@@ -59,6 +67,93 @@ def test_analysis_revision_is_path_and_name_neutral(
         == "renamed"
     )
     contracts.validate_record("application-model", first.revision.record)
+
+
+def test_explicit_module_normalizes_once_without_provider_facts_in_identity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_path = fixture.build(tmp_path / "project-root")
+    flat_revision = admit_project(project_path, fixture.profile()).select_analysis().revision
+    definition = yaml.safe_load(project_path.read_text(encoding="utf-8"))
+    authored = definition["analyses"]["primary"]
+    partitions = authored.pop("partitions")
+    definition["analyses"]["primary"] = {
+        "module": "emrys.paired-cmh",
+        "partitions": partitions,
+        "config": authored,
+    }
+    project_path.write_text(yaml.safe_dump(definition), encoding="utf-8")
+
+    descriptor = analysis_module_v1()
+    original_normalize = descriptor.normalize_config
+    calls = 0
+
+    def normalize(config, context):
+        nonlocal calls
+        calls += 1
+        return original_normalize(config, context)
+
+    descriptor = replace(descriptor, normalize_config=normalize)
+    package = InstalledPackageTreeIdentity(
+        REPO_ROOT / "src/emrys/analyses/paired_cmh_candidate_ranking",
+        "0" * 64,
+    )
+
+    def loaded(
+        distribution: str,
+        implementation: str = "0" * 64,
+    ) -> LoadedAnalysisModuleV1:
+        return LoadedAnalysisModuleV1(
+            descriptor,
+            InstalledProviderV1(
+                analysis_module_v1,
+                "emrys.analyses.paired_cmh_candidate_ranking:analysis_module_v1",
+                distribution,
+                "1",
+                replace(package, sha256=implementation),
+            ),
+        )
+
+    monkeypatch.setattr(normalization, "load_analysis_module", lambda _name: loaded("A"))
+    first = admit_project(project_path, fixture.profile()).select_analysis()
+    monkeypatch.setattr(normalization, "load_analysis_module", lambda _name: loaded("B"))
+    second = admit_project(project_path, fixture.profile()).select_analysis()
+
+    assert calls == 2
+    assert flat_revision.record["schema_version"] == "emrys.analysis-revision.v1"
+    assert first.revision.record["schema_version"] == "emrys.analysis-revision.v2"
+    assert first.revision == second.revision
+    assert first.workflow_inputs["analysis"]["policy"] != second.workflow_inputs[
+        "analysis"
+    ]["policy"]
+    policy = first.workflow_inputs["analysis"]["policy"]
+    assert policy["implementation_sha256"] == "0" * 64
+    monkeypatch.setattr(
+        analysis_modules,
+        "load_analysis_module",
+        lambda _name: loaded("A"),
+    )
+    assert analysis_modules.readmit_analysis_module(policy).descriptor is descriptor
+    monkeypatch.setattr(
+        analysis_modules,
+        "load_analysis_module",
+        lambda _name: loaded("A", "1" * 64),
+    )
+    with pytest.raises(
+        analysis_modules.AnalysisModuleLoadError,
+        match="implementation differs",
+    ):
+        analysis_modules.readmit_analysis_module(policy)
+    scientific_module = first.revision.record["identity"]["analysis_module"]
+    assert set(scientific_module) == {
+        "module_id",
+        "interface_version",
+        "module_version",
+        "configuration",
+    }
+    assert scientific_module["configuration"]["rna_ref"] == "A"
+    assert "target_change" not in scientific_module["configuration"]
 
 
 def test_named_analysis_selection_is_closed_and_content_bound(tmp_path: Path) -> None:
@@ -539,7 +634,7 @@ def test_path_profile_is_parsed_from_strict_admitted_json_bytes(
 
     normalized = admit_project(request, profile_path)
 
-    assert normalized.select_analysis().profile == fixture.profile()
+    assert len(normalized.select_analysis().profile["owner_tasks"]) == 6
 
 
 def test_path_profile_rejects_duplicate_json_keys(tmp_path: Path) -> None:

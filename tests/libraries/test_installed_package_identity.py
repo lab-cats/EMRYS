@@ -12,7 +12,9 @@ import pytest
 import emrys.libraries.installed_package_identity as package_identity
 from emrys.libraries.installed_package_identity import (
     InstalledPackageIdentityError,
+    admit_installed_provider,
     installed_package_tree_identity,
+    installed_python_package_identity,
 )
 
 
@@ -63,6 +65,36 @@ def test_tree_identity_is_order_stable_and_ignores_timestamps(tmp_path: Path) ->
     assert first_identity.root == first
     assert second_identity.root == second
     assert first_identity.sha256 == second_identity.sha256
+
+
+def test_python_package_identity_ignores_interpreter_cache(tmp_path: Path) -> None:
+    package = _package(tmp_path / "package")
+    before = installed_python_package_identity(package).sha256
+    cache = package / "__pycache__"
+    cache.mkdir()
+    (cache / "module.cpython-314.pyc").write_bytes(b"interpreter-cache")
+
+    assert installed_python_package_identity(package).sha256 == before
+
+
+def test_python_package_identity_binds_sourceless_bytecode(tmp_path: Path) -> None:
+    package = _package(tmp_path / "package")
+    module = package / "module.pyc"
+    module.write_bytes(b"first-bytecode")
+    before = installed_python_package_identity(package).sha256
+
+    module.write_bytes(b"second-bytecode")
+
+    assert installed_python_package_identity(package).sha256 != before
+
+
+def test_provider_admission_rejects_missing_selection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(package_identity.importlib.metadata, "entry_points", lambda **_: ())
+
+    with pytest.raises(InstalledPackageIdentityError, match="not installed"):
+        admit_installed_provider("emrys.analysis_modules", "missing", label="Module")
 
 
 @pytest.mark.parametrize(

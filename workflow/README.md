@@ -1,7 +1,8 @@
 # Local CMH workflow projection
 
-This directory contains EMRYS's fixed, source-checkout-bound Snakemake
-projection. It schedules public functional owners; it does not implement their
+This directory contains EMRYS's source-checkout-bound Snakemake projection.
+Planning composes the checked-in processing base with one immutable admitted
+analysis-module tail. It schedules public functional owners; it does not implement their
 science, infer work from filenames, or treat Snakemake metadata as completion
 evidence.
 
@@ -9,8 +10,8 @@ evidence.
 
 | Path | Purpose |
 | --- | --- |
-| [`Snakefile`](Snakefile) | Static scheduling projection for the supported local CMH scientific graph. |
-| [`contracts/`](contracts/README.md) | Reviewed workflow-projection instances that select owners, scopes, edges, and reportable artifacts. |
+| [`Snakefile`](Snakefile) | Common scheduling projection plus the generic selected-module analysis owner. |
+| [`contracts/`](contracts/README.md) | Reviewed processing-profile bases composed with an admitted module descriptor during planning. |
 | [`profiles/`](profiles/README.md) | Snakemake engine settings selected by EMRYS's lifecycle. |
 
 The canonical semantic owner identities and artifact edges live in
@@ -28,19 +29,21 @@ The supported flow is:
 emrys run [--through processing] / emrys resume
   -> Project admission and lifecycle materialization
   -> fixed Snakefile plus checkout-bound local engine profile
-  -> plan-selected public owner producers and validators through cohort_slice
+  -> plan-selected public owner producers and validators through cohort_slice,
+     including the admitted module tail for a full Run
   -> terminal scientific Attempt receipt and released Run lock
   -> downstream reporting for a full Run; not applicable to a processing Run
 ```
 
-The default `emrys run` behavior remains the complete Steps `00`–`10` Analysis.
+The default `emrys run` behavior remains the complete common graph through Step
+`08` plus the selected module's Step `09` and optional Step `10`.
 `emrys run --through processing` instead creates a distinct immutable Run whose
 successful boundary is the evidence-complete, all-sample Steps `00`–`06`
 closure. That closure is 31 owner tasks for the four-sample synthetic fixture.
 Reporting is not applicable, and the successful Run is complete rather than
-resumable. This slice establishes only the processing/future-reuse boundary.
-A future downstream Analysis would require a new Run, but compatible cross-Run
-reuse and downstream launch remain unimplemented ANALYSIS-01 work.
+resumable. A separately identified downstream Run may reuse a compatible
+stationary Steps `00`–`06` source and select a different admitted module; it
+owns fixed Steps `07`–`08`, its module tail, evidence, Results, and reporting.
 
 The lifecycle materializes an immutable attempt-specific configuration and
 dispatch for every expected owner/scope pair. The Snakefile invokes those
@@ -59,17 +62,20 @@ completion authority. The local-pilot
 [`CONTRACT`](../src/emrys/orchestration/local_pilot/CONTRACT.md) own the exact
 state, recovery, and resume rules.
 
-## Fixed projection
+## Composed projection
 
-The Snakefile projects fourteen executable scientific and evidence owners.
+The Snakefile projects the common scientific/evidence owners and one or two
+selected analysis tasks through its generic `analysis_owner` rule.
 Steps `02b` and `03` are required evidence leaves of a complete run but do not
 gate downstream scientific computation. The default backend target is
 `cohort_slice`; reporting is not a Snakemake rule or scientific stage.
 
-The checked-in projection instance is
-[`contracts/local_cmh_v2.json`](contracts/local_cmh_v2.json). The lifecycle
-binds its exact canonical bytes into the run and expands its declared scopes;
-the Snakefile separately checks that it matches the supported static graph.
+The checked-in processing base is
+[`contracts/local_cmh_v2.json`](contracts/local_cmh_v2.json). Planning composes
+it with the selected module descriptor, then lifecycle binds the exact
+canonical profile bytes into the Run and expands its declared scopes. The
+Snakefile checks the resulting exact rule/owner/scope projection; the base is
+not an installed-module registry.
 
 ## Reviewable targets
 
@@ -78,7 +84,8 @@ owner dependencies:
 
 - `reference_slice`: reference preparation;
 - `cohort_slice`: the plan-selected scientific/evidence owner graph and default
-  backend target. Without `--through processing`, it remains the complete graph.
+  backend target. Without `--through processing`, it includes the selected
+  module tail.
 
 These targets support review and deterministic tests; they are not alternate
 scientific profiles. The public processing boundary is selected through the

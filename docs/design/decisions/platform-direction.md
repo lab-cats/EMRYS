@@ -475,8 +475,9 @@ The first workflow control plane uses Snakemake's local executor because the
 existing semantic owners already expose the scientific operations and artifact
 edges that a general-purpose workflow engine should schedule. EMRYS therefore
 does not build a second scheduler, stage registry, scientific implementation,
-or recovery system. One fixed profile is easier to inspect and prove than a
-generic extension surface before a second real workflow exists.
+or recovery system. The checked-in processing base plus one explicitly
+selected immutable analysis-module tail keeps that inspectable boundary without
+turning provider discovery into another scheduler or workflow language.
 
 Human YAML remains concise while ordered scientific records stay in TSV. A
 normalizer resolves and hashes explicit inputs into canonical JSON so formatting
@@ -499,15 +500,19 @@ rejected. The decision-complete lifecycle and resume rules are in
 work is tracked in the [findings matrix](../../tasks/backlog_matrix.md).
 
 The public control plane remains thin: it reruns read-only admission, prints an
-exact no-write plan by default, materializes only the fixed profile under the
+exact no-write plan by default, materializes only the admitted composed profile under the
 aggregate run lock, and delegates scientific work to public owners. It exposes
 no raw Snakemake flags or automatic owner recovery.
 
 The application-logging foundation is implemented under
 [`LOGGING_CONTRACT.md`](../LOGGING_CONTRACT.md), while production-command
-adoption remains `LOG-05`. Report profiles, analysis modules, public
-acquisition, standalone workflow packaging, and site profiles remain designs,
-not current architecture. Accepted outcomes are in the
+adoption remains `LOG-05`. A bounded collaborator analysis-module v1 is current
+architecture: installed providers contribute closed configuration, typed
+artifacts, one Step `09`, optional Step `10`, and a separate bespoke scientific
+reporter while fixed task/reporting guarantees remain. Module-specific
+dependency/resource discovery and provisioning remain open under
+`ANALYSIS-02`. Public acquisition, standalone workflow packaging, and site
+profiles remain designs. Accepted outcomes are in the
 [findings matrix](../../tasks/backlog_matrix.md); unsliced alternatives remain
 in the temporary
 [architecture campaign](../../tasks/architecture_campaign.md).

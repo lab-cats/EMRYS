@@ -30,7 +30,11 @@ HTML transactions. The final report transaction publishes exactly:
 - `RUN_ID.run_summary.tsv`
 - `RUN_ID.report_outputs.tsv`
 
-The last file is the `emrys.report_receipt` v4 receipt. Existing older output
+The last file is the `emrys.report_receipt` v4 receipt for the existing flat
+paired-CMH path or v5 for an explicitly selected analysis module. V5 binds the
+computation provider, selected scientific-report provider, and fixed EMRYS core
+renderer separately; report-provider identity never changes Analysis or Run
+identity. Existing older output
 directories, bare HTML predecessors, partial ledgers, and incomplete sets are
 rejected and preserved. A complete existing bundle is reused only after every
 transaction and output is revalidated. New publication begins only when all
@@ -41,12 +45,22 @@ The artifact-index, run-summary, and HTML builder modules remain private
 implementation used by the Run-level coordinator and developer fixtures. They
 are not installed public commands or operator recovery routes.
 
-For current fixed-profile Runs, orchestration publishes this bundle only at
+For current Runs, orchestration publishes this bundle only at
 `results/reports/RUN_ID`. An exact historical profile and verified reporting
 ledger may still bind `products/report/RUN_ID` for read-only inspection; current
-publication cannot select or adopt that legacy location. The fixed-profile
+publication cannot select or adopt that legacy location. A composed-profile
 content change creates new Run identities, so historical Runs remain readable
 but are not thereby made resumable under the current profile.
+
+Artifact indexing derives its adapter registry, expected roster, producer
+evidence, and paths from the admitted immutable module profile. This dynamic
+indexing is still the same receipt-last artifact transaction; it is not an
+Artifact Store, database, service, or public registry. The following detailed
+scientific-report description is the behavior of the built-in paired-CMH
+reporter. Collaborator reporters provide their own bespoke scientific view
+through `emrys.analysis_reporters`; the fixed evidence/operations view and all
+transaction safety remain core-owned. There is no generic report schema or
+section DSL.
 
 The scientific HTML is the print-oriented reader-facing interpretation view.
 It opens with a concise analysis summary, then presents four primary figures,
@@ -139,8 +153,11 @@ adjudicated**. Candidate review, adjudication, and biological interpretation
 are external research activities and are not inferred from threshold-passing
 rows.
 
-[`report.py`](report.py) is the private HTML builder used by the Run-level
-reporting coordinator and developer fixtures. The private
+[`report.py`](report.py) is the private HTML coordinator used by the Run-level
+reporting operation and developer fixtures. The built-in bespoke scientific
+provider lives in
+[`paired_cmh_candidate_ranking_report/`](paired_cmh_candidate_ranking_report/).
+The private
 [`_run_report/`](_run_report/README.md) package owns explicit input admission,
 checkout-rooted semantic and table validation, structured view data, Jinja
 rendering, centralized deterministic figure rendering, per-view static HTML
@@ -160,7 +177,7 @@ Recovery routes are in
 
 [`transaction_validation.py`](transaction_validation.py) is the public
 read-only completion owner used by local lifecycle and inspection. Its three
-specific validators and fixed-profile `validate_receipt(...)` dispatcher pin
+specific validators and module-aware `validate_receipt(...)` dispatcher pin
 receipt identity by no-follow descriptor before and after semantic validation,
 then revalidate bound native sources, records, indexes, summaries, both HTML
 views, TSV,
@@ -172,7 +189,7 @@ full bound inputs and outputs. Historical artifact records are admitted from
 their receipt-bound roster rather than reconstructed from today's producer
 registry. The current checkout is admitted as the reader, not misrepresented as
 any historical producer. The report read validates
-receipt v4, its bound run summary, and every declared output path/hash/size; it
+receipt v4 or v5, its bound run summary, and every declared output path/hash/size; it
 does not misclassify preserved 5.1.0 HTML as a failed 5.2.0 reconstruction or
 permit that legacy location for current publication.
 

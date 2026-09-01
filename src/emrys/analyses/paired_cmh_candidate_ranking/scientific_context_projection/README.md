@@ -28,7 +28,7 @@ publication roster, and writes nothing:
 
 ```bash
 : "${EMRYS_RSCRIPT_BIN:?export the admitted Rscript executable path}"
-src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh \
+src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh \
   --analysis-id NORAD_EV_vs_PUM1 \
   --step09-all-sites results/editing/NORAD_EV_vs_PUM1/NORAD_EV_vs_PUM1.cmh_all_sites.tsv \
   --step09-significant-sites results/editing/NORAD_EV_vs_PUM1/NORAD_EV_vs_PUM1.cmh_significant_sites.tsv \
@@ -72,11 +72,11 @@ identity. Do not combine attempts or treat the receipt pathname, scheduler
 success, or output presence as proof of a current complete transaction.
 
 ```bash
-bash tests/analyses/scientific_context_projection/test_scientific_context_projection.sh
+bash tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh
 .venv/bin/python -m pytest -q \
   tests/contracts/scientific_evidence/test_scientific_context.py \
-  tests/analyses/scientific_context_projection/test_validator.py
-bash tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh
+  tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_validator.py
+bash tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh
 ```
 
 These are deterministic tiny-fixture and local-runtime checks, not production,

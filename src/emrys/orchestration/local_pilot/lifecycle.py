@@ -71,6 +71,7 @@ from emrys.orchestration.local_pilot.run_implementation import (
     WORKFLOW_PROFILE_RELATIVE,
     RunImplementationError,
     backend_semantics_identity,
+    execution_module_id,
     implementation_identity,
 )
 
@@ -1382,7 +1383,13 @@ def _admit_request(
                 profile=profile,
                 attempt=attempt,
                 resource_policy=config_document["resource_policy"],
-                observed_implementation_content_sha256=implementation_identity(source_root),
+                observed_implementation_content_sha256=implementation_identity(
+                    source_root,
+                    execution_module_id(
+                        successor.analysis_revision,
+                        successor.execution_plan,
+                    ),
+                ),
                 observed_backend_semantics_sha256=backend_semantics_identity(source_root),
             )
             inspection.admit_bound_processing_source(root, successor)

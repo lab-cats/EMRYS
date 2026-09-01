@@ -60,6 +60,10 @@ _REPORTING_OPERATION = "emrys.orchestration.local_pilot.reporting_operation"
 ORCHESTRATION_REPORTING_SEAMS = frozenset(
     {
         (
+            "emrys.orchestration.local_pilot.doctor",
+            "emrys.reporting",
+        ),
+        (
             "emrys.orchestration.local_pilot.lifecycle",
             "emrys.reporting.transaction_validation",
         ),
@@ -87,7 +91,11 @@ ORCHESTRATION_REPORTING_SEAMS = frozenset(
 # (documented ID, exact target); descriptive current behavior, not target APIs.
 COMPOSITION_SEAMS: tuple[tuple[str, str], ...] = (
     ("CLI-SEAM-001", "emrys.analyses.paired_cmh_candidate_ranking.validator"),
-    ("CLI-SEAM-002", "emrys.analyses.scientific_context_projection.validator"),
+    (
+        "CLI-SEAM-002",
+        "emrys.analyses.paired_cmh_candidate_ranking."
+        "scientific_context_projection.validator",
+    ),
     ("CLI-SEAM-003", "emrys.contracts.artifacts.validator"),
     ("CLI-SEAM-004", "emrys.evidence.canonical_bam_qc.validator"),
     ("CLI-SEAM-005", "emrys.evidence.reference_provenance.reconciler"),
@@ -333,6 +341,10 @@ def forbidden_rule(
         edge.source_module,
         edge.target_module,
     ) in ORCHESTRATION_REPORTING_SEAMS
+    declared_analysis_module_seam = (
+        edge.target_module == "emrys.analyses"
+        and source_kind in {"functional", "orchestration", "reporting"}
+    )
     if target_kind == "unclassified":
         return RULE_SOURCE_CLASSIFICATION, "target belongs to an unclassified domain"
     if source_kind == "root" and target_kind != "root":
@@ -356,17 +368,19 @@ def forbidden_rule(
     if source_kind == "functional" and (
         (target_kind == "functional" and source_owner != target_owner)
         or target_kind in {"ingestion", "orchestration", "reporting", "composition"}
-    ):
+    ) and not declared_analysis_module_seam:
         return RULE_FUNCTIONAL_OWNER, "functional owners cannot import peer/product owners"
     blocked = {
         "ingestion": {"functional", "orchestration", "reporting", "composition"},
         "reporting": {"functional", "ingestion", "orchestration", "composition"},
     }
     if target_kind in blocked.get(source_kind, set()):
+        if declared_analysis_module_seam:
+            return None
         rule = RULE_INGESTION_BOUNDARY if source_kind == "ingestion" else RULE_REPORTING_DOWNSTREAM
         return rule, f"{source_kind} dependency direction is reversed"
     if source_kind == "orchestration" and target_kind in {"functional", "ingestion", "reporting"}:
-        if not declared_reporting_seam:
+        if not (declared_reporting_seam or declared_analysis_module_seam):
             return RULE_ORCHESTRATION_BOUNDARY, "target is not a declared public capability"
     return None
 

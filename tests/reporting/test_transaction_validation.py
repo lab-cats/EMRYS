@@ -5,11 +5,13 @@ from __future__ import annotations
 import argparse
 import copy
 import hashlib
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from emrys import analyses
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.libraries.source_authority import (
     ArtifactSourceRoot,
@@ -24,6 +26,9 @@ from tests.contracts.orchestration.test_application_model_contracts import (
     successor_run_fixture,
 )
 from tests.orchestration.local_pilot.fixtures import workflow as workflow_fixture
+from tests.reporting.fixtures.artifact_adapters_v1 import (
+    build_fixture as adapter_fixture,
+)
 from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as fixture
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -97,6 +102,7 @@ def test_direct_validators_recheck_each_complete_transaction(
         run_contract=built.adapter_fixture.run_contract,
         inventory=built.adapter_fixture.inventory,
         output_root=built.adapter_fixture.output_root,
+        profile=adapter_fixture.analysis_profile_v1(),
         receipt_ops=_fixture_receipt_ops(),
     )
     summary = transaction_validation.validate_run_summary_transaction(
@@ -105,6 +111,7 @@ def test_direct_validators_recheck_each_complete_transaction(
         run_id=built.run_id,
         artifact_receipt=built.artifact_receipt,
         output_root=built.output_root,
+        profile=adapter_fixture.analysis_profile_v1(),
         receipt_ops=_fixture_receipt_ops(),
     )
     rendered = transaction_validation.validate_report_transaction(
@@ -112,6 +119,7 @@ def test_direct_validators_recheck_each_complete_transaction(
         artifact_source_root=built.root,
         run_summary=built.summary_json_path,
         output_root=report_root,
+        profile=adapter_fixture.analysis_profile_v1(),
         receipt_ops=_fixture_receipt_ops(),
     )
 
@@ -131,6 +139,187 @@ def test_direct_validators_recheck_each_complete_transaction(
             report_root / built.run_id / f"{built.run_id}.evidence_report.html",
         ),
     )
+
+
+def test_summary_revalidates_relative_artifacts_from_admitted_root(
+    tmp_path: Path,
+) -> None:
+    root = (tmp_path / "run").resolve()
+    adapter = adapter_fixture.build_fixture(root, run_id="nested_contract")
+    contract = root / "contract"
+    contract.mkdir()
+    inventory = contract / "artifact_inventory.tsv"
+    rows = tuple(
+        {
+            **row,
+            "source_path": Path(row["source_path"]).relative_to(root).as_posix(),
+        }
+        for row in adapter.inventory_rows
+    )
+    adapter_fixture.write_tsv(inventory, adapter_fixture.INVENTORY_HEADER, rows)
+    run_contract = contract / "run.json"
+    run_contract.write_bytes(adapter.run_contract.read_bytes())
+    relocated = replace(
+        adapter,
+        inventory=inventory,
+        run_contract=run_contract,
+        inventory_rows=rows,
+    )
+    fixture.publish_adapter_fixture(relocated)
+    built = fixture.RunSummaryFixture(
+        root,
+        relocated.run_id,
+        relocated.receipt_path,
+        relocated.output_root,
+        relocated,
+    )
+    _publish_summary(built)
+
+    validated = transaction_validation.validate_run_summary_transaction(
+        source_checkout=REPO_ROOT,
+        artifact_source_root=root,
+        run_id=built.run_id,
+        artifact_receipt=built.artifact_receipt,
+        output_root=built.output_root,
+        profile=adapter_fixture.analysis_profile_v1(),
+        receipt_ops=_fixture_receipt_ops(),
+    )
+
+    assert validated.receipt_path == built.summary_receipt_path
+
+
+def test_explicit_module_publishes_and_readmits_v3_v5_reporting(
+    tmp_path: Path,
+) -> None:
+    from emrys.reporting._artifact_index import context as artifact_context
+    from emrys.reporting._artifact_index import core as artifact_core
+    from emrys.reporting._artifact_index import publication as artifact_publication
+    from emrys.reporting._run_report import receipt as report_receipt
+
+    root = (tmp_path / "run").resolve()
+    adapter = adapter_fixture.build_fixture(root, run_id="module_reporting")
+    module = analyses.load_analysis_module(analyses.BUILTIN_PAIRED_CMH_MODULE_ID)
+    policy = {
+        "schema_version": "emrys.analysis-module-policy.v1",
+        "analysis_id": adapter_fixture.PRIMARY_ANALYSIS_ID,
+        "module": analyses.module_identity_record(module),
+        "implementation_sha256": module.provider.package.sha256,
+        "configuration": {
+            "control_condition": "control",
+            "treatment_condition": "treatment",
+            "background_condition": None,
+            "rna_ref": "A",
+            "rna_alt": "G",
+            "min_sample_dp": 1,
+            "mean_dp_threshold": 0,
+            "fdr_threshold": 0.05,
+            "common_or_threshold": 1.2,
+            "absolute_difference_threshold": 0.005,
+            "background_max_fraction": 0.01,
+        },
+    }
+    policy_path = root / "analysis_policy.json"
+    policy_bytes = orchestration_contracts.canonical_json_bytes(policy)
+    policy_path.write_bytes(policy_bytes)
+    policy_sha256 = hashlib.sha256(policy_bytes).hexdigest()
+    run_contract = adapter_fixture.build_run_contract()
+    run_contract["primary_analysis_policy_sha256"] = policy_sha256
+    run_contract["run_contract_sha256"] = (
+        adapter_fixture.canonical_run_contract_sha256(
+            {key: value for key, value in run_contract.items() if key != "run_contract_sha256"}
+        )
+    )
+    adapter.run_contract.write_bytes(
+        orchestration_contracts.canonical_json_bytes(run_contract)
+    )
+    profile = adapter_fixture.analysis_profile_v1()
+    artifact = artifact_context.prepare_context(
+        argparse.Namespace(
+            run_id=adapter.run_id,
+            run_contract=adapter.run_contract,
+            analysis_policy=policy_path,
+            profile=profile,
+            inventory=adapter.inventory,
+            output_root=adapter.output_root,
+            execute=True,
+        ),
+        source_checkout=SourceCheckout(root=REPO_ROOT),
+        artifact_source_root=ArtifactSourceRoot(root=root),
+        identity_ops=artifact_context.ArtifactIdentityOps(
+            matching_clean_checkout_head_commit=lambda **_kwargs: (
+                artifact_core.get_git_commit(
+                    source_root=REPO_ROOT,
+                    sanitize_git_routing=True,
+                )
+            )
+        ),
+    )
+    artifact_publication.publish_context(artifact)
+    built = fixture.RunSummaryFixture(
+        root,
+        adapter.run_id,
+        adapter.receipt_path,
+        adapter.output_root,
+        adapter,
+    )
+    summary = summary_builder.prepare_context(
+        argparse.Namespace(
+            run_id=built.run_id,
+            artifact_receipt=built.artifact_receipt,
+            analysis_policy=policy_path,
+            output_root=built.output_root,
+        ),
+        source_checkout=SourceCheckout(root=REPO_ROOT),
+        artifact_source_root=ArtifactSourceRoot(root=root),
+    )
+    summary_publication.publish_context(summary)
+    summary_document = orchestration_contracts.load_json_object(
+        built.summary_json_path
+    )
+    assert summary_document["schema_version"] == "3.0.0"
+    assert summary_document["analysis_policy"] == {
+        "path": str(policy_path),
+        "sha256": policy_sha256,
+        "size_bytes": len(policy_bytes),
+    }
+
+    report_root = root / "reports"
+    report_arguments = argparse.Namespace(
+        source_checkout=REPO_ROOT,
+        artifact_source_root=root,
+        run_summary=built.summary_json_path,
+        analysis_policy=policy_path,
+        output_root=report_root,
+        execute=True,
+    )
+    report_context = report.prepare_report(report_arguments)
+    report_publication.publish_report(
+        report_context,
+        report.default_publication_ops(),
+    )
+    document = report_receipt.read_receipt_tsv(report_context.output_receipt)
+    assert document["schema_version"] == "5.0.0"
+    assert document["scientific_renderer"]["module_id"] == "emrys.paired-cmh"
+    assert document["scientific_renderer"]["content_sha256"] == (
+        report_context.scientific_renderer["content_sha256"]
+    )
+    assert document["scientific_renderer"]["core_support"]["content_sha256"] == (
+        report_context.render_metadata["renderer_package_sha256"]
+    )
+    assert document["evidence_renderer"]["content_sha256"] == (
+        report_context.render_metadata["renderer_package_sha256"]
+    )
+    assert len(document["outputs"]) == 3
+    validated = transaction_validation.validate_report_transaction(
+        source_checkout=REPO_ROOT,
+        artifact_source_root=root,
+        run_summary=built.summary_json_path,
+        analysis_policy=policy_path,
+        profile=profile,
+        output_root=report_root,
+        receipt_ops=_fixture_receipt_ops(),
+    )
+    assert validated.receipt_path == report_context.output_receipt
 
 
 def test_historical_artifact_validation_uses_recorded_producer_roster(
@@ -166,6 +355,7 @@ def test_historical_artifact_validation_uses_recorded_producer_roster(
             run_contract=built.adapter_fixture.run_contract,
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
+            profile=adapter_fixture.analysis_profile_v1(),
             receipt_ops=_fixture_receipt_ops(),
         )
 
@@ -188,6 +378,7 @@ def test_historical_artifact_validation_uses_recorded_producer_roster(
         run_id=built.run_id,
         artifact_receipt=built.artifact_receipt,
         output_root=built.output_root,
+        profile=adapter_fixture.analysis_profile_v1(),
         receipt_ops=_fixture_receipt_ops(
             before_final_snapshot=reject_live_producer_binding,
         ),
@@ -349,6 +540,7 @@ def test_historical_report_admission_preserves_noncurrent_verified_bytes(
             artifact_source_root=built.root,
             run_summary=built.summary_json_path,
             output_root=report_root,
+            profile=adapter_fixture.analysis_profile_v1(),
             receipt_ops=_fixture_receipt_ops(),
         )
 
@@ -474,6 +666,7 @@ def test_report_validator_rechecks_bound_reference_identity_without_rereading(
         artifact_source_root=built.root,
         run_summary=built.summary_json_path,
         output_root=report_root,
+        profile=adapter_fixture.analysis_profile_v1(),
         receipt_ops=_fixture_receipt_ops(),
     )
 
@@ -538,6 +731,9 @@ def test_fixed_dispatcher_accepts_successor_run_authority(
             "path": f"{reporting_root}/reporting_run_contract.json"
         },
         "artifact_inventory_path": {"path": f"{reporting_root}/artifact_inventory.tsv"},
+        "primary_analysis_policy_path": {
+            "path": f"{reporting_root}/primary_analysis_policy.json"
+        },
     }
     observed: dict[str, Any] = {}
     monkeypatch.setattr(
@@ -568,6 +764,10 @@ def test_fixed_dispatcher_accepts_successor_run_authority(
         == run_root / config["reporting_run_contract_path"]["path"]
     )
     assert observed["inventory"] == run_root / config["artifact_inventory_path"]["path"]
+    assert observed["analysis_policy"] == (
+        run_root / config["primary_analysis_policy_path"]["path"]
+    )
+    assert observed["profile"] == profile
 
 
 def test_fixed_dispatcher_admits_historical_report_only_at_legacy_root(
@@ -816,6 +1016,7 @@ def test_artifact_validator_rejects_native_source_mutation(
             run_contract=built.adapter_fixture.run_contract,
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
+            profile=adapter_fixture.analysis_profile_v1(),
             receipt_ops=_fixture_receipt_ops(),
         )
 
@@ -841,6 +1042,7 @@ def test_report_validator_rejects_each_receipted_html_mutation(
             artifact_source_root=built.root,
             run_summary=built.summary_json_path,
             output_root=report_root,
+            profile=adapter_fixture.analysis_profile_v1(),
             receipt_ops=_fixture_receipt_ops(),
         )
 
@@ -868,6 +1070,7 @@ def test_receipt_identity_replacement_during_validation_fails_closed(
             run_contract=built.adapter_fixture.run_contract,
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
+            profile=adapter_fixture.analysis_profile_v1(),
             receipt_ops=_fixture_receipt_ops(
                 before_final_snapshot=replace_receipt,
             ),
@@ -896,6 +1099,7 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
             run_contract=built.adapter_fixture.run_contract,
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
+            profile=adapter_fixture.analysis_profile_v1(),
             receipt_ops=ops,
         )
 
@@ -906,6 +1110,7 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
             run_id=built.run_id,
             artifact_receipt=built.artifact_receipt,
             output_root=built.output_root,
+            profile=adapter_fixture.analysis_profile_v1(),
             receipt_ops=ops,
         )
 
@@ -915,6 +1120,7 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
             artifact_source_root=built.root,
             run_summary=built.summary_json_path,
             output_root=report_root,
+            profile=adapter_fixture.analysis_profile_v1(),
             receipt_ops=ops,
         )
 
@@ -969,6 +1175,7 @@ def test_artifact_validator_rejects_record_roster_membership_fault(
             run_contract=built.adapter_fixture.run_contract,
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
+            profile=adapter_fixture.analysis_profile_v1(),
             receipt_ops=_fixture_receipt_ops(
                 before_final_snapshot=add_record,
             ),
@@ -1003,6 +1210,7 @@ def test_artifact_validator_binds_nested_missing_source_to_existing_ancestor(
         run_contract=adapter.run_contract,
         inventory=adapter.inventory,
         output_root=adapter.output_root,
+        profile=adapter_fixture.analysis_profile_v1(),
         receipt_ops=_fixture_receipt_ops(),
     )
     assert validated.receipt_path == adapter.receipt_path
@@ -1022,6 +1230,7 @@ def test_artifact_validator_binds_nested_missing_source_to_existing_ancestor(
             run_contract=adapter.run_contract,
             inventory=adapter.inventory,
             output_root=adapter.output_root,
+            profile=adapter_fixture.analysis_profile_v1(),
             receipt_ops=_fixture_receipt_ops(
                 before_final_snapshot=create_intermediate_parent,
             ),
@@ -1044,6 +1253,7 @@ def test_each_validator_rejects_control_residue_injected_before_return(
             run_contract=built.adapter_fixture.run_contract,
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
+            profile=adapter_fixture.analysis_profile_v1(),
             receipt_ops=ops,
         )
 
@@ -1054,6 +1264,7 @@ def test_each_validator_rejects_control_residue_injected_before_return(
             run_id=built.run_id,
             artifact_receipt=built.artifact_receipt,
             output_root=built.output_root,
+            profile=adapter_fixture.analysis_profile_v1(),
             receipt_ops=ops,
         )
 
@@ -1063,6 +1274,7 @@ def test_each_validator_rejects_control_residue_injected_before_return(
             artifact_source_root=built.root,
             run_summary=built.summary_json_path,
             output_root=report_root,
+            profile=adapter_fixture.analysis_profile_v1(),
             receipt_ops=ops,
         )
 
@@ -1126,5 +1338,6 @@ def test_preexisting_reporting_control_residue_fails_closed(
             run_contract=built.adapter_fixture.run_contract,
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
+            profile=adapter_fixture.analysis_profile_v1(),
             receipt_ops=_fixture_receipt_ops(),
         )

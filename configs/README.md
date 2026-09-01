@@ -140,7 +140,28 @@ or explicit selected fragment may replace them, and owner-defined CLI overrides
 have highest precedence. EMRYS records effective values and sources and rejects
 policies that exceed the visible allocation.
 
-### Analysis answers
+### Analysis selection
+
+Each named Analysis either uses the existing flat paired-CMH fields below or
+selects an installed collaborator module explicitly:
+
+```yaml
+analyses:
+  differential:
+    module: org.example.differential
+    partitions: inputs/partitions.tsv
+    config:
+      design: "~ condition"
+      fdr: 0.05
+```
+
+`module` is the exact `emrys.analysis_modules` entry-point ID. The provider
+owns the closed schema and normalization for `config`; EMRYS does not infer,
+install, or substitute a provider. V1 modules are single-core, use existing
+runtime-check IDs plus minimum memory, and must be installed and self-contained.
+See the [analysis-module contract](../src/emrys/analyses/README.md).
+
+### Built-in paired-CMH answers
 
 The current profile performs a paired, two-sided, continuity-corrected
 Cochran-Mantel-Haenszel (CMH) test across declared replicate strata and applies
@@ -184,7 +205,7 @@ the final optional column.
 | `replicate` | Pairing-stratum identity. | Required safe ID. It—not row order or sample naming—defines control/treatment pairing. |
 | `notes` | Optional free text. | If used, add it as the last column on every row. |
 
-The fixed profile requires at least two paired strata. Every replicate appearing
+The built-in paired-CMH module requires at least two paired strata. Every replicate appearing
 in either analysis condition must contain exactly one control row and exactly
 one treatment row:
 

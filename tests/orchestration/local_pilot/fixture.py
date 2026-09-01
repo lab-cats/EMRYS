@@ -10,6 +10,8 @@ def profile() -> dict[str, Any]:
     owners = (
         "emrys.stage.construct_STAR_index.v1",
         "emrys.stage.align_RNA_reads_with_STAR.v1",
+        "emrys.stage.construct_FASTA_sidecars.v1",
+        "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
     )
     return {
         "schema_version": "emrys.profile.v2",
@@ -30,6 +32,20 @@ def profile() -> dict[str, Any]:
                 "step_id": "01",
                 "scope_type": "sample",
                 "scope_selector": "samples",
+            },
+            {
+                "machine_key": owners[2],
+                "rule_name": "construct_FASTA_sidecars",
+                "step_id": "00c",
+                "scope_type": "reference",
+                "scope_selector": "reference",
+            },
+            {
+                "machine_key": owners[3],
+                "rule_name": "preprocess_and_annotate_cohort_candidates",
+                "step_id": "08",
+                "scope_type": "cohort",
+                "scope_selector": "cohort",
             },
         ],
         "direct_edges": [

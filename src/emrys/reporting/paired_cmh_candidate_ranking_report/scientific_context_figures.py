@@ -10,6 +10,7 @@ from decimal import Decimal
 from typing import Any
 
 from emrys.contracts.scientific_evidence import scientific_context as owner_context
+from emrys.reporting import ReportProviderError as ReportRenderError
 
 from .candidate_display import (
     CandidateSampleEvidence,
@@ -24,14 +25,13 @@ from .figures import (
     _render_svg,
     _short_candidate_id,
 )
-from .models import (
-    ComputationalTable,
-    ReportRenderError,
+from .computational import ComputationalTable
+from .figure_models import (
     SCIENTIFIC_FIGURE_LABELS,
-    ScientificContextResults,
     ScientificFigure,
     ScientificFigurePanel,
 )
+from .scientific_context import ScientificContextResults
 
 _BASES = ("A", "C", "G", "T")
 _BASE_COLORS = {

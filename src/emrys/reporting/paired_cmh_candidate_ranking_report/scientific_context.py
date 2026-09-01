@@ -3,20 +3,69 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from emrys.contracts.scientific_evidence import scientific_context as owner_context
 from emrys.libraries import validation as owner_validation
 
-from .computational import _admit_source_identity, _source_table
-from .inputs import _fail, _resolve_contract_file, _snapshot_regular
-from .models import (
+from emrys.reporting import (
+    AnalysisReportArtifactV1,
+    ReportInputSnapshot as FileSnapshot,
+    admit_report_input as _snapshot_regular,
+    fail_report_provider as _fail,
+)
+
+from .computational import (
     ComputationalResults,
     ComputationalTable,
-    ScientificContextResults,
-    ScientificContextSource,
+    _admit_source_identity,
+    _source_table,
 )
+
+
+@dataclass(frozen=True)
+class ScientificContextSource:
+    role: str
+    artifact_id: str
+    path: Path
+    sha256: str
+    size_bytes: int
+    row_count: int | None
+    snapshot: FileSnapshot
+
+
+@dataclass(frozen=True)
+class ScientificContextResults:
+    analysis_id: str
+    validation: ComputationalTable
+    candidate_context: ComputationalTable
+    motif_hits: ComputationalTable
+    sequence_logo: ComputationalTable
+    motif_statistics: ComputationalTable
+    receipt: ComputationalTable
+    bound_inputs: tuple[ScientificContextSource, ...]
+    receipt_metadata: Mapping[str, str]
+
+    @property
+    def tables(self) -> tuple[ComputationalTable, ...]:
+        return (
+            self.validation,
+            self.candidate_context,
+            self.motif_hits,
+            self.sequence_logo,
+            self.motif_statistics,
+            self.receipt,
+        )
+
+    @property
+    def input_snapshots(self) -> tuple[FileSnapshot, ...]:
+        return (
+            *(table.snapshot for table in self.tables),
+            *(source.snapshot for source in self.bound_inputs),
+        )
+
 
 _VALIDATION_ADAPTER = "step10_validation_report_v1"
 _VALIDATION_CHECK_ID = "scientific_context_transaction"
@@ -72,61 +121,18 @@ _BOUND_INPUT_ROLES = (
 )
 
 
-def _is_complete(record: Mapping[str, Any]) -> bool:
-    return (
-        record["availability_status"] == "present"
-        and record["completion_status"] == "complete"
-        and record["source"] is not None
+def _select_artifacts(
+    artifacts: Mapping[str, AnalysisReportArtifactV1],
+) -> tuple[dict[str, AnalysisReportArtifactV1] | None, str | None]:
+    expected = (
+        *((spec[0], spec[1]) for spec in _ROLE_SPECS),
+        ("receipt", _RECEIPT_ADAPTER),
+        ("validation", _VALIDATION_ADAPTER),
     )
-
-
-def _validate_record_identity(
-    record: Mapping[str, Any],
-    *,
-    analysis_id: str,
-    adapter: str,
-) -> None:
-    if record["adapter"] != adapter:
-        _fail(
-            f"Primary Step 10 artifact {record['artifact_id']!r} uses the wrong "
-            f"adapter: {record['adapter']!r}"
-        )
-    expected_scope = {
-        "step_id": "10",
-        "scope_type": "analysis",
-        "scope_id": analysis_id,
+    selected = {
+        role: artifacts[adapter] for role, adapter in expected if adapter in artifacts
     }
-    if record["scope"] != expected_scope:
-        _fail(
-            f"Primary Step 10 artifact {record['artifact_id']!r} uses the wrong "
-            f"scope: {record['scope']!r}"
-        )
-    if record["expectation"]["required"] is not True:
-        _fail(f"Primary Step 10 artifact {record['artifact_id']!r} must be required")
-    recorded_analysis_id = record["parameters"].get("analysis_id")
-    if recorded_analysis_id not in {None, analysis_id}:
-        _fail(
-            f"Primary Step 10 artifact {record['artifact_id']!r} has a mismatched "
-            "analysis_id parameter"
-        )
-
-
-def _select_records(
-    summary: Mapping[str, Any],
-) -> tuple[dict[str, Mapping[str, Any]] | None, str | None]:
-    analysis_id = summary["run_contract"]["primary_analysis_id"]
-    expected_scope = {
-        "step_id": "10",
-        "scope_type": "analysis",
-        "scope_id": analysis_id,
-    }
-    primary_declarations = [
-        artifact
-        for artifact in summary["artifacts"]
-        if artifact["adapter"] in _ALL_ADAPTERS
-        and artifact["scope"]["scope_id"] == analysis_id
-    ]
-    if not primary_declarations:
+    if not selected:
         return (
             None,
             "This run predates the Step 10 scientific-context transaction; "
@@ -135,69 +141,30 @@ def _select_records(
             "reportable from Step 09, with sequence and registered-motif context "
             "marked not admitted.",
         )
-    wrong_scopes = [
-        artifact["artifact_id"]
-        for artifact in primary_declarations
-        if artifact["scope"] != expected_scope
-    ]
-    if wrong_scopes:
-        _fail(
-            "Primary Step 10 declarations use the wrong scope: "
-            + ", ".join(wrong_scopes)
-        )
-    in_scope = primary_declarations
-
-    selected: dict[str, Mapping[str, Any]] = {}
-    missing_or_incomplete: list[str] = []
-    for role, adapter in (
-        *((spec[0], spec[1]) for spec in _ROLE_SPECS),
-        ("receipt", _RECEIPT_ADAPTER),
-        ("validation", _VALIDATION_ADAPTER),
-    ):
-        matches = [record for record in in_scope if record["adapter"] == adapter]
-        if len(matches) > 1:
-            _fail(
-                "Run summary must not declare duplicate primary Step 10 artifacts "
-                f"using adapter {adapter!r}; observed {len(matches)}"
-            )
-        if not matches:
-            missing_or_incomplete.append(f"{adapter} (not declared)")
-            continue
-        record = matches[0]
-        _validate_record_identity(record, analysis_id=analysis_id, adapter=adapter)
-        selected[role] = record
-        if not _is_complete(record):
-            missing_or_incomplete.append(
-                f"{record['artifact_id']} "
-                f"({record['availability_status']}/{record['completion_status']})"
-            )
-    if missing_or_incomplete:
+    missing = [adapter for _role, adapter in expected if adapter not in artifacts]
+    if missing:
         return (
             None,
             "The complete primary-analysis Step 10 transaction is unavailable, "
             "so the Step 10 sequence-context and motif-enrichment figures were not "
             "inferred. Selected-candidate editing-rate and location evidence can "
             "remain reportable from Step 09, with sequence and registered-motif "
-            "context marked not admitted: " + "; ".join(missing_or_incomplete) + ".",
+            "context marked not admitted: " + ", ".join(missing) + ".",
         )
     return selected, None
 
 
 def _validation_table(
-    record: Mapping[str, Any],
+    record: AnalysisReportArtifactV1,
     *,
-    source_root: Path,
     analysis_id: str,
 ) -> ComputationalTable:
     path, snapshot, header, rows, observed_count = _source_table(
         record,
-        source_root=source_root,
         display_limit=1,
         expected_header=owner_validation.HEADER,
     )
-    source = record["source"]
-    assert isinstance(source, Mapping)
-    if source["row_count"] != 1 or observed_count != 1 or len(rows) != 1:
+    if record.row_count != 1 or observed_count != 1 or len(rows) != 1:
         _fail("Primary Step 10 owner-validation report must contain exactly one row")
     row = dict(zip(header, rows[0], strict=True))
     if row["step_id"] != "10" or row["scope_id"] != analysis_id:
@@ -212,7 +179,7 @@ def _validation_table(
     return ComputationalTable(
         role="validation",
         table_id="scientific_context_validation",
-        artifact_id=record["artifact_id"],
+        artifact_id=record.artifact_id,
         title="Step 10 owner-validation report",
         path=path,
         sha256=snapshot.sha256,
@@ -226,7 +193,7 @@ def _validation_table(
 
 
 def _canonical_table(
-    record: Mapping[str, Any],
+    record: AnalysisReportArtifactV1,
     *,
     role: str,
     table_id: str,
@@ -234,36 +201,32 @@ def _canonical_table(
     expected_header: tuple[str, ...],
     display_limit: int,
     canonical: owner_context.ContextTable,
-    source_root: Path,
 ) -> ComputationalTable:
     if display_limit:
         path, snapshot, header, displayed, observed_count = _source_table(
             record,
-            source_root=source_root,
             display_limit=display_limit,
             expected_header=expected_header,
         )
     else:
-        path, snapshot = _admit_source_identity(record, source_root=source_root)
+        path, snapshot = _admit_source_identity(record)
         header = expected_header
         displayed = []
         observed_count = canonical.row_count
-    source = record["source"]
-    assert isinstance(source, Mapping)
     if path != canonical.path or snapshot.sha256 != canonical.sha256:
         _fail(
-            f"Primary Step 10 artifact {record['artifact_id']!r} differs from "
+            f"Primary Step 10 artifact {record.artifact_id!r} differs from "
             "the canonical receipt transaction"
         )
-    if observed_count != canonical.row_count or source["row_count"] != observed_count:
+    if observed_count != canonical.row_count or record.row_count != observed_count:
         _fail(
-            f"Primary Step 10 artifact {record['artifact_id']!r} row count differs "
+            f"Primary Step 10 artifact {record.artifact_id!r} row count differs "
             "from the canonical receipt transaction"
         )
     return ComputationalTable(
         role=role,
         table_id=table_id,
-        artifact_id=record["artifact_id"],
+        artifact_id=record.artifact_id,
         title=title,
         path=path,
         sha256=snapshot.sha256,
@@ -277,26 +240,23 @@ def _canonical_table(
 
 
 def _receipt_table(
-    record: Mapping[str, Any],
+    record: AnalysisReportArtifactV1,
     *,
     transaction: owner_context.ScientificContextTransaction,
-    source_root: Path,
 ) -> ComputationalTable:
-    path, snapshot = _admit_source_identity(record, source_root=source_root)
+    path, snapshot = _admit_source_identity(record)
     header = tuple(transaction.receipt.header)
     rows = [tuple(transaction.receipt.rows[0][column] for column in header)]
-    source = record["source"]
-    assert isinstance(source, Mapping)
     if (
         path != transaction.receipt.path
         or snapshot.sha256 != transaction.receipt_sha256
-        or source["row_count"] != 1
+        or record.row_count != 1
     ):
         _fail("Primary Step 10 receipt record differs from its canonical transaction")
     return ComputationalTable(
         role="receipt",
         table_id="scientific_context_receipt",
-        artifact_id=record["artifact_id"],
+        artifact_id=record.artifact_id,
         title="Step 10 receipt-last scientific-context transaction",
         path=path,
         sha256=snapshot.sha256,
@@ -378,27 +338,19 @@ def _reconcile_step09_inputs(
 
 def admit_scientific_context_results(
     summary: Mapping[str, Any],
+    artifacts: Mapping[str, AnalysisReportArtifactV1],
     *,
-    source_root: Path,
     computational_results: ComputationalResults | None,
 ) -> tuple[ScientificContextResults | None, str | None]:
     """Admit one complete Step 10 transaction or disclose bounded absence."""
 
-    records, unavailable_reason = _select_records(summary)
+    records, unavailable_reason = _select_artifacts(artifacts)
     if records is None:
         return None, unavailable_reason
     analysis_id = summary["run_contract"]["primary_analysis_id"]
-    validation = _validation_table(
-        records["validation"], source_root=source_root, analysis_id=analysis_id
-    )
+    validation = _validation_table(records["validation"], analysis_id=analysis_id)
     receipt_record = records["receipt"]
-    source = receipt_record["source"]
-    assert isinstance(source, Mapping)
-    receipt_path = _resolve_contract_file(
-        source["path"],
-        f"scientific-context result {receipt_record['artifact_id']!r}",
-        source_root=source_root,
-    )
+    receipt_path = receipt_record.path
     try:
         transaction = owner_context.validate_scientific_context_transaction(
             receipt_path
@@ -410,7 +362,6 @@ def admit_scientific_context_results(
     receipt = _receipt_table(
         receipt_record,
         transaction=transaction,
-        source_root=source_root,
     )
     receipt_row = transaction.receipt.rows[0]
     if receipt_row["analysis_id"] != analysis_id:
@@ -432,7 +383,6 @@ def admit_scientific_context_results(
             expected_header=header,
             display_limit=display_limit,
             canonical=output_by_role[role],
-            source_root=source_root,
         )
         for role, _adapter, table_id, title, header, display_limit in _ROLE_SPECS
     }

@@ -34,6 +34,12 @@ Issues = "https://github.com/lab-cats/EMRYS/issues"
 [project.scripts]
 emrys = "emrys.__main__:main"
 
+[project.entry-points."emrys.analysis_modules"]
+"emrys.paired-cmh" = "emrys.analyses.paired_cmh_candidate_ranking:analysis_module_v1"
+
+[project.entry-points."emrys.analysis_reporters"]
+"emrys.paired-cmh" = "emrys.reporting.paired_cmh_candidate_ranking_report:render_scientific_report"
+
 [dependency-groups]
 dev = [
     "coverage==7.15.2",
@@ -69,9 +75,22 @@ namespaces = false
     "schemas/artifacts/v2/*.json",
     "schemas/artifacts/v3/*.json",
     "schemas/artifacts/v4/*.json",
+    "schemas/artifacts/v5/*.json",
     "schemas/orchestration/v1/*.json",
     "schemas/orchestration/v2/*.json",
     "schemas/orchestration/v3/*.json",
+]
+"emrys.analyses.paired_cmh_candidate_ranking" = ["*.R"]
+"emrys.analyses.paired_cmh_candidate_ranking.scientific_context_projection" = [
+    "*.R",
+    "*.sh",
+    "resources/*.tsv",
+]
+"emrys.libraries" = [
+    "argument_parsing.sh",
+    "executable_resolution.sh",
+    "file_checks.sh",
+    "input_contract.R",
 ]
 "emrys.orchestration.local_pilot" = ["resources/*.yaml"]
 "emrys.reporting" = ["styles/*.css", "templates/*.html.j2"]

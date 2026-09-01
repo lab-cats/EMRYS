@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:emrys:schema:artifacts:run-summary:v3",
+  "title": "EMRYS modular run summary v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name", "schema_version", "record_type", "run_id", "run_contract",
+    "summary_state", "generated_at", "inventory", "artifact_receipt", "attempts",
+    "superseded_attempt_ids", "expected_scopes", "artifacts", "computational_rollup",
+    "tools", "parameters", "qc_metrics", "limitations", "analysis_policy",
+    "warnings", "errors", "provenance"
+  ],
+  "properties": {
+    "schema_name": {"const": "emrys.run_summary"},
+    "schema_version": {"const": "3.0.0"},
+    "record_type": {"const": "run_summary"},
+    "run_id": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"},
+    "run_contract": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/run_contract"},
+    "summary_state": {"enum": ["complete", "incomplete", "failed"]},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "inventory": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path_hash"},
+    "artifact_receipt": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path_hash"},
+    "attempts": {"type": "array", "items": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/attempt"}},
+    "superseded_attempt_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"}},
+    "expected_scopes": {"type": "array", "minItems": 1, "items": {"$ref": "urn:emrys:schema:artifacts:run-summary:v2#/$defs/expected_scope"}},
+    "artifacts": {"type": "array", "minItems": 1, "items": {"$ref": "urn:emrys:schema:artifacts:artifact-record:v2"}},
+    "computational_rollup": {"$ref": "urn:emrys:schema:artifacts:run-summary:v2#/$defs/computational_rollup"},
+    "tools": {"type": "array", "items": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/tool"}},
+    "parameters": {"type": "object"},
+    "qc_metrics": {"type": "array", "items": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/metric"}},
+    "limitations": {"type": "array", "items": {"$ref": "urn:emrys:schema:artifacts:run-summary:v2#/$defs/limitation"}},
+    "analysis_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "size_bytes"],
+      "properties": {
+        "path": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path"},
+        "sha256": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "warnings": {"type": "array", "items": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/issue"}},
+    "errors": {"type": "array", "items": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/issue"}},
+    "provenance": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/provenance"}
+  }
+}

@@ -12,6 +12,7 @@ from typing import Any
 
 import pytest
 
+from emrys import reporting
 from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
     RuntimeInspection,
@@ -282,6 +283,54 @@ def test_absent_runtime_diagnosis_is_read_only_and_opens_no_log(
     assert result.inspection is None
     assert "runtime profile is not admitted" in result.blockers[-1]
     assert _snapshot(tmp_path) == before
+
+
+def test_foundation_readiness_requires_reporter_only_when_enabled(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = _project(tmp_path)
+    receipt = tmp_path / "storage.tsv"
+    receipt.write_bytes(b"qualified\n")
+    qualified = QualifiedStorage(receipt, "b" * 64, "site-1")
+    monkeypatch.setattr(
+        doctor,
+        "inspect_source_checkout",
+        lambda **_kwargs: SimpleNamespace(commit="a" * 40),
+    )
+    monkeypatch.setattr(
+        doctor.onboarding,
+        "validate_project",
+        lambda *_args, **_kwargs: SimpleNamespace(project=project),
+    )
+    monkeypatch.setattr(
+        doctor.storage_qualification,
+        "admit_direct_requirement",
+        lambda *_args, **_kwargs: qualified,
+    )
+    monkeypatch.setattr(
+        reporting,
+        "admit_analysis_reporter",
+        lambda _module_id: (_ for _ in ()).throw(
+            reporting.ReportProviderError("not installed")
+        ),
+    )
+
+    required = doctor._inspect_foundations(
+        project.source_path,
+        project.source_path.parent,
+        require_reporter=True,
+    )
+    disabled = doctor._inspect_foundations(
+        project.source_path,
+        project.source_path.parent,
+        require_reporter=False,
+    )
+
+    assert any("analysis reporter is not ready" in item for item in required.blockers)
+    assert not any(
+        "analysis reporter is not ready" in item for item in disabled.blockers
+    )
 
 
 @pytest.mark.parametrize(
