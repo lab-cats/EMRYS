@@ -30,9 +30,10 @@ Setup records the admitted absolute sample and initial Analysis-partition
 manifest paths in `project.yaml`; manifests and FASTQ, FASTA, GTF, and
 regions-file data all remain in place. `emrys init manifests` produces the
 required portable form without inventing biological assignments. No execution
-or runtime profile is generated or selected. Without `--execution-profile`,
-execution remains direct with the built-in resource policy. Runtime discovery
-separately admits the Project-owned `runtime/runtime.tsv`.
+or runtime profile is generated or selected. Without `--profile` or
+`--execution-profile`, execution remains direct with the built-in resource
+policy. Runtime discovery separately admits the Project-owned
+`runtime/runtime.tsv`.
 
 Keep the Project and every referenced input for the life of its Runs. Changing
 scientific inputs or computational policy is not a way to repair an entered
@@ -41,19 +42,20 @@ templates, globs, redundant separators, or `.`/`..` components.
 
 ## Execution profile
 
-EMRYS has one optional public execution configuration. With no
-`--execution-profile`, the built-in profile uses conservative resources and
-direct placement. An explicit profile is a closed YAML fragment with two
-concerns:
+EMRYS has one optional public execution configuration. With no selector, the
+built-in profile uses conservative resources and direct placement. A selected
+profile is a closed YAML fragment with two concerns:
 
 - `resources` declares the single-host computational policy; and
 - `placement` selects direct execution or one outer Slurm allocation.
 
-The built-in profile is the base, the explicitly selected file overrides it,
-and CLI resource flags override both. EMRYS does not discover adjacent
-configuration. If retired `emrys.resources.yaml` or `emrys.launcher.yaml`
-files remain beside the Project definition, omitting `--execution-profile` fails closed
-and requires deliberate migration.
+The built-in profile is the base, the selected file overrides it, and CLI
+resource flags override both. `--profile NAME` accepts the safe grammar
+`[A-Za-z0-9][A-Za-z0-9._-]*` and resolves exactly
+`<project-root>/emrys.execution.NAME.yaml`. It is mutually exclusive with the
+advanced `--execution-profile PATH` selector. The name adds no Project field,
+identity, runtime mode, scan, registry, or site/global search. Retired adjacent
+resource/launcher files still fail closed when neither selector is used.
 
 Use [`execution_profile.example.yaml`](execution_profile.example.yaml) as the
 Slurm starter. `account`, `partition`, `qos`, `memory_mb`, and `nodelist` may
@@ -63,13 +65,16 @@ nothing; `modules.mode: exact` requires one absolute initializer and a closed
 module roster. Paths and values are literal: environment interpolation,
 templates, shell commands, merge keys, and unknown fields are rejected.
 
-Select the file only with `--execution-profile FILE` on the `emrys run` or
-`emrys resume` command; see the [runbook](../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes)
-for the complete command. Planning never submits or writes. `--execute`
-submits exactly once and prints `JOB_ID`, `OUT`, and `ERR`. Scheduler streams
-use `<project-root>/logs`; the application-log root defaults to its
-`application/` subdirectory. Execution mode is never inferred from the profile
-or environment.
+Name a Project-local file with `--profile NAME`, or select any admitted file
+with `--execution-profile PATH`, on `emrys run` or `emrys resume`. The
+[runbook](../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes) owns the
+complete command, confirmation, submission, and logging journey.
+
+On resume, omitting both selectors preserves direct placement. Omission and
+placement-only or reporting-only fragments reuse predecessor computation;
+selected reporting then CLI overrides overlay it. Computational fields follow
+built-in → fragment → CLI precedence and must match immutable Run identity.
+Runtime acquisition remains separate.
 
 ## Project definition and analysis
 
@@ -130,10 +135,10 @@ only letters, digits, `.`, `_`, or `-`. Unknown fields and request-v3 input are
 rejected by active Project commands. Request-v3 is retained privately only so
 an exact historical Run can be re-admitted during resume.
 
-Execution resources remain separate. Packaged defaults apply first, an
-explicit `--execution-profile` may replace them, and owner-defined CLI
-overrides have highest precedence. EMRYS records effective values and sources
-and rejects policies that exceed the visible allocation.
+Execution resources remain separate. Packaged defaults apply first, one named
+or explicit selected fragment may replace them, and owner-defined CLI overrides
+have highest precedence. EMRYS records effective values and sources and rejects
+policies that exceed the visible allocation.
 
 ### Analysis answers
 

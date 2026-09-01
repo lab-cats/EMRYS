@@ -75,16 +75,19 @@ walkthrough.
 | Diagnose blocked, partial, locked, or uncertain state | [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) |
 
 `emrys run` and `emrys resume` are the whole-Run execution surface. With no
-`--execution-profile`, they execute directly with the built-in conservative
-resources. An explicit profile can place the same one-host workflow inside one
-Slurm allocation; it is not a distributed executor:
+profile selector, they execute directly with the built-in conservative
+resources. A Project-local named profile can place the same one-host workflow
+inside one Slurm allocation; it is not a distributed executor:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
   --project /absolute/path/to/project.yaml \
   --analysis ANALYSIS_NAME \
-  --execution-profile /absolute/path/to/emrys.execution.yaml
+  --profile site
 ```
+
+Exact name resolution, precedence, and the explicit-path escape hatch are
+defined in [`configs/README.md`](../../configs/README.md#execution-profile).
 
 The command above retains the full default Analysis. The semantic
 `emrys run --through processing` form creates a distinct immutable Run at the
@@ -182,10 +185,10 @@ a failed or interrupted Attempt, and `Recovery available: yes`:
   --run-root /absolute/project/runs/run-DIGEST
 ```
 
-Without an explicit execution profile, resume reuses the predecessor's
+Without either execution-profile selector, resume reuses the predecessor's
 symbolic computational resources and places the new Attempt directly. Select
-an explicit profile to request Slurm placement. Resource CLI overrides have
-highest precedence. Direct placement displays reusable and pending work, then
+`--profile NAME` or `--execution-profile PATH` to request another placement.
+Resource CLI overrides have highest precedence. Direct placement displays reusable and pending work, then
 asks once before execution. Slurm placement confirms the submission first;
 reusable and pending work is displayed later inside the allocation.
 That reuse is confined to a later Attempt of the same Run.

@@ -212,7 +212,7 @@ def require_operator_root(operator_root: Path, repo_root: Path) -> Paths:
         root / "direct",
         root / "slurm",
         root / "scratch",
-        root / "emrys.execution.slurm.json",
+        root / "slurm/emrys.execution.ci.yaml",
         root / "runtime-adapters",
         root / "driver-transcripts",
     )
@@ -359,7 +359,6 @@ def parse_launcher(value: str) -> tuple[str, ...]:
 
 
 def slurm_execution_profile_bytes(
-    request: Path,
     *,
     account: str | None,
     partition: str,
@@ -371,16 +370,11 @@ def slurm_execution_profile_bytes(
     scratch_parent: Path,
 ) -> bytes:
     from emrys.contracts.orchestration import api as contracts
-    from emrys.orchestration.local_pilot.execution_profile import (
-        SCHEMA_VERSION,
-        load_execution_profile,
-    )
+    from emrys.orchestration.local_pilot.execution_profile import SCHEMA_VERSION
 
     try:
-        source = load_execution_profile(request)
         document = {
             "schema_version": SCHEMA_VERSION,
-            "resources": source.resource_policy.document(),
             "placement": {
                 "kind": "slurm",
                 "account": account,
@@ -992,7 +986,6 @@ def run_driver(
     _write(
         paths.execution_profile,
         slurm_execution_profile_bytes(
-            projects["slurm"],
             account=arguments.slurm_account,
             partition=arguments.slurm_partition,
             qos=arguments.slurm_qos,
@@ -1085,8 +1078,8 @@ def run_driver(
         "run",
         "--project",
         str(projects["slurm"]),
-        "--execution-profile",
-        str(paths.execution_profile),
+        "--profile",
+        "ci",
         "--log-level",
         "verbose",
     )

@@ -119,6 +119,19 @@ def _absolute(path: Path) -> Path:
     return Path(os.path.abspath(path))
 
 
+def _profile_name(value: str) -> str:
+    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", value) is None:
+        raise argparse.ArgumentTypeError("must match [A-Za-z0-9][A-Za-z0-9._-]*")
+    return value
+
+
+def _execution_profile_path(arguments, workspace: Path) -> Path | None:
+    name = getattr(arguments, "profile", None)
+    if name is not None:
+        return workspace / f"emrys.execution.{name}.yaml"
+    return getattr(arguments, "execution_profile", None)
+
+
 def _require_ready(result: doctor.DoctorResult) -> None:
     if result.ready:
         return
@@ -251,6 +264,7 @@ def _resume_predecessor_policy(
     observed: inspection.RunInspection,
     predecessor_config: Mapping[str, Any],
     overrides: ResourceOverrides,
+    reporting_overlay=(),
 ) -> ResourcePolicy:
     """Re-admit the predecessor policy without observing an allocation."""
 
@@ -266,7 +280,9 @@ def _resume_predecessor_policy(
             if observed.authority is not None or has_symbolic_policy
             else prior
         )
-        return resume_resource_policy(predecessor, overrides=overrides)
+        return resume_resource_policy(
+            predecessor, reporting_overlay=reporting_overlay, overrides=overrides
+        )
     except ResourceConfigError as exc:
         raise ControlError(str(exc)) from exc
 
@@ -359,7 +375,6 @@ def _plan_resume(
     run_root: Path,
     *,
     execution_profile: ExecutionProfile,
-    profile_resources_explicit: bool,
     resource_overrides: ResourceOverrides = ResourceOverrides(),
     scheduler_job_id: str | None = None,
 ) -> AttemptPlan:
@@ -396,11 +411,12 @@ def _plan_resume(
         _require_ready(readiness)
         analysis = readiness.analysis
         policy = execution_profile.resource_policy
-        if not profile_resources_explicit:
+        if not execution_profile.computational_resources_explicit:
             policy = _resume_predecessor_policy(
                 observed,
                 predecessor_config,
                 resource_overrides,
+                execution_profile.selected_reporting_memory,
             )
             execution_profile = replace(
                 execution_profile,
@@ -535,8 +551,10 @@ def _delegate_job_id(
     if not isinstance(profile.placement, SlurmPlacement):
         raise ControlError("A private Slurm delegate requires Slurm placement")
     job_id = os.environ.get("SLURM_JOB_ID")
-    if job_id is None or not job_id.isascii() or not job_id.isdecimal() or not job_id.strip("0"):
-        raise ControlError("A private Slurm delegate requires one positive job ID")
+    try:
+        profile.attempt_placement(job_id)
+    except ExecutionProfileError as exc:
+        raise ControlError(str(exc)) from exc
     return job_id
 
 
@@ -1182,6 +1200,11 @@ def _finish_control(
 
 
 def _add_execution_arguments(parser: argparse.ArgumentParser) -> None:
+    add_profile = parser.add_mutually_exclusive_group().add_argument
+    add_profile("--profile", metavar="NAME", type=_profile_name, help="Project-local profile.")
+    add_profile("--execution-profile", metavar="PATH", type=Path, help="Explicit profile path.")
+    add_resource_override_arguments(parser)
+    add_log_arguments(parser)
     parser.add_argument("--no-report", action="store_true", help="Skip reporting after Results.")
     parser.add_argument("--execute", action="store_true", help="Execute noninteractively.")
 
@@ -1208,25 +1231,11 @@ def configure_run_parser(parser: argparse.ArgumentParser) -> None:
             "execute only the selected Analysis's downstream work."
         ),
     )
-    parser.add_argument(
-        "--execution-profile",
-        type=Path,
-        help="Optional combined resource and placement profile; direct is the default.",
-    )
-    add_resource_override_arguments(parser)
-    add_log_arguments(parser)
     _add_execution_arguments(parser)
 
 
 def configure_resume_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--run-root", required=True, type=Path)
-    parser.add_argument(
-        "--execution-profile",
-        type=Path,
-        help=("Optional placement profile. Without one, reuse prior computational resources and execute directly."),
-    )
-    add_resource_override_arguments(parser)
-    add_log_arguments(parser)
     _add_execution_arguments(parser)
 
 
@@ -1328,9 +1337,9 @@ def run_from_args(
         workspace = _absolute(arguments.project).parent
         profile = load_execution_profile(
             arguments.project,
-            config_path=getattr(arguments, "execution_profile", None),
+            config_path=_execution_profile_path(arguments, workspace),
             resource_overrides=overrides,
-            expected_sha256=expected_profile_sha256,
+            expected_binding_sha256=expected_profile_sha256,
         )
         scheduler_job_id = _delegate_job_id(profile, expected_profile_sha256)
         controls = _resolve_controls(arguments, workspace)
@@ -1368,21 +1377,19 @@ def resume_from_args(
     try:
         overrides = overrides_from_args(arguments)
         expected_profile_sha256 = _private_delegate_digest()
-        selected_profile = getattr(arguments, "execution_profile", None)
+        workspace = _resume_workspace(arguments.run_root)
         profile = load_execution_profile(
-            arguments.run_root,
-            config_path=selected_profile,
+            workspace / "project.yaml",
+            config_path=_execution_profile_path(arguments, workspace),
             resource_overrides=overrides,
-            expected_sha256=expected_profile_sha256,
+            expected_binding_sha256=expected_profile_sha256,
         )
         scheduler_job_id = _delegate_job_id(profile, expected_profile_sha256)
-        workspace = _resume_workspace(arguments.run_root)
-        profile_resources_explicit = profile.resource_policy.config_path is not None
         effective_workflow_cores = profile.resource_policy.declaration.workflow_cores
         if (
             isinstance(profile.placement, SlurmPlacement)
             and scheduler_job_id is None
-            and not profile_resources_explicit
+            and not profile.computational_resources_explicit
         ):
             observed, _previous, predecessor_config = _admit_resume_predecessor(
                 arguments.run_root
@@ -1397,7 +1404,6 @@ def resume_from_args(
             _plan_resume,
             arguments.run_root,
             execution_profile=profile,
-            profile_resources_explicit=profile_resources_explicit,
             resource_overrides=overrides,
             scheduler_job_id=scheduler_job_id,
         )

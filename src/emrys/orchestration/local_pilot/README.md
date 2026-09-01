@@ -59,11 +59,11 @@ run, resume, and Doctor derive it. The generic `inspect runtime-availability`
 route remains available for advanced profile-driven evidence. Use an exact
 historical checkout for an entered historical Run.
 
-`emrys run` and `emrys resume` accept one optional explicit
-`--execution-profile`. Without it, EMRYS uses its built-in conservative
-resources and executes directly. The profile combines the Run-bound
-computational declaration with Attempt-local direct or Slurm placement; CLI
-resource flags have highest precedence. EMRYS performs no adjacent discovery.
+`emrys run` and `emrys resume` accept one optional named or explicit execution
+profile; omission uses conservative resources and direct placement. The
+[configuration guide](../../../../configs/README.md#execution-profile) owns
+selection and precedence, while [`CONTRACT.md`](CONTRACT.md) owns exact
+admission and provenance guarantees.
 
 Slurm placement is a transport around the same one-host workflow, not another
 scientific backend. On a terminal, EMRYS prints concise placement and asks
@@ -72,8 +72,9 @@ interruption writes and submits nothing; verbose output adds the exact profile
 and stream paths. `--execute` is the noninteractive automation path. An
 accepted command submits the whole Run once and prints exact `JOB_ID`, `OUT`,
 and `ERR` values. The compute
-delegate re-admits the profile digest, submission UID, internal marker, and
-Slurm job ID before planning the immutable Run. It loads only an exact declared
+delegate re-admits the binding over exact profile-source bytes and effective
+semantics, submission UID, internal marker, and canonical Slurm job ID before
+planning the immutable Run. It loads only an exact declared
 module roster, creates and later removes one mode-`0700` private scratch
 directory, and runs doctor inside the allocation. Ambient `SBATCH_*` values do
 not alter the admitted Project.
@@ -212,7 +213,7 @@ work only through the accepted fixed profile:
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
   --project /absolute/path/to/project.yaml \
   --analysis ANALYSIS_NAME \
-  --execution-profile /absolute/path/to/emrys.execution.yaml
+  --profile site
 
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
   --project /absolute/path/to/project.yaml \
@@ -229,7 +230,7 @@ work only through the accepted fixed profile:
 
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume \
   --run-root /absolute/project/runs/run-DIGEST \
-  --execution-profile /absolute/path/to/emrys.execution.yaml
+  --profile site
 
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys report \
   --run-root /absolute/project/runs/run-DIGEST
@@ -266,10 +267,8 @@ without writes, then generates with `--execute` or reuses an exact complete
 report transaction. Verbose output adds the Run root,
 resources/allocation, execution profile, and scheduler streams; debug output
 adds exact engine, scheduler, and task commands. `inspect run` is
-always read-only. With no execution profile, `run` uses the built-in direct
-default; `resume` reuses its predecessor's symbolic computational resources and
-places the new Attempt directly. An explicit profile may select Slurm for either
-command. Explicit resource CLI flags override the selected or inherited policy.
+always read-only. Selection, resume inheritance, and resource precedence are
+defined in the [configuration guide](../../../../configs/README.md#execution-profile).
 
 Direct execution writes its application log beneath the selected root, which
 defaults to `<project-root>/logs/application`. Slurm submission writes scheduler

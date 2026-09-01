@@ -81,6 +81,9 @@ def test_retired_adjacent_sources_require_one_explicit_profile(
 
 
 def test_selected_resource_fragment_then_explicit_overrides(tmp_path: Path) -> None:
+    default_sha256 = load_execution_profile(
+        tmp_path / "request.yaml"
+    ).resource_policy.default_sha256
     selected = _write_profile(
         tmp_path / "profile.yaml",
         {
@@ -110,6 +113,7 @@ def test_selected_resource_fragment_then_explicit_overrides(tmp_path: Path) -> N
         "step_threads.00a",
     )
     assert profile.resource_policy.config_path == selected
+    assert profile.resource_policy.default_sha256 == default_sha256
     assert (
         profile.resource_policy.config_sha256
         == hashlib.sha256(selected.read_bytes()).hexdigest()
@@ -215,7 +219,7 @@ def test_attempt_placement_rejects_noncanonical_job_ids(
         profile.attempt_placement(job_id)  # type: ignore[arg-type]
 
 
-def test_selected_source_digest_is_admitted(tmp_path: Path) -> None:
+def test_selected_source_binding_is_admitted(tmp_path: Path) -> None:
     selected = _write_profile(
         tmp_path / "profile.yaml",
         {
@@ -223,18 +227,18 @@ def test_selected_source_digest_is_admitted(tmp_path: Path) -> None:
             "placement": {"kind": "direct"},
         },
     )
-    expected = load_execution_profile(
+    admitted = load_execution_profile(
         tmp_path / "request.yaml",
         config_path=selected,
-    ).sha256
+    )
 
     profile = load_execution_profile(
         tmp_path / "request.yaml",
         config_path=selected,
-        expected_sha256=expected,
+        expected_binding_sha256=admitted.binding_sha256,
     )
 
-    assert profile.sha256 == expected
+    assert profile.binding_sha256 == admitted.binding_sha256
     assert profile.source_path == selected
     assert (
         profile.source_raw_sha256 == hashlib.sha256(selected.read_bytes()).hexdigest()
@@ -243,25 +247,35 @@ def test_selected_source_digest_is_admitted(tmp_path: Path) -> None:
         load_execution_profile(
             tmp_path / "request.yaml",
             config_path=selected,
-            expected_sha256="0" * 64,
+            expected_binding_sha256="0" * 64,
         )
     with pytest.raises(ExecutionProfileError, match="64 lowercase hex"):
         load_execution_profile(
             tmp_path / "request.yaml",
             config_path=selected,
-            expected_sha256="invalid",
+            expected_binding_sha256="invalid",
+        )
+
+    selected.write_bytes(selected.read_bytes() + b"# equivalent rewrite\n")
+    rewritten = load_execution_profile(tmp_path / "request.yaml", config_path=selected)
+    assert rewritten.sha256 == admitted.sha256
+    with pytest.raises(ExecutionProfileError, match="binding SHA-256 differs"):
+        load_execution_profile(
+            tmp_path / "request.yaml",
+            config_path=selected,
+            expected_binding_sha256=admitted.binding_sha256,
         )
 
 
 def test_builtin_source_digest_can_be_bound(tmp_path: Path) -> None:
-    expected = load_execution_profile(tmp_path / "request.yaml").sha256
+    expected = load_execution_profile(tmp_path / "request.yaml").binding_sha256
 
     profile = load_execution_profile(
         tmp_path / "request.yaml",
-        expected_sha256=expected,
+        expected_binding_sha256=expected,
     )
 
-    assert profile.sha256 == expected
+    assert profile.binding_sha256 == expected
 
 
 def test_selected_profile_must_be_one_stable_real_file(tmp_path: Path) -> None:

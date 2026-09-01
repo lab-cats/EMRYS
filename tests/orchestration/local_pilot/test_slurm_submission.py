@@ -33,7 +33,7 @@ class _Placement:
 
 @dataclass(frozen=True, slots=True)
 class _Profile:
-    sha256: str
+    binding_sha256: str
     placement: _Placement
 
 
@@ -47,7 +47,7 @@ def _profile(
     scratch = tmp_path / "scratch parent"
     scratch.mkdir()
     return _Profile(
-        sha256="a" * 64,
+        binding_sha256="a" * 64,
         placement=_Placement(
             kind="slurm",
             account="research-account",
