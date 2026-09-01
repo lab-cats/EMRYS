@@ -13,6 +13,7 @@ import emrys.libraries.installed_package_identity as package_identity
 from emrys.libraries.installed_package_identity import (
     InstalledPackageIdentityError,
     installed_package_tree_identity,
+    installed_python_package_identity,
 )
 
 
@@ -97,6 +98,19 @@ def test_tree_identity_includes_normalized_permission_mode(tmp_path: Path) -> No
     library.chmod(0o600)
 
     assert installed_package_tree_identity(package).sha256 != before
+
+
+def test_python_package_identity_ignores_interpreter_caches(tmp_path: Path) -> None:
+    package = _package(tmp_path / "package")
+    before = installed_python_package_identity(package).sha256
+    cache = package / "__pycache__"
+    cache.mkdir()
+    (cache / "module.cpython-313.pyc").write_bytes(b"cache")
+
+    assert installed_python_package_identity(package).sha256 == before
+
+    (package / "sourceless.pyc").write_bytes(b"executable-package-content")
+    assert installed_python_package_identity(package).sha256 != before
 
 
 @pytest.mark.parametrize("entry_kind", ["symlink", "fifo"])

@@ -74,9 +74,7 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
     intake = tmp_path / "intake"
     intake.mkdir(parents=True)
     profile = fixture.profile()
-    _request, execution, execution_bytes = fixture.build_legacy_execution(
-        intake, profile
-    )
+    _request, execution, execution_bytes = fixture.build_legacy_execution(intake)
 
     run_root = tmp_path / "run"
     contract = run_root / "contract"

@@ -16,6 +16,7 @@ from .core import (
     canonical_json_bytes,
     load_run_contract,
     new_attempt_id,
+    scope_adapter_rosters,
     sha256_bytes,
     stat_source,
     utc_now,
@@ -43,7 +44,7 @@ from .records import (
     validate_existing_identity,
     validate_record_in_memory,
 )
-from .registry import ADAPTER_REGISTRY
+from .registry import admit_analysis_module, build_adapter_registry
 from .validation import validate_existing_transaction
 
 if TYPE_CHECKING:
@@ -76,11 +77,43 @@ def prepare_context(
     inventory_path = arguments.inventory.expanduser().resolve()
     output_root = arguments.output_root.expanduser().resolve()
     run_contract, run_contract_file_sha256 = load_run_contract(run_contract_path)
+    authored_policy_path = getattr(arguments, "analysis_policy", None)
+    analysis_policy_path = (
+        None
+        if authored_policy_path is None
+        else authored_policy_path.expanduser().resolve()
+    )
+    analysis_policy = (
+        None
+        if analysis_policy_path is None
+        else contracts.load_json_object(analysis_policy_path, "analysis policy")
+    )
+    analysis_policy_sha256 = (
+        None
+        if analysis_policy_path is None
+        else contracts.sha256_file(analysis_policy_path)
+    )
+    if (
+        analysis_policy_sha256 is not None
+        and analysis_policy_sha256 != run_contract["primary_analysis_policy_sha256"]
+    ):
+        raise ArtifactIndexError(
+            "Analysis policy does not match the reporting run contract"
+        )
+    analysis_module = admit_analysis_module(analysis_policy)
+    descriptor = analysis_module.descriptor
+    adapter_registry = build_adapter_registry(descriptor)
+    profile = arguments.profile
+    scope_rosters = scope_adapter_rosters(profile["artifact_templates"])
     inventory_rows = contracts.validate_inventory(
         inventory_path,
         source_root=source_root,
     )
-    validate_inventory_registry(inventory_rows)
+    validate_inventory_registry(
+        inventory_rows,
+        adapter_registry=adapter_registry,
+        scope_rosters=scope_rosters,
+    )
     inventory_sha256 = contracts.sha256_file(inventory_path)
     output_dir = output_root / arguments.run_id
     records_dir = output_dir / "records"
@@ -95,10 +128,13 @@ def prepare_context(
         raise ArtifactIndexError(
             f"Artifact-index output is locked; inspect owner metadata: {lock_path}"
         )
-    for label, path in (
+    contract_inputs = [
         ("run contract", run_contract_path),
         ("inventory", inventory_path),
-    ):
+    ]
+    if analysis_policy_path is not None:
+        contract_inputs.append(("analysis policy", analysis_policy_path))
+    for label, path in contract_inputs:
         if path == output_dir or output_dir in path.parents:
             raise ArtifactIndexError(
                 f"The {label} must not live inside its generated run directory"
@@ -140,11 +176,15 @@ def prepare_context(
         raise ArtifactIndexError(
             "Artifact-index provenance requires a stable clean source checkout"
         )
-    evidence = producer_evidence(git_commit, source_root=source_checkout.root)
+    evidence = producer_evidence(
+        git_commit,
+        source_root=source_checkout.root,
+        analysis_module=analysis_module,
+    )
     inspections = [
         inspect_source(
             row,
-            ADAPTER_REGISTRY[row["adapter"]],
+            adapter_registry[row["adapter"]],
             source_root=source_root,
         )
         for row in inventory_rows
@@ -210,6 +250,9 @@ def prepare_context(
         run_contract_path=run_contract_path,
         run_contract=run_contract,
         run_contract_file_sha256=run_contract_file_sha256,
+        analysis_policy_path=analysis_policy_path,
+        analysis_policy_sha256=analysis_policy_sha256,
+        analysis_module=analysis_module,
         inventory_path=inventory_path,
         inventory_sha256=inventory_sha256,
         inventory_rows=inventory_rows,
@@ -259,6 +302,12 @@ def recheck_inputs(context: BuildContext) -> None:
         context.run_contract_file_sha256
     ):
         raise ArtifactIndexError("Run-contract file changed after initial validation")
+    if (
+        context.analysis_policy_path is not None
+        and contracts.sha256_file(context.analysis_policy_path)
+        != context.analysis_policy_sha256
+    ):
+        raise ArtifactIndexError("Analysis policy changed after initial validation")
     if contracts.sha256_file(context.inventory_path) != context.inventory_sha256:
         raise ArtifactIndexError("Inventory changed after initial validation")
     for inspection in context.inspections:

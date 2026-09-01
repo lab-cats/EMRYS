@@ -8,7 +8,7 @@ import re
 from collections.abc import Mapping, Sequence
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from jinja2 import (
     Environment,
@@ -213,9 +213,7 @@ class ReportHTMLInspector(HTMLParser):
             self.wide_table_wraps += 1
         if "candidate-index-block" in classes:
             self.candidate_index_count += 1
-        if "candidate-index-record" in classes and attributes.get(
-            "data-candidate-id"
-        ):
+        if "candidate-index-record" in classes and attributes.get("data-candidate-id"):
             self.candidate_index_ids.append(str(attributes["data-candidate-id"]))
         if tag == "article" and "candidate-evidence-record" in classes:
             record = {
@@ -393,6 +391,7 @@ def validate_rendered_html(
     expected_banner: str,
     expected_identity: Mapping[str, str],
     expected_candidate_ids: Sequence[str] = (),
+    report_contract: Literal["paired", "module"] = "paired",
 ) -> None:
     report_view = expected_identity.get("data-report-view")
     if report_view not in REPORT_SECTION_IDS_BY_VIEW:
@@ -449,7 +448,7 @@ def validate_rendered_html(
         inspector.scientific_figure_errors.append(
             "scientific figure lacks a closing figure element"
         )
-    if report_view == "scientific":
+    if report_contract == "paired" and report_view == "scientific":
         expected_figure_ids = (
             *PRIMARY_SCIENTIFIC_FIGURE_IDS,
             *SUPPORTING_SCIENTIFIC_FIGURE_IDS,
@@ -620,7 +619,7 @@ def validate_rendered_html(
             inspector.scientific_figure_errors.append(
                 "scientific report contains unexpected selected-candidate content"
             )
-    else:
+    elif report_view == "evidence":
         if inspector.scientific_figures:
             inspector.scientific_figure_errors.append(
                 "evidence report must not contain scientific figure images"
@@ -655,27 +654,31 @@ def validate_rendered_html(
         _fail(
             f"Rendered report does not contain the required state banner: {expected_banner}"
         )
-    required_sections = REPORT_SECTION_IDS_BY_VIEW[report_view]
-    missing_sections = required_sections - inspector.ids
-    if missing_sections:
-        _fail(
-            "Rendered report lacks required sections: "
-            + ", ".join(sorted(missing_sections))
+    if report_contract == "paired":
+        missing_sections = REPORT_SECTION_IDS_BY_VIEW[report_view] - inspector.ids
+        if missing_sections:
+            _fail(
+                "Rendered report lacks required sections: "
+                + ", ".join(sorted(missing_sections))
+            )
+        other_sections = set().union(
+            *(
+                section_ids
+                for view_name, section_ids in REPORT_SECTION_IDS_BY_VIEW.items()
+                if view_name != report_view
+            )
         )
-    other_sections = set().union(
-        *(
-            section_ids
-            for view_name, section_ids in REPORT_SECTION_IDS_BY_VIEW.items()
-            if view_name != report_view
-        )
-    )
-    unexpected_sections = other_sections & inspector.ids
-    if unexpected_sections:
-        _fail(
-            f"Rendered {report_view} report contains sections owned by another "
-            "view: " + ", ".join(sorted(unexpected_sections))
-        )
-    if report_view == "scientific" and CANDIDATE_TERMINOLOGY not in content:
+        unexpected_sections = other_sections & inspector.ids
+        if unexpected_sections:
+            _fail(
+                f"Rendered {report_view} report contains sections owned by another "
+                "view: " + ", ".join(sorted(unexpected_sections))
+            )
+    if (
+        report_contract == "paired"
+        and report_view == "scientific"
+        and CANDIDATE_TERMINOLOGY not in content
+    ):
         _fail(f"Rendered report lacks fixed terminology: {CANDIDATE_TERMINOLOGY}")
     main_attributes = inspector.main_attributes[0]
     scientific_forbidden_attributes = {

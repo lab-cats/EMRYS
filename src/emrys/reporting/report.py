@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from emrys import analyses
+
 from emrys.libraries.source_authority import (
     ArtifactSourceRoot,
     ArtifactSourceRootError,
@@ -78,6 +80,8 @@ def _admit_source_authorities(
 
 def prepare_report(
     arguments: argparse.Namespace,
+    *,
+    analysis_module: analyses.LoadedAnalysisModuleV1 | None = None,
 ) -> Any:
     """Prepare and validate one report context without durable output state."""
 
@@ -88,4 +92,5 @@ def prepare_report(
         arguments,
         source_checkout=source_checkout,
         artifact_source_root=artifact_source_root,
+        analysis_module=analysis_module,
     )

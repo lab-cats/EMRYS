@@ -644,8 +644,10 @@ def _report_context_roster(
     }
     run_contract = expected_run_contract or Path(receipt_row["run_contract_path"])
     inventory = expected_inventory or Path(receipt_row["inventory_path"])
+    analysis_policy = summary.get("analysis_policy")
     files = {
         *(snapshot.path for snapshot in context.input_snapshots),
+        *(() if analysis_policy is None else (Path(analysis_policy["path"]),)),
         context.output_scientific_html,
         context.output_evidence_html,
         context.output_summary_tsv,
@@ -866,6 +868,8 @@ def validate_artifact_index_transaction(
     run_contract: Path,
     inventory: Path,
     output_root: Path,
+    analysis_policy: Path | None = None,
+    profile: Mapping[str, Any],
     receipt_ops: ReceiptValidationOps = DEFAULT_RECEIPT_VALIDATION_OPS,
 ) -> ValidatedTransaction:
     """Revalidate one artifact index plus current native artifact sources."""
@@ -893,6 +897,8 @@ def validate_artifact_index_transaction(
     arguments = argparse.Namespace(
         run_id=run_id,
         run_contract=run_contract,
+        analysis_policy=analysis_policy,
+        profile=profile,
         inventory=inventory,
         output_root=output_root,
         execute=False,
@@ -997,6 +1003,8 @@ def validate_run_summary_transaction(
     recorded_producer_commit: str | None = None,
     expected_run_contract: Path | None = None,
     expected_inventory: Path | None = None,
+    analysis_policy: Path | None = None,
+    profile: Mapping[str, Any] | None = None,
     validate_upstream: bool = True,
 ) -> ValidatedTransaction:
     """Revalidate one run summary and its bound transaction inputs.
@@ -1062,6 +1070,7 @@ def validate_run_summary_transaction(
         artifact_source_root=artifact_source_root,
         run_id=run_id,
         artifact_receipt=artifact_receipt,
+        analysis_policy=analysis_policy,
         output_root=output_root,
         expected_run_contract_path=expected_run_contract,
         expected_inventory_path=expected_inventory,
@@ -1102,14 +1111,21 @@ def validate_run_summary_transaction(
             if historical_read
             else validate_artifact_index_transaction
         )
+        artifact_options: dict[str, Any] = {
+            "source_checkout": source_checkout,
+            "artifact_source_root": artifact_source_root,
+            "run_id": run_id,
+            "run_contract": context.run_contract_path,
+            "inventory": context.inventory_path,
+            "output_root": output_root,
+            "receipt_ops": _predecessor_receipt_ops(receipt_ops),
+        }
+        if not historical_read:
+            artifact_options["profile"] = profile
+            if context.analysis_policy_path is not None:
+                artifact_options["analysis_policy"] = context.analysis_policy_path
         artifact_validator(
-            source_checkout=source_checkout,
-            artifact_source_root=artifact_source_root,
-            run_id=run_id,
-            run_contract=context.run_contract_path,
-            inventory=context.inventory_path,
-            output_root=output_root,
-            receipt_ops=_predecessor_receipt_ops(receipt_ops),
+            **artifact_options,
         )
     recheck_run_summary_inputs(context)
     for path, expected, label in (
@@ -1140,6 +1156,8 @@ def validate_report_transaction(
     run_summary: Path,
     output_root: Path,
     receipt_ops: ReceiptValidationOps = DEFAULT_RECEIPT_VALIDATION_OPS,
+    analysis_policy: Path | None = None,
+    profile: Mapping[str, Any] | None = None,
     validate_upstream: bool = True,
 ) -> ValidatedTransaction:
     """Revalidate both HTML views, TSV, receipt, and bound inputs."""
@@ -1193,6 +1211,8 @@ def validate_report_transaction(
             run_id=run_id,
             artifact_receipt=artifact_receipt,
             output_root=artifact_receipt.parent.parent,
+            analysis_policy=analysis_policy,
+            profile=profile,
             receipt_ops=_predecessor_receipt_ops(receipt_ops),
         )
     admitted_snapshot = context.previous_snapshots.get(context.output_receipt)
@@ -1277,11 +1297,13 @@ def validate_report_transaction(
             if context.candidate_display is not None
             else ()
         ),
+        report_contract=context.report_contract,
     )
     validation.validate_rendered_html(
         context.output_evidence_html,
         expected_banner=context.render_metadata["state_banner"],
         expected_identity=report_context.expected_html_identity(context, "evidence"),
+        report_contract=context.report_contract,
     )
     receipt.validate_summary_tsv(context.output_summary_tsv, context)
     if context.output_receipt != receipt_snapshot.path:
@@ -1312,6 +1334,7 @@ def _validate_historical_report_transaction(
     expected_source_commit: str,
     expected_run_contract: Path,
     expected_inventory: Path,
+    analysis_policy: Path | None = None,
     receipt_ops: ReceiptValidationOps = DEFAULT_RECEIPT_VALIDATION_OPS,
     validate_upstream: bool = True,
 ) -> ValidatedTransaction:
@@ -1469,6 +1492,7 @@ def _validate_historical_report_transaction(
             recorded_producer_commit=str(summary["provenance"]["git_commit"]),
             expected_run_contract=expected_run_contract,
             expected_inventory=expected_inventory,
+            analysis_policy=analysis_policy,
             receipt_ops=_predecessor_receipt_ops(receipt_ops),
         )
     locations = tuple(
@@ -1594,9 +1618,12 @@ def validate_receipt(
     contract_root = run_root / "contract"
     run_contract = contract_root / "reporting_run_contract.json"
     inventory = contract_root / "artifact_inventory.tsv"
+    analysis_policy = None
     if successor:
         run_contract = run_root / config["reporting_run_contract_path"]["path"]
         inventory = run_root / config["artifact_inventory_path"]["path"]
+    if successor and not historical_transaction:
+        analysis_policy = run_root / config["primary_analysis_policy_path"]["path"]
     artifact_receipt = artifact_root / run_id / f"{run_id}.artifact_receipt.tsv"
     try:
         if kind == "artifact_index":
@@ -1604,13 +1631,21 @@ def validate_receipt(
                 artifact_validator = _validate_historical_artifact_index_transaction
             else:
                 artifact_validator = validate_artifact_index_transaction
+            artifact_options = {
+                "source_checkout": source_checkout,
+                "artifact_source_root": run_root,
+                "run_id": run_id,
+                "run_contract": run_contract,
+                "inventory": inventory,
+                "output_root": artifact_root,
+            }
+            if successor and not historical_transaction:
+                artifact_options.update(
+                    analysis_policy=analysis_policy,
+                    profile=profile,
+                )
             result = artifact_validator(
-                source_checkout=source_checkout,
-                artifact_source_root=run_root,
-                run_id=run_id,
-                run_contract=run_contract,
-                inventory=inventory,
-                output_root=artifact_root,
+                **artifact_options,
             )
         elif kind == "run_summary":
             result = validate_run_summary_transaction(
@@ -1623,6 +1658,8 @@ def validate_receipt(
                     run_contract if historical_transaction else None
                 ),
                 expected_inventory=(inventory if historical_transaction else None),
+                analysis_policy=analysis_policy,
+                profile=profile,
                 validate_upstream=not reuse_predecessor,
             )
         elif historical_transaction:
@@ -1635,6 +1672,7 @@ def validate_receipt(
                 expected_source_commit=str(declared_checkout["commit"]),
                 expected_run_contract=run_contract,
                 expected_inventory=inventory,
+                analysis_policy=analysis_policy,
                 validate_upstream=not reuse_predecessor,
             )
         else:
@@ -1643,6 +1681,8 @@ def validate_receipt(
                 artifact_source_root=run_root,
                 run_summary=artifact_root / run_id / f"{run_id}.run_summary.json",
                 output_root=html_report_root,
+                analysis_policy=analysis_policy,
+                profile=profile,
                 validate_upstream=not reuse_predecessor,
             )
     except ReportingTransactionError:

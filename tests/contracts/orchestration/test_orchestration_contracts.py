@@ -588,6 +588,15 @@ def test_project_resource_execution_profile_and_run_records_pass() -> None:
     }
     orchestration.validate_record("project", project_without_background)
 
+    modular = project()
+    modular["analyses"]["primary"] = {
+        "module": "example.differential",
+        "partitions": "partitions.tsv",
+        "sample_ids": ["EV-1", "PUM1-1", "EV-2", "PUM1-2"],
+        "config": {"contrast": ["PUM1", "EV"], "fdr": 0.05},
+    }
+    orchestration.validate_record("project", modular)
+
 
 @pytest.mark.parametrize(
     "sample_ids",

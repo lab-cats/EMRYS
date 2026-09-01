@@ -128,9 +128,10 @@ def publish_report(context: ReportContext, ops: ReportPublicationOps) -> None:
         )
         validate_rendered_html(
             staged_scientific_html,
-            expected_banner=BOUNDARY_BANNER,
+            expected_banner=context.render_metadata["state_banner"],
             expected_identity=expected_html_identity(context, "scientific"),
             expected_candidate_ids=_expected_candidate_ids(context),
+            report_contract=context.report_contract,
         )
         staged_evidence_html = stage / context.output_evidence_html.name
         ops.write_owned_file(staged_evidence_html, context.evidence_html_bytes)
@@ -141,8 +142,9 @@ def publish_report(context: ReportContext, ops: ReportPublicationOps) -> None:
         )
         validate_rendered_html(
             staged_evidence_html,
-            expected_banner=BOUNDARY_BANNER,
+            expected_banner=context.render_metadata["state_banner"],
             expected_identity=expected_html_identity(context, "evidence"),
+            report_contract=context.report_contract,
         )
         staged_summary = stage / context.output_summary_tsv.name
         summary_bytes = summary_tsv_bytes(context)
@@ -254,14 +256,16 @@ def publish_report(context: ReportContext, ops: ReportPublicationOps) -> None:
         _assert_receipted_outputs(document)
         validate_rendered_html(
             context.output_scientific_html,
-            expected_banner=BOUNDARY_BANNER,
+            expected_banner=context.render_metadata["state_banner"],
             expected_identity=expected_html_identity(context, "scientific"),
             expected_candidate_ids=_expected_candidate_ids(context),
+            report_contract=context.report_contract,
         )
         validate_rendered_html(
             context.output_evidence_html,
-            expected_banner=BOUNDARY_BANNER,
+            expected_banner=context.render_metadata["state_banner"],
             expected_identity=expected_html_identity(context, "evidence"),
+            report_contract=context.report_contract,
         )
         validate_summary_tsv(context.output_summary_tsv, context)
         _recheck_inputs(context)

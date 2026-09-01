@@ -17,6 +17,9 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
+from emrys import analyses
+from emrys.analyses import effective_configuration
+from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.projection import build_reporting_bundle
@@ -509,7 +512,7 @@ def artifact_payloads(
     partition_id = str(execution["partitions"]["rows"][0]["partition_id"])
     sample_hash = str(execution["samples"]["manifest"]["sha256"])
     partition_hash = str(execution["partitions"]["manifest"]["sha256"])
-    policy = execution["analysis"]["policy"]
+    policy = effective_configuration(execution["analysis"]["policy"])
     by_adapter: dict[str, list[dict[str, str]]] = {}
     payloads: dict[str, bytes] = {}
     for row in rows:
@@ -1001,13 +1004,16 @@ def build(
     root = root.resolve(strict=True)
     intake_root = root / "intake"
     intake_root.mkdir()
+    core_profile = orchestration_contracts.load_json_object(PROFILE_PATH)
     profile = (
-        orchestration_contracts.load_json_object(PROFILE_PATH)
+        analyses.compose_profile(core_profile, analysis_module_v1())
         if profile_override is None
         else profile_override
     )
     request_path, execution, execution_bytes = build_legacy_execution(
-        intake_root, profile
+        intake_root,
+        core_profile,
+        execution_profile=profile if profile_override is not None else None,
     )
 
     run_root = (root / "run").resolve()

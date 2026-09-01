@@ -11,6 +11,7 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
+from emrys import analyses
 from emrys.contracts.artifacts import api as contracts
 from emrys.libraries.validation.tsv import tsv_bytes as render_tsv_bytes
 
@@ -27,7 +28,29 @@ from .models import (
     ArtifactIndexError,
     Inspection,
 )
-from .rosters import STEP_PRODUCERS
+
+STEP_PRODUCERS = {
+    "00a": "src/emrys/stages/star_index/step_00a_build_star_index.sh",
+    "00b": "src/emrys/stages/gtf_to_bed12/converter.py",
+    "00c": "src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
+    "01": "src/emrys/stages/star_alignment/step_01_star_align.sh",
+    "02": "src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh",
+    "02b": "src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
+    "03": (
+        "src/emrys/evidence/rseqc_orientation/"
+        "step_03_infer_strandedness_and_orientation.sh"
+    ),
+    "04": "src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh",
+    "05": "src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
+    "06": "src/emrys/stages/mechanical_orientation/producer.py",
+    "07": "src/emrys/stages/partitioned_cohort_mpileup/producer.py",
+    "08": "src/emrys/stages/cohort_candidate_preprocessing/producer.py",
+    "09": "src/emrys/analyses/paired_cmh_candidate_ranking/producer.py",
+    "10": (
+        "src/emrys/analyses/scientific_context_projection/"
+        "scientific_context_projection.sh"
+    ),
+}
 
 
 def record_manifest(
@@ -48,9 +71,20 @@ def producer_evidence(
     git_commit: str,
     *,
     source_root: Path = contracts.REPO_ROOT,
+    analysis_module: analyses.LoadedAnalysisModuleV1 | None = None,
 ) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
-    for step_id, relative_path in STEP_PRODUCERS.items():
+    descriptor = None if analysis_module is None else analysis_module.descriptor
+    built_in = analysis_module is None or (
+        analysis_module.trust == "built-in"
+        and descriptor.module_id == analyses.BUILTIN_PAIRED_CMH_MODULE_ID
+    )
+    core_producers = {
+        step: path
+        for step, path in STEP_PRODUCERS.items()
+        if built_in or step not in {"09", "10"}
+    }
+    for step_id, relative_path in core_producers.items():
         path = source_root / relative_path
         if not path.is_file():
             raise ArtifactIndexError(
@@ -67,6 +101,28 @@ def producer_evidence(
                     "sha256": contracts.sha256_file(path),
                 }
             ],
+        }
+    if built_in:
+        return result
+
+    assert analysis_module is not None and descriptor is not None
+    module_evidence = [
+        {
+            "evidence_id": "implementation_module",
+            "role": "implementation",
+            "path": (
+                f"{analysis_module.distribution_name}@"
+                f"{analysis_module.distribution_version}/"
+                f"{analysis_module.entry_point_value}"
+            ),
+            "sha256": analysis_module.implementation_sha256,
+        }
+    ]
+    for step_id in dict.fromkeys(task.step_id for task in descriptor.tasks):
+        result[step_id] = {
+            "status": "implemented",
+            "git_commit": git_commit,
+            "evidence": module_evidence,
         }
     return result
 

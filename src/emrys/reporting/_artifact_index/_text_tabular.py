@@ -23,10 +23,15 @@ def inspect_tsv(
     captured_rows: list[dict[str, str]] = []
     anchor_values: dict[str, set[str]] = defaultdict(set)
     value_counts: dict[str, Counter[str]] = defaultdict(Counter)
-    capture_rows = spec.exact_data_rows is not None or spec.adapter_id in {
-        "step07_mpileup_receipt_v1",
-        "step08_inputs_v1",
-    }
+    capture_rows = (
+        spec.kind == "validation_report"
+        or spec.exact_data_rows is not None
+        or spec.adapter_id
+        in {
+            "step07_mpileup_receipt_v1",
+            "step08_inputs_v1",
+        }
+    )
     try:
         with path.open(encoding="utf-8", newline="") as stream:
             reader = csv.reader(stream, delimiter="\t")

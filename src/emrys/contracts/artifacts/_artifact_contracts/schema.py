@@ -15,7 +15,9 @@ from emrys.libraries import validation as report
 
 from .definitions import (
     COMMON_SCHEMA_PATH,
+    CROSS_SCHEMA_FILES,
     SCHEMA_FILES,
+    VERSIONED_SCHEMA_FILES,
     ContractValidationError,
 )
 
@@ -95,15 +97,42 @@ def load_schema_registry() -> tuple[dict[str, dict[str, Any]], Registry]:
                 f"Could not register local {name} schema: {exc}"
             ) from exc
         schemas[name] = schema
+    supplemental_paths = {
+        **CROSS_SCHEMA_FILES,
+        **{
+            f"{name} {version}": path
+            for (name, version), path in VERSIONED_SCHEMA_FILES.items()
+        },
+    }
+    for label, schema_path in supplemental_paths.items():
+        schema = load_json_object(schema_path, f"{label} schema")
+        try:
+            Draft202012Validator.check_schema(schema)
+            registry = registry.with_resource(
+                schema["$id"],
+                Resource.from_contents(schema),
+            )
+        except Exception as exc:
+            raise ContractValidationError(
+                f"Could not register local {label} schema: {exc}"
+            ) from exc
     return schemas, registry
 
 
-def schema_validator(name: str) -> Draft202012Validator:
-    """Build a validator from the closed local registry for one named schema."""
+def schema_validator(
+    name: str, version: str | None = None
+) -> Draft202012Validator:
+    """Build the closed validator for one active or versioned schema."""
 
     schemas, registry = load_schema_registry()
+    path = None if version is None else VERSIONED_SCHEMA_FILES.get((name, version))
+    schema = (
+        schemas[name]
+        if path is None
+        else load_json_object(path, f"{name} {version} schema")
+    )
     return Draft202012Validator(
-        schemas[name],
+        schema,
         registry=registry,
         format_checker=FormatChecker(),
     )

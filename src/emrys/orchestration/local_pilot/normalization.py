@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import glob
 import hashlib
 import os
@@ -10,6 +11,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from emrys.analyses import (
+    ANALYSIS_MODULE_INTERFACE_V1,
+    BUILTIN_PAIRED_CMH_MODULE_ID,
+    AnalysisInputContextV1,
+    AnalysisModuleLoadError,
+    LoadedAnalysisModuleV1,
+    admit_configuration,
+    compose_profile,
+    load_analysis_module,
+    module_identity_record,
+)
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
     AnalysisRevision,
@@ -37,6 +49,7 @@ class AnalysisAdmission:
     revision: AnalysisRevision
     _workflow_input_bytes: bytes
     _authored_path_bytes: bytes
+    module: LoadedAnalysisModuleV1
     evidence_label: str | None
     selected_sample_manifest_bytes: bytes | None = None
 
@@ -215,6 +228,16 @@ def _load_profile(profile: Mapping[str, Any] | str | Path) -> dict[str, Any]:
     return value
 
 
+def _profile_for_module(
+    profile: Mapping[str, Any], module: LoadedAnalysisModuleV1
+) -> dict[str, Any]:
+    """Replace the fixed analysis tail with one admitted module fragment."""
+
+    composed = compose_profile(profile, module.descriptor)
+    orchestration_contracts.validate_record("profile", composed)
+    return composed
+
+
 def _normalize_samples(
     manifest_path: Path,
     manifest_data: bytes,
@@ -311,13 +334,6 @@ def _admit_project_data(
         f"Project YAML {resolved_project}",
     )
     profile_record = _load_profile(profile)
-    profile_bytes = orchestration_contracts.canonical_json_bytes(profile_record)
-    profile_identity = {
-        key: profile_record[key] for key in ("profile_id", "profile_version")
-    }
-    profile_identity["profile_sha256"] = orchestration_contracts.canonical_sha256(
-        profile_record
-    )
     project_dir = resolved_project.parent
     if definition.get("schema_version") == "emrys.request.v3":
         if not allow_legacy:
@@ -424,22 +440,61 @@ def _admit_project_data(
             )
             partitions = _normalize_partitions(partition_path, partition_data)
             partition_cache[authored_partition] = partitions
-        scientific_policy = dict(analysis_definition)
-        scientific_policy.pop("id", None)
-        scientific_policy.pop("partitions", None)
-        scientific_policy.pop("sample_ids", None)
-        if "target_change" in scientific_policy:
-            target = str(scientific_policy.pop("target_change"))
-            scientific_policy["rna_ref"], scientific_policy["rna_alt"] = target.split(
-                ">"
+        modular = "module" in analysis_definition
+        module_id = str(analysis_definition.get("module", BUILTIN_PAIRED_CMH_MODULE_ID))
+        try:
+            module = load_analysis_module(module_id)
+            admitted_profile = _profile_for_module(profile_record, module)
+            raw_config = (
+                analysis_definition["config"]
+                if modular
+                else {
+                    key: value
+                    for key, value in analysis_definition.items()
+                    if key not in {"id", "partitions", "sample_ids"}
+                }
             )
-        scientific_policy.setdefault("background_condition", None)
+            scientific_policy = admit_configuration(
+                module.descriptor,
+                raw_config,
+                AnalysisInputContextV1(
+                    samples=tuple(copy.deepcopy(selected_samples["rows"])),
+                    partitions=tuple(copy.deepcopy(partitions["rows"])),
+                    reference=copy.deepcopy(reference_input),
+                ),
+            )
+            orchestration_contracts.canonical_json_bytes(scientific_policy)
+        except (AnalysisModuleLoadError, TypeError, ValueError) as exc:
+            raise orchestration_contracts.ContractValidationError(
+                f"Analysis {name} module admission failed: {exc}"
+            ) from exc
+        profile_bytes = orchestration_contracts.canonical_json_bytes(admitted_profile)
+        profile_identity = {
+            key: admitted_profile[key] for key in ("profile_id", "profile_version")
+        }
+        profile_identity["profile_sha256"] = orchestration_contracts.canonical_sha256(
+            admitted_profile
+        )
+        module_identity = {
+            "module_id": module.descriptor.module_id,
+            "interface_version": ANALYSIS_MODULE_INTERFACE_V1,
+            "module_version": module.descriptor.module_version,
+        }
+        admission_policy = (
+            {
+                "schema_version": "emrys.analysis-module-policy.v1",
+                "module": module_identity,
+                "configuration": scientific_policy,
+            }
+            if modular
+            else scientific_policy
+        )
         revision = analysis_revision_from_execution_fields(
             {
                 "samples": selected_samples,
                 "partitions": partitions,
                 "reference": reference_input,
-                "analysis": {"policy": scientific_policy},
+                "analysis": {"policy": admission_policy},
             }
         )
         ids = dict(
@@ -450,11 +505,19 @@ def _admit_project_data(
                 "analysis": revision.scope_id("analysis"),
             }
         )
-        policy = {
-            "schema_version": "emrys.analysis-policy.v1",
-            "analysis_id": ids["analysis"],
-            **scientific_policy,
-        }
+        policy = (
+            {
+                **admission_policy,
+                "analysis_id": ids["analysis"],
+                "module": module_identity_record(module),
+            }
+            if modular
+            else {
+                "schema_version": "emrys.analysis-policy.v1",
+                "analysis_id": ids["analysis"],
+                **scientific_policy,
+            }
+        )
         reference = {
             "schema_version": "emrys.reference.v1",
             "reference_id": ids["reference"],
@@ -494,6 +557,7 @@ def _admit_project_data(
                 _authored_path_bytes=orchestration_contracts.canonical_json_bytes(
                     authored_paths
                 ),
+                module=module,
                 evidence_label=label,
                 selected_sample_manifest_bytes=selected_sample_manifest_bytes,
             )

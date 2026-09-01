@@ -17,6 +17,7 @@ from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.application_model import (
     RUN_BINDING_SCHEMA_VERSION,
     AnalysisRevision,
+    validate_successor_run,
 )
 from emrys.contracts.orchestration.projection import (
     CONTRACT_PATHS,
@@ -37,6 +38,10 @@ from emrys.orchestration.local_pilot._inspection_admission import (
     admit_attempt_run_lock,
     admit_canonical_record,
     admit_execution_path,
+)
+from emrys.orchestration.local_pilot.run_implementation import (
+    RunImplementationError,
+    implementation_identity,
 )
 
 ReportingKind = Literal["artifact_index", "run_summary", "html_report"]
@@ -507,7 +512,7 @@ def _admit_identity(
             "Reporting identity must use the fixed execution/profile contract paths"
         )
     profile, profile_data = _admit_record(profile_path, root, "profile")
-    execution, execution_data, _authority = _admit_execution(
+    execution, execution_data, authority = _admit_execution(
         execution_path,
         root,
         profile,
@@ -586,6 +591,31 @@ def _admit_identity(
             raise ReportingBoundaryError(
                 f"Could not attest reporting source checkout: {exc}"
             ) from exc
+        analysis_identity = (
+            authority.analysis_revision.record["identity"]
+            if authority is not None
+            else {}
+        )
+        module = analysis_identity.get("analysis_module")
+        if authority is not None and isinstance(module, Mapping):
+            try:
+                validate_successor_run(
+                    analysis=authority.analysis_revision,
+                    plan=authority.execution_plan,
+                    run=authority.run_binding,
+                    profile=profile,
+                    observed_implementation_content_sha256=implementation_identity(
+                        source_checkout_root,
+                        str(module["module_id"]),
+                    ),
+                )
+            except (
+                orchestration_contracts.ContractValidationError,
+                RunImplementationError,
+            ) as exc:
+                raise ReportingBoundaryError(
+                    f"Could not attest reporting implementation: {exc}"
+                ) from exc
     _admit_reporting_projection(root=root, execution=execution, config=config)
     run_lock_reference = _run_lock_reference(
         root,

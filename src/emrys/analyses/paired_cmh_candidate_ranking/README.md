@@ -4,6 +4,11 @@ Native owner of `emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1`
 (historical `09`). [`CONTRACT.md`](CONTRACT.md) owns exact pairing, method,
 six-output transaction, validation, consumer, and evidence semantics.
 
+It is also the installed built-in `emrys.paired-cmh` analysis module. Existing
+flat paired-CMH Project definitions retain their historical identity and rich
+report bytes; an explicit module selection uses the versioned module identity
+without changing the scientific implementation or output contracts.
+
 ## Entry points
 
 - private repository transaction owner: [`producer.py`](producer.py)

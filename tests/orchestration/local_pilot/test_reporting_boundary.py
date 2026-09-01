@@ -10,7 +10,9 @@ from typing import Any
 
 import pytest
 
+from emrys import analyses
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration import application_model
 from emrys.orchestration.local_pilot import inspection, reporting_boundary
 from emrys.reporting import transaction_validation
 from tests.contracts.orchestration.test_application_model_contracts import (
@@ -130,8 +132,29 @@ def _build(
     return built
 
 
-def _build_successor(root: Path) -> tuple[dict[str, Path], dict[str, Any]]:
+def _build_successor(
+    root: Path,
+    *,
+    modular: bool = False,
+) -> tuple[dict[str, Path], dict[str, Any]]:
     analysis, plan, run, profile, attempt, resource_policy = successor_run_fixture()
+    module = None
+    if modular:
+        module = analyses.load_analysis_module(analyses.BUILTIN_PAIRED_CMH_MODULE_ID)
+        descriptor = module.descriptor
+        inputs = analysis.record["identity"]
+        analysis = application_model.build_module_analysis_revision(
+            samples=inputs["samples"],
+            partitions=inputs["partitions"],
+            reference=inputs["reference"],
+            module_id=descriptor.module_id,
+            interface_version=analyses.ANALYSIS_MODULE_INTERFACE_V1,
+            module_version=descriptor.module_version,
+            configuration={},
+        )
+        run = application_model.bind_run(analysis, plan)
+        attempt["run_id"] = run.run_id
+        attempt["execution_contract_sha256"] = run.record_sha256
     run_root = (root / run.run_id).resolve()
     contract = run_root / "contract"
     contract.mkdir(parents=True)
@@ -147,6 +170,13 @@ def _build_successor(root: Path) -> tuple[dict[str, Path], dict[str, Any]]:
         path.write_bytes(data)
     source = historical_execution()
     source["run_id"] = run.run_id
+    if module is not None:
+        source["analysis"]["policy"] = {
+            "schema_version": "emrys.analysis-module-policy.v1",
+            "analysis_id": source["analysis"]["policy"]["analysis_id"],
+            "configuration": {},
+            "module": analyses.module_identity_record(module),
+        }
     identifier = str(attempt["workflow_attempt_id"])
     files, reporting_config, directories = (
         reporting_boundary._attempt_reporting_materialization(
@@ -459,6 +489,64 @@ def test_successor_boundary_uses_run_authority_and_exact_config_references(
         orchestration_contracts.load_json_object(identity["profile_path"]),
     )
     assert admitted.origin_workflow_attempt_id == start["origin_workflow_attempt_id"]
+
+
+def test_successor_module_boundary_rechecks_exact_implementation_identity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    identity, _config = _build_successor(
+        tmp_path / "successor-module",
+        modular=True,
+    )
+    plan = application_model.read_application_record(
+        (identity["run_root"] / "contract" / "execution-plan.json").read_bytes()
+    )
+    assert isinstance(plan, application_model.ExecutionPlan)
+    expected = str(plan.record["identity"]["implementation_content_sha256"])
+    observed: list[tuple[Path, str]] = []
+
+    def identify(source_root: Path, module_id: str) -> str:
+        observed.append((source_root, module_id))
+        return expected
+
+    monkeypatch.setattr(reporting_boundary, "implementation_identity", identify)
+    reporting_boundary.publish_start(
+        kind="artifact_index",
+        **identity,
+        ops=_ops(lambda *_arguments: _semantic_result(Path("/unused"))),
+    )
+
+    assert len(observed) == 2
+    assert len({source_root for source_root, _module_id in observed}) == 1
+    assert {module_id for _source_root, module_id in observed} == {
+        analyses.BUILTIN_PAIRED_CMH_MODULE_ID
+    }
+
+
+def test_successor_module_boundary_rejects_changed_implementation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    identity, _config = _build_successor(
+        tmp_path / "changed-successor-module",
+        modular=True,
+    )
+    monkeypatch.setattr(
+        reporting_boundary,
+        "implementation_identity",
+        lambda _source_root, _module_id: "d" * 64,
+    )
+
+    with pytest.raises(
+        reporting_boundary.ReportingBoundaryError,
+        match="Observed implementation content differs",
+    ):
+        reporting_boundary.publish_start(
+            kind="artifact_index",
+            **identity,
+            ops=_ops(lambda *_arguments: _semantic_result(Path("/unused"))),
+        )
 
 
 @pytest.mark.parametrize(

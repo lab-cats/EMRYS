@@ -2292,16 +2292,29 @@ Operational simplification must not distract from scientific architecture.
 - Compatible per-sample work through Step 06 should be reusable for separately
   identified cohort, subset, sensitivity, or downstream analyses beginning at
   the cohort-dependent boundary.
-- A collaborator-extensible analysis library may support differential or other
-  analyses through typed inputs/outputs, provenance, validation, trust level,
-  resources, failure semantics, and report integration.
-- The proposal that scientific modules should not require editing unrelated
-  owners or turn EMRYS into a generic workflow framework remains an exact
-  module-design choice for `ANALYSIS-02` and `ARCH-01`.
+- The completed `ANALYSIS-02` v1 boundary admits one explicitly selected
+  installed `emrys.analysis_modules` entry point. Its closed descriptor owns
+  configuration admission and one or two downstream Step 09/10 tasks with
+  typed predecessor inputs, result and validation outputs, dependencies,
+  planning/failure boundaries, minimum memory, admitted runtime needs, and
+  one implementation package. Fixed processing through Step 08, immutable
+  Analysis/Run identity, private `TaskDispatch`, the existing backend, and
+  evidence admission remain EMRYS-owned.
+- Each module renders its own bespoke scientific HTML from an admitted,
+  read-only Run/result context and declares its interpretation boundary.
+  EMRYS retains the evidence-and-operations view and the complete automatic,
+  disable-able, independently regenerable report transaction. No generic
+  report schema, template system, or customizable-section DSL is introduced.
+  The exact provider distribution, entry point, configuration schema,
+  implementation content, and trust classification are bound and re-admitted.
+  An external-provider fixture proves that adding a differential analysis
+  requires no edit to the built-in scientific core, workflow graph, scheduler,
+  or evidence/report transaction owner.
 - The algorithms, parameters, assumptions, interpretation boundaries, and
   implementation needed for scientific review must remain recognizable and
-  inspectable under binding `AC-GUARD-002`; the exact module API and placement
-  remain open.
+  inspectable under binding `AC-GUARD-002`; the v1 entry-point and task-centric
+  module boundary is selected without a universal Stage hierarchy, workflow
+  language, second scheduler, or auto-installation mechanism.
 
 The intake separately recommends a scientific audit of Steps 07–09, with
 particular attention to:
@@ -3073,7 +3086,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `OBS-01` | **Complete.** Grouped Run control now keeps Run/work/reporting, meaningful phases, Results/evidence, warnings/failures, and the log path normal; operational paths/resources/profile/streams are verbose; exact engine/scheduler/task commands are debug. Durable evidence and machine output are unchanged. |
 | `OBS-02` | High-level scientific progress, public run status, elapsed time, completion/failure, and links to recovery/inspection |
 | `ANALYSIS-01` | **Complete.** Named Analyses may select Dataset samples explicitly or default to all samples, stop at the immutable Step 06 boundary, and launch a separately identified exact-subset downstream Run from one stationary successful processing Run. The private selected TSV is Attempt-bound backend projection, not another authored/evidence authority. Generalized collaborator modules remain `ANALYSIS-02`. |
-| `ANALYSIS-02` | Collaborator-extensible modules with typed scientific contracts; scientific algorithms, assumptions, interpretation, and review-relevant implementation remain visible. The lightweight extension mechanism is open within the binding prohibition on a mandatory universal Stage hierarchy, registry, workflow language, or second scheduler |
+| `ANALYSIS-02` | **Implementation complete; Verification pending.** One explicitly selected installed v1 module declares configuration admission, one or two downstream Step 09/10 tasks, typed dependencies and artifacts, validation, runtime/resource needs, one implementation package, and provider provenance/trust. It owns a bespoke scientific renderer over admitted results; EMRYS owns evidence/operations rendering and report validation, publication, receipt, default invocation, opt-out, and independent regeneration. The built-in paired-CMH analysis and an external-provider fixture use the same boundary without edits to the core graph or scheduler. No universal Stage hierarchy, workflow language, second scheduler, auto-installation, generic report schema, or customizable-section DSL is introduced. Exact-head CI remains pending. |
 | `ARCH-01` | Consumes the completed prerequisites and current vertical cutovers. Sections 13.6, 13.19, and 13.20 leave one execution-profile owner, one private whole-Run Slurm transport/bootstrap, one closed project-v1/named-Analysis source, and grouped control while retiring split configuration, the generated wrapper, all sixteen owner-local scheduler routes, and active request-v3 intake. Run remains immutable, placement/diagnostics remain Attempt-local, Attempt-v1 evidence and Results authority remain unchanged, and no second backend, scheduler, facade, Artifact Store, or evidence deletion is introduced. Broader package, generalized storage, remaining caller migration, and only demonstrated policy/artifact consolidations stay Open under the existing-tool-first protocol. Generalized-backend evaluation remains required near closure. |
 | `REPORT-03` | Primary-scientific-findings hierarchy with evidence and operational detail progressively disclosed |
 | `REPORT-04` | Preserve the requested ability to render nine A-through-I selections when the admitted result warrants them |

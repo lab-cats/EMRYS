@@ -7,6 +7,8 @@ from typing import Any
 
 from emrys.reporting._run_summary.models import (
     INTERPRETATION_BOUNDARY,
+    MODULE_PRODUCER_VERSION,
+    MODULE_RUN_SUMMARY_SCHEMA_VERSION,
     PRODUCER,
     PRODUCER_VERSION,
     RUN_SUMMARY_SCHEMA_VERSION,
@@ -38,6 +40,10 @@ def _build_document(
     artifacts: list[dict[str, Any]],
     generated_at: str,
     git_commit: str,
+    analysis_policy_path: Path | None = None,
+    analysis_policy_sha256: str | None = None,
+    analysis_policy_size_bytes: int | None = None,
+    analysis_policy: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, int]]:
     expected_scopes, artifact_scope_order = _build_expected_scopes(artifacts)
     attempts, superseded_attempt_ids = _build_attempts(artifacts)
@@ -72,9 +78,20 @@ def _build_document(
             ],
         },
     }
+    module_policy = (
+        analysis_policy
+        if analysis_policy is not None
+        and analysis_policy.get("schema_version") == "emrys.analysis-module-policy.v1"
+        and analysis_policy.get("module", {}).get("trust") == "external"
+        else None
+    )
     document = {
         "schema_name": "emrys.run_summary",
-        "schema_version": RUN_SUMMARY_SCHEMA_VERSION,
+        "schema_version": (
+            MODULE_RUN_SUMMARY_SCHEMA_VERSION
+            if module_policy is not None
+            else RUN_SUMMARY_SCHEMA_VERSION
+        ),
         "record_type": "run_summary",
         "run_id": run_id,
         "run_contract": run_contract,
@@ -103,15 +120,37 @@ def _build_document(
         "parameters": parameters,
         "qc_metrics": qc_metrics,
         "limitations": _build_limitations(artifacts=artifacts),
-        "candidate_terminology": "CMH-ranked candidates",
-        "interpretation_boundary": INTERPRETATION_BOUNDARY,
+        **(
+            {}
+            if module_policy is not None
+            else {"candidate_terminology": "CMH-ranked candidates"}
+        ),
+        **(
+            {}
+            if module_policy is not None
+            else {"interpretation_boundary": INTERPRETATION_BOUNDARY}
+        ),
         "warnings": _stable_unique(warnings),
         "errors": errors,
         "provenance": {
             "producer": PRODUCER,
-            "producer_version": PRODUCER_VERSION,
+            "producer_version": (
+                MODULE_PRODUCER_VERSION
+                if module_policy is not None
+                else PRODUCER_VERSION
+            ),
             "git_commit": git_commit,
             "created_at": generated_at,
         },
     }
+    if module_policy is not None:
+        assert analysis_policy_path is not None
+        assert analysis_policy_sha256 is not None
+        assert analysis_policy_size_bytes is not None
+        document["analysis_policy"] = {
+            "path": str(analysis_policy_path),
+            "sha256": analysis_policy_sha256,
+            "size_bytes": analysis_policy_size_bytes,
+            "record": analysis_policy,
+        }
     return document, artifact_scope_order

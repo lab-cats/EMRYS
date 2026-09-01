@@ -20,6 +20,7 @@ from emrys.libraries.source_authority import (
     SourceCheckout,
     matching_checkout_head_commit,
 )
+from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.reporting import transaction_validation
 from emrys.reporting._artifact_index import api as adapter
 from emrys.reporting._run_summary import models
@@ -33,6 +34,11 @@ from emrys.reporting._run_summary.transaction import (
     _load_input_transaction,
     _new_attempt_id,
     _parse_history,
+)
+from emrys.reporting._run_summary.inputs import (
+    _capture_file_snapshot,
+    _load_json_bytes,
+    _require_explicit_regular_file,
 )
 from emrys.reporting._run_summary.validation import (
     _build_receipt_row,
@@ -102,6 +108,40 @@ def prepare_context(
     snapshot_by_path = {snapshot.path: snapshot for snapshot in input_snapshots}
     artifact_receipt_snapshot = snapshot_by_path[artifact_receipt_path]
     inventory_snapshot = snapshot_by_path[inventory_path]
+    analysis_policy_path: Path | None = None
+    analysis_policy: dict[str, Any] | None = None
+    analysis_policy_snapshot = None
+    analysis_policy_value = getattr(arguments, "analysis_policy", None)
+    if analysis_policy_value is not None:
+        analysis_policy_path = _require_explicit_regular_file(
+            "Analysis policy", analysis_policy_value
+        )
+        policy_bytes, analysis_policy_snapshot = _capture_file_snapshot(
+            "Analysis policy", analysis_policy_path
+        )
+        analysis_policy = _load_json_bytes(
+            label="Analysis policy",
+            path=analysis_policy_path,
+            payload=policy_bytes,
+        )
+        try:
+            orchestration_contracts.validate_record("policy", analysis_policy)
+        except orchestration_contracts.ContractValidationError as exc:
+            raise models.RunSummaryError(f"Analysis policy is invalid: {exc}") from exc
+        expected_policy_sha256 = run_contract["primary_analysis_policy_sha256"]
+        if (
+            analysis_policy_snapshot.sha256 != expected_policy_sha256
+            or orchestration_contracts.canonical_sha256(analysis_policy)
+            != expected_policy_sha256
+        ):
+            raise models.RunSummaryError(
+                "Analysis policy does not match the immutable run contract"
+            )
+        if analysis_policy["analysis_id"] != run_contract["primary_analysis_id"]:
+            raise models.RunSummaryError(
+                "Analysis policy identifies another primary analysis"
+            )
+        input_snapshots = (*input_snapshots, analysis_policy_snapshot)
     _parse_history(
         artifact_receipt,
         id_field="adapter_attempt_id",
@@ -133,6 +173,18 @@ def prepare_context(
         artifacts=artifacts,
         generated_at=generated_at,
         git_commit=git_commit,
+        analysis_policy_path=analysis_policy_path,
+        analysis_policy_sha256=(
+            None
+            if analysis_policy_snapshot is None
+            else analysis_policy_snapshot.sha256
+        ),
+        analysis_policy_size_bytes=(
+            None
+            if analysis_policy_snapshot is None
+            else analysis_policy_snapshot.size_bytes
+        ),
+        analysis_policy=analysis_policy,
     )
     _validate_document(
         document,
@@ -208,6 +260,8 @@ def prepare_context(
         inventory_rows=inventory_rows,
         artifacts_path=artifacts_path,
         records_dir=records_dir,
+        analysis_policy_path=analysis_policy_path,
+        analysis_policy=analysis_policy,
         input_snapshots=input_snapshots,
         artifacts=artifacts,
         document=document,

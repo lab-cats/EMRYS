@@ -20,6 +20,7 @@ from emrys.reporting._run_report import publication as report_publication
 from emrys.reporting._run_report import receipt
 from emrys.reporting._run_summary import builder as summary_builder
 from emrys.reporting._run_summary import publication as summary_publication
+from tests.orchestration.local_pilot import fixture as project_fixture
 from tests.contracts.orchestration.test_application_model_contracts import (
     successor_run_fixture,
 )
@@ -27,6 +28,7 @@ from tests.orchestration.local_pilot.fixtures import workflow as workflow_fixtur
 from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as fixture
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+PROFILE = project_fixture.profile()
 
 
 def _fixture_receipt_ops(
@@ -97,6 +99,7 @@ def test_direct_validators_recheck_each_complete_transaction(
         run_contract=built.adapter_fixture.run_contract,
         inventory=built.adapter_fixture.inventory,
         output_root=built.adapter_fixture.output_root,
+        profile=PROFILE,
         receipt_ops=_fixture_receipt_ops(),
     )
     summary = transaction_validation.validate_run_summary_transaction(
@@ -105,6 +108,7 @@ def test_direct_validators_recheck_each_complete_transaction(
         run_id=built.run_id,
         artifact_receipt=built.artifact_receipt,
         output_root=built.output_root,
+        profile=PROFILE,
         receipt_ops=_fixture_receipt_ops(),
     )
     rendered = transaction_validation.validate_report_transaction(
@@ -112,6 +116,7 @@ def test_direct_validators_recheck_each_complete_transaction(
         artifact_source_root=built.root,
         run_summary=built.summary_json_path,
         output_root=report_root,
+        profile=PROFILE,
         receipt_ops=_fixture_receipt_ops(),
     )
 
@@ -166,6 +171,7 @@ def test_historical_artifact_validation_uses_recorded_producer_roster(
             run_contract=built.adapter_fixture.run_contract,
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
+            profile=PROFILE,
             receipt_ops=_fixture_receipt_ops(),
         )
 
@@ -349,6 +355,7 @@ def test_historical_report_admission_preserves_noncurrent_verified_bytes(
             artifact_source_root=built.root,
             run_summary=built.summary_json_path,
             output_root=report_root,
+            profile=PROFILE,
             receipt_ops=_fixture_receipt_ops(),
         )
 
@@ -474,6 +481,7 @@ def test_report_validator_rechecks_bound_reference_identity_without_rereading(
         artifact_source_root=built.root,
         run_summary=built.summary_json_path,
         output_root=report_root,
+        profile=PROFILE,
         receipt_ops=_fixture_receipt_ops(),
     )
 
@@ -538,6 +546,9 @@ def test_fixed_dispatcher_accepts_successor_run_authority(
             "path": f"{reporting_root}/reporting_run_contract.json"
         },
         "artifact_inventory_path": {"path": f"{reporting_root}/artifact_inventory.tsv"},
+        "primary_analysis_policy_path": {
+            "path": f"{reporting_root}/primary_analysis_policy.json"
+        },
     }
     observed: dict[str, Any] = {}
     monkeypatch.setattr(
@@ -568,6 +579,9 @@ def test_fixed_dispatcher_accepts_successor_run_authority(
         == run_root / config["reporting_run_contract_path"]["path"]
     )
     assert observed["inventory"] == run_root / config["artifact_inventory_path"]["path"]
+    assert observed["analysis_policy"] == (
+        run_root / config["primary_analysis_policy_path"]["path"]
+    )
 
 
 def test_fixed_dispatcher_admits_historical_report_only_at_legacy_root(
@@ -816,6 +830,7 @@ def test_artifact_validator_rejects_native_source_mutation(
             run_contract=built.adapter_fixture.run_contract,
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
+            profile=PROFILE,
             receipt_ops=_fixture_receipt_ops(),
         )
 
@@ -841,6 +856,7 @@ def test_report_validator_rejects_each_receipted_html_mutation(
             artifact_source_root=built.root,
             run_summary=built.summary_json_path,
             output_root=report_root,
+            profile=PROFILE,
             receipt_ops=_fixture_receipt_ops(),
         )
 
@@ -868,6 +884,7 @@ def test_receipt_identity_replacement_during_validation_fails_closed(
             run_contract=built.adapter_fixture.run_contract,
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
+            profile=PROFILE,
             receipt_ops=_fixture_receipt_ops(
                 before_final_snapshot=replace_receipt,
             ),
@@ -896,6 +913,7 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
             run_contract=built.adapter_fixture.run_contract,
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
+            profile=PROFILE,
             receipt_ops=ops,
         )
 
@@ -906,6 +924,7 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
             run_id=built.run_id,
             artifact_receipt=built.artifact_receipt,
             output_root=built.output_root,
+            profile=PROFILE,
             receipt_ops=ops,
         )
 
@@ -915,6 +934,7 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
             artifact_source_root=built.root,
             run_summary=built.summary_json_path,
             output_root=report_root,
+            profile=PROFILE,
             receipt_ops=ops,
         )
 
@@ -969,6 +989,7 @@ def test_artifact_validator_rejects_record_roster_membership_fault(
             run_contract=built.adapter_fixture.run_contract,
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
+            profile=PROFILE,
             receipt_ops=_fixture_receipt_ops(
                 before_final_snapshot=add_record,
             ),
@@ -1003,6 +1024,7 @@ def test_artifact_validator_binds_nested_missing_source_to_existing_ancestor(
         run_contract=adapter.run_contract,
         inventory=adapter.inventory,
         output_root=adapter.output_root,
+        profile=PROFILE,
         receipt_ops=_fixture_receipt_ops(),
     )
     assert validated.receipt_path == adapter.receipt_path
@@ -1022,6 +1044,7 @@ def test_artifact_validator_binds_nested_missing_source_to_existing_ancestor(
             run_contract=adapter.run_contract,
             inventory=adapter.inventory,
             output_root=adapter.output_root,
+            profile=PROFILE,
             receipt_ops=_fixture_receipt_ops(
                 before_final_snapshot=create_intermediate_parent,
             ),
@@ -1044,6 +1067,7 @@ def test_each_validator_rejects_control_residue_injected_before_return(
             run_contract=built.adapter_fixture.run_contract,
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
+            profile=PROFILE,
             receipt_ops=ops,
         )
 
@@ -1054,6 +1078,7 @@ def test_each_validator_rejects_control_residue_injected_before_return(
             run_id=built.run_id,
             artifact_receipt=built.artifact_receipt,
             output_root=built.output_root,
+            profile=PROFILE,
             receipt_ops=ops,
         )
 
@@ -1063,6 +1088,7 @@ def test_each_validator_rejects_control_residue_injected_before_return(
             artifact_source_root=built.root,
             run_summary=built.summary_json_path,
             output_root=report_root,
+            profile=PROFILE,
             receipt_ops=ops,
         )
 
@@ -1126,5 +1152,6 @@ def test_preexisting_reporting_control_residue_fails_closed(
             run_contract=built.adapter_fixture.run_contract,
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
+            profile=PROFILE,
             receipt_ops=_fixture_receipt_ops(),
         )

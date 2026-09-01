@@ -9,11 +9,12 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from emrys.reporting._files import FileSnapshot
 
 if TYPE_CHECKING:
+    from emrys.analyses import LoadedAnalysisModuleV1
     from emrys.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
 
     from .candidate_display import SelectedCandidateProjection
@@ -22,6 +23,8 @@ PRODUCER = "emrys.reporting.report"
 PRODUCER_VERSION = "5.2.0"
 RUN_SUMMARY_SCHEMA_VERSION = "2.0.0"
 REPORT_RECEIPT_SCHEMA_VERSION = "4.0.0"
+MODULE_RUN_SUMMARY_SCHEMA_VERSION = "3.0.0"
+MODULE_REPORT_RECEIPT_SCHEMA_VERSION = "5.0.0"
 JINJA_VERSION = "3.1.6"
 MATPLOTLIB_VERSION = "3.11.1"
 LOGOMAKER_VERSION = "0.8.7"
@@ -565,6 +568,13 @@ class ReportContext:
     render_metadata: Mapping[str, str]
     scientific_html_bytes: bytes
     evidence_html_bytes: bytes
+    analysis_module: LoadedAnalysisModuleV1 | None
+    module_input_snapshots: tuple[FileSnapshot, ...]
+    interpretation_boundary: str
+
+    @property
+    def report_contract(self) -> Literal["paired", "module"]:
+        return "module" if self.analysis_module is not None else "paired"
 
     @property
     def input_rechecks(self) -> tuple[tuple[FileSnapshot, str, bool], ...]:
@@ -573,6 +583,10 @@ class ReportContext:
             (self.template_snapshot, "report Jinja template", True),
             (self.css_snapshot, "report CSS resource", True),
         ]
+        checks.extend(
+            (snapshot, f"analysis-module artifact {snapshot.path.name!r}", True)
+            for snapshot in self.module_input_snapshots
+        )
         computational_snapshots: tuple[FileSnapshot, ...] = ()
         if self.computational_results is not None:
             computational = self.computational_results

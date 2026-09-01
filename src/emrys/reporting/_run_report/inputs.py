@@ -14,6 +14,7 @@ from emrys.reporting import _files
 from .models import (
     CANDIDATE_TERMINOLOGY,
     INTERPRETATION_BOUNDARY,
+    MODULE_RUN_SUMMARY_SCHEMA_VERSION,
     RUN_SUMMARY_SCHEMA_VERSION,
     FileSnapshot,
     ReportRenderError,
@@ -126,7 +127,13 @@ def _assert_input_recheck(
 def _load_run_summary(path: Path, *, source_root: Path) -> dict[str, Any]:
     try:
         document = contracts.load_json_object(path, "run-summary document")
-        errors = contracts.schema_errors("run-summary", document)
+        version = str(document.get("schema_version", ""))
+        errors = sorted(
+            contracts.schema_validator("run-summary", version).iter_errors(
+                document
+            ),
+            key=lambda error: tuple(str(part) for part in error.absolute_path),
+        )
         if errors:
             detail = "\n".join(
                 f"- {contracts.format_json_path(error.absolute_path)}: {error.message}"
@@ -136,14 +143,23 @@ def _load_run_summary(path: Path, *, source_root: Path) -> dict[str, Any]:
         contracts.validate_run_summary_semantics(document, source_root=source_root)
     except contracts.ContractValidationError as exc:
         _fail(str(exc))
-    if document["schema_version"] != RUN_SUMMARY_SCHEMA_VERSION:
+    if document["schema_version"] not in {
+        RUN_SUMMARY_SCHEMA_VERSION,
+        MODULE_RUN_SUMMARY_SCHEMA_VERSION,
+    }:
         _fail(f"Unsupported run-summary schema version: {document['schema_version']!r}")
-    if document["candidate_terminology"] != CANDIDATE_TERMINOLOGY:
+    if (
+        document["schema_version"] == RUN_SUMMARY_SCHEMA_VERSION
+        and document["candidate_terminology"] != CANDIDATE_TERMINOLOGY
+    ):
         _fail(
             "Run summary does not use the required candidate terminology: "
             f"{CANDIDATE_TERMINOLOGY}"
         )
-    if document["interpretation_boundary"] != INTERPRETATION_BOUNDARY:
+    if (
+        document["schema_version"] == RUN_SUMMARY_SCHEMA_VERSION
+        and document["interpretation_boundary"] != INTERPRETATION_BOUNDARY
+    ):
         _fail(
             "Run summary uses an unsupported interpretation boundary: "
             f"{document['interpretation_boundary']!r}"

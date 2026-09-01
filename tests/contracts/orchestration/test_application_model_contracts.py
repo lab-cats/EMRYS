@@ -278,6 +278,39 @@ def test_analysis_content_and_versioned_scope_formulas_are_bound() -> None:
     )
 
 
+def test_module_analysis_identity_binds_method_and_canonical_configuration() -> None:
+    inputs = analysis_inputs()
+    common = {
+        key: inputs[key] for key in ("samples", "partitions", "reference")
+    }
+    first = model.build_module_analysis_revision(
+        **common,
+        module_id="example.differential",
+        interface_version="emrys.analysis-module.v1",
+        module_version="v1",
+        configuration={"contrast": ["treated", "control"], "fdr": 0.05},
+    )
+    reordered = model.build_module_analysis_revision(
+        **common,
+        module_id="example.differential",
+        interface_version="emrys.analysis-module.v1",
+        module_version="v1",
+        configuration={"fdr": 0.05, "contrast": ["treated", "control"]},
+    )
+    changed = model.build_module_analysis_revision(
+        **common,
+        module_id="example.differential",
+        interface_version="emrys.analysis-module.v1",
+        module_version="v2",
+        configuration={"contrast": ["treated", "control"], "fdr": 0.05},
+    )
+
+    assert first.canonical_bytes == reordered.canonical_bytes
+    assert first.record["schema_version"] == "emrys.analysis-revision.v2"
+    assert first != changed
+    assert model.read_application_record(first.canonical_bytes) == first
+
+
 def test_execution_plan_canonicalizes_sets_graphs_tools_and_resource_maps() -> None:
     first = execution_plan()
     functional = functional_specification()

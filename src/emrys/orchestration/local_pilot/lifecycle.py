@@ -38,6 +38,7 @@ try:
 except ImportError:  # pragma: no cover - exercised only on unsupported platforms
     _fcntl = None  # type: ignore[assignment]
 
+from emrys.analyses import BUILTIN_PAIRED_CMH_MODULE_ID
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
     RUN_BINDING_SCHEMA_VERSION,
@@ -1375,6 +1376,10 @@ def _admit_request(
     ops.admit_runtime_context(attempt, request, storage_binding, initial_runtime_inspection)
     if successor is not None:
         try:
+            analysis_identity = successor.analysis_revision.record["identity"]
+            module_id = analysis_identity.get("analysis_module", {}).get(
+                "module_id", BUILTIN_PAIRED_CMH_MODULE_ID
+            )
             validate_successor_run(
                 analysis=successor.analysis_revision,
                 plan=successor.execution_plan,
@@ -1382,7 +1387,9 @@ def _admit_request(
                 profile=profile,
                 attempt=attempt,
                 resource_policy=config_document["resource_policy"],
-                observed_implementation_content_sha256=implementation_identity(source_root),
+                observed_implementation_content_sha256=implementation_identity(
+                    source_root, str(module_id)
+                ),
                 observed_backend_semantics_sha256=backend_semantics_identity(source_root),
             )
             inspection.admit_bound_processing_source(root, successor)

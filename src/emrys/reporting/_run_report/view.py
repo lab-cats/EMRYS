@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from decimal import Decimal
+import os
+from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from .candidate_display import (
     CandidateMotifEvidence,
@@ -945,12 +948,15 @@ def _attempt_lineage(summary: Mapping[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
-def _artifact_appendix(summary: Mapping[str, Any]) -> dict[str, Any]:
+def _artifact_appendix(
+    summary: Mapping[str, Any], *, include_adapter: bool = False
+) -> dict[str, Any]:
     return _table(
         "artifact-evidence-index",
         "Expected artifact evidence and selected source records",
         (
             "Artifact ID",
+            *(("Adapter",) if include_adapter else ()),
             "Step",
             "Scope type",
             "Scope ID",
@@ -966,6 +972,7 @@ def _artifact_appendix(summary: Mapping[str, Any]) -> dict[str, Any]:
         (
             (
                 artifact["artifact_id"],
+                *((artifact["adapter"],) if include_adapter else ()),
                 artifact["scope"]["step_id"],
                 artifact["scope"]["scope_type"],
                 artifact["scope"]["scope_id"],
@@ -1131,6 +1138,26 @@ def _document_view(
     }
 
 
+def _section(section_id: str, title: str, *blocks: dict[str, Any]) -> dict[str, Any]:
+    return {"id": section_id, "title": title, "blocks": blocks}
+
+
+def _category(
+    category_id: str,
+    title: str,
+    *sections: dict[str, Any],
+    open: bool | None = None,
+) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "id": category_id,
+        "title": title,
+        "sections": sections,
+    }
+    if open is not None:
+        result["open"] = open
+    return result
+
+
 def _primary_scientific_blocks(
     figures: Sequence[ScientificFigure],
     candidate_display: SelectedCandidateProjection | None,
@@ -1189,51 +1216,45 @@ def build_scientific_view(
         ),
         result_links=result_links,
         categories=(
-            {
-                "id": "scientific-category",
-                "title": "Scientific results",
-                "sections": (
-                    {
-                        "id": "scientific-summary-section",
-                        "title": "Scientific summary and selected candidates",
-                        "blocks": _scientific_summary_blocks(
-                            computational_results,
-                            computational_unavailable_reason,
-                            candidate_display,
-                        ),
-                    },
-                    {
-                        "id": "primary-scientific-figures-section",
-                        "title": "Primary findings",
-                        "blocks": _primary_scientific_blocks(
-                            ordered_figures,
-                            candidate_display,
-                        ),
-                    },
-                    {
-                        "id": "supporting-scientific-figures-section",
-                        "title": "Supporting scientific analyses appendix",
-                        "blocks": _scientific_figure_blocks(
-                            ordered_figures,
-                            SUPPORTING_SCIENTIFIC_FIGURE_IDS,
-                        ),
-                    },
-                    {
-                        "id": "figure-guide-section",
-                        "title": "Scientific figure guide appendix",
-                        "blocks": _figure_guide_blocks(ordered_figures),
-                    },
-                    {
-                        "id": "methods-data-note-section",
-                        "title": "Methods and complete-data note",
-                        "blocks": _methods_data_blocks(
-                            computational_results,
-                            computational_unavailable_reason,
-                            scientific_context_unavailable_reason,
-                        ),
-                    },
+            _category(
+                "scientific-category",
+                "Scientific results",
+                _section(
+                    "scientific-summary-section",
+                    "Scientific summary and selected candidates",
+                    *_scientific_summary_blocks(
+                        computational_results,
+                        computational_unavailable_reason,
+                        candidate_display,
+                    ),
                 ),
-            },
+                _section(
+                    "primary-scientific-figures-section",
+                    "Primary findings",
+                    *_primary_scientific_blocks(ordered_figures, candidate_display),
+                ),
+                _section(
+                    "supporting-scientific-figures-section",
+                    "Supporting scientific analyses appendix",
+                    *_scientific_figure_blocks(
+                        ordered_figures, SUPPORTING_SCIENTIFIC_FIGURE_IDS
+                    ),
+                ),
+                _section(
+                    "figure-guide-section",
+                    "Scientific figure guide appendix",
+                    *_figure_guide_blocks(ordered_figures),
+                ),
+                _section(
+                    "methods-data-note-section",
+                    "Methods and complete-data note",
+                    *_methods_data_blocks(
+                        computational_results,
+                        computational_unavailable_reason,
+                        scientific_context_unavailable_reason,
+                    ),
+                ),
+            ),
         ),
     )
 
@@ -1269,95 +1290,217 @@ def build_evidence_view(
         ),
         result_links=result_links,
         categories=(
-            {
-                "id": "overview-category",
-                "title": "Run overview",
-                "open": True,
-                "sections": (
-                    {
-                        "id": "run-identity-section",
-                        "title": "Run identity",
-                        "blocks": (_run_identity(summary),),
-                    },
-                    {
-                        "id": "status-section",
-                        "title": "Computational status",
-                        "blocks": tuple(_status_blocks(summary)),
-                    },
-                    {
-                        "id": "limitations-section",
-                        "title": "Computational limitations",
-                        "blocks": (_limitations(summary),),
-                    },
-                    {
-                        "id": "scope-matrix-section",
-                        "title": "Expected computational scopes",
-                        "blocks": (_scope_matrix(summary),),
-                    },
+            _category(
+                "overview-category",
+                "Run overview",
+                _section(
+                    "run-identity-section", "Run identity", _run_identity(summary)
                 ),
-            },
+                _section(
+                    "status-section",
+                    "Computational status",
+                    *_status_blocks(summary),
+                ),
+                _section(
+                    "limitations-section",
+                    "Computational limitations",
+                    _limitations(summary),
+                ),
+                _section(
+                    "scope-matrix-section",
+                    "Expected computational scopes",
+                    _scope_matrix(summary),
+                ),
+                open=True,
+            ),
+            _category(
+                "evidence-category",
+                "Evidence and provenance",
+                _section(
+                    "step09-sources-section",
+                    "Scientific report sources",
+                    _step09_sources(
+                        computational_results, computational_unavailable_reason
+                    ),
+                    _scientific_context_sources(
+                        scientific_context_results,
+                        scientific_context_unavailable_reason,
+                    ),
+                    _scientific_context_policy(
+                        scientific_context_results,
+                        scientific_context_unavailable_reason,
+                    ),
+                ),
+                _section("qc-metrics-section", "QC metrics", _qc_metrics(summary)),
+                _section(
+                    "artifact-appendix-section",
+                    "Artifact appendix",
+                    _artifact_appendix(summary),
+                ),
+                _section(
+                    "tools-issues-section",
+                    "Tools and issues",
+                    *_tools_and_issues(summary),
+                ),
+                _section(
+                    "report-provenance-section",
+                    "Report provenance",
+                    _report_provenance(metadata),
+                    _scientific_figure_provenance(scientific_figures),
+                ),
+                open=False,
+            ),
+            _category(
+                "operations-category",
+                "Operations",
+                _section(
+                    "attempt-lineage-section",
+                    "Attempt lineage",
+                    _note(f"Inspect this Run: {inspect_command}"),
+                    *_attempt_lineage(summary),
+                ),
+                open=False,
+            ),
+        ),
+    )
+
+
+def _module_result_links(
+    summary: Mapping[str, Any],
+    *,
+    output_dir: Path,
+    source_root: Path,
+) -> tuple[dict[str, str], ...]:
+    links: list[dict[str, str]] = []
+    for artifact in summary["artifacts"]:
+        if (
+            artifact["scope"]["scope_type"] != "analysis"
+            or artifact["scope"]["scope_id"]
+            != summary["run_contract"]["primary_analysis_id"]
+        ):
+            continue
+        source = artifact["source"]
+        if source is None:
+            continue
+        declared = Path(source["path"])
+        target = declared if declared.is_absolute() else source_root / declared
+        links.append(
             {
-                "id": "evidence-category",
-                "title": "Evidence and provenance",
-                "open": False,
-                "sections": (
-                    {
-                        "id": "step09-sources-section",
-                        "title": "Scientific report sources",
-                        "blocks": (
-                            _step09_sources(
-                                computational_results,
-                                computational_unavailable_reason,
+                "label": f"Analysis artifact: {artifact['artifact_id']}",
+                "description": "Admitted analysis artifact",
+                "href": quote(
+                    Path(os.path.relpath(target, start=output_dir)).as_posix(),
+                    safe="/._-",
+                ),
+            }
+        )
+    return tuple(links)
+
+
+def build_module_evidence_view(
+    summary: Mapping[str, Any],
+    metadata: Mapping[str, str],
+    *,
+    output_dir: Path,
+    source_root: Path,
+    inspect_command: str,
+    interpretation_boundary: str,
+) -> dict[str, Any]:
+    """Project core-owned evidence and operations for a module Run."""
+
+    policy = summary["analysis_policy"]["record"]
+    module = policy["module"]
+    result_links = _module_result_links(
+        summary,
+        output_dir=output_dir,
+        source_root=source_root,
+    )
+    return _document_view(
+        summary,
+        metadata,
+        report_view="evidence",
+        document_title=f"EMRYS evidence report: {summary['run_id']}",
+        banner=interpretation_boundary,
+        introduction=(
+            "This read-only view records the immutable Run, installed analysis "
+            "module identity, admitted artifacts, and execution evidence."
+        ),
+        end_note="End of evidence report. Report generation changed no Run state.",
+        result_links=result_links,
+        categories=(
+            _category(
+                "overview-category",
+                "Run overview",
+                _section(
+                    "module-run-identity-section",
+                    "Run and module identity",
+                    _run_identity(summary),
+                    _key_value_table(
+                        "module-identity",
+                        "Persisted installed-module identity",
+                        tuple(
+                            (key.replace("_", " ").title(), value)
+                            for key, value in module.items()
+                        ),
+                    ),
+                    _artifact_overview(summary),
+                ),
+                _section(
+                    "module-scope-matrix-section",
+                    "Expected computational scopes",
+                    _scope_matrix(summary),
+                ),
+                open=True,
+            ),
+            _category(
+                "evidence-category",
+                "Evidence and provenance",
+                _section(
+                    "module-artifact-appendix-section",
+                    "Artifact appendix",
+                    _artifact_appendix(summary, include_adapter=True),
+                ),
+                _section(
+                    "module-tools-issues-section",
+                    "Tools and issues",
+                    *_tools_and_issues(summary),
+                ),
+                _section(
+                    "module-report-provenance-section",
+                    "Report provenance",
+                    _key_value_table(
+                        "module-report-provenance",
+                        "Core report renderer provenance",
+                        (
+                            ("Analysis policy", summary["analysis_policy"]["path"]),
+                            (
+                                "Analysis policy SHA-256",
+                                summary["analysis_policy"]["sha256"],
                             ),
-                            _scientific_context_sources(
-                                scientific_context_results,
-                                scientific_context_unavailable_reason,
+                            ("Run summary", metadata["run_summary_path"]),
+                            (
+                                "Run summary SHA-256",
+                                metadata["run_summary_sha256"],
                             ),
-                            _scientific_context_policy(
-                                scientific_context_results,
-                                scientific_context_unavailable_reason,
+                            (
+                                "Renderer",
+                                f"{metadata['renderer']} {metadata['renderer_version']}",
                             ),
                         ),
-                    },
-                    {
-                        "id": "qc-metrics-section",
-                        "title": "QC metrics",
-                        "blocks": (_qc_metrics(summary),),
-                    },
-                    {
-                        "id": "artifact-appendix-section",
-                        "title": "Artifact appendix",
-                        "blocks": (_artifact_appendix(summary),),
-                    },
-                    {
-                        "id": "tools-issues-section",
-                        "title": "Tools and issues",
-                        "blocks": tuple(_tools_and_issues(summary)),
-                    },
-                    {
-                        "id": "report-provenance-section",
-                        "title": "Report provenance",
-                        "blocks": (
-                            _report_provenance(metadata),
-                            _scientific_figure_provenance(scientific_figures),
-                        ),
-                    },
+                    ),
                 ),
-            },
-            {
-                "id": "operations-category",
-                "title": "Operations",
-                "open": False,
-                "sections": (
-                    {
-                        "id": "attempt-lineage-section",
-                        "title": "Attempt lineage",
-                        "blocks": (
-                            _note(f"Inspect this Run: {inspect_command}"),
-                            *_attempt_lineage(summary),
-                        ),
-                    },
+                open=False,
+            ),
+            _category(
+                "operations-category",
+                "Operations",
+                _section(
+                    "module-attempt-lineage-section",
+                    "Attempt lineage",
+                    _note(f"Inspect this Run: {inspect_command}"),
+                    *_attempt_lineage(summary),
                 ),
-            },
+                open=False,
+            ),
         ),
     )

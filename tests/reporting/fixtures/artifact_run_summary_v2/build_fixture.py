@@ -6,12 +6,15 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import json
 import os
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from emrys import analyses
+from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys.contracts.artifacts import api as ARTIFACT_CONTRACTS
 from emrys.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
 from emrys.reporting._artifact_index import context as ARTIFACT_CONTEXT
@@ -28,6 +31,14 @@ from tests.reporting.fixtures.artifact_adapters_v1 import (
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 FIXED_EPOCH = "1700000000"
+PROFILE = analyses.compose_profile(
+    json.loads(
+        (REPO_ROOT / "workflow/contracts/local_cmh_v2.json").read_text(
+            encoding="utf-8"
+        )
+    ),
+    analysis_module_v1(),
+)
 
 
 @dataclass(frozen=True)
@@ -94,6 +105,7 @@ def publish_adapter_fixture(fixture: Any) -> None:
             argparse.Namespace(
                 run_id=fixture.run_id,
                 run_contract=fixture.run_contract,
+                profile=PROFILE,
                 inventory=fixture.inventory,
                 output_root=fixture.output_root,
                 execute=True,

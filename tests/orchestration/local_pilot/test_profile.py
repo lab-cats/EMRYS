@@ -1,4 +1,4 @@
-"""Exact contract tests for the fixed local paired-CMH profile."""
+"""Exact contract tests for the processing core and composed paired-CMH profile."""
 
 from __future__ import annotations
 
@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from emrys import analyses
+from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.artifact_inventory import report_output_root
@@ -199,8 +201,13 @@ analysis.{analysis_id}.context_validation|10|analysis|analysis|step10_validation
 
 
 @pytest.fixture(scope="module")
-def profile() -> dict[str, object]:
+def static_profile() -> dict[str, object]:
     return orchestration_contracts.load_json_object(PROFILE_PATH)
+
+
+@pytest.fixture(scope="module")
+def profile(static_profile: dict[str, object]) -> dict[str, object]:
+    return analyses.compose_profile(static_profile, analysis_module_v1())
 
 
 def _expected_templates() -> list[dict[str, object]]:
@@ -308,9 +315,10 @@ def test_profile_covers_exact_public_adapter_roster_with_only_declared_reuse(
 
 def test_profile_expands_to_exact_formula_and_contiguous_scopes(
     tmp_path: Path,
+    static_profile: dict[str, object],
     profile: dict[str, object],
 ) -> None:
-    analysis = admit_project(build(tmp_path), profile).select_analysis()
+    analysis = admit_project(build(tmp_path), static_profile).select_analysis()
     source = analysis.workflow_inputs
     source["run_id"] = f"run-{'0' * 64}"
     bundle = build_reporting_bundle(

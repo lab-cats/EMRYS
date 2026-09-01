@@ -22,6 +22,7 @@ from types import SimpleNamespace
 import pytest
 import yaml
 
+from emrys import analyses
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
     PROCESSING_STEP_IDS,
@@ -53,8 +54,10 @@ from emrys.orchestration.local_pilot import (
     inspection,
     lifecycle,
     materialization,
+    normalization,
     onboarding,
     reporting_operation,
+    run_implementation,
     task,
 )
 from emrys.orchestration.local_pilot.materialization import (
@@ -75,7 +78,7 @@ from emrys.orchestration.local_pilot.resource_policy import (
 )
 from emrys.orchestration.local_pilot.run_implementation import (
     backend_semantics_identity,
-    implementation_identity,
+    implementation_identity as _implementation_identity,
 )
 from tests.orchestration.local_pilot.fixture import build, build_legacy
 from tests.orchestration.local_pilot.fixtures.b5_doubles import with_owner_doubles
@@ -85,6 +88,12 @@ _POLICY_BYTES, POLICY_CHECKS = load_runtime_profile_contract(
     onboarding.runtime_policy_path()
 )
 RUNTIME_CHECKS = tuple((check.check_id, check.check_type) for check in POLICY_CHECKS)
+
+
+def implementation_identity(source_root: Path) -> str:
+    return _implementation_identity(source_root, "emrys.paired-cmh")
+
+
 R_PACKAGES = tuple(
     (check.check_id, check.target)
     for check in POLICY_CHECKS
@@ -133,6 +142,7 @@ def _readiness(
     legacy: bool = False,
     replicate_count: int = 2,
     sample_ids: list[str] | None = None,
+    module_id: str | None = None,
 ) -> tuple[doctor.DoctorResult, object, Path, Path]:
     tmp_path.mkdir(parents=True, exist_ok=True)
     workspace = tmp_path / "project"
@@ -142,6 +152,19 @@ def _readiness(
         if legacy
         else build(workspace, replicate_count=replicate_count)
     )
+    if module_id is not None:
+        definition = yaml.safe_load(request.read_text(encoding="utf-8"))
+        analysis = definition["analyses"]["primary"]
+        partitions = analysis.pop("partitions")
+        definition["analyses"]["primary"] = {
+            "module": module_id,
+            "partitions": partitions,
+            "config": analysis,
+        }
+        request.write_text(
+            yaml.safe_dump(definition, sort_keys=False),
+            encoding="utf-8",
+        )
     if sample_ids is not None:
         definition = yaml.safe_load(request.read_text(encoding="utf-8"))
         definition["analyses"]["primary"]["sample_ids"] = sample_ids
@@ -437,6 +460,65 @@ def _dispatch_records(plan) -> list[dict[str, object]]:
     return [json.loads(item.data) for item in plan.new_dispatch_files]
 
 
+def _with_module_planner(monkeypatch, readiness, planner):
+    descriptor = readiness.analysis.module.descriptor
+    descriptor = replace(
+        descriptor,
+        tasks=tuple(
+            task._replace(plan=lambda context, task=task: planner(task, context))
+            for task in descriptor.tasks
+        ),
+    )
+    loaded = replace(readiness.analysis.module, descriptor=descriptor)
+    analysis = replace(
+        readiness.analysis,
+        module=loaded,
+    )
+    monkeypatch.setattr(
+        analyses, "load_analysis_module", lambda _module_id, **_kwargs: loaded
+    )
+    return replace(readiness, analysis=analysis), descriptor
+
+
+def _install_external_analysis_module(monkeypatch: pytest.MonkeyPatch) -> str:
+    module_id = "collaborator.dispatch-proof"
+    installed = analyses.load_analysis_module(analyses.BUILTIN_PAIRED_CMH_MODULE_ID)
+    selected_task = installed.descriptor.tasks[0]._replace(
+        owner_key="collaborator.analysis.rank.v1",
+        rule_name="run_collaborator_analysis",
+    )
+    loaded = replace(
+        installed,
+        descriptor=replace(
+            installed.descriptor,
+            module_id=module_id,
+            module_version="1.0.0",
+            tasks=(selected_task,),
+        ),
+        trust="external",
+        distribution_name="collaborator-analysis",
+        distribution_version="1.0.0",
+        entry_point_value="collaborator_analysis:analysis_module_v1",
+    )
+    loader = lambda _module_id, **_kwargs: loaded
+    monkeypatch.setattr(analyses, "load_analysis_module", loader)
+    monkeypatch.setattr(normalization, "load_analysis_module", loader)
+    monkeypatch.setattr(run_implementation, "load_analysis_module", loader)
+    return module_id
+
+
+def _undeclared_predecessor(_task, context):
+    context.artifact_path("00a", context.reference_id, "step00a_star_index_v1")
+
+
+def _undeclared_runtime(_task, context):
+    context.runtime_path("bcftools")
+
+
+def _omitted_predecessor(task, context):
+    return task.plan(context)._replace(input_paths=())
+
+
 def _workflow_config(plan) -> dict[str, object]:
     return json.loads(
         next(item.data for item in plan.attempt_files if item.path == plan.config_path)
@@ -554,7 +636,9 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert not (plan.workspace / "runs").exists()
     assert not (plan.workspace / "logs").exists()
     assert plan.lifecycle_request.operation == "execute"
-    assert json.loads(plan.lifecycle_request.attempt_record_bytes) == plan.attempt_record
+    assert (
+        json.loads(plan.lifecycle_request.attempt_record_bytes) == plan.attempt_record
+    )
     assert (
         plan.attempt_record["executor"]
         == plan.run.execution_plan.record["identity"]["backend"]["backend"]
@@ -739,6 +823,9 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     )
     assert_root(step09, "--step08-root", ".step08_sites.tsv", 1)
     assert_root(step09, "--output-root", ".cmh_all_sites.tsv", 1)
+    assert producer_argv[producer_argv.index("--r-script") + 1].endswith(
+        "/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R"
+    )
     step10 = next(
         record
         for record in records
@@ -746,7 +833,15 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
         == "emrys.analysis.project_candidate_scientific_context.v1"
     )
     assert "scientific_context_projection.sh" in " ".join(step10["producer_argv"])
-    assert "--motif-catalog" in step10["producer_argv"]
+    assert step10["producer_argv"][
+        step10["producer_argv"].index("--r-script") + 1
+    ].endswith(
+        "/scientific_context_projection/scientific_context_projection.R"
+    )
+    assert any(
+        str(item["path"]).endswith("resources/pum_motifs_v1.tsv")
+        for item in step10["inputs"]
+    )
     assert "scientific-context-projection" in step10["validator_argv"]
     assert_root(step10, "--output-root", ".candidate_context.tsv", 1)
     assert len(step10["inputs"]) == 6
@@ -777,6 +872,115 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
         set(item) == {"name", "version", "path", "resolved_path", "sha256"}
         for item in plan.attempt_record["required_tools"]
     )
+
+
+def test_installed_external_module_admits_one_immutable_run_and_dispatches_its_tasks(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module_id = _install_external_analysis_module(monkeypatch)
+    readiness, resources, _project, workspace = _readiness(
+        tmp_path / "case",
+        module_id=module_id,
+    )
+
+    selected = readiness.analysis.module
+    assert selected.descriptor.module_id == module_id
+    assert selected.trust == "external"
+    assert selected.distribution_name == "collaborator-analysis"
+    assert selected.distribution_version == "1.0.0"
+    assert selected.entry_point_value == "collaborator_analysis:analysis_module_v1"
+    assert (
+        readiness.analysis.revision.record["identity"]["analysis_module"]["module_id"]
+        == module_id
+    )
+
+    run = _run_candidate(readiness, resources)
+    plan = build_attempt_plan(
+        run,
+        readiness,
+        workspace,
+        resources=resources,
+        operation="execute",
+    )
+    records = {
+        str(item["machine_key"]): item
+        for item in _dispatch_records(plan)
+        if str(item["machine_key"]).startswith("collaborator.analysis.")
+    }
+
+    assert plan.run.run_id == run.run_id
+    assert plan.run.analysis.revision.canonical_bytes == (
+        readiness.analysis.revision.canonical_bytes
+    )
+    assert readiness.analysis.profile["profile_id"] == "emrys.profile.local_cmh"
+    assert readiness.analysis.profile["profile_version"] == "v2"
+    assert tuple(records) == ("collaborator.analysis.rank.v1",)
+    record = records["collaborator.analysis.rank.v1"]
+    assert "emrys.analyses.paired_cmh_candidate_ranking.producer" in " ".join(
+        record["producer_argv"]
+    )
+    assert len(record["inputs"]) == 5
+
+
+@pytest.mark.parametrize(
+    ("planner", "message"),
+    (
+        (_undeclared_predecessor, "undeclared Step 00a predecessor"),
+        (_undeclared_runtime, "undeclared runtime check bcftools"),
+        (_omitted_predecessor, "omitted declared predecessor"),
+    ),
+)
+def test_module_planner_enforces_declared_dependencies(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    planner,
+    message: str,
+) -> None:
+    readiness, resources, _project, workspace = _readiness(tmp_path)
+    readiness, _descriptor = _with_module_planner(monkeypatch, readiness, planner)
+    with pytest.raises(MaterializationError, match=message):
+        build_attempt_plan(
+            _run_candidate(readiness, resources),
+            readiness,
+            workspace,
+            resources=resources,
+            operation="execute",
+        )
+
+
+def test_module_resource_minimum_is_checked_against_the_selected_plan(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    readiness, resources, _project, workspace = _readiness(tmp_path)
+    descriptor = readiness.analysis.module.descriptor
+    descriptor = replace(
+        descriptor,
+        tasks=(
+            descriptor.tasks[0]._replace(stage_memory_mb=2048),
+            *descriptor.tasks[1:],
+        ),
+    )
+    analysis = replace(
+        readiness.analysis,
+        module=replace(readiness.analysis.module, descriptor=descriptor),
+    )
+    readiness = replace(readiness, analysis=analysis)
+    monkeypatch.setattr(
+        analyses,
+        "load_analysis_module",
+        lambda _module_id, **_kwargs: readiness.analysis.module,
+    )
+
+    with pytest.raises(MaterializationError, match="Step 09 requires at least 2048"):
+        build_attempt_plan(
+            _run_candidate(readiness, resources),
+            readiness,
+            workspace,
+            resources=resources,
+            operation="execute",
+        )
 
 
 def test_processing_plan_is_a_distinct_closed_31_task_run(tmp_path: Path) -> None:
@@ -843,10 +1047,9 @@ def test_subset_plan_materializes_one_bound_analysis_sample_manifest(
     )
     selected_bytes = readiness.analysis.selected_sample_manifest_bytes
     assert selected_bytes is not None
-    assert (
-        {item.path: item.data for item in plan.attempt_files}[manifest]
-        == selected_bytes
-    )
+    assert {item.path: item.data for item in plan.attempt_files}[
+        manifest
+    ] == selected_bytes
     manifest_binding = {
         "path": str(manifest),
         "size_bytes": len(selected_bytes),
@@ -927,9 +1130,7 @@ def test_processing_source_rejects_every_incompatible_target_dimension(
     source_samples = [dict(row) for row in identity["samples"]]
     for condition in ("EV", "PUM1"):
         row = next(item for item in source_samples if item["condition"] == condition)
-        source_samples.append(
-            {**row, "sample_id": f"{condition}_3", "replicate": "3"}
-        )
+        source_samples.append({**row, "sample_id": f"{condition}_3", "replicate": "3"})
     source_analysis = build_analysis_revision(
         samples=source_samples,
         partitions=identity["partitions"],
@@ -1496,6 +1697,29 @@ def test_implementation_identity_closes_direct_scientific_dependencies(
         path.write_bytes(original)
 
     assert implementation_identity(checkout) == baseline
+
+
+def test_implementation_identity_excludes_unselected_repo_analysis_module(
+    tmp_path: Path,
+) -> None:
+    checkout, _ = _clean_checkout(tmp_path)
+    baseline = implementation_identity(checkout)
+    unrelated = checkout / "src/emrys/analyses/unrelated_differential"
+    unrelated.mkdir()
+    (unrelated / "__init__.py").write_text("UNRELATED = True\n", encoding="utf-8")
+    with (checkout / "pyproject.toml").open("a", encoding="utf-8") as stream:
+        stream.write("\n[tool.unrelated-analysis]\nenabled = true\n")
+
+    assert implementation_identity(checkout) == baseline
+
+
+def test_implementation_identity_binds_selected_module_content(tmp_path: Path) -> None:
+    checkout, _ = _clean_checkout(tmp_path)
+    baseline = implementation_identity(checkout)
+    selected = checkout / "src/emrys/analyses/paired_cmh_candidate_ranking/producer.py"
+    selected.write_bytes(selected.read_bytes() + b"\n# selected module change\n")
+
+    assert implementation_identity(checkout) != baseline
 
 
 @pytest.mark.parametrize(
@@ -2706,9 +2930,7 @@ def test_processing_run_dry_run_is_no_write_and_truthfully_scoped(
     assert control.run_from_args(arguments) == 0
 
     rendered = capsys.readouterr().err
-    assert (
-        "Scientific boundary: sample processing (through Step 06)" in rendered
-    )
+    assert "Scientific boundary: sample processing (through Step 06)" in rendered
     assert "Work: 31 pending, 0 reusable" in rendered
     assert "Reporting: not applicable to this partial scientific Run" in rendered
     assert "Dry-run complete; no workspace state was written." in rendered
@@ -3826,9 +4048,7 @@ def _doubled_lifecycle_ops(
     *,
     fail_after_rule: str | None = None,
 ) -> lifecycle.LifecycleOps:
-    def run_workflow(
-        argv: tuple[str, ...], cwd: Path
-    ) -> lifecycle.WorkflowResult:
+    def run_workflow(argv: tuple[str, ...], cwd: Path) -> lifecycle.WorkflowResult:
         separator = argv.index("--")
         invoked = (
             (*argv[:separator], "--until", fail_after_rule, *argv[separator:])
@@ -3851,7 +4071,9 @@ def _doubled_lifecycle_ops(
             message=(
                 "controlled failure between owner tasks"
                 if injected
-                else completed.stdout if completed.returncode else None
+                else completed.stdout
+                if completed.returncode
+                else None
             ),
         )
 
@@ -4360,4 +4582,6 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         )
         == 2
     )
-    assert "not at an admissible between-task resume boundary" in capsys.readouterr().err
+    assert (
+        "not at an admissible between-task resume boundary" in capsys.readouterr().err
+    )

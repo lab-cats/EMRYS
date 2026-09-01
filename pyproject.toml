@@ -34,6 +34,9 @@ Issues = "https://github.com/lab-cats/EMRYS/issues"
 [project.scripts]
 emrys = "emrys.__main__:main"
 
+[project.entry-points."emrys.analysis_modules"]
+"emrys.paired-cmh" = "emrys.analyses.paired_cmh_candidate_ranking:analysis_module_v1"
+
 [dependency-groups]
 dev = [
     "coverage==7.15.2",
@@ -69,6 +72,7 @@ namespaces = false
     "schemas/artifacts/v2/*.json",
     "schemas/artifacts/v3/*.json",
     "schemas/artifacts/v4/*.json",
+    "schemas/artifacts/v5/*.json",
     "schemas/orchestration/v1/*.json",
     "schemas/orchestration/v2/*.json",
     "schemas/orchestration/v3/*.json",

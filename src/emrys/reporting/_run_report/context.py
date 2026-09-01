@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import quote
 
+from emrys import analyses
 from emrys.libraries.source_authority import (
     ArtifactSourceRoot,
     SourceCheckout,
@@ -40,6 +41,7 @@ from .models import (
     JINJA_VERSION,
     LOGOMAKER_VERSION,
     MATPLOTLIB_VERSION,
+    MODULE_RUN_SUMMARY_SCHEMA_VERSION,
     PRODUCER,
     PRODUCER_VERSION,
     BOUNDARY_BANNER,
@@ -52,7 +54,12 @@ from .models import (
 from .receipt import read_receipt_tsv
 from .scientific_context import admit_scientific_context_results
 from .validation import render_html
-from .view import build_evidence_view, build_scientific_view
+from .view import (
+    build_evidence_view,
+    build_module_evidence_view,
+    build_scientific_view,
+)
+from emrys.reporting._artifact_index.registry import admit_analysis_module
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +74,57 @@ DEFAULT_REPORT_IDENTITY_OPS = ReportIdentityOps(
 )
 
 
+def render_paired_scientific_report(
+    context: analyses.AnalysisReportContextV1,
+) -> analyses.AnalysisScientificReportV1:
+    """Render the existing paired-CMH scientific view through its module hook."""
+
+    summary = dict(context.run_summary)
+    computational, computational_reason = admit_computational_results(
+        summary,
+        source_root=context.artifact_source_root,
+    )
+    scientific_context, scientific_context_reason = admit_scientific_context_results(
+        summary,
+        source_root=context.artifact_source_root,
+        computational_results=computational,
+    )
+    candidate_display = build_candidate_display(
+        computational,
+        scientific_context,
+        scientific_context_reason,
+    )
+    figures = build_scientific_figures(
+        computational,
+        computational_reason,
+        scientific_context,
+        scientific_context_reason,
+        candidate_display,
+    )
+    css = _resource_snapshot(CSS_RESOURCE, "report CSS resource").path.read_text(
+        encoding="utf-8"
+    )
+    view = build_scientific_view(
+        summary,
+        {},
+        computational_results=computational,
+        computational_unavailable_reason=computational_reason,
+        scientific_context_results=scientific_context,
+        scientific_context_unavailable_reason=scientific_context_reason,
+        candidate_display=candidate_display,
+        scientific_figures=figures,
+        result_links=_result_links(
+            context.output_dir,
+            computational,
+            scientific_context,
+        ),
+    )
+    return analyses.AnalysisScientificReportV1(
+        interpretation_boundary=BOUNDARY_BANNER,
+        html_bytes=render_html(view, css),
+    )
+
+
 def _result_links(
     output_dir: Path,
     computational_results: ComputationalResults | None,
@@ -76,11 +134,13 @@ def _result_links(
 
     def append(label: str, description: str, target: Path) -> None:
         relative = os.path.relpath(target, start=output_dir)
-        links.append({
-            "label": label,
-            "description": description,
-            "href": quote(Path(relative).as_posix(), safe="/._-"),
-        })
+        links.append(
+            {
+                "label": label,
+                "description": description,
+                "href": quote(Path(relative).as_posix(), safe="/._-"),
+            }
+        )
 
     if computational_results is not None:
         append(
@@ -109,9 +169,7 @@ def _inspect_command(source_root: Path, output_root: Path) -> str:
     )
     if output_root not in canonical_roots:
         return "emrys inspect run --run-root <run-root>"
-    return shlex.join(
-        ("emrys", "inspect", "run", "--run-root", str(source_root))
-    )
+    return shlex.join(("emrys", "inspect", "run", "--run-root", str(source_root)))
 
 
 def expected_html_identity(
@@ -123,11 +181,12 @@ def expected_html_identity(
         "data-run-id": context.summary["run_id"],
     }
     if report_view == "scientific":
-        identity["data-selected-candidate-count"] = str(
-            len(context.candidate_display.candidates)
-            if context.candidate_display is not None
-            else 0
-        )
+        if context.analysis_module is None:
+            identity["data-selected-candidate-count"] = str(
+                len(context.candidate_display.candidates)
+                if context.candidate_display is not None
+                else 0
+            )
         return identity
     metadata = context.render_metadata
     identity.update(
@@ -140,6 +199,89 @@ def expected_html_identity(
         }
     )
     return identity
+
+
+def _render_module_scientific_report(
+    summary: dict[str, object],
+    *,
+    source_root: Path,
+    output_dir: Path,
+    admitted_module: analyses.LoadedAnalysisModuleV1 | None,
+) -> tuple[
+    analyses.LoadedAnalysisModuleV1,
+    bytes,
+    str,
+    tuple[FileSnapshot, ...],
+]:
+    policy = summary["analysis_policy"]["record"]
+    assert isinstance(policy, dict)
+    module = admit_analysis_module(policy, admitted=admitted_module)
+    declared = {
+        artifact.adapter: artifact
+        for task in module.descriptor.tasks
+        for artifact in task.outputs
+        if artifact.kind != "validation_report"
+    }
+    snapshots: list[FileSnapshot] = []
+    report_artifacts = []
+    for record in summary["artifacts"]:
+        if (
+            record["scope"]["scope_type"] != "analysis"
+            or record["scope"]["scope_id"] != policy["analysis_id"]
+            or record["adapter"] not in declared
+            or record["source"] is None
+        ):
+            continue
+        source = record["source"]
+        declared_path = Path(source["path"])
+        path = declared_path if declared_path.is_absolute() else source_root / declared_path
+        snapshot = _snapshot_regular(path, f"analysis artifact {record['artifact_id']!r}")
+        if snapshot.sha256 != source["sha256"]:
+            _fail(
+                "Analysis artifact differs from the admitted run summary: "
+                f"{record['artifact_id']}"
+            )
+        artifact = declared[record["adapter"]]
+        snapshots.append(snapshot)
+        report_artifacts.append(
+            analyses.AnalysisReportArtifactV1(
+                adapter=record["adapter"],
+                artifact_id=record["artifact_id"],
+                path=snapshot.path,
+                sha256=snapshot.sha256,
+                media_type=analyses.ANALYSIS_MEDIA_TYPE_BY_KIND[artifact.kind],
+            )
+        )
+    try:
+        rendered = module.descriptor.render_scientific_report(
+            analyses.AnalysisReportContextV1(
+                run_id=summary["run_id"],
+                analysis_id=policy["analysis_id"],
+                module_id=module.descriptor.module_id,
+                output_dir=output_dir,
+                artifact_source_root=source_root,
+                run_summary=summary,
+                artifacts=tuple(report_artifacts),
+            )
+        )
+    except Exception as exc:
+        _fail(f"Analysis module scientific reporter failed: {exc}")
+    if (
+        not isinstance(rendered, analyses.AnalysisScientificReportV1)
+        or not isinstance(rendered.html_bytes, bytes)
+        or not rendered.html_bytes
+        or not isinstance(rendered.interpretation_boundary, str)
+        or not rendered.interpretation_boundary.strip()
+        or rendered.interpretation_boundary.strip()
+        != rendered.interpretation_boundary
+    ):
+        _fail("Analysis module returned an invalid scientific report")
+    return (
+        module,
+        rendered.html_bytes,
+        rendered.interpretation_boundary,
+        tuple(snapshots),
+    )
 
 
 def _resource_snapshot(resource: str, label: str) -> FileSnapshot:
@@ -222,6 +364,7 @@ def prepare_context(
     source_checkout: SourceCheckout,
     artifact_source_root: ArtifactSourceRoot,
     identity_ops: ReportIdentityOps = DEFAULT_REPORT_IDENTITY_OPS,
+    analysis_module: analyses.LoadedAnalysisModuleV1 | None = None,
 ) -> ReportContext:
     source_root = artifact_source_root.root
     run_summary_path = _explicit_path(arguments.run_summary, "run-summary path")
@@ -236,11 +379,16 @@ def prepare_context(
             f"<run-id>/{expected_name}; observed {run_summary_path}"
         )
 
+    module_summary = summary["schema_version"] == MODULE_RUN_SUMMARY_SCHEMA_VERSION
     computational_results, computational_unavailable_reason = (
-        admit_computational_results(summary, source_root=source_root)
+        (None, None)
+        if module_summary
+        else admit_computational_results(summary, source_root=source_root)
     )
     scientific_context_results, scientific_context_unavailable_reason = (
-        admit_scientific_context_results(
+        (None, None)
+        if module_summary
+        else admit_scientific_context_results(
             summary,
             source_root=source_root,
             computational_results=computational_results,
@@ -274,18 +422,19 @@ def prepare_context(
             f"Installed Jinja2 version must match the lock: observed "
             f"{installed_jinja}; expected {JINJA_VERSION}"
         )
-    installed_matplotlib = importlib.metadata.version("matplotlib")
-    if installed_matplotlib != MATPLOTLIB_VERSION:
-        _fail(
-            "Installed Matplotlib version must match the lock: observed "
-            f"{installed_matplotlib}; expected {MATPLOTLIB_VERSION}"
-        )
-    installed_logomaker = importlib.metadata.version("logomaker")
-    if installed_logomaker != LOGOMAKER_VERSION:
-        _fail(
-            "Installed Logomaker version must match the lock: observed "
-            f"{installed_logomaker}; expected {LOGOMAKER_VERSION}"
-        )
+    if not module_summary:
+        installed_matplotlib = importlib.metadata.version("matplotlib")
+        if installed_matplotlib != MATPLOTLIB_VERSION:
+            _fail(
+                "Installed Matplotlib version must match the lock: observed "
+                f"{installed_matplotlib}; expected {MATPLOTLIB_VERSION}"
+            )
+        installed_logomaker = importlib.metadata.version("logomaker")
+        if installed_logomaker != LOGOMAKER_VERSION:
+            _fail(
+                "Installed Logomaker version must match the lock: observed "
+                f"{installed_logomaker}; expected {LOGOMAKER_VERSION}"
+            )
 
     output_root = _explicit_path(arguments.output_root, "report output root")
     _reject_symlink_components(output_root, "report output root")
@@ -317,6 +466,21 @@ def prepare_context(
         retired_html,
         retired_pdf,
     )
+    admitted_module = None
+    module_input_snapshots: tuple[FileSnapshot, ...] = ()
+    report_boundary = "" if module_summary else str(summary["interpretation_boundary"])
+    if module_summary:
+        (
+            admitted_module,
+            scientific_html_bytes,
+            report_boundary,
+            module_input_snapshots,
+        ) = _render_module_scientific_report(
+            summary,
+            source_root=source_root,
+            output_dir=output_dir,
+            admitted_module=analysis_module,
+        )
 
     try:
         css = css_snapshot.path.read_text(encoding="utf-8")
@@ -325,38 +489,57 @@ def prepare_context(
     metadata = {
         "css_path": f"emrys.reporting/{CSS_RESOURCE}",
         "css_sha256": css_snapshot.sha256,
-        "figure_format": FIGURE_FORMAT,
-        "figure_policy_version": FIGURE_POLICY_VERSION,
-        "figure_renderer": "Matplotlib",
-        "figure_renderer_version": MATPLOTLIB_VERSION,
-        "logo_renderer": "Logomaker",
-        "logo_renderer_version": LOGOMAKER_VERSION,
         "jinja_version": JINJA_VERSION,
         "producer_git_commit": producer_git_commit,
         "renderer": PRODUCER,
         "renderer_version": PRODUCER_VERSION,
         "run_summary_path": str(run_summary_snapshot.path),
         "run_summary_sha256": run_summary_snapshot.sha256,
-        "state_banner": BOUNDARY_BANNER,
+        "state_banner": (
+            report_boundary if module_summary else BOUNDARY_BANNER
+        ),
         "source_checkout": str(source_checkout.root),
         "artifact_source_root": str(artifact_source_root.root),
         "template_path": f"emrys.reporting/{TEMPLATE_RESOURCE}",
         "template_sha256": template_snapshot.sha256,
     }
-    scientific_figures = build_scientific_figures(
-        computational_results,
-        computational_unavailable_reason,
-        scientific_context_results,
-        scientific_context_unavailable_reason,
-        candidate_display,
+    if not module_summary:
+        metadata.update(
+            figure_format=FIGURE_FORMAT,
+            figure_policy_version=FIGURE_POLICY_VERSION,
+            figure_renderer="Matplotlib",
+            figure_renderer_version=MATPLOTLIB_VERSION,
+            logo_renderer="Logomaker",
+            logo_renderer_version=LOGOMAKER_VERSION,
+        )
+    scientific_figures = (
+        ()
+        if module_summary
+        else build_scientific_figures(
+            computational_results,
+            computational_unavailable_reason,
+            scientific_context_results,
+            scientific_context_unavailable_reason,
+            candidate_display,
+        )
     )
     result_links = _result_links(
         output_dir,
         computational_results,
         scientific_context_results,
     )
-    scientific_html_bytes = render_html(
-        build_scientific_view(
+    if module_summary:
+        evidence_view = build_module_evidence_view(
+            summary,
+            metadata,
+            output_dir=output_dir,
+            source_root=source_root,
+            inspect_command=_inspect_command(source_root, output_root),
+            interpretation_boundary=report_boundary,
+        )
+        evidence_html_bytes = render_html(evidence_view, css)
+    else:
+        scientific_view = build_scientific_view(
             summary,
             metadata,
             computational_results=computational_results,
@@ -368,11 +551,8 @@ def prepare_context(
             candidate_display=candidate_display,
             scientific_figures=scientific_figures,
             result_links=result_links,
-        ),
-        css,
-    )
-    evidence_html_bytes = render_html(
-        build_evidence_view(
+        )
+        evidence_view = build_evidence_view(
             summary,
             metadata,
             computational_results=computational_results,
@@ -384,9 +564,9 @@ def prepare_context(
             scientific_figures=scientific_figures,
             result_links=result_links,
             inspect_command=_inspect_command(source_root, output_root),
-        ),
-        css,
-    )
+        )
+        scientific_html_bytes = render_html(scientific_view, css)
+        evidence_html_bytes = render_html(evidence_view, css)
     context = ReportContext(
         source_checkout=source_checkout,
         artifact_source_root=artifact_source_root,
@@ -414,6 +594,9 @@ def prepare_context(
         render_metadata=metadata,
         scientific_html_bytes=scientific_html_bytes,
         evidence_html_bytes=evidence_html_bytes,
+        analysis_module=admitted_module,
+        module_input_snapshots=module_input_snapshots,
+        interpretation_boundary=report_boundary,
     )
     for recheck in context.input_rechecks:
         _assert_input_recheck(*recheck)

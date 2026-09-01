@@ -15,11 +15,19 @@ from typing import Any
 import pytest
 from jinja2 import StrictUndefined, UndefinedError
 
+from emrys import analyses
+from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
+from emrys.contracts.artifacts import api as artifact_contracts
+from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.libraries.source_authority import (
     ArtifactSourceRoot,
     SourceCheckout,
 )
-from emrys.reporting import report as REPORT
+from emrys.reporting import report as REPORT, transaction_validation
+from emrys.reporting._artifact_index import context as artifact_context
+from emrys.reporting._artifact_index import core as artifact_core
+from emrys.reporting._artifact_index import publication as artifact_publication
+from emrys.reporting._artifact_index import registry as artifact_registry
 from emrys.reporting._run_report import computational as report_computational
 from emrys.reporting._run_report import context as report_context
 from emrys.reporting._run_report import publication, receipt, validation, view
@@ -36,6 +44,8 @@ from emrys.reporting._run_report.models import (
     SUPPORTING_SCIENTIFIC_FIGURE_IDS,
     ReportRenderError,
 )
+from emrys.reporting._run_summary import builder as run_summary_builder
+from emrys.reporting._run_summary import publication as run_summary_publication
 from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -89,6 +99,205 @@ def output_paths(context: Any) -> tuple[Path, Path, Path, Path]:
         context.output_summary_tsv,
         context.output_receipt,
     )
+
+
+def test_external_module_owns_one_bespoke_scientific_report(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapter_fixture = FIXTURE.ADAPTER_FIXTURE.build_fixture(
+        tmp_path / "external-module"
+    )
+    builtin = analysis_module_v1()
+    selected_outputs = builtin.tasks[0].outputs
+    scientific_adapters = tuple(
+        item.adapter for item in selected_outputs if item.kind != "validation_report"
+    )
+    validation_adapter = next(
+        item.adapter for item in selected_outputs if item.kind == "validation_report"
+    )
+    render_contexts: list[analyses.AnalysisReportContextV1] = []
+
+    def render_scientific_report(
+        context: analyses.AnalysisReportContextV1,
+    ) -> analyses.AnalysisScientificReportV1:
+        render_contexts.append(context)
+        boundary = "Computational association only."
+        items = "".join(
+            f"<li>{artifact.adapter}</li>" for artifact in context.artifacts
+        )
+        return analyses.AnalysisScientificReportV1(
+            boundary,
+            (
+                "<!doctype html><html lang='en'><title>Collaborator report</title>"
+                f"<main data-report-view='scientific' data-run-id='{context.run_id}'>"
+                "<h1 id='bespoke-collaborator-report'>Collaborator differential "
+                "analysis</h1>"
+                f"<div class='state-banner'>{boundary}</div><ul>{items}</ul>"
+                "</main></html>"
+            ).encode(),
+        )
+
+    descriptor = replace(
+        builtin,
+        module_id="collaborator.differential",
+        module_version="1.0.0",
+        tasks=(
+            analyses.AnalysisTaskV1(
+                owner_key="collaborator.analysis.differential.v1",
+                rule_name="run_collaborator_differential",
+                step_id="09",
+                stage_memory_mb="workflow",
+                inputs=(),
+                outputs=selected_outputs,
+                plan=builtin.tasks[0].plan,
+            ),
+        ),
+        render_scientific_report=render_scientific_report,
+    )
+    loaded = replace(
+        analyses.load_analysis_module(analyses.BUILTIN_PAIRED_CMH_MODULE_ID),
+        descriptor=descriptor,
+        trust="external",
+        distribution_name="collaborator-analysis",
+        distribution_version="1.0.0",
+        entry_point_value="collaborator_analysis:analysis_module_v1",
+        implementation_sha256="e" * 64,
+    )
+    policy = {
+        "schema_version": "emrys.analysis-module-policy.v1",
+        "analysis_id": FIXTURE.ADAPTER_FIXTURE.PRIMARY_ANALYSIS_ID,
+        "configuration": {},
+        "module": analyses.module_identity_record(loaded),
+    }
+    policy_path = adapter_fixture.root / "analysis-policy.json"
+    policy_path.write_bytes(orchestration_contracts.canonical_json_bytes(policy))
+    policy_sha256 = orchestration_contracts.canonical_sha256(policy)
+    selected_adapters = {item.adapter for item in selected_outputs}
+    FIXTURE.ADAPTER_FIXTURE.write_tsv(
+        adapter_fixture.inventory,
+        FIXTURE.ADAPTER_FIXTURE.INVENTORY_HEADER,
+        (
+            row
+            for row in adapter_fixture.inventory_rows
+            if row["scope_type"] != "analysis" or row["adapter"] in selected_adapters
+        ),
+    )
+    run_contract = json.loads(adapter_fixture.run_contract.read_text(encoding="utf-8"))
+    run_contract["primary_analysis_policy_sha256"] = policy_sha256
+    components = {
+        key: value
+        for key, value in run_contract.items()
+        if key != "run_contract_sha256"
+    }
+    run_contract["run_contract_sha256"] = hashlib.sha256(
+        orchestration_contracts.canonical_json_bytes(components)
+    ).hexdigest()
+    adapter_fixture.run_contract.write_bytes(
+        orchestration_contracts.canonical_json_bytes(run_contract)
+    )
+    monkeypatch.setattr(
+        artifact_registry.analyses,
+        "load_analysis_module",
+        lambda module_id: loaded,
+    )
+    profile = analyses.compose_profile(
+        json.loads(
+            (REPO_ROOT / "workflow/contracts/local_cmh_v2.json").read_text(
+                encoding="utf-8"
+            )
+        ),
+        descriptor,
+    )
+    indexed = artifact_context.prepare_context(
+        argparse.Namespace(
+            run_id=adapter_fixture.run_id,
+            run_contract=adapter_fixture.run_contract,
+            analysis_policy=policy_path,
+            profile=profile,
+            inventory=adapter_fixture.inventory,
+            output_root=adapter_fixture.output_root,
+        ),
+        source_checkout=SourceCheckout(root=REPO_ROOT),
+        artifact_source_root=ArtifactSourceRoot(root=adapter_fixture.root),
+        identity_ops=artifact_context.ArtifactIdentityOps(
+            matching_clean_checkout_head_commit=lambda **_kwargs: (
+                artifact_core.get_git_commit(
+                    source_root=REPO_ROOT,
+                    sanitize_git_routing=True,
+                )
+            )
+        ),
+    )
+    artifact_publication.publish_context(indexed)
+    summarized = run_summary_builder.prepare_context(
+        argparse.Namespace(
+            run_id=adapter_fixture.run_id,
+            artifact_receipt=adapter_fixture.receipt_path,
+            analysis_policy=policy_path,
+            output_root=adapter_fixture.output_root,
+        ),
+        source_checkout=SourceCheckout(root=REPO_ROOT),
+        artifact_source_root=ArtifactSourceRoot(root=adapter_fixture.root),
+    )
+    assert summarized.document["schema_version"] == "3.0.0"
+    assert summarized.document["analysis_policy"]["record"] == policy
+    assert summarized.document["analysis_policy"]["sha256"] == policy_sha256
+    run_summary_publication.publish_context(summarized)
+    rendered = REPORT.prepare_report(
+        arguments(
+            summarized.paths.summary_json,
+            tmp_path / "reports",
+            execute=True,
+            artifact_source_root=adapter_fixture.root,
+        ),
+        analysis_module=indexed.analysis_module,
+    )
+    assert rendered.analysis_module is indexed.analysis_module
+    assert len(render_contexts) == 1
+    report_input = render_contexts[0]
+    assert report_input.run_summary["schema_version"] == "3.0.0"
+    assert {artifact.adapter for artifact in report_input.artifacts} == set(
+        scientific_adapters
+    )
+    scientific = rendered.scientific_html_bytes.decode("utf-8")
+    evidence = rendered.evidence_html_bytes.decode("utf-8")
+    assert "bespoke-collaborator-report" in scientific
+    assert "Computational association only." in scientific
+    assert all(adapter in scientific for adapter in scientific_adapters)
+    assert validation_adapter not in scientific
+    assert validation_adapter in evidence
+    assert "interpretation_boundary" not in summarized.document
+    assert "result_terminology" not in summarized.document
+    assert "report" not in summarized.document["analysis_policy"]["record"]
+    publication.publish_report(rendered, REPORT.default_publication_ops())
+    published_receipt = receipt.read_receipt_tsv(rendered.output_receipt)
+    assert published_receipt["schema_version"] == "5.0.0"
+    assert published_receipt["input_run_summary"]["schema_version"] == "3.0.0"
+    assert published_receipt["renderer"] == {
+        "name": "collaborator.differential",
+        "version": "1.0.0",
+    }
+    assert published_receipt["interpretation_boundary"] == (
+        "Computational association only."
+    )
+    validated = transaction_validation.validate_report_transaction(
+        source_checkout=REPO_ROOT,
+        artifact_source_root=adapter_fixture.root,
+        run_summary=summarized.paths.summary_json,
+        output_root=rendered.output_root,
+        analysis_policy=policy_path,
+        profile=profile,
+        receipt_ops=transaction_validation.ReceiptValidationOps(
+            matching_clean_checkout_head_commit=lambda **_kwargs: (
+                artifact_core.get_git_commit(
+                    source_root=REPO_ROOT,
+                    sanitize_git_routing=True,
+                )
+            )
+        ),
+    )
+    assert validated.receipt_path == rendered.output_receipt
 
 
 def receipt_document(path: Path) -> dict[str, Any]:
@@ -789,10 +998,7 @@ def test_two_html_views_separate_science_from_operational_evidence(
         assert 'href="https:' not in content
         assert 'href="/' not in content
     assert "emrys inspect run --run-root" not in scientific
-    assert (
-        "Inspect this Run: emrys inspect run --run-root &lt;run-root&gt;"
-        in evidence
-    )
+    assert "Inspect this Run: emrys inspect run --run-root &lt;run-root&gt;" in evidence
     assert "CMH-ranked candidates" in scientific
     assert "FWD_like" in scientific
     assert 'id="computational_significant_sites"' not in scientific

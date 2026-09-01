@@ -36,7 +36,7 @@ def _project(tmp_path: Path) -> ProjectAdmission:
     source = fixture.build(root)
     for name in ("logs", "runs", "runtime"):
         (root / name).mkdir()
-    return admit_project(source, fixture.profile())
+    return admit_project(source, fixture.core_profile())
 
 
 def _result(
@@ -282,6 +282,82 @@ def test_absent_runtime_diagnosis_is_read_only_and_opens_no_log(
     assert result.inspection is None
     assert "runtime profile is not admitted" in result.blockers[-1]
     assert _snapshot(tmp_path) == before
+
+
+def test_project_readiness_requires_selected_module_runtime_observations_and_bindings(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "project"
+    source = fixture.build(root)
+    project = admit_project(
+        source,
+        Path(__file__).resolve().parents[3]
+        / "workflow/contracts/local_cmh_v2.json",
+    )
+    foundations = _result(project, ready=True)
+    required = foundations.analysis.module.descriptor.required_runtime_checks
+    observations = []
+    for check_id in required:
+        if check_id == "r_biostrings":
+            continue
+        observation = _check(
+            check_id,
+            "path_visibility" if check_id.startswith("renv_") else "tool_version",
+            sys.executable if check_id == "python" else str(tmp_path),
+        )
+        if check_id == "r_rsamtools":
+            observation = replace(
+                observation,
+                check=replace(observation.check, required=False),
+                status="fail",
+                observed="unavailable",
+            )
+        observations.append(observation)
+    inspection = _inspection(tmp_path, tuple(observations))
+    bound = tuple(
+        doctor.RuntimeBinding(
+            item.check.check_id,
+            tmp_path,
+            tmp_path,
+            "a" * 64,
+            item.observed,
+        )
+        for item in observations
+        if item.status == "pass"
+        and item.check.check_id
+        not in {"renv_project", "renv_library", "r_genomic_ranges"}
+    )
+    monkeypatch.setattr(
+        doctor, "_inspect_foundations", lambda *_args, **_kwargs: foundations
+    )
+    monkeypatch.setattr(
+        doctor,
+        "load_runtime_profile_contract",
+        lambda _path: (inspection.profile_bytes, tuple(item.check for item in observations)),
+    )
+    monkeypatch.setattr(
+        doctor, "validate_runtime_profile_contract", lambda *_args: None
+    )
+    monkeypatch.setattr(doctor, "guarded_r_environment", lambda *_args: {})
+    monkeypatch.setattr(
+        doctor, "inspect_runtime_profile_bytes", lambda *_args, **_kwargs: inspection
+    )
+    monkeypatch.setattr(doctor, "runtime_file_bindings", lambda _inspection: bound)
+
+    result = doctor.inspect_local_pilot(
+        project.source_path,
+        project.source_path.parent,
+        inspection.profile_path,
+    )
+
+    assert not result.ready
+    assert not result.runtime_ready
+    assert result.blockers[-1] == (
+        "Analysis module runtime is not admitted: "
+        "r_biostrings, r_genomic_ranges, r_rsamtools"
+    )
+    assert result.remediations[-1].startswith("Run `emrys doctor --repair`")
 
 
 @pytest.mark.parametrize(

@@ -154,6 +154,24 @@ def _processing_source(
     return source, context
 
 
+def test_fixed_arguments_carry_the_admitted_analysis_policy(tmp_path: Path) -> None:
+    root = (tmp_path / "run").resolve()
+    state = _state(root)
+    identity = _identity(root, state)
+    relative = "contract/reporting-inputs/attempt/primary-analysis-policy.json"
+    identity.config["primary_analysis_policy_path"] = {
+        "path": relative,
+        "sha256": "e" * 64,
+    }
+
+    artifact = reporting_operation._arguments(identity, "artifact_index")
+    summary = reporting_operation._arguments(identity, "run_summary")
+
+    assert artifact.analysis_policy == root / relative
+    assert artifact.profile is identity.profile
+    assert summary.analysis_policy == root / relative
+
+
 def test_complete_historical_reporting_is_reused_read_only(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

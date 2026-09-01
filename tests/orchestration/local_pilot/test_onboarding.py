@@ -15,6 +15,7 @@ import pytest
 import yaml
 
 from emrys import __main__ as cli
+from emrys.analyses import effective_configuration
 from emrys.contracts.scientific_evidence import step08
 from emrys.evidence.runtime_availability.inspector import RuntimeInspection
 from emrys.libraries.validation.tsv import tsv_bytes
@@ -127,7 +128,9 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
         arguments.partition_manifest.resolve()
     )
     assert Path(definition["reference"]["fasta"]).is_absolute()
-    assert definition["analyses"][arguments.analysis_name]["target_change"] == "A>G"
+    analysis = definition["analyses"][arguments.analysis_name]
+    assert analysis["module"] == "emrys.paired-cmh"
+    assert analysis["config"]["target_change"] == "A>G"
     assert not list(output.rglob("*.fastq"))
     assert onboarding.validate_project(output / "project.yaml").sample_count == 4
 
@@ -440,7 +443,9 @@ def test_synthetic_fixture_is_deterministic_complete_and_normalizable(
     validation = onboarding.validate_project(first / "project.yaml")
     analysis = validation.project.select_analysis()
     source = analysis.workflow_inputs
-    control = source["analysis"]["policy"]["control_condition"]
+    control = effective_configuration(source["analysis"]["policy"])[
+        "control_condition"
+    ]
     assert validation.sample_count == 4
     assert analysis.name == "primary"
     assert len(
@@ -578,7 +583,8 @@ def test_production_like_profile_is_explicit_and_dry_run_skips_generation(
     assert project["dataset"] == {"samples": "samples.tsv"}
     assert project["reference"]["star_index"]["genome_sa_index_nbases"] == 10
     assert project["analyses"]["primary"]["partitions"] == "partitions.tsv"
-    assert project["analyses"]["primary"]["target_change"] == "A>G"
+    assert project["analyses"]["primary"]["module"] == "emrys.paired-cmh"
+    assert project["analyses"]["primary"]["config"]["target_change"] == "A>G"
 
 
 def test_production_like_neutral_plan_is_globally_disjoint_and_guarded() -> None:

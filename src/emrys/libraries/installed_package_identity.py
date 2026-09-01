@@ -12,6 +12,7 @@ from typing import Protocol
 # The renamed package namespace starts a new digest domain. A v2 EMRYS digest
 # cannot be mistaken for a pre-cutover installed-package identity.
 _DIGEST_DOMAIN = b"emrys-installed-package-tree-v2\0"
+_PYTHON_DIGEST_DOMAIN = b"emrys-installed-python-package-tree-v1\0"
 _READ_CHUNK_BYTES = 1024 * 1024
 
 
@@ -116,6 +117,8 @@ def _digest_directory(
     root: Path,
     directory: Path,
     digest: _Digest,
+    *,
+    ignore_python_cache: bool = False,
 ) -> None:
     try:
         before = directory.stat(follow_symlinks=False)
@@ -145,6 +148,8 @@ def _digest_directory(
     )
     for entry in entries:
         path = Path(entry.path)
+        if ignore_python_cache and entry.name == "__pycache__":
+            continue
         relative = (
             path.relative_to(root).as_posix().encode("utf-8", errors="surrogateescape")
         )
@@ -159,7 +164,12 @@ def _digest_directory(
                 f"Installed package tree contains a symbolic link: {path}"
             )
         if stat.S_ISDIR(admitted.st_mode):
-            _digest_directory(root, path, digest)
+            _digest_directory(
+                root,
+                path,
+                digest,
+                ignore_python_cache=ignore_python_cache,
+            )
         elif stat.S_ISREG(admitted.st_mode):
             data = _read_regular_file(path, admitted)
             _entry_frame(
@@ -185,14 +195,9 @@ def _digest_directory(
         )
 
 
-def installed_package_tree_identity(root: Path) -> InstalledPackageTreeIdentity:
-    """Bind an exact canonical tree by kind, path, mode, size, and file bytes.
-
-    Traversal order and filesystem timestamps do not enter the digest. Symbolic
-    links and non-regular, non-directory entries are rejected rather than
-    followed or silently omitted.
-    """
-
+def _tree_identity(
+    root: Path, *, digest_domain: bytes, ignore_python_cache: bool = False
+) -> InstalledPackageTreeIdentity:
     if not root.is_absolute():
         raise InstalledPackageIdentityError(
             f"Installed package root must be absolute: {root}"
@@ -212,13 +217,40 @@ def installed_package_tree_identity(root: Path) -> InstalledPackageTreeIdentity:
         raise InstalledPackageIdentityError(
             f"Installed package root must be one canonical real directory: {root}"
         )
-    digest = hashlib.sha256(_DIGEST_DOMAIN)
-    _digest_directory(root, root, digest)
+    digest = hashlib.sha256(digest_domain)
+    _digest_directory(
+        root,
+        root,
+        digest,
+        ignore_python_cache=ignore_python_cache,
+    )
     return InstalledPackageTreeIdentity(root=root, sha256=digest.hexdigest())
+
+
+def installed_package_tree_identity(root: Path) -> InstalledPackageTreeIdentity:
+    """Bind an exact canonical tree by kind, path, mode, size, and file bytes.
+
+    Traversal order and filesystem timestamps do not enter the digest. Symbolic
+    links and non-regular, non-directory entries are rejected rather than
+    followed or silently omitted.
+    """
+
+    return _tree_identity(root, digest_domain=_DIGEST_DOMAIN)
+
+
+def installed_python_package_identity(root: Path) -> InstalledPackageTreeIdentity:
+    """Bind installed Python package content while ignoring interpreter caches."""
+
+    return _tree_identity(
+        root,
+        digest_domain=_PYTHON_DIGEST_DOMAIN,
+        ignore_python_cache=True,
+    )
 
 
 __all__ = (
     "InstalledPackageIdentityError",
     "InstalledPackageTreeIdentity",
     "installed_package_tree_identity",
+    "installed_python_package_identity",
 )

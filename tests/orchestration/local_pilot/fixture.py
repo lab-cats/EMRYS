@@ -2,93 +2,28 @@
 
 from __future__ import annotations
 
+import json
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from emrys import analyses
+from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 
-def profile() -> dict[str, Any]:
-    owners = (
-        "emrys.stage.construct_STAR_index.v1",
-        "emrys.stage.align_RNA_reads_with_STAR.v1",
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+def core_profile() -> dict[str, Any]:
+    return json.loads(
+        (REPO_ROOT / "workflow/contracts/local_cmh_v2.json").read_text(encoding="utf-8")
     )
-    return {
-        "schema_version": "emrys.profile.v2",
-        "profile_id": "emrys.profile.local_cmh",
-        "profile_version": "v2",
-        "semantic_owner_keys": list(owners),
-        "owner_tasks": [
-            {
-                "machine_key": owners[0],
-                "rule_name": "construct_STAR_index",
-                "step_id": "00a",
-                "scope_type": "reference",
-                "scope_selector": "reference",
-            },
-            {
-                "machine_key": owners[1],
-                "rule_name": "align_RNA_reads_with_STAR",
-                "step_id": "01",
-                "scope_type": "sample",
-                "scope_selector": "samples",
-            },
-        ],
-        "direct_edges": [
-            {
-                "producer": owners[0],
-                "consumer": owners[1],
-                "artifact": "STAR genome-index directory",
-                "semantics": "required artifact",
-            }
-        ],
-        "required_owner_keys": list(owners),
-        "evidence_owner_keys": [],
-        "artifact_templates": [
-            {
-                "artifact_id_template": "ref.{reference_id}.index",
-                "step_id": "00a",
-                "scope_type": "reference",
-                "scope_selector": "reference",
-                "adapter": "step00a_star_index_v1",
-                "source_path_template": (
-                    "results/reference/{reference_id}/star/Genome"
-                ),
-                "required": True,
-            },
-            {
-                "artifact_id_template": "ref.{reference_id}.validation",
-                "step_id": "00a",
-                "scope_type": "reference",
-                "scope_selector": "reference",
-                "adapter": "step00a_validation_report_v1",
-                "source_path_template": (
-                    "results/validation/00a/{reference_id}.validation.tsv"
-                ),
-                "required": True,
-            },
-            {
-                "artifact_id_template": "sample.{sample_id}.bam",
-                "step_id": "01",
-                "scope_type": "sample",
-                "scope_selector": "samples",
-                "adapter": "step01_star_bam_v1",
-                "source_path_template": (
-                    "results/samples/{sample_id}/{sample_id}.Aligned.sortedByCoord.out.bam"
-                ),
-                "required": True,
-            },
-            {
-                "artifact_id_template": "sample.{sample_id}.validation",
-                "step_id": "01",
-                "scope_type": "sample",
-                "scope_selector": "samples",
-                "adapter": "step01_validation_report_v1",
-                "source_path_template": (
-                    "results/validation/01/{sample_id}.validation.tsv"
-                ),
-                "required": True,
-            },
-        ],
-    }
+
+
+def profile(core: dict[str, Any] | None = None) -> dict[str, Any]:
+    return analyses.compose_profile(
+        core_profile() if core is None else core, analysis_module_v1()
+    )
 
 
 def build(root: Path, *, replicate_count: int = 2) -> Path:
@@ -112,7 +47,7 @@ def build(root: Path, *, replicate_count: int = 2) -> Path:
         ">chrSynthetic\nACGTACGTACGT\n", encoding="utf-8"
     )
     (reference / "genome.gtf").write_text(
-        'chrSynthetic\tfixture\texon\t1\t12\t.\t+\t.\t'
+        "chrSynthetic\tfixture\texon\t1\t12\t.\t+\t.\t"
         'gene_id "g1"; transcript_id "t1";\n',
         encoding="utf-8",
     )
@@ -242,7 +177,9 @@ def build_legacy(root: Path) -> Path:
 
 def build_legacy_execution(
     root: Path,
-    selected_profile: dict[str, Any] | None = None,
+    admission_profile: dict[str, Any] | None = None,
+    *,
+    execution_profile: dict[str, Any] | None = None,
 ) -> tuple[Path, dict[str, Any], bytes]:
     """Build and admit the one exact historical execution fixture."""
 
@@ -250,12 +187,25 @@ def build_legacy_execution(
         _historical_execution_v1,
         admit_project,
     )
+    from emrys.contracts.orchestration import api as contracts
 
     request = build_legacy(root)
     admitted = admit_project(
         request,
-        profile() if selected_profile is None else selected_profile,
+        core_profile() if admission_profile is None else admission_profile,
         allow_legacy=True,
     ).select_analysis()
+    if execution_profile is not None:
+        workflow_inputs = admitted.workflow_inputs
+        workflow_inputs["profile"] = {
+            "profile_id": execution_profile["profile_id"],
+            "profile_version": execution_profile["profile_version"],
+            "profile_sha256": contracts.canonical_sha256(execution_profile),
+        }
+        admitted = replace(
+            admitted,
+            _profile_bytes=contracts.canonical_json_bytes(execution_profile),
+            _workflow_input_bytes=contracts.canonical_json_bytes(workflow_inputs),
+        )
     execution, execution_bytes = _historical_execution_v1(admitted)
     return request, execution, execution_bytes

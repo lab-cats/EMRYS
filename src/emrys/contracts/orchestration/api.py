@@ -459,7 +459,6 @@ def _validate_execution(record: Mapping[str, Any]) -> None:
 
     analysis = record["analysis"]
     policy = analysis["policy"]
-    _validate_policy(policy)
     if analysis["primary_analysis_id"] != policy["analysis_id"]:
         raise ContractValidationError(
             "Execution primary_analysis_id must equal policy.analysis_id"
@@ -468,23 +467,25 @@ def _validate_execution(record: Mapping[str, Any]) -> None:
         raise ContractValidationError(
             "Execution policy_sha256 does not match canonical policy content"
         )
-    controls: dict[str, int] = {}
-    treatments: dict[str, int] = {}
-    for sample in record["samples"]["rows"]:
-        replicate = sample["replicate"]
-        if sample["condition"] == policy["control_condition"]:
-            controls[replicate] = controls.get(replicate, 0) + 1
-        if sample["condition"] == policy["treatment_condition"]:
-            treatments[replicate] = treatments.get(replicate, 0) + 1
-    if (
-        set(controls) != set(treatments)
-        or len(controls) < 2
-        or any(count != 1 for count in (*controls.values(), *treatments.values()))
-    ):
-        raise ContractValidationError(
-            "Execution samples must define exactly one control and treatment "
-            "for each of at least two complete replicate strata"
-        )
+    if policy["schema_version"] == "emrys.analysis-policy.v1":
+        _validate_policy(policy)
+        controls: dict[str, int] = {}
+        treatments: dict[str, int] = {}
+        for sample in record["samples"]["rows"]:
+            replicate = sample["replicate"]
+            if sample["condition"] == policy["control_condition"]:
+                controls[replicate] = controls.get(replicate, 0) + 1
+            if sample["condition"] == policy["treatment_condition"]:
+                treatments[replicate] = treatments.get(replicate, 0) + 1
+        if (
+            set(controls) != set(treatments)
+            or len(controls) < 2
+            or any(count != 1 for count in (*controls.values(), *treatments.values()))
+        ):
+            raise ContractValidationError(
+                "Execution samples must define exactly one control and treatment "
+                "for each of at least two complete replicate strata"
+            )
 
     envelope = record["identity_envelope"]
     expected_envelope = {
@@ -809,8 +810,9 @@ def _validate_record_uncached(
             record["analyses"].values() if name == "project" else (record["analysis"],)
         )
         for analysis in analyses:
-            _validate_policy(analysis)
-    elif name == "policy":
+            if "module" not in analysis:
+                _validate_policy(analysis)
+    elif name == "policy" and record["schema_version"] == "emrys.analysis-policy.v1":
         _validate_policy(record)
     elif name == "execution":
         _validate_execution(record)

@@ -17,6 +17,7 @@ from .models import (
     CSS_RESOURCE,
     INTERPRETATION_BOUNDARY,
     JINJA_VERSION,
+    MODULE_REPORT_RECEIPT_SCHEMA_VERSION,
     PRODUCER,
     PRODUCER_VERSION,
     RECEIPT_HEADER,
@@ -28,7 +29,12 @@ from .models import (
 
 
 def validate_receipt(document: Mapping[str, Any]) -> None:
-    validator = contracts.schema_validator("report-receipt")
+    version = str(document.get("schema_version", ""))
+    validator = (
+        contracts.schema_validator("report-receipt", version)
+        if version == MODULE_REPORT_RECEIPT_SCHEMA_VERSION
+        else contracts.schema_validator("report-receipt")
+    )
     errors = sorted(validator.iter_errors(document), key=lambda error: list(error.path))
     if errors:
         first = errors[0]
@@ -48,7 +54,7 @@ def summary_tsv_bytes(context: ReportContext) -> bytes:
         rows.append(
             (
                 summary["run_id"],
-                summary["interpretation_boundary"],
+                context.interpretation_boundary,
                 scope["step_id"],
                 scope["scope_type"],
                 scope["scope_id"],
@@ -109,9 +115,15 @@ def receipt_document(
         if kind in {"scientific_html", "evidence_html"}:
             descriptor["self_contained"] = True
         descriptors.append(descriptor)
-    identity = hashlib.sha256(
-        (
-            "\0".join(snapshot.sha256 for snapshot in context.input_snapshots)
+    input_identity = "\0".join(snapshot.sha256 for snapshot in context.input_snapshots)
+    if context.analysis_module is not None:
+        identity_payload = (
+            f"{input_identity}\0{context.analysis_module.implementation_sha256}"
+            f"\0{JINJA_VERSION}\0{PRODUCER_VERSION}"
+        )
+    else:
+        identity_payload = (
+            input_identity
             + "\0"
             + JINJA_VERSION
             + "\0"
@@ -122,26 +134,38 @@ def receipt_document(
             + context.render_metadata["figure_policy_version"]
             + "\0"
             + PRODUCER_VERSION
-        ).encode("utf-8")
-    ).hexdigest()[:20]
+        )
+    identity = hashlib.sha256(identity_payload.encode("utf-8")).hexdigest()[:20]
     summary = context.summary
+    receipt_version = (
+        MODULE_REPORT_RECEIPT_SCHEMA_VERSION
+        if context.analysis_module is not None
+        else REPORT_RECEIPT_SCHEMA_VERSION
+    )
     document = {
         "schema_name": "emrys.report_receipt",
-        "schema_version": REPORT_RECEIPT_SCHEMA_VERSION,
+        "schema_version": receipt_version,
         "record_type": "report_receipt",
         "run_id": summary["run_id"],
         "attempt_id": f"report-{identity}",
         "generated_at": summary["generated_at"],
         "publication_state": "complete",
         "transaction_state": "complete",
-        "interpretation_boundary": INTERPRETATION_BOUNDARY,
+        "interpretation_boundary": context.interpretation_boundary,
         "input_run_summary": {
             "path": str(context.run_summary_path),
             "sha256": context.run_summary_snapshot.sha256,
             "schema_name": summary["schema_name"],
             "schema_version": summary["schema_version"],
         },
-        "renderer": {"name": "Jinja2", "version": JINJA_VERSION},
+        "renderer": (
+            {
+                "name": context.analysis_module.descriptor.module_id,
+                "version": context.analysis_module.descriptor.module_version,
+            }
+            if context.analysis_module is not None
+            else {"name": "Jinja2", "version": JINJA_VERSION}
+        ),
         "template": {
             "path": f"emrys.reporting/{TEMPLATE_RESOURCE}",
             "sha256": context.template_snapshot.sha256,
@@ -155,8 +179,8 @@ def receipt_document(
         "truncations": _truncations(context),
         "schema_versions": {
             "artifact_record": "2.0.0",
-            "run_summary": "2.0.0",
-            "report_receipt": REPORT_RECEIPT_SCHEMA_VERSION,
+            "run_summary": summary["schema_version"],
+            "report_receipt": receipt_version,
         },
         "analysis_execution_performed": False,
         "external_network_assets_used": False,

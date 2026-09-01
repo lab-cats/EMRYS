@@ -45,6 +45,45 @@ def _validate_scope_statuses(
             )
 
 
+def _validate_module_summary(document: dict[str, Any]) -> None:
+    if document.get("schema_version") != "3.0.0":
+        return
+
+    from emrys.contracts.orchestration import api as orchestration_contracts
+
+    policy_binding = document["analysis_policy"]
+    policy = policy_binding["record"]
+    policy_sha256 = orchestration_contracts.canonical_sha256(policy)
+    if (
+        policy_sha256 != policy_binding["sha256"]
+        or policy_sha256 != document["run_contract"]["primary_analysis_policy_sha256"]
+        or policy_binding["size_bytes"]
+        != len(orchestration_contracts.canonical_json_bytes(policy))
+    ):
+        raise ContractValidationError(
+            "modular run summary does not bind its exact analysis policy"
+        )
+    if policy["analysis_id"] != document["run_contract"]["primary_analysis_id"]:
+        raise ContractValidationError(
+            "modular run summary analysis policy identifies another analysis"
+        )
+    if policy["module"]["trust"] != "external":
+        raise ContractValidationError(
+            "modular run summary differs from its analysis policy"
+        )
+    analysis_id = policy["analysis_id"]
+    admitted_adapters = [
+        artifact["adapter"]
+        for artifact in document["artifacts"]
+        if artifact["scope"]["scope_type"] == "analysis"
+        and artifact["scope"]["scope_id"] == analysis_id
+    ]
+    if len(admitted_adapters) != len(set(admitted_adapters)):
+        raise ContractValidationError(
+            "modular run summary repeats an admitted analysis adapter"
+        )
+
+
 def validate_run_summary_semantics(
     document: dict[str, Any],
     *,
@@ -52,6 +91,7 @@ def validate_run_summary_semantics(
 ) -> None:
     validate_run_contract(document["run_contract"], "run summary")
     validate_document_paths(document)
+    _validate_module_summary(document)
 
     attempts = validate_attempt_graph(
         document["attempts"],

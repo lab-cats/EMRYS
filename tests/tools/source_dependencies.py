@@ -312,6 +312,10 @@ def owner(module: str) -> tuple[str, str]:
         return "root", "emrys"
     if module == "emrys.__main__" or module.startswith("emrys.__main__."):
         return "composition", "emrys.__main__"
+    if module == "emrys.analyses":
+        # The namespace root is the public extension boundary; concrete
+        # analysis packages beneath it remain independent functional owners.
+        return "libraries", module
     parts = module.split(".")
     domain = parts[1] if len(parts) > 1 else ""
     if domain in {"stages", "analyses", "evidence"}:
