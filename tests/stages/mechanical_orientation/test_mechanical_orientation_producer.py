@@ -140,6 +140,20 @@ def install_fake(
     monkeypatch.setattr(producer.Publication, "command", command)
 
 
+def install_process_failure(
+    monkeypatch: pytest.MonkeyPatch,
+    returncode: int,
+) -> None:
+    class Process:
+        def communicate(self) -> tuple[str, None]:
+            return "", None
+
+    Process.returncode = returncode
+    monkeypatch.setattr(
+        producer.subprocess, "Popen", lambda *_args, **_kwargs: Process()
+    )
+
+
 def assert_clean(fixture: Fixture) -> None:
     assert not any(path.exists() for path in fixture.finals)
     assert (
@@ -348,6 +362,20 @@ def test_signal_between_link_and_ownership_check_removes_owned_final(
     assert_clean(fixture)
 
 
+def test_signal_before_link_cleans_unpublished_state(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_fake(monkeypatch, FakeSamtools(fixture))
+
+    def interrupt(*_args: object, **_kwargs: object) -> None:
+        os.kill(os.getpid(), signal.SIGTERM)
+
+    monkeypatch.setattr(producer.os, "link", interrupt)
+    assert producer.main(fixture.argv()) == 143
+    assert_clean(fixture)
+
+
 def test_ambiguous_final_mutation_preserves_lock_and_staging_anchor(
     fixture: Fixture,
     monkeypatch: pytest.MonkeyPatch,
@@ -402,6 +430,41 @@ def test_scratch_cleanup_failure_preserves_lock_and_ambiguous_state(
     assert (fixture.output / ".S.step06.owner-step06-test.99.tmp.bam").is_file()
 
 
+def test_lost_lock_does_not_remove_winner_scratch(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    scratch = fixture.output / ".S.step06.owner-step06-test.99.tmp.bam"
+
+    def lose_lock(_tx: producer.Publication) -> None:
+        fixture.output.mkdir(parents=True, exist_ok=True)
+        (fixture.output / ".S.step06.lock").mkdir()
+        scratch.write_bytes(b"winner scratch\n")
+        raise producer.ProducerError("forced lock loss")
+
+    monkeypatch.setattr(producer.Publication, "acquire", lose_lock)
+    assert producer.main(fixture.argv()) == 1
+    assert scratch.read_bytes() == b"winner scratch\n"
+
+
+def test_post_lock_residue_is_not_adopted_as_owned_scratch(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real_acquire = producer.Publication.acquire
+
+    def race_residue(tx: producer.Publication) -> None:
+        real_acquire(tx)
+        tx.p["tmp_99"].write_bytes(b"foreign scratch\n")
+
+    monkeypatch.setattr(producer.Publication, "acquire", race_residue)
+    assert producer.main(fixture.argv()) == 1
+    assert (
+        fixture.output / ".S.step06.owner-step06-test.99.tmp.bam"
+    ).read_bytes() == b"foreign scratch\n"
+    assert not (fixture.output / ".S.step06.lock").exists()
+
+
 def test_lock_release_failure_restores_exact_owner_record(
     fixture: Fixture,
     monkeypatch: pytest.MonkeyPatch,
@@ -419,6 +482,59 @@ def test_lock_release_failure_restores_exact_owner_record(
     owner = fixture.output / ".S.step06.lock" / "owner"
     assert owner.read_bytes() == b"run_token=owner-step06-test\n"
     assert all(path.is_file() for path in fixture.finals)
+
+
+@pytest.mark.parametrize(("failure", "expected"), (("child", 73), ("signal", 143)))
+def test_lock_owner_unlink_failure_preserves_primary_status(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+    expected: int,
+) -> None:
+    if failure == "signal":
+        install_fake(monkeypatch, FakeSamtools(fixture, signal_parent=True))
+    else:
+        install_process_failure(monkeypatch, 73)
+
+    real_unlink = Path.unlink
+
+    def refuse_owner_removal(path: Path, *args: object, **kwargs: object) -> None:
+        if path.name == "owner":
+            raise OSError("forced owner unlink failure")
+        real_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", refuse_owner_removal)
+    assert producer.main(fixture.argv()) == expected
+    assert (fixture.output / ".S.step06.lock" / "owner").is_file()
+
+
+@pytest.mark.parametrize(("failure", "expected"), (("child", 73), ("signal", 143)))
+def test_cleanup_runs_with_signals_ignored_and_preserves_primary_status(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+    expected: int,
+) -> None:
+    if failure == "signal":
+        install_fake(monkeypatch, FakeSamtools(fixture, signal_parent=True))
+    else:
+        install_process_failure(monkeypatch, 73)
+
+    handlers = {number: signal.getsignal(number) for number in producer.SIGNALS}
+    real_discard = producer.Publication.discard_scratch
+    observed: list[object] = []
+
+    def inspect_cleanup(tx: producer.Publication) -> bool:
+        observed.extend(signal.getsignal(number) for number in producer.SIGNALS)
+        return real_discard(tx)
+
+    monkeypatch.setattr(producer.Publication, "discard_scratch", inspect_cleanup)
+    assert producer.main(fixture.argv()) == expected
+    assert observed == [signal.SIG_IGN] * len(producer.SIGNALS)
+    assert all(
+        signal.getsignal(number) == handler for number, handler in handlers.items()
+    )
+    assert_clean(fixture)
 
 
 def test_flag_subcount_mismatch_is_left_to_independent_validator(
@@ -473,6 +589,7 @@ def test_signal_is_forwarded_to_the_owned_child_process_group(
         samtools_bin=str(fixture.tool),
     )
     transaction = producer.Publication(producer.build_context(arguments))
+
     class Child:
         pid = 4321
 
@@ -483,6 +600,7 @@ def test_signal_is_forwarded_to_the_owned_child_process_group(
         @staticmethod
         def wait() -> None:
             return None
+
     def spawn(*_args: object, **kwargs: object) -> Child:
         assert kwargs["process_group"] == 0
         transaction.interrupted(signal.SIGTERM, None)
@@ -491,7 +609,9 @@ def test_signal_is_forwarded_to_the_owned_child_process_group(
     delivered: list[tuple[int, int]] = []
     handlers = {number: signal.getsignal(number) for number in producer.SIGNALS}
     monkeypatch.setattr(producer.subprocess, "Popen", spawn)
-    monkeypatch.setattr(producer.os, "killpg", lambda pid, sig: delivered.append((pid, sig)))
+    monkeypatch.setattr(
+        producer.os, "killpg", lambda pid, sig: delivered.append((pid, sig))
+    )
     try:
         with pytest.raises(producer.Interrupted):
             transaction.command((str(fixture.tool), "--version"))
@@ -505,14 +625,9 @@ def test_signal_is_forwarded_to_the_owned_child_process_group(
 def test_main_propagates_nonzero_child_status_and_cleans_owned_state(
     fixture: Fixture,
     monkeypatch: pytest.MonkeyPatch,
-    returncode: int, expected: int,
+    returncode: int,
+    expected: int,
 ) -> None:
-    class Process:
-        returncode = 0
-        def communicate(self) -> tuple[str, None]:
-            return "", None
-
-    Process.returncode = returncode
-    monkeypatch.setattr(producer.subprocess, "Popen", lambda *args, **kwargs: Process())
+    install_process_failure(monkeypatch, returncode)
     assert producer.main(fixture.argv()) == expected
     assert_clean(fixture)

@@ -142,6 +142,7 @@ class Publication:
         self.context = context
         self.p = context.paths
         self.locked = self.committed = False
+        self.scratch_owned = False
         self.published: list[str] = []
         self.child: subprocess.Popen[str] | None = None
         self.spawning = False
@@ -177,7 +178,12 @@ class Publication:
             ) from exc
         if not owned or unexpected:
             fail(f"Step 06 lock ownership changed; preserving lock: {self.p['lock']}")
-        self.owner.unlink()
+        try:
+            self.owner.unlink()
+        except OSError as exc:
+            raise ProducerError(
+                f"Could not remove Step 06 lock owner: {self.owner}"
+            ) from exc
         try:
             self.p["lock"].rmdir()
         except OSError as exc:
@@ -265,6 +271,8 @@ class Publication:
         success = True
         for name in self.published:
             staged, final = self.p[f"tmp_{name}"], self.p[name]
+            if not os.path.lexists(final):
+                continue
             if not self.same(staged, final):
                 success = False
                 continue
@@ -282,13 +290,15 @@ class Publication:
                 self.p[name].unlink(missing_ok=True)
             except OSError:
                 success = False
+        if success:
+            self.scratch_owned = False
         return success
 
-    def cleanup(self, failed: bool) -> None:
+    def cleanup(self) -> None:
         rollback_ok = not (
-            failed and self.published and not self.committed and not self.rollback()
+            self.published and not self.committed and not self.rollback()
         )
-        scratch_ok = rollback_ok and self.discard_scratch()
+        scratch_ok = rollback_ok and (not self.scratch_owned or self.discard_scratch())
         if not rollback_ok or not scratch_ok:
             print(
                 f"ERROR: Step 06 cleanup is ambiguous; retaining owned lock and residue: {self.p['lock']}",
@@ -391,6 +401,7 @@ def execute(context: Context) -> None:
         tx.acquire()
         if any(os.path.lexists(p[name]) for name in (*tx.scratch, *tx.finals)):
             fail("Step 06 requires absent scratch and final outputs.")
+        tx.scratch_owned = True
         tx.command((context.samtools, "--version"))
         for orientation in ORIENTATIONS:
             for flag in MECHANICAL_ORIENTATION_FLAG_GROUPS[orientation]:
@@ -440,9 +451,14 @@ def execute(context: Context) -> None:
         tx.release()
         failed = False
     finally:
-        for number, handler in handlers.items():
-            signal.signal(number, handler)
-        tx.cleanup(failed)
+        for number in handlers:
+            signal.signal(number, signal.SIG_IGN)
+        try:
+            if failed:
+                tx.cleanup()
+        finally:
+            for number, handler in handlers.items():
+                signal.signal(number, handler)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
