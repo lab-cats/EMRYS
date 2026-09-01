@@ -8,9 +8,6 @@ from pathlib import Path
 from emrys import analyses as module_api
 from emrys.analyses.paired_cmh_candidate_ranking import producer as step09_producer
 from emrys.analyses.paired_cmh_candidate_ranking import validator as step09_validator
-from emrys.analyses.scientific_context_projection import (
-    validator as step10_validator,
-)
 from emrys.contracts.scientific_evidence import scientific_context, step09
 
 _STEP09_OWNER = "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1"
@@ -183,7 +180,7 @@ _STEP10_OUTPUTS = tuple(
         "products/native/qc/validation/10/{analysis_id}.validation.tsv",
         "validation_report",
         expected_header=module_api.VALIDATION_REPORT_HEADER,
-        exact_data_rows=len(step10_validator.CHECK_IDS),
+        exact_data_rows=len(scientific_context.VALIDATION_CHECK_IDS),
         allow_header_only=False,
     ),
 )

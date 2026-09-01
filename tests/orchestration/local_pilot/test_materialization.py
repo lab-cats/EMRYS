@@ -4303,7 +4303,10 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         "fdr_threshold": 0.02,
     }
     project.write_text(yaml.safe_dump(authored, sort_keys=False), encoding="utf-8")
-    admitted_project = admit_project(project, readiness.analysis.profile)
+    admitted_project = admit_project(
+        project,
+        checkout / "workflow/contracts/local_cmh_v2.json",
+    )
     primary = replace(
         readiness,
         project=admitted_project,

@@ -19,7 +19,7 @@ from .models import (
 )
 
 _VALIDATION_ADAPTER = "step10_validation_report_v1"
-_VALIDATION_CHECK_ID = "scientific_context_transaction"
+_VALIDATION_CHECK_ID = owner_context.VALIDATION_CHECK_IDS[0]
 _ROLE_SPECS = (
     (
         "candidate_context",

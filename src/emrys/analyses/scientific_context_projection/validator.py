@@ -18,7 +18,7 @@ from emrys.libraries.validation import (
 )
 
 DESCRIPTION = __doc__
-CHECK_IDS = {"scientific_context_transaction"}
+CHECK_IDS = set(scientific_context.VALIDATION_CHECK_IDS)
 _BOUND_PREFIXES = (
     "step09_all_sites",
     "step09_significant_sites",
