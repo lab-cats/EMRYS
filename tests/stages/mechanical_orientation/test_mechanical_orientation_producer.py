@@ -155,7 +155,7 @@ def install_process_failure(
 
 
 def assert_clean(fixture: Fixture) -> None:
-    assert not any(path.exists() for path in fixture.finals)
+    assert not any(os.path.lexists(path) for path in fixture.finals)
     assert (
         not list(fixture.output.glob(".S.step06.*"))
         if fixture.output.exists()
@@ -547,7 +547,9 @@ def test_flag_subcount_mismatch_is_left_to_independent_validator(
     assert b"\t12\t6\t18\t2\t0.900000\n" in fixture.finals[-1].read_bytes()
 
 
-@pytest.mark.parametrize("occupied", ("output-residue", "qc-residue", "final"))
+@pytest.mark.parametrize(
+    "occupied", ("output-residue", "qc-residue", "final", "broken-final")
+)
 def test_preexisting_state_is_preserved(
     fixture: Fixture,
     monkeypatch: pytest.MonkeyPatch,
@@ -557,13 +559,21 @@ def test_preexisting_state_is_preserved(
         "output-residue": fixture.output / ".S.step06.foreign.tmp.bam",
         "qc-residue": fixture.qc / ".S.step06.foreign.orientation_counts.tmp.tsv",
         "final": fixture.finals[0],
+        "broken-final": fixture.finals[0],
     }[occupied]
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(b"preexisting\n")
+    if occupied == "broken-final":
+        path.symlink_to(fixture.root / "absent")
+    else:
+        path.write_bytes(b"preexisting\n")
     fake = FakeSamtools(fixture)
     install_fake(monkeypatch, fake)
     assert producer.main(fixture.argv()) == 1
-    assert path.read_bytes() == b"preexisting\n"
+    assert (
+        path.is_symlink()
+        if occupied == "broken-final"
+        else (path.read_bytes() == b"preexisting\n")
+    )
     assert fake.commands == []
 
 
