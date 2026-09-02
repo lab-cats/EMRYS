@@ -737,7 +737,7 @@ def _regions_lines(path: Path) -> Iterator[str]:
         else:
             with path.open(encoding="utf-8", newline="") as handle:
                 yield from handle
-    except (OSError, UnicodeError) as exc:
+    except (EOFError, OSError, UnicodeError) as exc:
         raise OnboardingError(
             f"regions file is not valid UTF-8 text: {path}: {exc}"
         ) from exc

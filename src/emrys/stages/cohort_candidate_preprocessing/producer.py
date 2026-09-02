@@ -509,6 +509,8 @@ class Publication:
         self.locked = self.owner_written = self.scratch = False
         self.previous = self.started = self.committed = False
         self.child: subprocess.Popen[bytes] | None = None
+        self.spawning = False
+        self.pending_signal: int | None = None
 
     @property
     def owner(self) -> Path:
@@ -669,6 +671,10 @@ class Publication:
                     print(f"ERROR: {exc}", file=sys.stderr)
 
     def interrupted(self, signum: int, _frame: object) -> None:
+        if self.spawning:
+            if self.pending_signal is None:
+                self.pending_signal = signum
+            return
         for number in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
             signal.signal(number, signal.SIG_IGN)
         child = self.child
@@ -728,7 +734,17 @@ def execute(context: Context, command: Sequence[str]) -> None:
             fail("Refusing to replace complete Step 08 outputs under --no-clobber.")
         confirm_inputs(context)
         sys.stdout.flush()
-        tx.child = subprocess.Popen(command)
+        tx.spawning = True
+        try:
+            tx.child = subprocess.Popen(command)
+        except OSError:
+            tx.spawning = False
+            if tx.pending_signal is not None:
+                tx.interrupted(tx.pending_signal, None)
+            raise
+        tx.spawning = False
+        if tx.pending_signal is not None:
+            tx.interrupted(tx.pending_signal, None)
         status = tx.child.wait()
         tx.child = None
         if status:

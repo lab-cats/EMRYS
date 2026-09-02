@@ -219,10 +219,9 @@ def _require_descriptor_path_binding(
         path_state = os.stat(path, follow_symlinks=False)
     except OSError as exc:
         fail(f"{label} pathname changed while read: {path}: {exc}")
-    if stat.S_ISLNK(path_state.st_mode) or (
-        path_state.st_dev,
-        path_state.st_ino,
-    ) != (descriptor_state.st_dev, descriptor_state.st_ino):
+    if stat.S_ISLNK(path_state.st_mode) or _stable_file_state(
+        path_state
+    ) != _stable_file_state(descriptor_state):
         fail(f"{label} pathname changed while read: {path}")
 
 

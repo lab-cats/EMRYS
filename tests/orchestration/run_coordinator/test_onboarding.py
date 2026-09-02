@@ -948,6 +948,23 @@ def test_project_validation_streams_gzip_regions_file(tmp_path: Path) -> None:
     ) == 1
 
 
+def test_project_validation_rejects_truncated_gzip_regions_file(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "fixture"
+    _publish_synthetic(output)
+    regions = output / "regions.tsv.gz"
+    regions.write_bytes(gzip.compress(b"chrSynthetic\t1\t2\n")[:-4])
+    (output / "partitions.tsv").write_text(
+        "partition_id\tselector_type\tselector_value\n"
+        "primary\tregions_file\tregions.tsv.gz\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(onboarding.OnboardingError, match="not valid UTF-8 text"):
+        onboarding.validate_project(output / "project.yaml")
+
+
 def _runtime_environment(tmp_path: Path) -> tuple[dict[str, str], Path]:
     tool_dir = tmp_path / "tools"
     tool_dir.mkdir()
