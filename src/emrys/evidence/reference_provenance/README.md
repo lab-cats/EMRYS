@@ -2,7 +2,7 @@
 
 The private [`reconciler.py`](reconciler.py) inventories and reconciles one
 explicitly declared reference bundle through
-`python -I -m emrys reconcile reference-provenance`. It checks declared
+`emrys reconcile reference-provenance`. It checks declared
 artifacts and contig agreement; it never repairs, regenerates, discovers, or
 selects a reference.
 
@@ -43,13 +43,13 @@ does not prove a committed publication.
 Dry-run, execute, and focused test are:
 
 ```bash
-python -I -m emrys reconcile reference-provenance \
+emrys reconcile reference-provenance \
   --inventory configs/reference_provenance.example.tsv \
   --base-dir . \
   --output-root results/qc/reference_provenance
 
 mkdir -p results/qc/reference_provenance
-python -I -m emrys reconcile reference-provenance \
+emrys reconcile reference-provenance \
   --inventory /explicit/path/to/reference_provenance.tsv \
   --base-dir /explicit/reference/root \
   --output-root results/qc/reference_provenance \

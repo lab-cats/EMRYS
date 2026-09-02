@@ -103,7 +103,7 @@ either output VCF.
 
 ## Validation interface
 
-The grouped `python -I -m emrys validate partitioned-cohort-mpileup` route,
+The grouped `emrys validate partitioned-cohort-mpileup` route,
 implemented by private [`validator.py`](validator.py), accepts explicit cohort,
 partition, manifests, FAI, both VCFs, receipt, and report output. It does not
 invoke bcftools. Dry-run prints the common report; `--execute`

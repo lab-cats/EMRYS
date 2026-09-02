@@ -123,7 +123,7 @@ replacement owns its complete implementation and dependency behavior.
 
 ## Validation interface
 
-The grouped `python -I -m emrys validate cohort-candidate-preprocessing` route,
+The grouped `emrys validate cohort-candidate-preprocessing` route,
 implemented by private [`validator.py`](validator.py), accepts explicit cohort,
 manifests, annotation GTF, the three outputs, and a report path. It does not
 invoke R. Dry-run prints the common report; `--execute` snapshot-rechecks inputs

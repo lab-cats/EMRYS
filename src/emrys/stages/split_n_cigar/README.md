@@ -9,7 +9,7 @@ change with that layout.
 ## Entry points
 
 - producer: [`step_05_split_n_cigar_reads.sh`](step_05_split_n_cigar_reads.sh)
-- validator: grouped route `python -I -m emrys validate split-n-cigar`,
+- validator: grouped route `emrys validate split-n-cigar`,
   implemented by private [`validator.py`](validator.py)
 
 For Slurm execution, use the complete immutable Run through `emrys run` or
@@ -48,7 +48,7 @@ can still erase recovery evidence. The native pair is not an attempt receipt.
 Validator dry-run:
 
 ```bash
-.venv/bin/python -I -m emrys validate split-n-cigar \
+emrys validate split-n-cigar \
   --scope-id ABE_EV_2 \
   --bam results/split_ncigar/ABE_EV_2/ABE_EV_2.split_ncigar.bam \
   --bai results/split_ncigar/ABE_EV_2/ABE_EV_2.split_ncigar.bam.bai \

@@ -1,6 +1,6 @@
 # Artifact-contract owner
 
-The installed `python -I -m emrys validate artifact-contracts` route validates
+The installed `emrys validate artifact-contracts` route validates
 the closed artifact, run-summary, and report-receipt schemas.
 It does not discover artifacts, build indexes, render reports, repair inputs,
 or promote evidence. The route is coordinated by private
@@ -17,7 +17,7 @@ reduction; the former `core.py` compatibility layer is retired.
 Validate the schemas and starter inventory:
 
 ```sh
-python -I -m emrys validate artifact-contracts \
+emrys validate artifact-contracts \
   --check-schemas \
   --inventory configs/artifact_inventory.example.tsv
 ```
@@ -25,7 +25,7 @@ python -I -m emrys validate artifact-contracts \
 Validate one explicit document:
 
 ```sh
-python -I -m emrys validate artifact-contracts \
+emrys validate artifact-contracts \
   --schema artifact-record \
   --document /explicit/path/to/artifact_record.json \
   --inventory /explicit/path/to/artifact_inventory.tsv

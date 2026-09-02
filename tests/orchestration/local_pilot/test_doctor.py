@@ -38,7 +38,7 @@ def _project(tmp_path: Path) -> ProjectAdmission:
     root = tmp_path / "project"
     source = fixture.build(root)
     for name in ("logs", "runs", "runtime"):
-        (root / name).mkdir()
+        (root / name).mkdir(exist_ok=True)
     return admit_project(source, fixture.profile())
 
 
@@ -57,11 +57,36 @@ def _result(
         source_commit="a" * 40,
         inspection=inspection,
         bindings=(),
-        blockers=() if ready else ("runtime profile is not admitted",),
+        blockers=() if ready else ("runtime inventory is not admitted",),
         remediations=() if ready else ("Run `emrys doctor --repair`.",),
         storage_ready=True,
         runtime_ready=ready,
     )
+
+
+def _patch_foundations(
+    monkeypatch: pytest.MonkeyPatch,
+    project: ProjectAdmission,
+) -> QualifiedStorage:
+    receipt = project.source_path.parent / "storage.tsv"
+    receipt.write_bytes(b"qualified\n")
+    qualified = QualifiedStorage(receipt, "b" * 64, "site-1")
+    monkeypatch.setattr(
+        doctor,
+        "inspect_source_checkout",
+        lambda **_kwargs: SimpleNamespace(commit="a" * 40),
+    )
+    monkeypatch.setattr(
+        doctor.onboarding,
+        "validate_project",
+        lambda *_args, **_kwargs: SimpleNamespace(project=project),
+    )
+    monkeypatch.setattr(
+        doctor.storage_qualification,
+        "admit_direct_requirement",
+        lambda *_args, **_kwargs: qualified,
+    )
+    return qualified
 
 
 def _check(
@@ -235,7 +260,7 @@ def test_selected_package_tree_dependency_is_composed_and_content_bound(
         ),
     )
     rscript = tmp_path / "Rscript"
-    required, additions, package_tree_ids, explicit_file_ids = (
+    additions, package_tree_ids, explicit_file_ids = (
         doctor._module_dependency_checks(
             descriptor,
             (
@@ -263,12 +288,11 @@ def test_selected_package_tree_dependency_is_composed_and_content_bound(
         package_tree_ids=package_tree_ids,
     )
 
-    assert required == (
+    assert tuple(check.check_id for check in additions) == (
         "collaborator_assets",
         "collaborator_file",
         "collaborator_r",
         "collaborator_tool",
-        "python",
     )
     assert by_name["collaborator_assets"].probe_args == ("directory_readable",)
     assert by_name["collaborator_file"].probe_args == ("file_readable",)
@@ -304,38 +328,6 @@ def test_selected_package_tree_dependency_is_composed_and_content_bound(
             ),
             explicit_file_ids=frozenset({"r_tool"}),
         )
-
-
-def test_module_runtime_checks_are_composed_once_for_run_and_resume(
-    tmp_path: Path,
-) -> None:
-    fixed = (
-        _check("python", "tool_version", sys.executable).check,
-        _check("rscript", "tool_version", "/Rscript").check,
-    )
-    descriptor = replace(
-        analysis_module_v1(),
-        dependencies=(
-            analyses.AnalysisDependencyV1(
-                "collaborator_file", "file", str(tmp_path / "resource.dat")
-            ),
-        ),
-    )
-
-    composed, *_rest = doctor._compose_module_runtime_checks(
-        descriptor, fixed, len(fixed)
-    )
-    retained, *_rest = doctor._compose_module_runtime_checks(
-        descriptor, composed, len(fixed)
-    )
-
-    assert [check.check_id for check in composed] == [
-        "python",
-        "rscript",
-        "collaborator_file",
-    ]
-    assert retained == composed
-
 
 def test_runtime_contract_refuses_a_truncated_fixed_roster(tmp_path: Path) -> None:
     source = tmp_path / "source"
@@ -399,26 +391,7 @@ def test_absent_runtime_diagnosis_is_read_only_and_opens_no_log(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     project = _project(tmp_path)
-    storage_receipt = tmp_path / "storage.tsv"
-    storage_receipt.write_bytes(b"qualified\n")
-    storage = doctor.storage_runtime_binding(
-        QualifiedStorage(storage_receipt, "b" * 64, "site-1")
-    )
-    foundations = doctor.DoctorResult(
-        project=project,
-        analysis=project.select_analysis(),
-        source_root=project.source_path.parent / "source",
-        source_commit="a" * 40,
-        inspection=None,
-        bindings=(storage,),
-        blockers=(),
-        remediations=(),
-        storage_ready=True,
-        runtime_ready=False,
-    )
-    monkeypatch.setattr(
-        doctor, "_inspect_foundations", lambda *_args, **_kwargs: foundations
-    )
+    _patch_foundations(monkeypatch, project)
     monkeypatch.setattr(
         doctor,
         "open_attempt_log",
@@ -431,8 +404,57 @@ def test_absent_runtime_diagnosis_is_read_only_and_opens_no_log(
     assert not result.ready
     assert not result.runtime_ready
     assert result.inspection is None
-    assert "runtime profile is not admitted" in result.blockers[-1]
+    assert "runtime inventory is not admitted" in result.blockers[-1]
     assert _snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize("state", ("missing", "malformed"))
+def test_doctor_rejects_an_unusable_default_execution_profile_without_repair(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    state: str,
+) -> None:
+    project = _project(tmp_path)
+    default = project.source_path.parent / "runtime/profiles/default.yaml"
+    if state == "missing":
+        default.unlink()
+    else:
+        default.write_text("not: [valid\n", encoding="utf-8")
+    _patch_foundations(monkeypatch, project)
+    before = _snapshot(tmp_path)
+
+    result = doctor.diagnose_project(project.source_path)
+
+    assert not result.ready
+    assert not result.execution_ready
+    assert "default execution profile is not admitted" in result.blockers[-1]
+    with pytest.raises(doctor.DoctorRepairError, match="preserves execution profiles"):
+        doctor._build_repair_plan(result)
+    assert _snapshot(tmp_path) == before
+
+
+def test_doctor_derives_storage_requirement_from_the_default_profile(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = _project(tmp_path)
+    requirements: list[str] = []
+    monkeypatch.setattr(
+        doctor,
+        "load_execution_profile",
+        lambda **_kwargs: SimpleNamespace(placement=SimpleNamespace(kind="slurm")),
+    )
+
+    qualified = _patch_foundations(monkeypatch, project)
+    monkeypatch.setattr(
+        doctor.storage_qualification,
+        "admit_final_qualification",
+        lambda *_args, **_kwargs: requirements.append("slurm") or qualified,
+    )
+
+    doctor.diagnose_project(project.source_path)
+
+    assert requirements == ["slurm"]
 
 
 def test_foundation_readiness_requires_reporter_only_when_enabled(
@@ -440,24 +462,7 @@ def test_foundation_readiness_requires_reporter_only_when_enabled(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     project = _project(tmp_path)
-    receipt = tmp_path / "storage.tsv"
-    receipt.write_bytes(b"qualified\n")
-    qualified = QualifiedStorage(receipt, "b" * 64, "site-1")
-    monkeypatch.setattr(
-        doctor,
-        "inspect_source_checkout",
-        lambda **_kwargs: SimpleNamespace(commit="a" * 40),
-    )
-    monkeypatch.setattr(
-        doctor.onboarding,
-        "validate_project",
-        lambda *_args, **_kwargs: SimpleNamespace(project=project),
-    )
-    monkeypatch.setattr(
-        doctor.storage_qualification,
-        "admit_direct_requirement",
-        lambda *_args, **_kwargs: qualified,
-    )
+    _patch_foundations(monkeypatch, project)
     monkeypatch.setattr(
         reporting,
         "admit_analysis_reporter",
@@ -466,14 +471,12 @@ def test_foundation_readiness_requires_reporter_only_when_enabled(
         ),
     )
 
-    required = doctor._inspect_foundations(
+    required = doctor.diagnose_project(
         project.source_path,
-        project.source_path.parent,
         require_reporter=True,
     )
-    disabled = doctor._inspect_foundations(
+    disabled = doctor.diagnose_project(
         project.source_path,
-        project.source_path.parent,
         require_reporter=False,
     )
 
@@ -927,6 +930,9 @@ def test_repair_readmission_rejects_a_redirected_runtime_before_writing(
     runtime = _runtime(plan)
     external = tmp_path / "external-runtime"
     external.mkdir()
+    default_profile = runtime.managed_root.parent / "profiles/default.yaml"
+    default_profile.unlink()
+    default_profile.parent.rmdir()
     runtime.managed_root.parent.rmdir()
     runtime.managed_root.parent.symlink_to(external, target_is_directory=True)
     monkeypatch.setattr(

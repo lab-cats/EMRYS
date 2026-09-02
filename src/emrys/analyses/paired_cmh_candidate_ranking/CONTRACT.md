@@ -102,7 +102,7 @@ the producer returned success or that the current set is immutable.
 
 ## Validation interface
 
-The grouped `python -I -m emrys validate paired-cmh-candidate-ranking` route,
+The grouped `emrys validate paired-cmh-candidate-ranking` route,
 implemented by private [`validator.py`](validator.py), accepts explicit
 manifests, Step `08` inputs, all six native outputs, analysis and cohort IDs,
 and report output. It does not invoke R. Dry-run prints the common report;

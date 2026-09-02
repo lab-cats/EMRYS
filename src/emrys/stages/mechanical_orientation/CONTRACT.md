@@ -74,7 +74,7 @@ a final native output, not a cryptographic transaction receipt.
 
 ## Validation interface
 
-The grouped `python -I -m emrys validate mechanical-orientation` route,
+The grouped `emrys validate mechanical-orientation` route,
 implemented by private [`validator.py`](validator.py), accepts the four
 explicit BAM/BAI paths, counts TSV, scope, and report output. It does not invoke
 samtools. Dry-run prints the common TSV; `--execute` snapshot-rechecks inputs

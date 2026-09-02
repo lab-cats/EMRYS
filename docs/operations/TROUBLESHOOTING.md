@@ -34,27 +34,26 @@ publication failure.
 ## Public local-pilot diagnosis
 
 Begin with the root [researcher journey](../../README.md). Keep the exact
-Project definition, Project-owned admitted runtime, run root, and clean source
+Project definition, Project-owned admitted runtime, Run, and clean source
 checkout selected for the attempt; changing them is not recovery.
 
-The table spells out command intent compactly. Invoke every `run`, `resume`,
-and `inspect` route with the controlled checkout interpreter shown in the root
-journey: `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys` followed by
-the displayed subcommand and arguments. Doctor uses the same controlled prefix:
-`.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys doctor ...`.
+Run the installed `emrys` command from the exact Project root. The entry point
+performs the controlled-runtime handoff. When several Runs exist, terminal
+omission opens a picker; noninteractive use supplies an unambiguous two-word
+Run name, full Run ID, or unique ID prefix.
 
 | Observed state or symptom | Public route and safe response |
 | --- | --- |
-| Doctor prints `EMRYS is not ready.` | Read every `BLOCKER` and `REMEDIATION` from `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys doctor --project ...`. Correct declared inputs, storage, checkout, or a site/user runtime outside Doctor. For an absent or incomplete managed runtime, preview `emrys doctor --project ... --repair`; confirm only after reviewing the bounded plan. Do not start `emrys run`. |
+| Doctor prints `EMRYS is not ready.` | Read every `BLOCKER` and `REMEDIATION` from `emrys doctor`. Correct declared inputs, storage, checkout, or a site/user runtime outside Doctor. For an absent or incomplete managed runtime, preview `emrys doctor --repair`; confirm only after reviewing the bounded plan. Do not start `emrys run`. |
 | Doctor exits `2` | The Project definition, discovered runtime, or path boundary is malformed or unsafe, or `--execute` was supplied without `--repair`. Correct the Project/active environment or invocation and rerun; do not edit `runtime/runtime.tsv` or manufacture readiness. |
 | Doctor repair is blocked because a profile is site- or user-owned | The admitted profile points outside the active checkout-owned `.venv` or Project-owned managed runtime. | Repair that environment through site policy and rediscover it, or explicitly admit a replacement. Doctor intentionally refuses silent migration or overwrite. |
 | Doctor repair needs a package manager or unsupported platform | Managed repair currently requires `uv` and Pixi on Linux x86-64. | Install those managers through site policy or use an institution-provided runtime with `emrys runtime discover`; EMRYS does not implement its own solver or package manager. |
-| Readiness passed, but execution has not started | Run `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run ...` once on a terminal. For direct placement, review the complete Run plan; for Slurm placement, review the submission summary, with Run planning continuing inside the allocation. Confirm once; refusal, EOF, or interruption writes nothing. Use `--execute` only for deliberate noninteractive automation. |
-| An initial run fails or its state is uncertain | Run `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect run --run-root /absolute/run/root`. Do not submit another initial run against the existing run root. |
-| Inspection prints incomplete scientific Results, a failed or interrupted Attempt, and `Recovery available: yes` | Run `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume --run-root ...` once. It derives the admitted runtime from the Run's Project. Direct placement shows reusable and pending jobs before confirmation; Slurm confirms submission first and shows that work inside the allocation. EMRYS re-admits completed work before reuse. Use `--execute` only for noninteractive automation. |
+| Readiness passed, but execution has not started | Run `emrys run` once on a terminal. For direct placement, review the complete Run plan; for Slurm placement, review the submission summary, with Run planning continuing inside the allocation. Confirm once; refusal, EOF, or interruption writes nothing. Use `--execute` only for deliberate noninteractive automation. |
+| An initial run fails or its state is uncertain | Run `emrys inspect [RUN]`. Do not submit another initial run against the existing Run. |
+| Inspection prints incomplete scientific Results, a failed or interrupted Attempt, and `Recovery available: yes` | Run `emrys resume [RUN]` once. It derives the admitted runtime and immutable Analysis from the selected Run. Direct placement shows reusable and pending jobs before confirmation; Slurm confirms submission first and shows that work inside the allocation. EMRYS re-admits completed work before reuse. Use `--execute` only for noninteractive automation. |
 | Run integrity, scientific Results, or reporting is `blocked` | Preserve the complete run root, attempt receipts, locks, task/reporting ledgers, logs, native artifacts, partials, backups, and recovery markers. Read the domain-specific status and blockers; no public command forces, unlocks, cleans, or automatically reconciles ambiguous evidence. Route the failing scope to its owner below. |
-| Scientific Results are `complete`, but reporting is incomplete after no-report or a reporting failure | The successful scientific Attempt receipt and Results remain unchanged. Review `emrys report --run-root ...` without `--execute`, then add `--execute` only when it reports an admissible empty reporting state. Complete reports are revalidated and reused; partial or ambiguous state fails closed and must be preserved. |
-| `Run root already exists; inspect or resume it instead` | Use `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect run --run-root ...` on that exact root. Never delete or rename it merely to make an initial run start. |
+| Scientific Results are `complete`, but reporting is incomplete after no-report or a reporting failure | The successful scientific Attempt receipt and Results remain unchanged. Review `emrys report [RUN]` without `--execute`, then add `--execute` only when it reports an admissible empty reporting state. Complete reports are revalidated and reused; partial or ambiguous state fails closed and must be preserved. |
+| `Run root already exists; inspect or resume it instead` | Use `emrys inspect [RUN]` for that Run. Never delete or rename it merely to make an initial run start. |
 | Step `00c` cannot create or re-admit the reference FAI/dictionary | Stop before downstream work. Preserve the FASTA, `<reference-fasta>.fai`, `<reference-stem>.dict`, and every adjacent Step `00c` lock/staging path. Confirm that the declared external reference directory is the intended writable sidecar authority; do not copy, delete, or regenerate one member independently. |
 
 Control-plane fixtures, real-tool synthetic exercises, and scheduled runs establish
@@ -66,23 +65,23 @@ infer such a claim from this recovery guide.
 
 | Symptom or message | What it means | Safe next action |
 | --- | --- | --- |
-| Shell prints `permission denied` or `is a directory` for a path | A directory or nonexecutable data file was entered as though it were a command. | Use `cd /absolute/path/to/emrys` for the checkout and invoke EMRYS through its selected `.venv/bin/python`; pass data paths only as command arguments. |
-| `No module named emrys` | The selected Python does not contain this checkout's installed package. | From the clean checkout, perform the explicit locked setup with `uv sync --locked --group workflow`, then use that checkout's `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys`. Do not add `PYTHONPATH`. |
-| Selected interpreter imports another checkout | The Python/package authority differs from the current Git tree. | Stop, bind `EMRYS_PY` to the intended checkout's `.venv/bin/python`, and rerun help. Do not copy package files between environments. |
+| Shell prints `permission denied` or `is a directory` for a path | A directory or nonexecutable data file was entered as though it were a command. | Activate the intended checkout's locked environment, `cd` to the Project root, and run `emrys`; pass data paths only as command arguments. |
+| `No module named emrys` | The active environment does not contain this checkout's installed package. | From the clean checkout, run `uv sync --locked --group workflow`, activate `.venv`, and rerun `emrys --help`. Do not add `PYTHONPATH`. |
+| Selected interpreter imports another checkout | The Python/package authority differs from the intended Git tree. | Stop, activate the intended checkout's `.venv`, and rerun `emrys --help`. Do not copy package files between environments. |
 | Doctor says the checkout is dirty | Runtime identity cannot bind an uncommitted implementation. | Inspect `git status --short`; preserve and resolve the changes through the approved development workflow. Do not stash or discard unrelated work merely to make doctor pass. |
-| Project contains an unknown/duplicate field or YAML merge | The temporary Project-adapter schema is intentionally closed and merge expansion is disabled. | Rerun `emrys init project` with each supported value supplied once. Do not use anchors, templates, or environment interpolation. |
+| Project contains an unknown/duplicate field or YAML merge | The Project schema is intentionally closed and merge expansion is disabled. | Rerun `emrys init PROJECT_NAME` with each supported value supplied once. Do not use anchors, templates, or environment interpolation. |
 | FASTQ, manifest, partition, FASTA, or GTF path is rejected | Paths resolve from the Project directory and must name stable regular files using the explicit path vocabulary. | Correct the authored path. Remove `~`, `$VAR`, globs, redundant separators, and `.`/`..` components; do not create a symlink workaround. |
 | Control/treatment pairing is rejected | `replicate` is the pairing authority and the two analysis conditions do not define identical paired strata. | For at least two replicate IDs, provide exactly one control row and one treatment row with the same replicate value. Do not rely on row order or sample-name patterns. |
 | R1 and R2 are identical or compression differs | One paired library must have two distinct files with the same plain/gzip mode. | Correct the manifest or upstream staging; do not rename the same file twice. |
 | Partition or contig later fails owner validation | The declared selector does not reconcile with the FASTA/FAI or partitions overlap. | Preserve the Attempt. Correct reference/partition preparation for a newly admitted Project revision; do not hand-edit VCFs or receipts. |
 | Project root already exists | Initial publication is create-absent and refuses adoption. | Inspect it if it is an EMRYS Project. Otherwise choose a different absent child under an existing writable parent; do not delete an uncertain directory. |
-| Project root or reference sidecars are on unqualified storage | Required locking, hard-link, rename, visibility, or durability semantics are not admitted for the selected placement. | For direct placement, preview `emrys doctor --project ... --repair`; confirmed repair performs the bounded single-host checks. For Slurm, run both phases of `emrys inspect storage-qualification` for the exact Project-root/reference pair. Stop if either path fails; scheduler availability is not storage support. |
+| Project root or reference sidecars are on unqualified storage | Required locking, hard-link, rename, visibility, or durability semantics are not admitted for the selected placement. | For direct placement, preview `emrys doctor --repair`; confirmed repair performs the bounded single-host checks. For Slurm, run both phases of `emrys debug storage-qualification` for the exact Project-root/reference pair. Stop if either path fails; scheduler availability is not storage support. |
 
 ## Runtime and scheduler blockers
 
 | Symptom or message | What it means | Safe next action |
 | --- | --- | --- |
-| Tool is visible on the login node but absent in a job | Login and batch module environments differ. | Enter the intended compute environment, load the approved modules, and rerun `emrys runtime discover --project ...`; do not treat the head-node result as runtime evidence. |
+| Tool is visible on the login node but absent in a job | Login and batch module environments differ. | Enter the intended compute environment, load the approved modules, and rerun `emrys runtime discover` from the Project root; do not treat the head-node result as runtime evidence. |
 | `module avail` lists a tool but discovery cannot admit it | A module name is not an executable identity, and discovery never loads modules. | Load the module in the execution context, ensure exactly one matching installation is visible, then rerun discovery. |
 | `module purge` emits unload errors | The site has default modules whose unload metadata is incomplete. | Preserve the output and use the site's supported module initialization/selection. Do not infer that requested scientific modules failed solely from purge warnings; inspect `module list` and actual probes. |
 | Java module name and `java -version` disagree | The site module may expose the system launcher or only supporting variables. | Make `JAVA_HOME` and the Java on `PATH` identify the same canonical Java 17-or-newer launcher, then rediscover; Picard and GATK use that identity. |

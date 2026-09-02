@@ -1,4 +1,4 @@
-"""Read-only derivation of local-pilot Run and Results state.
+"""Read-only derivation of Project Run and Results state.
 
 This facade aggregates immutable Attempt, task, reporting, and lock evidence.
 Snakemake metadata remains intentionally outside the inspection authority.
@@ -7,11 +7,14 @@ Snakemake metadata remains intentionally outside the inspection authority.
 from __future__ import annotations
 
 import hashlib
+import re
 import socket
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, cast
+
+from coolname_hash import pseudohash
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
@@ -47,7 +50,6 @@ from emrys.orchestration.local_pilot._inspection_attempts import (
 from emrys.orchestration.local_pilot._inspection_evidence import (
     ReportingReceiptValidator,
     TaskInspection,
-    TaskState,
     ValidatedReportingReceipt,
     _receipt_binds_reporting,
     inspect_evidence,
@@ -64,6 +66,53 @@ AttemptOutcome = Literal[
 RunIntegrity = Literal["valid", "blocked"]
 ResultsStatus = Literal["incomplete", "complete", "blocked"]
 ReportingStatus = Literal["not applicable", "incomplete", "complete", "blocked"]
+_RUN_ID_PATTERN = re.compile(r"run-[0-9a-f]{64}\Z")
+_RUN_ID_PREFIX_PATTERN = re.compile(r"run-[0-9a-f]{1,64}\Z")
+
+
+def human_run_name(run_id: str) -> str:
+    """Derive one stable two-word presentation name from an immutable Run ID."""
+
+    if _RUN_ID_PATTERN.fullmatch(run_id) is None:
+        raise InspectionError(f"Invalid Run ID: {run_id}")
+    return "-".join(pseudohash(run_id, 2))
+
+
+def project_run_roots(project_root: Path) -> tuple[Path, ...]:
+    """List canonical Run paths without admitting their evidence trees."""
+
+    runs_root = project_root / "runs"
+    if not runs_root.exists() and not runs_root.is_symlink():
+        return ()
+    if runs_root.is_symlink() or not runs_root.is_dir():
+        raise InspectionError(f"Project runs path must be a real directory: {runs_root}")
+    try:
+        entries = tuple(runs_root.iterdir())
+    except OSError as exc:
+        raise InspectionError(f"Could not list Project Runs: {runs_root}: {exc}") from exc
+    return tuple(
+        entry
+        for entry in sorted(entries, key=lambda item: item.name)
+        if _RUN_ID_PATTERN.fullmatch(entry.name) is not None
+        and not entry.is_symlink()
+        and entry.is_dir()
+    )
+
+
+def resolve_run_root(run_roots: Sequence[Path], selector: str) -> Path:
+    """Resolve an exact name or ID, or an unambiguous Run-ID prefix."""
+
+    matches = tuple(
+        root
+        for root in run_roots
+        if selector == human_run_name(root.name) or selector == root.name
+    )
+    if not matches and _RUN_ID_PREFIX_PATTERN.fullmatch(selector) is not None:
+        matches = tuple(root for root in run_roots if root.name.startswith(selector))
+    if len(matches) == 1:
+        return matches[0]
+    outcome = "No Project Run matches" if not matches else "Ambiguous Project Run"
+    raise InspectionError(f"{outcome} selector: {selector}")
 
 
 @dataclass(frozen=True, slots=True)

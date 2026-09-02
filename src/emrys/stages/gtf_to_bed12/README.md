@@ -4,9 +4,9 @@ This directory is the implemented native owner for semantic stage
 `convert_GTF_to_BED12` (`emrys.stage.convert_GTF_to_BED12.v1`, historical
 alias `00b`). Its current public assets are:
 
-- `python -I -m emrys convert gtf-to-bed12`, implemented by the private
+- `emrys convert gtf-to-bed12`, implemented by the private
   [`converter.py`](converter.py) module;
-- `python -I -m emrys validate bed12`, implemented by the private
+- `emrys validate bed12`, implemented by the private
   [`validator.py`](validator.py) module; and
 - the mirrored [producer](../../../../tests/stages/gtf_to_bed12/test_gtf_to_bed12.py),
   and [validator](../../../../tests/stages/gtf_to_bed12/test_validate_step_00b_bed12.py)
@@ -22,7 +22,7 @@ From the repository root, invoke the producer through the installed repository
 interpreter:
 
 ```bash
-.venv/bin/python -I -m emrys convert gtf-to-bed12 \
+emrys convert gtf-to-bed12 \
   --gtf refs/novogene_ref/genome.gtf \
   --bed refs/novogene_ref/genome.bed
 ```
@@ -49,7 +49,7 @@ Invoke the validator through an explicit interpreter. Omitting `--execute` is
 the no-write dry run:
 
 ```bash
-.venv/bin/python -I -m emrys validate bed12 \
+emrys validate bed12 \
   --scope-id novogene_ref \
   --bed12 refs/novogene_ref/genome.bed \
   --source-gtf refs/novogene_ref/genome.gtf \

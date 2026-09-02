@@ -33,7 +33,7 @@ PRIVATE_PYTHON_MODULES = frozenset()
 DIRECT_PYTHON_ENTRYPOINTS = frozenset({"benchmark_stage_resources.py"})
 INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
 EMRYS_COMMANDS = (
-    (("init", "project"), "usage: emrys init project"),
+    (("init",), "usage: emrys init"),
     (
         ("init", "synthetic"),
         "usage: emrys init synthetic",
@@ -49,28 +49,28 @@ EMRYS_COMMANDS = (
     ),
     (("validate", "all-pass"), "usage: emrys validate all-pass"),
     (
-        ("validate", "project"),
-        "usage: emrys validate project",
+        ("validate",),
+        "usage: emrys validate",
     ),
     (
         ("reconcile", "reference-provenance"),
         "usage: emrys reconcile reference-provenance",
     ),
     (
-        ("inspect", "run"),
-        "usage: emrys inspect run",
+        ("inspect",),
+        "usage: emrys inspect",
     ),
     (
-        ("inspect", "runtime-availability"),
-        "usage: emrys inspect runtime-availability",
+        ("debug", "runtime-availability"),
+        "usage: emrys debug runtime-availability",
     ),
     (
-        ("inspect", "storage-inventory"),
-        "usage: emrys inspect storage-inventory",
+        ("debug", "storage-inventory"),
+        "usage: emrys debug storage-inventory",
     ),
     (
-        ("inspect", "storage-qualification"),
-        "usage: emrys inspect storage-qualification",
+        ("debug", "storage-qualification"),
+        "usage: emrys debug storage-qualification",
     ),
     (("convert", "gtf-to-bed12"), "usage: emrys convert gtf-to-bed12"),
     (("validate", "bed12"), "usage: emrys validate bed12"),
@@ -144,9 +144,7 @@ SHELL_ENTRYPOINT_PATHS = {
         "src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
     ),
     "scientific_context_projection.sh": Path(
-        "src/emrys/analyses/paired_cmh_candidate_ranking/"
-        "scientific_context_projection/"
-        "scientific_context_projection.sh"
+        "src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh"
     ),
 }
 SHELL_ENTRYPOINTS = frozenset(SHELL_ENTRYPOINT_PATHS)
@@ -170,9 +168,7 @@ R_ENTRYPOINT_PATHS = {
         "step_09_cmh_editing_site_calling.R"
     ),
     "scientific_context_projection.R": Path(
-        "src/emrys/analyses/paired_cmh_candidate_ranking/"
-        "scientific_context_projection/"
-        "scientific_context_projection.R"
+        "src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.R"
     ),
 }
 R_ENTRYPOINTS = frozenset(R_ENTRYPOINT_PATHS)
@@ -569,7 +565,7 @@ def test_installed_emrys_commands_are_isolated_and_cwd_independent(
     "command",
     (
         ("runtime", "discover"),
-        ("validate", "project"),
+        ("validate",),
         ("doctor",),
         ("run",),
     ),
@@ -595,9 +591,9 @@ def test_project_is_the_only_active_intake_spelling(
         (("doctor",), True),
         (("run",), True),
         (("runtime", "discover"), False),
-        (("validate", "project"), False),
+        (("validate",), False),
         (("resume",), False),
-        (("inspect", "run"), False),
+        (("inspect",), False),
         (("report",), False),
     ),
 )

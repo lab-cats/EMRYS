@@ -831,11 +831,8 @@ def test_two_html_views_separate_science_from_operational_evidence(
             continue
         href = Path(os.path.relpath(artifact.path, start=context.output_dir)).as_posix()
         assert f'href="{href}"><strong>Analysis artifact: ' in evidence
-    assert "emrys inspect run --run-root" not in scientific
-    assert (
-        "Inspect this Run: emrys inspect run --run-root &lt;run-root&gt;"
-        in evidence
-    )
+    assert "emrys inspect" not in scientific
+    assert "Inspect this Run: emrys inspect &lt;RUN&gt;" in evidence
     assert "CMH-ranked candidates" in scientific
     assert "FWD_like" in scientific
     assert 'id="computational_significant_sites"' not in scientific

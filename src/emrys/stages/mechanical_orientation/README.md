@@ -9,7 +9,7 @@ labels, artifact names, and historical alias do not change with that layout.
 ## Entry points
 
 - private workflow producer: [`producer.py`](producer.py)
-- validator: grouped route `python -I -m emrys validate mechanical-orientation`,
+- validator: grouped route `emrys validate mechanical-orientation`,
   implemented by private [`validator.py`](validator.py)
 
 For Slurm execution, use the complete immutable Run through `emrys run` or
@@ -30,7 +30,7 @@ not a receipt.
 Validator dry-run:
 
 ```bash
-.venv/bin/python -I -m emrys validate mechanical-orientation \
+emrys validate mechanical-orientation \
   --scope-id ABE_EV_2 \
   --fwd-bam results/orientation/ABE_EV_2/ABE_EV_2.FWD_like.bam \
   --fwd-bai results/orientation/ABE_EV_2/ABE_EV_2.FWD_like.bam.bai \

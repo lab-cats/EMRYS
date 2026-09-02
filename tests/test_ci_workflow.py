@@ -340,11 +340,16 @@ def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
 
     path = journey["run"]
     assert "init synthetic" not in path
+    assert 'emrys=("${clean_clone}/.venv/bin/emrys")' in path
+    assert 'cd "${project_root}"' in path
+    assert "-m emrys" not in path
+    assert "--project" not in path
     for command in (
         "doctor",
+        "validate",
         "--repair --execute",
         "run",
-        "inspect run",
+        "inspect",
     ):
         assert command in path
     for retired in (
@@ -360,6 +365,7 @@ def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
     assert _expression(upload["if"]) == "always()"
     assert upload["with"]["include-hidden-files"] is True
     assert upload["with"]["if-no-files-found"] == "error"
+    assert "project/runtime/profiles" in upload["with"]["path"]
 
 
 def test_synthetic_evidence_is_always_uploaded_with_hidden_state() -> None:

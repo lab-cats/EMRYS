@@ -141,8 +141,10 @@ def _inspect_command(source_root: Path, output_root: Path) -> str:
         source_root / "results" / "reports",
         source_root / "products" / "report",
     }:
-        return "emrys inspect run --run-root <run-root>"
-    return shlex.join(("emrys", "inspect", "run", "--run-root", str(source_root)))
+        return "emrys inspect <RUN>"
+    return shlex.join(
+        ("emrys", "inspect", source_root.name, "--project", str(source_root.parent.parent / "project.yaml"))
+    )
 
 
 def expected_html_identity(

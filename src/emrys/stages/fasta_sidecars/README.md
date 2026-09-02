@@ -8,7 +8,7 @@ evidence limits.
 
 - repository producer:
   [`step_00c_prepare_gatk_reference.sh`](step_00c_prepare_gatk_reference.sh)
-- grouped validator: `python -I -m emrys validate fasta-sidecars`, implemented
+- grouped validator: `emrys validate fasta-sidecars`, implemented
   by the private [`validator.py`](validator.py) module
 
 For Slurm execution, use the complete immutable Run through `emrys run` or
@@ -52,7 +52,7 @@ returns failure and retains the lock plus remaining residue.
 Validator dry-run:
 
 ```bash
-.venv/bin/python -I -m emrys validate fasta-sidecars \
+emrys validate fasta-sidecars \
   --scope-id novogene_ref \
   --reference-fasta refs/novogene_ref/genome.fa \
   --reference-fai refs/novogene_ref/genome.fa.fai \

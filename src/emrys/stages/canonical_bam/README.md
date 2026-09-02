@@ -7,7 +7,7 @@ semantics.
 ## Entry points
 
 - producer: [`step_02_sort_index_bam.sh`](step_02_sort_index_bam.sh)
-- validator: grouped route `python -I -m emrys validate canonical-bam`,
+- validator: grouped route `emrys validate canonical-bam`,
   implemented by private [`validator.py`](validator.py)
 
 For Slurm execution, use the complete immutable Run through `emrys run` or
@@ -41,7 +41,7 @@ retain the generic samtools sort/read-group fallback.
 Validator dry-run:
 
 ```bash
-.venv/bin/python -I -m emrys validate canonical-bam \
+emrys validate canonical-bam \
   --scope-id ABE_EV_2 \
   --bam results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
   --bai results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai \

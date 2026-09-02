@@ -155,7 +155,7 @@ def _readiness(
             yaml.safe_dump(definition, sort_keys=False),
             encoding="utf-8",
         )
-    execution_profile_path = request.parent / "emrys.execution.yaml"
+    execution_profile_path = request.parent / "runtime/profiles/default.yaml"
     profile_document = yaml.safe_load(
         execution_profile_path.read_text(encoding="utf-8")
     )
@@ -183,10 +183,7 @@ def _readiness(
     )
     analysis = project.select_analysis()
     resources = resolve_resource_policy(
-        load_execution_profile(
-            request,
-            config_path=execution_profile_path,
-        ).resource_policy,
+        load_execution_profile(config_path=execution_profile_path).resource_policy,
         AllocationCapacity(
             cores=workflow_cores,
             memory_mb=max(1024, workflow_cores * 1024),
@@ -194,7 +191,7 @@ def _readiness(
         ),
     )
     runtime = workspace / "runtime/runtime.tsv"
-    runtime.parent.mkdir(mode=0o700)
+    runtime.parent.mkdir(mode=0o700, exist_ok=True)
     runtime_bytes = b"fixed test runtime profile\n"
     runtime.write_bytes(runtime_bytes)
     tool = tmp_path / "tool"
@@ -385,7 +382,7 @@ def _patch_run_control(
     readiness, resources, project_path, workspace = _readiness(tmp_path)
     arguments = argparse.Namespace(
         project=project_path,
-        execution_profile=project_path.parent / "emrys.execution.yaml",
+        profile=None,
         log_level=None,
         log_root=None,
         execute=False,
@@ -730,8 +727,7 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
         str(tmp_path / "tool"),
         "-c",
         (
-            'export EMRYS_RUN_TOKEN="$1" EMRYS_SHA256_PYTHON="$2" '
-            'EMRYS_REQUIRE_BOUND_SHA256=1; shift 2; exec "$@"'
+            'export EMRYS_RUN_TOKEN="$1" EMRYS_SHA256_PYTHON="$2" EMRYS_REQUIRE_BOUND_SHA256=1; shift 2; exec "$@"'
         ),
         "emrys-owner",
     ]
@@ -1981,10 +1977,15 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     assert observed.run_id == plan.run.run_id
     assert observed.latest_attempt is None
 
-    arguments = argparse.Namespace(run_root=plan.run_root, detail="normal")
+    arguments = argparse.Namespace(
+        project=plan.run.analysis.source_path,
+        run=plan.run.run_id,
+        detail="normal",
+    )
     assert control.inspect_from_args(arguments) == 0
     normal = capsys.readouterr().out
-    assert normal.count(f"Run ID: {plan.run.run_id}") == 1
+    assert normal.count(f"Run: {inspection.human_run_name(plan.run.run_id)}") == 1
+    assert "Run ID:" not in normal
     assert "Analysis ID:" not in normal
     assert "Execution Plan ID:" not in normal
     assert "Run root:" not in normal
@@ -1992,6 +1993,7 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     arguments.detail = "verbose"
     assert control.inspect_from_args(arguments) == 0
     verbose = capsys.readouterr().out
+    assert f"Run ID: {plan.run.run_id}" in verbose
     assert f"Analysis ID: {plan.run.analysis.revision.analysis_revision_id}" in verbose
     assert f"Execution Plan ID: {plan.run.execution_plan.execution_plan_id}" in verbose
     assert "Attempt ID: none" in verbose
@@ -2147,8 +2149,7 @@ def test_post_binding_interruption_completes_the_exact_pristine_run(
     replanned = control._plan_run(
         plan.run.analysis.source_path,
         execution_profile=load_execution_profile(
-            plan.run.analysis.source_path,
-            config_path=plan.run.analysis.source_path.parent / "emrys.execution.yaml",
+            config_path=(plan.run.analysis.source_path.parent / "runtime/profiles/default.yaml"),
         ),
     )
     assert (
@@ -2278,7 +2279,7 @@ def _patch_resume_control(
     monkeypatch.setattr(control.inspection, "inspect_run", lambda _root: observed)
     monkeypatch.setattr(
         control.doctor,
-        "inspect_local_pilot",
+        "diagnose_project",
         inspect_readiness,
     )
     monkeypatch.setattr(
@@ -2359,7 +2360,7 @@ def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
     )
     second = control._plan_resume(
         first.run_root,
-        execution_profile=load_execution_profile(request),
+        execution_profile=load_execution_profile(),
     )
 
     assert selected == [retained]
@@ -2408,7 +2409,7 @@ def test_successor_resume_snapshots_current_runtime_profile(
     )
     second = control._plan_resume(
         first.run_root,
-        execution_profile=load_execution_profile(first.run.analysis.source_path),
+        execution_profile=load_execution_profile(),
     )
 
     new_profile = next(
@@ -2448,10 +2449,7 @@ def test_reporting_profile_inherits_computation_and_cli_reporting_wins(
         "    html_report: 512\n",
         encoding="utf-8",
     )
-    profile = load_execution_profile(
-        first.run.analysis.source_path,
-        config_path=selected,
-    )
+    profile = load_execution_profile(config_path=selected)
 
     second = control._plan_resume(
         first.run_root,
@@ -2483,7 +2481,7 @@ def test_project_v1_predecessor_does_not_enable_request_v3_resume(
     ):
         control._plan_resume(
             first.run_root,
-            execution_profile=load_execution_profile(first.run.analysis.source_path),
+            execution_profile=load_execution_profile(),
         )
 
 
@@ -2607,11 +2605,8 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     assert relocated_run.run_id == run_one.run_id
     assert relocated_analysis.workflow_inputs != readiness_one.analysis.workflow_inputs
 
-    resume_profile = load_execution_profile(
-        readiness_one.project.source_path,
-        config_path=_slurm_profile(tmp_path),
-    )
-    monkeypatch.setattr(control.doctor, "inspect_local_pilot", inspect_second_runtime)
+    resume_profile = load_execution_profile(config_path=_slurm_profile(tmp_path))
+    monkeypatch.setattr(control.doctor, "diagnose_project", inspect_second_runtime)
     monkeypatch.setattr(control.inspection, "inspect_run", inspection.inspect_run)
     monkeypatch.setattr(
         control.capacity,
@@ -2918,9 +2913,8 @@ def test_public_run_dry_run_is_no_write(
         execute_plan=lambda plan, _observe, _inspection: executed.append(plan),
         transform_plan=lambda plan: plan,
     )
-    named = workspace / "emrys.execution.ci.yaml"
-    shutil.copy2(arguments.execution_profile, named)
-    arguments.execution_profile = None
+    named = workspace / "runtime/profiles/ci.yaml"
+    shutil.copy2(workspace / "runtime/profiles/default.yaml", named)
     arguments.profile = "ci"
 
     projections = {}
@@ -2947,7 +2941,7 @@ def test_public_run_dry_run_is_no_write(
     normal = projections["normal"]
     assert "Project: 'project'" in normal
     assert "Analysis: 'primary'" in normal
-    assert "Run ID:" in normal
+    assert "Run: " in normal
     assert "Scientific boundary: complete analysis" in normal
     assert "Work: 35 pending, 0 reusable" in normal
     assert "Reporting: automatic after scientific work" in normal
@@ -2956,6 +2950,7 @@ def test_public_run_dry_run_is_no_write(
         "Operation:",
         "Analysis ID:",
         "Execution Plan ID:",
+        "Run ID:",
         "Run root:",
         "Resources:",
         "Step thread allocations:",
@@ -2982,7 +2977,7 @@ def test_public_run_dry_run_is_no_write(
     assert executed == []
     arguments.profile = "missing"
     assert control.run_from_args(arguments) == 2
-    assert "emrys.execution.missing.yaml" in capsys.readouterr().err
+    assert "runtime/profiles/missing.yaml" in capsys.readouterr().err
 
 
 def test_processing_run_dry_run_is_no_write_and_truthfully_scoped(
@@ -3069,8 +3064,8 @@ def test_interactive_run_confirms_exact_plan_before_every_write(
         assert control.run_from_args(arguments) == expected_exit
 
     rendered = capsys.readouterr().err
-    assert rendered.count("Run ID:") == 1
-    assert rendered.index("Run ID:") < rendered.index("Execute this plan? [y/N]")
+    assert rendered.count("Run: ") == 1
+    assert rendered.index("Run: ") < rendered.index("Execute this plan? [y/N]")
     if expected_exit == 1:
         assert len(planned) == len(executed) == 1
         assert executed[0] is planned[0]
@@ -3090,8 +3085,12 @@ def test_interactive_resume_uses_the_same_no_write_gate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     plan = _plan(tmp_path)
-    named = plan.workspace / "emrys.execution.resume-ci.yaml"
-    shutil.copy2(plan.run.analysis.source_path.parent / "emrys.execution.yaml", named)
+    plan.run_root.mkdir(parents=True)
+    named = plan.workspace / "runtime/profiles/resume-ci.yaml"
+    shutil.copy2(
+        plan.run.analysis.source_path.parent / "runtime/profiles/default.yaml",
+        named,
+    )
 
     def plan_resume(*_args: object, execution_profile, **_kwargs: object):
         assert execution_profile.source_path == named
@@ -3101,9 +3100,9 @@ def test_interactive_resume_uses_the_same_no_write_gate(
     monkeypatch.setattr(control.sys, "stdin", _InputStream("no\n"))
     monkeypatch.setattr(control.sys, "stderr", _TerminalOutput(control.sys.stderr))
     arguments = argparse.Namespace(
-        run_root=plan.run_root,
+        project=plan.run.analysis.source_path,
+        run=plan.run.run_id,
         profile="resume-ci",
-        execution_profile=None,
         log_level=None,
         log_root=None,
         execute=False,
@@ -3114,13 +3113,7 @@ def test_interactive_resume_uses_the_same_no_write_gate(
     rendered = capsys.readouterr().err
     assert "Execute this plan? [y/N]" in rendered
     assert "Dry-run complete; no resume state was written." in rendered
-    assert not plan.run_root.exists()
-    arguments.profile = None
-    (plan.workspace / "emrys.resources.yaml").write_text("retired: true\n")
-    assert control.resume_from_args(arguments) == 2
-    assert (
-        "Retired adjacent configuration requires migration" in capsys.readouterr().err
-    )
+    assert list(plan.run_root.iterdir()) == []
 
 
 def test_public_execute_logs_and_terminalizes_doctor_failure_before_run_state(
@@ -3145,10 +3138,10 @@ def test_public_execute_logs_and_terminalizes_doctor_failure_before_run_state(
         raise doctor.DoctorInputError("injected Doctor failure")
 
     monkeypatch.setattr(control, "open_attempt_log", capture_open)
-    monkeypatch.setattr(control.doctor, "inspect_local_pilot", reject_readiness)
+    monkeypatch.setattr(control.doctor, "diagnose_project", reject_readiness)
     arguments = argparse.Namespace(
         project=request,
-        execution_profile=request.parent / "emrys.execution.yaml",
+        profile=None,
         log_level=None,
         log_root=None,
         execute=True,
@@ -3261,15 +3254,19 @@ def test_public_resume_logs_inspection_failure_before_run_state(
 ) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
-    run_root = workspace / "runs" / "run-preflight"
+    project = build(workspace)
+    run_id = f"run-{'a' * 64}"
+    run_root = workspace / "runs" / run_id
+    run_root.mkdir(parents=True)
 
     def reject_inspection(_root: Path) -> inspection.RunInspection:
         raise inspection.InspectionError("injected resume inspection failure")
 
     monkeypatch.setattr(control.inspection, "inspect_run", reject_inspection)
     arguments = argparse.Namespace(
-        run_root=run_root,
-        execution_profile=None,
+        project=project,
+        run=run_id,
+        profile=None,
         log_level=None,
         log_root=None,
         execute=True,
@@ -3283,8 +3280,8 @@ def test_public_resume_logs_inspection_failure_before_run_state(
         "attempt_opened",
         "attempt_failed",
     ]
-    assert records[0]["scope_id"] == "run-preflight"
-    assert not (workspace / "runs").exists()
+    assert records[0]["scope_id"] == run_id
+    assert list(run_root.iterdir()) == []
     captured = capsys.readouterr()
     assert "injected resume inspection failure" in captured.err
     assert "phase=preflight status=failed" in captured.err
@@ -3347,11 +3344,8 @@ def test_new_run_doctor_storage_requirement_tracks_execution_placement(
         ),
     )
 
-    direct = load_execution_profile(project_path)
-    slurm = load_execution_profile(
-        project_path,
-        config_path=_slurm_profile(tmp_path),
-    )
+    direct = load_execution_profile()
+    slurm = load_execution_profile(config_path=_slurm_profile(tmp_path))
     assert (
         control._plan_run(
             project_path,
@@ -3371,10 +3365,11 @@ def test_new_run_doctor_storage_requirement_tracks_execution_placement(
 
 
 def _scheduled_run_arguments(tmp_path: Path, *, execute: bool) -> argparse.Namespace:
+    project = build(tmp_path / "project")
     return argparse.Namespace(
-        project=tmp_path / "project.yaml",
+        project=project,
         analysis="sensitivity",
-        execution_profile=_slurm_profile(tmp_path),
+        profile=str(_slurm_profile(tmp_path)),
         log_level=None,
         log_root=None,
         execute=execute,
@@ -3387,7 +3382,7 @@ def test_public_slurm_rejects_cpu_shortfall_before_submission(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     arguments = _scheduled_run_arguments(tmp_path, execute=True)
-    arguments.execution_profile = _slurm_profile(tmp_path, cpus_per_task=3)
+    arguments.profile = str(_slurm_profile(tmp_path, cpus_per_task=3))
     monkeypatch.setattr(
         control.slurm_submission,
         "plan_submission",
@@ -3420,11 +3415,9 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
     first = _plan(tmp_path, workflow_cores=workflow_cores)
     _failed_run(first)
     arguments = argparse.Namespace(
-        run_root=first.run_root,
-        execution_profile=_slurm_profile(
-            tmp_path,
-            cpus_per_task=cpus_per_task,
-        ),
+        project=first.run.analysis.source_path,
+        run=first.run.run_id,
+        profile=str(_slurm_profile(tmp_path, cpus_per_task=cpus_per_task)),
         log_level=None,
         log_root=None,
         execute=True,
@@ -3437,7 +3430,7 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
     )
     monkeypatch.setattr(
         control.doctor,
-        "inspect_local_pilot",
+        "diagnose_project",
         lambda *_args, **_kwargs: pytest.fail(
             "submit host performed compute-allocation readiness"
         ),
@@ -3475,7 +3468,7 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
     )
     monkeypatch.setattr(
         control.doctor,
-        "inspect_local_pilot",
+        "diagnose_project",
         lambda *_args, **_kwargs: pytest.fail(
             "submit host performed compute-allocation readiness"
         ),
@@ -3502,7 +3495,7 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
 
     verbose = projections["verbose"]
     assert set(normal.splitlines()) <= set(verbose.splitlines())
-    assert f"Execution profile: {arguments.execution_profile}" in verbose
+    assert f"Execution profile: {arguments.profile}" in verbose
     assert f"Scheduler stdout: {workspace}/logs/emrys-local-pilot-%j.out" in verbose
     assert f"Scheduler stderr: {workspace}/logs/emrys-local-pilot-%j.err" in verbose
     assert "Scheduler command:" not in verbose
@@ -3525,6 +3518,8 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     arguments.from_processing_run = "run-" + "a" * 64 if execute else None
     arguments.no_report = True
     workspace = arguments.project.parent
+    if execute:
+        (workspace / "runs" / arguments.from_processing_run).mkdir(parents=True)
     submissions = []
 
     def submit(plan):
@@ -3542,7 +3537,7 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     monkeypatch.setattr(control.slurm_submission, "submit", submit)
     monkeypatch.setattr(
         control.doctor,
-        "inspect_local_pilot",
+        "diagnose_project",
         lambda *_args, **_kwargs: pytest.fail(
             "submit host performed compute-allocation readiness"
         ),
@@ -3581,38 +3576,33 @@ def test_private_slurm_delegate_rejects_profile_drift_before_readiness(
 ) -> None:
     arguments = _scheduled_run_arguments(tmp_path, execute=True)
     scheduler = control.slurm_submission
-    admitted = load_execution_profile(
-        arguments.project,
-        config_path=arguments.execution_profile,
-    )
-    arguments.execution_profile.write_bytes(
-        arguments.execution_profile.read_bytes() + b"# equivalent rewrite\n"
-    )
+    admitted = load_execution_profile(config_path=Path(arguments.profile))
+    selected_profile = Path(arguments.profile)
+    selected_profile.write_bytes(selected_profile.read_bytes() + b"# equivalent rewrite\n")
     monkeypatch.setenv(scheduler.DELEGATE_MARKER_ENV, scheduler.DELEGATE_MARKER)
     monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, admitted.binding_sha256)
     monkeypatch.setenv(scheduler.SUBMIT_UID_ENV, str(os.getuid()))
     monkeypatch.setenv("SLURM_JOB_ID", "812345")
     monkeypatch.setattr(
         control.doctor,
-        "inspect_local_pilot",
+        "diagnose_project",
         lambda *_args, **_kwargs: pytest.fail("digest drift reached compute readiness"),
     )
 
     assert control.run_from_args(arguments) == 2
     assert "Execution-profile binding SHA-256 differs" in capsys.readouterr().err
     assert not (arguments.project.parent / "logs").exists()
-    profile = load_execution_profile(
-        arguments.project,
-        config_path=arguments.execution_profile,
-    )
+    profile = load_execution_profile(config_path=selected_profile)
     monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, profile.binding_sha256)
     monkeypatch.setenv("SLURM_JOB_ID", "01")
     assert control.run_from_args(arguments) == 2
     assert "canonical positive decimal" in capsys.readouterr().err
-    with pytest.raises(control.ControlError, match="requires Slurm placement"):
-        control._delegate_job_id(
-            load_execution_profile(arguments.project), profile.binding_sha256
-        )
+    direct = load_execution_profile()
+    arguments.profile = str(direct.source_path)
+    monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, direct.binding_sha256)
+    monkeypatch.setenv("SLURM_JOB_ID", "812345")
+    assert control.run_from_args(arguments) == 2
+    assert "requires Slurm placement" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize(
@@ -3741,7 +3731,10 @@ def test_direct_execution_owns_receipt_ordered_reporting_log(
     assert f"Evidence: {receipt_path}" in captured.err
     if report_mode == "failure":
         assert "Scientific Results remain complete" in captured.err
-        assert f"emrys report --run-root {plan.run_root} --execute" in captured.err
+        assert (
+            f"emrys report {inspection.human_run_name(plan.run.run_id)} "
+            f"--project {plan.run_root.parent.parent / 'project.yaml'} --execute"
+        ) in captured.err
 
 
 @pytest.mark.parametrize(
@@ -3857,8 +3850,10 @@ def test_standalone_report_logging_boundary(
     logging_fails: bool,
 ) -> None:
     workspace = tmp_path / "workspace"
+    project = workspace / "project.yaml"
     run_root = workspace / "runs" / ("run-" + "a" * 64)
     run_root.mkdir(parents=True)
+    project.write_text("report selection anchor\n", encoding="utf-8")
     calls: list[bool] = []
     locations = (
         ("scientific-report-html", run_root / "scientific.html"),
@@ -3893,7 +3888,8 @@ def test_standalone_report_logging_boundary(
 
         monkeypatch.setattr(control, "open_attempt_log", reject_log)
     arguments = argparse.Namespace(
-        run_root=run_root,
+        project=project,
+        run=run_root.name,
         execute=execute_requested,
         log_level=None,
         log_root=None,
@@ -3936,7 +3932,8 @@ def test_next_supported_action_uses_separated_status_domains() -> None:
                 results_status=results,
                 reporting_status=reporting,
                 recovery_available=recovery,
-                run_root=Path("/run"),
+                run_root=Path.cwd() / "runs" / ("run-" + "a" * 64),
+                run_id="run-" + "a" * 64,
             )
         )
 
@@ -3982,7 +3979,7 @@ def test_next_supported_action_uses_separated_status_domains() -> None:
     )
     assert action() == "Review the verified Results and report paths."
     assert action(reporting="incomplete") == (
-        "Generate reports with emrys report --run-root /run --execute."
+        "Generate reports with emrys report stimulating-beagle --execute."
     )
     assert action(reporting="not applicable") == (
         "Inspect this Run's verified scientific artifacts with --detail debug."
@@ -4100,10 +4097,7 @@ def test_public_help_routes() -> None:
     for command, expected in (
         (("run", "--help"), "usage: emrys run"),
         (("resume", "--help"), "usage: emrys resume"),
-        (
-            ("inspect", "run", "--help"),
-            "usage: emrys inspect run",
-        ),
+        (("inspect", "--help"), "usage: emrys inspect"),
     ):
         result = subprocess.run(
             [sys.executable, "-I", "-m", "emrys", *command],
@@ -4116,29 +4110,10 @@ def test_public_help_routes() -> None:
         if command[0] == "run":
             assert "--through {analysis,processing}" in result.stdout
             assert "--from-processing-run" in result.stdout
-            assert "--profile NAME" in result.stdout
-            assert "--execution-profile PATH" in result.stdout
+            assert "--profile NAME_OR_ABSOLUTE_PATH" in result.stdout
         if command[0] == "resume":
             assert "--through" not in result.stdout
-            assert "--profile NAME" in result.stdout
-            assert "--execution-profile PATH" in result.stdout
-
-
-@pytest.mark.parametrize(
-    "arguments",
-    (
-        ("--profile", "ci", "--execution-profile", "/tmp/site.yaml"),
-        ("--profile", "../escape"),
-    ),
-)
-def test_profile_name_is_safe_and_mutually_exclusive_with_explicit_path(
-    arguments: tuple[str, ...],
-) -> None:
-    parser = argparse.ArgumentParser()
-    control.configure_run_parser(parser)
-    with pytest.raises(SystemExit) as caught:
-        parser.parse_args(("--project", "/tmp/project.yaml", *arguments))
-    assert caught.value.code == 2
+            assert "--profile NAME_OR_ABSOLUTE_PATH" in result.stdout
 
 
 def _clean_checkout(tmp_path: Path) -> tuple[Path, str]:
@@ -4257,11 +4232,6 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     fail_after_rule: list[str | None] = ["construct_canonical_BAM"]
     monkeypatch.setattr(
         control.doctor,
-        "inspect_local_pilot",
-        lambda *_args, **_kwargs: readiness,
-    )
-    monkeypatch.setattr(
-        control.doctor,
         "diagnose_project",
         lambda *_args, **_kwargs: readiness,
     )
@@ -4285,7 +4255,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     )
     run_arguments = argparse.Namespace(
         project=request,
-        execution_profile=request.parent / "emrys.execution.yaml",
+        profile=None,
         allocated_cores=1,
         execute=True,
     )
@@ -4303,7 +4273,9 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
 
     fail_after_rule[0] = None
     resume_arguments = argparse.Namespace(
-        run_root=run_root,
+        project=request,
+        run=run_id,
+        profile=None,
         allocated_cores=1,
         execute=False,
     )
@@ -4345,7 +4317,11 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     after = _verified_snapshot(run_root)
     assert all(after[path] == value for path, value in before.items())
 
-    inspect_arguments = argparse.Namespace(run_root=run_root, detail="normal")
+    inspect_arguments = argparse.Namespace(
+        project=request,
+        run=run_id,
+        detail="normal",
+    )
     assert control.inspect_from_args(inspect_arguments) == 0
     inspect_output = capsys.readouterr().out
     assert "Attempt outcome: succeeded" in inspect_output
@@ -4474,11 +4450,6 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     fail_after_rule: list[str | None] = [None]
     monkeypatch.setattr(control.doctor, "diagnose_project", diagnose)
     monkeypatch.setattr(
-        control.doctor,
-        "inspect_local_pilot",
-        lambda *_args, **_kwargs: sensitivity,
-    )
-    monkeypatch.setattr(
         control.capacity,
         "observe_allocation",
         lambda: resources.allocation,
@@ -4500,7 +4471,7 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     source_arguments = argparse.Namespace(
         project=project,
         analysis="primary",
-        execution_profile=project.parent / "emrys.execution.yaml",
+        profile=None,
         through="processing",
         execute=True,
     )
@@ -4539,7 +4510,7 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     target_arguments = argparse.Namespace(
         project=project,
         analysis="sensitivity",
-        execution_profile=project.parent / "emrys.execution.yaml",
+        profile=None,
         through="analysis",
         from_processing_run=source_run_id,
         execute=True,
@@ -4567,7 +4538,9 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     assert (
         control.resume_from_args(
             argparse.Namespace(
-                run_root=target_root,
+                project=project,
+                run=target_root.name,
+                profile=None,
                 allocated_cores=1,
                 execute=True,
             )
@@ -4621,7 +4594,11 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
 
     assert (
         control.inspect_from_args(
-            argparse.Namespace(run_root=target_root, detail="verbose")
+            argparse.Namespace(
+                project=project,
+                run=target_root.name,
+                detail="verbose",
+            )
         )
         == 0
     )
@@ -4629,7 +4606,10 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     assert "Preparation: reused" in inspect_output
     assert "Alignment and sample processing: reused" in inspect_output
     assert "QC evidence: reused" in inspect_output
-    assert f"Processing source: {source_run_id} (admitted)" in inspect_output
+    assert (
+        f"Processing source: {inspection.human_run_name(source_run_id)} (admitted)"
+        in inspect_output
+    )
 
     mutated_source: list[tuple[Path, bytes, int]] = []
 
@@ -4673,7 +4653,7 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
             argparse.Namespace(
                 project=project,
                 analysis="source-drift",
-                execution_profile=project.parent / "emrys.execution.yaml",
+                profile=None,
                 through="analysis",
                 from_processing_run=source_run_id,
                 execute=True,
@@ -4710,7 +4690,9 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     assert (
         control.resume_from_args(
             argparse.Namespace(
-                run_root=drift_root,
+                project=project,
+                run=drift_root.name,
+                profile=None,
                 allocated_cores=1,
                 execute=True,
             )

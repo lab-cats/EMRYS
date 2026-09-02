@@ -50,9 +50,9 @@ policy inside the workflow.
 | Sample admission | [`sample_manifest_admission`](../../src/emrys/ingestion/sample_manifest_admission/README.md) |
 | Reference preparation and Steps `01`–`08` | [`stages`](../../src/emrys/stages/README.md) |
 | Paired CMH ranking | [`rank_cohort_candidates_with_paired_CMH`](../../src/emrys/analyses/paired_cmh_candidate_ranking/README.md) |
-| Runtime, reference, storage, and QC evidence | [`evidence`](../../src/emrys/evidence/README.md); runtime `inspect runtime-availability`; storage `inspect storage-inventory` and `inspect storage-qualification`; reference `reconcile reference-provenance` |
-| Artifact schemas | [`artifact contracts`](../../src/emrys/contracts/artifacts/README.md); installed route `python -I -m emrys validate artifact-contracts` |
-| Artifact index, run summary, and reports | [`reporting`](../../src/emrys/reporting/README.md); the public independent route is `emrys report --run-root ...`, while low-level builders are private implementation and developer-fixture surfaces |
+| Runtime, reference, storage, and QC evidence | [`evidence`](../../src/emrys/evidence/README.md); runtime `debug runtime-availability`; storage `debug storage-inventory` and `debug storage-qualification`; reference `reconcile reference-provenance` |
+| Artifact schemas | [`artifact contracts`](../../src/emrys/contracts/artifacts/README.md); installed route `emrys validate artifact-contracts` |
+| Artifact index, run summary, and reports | [`reporting`](../../src/emrys/reporting/README.md); the public independent route is `emrys report [RUN]`, while low-level builders are private implementation and developer-fixture surfaces |
 
 Each owner README supplies supported help, dry-run, execute, scheduler, focused
 test, diagnostics, and recovery routes when those surfaces exist. Its adjacent
@@ -81,14 +81,14 @@ resources. A Project-local named profile can place the same one-host workflow
 inside one Slurm allocation; it is not a distributed executor:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
-  --project /absolute/path/to/project.yaml \
-  --analysis ANALYSIS_NAME \
-  --profile site
+cd /absolute/path/to/PROJECT_NAME
+emrys run --analysis ANALYSIS_NAME --profile site
 ```
 
-Exact name resolution, precedence, and the explicit-path escape hatch are
-defined in [`configs/README.md`](../../configs/README.md#execution-profile).
+Omission reads `runtime/profiles/default.yaml`; `--profile site` reads
+`runtime/profiles/site.yaml`; an absolute `--profile` path selects that exact
+file. No site/global profile registry or search exists. Precedence is defined
+in [`configs/README.md`](../../configs/README.md#execution-profile).
 
 The command above retains the full default Analysis. The semantic
 `emrys run --through processing` form creates a distinct immutable Run at the
@@ -98,11 +98,9 @@ processing Run is complete and refuses resume, and reporting is not applicable.
 Launch a separately identified downstream Analysis from that exact source with:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
-  --project /absolute/path/to/project.yaml \
-  --analysis ANALYSIS_NAME \
-  --from-processing-run RUN_ID \
-  --execution-profile /absolute/path/to/emrys.execution.yaml
+emrys run --analysis ANALYSIS_NAME \
+  --from-processing-run PROCESSING_RUN \
+  --profile /absolute/path/to/profile.yaml
 ```
 
 The source must be a valid, successful, complete processing Run beneath the
@@ -121,8 +119,8 @@ Doctor and `run` select exactly one readiness/execution context. `--analysis`
 may be omitted only when the Project defines one Analysis. Its human name
 selects the Analysis but does not enter the content-derived Analysis revision
 or Run identity. Resume starts from an
-existing Run root, so it reuses the selected Analysis recorded by that Run and
-does not accept a new Analysis choice.
+existing Project Run, so it reuses the selected Analysis recorded by that Run
+and does not accept a new Analysis choice.
 
 On a terminal, direct placement prints one frozen Run plan and asks whether to
 execute it. Slurm placement instead prints its placement summary and asks
@@ -133,11 +131,11 @@ Accepted Slurm submission prints exact `JOB_ID`, `OUT`, and `ERR` values. Setup
 creates `runs/`, `logs/`, and `runtime/` beneath the `project.yaml` parent;
 scheduler and application logs use its `logs/` tree. Run, resume, and Doctor
 derive the admitted `runtime/runtime.tsv` from that Project. Only the advanced
-`inspect storage-qualification --workspace PROJECT_ROOT ...` retains the
+`emrys debug storage-qualification --workspace PROJECT_ROOT ...` retains the
 explicit two-phase Slurm/site probe; run and Doctor derive the target. Direct
 placement instead consumes Doctor's Project-owned single-host receipt.
 
-`emrys doctor --project /absolute/path/to/project.yaml` is the top-level
+`emrys doctor` from the Project root is the top-level
 readiness route. Diagnosis is side-effect-free; `--log-level verbose` and
 `--log-level debug` reveal progressively more retained operational evidence. A
 missing direct-storage admission or incomplete EMRYS-managed runtime can be
@@ -147,7 +145,7 @@ needed, delegates locked installation to `uv`, Pixi, and `renv` within the
 active checkout-owned `.venv` and Project-owned `runtime/managed`. One
 maintenance log spans mutation and requalification. Repair preserves a ready
 site/user runtime profile, declared inputs, and workflow outputs. Managed
-runtime repair currently targets Linux x86-64; use `runtime discover` for an
+runtime repair currently targets Linux x86-64; use `emrys runtime discover` for an
 institution-provided environment.
 For a full Run, reporting runs automatically after scientific work and remains
 a separate, receipt-last transaction rather than a scientific stage. The
@@ -166,30 +164,30 @@ placement.
 Inspect state from EMRYS's admitted records rather than `.snakemake` metadata:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
-  run \
-  --run-root /absolute/project/runs/run-DIGEST
+emrys inspect [RUN]
 ```
 
 Inspection is read-only. Rehashing bound evidence can be expensive, so run it
 at meaningful boundaries rather than in a tight polling loop.
-The normal view uses the primary Run ID and scientific outcome. Add
-`--detail verbose` for admitted Analysis, Execution Plan, and Attempt identity
-plus effective execution facts; use `--detail debug` only when exact authority
-paths/digests, verified output bindings, receipt evidence, or task commands are
-needed. Historical Runs are labeled rather than assigned successor identities.
+Omission selects the sole Run or opens a terminal picker when several exist;
+noninteractive callers provide an unambiguous two-word name, full Run ID, or
+unique ID prefix. The normal view uses the human Run name and scientific
+outcome. Add `--detail verbose` for the canonical Run ID, admitted Analysis,
+Execution Plan, and Attempt identity plus effective execution facts; use
+`--detail debug` only when exact authority paths/digests, verified output
+bindings, receipt evidence, or task commands are needed. Historical Runs are
+labeled rather than assigned successor identities.
 
 Resume is supported only when inspection reports incomplete scientific Results,
 a failed or interrupted Attempt, and `Recovery available: yes`:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume \
-  --run-root /absolute/project/runs/run-DIGEST
+emrys resume [RUN]
 ```
 
-Without either execution-profile selector, resume reuses the predecessor's
-symbolic computational resources and places the new Attempt directly. Select
-`--profile NAME` or `--execution-profile PATH` to request another placement.
+Without `--profile`, resume reuses the predecessor's symbolic computational
+resources and uses `runtime/profiles/default.yaml` for placement. Select one
+named or absolute `--profile` to request another compatible placement.
 Resource CLI overrides have highest precedence. Direct placement displays reusable and pending work, then
 asks once before execution. Slurm placement confirms the submission first;
 reusable and pending work is displayed later inside the allocation.
@@ -203,11 +201,8 @@ Generate reports independently only for a completed scientific Run. The first
 command is read-only; add `--execute` after reviewing its plan:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys report \
-  --run-root /absolute/project/runs/run-DIGEST
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys report \
-  --run-root /absolute/project/runs/run-DIGEST \
-  --execute
+emrys report [RUN]
+emrys report [RUN] --execute
 ```
 
 Validated complete reports are reused. Partial, corrupt, orphaned, mismatched,
@@ -503,12 +498,10 @@ It never changes the workflow, run root, logs, scheduler job, or reports, and
 it does not derive or display result locations. Its status, inferred progress,
 and timing are not completion or evidence authority. After the allocation
 reaches a terminal state, inspect accounting and run the final EMRYS inspection
-using the exact run root printed by the control stream:
+from the Project root, using the human Run name printed by control when needed:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
-  run \
-  --run-root /absolute/project/runs/run-DIGEST
+emrys inspect [RUN]
 ```
 
 A successful run or resume, and a completed inspection, supply verified result

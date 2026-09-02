@@ -18,6 +18,10 @@ from types import MappingProxyType
 from typing import cast
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.orchestration.local_pilot.execution_profile import (
+    PROJECT_DEFAULT_PROFILE_BYTES,
+    PROJECT_PROFILE_DIRECTORY,
+)
 from emrys.orchestration.local_pilot.onboarding import (
     OnboardingError,
     PROJECT_DIRECTORIES,
@@ -628,6 +632,10 @@ def fixture_members(
     reference = _reference(profile)
     members: dict[str, tuple[bytes, int]] = {
         "project.yaml": (_project_definition(profile), 0o644),
+        (PROJECT_PROFILE_DIRECTORY / "default.yaml").as_posix(): (
+            PROJECT_DEFAULT_PROFILE_BYTES,
+            0o644,
+        ),
         "samples.tsv": (_sample_manifest(), 0o644),
         "partitions.tsv": (
             f"partition_id\tselector_type\tselector_value\nprimary\tregion\t{CONTIG}\n".encode(),

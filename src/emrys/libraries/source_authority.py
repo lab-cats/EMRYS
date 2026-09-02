@@ -105,12 +105,7 @@ def controlled_console_main() -> NoReturn:
 
     os.execv(
         sys.executable,
-        controlled_python_argv(
-            sys.executable,
-            "-m",
-            "emrys",
-            *sys.argv[1:],
-        ),
+        controlled_python_argv(sys.executable, "-m", "emrys", *sys.argv[1:]),
     )
 
 

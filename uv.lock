@@ -243,6 +243,27 @@ wheels = [
 ]
 
 [[package]]
+name = "coolname"
+version = "4.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/50/97/c6d3911b2c9ba7c129820bbbd2ef1e9bae8402aa70f15820dc3a9d770e87/coolname-4.1.0.tar.gz", hash = "sha256:1db8b0857d0e40795cf555f449542cc3b8fe4a85b64ae3507fb475bafa2924fa", size = 38433, upload-time = "2026-03-16T18:52:31.875Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f9/96/e0ea059650e0db3755d2e734cd65fb15aa5546e5cdf96e7e68ae018cc994/coolname-4.1.0-py3-none-any.whl", hash = "sha256:2721ab2112788ad3f92b398ed48533d58be30450c4e7b266f9407fcdf37c8d24", size = 39907, upload-time = "2026-03-16T18:52:30.303Z" },
+]
+
+[[package]]
+name = "coolname-hash"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "coolname" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5a/60/3787b57593d7f2eb1acf40bea966428bf52414ffddb2820ef2019781ee3a/coolname_hash-1.0.0.tar.gz", hash = "sha256:0c404efad8d472a9f6b80ac815ccc09f7dfe43b6e4b2b5a06d3456f0727e3031", size = 5377, upload-time = "2026-03-16T19:49:52.681Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d7/83/fcbd75513b767ed686c2761af811d1c9726a8569c2720c1f531a9b07fbe6/coolname_hash-1.0.0-py3-none-any.whl", hash = "sha256:debd8a21b955dcb3ec93872430399b6d3fc8454d99ba34a4b798be3bf42aba68", size = 5578, upload-time = "2026-03-16T19:49:51.301Z" },
+]
+
+[[package]]
 name = "coverage"
 version = "7.15.2"
 source = { registry = "https://pypi.org/simple" }
@@ -352,6 +373,56 @@ sdist = { url = "https://files.pythonhosted.org/packages/b5/ce/e1fd64d36e4a5717b
 wheels = [
     { url = "https://files.pythonhosted.org/packages/05/d1/8952806fbf9583004ab479d8f58a9496c3d35f6b6009ddd458bdd9978eaf/dpath-2.2.0-py3-none-any.whl", hash = "sha256:b330a375ded0a0d2ed404440f6c6a715deae5313af40bbb01c8a41d891900576", size = 17618, upload-time = "2024-06-12T22:08:01.881Z" },
 ]
+
+[[package]]
+name = "emrys-rna-workflow"
+source = { editable = "." }
+dependencies = [
+    { name = "coolname" },
+    { name = "coolname-hash" },
+    { name = "jinja2" },
+    { name = "jsonschema" },
+    { name = "logomaker" },
+    { name = "matplotlib" },
+    { name = "pyyaml" },
+    { name = "referencing" },
+    { name = "simple-term-menu" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "coverage" },
+    { name = "pytest" },
+    { name = "pytest-xdist" },
+    { name = "ruff" },
+    { name = "vulture" },
+]
+workflow = [
+    { name = "snakemake" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "coolname", specifier = "==4.1.0" },
+    { name = "coolname-hash", specifier = "==1.0.0" },
+    { name = "jinja2", specifier = "==3.1.6" },
+    { name = "jsonschema", specifier = ">=4.18.0" },
+    { name = "logomaker", specifier = "==0.8.7" },
+    { name = "matplotlib", specifier = "==3.11.1" },
+    { name = "pyyaml", specifier = "==6.0.3" },
+    { name = "referencing", specifier = ">=0.28.4" },
+    { name = "simple-term-menu", specifier = "==1.6.6" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "coverage", specifier = "==7.15.2" },
+    { name = "pytest" },
+    { name = "pytest-xdist" },
+    { name = "ruff" },
+    { name = "vulture" },
+]
+workflow = [{ name = "snakemake", specifier = "==9.25.1" }]
 
 [[package]]
 name = "execnet"
@@ -895,50 +966,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/b2/fd/80f407a9525bc5bd9
 wheels = [
     { url = "https://files.pythonhosted.org/packages/be/4a/0eece9dad5e73230ca972f7bc29456ce7d74772f123d401fcf67379008f7/nbformat-5.11.0-py3-none-any.whl", hash = "sha256:f70a17f591a9ccd1c601d5e61a4b20972703926df0ba42458ce14bf575766bb6", size = 79820, upload-time = "2026-08-06T12:29:54.178Z" },
 ]
-
-[[package]]
-name = "emrys-rna-workflow"
-source = { editable = "." }
-dependencies = [
-    { name = "jinja2" },
-    { name = "jsonschema" },
-    { name = "logomaker" },
-    { name = "matplotlib" },
-    { name = "pyyaml" },
-    { name = "referencing" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "coverage" },
-    { name = "pytest" },
-    { name = "pytest-xdist" },
-    { name = "ruff" },
-    { name = "vulture" },
-]
-workflow = [
-    { name = "snakemake" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "jinja2", specifier = "==3.1.6" },
-    { name = "jsonschema", specifier = ">=4.18.0" },
-    { name = "logomaker", specifier = "==0.8.7" },
-    { name = "matplotlib", specifier = "==3.11.1" },
-    { name = "pyyaml", specifier = "==6.0.3" },
-    { name = "referencing", specifier = ">=0.28.4" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "coverage", specifier = "==7.15.2" },
-    { name = "pytest" },
-    { name = "pytest-xdist" },
-    { name = "ruff" },
-    { name = "vulture" },
-]
-workflow = [{ name = "snakemake", specifier = "==9.25.1" }]
 
 [[package]]
 name = "numpy"
@@ -1724,6 +1751,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/b8/76/a7776f32048d991e16d4fa8ff91790b877342d3596cc3ed04acdbf1aaedc/ruff-0.16.2-py3-none-win32.whl", hash = "sha256:bf3a63d78fb39f4bf5ac8ae52051c5520505301abe19ba4e204c453b3f09bb0b", size = 10872850, upload-time = "2026-08-07T13:30:53.471Z" },
     { url = "https://files.pythonhosted.org/packages/00/0d/929c800d920e61397d82a01b60bffc68da3052c17d31de59efaad2e4ed75/ruff-0.16.2-py3-none-win_amd64.whl", hash = "sha256:bcabe2f6d0fc7819f1431793005af4e4de7371927d037345bf941252b195b9fa", size = 12023338, upload-time = "2026-08-07T13:30:56.193Z" },
     { url = "https://files.pythonhosted.org/packages/5b/6c/93e26c22c5f78ff87363e07da49c84955affbeb1098bd1936bf3b3f293bf/ruff-0.16.2-py3-none-win_arm64.whl", hash = "sha256:d614e95cedf38a2053fd351c55b103ba30d017d61688fdbfd40ee0412852a99f", size = 11374065, upload-time = "2026-08-07T13:30:58.775Z" },
+]
+
+[[package]]
+name = "simple-term-menu"
+version = "1.6.6"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d8/80/f0f10b4045628645a841d3d98b584a8699005ee03a211fc7c45f6c6f0e99/simple_term_menu-1.6.6.tar.gz", hash = "sha256:9813d36f5749d62d200a5599b1ec88469c71378312adc084c00c00bfbb383893", size = 35493, upload-time = "2024-12-02T16:31:50.639Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9c/09/21d993e394c1fe5c44cd90453d88ed44932da8dfca006e424c072d77d29b/simple_term_menu-1.6.6-py3-none-any.whl", hash = "sha256:c2a869efa7a9f7e4a9c25858b42ca6974034951c137d5e281f5339b06ed8c9c2", size = 27600, upload-time = "2024-12-02T16:31:48.934Z" },
 ]
 
 [[package]]

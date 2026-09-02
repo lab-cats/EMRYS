@@ -49,10 +49,10 @@ report state; Logomaker operates inside that already controlled renderer
 boundary. The owner never installs or repairs tooling, invokes an external
 renderer, accesses the network, or creates report sidecars.
 
-### Inspect runtime availability from explicit profiles
+### Inspect runtime availability from an explicit inventory
 
-The grouped route `python -I -m emrys inspect runtime-availability` evaluates
-one exact profile in one explicitly declared context and installs or repairs
+The technical route `emrys debug runtime-availability` evaluates
+one exact inventory in one explicitly declared context and installs or repairs
 nothing. It retains `runtime_preflight` artifact vocabulary. Local or
 login-shell availability does not establish batch visibility. Even an all-pass
 batch report is availability evidence, not workflow runtime validation or

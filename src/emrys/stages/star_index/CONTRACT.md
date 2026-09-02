@@ -89,7 +89,7 @@ producer. It:
 
 ## Validation interface
 
-`python -I -m emrys validate star-index`, implemented by the private
+`emrys validate star-index`, implemented by the private
 [`validator.py`](validator.py) module, accepts explicit scope, index, FASTA,
 GTF, relative-parameter base, expected overhang, expected suffix-array length,
 and output paths. Validation

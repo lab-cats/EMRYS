@@ -6,7 +6,7 @@ acquired data, run or attempt state, or neutral cross-orchestration contracts.
 
 | Owner | Role |
 | --- | --- |
-| [`sample_manifest_admission`](sample_manifest_admission/README.md) | Owns the `python -I -m emrys validate manifest` route, validates optional FASTQ-path existence, provides an operator-run paired-FASTQ check, and exposes the lightweight sample-manifest scheduler smoke check. |
+| [`sample_manifest_admission`](sample_manifest_admission/README.md) | Owns the `emrys validate manifest` route, validates optional FASTQ-path existence, provides an operator-run paired-FASTQ check, and exposes the lightweight sample-manifest scheduler smoke check. |
 
 The current owner is a bounded admission surface, not an ingestion subsystem or
 runner. Nothing here discovers inputs, chooses acquisition policy, copies or

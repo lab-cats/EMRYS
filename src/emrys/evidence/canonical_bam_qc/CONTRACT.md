@@ -110,7 +110,7 @@ exists.
 
 ## Validation interface
 
-The grouped route `python -I -m emrys validate canonical-bam-qc`, implemented
+The grouped route `emrys validate canonical-bam-qc`, implemented
 by private [`validator.py`](validator.py), accepts an explicit scope,
 quickcheck file, flagstat file, and output path. It does not receive the source
 BAM, BAI, samtools identity, or an attempt receipt. Validation is dry-run by

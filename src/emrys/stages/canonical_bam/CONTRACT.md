@@ -126,7 +126,7 @@ not failure-atomicity, successful rollback, or authority to clean or retry.
 
 ## Validation interface
 
-The grouped route `python -I -m emrys validate canonical-bam`, implemented by
+The grouped route `emrys validate canonical-bam`, implemented by
 private [`validator.py`](validator.py), accepts an explicit scope, BAM, BAI,
 samtools executable, and output path. Validation is dry-run by default;
 `--execute` publishes

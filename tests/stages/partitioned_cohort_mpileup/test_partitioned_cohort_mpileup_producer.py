@@ -291,9 +291,7 @@ def test_dry_run_is_no_write_and_prints_the_exact_plan(
     assert " -r chr1 " in output
     fwd, rev, receipt = step07.finals
     report = step07.output_dir / "cohort_A.part_A.step07_validation.tsv"
-    validate_prefix = shlex.split(
-        ".venv/bin/python -X pycache_prefix=/dev/null -I -m emrys validate"
-    )
+    validate_prefix = ("emrys", "validate")
     validator_bindings = (
         ("--cohort-id", "cohort_A"),
         ("--partition-id", "part_A"),

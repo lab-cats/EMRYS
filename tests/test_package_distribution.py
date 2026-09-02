@@ -18,20 +18,26 @@ from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FI
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_DEPENDENCIES = {
+    "coolname",
+    "coolname-hash",
     "jinja2",
     "jsonschema",
     "logomaker",
     "matplotlib",
     "pyyaml",
     "referencing",
+    "simple-term-menu",
 }
 RUNTIME_REQUIREMENT_SPECIFIERS = {
+    "coolname": "==4.1.0",
+    "coolname-hash": "==1.0.0",
     "jinja2": "==3.1.6",
     "jsonschema": ">=4.18.0",
     "logomaker": "==0.8.7",
     "matplotlib": "==3.11.1",
     "pyyaml": "==6.0.3",
     "referencing": ">=0.28.4",
+    "simple-term-menu": "==1.6.6",
 }
 RESOURCE_PATHS = (
     "emrys/contracts/schemas/artifacts/v2/artifact_record.schema.json",
@@ -367,10 +373,7 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     require_success(producer_help)
     assert "Produce one create-absent Step 06" in producer_help.stdout
     for command, usage in (
-        (
-            ("init", "project", "--help"),
-            "usage: emrys init project",
-        ),
+        (("init", "--help"), "usage: emrys init"),
         (("init", "manifests", "--help"), "usage: emrys init manifests"),
         (
             ("init", "synthetic", "--help"),
@@ -380,17 +383,11 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
             ("runtime", "discover", "--help"),
             "usage: emrys runtime discover",
         ),
-        (
-            ("validate", "project", "--help"),
-            "usage: emrys validate project",
-        ),
+        (("validate", "--help"), "usage: emrys validate"),
         (("run", "--help"), "usage: emrys run"),
         (("resume", "--help"), "usage: emrys resume"),
         (("report", "--help"), "usage: emrys report"),
-        (
-            ("inspect", "run", "--help"),
-            "usage: emrys inspect run",
-        ),
+        (("inspect", "--help"), "usage: emrys inspect"),
     ):
         public_help = run_command(
             [str(environment_python), "-I", "-m", "emrys", *command],

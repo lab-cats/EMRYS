@@ -38,13 +38,11 @@ git checkout --detach FULL_COMMIT_OR_RELEASE_TAG
 uv sync --locked --group workflow
 ```
 
-Bind every command below to this checkout rather than an ambient installation:
+Activate the locked environment so the installed `emrys` command remains bound
+to this checkout:
 
 ```sh
-EMRYS_REPO="$(pwd -P)"
-emrys() {
-  "$EMRYS_REPO/.venv/bin/python" -X pycache_prefix=/dev/null -I -m emrys "$@"
-}
+source .venv/bin/activate
 emrys --help
 git status --short
 ```
@@ -71,10 +69,10 @@ it inside the source checkout.
 
 ```sh
 EMRYS_PROJECT_ROOT=/absolute/durable/path/emrys-smoke
-EMRYS_PROJECT_PATH="$EMRYS_PROJECT_ROOT/project.yaml"
 
 emrys init synthetic --output-dir "$EMRYS_PROJECT_ROOT"
 emrys init synthetic --output-dir "$EMRYS_PROJECT_ROOT" --execute
+cd "$EMRYS_PROJECT_ROOT"
 ```
 
 The first command is a no-write plan. The second publishes the create-absent
@@ -87,9 +85,11 @@ For the larger synthetic exercise, add
 per library and a 5 Mb reference, remains synthetic, and is intentionally much
 slower.
 
-For real FASTQs and references, use `emrys init manifests` followed by
-`emrys init project`. Those commands require explicit biological assignments
-and scientific thresholds and leave inputs in place. See the
+For real FASTQs and references, create manifest drafts, move to the intended
+parent directory, then run `emrys init PROJECT_NAME`. Review the no-write plan
+before repeating it with `--execute`, then `cd PROJECT_NAME`. Setup requires
+explicit biological assignments and scientific thresholds and leaves inputs in
+place. See the
 [configuration guide](configs/README.md); this quickstart does not duplicate
 that advanced intake.
 
@@ -110,7 +110,7 @@ named Analysis, and their declared files without running scientific tools or
 writing workflow output:
 
 ```sh
-emrys validate project --project "$EMRYS_PROJECT_PATH"
+emrys validate
 ```
 
 Continue only after `Project validation: PASS`. Doctor remains the authority
@@ -122,9 +122,7 @@ checks. Do not manufacture or bypass readiness evidence.
 Run the bounded managed repair and requalification:
 
 ```sh
-emrys doctor \
-  --project "$EMRYS_PROJECT_PATH" \
-  --repair --execute
+emrys doctor --repair --execute
 ```
 
 Doctor diagnoses first, changes only supported EMRYS-owned runtime state when
@@ -143,10 +141,7 @@ Doctor reports a blocker, stop and use the
 For explicit noninteractive execution, run:
 
 ```sh
-emrys run \
-  --project "$EMRYS_PROJECT_PATH" \
-  --analysis primary \
-  --execute
+emrys run --analysis primary --execute
 ```
 
 That command retains the full default Analysis through Step `10`. To create a
@@ -154,18 +149,14 @@ distinct Run that stops after evidence-complete processing for every sample,
 use the semantic boundary explicitly:
 
 ```sh
-emrys run \
-  --project "$EMRYS_PROJECT_PATH" \
-  --analysis primary \
-  --through processing \
-  --execute
+emrys run --analysis primary --through processing --execute
 ```
 
 The semantic `emrys run --through processing` form selects 31 owner tasks
 across Steps `00`–`06` for this four-sample fixture. A successful processing
 Run is complete and not resumable; reporting is not applicable. Later
-downstream work would require a new immutable Run, but no compatible cross-Run
-reuse or downstream launch path is implemented yet.
+downstream work uses a new immutable Run selected with
+`--from-processing-run`; see the runbook for its compatibility boundary.
 
 Because the synthetic Project has exactly one Analysis, `--analysis primary`
 may be omitted. For a Project with multiple Analyses it is required.
@@ -178,27 +169,32 @@ confirmation writes nothing, submits nothing, and opens no application log.
 
 Reporting runs automatically after successful full scientific work. Add
 `--no-report` only when reporting should be skipped; this does not change the
-scientific Run or its Results. An explicit execution profile may place the same
-one-host workflow in one Slurm allocation; follow the [runbook](docs/operations/RUNBOOK.md)
-rather than adapting this direct golden path.
+scientific Run or its Results. A Project-local named or absolute `--profile`
+may place the same one-host workflow in one Slurm allocation; follow the
+[runbook](docs/operations/RUNBOOK.md) rather than adapting this direct golden
+path.
 
 ## 8. Inspect Results
 
-Record the exact Run root printed by `emrys run`, then inspect EMRYS's admitted
-records rather than inferring completion from process or scheduler status:
+Inspect EMRYS's admitted records rather than inferring completion from process
+or scheduler status:
 
 ```sh
-EMRYS_RUN_ROOT=/absolute/path/printed/by/emrys
-emrys inspect run --run-root "$EMRYS_RUN_ROOT"
+emrys inspect
 ```
+
+With one Run, omission selects it. With several Runs, a terminal offers their
+stable two-word names for selection; scripts must supply an unambiguous human
+name, full Run ID, or unique ID prefix, for example
+`emrys inspect international-jackrabbit`.
 
 Inspection is read-only. A successful process, scheduler job, or visible file
 does not replace `complete` admitted Results. Scientist-facing outputs and the
 automatic reports are retained beneath the Run's `results/` tree.
 
 If scientific Results are complete but reports were skipped or failed, preview
-`emrys report --run-root "$EMRYS_RUN_ROOT"`, then add `--execute` only for an
-admissible absent report bundle. Preserve partial or ambiguous report state.
+`emrys report [RUN]`, then add `--execute` only for an admissible absent report
+bundle. Preserve partial or ambiguous report state.
 
 For failure classification, resume rules, exact Slurm/site setup, or detailed
 inspection, use the [runbook](docs/operations/RUNBOOK.md) and

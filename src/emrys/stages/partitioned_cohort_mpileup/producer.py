@@ -732,9 +732,7 @@ def _print_plan(context: Context) -> None:
     validation_report = (
         p["root"] / f"{a.cohort_id}.{a.partition_id}.step07_validation.tsv"
     )
-    validate_prefix = shlex.split(
-        ".venv/bin/python -X pycache_prefix=/dev/null -I -m emrys validate"
-    )
+    validate_prefix = ("emrys", "validate")
     validator_bindings = (
         ("--cohort-id", a.cohort_id),
         ("--partition-id", a.partition_id),

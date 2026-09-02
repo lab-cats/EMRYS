@@ -15,7 +15,7 @@ failure semantics.
 - producer: [`scientific_context_projection.sh`](scientific_context_projection.sh)
 - R computation: [`scientific_context_projection.R`](scientific_context_projection.R)
 - known-motif policy: [`resources/pum_motifs_v1.tsv`](resources/pum_motifs_v1.tsv)
-- grouped validator: `python -I -m emrys validate scientific-context-projection`
+- grouped validator: `emrys validate scientific-context-projection`
 
 For Slurm execution, use the complete immutable Run through `emrys run` or
 `emrys resume` as documented in the
@@ -55,7 +55,7 @@ adjudication.
 Validate a completed receipt:
 
 ```bash
-.venv/bin/python -I -m emrys validate scientific-context-projection \
+emrys validate scientific-context-projection \
   --receipt results/scientific_context/NORAD_EV_vs_PUM1/NORAD_EV_vs_PUM1.context_receipt.tsv \
   --output results/qc/validation/10/NORAD_EV_vs_PUM1.validation.tsv
 ```

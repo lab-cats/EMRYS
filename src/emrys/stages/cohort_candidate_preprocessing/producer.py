@@ -463,15 +463,7 @@ def print_plan(context: Context, command: Sequence[str]) -> None:
     print("  Publish sites, then summary, then the input receipt last as commit marker")
     print("  Restore a previous complete set on failure after backup begins")
     validation = Path(a.qc_root) / f"{a.cohort_id}.step08_validation.tsv"
-    prefix = [
-        ".venv/bin/python",
-        "-X",
-        "pycache_prefix=/dev/null",
-        "-I",
-        "-m",
-        "emrys",
-        "validate",
-    ]
+    prefix = ["emrys", "validate"]
     validator = [
         *prefix,
         "cohort-candidate-preprocessing",

@@ -1,8 +1,9 @@
 # Configuration and input guide
 
-`emrys init project` is the supported Project-creation route. It collects the
-current profile's scientific answers, validates existing sample and partition
-manifests plus their reference, and plans one absent Project root. On a
+`emrys init PROJECT_NAME` is the supported Project-creation route. It collects
+the current profile's scientific answers, validates existing sample and
+partition manifests plus their reference, and plans the absent `PROJECT_NAME/`
+child of the current directory. On a
 terminal, omitted answers are prompted; automation supplies them as flags.
 Add `--execute` only after reviewing the no-write plan.
 
@@ -15,6 +16,9 @@ PROJECT/
 |-- project.yaml
 |-- logs/
 |-- runtime/
+|   |-- runtime.tsv
+|   `-- profiles/
+|       `-- default.yaml
 `-- runs/
     `-- RUN-ID/
         `-- results/
@@ -29,10 +33,9 @@ remain under `runs/<run-id>/results`, including reports beneath
 Setup records the admitted absolute sample and initial Analysis-partition
 manifest paths in `project.yaml`; manifests and FASTQ, FASTA, GTF, and
 regions-file data all remain in place. `emrys init manifests` produces the
-required portable form without inventing biological assignments. No execution
-or runtime profile is generated or selected. Without `--profile` or
-`--execution-profile`, execution remains direct with the built-in resource
-policy. Runtime discovery separately admits the Project-owned
+required portable form without inventing biological assignments. Setup creates
+the placement-only `runtime/profiles/default.yaml`; omission of `--profile`
+selects it. Runtime discovery separately admits the Project-owned
 `runtime/runtime.tsv`.
 
 Keep the Project and every referenced input for the life of its Runs. Changing
@@ -42,20 +45,21 @@ templates, globs, redundant separators, or `.`/`..` components.
 
 ## Execution profile
 
-EMRYS has one optional public execution configuration. With no selector, the
-built-in profile uses conservative resources and direct placement. A selected
-profile is a closed YAML fragment with two concerns:
+EMRYS has one optional public execution configuration. With no selector, it
+loads the generated Project-local `runtime/profiles/default.yaml`, which uses
+conservative resources and direct placement. A selected profile is a closed
+YAML fragment with two concerns:
 
 - `resources` declares the single-host computational policy; and
 - `placement` selects direct execution or one outer Slurm allocation.
 
-The built-in profile is the base, the selected file overrides it, and CLI
+Packaged defaults are the base, the selected file overrides them, and CLI
 resource flags override both. `--profile NAME` accepts the safe grammar
 `[A-Za-z0-9][A-Za-z0-9._-]*` and resolves exactly
-`<project-root>/emrys.execution.NAME.yaml`. It is mutually exclusive with the
-advanced `--execution-profile PATH` selector. The name adds no Project field,
-identity, runtime mode, scan, registry, or site/global search. Retired adjacent
-resource/launcher files still fail closed when neither selector is used.
+`<project-root>/runtime/profiles/NAME.yaml`. The same option accepts an exact
+absolute path. A relative value is a Project-local name, not a path. The name
+adds no Project field, identity, runtime mode, scan, registry, or site/global
+search.
 
 Use [`execution_profile.example.yaml`](execution_profile.example.yaml) as the
 Slurm starter. `account`, `partition`, `qos`, `memory_mb`, and `nodelist` may
@@ -65,15 +69,17 @@ nothing; `modules.mode: exact` requires one absolute initializer and a closed
 module roster. Paths and values are literal: environment interpolation,
 templates, shell commands, merge keys, and unknown fields are rejected.
 
-Name a Project-local file with `--profile NAME`, or select any admitted file
-with `--execution-profile PATH`, on `emrys run` or `emrys resume`. The
+Name a Project-local file or pass an absolute file with `--profile` on
+`emrys run` or `emrys resume`. The
 [runbook](../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes) owns the
 complete command, confirmation, submission, and logging journey.
 
-On resume, omitting both selectors preserves direct placement. Omission and
-placement-only or reporting-only fragments reuse predecessor computation;
+On resume, omitting the selector loads the Project default while preserving the
+predecessor's computational policy. Placement-only or reporting-only fragments
+reuse predecessor computation;
 selected reporting then CLI overrides overlay it. Computational fields follow
-built-in → fragment → CLI precedence and must match immutable Run identity.
+packaged default → selected fragment → CLI precedence and must match
+immutable Run identity.
 Runtime acquisition remains separate.
 
 ## Project definition and analysis
@@ -118,10 +124,10 @@ analyses:
     # partitions, comparison, target change, and thresholds are also required
 ```
 
-`emrys init project` creates one initial Analysis, named `primary` by default
+`emrys init PROJECT_NAME` creates one initial Analysis, named `primary` by default
 or selected with `--analysis-name`. Additional Analyses may reuse the Dataset,
 Reference, and even the same partition manifest while changing their own
-partition selection or scientific policy. `emrys validate project`, runtime
+partition selection or scientific policy. `emrys validate`, runtime
 discovery, and Doctor admit and validate every named Analysis. `emrys run` and
 Doctor select the Analysis whose execution readiness is being evaluated with
 `--analysis NAME`; omission is accepted only when the Project contains exactly
@@ -247,8 +253,9 @@ Run discovery in the environment that will execute EMRYS. It checks the fixed
 runtime policy and displays the one profile it would admit without writing:
 
 ```sh
-emrys runtime discover --project /absolute/project/project.yaml
-emrys runtime discover --project /absolute/project/project.yaml --execute
+cd PROJECT_NAME
+emrys runtime discover
+emrys runtime discover --execute
 ```
 
 `--execute` publishes the only ordinary runtime authority at
@@ -258,14 +265,14 @@ profile is preserved and rejected, including byte-identical content.
 Discovery does not install software or load modules. A missing or ambiguous
 site installation fails without silent selection, so load the approved site environment first
 and rerun discovery there. For the supported EMRYS-managed alternative, run
-`emrys doctor --project /absolute/project/project.yaml --repair` to preview the
+`emrys doctor --repair` to preview the
 exact repair, then confirm it on a terminal or add `--execute` for deliberate
 noninteractive mutation. Doctor preserves any site- or user-owned admitted
 profile rather than migrating it. Commands come from the active `PATH`. Select the
 Picard jar and R library with `EMRYS_PICARD_JAR` and
 `EMRYS_RENV_LIBRARY`. `EMRYS_RSCRIPT` can select Rscript directly, and
 `JAVA_HOME` must agree with the Java on `PATH`. The advanced
-`emrys inspect runtime-availability` route remains available for explicit
+`emrys debug runtime-availability` route remains available for explicit
 evidence collection against a supplied profile.
 
 The accepted tool versions are:
@@ -296,7 +303,7 @@ read-only; only its explicit managed repair delegates a locked Python sync to
 maintenance log under Project `logs/application`, then re-runs readiness.
 
 On a module-based cluster, declare the exact initializer and module roster in
-the execution profile. EMRYS loads that roster inside the allocation before
+the selected profile. EMRYS loads that roster inside the allocation before
 runtime admission. Discover the resulting canonical tools in that environment;
 a successful head-node probe does not establish compute-node visibility.
 
@@ -328,7 +335,8 @@ scientific result.
 Before doctor, run the tool-free compatibility validator on the execution host:
 
 ```sh
-emrys validate project --project /absolute/project/project.yaml
+cd PROJECT_NAME
+emrys validate
 ```
 
 It streams and binds declared inputs, checks paired strata for every named
