@@ -162,8 +162,8 @@ def _digest_directory(
     directory: Path,
     digest: _Digest,
     *,
+    owned_files: set[Path],
     ignore_python_cache: bool = False,
-    owned_files: set[Path] | None = None,
 ) -> None:
     try:
         before = directory.stat(follow_symlinks=False)
@@ -218,8 +218,7 @@ def _digest_directory(
             )
         elif stat.S_ISREG(admitted.st_mode):
             data = _read_regular_file(path, admitted)
-            if owned_files is not None:
-                owned_files.add(path)
+            owned_files.add(path)
             _entry_frame(
                 digest,
                 kind=b"file",

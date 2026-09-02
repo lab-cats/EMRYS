@@ -97,6 +97,16 @@ def test_provider_admission_rejects_missing_selection(
         admit_installed_provider("emrys.analysis_modules", "missing", label="Module")
 
 
+def test_provider_rejects_a_callable_outside_its_admitted_tree(tmp_path: Path) -> None:
+    identity = installed_python_package_identity(_package(tmp_path / "package"))
+    provider = package_identity.InstalledProviderV1(
+        lambda: None, "fixture:provider", "fixture", "1", identity
+    )
+
+    with pytest.raises(InstalledPackageIdentityError, match="outside its admitted package"):
+        provider.require_callables(label="Module")
+
+
 @pytest.mark.parametrize(
     "mutation",
     ["add_database", "remove_database", "mutate_database", "mutate_shared_object"],
