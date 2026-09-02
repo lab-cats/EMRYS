@@ -380,13 +380,19 @@ def runtime_file_bindings(
         if check.check_type == "r_namespace" or check.check_id in package_tree_ids:
             try:
                 root = renv_library / check.target if check.check_type == "r_namespace" else Path(check.target)
-                identity = installed_package_tree_identity(root.resolve(strict=True))
+                resolved_root = root.resolve(strict=True)
+                identity = installed_package_tree_identity(resolved_root)
+                confirmed_root = root.resolve(strict=True)
             except (OSError, InstalledPackageIdentityError) as exc:
                 raise DoctorInputError(
                     f"Could not bind runtime package tree {check.check_id}: {exc}"
                 ) from exc
             expected_root = observation.resolved_path if check.check_type == "r_namespace" else Path(check.target)
-            if expected_root is None or identity.root != expected_root:
+            if (
+                expected_root is None
+                or identity.root != expected_root
+                or confirmed_root != resolved_root
+            ):
                 raise DoctorInputError(f"Runtime package-tree root changed: {check.check_id}")
             bindings.append(
                 RuntimeBinding(
@@ -1264,6 +1270,13 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                 root=plan.source_root,
                 python_executable=Path(sys.executable),
             )
+            if not _profile_is_managed(
+                tuple(item.check for item in candidate.observations),
+                runtime,
+            ):
+                raise DoctorRepairError(
+                    "repaired runtime discovery escaped the Project-managed environment"
+                )
             if not candidate.required_ready:
                 raise DoctorRepairError("repaired runtime did not pass qualification")
             if runtime.profile_bytes is None:

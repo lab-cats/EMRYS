@@ -986,6 +986,21 @@ def _admit_required_tool_identity(identity: Mapping[str, Any]) -> None:
         raise LifecycleError(f"Required tool byte digest differs: {name}")
 
 
+def _admit_runtime_executable_permissions(inspection: "RuntimeInspection") -> None:
+    """Recheck cached passing probes still name executable files."""
+
+    for observation in inspection.observations:
+        check = observation.check
+        if (
+            observation.status == "pass"
+            and check.check_type in {"tool_version", "tool_version_exit_1"}
+            and not os.access(check.target, os.X_OK)
+        ):
+            raise LifecycleError(
+                f"Required runtime executable is no longer executable: {check.check_id}"
+            )
+
+
 def _readmit_storage_runtime_binding(
     attempt: Mapping[str, Any],
     execution: Mapping[str, Any],
@@ -1124,6 +1139,7 @@ def _admit_runtime_context(
         )
     except (RuntimeInspectionError, doctor.DoctorInputError) as exc:
         raise LifecycleError(f"Could not re-admit local runtime profile: {exc}") from exc
+    _admit_runtime_executable_permissions(runtime_inspection)
     if not runtime_inspection.required_ready:
         failures = ", ".join(
             item.check.check_id

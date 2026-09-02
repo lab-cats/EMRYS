@@ -393,6 +393,23 @@ def _retained_runtime_profile_path(
     return path
 
 
+def _resume_runtime_profile_path(
+    project_path: Path,
+    predecessor: Mapping[str, Any],
+    retained: Path | None,
+) -> Path:
+    """Prefer a historical Attempt's retained runtime over Project state."""
+
+    if retained is not None:
+        return retained
+    candidate = onboarding.runtime_profile_path(project_path)
+    return (
+        candidate
+        if os.path.lexists(candidate)
+        else _retained_runtime_profile_path(predecessor)
+    )
+
+
 def _predecessor_source_schema(
     root: Path,
     predecessor: Mapping[str, Any],
@@ -435,13 +452,11 @@ def _plan_resume(
     project_path = Path(str(previous["authored_paths"]["request"]))
     workspace = Path(str(previous["workspace"]))
     retained_runtime_profile = _retained_runtime_profile_path(previous) if observed.authority is None else None
-    runtime_profile = onboarding.runtime_profile_path(project_path)
-    if not os.path.lexists(runtime_profile):
-        runtime_profile = (
-            retained_runtime_profile
-            if retained_runtime_profile is not None
-            else _retained_runtime_profile_path(previous)
-        )
+    runtime_profile = _resume_runtime_profile_path(
+        project_path,
+        previous,
+        retained_runtime_profile,
+    )
     try:
         readiness = doctor.diagnose_project(
             project_path,
@@ -742,7 +757,14 @@ def _owned_failure_paths(
 
     owned: dict[str, Path] = {}
     lock_path = plan.run_root / "locks" / "run.lock"
-    if os.path.lexists(lock_path):
+    expected_lock = orchestration_contracts.canonical_json_bytes(
+        orchestration_contracts.run_lock_record(plan.attempt_record)
+    )
+    try:
+        observed_lock = read_bytes(lock_path, "Run lock")
+    except ValidationError:
+        observed_lock = None
+    if observed_lock == expected_lock:
         owned["lock"] = lock_path
     recovery_paths = (
         *((released_lock_path,) if released_lock_path is not None else ()),

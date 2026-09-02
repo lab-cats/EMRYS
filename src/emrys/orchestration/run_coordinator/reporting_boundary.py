@@ -364,6 +364,7 @@ def _attempt_reporting_materialization(
     analysis: AnalysisRevision | None = None,
     attempt_id: str | None = None,
     processing_source_root: Path | None = None,
+    processing_artifact_paths: Mapping[tuple[str, str, str], Path] | None = None,
 ) -> tuple[
     tuple[tuple[Path, bytes], ...],
     dict[str, Any],
@@ -376,6 +377,7 @@ def _attempt_reporting_materialization(
         profile,
         analysis,
         processing_source_root,
+        processing_artifact_paths,
     )
     projection_data = {
         "reference_contract": reporting.reference_contract_bytes,

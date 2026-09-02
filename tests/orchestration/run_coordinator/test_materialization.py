@@ -25,6 +25,7 @@ import yaml
 import emrys.libraries.installed_package_identity as installed_package_identity
 from emrys import analyses as analysis_modules
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration import artifact_inventory
 from emrys.contracts.orchestration.application_model import (
     PROCESSING_STEP_IDS,
     build_analysis_revision,
@@ -1237,6 +1238,110 @@ def test_downstream_plan_rejects_an_unbound_reused_input(tmp_path: Path) -> None
         )
 
 
+def test_downstream_plan_preserves_admitted_sidecars_for_relocated_reference(
+    tmp_path: Path,
+) -> None:
+    readiness, resources, _project, workspace = _readiness(tmp_path)
+    source_run = _run_candidate(readiness, resources, through="processing")
+    binding = {
+        "source_run_id": source_run.run_id,
+        "workflow_attempt_id": "workflow-20260831T120000Z-" + "1" * 32,
+        "attempt_receipt_sha256": "2" * 64,
+    }
+    workflow_inputs = readiness.analysis.workflow_inputs
+    original_fasta = Path(workflow_inputs["reference"]["fasta"]["path"])
+    relocated_fasta = tmp_path / "relocated" / original_fasta.name
+    workflow_inputs["reference"]["fasta"]["path"] = str(relocated_fasta)
+    relocated_analysis = replace(
+        readiness.analysis,
+        _workflow_input_bytes=orchestration_contracts.canonical_json_bytes(
+            workflow_inputs
+        ),
+    )
+    relocated_readiness = replace(readiness, analysis=relocated_analysis)
+    target = build_run_candidate(
+        relocated_analysis,
+        relocated_readiness,
+        resources.declaration,
+        processing_source=binding,
+    )
+    source_root = workspace / "runs" / source_run.run_id
+    rows = artifact_inventory.project_rows(
+        {**relocated_analysis.workflow_inputs, "run_id": target.run_id},
+        relocated_analysis.profile,
+        relocated_analysis.revision,
+        source_root,
+    )
+    old_sidecars = tmp_path / "source-sidecars"
+    snapshots_list = []
+    output_indexes: dict[tuple[str, str], int] = {}
+    for row in rows:
+        if (
+            row["step_id"] not in PROCESSING_STEP_IDS
+            or row["adapter"].endswith("_validation_report_v1")
+            or row["adapter"] == "step00c_reference_fasta_v1"
+        ):
+            continue
+        scope = row["step_id"], row["scope_id"]
+        snapshots_list.append(
+            {
+                "step_id": row["step_id"],
+                "scope_id": row["scope_id"],
+                "output_index": output_indexes.get(scope, 0),
+                "role": row["adapter"],
+                "path": str(
+                    old_sidecars / Path(row["source_path"]).name
+                    if row["adapter"]
+                    in {"step00c_reference_fai_v1", "step00c_reference_dict_v1"}
+                    else Path(row["source_path"])
+                ),
+                "size_bytes": 1,
+                "sha256": "a" * 64,
+            }
+        )
+        output_indexes[scope] = output_indexes.get(scope, 0) + 1
+    snapshots = tuple(snapshots_list)
+    source = inspection.ProcessingSourceAdmission(
+        root=source_root,
+        state=SimpleNamespace(),
+        binding=binding,
+        artifact_snapshots=snapshots,
+    )
+
+    plan = build_attempt_plan(
+        target,
+        relocated_readiness,
+        workspace,
+        resources=resources,
+        operation="execute",
+        processing_source=source,
+    )
+
+    old_paths = {
+        snapshot["path"]
+        for snapshot in snapshots
+        if snapshot["role"]
+        in {"step00c_reference_fai_v1", "step00c_reference_dict_v1"}
+    }
+    dispatch_inputs = {
+        item["path"]: item
+        for planned in plan.attempt_files
+        if "dispatch" in planned.path.parts
+        for item in orchestration_contracts.load_json_object_bytes(
+            planned.data, "test dispatch"
+        )["inputs"]
+    }
+    old_fai = next(path for path in old_paths if path.endswith(".fai"))
+    assert dispatch_inputs[old_fai]["sha256"] == "a" * 64
+    inventory = next(
+        planned.data
+        for planned in plan.attempt_files
+        if planned.path.name == "artifact_inventory.tsv"
+    )
+    assert all(path.encode() in inventory for path in old_paths)
+    assert str(relocated_fasta).encode() + b".fai" not in inventory
+
+
 def _runtime_admission_fixture(
     plan: materialization.AttemptPlan,
     monkeypatch: pytest.MonkeyPatch,
@@ -1716,7 +1821,6 @@ def test_processing_compatibility_binds_only_processing_semantics(
     for relative in (
         "src/emrys/analyses/__init__.py",
         "src/emrys/stages/cohort_candidate_preprocessing/producer.py",
-        "workflow/Snakefile",
     ):
         path = checkout / relative
         original = path.read_bytes()
@@ -1724,6 +1828,18 @@ def test_processing_compatibility_binds_only_processing_semantics(
         changed = _run_candidate(readiness, resources)
         assert changed.run_id != baseline.run_id
         assert compatibility(changed) == baseline_compatibility
+        path.write_bytes(original)
+
+    for relative in (
+        "src/emrys/orchestration/run_coordinator/materialization.py",
+        "workflow/Snakefile",
+    ):
+        path = checkout / relative
+        original = path.read_bytes()
+        path.write_bytes(original + b"\n# processing dispatch change\n")
+        assert compatibility(_run_candidate(readiness, resources)) != (
+            baseline_compatibility
+        )
         path.write_bytes(original)
 
     downstream_tool = build_run_candidate(
@@ -3204,10 +3320,12 @@ def test_execute_preflight_interrupt_terminalizes_log_and_preserves_signal(
     assert "Next action: Retry when ready." in captured.err
 
 
-def test_execute_failure_summary_names_owned_lock_and_recovery(
+@pytest.mark.parametrize("owned_lock", [True, False])
+def test_execute_failure_summary_names_only_proven_owned_lock_and_recovery(
     tmp_path: Path,
     capsys,
     monkeypatch: pytest.MonkeyPatch,
+    owned_lock: bool,
 ) -> None:
     plan = _plan(tmp_path)
     lock_path = plan.run_root / "locks" / "run.lock"
@@ -3217,7 +3335,14 @@ def test_execute_failure_summary_names_owned_lock_and_recovery(
 
     def fail_with_owned_paths(_plan, _observe, _inspection):
         lock_path.parent.mkdir(parents=True)
-        lock_path.write_text("owned", encoding="utf-8")
+        attempt = plan.attempt_record
+        if not owned_lock:
+            attempt["owner_token"] = "workflow-owner-foreign"
+        lock_path.write_bytes(
+            orchestration_contracts.canonical_json_bytes(
+                orchestration_contracts.run_lock_record(attempt)
+            )
+        )
         recovery_path.parent.mkdir(parents=True)
         recovery_path.write_text("owned", encoding="utf-8")
         raise lifecycle.LifecycleError("injected lifecycle failure")
@@ -3242,7 +3367,7 @@ def test_execute_failure_summary_names_owned_lock_and_recovery(
         )
 
     captured = capsys.readouterr()
-    assert f"Owned lock: {lock_path}" in captured.err
+    assert (f"Owned lock: {lock_path}" in captured.err) is owned_lock
     assert f"Owned recovery: {recovery_path}" in captured.err
 
 

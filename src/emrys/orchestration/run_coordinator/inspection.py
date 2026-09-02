@@ -157,13 +157,18 @@ class RunInspection:
     def integrity(self) -> RunIntegrity:
         """Return whether Run and Attempt authority remain admissible."""
 
+        blocked_receipt_has_no_derived_domain = (
+            self.latest_receipt is not None
+            and self.latest_receipt["status"] == "blocked"
+            and not self.results_blockers
+            and not (
+                _receipt_binds_reporting(self.latest_receipt)
+                and self.reporting_blockers
+            )
+        )
         return (
             "blocked"
-            if self.integrity_blockers
-            or (
-                self.latest_receipt is not None
-                and self.latest_receipt["status"] == "blocked"
-            )
+            if self.integrity_blockers or blocked_receipt_has_no_derived_domain
             else "valid"
         )
 
@@ -193,18 +198,11 @@ class RunInspection:
 
     @property
     def receipt_blockers(self) -> tuple[str, ...]:
-        """Return untyped blockers retained by the legacy terminal receipt."""
+        """Return Attempt blockers retained by the terminal receipt."""
 
         if self.latest_receipt is None or self.latest_receipt["status"] != "blocked":
             return ()
-        rederived = {*self.integrity_blockers, *self.results_blockers}
-        if _receipt_binds_reporting(self.latest_receipt):
-            rederived.update(self.reporting_blockers)
-        return tuple(
-            str(value)
-            for value in self.latest_receipt["blockers"]
-            if str(value) not in rederived
-        )
+        return tuple(str(value) for value in self.latest_receipt["blockers"])
 
     @property
     def blockers(self) -> tuple[str, ...]:
@@ -256,12 +254,10 @@ def _attempt_outcome(
         return "not_started"
     if running:
         return "running"
-    if receipt is None or results_status == "blocked":
+    if receipt is None or results_status == "blocked" or integrity_blockers:
         return "blocked"
-    if results_status == "complete":
+    if _receipt_binds_reporting(receipt) and results_status == "complete":
         return "succeeded"
-    if integrity_blockers:
-        return "blocked"
     return cast(AttemptOutcome, receipt["status"])
 
 
@@ -586,13 +582,23 @@ def admit_processing_source(run_root: Path) -> ProcessingSourceAdmission:
         },
         artifact_snapshots=tuple(
             {
+                "step_id": task_state.expected.step_id,
+                "scope_id": task_state.expected.scope_id,
+                "role": (
+                    (
+                        "step00c_reference_fai_v1",
+                        "step00c_reference_dict_v1",
+                    )[output_index]
+                    if task_state.expected.step_id == "00c"
+                    else str(output["role"])
+                ),
                 "path": str(output["path"]),
                 "size_bytes": int(output["size_bytes"]),
                 "sha256": str(output["sha256"]),
             }
             for task_state in state.tasks
             if task_state.record is not None
-            for output in task_state.record["outputs"]
+            for output_index, output in enumerate(task_state.record["outputs"])
         ),
     )
 

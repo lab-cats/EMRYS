@@ -329,6 +329,53 @@ def test_selected_package_tree_dependency_is_composed_and_content_bound(
             explicit_file_ids=frozenset({"r_tool"}),
         )
 
+
+def test_runtime_package_binding_rechecks_a_symlink_after_hashing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    library = tmp_path / "renv-library"
+    first = tmp_path / "edgeR-first"
+    second = tmp_path / "edgeR-second"
+    for package, version in ((first, "1.0"), (second, "2.0")):
+        package.mkdir()
+        (package / "DESCRIPTION").write_text(
+            f"Package: edgeR\nVersion: {version}\n",
+            encoding="utf-8",
+        )
+    library.mkdir()
+    selected = library / "edgeR"
+    selected.symlink_to(first, target_is_directory=True)
+    real_identity = doctor.installed_package_tree_identity
+
+    def retarget_after_hash(path: Path):
+        identity = real_identity(path)
+        selected.unlink()
+        selected.symlink_to(second, target_is_directory=True)
+        return identity
+
+    monkeypatch.setattr(
+        doctor,
+        "installed_package_tree_identity",
+        retarget_after_hash,
+    )
+
+    with pytest.raises(doctor.DoctorInputError, match="package-tree root changed"):
+        doctor.runtime_file_bindings(
+            _inspection(
+                tmp_path,
+                (
+                    _check("renv_library", "path_visibility", str(library)),
+                    _check(
+                        "r_edger",
+                        "r_namespace",
+                        "edgeR",
+                        resolved_path=first,
+                    ),
+                ),
+            )
+        )
+
 def test_runtime_contract_refuses_a_truncated_fixed_roster(tmp_path: Path) -> None:
     source = tmp_path / "source"
     source.mkdir()
@@ -1054,6 +1101,54 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     assert records[0] == "opened"
     assert "terminal" in records
     assert records[-1] == "closed"
+
+
+def test_repair_refuses_a_discovered_executable_symlink_outside_managed_root(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = _project(tmp_path)
+    plan = _plan(project)
+    runtime = _runtime(plan)
+    external = tmp_path / "site/bin/STAR"
+    external.parent.mkdir(parents=True)
+    external.write_bytes(b"site tool\n")
+    external.chmod(0o755)
+    linked = runtime.managed_root / "bin/STAR"
+    candidate = _inspection(
+        tmp_path,
+        (_check("star", "tool_version", str(linked)),),
+        profile=runtime.profile,
+        profile_bytes=b"escaped runtime\n",
+    )
+    records: list[str] = []
+    _patch_logging(monkeypatch, plan, records)
+
+    def discover(**_kwargs: object) -> RuntimeInspection:
+        linked.parent.mkdir(parents=True)
+        linked.symlink_to(external)
+        return candidate
+
+    monkeypatch.setattr(doctor, "_readmit_repair_plan", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(doctor, "_admit_managed_root", lambda _plan: None)
+    monkeypatch.setattr(doctor, "_repair_actions", lambda _plan: ())
+    monkeypatch.setattr(doctor, "_managed_discovery_environment", lambda _plan: {})
+    monkeypatch.setattr(
+        doctor.onboarding,
+        "discover_runtime_profile",
+        discover,
+    )
+    monkeypatch.setattr(
+        doctor.onboarding,
+        "publish_runtime_profile",
+        lambda _candidate: pytest.fail("escaped runtime profile was published"),
+    )
+
+    with pytest.raises(doctor.DoctorRepairError, match="escaped"):
+        doctor._execute_repair(plan, controls=_controls(project))
+
+    assert not runtime.profile.exists()
+    assert "failed" in records
 
 
 @pytest.mark.parametrize(

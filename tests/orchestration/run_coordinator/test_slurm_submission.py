@@ -135,6 +135,7 @@ def test_plan_is_no_write_and_builds_exact_sbatch_argv(tmp_path: Path) -> None:
     assert plan.stdout_pattern == log_dir / "emrys-local-pilot-%j.out"
     assert plan.stderr_pattern == log_dir / "emrys-local-pilot-%j.err"
     assert plan.batch_script.startswith("#!/bin/bash\nset -euo pipefail\n")
+    assert '/bin/rm -rf --one-file-system -- "$job_tmpdir"' in plan.batch_script
     assert "--wrap" not in plan.argv
 
 

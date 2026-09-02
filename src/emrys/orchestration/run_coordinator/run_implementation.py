@@ -72,6 +72,7 @@ _PROCESSING_ROOTS = (
     "src/emrys/libraries/validation/report.py",
     "src/emrys/libraries/validation/runtime.py",
     "src/emrys/libraries/validation/tsv.py",
+    "src/emrys/orchestration/run_coordinator/materialization.py",
     "src/emrys/stages/canonical_bam",
     "src/emrys/stages/duplicate_marking",
     "src/emrys/stages/fasta_sidecars",

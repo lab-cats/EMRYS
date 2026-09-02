@@ -21,7 +21,11 @@ from typing import Any
 import pytest
 
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.evidence.runtime_availability.inspector import RuntimeInspection
+from emrys.evidence.runtime_availability.inspector import (
+    RuntimeCheck,
+    RuntimeInspection,
+    RuntimeObservation,
+)
 from emrys.evidence.storage_inventory import qualification as storage_qualification
 from emrys.libraries.installed_package_identity import installed_package_tree_identity
 from emrys.libraries.validation import inputs as validation_inputs
@@ -1624,6 +1628,43 @@ def test_required_tool_same_path_and_version_rejects_byte_mutation(
         lifecycle._admit_required_tool_identity(identity)
 
 
+def test_cached_runtime_probe_rechecks_executable_permission(tmp_path: Path) -> None:
+    tool = tmp_path / "STAR"
+    tool.write_bytes(b"tool bytes\n")
+    tool.chmod(0o755)
+    check = RuntimeCheck(
+        check_id="star",
+        check_type="tool_version",
+        runtime_context="local",
+        required=True,
+        target=str(tool),
+        probe_args=("--version",),
+        expected=".*",
+        description="STAR",
+    )
+    cached = RuntimeInspection(
+        profile_path=tmp_path / "runtime.tsv",
+        profile_sha256="a" * 64,
+        profile_bytes=b"runtime\n",
+        runtime_context="local",
+        observations=(
+            RuntimeObservation(
+                check=check,
+                status="pass",
+                observed="1.0",
+                detail="qualified",
+                resolved_path=tool,
+            ),
+        ),
+        rendered_bytes=b"rendered\n",
+    )
+    lifecycle._admit_runtime_executable_permissions(cached)
+    tool.chmod(0o644)
+
+    with pytest.raises(lifecycle.LifecycleError, match="no longer executable"):
+        lifecycle._admit_runtime_executable_permissions(cached)
+
+
 def test_explicit_package_tree_mutation_before_workflow_retains_ambiguous_lock(
     tmp_path: Path,
 ) -> None:
@@ -1719,6 +1760,52 @@ def test_clean_failure_and_interruption_are_resume_available(
     assert observed.recovery_available
 
 
+@pytest.mark.parametrize(
+    ("schema_version", "expected"),
+    [
+        ("emrys.attempt-receipt.v1", "succeeded"),
+        ("emrys.attempt-receipt.v2", "failed"),
+    ],
+)
+def test_complete_results_do_not_replace_latest_scientific_attempt_outcome(
+    schema_version: str,
+    expected: str,
+) -> None:
+    assert (
+        inspection._attempt_outcome(
+            latest={"workflow_attempt_id": "latest"},
+            receipt={"schema_version": schema_version, "status": "failed"},
+            running=False,
+            integrity_blockers=(),
+            results_status="complete",
+        )
+        == expected
+    )
+
+
+def test_rederived_results_blocker_does_not_block_run_integrity_by_wording() -> None:
+    state = inspection.RunInspection(
+        run_root=Path("/run"),
+        run_id=f"run-{'a' * 64}",
+        attempt_outcome="blocked",
+        latest_attempt={"workflow_attempt_id": "latest"},
+        latest_receipt={
+            "schema_version": "emrys.attempt-receipt.v2",
+            "status": "blocked",
+            "blockers": ["Could not admit task-start record"],
+        },
+        tasks=(),
+        reporting_completion_records={},
+        integrity_blockers=(),
+        results_blockers=("Could not close task-start",),
+        reporting_blockers=(),
+    )
+
+    assert state.integrity == "valid"
+    assert state.results_status == "blocked"
+    assert state.receipt_blockers == ("Could not admit task-start record",)
+
+
 def test_reporting_residue_does_not_gate_failed_science_recovery(
     tmp_path: Path,
 ) -> None:
@@ -1763,7 +1850,7 @@ def test_complete_results_survive_failed_scientific_receipt(
     )
 
     assert outcome.receipt["status"] == "failed"
-    assert observed.attempt_outcome == "succeeded"
+    assert observed.attempt_outcome == "failed"
     assert observed.results_status == "complete"
     assert observed.reporting_status == "incomplete"
     assert not observed.recovery_available
@@ -2440,7 +2527,9 @@ def test_live_owned_incomplete_start_is_running_then_terminally_blocked(
             built.validate_reporting,
         ),
     )
-    assert observed.integrity == "blocked"
+    assert observed.integrity == "valid"
+    assert observed.attempt_outcome == "blocked"
+    assert observed.results_status == "blocked"
 
 
 def test_task_start_crash_and_deletion_remain_blocked(tmp_path: Path) -> None:

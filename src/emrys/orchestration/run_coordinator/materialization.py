@@ -239,6 +239,7 @@ def build_run_candidate(
             toolchain=toolchain,
             backend="local",
             engine="snakemake",
+            backend_semantics_sha256=backend_sha256,
             star_index=source["reference"]["star_index"],
             computational_resources=resources,
         ),
@@ -1032,6 +1033,7 @@ def _dispatches(
     retained: Mapping[tuple[str, str], dict[str, str]],
     resources: ResourcePlan,
     processing_source_root: Path | None,
+    processing_artifact_paths: Mapping[tuple[str, str, str], Path],
     bound_input_snapshots: Mapping[Path, Mapping[str, Any]],
 ) -> tuple[
     tuple[PlannedFile, ...], dict[str, dict[str, dict[str, str]]], tuple[Path, ...]
@@ -1045,6 +1047,7 @@ def _dispatches(
         profile,
         analysis_revision,
         processing_source_root,
+        processing_artifact_paths,
     ):
         item = dict(row)
         path = Path(str(row["source_path"]))
@@ -1536,6 +1539,18 @@ def build_attempt_plan(
             () if processing_source is None else processing_source.artifact_snapshots
         )
     }
+    processing_artifact_paths = {
+        (
+            str(snapshot["step_id"]),
+            str(snapshot["scope_id"]),
+            str(snapshot["role"]),
+        ): Path(str(snapshot["path"]))
+        for snapshot in (
+            () if processing_source is None else processing_source.artifact_snapshots
+        )
+        if snapshot.get("role")
+        in {"step00c_reference_fai_v1", "step00c_reference_dict_v1"}
+    }
     if selected_sample_file is not None:
         bound_input_snapshots[selected_sample_file.path] = source["samples"][
             "manifest"
@@ -1574,6 +1589,7 @@ def build_attempt_plan(
         retained,
         resources,
         processing_source_root,
+        processing_artifact_paths,
         bound_input_snapshots,
     )
     reporting_files, reporting_config, reporting_directories = (
@@ -1584,6 +1600,7 @@ def build_attempt_plan(
             analysis=(analysis.revision if successor else None),
             attempt_id=(attempt_id if successor else None),
             processing_source_root=processing_source_root,
+            processing_artifact_paths=processing_artifact_paths,
         )
     )
     fixed_files = [

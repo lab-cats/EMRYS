@@ -1146,7 +1146,11 @@ def _runtime_profile_bytes(
     return runtime_profile_bytes(checks), renv_library
 
 
-def project_runtime_directory(project: ProjectAdmission) -> Path:
+def project_runtime_directory(
+    project: ProjectAdmission,
+    *,
+    writable: bool = True,
+) -> Path:
     """Admit the canonical Project-owned runtime directory."""
 
     directory = project.source_path.parent / "runtime"
@@ -1155,7 +1159,7 @@ def project_runtime_directory(project: ProjectAdmission) -> Path:
             directory,
             "Project runtime directory",
             directory=True,
-            writable=True,
+            writable=writable,
             canonical=True,
         )
     except OnboardingError as exc:
@@ -1175,7 +1179,7 @@ def discover_runtime_profile(
 
     checkout = _absolute(source_root() if root is None else root)
     admitted = validate_project(project, root=checkout).project
-    destination = project_runtime_directory(admitted) / "runtime.tsv"
+    destination = project_runtime_directory(admitted, writable=False) / "runtime.tsv"
     selected_environment = os.environ if environment is None else environment
     profile_bytes, renv_library = _runtime_profile_bytes(
         selected_environment,

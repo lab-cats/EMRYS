@@ -19,7 +19,12 @@ from emrys.contracts.scientific_evidence import step08
 from emrys.evidence.runtime_availability.inspector import RuntimeInspection
 from emrys.libraries.validation.tsv import tsv_bytes
 from emrys.libraries import exclusive_publication
-from emrys.orchestration.run_coordinator import doctor, onboarding, synthetic_fixture
+from emrys.orchestration.run_coordinator import (
+    control,
+    doctor,
+    onboarding,
+    synthetic_fixture,
+)
 from tests.orchestration.run_coordinator.fixture import build
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -1055,6 +1060,50 @@ def test_runtime_discovery_builds_project_owned_fixed_policy_without_writing(
         environment["EMRYS_RSCRIPT"]
     ]
     assert not inspection.profile_path.exists()
+
+
+def test_runtime_discovery_does_not_require_writable_project_state(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = _project_with_owned_runtime(tmp_path / "project")
+    environment, _tool_dir = _runtime_environment(tmp_path)
+    real_admit = onboarding._admit_existing_path
+    runtime_admissions: list[bool] = []
+
+    def admit(value: str | Path, label: str, **options) -> Path:
+        if label == "Project runtime directory":
+            runtime_admissions.append(options["writable"])
+        return real_admit(value, label, **options)
+
+    monkeypatch.setattr(onboarding, "_admit_existing_path", admit)
+    monkeypatch.setattr(
+        onboarding,
+        "inspect_runtime_profile_bytes",
+        _no_probe_inspection,
+    )
+
+    onboarding.discover_runtime_profile(
+        project=project,
+        environment=environment,
+        root=REPO_ROOT,
+    )
+
+    assert runtime_admissions == [False]
+
+
+def test_historical_resume_prefers_its_retained_runtime_over_project_state(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project.yaml"
+    project_runtime = tmp_path / "runtime/runtime.tsv"
+    retained = tmp_path / "historical/runtime.tsv"
+    project_runtime.parent.mkdir()
+    retained.parent.mkdir()
+    project_runtime.write_bytes(b"new Project runtime\n")
+    retained.write_bytes(b"retained historical runtime\n")
+
+    assert control._resume_runtime_profile_path(project, {}, retained) == retained
 
 
 def test_runtime_discovery_rejects_missing_and_ambiguous_tools(

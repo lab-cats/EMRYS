@@ -86,6 +86,7 @@ def build_reporting_bundle(
     profile: Mapping[str, Any],
     analysis: AnalysisRevision | None = None,
     processing_source_root: Path | None = None,
+    processing_artifact_paths: Mapping[tuple[str, str, str], Path] | None = None,
 ) -> ReportingBundle:
     """Build exact reporting inputs before the execution contract is finalized."""
 
@@ -125,6 +126,7 @@ def build_reporting_bundle(
         profile,
         analysis,
         processing_source_root,
+        processing_artifact_paths,
     )
     return ReportingBundle(
         reference_contract=reference_contract,
