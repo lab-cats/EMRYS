@@ -94,11 +94,12 @@ Placement source/digest, Project source, and scheduler job ID are Attempt proven
 not Run identity or completion authority. Direct and Slurm use one scientific
 backend and one materialization/lifecycle contract. Hosted 130-pair
 direct/disposable-single-node-Slurm execution proves matching immutable
-authority, Attempt common fields/task roster, path-neutral science, and
-symbolic resources. Each placement separately admits successful
-receipt/reporting and one application log; effective allocation and scheduler
-streams differ as intended. It does not establish the 100,000-pair case, institutional site/module
-portability, failure/recovery parity, multi-node or production execution,
+authority, Attempt common fields/task roster, path-neutral science, symbolic
+resources, and controlled pre-task failure/resume behavior. Each placement
+separately admits successful and failed receipts, final reporting, and one
+application log per execution operation; effective allocation and scheduler
+streams differ as intended. It does not establish the 100,000-pair case,
+institutional site/module portability, multi-node or production execution,
 scientific review, or biological validation. Owner-local scheduler entry
 points are retired; the private whole-Run batch bootstrap remains.
 
@@ -482,6 +483,7 @@ the shipped command default unchanged, with no fake mode or raw-engine option.
 Separate clean-success and
 controlled between-task failure/resume paths cover all 35 owner jobs, the three
 downstream reporting transactions, byte-preserving reuse, final inspection, and
-completed-run refusal. These are local structural/no-science workflow facts,
-not real science-tool or cluster proof, completed scientific review, or
-biological validation.
+completed-run refusal. Separate hosted real-synthetic evidence covers direct
+and disposable single-node Slurm success plus controlled pre-task
+failure/resume parity. Neither establishes institutional-site, multi-node,
+production-data, completed scientific-review, or biological proof.

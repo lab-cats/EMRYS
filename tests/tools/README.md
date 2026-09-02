@@ -41,7 +41,11 @@ launcher with the locked runtime Python, clears ambient launcher overrides, and
 seals PATH/JAVA_HOME to the locked Java independently of the private Slurm
 transport's PATH. A retained gunzip adapter adds explicit decompression after
 canonical path admission, so a provisioned `gunzip -> gzip` link cannot
-silently change STAR's read-command behavior. Adapter delegates, retained bytes, and bound
-runtimes are hashed in the summary. The driver installs and cleans nothing; its
-machine-readable summary remains synthetic execution evidence, never
-production or biological evidence.
+silently change STAR's read-command behavior. For the 130-pair profile, the
+CI driver supplies an absent Snakemake profile once per placement, causing a
+deterministic engine-admission failure before task entry while leaving admitted
+inputs unchanged. It then proves failed direct and Slurm Attempts followed by
+public `resume`. The 100,000-pair profile remains an uninterrupted success-only
+path. Adapter delegates, retained bytes, and bound runtimes are hashed in the
+summary. The driver installs and cleans nothing; its machine-readable summary
+remains synthetic execution evidence, never production or biological evidence.

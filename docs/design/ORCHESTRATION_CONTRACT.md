@@ -766,9 +766,10 @@ This contract makes no decision or implementation commitment for:
 - optional-stage and archival-success policy;
 - in-code scientific approval or biological-readiness policy;
 - public acquisition or a general provenance subsystem;
-- logging adoption beyond the `run`/`resume` Attempt boundary and standalone
-  executing report generation, or generic gate receipts; standalone report
-  dry-run and reuse own no durable log;
+- application-log adopters beyond the closed `run`/`resume`, automatic and
+  standalone executing report, and confirmed Doctor-repair roster, or generic
+  gate receipts; dry-run, refusal, inspection, and report reuse own no durable
+  log;
 - automatic stale-lock cleanup or owner recovery;
 - artifact-schema migration or installed workflow assets;
 - a wheel-only control plane; or

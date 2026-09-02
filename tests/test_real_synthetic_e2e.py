@@ -98,6 +98,27 @@ def test_launcher_adapters_and_default_resource_projection(tmp_path: Path) -> No
     assert b'exec /runtime/bin/gunzip -d "$@"' in driver.gunzip_adapter_bytes(
         Path("/runtime/bin/gunzip")
     )
+    missing_profile, marker = tmp_path / "missing-profile", tmp_path / "fail-once"
+    marker.write_text("armed\n")
+    module_init = tmp_path / "module-init.sh"
+    module_init.write_bytes(
+        driver.controlled_failure_module_init_bytes(missing_profile, marker)
+    )
+    observed = subprocess.run(
+        [
+            "/bin/bash",
+            "-c",
+            'source "$1"; module purge; module load emrys-ci-controlled-failure; '
+            'printf "%s" "$SNAKEMAKE_PROFILE"',
+            "bash",
+            str(module_init),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert observed.stdout == str(missing_profile)
+    assert not marker.exists()
 
     from emrys.orchestration.local_pilot.execution_profile import load_execution_profile
 
@@ -112,8 +133,15 @@ def test_launcher_adapters_and_default_resource_projection(tmp_path: Path) -> No
         time_limit="02:00:00",
         nodelist=None,
         scratch_parent=tmp_path / "scratch",
+        module_init=module_init,
     )
-    assert "resources" not in json.loads(rendered)
+    profile_document = json.loads(rendered)
+    assert "resources" not in profile_document
+    assert profile_document["placement"]["modules"] == {
+        "mode": "exact",
+        "init": str(module_init),
+        "load": ["emrys-ci-controlled-failure"],
+    }
     profile = tmp_path / "slurm.json"
     profile.write_bytes(rendered)
     assert load_execution_profile(
@@ -197,6 +225,27 @@ def test_run_submission_and_wait_failure_cancel_once(
     assert run_root.parent == workspace / "runs"
     assert sum(argv[0] == "scancel" for argv in calls) == 1
 
+    stdout, stderr = tmp_path / "job.out", tmp_path / "job.err"
+    stdout.write_text("")
+    stderr.write_text("controlled failure\n")
+    monkeypatch.setattr(
+        driver,
+        "_scheduler",
+        lambda argv, _cwd: subprocess.CompletedProcess(
+            argv, 0, "JobState=FAILED ExitCode=1:0", ""
+        ),
+    )
+    job = driver.wait_for_job(
+        driver.Job("43", stdout, stderr),
+        scontrol=Path("scontrol"),
+        scancel=Path("scancel"),
+        cwd=tmp_path,
+        timeout_seconds=1,
+        poll_seconds=0.01,
+        expected=("FAILED", "1:0"),
+    )
+    assert (job.state, job.exit_code) == ("FAILED", "1:0")
+
 
 def _table(path: Path, rows: tuple[tuple[str, str], ...]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -226,6 +275,7 @@ def test_completed_results_use_inspection_reports_and_direct_step09_oracle(
         attempt_outcome="succeeded",
         results_status="complete",
         reporting_status="complete",
+        recovery_available=False,
         blockers=(),
         run_id="run-1",
         verified_report_locations=(
@@ -256,21 +306,16 @@ def test_completed_results_use_inspection_reports_and_direct_step09_oracle(
 def _completion(attempt_id: str, memory_mb: int) -> dict[str, object]:
     return {
         "authority": {"run": {"id": "run-1", "sha256": "a" * 64}},
-        "authority_bytes": {
-            "analysis": b"analysis\n",
-            "execution_plan": b"plan\n",
-            "run": b"run\n",
-        },
         "attempt": {
             "id": attempt_id,
             "common_fields": {"run_id": "run-1", "executor": "snakemake"},
             "task_roster": [{"machine_key": "owner", "state": "verified"}],
+            "resources": {
+                "symbolic": {"workflow_memory_mb": "allocation"},
+                "effective": {"workflow_memory_mb": memory_mb},
+            },
         },
         "scientific_results": {"result.tsv": {"sha256": "b" * 64}},
-        "resources": {
-            "symbolic": {"workflow_memory_mb": "allocation"},
-            "effective": {"workflow_memory_mb": memory_mb},
-        },
         "reports": {
             "scientific-report-html": {},
             "evidence-report-html": {},
@@ -303,11 +348,16 @@ def test_application_log_snapshot_binds_run_attempt_and_scheduler(
             fields["slurm_job_id"] = "42"
         elif event == "analysis_prepared":
             fields = {"run_id": "run-1", "workflow_attempt_id": "attempt-1"}
+        elif event == "attempt_receipt_observed":
+            fields["status"] = "succeeded"
         records.append(
             {
                 "sequence": sequence,
                 "scope_kind": "run",
                 "scope_id": "pending",
+                "entrypoint": "emrys-run",
+                "execution_attempt_id": "application-1",
+                "mode": "execute",
                 "event": event,
                 "fields": fields,
             }
@@ -319,9 +369,11 @@ def test_application_log_snapshot_binds_run_attempt_and_scheduler(
         run_id="run-1",
         attempt_id="attempt-1",
         scheduler_job_id="42",
+        operation="execute",
+        expected_status="succeeded",
     )
 
-    assert observed["scope_id"] == "pending"
+    assert observed["path"]["path"] == str(path)
     assert observed["scheduler_job_id"] == "42"
 
 
