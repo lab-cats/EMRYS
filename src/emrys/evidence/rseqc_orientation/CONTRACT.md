@@ -105,7 +105,7 @@ tests and orchestration invoke it explicitly through Bash.
 
 ## Validation interface
 
-The grouped route `python -I -m emrys validate rseqc-orientation`, implemented
+The grouped route `emrys validate rseqc-orientation`, implemented
 by private [`validator.py`](validator.py), accepts an explicit scope, native
 report, sum tolerance, and output path. It does not receive the BAM, index,
 BED12, RSeQC identity, or attempt receipt. Validation is dry-run by default;

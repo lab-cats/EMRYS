@@ -62,7 +62,7 @@ Deterministic ordering is owned by the converter.
 
 ## Current execution surfaces
 
-`python -I -m emrys convert gtf-to-bed12` is the public conversion route,
+`emrys convert gtf-to-bed12` is the public conversion route,
 implemented by [`converter.py`](converter.py). It accepts explicit input/output
 and GTF-selection arguments. It renders complete deterministic BED12 bytes in
 memory and is dry-run by default. `--execute` acquires a create-exclusive lock,
@@ -80,7 +80,7 @@ evidence; a subsequent invocation preserves and reports that ambiguous state.
 
 ## Validation interface
 
-`python -I -m emrys validate bed12`, implemented by
+`emrys validate bed12`, implemented by
 [`validator.py`](validator.py), accepts explicit scope, BED12, source-GTF, and
 output paths. Validation is dry-run by default; `--execute` publishes
 `<scope-id>.validation.tsv` using the common seven-field step-validation

@@ -7,7 +7,7 @@ evidence meaning.
 ## Entry points
 
 - producer: [`step_02b_bam_qc.sh`](step_02b_bam_qc.sh)
-- validator: grouped route `python -I -m emrys validate canonical-bam-qc`,
+- validator: grouped route `emrys validate canonical-bam-qc`,
   implemented by private [`validator.py`](validator.py)
 
 For Slurm execution, use the complete immutable Run through `emrys run` or
@@ -39,7 +39,7 @@ to the wider run and tool-version context.
 Validator dry-run:
 
 ```bash
-.venv/bin/python -I -m emrys validate canonical-bam-qc \
+emrys validate canonical-bam-qc \
   --scope-id ABE_EV_2 \
   --quickcheck results/qc/bam/ABE_EV_2.quickcheck.txt \
   --flagstat results/qc/bam/ABE_EV_2.flagstat.txt \

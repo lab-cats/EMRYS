@@ -429,7 +429,7 @@ jobs:
             --group workflow \
             --python python
           project_root="${evidence_root}/project"
-          emrys=("${clean_clone}/.venv/bin/python" -X pycache_prefix=/dev/null -I -m emrys)
+          emrys=("${clean_clone}/.venv/bin/emrys")
           cd "${clean_clone}"
           "${emrys[@]}" init synthetic \
             --output-dir "${project_root}" --execute \
@@ -451,15 +451,15 @@ jobs:
           clean_clone="${{ steps.golden.outputs.clone }}"
           evidence_root="${{ steps.golden.outputs.evidence }}"
           project_root="${evidence_root}/project"
-          emrys=("${clean_clone}/.venv/bin/python" -X pycache_prefix=/dev/null -I -m emrys)
-          cd "${clean_clone}"
+          emrys=("${clean_clone}/.venv/bin/emrys")
+          cd "${project_root}"
 
-          "${emrys[@]}" doctor \
-            --project "${project_root}/project.yaml" --repair --execute \
-            2>&1 | tee "${evidence_root}/02-doctor.log"
-          "${emrys[@]}" run \
-            --project "${project_root}/project.yaml" --execute \
-            2>&1 | tee "${evidence_root}/03-run.log"
+          "${emrys[@]}" validate \
+            2>&1 | tee "${evidence_root}/02-validate.log"
+          "${emrys[@]}" doctor --repair --execute \
+            2>&1 | tee "${evidence_root}/03-doctor.log"
+          "${emrys[@]}" run --execute \
+            2>&1 | tee "${evidence_root}/04-run.log"
 
           mapfile -d '' -t run_roots < <(
             find "${project_root}/runs" -mindepth 1 -maxdepth 1 \
@@ -468,16 +468,16 @@ jobs:
           test "${#run_roots[@]}" -eq 1
           run_root="${run_roots[0]}"
           printf '%s\n' "${run_root}" > "${evidence_root}/run-root.txt"
-          "${emrys[@]}" inspect run --run-root "${run_root}" \
-            | tee "${evidence_root}/04-inspect.log"
+          "${emrys[@]}" inspect \
+            | tee "${evidence_root}/05-inspect.log"
           grep --fixed-strings --line-regexp 'Run integrity: valid' \
-            "${evidence_root}/04-inspect.log"
+            "${evidence_root}/05-inspect.log"
           grep --fixed-strings --line-regexp 'Attempt outcome: succeeded' \
-            "${evidence_root}/04-inspect.log"
+            "${evidence_root}/05-inspect.log"
           grep --fixed-strings --line-regexp 'Scientific Results: complete' \
-            "${evidence_root}/04-inspect.log"
+            "${evidence_root}/05-inspect.log"
           grep --fixed-strings --line-regexp 'Reporting: complete' \
-            "${evidence_root}/04-inspect.log"
+            "${evidence_root}/05-inspect.log"
           test "$(find "${run_root}/results/reports" -type f -name '*.html' | wc -l)" -eq 2
 
       - name: Require the clean clone to remain unchanged
@@ -508,6 +508,7 @@ jobs:
             ${{ runner.temp }}/emrys-managed-golden/project/logs
             ${{ runner.temp }}/emrys-managed-golden/project/runs
             ${{ runner.temp }}/emrys-managed-golden/project/runtime/runtime.tsv
+            ${{ runner.temp }}/emrys-managed-golden/project/runtime/profiles
             ${{ runner.temp }}/emrys-managed-golden/project/runtime/.emrys-storage-qualification
           if-no-files-found: error
           include-hidden-files: true

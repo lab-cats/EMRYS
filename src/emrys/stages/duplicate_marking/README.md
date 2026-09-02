@@ -7,7 +7,7 @@ and evidence semantics.
 ## Entry points
 
 - producer: [`step_04_mark_duplicates.sh`](step_04_mark_duplicates.sh)
-- grouped validator: `python -I -m emrys validate duplicate-marking`, implemented
+- grouped validator: `emrys validate duplicate-marking`, implemented
   by private [`validator.py`](validator.py)
 
 For Slurm execution, use the complete immutable Run through `emrys run` or
@@ -41,7 +41,7 @@ workflow attempt records their observed versions.
 Validator dry-run:
 
 ```bash
-.venv/bin/python -I -m emrys validate duplicate-marking \
+emrys validate duplicate-marking \
   --scope-id ABE_EV_2 \
   --bam results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam \
   --bai results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam.bai \

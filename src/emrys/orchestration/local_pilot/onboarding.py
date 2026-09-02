@@ -43,6 +43,10 @@ from emrys.orchestration.local_pilot.normalization import (
     admit_project,
     validate_authored_path,
 )
+from emrys.orchestration.local_pilot.execution_profile import (
+    PROJECT_DEFAULT_PROFILE_BYTES,
+    PROJECT_PROFILE_DIRECTORY,
+)
 from emrys.stages.gtf_to_bed12 import converter as gtf_converter
 
 DESCRIPTION = (
@@ -51,7 +55,7 @@ DESCRIPTION = (
     "and writes nothing."
 )
 PROFILE_RELATIVE_PATH = Path("workflow/contracts/local_cmh_v2.json")
-PROJECT_DIRECTORIES = ("logs", "runs", "runtime")
+PROJECT_DIRECTORIES = ("logs", "runs")
 RUNTIME_PROFILE_RELATIVE_PATH = Path("runtime/runtime.tsv")
 PATH_TOOL_COMMANDS = {
     "bash": "bash",
@@ -99,6 +103,30 @@ def _absolute(value: str | Path) -> Path:
     if not path.is_absolute():
         raise OnboardingError(f"path must be absolute: {path}")
     return Path(os.path.abspath(path))
+
+
+def project_definition_path(selection: str | Path | None = None) -> Path:
+    """Resolve the exact current, named-directory, or explicit Project definition."""
+
+    candidate = Path(os.path.abspath("project.yaml" if selection is None else selection))
+    if candidate.is_dir() or (not candidate.exists() and candidate.suffix != ".yaml"):
+        candidate /= "project.yaml"
+    try:
+        resolved = candidate.resolve(strict=True)
+    except OSError as exc:
+        raise OnboardingError(f"Project definition is unavailable: {candidate}") from exc
+    if resolved != candidate or not candidate.is_file():
+        raise OnboardingError(f"Project definition is unavailable: {candidate}")
+    return candidate
+
+
+def add_project_argument(parser: argparse.ArgumentParser) -> None:
+    """Add the one ordinary Project selector shared by public commands."""
+
+    parser.add_argument(
+        "--project",
+        help="Named Project directory or exact project.yaml path; default: current Project.",
+    )
 
 
 def _require_external_absent_output(value: str | Path, root: Path) -> Path:
@@ -291,7 +319,7 @@ def publish_create_absent_tree(
         ) from exc
 
 
-_PROJECT_FIELDS = """output_dir sample_manifest partition_manifest
+_PROJECT_FIELDS = """sample_manifest partition_manifest
 reference_fasta reference_gtf sjdb_overhang genome_sa_index_nbases
 control_condition treatment_condition target_change min_sample_dp
 mean_dp_threshold fdr_threshold common_or_threshold absolute_difference_threshold
@@ -299,7 +327,7 @@ background_max_fraction""".split()
 _PROJECT_TYPES = {
     field: converter
     for fields, converter in (
-        ("output_dir sample_manifest partition_manifest reference_fasta reference_gtf".split(), Path),
+        ("sample_manifest partition_manifest reference_fasta reference_gtf".split(), Path),
         ("sjdb_overhang genome_sa_index_nbases min_sample_dp".split(), int),
         ("mean_dp_threshold fdr_threshold common_or_threshold absolute_difference_threshold background_max_fraction".split(), float),
     )
@@ -315,6 +343,12 @@ _PROJECT_SUGGESTIONS = dict(
 
 
 def configure_project_init_parser(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "project_name",
+        metavar="PROJECT_NAME",
+        type=_project_name,
+        help="Safe name for the new child directory and Project root.",
+    )
     for destination in _PROJECT_FIELDS:
         parser.add_argument(
             f"--{destination.replace('_', '-')}",
@@ -334,6 +368,16 @@ def configure_project_init_parser(parser: argparse.ArgumentParser) -> None:
         "--execute", action="store_true", help="Create; omission is a no-write plan."
     )
     parser.set_defaults(_command_parser=parser)
+
+
+def _project_name(value: str) -> str:
+    if value in {"project", "manifests", "synthetic"}:
+        raise argparse.ArgumentTypeError(f"reserved Project name: {value}")
+    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", value) is None:
+        raise argparse.ArgumentTypeError(
+            "must begin with a letter or digit and contain only letters, digits, '.', '_', or '-'"
+        )
+    return value
 
 
 def _collect_project_answers(arguments: argparse.Namespace) -> dict[str, object]:
@@ -416,9 +460,9 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
     try:
         answers = _collect_project_answers(arguments)
         output = _require_external_absent_output(
-            Path(answers["output_dir"]), source_root()
+            Path.cwd() / arguments.project_name, source_root()
         )
-        for field in _PROJECT_FIELDS[1:5]:
+        for field in _PROJECT_FIELDS[:4]:
             answers[field] = _absolute(Path(answers[field])).resolve(strict=True)
         answers["analysis_name"] = arguments.analysis_name
         answers["background_condition"] = arguments.background_condition
@@ -437,7 +481,12 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
             return 0
         publish_create_absent_tree(
             output,
-            {},
+            {
+                (PROJECT_PROFILE_DIRECTORY / "default.yaml").as_posix(): (
+                    PROJECT_DEFAULT_PROFILE_BYTES,
+                    0o644,
+                )
+            },
             completion_name="project.yaml",
             completion_bytes=project_bytes,
             directories=PROJECT_DIRECTORIES,
@@ -843,13 +892,13 @@ def validate_project_admission(
 
 
 def configure_validation_parser(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--project", required=True, type=Path)
+    add_project_argument(parser)
     parser.set_defaults(_command_parser=parser)
 
 
 def validate_from_args(arguments: argparse.Namespace) -> int:
     try:
-        result = validate_project(arguments.project)
+        result = validate_project(project_definition_path(arguments.project))
     except (
         OSError,
         OnboardingError,
@@ -1111,7 +1160,7 @@ def project_runtime_directory(project: ProjectAdmission) -> Path:
         )
     except OnboardingError as exc:
         raise OnboardingError(
-            f"Project runtime directory is unavailable; run `emrys init project`: {exc}"
+            f"Project runtime directory is unavailable; run `emrys init PROJECT_NAME`: {exc}"
         ) from exc
 
 
@@ -1152,22 +1201,22 @@ def publish_runtime_profile(inspection: RuntimeInspection) -> None:
         destination,
         inspection.profile_bytes,
         OnboardingError,
-        existing=f"runtime profile already exists and was preserved: {destination}",
+        existing=f"runtime inventory already exists and was preserved: {destination}",
     )
 
 
 def configure_runtime_discovery_parser(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--project", default=Path("project.yaml"), type=Path)
+    add_project_argument(parser)
     parser.add_argument(
         "--execute",
         action="store_true",
-        help="Publish the admitted profile; omission is a no-write discovery.",
+        help="Publish the admitted inventory; omission is a no-write discovery.",
     )
     parser.set_defaults(_command_parser=parser)
 
 
 def _print_runtime_inventory(inspection: RuntimeInspection) -> None:
-    print("EMRYS runtime profile")
+    print("EMRYS runtime inventory")
     print(f"  emrys: PASS ({__version__})")
     for observation in inspection.observations:
         print(
@@ -1180,9 +1229,9 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
     """Discover, probe, and optionally admit the active Project runtime."""
 
     try:
-        inspection = discover_runtime_profile(project=arguments.project)
+        inspection = discover_runtime_profile(project=project_definition_path(arguments.project))
         _print_runtime_inventory(inspection)
-        print(f"Profile: {inspection.profile_path}")
+        print(f"Inventory: {inspection.profile_path}")
         if not inspection.required_ready:
             print("NOT READY: required runtime checks did not pass.")
             return 1
@@ -1190,7 +1239,7 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
             print("Dry-run complete; no files were written.")
             return 0
         publish_runtime_profile(inspection)
-        print("Runtime profile admitted.")
+        print("Runtime inventory admitted.")
         return 0
     except RuntimeDiscoveryError as exc:
         print(f"NOT READY: {exc}", file=sys.stderr)
@@ -1210,6 +1259,7 @@ __all__ = (
     "OnboardingError",
     "ProjectValidation",
     "RuntimeDiscoveryError",
+    "add_project_argument",
     "configure_runtime_discovery_parser",
     "configure_manifest_init_parser",
     "configure_project_init_parser",
@@ -1219,6 +1269,7 @@ __all__ = (
     "init_manifests_from_args",
     "init_project_from_args",
     "project_runtime_directory",
+    "project_definition_path",
     "publish_create_absent_tree",
     "publish_runtime_profile",
     "runtime_policy_path",

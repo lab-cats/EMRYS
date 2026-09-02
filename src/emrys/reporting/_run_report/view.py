@@ -398,7 +398,7 @@ def build_evidence_view(
     *,
     banner: str,
     result_links: tuple[dict[str, str], ...] = (),
-    inspect_command: str = "emrys inspect run --run-root <run-root>",
+    inspect_command: str = "emrys inspect <RUN>",
     renderer_details: tuple[tuple[str, str], ...] = (),
     figure_evidence: tuple[tuple[str, ...], ...] = (),
     report_inputs: tuple[tuple[str, str, str, str], ...] = (),

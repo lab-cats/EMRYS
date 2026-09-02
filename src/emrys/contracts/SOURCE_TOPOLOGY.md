@@ -15,7 +15,7 @@ owns exact public programs, jobs, validators, and tests.
 
 | Domain | Responsibility |
 | --- | --- |
-| Package root | `__init__.py` exposes package metadata; `__main__.py` is the current grouped CLI composition root, not the future application model. |
+| Package root | `__init__.py` exposes package metadata; `__main__.py` composes the installed `emrys` command and retains direct module invocation only as an internal/test seam. |
 | `contracts/` | Neutral schemas, shared scientific-evidence contracts, identities, and topology contracts. |
 | `libraries/` | Narrow shared implementation proven across named consumers; never a generic utility bucket. |
 | `stages/` | Preprocessing and transformation owners keyed by the slugs in `STAGE_MAP.md`. |
@@ -138,11 +138,11 @@ composition are reviewed together.
 | `CLI-SEAM-004` | `emrys.evidence.canonical_bam_qc.validator` | Owner validation command |
 | `CLI-SEAM-005` | `emrys.evidence.reference_provenance.reconciler` | Reference-provenance reconciliation command |
 | `CLI-SEAM-006` | `emrys.evidence.rseqc_orientation.validator` | Owner validation command |
-| `CLI-SEAM-007` | `emrys.evidence.runtime_availability.inspector` | Runtime inspection command |
-| `CLI-SEAM-008` | `emrys.evidence.storage_inventory.inspector` | Storage inventory command |
-| `CLI-SEAM-009` | `emrys.evidence.storage_inventory.qualification` | Storage qualification command |
+| `CLI-SEAM-007` | `emrys.evidence.runtime_availability.inspector` | Technical runtime inspection command under `emrys debug` |
+| `CLI-SEAM-008` | `emrys.evidence.storage_inventory.inspector` | Technical storage inventory command under `emrys debug` |
+| `CLI-SEAM-009` | `emrys.evidence.storage_inventory.qualification` | Technical storage qualification command under `emrys debug` |
 | `CLI-SEAM-010` | `emrys.ingestion.sample_manifest_admission.validator` | Input-manifest admission command |
-| `CLI-SEAM-011` | `emrys.libraries.source_authority` | Controlled-runtime admission for grouped dispatch |
+| `CLI-SEAM-011` | `emrys.libraries.source_authority` | Controlled-runtime admission behind the installed command |
 | `CLI-SEAM-012` | `emrys.orchestration.local_pilot.all_pass` | Current all-pass inspection command |
 | `CLI-SEAM-013` | `emrys.orchestration.local_pilot.doctor` | Current readiness command |
 | `CLI-SEAM-014` | `emrys.orchestration.local_pilot.control` | Current plan/execute/inspect commands |
@@ -247,12 +247,13 @@ contracts, and direct tests. It does not require future `project`, `run`,
 
 Owner-specific public shell, Python, and R entry points remain with their
 functional owner. Slurm placement belongs only to the private whole-Run
-transport; owner-local scheduler entry points are retired. The unreleased internal Python distribution packages only
-explicitly migrated import owners and their named resources; it does not imply
-portable repository-root semantics. Its installed `python -I -m emrys` module
-interface contains explicitly migrated owner routes, the read-only semantic
-all-pass/readiness checks, and the source-checkout-bound fixed-profile control
-routes. `orchestration/local_pilot/control.py` and `materialization.py` are the
+transport; owner-local scheduler entry points are retired. The installed Python
+distribution packages only explicitly migrated import owners and their named
+resources; it does not imply portable repository-root semantics. Its `emrys`
+console command contains the admitted ordinary Project routes and keeps
+technical inspectors under `emrys debug`; direct `python -m emrys` invocation
+is an internal/test seam. `orchestration/local_pilot/control.py` and
+`materialization.py` are the
 single public application owner for that projection. The dedicated
 `reporting_operation.py` coordinator is the only owner allowed to compose the
 three fixed reporting producers; the grouped command does not expose those

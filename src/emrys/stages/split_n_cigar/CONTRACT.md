@@ -70,7 +70,7 @@ evidence. The lock is output-directory-wide rather than sample-scoped.
 
 ## Validation interface
 
-The grouped `python -I -m emrys validate split-n-cigar` route, implemented by
+The grouped `emrys validate split-n-cigar` route, implemented by
 private [`validator.py`](validator.py), accepts explicit BAM, BAI, FASTA, FAI,
 DICT, samtools, scope, and report paths. Dry-run prints the common TSV;
 `--execute` snapshot-rechecks inputs and uses the neutral validation-report

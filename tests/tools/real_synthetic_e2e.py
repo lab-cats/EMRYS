@@ -212,7 +212,7 @@ def require_operator_root(operator_root: Path, repo_root: Path) -> Paths:
         root / "direct",
         root / "slurm",
         root / "scratch",
-        root / "slurm/emrys.execution.ci.yaml",
+        root / "slurm/runtime/profiles/ci.yaml",
         root / "runtime-adapters",
         root / "driver-transcripts",
     )
@@ -1022,14 +1022,14 @@ def run_driver(
         )
         transcripts.run(
             f"{label}-validate",
-            _emrys(python, "validate", "project", "--project", str(project)),
+            _emrys(python, "validate", "--project", str(project)),
             cwd=repo,
         )
 
         fasta = workspace / "inputs/reference/reference.fa"
         storage = _emrys(
             python,
-            "inspect",
+            "debug",
             "storage-qualification",
             "--workspace",
             str(workspace),
@@ -1137,7 +1137,13 @@ def run_driver(
     ):
         inspected = transcripts.run(
             f"{label}-inspect",
-            _emrys(python, "inspect", "run", "--run-root", str(run_root)),
+            _emrys(
+                python,
+                "inspect",
+                run_root.name,
+                "--project",
+                str(projects[label]),
+            ),
             cwd=repo,
         )
         if any(

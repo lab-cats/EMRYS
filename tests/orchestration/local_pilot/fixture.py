@@ -171,7 +171,9 @@ def build(root: Path, *, replicate_count: int = 2) -> Path:
         "    background_max_fraction: 0.01\n",
         encoding="utf-8",
     )
-    (root / "emrys.execution.yaml").write_text(
+    profile = root / "runtime/profiles/default.yaml"
+    profile.parent.mkdir(parents=True)
+    profile.write_text(
         "schema_version: emrys.execution-profile.v1\n"
         "resources:\n"
         "  schema_version: emrys.local-pilot-resources.v1\n"

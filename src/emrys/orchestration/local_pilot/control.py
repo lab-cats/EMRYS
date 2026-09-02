@@ -1,14 +1,14 @@
-"""Public dry-run-first control plane for the fixed local CMH pilot."""
+"""Public dry-run-first control plane for Project Runs."""
 
 from __future__ import annotations
 
 import argparse
 import hashlib
 import os
-import re
 import shlex
 import sys
 import uuid
+from collections import Counter
 from collections.abc import Callable, Mapping
 from contextlib import suppress
 from dataclasses import replace
@@ -16,6 +16,8 @@ from datetime import UTC, datetime, timedelta
 from functools import partial
 from pathlib import Path
 from typing import Any, TextIO
+
+from simple_term_menu import TerminalMenu
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
@@ -51,6 +53,7 @@ from emrys.orchestration.local_pilot.execution_profile import (
     ExecutionProfileError,
     SlurmPlacement,
     load_execution_profile,
+    project_execution_profile_path,
 )
 from emrys.orchestration.local_pilot.materialization import (
     AttemptPlan,
@@ -103,13 +106,31 @@ class ControlError(RuntimeError):
         self.reported = reported
 
 
-_CONTROL_ERRORS = (ControlError, ExecutionProfileError, ResourceConfigError)
+class _RunSelectionCancelled(ControlError):
+    """The operator left the read-only Run picker without selecting a Run."""
+
+
+_CONTROL_ERRORS = (
+    ControlError,
+    ExecutionProfileError,
+    ResourceConfigError,
+    inspection.InspectionError,
+    onboarding.OnboardingError,
+)
+_PLANNING_ERRORS = (
+    doctor.DoctorInputError,
+    inspection.InspectionError,
+    MaterializationError,
+    ResourceConfigError,
+    ExecutionProfileError,
+    orchestration_contracts.ContractValidationError,
+)
 
 
 def _control_failure(exc: Exception) -> int:
     if not isinstance(exc, ControlError) or not exc.reported:
-        print(f"emrys: error: {exc}", file=sys.stderr)
-    return 2
+        _print_safe(f"emrys: error: {exc}", file=sys.stderr)
+    return 0 if isinstance(exc, _RunSelectionCancelled) else 2
 
 
 PlanBuilder = Callable[[], AttemptPlan]
@@ -119,17 +140,50 @@ def _absolute(path: Path) -> Path:
     return Path(os.path.abspath(path))
 
 
-def _profile_name(value: str) -> str:
-    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", value) is None:
-        raise argparse.ArgumentTypeError("must match [A-Za-z0-9][A-Za-z0-9._-]*")
-    return value
+def _select_project_run(
+    project_path: Path,
+    selector: str | None,
+    *,
+    interactive: bool,
+) -> Path:
+    run_roots = inspection.project_run_roots(project_path.parent)
+    if selector is not None:
+        return inspection.resolve_run_root(run_roots, selector)
+    if not run_roots:
+        raise ControlError(f"Project has no Runs: {project_path.parent}")
+    if len(run_roots) == 1:
+        return run_roots[0]
+    names = tuple(inspection.human_run_name(root.name) for root in run_roots)
+    name_counts = Counter(names)
+    choices = tuple(
+        name if name_counts[name] == 1 else f"{name} ({root.name})"
+        for name, root in zip(names, run_roots, strict=True)
+    )
+    if not interactive:
+        raise ControlError(
+            "Multiple Runs exist; select one explicitly:\n" + "\n".join(choices)
+        )
+    try:
+        selected = TerminalMenu(choices, title="Select a Run:").show()
+    except (EOFError, KeyboardInterrupt) as exc:
+        raise _RunSelectionCancelled("Run selection canceled; nothing was changed.") from exc
+    if selected is None:
+        raise _RunSelectionCancelled("Run selection canceled; nothing was changed.")
+    return run_roots[selected]
 
 
-def _execution_profile_path(arguments, workspace: Path) -> Path | None:
-    name = getattr(arguments, "profile", None)
-    if name is not None:
-        return workspace / f"emrys.execution.{name}.yaml"
-    return getattr(arguments, "execution_profile", None)
+def _resolve_run_argument(
+    arguments: argparse.Namespace,
+) -> tuple[Path, Path]:
+    project_path = onboarding.project_definition_path(getattr(arguments, "project", None))
+    run_root = _select_project_run(
+        project_path,
+        getattr(arguments, "run", None),
+        interactive=sys.stdin.isatty() and sys.stderr.isatty(),
+    )
+    arguments.project = project_path
+    arguments.run = run_root.name
+    return project_path, run_root
 
 
 def _require_ready(result: doctor.DoctorResult) -> None:
@@ -137,7 +191,7 @@ def _require_ready(result: doctor.DoctorResult) -> None:
         return
     details = [*result.blockers]
     details.extend(f"REMEDIATION: {value}" for value in result.remediations)
-    raise ControlError("Local-pilot readiness blockers: " + "; ".join(details))
+    raise ControlError("Project readiness blockers: " + "; ".join(details))
 
 
 def _plan_run(
@@ -168,8 +222,6 @@ def _plan_run(
                 raise ControlError(
                     "--from-processing-run cannot be combined with --through processing"
                 )
-            if re.fullmatch(r"run-[0-9a-f]{64}", processing_source_run_id) is None:
-                raise ControlError("--from-processing-run must name one exact Run ID")
             processing_source = inspection.admit_processing_source(
                 workspace / "runs" / processing_source_run_id
             )
@@ -203,14 +255,7 @@ def _plan_run(
             processing_source=processing_source,
         )
         validate_run_destination(plan.run_root, candidate=plan.run)
-    except (
-        doctor.DoctorInputError,
-        inspection.InspectionError,
-        MaterializationError,
-        ResourceConfigError,
-        ExecutionProfileError,
-        orchestration_contracts.ContractValidationError,
-    ) as exc:
+    except _PLANNING_ERRORS as exc:
         raise ControlError(str(exc)) from exc
     return plan
 
@@ -398,7 +443,7 @@ def _plan_resume(
             else _retained_runtime_profile_path(previous)
         )
     try:
-        readiness = doctor.inspect_local_pilot(
+        readiness = doctor.diagnose_project(
             project_path,
             workspace,
             runtime_profile,
@@ -478,14 +523,7 @@ def _plan_resume(
             placement=execution_profile.attempt_placement(scheduler_job_id),
             processing_source=processing_source,
         )
-    except (
-        doctor.DoctorInputError,
-        inspection.InspectionError,
-        MaterializationError,
-        ResourceConfigError,
-        ExecutionProfileError,
-        orchestration_contracts.ContractValidationError,
-    ) as exc:
+    except _PLANNING_ERRORS as exc:
         raise ControlError(str(exc)) from exc
     if plan.run_root != root:
         raise ControlError("Resume workspace resolves to a different run root")
@@ -505,6 +543,16 @@ def _verified_report_location_lines(
         "Results:",
         *(f"  {label}: {path}" for label, (_, path) in zip(labels, locations, strict=True)),
     )
+
+
+def _run_followup(command: str, run_root: Path, run_id: str, *options: str) -> str:
+    """Render one human-name Run command that remains complete outside its Project."""
+
+    project_path = run_root.parent.parent / "project.yaml"
+    argv = ["emrys", command, inspection.human_run_name(run_id)]
+    if _absolute(Path.cwd()) != project_path.parent:
+        argv.extend(("--project", str(project_path)))
+    return shlex.join((*argv, *options))
 
 
 def _next_supported_action(observed: inspection.RunInspection) -> str:
@@ -529,11 +577,17 @@ def _next_supported_action(observed: inspection.RunInspection) -> str:
             return "Inspect this Run's verified scientific artifacts with --detail debug."
         if observed.reporting_status == "complete":
             return "Review the verified Results and report paths."
-        return f"Generate reports with emrys report --run-root {observed.run_root} --execute."
+        return f"Generate reports with {_run_followup('report', observed.run_root, observed.run_id, '--execute')}."
     return "Preserve this Run; review retained evidence. Do not resume."
 
 
-def _private_delegate_digest() -> str | None:
+def _resolve_execution_profile(
+    arguments: argparse.Namespace,
+    project_path: Path,
+    overrides: ResourceOverrides,
+) -> tuple[ExecutionProfile, str | None]:
+    """Admit one selected profile and any private Slurm delegate binding."""
+
     values = {
         name: os.environ.get(name)
         for name in (
@@ -542,23 +596,25 @@ def _private_delegate_digest() -> str | None:
             slurm_submission.SUBMIT_UID_ENV,
         )
     }
-    if not any(value is not None for value in values.values()):
-        return None
-    if any(value is None for value in values.values()):
-        raise ControlError("Private Slurm delegate context is incomplete")
-    if values[slurm_submission.DELEGATE_MARKER_ENV] != slurm_submission.DELEGATE_MARKER:
-        raise ControlError("Private Slurm delegate marker is invalid")
-    if values[slurm_submission.SUBMIT_UID_ENV] != str(os.getuid()):
-        raise ControlError("Private Slurm delegate UID differs from the current process")
-    return values[slurm_submission.PROFILE_SHA256_ENV]
-
-
-def _delegate_job_id(
-    profile: ExecutionProfile,
-    expected_profile_sha256: str | None,
-) -> str | None:
-    if expected_profile_sha256 is None:
-        return None
+    delegated = any(value is not None for value in values.values())
+    if delegated:
+        if any(value is None for value in values.values()):
+            raise ControlError("Private Slurm delegate context is incomplete")
+        if values[slurm_submission.DELEGATE_MARKER_ENV] != slurm_submission.DELEGATE_MARKER:
+            raise ControlError("Private Slurm delegate marker is invalid")
+        if values[slurm_submission.SUBMIT_UID_ENV] != str(os.getuid()):
+            raise ControlError("Private Slurm delegate UID differs from the current process")
+    expected_sha256 = values[slurm_submission.PROFILE_SHA256_ENV] if delegated else None
+    profile = load_execution_profile(
+        config_path=project_execution_profile_path(
+            project_path,
+            getattr(arguments, "profile", None),
+        ),
+        resource_overrides=overrides,
+        expected_binding_sha256=expected_sha256,
+    )
+    if not delegated:
+        return profile, None
     if not isinstance(profile.placement, SlurmPlacement):
         raise ControlError("A private Slurm delegate requires Slurm placement")
     job_id = os.environ.get("SLURM_JOB_ID")
@@ -566,7 +622,7 @@ def _delegate_job_id(
         profile.attempt_placement(job_id)
     except ExecutionProfileError as exc:
         raise ControlError(str(exc)) from exc
-    return job_id
+    return profile, job_id
 
 
 def _resolve_controls(arguments: argparse.Namespace, workspace: Path) -> LogControls:
@@ -582,13 +638,6 @@ def _resolve_controls(arguments: argparse.Namespace, workspace: Path) -> LogCont
         )
     except LogControlError as exc:
         raise ControlError(str(exc)) from exc
-
-
-def _resume_workspace(run_root: Path) -> Path:
-    root = _absolute(run_root)
-    if root.parent.name != "runs" or root.parent.parent == Path("/"):
-        raise ControlError("Run root must use the canonical <workspace>/runs/<run-id> layout")
-    return root.parent.parent
 
 
 def _admit_workspace_location(workspace: Path) -> None:
@@ -634,10 +683,16 @@ def _delegate_argv(
         ) is not None:
             argv.extend(("--from-processing-run", source_run_id))
     else:
-        argv.extend(("--run-root", str(_absolute(arguments.run_root))))
+        argv.extend(
+            (
+                str(arguments.run),
+                "--project",
+                str(_absolute(arguments.project)),
+            )
+        )
     argv.extend(
         (
-            "--execution-profile",
+            "--profile",
             str(profile.source_path),
             "--log-level",
             controls.level.value,
@@ -775,12 +830,11 @@ def _execute_plan(
     scope_id: str,
     entrypoint: str,
     report_enabled: bool = True,
-    render_plan: bool = True,
 ) -> int:
     """Build and execute one plan inside one non-authoritative application log."""
 
     _admit_workspace_location(workspace)
-    reuse_runtime_inspection = callable(plan_source)
+    build_at_execution = callable(plan_source)
 
     execution_attempt_id = f"application-{uuid.uuid4().hex}"
     try:
@@ -837,24 +891,39 @@ def _execute_plan(
         with suppress(Exception):
             attempt.close()
 
+    def print_failure(
+        *,
+        phase: str,
+        status: str,
+        next_action: str,
+        owned_paths: Mapping[str, Path] | None = None,
+        run_scope: str = scope_id,
+    ) -> None:
+        print(
+            render_failure_summary(
+                entrypoint=entrypoint,
+                phase=phase,
+                status=status,
+                scope=f"run:{run_scope}",
+                execution_attempt_id=execution_attempt_id,
+                log_path=attempt.path,
+                owned_paths=owned_paths,
+                recent_events=attempt.recent_console_events,
+                durable_only_count=attempt.durable_only_count,
+                next_action=next_action,
+            ),
+            end="",
+            file=sys.stderr,
+        )
+
     try:
         plan = plan_source() if callable(plan_source) else plan_source
     except KeyboardInterrupt:
         log_best_effort(lambda: attempt.interrupt_best_effort(message="Analysis preflight interrupted."))
-        print(
-            render_failure_summary(
-                entrypoint=entrypoint,
-                phase="preflight",
-                status="interrupted",
-                scope=f"run:{scope_id}",
-                execution_attempt_id=execution_attempt_id,
-                log_path=attempt.path,
-                recent_events=attempt.recent_console_events,
-                durable_only_count=attempt.durable_only_count,
-                next_action="Retry when ready.",
-            ),
-            end="",
-            file=sys.stderr,
+        print_failure(
+            phase="preflight",
+            status="interrupted",
+            next_action="Retry when ready.",
         )
         raise
     except ControlError as exc:
@@ -865,20 +934,10 @@ def _execute_plan(
             )
         )
         print(f"emrys: error: {exc}", file=sys.stderr)
-        print(
-            render_failure_summary(
-                entrypoint=entrypoint,
-                phase="preflight",
-                status="failed",
-                scope=f"run:{scope_id}",
-                execution_attempt_id=execution_attempt_id,
-                log_path=attempt.path,
-                recent_events=attempt.recent_console_events,
-                durable_only_count=attempt.durable_only_count,
-                next_action="Correct the reported preflight error, then retry.",
-            ),
-            end="",
-            file=sys.stderr,
+        print_failure(
+            phase="preflight",
+            status="failed",
+            next_action="Correct the reported preflight error, then retry.",
         )
         raise ControlError(str(exc), reported=True) from exc
 
@@ -894,7 +953,7 @@ def _execute_plan(
             ),
         )
     )
-    if render_plan:
+    if build_at_execution:
         _print_plan(plan, level=controls.level, report_enabled=report_enabled)
     receipt_ready = False
 
@@ -918,7 +977,7 @@ def _execute_plan(
             plan.lifecycle_request,
             lambda: publish_attempt(plan, ops=ops),
             ops=ops,
-            initial_runtime_inspection=plan.readiness.inspection if reuse_runtime_inspection else None,
+            initial_runtime_inspection=plan.readiness.inspection if build_at_execution else None,
         )
     except (
         MaterializationError,
@@ -936,21 +995,14 @@ def _execute_plan(
         else:
             log_best_effort(lambda: attempt.fail(phase="execute", message="Analysis execution failed."))
         print(f"emrys: error: {exc}", file=sys.stderr)
-        print(
-            render_failure_summary(
-                entrypoint=entrypoint,
-                phase="execute",
-                status="failed",
-                scope=f"run:{scope_id}",
-                execution_attempt_id=execution_attempt_id,
-                log_path=attempt.path,
-                owned_paths=_owned_failure_paths(plan),
-                recent_events=attempt.recent_console_events,
-                durable_only_count=attempt.durable_only_count,
-                next_action=(f"Inspect the Run with emrys inspect run --run-root {plan.run_root}"),
+        print_failure(
+            phase="execute",
+            status="failed",
+            owned_paths=_owned_failure_paths(plan),
+            next_action=(
+                f"Inspect the Run with "
+                f"{_run_followup('inspect', plan.run_root, plan.run.run_id)}"
             ),
-            end="",
-            file=sys.stderr,
         )
         close_log_best_effort()
         raise ControlError(str(exc), reported=True) from exc
@@ -1020,24 +1072,14 @@ def _execute_plan(
                 f"emrys: error: Reporting failed after scientific Results completed: {exc}",
                 file=sys.stderr,
             )
-            print(
-                render_failure_summary(
-                    entrypoint=entrypoint,
-                    phase="reporting",
-                    status="failed",
-                    scope=f"run:{plan.run.run_id}",
-                    execution_attempt_id=execution_attempt_id,
-                    log_path=attempt.path,
-                    recent_events=attempt.recent_console_events,
-                    durable_only_count=attempt.durable_only_count,
-                    next_action=(
-                        "Scientific Results remain complete. Inspect the Run, then "
-                        "use emrys report --run-root "
-                        f"{plan.run_root} --execute."
-                    ),
+            print_failure(
+                phase="reporting",
+                status="failed",
+                run_scope=plan.run.run_id,
+                next_action=(
+                    "Scientific Results remain complete. Inspect the Run, then "
+                    f"use {_run_followup('report', plan.run_root, plan.run.run_id, '--execute')}."
                 ),
-                end="",
-                file=sys.stderr,
             )
             return 1
         observe_reporting(
@@ -1051,24 +1093,17 @@ def _execute_plan(
             print(line, file=sys.stderr)
         return 0
     close_log_best_effort()
-    print(
-        render_failure_summary(
-            entrypoint=entrypoint,
-            phase="terminal",
-            status=status,
-            scope=f"run:{scope_id}",
-            execution_attempt_id=execution_attempt_id,
-            log_path=attempt.path,
-            owned_paths=_owned_failure_paths(
-                plan,
-                released_lock_path=outcome.released_lock_path,
-            ),
-            recent_events=attempt.recent_console_events,
-            durable_only_count=attempt.durable_only_count,
-            next_action=(f"Inspect the Run with emrys inspect run --run-root {plan.run_root}"),
+    print_failure(
+        phase="terminal",
+        status=status,
+        owned_paths=_owned_failure_paths(
+            plan,
+            released_lock_path=outcome.released_lock_path,
         ),
-        end="",
-        file=sys.stderr,
+        next_action=(
+            f"Inspect the Run with "
+            f"{_run_followup('inspect', plan.run_root, plan.run.run_id)}"
+        ),
     )
     return 1
 
@@ -1086,7 +1121,7 @@ def _print_plan(plan: AttemptPlan, *, level: LogLevel, report_enabled: bool = Tr
     project_label = plan.run.analysis.source_path.parent.name
     print(f"Project: {project_label!a}", file=sys.stderr)
     print(f"Analysis: {plan.run.analysis.name!a}", file=sys.stderr)
-    print(f"Run ID: {plan.run.run_id}", file=sys.stderr)
+    print(f"Run: {inspection.human_run_name(plan.run.run_id)}", file=sys.stderr)
     full_analysis = _reporting_applicable(plan)
     if full_analysis:
         boundary = "complete analysis"
@@ -1111,12 +1146,18 @@ def _print_plan(plan: AttemptPlan, *, level: LogLevel, report_enabled: bool = Tr
         is not None
     ):
         print(
-            f"Processing source: {processing_source['source_run_id']}",
+            f"Processing source: {inspection.human_run_name(processing_source['source_run_id'])}",
             file=sys.stderr,
         )
     print(f"Work: {len(new_dispatches)} pending, {reused} reusable", file=sys.stderr)
     print(f"Reporting: {reporting}", file=sys.stderr)
     if level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
+        print(f"Run ID: {plan.run.run_id}", file=sys.stderr)
+        if not isinstance(plan.run, HistoricalRun) and processing_source is not None:
+            print(
+                f"Processing source Run ID: {processing_source['source_run_id']}",
+                file=sys.stderr,
+            )
         print(
             f"Analysis revision: {plan.run.analysis.revision.analysis_revision_id}",
             file=sys.stderr,
@@ -1203,25 +1244,31 @@ def _finish_control(
         controls=controls,
         workspace=workspace,
         mode="execute" if command == "run" else "resume",
-        scope_id="pending" if command == "run" else _absolute(arguments.run_root).name,
+        scope_id="pending" if command == "run" else str(arguments.run),
         entrypoint=f"emrys-{command}",
         report_enabled=report_enabled,
-        render_plan=arguments.execute,
     )
 
 
 def _add_execution_arguments(parser: argparse.ArgumentParser) -> None:
-    add_profile = parser.add_mutually_exclusive_group().add_argument
-    add_profile("--profile", metavar="NAME", type=_profile_name, help="Project-local profile.")
-    add_profile("--execution-profile", metavar="PATH", type=Path, help="Explicit profile path.")
+    parser.add_argument(
+        "--profile",
+        metavar="NAME_OR_ABSOLUTE_PATH",
+        help="Project-local profile name or exact absolute profile path.",
+    )
     add_resource_override_arguments(parser)
     add_log_arguments(parser)
     parser.add_argument("--no-report", action="store_true", help="Skip reporting after Results.")
     parser.add_argument("--execute", action="store_true", help="Execute noninteractively.")
 
 
+def _add_run_selector(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("run", nargs="?", metavar="RUN", help="Run name or ID prefix.")
+    onboarding.add_project_argument(parser)
+
+
 def configure_run_parser(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--project", default=Path("project.yaml"), type=Path)
+    onboarding.add_project_argument(parser)
     parser.add_argument(
         "--analysis",
         help="Named Analysis; required only when the Project defines more than one.",
@@ -1238,7 +1285,7 @@ def configure_run_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--from-processing-run",
         help=(
-            "Reuse one exact successful processing Run from this Project and "
+            "Reuse one successful processing Run name or ID from this Project and "
             "execute only the selected Analysis's downstream work."
         ),
     )
@@ -1246,12 +1293,12 @@ def configure_run_parser(parser: argparse.ArgumentParser) -> None:
 
 
 def configure_resume_parser(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--run-root", required=True, type=Path)
+    _add_run_selector(parser)
     _add_execution_arguments(parser)
 
 
 def configure_report_parser(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--run-root", required=True, type=Path)
+    _add_run_selector(parser)
     add_log_arguments(parser)
     parser.add_argument(
         "--execute",
@@ -1261,7 +1308,7 @@ def configure_report_parser(parser: argparse.ArgumentParser) -> None:
 
 
 def configure_inspect_parser(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--run-root", required=True, type=Path)
+    _add_run_selector(parser)
     parser.add_argument(
         "--detail",
         choices=("normal", "verbose", "debug"),
@@ -1336,103 +1383,97 @@ def _attempt_elapsed_line(
 
 
 def _print_safe(value: object, *, file: TextIO | None = None) -> None:
-    print(ascii(str(value))[1:-1], file=file)
+    for line in str(value).splitlines() or ("",):
+        print(ascii(line)[1:-1], file=file)
 
 
-def run_from_args(
+def _run_or_resume_from_args(
     arguments: argparse.Namespace,
+    command: str,
 ) -> int:
+    """Admit the shared public control context, then build the selected plan."""
+
     try:
         overrides = overrides_from_args(arguments)
-        expected_profile_sha256 = _private_delegate_digest()
-        workspace = _absolute(arguments.project).parent
-        profile = load_execution_profile(
-            arguments.project,
-            config_path=_execution_profile_path(arguments, workspace),
-            resource_overrides=overrides,
-            expected_binding_sha256=expected_profile_sha256,
-        )
-        scheduler_job_id = _delegate_job_id(profile, expected_profile_sha256)
-        controls = _resolve_controls(arguments, workspace)
-        build_plan = partial(
-            _plan_run,
-            arguments.project,
-            execution_profile=profile,
-            analysis_name=getattr(arguments, "analysis", None),
-            through=getattr(arguments, "through", "analysis"),
-            processing_source_run_id=getattr(
-                arguments,
-                "from_processing_run",
-                None,
-            ),
-            scheduler_job_id=scheduler_job_id,
-            report_enabled=not getattr(arguments, "no_report", False),
-        )
-        return _finish_control(
-            arguments,
-            command="run",
-            profile=profile,
-            effective_workflow_cores=profile.resource_policy.declaration.workflow_cores,
-            build_plan=build_plan,
-            controls=controls,
-            overrides=overrides,
-            scheduler_job_id=scheduler_job_id,
-            workspace=workspace,
-        )
-    except _CONTROL_ERRORS as exc:
-        return _control_failure(exc)
-
-
-def resume_from_args(
-    arguments: argparse.Namespace,
-) -> int:
-    try:
-        overrides = overrides_from_args(arguments)
-        expected_profile_sha256 = _private_delegate_digest()
-        workspace = _resume_workspace(arguments.run_root)
-        profile = load_execution_profile(
-            workspace / "project.yaml",
-            config_path=_execution_profile_path(arguments, workspace),
-            resource_overrides=overrides,
-            expected_binding_sha256=expected_profile_sha256,
-        )
-        scheduler_job_id = _delegate_job_id(profile, expected_profile_sha256)
-        effective_workflow_cores = profile.resource_policy.declaration.workflow_cores
-        if (
-            isinstance(profile.placement, SlurmPlacement)
-            and scheduler_job_id is None
-            and not profile.computational_resources_explicit
-        ):
-            observed, _previous, predecessor_config = _admit_resume_predecessor(
-                arguments.run_root
+        if command == "resume":
+            project_path, run_root = _resolve_run_argument(arguments)
+        else:
+            project_path = onboarding.project_definition_path(
+                getattr(arguments, "project", None)
             )
-            effective_workflow_cores = _resume_predecessor_policy(
-                observed,
-                predecessor_config,
-                overrides,
-            ).declaration.workflow_cores
-        controls = _resolve_controls(arguments, workspace)
-        build_plan = partial(
-            _plan_resume,
-            arguments.run_root,
-            execution_profile=profile,
-            resource_overrides=overrides,
-            scheduler_job_id=scheduler_job_id,
-            report_enabled=not getattr(arguments, "no_report", False),
+            arguments.project = project_path
+            run_root = None
+        workspace = project_path.parent
+        profile, scheduler_job_id = _resolve_execution_profile(
+            arguments,
+            project_path,
+            overrides,
         )
+        effective_workflow_cores = profile.resource_policy.declaration.workflow_cores
+        report_enabled = not getattr(arguments, "no_report", False)
+        if command == "run":
+            source_run_id = None
+            source_selector = getattr(arguments, "from_processing_run", None)
+            if source_selector is not None:
+                source_run_id = _select_project_run(
+                    project_path,
+                    source_selector,
+                    interactive=False,
+                ).name
+                arguments.from_processing_run = source_run_id
+            build_plan = partial(
+                _plan_run,
+                project_path,
+                execution_profile=profile,
+                analysis_name=getattr(arguments, "analysis", None),
+                through=getattr(arguments, "through", "analysis"),
+                processing_source_run_id=source_run_id,
+                scheduler_job_id=scheduler_job_id,
+                report_enabled=report_enabled,
+            )
+        else:
+            if (
+                isinstance(profile.placement, SlurmPlacement)
+                and scheduler_job_id is None
+                and not profile.computational_resources_explicit
+            ):
+                observed, _previous, predecessor_config = _admit_resume_predecessor(
+                    run_root
+                )
+                effective_workflow_cores = _resume_predecessor_policy(
+                    observed,
+                    predecessor_config,
+                    overrides,
+                ).declaration.workflow_cores
+            build_plan = partial(
+                _plan_resume,
+                run_root,
+                execution_profile=profile,
+                resource_overrides=overrides,
+                scheduler_job_id=scheduler_job_id,
+                report_enabled=report_enabled,
+            )
         return _finish_control(
             arguments,
-            command="resume",
+            command=command,
             profile=profile,
             effective_workflow_cores=effective_workflow_cores,
             build_plan=build_plan,
-            controls=controls,
+            controls=_resolve_controls(arguments, workspace),
             overrides=overrides,
             scheduler_job_id=scheduler_job_id,
             workspace=workspace,
         )
     except _CONTROL_ERRORS as exc:
         return _control_failure(exc)
+
+
+def run_from_args(arguments: argparse.Namespace) -> int:
+    return _run_or_resume_from_args(arguments, "run")
+
+
+def resume_from_args(arguments: argparse.Namespace) -> int:
+    return _run_or_resume_from_args(arguments, "resume")
 
 
 def _print_reporting_outcome(
@@ -1446,12 +1487,15 @@ def _print_reporting_outcome(
 def report_from_args(
     arguments: argparse.Namespace,
 ) -> int:
-    root = _absolute(arguments.run_root)
     try:
-        workspace = _resume_workspace(root)
-    except ControlError as exc:
-        print(f"emrys: error: {exc}", file=sys.stderr)
-        return 2
+        project_path, root = _resolve_run_argument(arguments)
+        workspace = project_path.parent
+    except (
+        ControlError,
+        inspection.InspectionError,
+        onboarding.OnboardingError,
+    ) as exc:
+        return _control_failure(exc)
     if not arguments.execute:
         try:
             planned = reporting_operation.run_reporting(root, execute=False)
@@ -1542,7 +1586,8 @@ def inspect_from_args(
     arguments: argparse.Namespace,
 ) -> int:
     try:
-        observed = inspection.inspect_run(_absolute(arguments.run_root))
+        _project_path, run_root = _resolve_run_argument(arguments)
+        observed = inspection.inspect_run(run_root)
         detail = getattr(arguments, "detail", "normal")
         milestones = _milestone_progress(
             observed.tasks,
@@ -1556,17 +1601,23 @@ def inspect_from_args(
         )
         elapsed = _attempt_elapsed_line(observed)
         result_lines = _verified_report_location_lines(observed.verified_report_locations)
-    except (OSError, inspection.InspectionError, ControlError) as exc:
-        _print_safe(f"emrys: error: {exc}", file=sys.stderr)
-        return 2
-    print(f"Run ID: {observed.run_id}")
+    except (
+        OSError,
+        inspection.InspectionError,
+        onboarding.OnboardingError,
+        ControlError,
+    ) as exc:
+        return _control_failure(exc)
+    print(f"Run: {inspection.human_run_name(run_root.name)}")
     print(f"Run integrity: {observed.integrity}")
     print(f"Attempt outcome: {observed.attempt_outcome}")
     print(elapsed)
     if observed.processing_source_run_id is not None:
         source_state = "admitted" if observed.processing_source is not None else "blocked"
         print(
-            f"Processing source: {observed.processing_source_run_id} ({source_state})"
+            "Processing source: "
+            f"{inspection.human_run_name(observed.processing_source_run_id)} "
+            f"({source_state})"
         )
     print("Scientific milestones:")
     for label, state, verified, total in milestones:
@@ -1579,6 +1630,9 @@ def inspect_from_args(
     latest = observed.latest_attempt
     receipt = observed.latest_receipt
     if detail != "normal":
+        print(f"Run ID: {observed.run_id}")
+        if observed.processing_source_run_id is not None:
+            print(f"Processing source Run ID: {observed.processing_source_run_id}")
         authority = observed.authority
         if authority is None:
             print("Identity model: historical execution.v1")

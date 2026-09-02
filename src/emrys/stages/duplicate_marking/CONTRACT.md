@@ -65,7 +65,7 @@ cross-attempt set.
 
 ## Validation interface
 
-The grouped `python -I -m emrys validate duplicate-marking` route, implemented
+The grouped `emrys validate duplicate-marking` route, implemented
 by private [`validator.py`](validator.py), accepts explicit BAM, BAI, metrics,
 samtools, scope, and report paths. Dry-run prints the common seven-column TSV;
 `--execute` snapshot-rechecks inputs and publishes it through neutral private

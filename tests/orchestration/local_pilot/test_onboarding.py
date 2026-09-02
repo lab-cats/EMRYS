@@ -79,7 +79,7 @@ def _project_arguments(
     analysis = definition["analyses"]["primary"]
     reference = definition["reference"]
     return argparse.Namespace(
-        output_dir=output,
+        project_name=output.name,
         sample_manifest=sample_manifest,
         partition_manifest=source / "partitions.tsv",
         reference_fasta=(source / reference["fasta"]).resolve(),
@@ -104,8 +104,10 @@ def _project_arguments(
 def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     output = tmp_path / "project"
+    monkeypatch.chdir(tmp_path)
     arguments = _project_arguments(tmp_path, output, execute=False)
     assert onboarding.init_project_from_args(arguments) == 0
     assert not output.exists()
@@ -113,7 +115,10 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
 
     arguments.execute = True
     assert onboarding.init_project_from_args(arguments) == 0
-    assert set(_tree_bytes(output)) == {"project.yaml"}
+    assert set(_tree_bytes(output)) == {
+        "project.yaml",
+        "runtime/profiles/default.yaml",
+    }
     directories = {path.name for path in output.iterdir() if path.is_dir()}
     assert directories == {"logs", "runs", "runtime"}
     assert all(
@@ -132,8 +137,12 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     assert onboarding.validate_project(output / "project.yaml").sample_count == 4
 
 
-def test_init_project_refuses_predecessor_without_changing_it(tmp_path: Path) -> None:
+def test_init_project_refuses_predecessor_without_changing_it(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     output = tmp_path / "project"
+    monkeypatch.chdir(tmp_path)
     arguments = _project_arguments(tmp_path, output, execute=True)
     output.mkdir()
     predecessor = output / "owned.txt"
@@ -146,10 +155,10 @@ def test_init_project_refuses_predecessor_without_changing_it(tmp_path: Path) ->
 def test_init_project_requires_every_noninteractive_answer(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    assert cli.main(["init", "project"]) == 2
+    assert cli.main(["init", "experiment"]) == 2
     error = capsys.readouterr().err
     assert "missing Project setup answers" in error
-    assert "--output-dir" in error
+    assert "--sample-manifest" in error
     assert "--background-max-fraction" in error
 
 
@@ -411,11 +420,39 @@ def test_publication_rejects_unsafe_member_paths(
     assert not output.exists()
 
 
-def test_init_requires_an_absolute_external_output(tmp_path: Path) -> None:
-    arguments = _project_arguments(tmp_path, Path("relative"), execute=True)
-    assert onboarding.init_project_from_args(arguments) == 2
-    arguments.output_dir = REPO_ROOT / "forbidden-output"
-    assert onboarding.init_project_from_args(arguments) == 2
+@pytest.mark.parametrize("name", ("project", "manifests", "synthetic", "../escape"))
+def test_init_rejects_reserved_or_unsafe_project_names(name: str) -> None:
+    with pytest.raises(SystemExit) as raised:
+        cli.main(["init", name])
+    assert raised.value.code == 2
+
+
+def test_project_lookup_is_exact_current_named_or_explicit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_root = tmp_path / "experiment"
+    project_root.mkdir()
+    project = project_root / "project.yaml"
+    project.write_text("project\n", encoding="utf-8")
+
+    monkeypatch.chdir(project_root)
+    assert onboarding.project_definition_path() == project
+    monkeypatch.chdir(tmp_path)
+    assert onboarding.project_definition_path("experiment") == project
+    assert onboarding.project_definition_path(project) == project
+
+    alias = tmp_path / "project-alias"
+    alias.symlink_to(project_root, target_is_directory=True)
+    with pytest.raises(onboarding.OnboardingError, match="unavailable"):
+        onboarding.project_definition_path(alias)
+
+    (tmp_path / "project.yaml").write_text("parent\n", encoding="utf-8")
+    nested = tmp_path / "nested"
+    nested.mkdir()
+    monkeypatch.chdir(nested)
+    with pytest.raises(onboarding.OnboardingError, match="unavailable"):
+        onboarding.project_definition_path()
 
 
 def test_synthetic_fixture_is_deterministic_complete_and_normalizable(
@@ -822,9 +859,8 @@ def test_public_cli_routes_synthetic_init_and_project_validation(
         cli.main(
             [
                 "validate",
-                "project",
                 "--project",
-                str(output / "project.yaml"),
+                str(output),
             ]
         )
         == 0
@@ -937,7 +973,7 @@ def _project_with_owned_runtime(tmp_path: Path) -> Path:
     project = build(tmp_path)
     authored = tmp_path / "project.yaml"
     project.rename(authored)
-    (tmp_path / "runtime").mkdir(mode=0o700)
+    (tmp_path / "runtime").mkdir(mode=0o700, exist_ok=True)
     return authored
 
 

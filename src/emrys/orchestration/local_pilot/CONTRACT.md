@@ -2,20 +2,24 @@
 
 ## Public onboarding boundary
 
-`emrys init project` is dry-run-first and publishes only with `--execute` into
-one absent external root beneath a canonical writable/searchable parent. It
+`emrys init PROJECT_NAME` is dry-run-first and publishes only with `--execute`
+into that absent child of the current canonical writable/searchable directory. It
 validates supplied strict manifests and referenced data, records the manifests'
 admitted absolute paths without copying inputs, creates mode-`0700` `runs/`,
-`logs/`, and `runtime/`, publishes generated `emrys.project.v1` `project.yaml` last,
+`logs/`, `runtime/`, and `runtime/profiles/`, publishes a placement-only
+`runtime/profiles/default.yaml`, publishes generated `emrys.project.v1` `project.yaml` last,
 then re-admits exact tree types, modes, sizes, and bytes before full Project
-validation. No execution/runtime profile, Results, Run, Attempt, or log is
-created. Failure
-preserves the partial root and never overwrites or adopts it.
+validation. Beyond that default placement file, no runtime inventory, Results,
+Run, Attempt, or log is created. Failure preserves the partial root and never
+overwrites or adopts it.
 
 The canonical `project.yaml` parent is the Project root derived by ordinary
 run and Doctor routes. Results exist only under `runs/<run-id>/results`.
+Every Project-aware route defaults to the exact current directory's
+`project.yaml`; optional `--project` accepts one named Project directory or
+exact `project.yaml` path. No parent-directory or global lookup occurs.
 
-`emrys validate project --project FILE` calls canonical Project admission with
+From the exact Project root, `emrys validate` calls canonical Project admission with
 the tracked processing-profile base and each explicitly selected installed
 analysis-module descriptor, validates every named Analysis, then reuses
 the reference-contig and GTF-to-BED12 owners to require nonempty FASTA contigs,
@@ -34,9 +38,9 @@ publishes the admitted bytes only at `<project-root>/runtime/runtime.tsv` and
 re-admits that file; it does not create another runtime identity or accept a
 caller-selected output path. Any existing profile is preserved and fails
 publication, including byte-identical content. Ordinary run, resume, and Doctor
-routes derive the canonical profile from the Project. The generic
-profile-driven `emrys inspect runtime-availability` route remains the advanced evidence
-surface and does not establish the ordinary Project runtime authority.
+routes derive the canonical runtime inventory from the Project. The generic
+inventory-driven `emrys debug runtime-availability` route remains the advanced evidence
+surface and does not establish the ordinary Project runtime inventory.
 
 `emrys init synthetic` uses the same external, dry-run-first,
 create-absent publication policy. Its closed `--dataset-profile` selector
@@ -54,15 +58,15 @@ last, and then re-admits the complete transaction. The metadata's expected
 data, scientific review, or biological interpretation.
 
 `emrys run` and `emrys resume` accept at most one selected closed
-`emrys.execution-profile.v1` YAML fragment. `--profile NAME` resolves one safe
-name exactly to `<project-root>/emrys.execution.NAME.yaml`; the mutually
-exclusive `--execution-profile PATH` remains supported. The built-in base
-supplies conservative resources and direct placement. A selected fragment may
+`emrys.execution-profile.v1` YAML fragment. Omission resolves
+`<project-root>/runtime/profiles/default.yaml`; `--profile NAME` resolves one
+safe name exactly to `<project-root>/runtime/profiles/NAME.yaml`; and an
+absolute `--profile PATH` selects that exact source. No site/global registry or
+scan exists. The default fragment supplies conservative resources and direct
+placement. A selected fragment may
 replace the Run-bound computational declaration and select Attempt-local direct
 or Slurm placement; resource CLI flags have highest precedence. The name is not
-identity, a registry, automatic search, or a runtime mode. Retired adjacent
-`emrys.resources.yaml` or `emrys.launcher.yaml` files therefore fail closed
-when neither selector is used.
+identity or a runtime mode.
 
 Slurm placement submits the whole Run as exactly one node/task/allocation and
 delegates back to the same grouped control path inside it. EMRYS constructs one
@@ -121,7 +125,7 @@ name and permits omission only when exactly one Analysis exists. Active Project
 commands reject request-v3. Its schema and admission path remain private solely
 for exact historical resume compatibility.
 
-`doctor.inspect_local_pilot` is the read-only internal readiness capability used
+`doctor.diagnose_project` is the read-only internal readiness capability used
 by Run and resume. The top-level `emrys doctor` route composes it into one
 Project-aware readiness and explicit managed-repair boundary. They derive
 `<project-root>/runtime/runtime.tsv`, reuse Project admission plus the runtime-
@@ -155,7 +159,7 @@ outputs are outside repair ownership. Ambient Pixi configuration is disabled
 and Project-local Pixi configuration is rejected so it cannot redirect managed
 environments beyond that boundary.
 The advanced storage-evidence command retains
-`inspect storage-qualification --workspace PROJECT_ROOT`; this explicit
+`emrys debug storage-qualification --workspace PROJECT_ROOT`; this explicit
 two-phase Slurm/site probe is not an ordinary Project/workspace choice.
 Ordinary executable and hash probes are bounded at 30 seconds. Each guarded R
 namespace load has a separate 120-second bound and records elapsed/configured
@@ -164,13 +168,15 @@ timing in its diagnostic; timeouts remain readiness failures. The selected
 resolve through a cache symlink only when the loaded namespace and exact
 canonical package-tree binding agree on its target.
 
-The grouped `emrys run`, `emrys resume`, `emrys report`, and
-`emrys inspect run`
-routes are the supported control surface; their planning helpers are private
-implementation details. Their public model is
+The installed `emrys run`, `emrys resume [RUN]`, `emrys report [RUN]`, and
+`emrys inspect [RUN]` routes are the supported control surface; their planning
+helpers are private implementation details. Their public model is
 `Project -> named Analysis -> immutable Run -> Results`. `run --analysis NAME`
 selects exactly one Analysis, with omission allowed only for a single-Analysis
-Project. Resume takes an existing Run root and cannot change that selection.
+Project. Resume selects an existing Project Run and cannot change that Analysis.
+Omitting `[RUN]` selects the sole Run or presents a terminal picker when several
+exist. A noninteractive caller must provide an unambiguous deterministic
+two-word name, full Run ID, or unique ID prefix; no latest-Run inference exists.
 `emrys run --through processing` creates a distinct immutable Execution Plan
 and Run whose nonempty predecessor-closed stopping roster selects the
 evidence-complete Steps `00`–`06` closure for its selected Analysis. The fixed four-sample
@@ -178,7 +184,7 @@ fixture expands this closure to 31 owner tasks. The default full Run contains
 the common path through Step `08` plus the selected module's Step `09` and
 optional Step `10`. Reporting is not applicable to a processing-boundary Run;
 successful completion is terminal and not resumable. This slice establishes
-the reusable processing authority. `run --from-processing-run RUN_ID` admits one
+the reusable processing authority. `run --from-processing-run RUN` admits one
 exact successful processing Run from the same Project and creates a distinct
 complete downstream Run. The target plan binds the source Run, successful
 workflow Attempt, and receipt; normalized samples, Reference, and execution
@@ -194,9 +200,11 @@ relationship. No source task record is copied or adopted, and no Artifact Store
 or second scientist-authored manifest authority is introduced. A proper subset
 uses one private Attempt-bound TSV projection for the unchanged backend. The
 bounded collaborator-module v1 inherits existing task, publication, failure,
-recovery, and logging semantics; module-specific dependency/resource
-provisioning remains `ANALYSIS-02` work.
-`run` and `resume` require the controlled Python invocation. With direct
+recovery, and logging semantics. Doctor composes its declared dependencies,
+exact file/package identities bind the Run, and the existing resource policy
+must satisfy its minimum memory and threads; package managers retain
+installation and solving authority.
+The installed command performs the controlled-runtime handoff. With direct
 placement, a terminal builds and prints one frozen Run
 plan, asks once, and executes that same object only after confirmation. Slurm
 placement instead confirms the frozen submission plan described above; Run
@@ -211,9 +219,9 @@ resources/allocation; debug output adds exact engine and task commands.
 Slurm submission output instead adds placement detail, profile and stream paths
 at verbose level, and the scheduler command at debug level.
 Read-only Run inspection follows the same disclosure boundary: normal uses the
-primary Run ID, verbose adds admitted Analysis, Execution Plan, and Attempt
-identity plus effective execution facts, and debug adds canonical authority
-paths/digests, verified output bindings, receipts, and task evidence.
+stable human Run name, verbose adds the canonical Run ID, admitted Analysis,
+Execution Plan, and Attempt identity plus effective execution facts, and debug
+adds canonical authority paths/digests, verified output bindings, receipts, and task evidence.
 Historical Runs are labeled and never receive fabricated successor identities.
 The fixed four-sample, one-partition synthetic fixture expands to 35 owner jobs
 for the default full Run and 31 for the processing boundary; other admitted
@@ -237,8 +245,8 @@ the Run lock and publishes the v2 Attempt receipt. For a full Run, reporting
 then runs automatically unless `run` or `resume` receives `--no-report`; it is
 separately receipt-bound, creates no Run or Attempt, and cannot change the
 scientific receipt. A processing Run has no applicable reporting transaction.
-`emrys report --run-root RUN_ROOT` plans independently without writes and
-generates only with `--execute`. Successful default run/resume reporting,
+`emrys report [RUN]` plans independently without writes and generates only with
+`--execute`. Successful default run/resume reporting,
 successful independent generation or reuse, and completed final inspection
 print a short `Results:` block with the scientific report first and evidence
 report second. Those absolute locations are carried from the fully revalidated
@@ -281,7 +289,7 @@ The projection does not discover files or promote reporter identity into
 Analysis, Run, or workflow identity. Deriving the roster from the profile is
 dynamic artifact indexing, not a store or second manifest authority.
 
-The public `python -I -m emrys validate all-pass` route reads one explicit
+The public `emrys validate all-pass` route reads one explicit
 owner-validation report and writes nothing. It requires the exact shared
 seven-column validation header, at least one well-formed check row, the
 declared step and scope on every row, unique nonempty `check_id` values, and

@@ -19,12 +19,15 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 dependencies = [
+    "coolname==4.1.0",
+    "coolname-hash==1.0.0",
     "Jinja2==3.1.6",
     "logomaker==0.8.7",
     "matplotlib==3.11.1",
     "PyYAML==6.0.3",
     "jsonschema>=4.18.0",
     "referencing>=0.28.4",
+    "simple-term-menu==1.6.6",
 ]
 
 [project.urls]
@@ -32,7 +35,7 @@ Repository = "https://github.com/lab-cats/EMRYS"
 Issues = "https://github.com/lab-cats/EMRYS/issues"
 
 [project.scripts]
-emrys = "emrys.__main__:main"
+emrys = "emrys.libraries.source_authority:controlled_console_main"
 
 [project.entry-points."emrys.analysis_modules"]
 "emrys.paired-cmh" = "emrys.analyses.paired_cmh_candidate_ranking:analysis_module_v1"

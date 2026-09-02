@@ -31,7 +31,7 @@ from emrys.evidence.runtime_availability._runtime_model import (
 from emrys.libraries.source_authority import controlled_python_argv
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-COMMAND = (sys.executable, "-I", "-m", "emrys", "inspect", "runtime-availability")
+COMMAND = (sys.executable, "-I", "-m", "emrys", "debug", "runtime-availability")
 EXAMPLE_PROFILE = REPO_ROOT / "configs" / "runtime_preflight.example.tsv"
 PROFILE_HEADER = (
     "check_id\tcheck_type\truntime_context\trequired\ttarget\tprobe_args\t"
@@ -1005,8 +1005,7 @@ def test_r_namespace_timeout_is_distinct_bounded_and_fail_closed(
     assert result.status == "fail"
     assert result.observed == "fixture timeout"
     assert result.detail == (
-        "R namespace probe timed out; elapsed_seconds=120.250; "
-        f"timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
+        f"R namespace probe timed out; elapsed_seconds=120.250; timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
     )
 
 
@@ -1041,8 +1040,7 @@ def test_r_namespace_real_exit_124_is_not_misclassified_as_timeout(
     assert result.status == "fail"
     assert result.observed == "real child exit"
     assert result.detail == (
-        "R namespace probe failed; elapsed_seconds=0.250; "
-        f"timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
+        f"R namespace probe failed; elapsed_seconds=0.250; timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
     )
 
 
@@ -1320,7 +1318,7 @@ def test_profile_symlink_and_changed_profile_fail_closed(
     assert (
         emrys_main.main(
             [
-                "inspect",
+                "debug",
                 "runtime-availability",
                 "--profile",
                 str(profile),

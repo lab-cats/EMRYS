@@ -11,7 +11,7 @@ alias do not change with that layout.
 - producer: private [`producer.py`](producer.py), invoked as
   `python -I -m emrys.stages.partitioned_cohort_mpileup.producer`
 - validator: grouped route
-  `python -I -m emrys validate partitioned-cohort-mpileup`, implemented by
+  `emrys validate partitioned-cohort-mpileup`, implemented by
   private [`validator.py`](validator.py)
 
 For Slurm execution, use the complete immutable Run through `emrys run` or

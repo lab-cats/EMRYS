@@ -7,7 +7,7 @@ mechanical-evidence boundary.
 ## Entry points
 
 - producer: [`step_03_infer_strandedness_and_orientation.sh`](step_03_infer_strandedness_and_orientation.sh)
-- validator: grouped route `python -I -m emrys validate rseqc-orientation`,
+- validator: grouped route `emrys validate rseqc-orientation`,
   implemented by private [`validator.py`](validator.py)
 
 The shell producer remains a repository-path interface. `validator.py` is not
@@ -39,7 +39,7 @@ route. The native report is evidence, not an attempt receipt.
 Validator dry-run:
 
 ```bash
-.venv/bin/python -I -m emrys validate rseqc-orientation \
+emrys validate rseqc-orientation \
   --scope-id ABE_EV_2 \
   --infer-report results/qc/strandedness/ABE_EV_2.infer_experiment.txt \
   --output results/qc/validation/03/ABE_EV_2.validation.tsv

@@ -8,7 +8,7 @@ three-output transaction, retained defects, consumers, and evidence semantics.
 
 - producer: private Python module [`producer.py`](producer.py)
 - R implementation: [`step_08_vcf_preprocessing.R`](step_08_vcf_preprocessing.R)
-- validator: grouped `python -I -m emrys validate cohort-candidate-preprocessing`,
+- validator: grouped `emrys validate cohort-candidate-preprocessing`,
   implemented by private [`validator.py`](validator.py)
 
 Private R modules split input admission, annotation, receipt reconciliation,

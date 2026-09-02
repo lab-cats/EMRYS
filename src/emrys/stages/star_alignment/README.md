@@ -6,7 +6,7 @@ Native owner of `emrys.stage.align_RNA_reads_with_STAR.v1` (historical `01`).
 ## Entry points
 
 - producer: [`step_01_star_align.sh`](step_01_star_align.sh)
-- validator: grouped route `python -I -m emrys validate star-alignment`,
+- validator: grouped route `emrys validate star-alignment`,
   implemented by private [`validator.py`](validator.py)
 
 For Slurm execution, use the complete immutable Run through `emrys run` or
@@ -50,7 +50,7 @@ mode. The workflow verified record remains the wider run/output/tool binding.
 Validator dry-run:
 
 ```bash
-.venv/bin/python -I -m emrys validate star-alignment \
+emrys validate star-alignment \
   --scope-id ABE_EV_2 \
   --bam results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam \
   --log-final results/star/ABE_EV_2/ABE_EV_2.Log.final.out \

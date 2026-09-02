@@ -113,7 +113,7 @@ returned success.
 
 ## Validation and evidence boundary
 
-The grouped `python -I -m emrys validate scientific-context-projection` route
+The grouped `emrys validate scientific-context-projection` route
 accepts only `--receipt`, common `--output`, and optional `--execute`. It
 snapshots the receipt and every bound file, performs one canonical transaction
 admission, and publishes exactly one check:

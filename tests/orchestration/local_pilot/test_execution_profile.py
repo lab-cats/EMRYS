@@ -43,47 +43,46 @@ def _slurm_placement(root: Path) -> dict[str, object]:
     }
 
 
-def test_retired_adjacent_sources_require_one_explicit_profile(
-    tmp_path: Path,
-) -> None:
-    request = tmp_path / "request.yaml"
-    request.write_text("ignored by profile loading\n", encoding="utf-8")
-    retired_names = (
-        "emrys.resources.yaml",
-        "emrys.launcher.yaml",
-        "norad.resources.yaml",
-        "norad.launcher.yaml",
-    )
-    for name in retired_names:
-        (tmp_path / name).write_text("not: valid\n", encoding="utf-8")
+def test_project_profile_selection_is_default_named_or_absolute(tmp_path: Path) -> None:
+    project = tmp_path / "project.yaml"
+    default = tmp_path / "runtime/profiles/default.yaml"
+    named = tmp_path / "runtime/profiles/viking.yaml"
+    absolute = tmp_path / "external.yaml"
+    assert execution_profile.project_execution_profile_path(project, None) == default
+    assert execution_profile.project_execution_profile_path(project, "viking") == named
+    assert execution_profile.project_execution_profile_path(project, absolute) == absolute
+    for invalid in ("nested/viking", "viking.yaml"):
+        with pytest.raises(ExecutionProfileError, match="safe Project profile"):
+            execution_profile.project_execution_profile_path(project, invalid)
 
-    with pytest.raises(
-        ExecutionProfileError,
-        match="Retired adjacent configuration requires migration",
-    ) as caught:
-        load_execution_profile(request)
-    assert all(name in str(caught.value) for name in retired_names)
-
-    profile = load_execution_profile(
-        request,
-        config_path=execution_profile.DEFAULT_PROFILE_PATH,
-    )
+    default.parent.mkdir(parents=True)
+    default.write_bytes(execution_profile.PROJECT_DEFAULT_PROFILE_BYTES)
+    profile = load_execution_profile(config_path=default)
     assert isinstance(profile.placement, DirectPlacement)
     assert profile.resource_policy.declaration.workflow_cores == 4
-    assert profile.source_path == execution_profile.DEFAULT_PROFILE_PATH
-    assert (
-        profile.source_raw_sha256
-        == hashlib.sha256(
-            execution_profile.DEFAULT_PROFILE_PATH.read_bytes()
-        ).hexdigest()
-    )
+    assert profile.source_path == default
+    assert not profile.computational_resources_explicit
     assert profile.document()["placement"] == {"kind": "direct"}
 
 
+def test_default_project_profile_rejects_retired_adjacent_configuration(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project.yaml"
+    retired = ("emrys.resources.yaml", "norad.launcher.yaml")
+    for name in retired:
+        (tmp_path / name).write_text("retired: true\n", encoding="utf-8")
+
+    with pytest.raises(ExecutionProfileError, match="requires migration") as caught:
+        execution_profile.project_execution_profile_path(project, None)
+    assert all(name in str(caught.value) for name in retired)
+    assert execution_profile.project_execution_profile_path(project, "default") == (
+        tmp_path / "runtime/profiles/default.yaml"
+    )
+
+
 def test_selected_resource_fragment_then_explicit_overrides(tmp_path: Path) -> None:
-    default_sha256 = load_execution_profile(
-        tmp_path / "request.yaml"
-    ).resource_policy.default_sha256
+    default_sha256 = load_execution_profile().resource_policy.default_sha256
     selected = _write_profile(
         tmp_path / "profile.yaml",
         {
@@ -97,7 +96,6 @@ def test_selected_resource_fragment_then_explicit_overrides(tmp_path: Path) -> N
     )
 
     profile = load_execution_profile(
-        tmp_path / "request.yaml",
         config_path=selected,
         resource_overrides=ResourceOverrides(
             workflow_cores=8,
@@ -123,7 +121,7 @@ def test_selected_resource_fragment_then_explicit_overrides(tmp_path: Path) -> N
 def test_placement_only_profile_does_not_change_resource_policy(
     tmp_path: Path,
 ) -> None:
-    direct = load_execution_profile(tmp_path / "request.yaml")
+    direct = load_execution_profile()
     selected = _write_profile(
         tmp_path / "profile.yaml",
         {
@@ -132,10 +130,7 @@ def test_placement_only_profile_does_not_change_resource_policy(
         },
     )
 
-    scheduled = load_execution_profile(
-        tmp_path / "request.yaml",
-        config_path=selected,
-    )
+    scheduled = load_execution_profile(config_path=selected)
 
     assert isinstance(scheduled.placement, SlurmPlacement)
     assert scheduled.placement.cpus_per_task == 8
@@ -152,7 +147,7 @@ def test_placement_only_profile_does_not_change_resource_policy(
 def test_attempt_placement_projects_direct_and_slurm_provenance(
     tmp_path: Path,
 ) -> None:
-    direct = load_execution_profile(tmp_path / "request.yaml")
+    direct = load_execution_profile()
 
     assert direct.source_path.is_absolute()
     assert (
@@ -177,10 +172,7 @@ def test_attempt_placement_projects_direct_and_slurm_provenance(
             "placement": _slurm_placement(tmp_path),
         },
     )
-    scheduled = load_execution_profile(
-        tmp_path / "request.yaml",
-        config_path=selected,
-    )
+    scheduled = load_execution_profile(config_path=selected)
 
     assert scheduled.source_path == selected
     assert (
@@ -210,10 +202,7 @@ def test_attempt_placement_rejects_noncanonical_job_ids(
             "placement": _slurm_placement(tmp_path),
         },
     )
-    profile = load_execution_profile(
-        tmp_path / "request.yaml",
-        config_path=selected,
-    )
+    profile = load_execution_profile(config_path=selected)
 
     with pytest.raises(ExecutionProfileError, match="canonical positive decimal"):
         profile.attempt_placement(job_id)  # type: ignore[arg-type]
@@ -227,13 +216,9 @@ def test_selected_source_binding_is_admitted(tmp_path: Path) -> None:
             "placement": {"kind": "direct"},
         },
     )
-    admitted = load_execution_profile(
-        tmp_path / "request.yaml",
-        config_path=selected,
-    )
+    admitted = load_execution_profile(config_path=selected)
 
     profile = load_execution_profile(
-        tmp_path / "request.yaml",
         config_path=selected,
         expected_binding_sha256=admitted.binding_sha256,
     )
@@ -245,35 +230,29 @@ def test_selected_source_binding_is_admitted(tmp_path: Path) -> None:
     )
     with pytest.raises(ExecutionProfileError, match="SHA-256 differs"):
         load_execution_profile(
-            tmp_path / "request.yaml",
             config_path=selected,
             expected_binding_sha256="0" * 64,
         )
     with pytest.raises(ExecutionProfileError, match="64 lowercase hex"):
         load_execution_profile(
-            tmp_path / "request.yaml",
             config_path=selected,
             expected_binding_sha256="invalid",
         )
 
     selected.write_bytes(selected.read_bytes() + b"# equivalent rewrite\n")
-    rewritten = load_execution_profile(tmp_path / "request.yaml", config_path=selected)
+    rewritten = load_execution_profile(config_path=selected)
     assert rewritten.sha256 == admitted.sha256
     with pytest.raises(ExecutionProfileError, match="binding SHA-256 differs"):
         load_execution_profile(
-            tmp_path / "request.yaml",
             config_path=selected,
             expected_binding_sha256=admitted.binding_sha256,
         )
 
 
 def test_builtin_source_digest_can_be_bound(tmp_path: Path) -> None:
-    expected = load_execution_profile(tmp_path / "request.yaml").binding_sha256
+    expected = load_execution_profile().binding_sha256
 
-    profile = load_execution_profile(
-        tmp_path / "request.yaml",
-        expected_binding_sha256=expected,
-    )
+    profile = load_execution_profile(expected_binding_sha256=expected)
 
     assert profile.binding_sha256 == expected
 
@@ -287,10 +266,7 @@ def test_selected_profile_must_be_one_stable_real_file(tmp_path: Path) -> None:
     link.symlink_to(selected)
 
     with pytest.raises(ExecutionProfileError, match="canonical and nonsymlink"):
-        load_execution_profile(
-            tmp_path / "request.yaml",
-            config_path=link,
-        )
+        load_execution_profile(config_path=link)
 
 
 @pytest.mark.parametrize(
@@ -302,9 +278,7 @@ def test_selected_profile_must_be_one_stable_real_file(tmp_path: Path) -> None:
             "Duplicate YAML mapping key",
         ),
         (
-            "schema_version: emrys.execution-profile.v1\n"
-            "base: &base\n  kind: direct\n"
-            "placement:\n  <<: *base\n",
+            "schema_version: emrys.execution-profile.v1\nbase: &base\n  kind: direct\nplacement:\n  <<: *base\n",
             "YAML merge keys are not allowed",
         ),
         (
@@ -336,10 +310,7 @@ def test_profile_yaml_is_closed_without_environment_references(
     selected.write_text(text, encoding="utf-8")
 
     with pytest.raises(ExecutionProfileError, match=message):
-        load_execution_profile(
-            tmp_path / "request.yaml",
-            config_path=selected,
-        )
+        load_execution_profile(config_path=selected)
 
 
 @pytest.mark.parametrize(
@@ -355,10 +326,7 @@ def test_tracked_execution_profile_examples_are_admissible(
     cpus_per_task: int,
     exclusive: bool,
 ) -> None:
-    profile = load_execution_profile(
-        REPO_ROOT / "project.yaml",
-        config_path=REPO_ROOT / relative_path,
-    )
+    profile = load_execution_profile(config_path=REPO_ROOT / relative_path)
 
     assert isinstance(profile.placement, SlurmPlacement)
     assert profile.resource_policy.declaration.workflow_cores == workflow_cores
@@ -382,10 +350,7 @@ def test_exact_module_realization_is_typed(tmp_path: Path) -> None:
         },
     )
 
-    profile = load_execution_profile(
-        tmp_path / "request.yaml",
-        config_path=selected,
-    )
+    profile = load_execution_profile(config_path=selected)
 
     assert isinstance(profile.placement, SlurmPlacement)
     assert profile.placement.module_init == Path("/etc/profile.d/modules.sh")

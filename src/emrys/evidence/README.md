@@ -38,22 +38,22 @@ operator route; those roles do not make their evidence states interchangeable.
 
 Steps `02b` and `03` keep their shell producers and schedulers as
 repository-path interfaces while exposing their private validators as
-`python -I -m emrys validate canonical-bam-qc` and
-`python -I -m emrys validate rseqc-orientation`, respectively.
+`emrys validate canonical-bam-qc` and
+`emrys validate rseqc-orientation`, respectively.
 
 Reference provenance exposes installed, read-only reconciliation as
-`python -I -m emrys reconcile reference-provenance` through a private
+`emrys reconcile reference-provenance` through a private
 reconciler. Dry-run is the default; `--execute` publishes evidence without
 repairing references, and exit `0` does not mean the resulting summary passed.
 
 Runtime availability exposes installed inspection as
-`python -I -m emrys inspect runtime-availability` through a private inspector.
+`emrys debug runtime-availability` through a private inspector.
 It retains the `runtime_preflight` profile, report, and lock vocabulary.
 Dry-run performs applicable probes without publication; `--execute` publishes
 the requested report, and exit `0` does not mean every probe passed.
 
-Storage inventory exposes `emrys inspect storage-inventory` for read-only
-measurement and `emrys inspect storage-qualification` for an explicit
+Storage inventory exposes `emrys debug storage-inventory` for read-only
+measurement and `emrys debug storage-qualification` for an explicit
 compute/head durability probe. The latter publishes a final receipt only after
 both declared roots pass and never supplies an ad hoc stage-copy path.
 

@@ -8,7 +8,7 @@ six-output transaction, validation, consumer, and evidence semantics.
 
 - private repository transaction owner: [`producer.py`](producer.py)
 - repository statistical coordinator: [`step_09_cmh_editing_site_calling.R`](step_09_cmh_editing_site_calling.R)
-- grouped validator: `python -I -m emrys validate paired-cmh-candidate-ranking`,
+- grouped validator: `emrys validate paired-cmh-candidate-ranking`,
   implemented by private [`validator.py`](validator.py)
 
 Private R modules sit behind the public coordinator; the historical REMORA
@@ -49,7 +49,7 @@ Validator dry-run:
 ```bash
 analysis=NORAD_EV_vs_PUM1 cohort=NORAD_EV_PUM1
 analysis_dir="results/editing/$analysis"
-.venv/bin/python -I -m emrys validate paired-cmh-candidate-ranking \
+emrys validate paired-cmh-candidate-ranking \
   --analysis-id "$analysis" --cohort-id "$cohort" \
   --sample-manifest samples.tsv \
   --partition-manifest configs/step_07_partitions.primary_contigs.tsv \

@@ -8,7 +8,7 @@ analysis, decide scientific validity, or promote evidence.
 | Interface | Supported role | Responsibility |
 | --- | --- | --- |
 | `emrys run` / `emrys resume` | Normal operator path | Close the scientific Attempt at `cohort_slice`, release its Run lock, then invoke reporting automatically unless `--no-report` was selected. |
-| `emrys report --run-root ABSOLUTE_RUN_ROOT` | Independent reporting path | Re-admit one successful scientific Run and either validate reusable reports or print a no-write generation plan; add `--execute` to generate an absent bundle. |
+| `emrys report [RUN]` | Independent reporting path | From the Project root, re-admit one successful scientific Run and either validate reusable reports or print a no-write generation plan; add `--execute` to generate an absent bundle. |
 
 Reporting is downstream of, and not part of, the scientific Attempt. A
 reporting failure returns nonzero but leaves the successful Attempt receipt and
@@ -18,9 +18,12 @@ operation; it does not change the scientific graph, receipt, or Results.
 The independent command is dry-run/read-only by default:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys report \
-  --run-root /absolute/path/to/workspace/runs/run-DIGEST
+emrys report
 ```
+
+Omission selects the sole Run or opens a terminal picker when several exist.
+Noninteractive callers provide an unambiguous two-word Run name, full Run ID,
+or unique ID prefix: `emrys report international-jackrabbit`.
 
 Repeat with `--execute` to publish the ordered artifact-index, run-summary, and
 HTML transactions. The final report transaction publishes exactly:

@@ -59,7 +59,9 @@ def test_cli_defaults_to_a_no_write_plan(tmp_path: Path, capsys: pytest.CaptureF
     assert not (tmp_path / "operator").exists()
 
 
-def test_operator_root_is_external_empty_and_never_adopts_contents(tmp_path: Path) -> None:
+def test_operator_root_is_external_empty_and_never_adopts_contents(
+    tmp_path: Path,
+) -> None:
     repo, operator = tmp_path / "repo", tmp_path / "operator"
     repo.mkdir()
     operator.mkdir()
@@ -68,7 +70,7 @@ def test_operator_root_is_external_empty_and_never_adopts_contents(tmp_path: Pat
     assert admitted.direct_workspace == operator.resolve() / "direct"
     assert admitted.slurm_workspace == operator.resolve() / "slurm"
     assert admitted.execution_profile == (
-        operator.resolve() / "slurm/emrys.execution.ci.yaml"
+        operator.resolve() / "slurm/runtime/profiles/ci.yaml"
     )
     assert not any(operator.iterdir())
     marker = operator / "keep.txt"
@@ -115,8 +117,8 @@ def test_launcher_adapters_and_default_resource_projection(tmp_path: Path) -> No
     profile = tmp_path / "slurm.json"
     profile.write_bytes(rendered)
     assert load_execution_profile(
-        project, config_path=profile
-    ).resource_policy.document() == load_execution_profile(project).resource_policy.document()
+        config_path=profile
+    ).resource_policy.document() == load_execution_profile().resource_policy.document()
 
 
 def test_runtime_environment_seals_science_adapters_and_managed_utilities(

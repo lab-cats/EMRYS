@@ -24,11 +24,53 @@ from emrys.orchestration.local_pilot.resource_policy import (
 
 SCHEMA_VERSION = "emrys.execution-profile.v1"
 DEFAULT_PROFILE_PATH = Path(__file__).parent / "resources/default_execution.yaml"
+PROJECT_PROFILE_DIRECTORY = Path("runtime/profiles")
+PROJECT_DEFAULT_PROFILE_BYTES = (
+    f"schema_version: {SCHEMA_VERSION}\nplacement:\n  kind: direct\n".encode()
+)
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_PROFILE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+_RETIRED_ADJACENT_FILES = (
+    "emrys.resources.yaml",
+    "emrys.launcher.yaml",
+    "norad.resources.yaml",
+    "norad.launcher.yaml",
+)
 
 
 class ExecutionProfileError(ValueError):
     """One execution-profile source or resolved value is inadmissible."""
+
+
+def project_execution_profile_path(
+    project_path: Path,
+    selection: str | Path | None,
+) -> Path:
+    """Resolve one default, named, or absolute execution-profile source."""
+
+    project_root = Path(os.path.abspath(project_path)).parent
+    if selection is None:
+        retired = tuple(
+            name
+            for name in _RETIRED_ADJACENT_FILES
+            if os.path.lexists(project_root / name)
+        )
+        if retired:
+            raise ExecutionProfileError(
+                "Retired adjacent configuration requires migration: "
+                + ", ".join(retired)
+            )
+        return project_root / PROJECT_PROFILE_DIRECTORY / "default.yaml"
+    value = str(selection)
+    path = Path(value)
+    if path.is_absolute():
+        return path
+    if _PROFILE_NAME.fullmatch(value) is None or value.endswith(".yaml"):
+        raise ExecutionProfileError(
+            "--profile must be a safe Project profile name without '.yaml' "
+            "or an absolute path"
+        )
+    return project_root / PROJECT_PROFILE_DIRECTORY / f"{value}.yaml"
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,39 +258,16 @@ def _admit_placement(document: Any) -> Placement:
 
 
 def load_execution_profile(
-    context_path: Path,
     config_path: Path | None = None,
     resource_overrides: ResourceOverrides = ResourceOverrides(),
     expected_binding_sha256: str | None = None,
 ) -> ExecutionProfile:
-    """Load the direct default, an explicit fragment, and resource overrides.
-
-    Retired adjacent configuration fails closed unless one profile is selected
-    explicitly, preventing an old starter from silently using new defaults.
-    """
+    """Load packaged defaults, one selected profile fragment, and resource overrides."""
 
     if expected_binding_sha256 is not None and _SHA256.fullmatch(
         expected_binding_sha256
     ) is None:
         raise ExecutionProfileError("expected_binding_sha256 must be 64 lowercase hex")
-    if config_path is None:
-        context_parent = Path(os.path.abspath(context_path)).parent
-        retired = tuple(
-            name
-            for name in (
-                "emrys.resources.yaml",
-                "emrys.launcher.yaml",
-                "norad.resources.yaml",
-                "norad.launcher.yaml",
-            )
-            if os.path.lexists(context_parent / name)
-        )
-        if retired:
-            raise ExecutionProfileError(
-                "Retired adjacent configuration requires migration to one explicit "
-                "execution profile: " + ", ".join(retired)
-            )
-
     source_path, source_data, default = _read_profile(
         DEFAULT_PROFILE_PATH,
         "built-in execution profile",
@@ -313,8 +332,11 @@ __all__ = (
     "DirectPlacement",
     "ExecutionProfile",
     "ExecutionProfileError",
+    "PROJECT_DEFAULT_PROFILE_BYTES",
+    "PROJECT_PROFILE_DIRECTORY",
     "Placement",
     "SCHEMA_VERSION",
     "SlurmPlacement",
     "load_execution_profile",
+    "project_execution_profile_path",
 )

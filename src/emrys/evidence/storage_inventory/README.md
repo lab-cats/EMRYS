@@ -1,7 +1,7 @@
 # Storage-inventory evidence owner
 
 The grouped command
-`python -I -m emrys inspect storage-inventory` measures explicitly declared
+`emrys debug storage-inventory` measures explicitly declared
 storage roots and records explicitly declared retention-policy state. Its
 private [`inspector.py`](inspector.py) coordinates private owners for:
 
@@ -21,7 +21,7 @@ numeric identity, then removes only its private probe directories. It makes no
 cross-node, head/compute-consistency, or post-allocation durability claim.
 
 The sibling grouped command
-`python -I -m emrys inspect storage-qualification` owns the narrow two-phase
+`emrys debug storage-qualification` owns the narrow two-phase
 site check required for Slurm. Its compute phase
 creates private probes in the workflow parent and Step `00c` sidecar parent;
 its head-node finalize phase re-admits those probes after the allocation,
@@ -67,12 +67,12 @@ Site qualification is dry-run-first. Run the compute phase inside the selected
 allocation, then run finalize on the head node only after that allocation ends:
 
 ```bash
-python -I -m emrys inspect storage-qualification \
+emrys debug storage-qualification \
   --workspace /absolute/path/to/future-workspace \
   --reference-fasta /absolute/path/to/reference.fa \
   --phase compute --execute
 
-python -I -m emrys inspect storage-qualification \
+emrys debug storage-qualification \
   --workspace /absolute/path/to/future-workspace \
   --reference-fasta /absolute/path/to/reference.fa \
   --phase finalize --execute
@@ -91,13 +91,13 @@ without placement retain the two-phase requirement.
 Dry-run, execute, and focused test are:
 
 ```bash
-.venv/bin/python -I -m emrys inspect storage-inventory \
+emrys debug storage-inventory \
   --roots configs/storage_roots.example.tsv \
   --retention-policy configs/retention_policy.example.tsv \
   --output-root results/qc/storage
 
 mkdir -p results/qc/storage
-.venv/bin/python -I -m emrys inspect storage-inventory \
+emrys debug storage-inventory \
   --roots /explicit/path/to/storage_roots.tsv \
   --retention-policy /explicit/path/to/retention_policy.tsv \
   --output-root results/qc/storage \

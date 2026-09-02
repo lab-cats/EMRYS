@@ -113,7 +113,7 @@ public producer entrypoint. It:
 
 ## Validation interface
 
-`python -I -m emrys validate star-alignment`, implemented by private
+`emrys validate star-alignment`, implemented by private
 [`validator.py`](validator.py), accepts an explicit scope, BAM, three STAR log
 paths, splice-junction table, and output path. Validation is dry-run by
 default; `--execute` publishes `<scope-id>.validation.tsv` using the common

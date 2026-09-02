@@ -372,6 +372,31 @@ def test_uncontrolled_python_runtime_is_rejected(
         source_authority.require_controlled_python_runtime()
 
 
+def test_console_entry_restarts_with_the_controlled_python_prefix(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: list[tuple[str, tuple[str, ...]]] = []
+
+    def stop_after_exec(executable: str, arguments: tuple[str, ...]) -> None:
+        observed.append((executable, arguments))
+        raise RuntimeError("exec observed")
+
+    monkeypatch.setattr(source_authority.os, "execv", stop_after_exec)
+    monkeypatch.setattr(source_authority.sys, "argv", ["emrys", "run", "--execute"])
+
+    with pytest.raises(RuntimeError, match="exec observed"):
+        source_authority.controlled_console_main()
+
+    assert observed == [
+        (
+            sys.executable,
+            source_authority.controlled_python_argv(
+                sys.executable, "-m", "emrys", "run", "--execute"
+            ),
+        )
+    ]
+
+
 def test_package_identity_rejects_dirty_tracked_checkout_bytes(tmp_path: Path) -> None:
     fixture = _build_fixture(tmp_path)
     _commit_package(fixture)

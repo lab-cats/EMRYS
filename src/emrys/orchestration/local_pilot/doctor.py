@@ -58,6 +58,11 @@ from emrys.libraries.source_authority import (
     inspect_source_checkout,
 )
 from emrys.orchestration.local_pilot import onboarding
+from emrys.orchestration.local_pilot.execution_profile import (
+    ExecutionProfileError,
+    load_execution_profile,
+    project_execution_profile_path,
+)
 from emrys.orchestration.local_pilot.normalization import (
     AnalysisAdmission,
     ProjectAdmission,
@@ -83,7 +88,7 @@ class DoctorRepairError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class RuntimeBinding:
-    """One exact path-and-content binding admitted from the runtime profile."""
+    """One exact path-and-content binding admitted from the runtime inventory."""
 
     check_id: str
     path: Path
@@ -107,10 +112,11 @@ class DoctorResult:
     remediations: tuple[str, ...]
     storage_ready: bool = True
     runtime_ready: bool = True
+    execution_ready: bool = True
 
     @property
     def ready(self) -> bool:
-        return self.source_commit is not None and self.storage_ready and self.runtime_ready and not self.blockers
+        return not self.blockers
 
 
 def storage_runtime_binding(
@@ -223,7 +229,6 @@ def _module_dependency_checks(
     descriptor: analysis_modules.AnalysisModuleDescriptorV1,
     fixed_checks: tuple[RuntimeCheck, ...],
 ) -> tuple[
-    tuple[str, ...],
     tuple[RuntimeCheck, ...],
     frozenset[str],
     frozenset[str],
@@ -231,7 +236,6 @@ def _module_dependency_checks(
     """Resolve one selected module onto the fixed runtime-check vocabulary."""
 
     fixed = {item.check_id: item for item in fixed_checks}
-    required: list[str] = []
     additions: list[RuntimeCheck] = []
     package_trees: set[str] = set()
     files: set[str] = set()
@@ -244,7 +248,6 @@ def _module_dependency_checks(
                 raise DoctorInputError(
                     f"Analysis module references an unknown runtime check: {declaration}"
                 )
-            required.append(declaration)
             continue
         check_id = declaration.dependency_id
         if check_id in fixed:
@@ -272,44 +275,18 @@ def _module_dependency_checks(
                 expected, declaration.description,
             )
         )
-        required.append(check_id)
     return (
-        tuple(required),
         tuple(additions),
         frozenset(package_trees),
         frozenset(files),
     )
 
 
-def _compose_module_runtime_checks(
-    descriptor: analysis_modules.AnalysisModuleDescriptorV1,
-    declared_checks: tuple[RuntimeCheck, ...],
-    fixed_count: int,
-) -> tuple[
-    tuple[RuntimeCheck, ...],
-    tuple[str, ...],
-    frozenset[str],
-    frozenset[str],
-]:
-    """Compose module checks once, or admit an already-derived profile."""
-
-    fixed_checks = declared_checks[:fixed_count]
-    required, additions, package_trees, files = _module_dependency_checks(
-        descriptor, fixed_checks
-    )
-    selected_checks = (
-        (*fixed_checks, *additions)
-        if len(declared_checks) == fixed_count
-        else declared_checks
-    )
-    return selected_checks, required, package_trees, files
-
-
 def validate_runtime_profile_contract(
     checks: tuple[RuntimeCheck, ...],
     source_root: Path,
-    descriptor: analysis_modules.AnalysisModuleDescriptorV1 | None = None,
     *,
+    expected_additions: tuple[RuntimeCheck, ...] = (),
     allow_derived_dependencies: bool = False,
 ) -> None:
     """Bind editable runtime paths plus one selected module to fixed policy."""
@@ -324,7 +301,7 @@ def validate_runtime_profile_contract(
         (item.check_id, item.check_type) for item in values
     )
     if shape(selected_fixed) != shape(policy):
-        raise DoctorInputError("Runtime profile must begin with the exact ordered fixed-policy roster")
+        raise DoctorInputError("Runtime inventory must begin with the exact ordered fixed-policy roster")
     selected = {item.check_id: item for item in selected_fixed}
     fixed = {item.check_id: item for item in policy}
     rscript = selected["rscript"].target
@@ -366,17 +343,10 @@ def validate_runtime_profile_contract(
         and Path(selected["renv_project"].target) == source_root
     )
     if not relations:
-        raise DoctorInputError("Runtime profile changes a fixed cross-check binding")
+        raise DoctorInputError("Runtime inventory changes a fixed cross-check binding")
     additions = checks[fixed_count:]
-    expected_additions = (
-        additions
-        if descriptor is None and allow_derived_dependencies
-        else ()
-        if descriptor is None
-        else _module_dependency_checks(descriptor, selected_fixed)[1]
-    )
-    if additions != expected_additions:
-        raise DoctorInputError("Runtime profile differs from the selected analysis-module dependencies")
+    if not allow_derived_dependencies and additions != expected_additions:
+        raise DoctorInputError("Runtime inventory differs from the selected analysis-module dependencies")
     for check in additions:
         valid = check.required and check.runtime_context == "local" and (
             check.check_type == "tool_version" and Path(check.target).is_absolute() and bool(check.probe_args)
@@ -464,32 +434,49 @@ def runtime_file_bindings(
     return tuple(bindings)
 
 
-def _inspect_foundations(
+def diagnose_project(
     project_path: str | Path,
-    workspace: str | Path,
+    workspace: str | Path | None = None,
+    runtime_inventory: str | Path | None = None,
     *,
-    storage_requirement: StorageRequirement = "direct",
+    storage_requirement: StorageRequirement | None = None,
     analysis_name: str | None = None,
     expected_analysis_revision: AnalysisRevision | None = None,
     allow_legacy: bool = False,
     require_reporter: bool = True,
 ) -> DoctorResult:
+    """Diagnose Project execution, storage, and runtime readiness without writes."""
+
+    project = _absolute_path(project_path)
+    execution_error: str | None = None
+    if storage_requirement is None:
+        execution_path = project_execution_profile_path(project, None)
+        try:
+            execution = load_execution_profile(config_path=execution_path)
+            storage_requirement = execution.placement.kind
+        except ExecutionProfileError as exc:
+            execution_error = str(exc)
+            storage_requirement = "direct"
     root = _absolute_path(onboarding.source_root())
-    workspace_path = _absolute_path(workspace)
+    workspace_path = _absolute_path(project.parent if workspace is None else workspace)
     blockers, remediations = workspace_location_blockers(workspace_path, root)
     try:
-        source_commit = inspect_source_checkout(root=root, package_root=_PACKAGE_ROOT, require_clean=True).commit
+        source_commit = inspect_source_checkout(
+            root=root,
+            package_root=_PACKAGE_ROOT,
+            require_clean=True,
+        ).commit
     except SourceCheckoutError as exc:
         source_commit = None
         blockers.append(f"source checkout is not ready: {exc}")
         remediations.append("Use the clean reviewed EMRYS checkout and workflow environment.")
     try:
-        project = onboarding.validate_project(
-            project_path,
+        admitted_project = onboarding.validate_project(
+            project,
             root=root,
             allow_legacy=allow_legacy,
         ).project
-        analysis = project.select_analysis(
+        analysis = admitted_project.select_analysis(
             analysis_name,
             expected_revision=expected_analysis_revision,
         )
@@ -503,9 +490,7 @@ def _inspect_foundations(
         from emrys import reporting  # noqa: PLC0415
 
         try:
-            reporting.admit_analysis_reporter(
-                analysis.module.descriptor.module_id
-            )
+            reporting.admit_analysis_reporter(analysis.module.descriptor.module_id)
         except reporting.ReportProviderError as exc:
             blockers.append(f"analysis reporter is not ready: {exc}")
             remediations.append(
@@ -516,12 +501,13 @@ def _inspect_foundations(
     if storage_requirement == "direct":
         admit_storage = storage_qualification.admit_direct_requirement
         storage_label = "single-host storage is not qualified"
-        remediation = "Run `emrys doctor --repair` in the intended direct execution context."
+        storage_remediation = "Run `emrys doctor --repair` in the intended direct execution context."
     elif storage_requirement == "slurm":
         admit_storage = storage_qualification.admit_final_qualification
         storage_label = "storage is not site-qualified"
-        remediation = (
-            f"Run `emrys inspect storage-qualification` for Project {workspace_path} and reference FASTA {fasta}."
+        storage_remediation = (
+            f"Run `emrys debug storage-qualification` for Project {workspace_path} "
+            f"and reference FASTA {fasta}."
         )
     else:
         raise DoctorInputError(f"unsupported storage requirement: {storage_requirement}")
@@ -530,9 +516,9 @@ def _inspect_foundations(
     except storage_qualification.StorageQualificationError as exc:
         bindings = ()
         blockers.append(f"{storage_label}: {exc}")
-        remediations.append(remediation)
-    return DoctorResult(
-        project=project,
+        remediations.append(storage_remediation)
+    foundations = DoctorResult(
+        project=admitted_project,
         analysis=analysis,
         source_root=root,
         source_commit=source_commit,
@@ -543,161 +529,143 @@ def _inspect_foundations(
         storage_ready=bool(bindings),
         runtime_ready=False,
     )
-
-
-def inspect_local_pilot(
-    project_path: str | Path,
-    workspace: str | Path,
-    runtime_profile: str | Path,
-    *,
-    storage_requirement: StorageRequirement = "direct",
-    analysis_name: str | None = None,
-    expected_analysis_revision: AnalysisRevision | None = None,
-    allow_legacy: bool = False,
-    require_reporter: bool = True,
-) -> DoctorResult:
-    """Inspect one Project and runtime without writing anything."""
-
-    foundations = _inspect_foundations(
-        project_path,
-        workspace,
-        storage_requirement=storage_requirement,
-        analysis_name=analysis_name,
-        expected_analysis_revision=expected_analysis_revision,
-        allow_legacy=allow_legacy,
-        require_reporter=require_reporter,
+    profile_path = (
+        onboarding.runtime_profile_path(project)
+        if runtime_inventory is None
+        else _absolute_path(runtime_inventory)
     )
-    profile_path = _absolute_path(runtime_profile)
-    try:
-        profile_bytes, declared_checks = load_runtime_profile_contract(profile_path)
-        _policy_bytes, fixed_policy = load_runtime_profile_contract(
-            onboarding.runtime_policy_path()
+    if runtime_inventory is None and not os.path.lexists(profile_path):
+        result = replace(
+            foundations,
+            blockers=(
+                *foundations.blockers,
+                f"runtime inventory is not admitted: {profile_path}",
+            ),
+            remediations=tuple(
+                dict.fromkeys(
+                    (
+                        *foundations.remediations,
+                        "Run `emrys doctor --repair`, or admit a complete site runtime "
+                        "with `emrys runtime discover --execute`.",
+                    )
+                )
+            ),
         )
-    except RuntimeInspectionError as exc:
-        raise DoctorInputError(str(exc)) from exc
-    fixed_checks = declared_checks[: len(fixed_policy)]
-    validate_runtime_profile_contract(fixed_checks, foundations.source_root)
-    (
-        selected_checks,
-        required_dependencies,
-        package_tree_ids,
-        explicit_file_ids,
-    ) = _compose_module_runtime_checks(
-        foundations.analysis.module.descriptor,
-        declared_checks,
-        len(fixed_policy),
-    )
-    validate_runtime_profile_contract(
-        selected_checks, foundations.source_root, foundations.analysis.module.descriptor
-    )
-    if selected_checks != declared_checks:
-        profile_bytes = runtime_profile_bytes(selected_checks)
-    renv_library = next(Path(check.target) for check in fixed_checks if check.check_id == "renv_library")
-    environment = guarded_r_environment(foundations.source_root, renv_library)
-    try:
-        inspection = inspect_runtime_profile_bytes(profile_bytes, profile_path, "local", environment=environment)
-    except RuntimeInspectionError as exc:
-        raise DoctorInputError(str(exc)) from exc
-    blockers = list(foundations.blockers)
-    remediations = list(foundations.remediations)
-    python = next(item for item in inspection.observations if item.check.check_id == "python")
-    python_ready = Path(python.check.target) == Path(sys.executable)
-    if not python_ready:
-        blockers.append(f"runtime Python differs from this interpreter: {python.check.target}")
-        remediations.append("Activate the Python environment admitted by the Project runtime, then rerun Doctor.")
-    failed = [item for item in inspection.observations if item.check.required and item.status != "pass"]
-    blockers.extend(f"{item.check.check_id}: {item.status} ({item.observed})" for item in failed)
-    runtime_bindings = runtime_file_bindings(
-        inspection,
-        package_tree_ids=package_tree_ids,
-        explicit_file_ids=explicit_file_ids,
-    )
-    observations = {
-        item.check.check_id: item for item in inspection.observations
-    }
-    bound_runtime = {item.check_id for item in runtime_bindings}
-    unavailable_analysis_runtime = tuple(
-        check_id
-        for check_id in required_dependencies
-        if check_id not in observations
-        or observations[check_id].status != "pass"
-        or (
-            check_id not in {"renv_project", "renv_library"}
-            and check_id not in bound_runtime
+    else:
+        try:
+            profile_bytes, declared_checks = load_runtime_profile_contract(profile_path)
+            _policy_bytes, fixed_policy = load_runtime_profile_contract(
+                onboarding.runtime_policy_path()
+            )
+        except RuntimeInspectionError as exc:
+            raise DoctorInputError(str(exc)) from exc
+        fixed_checks = declared_checks[: len(fixed_policy)]
+        additions, package_tree_ids, explicit_file_ids = _module_dependency_checks(
+            foundations.analysis.module.descriptor,
+            fixed_checks,
         )
-    )
-    custom_dependency_ids = {
-        dependency.dependency_id
-        for dependency in foundations.analysis.module.descriptor.dependencies
-        if isinstance(dependency, analysis_modules.AnalysisDependencyV1)
-    }
-    unavailable_custom_dependencies = tuple(
-        check_id
-        for check_id in unavailable_analysis_runtime
-        if check_id in custom_dependency_ids
-    )
-    if unavailable_analysis_runtime:
-        blockers.append(
-            "Analysis module runtime is not admitted: "
-            + ", ".join(unavailable_analysis_runtime)
+        selected_checks = (
+            (*fixed_checks, *additions)
+            if len(declared_checks) == len(fixed_policy)
+            else declared_checks
         )
-    fixed_ids = {check.check_id for check in fixed_checks}
-    if any(item.check.check_id in fixed_ids for item in failed):
-        remediations.append(
-            "Run `emrys doctor --repair` for an EMRYS-managed runtime, or repair and "
-            "re-admit the selected site environment without editing runtime.tsv."
+        validate_runtime_profile_contract(
+            selected_checks,
+            foundations.source_root,
+            expected_additions=additions,
         )
-    if unavailable_custom_dependencies:
-        remediations.append(
-            "Install the selected analysis module and its declared dependencies with "
-            "their package manager, then rerun Doctor; managed repair restores only "
-            "the fixed EMRYS runtime."
+        if selected_checks != declared_checks:
+            profile_bytes = runtime_profile_bytes(selected_checks)
+        renv_library = next(
+            Path(check.target)
+            for check in fixed_checks
+            if check.check_id == "renv_library"
         )
-    bindings = (*runtime_bindings, *foundations.bindings)
+        try:
+            inspection = inspect_runtime_profile_bytes(
+                profile_bytes,
+                profile_path,
+                "local",
+                environment=guarded_r_environment(
+                    foundations.source_root,
+                    renv_library,
+                ),
+            )
+        except RuntimeInspectionError as exc:
+            raise DoctorInputError(str(exc)) from exc
+        blockers = list(foundations.blockers)
+        remediations = list(foundations.remediations)
+        python = next(
+            item for item in inspection.observations if item.check.check_id == "python"
+        )
+        python_ready = Path(python.check.target) == Path(sys.executable)
+        if not python_ready:
+            blockers.append(
+                f"runtime Python differs from this interpreter: {python.check.target}"
+            )
+            remediations.append(
+                "Activate the Python environment admitted by the Project runtime, "
+                "then rerun Doctor."
+            )
+        failed = tuple(
+            item
+            for item in inspection.observations
+            if item.check.required and item.status != "pass"
+        )
+        blockers.extend(
+            f"{item.check.check_id}: {item.status} ({item.observed})"
+            for item in failed
+        )
+        fixed_ids = {check.check_id for check in fixed_checks}
+        custom_ids = {
+            dependency.dependency_id
+            for dependency in foundations.analysis.module.descriptor.dependencies
+            if isinstance(dependency, analysis_modules.AnalysisDependencyV1)
+        }
+        if any(item.check.check_id in fixed_ids for item in failed):
+            remediations.append(
+                "Run `emrys doctor --repair` for an EMRYS-managed runtime, or repair "
+                "and re-admit the selected site environment without editing runtime.tsv."
+            )
+        if any(item.check.check_id in custom_ids for item in failed):
+            remediations.append(
+                "Install the selected analysis module and its declared dependencies "
+                "with their package manager, then rerun Doctor; managed repair "
+                "restores only the fixed EMRYS runtime."
+            )
+        result = replace(
+            foundations,
+            inspection=inspection,
+            bindings=(
+                *runtime_file_bindings(
+                    inspection,
+                    package_tree_ids=package_tree_ids,
+                    explicit_file_ids=explicit_file_ids,
+                ),
+                *foundations.bindings,
+            ),
+            blockers=tuple(blockers),
+            remediations=tuple(dict.fromkeys(remediations)),
+            runtime_ready=python_ready and not failed,
+        )
+    if execution_error is None:
+        return result
     return replace(
-        foundations,
-        inspection=inspection,
-        bindings=bindings,
-        blockers=tuple(blockers),
-        remediations=tuple(dict.fromkeys(remediations)),
-        runtime_ready=python_ready and not failed and not unavailable_analysis_runtime,
-    )
-
-
-def diagnose_project(
-    project_path: str | Path,
-    *,
-    storage_requirement: StorageRequirement = "direct",
-    analysis_name: str | None = None,
-    require_reporter: bool = True,
-) -> DoctorResult:
-    """Diagnose the canonical Project runtime, including an absent profile."""
-
-    project = _absolute_path(project_path)
-    profile = onboarding.runtime_profile_path(project)
-    if os.path.lexists(profile):
-        return inspect_local_pilot(
-            project,
-            project.parent,
-            profile,
-            storage_requirement=storage_requirement,
-            analysis_name=analysis_name,
-            require_reporter=require_reporter,
-        )
-    foundations = _inspect_foundations(
-        project,
-        project.parent,
-        storage_requirement=storage_requirement,
-        analysis_name=analysis_name,
-        require_reporter=require_reporter,
-    )
-    remediation = (
-        "Run `emrys doctor --repair`, or admit a complete site runtime with `emrys runtime discover --execute`."
-    )
-    return replace(
-        foundations,
-        blockers=(*foundations.blockers, f"runtime profile is not admitted: {profile}"),
-        remediations=tuple(dict.fromkeys((*foundations.remediations, remediation))),
+        result,
+        blockers=(
+            *result.blockers,
+            f"default execution profile is not admitted: {execution_error}",
+        ),
+        remediations=tuple(
+            dict.fromkeys(
+                (
+                    *result.remediations,
+                    "Restore a valid Project-owned runtime/profiles/default.yaml; "
+                    "Doctor preserves operator execution policy.",
+                )
+            )
+        ),
+        execution_ready=False,
     )
 
 
@@ -775,6 +743,10 @@ def _file_sha256(path: Path) -> str:
 def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
     if result.source_commit is None:
         raise DoctorRepairError("repair requires a clean reviewed EMRYS checkout")
+    if not result.execution_ready:
+        raise DoctorRepairError(
+            "repair preserves execution profiles; restore runtime/profiles/default.yaml"
+        )
     project = result.project
     fasta = Path(str(result.analysis.workflow_inputs["reference"]["fasta"]["path"]))
     try:
@@ -802,21 +774,13 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
         for dependency in result.analysis.module.descriptor.dependencies
         if isinstance(dependency, analysis_modules.AnalysisDependencyV1)
     }
-    observed_dependencies = (
-        {}
-        if result.inspection is None
-        else {
-            item.check.check_id: item.status
-            for item in result.inspection.observations
-        }
-    )
     unavailable_dependencies = (
         []
         if result.inspection is None
         else sorted(
-            check_id
-            for check_id in custom_dependencies
-            if observed_dependencies.get(check_id) != "pass"
+            item.check.check_id
+            for item in result.inspection.observations
+            if item.check.check_id in custom_dependencies and item.status != "pass"
         )
     )
     if unavailable_dependencies:
@@ -855,12 +819,12 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
     if result.inspection is not None:
         if _absolute_path(result.inspection.profile_path) != profile:
             raise DoctorRepairError(
-                "the admitted runtime profile is site- or user-owned and was preserved"
+                "the admitted runtime inventory is site- or user-owned and was preserved"
             )
         try:
             profile_bytes, profile_checks = load_runtime_profile_contract(profile)
         except RuntimeInspectionError as exc:
-            raise DoctorRepairError(f"could not re-admit the managed runtime profile: {exc}") from exc
+            raise DoctorRepairError(f"could not re-admit the managed runtime inventory: {exc}") from exc
     uv, pixi = _manager("uv"), _manager("pixi")
     managed_plan = _ManagedRuntimePlan(
         source_root=result.source_root,
@@ -877,7 +841,7 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
     if result.inspection is not None:
         if not _profile_is_managed(profile_checks, managed_plan):
             raise DoctorRepairError(
-                "the admitted runtime profile is site- or user-owned and was "
+                "the admitted runtime inventory is site- or user-owned and was "
                 "preserved; repair that environment or explicitly admit a replacement"
             )
     return _RepairPlan(
@@ -926,15 +890,15 @@ def _readmit_repair_plan(
         raise DoctorRepairError("admitted package manager changed before execution")
     if runtime.profile_bytes is None:
         if os.path.lexists(runtime.profile):
-            raise DoctorRepairError("runtime profile appeared after repair confirmation")
+            raise DoctorRepairError("runtime inventory appeared after repair confirmation")
         return
     try:
         state = runtime.profile.lstat()
         data = runtime.profile.read_bytes()
     except OSError as exc:
-        raise DoctorRepairError(f"runtime profile changed before execution: {exc}") from exc
+        raise DoctorRepairError(f"runtime inventory changed before execution: {exc}") from exc
     if stat.S_ISLNK(state.st_mode) or not stat.S_ISREG(state.st_mode) or data != runtime.profile_bytes:
-        raise DoctorRepairError("runtime profile changed before execution")
+        raise DoctorRepairError("runtime inventory changed before execution")
 
 
 def _admit_managed_root(plan: _ManagedRuntimePlan) -> None:
@@ -1132,15 +1096,15 @@ def _print_result(result: DoctorResult, detail: LogLevel) -> None:
     for label, ready in (
         ("Storage", result.storage_ready),
         ("Runtime", result.runtime_ready),
-        ("Execution", result.ready),
+        ("Execution", result.execution_ready),
     ):
         _stderr(f"  {label:<10} {'PASS' if ready else 'FAIL'}")
     if detail in {LogLevel.VERBOSE, LogLevel.DEBUG}:
         _stderr(f"Source checkout: {result.source_root}")
         _stderr(f"Source commit: {result.source_commit or 'not admitted'}")
         if result.inspection is not None:
-            _stderr(f"Runtime profile: {result.inspection.profile_path}")
-            _stderr(f"Runtime profile SHA-256: {result.inspection.profile_sha256}")
+            _stderr(f"Runtime inventory: {result.inspection.profile_path}")
+            _stderr(f"Runtime inventory SHA-256: {result.inspection.profile_sha256}")
             for observation in result.inspection.observations:
                 _stderr(f"  {observation.check.check_id}: {observation.status} ({observation.observed})")
     if detail is LogLevel.DEBUG:
@@ -1306,7 +1270,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                 onboarding.publish_runtime_profile(candidate)
                 emit(
                     "runtime_profile_admitted",
-                    "Managed runtime profile admitted.",
+                    "Managed runtime inventory admitted.",
                     profile=runtime.profile,
                     sha256=candidate.profile_sha256,
                 )
@@ -1315,7 +1279,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                     state = runtime.profile.lstat()
                     existing = runtime.profile.read_bytes()
                 except OSError as exc:
-                    raise DoctorRepairError(f"could not read runtime profile: {exc}") from exc
+                    raise DoctorRepairError(f"could not read runtime inventory: {exc}") from exc
                 if (
                     stat.S_ISLNK(state.st_mode)
                     or not stat.S_ISREG(state.st_mode)
@@ -1367,7 +1331,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
 
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--project", default=Path("project.yaml"), type=Path)
+    onboarding.add_project_argument(parser)
     parser.add_argument(
         "--analysis",
         help="Named Analysis; required only when the Project defines more than one.",
@@ -1392,7 +1356,7 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
         return 2
     try:
         result = diagnose_project(
-            arguments.project,
+            onboarding.project_definition_path(arguments.project),
             analysis_name=arguments.analysis,
         )
         controls = resolve_log_controls(
@@ -1401,7 +1365,7 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
             cli_root=arguments.log_root,
             default_root=result.project.source_path.parent / "logs/application",
         )
-    except (DoctorInputError, LogControlError) as exc:
+    except (DoctorInputError, LogControlError, onboarding.OnboardingError) as exc:
         print(f"emrys: error: {exc}", file=sys.stderr)
         return 2
     detail = controls.level
@@ -1443,7 +1407,6 @@ __all__ = (
     "configure_parser",
     "diagnose_project",
     "doctor_from_args",
-    "inspect_local_pilot",
     "required_tool_identities",
     "runtime_file_bindings",
     "storage_runtime_binding",

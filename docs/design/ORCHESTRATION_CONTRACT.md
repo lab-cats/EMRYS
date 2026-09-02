@@ -9,7 +9,7 @@ that publishes task-attempt and content-bound verified records. Lifecycle and
 reporting owners publish durable entry,
 Attempt, receipt, reporting, recovery, and read-only inspection evidence.
 Project-aware Doctor, composed-profile materialization, and the dry-run-first
-`run`, `resume`, `report`, and `inspect run` commands form the public control
+`run`, `resume [RUN]`, `report [RUN]`, and `inspect [RUN]` commands form the public control
 surface. Scientific behavior remains with the applicable functional owner, and
 exact semantic identities and artifact edges remain in
 [`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md).
@@ -114,7 +114,7 @@ threads, and producer/validator plans. Selection authorizes that installed
 in-process provider. Existing `TaskDispatch`, failure, validation,
 publication, lock/rollback/recovery, signal, and logging semantics are fixed;
 providers do not declare substitute trust or failure policy. Doctor composes
-only the selected module's checks onto the fixed runtime profile; exact file
+only the selected module's checks onto the fixed runtime inventory; exact file
 and package-tree identities are Run-bound, and the existing Step `09`/`10`
 resource policy must meet task minimums. Package managers own installation and
 solving; EMRYS does not execute provider-supplied installers. GPU, disk,
@@ -515,9 +515,9 @@ Its separate `--repair` operation is limited to the active checkout-owned
 `.venv` and Project-owned `runtime/managed`, delegates locked dependency work
 to `uv`, Pixi, and `renv`, records one maintenance application attempt, and
 re-runs the full readiness report. It cannot alter declared inputs or silently
-migrate an admitted site/user runtime profile; ambient and Project-local Pixi
-configuration cannot redirect installation outside the owned root. The currently supported managed
-target is Linux x86-64; advanced runtime/storage probes remain independently
+migrate an admitted site/user runtime inventory; ambient and Project-local Pixi
+configuration cannot redirect installation outside the owned root. The
+currently supported managed target is Linux x86-64; advanced runtime/storage probes remain independently
 available. Neither planning nor Doctor invokes scientific owner producers or
 validators.
 
@@ -730,7 +730,7 @@ observes.
 
 Reporting is invoked automatically after a successful full scientific Run but
 remains a separate non-scientific domain. `run` and `resume` may disable it with
-`--no-report`; `emrys report --run-root ...` performs the same admission and is
+`--no-report`; `emrys report [RUN]` performs the same admission and is
 read-only unless `--execute` is present. Reporting creates no Run or Attempt and
 cannot alter the successful v2 Attempt receipt. Each reporting transaction
 follows the same irreversible entry policy. Its read-only preflight occurs

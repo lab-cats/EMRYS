@@ -2,7 +2,7 @@
 
 [`inspector.py`](inspector.py) directly owns the immutable
 `inspect_runtime_availability(...)` API and implements
-`python -I -m emrys inspect runtime-availability`. It performs read-only
+`emrys debug runtime-availability`. It performs read-only
 availability probes declared in an explicit profile and retains the
 `runtime_preflight` profile, report, and publication vocabulary. It records
 observations for an asserted `local` or `cluster_batch` context; it does not
@@ -57,13 +57,13 @@ remain inadmissible.
 Dry-run, execute, and the focused test are:
 
 ```bash
-python -I -m emrys inspect runtime-availability \
+emrys debug runtime-availability \
   --profile configs/runtime_preflight.example.tsv \
   --output results/qc/runtime/local.runtime_preflight.tsv \
   --runtime-context local
 
 mkdir -p results/qc/runtime
-python -I -m emrys inspect runtime-availability \
+emrys debug runtime-availability \
   --profile /explicit/path/to/runtime_profile.tsv \
   --output results/qc/runtime/runtime_preflight.tsv \
   --runtime-context cluster_batch \

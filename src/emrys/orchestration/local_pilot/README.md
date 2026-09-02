@@ -10,10 +10,11 @@ emrys init manifests \
   --fastq /data/control_1_R1.fastq.gz /data/control_1_R2.fastq.gz \
   --sample control_1 control pair_1 forward
 
-# Collect the remaining scientific answers and plan an absent Project root.
+# Collect the remaining scientific answers and plan an absent named Project root
+# beneath the current directory.
 # Omitted answers are prompted on a terminal; the first Analysis defaults to
 # "primary". Add --execute after review.
-emrys init project
+emrys init PROJECT_NAME
 
 # Generate the default 130-pair deterministic science fixture the same way.
 emrys init synthetic \
@@ -25,24 +26,25 @@ emrys init synthetic \
   --output-dir /absolute/outside-checkout/synthetic-production-like \
   --dataset-profile production-like-v1
 
-# Validate all declared inputs without requiring or probing science tools.
-emrys validate project \
-  --project /absolute/path/to/project.yaml
+# Enter the Project for ordinary commands, then validate all declared inputs
+# without requiring or probing science tools.
+cd PROJECT_NAME
+emrys validate
 
 # Preview the fixed runtime policy, then publish the admitted Project profile.
-emrys runtime discover --project /absolute/path/to/project.yaml
-emrys runtime discover --project /absolute/path/to/project.yaml --execute
+emrys runtime discover
+emrys runtime discover --execute
 ```
 
 `init manifests` produces deterministic strict manifests with absolute data
-paths and requires every biological assignment explicitly. `init project`
+paths and requires every biological assignment explicitly. `init PROJECT_NAME`
 validates them, records their admitted absolute paths without copying manifests
-or raw data, creates mode-`0700` `runs/`, `logs/`, and `runtime/`, and publishes
-`emrys.project.v1` `project.yaml` last. Its canonical parent is the Project root
-used by run and Doctor; Results remain under `runs/<run-id>/results`. Setup
-creates one initial named Analysis (`primary` unless `--analysis-name` is
-supplied) and creates no execution or runtime profile, Run, Attempt, Results,
-or application log.
+or raw data, creates a child Project root with mode-`0700` `runs/`, `logs/`,
+`runtime/`, and `runtime/profiles/`, then publishes `emrys.project.v1`
+`project.yaml` last. Results remain under `runs/<run-id>/results`. Setup creates
+one initial named Analysis (`primary` unless `--analysis-name` is supplied) and
+one placement-only `runtime/profiles/default.yaml`; it creates no runtime
+inventory, Run, Attempt, Results, or application log.
 
 The public model is `Project -> named Analysis -> immutable Run -> Results`.
 A Project shares one Dataset and Reference across one or more named Analyses;
@@ -54,13 +56,16 @@ content-derived Analysis identity.
 
 Runtime discovery probes the active environment without installing or loading
 modules. Missing or ambiguous identities fail closed. `--execute` publishes
-the sole ordinary runtime authority at `<project-root>/runtime/runtime.tsv`;
-run, resume, and Doctor derive it. The generic `inspect runtime-availability`
-route remains available for advanced profile-driven evidence. Use an exact
+the sole ordinary runtime inventory at `<project-root>/runtime/runtime.tsv`;
+run, resume, and Doctor derive it. The generic
+`emrys debug runtime-availability` route remains available for advanced
+inventory-driven evidence. Use an exact
 historical checkout for an entered historical Run.
 
 `emrys run` and `emrys resume` accept one optional named or explicit execution
-profile; omission uses conservative resources and direct placement. The
+profile. Omission reads `runtime/profiles/default.yaml`; `--profile site` reads
+`runtime/profiles/site.yaml`, while an absolute path selects that exact file.
+No site/global registry or directory scan exists. The
 [configuration guide](../../../../configs/README.md#execution-profile) owns
 selection and precedence, while [`CONTRACT.md`](CONTRACT.md) owns exact
 admission and provenance guarantees.
@@ -160,7 +165,7 @@ The underlying narrow read-only admission APIs are:
   immutable;
 - `all_pass.require_all_pass(...)` checks the meaning of one owner-validation
   report rather than trusting its process exit;
-- `doctor.inspect_local_pilot(...)` admits one Project plus each selected
+- `doctor.diagnose_project(...)` admits one Project plus each selected
   composed processing/module profile,
   checks its external Project root, exact clean source checkout, controlled
   Python/Snakemake, science-tool paths and versions, Picard jar, guarded
@@ -168,11 +173,10 @@ The underlying narrow read-only admission APIs are:
   qualification. It remains the read-only internal readiness capability used
   by Run and resume.
 
-The Project-aware public command is top-level:
+From the Project root, the public command is:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys doctor \
-  --project /absolute/path/to/project.yaml
+emrys doctor
 ```
 
 Exit `0` means every declared readiness check passed, exit `1` reports exact
@@ -191,8 +195,7 @@ A missing direct-storage receipt or absent/incomplete EMRYS-managed runtime has
 one explicit repair path:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys doctor \
-  --project /absolute/path/to/project.yaml --repair
+emrys doctor --repair
 ```
 
 On a terminal, Doctor prints and confirms the exact plan. Noninteractive
@@ -201,41 +204,28 @@ may publish one Project-owned single-host storage receipt. When runtime repair
 is also needed, it currently supports Linux x86-64, requires the active
 checkout-owned `.venv`, and delegates the locked Python environment to `uv`,
 the packaged native/R lock to Pixi, and the R library to `renv`; only `.venv`,
-`<project-root>/runtime/managed`, a create-absent canonical runtime profile,
+`<project-root>/runtime/managed`, a create-absent canonical runtime inventory,
 the direct receipt/probes, and one maintenance log are writable. It then reruns
-complete Project readiness. Declared input files and ready site/user profiles
-are preserved rather than modified, repaired, or silently migrated.
+complete Project readiness. Declared input files and ready site/user runtime
+inventories are preserved rather than modified, repaired, or silently migrated.
 
-The source-checkout-bound public control surface requires every mutating route
-to use the controlled Python runtime, remain dry-run-first, and delegate owner
-work only through the immutable profile composed from the processing base and
-the explicitly selected installed analysis module:
+The installed command performs the controlled-runtime handoff. From the
+Project root, the public control surface remains dry-run-first and delegates
+owner work only through the immutable profile composed from the processing
+base and explicitly selected installed analysis module:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
-  --project /absolute/path/to/project.yaml \
-  --analysis ANALYSIS_NAME \
-  --profile site
+emrys run --analysis ANALYSIS_NAME --profile site
 
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
-  --project /absolute/path/to/project.yaml \
-  --analysis ANALYSIS_NAME \
-  --through processing
+emrys run --analysis ANALYSIS_NAME --through processing
 
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
-  --project /absolute/path/to/project.yaml \
-  --analysis ANALYSIS_NAME \
-  --from-processing-run run-DIGEST
+emrys run --analysis ANALYSIS_NAME --from-processing-run PROCESSING_RUN
 
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
-  run --run-root /absolute/project/runs/run-DIGEST
+emrys inspect [RUN]
 
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume \
-  --run-root /absolute/project/runs/run-DIGEST \
-  --profile site
+emrys resume [RUN] --profile site
 
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys report \
-  --run-root /absolute/project/runs/run-DIGEST
+emrys report [RUN]
 ```
 
 The first `run` command retains the full default Analysis. The semantic
@@ -253,8 +243,10 @@ the target owns fixed Steps `07`–`08`, its selected Step `09`/optional Step
 `10` tail, evidence, Results, reports, and log. A proper subset is projected to
 one private Attempt-bound TSV for the existing backend; it is not another
 scientist-authored manifest. The bounded collaborator-module v1 is documented
-under [`analyses/`](../../analyses/README.md); module-specific dependency and
-resource provisioning remains `ANALYSIS-02` work.
+under [`analyses/`](../../analyses/README.md). Doctor composes its declared
+dependencies onto the Project runtime inventory, exact file/package identities
+bind the Run, and the existing resource policy must satisfy its task minima;
+package managers retain installation and solving authority.
 
 With direct placement, `run` and `resume` print concise Run identity, combined
 pending/reusable work within that Run, and reporting information; a terminal
@@ -271,8 +263,10 @@ changing Results. `report` independently validates a completed Run and plans
 without writes, then generates with `--execute` or reuses an exact complete
 report transaction. Verbose output adds the Run root,
 resources/allocation, execution profile, and scheduler streams; debug output
-adds exact engine, scheduler, and task commands. `inspect run` is
-always read-only. Selection, resume inheritance, and resource precedence are
+adds exact engine, scheduler, and task commands. `inspect` is always read-only.
+Omitting `[RUN]` selects the sole Run or opens a terminal picker when several
+exist; noninteractive callers provide an unambiguous two-word name, full Run
+ID, or unique ID prefix. Selection, resume inheritance, and resource precedence are
 defined in the [configuration guide](../../../../configs/README.md#execution-profile).
 
 Direct execution writes its application log beneath the selected root, which
@@ -320,7 +314,7 @@ state-roster semantics remain owner-local; hostile replacement invalidates evide
 The semantic checker also has this grouped command:
 
 ```bash
-.venv/bin/python -I -m emrys validate all-pass \
+emrys validate all-pass \
   --report /absolute/path/SCOPE.validation.tsv \
   --step-id 01 \
   --scope-id SAMPLE

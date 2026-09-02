@@ -15,12 +15,9 @@ from emrys import __main__ as emrys_main
 from emrys.evidence.storage_inventory import qualification
 
 ROOT = Path(__file__).resolve().parents[3]
-COMMAND = (sys.executable, "-I", "-m", "emrys", "inspect", "storage-inventory")
+COMMAND = (sys.executable, "-I", "-m", "emrys", "debug", "storage-inventory")
 ROOT_HEADER = "storage_id\tpath\trequired\tpurpose\tquota_bytes_expected\tnotes\n"
-POLICY_HEADER = (
-    "policy_id\tstorage_id\tartifact_class\taction\tretention_days\t"
-    "approval_status\tapproved_by\tapproved_at\tnotes\n"
-)
+POLICY_HEADER = "policy_id\tstorage_id\tartifact_class\taction\tretention_days\tapproval_status\tapproved_by\tapproved_at\tnotes\n"
 
 
 def contracts(tmp_path: Path, *, approved: bool = True) -> tuple[Path, Path, Path]:
@@ -268,7 +265,7 @@ def test_contract_mutation_after_measurement_fails_before_publication(
     monkeypatch.setattr(measurement, "outputs", render_then_mutate)
     status = emrys_main.main(
         [
-            "inspect",
+            "debug",
             "storage-inventory",
             "--roots",
             str(roots),

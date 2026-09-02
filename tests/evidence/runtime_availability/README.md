@@ -3,7 +3,7 @@
 This directory directly protects runtime-profile admission, read-only probes,
 deterministic results, publication, rollback, and CLI failure behavior for the
 [runtime-availability owner](../../../src/emrys/evidence/runtime_availability/README.md)
-and its grouped route `python -I -m emrys inspect runtime-availability`.
+and its grouped route `emrys debug runtime-availability`.
 The local-pilot doctor separately consumes the owner's direct admitted
 inspection result as required readiness. The standalone inspector remains an
 operator diagnostic. Whole-Run scheduler/runtime parity belongs to the

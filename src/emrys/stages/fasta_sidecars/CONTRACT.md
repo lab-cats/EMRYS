@@ -93,7 +93,7 @@ and retains the lock plus remaining residue for operator inspection.
 
 ## Validation interface
 
-`python -I -m emrys validate fasta-sidecars`, implemented by the private
+`emrys validate fasta-sidecars`, implemented by the private
 [`validator.py`](validator.py) module, accepts explicit scope, FASTA, `FAI`,
 `DICT`, and output paths. Validation is dry-run by default; `--execute`
 publishes `<scope-id>.validation.tsv` using the common seven-field

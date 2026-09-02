@@ -3,7 +3,7 @@
 This directory owns the existing, deliberately narrow sample-manifest admission
 family. Its public assets are:
 
-- `python -I -m emrys validate manifest`, the installed module command
+- `emrys validate manifest`, the installed module command
   implemented by [`validator.py`](validator.py), which validates a TSV manifest
   and optionally checks that its declared FASTQ paths exist;
 - [`check_fastq_pairs.sh`](check_fastq_pairs.sh), the mode-`0755` operator-run
@@ -36,7 +36,7 @@ does not inspect FASTQ contents or invoke the paired-FASTQ checker.
 From the repository root:
 
 ```bash
-.venv/bin/python -I -m emrys validate manifest \
+emrys validate manifest \
   --manifest configs/samples.example.tsv \
   --base-dir .
 ```
@@ -47,7 +47,7 @@ installed interpreter and make the manifest and base directory absolute:
 
 ```bash
 repo=/absolute/path/to/emrys
-"$repo/.venv/bin/python" -I -m emrys validate manifest \
+emrys validate manifest \
   --manifest "$repo/configs/samples.example.tsv" \
   --base-dir "$repo"
 ```

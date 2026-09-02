@@ -6,7 +6,7 @@ This directory is the implemented native owner for semantic stage
 
 - [`step_00a_build_star_index.sh`](step_00a_build_star_index.sh), the explicit
   producer;
-- `python -I -m emrys validate star-index`, implemented by the private
+- `emrys validate star-index`, implemented by the private
   mode-`0644` [`validator.py`](validator.py) module; and
 - the mirrored [validator](../../../../tests/stages/star_index/test_validate_step_00a_star_index.py)
   and [producer](../../../../tests/stages/star_index/test_step_00a_build_star_index.py)
@@ -49,7 +49,7 @@ Invoke the validator with the repository Python and explicit inputs. Omitting
 `--execute` is the no-write dry run; adding it publishes the declared output:
 
 ```bash
-.venv/bin/python -I -m emrys validate star-index \
+emrys validate star-index \
   --scope-id novogene_ref \
   --index-dir refs/novogene_star_index \
   --reference-fasta refs/novogene_ref/genome.fa \
