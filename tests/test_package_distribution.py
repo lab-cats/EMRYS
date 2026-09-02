@@ -200,7 +200,10 @@ def inspect_wheel(wheel: Path) -> None:
             for name, specifier in RUNTIME_REQUIREMENT_SPECIFIERS.items()
         }
         entry_points = archive.read(entry_points_member).decode().splitlines()
-        assert "emrys = emrys.__main__:main" in entry_points
+        assert (
+            "emrys = emrys.libraries.source_authority:controlled_console_main"
+            in entry_points
+        )
         assert "[emrys.analysis_modules]" in entry_points
         assert (
             "emrys.paired-cmh = "
@@ -399,6 +402,14 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     console_help = run_command([str(console), "--help"], cwd=arbitrary_cwd)
     require_success(console_help)
     assert "usage: emrys" in console_help.stdout
+    console_control = run_command(
+        [str(console), "run", "--project", str(arbitrary_cwd / "missing.yaml")],
+        cwd=arbitrary_cwd,
+        hostile_pythonpath=True,
+    )
+    assert console_control.returncode == 2
+    assert "Controlled EMRYS Python children require" not in console_control.stderr
+    assert "missing.yaml" in console_control.stderr
     manifest = arbitrary_cwd / "samples.tsv"
     manifest.write_text(
         "sample_id\tr1_fastq\tr2_fastq\tstrandedness\tcondition\n"

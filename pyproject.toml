@@ -32,7 +32,7 @@ Repository = "https://github.com/lab-cats/EMRYS"
 Issues = "https://github.com/lab-cats/EMRYS/issues"
 
 [project.scripts]
-emrys = "emrys.__main__:main"
+emrys = "emrys.libraries.source_authority:controlled_console_main"
 
 [project.entry-points."emrys.analysis_modules"]
 "emrys.paired-cmh" = "emrys.analyses.paired_cmh_candidate_ranking:analysis_module_v1"
