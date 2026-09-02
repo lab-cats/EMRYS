@@ -20,6 +20,7 @@ from jinja2 import (
 from .inputs import _assert_snapshot, _fail, _snapshot_regular
 from .models import (
     ACTIVE_RESOURCE_ATTRIBUTES,
+    ACTIVE_URI_RE,
     CSS_RESOURCE_RE,
     EVIDENCE_REPORT_SECTION_IDS,
     REMOTE_URI_RE,
@@ -217,6 +218,18 @@ class ReportHTMLInspector(HTMLParser):
             except ReportRenderError as exc:
                 self.active_resource_errors.append(str(exc))
         for name, value in attrs:
+            if name.startswith("on"):
+                self.active_resource_errors.append(
+                    f"<{tag}> event attribute {name!r} is not permitted"
+                )
+            if (
+                value is not None
+                and name in {"href", "xlink:href", "action", "formaction"}
+                and ACTIVE_URI_RE.match(value)
+            ):
+                self.active_resource_errors.append(
+                    f"<{tag}> {name} uses an active URI {value!r}"
+                )
             if value is None or (tag, name) not in ACTIVE_RESOURCE_ATTRIBUTES:
                 continue
             for resource in self._resource_values(name, value):

@@ -177,3 +177,23 @@ def test_module_dependencies_are_canonical_and_readmitted(
     )
     with pytest.raises(analyses.AnalysisModuleLoadError, match="reserved"):
         analyses._validate_descriptor(reserved)
+
+
+def test_module_validation_report_must_stay_outside_results() -> None:
+    descriptor = analysis_module_v1()
+    task = descriptor.tasks[0]
+    outputs = tuple(
+        output._replace(
+            source_path_template=(
+                "results/{analysis_id}/validation.tsv"
+                if output.kind == "validation_report"
+                else output.source_path_template
+            )
+        )
+        for output in task.outputs
+    )
+
+    with pytest.raises(analyses.AnalysisModuleLoadError, match="Invalid.*task"):
+        analyses._validate_descriptor(
+            replace(descriptor, tasks=(task._replace(outputs=outputs), *descriptor.tasks[1:]))
+        )

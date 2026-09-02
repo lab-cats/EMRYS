@@ -52,6 +52,7 @@ ACTIVE_RESOURCE_ATTRIBUTES = {
     ("use", "xlink:href"),
 }
 REMOTE_URI_RE = re.compile(r"^\s*(?:https?:)?//", re.IGNORECASE)
+ACTIVE_URI_RE = re.compile(r"^\s*(?:javascript|vbscript):", re.IGNORECASE)
 CSS_RESOURCE_RE = re.compile(
     r"url\s*\(\s*(['\"]?)(.*?)\1\s*\)"
     r"|@import\s+(?:url\s*\(\s*)?(['\"])(.*?)\3",
