@@ -2,15 +2,16 @@
 
 This is the binding cross-cutting application logging contract. The neutral
 foundation is implemented by the
-[application-logging owner](../../src/emrys/libraries/application_logging/README.md),
-and grouped local-pilot `run`/`resume` control is its first production adopter.
-Confirmed `emrys doctor --repair` is a second bounded adopter: it owns exactly
-one maintenance attempt, while diagnosis, preview, refusal, EOF, interruption
-before authority, and help own none. A Run execute owns exactly one compute-side
-application attempt; scheduler submission transport and valid dry-run own none. Further rollout remains
-`LOG-05` in the [findings matrix](../tasks/backlog_matrix.md). A command implements
-this contract only when its owner documentation and direct tests say so.
-Foundation code remains stage-independent and never imports a stage.
+[application-logging owner](../../src/emrys/libraries/application_logging/README.md).
+The complete retained-operation roster is executing `run` and `resume`, their
+automatic reporting in the same log, standalone report generation, and
+confirmed `emrys doctor --repair`. A Run execute owns exactly one compute-side
+application attempt; scheduler submission transport and valid dry-run own none.
+The roster is closed, while direct/Slurm failure-and-resume parity remains
+pending under `LOG-05` in the [findings matrix](../tasks/backlog_matrix.md). A
+command implements this contract only when its owner documentation and direct
+tests say so. Foundation code remains stage-independent and never imports a
+stage.
 
 ## Adoption boundary
 
@@ -20,9 +21,18 @@ transport, or scheduler wrapper. The accepted outer operation owns exactly one
 application attempt and resolves controls once. Retained delegates receive the
 resolved controls and event context explicitly and do not open a second attempt.
 For scheduled local-pilot execution, the compute-side `run`/`resume` delegate is
-that operation; submission is transport only. For Doctor, only the confirmed
-repair is the operation; read-only readiness diagnosis is not a durable
-diagnostic lifecycle.
+that operation; submission is transport only. Automatic reporting continues in
+that Run log, while standalone reporting opens one log only when generation
+begins. For Doctor, only confirmed repair is the operation; readiness diagnosis
+is not a durable diagnostic lifecycle.
+
+All other current public operations own no application log: Project and
+synthetic/manifest initialization, validation, runtime discovery and profile
+publication, Doctor diagnosis/preview/refusal, Run or report planning/refusal,
+complete report reuse, inspection, debug inspection, and scheduler submission.
+Their admitted outputs or direct command diagnostics remain authoritative.
+Delegated scientific tasks retain their task streams and evidence beneath the
+outer Run operation and do not open additional application logs.
 
 Each bounded adoption package satisfies the operation, ownership, placement,
 projection, stream, and parity admission conditions in its owner documentation
@@ -64,7 +74,8 @@ policy before their own bounded decisions.
   controls fail before log, output, lock, scratch, or compute side effects while
   preserving established parse exits. A legacy alias requires parity-tested
   migration.
-- Grouped `run`/`resume` and confirmed Doctor repair default to
+- Grouped `run`/`resume`, standalone report generation, and confirmed Doctor
+  repair default to
   `<project-root>/logs/application`. Until a
   state root exists for another adopter, its default is
   `<repository-root>/logs/application`, derived from repository/package
@@ -96,10 +107,10 @@ SHA-256, stream, and component; never replace bytes silently.
 
 ## Attempt identity and record
 
-- One adopted execute, substantive validation/check, mutating maintenance
-  action, or validation-gate invocation owns one application attempt. Help,
-  CLI parse failures, invalid log controls, invalid execution-profile/delegate
-  context, inadmissible workspace scope, and valid dry-runs own none.
+- One executing `run` or `resume`, standalone report-generation operation, or
+  confirmed Doctor repair owns one application attempt. Help, CLI parse
+  failures, invalid log controls, invalid execution-profile/delegate context,
+  inadmissible workspace scope, and valid dry-runs own none.
 - The attempt begins after minimal log-control and scope validation but before
   semantic input validation, expensive work, output directories, locks, or
   publication, so execute preflight failures are logged without authorizing
