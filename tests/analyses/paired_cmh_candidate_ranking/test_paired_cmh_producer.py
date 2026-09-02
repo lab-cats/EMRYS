@@ -419,7 +419,7 @@ def test_path_basename_rscript_works_from_an_arbitrary_cwd(
     assert list(cwd.iterdir()) == []
 
 
-def test_local_pilot_r_command_uses_the_controlled_environment(
+def test_run_coordinator_r_command_uses_the_controlled_environment(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fixture = _fixture(tmp_path)

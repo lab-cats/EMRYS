@@ -58,7 +58,7 @@ Each owner README supplies supported help, dry-run, execute, scheduler, focused
 test, diagnostics, and recovery routes when those surfaces exist. Its adjacent
 `CONTRACT.md` owns exact inputs, outputs, checks, and evidence limits.
 
-## Local-pilot lifecycle routes
+## Run-coordinator lifecycle routes
 
 The complete first-run journey belongs to the
 [Quickstart](../../quickstart.md). This runbook retains recurring operator
@@ -72,7 +72,7 @@ walkthrough.
 | Qualify storage, diagnose Project readiness, or repair the managed runtime | [Quickstart: compatibility](../../quickstart.md#5-validate-data-compatibility-without-scientific-tools) and [Doctor](../../quickstart.md#6-diagnose-readiness-and-optionally-repair-the-managed-runtime) |
 | Select or develop a collaborator analysis module | [`analyses/README.md`](../../src/emrys/analyses/README.md) |
 | Review and execute the immutable selected workflow | [Quickstart: plan and execution](../../quickstart.md#7-review-and-confirm-one-immutable-plan) |
-| Inspect run state or plan a supported resume | Commands below and the [local-pilot owner](../../src/emrys/orchestration/local_pilot/README.md) |
+| Inspect run state or plan a supported resume | Commands below and the [run-coordinator owner](../../src/emrys/orchestration/run_coordinator/README.md) |
 | Diagnose blocked, partial, locked, or uncertain state | [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) |
 
 `emrys run` and `emrys resume` are the whole-Run execution surface. With no

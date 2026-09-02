@@ -1,4 +1,4 @@
-"""Public registry and validation API for local-pilot orchestration records."""
+"""Public registry and validation API for run-coordinator orchestration records."""
 
 from __future__ import annotations
 

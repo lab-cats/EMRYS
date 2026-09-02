@@ -17,5 +17,5 @@ allocation; there are no standalone owner-local scheduler entry points.
 Materialization selects this exact checkout file and lifecycle passes it to
 Snakemake. Operators should use `emrys run` and `emrys resume`, not invoke the
 profile directly. See the parent [workflow overview](../../README.md), the
-[local-pilot owner](../../../src/emrys/orchestration/local_pilot/README.md), and
+[run-coordinator owner](../../../src/emrys/orchestration/run_coordinator/README.md), and
 the [Runbook](../../../docs/operations/RUNBOOK.md).

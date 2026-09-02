@@ -14,7 +14,7 @@ This directory is the implemented native owner for semantic stage
 
 For Slurm execution, use the complete immutable Run through `emrys run` or
 `emrys resume` as documented in the
-[runbook](../../../../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes).
+[runbook](../../../../docs/operations/RUNBOOK.md#run-coordinator-lifecycle-routes).
 
 Plan one local build from any working directory with explicit paths:
 

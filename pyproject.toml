@@ -95,7 +95,7 @@ namespaces = false
     "file_checks.sh",
     "input_contract.R",
 ]
-"emrys.orchestration.local_pilot" = ["resources/*.yaml"]
+"emrys.orchestration.run_coordinator" = ["resources/*.yaml"]
 "emrys.reporting" = ["styles/*.css", "templates/*.html.j2"]
 
 [tool.setuptools.dynamic]

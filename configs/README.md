@@ -71,7 +71,7 @@ templates, shell commands, merge keys, and unknown fields are rejected.
 
 Name a Project-local file or pass an absolute file with `--profile` on
 `emrys run` or `emrys resume`. The
-[runbook](../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes) owns the
+[runbook](../docs/operations/RUNBOOK.md#run-coordinator-lifecycle-routes) owns the
 complete command, confirmation, submission, and logging journey.
 
 On resume, omitting the selector loads the Project default while preserving the
@@ -347,7 +347,7 @@ It writes nothing and establishes no runtime or scientific evidence.
 ## Other configuration assets
 
 The remaining files in this directory serve narrower owners. They are not
-alternate local-pilot overlays and should not be mixed into a Project unless
+alternate runtime overlays and should not be mixed into a Project unless
 their owner explicitly calls for them.
 
 | Area | Consumer | Tracked inputs |

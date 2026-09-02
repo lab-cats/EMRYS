@@ -35,7 +35,7 @@ retain their own neutral or repository-level ownership.
 
 Slurm placement belongs to the complete immutable Run through `emrys run` or
 `emrys resume`, not to individual stage entry points. See the
-[runbook](../../../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes).
+[runbook](../../../docs/operations/RUNBOOK.md#run-coordinator-lifecycle-routes).
 
 Each owner declares and governs the outputs produced through its interfaces,
 normally under ignored `results/` or declared reference storage. A file,

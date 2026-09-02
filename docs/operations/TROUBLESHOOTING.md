@@ -31,7 +31,7 @@ restore runtime artifacts. A validator or evidence command can exit `0` while
 recording failed evidence rows; exit `2` means unsafe input, CLI, tool, or
 publication failure.
 
-## Public local-pilot diagnosis
+## Public run-coordinator diagnosis
 
 Begin with the root [researcher journey](../../README.md). Keep the exact
 Project definition, Project-owned admitted runtime, Run, and clean source

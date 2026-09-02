@@ -10,7 +10,7 @@ are in the [operations runbook](../docs/operations/RUNBOOK.md).
 
 - `analyses/`, `stages/`, `evidence/`, `ingestion/`, and `reporting/` protect
   their matching functional owners.
-- `orchestration/local_pilot/` protects Project admission, readiness, fixed
+- `orchestration/run_coordinator/` protects Project admission, readiness, fixed
   graph materialization, task/reporting records, lifecycle, inspection, resume,
   and focused failure/resume behavior for the application owner. The tracked
   CI workflow owns the clean-clone, real-tool managed golden path.

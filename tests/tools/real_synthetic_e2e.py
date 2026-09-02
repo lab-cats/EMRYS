@@ -388,7 +388,7 @@ def slurm_execution_profile_bytes(
     module_init: Path | None = None,
 ) -> bytes:
     from emrys.contracts.orchestration import api as contracts
-    from emrys.orchestration.local_pilot.execution_profile import SCHEMA_VERSION
+    from emrys.orchestration.run_coordinator.execution_profile import SCHEMA_VERSION
 
     try:
         document = {
@@ -664,7 +664,7 @@ def assert_completed_run(
     *,
     observed: Any | None = None,
 ) -> dict[str, Any]:
-    from emrys.orchestration.local_pilot import inspection
+    from emrys.orchestration.run_coordinator import inspection
 
     observed = inspection.inspect_run(run_root) if observed is None else observed
     if (
@@ -722,7 +722,7 @@ def _resource_snapshot(
     run_root: Path,
     attempt: dict[str, Any],
 ) -> dict[str, Any]:
-    from emrys.orchestration.local_pilot.resource_policy import (
+    from emrys.orchestration.run_coordinator.resource_policy import (
         admit_resource_policy_record,
     )
 
@@ -877,7 +877,7 @@ def _attempt_snapshot(
     expected_exit_code: int,
     operation: str,
 ) -> dict[str, Any]:
-    from emrys.orchestration.local_pilot import inspection
+    from emrys.orchestration.run_coordinator import inspection
 
     if (
         receipt.get("status") != expected_status
@@ -933,7 +933,7 @@ def _assert_scheduler_streams(workspace: Path, jobs: tuple[Job, ...]) -> None:
 
 
 def _admitted_failure(run_root: Path, *, job: Job | None) -> dict[str, Any]:
-    from emrys.orchestration.local_pilot import inspection
+    from emrys.orchestration.run_coordinator import inspection
 
     observed = inspection.inspect_run(run_root)
     if (
@@ -991,7 +991,7 @@ def _admitted_completion(
     jobs: tuple[Job, ...],
     failure: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    from emrys.orchestration.local_pilot import inspection
+    from emrys.orchestration.run_coordinator import inspection
 
     observed = inspection.inspect_run(run_root)
     completion = assert_completed_run(run_root, fixture, observed=observed)

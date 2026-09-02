@@ -12,5 +12,5 @@ export EMRYS_DASHBOARD_REFRESH := $(DASHBOARD_REFRESH)
 .PHONY: dashboard
 dashboard:
 	@"$(DASHBOARD_PYTHON_BIN)" -I -B \
-		"$(EMRYS_MAKE_ROOT)/src/emrys/orchestration/local_pilot/dashboard.py" \
+		"$(EMRYS_MAKE_ROOT)/src/emrys/orchestration/run_coordinator/dashboard.py" \
 		--refresh "$$EMRYS_DASHBOARD_REFRESH"

@@ -62,7 +62,7 @@ manifests`; it requires `replicate` and delegates final admission back to those
 current contracts.
 For Slurm execution, use the admitted Project through the complete immutable
 Run as documented in the
-[runbook](../../../../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes).
+[runbook](../../../../docs/operations/RUNBOOK.md#run-coordinator-lifecycle-routes).
 
 ## Paired-FASTQ diagnostic
 

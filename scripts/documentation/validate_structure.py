@@ -18,7 +18,7 @@ CANONICAL_DOCUMENTS = {
     ),
     "docs/design/DECISIONS.md": "# Durable decisions",
     "docs/design/LOGGING_CONTRACT.md": "# Application logging contract",
-    "docs/design/ORCHESTRATION_CONTRACT.md": "# Local-pilot orchestration contract",
+    "docs/design/ORCHESTRATION_CONTRACT.md": "# Run-coordinator orchestration contract",
     "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
     "docs/operations/RUNBOOK.md": "# Runbook",
     "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",

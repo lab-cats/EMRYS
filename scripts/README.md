@@ -29,7 +29,7 @@ The dashboard is an operational convenience over scheduler metadata and
 append-only logs. It does not derive or display result locations. Its state,
 progress, and timing are not completion, validation, or evidence authority;
 final EMRYS inspection and the applicable owner records remain authoritative.
-The current implementation is specialized to the CSU local-pilot wrapper,
+The frozen implementation is specialized to the legacy CSU scheduler-stream convention,
 fixed qualified stage topology, six-sample cohort, and 25-partition
 qualification run. Portable, request-derived topology, machine-readable
 events, and bounded generic parsing remain deferred dashboard work. Effective

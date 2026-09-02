@@ -13,7 +13,7 @@ mechanical-evidence boundary.
 The shell producer remains a repository-path interface. `validator.py` is not
 a direct repository entrypoint. For Slurm execution, use the complete immutable
 Run through `emrys run` or `emrys resume` as documented in the
-[runbook](../../../../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes).
+[runbook](../../../../docs/operations/RUNBOOK.md#run-coordinator-lifecycle-routes).
 
 ## Operate
 

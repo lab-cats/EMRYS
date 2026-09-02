@@ -370,7 +370,7 @@ def _confirm_inputs(context: Context, snapshot: tuple[str, ...]) -> None:
             digest.update(os.fsencode(f"{item[1]}\0{_input_digest(item)}\0"))
         if digest.hexdigest() != context.bound_input_identity:
             fail(
-                "Scientific inputs changed after local-pilot admission during "
+                "Scientific inputs changed after run-coordinator admission during "
                 "Step 07 --no-clobber execution."
             )
         return

@@ -11,7 +11,7 @@ Current-system views:
 - [`pipeline.mmd`](pipeline.mmd) — grouped implemented-system projection.
 - [`reliability.mmd`](reliability.mmd) — validation, publication, and recovery
   flow.
-- [`local_pilot_orchestration.mmd`](local_pilot_orchestration.mmd) — implemented
+- [`run_coordinator.mmd`](run_coordinator.mmd) — implemented
   local-first request, readiness, public control, execution, validation,
   failure, resume, and completion flow.
 

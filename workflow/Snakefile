@@ -18,11 +18,11 @@ from emrys.libraries.source_authority import (
     attest_source_checkout,
     require_controlled_python_runtime,
 )
-from emrys.orchestration.local_pilot.task import (
+from emrys.orchestration.run_coordinator.task import (
     TaskBoundaryError,
     validate_verified_task,
 )
-from emrys.orchestration.local_pilot.inspection import (
+from emrys.orchestration.run_coordinator.inspection import (
     admit_execution_path,
     expected_tasks,
     state_tree_blockers,
@@ -447,7 +447,7 @@ TASK_ARGV_PREFIX = (
     "pycache_prefix=/dev/null",
     "-I",
     "-m",
-    "emrys.orchestration.local_pilot.task",
+    "emrys.orchestration.run_coordinator.task",
 )
 TASK_SHELL = "{params.task_argv:q}"
 

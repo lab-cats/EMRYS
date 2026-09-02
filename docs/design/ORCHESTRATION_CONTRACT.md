@@ -1,4 +1,4 @@
-# Local-pilot orchestration contract
+# Run-coordinator orchestration contract
 
 This document is the binding architecture for EMRYS's current local Snakemake
 backend. The orchestration contract package owns closed machine schemas,
@@ -35,7 +35,7 @@ control plane remain later decisions.
 
 ## Design outcome
 
-The local pilot has one explicit path:
+The run coordinator has one explicit path:
 
 1. A scientist authors one YAML Project definition containing a shared Dataset
    and Reference plus one or more named Analyses that reference ordered TSV
@@ -190,7 +190,7 @@ exact historical resume; active Project commands reject it.
 Execution uses one optional selected `emrys.execution-profile.v1` fragment.
 Its computational declaration is Run-bound while placement is Attempt-local;
 exact selection, precedence, and admission belong to the
-[orchestration owner](../../src/emrys/orchestration/local_pilot/CONTRACT.md).
+[orchestration owner](../../src/emrys/orchestration/run_coordinator/CONTRACT.md).
 
 The effective computational declaration enters the successor Execution Plan
 and therefore Run identity. Profile source, reporting memory, placement,

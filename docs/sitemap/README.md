@@ -44,7 +44,7 @@ For task orientation and approved delivery, use
 | Accepted work, status, and acceptance | [`backlog_matrix.md`](../tasks/backlog_matrix.md) |
 | Cross-cutting commands and common recovery | [`RUNBOOK.md`](../operations/RUNBOOK.md) and [`TROUBLESHOOTING.md`](../operations/TROUBLESHOOTING.md) |
 | System-view routing and exact architecture | [Architecture index](../architecture/README.md) and its named children |
-| Local-pilot lifecycle and owner admission | [`ORCHESTRATION_CONTRACT.md`](../design/ORCHESTRATION_CONTRACT.md), owner contracts, workflow profile, stage map, and tests |
+| Run-coordinator lifecycle and owner admission | [`ORCHESTRATION_CONTRACT.md`](../design/ORCHESTRATION_CONTRACT.md), owner contracts, workflow profile, stage map, and tests |
 | Durable rationale and unsliced architecture alternatives | [`DECISIONS.md`](../design/DECISIONS.md), its detail files, and the temporary [`architecture_campaign.md`](../tasks/architecture_campaign.md) |
 | Exact behavior, commands, defects, and tests | Applicable colocated owner `README.md` and `CONTRACT.md` |
 | Test policy and cross-cutting recheck routes | [`TEST_BASELINE.md`](../design/TEST_BASELINE.md); exact defects remain with the applicable owner `README.md` or `CONTRACT.md` |

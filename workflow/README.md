@@ -57,9 +57,9 @@ separate post-Attempt operation:
 it reuses only a fully validated report set, generates only into exactly empty
 reporting state, and fails closed on partial or ambiguous state. A path,
 timestamp, process exit, `.snakemake` entry, or receipt name alone is not
-completion authority. The local-pilot
-[`README`](../src/emrys/orchestration/local_pilot/README.md) and
-[`CONTRACT`](../src/emrys/orchestration/local_pilot/CONTRACT.md) own the exact
+completion authority. The run-coordinator
+[`README`](../src/emrys/orchestration/run_coordinator/README.md) and
+[`CONTRACT`](../src/emrys/orchestration/run_coordinator/CONTRACT.md) own the exact
 state, recovery, and resume rules.
 
 ## Composed projection

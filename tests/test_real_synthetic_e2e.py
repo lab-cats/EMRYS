@@ -120,7 +120,7 @@ def test_launcher_adapters_and_default_resource_projection(tmp_path: Path) -> No
     assert observed.stdout == str(missing_profile)
     assert not marker.exists()
 
-    from emrys.orchestration.local_pilot.execution_profile import load_execution_profile
+    from emrys.orchestration.run_coordinator.execution_profile import load_execution_profile
 
     project = tmp_path / "project.yaml"
     project.write_text("fixture\n", encoding="utf-8")
@@ -283,7 +283,7 @@ def test_completed_results_use_inspection_reports_and_direct_step09_oracle(
             ("evidence-report-html", evidence),
         ),
     )
-    from emrys.orchestration.local_pilot import inspection
+    from emrys.orchestration.run_coordinator import inspection
 
     monkeypatch.setattr(inspection, "inspect_run", lambda _root: observed)
     result = driver.assert_completed_run(

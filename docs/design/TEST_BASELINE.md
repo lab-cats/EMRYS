@@ -59,7 +59,7 @@ The accepted exact floors are:
 | --- | ---: | ---: |
 | Python behavior lane | `13817 / 15987` (`0.864265`) | `4530 / 6054` (`0.748266`) |
 | Orchestration machine contracts | `436 / 492` (`0.886179`) | `193 / 236` (`0.817797`) |
-| Local-pilot control plane | `3385 / 4138` (`0.818028`) | `1030 / 1498` (`0.687583`) |
+| Run-coordinator control plane | `3385 / 4138` (`0.818028`) | `1030 / 1498` (`0.687583`) |
 | Source-checkout admission | `235 / 267` (`0.880150`) | `83 / 94` (`0.882979`) |
 | Runtime-availability admission | `364 / 410` (`0.887805`) | `100 / 138` (`0.724638`) |
 | `emrys.contracts.scientific_evidence` | `592 / 597` (`0.991625`) | `283 / 290` (`0.975862`) |
@@ -75,7 +75,7 @@ while covered counts grew by `4645` statements and `1396` branches. Coverage
 therefore expanded substantially while the global ratios declined. This
 explicit rebase accepts the measured Campaign B source/test surface and adds
 independent non-regression floors for orchestration machine contracts, the
-local-pilot control plane, source-checkout admission, and runtime-availability
+run-coordinator control plane, source-checkout admission, and runtime-availability
 admission.
 
 Scientific-evidence line coverage increased with identical branch coverage;
@@ -149,7 +149,7 @@ archived entry-point matrices.
 | Surface or risk | Current regression route |
 | --- | --- |
 | Python, shell, R, file mode, arbitrary CWD, and Make entry points | [`test_public_cli_contracts.py`](../../tests/test_public_cli_contracts.py) plus the applicable direct owner |
-| Whole-Run execution profile, direct/Slurm placement, modules, private scratch, scheduler receipt, grouped control, and hosted successful-outcome parity | [`test_execution_profile.py`](../../tests/orchestration/local_pilot/test_execution_profile.py), [`test_slurm_submission.py`](../../tests/orchestration/local_pilot/test_slurm_submission.py), [`test_real_synthetic_e2e.py`](../../tests/test_real_synthetic_e2e.py), the retained [`real_synthetic_e2e.py`](../../tests/tools/real_synthetic_e2e.py) driver, and affected control/materialization/lifecycle tests |
+| Whole-Run execution profile, direct/Slurm placement, modules, private scratch, scheduler receipt, grouped control, and hosted successful-outcome parity | [`test_execution_profile.py`](../../tests/orchestration/run_coordinator/test_execution_profile.py), [`test_slurm_submission.py`](../../tests/orchestration/run_coordinator/test_slurm_submission.py), [`test_real_synthetic_e2e.py`](../../tests/test_real_synthetic_e2e.py), the retained [`real_synthetic_e2e.py`](../../tests/tools/real_synthetic_e2e.py) driver, and affected control/materialization/lifecycle tests |
 | Exact validation check rosters | [`validation_roster_expectations.py`](../../tests/contract_integration/validation_rosters/validation_roster_expectations.py) and [`test_validation_check_rosters.py`](../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py) |
 | Validation publication and neutral BAM/reference/executable-resolution helpers | [`test_validation_report.py`](../../tests/libraries/test_validation_report.py), [`test_bam_validation.py`](../../tests/libraries/test_bam_validation.py), [`test_reference_contigs.py`](../../tests/libraries/test_reference_contigs.py), [`test_executable_resolution.py`](../../tests/libraries/test_executable_resolution.py), and affected consumer transaction suites |
 | Public schemas, headers, deterministic bytes, and computational statuses | Contract-owner tests under `tests/contracts/` plus [independent contract goldens](../../tests/contract_integration/independent_contract_goldens/README.md) and affected producer suites |

@@ -11,7 +11,7 @@ validate production inputs, or repair a runtime.
 
 The direct API returns the admitted profile bytes and SHA-256, normalized
 checks, observations, deterministic result bytes, and required-readiness
-summary without publication. The local-pilot doctor consumes that result with
+summary without publication. The run-coordinator doctor consumes that result with
 an explicit guarded R environment; it does not parse CLI output or import the
 private probe/model modules. Private modules separate
 literal data/error contracts (`_runtime_model.py`), profile parsing
@@ -26,7 +26,7 @@ nothing; execute mode publishes the requested TSV. Exit zero means probing and
 any requested publication completed, not that every required probe passed.
 Ordinary `tool_version` probes require command status zero. The explicit
 `tool_version_exit_1` probe type requires status exactly 1 before applying its
-output regex; the fixed local-pilot profile uses it for Picard 3.1.1's exact
+output regex; the fixed run-coordinator profile uses it for Picard 3.1.1's exact
 `java -jar ... MarkDuplicates --version` behavior. Other nonzero tool probes
 remain failures.
 
@@ -46,8 +46,8 @@ The stricter fixed-pilot roster is the packaged internal
 Project runtime discovery; it does not change this generic profile contract.
 For Slurm execution, admit the Project runtime and use the complete immutable
 Run through `emrys run` or `emrys resume` as documented in the
-[runbook](../../../../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes).
-For the guarded local pilot, the declared `renv_library` itself remains one
+[runbook](../../../../docs/operations/RUNBOOK.md#run-coordinator-lifecycle-routes).
+For the guarded run coordinator, the declared `renv_library` itself remains one
 canonical real directory. An installed package entry may be a normal `renv`
 cache symlink, but the probe resolves it and requires `find.package`, the loaded
 namespace, and the recorded package-tree identity to agree on the exact

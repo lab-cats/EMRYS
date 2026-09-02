@@ -1,6 +1,6 @@
 # Orchestration schemas
 
-This directory stores versioned machine resources for the neutral local-pilot
+This directory stores versioned machine resources for the neutral run-coordinator
 orchestration contract owner. The supported registry and validation API are
 documented in [`../../orchestration`](../../orchestration/README.md).
 

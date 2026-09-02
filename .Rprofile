@@ -31,14 +31,14 @@ local({
 
     if (identical(local_pilot, "1")) {
         if (!identical(use_renv, "1")) {
-            stop("EMRYS local-pilot R requires EMRYS_USE_RENV=1.")
+            stop("Guarded EMRYS R requires EMRYS_USE_RENV=1.")
         }
         project_root <- Sys.getenv("RENV_PROJECT", unset = "")
         selected_library <- Sys.getenv("EMRYS_RENV_LIBRARY", unset = "")
         expected_renv_version <- Sys.getenv("EMRYS_RENV_VERSION", unset = "")
         if (!nzchar(project_root) || !nzchar(selected_library) ||
             !nzchar(expected_renv_version)) {
-            stop("EMRYS local-pilot R selectors are incomplete.")
+            stop("Guarded EMRYS R selectors are incomplete.")
         }
         project_root <- normalizePath(project_root, winslash = "/", mustWork = TRUE)
         selected_library <- normalizePath(
@@ -53,7 +53,7 @@ local({
             ),
             profile_path
         )) {
-            stop("EMRYS local-pilot R did not select the reviewed project profile.")
+            stop("Guarded EMRYS R did not select the reviewed project profile.")
         }
         renv_description <- file.path(selected_library, "renv", "DESCRIPTION")
         if (!file.exists(renv_description)) {

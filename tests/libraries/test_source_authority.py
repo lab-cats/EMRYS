@@ -28,7 +28,7 @@ RESOURCE_FILES: Mapping[str, bytes] = {
     "contracts/schemas/orchestration/v1/common.schema.json": b'{"schema": true}\n',
     "contracts/schemas/orchestration/v2/request.schema.json": b'{"schema": true}\n',
     "contracts/schemas/orchestration/v3/execution_profile.schema.json": b'{"schema": 3}\n',
-    "orchestration/local_pilot/resources/default_execution.yaml": (
+    "orchestration/run_coordinator/resources/default_execution.yaml": (
         b"schema_version: emrys.execution-profile.v1\n"
     ),
     "resources/runtime/runtime_policy.tsv": b"check_id\tcheck_type\n",
@@ -126,7 +126,7 @@ def _project_configuration(name: str = PROJECT_NAME) -> bytes:
         "\n"
         "[tool.setuptools.package-data]\n"
         '"emrys.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json", "schemas/artifacts/v3/*.json", "schemas/artifacts/v4/*.json", "schemas/orchestration/v1/*.json", "schemas/orchestration/v2/*.json", "schemas/orchestration/v3/*.json"]\n'
-        '"emrys.orchestration.local_pilot" = ["resources/*.yaml"]\n'
+        '"emrys.orchestration.run_coordinator" = ["resources/*.yaml"]\n'
         '"emrys" = ["resources/runtime/*"]\n'
         '"emrys.reporting" = ["styles/*.css", "templates/*.html.j2"]\n'
     ).encode()
@@ -418,7 +418,7 @@ def test_package_identity_rejects_dirty_tracked_checkout_bytes(tmp_path: Path) -
         Path("contracts/schemas/artifacts/v4/report_receipt.schema.json"),
         Path("contracts/schemas/orchestration/v1/common.schema.json"),
         Path("contracts/schemas/orchestration/v3/execution_profile.schema.json"),
-        Path("orchestration/local_pilot/resources/default_execution.yaml"),
+        Path("orchestration/run_coordinator/resources/default_execution.yaml"),
         Path("resources/runtime/runtime_policy.tsv"),
     ),
 )

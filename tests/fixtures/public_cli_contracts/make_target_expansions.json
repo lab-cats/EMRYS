@@ -9,7 +9,7 @@
   ],
   "dashboard": [
     "\"/usr/bin/python3\" -I -B \\",
-    "\t\t\"<REPO_ROOT>/src/emrys/orchestration/local_pilot/dashboard.py\" \\",
+    "\t\t\"<REPO_ROOT>/src/emrys/orchestration/run_coordinator/dashboard.py\" \\",
     "\t\t--refresh \"$EMRYS_DASHBOARD_REFRESH\""
   ],
   "documentation-check": [

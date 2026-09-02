@@ -28,7 +28,7 @@ def fixture_files() -> dict[str, dict[str, dict[str, int]]]:
         "src/emrys/contracts/orchestration/private_contract.py": {
             "summary": summary((90, 100), (34, 40))
         },
-        "src/emrys/orchestration/local_pilot/private_control.py": {
+        "src/emrys/orchestration/run_coordinator/private_control.py": {
             "summary": summary((80, 100), (28, 40))
         },
         "src/emrys/libraries/source_authority.py": {
@@ -120,13 +120,13 @@ def test_campaign_b_critical_owner_floors_are_independent() -> None:
         name: TOOL.CRITICAL_OWNER_GROUPS[name]
         for name in (
             "orchestration_machine_contracts",
-            "local_pilot_control_plane",
+            "run_coordinator",
             "source_checkout_admission",
             "runtime_availability_admission",
         )
     } == {
         "orchestration_machine_contracts": ("src/emrys/contracts/orchestration/",),
-        "local_pilot_control_plane": ("src/emrys/orchestration/local_pilot/",),
+        "run_coordinator": ("src/emrys/orchestration/run_coordinator/",),
         "source_checkout_admission": ("src/emrys/libraries/source_authority.py",),
         "runtime_availability_admission": ("src/emrys/evidence/runtime_availability/",),
     }

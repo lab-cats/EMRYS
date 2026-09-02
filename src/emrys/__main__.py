@@ -19,11 +19,11 @@ import emrys.evidence.runtime_availability.inspector as runtime_availability_ins
 import emrys.evidence.storage_inventory.inspector as storage_inventory_inspection_command
 import emrys.evidence.storage_inventory.qualification as storage_qualification_inspection_command
 import emrys.ingestion.sample_manifest_admission.validator as manifest_command
-import emrys.orchestration.local_pilot.all_pass as all_pass_validation_command
-import emrys.orchestration.local_pilot.control as local_pilot_control_command
-import emrys.orchestration.local_pilot.doctor as local_pilot_doctor_command
-import emrys.orchestration.local_pilot.onboarding as local_pilot_onboarding_command
-import emrys.orchestration.local_pilot.synthetic_fixture as local_pilot_synthetic_fixture_command
+import emrys.orchestration.run_coordinator.all_pass as all_pass_validation_command
+import emrys.orchestration.run_coordinator.control as run_coordinator_control_command
+import emrys.orchestration.run_coordinator.doctor as run_coordinator_doctor_command
+import emrys.orchestration.run_coordinator.onboarding as run_coordinator_onboarding_command
+import emrys.orchestration.run_coordinator.synthetic_fixture as run_coordinator_synthetic_fixture_command
 import emrys.stages.canonical_bam.validator as canonical_bam_validation_command
 import emrys.stages.cohort_candidate_preprocessing.validator as cohort_candidate_preprocessing_validation_command
 import emrys.stages.duplicate_marking.validator as duplicate_marking_validation_command
@@ -166,7 +166,7 @@ def _add_onboarding_commands(command_parsers: Any) -> None:
     _add_owned_command(
         init_parsers,
         _PROJECT_INIT_SUBJECT,
-        local_pilot_onboarding_command,
+        run_coordinator_onboarding_command,
         "init_project",
         argparse.SUPPRESS,
         (
@@ -184,7 +184,7 @@ def _add_onboarding_commands(command_parsers: Any) -> None:
     _add_owned_command(
         init_parsers,
         "manifests",
-        local_pilot_onboarding_command,
+        run_coordinator_onboarding_command,
         "init_manifests",
         "Draft strict sample and optional partition manifests from paths.",
         "Infer structural pairs and require explicit biological metadata.",
@@ -193,7 +193,7 @@ def _add_onboarding_commands(command_parsers: Any) -> None:
     _add_owned_command(
         init_parsers,
         "synthetic",
-        local_pilot_synthetic_fixture_command,
+        run_coordinator_synthetic_fixture_command,
         "init",
         "Create a deterministic four-library synthetic Project.",
     )
@@ -204,7 +204,7 @@ def _add_onboarding_commands(command_parsers: Any) -> None:
         "Discover and admit the active Project runtime.",
         "runtime_operation",
         ((
-            "discover", local_pilot_onboarding_command, "discover_runtime",
+            "discover", run_coordinator_onboarding_command, "discover_runtime",
             "Inspect the active environment and admit one Project runtime.",
             "Discover one unambiguous fixed-workflow runtime, run its readiness "
             "probes, and optionally publish the Project-owned inventory. Discovery "
@@ -237,15 +237,15 @@ def build_parser() -> argparse.ArgumentParser:
     _add_owned_command(
         command_parsers,
         "doctor",
-        local_pilot_doctor_command,
+        run_coordinator_doctor_command,
         "doctor",
         "Diagnose Project readiness and explicitly repair managed runtime state.",
     )
     for command in (
-        ("run", local_pilot_control_command, "run", "Plan or execute one selected Project Analysis."),
-        ("resume", local_pilot_control_command, "resume", "Plan or resume one failed or interrupted Run."),
-        ("report", local_pilot_control_command, "report", "Plan, generate, or reuse reports for one completed Run."),
-        ("inspect", local_pilot_control_command, "inspect", "Inspect one Project-local Run without mutation."),
+        ("run", run_coordinator_control_command, "run", "Plan or execute one selected Project Analysis."),
+        ("resume", run_coordinator_control_command, "resume", "Plan or resume one failed or interrupted Run."),
+        ("report", run_coordinator_control_command, "report", "Plan, generate, or reuse reports for one completed Run."),
+        ("inspect", run_coordinator_control_command, "inspect", "Inspect one Project-local Run without mutation."),
     ):
         _add_owned_command(command_parsers, *command, controlled=True)
     _add_group(
@@ -282,16 +282,16 @@ def build_parser() -> argparse.ArgumentParser:
     validate_parser = command_parsers.add_parser(
         "validate",
         help="Validate the current Project or one specialist input.",
-        description=local_pilot_onboarding_command.DESCRIPTION,
+        description=run_coordinator_onboarding_command.DESCRIPTION,
     )
-    local_pilot_onboarding_command.configure_validation_parser(validate_parser)
+    run_coordinator_onboarding_command.configure_validation_parser(validate_parser)
     validate_parser.set_defaults(
-        _command_handler=local_pilot_onboarding_command.validate_from_args,
+        _command_handler=run_coordinator_onboarding_command.validate_from_args,
         _command_parser=validate_parser,
     )
     validation_parsers = validate_parser.add_subparsers(
         dest="validation",
-        metavar="SUBJECT",
+        metavar="[SUBJECT]",
     )
     for name, owner in _VALIDATION_OWNERS:
         _add_owned_command(validation_parsers, name, owner, "validate")

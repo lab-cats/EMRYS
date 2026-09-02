@@ -1,4 +1,4 @@
-"""Focused contract tests for the closed local-pilot schema registry."""
+"""Focused contract tests for the closed run-coordinator schema registry."""
 
 from __future__ import annotations
 

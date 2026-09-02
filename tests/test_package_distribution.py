@@ -53,7 +53,7 @@ RESOURCE_PATHS = (
     "emrys/contracts/schemas/orchestration/v3/request.schema.json",
     "emrys/contracts/schemas/orchestration/v3/resource_config.schema.json",
     "emrys/contracts/schemas/orchestration/v3/execution_profile.schema.json",
-    "emrys/orchestration/local_pilot/resources/default_execution.yaml",
+    "emrys/orchestration/run_coordinator/resources/default_execution.yaml",
     "emrys/resources/runtime/runtime_policy.tsv",
     "emrys/resources/runtime/pixi.toml",
     "emrys/resources/runtime/pixi.lock",
@@ -82,8 +82,8 @@ RESOURCE_PATHS = (
     "emrys/reporting/templates/run_report.html.j2",
 )
 PUBLIC_ONBOARDING_MODULES = {
-    "emrys/orchestration/local_pilot/onboarding.py",
-    "emrys/orchestration/local_pilot/synthetic_fixture.py",
+    "emrys/orchestration/run_coordinator/onboarding.py",
+    "emrys/orchestration/run_coordinator/synthetic_fixture.py",
 }
 PRIVATE_RUNTIME_MODULES = {
     "emrys/stages/mechanical_orientation/producer.py",

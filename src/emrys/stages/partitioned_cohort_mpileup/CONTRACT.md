@@ -82,7 +82,7 @@ stable outputs. A direct invocation hashes the exact sample and partition
 manifests, reference FASTA/FAI pair, selected regions file when applicable,
 and both BAM/BAI pairs for every admitted sample before bcftools, then rechecks
 that roster after tool execution and again before publication. An admitted
-local-pilot task has already hashed the same declared roster twice at producer
+run-coordinator task has already hashed the same declared roster twice at producer
 entry. It supplies a process-lifetime aggregate only to this producer, which
 reconstructs the roster without another initial full pass and rehashes the
 complete roster immediately before publication. The task boundary performs

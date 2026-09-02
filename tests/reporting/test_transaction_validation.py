@@ -25,7 +25,7 @@ from emrys.reporting._run_summary import publication as summary_publication
 from tests.contracts.orchestration.test_application_model_contracts import (
     successor_run_fixture,
 )
-from tests.orchestration.local_pilot.fixtures import workflow as workflow_fixture
+from tests.orchestration.run_coordinator.fixtures import workflow as workflow_fixture
 from tests.reporting.fixtures.artifact_adapters_v1 import (
     build_fixture as adapter_fixture,
 )

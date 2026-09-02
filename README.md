@@ -138,7 +138,6 @@ emrys runtime discover --execute
 emrys doctor
 emrys run
 emrys inspect
-emrys resume
 emrys report
 ```
 
@@ -199,7 +198,7 @@ establishes.
 | Need | Canonical guide |
 | --- | --- |
 | Every input and runtime-profile field | [`configs/README.md`](configs/README.md) |
-| Public Project and Run boundary | [`src/emrys/orchestration/local_pilot/README.md`](src/emrys/orchestration/local_pilot/README.md) |
+| Public Project and Run boundary | [`src/emrys/orchestration/run_coordinator/README.md`](src/emrys/orchestration/run_coordinator/README.md) |
 | Recurring operations, scheduler inspection, and recovery | [`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md) |
 | Evidence-preserving recovery | [`docs/operations/TROUBLESHOOTING.md`](docs/operations/TROUBLESHOOTING.md) |
 | Optional external scientific-evaluation checklist | [`docs/reference/EXTERNAL_SCIENTIFIC_EVALUATION.md`](docs/reference/EXTERNAL_SCIENTIFIC_EVALUATION.md) |

@@ -20,7 +20,7 @@ boundary, not independently at every leaf command, compatibility facade,
 transport, or scheduler wrapper. The accepted outer operation owns exactly one
 application attempt and resolves controls once. Retained delegates receive the
 resolved controls and event context explicitly and do not open a second attempt.
-For scheduled local-pilot execution, the compute-side `run`/`resume` delegate is
+For scheduled run-coordinator execution, the compute-side `run`/`resume` delegate is
 that operation; submission is transport only. Automatic reporting continues in
 that Run log, while standalone reporting opens one log only when generation
 begins. For Doctor, only confirmed repair is the operation; readiness diagnosis

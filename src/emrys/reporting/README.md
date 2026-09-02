@@ -197,7 +197,7 @@ does not misclassify preserved 5.1.0 HTML as a failed 5.2.0 reconstruction or
 permit that legacy location for current publication.
 
 This completion boundary assumes the same single-user, cooperative workspace
-as the local pilot. Pre-existing symlink components, leaf substitution,
+as the run coordinator. Pre-existing symlink components, leaf substitution,
 unstable bytes, and roster drift fail closed; hostile concurrent replacement
 of ancestor directories or mount namespaces requires external isolation and
 lies outside this local evidence claim.

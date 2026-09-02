@@ -16,7 +16,7 @@ VCF counts, and candidate processing behind the public R coordinator; they are
 not additional commands or package APIs.
 For Slurm execution, use the complete immutable Run through `emrys run` or
 `emrys resume` as documented in the
-[runbook](../../../../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes).
+[runbook](../../../../docs/operations/RUNBOOK.md#run-coordinator-lifecycle-routes).
 
 ## Operate
 

@@ -1,4 +1,4 @@
-# Local-pilot orchestration schemas v1
+# Run-coordinator orchestration schemas v1
 
 This directory contains fourteen Draft 2020-12 JSON resources: one shared
 definition resource plus thirteen registered selectors for the active Project,

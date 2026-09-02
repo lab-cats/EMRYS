@@ -12,7 +12,7 @@ with the relevant child and functional owner.
 | Which public programs, jobs, validators, and tests exist? | [`FUNCTIONAL_OWNER_INVENTORY.md`](FUNCTIONAL_OWNER_INVENTORY.md) |
 | What are the semantic identities and artifact edges? | [`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md) |
 | Which source dependencies and shared seams are allowed? | [`SOURCE_TOPOLOGY.md`](../../src/emrys/contracts/SOURCE_TOPOLOGY.md) |
-| How is the implemented source-checkout local pilot designed? | [`ORCHESTRATION_CONTRACT.md`](../design/ORCHESTRATION_CONTRACT.md), workflow profile, stage map, owner contracts/tests, and [`local_pilot_orchestration.mmd`](diagrams/local_pilot_orchestration.mmd) |
+| How is the implemented source-checkout run coordinator designed? | [`ORCHESTRATION_CONTRACT.md`](../design/ORCHESTRATION_CONTRACT.md), workflow profile, stage map, owner contracts/tests, and [`run_coordinator.mmd`](diagrams/run_coordinator.mmd) |
 | Which invariants and migration guardrails constrain architecture changes? | [Ratified architectural invariant constitution](../design/decisions/platform-direction.md#ratified-architectural-invariant-constitution) |
 | What target responsibilities, dependency graphs, and forbidden authority transfers bind architecture work? | [Ratified responsibility and dependency model](../design/decisions/platform-direction.md#ratified-responsibility-and-dependency-model) |
 | What accepted work remains? | [`backlog_matrix.md`](../tasks/backlog_matrix.md) |
