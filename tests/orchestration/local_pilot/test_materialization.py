@@ -71,6 +71,7 @@ from emrys.orchestration.local_pilot.normalization import (
 from emrys.orchestration.local_pilot.execution_profile import load_execution_profile
 from emrys.orchestration.local_pilot.resource_policy import (
     AllocationCapacity,
+    ResourceOverrides,
     resolve_resource_policy,
 )
 from emrys.orchestration.local_pilot.run_implementation import (
@@ -2101,7 +2102,6 @@ def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
     second = control._plan_resume(
         first.run_root,
         execution_profile=load_execution_profile(request),
-        profile_resources_explicit=False,
     )
 
     assert selected == [retained]
@@ -2151,7 +2151,6 @@ def test_successor_resume_snapshots_current_runtime_profile(
     second = control._plan_resume(
         first.run_root,
         execution_profile=load_execution_profile(first.run.analysis.source_path),
-        profile_resources_explicit=False,
     )
 
     new_profile = next(
@@ -2175,6 +2174,43 @@ def test_successor_resume_snapshots_current_runtime_profile(
     )
 
 
+def test_reporting_profile_inherits_computation_and_cli_reporting_wins(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first = _plan(tmp_path, workflow_cores=2)
+    observed = _failed_run(first)
+    _patch_resume_control(monkeypatch, observed, first.readiness, first.resources, [])
+    selected = tmp_path / "reporting.yaml"
+    selected.write_text(
+        "schema_version: emrys.execution-profile.v1\n"
+        "resources:\n"
+        "  schema_version: emrys.local-pilot-resources.v1\n"
+        "  reporting_memory_mb:\n"
+        "    html_report: 512\n",
+        encoding="utf-8",
+    )
+    profile = load_execution_profile(
+        first.run.analysis.source_path,
+        config_path=selected,
+    )
+
+    second = control._plan_resume(
+        first.run_root,
+        execution_profile=profile,
+        resource_overrides=ResourceOverrides(
+            reporting_memory_mb=(("html_report", 768),)
+        ),
+    )
+
+    expected_reporting = dict(first.resources.reporting_memory_mb)
+    expected_reporting["html_report"] = 768
+    assert not profile.computational_resources_explicit
+    assert second.resources.declaration == first.resources.declaration
+    assert dict(second.resources.reporting_memory_mb) == expected_reporting
+    assert second.attempt_record["placement"]["source"]["path"] == str(selected)
+
+
 def test_project_v1_predecessor_does_not_enable_request_v3_resume(
     tmp_path: Path,
 ) -> None:
@@ -2190,7 +2226,6 @@ def test_project_v1_predecessor_does_not_enable_request_v3_resume(
         control._plan_resume(
             first.run_root,
             execution_profile=load_execution_profile(first.run.analysis.source_path),
-            profile_resources_explicit=False,
         )
 
 
@@ -2331,7 +2366,6 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     second = control._plan_resume(
         first.run_root,
         execution_profile=resume_profile,
-        profile_resources_explicit=False,
         scheduler_job_id="700123",
     )
     assert selected_runtime_profiles == [
@@ -2625,6 +2659,10 @@ def test_public_run_dry_run_is_no_write(
         execute_plan=lambda plan, _observe, _inspection: executed.append(plan),
         transform_plan=lambda plan: plan,
     )
+    named = workspace / "emrys.execution.ci.yaml"
+    shutil.copy2(arguments.execution_profile, named)
+    arguments.execution_profile = None
+    arguments.profile = "ci"
 
     projections = {}
     workspace = arguments.project.parent
@@ -2683,6 +2721,9 @@ def test_public_run_dry_run_is_no_write(
     assert "Snakemake command:" in debug
     assert "TASK " in debug
     assert executed == []
+    arguments.profile = "missing"
+    assert control.run_from_args(arguments) == 2
+    assert "emrys.execution.missing.yaml" in capsys.readouterr().err
 
 
 def test_processing_run_dry_run_is_no_write_and_truthfully_scoped(
@@ -2792,11 +2833,19 @@ def test_interactive_resume_uses_the_same_no_write_gate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     plan = _plan(tmp_path)
-    monkeypatch.setattr(control, "_plan_resume", lambda *_args, **_kwargs: plan)
+    named = plan.workspace / "emrys.execution.resume-ci.yaml"
+    shutil.copy2(plan.run.analysis.source_path.parent / "emrys.execution.yaml", named)
+
+    def plan_resume(*_args: object, execution_profile, **_kwargs: object):
+        assert execution_profile.source_path == named
+        return plan
+
+    monkeypatch.setattr(control, "_plan_resume", plan_resume)
     monkeypatch.setattr(control.sys, "stdin", _InputStream("no\n"))
     monkeypatch.setattr(control.sys, "stderr", _TerminalOutput(control.sys.stderr))
     arguments = argparse.Namespace(
         run_root=plan.run_root,
+        profile="resume-ci",
         execution_profile=None,
         log_level=None,
         log_root=None,
@@ -2809,6 +2858,10 @@ def test_interactive_resume_uses_the_same_no_write_gate(
     assert "Execute this plan? [y/N]" in rendered
     assert "Dry-run complete; no resume state was written." in rendered
     assert not plan.run_root.exists()
+    arguments.profile = None
+    (plan.workspace / "emrys.resources.yaml").write_text("retired: true\n")
+    assert control.resume_from_args(arguments) == 2
+    assert "Retired adjacent configuration requires migration" in capsys.readouterr().err
 
 
 def test_public_execute_logs_and_terminalizes_doctor_failure_before_run_state(
@@ -3267,8 +3320,15 @@ def test_private_slurm_delegate_rejects_profile_drift_before_readiness(
 ) -> None:
     arguments = _scheduled_run_arguments(tmp_path, execute=True)
     scheduler = control.slurm_submission
+    admitted = load_execution_profile(
+        arguments.project,
+        config_path=arguments.execution_profile,
+    )
+    arguments.execution_profile.write_bytes(
+        arguments.execution_profile.read_bytes() + b"# equivalent rewrite\n"
+    )
     monkeypatch.setenv(scheduler.DELEGATE_MARKER_ENV, scheduler.DELEGATE_MARKER)
-    monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, "0" * 64)
+    monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, admitted.binding_sha256)
     monkeypatch.setenv(scheduler.SUBMIT_UID_ENV, str(os.getuid()))
     monkeypatch.setenv("SLURM_JOB_ID", "812345")
     monkeypatch.setattr(
@@ -3278,8 +3338,20 @@ def test_private_slurm_delegate_rejects_profile_drift_before_readiness(
     )
 
     assert control.run_from_args(arguments) == 2
-    assert "Execution-profile SHA-256 differs" in capsys.readouterr().err
+    assert "Execution-profile binding SHA-256 differs" in capsys.readouterr().err
     assert not (arguments.project.parent / "logs").exists()
+    profile = load_execution_profile(
+        arguments.project,
+        config_path=arguments.execution_profile,
+    )
+    monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, profile.binding_sha256)
+    monkeypatch.setenv("SLURM_JOB_ID", "01")
+    assert control.run_from_args(arguments) == 2
+    assert "canonical positive decimal" in capsys.readouterr().err
+    with pytest.raises(control.ControlError, match="requires Slurm placement"):
+        control._delegate_job_id(
+            load_execution_profile(arguments.project), profile.binding_sha256
+        )
 
 
 @pytest.mark.parametrize(
@@ -3783,8 +3855,29 @@ def test_public_help_routes() -> None:
         if command[0] == "run":
             assert "--through {analysis,processing}" in result.stdout
             assert "--from-processing-run" in result.stdout
+            assert "--profile NAME" in result.stdout
+            assert "--execution-profile PATH" in result.stdout
         if command[0] == "resume":
             assert "--through" not in result.stdout
+            assert "--profile NAME" in result.stdout
+            assert "--execution-profile PATH" in result.stdout
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    (
+        ("--profile", "ci", "--execution-profile", "/tmp/site.yaml"),
+        ("--profile", "../escape"),
+    ),
+)
+def test_profile_name_is_safe_and_mutually_exclusive_with_explicit_path(
+    arguments: tuple[str, ...],
+) -> None:
+    parser = argparse.ArgumentParser()
+    control.configure_run_parser(parser)
+    with pytest.raises(SystemExit) as caught:
+        parser.parse_args(("--project", "/tmp/project.yaml", *arguments))
+    assert caught.value.code == 2
 
 
 def _clean_checkout(tmp_path: Path) -> tuple[Path, str]:

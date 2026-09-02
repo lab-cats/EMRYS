@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import hashlib
 import os
 import re
@@ -19,13 +18,13 @@ from emrys.orchestration.local_pilot.resource_policy import (
     ResourceOverrides,
     ResourcePolicy,
     admit_resource_policy,
+    is_canonical_slurm_job_id,
     resume_resource_policy,
 )
 
 SCHEMA_VERSION = "emrys.execution-profile.v1"
 DEFAULT_PROFILE_PATH = Path(__file__).parent / "resources/default_execution.yaml"
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_POSITIVE_DECIMAL = re.compile(r"^[1-9][0-9]*$")
 
 
 class ExecutionProfileError(ValueError):
@@ -95,6 +94,8 @@ class ExecutionProfile:
     placement: Placement
     source_path: Path
     source_raw_sha256: str
+    computational_resources_explicit: bool
+    selected_reporting_memory: tuple[tuple[str, int | Literal["workflow"]], ...]
 
     def document(self) -> dict[str, Any]:
         """Return the complete effective profile without source locators."""
@@ -111,6 +112,12 @@ class ExecutionProfile:
 
         return orchestration_contracts.canonical_sha256(self.document())
 
+    @property
+    def binding_sha256(self) -> str:
+        """Bind effective semantics to the exact selected source bytes."""
+
+        return hashlib.sha256(f"{self.sha256}\0{self.source_raw_sha256}".encode()).hexdigest()
+
     def attempt_placement(self, slurm_job_id: str | None = None) -> dict[str, Any]:
         """Project closed Attempt-local placement provenance."""
 
@@ -118,10 +125,7 @@ class ExecutionProfile:
             raise ExecutionProfileError("Direct placement cannot record a Slurm job ID")
         if isinstance(self.placement, SlurmPlacement) and slurm_job_id is None:
             raise ExecutionProfileError("Slurm placement requires one job ID")
-        if slurm_job_id is not None and (
-            not isinstance(slurm_job_id, str)
-            or _POSITIVE_DECIMAL.fullmatch(slurm_job_id) is None
-        ):
+        if slurm_job_id is not None and not is_canonical_slurm_job_id(slurm_job_id):
             raise ExecutionProfileError(
                 "Slurm job ID must be one canonical positive decimal string or null"
             )
@@ -169,28 +173,18 @@ def _read_profile(path: Path, label: str) -> tuple[Path, bytes, dict[str, Any]]:
     return resolved, data, value
 
 
-def _merge_resource_fragment(
-    target: dict[str, Any], fragment: Mapping[str, Any]
-) -> None:
-    for key, value in fragment.items():
-        if key == "schema_version":
-            continue
-        if isinstance(value, Mapping):
-            selected = target.get(key)
-            if not isinstance(selected, dict):
-                selected = {}
-                target[key] = selected
-            selected.update(copy.deepcopy(dict(value)))
-        else:
-            target[key] = copy.deepcopy(value)
-
-
 def _merge_profile(target: dict[str, Any], fragment: Mapping[str, Any]) -> None:
     resources = fragment.get("resources")
     if isinstance(resources, Mapping):
-        _merge_resource_fragment(target["resources"], resources)
+        for key, value in resources.items():
+            if key == "schema_version":
+                continue
+            if isinstance(value, Mapping):
+                target["resources"][key].update(dict(value))
+            else:
+                target["resources"][key] = value
     if "placement" in fragment:
-        target["placement"] = copy.deepcopy(fragment["placement"])
+        target["placement"] = fragment["placement"]
 
 
 def _absolute_nonroot_path(value: str) -> Path:
@@ -225,7 +219,7 @@ def load_execution_profile(
     context_path: Path,
     config_path: Path | None = None,
     resource_overrides: ResourceOverrides = ResourceOverrides(),
-    expected_sha256: str | None = None,
+    expected_binding_sha256: str | None = None,
 ) -> ExecutionProfile:
     """Load the direct default, an explicit fragment, and resource overrides.
 
@@ -233,8 +227,10 @@ def load_execution_profile(
     explicitly, preventing an old starter from silently using new defaults.
     """
 
-    if expected_sha256 is not None and _SHA256.fullmatch(expected_sha256) is None:
-        raise ExecutionProfileError("expected_sha256 must be 64 lowercase hex")
+    if expected_binding_sha256 is not None and _SHA256.fullmatch(
+        expected_binding_sha256
+    ) is None:
+        raise ExecutionProfileError("expected_binding_sha256 must be 64 lowercase hex")
     if config_path is None:
         context_parent = Path(os.path.abspath(context_path)).parent
         retired = tuple(
@@ -253,41 +249,38 @@ def load_execution_profile(
                 "execution profile: " + ", ".join(retired)
             )
 
-    default_path, default_data, default = _read_profile(
+    source_path, source_data, default = _read_profile(
         DEFAULT_PROFILE_PATH,
         "built-in execution profile",
     )
-    document = copy.deepcopy(default)
-    selected_path: Path | None = None
-    selected_data: bytes | None = None
-    selected_fragment: dict[str, Any] | None = None
+    default_resource_sha256 = orchestration_contracts.canonical_sha256(
+        default["resources"]
+    )
+    document = default
+    selected_fragment: dict[str, Any] = {}
     if config_path is not None:
-        selected_path, selected_data, selected_fragment = _read_profile(
+        source_path, source_data, selected_fragment = _read_profile(
             Path(config_path),
             "execution profile",
         )
         _merge_profile(document, selected_fragment)
 
     _validate_profile(document)
-    default_sha256 = hashlib.sha256(default_data).hexdigest()
-    config_sha256 = (
-        None if selected_data is None else hashlib.sha256(selected_data).hexdigest()
-    )
+    source_sha256 = hashlib.sha256(source_data).hexdigest()
     resources = document["resources"]
-    selected_resources = (
-        None if selected_fragment is None else selected_fragment.get("resources")
-    )
-    resource_fragment_explicit = isinstance(selected_resources, Mapping) and set(
-        selected_resources
-    ) != {"schema_version"}
-    resource_config_path = selected_path if resource_fragment_explicit else None
-    resource_config_sha256 = config_sha256 if resource_fragment_explicit else None
+    selected_resources = selected_fragment.get("resources", {})
+    explicit_resource_fields = {
+        key
+        for key, value in selected_resources.items()
+        if key != "schema_version" and value
+    }
+    resource_fragment_explicit = bool(explicit_resource_fields)
+    resource_config_path = source_path if resource_fragment_explicit else None
+    resource_config_sha256 = source_sha256 if resource_fragment_explicit else None
     try:
         policy = admit_resource_policy(
             resources,
-            default_sha256=orchestration_contracts.canonical_sha256(
-                default["resources"]
-            ),
+            default_sha256=default_resource_sha256,
             config_path=resource_config_path,
             config_sha256=resource_config_sha256,
         )
@@ -298,11 +291,20 @@ def load_execution_profile(
     profile = ExecutionProfile(
         resource_policy=policy,
         placement=_admit_placement(document["placement"]),
-        source_path=default_path if selected_path is None else selected_path,
-        source_raw_sha256=(default_sha256 if config_sha256 is None else config_sha256),
+        source_path=source_path,
+        source_raw_sha256=source_sha256,
+        computational_resources_explicit=bool(
+            explicit_resource_fields - {"reporting_memory_mb"}
+        ),
+        selected_reporting_memory=tuple(
+            selected_resources.get("reporting_memory_mb", {}).items()
+        ),
     )
-    if expected_sha256 is not None and profile.sha256 != expected_sha256:
-        raise ExecutionProfileError("Execution-profile SHA-256 differs")
+    if (
+        expected_binding_sha256 is not None
+        and profile.binding_sha256 != expected_binding_sha256
+    ):
+        raise ExecutionProfileError("Execution-profile binding SHA-256 differs")
     return profile
 
 

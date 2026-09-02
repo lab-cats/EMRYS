@@ -31,10 +31,26 @@ STAGE_IDS = (
 REPEATABLE_STAGE_IDS = ("01", "02", "02b", "03", "04", "05", "06", "07")
 THREAD_CAPABLE_STAGE_IDS = ("00a", "01", "02", "06", "08")
 REPORTING_KINDS = ("artifact_index", "run_summary", "html_report")
+_SCALAR_RESOURCE_CONTROLS = ("workflow_cores", "workflow_memory_mb")
+_KEYED_RESOURCE_CONTROLS = (
+    ("stage_concurrency", REPEATABLE_STAGE_IDS, "STEP=COUNT"),
+    ("step_threads", THREAD_CAPABLE_STAGE_IDS, "STEP=THREADS"),
+    ("stage_memory_mb", STAGE_IDS, "STEP=MIB"),
+    ("reporting_memory_mb", REPORTING_KINDS, "KIND=MIB"),
+)
 
 
 class ResourceConfigError(ValueError):
     """One resource source or its resolved policy is not admissible."""
+
+
+def is_canonical_slurm_job_id(value: object) -> bool:
+    """Return whether a value is one canonical positive Slurm job ID."""
+
+    return (
+        isinstance(value, str) and value.isascii() and value.isdecimal()
+        and not value.startswith("0")
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,11 +77,8 @@ class AllocationCapacity:
             raise ResourceConfigError("Allocation memory must be a positive integer")
         if not isinstance(self.source, str) or not self.source:
             raise ResourceConfigError("Allocation source must be nonempty")
-        if self.slurm_job_id is not None and (
-            not isinstance(self.slurm_job_id, str)
-            or not self.slurm_job_id.isascii()
-            or not self.slurm_job_id.isdecimal()
-            or not self.slurm_job_id.strip("0")
+        if self.slurm_job_id is not None and not is_canonical_slurm_job_id(
+            self.slurm_job_id
         ):
             raise ResourceConfigError(
                 "Slurm job ID must be a positive decimal string or null"
@@ -84,12 +97,7 @@ class ResourceOverrides:
     reporting_memory_mb: tuple[tuple[str, int], ...] = ()
 
     def __post_init__(self) -> None:
-        for field, allowed in (
-            ("stage_concurrency", REPEATABLE_STAGE_IDS),
-            ("step_threads", THREAD_CAPABLE_STAGE_IDS),
-            ("stage_memory_mb", STAGE_IDS),
-            ("reporting_memory_mb", REPORTING_KINDS),
-        ):
+        for field, allowed, _metavar in _KEYED_RESOURCE_CONTROLS:
             values = getattr(self, field)
             keys = [key for key, _ in values]
             duplicates = sorted({key for key in keys if keys.count(key) > 1})
@@ -108,7 +116,7 @@ class ResourceOverrides:
                     raise ResourceConfigError(
                         f"Command-line {field}.{key} must be a positive integer"
                     )
-        for field in ("workflow_cores", "workflow_memory_mb"):
+        for field in _SCALAR_RESOURCE_CONTROLS:
             value = getattr(self, field)
             if value is not None and (
                 isinstance(value, bool) or not isinstance(value, int) or value < 1
@@ -121,16 +129,10 @@ class ResourceOverrides:
         """Return deterministic paths changed by this override set."""
 
         labels: list[str] = []
-        if self.workflow_cores is not None:
-            labels.append("workflow_cores")
-        if self.workflow_memory_mb is not None:
-            labels.append("workflow_memory_mb")
-        for field in (
-            "stage_concurrency",
-            "step_threads",
-            "stage_memory_mb",
-            "reporting_memory_mb",
-        ):
+        for field in _SCALAR_RESOURCE_CONTROLS:
+            if getattr(self, field) is not None:
+                labels.append(field)
+        for field, _allowed, _metavar in _KEYED_RESOURCE_CONTROLS:
             labels.extend(f"{field}.{key}" for key, _ in getattr(self, field))
         return tuple(labels)
 
@@ -292,16 +294,11 @@ def stage_slot_name(step_id: str) -> str:
 
 
 def _apply_overrides(target: dict[str, Any], overrides: ResourceOverrides) -> None:
-    if overrides.workflow_cores is not None:
-        target["workflow_cores"] = overrides.workflow_cores
-    if overrides.workflow_memory_mb is not None:
-        target["workflow_memory_mb"] = overrides.workflow_memory_mb
-    for field in (
-        "stage_concurrency",
-        "step_threads",
-        "stage_memory_mb",
-        "reporting_memory_mb",
-    ):
+    for field in _SCALAR_RESOURCE_CONTROLS:
+        value = getattr(overrides, field)
+        if value is not None:
+            target[field] = value
+    for field, _allowed, _metavar in _KEYED_RESOURCE_CONTROLS:
         selected = target[field]
         assert isinstance(selected, dict)
         selected.update(dict(getattr(overrides, field)))
@@ -492,6 +489,7 @@ def _admit_policy_sources(
 def resume_resource_policy(
     predecessor_policy: ResourcePolicy | Mapping[str, Any],
     *,
+    reporting_overlay: tuple[tuple[str, int | Literal["workflow"]], ...] = (),
     overrides: ResourceOverrides = ResourceOverrides(),
 ) -> ResourcePolicy:
     """Re-admit a predecessor policy and explicit overrides without allocation."""
@@ -515,6 +513,7 @@ def resume_resource_policy(
         default_sha256, config_path, config_sha256, prior_labels = (
             _admit_policy_sources(sources, label="Predecessor")
         )
+    document["reporting_memory_mb"].update(dict(reporting_overlay))
     _apply_overrides(document, overrides)
     combined_labels = tuple(dict.fromkeys((*prior_labels, *overrides.labels())))
     return admit_resource_policy(
@@ -647,68 +646,34 @@ def _assignment(value: str) -> tuple[str, int]:
 def add_resource_override_arguments(parser: argparse.ArgumentParser) -> None:
     """Add optional highest-precedence computational-resource controls."""
 
-    parser.add_argument(
-        "--workflow-cores",
-        type=_positive_integer,
-        help="Override workflow_cores from YAML and packaged defaults.",
-    )
-    parser.add_argument(
-        "--workflow-memory-mb",
-        type=_positive_integer,
-        help="Override workflow_memory_mb from YAML and packaged defaults.",
-    )
-    parser.add_argument(
-        "--stage-concurrency",
-        action="append",
-        default=[],
-        metavar="STEP=COUNT",
-        type=_assignment,
-        help="Repeatable per-stage concurrency override.",
-    )
-    parser.add_argument(
-        "--step-threads",
-        action="append",
-        default=[],
-        metavar="STEP=THREADS",
-        type=_assignment,
-        help="Repeatable thread-capable stage override.",
-    )
-    parser.add_argument(
-        "--stage-memory-mb",
-        action="append",
-        default=[],
-        metavar="STEP=MIB",
-        type=_assignment,
-        help="Repeatable per-stage memory override in MiB.",
-    )
-    parser.add_argument(
-        "--reporting-memory-mb",
-        action="append",
-        default=[],
-        metavar="KIND=MIB",
-        type=_assignment,
-        help="Repeatable reporting memory override in MiB.",
-    )
+    for field in _SCALAR_RESOURCE_CONTROLS:
+        parser.add_argument(
+            "--" + field.replace("_", "-"),
+            type=_positive_integer,
+            help=f"Override {field} from YAML and packaged defaults.",
+        )
+    for field, _allowed, metavar in _KEYED_RESOURCE_CONTROLS:
+        parser.add_argument(
+            "--" + field.replace("_", "-"),
+            action="append",
+            default=[],
+            metavar=metavar,
+            type=_assignment,
+            help=f"Repeatable {field.replace('_', ' ')} override.",
+        )
 
 
 def resource_override_argv(overrides: ResourceOverrides) -> tuple[str, ...]:
     """Render admitted overrides for one exact grouped-command delegate."""
 
     arguments: list[str] = []
-    for flag, value in (
-        ("--workflow-cores", overrides.workflow_cores),
-        ("--workflow-memory-mb", overrides.workflow_memory_mb),
-    ):
+    for field in _SCALAR_RESOURCE_CONTROLS:
+        value = getattr(overrides, field)
         if value is not None:
-            arguments.extend((flag, str(value)))
-    for field, flag in (
-        ("stage_concurrency", "--stage-concurrency"),
-        ("step_threads", "--step-threads"),
-        ("stage_memory_mb", "--stage-memory-mb"),
-        ("reporting_memory_mb", "--reporting-memory-mb"),
-    ):
+            arguments.extend(("--" + field.replace("_", "-"), str(value)))
+    for field, _allowed, _metavar in _KEYED_RESOURCE_CONTROLS:
         for key, value in getattr(overrides, field):
-            arguments.extend((flag, f"{key}={value}"))
+            arguments.extend(("--" + field.replace("_", "-"), f"{key}={value}"))
     return tuple(arguments)
 
 
@@ -718,12 +683,10 @@ def overrides_from_args(arguments: argparse.Namespace) -> ResourceOverrides:
     return ResourceOverrides(
         workflow_cores=getattr(arguments, "workflow_cores", None),
         workflow_memory_mb=getattr(arguments, "workflow_memory_mb", None),
-        stage_concurrency=tuple(getattr(arguments, "stage_concurrency", ())),
-        step_threads=tuple(getattr(arguments, "step_threads", ())),
-        stage_memory_mb=tuple(getattr(arguments, "stage_memory_mb", ())),
-        reporting_memory_mb=tuple(
-            getattr(arguments, "reporting_memory_mb", ())
-        ),
+        **{
+            field: tuple(getattr(arguments, field, ()))
+            for field, _allowed, _metavar in _KEYED_RESOURCE_CONTROLS
+        },
     )
 
 

@@ -161,13 +161,10 @@ repeated partition-manifest spellings are reused within the Project admission.
 The retained request-v3 schema is private compatibility authority only for
 exact historical resume; active Project commands reject it.
 
-Execution uses one optional explicit `emrys.execution-profile.v1` fragment.
-The built-in base supplies conservative resources and direct placement. The
-profile combines workflow-wide cores/memory, per-stage concurrency, threads,
-and computational/reporting memory with an Attempt-local direct or Slurm
-placement request. CLI resource overrides have highest precedence. EMRYS does
-not discover adjacent configuration; retired adjacent resource/launcher files
-fail closed when no explicit profile is selected.
+Execution uses one optional selected `emrys.execution-profile.v1` fragment.
+Its computational declaration is Run-bound while placement is Attempt-local;
+exact selection, precedence, and admission belong to the
+[orchestration owner](../../src/emrys/orchestration/local_pilot/CONTRACT.md).
 
 The effective computational declaration enters the successor Execution Plan
 and therefore Run identity. Profile source, reporting memory, placement,
@@ -455,8 +452,9 @@ task commands.
 For Slurm placement, terminal confirmation or explicit noninteractive
 `--execute` uses only `<project-root>/logs` on the submit host, submits the
 displayed placement once, and prints `JOB_ID`, `OUT`, and `ERR`. The compute
-delegate re-admits its profile digest, UID, marker, and scheduler job ID before
-doctor, Run planning, or lifecycle mutation. It owns the single application
+delegate re-admits the binding over exact profile-source bytes and effective
+semantics, UID, marker, and canonical scheduler job ID before doctor, Run
+planning, or lifecycle mutation. It owns the single application
 log for the executing Attempt.
 
 The public control surface owns that exact planning and materialization boundary; direct

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import re
 import shlex
 import subprocess
 from collections.abc import Mapping, Sequence
@@ -11,6 +10,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, cast
+
+from emrys.orchestration.local_pilot.resource_policy import (
+    is_canonical_slurm_job_id,
+)
 
 if TYPE_CHECKING:
     from emrys.orchestration.local_pilot.execution_profile import (
@@ -25,8 +28,6 @@ SUBMIT_UID_ENV = "EMRYS_PRIVATE_SLURM_SUBMIT_UID"
 DELEGATE_MARKER = "emrys-slurm-delegate-v1"
 
 _DELEGATE_ENV_PREFIX = "EMRYS_PRIVATE_SLURM_"
-_SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_POSITIVE_DECIMAL = re.compile(r"^[1-9][0-9]*$")
 
 
 class SlurmSubmissionError(RuntimeError):
@@ -144,9 +145,7 @@ def plan_submission(
     if isinstance(uid, bool) or not isinstance(uid, int) or uid < 0:
         raise SlurmSubmissionError("submitter_uid must be a nonnegative integer")
 
-    profile_sha256 = profile.sha256
-    if not isinstance(profile_sha256, str) or not _SHA256.fullmatch(profile_sha256):
-        raise SlurmSubmissionError("execution-profile SHA-256 is invalid")
+    profile_sha256 = profile.binding_sha256
     placement = profile.placement
     if getattr(placement, "kind", None) != "slurm":
         raise SlurmSubmissionError("scheduler submission requires Slurm placement")
@@ -245,7 +244,7 @@ def submit(submission: SlurmSubmission) -> str:
     fields = lines[0].split(";")
     if (
         len(fields) not in {1, 2}
-        or _POSITIVE_DECIMAL.fullmatch(fields[0]) is None
+        or not is_canonical_slurm_job_id(fields[0])
         or (len(fields) == 2 and not fields[1])
     ):
         raise SlurmSubmissionError("sbatch returned an invalid job ID")

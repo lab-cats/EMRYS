@@ -59,9 +59,9 @@ Read this before installing:
 - The public runtime target is a Linux/POSIX host with Python `3.11` or newer,
   Git, GNU Make, `uv`, and the scientific runtime listed below.
 - The workflow has one Snakemake **single-host local executor**. With no
-  `--execution-profile`, EMRYS uses its built-in direct placement and
-  conservative resources. One optional explicit execution profile combines
-  Run-bound computational resources with Attempt-local direct or Slurm
+  selector, EMRYS uses conservative resources and direct placement. A closed
+  fragment selected by Project-local `--profile NAME` or mutually exclusive
+  `--execution-profile PATH` may supply Run-bound resources and Attempt-local
   placement; explicit CLI resource values have highest precedence.
 - Slurm placement submits the whole Run into **one** allocation on **one**
   compute node through the same `emrys run` or `emrys resume` command. It is
