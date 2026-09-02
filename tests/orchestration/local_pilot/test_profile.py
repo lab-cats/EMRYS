@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from emrys.analyses import compose_profile
+from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.artifact_inventory import report_output_root
@@ -199,8 +201,13 @@ analysis.{analysis_id}.context_validation|10|analysis|analysis|step10_validation
 
 
 @pytest.fixture(scope="module")
-def profile() -> dict[str, object]:
+def processing_profile() -> dict[str, object]:
     return orchestration_contracts.load_json_object(PROFILE_PATH)
+
+
+@pytest.fixture(scope="module")
+def profile(processing_profile: dict[str, object]) -> dict[str, object]:
+    return compose_profile(processing_profile, analysis_module_v1())
 
 
 def _expected_templates() -> list[dict[str, object]]:
@@ -261,11 +268,11 @@ def _stage_map_tables() -> tuple[list[tuple[str, str, str]], list[dict[str, str]
 
 
 def test_profile_is_schema_valid_and_exactly_matches_stage_map(
-    profile: dict[str, object],
+    processing_profile: dict[str, object],
 ) -> None:
-    orchestration_contracts.validate_record("profile", profile)
+    orchestration_contracts.validate_record("profile", processing_profile)
     identities, edges = _stage_map_tables()
-    tasks = profile["owner_tasks"]
+    tasks = processing_profile["owner_tasks"]
     observed_tasks = [
         (
             task["machine_key"],
@@ -276,12 +283,24 @@ def test_profile_is_schema_valid_and_exactly_matches_stage_map(
         )
         for task in tasks
     ]
-    assert observed_tasks == list(EXPECTED_TASKS)
-    assert [(key, slug, alias) for key, slug, alias in identities] == [
-        (key, rule, step) for key, rule, step, _, _ in EXPECTED_TASKS
+    expected_tasks = EXPECTED_TASKS[:-2]
+    expected_keys = {key for key, *_rest in expected_tasks}
+    assert observed_tasks == list(expected_tasks)
+    assert [
+        (key, slug, alias)
+        for key, slug, alias in identities
+        if key in expected_keys
+    ] == [
+        (key, rule, step) for key, rule, step, _, _ in expected_tasks
     ]
-    assert profile["semantic_owner_keys"] == [key for key, _, _ in identities]
-    assert profile["direct_edges"] == edges
+    assert processing_profile["semantic_owner_keys"] == [
+        key for key, _, _ in identities if key in expected_keys
+    ]
+    assert processing_profile["direct_edges"] == [
+        edge
+        for edge in edges
+        if edge["producer"] in expected_keys and edge["consumer"] in expected_keys
+    ]
 
 
 def test_profile_has_exact_70_artifact_templates(profile: dict[str, object]) -> None:
@@ -309,8 +328,10 @@ def test_profile_covers_exact_public_adapter_roster_with_only_declared_reuse(
 def test_profile_expands_to_exact_formula_and_contiguous_scopes(
     tmp_path: Path,
     profile: dict[str, object],
+    processing_profile: dict[str, object],
 ) -> None:
-    analysis = admit_project(build(tmp_path), profile).select_analysis()
+    analysis = admit_project(build(tmp_path), processing_profile).select_analysis()
+    assert analysis.profile == profile
     source = analysis.workflow_inputs
     source["run_id"] = f"run-{'0' * 64}"
     bundle = build_reporting_bundle(

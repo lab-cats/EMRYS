@@ -34,6 +34,12 @@ REPORT_RECEIPT = importlib.import_module("emrys.reporting._run_report.receipt")
 REPORT_FIGURES = importlib.import_module(
     "emrys.reporting.paired_cmh_candidate_ranking_report.figures"
 )
+REPORT_CONSTANTS = importlib.import_module(
+    "emrys.reporting.paired_cmh_candidate_ranking_report.constants"
+)
+SCIENTIFIC_REPORT_VIEW = importlib.import_module(
+    "emrys.reporting.paired_cmh_candidate_ranking_report.view"
+)
 REPORT_VALIDATION = importlib.import_module("emrys.reporting._run_report.validation")
 REPORT_VIEW = importlib.import_module("emrys.reporting._run_report.view")
 
@@ -138,7 +144,7 @@ def report_html_bytes(document: Mapping[str, Any]) -> dict[str, bytes]:
     scientific_figures = REPORT_FIGURES.build_scientific_figures(None, None)
     return {
         "scientific": REPORT_VALIDATION.render_html(
-            REPORT_VIEW.build_scientific_view(
+            SCIENTIFIC_REPORT_VIEW.build_scientific_view(
                 summary,
                 document["metadata"],
                 scientific_figures=scientific_figures,
@@ -149,7 +155,7 @@ def report_html_bytes(document: Mapping[str, Any]) -> dict[str, bytes]:
             REPORT_VIEW.build_evidence_view(
                 summary,
                 document["metadata"],
-                scientific_figures=scientific_figures,
+                banner=REPORT_CONSTANTS.BOUNDARY_BANNER,
             ),
             document["css"],
         ),

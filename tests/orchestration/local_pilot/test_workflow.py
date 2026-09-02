@@ -580,7 +580,7 @@ def test_static_graph_rejects_schema_valid_owner_reassignment(tmp_path: Path) ->
     )
 
     assert failed.returncode != 0
-    assert "Fixed profile owner tasks do not match the static graph" in failed.stdout
+    assert "Processing owner tasks do not match the static base graph" in failed.stdout
 
 
 def test_real_cohort_slice_validates_all_scientific_outputs(

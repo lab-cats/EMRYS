@@ -259,7 +259,7 @@ def build_legacy(root: Path) -> Path:
 def build_legacy_execution(
     root: Path,
     selected_profile: dict[str, Any] | None = None,
-) -> tuple[Path, dict[str, Any], bytes]:
+) -> tuple[Path, dict[str, Any], bytes, dict[str, Any]]:
     """Build and admit the one exact historical execution fixture."""
 
     from emrys.orchestration.local_pilot.normalization import (
@@ -274,4 +274,4 @@ def build_legacy_execution(
         allow_legacy=True,
     ).select_analysis()
     execution, execution_bytes = _historical_execution_v1(admitted)
-    return request, execution, execution_bytes
+    return request, execution, execution_bytes, admitted.profile

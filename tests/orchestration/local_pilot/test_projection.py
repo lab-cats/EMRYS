@@ -17,10 +17,10 @@ from tests.orchestration.local_pilot import fixture
 def test_reporting_projection_is_exact_deterministic_and_legacy_compatible(
     tmp_path: Path,
 ) -> None:
-    _request, execution, _execution_bytes = fixture.build_legacy_execution(
+    _request, execution, _execution_bytes, profile = fixture.build_legacy_execution(
         tmp_path / "request-root"
     )
-    bundle = project_reporting(execution, fixture.profile())
+    bundle = project_reporting(execution, profile)
 
     assert tuple(bundle.reporting_run_contract) == (
         "run_contract_sha256",
@@ -45,7 +45,7 @@ def test_execution_rejects_profile_identity_that_only_matches_digest(
     tmp_path: Path,
 ) -> None:
     profile = fixture.profile()
-    _request, execution, _execution_bytes = fixture.build_legacy_execution(
+    _request, execution, _execution_bytes, profile = fixture.build_legacy_execution(
         tmp_path / "request-root", profile
     )
     mutated = json.loads(json.dumps(execution))
@@ -70,10 +70,10 @@ def test_execution_rejects_profile_identity_that_only_matches_digest(
 def test_inventory_expansion_keeps_each_logical_scope_contiguous(
     tmp_path: Path,
 ) -> None:
-    _request, execution, _execution_bytes = fixture.build_legacy_execution(
+    _request, execution, _execution_bytes, profile = fixture.build_legacy_execution(
         tmp_path / "request-root"
     )
-    bundle = project_reporting(execution, fixture.profile())
+    bundle = project_reporting(execution, profile)
     inventory = tmp_path / "artifact_inventory.tsv"
     inventory.write_bytes(bundle.artifact_inventory_bytes)
 
@@ -101,10 +101,10 @@ def test_inventory_expansion_keeps_each_logical_scope_contiguous(
 def test_inventory_bytes_preserve_row_and_scope_semantics_without_publication(
     tmp_path: Path,
 ) -> None:
-    _request, execution, _execution_bytes = fixture.build_legacy_execution(
+    _request, execution, _execution_bytes, profile = fixture.build_legacy_execution(
         tmp_path / "request-root"
     )
-    bundle = project_reporting(execution, fixture.profile())
+    bundle = project_reporting(execution, profile)
     reader = csv.DictReader(
         io.StringIO(bundle.artifact_inventory_bytes.decode("utf-8"), newline=""),
         delimiter="\t",
@@ -151,7 +151,7 @@ def test_reference_sidecar_templates_can_bind_stationary_external_paths(
             },
         ]
     )
-    request, execution, _execution_bytes = fixture.build_legacy_execution(
+    request, execution, _execution_bytes, profile = fixture.build_legacy_execution(
         tmp_path / "request-root", profile
     )
     bundle = project_reporting(execution, profile)

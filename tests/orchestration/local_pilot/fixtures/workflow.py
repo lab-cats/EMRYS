@@ -21,7 +21,6 @@ from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.contracts.scientific_evidence import scientific_context, step08, step09
-from emrys.analyses import compose_profile
 from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.orchestration.local_pilot import inspection
@@ -1009,10 +1008,9 @@ def build(
         if profile_override is None
         else profile_override
     )
-    request_path, execution, execution_bytes = build_legacy_execution(
+    request_path, execution, execution_bytes, profile = build_legacy_execution(
         intake_root, profile_base
     )
-    profile = compose_profile(profile_base, analysis_module_v1())
 
     run_root = (root / "run").resolve()
     contract_root = run_root / "contract"

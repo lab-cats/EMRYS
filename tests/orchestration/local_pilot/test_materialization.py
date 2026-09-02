@@ -28,6 +28,7 @@ from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
     PROCESSING_STEP_IDS,
     build_analysis_revision,
+    execution_plan_boundary,
 )
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.contracts.scientific_evidence import step08
@@ -396,6 +397,9 @@ def _patch_run_control(
         assert kwargs == {
             "storage_requirement": "direct",
             "analysis_name": None,
+            "require_reporter": getattr(arguments, "through", "analysis")
+            == "analysis"
+            and not getattr(arguments, "no_report", False),
         }
         return readiness
 
@@ -2232,6 +2236,9 @@ def _patch_resume_control(
                 else observed.authority.analysis_revision
             ),
             "allow_legacy": legacy,
+            "require_reporter": observed.authority is None
+            or execution_plan_boundary(observed.authority.execution_plan)
+            == "analysis",
         }
         selected.append(runtime_profile)
         return readiness
@@ -2543,6 +2550,7 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
             "analysis_name": "primary",
             "expected_analysis_revision": first.run.analysis.revision,
             "allow_legacy": False,
+            "require_reporter": True,
         }
         selected_runtime_profiles.append(runtime_profile)
         return readiness_two
@@ -3289,8 +3297,10 @@ def test_new_run_doctor_storage_requirement_tracks_execution_placement(
         *,
         storage_requirement: str,
         analysis_name: str | None,
+        require_reporter: bool,
     ):
         assert analysis_name is None
+        assert require_reporter is True
         requirements.append(storage_requirement)
         return readiness
 
