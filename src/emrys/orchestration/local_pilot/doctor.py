@@ -17,6 +17,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal
 
+from emrys import analyses as analysis_modules
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import AnalysisRevision
 from emrys.evidence.runtime_availability.inspector import (
@@ -25,6 +26,7 @@ from emrys.evidence.runtime_availability.inspector import (
     RuntimeInspectionError,
     inspect_runtime_profile_bytes,
     load_runtime_profile_contract,
+    runtime_profile_bytes,
 )
 from emrys.evidence.storage_inventory import qualification as storage_qualification
 from emrys.libraries.application_logging import (
@@ -88,6 +90,7 @@ class RuntimeBinding:
     resolved_path: Path
     sha256: str
     observed: str
+    identity_kind: Literal["file", "package_tree"] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,13 +143,16 @@ def required_tool_identities(
             binding = bound[name]
         except KeyError as exc:
             raise DoctorInputError(f"Runtime file binding is absent: {name}") from exc
-        return {
+        value = {
             "name": name,
             "version": version,
             "path": str(binding.path),
             "resolved_path": str(binding.resolved_path),
             "sha256": binding.sha256,
         }
+        if binding.identity_kind is not None:
+            value["identity_kind"] = binding.identity_kind
+        return value
 
     python_binding = identity("python", platform.python_version())
     if Path(str(python_binding["path"])) != python_executable:
@@ -213,19 +219,113 @@ def workspace_location_blockers(workspace: Path, source_root: Path) -> tuple[lis
     return [], []
 
 
-def validate_runtime_profile_contract(checks: tuple[RuntimeCheck, ...], source_root: Path) -> None:
-    """Bind every editable runtime path to the tracked fixed probe policy."""
+def _module_dependency_checks(
+    descriptor: analysis_modules.AnalysisModuleDescriptorV1,
+    fixed_checks: tuple[RuntimeCheck, ...],
+) -> tuple[
+    tuple[str, ...],
+    tuple[RuntimeCheck, ...],
+    frozenset[str],
+    frozenset[str],
+]:
+    """Resolve one selected module onto the fixed runtime-check vocabulary."""
+
+    fixed = {item.check_id: item for item in fixed_checks}
+    required: list[str] = []
+    additions: list[RuntimeCheck] = []
+    package_trees: set[str] = set()
+    files: set[str] = set()
+    for declaration in sorted(
+        descriptor.dependencies,
+        key=lambda item: item if isinstance(item, str) else item.dependency_id,
+    ):
+        if isinstance(declaration, str):
+            if declaration not in fixed:
+                raise DoctorInputError(
+                    f"Analysis module references an unknown runtime check: {declaration}"
+                )
+            required.append(declaration)
+            continue
+        check_id = declaration.dependency_id
+        if check_id in fixed:
+            raise DoctorInputError(
+                f"Analysis module dependency collides with fixed runtime check: {check_id}"
+            )
+        if declaration.kind == "executable":
+            check_type, target = "tool_version", declaration.target
+            probe_args, expected = declaration.probe_args, declaration.expected
+            files.add(check_id)
+        elif declaration.kind == "r_namespace":
+            check_type, target = "r_namespace", declaration.target
+            probe_args, expected = (fixed["rscript"].target,), declaration.expected
+            package_trees.add(check_id)
+        else:
+            check_type, target, expected = "path_visibility", declaration.target, "readable"
+            probe_args = (("directory_readable",) if declaration.kind == "package_tree" else ("file_readable",))
+            if declaration.kind == "package_tree":
+                package_trees.add(check_id)
+            else:
+                files.add(check_id)
+        additions.append(
+            RuntimeCheck(
+                check_id, check_type, "local", True, target, probe_args,
+                expected, declaration.description,
+            )
+        )
+        required.append(check_id)
+    return (
+        tuple(required),
+        tuple(additions),
+        frozenset(package_trees),
+        frozenset(files),
+    )
+
+
+def _compose_module_runtime_checks(
+    descriptor: analysis_modules.AnalysisModuleDescriptorV1,
+    declared_checks: tuple[RuntimeCheck, ...],
+    fixed_count: int,
+) -> tuple[
+    tuple[RuntimeCheck, ...],
+    tuple[str, ...],
+    frozenset[str],
+    frozenset[str],
+]:
+    """Compose module checks once, or admit an already-derived profile."""
+
+    fixed_checks = declared_checks[:fixed_count]
+    required, additions, package_trees, files = _module_dependency_checks(
+        descriptor, fixed_checks
+    )
+    selected_checks = (
+        (*fixed_checks, *additions)
+        if len(declared_checks) == fixed_count
+        else declared_checks
+    )
+    return selected_checks, required, package_trees, files
+
+
+def validate_runtime_profile_contract(
+    checks: tuple[RuntimeCheck, ...],
+    source_root: Path,
+    descriptor: analysis_modules.AnalysisModuleDescriptorV1 | None = None,
+    *,
+    allow_derived_dependencies: bool = False,
+) -> None:
+    """Bind editable runtime paths plus one selected module to fixed policy."""
 
     try:
         _bytes, policy = load_runtime_profile_contract(onboarding.runtime_policy_path())
     except RuntimeInspectionError as exc:
         raise DoctorInputError(f"Could not load fixed runtime policy: {exc}") from exc
+    fixed_count = len(policy)
+    selected_fixed = checks[:fixed_count]
     shape = lambda values: tuple(  # noqa: E731 - compact immutable projection
         (item.check_id, item.check_type) for item in values
     )
-    if shape(checks) != shape(policy):
-        raise DoctorInputError("Runtime profile must contain the exact ordered fixed-policy roster")
-    selected = {item.check_id: item for item in checks}
+    if shape(selected_fixed) != shape(policy):
+        raise DoctorInputError("Runtime profile must begin with the exact ordered fixed-policy roster")
+    selected = {item.check_id: item for item in selected_fixed}
     fixed = {item.check_id: item for item in policy}
     rscript = selected["rscript"].target
     immutable = lambda item: (  # noqa: E731 - compact fixed-policy projection
@@ -234,7 +334,7 @@ def validate_runtime_profile_contract(checks: tuple[RuntimeCheck, ...], source_r
         item.expected,
         item.description,
     )
-    for check in checks:
+    for check in selected_fixed:
         expected = fixed[check.check_id]
         dynamic = check.check_id in {"snakemake", "sha256_python", "picard"}
         wanted_args = (rscript,) if check.check_type == "r_namespace" else expected.probe_args
@@ -267,10 +367,32 @@ def validate_runtime_profile_contract(checks: tuple[RuntimeCheck, ...], source_r
     )
     if not relations:
         raise DoctorInputError("Runtime profile changes a fixed cross-check binding")
+    additions = checks[fixed_count:]
+    expected_additions = (
+        additions
+        if descriptor is None and allow_derived_dependencies
+        else ()
+        if descriptor is None
+        else _module_dependency_checks(descriptor, selected_fixed)[1]
+    )
+    if additions != expected_additions:
+        raise DoctorInputError("Runtime profile differs from the selected analysis-module dependencies")
+    for check in additions:
+        valid = check.required and check.runtime_context == "local" and (
+            check.check_type == "tool_version" and Path(check.target).is_absolute() and bool(check.probe_args)
+            or check.check_type == "r_namespace" and check.probe_args == (rscript,)
+            or check.check_type == "path_visibility" and Path(check.target).is_absolute()
+            and check.probe_args in {("file_readable",), ("directory_readable",)}
+        )
+        if not valid:
+            raise DoctorInputError(f"Runtime check is not a supported analysis dependency: {check.check_id}")
 
 
 def runtime_file_bindings(
     inspection: RuntimeInspection,
+    *,
+    package_tree_ids: frozenset[str] = frozenset(),
+    explicit_file_ids: frozenset[str] = frozenset(),
 ) -> tuple[RuntimeBinding, ...]:
     """Bind executable/jar bytes and exact installed R package trees."""
 
@@ -285,13 +407,17 @@ def runtime_file_bindings(
             "renv_library",
         }:
             continue
-        if check.check_type == "r_namespace":
+        if check.check_type == "r_namespace" or check.check_id in package_tree_ids:
             try:
-                identity = installed_package_tree_identity((renv_library / check.target).resolve(strict=True))
+                root = renv_library / check.target if check.check_type == "r_namespace" else Path(check.target)
+                identity = installed_package_tree_identity(root.resolve(strict=True))
             except (OSError, InstalledPackageIdentityError) as exc:
-                raise DoctorInputError(f"Could not bind R package {check.check_id}: {exc}") from exc
-            if observation.resolved_path is None or identity.root != observation.resolved_path:
-                raise DoctorInputError(f"Loaded R namespace root changed: {check.check_id}")
+                raise DoctorInputError(
+                    f"Could not bind runtime package tree {check.check_id}: {exc}"
+                ) from exc
+            expected_root = observation.resolved_path if check.check_type == "r_namespace" else Path(check.target)
+            if expected_root is None or identity.root != expected_root:
+                raise DoctorInputError(f"Runtime package-tree root changed: {check.check_id}")
             bindings.append(
                 RuntimeBinding(
                     check.check_id,
@@ -299,12 +425,29 @@ def runtime_file_bindings(
                     identity.root,
                     identity.sha256,
                     observation.observed,
+                    (
+                        "package_tree"
+                        if check.check_id in package_tree_ids
+                        else None
+                    ),
                 )
             )
             continue
         path = Path(check.target)
         try:
             resolved = path.resolve(strict=True)
+            state = path.lstat()
+        except OSError as exc:
+            raise DoctorInputError(f"Could not bind runtime file {check.check_id}: {exc}") from exc
+        if check.check_id in explicit_file_ids and (
+            stat.S_ISLNK(state.st_mode)
+            or not stat.S_ISREG(state.st_mode)
+            or resolved != path
+        ):
+            raise DoctorInputError(
+                f"Analysis dependency must be a canonical real file: {check.check_id}"
+            )
+        try:
             data = resolved.read_bytes()
         except OSError as exc:
             raise DoctorInputError(f"Could not bind runtime file {check.check_id}: {exc}") from exc
@@ -315,6 +458,7 @@ def runtime_file_bindings(
                 resolved,
                 hashlib.sha256(data).hexdigest(),
                 observation.observed,
+                "file" if check.check_id in explicit_file_ids else None,
             )
         )
     return tuple(bindings)
@@ -328,6 +472,7 @@ def _inspect_foundations(
     analysis_name: str | None = None,
     expected_analysis_revision: AnalysisRevision | None = None,
     allow_legacy: bool = False,
+    require_reporter: bool = True,
 ) -> DoctorResult:
     root = _absolute_path(onboarding.source_root())
     workspace_path = _absolute_path(workspace)
@@ -354,6 +499,19 @@ def _inspect_foundations(
         OSError,
     ) as exc:
         raise DoctorInputError(str(exc)) from exc
+    if require_reporter:
+        from emrys import reporting  # noqa: PLC0415
+
+        try:
+            reporting.admit_analysis_reporter(
+                analysis.module.descriptor.module_id
+            )
+        except reporting.ReportProviderError as exc:
+            blockers.append(f"analysis reporter is not ready: {exc}")
+            remediations.append(
+                "Install exactly one matching analysis reporter, or run with "
+                "--no-report and generate reporting after it is installed."
+            )
     fasta = Path(str(analysis.workflow_inputs["reference"]["fasta"]["path"]))
     if storage_requirement == "direct":
         admit_storage = storage_qualification.admit_direct_requirement
@@ -396,6 +554,7 @@ def inspect_local_pilot(
     analysis_name: str | None = None,
     expected_analysis_revision: AnalysisRevision | None = None,
     allow_legacy: bool = False,
+    require_reporter: bool = True,
 ) -> DoctorResult:
     """Inspect one Project and runtime without writing anything."""
 
@@ -406,14 +565,34 @@ def inspect_local_pilot(
         analysis_name=analysis_name,
         expected_analysis_revision=expected_analysis_revision,
         allow_legacy=allow_legacy,
+        require_reporter=require_reporter,
     )
     profile_path = _absolute_path(runtime_profile)
     try:
         profile_bytes, declared_checks = load_runtime_profile_contract(profile_path)
+        _policy_bytes, fixed_policy = load_runtime_profile_contract(
+            onboarding.runtime_policy_path()
+        )
     except RuntimeInspectionError as exc:
         raise DoctorInputError(str(exc)) from exc
-    validate_runtime_profile_contract(declared_checks, foundations.source_root)
-    renv_library = next(Path(check.target) for check in declared_checks if check.check_id == "renv_library")
+    fixed_checks = declared_checks[: len(fixed_policy)]
+    validate_runtime_profile_contract(fixed_checks, foundations.source_root)
+    (
+        selected_checks,
+        required_dependencies,
+        package_tree_ids,
+        explicit_file_ids,
+    ) = _compose_module_runtime_checks(
+        foundations.analysis.module.descriptor,
+        declared_checks,
+        len(fixed_policy),
+    )
+    validate_runtime_profile_contract(
+        selected_checks, foundations.source_root, foundations.analysis.module.descriptor
+    )
+    if selected_checks != declared_checks:
+        profile_bytes = runtime_profile_bytes(selected_checks)
+    renv_library = next(Path(check.target) for check in fixed_checks if check.check_id == "renv_library")
     environment = guarded_r_environment(foundations.source_root, renv_library)
     try:
         inspection = inspect_runtime_profile_bytes(profile_bytes, profile_path, "local", environment=environment)
@@ -428,19 +607,60 @@ def inspect_local_pilot(
         remediations.append("Activate the Python environment admitted by the Project runtime, then rerun Doctor.")
     failed = [item for item in inspection.observations if item.check.required and item.status != "pass"]
     blockers.extend(f"{item.check.check_id}: {item.status} ({item.observed})" for item in failed)
-    if failed:
+    runtime_bindings = runtime_file_bindings(
+        inspection,
+        package_tree_ids=package_tree_ids,
+        explicit_file_ids=explicit_file_ids,
+    )
+    observations = {
+        item.check.check_id: item for item in inspection.observations
+    }
+    bound_runtime = {item.check_id for item in runtime_bindings}
+    unavailable_analysis_runtime = tuple(
+        check_id
+        for check_id in required_dependencies
+        if check_id not in observations
+        or observations[check_id].status != "pass"
+        or (
+            check_id not in {"renv_project", "renv_library"}
+            and check_id not in bound_runtime
+        )
+    )
+    custom_dependency_ids = {
+        dependency.dependency_id
+        for dependency in foundations.analysis.module.descriptor.dependencies
+        if isinstance(dependency, analysis_modules.AnalysisDependencyV1)
+    }
+    unavailable_custom_dependencies = tuple(
+        check_id
+        for check_id in unavailable_analysis_runtime
+        if check_id in custom_dependency_ids
+    )
+    if unavailable_analysis_runtime:
+        blockers.append(
+            "Analysis module runtime is not admitted: "
+            + ", ".join(unavailable_analysis_runtime)
+        )
+    fixed_ids = {check.check_id for check in fixed_checks}
+    if any(item.check.check_id in fixed_ids for item in failed):
         remediations.append(
             "Run `emrys doctor --repair` for an EMRYS-managed runtime, or repair and "
             "re-admit the selected site environment without editing runtime.tsv."
         )
-    bindings = (*runtime_file_bindings(inspection), *foundations.bindings)
+    if unavailable_custom_dependencies:
+        remediations.append(
+            "Install the selected analysis module and its declared dependencies with "
+            "their package manager, then rerun Doctor; managed repair restores only "
+            "the fixed EMRYS runtime."
+        )
+    bindings = (*runtime_bindings, *foundations.bindings)
     return replace(
         foundations,
         inspection=inspection,
         bindings=bindings,
         blockers=tuple(blockers),
         remediations=tuple(dict.fromkeys(remediations)),
-        runtime_ready=python_ready and not failed,
+        runtime_ready=python_ready and not failed and not unavailable_analysis_runtime,
     )
 
 
@@ -449,6 +669,7 @@ def diagnose_project(
     *,
     storage_requirement: StorageRequirement = "direct",
     analysis_name: str | None = None,
+    require_reporter: bool = True,
 ) -> DoctorResult:
     """Diagnose the canonical Project runtime, including an absent profile."""
 
@@ -461,12 +682,14 @@ def diagnose_project(
             profile,
             storage_requirement=storage_requirement,
             analysis_name=analysis_name,
+            require_reporter=require_reporter,
         )
     foundations = _inspect_foundations(
         project,
         project.parent,
         storage_requirement=storage_requirement,
         analysis_name=analysis_name,
+        require_reporter=require_reporter,
     )
     remediation = (
         "Run `emrys doctor --repair`, or admit a complete site runtime with `emrys runtime discover --execute`."
@@ -574,6 +797,34 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
             storage=storage,
             runtime=None,
         )
+    custom_dependencies = {
+        dependency.dependency_id
+        for dependency in result.analysis.module.descriptor.dependencies
+        if isinstance(dependency, analysis_modules.AnalysisDependencyV1)
+    }
+    observed_dependencies = (
+        {}
+        if result.inspection is None
+        else {
+            item.check.check_id: item.status
+            for item in result.inspection.observations
+        }
+    )
+    unavailable_dependencies = (
+        []
+        if result.inspection is None
+        else sorted(
+            check_id
+            for check_id in custom_dependencies
+            if observed_dependencies.get(check_id) != "pass"
+        )
+    )
+    if unavailable_dependencies:
+        raise DoctorRepairError(
+            "managed repair does not install selected analysis-module dependencies: "
+            + ", ".join(unavailable_dependencies)
+            + "; install them with their package manager and rerun Doctor"
+        )
     machine = platform.machine().casefold()
     if platform.system() != "Linux" or machine not in {"amd64", "x86_64"}:
         raise DoctorRepairError(
@@ -598,22 +849,33 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
     except (OSError, onboarding.OnboardingError) as exc:
         raise DoctorRepairError(str(exc)) from exc
     managed = runtime / "managed"
+    profile = runtime / "runtime.tsv"
+    profile_bytes: bytes | None = None
+    profile_checks: tuple[RuntimeCheck, ...] = ()
+    if result.inspection is not None:
+        if _absolute_path(result.inspection.profile_path) != profile:
+            raise DoctorRepairError(
+                "the admitted runtime profile is site- or user-owned and was preserved"
+            )
+        try:
+            profile_bytes, profile_checks = load_runtime_profile_contract(profile)
+        except RuntimeInspectionError as exc:
+            raise DoctorRepairError(f"could not re-admit the managed runtime profile: {exc}") from exc
     uv, pixi = _manager("uv"), _manager("pixi")
     managed_plan = _ManagedRuntimePlan(
         source_root=result.source_root,
         managed_root=managed,
-        profile=runtime / "runtime.tsv",
+        profile=profile,
         uv=uv,
         pixi=pixi,
         uv_sha256=_file_sha256(uv),
         pixi_sha256=_file_sha256(pixi),
-        profile_bytes=None if result.inspection is None else result.inspection.profile_bytes,
+        profile_bytes=profile_bytes,
         manifest_bytes=manifest_bytes,
         lock_bytes=lock_bytes,
     )
     if result.inspection is not None:
-        checks = tuple(item.check for item in result.inspection.observations)
-        if not _profile_is_managed(checks, managed_plan):
+        if not _profile_is_managed(profile_checks, managed_plan):
             raise DoctorRepairError(
                 "the admitted runtime profile is site- or user-owned and was "
                 "preserved; repair that environment or explicitly admit a replacement"

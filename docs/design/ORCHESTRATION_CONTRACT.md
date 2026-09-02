@@ -3,11 +3,12 @@
 This document is the binding architecture for EMRYS's current local Snakemake
 backend. The orchestration contract package owns closed machine schemas,
 canonical identities, reporting projection, and semantic all-pass admission.
-The fixed local-CMH profile and static fourteen-scientific-owner graph delegate
-each task through one boundary that publishes task-attempt and content-bound
-verified records. Lifecycle and reporting owners publish durable entry,
+The checked-in processing profile and one immutable selected analysis-module
+tail compose the Run-specific graph. Each task delegates through one boundary
+that publishes task-attempt and content-bound verified records. Lifecycle and
+reporting owners publish durable entry,
 Attempt, receipt, reporting, recovery, and read-only inspection evidence.
-Project-aware Doctor, fixed-profile materialization, and the dry-run-first
+Project-aware Doctor, composed-profile materialization, and the dry-run-first
 `run`, `resume`, `report`, and `inspect run` commands form the public control
 surface. Scientific behavior remains with the applicable functional owner, and
 exact semantic identities and artifact edges remain in
@@ -51,21 +52,25 @@ The local pilot has one explicit path:
    no-write/no-submit; `--execute` is the explicit automation path. Verbose
    output adds the applicable Run root/resources or
    execution-profile/scheduler-stream detail.
-5. One fixed CMH workflow profile projects the semantic DAG into Snakemake.
+5. Planning composes the checked-in processing profile through Step `08` with
+   one explicitly admitted analysis-module tail containing one Step `09` task
+   and optional Step `10` task, then projects that immutable DAG into Snakemake.
 6. Each workflow task invokes one owner's public producer, that owner's public
    validator, and a generic semantic all-pass check.
 7. A content-bound verified task record is published only after all three
    succeed.
 8. After every required task is verified, lifecycle releases the Run lock and
    publishes a v2 workflow-attempt receipt last.
-9. Public control then invokes the fixed artifact-index, run-summary, and Jinja
-   HTML-report sequence by default. `--no-report` disables only that downstream
+9. Public control then invokes the fixed artifact-index → run-summary → HTML
+   transaction sequence by default. The selected module reporter owns bespoke
+   scientific rendering while the EMRYS core owns evidence/operations output.
+   `--no-report` disables only that downstream
    work, and `emrys report` can plan or generate it independently. Reporting is
    not a scientific stage and creates neither Run nor Attempt.
 10. Inspection derives state from EMRYS contracts and records, never from
     Snakemake metadata alone.
 
-There is no Project inbox, watcher, database, service, plugin registry, or
+There is no Project inbox, watcher, database, service, mutable plugin registry, or
 automatic recovery subsystem in version 1.
 
 ## Authority matrix
@@ -76,10 +81,10 @@ automatic recovery subsystem in version 1.
 | Producer, validator, output, transaction, and recovery behavior | Applicable owner `README.md` and `CONTRACT.md` | Workflow rules and lifecycle records |
 | Scientist intent | Admitted YAML Project definition plus referenced ordered TSV manifests | Caller working directory, environment discovery, filename inference, and globs |
 | Immutable local-run identity | Successor Analysis-revision and Execution-Plan digests, including the computational resource declaration, committed by the canonical Run binding; exact `emrys.execution.v1` bytes for historical Runs | Project formatting, human Analysis name, Attempt placement/realization, workspace, host, reporting, scheduler identity, or Snakemake state |
-| Fixed pilot membership and scope expansion | Versioned local CMH workflow profile | A generic registry or automatic owner discovery |
+| Run-specific membership and scope expansion | Versioned processing profile composed with the explicitly selected installed module descriptor | A universal Stage hierarchy, workflow language, mutable registry, or filesystem discovery |
 | Scheduling | Attempt-local direct or whole-Run Slurm placement around Snakemake's local executor and static rule graph | A second scientific backend, distributed execution, scientific completion, recovery authority, or evidence promotion |
 | Reusable task completion | EMRYS verified task record after owner validation and semantic all-pass gating | Process exit alone, output presence, timestamps, or `.snakemake/` metadata |
-| Reporting identity | Explicit projection from the execution contract into the existing artifact run contract | The reporting run contract as a complete execution identity |
+| Reporting identity | Explicit projection from the execution contract plus selected reporter-package and core-renderer identity in the report receipt | The reporting run contract or reporter identity as Analysis or Run identity |
 | Run state | Immutable workflow-attempt records, verified task records, owner receipts/reports, and observed recovery state | A mutable status cache, log, rendered report, or scheduler state |
 | Biological review and interpretation | External research work-process records | EMRYS orchestration, reports, or local computational completion |
 
@@ -89,16 +94,31 @@ the implemented rule edges and scope expansion with the reviewed projection.
 
 ## Version 1 scope
 
-The only selected profile is the current paired-CMH workflow:
+The common selected profile contains:
 
 - reference preparation through historical `00a`, `00b`, and `00c`;
 - per-sample compute through `01`, `02`, `04`, `05`, and `06`;
 - automatic per-sample evidence `02b` and `03`;
-- cohort/analysis work through `07`, `08`, `09`, and the post-Step09
-  scientific-context projection `10`;
+- fixed cohort transformation through `07` and `08`;
+- one selected installed module with a typed Step `09` task and optional Step
+  `10`; the built-in paired-CMH module retains ranking plus the post-Step09
+  scientific-context projection;
 - default downstream artifact indexing, canonical run-summary assembly, and
   separate self-contained scientific and evidence HTML reports; these can be
   disabled for execution or generated independently after successful science.
+
+The bounded v1 module descriptor supplies closed configuration normalization,
+typed artifact inputs/outputs, fixed runtime-check references or exact local
+executable/R-namespace/file/package-tree dependencies, minimum memory and
+threads, and producer/validator plans. Selection authorizes that installed
+in-process provider. Existing `TaskDispatch`, failure, validation,
+publication, lock/rollback/recovery, signal, and logging semantics are fixed;
+providers do not declare substitute trust or failure policy. Doctor composes
+only the selected module's checks onto the fixed runtime profile; exact file
+and package-tree identities are Run-bound, and the existing Step `09`/`10`
+resource policy must meet task minimums. Package managers own installation and
+solving; EMRYS does not execute provider-supplied installers. GPU, disk,
+walltime, remote resources, and new placement semantics are outside v1.
 
 The `02b` and `03` evidence branches do not gate downstream scientific compute,
 but the local profile requires them before workflow completion. Step `10`
@@ -123,8 +143,9 @@ explicit references:
 
 - one shared sample manifest;
 - one shared reference FASTA, GTF, and STAR-index policy; and
-- one or more human-named Analyses, each with its partition manifest and
-  complete inline Step `09` analysis policy.
+- one or more human-named Analyses, each with its partition manifest and either
+  the complete inline built-in paired-CMH policy or an explicit module
+  identifier plus module-owned closed `config`.
 
 The public shape is:
 
@@ -151,6 +172,11 @@ analyses:
     absolute_difference_threshold: 0.005
     background_condition: null
     background_max_fraction: 0.01
+  collaborator:
+    module: example.differential
+    partitions: partitions.tsv
+    config:
+      comparison: treatment-vs-control
 ```
 
 Project validation, runtime discovery, and Doctor admit all named Analyses.
@@ -302,6 +328,18 @@ creates a different Run. Formatting and sample/partition row order are
 identity-neutral because admitted semantic rows are canonicalized before
 identity is derived.
 
+### Processing reuse across modules
+
+Processing-only compatibility remains the exact Steps `00`–`06` boundary.
+Its digest retains the processing graph, processing implementation and
+toolchain identities, backend semantics, STAR-index policy, and Step `00`–`06`
+resource semantics. It excludes the selected downstream analysis module and
+whole-workflow resource caps that do not affect processing. A downstream Run
+may therefore select a different admitted module only when that processing
+digest and the existing sample/reference subset rules match. Source artifacts
+remain stationary, immutable, and exact-size/hash bound; no provider may copy,
+relabel, or adopt the source Run's evidence.
+
 ## Reporting projection
 
 The current artifact `run_contract` contains only:
@@ -328,8 +366,15 @@ records both execution and reporting digests and their relationship. Artifact
 schema version 1 and its historical `step_id` fields remain unchanged until a
 separately approved schema migration.
 
+The existing flat paired-CMH path publishes run-summary v2 and report-receipt
+v4. An explicit module publishes run-summary v3, whose module-neutral policy
+binding is only path, SHA-256, and size, and report-receipt v5, which binds the
+analysis provider, reporter provider, and fixed core renderer separately.
+Artifact-record v2 may use a null source commit only when exact installed
+external-provider bytes are the recorded implementation authority.
+
 The run-specific artifact inventory is also materialized deterministically
-from the admitted profile, samples, partitions, and declared output paths
+from the admitted composed profile, samples, partitions, and declared output paths
 before compute. It is never discovered afterward by globbing the filesystem.
 Generated native-output paths are relative to the immutable run root. The
 stationary Step `00c` FASTA, FAI, and dictionary rows instead use normalized
@@ -339,7 +384,11 @@ root distinct from the admitted source checkout: the run root resolves
 relative inventory paths, while checkout authority continues to bind producer
 and renderer code. A workflow may not force the operator workspace beneath the
 Git checkout to collapse those authorities.
-The profile projects current computational artifacts through Step `10`.
+The profile projects the common artifacts plus the selected module's declared
+Step `09` and optional Step `10` outputs. The artifact-index transaction derives
+its adapter registry and expected roster from that admitted profile; this is
+dynamic indexing of existing immutable declarations, not a store, database,
+service, or second authored manifest.
 Successful reporting transactions do not create biological evidence, and the
 run-summary state or required-missing count is not the workflow completion
 Boolean.

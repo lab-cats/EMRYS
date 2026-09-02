@@ -29,12 +29,21 @@ producer identity; its artifact root governs contract-relative artifact paths
 plus semantic, predecessor, post-publication, and rollback validation.
 
 The modules keep observed responsibilities separate: the curated run-summary
-API, exact contract loading, models and rosters, explicit adapter registration,
-text and binary readers, inspection, named native reconciliation, record and
-receipt assembly, context construction, receipt-last publication, and
-published-transaction validation.
+API, exact contract loading, models, profile-derived adapter registration and
+rosters, text and binary readers, inspection, named native reconciliation,
+record and receipt assembly, context construction, receipt-last publication,
+and published-transaction validation.
 Stage-specific rules remain in their named reconciliation modules; this
 package is not a generic stage framework.
+
+The admitted immutable analysis-module descriptor supplies typed artifact
+declarations. `registry.py`, `records.py`, and context preparation derive the
+expected adapter closure, producer evidence, and paths from the composed Run
+profile. They do not scan installed modules or discover filesystem outputs.
+This dynamic indexing changes how the existing artifact transaction receives
+its closed roster; it adds no Artifact Store, database, service, authored
+manifest, or public mutable registry. Paired-CMH-specific Step `09`/`10`
+reconciliation remains in the built-in adapter path below.
 
 [`reconcile_step09.py`](reconcile_step09.py) delegates intrinsic admission of
 the exact result trio and mutation-spectrum reconciliation to

@@ -29,7 +29,8 @@ STAGE_IDS = (
     "10",
 )
 REPEATABLE_STAGE_IDS = ("01", "02", "02b", "03", "04", "05", "06", "07")
-THREAD_CAPABLE_STAGE_IDS = ("00a", "01", "02", "06", "08")
+_HISTORICAL_THREAD_CAPABLE_STAGE_IDS = ("00a", "01", "02", "06", "08")
+THREAD_CAPABLE_STAGE_IDS = (*_HISTORICAL_THREAD_CAPABLE_STAGE_IDS, "09", "10")
 REPORTING_KINDS = ("artifact_index", "run_summary", "html_report")
 _SCALAR_RESOURCE_CONTROLS = ("workflow_cores", "workflow_memory_mb")
 _KEYED_RESOURCE_CONTROLS = (
@@ -335,7 +336,21 @@ def admit_resource_policy(
     stage_concurrency = _closed_map(
         value, "stage_concurrency", REPEATABLE_STAGE_IDS
     )
-    step_threads = _closed_map(value, "step_threads", THREAD_CAPABLE_STAGE_IDS)
+    step_threads = value.get("step_threads")
+    observed_thread_steps = (
+        set(step_threads) if isinstance(step_threads, dict) else set()
+    )
+    if not (
+        isinstance(step_threads, dict)
+        and set(_HISTORICAL_THREAD_CAPABLE_STAGE_IDS)
+        <= observed_thread_steps
+        <= set(THREAD_CAPABLE_STAGE_IDS)
+    ):
+        raise ResourceConfigError(
+            "Resolved step_threads keys must include: "
+            + ", ".join(_HISTORICAL_THREAD_CAPABLE_STAGE_IDS)
+            + "; optional keys: 09, 10"
+        )
     stage_memory = _closed_map(value, "stage_memory_mb", STAGE_IDS)
     reporting_memory = _closed_map(
         value, "reporting_memory_mb", REPORTING_KINDS
@@ -363,7 +378,9 @@ def admit_resource_policy(
             (key, int(stage_concurrency[key])) for key in REPEATABLE_STAGE_IDS
         ),
         step_threads=tuple(
-            (key, int(step_threads[key])) for key in THREAD_CAPABLE_STAGE_IDS
+            (key, int(step_threads[key]))
+            for key in THREAD_CAPABLE_STAGE_IDS
+            if key in step_threads
         ),
         stage_memory_mb=tuple((key, declared_stage_memory[key]) for key in STAGE_IDS),
     )

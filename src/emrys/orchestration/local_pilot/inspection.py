@@ -581,14 +581,31 @@ def validate_processing_source(
         raise InspectionError(
             "Target Execution Plan binds a different processing source"
         )
+    source_compatibility = source_plan.get("processing_compatibility_sha256")
+    target_compatibility = target_plan_identity.get(
+        "processing_compatibility_sha256"
+    )
+    if source_compatibility is not None and target_compatibility is not None:
+        if source_compatibility != target_compatibility:
+            raise InspectionError(
+                "Processing source and target execution semantics differ"
+            )
+        return
+
+    # Historical execution-plan.v1 records predate the processing projection.
+    # They remain reusable only when the former whole-plan comparison proves
+    # exact compatibility; no missing digest is synthesized or trusted.
+    ignored = {
+        "scientific_stopping_owner_keys",
+        "processing_source",
+        "processing_compatibility_sha256",
+    }
     if {
-        key: value
-        for key, value in source_plan.items()
-        if key != "scientific_stopping_owner_keys"
+        key: value for key, value in source_plan.items() if key not in ignored
     } != {
         key: value
         for key, value in target_plan_identity.items()
-        if key not in {"scientific_stopping_owner_keys", "processing_source"}
+        if key not in ignored
     }:
         raise InspectionError("Processing source and target execution semantics differ")
 

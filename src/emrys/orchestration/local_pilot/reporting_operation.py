@@ -82,23 +82,33 @@ def _arguments(identity: Any, kind: str) -> argparse.Namespace:
     source_checkout = Path(str(identity.attempt["source_checkout"]["path"]))
     authority = {"source_checkout": source_checkout, "artifact_source_root": root}
     run_contract = root / str(identity.config["reporting_run_contract_path"]["path"])
+    policy_reference = identity.config.get("primary_analysis_policy_path")
+    analysis_policy = (
+        None
+        if policy_reference is None
+        else root / str(policy_reference["path"])
+    )
     inventory = root / str(identity.config["artifact_inventory_path"]["path"])
     values = {
         "artifact_index": {
             "run_id": run_id,
             "run_contract": run_contract,
+            "analysis_policy": analysis_policy,
+            "profile": identity.profile,
             "inventory": inventory,
             "output_root": artifact_root,
         },
         "run_summary": {
             "run_id": run_id,
             "artifact_receipt": artifact_run_root / f"{run_id}.artifact_receipt.tsv",
+            "analysis_policy": analysis_policy,
             "output_root": artifact_root,
             "expected_run_contract_path": run_contract,
             "expected_inventory_path": inventory,
         },
         "html_report": {
             "run_summary": artifact_run_root / f"{run_id}.run_summary.json",
+            "analysis_policy": analysis_policy,
             "output_root": report_output_root(root, identity.profile),
         },
     }

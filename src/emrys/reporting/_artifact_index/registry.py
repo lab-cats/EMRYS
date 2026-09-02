@@ -1,11 +1,12 @@
-"""Declarative artifact-adapter registry."""
+"""Processing adapters plus the one analysis module selected by a Run."""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from functools import partial
 
-from emrys.contracts.scientific_evidence import scientific_context, step08, step09
+from emrys import analyses
+from emrys.contracts.scientific_evidence import step08
 from emrys.libraries.alignments import orientation as alignment_orientation
 
 from .models import (
@@ -14,9 +15,11 @@ from .models import (
     STEP07_RECEIPT_HEADER,
     VALIDATION_REPORT_HEADER,
     AdapterSpec,
+    ArtifactIndexError,
 )
 
 MEDIA_TYPE_BY_KIND = {
+    **analyses.ANALYSIS_ARTIFACT_MEDIA_TYPES,
     "bai": "application/octet-stream",
     "bam": "application/x-bam",
     "bed12": "text/bed",
@@ -24,17 +27,13 @@ MEDIA_TYPE_BY_KIND = {
     "fai": "text/tab-separated-values",
     "fasta": "text/x-fasta",
     "flagstat": "text/plain",
-    "pdf": "application/pdf",
     "picard_metrics": "text/plain",
     "quickcheck": "text/plain",
     "rseqc": "text/plain",
-    "sample_blocks_tsv": "text/tab-separated-values",
     "star_index": "application/octet-stream",
     "star_log_final": "text/plain",
     "star_sj": "text/plain",
     "text": "text/plain",
-    "tsv": "text/tab-separated-values",
-    "validation_report": "text/tab-separated-values",
     "vcf": "text/vcf",
 }
 
@@ -90,13 +89,38 @@ def add_validation_report(
     )
 
 
-def build_adapter_registry() -> dict[str, AdapterSpec]:
+def _add_analysis_adapters(
+    registry: dict[str, AdapterSpec],
+    descriptor: analyses.AnalysisModuleDescriptorV1,
+) -> None:
+    for task in descriptor.tasks:
+        for item in task.outputs:
+            if item.adapter in registry:
+                raise ArtifactIndexError(
+                    f"Analysis module adapter collides: {item.adapter!r}"
+                )
+            registry[item.adapter] = AdapterSpec(
+                adapter_id=item.adapter,
+                step_id=task.step_id,
+                scope_type="analysis",
+                kind=item.kind,
+                media_type=analyses.ANALYSIS_ARTIFACT_MEDIA_TYPES[item.kind],
+                source_path_template=item.source_path_template,
+                suffixes=(item.source_path_template.rsplit("}", 1)[-1],),
+                expected_header=item.expected_header,
+                exact_data_rows=item.exact_data_rows,
+                allow_header_only=item.allow_header_only,
+            )
+
+
+def build_adapter_registry(
+    descriptor: analyses.AnalysisModuleDescriptorV1,
+) -> dict[str, AdapterSpec]:
     registry: dict[str, AdapterSpec] = {}
     add_reference = partial(add_spec, registry, "reference")
     add_sample = partial(add_spec, registry, "sample")
     add_partition = partial(add_spec, registry, "cohort_partition")
     add_cohort = partial(add_spec, registry, "cohort")
-    add_analysis = partial(add_spec, registry, "analysis")
     add_reference(
         "step00a_star_index_v1",
         "00a",
@@ -262,84 +286,5 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         allow_header_only=False,
     )
     add_validation_report(registry, "08", "cohort")
-    for adapter_id, suffix in (
-        ("step09_cmh_all_sites_v1", ".cmh_all_sites.tsv"),
-        ("step09_cmh_significant_sites_v1", ".cmh_significant_sites.tsv"),
-    ):
-        add_analysis(
-            adapter_id,
-            "09",
-            "sample_blocks_tsv",
-            suffixes=(suffix,),
-            expected_header=step09.STEP09_RESULT_HEADER,
-        )
-    add_analysis(
-        "step09_cmh_summary_v1",
-        "09",
-        "tsv",
-        suffixes=(".cmh_summary.tsv",),
-        expected_header=step09.STEP09_SUMMARY_HEADER,
-        exact_data_rows=1,
-        allow_header_only=False,
-    )
-    add_analysis(
-        "step09_mutation_spectrum_tsv_v1",
-        "09",
-        "tsv",
-        suffixes=(".mutation_spectrum.tsv",),
-        expected_header=step09.STEP09_MUTATION_HEADER,
-    )
-    for adapter_id, suffix in (
-        ("step09_mutation_spectrum_pdf_v1", ".mutation_spectrum.pdf"),
-        ("step09_depth_delta_pdf_v1", ".depth_delta.pdf"),
-    ):
-        add_analysis(
-            adapter_id,
-            "09",
-            "pdf",
-            suffixes=(suffix,),
-        )
-    add_validation_report(registry, "09", "analysis", exact_data_rows=7)
-    for adapter_id, suffix, header in (
-        (
-            "step10_candidate_context_v1",
-            ".candidate_context.tsv",
-            scientific_context.CANDIDATE_CONTEXT_HEADER,
-        ),
-        (
-            "step10_motif_hits_v1",
-            ".motif_hits.tsv",
-            scientific_context.MOTIF_HITS_HEADER,
-        ),
-        (
-            "step10_sequence_logo_v1",
-            ".sequence_logo.tsv",
-            scientific_context.SEQUENCE_LOGO_HEADER,
-        ),
-        (
-            "step10_motif_statistics_v1",
-            ".motif_statistics.tsv",
-            scientific_context.MOTIF_STATISTICS_HEADER,
-        ),
-    ):
-        add_analysis(
-            adapter_id,
-            "10",
-            "tsv",
-            suffixes=(suffix,),
-            expected_header=header,
-        )
-    add_analysis(
-        "step10_context_receipt_v1",
-        "10",
-        "tsv",
-        suffixes=(".context_receipt.tsv",),
-        expected_header=scientific_context.SCIENTIFIC_CONTEXT_RECEIPT_HEADER,
-        exact_data_rows=1,
-        allow_header_only=False,
-    )
-    add_validation_report(registry, "10", "analysis", exact_data_rows=1)
+    _add_analysis_adapters(registry, descriptor)
     return registry
-
-
-ADAPTER_REGISTRY = build_adapter_registry()

@@ -10,6 +10,8 @@ def profile() -> dict[str, Any]:
     owners = (
         "emrys.stage.construct_STAR_index.v1",
         "emrys.stage.align_RNA_reads_with_STAR.v1",
+        "emrys.stage.construct_FASTA_sidecars.v1",
+        "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
     )
     return {
         "schema_version": "emrys.profile.v2",
@@ -30,6 +32,20 @@ def profile() -> dict[str, Any]:
                 "step_id": "01",
                 "scope_type": "sample",
                 "scope_selector": "samples",
+            },
+            {
+                "machine_key": owners[2],
+                "rule_name": "construct_FASTA_sidecars",
+                "step_id": "00c",
+                "scope_type": "reference",
+                "scope_selector": "reference",
+            },
+            {
+                "machine_key": owners[3],
+                "rule_name": "preprocess_and_annotate_cohort_candidates",
+                "step_id": "08",
+                "scope_type": "cohort",
+                "scope_selector": "cohort",
             },
         ],
         "direct_edges": [
@@ -243,7 +259,7 @@ def build_legacy(root: Path) -> Path:
 def build_legacy_execution(
     root: Path,
     selected_profile: dict[str, Any] | None = None,
-) -> tuple[Path, dict[str, Any], bytes]:
+) -> tuple[Path, dict[str, Any], bytes, dict[str, Any]]:
     """Build and admit the one exact historical execution fixture."""
 
     from emrys.orchestration.local_pilot.normalization import (
@@ -258,4 +274,4 @@ def build_legacy_execution(
         allow_legacy=True,
     ).select_analysis()
     execution, execution_bytes = _historical_execution_v1(admitted)
-    return request, execution, execution_bytes
+    return request, execution, execution_bytes, admitted.profile

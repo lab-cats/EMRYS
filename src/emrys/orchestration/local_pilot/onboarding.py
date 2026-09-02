@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import gzip
-import json
 import os
 import re
 import stat
@@ -19,11 +18,12 @@ from emrys import __version__
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.scientific_evidence import step08
 from emrys.evidence.runtime_availability.inspector import (
-    PROFILE_HEADER,
+    RuntimeCheck,
     RuntimeInspection,
     RuntimeInspectionError,
     inspect_runtime_profile_bytes,
     load_runtime_profile_contract,
+    runtime_profile_bytes,
 )
 from emrys.libraries.exclusive_publication import publish_exclusive
 from emrys.libraries.process_environment import guarded_r_environment
@@ -1057,7 +1057,7 @@ def _runtime_profile_bytes(
         executable=True,
         retain_path=True,
     )
-    rows: list[dict[str, str]] = []
+    checks: list[RuntimeCheck] = []
     for check in policy:
         target = check.target
         probe_args = check.probe_args
@@ -1082,19 +1082,19 @@ def _runtime_profile_bytes(
             raise OnboardingError(
                 f"packaged runtime policy has no discovery rule: {check.check_id}"
             )
-        rows.append(
-            {
-                "check_id": check.check_id,
-                "check_type": check.check_type,
-                "runtime_context": check.runtime_context,
-                "required": "true" if check.required else "false",
-                "target": target,
-                "probe_args": json.dumps(probe_args, separators=(",", ":")),
-                "expected": check.expected,
-                "description": check.description,
-            }
+        checks.append(
+            RuntimeCheck(
+                check.check_id,
+                check.check_type,
+                check.runtime_context,
+                check.required,
+                target,
+                probe_args,
+                check.expected,
+                check.description,
+            )
         )
-    return tsv_bytes(PROFILE_HEADER, rows), renv_library
+    return runtime_profile_bytes(checks), renv_library
 
 
 def project_runtime_directory(project: ProjectAdmission) -> Path:

@@ -142,6 +142,30 @@ implementation order, dependencies, or approval.
 | `AC-SLICE-18` | Documentation | `4` | `3` | Rewrite navigation and documentation around scientist/operator/developer journeys | Expansion or slicing of `DOC-01`; uses the accepted `DOC-02`/`DOC-03` traces and coordinates with `DOC-04`–`DOC-05` retirements | Scope follows the settled role journeys |
 | `AC-SLICE-19` | Doctor | `4` | `5` | **Complete.** Top-level Doctor diagnosis is no-write/no-log; explicit managed repair is previewed and confirmed, may publish the Project-owned direct-storage receipt, is otherwise bounded to the active checkout-owned `.venv` and Project `runtime/managed`, and is followed by complete requalification | Completed with `DOCTOR-01`; direct execution admits the local receipt or stronger v1 evidence, while Slurm and placement-less historical execution remain v1-only. Storage-only repair preserves an already-ready site runtime and invokes no package manager; otherwise `uv`, Pixi, and `renv` own solving/installation while Doctor owns authority, one maintenance log, and requalification | Site/user profiles and declared inputs are preserved; Linux x86-64 is the current managed target. Broader runtime modes/profiles remain `RUNTIME-01`, broader logging adoption remains `LOG-05`, and integrated exact-head verification remains with `AC-SLICE-13` |
 
+## Consolidated closure routing
+
+Campaign Section
+[13.29](architecture_campaign.md#1329-consolidated-architecture-closure-register)
+replaces card-by-card reslicing with three finite tranches. The statuses in the
+matrix above remain authoritative until their routed tranche completes or the
+three identified no-op recommendations receive final ratification.
+
+| Tranche | Cards absorbed | Terminal outcome |
+|---|---|---|
+| `ARCH-CLOSE-01` | `AC-SLICE-08`, `AC-SLICE-13`, residual `OPS-02`, `RUNTIME-01`, `ANALYSIS-02` | One path-light installed-command journey from Project root; managed runtime, named profile, Doctor, collaborator dependencies/resources, automatic reporting, and golden path verified together. |
+| `ARCH-CLOSE-02` | `AC-SLICE-05`, residual `OPS-02`, `LOG-05` | Direct/whole-Run-Slurm failure, resume, Results/reporting, provenance, and single-log parity; generalized backend explicitly rejected unless a concrete extension or net-negative consolidation appears. |
+| `ARCH-CLOSE-03` | `AC-SLICE-06`, `AC-SLICE-07`, `AC-SLICE-14`, `CONTROL-01`, `REVIEW-UX-03`, `ARCH-01`, final `AC-SLICE-17` reconciliation | One role-based UX/measurement/owner audit, final compression register, umbrella status reconciliation, and campaign closeout. |
+
+| Remaining umbrella | Disposition outside those tranches |
+|---|---|
+| `AC-SLICE-11` / `FILESYSTEM-01` | Proposed no-op: retain the current layout; conditional `RUN-BUNDLE-01` only for a demonstrated portability/archive/share need. Final ratification required. |
+| `OPS-01` | Proposed no-op for site/global registry; conditional `PROFILE-REGISTRY-01` only for a demonstrated site or multi-Project need. Final ratification required. |
+| `OPS-04` | Proposed no-op for a private-source-only rename; conditional caller-complete `INTERNAL-NAME-01` only if later justified. Final ratification required. |
+| `AC-SLICE-15` / `AC-SLICE-16` | Scientific follow-ons `SCI-AUDIT-01` and `SCI-ORACLE-01`; not architecture gates. |
+| `AC-SLICE-18` / `OPS-03` / residual `AC-SLICE-17` | Post-campaign `DOC-COMPRESS-01`, `INLINE-OWNERS-01`, `DASHBOARD-RETIRE-01`, and `REPORT-ROSTER-01`. Evidence deletion still requires explicit approval. |
+| `CONTAINER-01` / institutional execution | Independent `MANAGED-CONTAINER-01` and `SITE-PARITY-01`; neither is an architecture-campaign closure gate. |
+| `AC-SLICE-06` / `AC-SLICE-07` | No-op closure after the final audit: no shared policy object, universal artifact lifecycle, or Artifact Store is currently justified. |
+
 `AC-SLICE-15` and `AC-SLICE-16` remain visible so the campaign does not lose
 its parallel scientific-review commitments. Their `1` score is only an
 Architecture Priority classification within this view; it is not a statement

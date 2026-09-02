@@ -54,7 +54,9 @@
         "01": { "$ref": "#/$defs/positive_integer" },
         "02": { "$ref": "#/$defs/positive_integer" },
         "06": { "$ref": "#/$defs/positive_integer" },
-        "08": { "$ref": "#/$defs/positive_integer" }
+        "08": { "$ref": "#/$defs/positive_integer" },
+        "09": { "$ref": "#/$defs/positive_integer" },
+        "10": { "$ref": "#/$defs/positive_integer" }
       }
     },
     "stage_memory": {

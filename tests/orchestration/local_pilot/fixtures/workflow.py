@@ -21,10 +21,11 @@ from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.contracts.scientific_evidence import scientific_context, step08, step09
+from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.orchestration.local_pilot import inspection
 from emrys.orchestration.local_pilot.lifecycle import build_snakemake_argv
-from emrys.reporting._artifact_index.registry import ADAPTER_REGISTRY
+from emrys.reporting._artifact_index.registry import build_adapter_registry
 from tests.reporting.fixtures.artifact_adapters_v1.build_fixture import (
     minimal_bai_bytes,
     minimal_bam_bytes,
@@ -39,6 +40,7 @@ SNAKEFILE = REPO_ROOT / "workflow" / "Snakefile"
 WORKFLOW_PROFILE = REPO_ROOT / "workflow" / "profiles" / "local" / "profile.v9+.yaml"
 TASK_DOUBLE = Path(__file__).with_name("task_double.py").resolve()
 _MAX_INLINE_PAYLOAD_CHARS = 64 * 1024
+ADAPTER_REGISTRY = build_adapter_registry(analysis_module_v1())
 
 
 def _resource_policy() -> dict[str, Any]:
@@ -49,7 +51,9 @@ def _resource_policy() -> dict[str, Any]:
         "stage_concurrency": {
             step_id: 1 for step_id in ("01", "02", "02b", "03", "04", "05", "06", "07")
         },
-        "step_threads": {step_id: 1 for step_id in ("00a", "01", "02", "06", "08")},
+        "step_threads": {
+            step_id: 1 for step_id in ("00a", "01", "02", "06", "08", "09", "10")
+        },
         "stage_memory_mb": {
             step_id: 1024
             for step_id in (
@@ -796,7 +800,7 @@ def artifact_payloads(
         temporary_fai.write_bytes(payloads[str(reference_fai_row["source_path"])])
         motif_catalog = (
             REPO_ROOT
-            / "src/emrys/analyses/scientific_context_projection/resources/pum_motifs_v1.tsv"
+            / "src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/resources/pum_motifs_v1.tsv"
         )
         context_fixture = build_transaction(
             temporary_root / "context",
@@ -1001,13 +1005,13 @@ def build(
     root = root.resolve(strict=True)
     intake_root = root / "intake"
     intake_root.mkdir()
-    profile = (
+    profile_base = (
         orchestration_contracts.load_json_object(PROFILE_PATH)
         if profile_override is None
         else profile_override
     )
-    request_path, execution, execution_bytes = build_legacy_execution(
-        intake_root, profile
+    request_path, execution, execution_bytes, profile = build_legacy_execution(
+        intake_root, profile_base
     )
 
     run_root = (root / "run").resolve()

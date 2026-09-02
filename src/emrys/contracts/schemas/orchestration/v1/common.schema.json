@@ -382,6 +382,9 @@
               "type": "null"
             }
           ]
+        },
+        "identity_kind": {
+          "enum": ["file", "package_tree"]
         }
       }
     },

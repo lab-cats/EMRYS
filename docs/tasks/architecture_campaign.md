@@ -2284,16 +2284,33 @@ Operational simplification must not distract from scientific architecture.
 - Compatible per-sample work through Step 06 should be reusable for separately
   identified cohort, subset, sensitivity, or downstream analyses beginning at
   the cohort-dependent boundary.
-- A collaborator-extensible analysis library may support differential or other
-  analyses through typed inputs/outputs, provenance, validation, trust level,
-  resources, failure semantics, and report integration.
-- The proposal that scientific modules should not require editing unrelated
-  owners or turn EMRYS into a generic workflow framework remains an exact
-  module-design choice for `ANALYSIS-02` and `ARCH-01`.
+- The bounded v1 collaborator interface loads an explicitly selected installed
+  provider through `emrys.analysis_modules`. The provider owns closed
+  configuration normalization, typed artifact inputs and outputs, one Step
+  `09` task, an optional Step `10` task, exact dependency declarations,
+  minimum memory and threads, and producer/validator plans. Existing dispatch,
+  failure, validation, publication, recovery, and logging owners remain
+  authoritative.
+- Bespoke scientific reporting is selected separately through
+  `emrys.analysis_reporters`; its provider identity is report-receipt metadata,
+  not Analysis or Run identity. Artifact indexing derives its roster from the
+  admitted module profile rather than a fixed Step `09`/`10` table.
+- The v1 boundary deliberately does not add a universal Stage hierarchy,
+  workflow language, second scheduler, trust/failure DSL, generic report DSL,
+  Artifact Store, or public mutable registry. Existing flat paired-CMH
+  Analyses remain supported.
+- The dependency/resource vertical reuses the fixed runtime inspector, Run
+  toolchain identity, task-input rechecks, and existing execution-resource
+  policy. A provider may reference fixed checks or declare exact local
+  executable, R namespace, file, and package-tree dependencies; Step `09`/`10`
+  threads and memory must satisfy its task minimums. Established package
+  managers own installation and solving. EMRYS diagnoses and admits the result
+  but does not add provider-supplied installers, a solver, or another runtime
+  authority.
 - The algorithms, parameters, assumptions, interpretation boundaries, and
   implementation needed for scientific review must remain recognizable and
-  inspectable under binding `AC-GUARD-002`; the exact module API and placement
-  remain open.
+  inspectable under binding `AC-GUARD-002`; later dependency, resource, and
+  distribution work may extend the bounded API without weakening that rule.
 
 The intake separately recommends a scientific audit of Steps 07–09, with
 particular attention to:
@@ -2864,6 +2881,67 @@ the selected hosted 130-pair lane. The 100,000-pair lane is not required. This
 can establish disposable single-node synthetic Slurm engineering evidence, not
 site/global, multi-node, production, failure/recovery, scientific, or biological proof.
 
+### 13.27 Bounded slice record: collaborator analysis module v1
+
+| Surface/category | Selected implementation and boundary |
+|---|---|
+| Public model and provider admission | A Project Analysis may keep the existing flat paired-CMH form or explicitly select an installed `emrys.analysis_modules` provider with module-owned closed configuration. Explicit selection authorizes that in-process provider. The descriptor contributes typed artifact inputs/outputs, one Step `09` task, optional Step `10`, exact dependency declarations, minimum memory and threads, and producer/validator plans to the immutable Run profile. It does not introduce a mandatory Stage hierarchy, workflow language, scheduler, or public mutable registry. |
+| Fixed v1 trust, failure, dependency, and resource semantics | Existing `TaskDispatch`, validation, receipt-last publication, lock/rollback/recovery, process-signal, failure, and `LOG-05` owners apply unchanged; a module cannot replace them with self-attested trust or failure policy. The selected module may reuse fixed runtime checks or declare exact local executable, R namespace, file, and package-tree dependencies. Doctor composes and probes only that selected fragment; Run toolchain identity binds exact files and package trees, while the existing task-input boundary rechecks used files. Step `09`/`10` resource policy must meet module minimum memory and threads. Established package managers own installation and solving; managed Doctor repair restores only the fixed EMRYS runtime. No provider installer, dependency solver, GPU/disk/walltime policy, remote-resource authority, or second runtime model is added. |
+| Profile, artifact indexing, and processing reuse | The checked-in processing profile owns the common graph through Step `08`; planning composes an immutable selected-module tail. Artifact indexing derives the expected roster, producer evidence, and paths from that admitted profile instead of fixed Step `09`/`10` tables. This is dynamic indexing of the existing artifact transaction, not an Artifact Store, database, service, or second authored manifest. Processing compatibility binds Steps `00`–`06` independently of the selected downstream module, so compatible stationary source artifacts may feed a different admitted module without copy or mutation. |
+| Reporting and schema identity | The computation provider's exact implementation digest is Run-bound. `emrys.analysis_reporters` separately selects one bespoke scientific reporter by module ID while fixed EMRYS reporting retains evidence/operations rendering, HTML safety, transaction ordering, and default/disabled/independent invocation. The reporter package and core-renderer identities are bound in report receipt v5 and never change Analysis or Run identity. Explicit-module work uses Analysis revision v2, run-summary v3, and report-receipt v5; existing flat paired-CMH work retains Analysis revision v1, run-summary v2, and report-receipt v4. No generic report DSL is added. |
+| Compression, mutation, evidence, and remaining scope | The fixed artifact roster, paired-CMH coupling in the reporting core, unused provider injection, duplicate artifact declarations, pseudo-whitelist, and redundant shape/status checks retire; one descriptor-derived path and separately owned built-in computation/report providers survive. This is the approved permanent collaborator-extension exception, not a net-negative refactor: maintained product is 55 paths, `+5065/-3270`, net `+1795`, with six additions, one deletion, ten renames, and five net-new product files. Its permanent owners are the `emrys.analyses` computation-provider boundary and `emrys.reporting` reporter-provider boundary, so there is no temporary owner or retirement condition. Protections/tests are 33 paths, `+1129/-359`, net `+770`; configuration/schema/workflow/tooling is 11 paths, `+400/-344`, net `+56`; documentation is 30 paths, `+586/-325`, net `+261`; the whole slice is 129 paths, `+7180/-4298`, net `+2882`. The public extension is exactly two installed-provider entry-point groups plus the explicit Project Analysis `{module, config}` form; commands, flags, backends, schedulers, Artifact Stores, Results authorities, mutable authorities, and log owners change by zero. Existing flat paired-CMH compatibility remains intentionally supported. The touched Step `10` shell owner is `KEEP`; no wrapper or second implementation is added. `LOG-05` behavior is unchanged because no durable-output or diagnostic owner changes. Run and retained evidence remain immutable; no retained evidence is moved, rewritten, or deleted. Focused local evidence passes 36 processing/application tests, 139 reporting tests, all 23 transaction cases across the repaired suite and its targeted rerun, one 231-second real cross-Run reuse journey, 27 installed-identity/module tests, four explicit regressions, 156 documentation/public-CLI tests with three environment skips, 35 source-boundary tests, and one isolated-wheel test. Documentation structure passes at 163 Markdown documents/four Mermaid sources; repository Ruff lint and `git diff --check` pass. Independent review found no remaining P1/P2 blocker. The first exact-head CI run exposed only incomplete test migration; the test-only repair passes all 78 profile/projection/task tests, 14 affected materialization cases, all 13 independent contract goldens, and the static-graph regression without weakening production admission. Six compact provider-contract tests restore the expanded paired-CMH owner from `148/184` branches (`0.804348`) to `155/184` (`0.842391`), above the retained `133/158` baseline (`0.841772`), without changing product code or rebasing coverage. The next gate revealed one unreachable optional state in installed-package traversal; making the already-mandatory owned-file set explicit and adding one callable-provenance rejection test projects `36/42` branches (`0.857143`), above the fixed `0.85` new-shared-module floor, with all 26 direct identity tests passing. Exact-head hosted CI remains pending repair publication. Institutional-site, production-data, scientific-review, and biological proof are not claimed here. |
+
+### 13.28 Bounded slice record: collaborator dependency and resource admission
+
+| Surface/category | Selected implementation and boundary |
+|---|---|
+| Dependency admission | One selected module may reference a fixed EMRYS runtime check or declare a local executable, R namespace, file, or package tree. Its logical ID, kind, version requirement, and probe shape are canonical Analysis policy; installation paths remain runtime facts. Doctor composes only that selected fragment onto the fixed runtime profile and reuses the existing tool, R, and path probes. Exact executable/file bytes and installed package trees enter the existing path-neutral Run toolchain identity, while lexical/resolved paths remain Attempt evidence; task-used files also enter the existing task-input hash and mutation checks. Unselected modules add nothing. |
+| Resource admission | `AnalysisTaskV1` adds only `minimum_threads`; the planning context receives the admitted effective thread count. Existing Step `09`/`10` memory and thread controls remain the single resource authority, historical profiles without those optional thread keys retain a one-thread meaning, and the existing Snakemake owner consumes the effective value. No resource copy enters `TaskDispatch`. |
+| Provisioning and explicit no-ops | Established package managers install and solve provider dependencies. Managed Doctor repair remains bounded to the fixed EMRYS uv/Pixi/renv locks and gives module-specific remediation instead of executing provider-supplied installers. No dependency solver, installer DSL, GPU/disk/walltime policy, remote-resource authority, second runtime profile, scheduler, Artifact Store, or generic report machinery is introduced. These are explicit v1 no-ops, not hidden implementation debt. |
+| Mutation, logging, evidence, and accounting | This extends the previously approved permanent collaborator-module exception. Maintained product Python is nine existing paths, `+477/-53`, net `+424`; protections/tests are eight existing paths, `+452/-12`, net `+440`; configuration/schema/workflow is six existing paths, `+83/-8`, net `+75`; implementation documentation is three existing paths, `+33/-23`, net `+10`; the whole implementation is 26 existing paths, `+1045/-96`, net `+949`, with no file growth. The module-v1 contract is unreleased on this stacked branch and is revised in place rather than retaining an unused adapter. No public command, mutable authority, log owner, shell owner, report contract, retained evidence, or Results authority changes; no evidence is moved, rewritten, or deleted. Final-code focused gates pass 119 Doctor/runtime/onboarding cases and the two subprocess-heavy public failure/resume and stationary-processing-reuse journeys; earlier focused selections covered module contracts, resource propagation, lifecycle identity, and three real-Snakemake dry-run cases. Targeted Ruff, Python compilation, documentation structure, and `git diff --check` pass. Long integration and selected 130-pair checks remain exact-head CI gates; this is engineering evidence only. |
+
+### 13.29 Consolidated architecture closure register
+
+The remaining architecture work is finite. The campaign must now move through
+the following three tranches rather than reopening one umbrella at a time.
+Each tranche absorbs all listed cards and ends with one status reconciliation.
+
+| Tranche | Finite deliverable | Absorbed campaign scope | Required proof |
+|---|---|---|---|
+| `ARCH-CLOSE-01` Supported ordinary journey | From a Project root, the installed `emrys` command discovers the Project and default execution profile; ordinary `validate`, `run`, `inspect`, and `report` require no interpreter path or repeated file arguments, while `--analysis` is needed only to disambiguate multiple Analyses. Reconcile runtime terminology and verify named profiles, managed runtime, Doctor, collaborator dependency admission, and automatic reporting as one documented golden path. | `AC-SLICE-08`, `AC-SLICE-13`, residual `OPS-02`, `RUNTIME-01`, and `ANALYSIS-02` verification | Focused command tests, ordinary CI, and the managed real-tool direct golden path. |
+| `ARCH-CLOSE-02` Execution and logging parity | Exercise one controlled failure and resume through direct and disposable whole-Run Slurm placement using the existing driver; compare immutable Run/Attempt authority, recovery eligibility, Results/reporting, scheduler provenance, and exactly one application log. Perform the required generalized-backend evaluation and add no abstraction unless this evidence exposes a concrete extension or net-negative compression case. | `AC-SLICE-05`, residual `OPS-02`, and `LOG-05` | Focused failure/recovery tests and the selected 130-pair direct/Slurm lane; no 100,000-pair run. Institutional Viking evidence remains separate. |
+| `ARCH-CLOSE-03` UX and campaign closeout | Perform one role-based journey review and campaign measurement pass, reconcile every compression candidate and remaining matrix status, record the final dependency-direction/backend decisions, and leave each non-campaign concern with one named owner below. Product changes are permitted only for a concrete acceptance failure found by this pass; otherwise this is verification and closeout. | `AC-SLICE-06`, `AC-SLICE-07`, `AC-SLICE-14`, `CONTROL-01`, `REVIEW-UX-03`, `ARCH-01`, and final `AC-SLICE-17` reconciliation | Recorded journeys and measurements, caller/owner scans, documentation checks, full ordinary CI, and exact links to prior integration evidence. |
+
+#### Umbrella dispositions
+
+| Umbrella | Closure disposition |
+|---|---|
+| `AC-SLICE-05` | Finish only the failure/resume/logging parity cut in `ARCH-CLOSE-02`. The generalized-backend decision is **no-op** unless the audit finds a concrete second backend or net-negative consolidation. Site, multi-node, and production proof becomes `SITE-PARITY-01`. |
+| `AC-SLICE-06` | **No-op closure** in `ARCH-CLOSE-03`: retain the existing equivalent-owner gate; no shared policy object is justified by the audited production owners. |
+| `AC-SLICE-07` | **No-op closure** in `ARCH-CLOSE-03`: retain class-specific artifact authorities; no distinct Artifact Store or universal lifecycle is justified. A demonstrated future class gap becomes `ARTIFACT-LIFECYCLE-01`. |
+| `AC-SLICE-08`, `AC-SLICE-13` | Verification and ordinary-command completion only in `ARCH-CLOSE-01`; do not create more configuration or golden-path machinery. |
+| `AC-SLICE-11`, `FILESYSTEM-01` | **Proposed no-op closure, final ratification required:** retain the current Project/Run/Results layout and do not add a Run Bundle without a concrete portability, archival, or sharing use case. Such a use case becomes `RUN-BUNDLE-01`. |
+| `AC-SLICE-14` | One final measurement pass in `ARCH-CLOSE-03`; no permanent measurement subsystem. |
+| `AC-SLICE-15`, `AC-SLICE-16` | Leave the architecture campaign as `SCI-AUDIT-01` and `SCI-ORACLE-01`; they remain scientifically important but are not architecture-closure gates. |
+| `AC-SLICE-17` | Close the umbrella after the final candidate reconciliation in `ARCH-CLOSE-03`. Remaining dashboard, documentation, and reporting reductions become `DASHBOARD-RETIRE-01`, `DOC-COMPRESS-01`, and `REPORT-ROSTER-01`; retained evidence still requires explicit deletion approval. |
+| `AC-SLICE-18` | Route to post-campaign `DOC-COMPRESS-01`; do not block architecture closure on the already-deferred broad documentation rewrite. |
+| `CONTROL-01` | **No additional implementation:** the public model is complete. `ARCH-CLOSE-03` verifies callers and closes the umbrella; hypothetical package APIs or generalized storage require a concrete follow-on need. |
+| `OPS-01` | `ARCH-CLOSE-01` verifies Project-local profiles. **Proposed no-op closure, final ratification required** for a site/global profile registry; a demonstrated multi-Project/site need becomes `PROFILE-REGISTRY-01`. |
+| `OPS-02` | Its remaining user-facing command burden is wholly owned by `ARCH-CLOSE-01`; failure/recovery placement parity is wholly owned by `ARCH-CLOSE-02`. |
+| `OPS-03` | Move the remaining repository-wide inline-program inventory to maintenance follow-on `INLINE-OWNERS-01`; normal operation already has no helper-script requirement. |
+| `OPS-04` | **Proposed no-op closure, final ratification required:** the public surface no longer says “local pilot”; renaming private source paths alone has no user value and would create migration churn. A future caller-complete package rename, if justified, becomes `INTERNAL-NAME-01`. |
+| `RUNTIME-01` | `ARCH-CLOSE-01` verifies the current Managed path and records Site/Explicit as acquisition through the same discover/admit contract, not new runtime objects. Container and institutional proof remain named follow-ons. |
+| `CONTAINER-01` | Independent follow-on `MANAGED-CONTAINER-01`; containerization is not a setup or architecture-campaign closure gate. |
+| `REVIEW-UX-03` | One final review in `ARCH-CLOSE-03`, then close; do not create a recurring review bureaucracy. |
+| `LOG-05` | Finish the retained-operation roster and direct/Slurm failure-path parity in `ARCH-CLOSE-02`, then close. |
+| `ANALYSIS-02` | Implementation is complete after Section 13.28; exact-head verification belongs to `ARCH-CLOSE-01`, after which the card closes. New resource forms require a concrete collaborator use case. |
+| `ARCH-01` | `ARCH-CLOSE-03` is the sole remaining umbrella closeout. It records no-op/follow-on decisions and aggregate accounting; it does not authorize another design campaign. |
+
+The three proposed no-op decisions above are the only remaining user
+ratification points. All other architecture work is either one of the three
+finite tranches or explicitly outside this campaign. This register may be
+updated by tranche results, but no new architecture-planning card is required.
+
 ## 14. Measurement plan
 
 Measurement is required so the campaign does not merely move complexity.
@@ -3081,11 +3159,11 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `OBS-01` | **Complete.** Grouped Run control now keeps Run/work/reporting, meaningful phases, Results/evidence, warnings/failures, and the log path normal; operational paths/resources/profile/streams are verbose; exact engine/scheduler/task commands are debug. Durable evidence and machine output are unchanged. |
 | `OBS-02` | High-level scientific progress, public run status, elapsed time, completion/failure, and links to recovery/inspection |
 | `ANALYSIS-01` | **Complete.** Named Analyses may select Dataset samples explicitly or default to all samples, stop at the immutable Step 06 boundary, and launch a separately identified exact-subset downstream Run from one stationary successful processing Run. The private selected TSV is Attempt-bound backend projection, not another authored/evidence authority. Generalized collaborator modules remain `ANALYSIS-02`. |
-| `ANALYSIS-02` | Collaborator-extensible modules with typed scientific contracts; scientific algorithms, assumptions, interpretation, and review-relevant implementation remain visible. The lightweight extension mechanism is open within the binding prohibition on a mandatory universal Stage hierarchy, registry, workflow language, or second scheduler |
+| `ANALYSIS-02` | **Implementation complete; exact-head verification pending.** Explicit installed providers supply closed configuration, typed artifact inputs/outputs, one Step `09` task, optional Step `10`, fixed or exact local dependency declarations, minimum memory and threads, and producer/validator plans; a separate provider owns bespoke scientific reporting. Doctor composes only the selected dependency fragment, existing inspectors admit it, exact files/package trees enter Run identity, and task-used files retain task-bound rechecks. Existing package managers own installation and solving. Existing task, failure, publication, recovery, logging, Run, and Results authorities remain fixed. No universal Stage hierarchy, workflow language, second scheduler, generic report DSL, provider installer, dependency solver, Artifact Store, or mutable registry is selected. |
 | `ARCH-01` | Consumes the completed prerequisites and current vertical cutovers. Sections 13.6, 13.19, and 13.20 leave one execution-profile owner, one private whole-Run Slurm transport/bootstrap, one closed project-v1/named-Analysis source, and grouped control while retiring split configuration, the generated wrapper, all sixteen owner-local scheduler routes, and active request-v3 intake. Run remains immutable, placement/diagnostics remain Attempt-local, Attempt-v1 evidence and Results authority remain unchanged, and no second backend, scheduler, facade, Artifact Store, or evidence deletion is introduced. Broader package, generalized storage, remaining caller migration, and only demonstrated policy/artifact consolidations stay Open under the existing-tool-first protocol. Generalized-backend evaluation remains required near closure. |
 | `REPORT-03` | Primary-scientific-findings hierarchy with evidence and operational detail progressively disclosed |
 | `REPORT-04` | Preserve the requested ability to render nine A-through-I selections when the admitted result warrants them |
-| `RESULTS-01` | **Complete.** Current Runs expose only editing results, scientific context, and receipt-bound reports beneath `results`; nonfinal/QC artifacts live beneath `products/native`; both reports link to admitted primary result tables; no copy, symlink, new manifest/index, or competing current report root exists. Exact legacy-profile report ledgers remain readable as historical evidence, while old-layout Runs are not automatically resumable under the changed current profile. |
+| `RESULTS-01` | **Complete.** The built-in paired-CMH module exposes editing results, scientific context, and receipt-bound reports beneath `results`; collaborator modules may declare different final paths beneath that same canonical Results authority, while nonfinal/QC artifacts remain beneath `products/native`. Reports link to the admitted module outputs; no copy, symlink, authored artifact index, or competing current report root exists. Exact legacy-profile report ledgers remain readable as historical evidence, while old-layout Runs are not automatically resumable under a changed current profile. |
 | `DOC-01` | Role- and journey-based scientist/operator/developer documentation that does not assume campaign history |
 | `DOC-02` | Completed repository-wide documentation disposition and authority cutover; bounded documentation migration and retirement now remain under completed `DOC-03` and open `DOC-04`–`DOC-05`; `CLEAN-01` is Verification pending and `CLEAN-02` is complete |
 | `DOC-03` | Completed source reconciliation and retirement of the stale future-architecture, pipeline-plan, question-index, and future-diagram surfaces without settling the final architecture-document set; the [durable trace](../design/decisions/repository-and-delivery.md#doc-03-source-to-destination-trace-2026-08-25) lives in the repository-and-delivery decision record |

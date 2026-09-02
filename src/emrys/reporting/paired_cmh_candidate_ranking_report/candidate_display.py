@@ -10,13 +10,14 @@ from typing import Literal
 
 from emrys.contracts.scientific_evidence import scientific_context as owner_context
 
-from .inputs import _assert_snapshot, _fail
-from .models import (
-    ComputationalResults,
-    ComputationalTable,
-    ReportRenderError,
-    ScientificContextResults,
+from emrys.reporting import (
+    ReportProviderError as ReportRenderError,
+    fail_report_provider as _fail,
+    recheck_report_input as _assert_snapshot,
 )
+
+from .computational import ComputationalResults, ComputationalTable
+from .scientific_context import ScientificContextResults
 
 
 SelectionSource = Literal["step10_display_rank", "step09_display_rule"]

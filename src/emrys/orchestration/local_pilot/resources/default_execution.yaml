@@ -18,6 +18,8 @@ resources:
     "02": 1
     "06": 4
     "08": 1
+    "09": 1
+    "10": 1
   stage_memory_mb:
     "00a": workflow
     "00b": workflow

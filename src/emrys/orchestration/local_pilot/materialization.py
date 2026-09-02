@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import socket
 import sys
 import uuid
@@ -11,9 +12,11 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, Literal
 
 from emrys import __version__
+from emrys import analyses as analysis_modules
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration import artifact_inventory
 from emrys.contracts.orchestration.application_model import (
@@ -24,6 +27,7 @@ from emrys.contracts.orchestration.application_model import (
     build_execution_plan,
     execution_plan_boundary,
     functional_specification_from_profile,
+    processing_compatibility_sha256,
     processing_stopping_owner_keys,
     toolchain_from_required_tools,
     validate_successor_run,
@@ -47,7 +51,9 @@ from emrys.orchestration.local_pilot.run_implementation import (
     WORKFLOW_PROFILE_RELATIVE,
     RunImplementationError,
     backend_semantics_identity,
+    execution_module_id,
     implementation_identity,
+    processing_implementation_identity,
 )
 from emrys.libraries.process_environment import (
     R_SELECTOR_PREFIXES,
@@ -56,10 +62,11 @@ from emrys.libraries.process_environment import (
 )
 
 Operation = Literal["execute", "resume"]
+_SAFE_ROLE_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
 class MaterializationError(RuntimeError):
-    """One fixed-profile attempt could not be planned or published safely."""
+    """One admitted-profile attempt could not be planned or published safely."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,6 +175,16 @@ def _absolute(path: Path) -> Path:
     return Path(os.path.abspath(path))
 
 
+def _frozen_json(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return MappingProxyType(
+            {str(key): _frozen_json(item) for key, item in value.items()}
+        )
+    if isinstance(value, list):
+        return tuple(_frozen_json(item) for item in value)
+    return value
+
+
 def build_run_candidate(
     analysis: AnalysisAdmission,
     readiness: doctor.DoctorResult,
@@ -183,29 +200,48 @@ def build_run_candidate(
         bindings=readiness.bindings,
         python_executable=Path(sys.executable),
     )
-    try:
-        implementation_sha256 = implementation_identity(readiness.source_root)
-        backend_sha256 = backend_semantics_identity(readiness.source_root)
-    except RunImplementationError as exc:
-        raise MaterializationError(str(exc)) from exc
     source = analysis.workflow_inputs
+    functional = functional_specification_from_profile(analysis.profile)
     stopping_owner_keys = (
         analysis.profile["required_owner_keys"]
         if scientific_stopping_owner_keys is None
         else scientific_stopping_owner_keys
     )
+    module_owner_keys = {task.owner_key for task in analysis.module.descriptor.tasks}
+    executes_module = bool(module_owner_keys & set(stopping_owner_keys))
+    try:
+        implementation_sha256 = implementation_identity(
+            readiness.source_root,
+            analysis.module.descriptor.module_id if executes_module else None,
+            loaded_module=analysis.module if executes_module else None,
+        )
+        processing_implementation_sha256 = processing_implementation_identity(
+            readiness.source_root
+        )
+        backend_sha256 = backend_semantics_identity(readiness.source_root)
+    except RunImplementationError as exc:
+        raise MaterializationError(str(exc)) from exc
+    toolchain = toolchain_from_required_tools(required_tools)
+    resources = declaration.identity_document()
     plan = build_execution_plan(
-        functional_specification=functional_specification_from_profile(
-            analysis.profile
-        ),
+        functional_specification=functional,
         scientific_stopping_owner_keys=stopping_owner_keys,
         implementation_content_sha256=implementation_sha256,
-        toolchain=toolchain_from_required_tools(required_tools),
+        toolchain=toolchain,
         backend="local",
         engine="snakemake",
         backend_semantics_sha256=backend_sha256,
         star_index=source["reference"]["star_index"],
-        computational_resources=declaration.identity_document(),
+        computational_resources=resources,
+        processing_compatibility_sha256=processing_compatibility_sha256(
+            functional_specification=functional,
+            processing_implementation_sha256=processing_implementation_sha256,
+            toolchain=toolchain,
+            backend="local",
+            engine="snakemake",
+            star_index=source["reference"]["star_index"],
+            computational_resources=resources,
+        ),
         processing_source=processing_source,
     )
     return RunCandidate(analysis, plan, bind_run(analysis.revision, plan))
@@ -234,6 +270,50 @@ def _one(paths: Mapping[str, list[Path]], adapter: str) -> Path:
             f"Fixed profile expected one {adapter} path; observed {len(values)}"
         )
     return values[0]
+
+
+def _scope_ids(
+    source: Mapping[str, Any], analysis: AnalysisRevision | None
+) -> tuple[str, str, str]:
+    if analysis is not None:
+        return tuple(
+            analysis.scope_id(scope)
+            for scope in ("reference", "cohort", "analysis")
+        )
+    return (
+        str(source["reference"]["reference_id"]),
+        str(source["analysis"]["cohort_id"]),
+        str(source["analysis"]["primary_analysis_id"]),
+    )
+
+
+def _readmit_execution_module(
+    run: MaterializedRun,
+    source: Mapping[str, Any],
+) -> analysis_modules.LoadedAnalysisModuleV1:
+    try:
+        policy = source["analysis"]["policy"]
+        loaded = analysis_modules.readmit_analysis_module(policy)
+        if (
+            isinstance(run, RunCandidate)
+            and policy.get("schema_version") == "emrys.analysis-module-policy.v1"
+        ):
+            module = policy["module"]
+            revision_module = run.analysis.revision.record["identity"][
+                "analysis_module"
+            ]
+            expected = {
+                key: module[key]
+                for key in ("module_id", "interface_version", "module_version")
+            }
+            expected["configuration"] = policy["configuration"]
+            if revision_module != expected:
+                raise analysis_modules.AnalysisModuleLoadError(
+                    "Analysis revision differs from persisted module policy"
+                )
+        return loaded
+    except (analysis_modules.AnalysisModuleLoadError, KeyError, TypeError) as exc:
+        raise MaterializationError(str(exc)) from exc
 
 
 def _validator(
@@ -298,7 +378,6 @@ def _task_commands(
     }
     reference = source["reference"]
     analysis = source["analysis"]
-    policy = analysis["policy"]
     sample_manifest = Path(str(source["samples"]["manifest"]["path"]))
     partition_manifest = Path(str(source["partitions"]["manifest"]["path"]))
     fasta = Path(str(reference["fasta"]["path"]))
@@ -312,11 +391,6 @@ def _task_commands(
         analysis_revision.scope_id("cohort")
         if analysis_revision is not None
         else str(analysis["cohort_id"])
-    )
-    analysis_id = (
-        analysis_revision.scope_id("analysis")
-        if analysis_revision is not None
-        else str(analysis["primary_analysis_id"])
     )
     partition_scopes = {
         partition_id: (
@@ -945,175 +1019,7 @@ def _task_commands(
             (sample_manifest, partition_manifest, gtf, *step07_inputs),
         )
 
-    if step_id == "09":
-        sites = _one(all_paths["08", cohort_id], "step08_sites_v1")
-        inputs = _one(all_paths["08", cohort_id], "step08_inputs_v1")
-        summary08 = _one(all_paths["08", cohort_id], "step08_summary_v1")
-        all_sites = _one(paths, "step09_cmh_all_sites_v1")
-        significant = _one(paths, "step09_cmh_significant_sites_v1")
-        summary = _one(paths, "step09_cmh_summary_v1")
-        mutation = _one(paths, "step09_mutation_spectrum_tsv_v1")
-        mutation_pdf = _one(paths, "step09_mutation_spectrum_pdf_v1")
-        depth_pdf = _one(paths, "step09_depth_delta_pdf_v1")
-        arguments = [
-            "--analysis-id",
-            analysis_id,
-            "--cohort-id",
-            cohort_id,
-            "--sample-manifest",
-            str(sample_manifest),
-            "--partition-manifest",
-            str(partition_manifest),
-            "--step08-root",
-            str(sites.parents[1]),
-            "--output-root",
-            str(all_sites.parents[1]),
-            "--control-condition",
-            str(policy["control_condition"]),
-            "--treatment-condition",
-            str(policy["treatment_condition"]),
-            "--rna-ref",
-            str(policy["rna_ref"]),
-            "--rna-alt",
-            str(policy["rna_alt"]),
-            "--min-sample-dp",
-            str(policy["min_sample_dp"]),
-            "--mean-dp-threshold",
-            str(policy["mean_dp_threshold"]),
-            "--fdr-threshold",
-            str(policy["fdr_threshold"]),
-            "--common-or-threshold",
-            str(policy["common_or_threshold"]),
-            "--absolute-difference-threshold",
-            str(policy["absolute_difference_threshold"]),
-            "--background-max-fraction",
-            str(policy["background_max_fraction"]),
-            "--rscript-bin",
-            rscript,
-            "--r-script",
-            str(
-                source_root
-                / "src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R"
-            ),
-            "--no-clobber",
-            "--execute",
-        ]
-        if policy["background_condition"] is not None:
-            arguments.extend(
-                ("--background-condition", str(policy["background_condition"]))
-            )
-        producer = _r_owner_command(
-            bash,
-            source_root,
-            renv_library,
-            controlled_python_argv(
-                sys.executable,
-                "-m",
-                "emrys.analyses.paired_cmh_candidate_ranking.producer",
-                *arguments,
-            ),
-        )
-        validator = _validator(
-            "paired-cmh-candidate-ranking",
-            "--analysis-id",
-            analysis_id,
-            "--cohort-id",
-            cohort_id,
-            "--sample-manifest",
-            str(sample_manifest),
-            "--partition-manifest",
-            str(partition_manifest),
-            "--step08-sites",
-            str(sites),
-            "--step08-inputs",
-            str(inputs),
-            "--all-sites",
-            str(all_sites),
-            "--significant-sites",
-            str(significant),
-            "--summary",
-            str(summary),
-            "--mutation-spectrum",
-            str(mutation),
-            "--mutation-spectrum-pdf",
-            str(mutation_pdf),
-            "--depth-delta-pdf",
-            str(depth_pdf),
-            "--output",
-            str(validation),
-        )
-        return (
-            producer,
-            validator,
-            (sample_manifest, partition_manifest, sites, inputs, summary08),
-        )
-
-    if step_id == "10":
-        step09_paths = all_paths["09", analysis_id]
-        all_sites = _one(step09_paths, "step09_cmh_all_sites_v1")
-        significant = _one(step09_paths, "step09_cmh_significant_sites_v1")
-        summary = _one(step09_paths, "step09_cmh_summary_v1")
-        fai = _one(all_paths["00c", reference_id], "step00c_reference_fai_v1")
-        motif_catalog = (
-            source_root
-            / "src/emrys/analyses/scientific_context_projection/resources/pum_motifs_v1.tsv"
-        )
-        receipt = _one(paths, "step10_context_receipt_v1")
-        candidate_context = _one(paths, "step10_candidate_context_v1")
-        arguments = (
-            "--analysis-id",
-            analysis_id,
-            "--step09-all-sites",
-            str(all_sites),
-            "--step09-significant-sites",
-            str(significant),
-            "--step09-summary",
-            str(summary),
-            "--reference-fasta",
-            str(fasta),
-            "--reference-fai",
-            str(fai),
-            "--output-root",
-            str(candidate_context.parents[1]),
-            "--motif-catalog",
-            str(motif_catalog),
-            "--rscript-bin",
-            rscript,
-            "--r-script",
-            str(
-                source_root
-                / "src/emrys/analyses/scientific_context_projection/scientific_context_projection.R"
-            ),
-            "--no-clobber",
-            "--execute",
-        )
-        producer = _r_owner_command(
-            bash,
-            source_root,
-            renv_library,
-            (
-                bash,
-                str(
-                    source_root
-                    / "src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh"
-                ),
-                *arguments,
-            ),
-        )
-        validator = _validator(
-            "scientific-context-projection",
-            "--receipt",
-            str(receipt),
-            "--output",
-            str(validation),
-        )
-        return (
-            producer,
-            validator,
-            (all_sites, significant, summary, fasta, fai, motif_catalog),
-        )
-
-    raise MaterializationError(f"Unsupported fixed-profile Step: {step_id}")
+    raise MaterializationError(f"Unsupported core processing Step: {step_id}")
 
 
 def _dispatches(
@@ -1165,6 +1071,70 @@ def _dispatches(
     )
     expected = inspection.expected_tasks(authority, profile)
     owners = {str(item["machine_key"]): item for item in profile["owner_tasks"]}
+    if readiness.source_commit is None:
+        raise MaterializationError("Task planning requires an admitted source commit")
+    module = run.analysis.module.descriptor
+    module_tasks = {task.owner_key: task for task in module.tasks}
+    scheduled_module_owners = {
+        task.machine_key for task in expected if task.machine_key in module_tasks
+    }
+    if scheduled_module_owners:
+        module = _readmit_execution_module(run, source).descriptor
+        module_tasks = {task.owner_key: task for task in module.tasks}
+        for owner_key in scheduled_module_owners:
+            requirement = module_tasks[owner_key]
+            minimum = (
+                resources.workflow_memory_mb
+                if requirement.stage_memory_mb == "workflow"
+                else requirement.stage_memory_mb
+            )
+            if dict(resources.stage_memory_mb)[requirement.step_id] < minimum:
+                raise MaterializationError(
+                    f"Analysis module Step {requirement.step_id} requires at least "
+                    f"{minimum} MiB"
+                )
+            if resources.threads_for(requirement.step_id) < requirement.minimum_threads:
+                raise MaterializationError(
+                    f"Analysis module Step {requirement.step_id} requires at least "
+                    f"{requirement.minimum_threads} threads"
+                )
+    reference_id, cohort_id, analysis_id = _scope_ids(source, analysis_revision)
+    analysis_identity = (
+        None if analysis_revision is None else analysis_revision.record["identity"]
+    )
+    scope_ids = {
+        "reference": (reference_id,),
+        "sample": tuple(
+            str(row["sample_id"])
+            for row in (
+                source["samples"]["rows"]
+                if analysis_identity is None
+                else analysis_identity["samples"]
+            )
+        ),
+        "cohort_partition": tuple(
+            (
+                f"{cohort_id}__{row['partition_id']}"
+                if analysis_revision is None
+                else analysis_revision.scope_id(
+                    "cohort_partition", str(row["partition_id"])
+                )
+            )
+            for row in source["partitions"]["rows"]
+        ),
+        "cohort": (cohort_id,),
+        "analysis": (analysis_id,),
+    }
+    policy = source["analysis"]["policy"]
+    configuration = (
+        dict(policy["configuration"])
+        if policy["schema_version"] == "emrys.analysis-module-policy.v1"
+        else {
+            key: value
+            for key, value in policy.items()
+            if key not in {"schema_version", "analysis_id"}
+        }
+    )
     for index, task in enumerate(expected, start=1):
         identity = (task.machine_key, task.scope_id)
         references.setdefault(task.machine_key, {})
@@ -1174,35 +1144,190 @@ def _dispatches(
         owner = owners[task.machine_key]
         step_id = str(owner["step_id"])
         adapters = paths_by_scope[step_id, task.scope_id]
-        validation = next(
-            path
-            for adapter, values in adapters.items()
-            if adapter.endswith("_validation_report_v1")
-            for path in values
+        module_task = module_tasks.get(task.machine_key)
+        validation_adapter = (
+            next(
+                output.adapter
+                for output in module_task.outputs
+                if output.kind == "validation_report"
+            )
+            if module_task is not None
+            else next(
+                adapter
+                for adapter in adapters
+                if adapter.endswith("_validation_report_v1")
+            )
         )
+        validation = _one(adapters, validation_adapter)
         outputs = tuple(
             path
             for adapter, values in adapters.items()
-            if not adapter.endswith("_validation_report_v1")
-            and adapter != "step00c_reference_fasta_v1"
+            if adapter != validation_adapter and adapter != "step00c_reference_fasta_v1"
             for path in values
         )
-        producer, validator, inputs = _task_commands(
-            step_id=step_id,
-            scope_id=task.scope_id,
-            paths=adapters,
-            source=source,
-            analysis_revision=analysis_revision,
-            run_root=run_root,
-            source_root=readiness.source_root,
-            runtime=runtime,
-            all_paths=paths_by_scope,
-            threads=(
-                resources.threads_for(step_id)
-                if step_id in THREAD_CAPABLE_STAGE_IDS
-                else None
-            ),
-        )
+        if module_task is None:
+            producer, validator, input_paths = _task_commands(
+                step_id=step_id,
+                scope_id=task.scope_id,
+                paths=adapters,
+                source=source,
+                analysis_revision=analysis_revision,
+                run_root=run_root,
+                source_root=readiness.source_root,
+                runtime=runtime,
+                all_paths=paths_by_scope,
+                threads=(
+                    resources.threads_for(step_id)
+                    if step_id in THREAD_CAPABLE_STAGE_IDS
+                    else None
+                ),
+            )
+            planned_inputs = tuple(
+                (f"input_{input_index:03d}", path)
+                for input_index, path in enumerate(input_paths, start=1)
+            )
+            planned_outputs = tuple(
+                (f"output_{output_index:03d}", path)
+                for output_index, path in enumerate(outputs, start=1)
+            )
+        else:
+            declared_inputs: dict[str, tuple[Path, ...]] = {}
+            for predecessor in module_task.inputs:
+                producer_owner = owners.get(predecessor.producer)
+                if producer_owner is None:
+                    raise MaterializationError(
+                        f"Analysis module predecessor is absent: {predecessor.producer}"
+                    )
+                predecessor_step = str(producer_owner["step_id"])
+                predecessor_scopes = scope_ids[str(producer_owner["scope_type"])]
+                for adapter in predecessor.adapters:
+                    if adapter in declared_inputs:
+                        raise MaterializationError(
+                            f"Analysis module repeats input adapter {adapter}"
+                        )
+                    try:
+                        declared_inputs[adapter] = tuple(
+                            path
+                            for scope in predecessor_scopes
+                            for path in paths_by_scope[
+                                predecessor_step, scope
+                            ][adapter]
+                        )
+                    except KeyError as exc:
+                        raise MaterializationError(
+                            "Analysis module predecessor artifact is absent: "
+                            f"{predecessor.producer}:{adapter}"
+                        ) from exc
+            declared_outputs = {
+                output.adapter: _one(adapters, output.adapter)
+                for output in module_task.outputs
+            }
+            planning_configuration = orchestration_contracts.load_json_object_bytes(
+                orchestration_contracts.canonical_json_bytes(configuration),
+                "analysis-module planning configuration",
+            )
+            context = analysis_modules.TaskPlanningContextV1(
+                reference_id=reference_id,
+                cohort_id=cohort_id,
+                analysis_id=analysis_id,
+                sample_manifest=Path(str(source["samples"]["manifest"]["path"])),
+                partition_manifest=Path(
+                    str(source["partitions"]["manifest"]["path"])
+                ),
+                reference_fasta=Path(str(source["reference"]["fasta"]["path"])),
+                reference_gtf=Path(str(source["reference"]["gtf"]["path"])),
+                source_commit=str(readiness.source_commit),
+                configuration=_frozen_json(planning_configuration),
+                inputs=MappingProxyType(declared_inputs),
+                outputs=MappingProxyType(declared_outputs),
+                runtime_paths=MappingProxyType(
+                    {
+                        check_id: _runtime_path(runtime, check_id)
+                        for check_id in analysis_modules.dependency_ids(module)
+                    }
+                ),
+                python_command=lambda command: controlled_python_argv(
+                    sys.executable, *command
+                ),
+                r_owner_command=lambda command: _r_owner_command(
+                    _runtime_path(runtime, "bash"),
+                    readiness.source_root,
+                    Path(_runtime_path(runtime, "renv_library")),
+                    command,
+                ),
+                validator_command=lambda command: _validator(*command),
+                threads=resources.threads_for(step_id),
+            )
+            try:
+                commands = module_task.plan(context)
+            except (analysis_modules.AnalysisTaskPlanningError, KeyError) as exc:
+                raise MaterializationError(
+                    f"Analysis module task planning failed for {task.machine_key}: {exc}"
+                ) from exc
+            if not isinstance(commands, analysis_modules.TaskCommandPlanV1):
+                raise MaterializationError(
+                    f"Analysis module returned no task plan for {task.machine_key}"
+                )
+            producer, validator, module_inputs = commands
+            if any(
+                not isinstance(argv, tuple)
+                or not argv
+                or any(not isinstance(value, str) or not value for value in argv)
+                for argv in (producer, validator)
+            ) or any(
+                not isinstance(item, analysis_modules.TaskInputV1)
+                or _SAFE_ROLE_RE.fullmatch(item.role) is None
+                or not isinstance(item.path, Path)
+                for item in module_inputs
+            ):
+                raise MaterializationError(
+                    f"Analysis module returned an invalid task plan for {task.machine_key}"
+                )
+            occupied_paths = {item.path for item in module_inputs}
+            module_inputs = (
+                *module_inputs,
+                *(
+                    analysis_modules.TaskInputV1(
+                        f"dependency.{dependency.dependency_id}",
+                        Path(dependency.target),
+                    )
+                    for dependency in sorted(
+                        module.dependencies,
+                        key=lambda item: item if isinstance(item, str) else item.dependency_id,
+                    )
+                    if isinstance(dependency, analysis_modules.AnalysisDependencyV1)
+                    and dependency.kind in {"executable", "file"}
+                    and Path(dependency.target) not in occupied_paths
+                ),
+            )
+            input_roles = [item.role for item in module_inputs]
+            input_paths = [item.path for item in module_inputs]
+            output_roles = [
+                output.adapter
+                for output in module_task.outputs
+                if output.adapter != validation_adapter
+            ]
+            if (
+                len(set(input_roles)) != len(input_roles)
+                or len(set(input_paths)) != len(input_paths)
+                or set(input_roles) & set(output_roles)
+            ):
+                raise MaterializationError(
+                    f"Analysis module task {task.machine_key} repeats a provenance role or path"
+                )
+            required_inputs = {
+                path for paths in declared_inputs.values() for path in paths
+            }
+            if not required_inputs <= set(input_paths):
+                raise MaterializationError(
+                    f"Analysis module task {task.machine_key} omitted declared inputs"
+                )
+            planned_inputs = tuple(module_inputs)
+            planned_outputs = tuple(
+                (output.adapter, declared_outputs[output.adapter])
+                for output in module_task.outputs
+                if output.adapter != validation_adapter
+            )
         suffix = hashlib.sha256(
             f"{attempt_id}:{task.machine_key}:{task.scope_id}".encode()
         ).hexdigest()[:32]
@@ -1236,9 +1361,9 @@ def _dispatches(
             / f"{task.scope_id}.json"
         )
         input_declarations = []
-        for input_index, path in enumerate(inputs, start=1):
+        for role, path in planned_inputs:
             declaration = {
-                "role": f"input_{input_index:03d}",
+                "role": role,
                 "path": str(path),
             }
             snapshot = bound_input_snapshots.get(path)
@@ -1272,8 +1397,8 @@ def _dispatches(
             "validator_argv": list(validator),
             "inputs": input_declarations,
             "outputs": [
-                {"role": f"output_{output_index:03d}", "path": str(path)}
-                for output_index, path in enumerate(outputs, start=1)
+                {"role": role, "path": str(path)}
+                for role, path in planned_outputs
             ],
             "validation_report_path": str(validation),
             "native_receipt_path": None,
@@ -1547,6 +1672,9 @@ def build_attempt_plan(
     if placement is not None:
         attempt["placement"] = dict(placement)
     if successor:
+        selected_module_id = execution_module_id(
+            run.analysis.revision, run.execution_plan
+        )
         try:
             validate_successor_run(
                 analysis=analysis.revision,
@@ -1556,7 +1684,11 @@ def build_attempt_plan(
                 attempt=attempt,
                 resource_policy=resource_policy_record,
                 observed_implementation_content_sha256=implementation_identity(
-                    source_root
+                    source_root,
+                    selected_module_id,
+                    loaded_module=(
+                        analysis.module if selected_module_id is not None else None
+                    ),
                 ),
                 observed_backend_semantics_sha256=backend_semantics_identity(
                     source_root

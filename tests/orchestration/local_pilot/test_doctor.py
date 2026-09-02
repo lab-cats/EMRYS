@@ -12,6 +12,9 @@ from typing import Any
 
 import pytest
 
+from emrys import analyses
+from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
+from emrys import reporting
 from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
     RuntimeInspection,
@@ -194,7 +197,155 @@ def test_runtime_identity_binds_executables_packages_and_storage(
     }
     assert by_name["python"]["sha256"] == by_name["snakemake"]["sha256"]
     assert by_name["r_edger"]["resolved_path"] == str(package)
+    assert "identity_kind" not in by_name["r_edger"]
     assert by_name["storage_qualification"]["version"] == "site-1"
+
+
+def test_selected_package_tree_dependency_is_composed_and_content_bound(
+    tmp_path: Path,
+) -> None:
+    tool = tmp_path / "collaborator-tool"
+    tool.write_bytes(b"tool\n")
+    resource = tmp_path / "collaborator.dat"
+    resource.write_bytes(b"resource\n")
+    package = tmp_path / "collaborator-package"
+    package.mkdir()
+    (package / "model.dat").write_bytes(b"fixed model\n")
+    renv_library = tmp_path / "renv-library"
+    renv_library.mkdir()
+    descriptor = replace(
+        analysis_module_v1(),
+        dependencies=(
+            "python",
+            analyses.AnalysisDependencyV1(
+                "collaborator_tool", "executable", str(tool), ".*", ("--version",)
+            ),
+            analyses.AnalysisDependencyV1(
+                "collaborator_r", "r_namespace", "Collaborator", ".*"
+            ),
+            analyses.AnalysisDependencyV1(
+                "collaborator_file", "file", str(resource)
+            ),
+            analyses.AnalysisDependencyV1(
+                "collaborator_assets",
+                "package_tree",
+                str(package),
+                description="collaborator model assets",
+            ),
+        ),
+    )
+    rscript = tmp_path / "Rscript"
+    required, additions, package_tree_ids, explicit_file_ids = (
+        doctor._module_dependency_checks(
+            descriptor,
+            (
+                _check("python", "tool_version", sys.executable).check,
+                _check("rscript", "tool_version", str(rscript)).check,
+            ),
+        )
+    )
+    by_name = {check.check_id: check for check in additions}
+    inspection = _inspection(
+        tmp_path,
+        (
+            _check("renv_library", "path_visibility", str(renv_library)),
+            RuntimeObservation(
+                check=by_name["collaborator_assets"],
+                status="pass",
+                observed="readable",
+                detail="qualified",
+                resolved_path=package,
+            ),
+        ),
+    )
+    (binding,) = doctor.runtime_file_bindings(
+        inspection,
+        package_tree_ids=package_tree_ids,
+    )
+
+    assert required == (
+        "collaborator_assets",
+        "collaborator_file",
+        "collaborator_r",
+        "collaborator_tool",
+        "python",
+    )
+    assert by_name["collaborator_assets"].probe_args == ("directory_readable",)
+    assert by_name["collaborator_file"].probe_args == ("file_readable",)
+    assert by_name["collaborator_r"].probe_args == (str(rscript),)
+    assert by_name["collaborator_tool"].check_type == "tool_version"
+    assert package_tree_ids == {"collaborator_assets", "collaborator_r"}
+    assert explicit_file_ids == {"collaborator_file", "collaborator_tool"}
+    assert binding.identity_kind == "package_tree"
+    assert binding.sha256 == doctor.installed_package_tree_identity(package).sha256
+
+    (file_binding,) = doctor.runtime_file_bindings(
+        _inspection(
+            tmp_path,
+            (
+                _check("renv_library", "path_visibility", str(renv_library)),
+                _check("r_tool", "tool_version", str(tool)),
+            ),
+        ),
+        explicit_file_ids=frozenset({"r_tool"}),
+    )
+    assert file_binding.identity_kind == "file"
+
+    linked_tool = tmp_path / "linked-tool"
+    linked_tool.symlink_to(tool)
+    with pytest.raises(doctor.DoctorInputError, match="canonical real file"):
+        doctor.runtime_file_bindings(
+            _inspection(
+                tmp_path,
+                (
+                    _check("renv_library", "path_visibility", str(renv_library)),
+                    _check("r_tool", "tool_version", str(linked_tool)),
+                ),
+            ),
+            explicit_file_ids=frozenset({"r_tool"}),
+        )
+
+
+def test_module_runtime_checks_are_composed_once_for_run_and_resume(
+    tmp_path: Path,
+) -> None:
+    fixed = (
+        _check("python", "tool_version", sys.executable).check,
+        _check("rscript", "tool_version", "/Rscript").check,
+    )
+    descriptor = replace(
+        analysis_module_v1(),
+        dependencies=(
+            analyses.AnalysisDependencyV1(
+                "collaborator_file", "file", str(tmp_path / "resource.dat")
+            ),
+        ),
+    )
+
+    composed, *_rest = doctor._compose_module_runtime_checks(
+        descriptor, fixed, len(fixed)
+    )
+    retained, *_rest = doctor._compose_module_runtime_checks(
+        descriptor, composed, len(fixed)
+    )
+
+    assert [check.check_id for check in composed] == [
+        "python",
+        "rscript",
+        "collaborator_file",
+    ]
+    assert retained == composed
+
+
+def test_runtime_contract_refuses_a_truncated_fixed_roster(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    _data, policy = doctor.load_runtime_profile_contract(
+        doctor.onboarding.runtime_policy_path()
+    )
+
+    with pytest.raises(doctor.DoctorInputError, match="exact ordered fixed-policy"):
+        doctor.validate_runtime_profile_contract(policy[:-1], source)
 
 
 def test_runtime_contract_refuses_a_symlinked_renv_library(tmp_path: Path) -> None:
@@ -282,6 +433,54 @@ def test_absent_runtime_diagnosis_is_read_only_and_opens_no_log(
     assert result.inspection is None
     assert "runtime profile is not admitted" in result.blockers[-1]
     assert _snapshot(tmp_path) == before
+
+
+def test_foundation_readiness_requires_reporter_only_when_enabled(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = _project(tmp_path)
+    receipt = tmp_path / "storage.tsv"
+    receipt.write_bytes(b"qualified\n")
+    qualified = QualifiedStorage(receipt, "b" * 64, "site-1")
+    monkeypatch.setattr(
+        doctor,
+        "inspect_source_checkout",
+        lambda **_kwargs: SimpleNamespace(commit="a" * 40),
+    )
+    monkeypatch.setattr(
+        doctor.onboarding,
+        "validate_project",
+        lambda *_args, **_kwargs: SimpleNamespace(project=project),
+    )
+    monkeypatch.setattr(
+        doctor.storage_qualification,
+        "admit_direct_requirement",
+        lambda *_args, **_kwargs: qualified,
+    )
+    monkeypatch.setattr(
+        reporting,
+        "admit_analysis_reporter",
+        lambda _module_id: (_ for _ in ()).throw(
+            reporting.ReportProviderError("not installed")
+        ),
+    )
+
+    required = doctor._inspect_foundations(
+        project.source_path,
+        project.source_path.parent,
+        require_reporter=True,
+    )
+    disabled = doctor._inspect_foundations(
+        project.source_path,
+        project.source_path.parent,
+        require_reporter=False,
+    )
+
+    assert any("analysis reporter is not ready" in item for item in required.blockers)
+    assert not any(
+        "analysis reporter is not ready" in item for item in disabled.blockers
+    )
 
 
 @pytest.mark.parametrize(
@@ -392,6 +591,118 @@ def test_repair_refuses_a_site_owned_runtime_without_mutation(
         doctor._build_repair_plan(result)
 
     assert _snapshot(tmp_path) == before
+
+
+def test_managed_repair_binds_base_profile_not_derived_module_bytes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = _project(tmp_path)
+    profile = project.source_path.parent / "runtime/runtime.tsv"
+    base_bytes = b"fixed managed profile\n"
+    profile.write_bytes(base_bytes)
+    tool = tmp_path / "collaborator-tool"
+    tool.write_bytes(b"tool\n")
+    python_check = _check("python", "tool_version", sys.executable)
+    dependency_check = _check(
+        "collaborator_tool", "tool_version", str(tool)
+    )
+    result = _result(
+        project,
+        ready=False,
+        inspection=_inspection(
+            tmp_path,
+            (python_check, dependency_check),
+            profile=profile,
+            profile_bytes=b"fixed managed profile\nderived module check\n",
+        ),
+    )
+    descriptor = replace(
+        result.analysis.module.descriptor,
+        dependencies=(
+            analyses.AnalysisDependencyV1(
+                "collaborator_tool",
+                "executable",
+                str(tool),
+                ".*",
+                ("--version",),
+            ),
+        ),
+    )
+    result = replace(
+        result,
+        analysis=replace(
+            result.analysis,
+            module=replace(result.analysis.module, descriptor=descriptor),
+        ),
+    )
+    monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
+    (result.source_root / ".venv").mkdir()
+    monkeypatch.setattr(doctor.sys, "prefix", str(result.source_root / ".venv"))
+    monkeypatch.setattr(doctor, "_manager", lambda name: Path(f"/manager/{name}"))
+    monkeypatch.setattr(doctor, "_file_sha256", lambda _path: "d" * 64)
+    monkeypatch.setattr(
+        doctor,
+        "load_runtime_profile_contract",
+        lambda _path: (base_bytes, (python_check.check,)),
+    )
+
+    plan = doctor._build_repair_plan(result)
+
+    assert plan.runtime is not None
+    assert plan.runtime.profile_bytes == base_bytes
+
+
+def test_managed_repair_refuses_module_specific_dependency_installation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = _project(tmp_path)
+    missing = replace(
+        _check("collaborator_tool", "tool_version", str(tmp_path / "tool")),
+        status="fail",
+        observed="missing",
+    )
+    result = _result(
+        project,
+        ready=False,
+        inspection=_inspection(tmp_path, (missing,)),
+    )
+    descriptor = replace(
+        result.analysis.module.descriptor,
+        dependencies=(
+            analyses.AnalysisDependencyV1(
+                "collaborator_tool",
+                "executable",
+                str(tmp_path / "tool"),
+                ".*",
+                ("--version",),
+            ),
+        ),
+    )
+    result = replace(
+        result,
+        analysis=replace(
+            result.analysis,
+            module=replace(result.analysis.module, descriptor=descriptor),
+        ),
+    )
+
+    with pytest.raises(doctor.DoctorRepairError, match="package manager"):
+        doctor._build_repair_plan(result)
+
+    monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
+    (result.source_root / ".venv").mkdir()
+    monkeypatch.setattr(doctor.sys, "prefix", str(result.source_root / ".venv"))
+    monkeypatch.setattr(doctor, "_manager", lambda name: Path(f"/manager/{name}"))
+    monkeypatch.setattr(doctor, "_file_sha256", lambda _path: "d" * 64)
+
+    bootstrap = doctor._build_repair_plan(replace(result, inspection=None))
+
+    assert bootstrap.runtime is not None
+    assert bootstrap.runtime.profile_bytes is None
 
 
 def test_storage_only_repair_preserves_ready_site_runtime_and_skips_managers(

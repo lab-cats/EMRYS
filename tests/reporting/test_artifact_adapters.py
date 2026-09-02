@@ -17,6 +17,7 @@ from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
+from emrys import analyses
 from emrys.contracts.artifacts import api as ARTIFACT_CONTRACTS
 from emrys.contracts.scientific_evidence import step08, step09
 from tests.contract_integration.validation_rosters.validation_roster_expectations import (
@@ -52,11 +53,6 @@ EXPECTED_PRODUCER_PATHS = {
     "06": "src/emrys/stages/mechanical_orientation/producer.py",
     "07": ("src/emrys/stages/partitioned_cohort_mpileup/producer.py"),
     "08": ("src/emrys/stages/cohort_candidate_preprocessing/producer.py"),
-    "09": ("src/emrys/analyses/paired_cmh_candidate_ranking/producer.py"),
-    "10": (
-        "src/emrys/analyses/scientific_context_projection/"
-        "scientific_context_projection.sh"
-    ),
 }
 VALIDATION_ARTIFACT_STEPS = {
     "ref.star_index.validation": "00a",
@@ -90,7 +86,6 @@ ARTIFACT_PUBLICATION = importlib.import_module(
 )
 ARTIFACT_RECORDS = importlib.import_module("emrys.reporting._artifact_index.records")
 ARTIFACT_REGISTRY = importlib.import_module("emrys.reporting._artifact_index.registry")
-ARTIFACT_ROSTERS = importlib.import_module("emrys.reporting._artifact_index.rosters")
 ARTIFACT_NATIVE = importlib.import_module(
     "emrys.reporting._artifact_index.reconcile_native"
 )
@@ -124,6 +119,7 @@ def artifact_index_arguments(
         run_contract=fixture.run_contract,
         inventory=fixture.inventory,
         output_root=fixture.output_root,
+        profile=FIXTURE.analysis_profile_v1(),
         execute=execute,
     )
 
@@ -223,6 +219,7 @@ def context_for(fixture: Any) -> Any:
             run_contract=fixture.run_contract,
             inventory=fixture.inventory,
             output_root=fixture.output_root,
+            profile=FIXTURE.analysis_profile_v1(),
             execute=True,
         ),
         source_checkout=SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT),
@@ -294,7 +291,10 @@ def test_fixture_covers_exact_tracked_inventory_and_adapter_registry(
     assert [row["artifact_id"] for row in rows] == [
         row["artifact_id"] for row in FIXTURE.read_inventory_template()
     ]
-    assert {row["adapter"] for row in rows} == set(ARTIFACT_REGISTRY.ADAPTER_REGISTRY)
+    registry = ARTIFACT_REGISTRY.build_adapter_registry(
+        FIXTURE.analysis_module_v1()
+    )
+    assert {row["adapter"] for row in rows} == set(registry)
     assert len(artifact_fixture.source_paths) == 74
     assert all(path.is_file() for path in artifact_fixture.source_paths.values())
     assert not artifact_fixture.output_root.exists()
@@ -303,10 +303,15 @@ def test_fixture_covers_exact_tracked_inventory_and_adapter_registry(
 def test_migrated_implementation_evidence_uses_final_paths_and_current_bytes() -> None:
     git_commit = "a" * 40
 
-    evidence = ARTIFACT_RECORDS.producer_evidence(git_commit)
+    evidence = ARTIFACT_RECORDS.producer_evidence(
+        git_commit,
+        analysis_module=analyses.load_analysis_module(
+            analyses.BUILTIN_PAIRED_CMH_MODULE_ID
+        ),
+    )
 
-    assert tuple(evidence) == tuple(EXPECTED_PRODUCER_PATHS)
-    assert ARTIFACT_ROSTERS.STEP_PRODUCERS == EXPECTED_PRODUCER_PATHS
+    assert tuple(evidence) == (*EXPECTED_PRODUCER_PATHS, "09", "10")
+    assert ARTIFACT_RECORDS.STEP_PRODUCERS == EXPECTED_PRODUCER_PATHS
     for step_id, expected_path in EXPECTED_PRODUCER_PATHS.items():
         record = evidence[step_id]
         assert record["status"] == "implemented"
@@ -321,6 +326,35 @@ def test_migrated_implementation_evidence_uses_final_paths_and_current_bytes() -
             (REPO_ROOT / expected_path).read_bytes()
         ).hexdigest()
         assert row["sha256"] == expected_sha256
+    assert evidence["09"] == evidence["10"]
+    assert evidence["09"]["evidence"][0]["evidence_id"] == "implementation_module"
+
+
+def test_checkout_local_wheel_does_not_claim_the_core_commit() -> None:
+    module = analyses.load_analysis_module(analyses.BUILTIN_PAIRED_CMH_MODULE_ID)
+    external = dataclasses.replace(
+        module,
+        provider=dataclasses.replace(
+            module.provider,
+            package=dataclasses.replace(
+                module.provider.package,
+                root=(
+                    REPO_ROOT
+                    / ".venv/lib/python/site-packages/emrys/analyses/paired_cmh_candidate_ranking"
+                ),
+            ),
+        ),
+    )
+
+    evidence = ARTIFACT_RECORDS.producer_evidence(
+        "a" * 40,
+        analysis_module=external,
+    )
+
+    assert evidence["09"]["git_commit"] is None
+    assert evidence["09"]["evidence"][0]["sha256"] == (
+        module.provider.package.sha256
+    )
 
 
 def test_git_commit_routing_sanitization_is_explicit_and_complete(
@@ -402,10 +436,15 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
         git_commit: str,
         *,
         source_root: Path,
+        analysis_module: Any,
     ) -> dict[str, dict[str, Any]]:
         assert source_root == source_checkout.root
         root_calls["producers"] += 1
-        return real_producer_evidence(git_commit, source_root=source_root)
+        return real_producer_evidence(
+            git_commit,
+            source_root=source_root,
+            analysis_module=analysis_module,
+        )
 
     def declared_contract_path(value: str, *, source_root: Path) -> Path:
         assert source_root == artifact_source_root.root
@@ -439,6 +478,7 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
             run_contract=artifact_fixture.run_contract,
             inventory=artifact_fixture.inventory,
             output_root=artifact_fixture.output_root,
+            profile=FIXTURE.analysis_profile_v1(),
             execute=False,
         ),
         source_checkout=source_checkout,
@@ -469,6 +509,7 @@ def test_prepare_context_rejects_unattributable_dirty_checkout(
                 run_contract=artifact_fixture.run_contract,
                 inventory=artifact_fixture.inventory,
                 output_root=artifact_fixture.output_root,
+                profile=FIXTURE.analysis_profile_v1(),
                 execute=False,
             ),
             source_checkout=SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT),

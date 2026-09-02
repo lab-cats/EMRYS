@@ -38,7 +38,9 @@ RESOURCE_PATHS = (
     "emrys/contracts/schemas/artifacts/v1/common.schema.json",
     "emrys/contracts/schemas/artifacts/v2/run_summary.schema.json",
     "emrys/contracts/schemas/artifacts/v3/report_receipt.schema.json",
+    "emrys/contracts/schemas/artifacts/v3/run_summary.schema.json",
     "emrys/contracts/schemas/artifacts/v4/report_receipt.schema.json",
+    "emrys/contracts/schemas/artifacts/v5/report_receipt.schema.json",
     "emrys/contracts/schemas/orchestration/v1/project.schema.json",
     "emrys/contracts/schemas/orchestration/v2/profile.schema.json",
     "emrys/contracts/schemas/orchestration/v2/request.schema.json",
@@ -62,6 +64,14 @@ RESOURCE_PATHS = (
     "emrys/contracts/schemas/orchestration/v1/reporting_start.schema.json",
     "emrys/contracts/schemas/orchestration/v1/verified_reporting.schema.json",
     "emrys/contracts/schemas/orchestration/v1/common.schema.json",
+    "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_common.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_evaluation.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_output.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_validation.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh",
+    "emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/resources/pum_motifs_v1.tsv",
     "emrys/reporting/styles/run_report.css",
     "emrys/reporting/templates/run_report.html.j2",
 )
@@ -191,6 +201,16 @@ def inspect_wheel(wheel: Path) -> None:
         }
         entry_points = archive.read(entry_points_member).decode().splitlines()
         assert "emrys = emrys.__main__:main" in entry_points
+        assert "[emrys.analysis_modules]" in entry_points
+        assert (
+            "emrys.paired-cmh = "
+            "emrys.analyses.paired_cmh_candidate_ranking:analysis_module_v1"
+        ) in entry_points
+        assert "[emrys.analysis_reporters]" in entry_points
+        assert (
+            "emrys.paired-cmh = "
+            "emrys.reporting.paired_cmh_candidate_ranking_report:render_scientific_report"
+        ) in entry_points
         assert set(RESOURCE_PATHS) <= members
         assert PUBLIC_ONBOARDING_MODULES <= members
         assert PRIVATE_RUNTIME_MODULES <= members

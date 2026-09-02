@@ -22,10 +22,13 @@ from types import SimpleNamespace
 import pytest
 import yaml
 
+import emrys.libraries.installed_package_identity as installed_package_identity
+from emrys import analyses as analysis_modules
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
     PROCESSING_STEP_IDS,
     build_analysis_revision,
+    execution_plan_boundary,
 )
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.contracts.scientific_evidence import step08
@@ -53,6 +56,7 @@ from emrys.orchestration.local_pilot import (
     inspection,
     lifecycle,
     materialization,
+    normalization,
     onboarding,
     reporting_operation,
     task,
@@ -77,6 +81,7 @@ from emrys.orchestration.local_pilot.resource_policy import (
 from emrys.orchestration.local_pilot.run_implementation import (
     backend_semantics_identity,
     implementation_identity,
+    processing_implementation_identity,
 )
 from tests.orchestration.local_pilot.fixture import build, build_legacy
 from tests.orchestration.local_pilot.fixtures.b5_doubles import with_owner_doubles
@@ -392,6 +397,9 @@ def _patch_run_control(
         assert kwargs == {
             "storage_requirement": "direct",
             "analysis_name": None,
+            "require_reporter": getattr(arguments, "through", "analysis")
+            == "analysis"
+            and not getattr(arguments, "no_report", False),
         }
         return readiness
 
@@ -555,7 +563,9 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert not (plan.workspace / "runs").exists()
     assert not (plan.workspace / "logs").exists()
     assert plan.lifecycle_request.operation == "execute"
-    assert json.loads(plan.lifecycle_request.attempt_record_bytes) == plan.attempt_record
+    assert (
+        json.loads(plan.lifecycle_request.attempt_record_bytes) == plan.attempt_record
+    )
     assert (
         plan.attempt_record["executor"]
         == plan.run.execution_plan.record["identity"]["backend"]["backend"]
@@ -566,6 +576,28 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert len({record["machine_key"] for record in records}) == 14
     assert all("--execute" in record["producer_argv"] for record in records)
     assert all("--execute" in record["validator_argv"] for record in records)
+    owners = {
+        str(item["machine_key"]): str(item["step_id"])
+        for item in plan.run.analysis.profile["owner_tasks"]
+    }
+    step09 = next(
+        record for record in records if owners[str(record["machine_key"])] == "09"
+    )
+    assert {item["role"] for item in step09["inputs"]} == {
+        "sample_manifest",
+        "partition_manifest",
+        "step08_sites_v1",
+        "step08_inputs_v1",
+        "step08_summary_v1",
+    }
+    assert {item["role"] for item in step09["outputs"]} == {
+        "step09_cmh_all_sites_v1",
+        "step09_cmh_significant_sites_v1",
+        "step09_cmh_summary_v1",
+        "step09_mutation_spectrum_tsv_v1",
+        "step09_mutation_spectrum_pdf_v1",
+        "step09_depth_delta_pdf_v1",
+    }
 
     produced_paths = [
         Path(item["path"]) for record in records for item in record["outputs"]
@@ -774,10 +806,159 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
             ).hexdigest(),
         }
     ]
+    required_tool_fields = {"name", "version", "path", "resolved_path", "sha256"}
     assert all(
-        set(item) == {"name", "version", "path", "resolved_path", "sha256"}
+        required_tool_fields <= set(item) <= required_tool_fields | {"identity_kind"}
         for item in plan.attempt_record["required_tools"]
     )
+
+
+def test_distinct_installed_module_materializes_one_typed_task(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed_threads: list[int] = []
+
+    def normalize(config, _context):
+        return {"label": str(config["label"]).strip().lower()}
+
+    def plan_task(context):
+        observed_threads.append(context.threads)
+        (summary,) = context.inputs["step08_summary_v1"]
+        result = context.outputs["collaborator_result_v1"]
+        validation = context.outputs["collaborator_validation_v1"]
+        return analysis_modules.TaskCommandPlanV1(
+            context.python_command(("collaborator-produce", str(result))),
+            context.python_command(("collaborator-validate", str(validation))),
+            (analysis_modules.TaskInputV1("cohort_summary", summary),),
+        )
+
+    task = analysis_modules.AnalysisTaskV1(
+        "collaborator.analysis.echo.v1",
+        "09",
+        512,
+        (
+            analysis_modules.AnalysisInputV1(
+                "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
+                ("step08_summary_v1",),
+            ),
+        ),
+        (
+            analysis_modules.AnalysisArtifactV1(
+                "collaborator_result",
+                "collaborator_result_v1",
+                "results/collaborator/{analysis_id}.tsv",
+                "tsv",
+            ),
+            analysis_modules.AnalysisArtifactV1(
+                "collaborator_validation",
+                "collaborator_validation_v1",
+                "products/native/collaborator/{analysis_id}.validation.tsv",
+                "validation_report",
+                analysis_modules.VALIDATION_REPORT_HEADER,
+            ),
+        ),
+        plan_task,
+        2,
+    )
+    descriptor = analysis_modules.AnalysisModuleDescriptorV1(
+        "collaborator.echo",
+        "v1",
+        {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["label"],
+            "properties": {"label": {"type": "string"}},
+        },
+        normalize,
+        (task,),
+        ("python",),
+    )
+
+    def provider():
+        return descriptor
+
+    source = Path(__file__).resolve()
+    package = installed_package_identity.InstalledPackageTreeIdentity(
+        source.parent, "c" * 64, (source,)
+    )
+    installed = installed_package_identity.InstalledProviderV1(
+        provider,
+        "collaborator_analysis:analysis_module_v1",
+        "collaborator-analysis",
+        "1.0",
+        package,
+    )
+    loaded = analysis_modules.LoadedAnalysisModuleV1(descriptor, installed)
+    monkeypatch.setattr(normalization, "load_analysis_module", lambda _name: loaded)
+    monkeypatch.setattr(analysis_modules, "load_analysis_module", lambda _name: loaded)
+    fixture_build = build
+
+    def build_collaborator_project(root: Path, *, replicate_count: int = 2) -> Path:
+        project_path = fixture_build(root, replicate_count=replicate_count)
+        definition = yaml.safe_load(project_path.read_text(encoding="utf-8"))
+        authored = definition["analyses"]["primary"]
+        definition["analyses"]["primary"] = {
+            "module": "collaborator.echo",
+            "partitions": authored["partitions"],
+            "config": {"label": " Collaborator result "},
+        }
+        project_path.write_text(
+            yaml.safe_dump(definition, sort_keys=False), encoding="utf-8"
+        )
+        return project_path
+
+    monkeypatch.setitem(globals(), "build", build_collaborator_project)
+    rejected_readiness, rejected_resources, _project, rejected_workspace = _readiness(
+        tmp_path / "rejected"
+    )
+    with pytest.raises(MaterializationError, match="requires at least 2 threads"):
+        build_attempt_plan(
+            _run_candidate(rejected_readiness, rejected_resources),
+            rejected_readiness,
+            rejected_workspace,
+            resources=rejected_resources,
+            operation="execute",
+        )
+
+    readiness, resources, _project, workspace = _readiness(
+        tmp_path / "run",
+        workflow_cores=2,
+        step_threads={
+            "00a": 1,
+            "01": 1,
+            "02": 1,
+            "06": 1,
+            "08": 1,
+            "09": 2,
+            "10": 1,
+        },
+    )
+    run = _run_candidate(readiness, resources)
+    plan = build_attempt_plan(
+        run,
+        readiness,
+        workspace,
+        resources=resources,
+        operation="execute",
+    )
+
+    assert run.analysis.revision.record["identity"]["analysis_module"][
+        "configuration"
+    ] == {"label": "collaborator result"}
+    binding = run.run_binding.record["binding"]
+    assert binding["analysis_revision_sha256"] == run.analysis.revision.identity_sha256
+    assert binding["execution_plan_sha256"] == run.execution_plan.identity_sha256
+    assert not (workspace / "runs").exists()
+    (dispatch,) = (
+        record
+        for record in _dispatch_records(plan)
+        if record["machine_key"] == "collaborator.analysis.echo.v1"
+    )
+    assert {item["role"] for item in dispatch["inputs"]} == {"cohort_summary"}
+    assert {item["role"] for item in dispatch["outputs"]} == {"collaborator_result_v1"}
+    assert dispatch["validation_report_path"].endswith(".validation.tsv")
+    assert observed_threads == [2]
 
 
 def test_processing_plan_is_a_distinct_closed_31_task_run(tmp_path: Path) -> None:
@@ -844,10 +1025,9 @@ def test_subset_plan_materializes_one_bound_analysis_sample_manifest(
     )
     selected_bytes = readiness.analysis.selected_sample_manifest_bytes
     assert selected_bytes is not None
-    assert (
-        {item.path: item.data for item in plan.attempt_files}[manifest]
-        == selected_bytes
-    )
+    assert {item.path: item.data for item in plan.attempt_files}[
+        manifest
+    ] == selected_bytes
     manifest_binding = {
         "path": str(manifest),
         "size_bytes": len(selected_bytes),
@@ -928,9 +1108,7 @@ def test_processing_source_rejects_every_incompatible_target_dimension(
     source_samples = [dict(row) for row in identity["samples"]]
     for condition in ("EV", "PUM1"):
         row = next(item for item in source_samples if item["condition"] == condition)
-        source_samples.append(
-            {**row, "sample_id": f"{condition}_3", "replicate": "3"}
-        )
+        source_samples.append({**row, "sample_id": f"{condition}_3", "replicate": "3"})
     source_analysis = build_analysis_revision(
         samples=source_samples,
         partitions=identity["partitions"],
@@ -975,12 +1153,29 @@ def test_processing_source_rejects_every_incompatible_target_dimension(
         resources.declaration,
         processing_source=different_binding,
     )
-    resources_changed = build_run_candidate(
+    capacity_changed = build_run_candidate(
         readiness.analysis,
         readiness,
         replace(
             resources.declaration,
             workflow_cores=resources.declaration.workflow_cores + 1,
+        ),
+        processing_source=binding,
+    )
+    inspection.validate_processing_source(
+        source,
+        target_analysis=target.analysis.revision,
+        target_plan=capacity_changed.execution_plan,
+    )
+    resources_changed = build_run_candidate(
+        readiness.analysis,
+        readiness,
+        replace(
+            resources.declaration,
+            stage_memory_mb=tuple(
+                (step_id, value + 1 if step_id == "06" else value)
+                for step_id, value in resources.declaration.stage_memory_mb
+            ),
         ),
         processing_source=binding,
     )
@@ -1066,7 +1261,7 @@ def _runtime_admission_fixture(
     monkeypatch.setattr(
         doctor,
         "validate_runtime_profile_contract",
-        lambda _checks, _source_root: None,
+        lambda _checks, _source_root, **_kwargs: None,
     )
     return request, next(
         binding
@@ -1486,7 +1681,6 @@ def test_implementation_identity_closes_direct_scientific_dependencies(
         "src/emrys/libraries/gatk_invocation.sh",
         "src/emrys/libraries/input_contract.R",
         "src/emrys/libraries/signal_traps.sh",
-        "src/emrys/analyses/scientific_context_projection/resources/pum_motifs_v1.tsv",
     )
 
     for relative in dependencies:
@@ -1497,6 +1691,65 @@ def test_implementation_identity_closes_direct_scientific_dependencies(
         path.write_bytes(original)
 
     assert implementation_identity(checkout) == baseline
+
+
+def test_processing_compatibility_binds_only_processing_semantics(
+    tmp_path: Path,
+) -> None:
+    checkout, commit = _clean_checkout(tmp_path)
+    readiness, resources, _request, _workspace = _readiness(
+        tmp_path / "case",
+        source_root=checkout,
+        source_commit=commit,
+    )
+    baseline = _run_candidate(readiness, resources)
+
+    def compatibility(run) -> str:
+        return str(run.execution_plan.record["identity"]["processing_compatibility_sha256"])
+
+    def with_tool(name: str, digest: str):
+        return replace(
+            readiness,
+            bindings=tuple(
+                replace(binding, sha256=digest) if binding.check_id == name else binding
+                for binding in readiness.bindings
+            ),
+        )
+
+    baseline_compatibility = compatibility(baseline)
+    for relative in (
+        "src/emrys/analyses/__init__.py",
+        "src/emrys/stages/cohort_candidate_preprocessing/producer.py",
+        "workflow/Snakefile",
+    ):
+        path = checkout / relative
+        original = path.read_bytes()
+        path.write_bytes(original + b"\n# downstream-only change\n")
+        changed = _run_candidate(readiness, resources)
+        assert changed.run_id != baseline.run_id
+        assert compatibility(changed) == baseline_compatibility
+        path.write_bytes(original)
+
+    downstream_tool = build_run_candidate(
+        readiness.analysis,
+        with_tool("bcftools", "d" * 64),
+        resources.declaration,
+    )
+    assert downstream_tool.run_id != baseline.run_id
+    assert compatibility(downstream_tool) == baseline_compatibility
+
+    processing_owner = checkout / "src/emrys/stages/mechanical_orientation/producer.py"
+    processing_owner_bytes = processing_owner.read_bytes()
+    processing_owner.write_bytes(processing_owner_bytes + b"\n# processing change\n")
+    owner_changed = _run_candidate(readiness, resources)
+    processing_owner.write_bytes(processing_owner_bytes)
+    processing_tool = build_run_candidate(
+        readiness.analysis,
+        with_tool("star", "e" * 64),
+        resources.declaration,
+    )
+    for changed in (owner_changed, processing_tool):
+        assert compatibility(changed) != baseline_compatibility
 
 
 @pytest.mark.parametrize(
@@ -1568,7 +1821,7 @@ def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> Non
         "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
     }
 
-    assert dict(plan.resources.step_threads) == allocation
+    assert dict(plan.resources.step_threads) == {**allocation, "09": 1, "10": 1}
     owner_steps = {
         "emrys.stage.construct_STAR_index.v1": "00a",
         "emrys.stage.align_RNA_reads_with_STAR.v1": "01",
@@ -1612,6 +1865,8 @@ def test_plan_records_stage_specific_concurrency(tmp_path: Path) -> None:
         "02": 2,
         "06": 2,
         "08": 4,
+        "09": 1,
+        "10": 1,
     }
     assert effective["stage_concurrency"]["01"] == 2
 
@@ -2013,6 +2268,9 @@ def _patch_resume_control(
                 else observed.authority.analysis_revision
             ),
             "allow_legacy": legacy,
+            "require_reporter": observed.authority is None
+            or execution_plan_boundary(observed.authority.execution_plan)
+            == "analysis",
         }
         selected.append(runtime_profile)
         return readiness
@@ -2324,6 +2582,7 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
             "analysis_name": "primary",
             "expected_analysis_revision": first.run.analysis.revision,
             "allow_legacy": False,
+            "require_reporter": True,
         }
         selected_runtime_profiles.append(runtime_profile)
         return readiness_two
@@ -2747,9 +3006,7 @@ def test_processing_run_dry_run_is_no_write_and_truthfully_scoped(
     assert control.run_from_args(arguments) == 0
 
     rendered = capsys.readouterr().err
-    assert (
-        "Scientific boundary: sample processing (through Step 06)" in rendered
-    )
+    assert "Scientific boundary: sample processing (through Step 06)" in rendered
     assert "Work: 31 pending, 0 reusable" in rendered
     assert "Reporting: not applicable to this partial scientific Run" in rendered
     assert "Dry-run complete; no workspace state was written." in rendered
@@ -2861,7 +3118,9 @@ def test_interactive_resume_uses_the_same_no_write_gate(
     arguments.profile = None
     (plan.workspace / "emrys.resources.yaml").write_text("retired: true\n")
     assert control.resume_from_args(arguments) == 2
-    assert "Retired adjacent configuration requires migration" in capsys.readouterr().err
+    assert (
+        "Retired adjacent configuration requires migration" in capsys.readouterr().err
+    )
 
 
 def test_public_execute_logs_and_terminalizes_doctor_failure_before_run_state(
@@ -3070,8 +3329,10 @@ def test_new_run_doctor_storage_requirement_tracks_execution_placement(
         *,
         storage_requirement: str,
         analysis_name: str | None,
+        require_reporter: bool,
     ):
         assert analysis_name is None
+        assert require_reporter is True
         requirements.append(storage_requirement)
         return readiness
 
@@ -3919,9 +4180,7 @@ def _doubled_lifecycle_ops(
     *,
     fail_after_rule: str | None = None,
 ) -> lifecycle.LifecycleOps:
-    def run_workflow(
-        argv: tuple[str, ...], cwd: Path
-    ) -> lifecycle.WorkflowResult:
+    def run_workflow(argv: tuple[str, ...], cwd: Path) -> lifecycle.WorkflowResult:
         separator = argv.index("--")
         invoked = (
             (*argv[:separator], "--until", fail_after_rule, *argv[separator:])
@@ -3944,7 +4203,9 @@ def _doubled_lifecycle_ops(
             message=(
                 "controlled failure between owner tasks"
                 if injected
-                else completed.stdout if completed.returncode else None
+                else completed.stdout
+                if completed.returncode
+                else None
             ),
         )
 
@@ -4174,7 +4435,10 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         "fdr_threshold": 0.02,
     }
     project.write_text(yaml.safe_dump(authored, sort_keys=False), encoding="utf-8")
-    admitted_project = admit_project(project, readiness.analysis.profile)
+    admitted_project = admit_project(
+        project,
+        checkout / "workflow/contracts/local_cmh_v2.json",
+    )
     primary = replace(
         readiness,
         project=admitted_project,
@@ -4453,4 +4717,6 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         )
         == 2
     )
-    assert "not at an admissible between-task resume boundary" in capsys.readouterr().err
+    assert (
+        "not at an admissible between-task resume boundary" in capsys.readouterr().err
+    )

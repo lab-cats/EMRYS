@@ -16,13 +16,27 @@ reporting projection.
 
 `emrys.project.v1` is the sole active scientist-authored schema. It defines one
 shared Dataset and Reference plus one or more named Analyses, each with its own
-partition manifest and scientific policy. An Analysis may select a nonempty
+partition manifest and either the existing flat paired-CMH policy or an
+explicit installed `module` plus module-owned closed `config`. An Analysis may select a nonempty
 set of Dataset samples by ID; omission selects the complete Dataset. The
 application layer validates all Analyses and selects one for `run`; the human
 mapping key and authored selection order are not part of the content-derived
 Analysis identity. The request-v3 schema remains registered
 only for private, exact historical-Run re-admission. It is not accepted by
-active Project commands.
+active Project commands. The flat compatibility path builds Analysis revision
+v1; an explicit module builds revision v2 from its stable module/interface
+version and normalized scientific configuration. Provider installation facts
+remain execution/provenance facts rather than scientific Analysis fields.
+
+The checked-in `emrys.profile.local_cmh.v2` record is the processing-profile
+base through Step `08`, not the complete collaborator-module registry.
+Application planning composes it with one admitted module descriptor and binds
+the exact immutable result into the Execution Plan. Processing compatibility
+is separately derived through Steps `00`–`06`: it retains processing graph,
+implementation/toolchain, backend, STAR policy, and processing-resource
+semantics while excluding the selected downstream module and unrelated global
+caps. This permits exact stationary cross-Run reuse across module selections
+without changing source evidence.
 
 The `execution-profile` selector validates the combined public authored profile:
 its resource projection is Run-bound and its placement projection is
@@ -83,3 +97,9 @@ Reporting producers have a separate fixed ledger beneath
 configuration before producer entry, while `verified.json` binds that marker
 to a semantically revalidated receipt after receipt-last publication. The
 three closed kinds are `artifact_index`, `run_summary`, and `html_report`.
+The artifact-index roster is derived from the admitted composed profile rather
+than fixed Step `09`/`10` tables. Existing flat paired-CMH reporting retains
+run-summary v2 and report-receipt v4; explicit modules use run-summary v3 and
+report-receipt v5 so computation-provider, reporter-provider, and fixed core
+renderer identities remain separately inspectable. Reporter identity never
+enters Analysis or Run identity.

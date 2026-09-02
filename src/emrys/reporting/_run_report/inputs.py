@@ -12,11 +12,15 @@ from emrys.contracts.artifacts import api as contracts
 from emrys.reporting import _files
 
 from .models import (
-    CANDIDATE_TERMINOLOGY,
-    INTERPRETATION_BOUNDARY,
+    HISTORICAL_RUN_SUMMARY_SCHEMA_VERSION,
     RUN_SUMMARY_SCHEMA_VERSION,
     FileSnapshot,
     ReportRenderError,
+)
+
+_HISTORICAL_CANDIDATE_TERMINOLOGY = "CMH-ranked candidates"
+_HISTORICAL_INTERPRETATION_BOUNDARY = (
+    "computational_candidates_only_biological_validation_outside_emrys"
 )
 
 
@@ -81,6 +85,45 @@ def _assert_snapshot(snapshot: FileSnapshot, label: str) -> None:
         _fail(f"{label} changed during report rendering: {snapshot.path}")
 
 
+def _read_snapshot_bytes(snapshot: FileSnapshot, label: str) -> bytes:
+    """Securely read an already admitted small identity-bearing input."""
+
+    path = _explicit_path(snapshot.path, label)
+    _reject_symlink_components(path, label)
+    descriptor: int | None = None
+    try:
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        descriptor = os.open(path, flags)
+        with os.fdopen(descriptor, "rb") as stream:
+            descriptor = None
+            before = os.fstat(stream.fileno())
+            if not stat.S_ISREG(before.st_mode):
+                _fail(f"{label} must be a regular non-symlink file: {path}")
+            data = stream.read()
+            after = os.fstat(stream.fileno())
+        current = path.lstat()
+    except ReportRenderError:
+        raise
+    except OSError as exc:
+        _fail(f"Could not read {label} {path}: {exc}")
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+    current_snapshot = _files.stable_snapshot(
+        path,
+        hashlib.sha256(data).hexdigest(),
+        (before, after, current),
+        _fail,
+        f"{label} changed while it was read: {path}",
+        len(data),
+    )
+    if current_snapshot != snapshot:
+        _fail(f"{label} changed during report rendering: {path}")
+    return data
+
+
 def _assert_snapshot_identity(snapshot: FileSnapshot, label: str) -> None:
     """Recheck an already hash-bound large input without rereading its contents."""
 
@@ -126,7 +169,11 @@ def _assert_input_recheck(
 def _load_run_summary(path: Path, *, source_root: Path) -> dict[str, Any]:
     try:
         document = contracts.load_json_object(path, "run-summary document")
-        errors = contracts.schema_errors("run-summary", document)
+        version = str(document.get("schema_version", ""))
+        errors = sorted(
+            contracts.schema_validator("run-summary", version).iter_errors(document),
+            key=lambda error: tuple(str(part) for part in error.absolute_path),
+        )
         if errors:
             detail = "\n".join(
                 f"- {contracts.format_json_path(error.absolute_path)}: {error.message}"
@@ -136,14 +183,23 @@ def _load_run_summary(path: Path, *, source_root: Path) -> dict[str, Any]:
         contracts.validate_run_summary_semantics(document, source_root=source_root)
     except contracts.ContractValidationError as exc:
         _fail(str(exc))
-    if document["schema_version"] != RUN_SUMMARY_SCHEMA_VERSION:
+    if document["schema_version"] not in {
+        HISTORICAL_RUN_SUMMARY_SCHEMA_VERSION,
+        RUN_SUMMARY_SCHEMA_VERSION,
+    }:
         _fail(f"Unsupported run-summary schema version: {document['schema_version']!r}")
-    if document["candidate_terminology"] != CANDIDATE_TERMINOLOGY:
+    if (
+        document["schema_version"] == HISTORICAL_RUN_SUMMARY_SCHEMA_VERSION
+        and document["candidate_terminology"] != _HISTORICAL_CANDIDATE_TERMINOLOGY
+    ):
         _fail(
             "Run summary does not use the required candidate terminology: "
-            f"{CANDIDATE_TERMINOLOGY}"
+            f"{_HISTORICAL_CANDIDATE_TERMINOLOGY}"
         )
-    if document["interpretation_boundary"] != INTERPRETATION_BOUNDARY:
+    if (
+        document["schema_version"] == HISTORICAL_RUN_SUMMARY_SCHEMA_VERSION
+        and document["interpretation_boundary"] != _HISTORICAL_INTERPRETATION_BOUNDARY
+    ):
         _fail(
             "Run summary uses an unsupported interpretation boundary: "
             f"{document['interpretation_boundary']!r}"

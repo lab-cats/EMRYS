@@ -24,7 +24,14 @@ Candidate review, adjudication, and biological interpretation are external
 work-process records. EMRYS does not model them as pipeline steps, gates,
 artifacts, or completion states.
 
-## What happens to the data
+That paired-CMH path remains the built-in Analysis. A Project may instead
+select an installed collaborator module with explicit module-owned scientific
+configuration; EMRYS retains the same immutable Run, validation, provenance,
+recovery, logging, Results, and reporting boundaries. V1 modules must already
+be installed and self-contained. See the
+[analysis-module contract](src/emrys/analyses/README.md).
+
+## What happens to the data in the built-in Analysis
 
 | Step | Scope | Operation | Principal result |
 | --- | --- | --- | --- |
@@ -48,7 +55,7 @@ Steps `02b` and `03` are required QC leaves but do not gate downstream
 scientific computation. External review or adjudication may use EMRYS's
 computational outputs and provenance, but it is not part of `emrys run`.
 
-The fixed graph contains `3 + 7S + P + 3` scientific-owner jobs for `S`
+The built-in graph contains `3 + 7S + P + 3` scientific-owner jobs for `S`
 samples and `P` genomic partitions. The four-sample, one-partition synthetic fixture
 therefore expands to 35 jobs, followed by three reporting transactions.
 

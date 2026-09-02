@@ -71,6 +71,7 @@ from emrys.orchestration.local_pilot.run_implementation import (
     WORKFLOW_PROFILE_RELATIVE,
     RunImplementationError,
     backend_semantics_identity,
+    execution_module_id,
     implementation_identity,
 )
 
@@ -933,6 +934,7 @@ def _admit_required_tool_identity(identity: Mapping[str, Any]) -> None:
     if observed_resolved != resolved_path or resolved_path.resolve(strict=True) != resolved_path:
         raise LifecycleError(f"Required tool canonical path differs from its binding: {name}")
     digest = identity["sha256"]
+    identity_kind = identity.get("identity_kind")
     if digest is None:
         if (
             name not in {"renv_project", "renv_library"}
@@ -942,15 +944,21 @@ def _admit_required_tool_identity(identity: Mapping[str, Any]) -> None:
         ):
             raise LifecycleError(f"Required runtime directory is not admissible: {name}: {resolved_path}")
         return
-    if name.startswith("r_"):
+    if identity_kind == "package_tree" or (
+        identity_kind is None and name.startswith("r_")
+    ):
         if path != resolved_path:
-            raise LifecycleError(f"Required R package root is not its exact canonical path: {name}")
+            raise LifecycleError(
+                f"Required package-tree root is not its exact canonical path: {name}"
+            )
         try:
             package_identity = installed_package_tree_identity(resolved_path)
         except InstalledPackageIdentityError as exc:
-            raise LifecycleError(f"Required R package tree is not admissible: {name}: {resolved_path}") from exc
+            raise LifecycleError(
+                f"Required package tree is not admissible: {name}: {resolved_path}"
+            ) from exc
         if package_identity.sha256 != digest:
-            raise LifecycleError(f"Required R package tree digest differs: {name}")
+            raise LifecycleError(f"Required package tree digest differs: {name}")
         return
     if stat.S_ISLNK(resolved_state.st_mode) or not stat.S_ISREG(resolved_state.st_mode):
         raise LifecycleError(f"Required tool canonical target is not a real file: {name}: {resolved_path}")
@@ -1113,6 +1121,7 @@ def _admit_runtime_context(
         doctor.validate_runtime_profile_contract(
             tuple(item.check for item in runtime_inspection.observations),
             observed.root,
+            allow_derived_dependencies=True,
         )
     except (RuntimeInspectionError, doctor.DoctorInputError) as exc:
         raise LifecycleError(f"Could not re-admit local runtime profile: {exc}") from exc
@@ -1130,10 +1139,24 @@ def _admit_runtime_context(
     ):
         raise LifecycleError("Local science attempt must bind its storage qualification")
     try:
+        package_tree_ids = frozenset(
+            name
+            for name, identity in tools.items()
+            if identity.get("identity_kind") == "package_tree"
+        )
+        explicit_file_ids = frozenset(
+            name
+            for name, identity in tools.items()
+            if identity.get("identity_kind") == "file"
+        )
         expected_tools = doctor.required_tool_identities(
             runtime_inspection,
             bindings=(
-                *doctor.runtime_file_bindings(runtime_inspection),
+                *doctor.runtime_file_bindings(
+                    runtime_inspection,
+                    package_tree_ids=package_tree_ids,
+                    explicit_file_ids=explicit_file_ids,
+                ),
                 storage_binding,
             ),
             python_executable=request.python_executable,
@@ -1382,7 +1405,13 @@ def _admit_request(
                 profile=profile,
                 attempt=attempt,
                 resource_policy=config_document["resource_policy"],
-                observed_implementation_content_sha256=implementation_identity(source_root),
+                observed_implementation_content_sha256=implementation_identity(
+                    source_root,
+                    execution_module_id(
+                        successor.analysis_revision,
+                        successor.execution_plan,
+                    ),
+                ),
                 observed_backend_semantics_sha256=backend_semantics_identity(source_root),
             )
             inspection.admit_bound_processing_source(root, successor)

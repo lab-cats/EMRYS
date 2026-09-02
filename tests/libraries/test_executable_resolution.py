@@ -34,7 +34,8 @@ CONSUMERS = {
     ),
     "stages/duplicate_marking/step_04_mark_duplicates.sh": (0o644, 2, 0, 1),
     "stages/split_n_cigar/step_05_split_n_cigar_reads.sh": (0o644, 0, 3, 1),
-    "analyses/scientific_context_projection/scientific_context_projection.sh": (
+    "analyses/paired_cmh_candidate_ranking/scientific_context_projection/"
+    "scientific_context_projection.sh": (
         0o755,
         1,
         0,

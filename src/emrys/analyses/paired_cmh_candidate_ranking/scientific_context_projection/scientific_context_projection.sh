@@ -4,19 +4,19 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd "$script_dir/../../../.." && pwd)"
+repo_root="$(cd "$script_dir/../../../../.." && pwd)"
 
-# shellcheck source=../../libraries/argument_parsing.sh
-source "$script_dir/../../libraries/argument_parsing.sh"
-# shellcheck source=../../libraries/executable_resolution.sh
-source "$script_dir/../../libraries/executable_resolution.sh"
-# shellcheck source=../../libraries/file_checks.sh
-source "$script_dir/../../libraries/file_checks.sh"
+# shellcheck source=../../../libraries/argument_parsing.sh
+source "$script_dir/../../../libraries/argument_parsing.sh"
+# shellcheck source=../../../libraries/executable_resolution.sh
+source "$script_dir/../../../libraries/executable_resolution.sh"
+# shellcheck source=../../../libraries/file_checks.sh
+source "$script_dir/../../../libraries/file_checks.sh"
 
 usage() {
     cat <<'USAGE'
 Usage:
-  src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh \
+  src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh \
     --analysis-id ANALYSIS_ID \
     --step09-all-sites STEP09_ALL_SITES \
     --step09-significant-sites STEP09_SIGNIFICANT_SITES \
@@ -27,6 +27,7 @@ Usage:
     [--motif-catalog MOTIF_CATALOG] \
     [--rscript-bin RSCRIPT_BIN] \
     [--r-script R_SCRIPT] \
+    [--git-commit COMMIT] \
     [--no-clobber] \
     [--execute]
 
@@ -49,6 +50,7 @@ reference_fai=""
 output_root=""
 motif_catalog="$script_dir/resources/pum_motifs_v1.tsv"
 rscript_bin_arg=""
+git_commit_arg=""
 r_script="${SCIENTIFIC_CONTEXT_R_SCRIPT:-$script_dir/scientific_context_projection.R}"
 no_clobber=false
 execute=false
@@ -65,6 +67,7 @@ while [[ "$#" -gt 0 ]]; do
         --motif-catalog) require_value "$1" "${2:-}"; motif_catalog="$2"; shift 2 ;;
         --rscript-bin) require_value "$1" "${2:-}"; rscript_bin_arg="$2"; shift 2 ;;
         --r-script) require_value "$1" "${2:-}"; r_script="$2"; shift 2 ;;
+        --git-commit) require_value "$1" "${2:-}"; git_commit_arg="$2"; shift 2 ;;
         --no-clobber) no_clobber=true; shift ;;
         --execute) execute=true; shift ;;
         -h|--help) usage; exit 0 ;;
@@ -89,8 +92,11 @@ validate_nonempty_file "Scientific-context R program" "$r_script"
 
 rscript_value="${rscript_bin_arg:-${RSCRIPT_BIN_OVERRIDE:-Rscript}}"
 rscript_bin="$(resolve_executable_value "Rscript" "$rscript_value" "Rscript")"
-git_commit="$(git -C "$repo_root" rev-parse --verify 'HEAD^{commit}')" ||
-    die "Could not resolve the submitted repository commit."
+git_commit="$git_commit_arg"
+if [[ -z "$git_commit" ]]; then
+    git_commit="$(git -C "$repo_root" rev-parse --verify 'HEAD^{commit}')" ||
+        die "Could not resolve the submitted repository commit."
+fi
 [[ "$git_commit" =~ ^[0-9a-f]{40}([0-9a-f]{24})?$ ]] ||
     die "Repository HEAD is not a full 40- or 64-character commit: $git_commit"
 

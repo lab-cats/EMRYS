@@ -10,13 +10,16 @@ from __future__ import annotations
 import argparse
 import contextlib
 import hashlib
+import json
 import os
 import stat
 import sys
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+
+from emrys.libraries.validation.tsv import tsv_bytes
 
 from ._probes import run_checks
 from ._profile_contract import _read_regular_file, load_profile, load_profile_bytes
@@ -80,6 +83,27 @@ class RuntimeInspection:
 
 class RuntimeInspectionError(RuntimeError):
     """The declared runtime profile could not be inspected safely."""
+
+
+def runtime_profile_bytes(checks: Iterable[RuntimeCheck]) -> bytes:
+    """Render normalized checks through the runtime profile's sole TSV owner."""
+
+    return tsv_bytes(
+        PROFILE_HEADER,
+        (
+            {
+                "check_id": check.check_id,
+                "check_type": check.check_type,
+                "runtime_context": check.runtime_context,
+                "required": str(check.required).lower(),
+                "target": check.target,
+                "probe_args": json.dumps(check.probe_args, separators=(",", ":")),
+                "expected": check.expected,
+                "description": check.description,
+            }
+            for check in checks
+        ),
+    )
 
 
 def _public_check(check: Check) -> RuntimeCheck:
@@ -332,4 +356,5 @@ __all__ = (
     "configure_parser",
     "inspect_from_args",
     "inspect_runtime_availability",
+    "runtime_profile_bytes",
 )

@@ -160,7 +160,8 @@ The underlying narrow read-only admission APIs are:
   immutable;
 - `all_pass.require_all_pass(...)` checks the meaning of one owner-validation
   report rather than trusting its process exit;
-- `doctor.inspect_local_pilot(...)` admits one Project plus the fixed profile,
+- `doctor.inspect_local_pilot(...)` admits one Project plus each selected
+  composed processing/module profile,
   checks its external Project root, exact clean source checkout, controlled
   Python/Snakemake, science-tool paths and versions, Picard jar, guarded
   `renv`, Step `08` namespaces, and the placement-appropriate storage
@@ -207,7 +208,8 @@ are preserved rather than modified, repaired, or silently migrated.
 
 The source-checkout-bound public control surface requires every mutating route
 to use the controlled Python runtime, remain dry-run-first, and delegate owner
-work only through the accepted fixed profile:
+work only through the immutable profile composed from the processing base and
+the explicitly selected installed analysis module:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
@@ -244,13 +246,15 @@ successful processing Run is complete and not resumable, and reporting is not
 applicable. The `--from-processing-run` form admits that exact successful Run
 from the same Project and creates a distinct complete downstream Run. Target
 samples must be an exact subset of the source Analysis; Reference and the
-entire Execution Plan identity except its source/stopping fields must match.
-Partitions and scientific policy may differ. Source
+Steps `00`–`06` processing-compatibility identity must match. Partitions,
+module selection, and scientific policy may differ. Source
 artifacts stay in place and content-bound;
-the target owns only Steps `07`–`10`, its evidence, Results, reports, and log.
-A proper subset is projected to one private Attempt-bound TSV for the fixed
-backend; it is not another scientist-authored manifest. Generalized modular
-analyses remain ANALYSIS-02 work.
+the target owns fixed Steps `07`–`08`, its selected Step `09`/optional Step
+`10` tail, evidence, Results, reports, and log. A proper subset is projected to
+one private Attempt-bound TSV for the existing backend; it is not another
+scientist-authored manifest. The bounded collaborator-module v1 is documented
+under [`analyses/`](../../analyses/README.md); module-specific dependency and
+resource provisioning remains `ANALYSIS-02` work.
 
 With direct placement, `run` and `resume` print concise Run identity, combined
 pending/reusable work within that Run, and reporting information; a terminal
@@ -260,7 +264,8 @@ that same object once; Run planning occurs inside the allocation. Refusal, EOF,
 or interruption opens no application log and writes nothing. Noninteractive
 omission of `--execute` retains the no-write/no-submit behavior, while
 `--execute` remains the explicit automation path. After successful full
-scientific execution they generate the fixed reports by
+scientific execution they generate the selected module's scientific report and
+the fixed evidence/operations report by
 default; `--no-report` stops after the successful v2 Attempt receipt without
 changing Results. `report` independently validates a completed Run and plans
 without writes, then generates with `--execute` or reuses an exact complete
@@ -330,7 +335,7 @@ emrys.orchestration.local_pilot.task --dispatch ...` module is the one-owner
 task boundary. It runs the exact admitted public producer and validator,
 performs semantic all-pass and stable-content checks, preserves failure
 evidence, and publishes a verified-task record only after complete success.
-The fixed profile and local Snakemake graph live under
+The processing profile base and local Snakemake graph live under
 [`workflow/`](../../../../workflow/README.md).
 
 The public control surface uses these internal lifecycle authorities:
@@ -381,11 +386,12 @@ SIGKILL, power loss, and descendants that deliberately escape the delegated
 session/process group remain outside automatic signal recovery.
 
 The adjacent neutral [machine contracts](../../contracts/orchestration/README.md)
-define project-v1, the fixed profile, successor Analysis/Execution-Plan/Run or
+define project-v1, the processing profile plus selected module tail, successor Analysis/Execution-Plan/Run or
 historical normalized execution, lock, Attempt, receipt,
 task-start/task-attempt/verified-task, and reporting-ledger record shapes. No
 automatic owner-recovery mechanism is implemented. Materialization uses only
-the fixed source-checkout profile and public owner commands. Request-v3 remains a
+the admitted source-checkout processing profile, selected installed module,
+and public owner commands. Request-v3 remains a
 private compatibility schema used only to re-admit exact historical Runs. New
 and historical Attempts retain the exact `emrys.workflow-attempt.v1` shape and
 its `attempts/<attempt-id>/request.yaml` source snapshot; those evidence names

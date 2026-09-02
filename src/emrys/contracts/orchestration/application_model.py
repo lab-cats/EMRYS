@@ -21,14 +21,17 @@ from .api import (
 )
 
 ANALYSIS_SCHEMA_VERSION = "emrys.analysis-revision.v1"
+MODULE_ANALYSIS_SCHEMA_VERSION = "emrys.analysis-revision.v2"
 EXECUTION_PLAN_SCHEMA_VERSION = "emrys.execution-plan.v1"
 RUN_BINDING_SCHEMA_VERSION = "emrys.run-binding.v1"
 LEGACY_EXECUTION_SCHEMA_VERSION = "emrys.execution.v1"
 
 ANALYSIS_IDENTITY_DOMAIN = "emrys.analysis-revision-identity.v1"
+MODULE_ANALYSIS_IDENTITY_DOMAIN = "emrys.analysis-revision-identity.v2"
 EXECUTION_PLAN_IDENTITY_DOMAIN = "emrys.execution-plan-identity.v1"
 RUN_IDENTITY_DOMAIN = "emrys.run-identity.v1"
 IMPLEMENTATION_IDENTITY_DOMAIN = "emrys.implementation-content-identity.v1"
+PROCESSING_COMPATIBILITY_IDENTITY_DOMAIN = "emrys.processing-compatibility-identity.v1"
 PROCESSING_STEP_IDS = frozenset(
     {"00a", "00b", "00c", "01", "02", "02b", "03", "04", "05", "06"}
 )
@@ -77,6 +80,22 @@ _NON_RUN_TOOL_NAMES = {
     "renv_project",
     "renv_library",
 }
+_PROCESSING_TOOL_NAMES = frozenset(
+    {
+        "bash",
+        "python",
+        "snakemake",
+        "sha256_python",
+        "star",
+        "samtools",
+        "java",
+        "gatk",
+        "picard",
+        "picard_jar",
+        "infer_experiment",
+        "gunzip",
+    }
+)
 
 
 def _closed_copy(
@@ -157,6 +176,7 @@ class _CanonicalRecord:
 
     _record_bytes: bytes
     schema_version: ClassVar[str]
+    accepted_schema_versions: ClassVar[tuple[str, ...] | None] = None
 
     def __post_init__(self) -> None:
         record = load_json_object_bytes(
@@ -168,9 +188,11 @@ class _CanonicalRecord:
                 f"{self.schema_version} record bytes must use canonical JSON"
             )
         validate_record("application-model", record)
-        if record.get("schema_version") != self.schema_version:
+        accepted = self.accepted_schema_versions or (self.schema_version,)
+        if record.get("schema_version") not in accepted:
             raise ContractValidationError(
-                f"Expected {self.schema_version}, got {record.get('schema_version')!r}"
+                f"Expected one of {', '.join(accepted)}, "
+                f"got {record.get('schema_version')!r}"
             )
 
     @classmethod
@@ -204,6 +226,10 @@ class AnalysisRevision(_CanonicalRecord):
     """One admitted, content-addressed scientific Analysis revision."""
 
     schema_version = ANALYSIS_SCHEMA_VERSION
+    accepted_schema_versions = (
+        ANALYSIS_SCHEMA_VERSION,
+        MODULE_ANALYSIS_SCHEMA_VERSION,
+    )
 
     @property
     def analysis_revision_id(self) -> str:
@@ -298,15 +324,15 @@ ApplicationRecord: TypeAlias = AnalysisRevision | ExecutionPlan | RunBinding
 ReadableApplicationRecord: TypeAlias = ApplicationRecord | LegacyExecution
 
 
-def build_analysis_revision(
+def _build_analysis_revision(
     *,
+    schema_version: str,
+    identity_domain: str,
     samples: Iterable[Mapping[str, Any]],
     partitions: Iterable[Mapping[str, Any]],
     reference: Mapping[str, Any],
-    scientific_policy: Mapping[str, Any],
+    selected_analysis: Mapping[str, Any],
 ) -> AnalysisRevision:
-    """Build the exact, path-neutral scientific identity record."""
-
     sample_rows = _canonical_rows(
         samples,
         _SAMPLE_FIELDS,
@@ -331,7 +357,7 @@ def build_analysis_revision(
     )
 
     identity = {
-        "identity_domain": ANALYSIS_IDENTITY_DOMAIN,
+        "identity_domain": identity_domain,
         "samples": sample_rows,
         "partitions": partition_rows,
         "reference": _closed_copy(
@@ -339,19 +365,69 @@ def build_analysis_revision(
             ("fasta_sha256", "gtf_sha256"),
             "Analysis reference",
         ),
-        "scientific_policy": _closed_copy(
-            scientific_policy,
-            _POLICY_FIELDS,
-            "Analysis scientific_policy",
-        ),
+        **selected_analysis,
     }
     digest = canonical_sha256(identity)
     return AnalysisRevision.from_record(
         {
-            "schema_version": ANALYSIS_SCHEMA_VERSION,
+            "schema_version": schema_version,
             "identity": identity,
             "analysis_revision_id": f"analysis-{digest}",
         }
+    )
+
+
+def build_analysis_revision(
+    *,
+    samples: Iterable[Mapping[str, Any]],
+    partitions: Iterable[Mapping[str, Any]],
+    reference: Mapping[str, Any],
+    scientific_policy: Mapping[str, Any],
+) -> AnalysisRevision:
+    """Build the exact historical paired-CMH scientific identity record."""
+
+    return _build_analysis_revision(
+        schema_version=ANALYSIS_SCHEMA_VERSION,
+        identity_domain=ANALYSIS_IDENTITY_DOMAIN,
+        samples=samples,
+        partitions=partitions,
+        reference=reference,
+        selected_analysis={
+            "scientific_policy": _closed_copy(
+                scientific_policy,
+                _POLICY_FIELDS,
+                "Analysis scientific_policy",
+            )
+        },
+    )
+
+
+def build_module_analysis_revision(
+    *,
+    samples: Iterable[Mapping[str, Any]],
+    partitions: Iterable[Mapping[str, Any]],
+    reference: Mapping[str, Any],
+    module_id: str,
+    interface_version: str,
+    module_version: str,
+    configuration: Mapping[str, Any],
+) -> AnalysisRevision:
+    """Build one path-neutral scientific identity for an explicit module."""
+
+    return _build_analysis_revision(
+        schema_version=MODULE_ANALYSIS_SCHEMA_VERSION,
+        identity_domain=MODULE_ANALYSIS_IDENTITY_DOMAIN,
+        samples=samples,
+        partitions=partitions,
+        reference=reference,
+        selected_analysis={
+            "analysis_module": {
+                "module_id": module_id,
+                "interface_version": interface_version,
+                "module_version": module_version,
+                "configuration": dict(configuration),
+            }
+        },
     )
 
 
@@ -364,8 +440,8 @@ def analysis_revision_from_execution_fields(
     partitions = execution["partitions"]["rows"]
     reference = execution["reference"]
     policy = execution["analysis"]["policy"]
-    return build_analysis_revision(
-        samples=(
+    common = {
+        "samples": (
             {
                 "sample_id": row["sample_id"],
                 "condition": row["condition"],
@@ -376,7 +452,7 @@ def analysis_revision_from_execution_fields(
             }
             for row in samples
         ),
-        partitions=(
+        "partitions": (
             {
                 "partition_id": row["partition_id"],
                 "selector_type": row["selector_type"],
@@ -388,10 +464,22 @@ def analysis_revision_from_execution_fields(
             }
             for row in partitions
         ),
-        reference={
+        "reference": {
             "fasta_sha256": reference["fasta"]["sha256"],
             "gtf_sha256": reference["gtf"]["sha256"],
         },
+    }
+    if policy.get("schema_version") == "emrys.analysis-module-policy.v1":
+        module = policy["module"]
+        return build_module_analysis_revision(
+            **common,
+            module_id=module["module_id"],
+            interface_version=module["interface_version"],
+            module_version=module["module_version"],
+            configuration=policy["configuration"],
+        )
+    return build_analysis_revision(
+        **common,
         scientific_policy={
             key: value
             for key, value in policy.items()
@@ -495,7 +583,13 @@ def toolchain_from_required_tools(
             )
         tools.append(
             {
-                "kind": "environment" if name.startswith("r_") else "tool",
+                "kind": (
+                    "environment"
+                    if item.get("identity_kind") == "package_tree"
+                    or item.get("identity_kind") is None
+                    and name.startswith("r_")
+                    else "tool"
+                ),
                 "logical_name": name,
                 "content_sha256": content_sha256,
             }
@@ -513,6 +607,103 @@ def toolchain_from_required_tools(
     return canonical
 
 
+def processing_compatibility_sha256(
+    *,
+    functional_specification: Mapping[str, Any],
+    processing_implementation_sha256: str,
+    toolchain: Iterable[Mapping[str, Any]],
+    backend: str,
+    engine: str,
+    star_index: Mapping[str, Any],
+    computational_resources: Mapping[str, Any],
+) -> str:
+    """Identify the exact Step 00-06 computation reusable across Analyses."""
+
+    functional = _canonical_functional_specification(functional_specification)
+    processing_owners = {
+        str(owner["machine_key"])
+        for owner in functional["owner_tasks"]
+        if str(owner["step_id"]) in PROCESSING_STEP_IDS
+    }
+    processing_functional = _canonical_functional_specification(
+        {
+            "owner_tasks": [
+                owner
+                for owner in functional["owner_tasks"]
+                if str(owner["machine_key"]) in processing_owners
+            ],
+            "direct_edges": [
+                edge
+                for edge in functional["direct_edges"]
+                if str(edge["producer"]) in processing_owners
+                and str(edge["consumer"]) in processing_owners
+            ],
+            "required_owner_keys": [
+                owner
+                for owner in functional["required_owner_keys"]
+                if str(owner) in processing_owners
+            ],
+            "evidence_owner_keys": [
+                owner
+                for owner in functional["evidence_owner_keys"]
+                if str(owner) in processing_owners
+            ],
+            "artifact_templates": [
+                artifact
+                for artifact in functional["artifact_templates"]
+                if str(artifact["step_id"]) in PROCESSING_STEP_IDS
+            ],
+        }
+    )
+    resources = _closed_copy(
+        computational_resources,
+        (
+            "workflow_cores",
+            "workflow_memory_mb",
+            "stage_concurrency",
+            "step_threads",
+            "stage_memory_mb",
+        ),
+        "computational resource declaration",
+    )
+    resources = {
+        name: {
+            key: value
+            for key, value in sorted(resources[name].items())
+            if key in PROCESSING_STEP_IDS
+        }
+        for name in ("stage_concurrency", "step_threads", "stage_memory_mb")
+    }
+    tools = [
+        row
+        for row in _canonical_rows(
+            toolchain,
+            _TOOL_FIELDS,
+            lambda row: (row["kind"], row["logical_name"]),
+            "tool/environment identity",
+        )
+        if row["logical_name"] in _PROCESSING_TOOL_NAMES
+    ]
+    return canonical_sha256(
+        {
+            "identity_domain": PROCESSING_COMPATIBILITY_IDENTITY_DOMAIN,
+            "functional_specification": processing_functional,
+            "implementation_content_sha256": processing_implementation_sha256,
+            "toolchain": tools,
+            "backend": {
+                "backend": backend,
+                "engine": engine,
+            },
+            "star_index": _closed_copy(
+                star_index,
+                ("sjdb_overhang", "genome_sa_index_nbases"),
+                "STAR-index policy",
+            ),
+            "computational_resources": resources,
+        }
+    )
+
+
 def build_execution_plan(
     *,
     functional_specification: Mapping[str, Any],
@@ -524,6 +715,7 @@ def build_execution_plan(
     backend_semantics_sha256: str,
     star_index: Mapping[str, Any],
     computational_resources: Mapping[str, Any],
+    processing_compatibility_sha256: str | None = None,
     processing_source: Mapping[str, Any] | None = None,
 ) -> ExecutionPlan:
     """Build the exact pre-allocation, reporting-neutral Execution Plan."""
@@ -575,6 +767,10 @@ def build_execution_plan(
             processing_source,
             _PROCESSING_SOURCE_FIELDS,
             "processing source",
+        )
+    if processing_compatibility_sha256 is not None:
+        identity["processing_compatibility_sha256"] = (
+            processing_compatibility_sha256
         )
     digest = canonical_sha256(identity)
     return ExecutionPlan.from_record(
@@ -652,6 +848,7 @@ def read_application_record(
     version = record.get("schema_version")
     record_types: dict[str, type[_CanonicalRecord]] = {
         ANALYSIS_SCHEMA_VERSION: AnalysisRevision,
+        MODULE_ANALYSIS_SCHEMA_VERSION: AnalysisRevision,
         EXECUTION_PLAN_SCHEMA_VERSION: ExecutionPlan,
         RUN_BINDING_SCHEMA_VERSION: RunBinding,
     }
@@ -949,6 +1146,8 @@ def _validate_analysis_semantics(record: Mapping[str, Any]) -> None:
         )
     _require_unique((row["sample_id"] for row in samples), "sample_id")
     _require_unique((row["partition_id"] for row in partitions), "partition_id")
+    if record["schema_version"] == MODULE_ANALYSIS_SCHEMA_VERSION:
+        return
     policy = identity["scientific_policy"]
     if policy["control_condition"] == policy["treatment_condition"]:
         raise ContractValidationError("Analysis conditions must differ")
@@ -1120,7 +1319,7 @@ def _validate_application_model_semantics(record: Mapping[str, Any]) -> None:
     """Validate content identities after the shared closed schema succeeds."""
 
     version = record["schema_version"]
-    if version == ANALYSIS_SCHEMA_VERSION:
+    if version in {ANALYSIS_SCHEMA_VERSION, MODULE_ANALYSIS_SCHEMA_VERSION}:
         _validate_analysis_semantics(record)
     elif version == EXECUTION_PLAN_SCHEMA_VERSION:
         _validate_plan_semantics(record)
@@ -1132,6 +1331,7 @@ def _validate_application_model_semantics(record: Mapping[str, Any]) -> None:
 
 __all__ = (
     "ANALYSIS_SCHEMA_VERSION",
+    "MODULE_ANALYSIS_SCHEMA_VERSION",
     "EXECUTION_PLAN_SCHEMA_VERSION",
     "RUN_BINDING_SCHEMA_VERSION",
     "LEGACY_EXECUTION_SCHEMA_VERSION",
@@ -1144,9 +1344,11 @@ __all__ = (
     "bind_run",
     "analysis_revision_from_execution_fields",
     "build_analysis_revision",
+    "build_module_analysis_revision",
     "build_execution_plan",
     "functional_specification_from_profile",
     "implementation_content_sha256",
+    "processing_compatibility_sha256",
     "execution_plan_boundary",
     "execution_owner_keys",
     "processing_stopping_owner_keys",

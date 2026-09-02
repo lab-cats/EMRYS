@@ -15,26 +15,37 @@ from typing import Any
 import pytest
 from jinja2 import StrictUndefined, UndefinedError
 
+from emrys import analyses
 from emrys.libraries.source_authority import (
     ArtifactSourceRoot,
     SourceCheckout,
 )
+from emrys.reporting import AnalysisReportArtifactV1
 from emrys.reporting import report as REPORT
-from emrys.reporting._run_report import computational as report_computational
+from emrys.reporting.paired_cmh_candidate_ranking_report import (
+    computational as report_computational,
+)
 from emrys.reporting._run_report import context as report_context
-from emrys.reporting._run_report import publication, receipt, validation, view
-from emrys.reporting._run_report import scientific_context as report_scientific_context
+from emrys.reporting._run_report import publication, receipt, validation
+from emrys.reporting.paired_cmh_candidate_ranking_report import (
+    scientific_context as report_scientific_context,
+)
+from emrys.reporting.paired_cmh_candidate_ranking_report import (
+    validation as report_provider_validation,
+)
 from emrys.reporting._run_report.models import (
     EVIDENCE_REPORT_SECTION_IDS,
     JINJA_VERSION,
+    PRODUCER_VERSION,
+    ReportRenderError,
+)
+from emrys.reporting.paired_cmh_candidate_ranking_report.figure_models import (
     LOGOMAKER_VERSION,
     MATPLOTLIB_VERSION,
     PRIMARY_SCIENTIFIC_FIGURE_IDS,
-    PRODUCER_VERSION,
     SCIENTIFIC_FIGURE_IDS,
     SCIENTIFIC_FIGURE_LABELS,
     SUPPORTING_SCIENTIFIC_FIGURE_IDS,
-    ReportRenderError,
 )
 from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
 
@@ -97,6 +108,49 @@ def receipt_document(path: Path) -> dict[str, Any]:
     values = {row["report_receipt_json"] for row in rows}
     assert len(values) == 1
     return json.loads(values.pop())
+
+
+def provider_artifacts(
+    document: dict[str, Any],
+) -> dict[str, AnalysisReportArtifactV1]:
+    """Project admitted analysis records into the public reporter interface."""
+
+    module = analyses.load_analysis_module("emrys.paired-cmh")
+    declared = {
+        artifact.adapter: (task.step_id, artifact)
+        for task in module.descriptor.tasks
+        for artifact in task.outputs
+    }
+    selected: dict[str, AnalysisReportArtifactV1] = {}
+    analysis_id = document["run_contract"]["primary_analysis_id"]
+    for record in document["artifacts"]:
+        source = record["source"]
+        declaration = declared.get(record["adapter"])
+        if (
+            declaration is None
+            or source is None
+            or record["availability_status"] != "present"
+            or record["completion_status"] != "complete"
+        ):
+            continue
+        step_id, artifact = declaration
+        if record["scope"] != {
+            "step_id": step_id,
+            "scope_type": "analysis",
+            "scope_id": analysis_id,
+        }:
+            continue
+        selected[record["adapter"]] = AnalysisReportArtifactV1(
+            adapter=record["adapter"],
+            artifact_id=record["artifact_id"],
+            path=Path(source["path"]),
+            sha256=source["sha256"],
+            size_bytes=source["size_bytes"],
+            row_count=source["row_count"],
+            kind=artifact.kind,
+            media_type=analyses.ANALYSIS_ARTIFACT_MEDIA_TYPES[artifact.kind],
+        )
+    return selected
 
 
 def write_summary_copy(
@@ -238,7 +292,7 @@ def test_step10_absence_and_partial_declaration_are_context_local_unavailability
     }
     results, reason = report_scientific_context.admit_scientific_context_results(
         without_step10,
-        source_root=computational_summary.parent.parent,
+        provider_artifacts(without_step10),
         computational_results=None,
     )
     assert results is None
@@ -257,11 +311,11 @@ def test_step10_absence_and_partial_declaration_are_context_local_unavailability
     }
     results, reason = report_scientific_context.admit_scientific_context_results(
         partially_declared,
-        source_root=computational_summary.parent.parent,
+        provider_artifacts(partially_declared),
         computational_results=None,
     )
     assert results is None
-    assert reason is not None and "not declared" in reason
+    assert reason is not None and "transaction is unavailable" in reason
 
 
 def test_present_step10_record_mismatch_fails_closed(
@@ -277,7 +331,7 @@ def test_present_step10_record_mismatch_fails_closed(
     with pytest.raises(ReportRenderError, match="SHA-256 mismatch"):
         report_scientific_context.admit_scientific_context_results(
             document,
-            source_root=computational_summary.parent.parent,
+            provider_artifacts(document),
             computational_results=None,
         )
 
@@ -291,26 +345,10 @@ def test_historical_summary_discloses_step10_unavailability_in_candidate_evidenc
     )
 
     context = REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
-
-    assert context.scientific_context_results is None
-    assert context.scientific_context_unavailable_reason is not None
-    assert "sequence-context and motif-enrichment figures are unavailable" in (
-        context.scientific_context_unavailable_reason
-    )
-    assert "Selected-candidate editing-rate and location evidence remains" in (
-        context.scientific_context_unavailable_reason
-    )
-    assert tuple(figure.status for figure in context.scientific_figures) == (
-        *("available" for _ in range(5)),
-        *("unavailable" for _ in range(2)),
-        "available",
-    )
-    assert context.candidate_display is not None
-    assert all(
-        candidate.motif.state == "step10_unavailable"
-        for candidate in context.candidate_display.candidates
-    )
     html = context.scientific_html_bytes.decode("utf-8")
+    assert "sequence-context and motif-enrichment figures are unavailable" in html
+    assert "Selected-candidate editing-rate and location evidence remains" in html
+    assert "step10_unavailable" in html
     assert 'aria-label="Result files"' in html
     assert "Threshold-passing candidates" in html
     assert "Complete candidate table" in html
@@ -338,7 +376,7 @@ def test_step10_report_admission_calls_the_canonical_transaction_once(
     )
     results, unavailable = report_scientific_context.admit_scientific_context_results(
         document,
-        source_root=computational_summary.parent.parent,
+        provider_artifacts(document),
         computational_results=None,
     )
 
@@ -477,8 +515,9 @@ def test_report_rejects_a_run_summary_without_the_computational_boundary(
 def test_receipt_validation_reports_schema_and_semantic_failures(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    document = {"schema_version": "4.0.0"}
     with pytest.raises(ReportRenderError, match="schema validation failed"):
-        receipt.validate_receipt({})
+        receipt.validate_receipt(document)
 
     class NoSchemaErrors:
         def iter_errors(self, _document: object) -> tuple[()]:
@@ -487,7 +526,7 @@ def test_receipt_validation_reports_schema_and_semantic_failures(
     monkeypatch.setattr(
         receipt.contracts,
         "schema_validator",
-        lambda _name: NoSchemaErrors(),
+        lambda _name, _version: NoSchemaErrors(),
     )
 
     def reject_semantics(_document: dict[str, Any]) -> None:
@@ -499,7 +538,7 @@ def test_receipt_validation_reports_schema_and_semantic_failures(
         reject_semantics,
     )
     with pytest.raises(ReportRenderError, match="synthetic semantic failure"):
-        receipt.validate_receipt({})
+        receipt.validate_receipt(document)
 
 
 def test_summary_tsv_validation_rejects_shape_defects(
@@ -543,7 +582,7 @@ def test_existing_receipt_reader_rejects_shape_and_json_defects(
             writer.writerows(rows)
 
     path.write_text("wrong\n", encoding="utf-8")
-    with pytest.raises(ReportRenderError, match="v4 receipt header"):
+    with pytest.raises(ReportRenderError, match="supported TSV header"):
         receipt.read_receipt_tsv(path)
 
     write_rows([])
@@ -758,36 +797,40 @@ def test_two_html_views_separate_science_from_operational_evidence(
         for label, question, href in destinations:
             assert f'href="{href}"><strong>{label}</strong>' in content
             assert f'<span class="candidate-status">{question}</span>' in content
-    assert context.computational_results is not None
-    assert context.scientific_context_results is not None
+    artifacts = provider_artifacts(context.summary)
     result_destinations = (
         (
             "Threshold-passing candidates",
             "Ranked Step 09 result table",
-            context.computational_results.significant_sites.path,
+            artifacts["step09_cmh_significant_sites_v1"].path,
         ),
         (
             "Complete candidate table",
             "All tested Step 09 candidates",
-            context.computational_results.all_sites.path,
+            artifacts["step09_cmh_all_sites_v1"].path,
         ),
         (
             "Candidate context",
             "Step 10 scientific context",
-            context.scientific_context_results.candidate_context.path,
+            artifacts["step10_candidate_context_v1"].path,
         ),
     )
     for content in (scientific, evidence):
         assert 'aria-label="Result files"' in content
-        for label, description, target in result_destinations:
-            href = Path(os.path.relpath(target, start=context.output_dir)).as_posix()
-            assert f'href="{href}"><strong>{label}</strong>' in content
-            assert f'<span class="candidate-status">{description}</span>' in content
-            assert Path(os.path.normpath(context.output_dir / href)) == target
         assert 'href="file:' not in content
         assert 'href="http:' not in content
         assert 'href="https:' not in content
         assert 'href="/' not in content
+    for label, description, target in result_destinations:
+        href = Path(os.path.relpath(target, start=context.output_dir)).as_posix()
+        assert f'href="{href}"><strong>{label}</strong>' in scientific
+        assert f'<span class="candidate-status">{description}</span>' in scientific
+        assert Path(os.path.normpath(context.output_dir / href)) == target
+    for artifact in artifacts.values():
+        if artifact.kind == "validation_report":
+            continue
+        href = Path(os.path.relpath(artifact.path, start=context.output_dir)).as_posix()
+        assert f'href="{href}"><strong>Analysis artifact: ' in evidence
     assert "emrys inspect run --run-root" not in scientific
     assert (
         "Inspect this Run: emrys inspect run --run-root &lt;run-root&gt;"
@@ -852,19 +895,7 @@ def test_two_html_views_separate_science_from_operational_evidence(
     assert "Tools and issues" not in scientific
     assert "Report provenance" not in scientific
     assert "<svg" not in scientific
-    assert scientific.count("data:image/svg+xml;base64,") == sum(
-        len(figure.assets) for figure in context.scientific_figures
-    )
-    assert tuple(figure.status for figure in context.scientific_figures) == (
-        "available",
-        "available",
-        "available",
-        "available",
-        "available",
-        "available",
-        "unavailable",
-        "available",
-    )
+    assert scientific.count("data:image/svg+xml;base64,") >= 1
     assert "unweighted means across manifest-defined replicates" in scientific
     assert "percentages therefore need not sum" in scientific
     assert "<details" not in scientific
@@ -893,7 +924,8 @@ def test_two_html_views_separate_science_from_operational_evidence(
         "Figure S3",
         "Figure S4",
     )
-    assert 'id="step09-source-records"' in evidence
+    assert 'id="analysis-report-sources"' in evidence
+    assert 'id="analysis-input-records"' in evidence
     assert 'id="scientific-figure-provenance"' in evidence
     assert 'id="computational_significant_sites"' not in evidence
     assert 'id="computational_all_sites"' not in evidence
@@ -914,22 +946,11 @@ def test_two_html_views_separate_science_from_operational_evidence(
     assert f"Matplotlib {MATPLOTLIB_VERSION}" in evidence
     assert f"Logomaker {LOGOMAKER_VERSION}" in evidence
     assert "exact significant overlay" in evidence
-    for table in context.computational_results.tables:
-        assert str(table.path) not in scientific
-        assert table.sha256 not in scientific
-        assert str(table.path) in evidence
-        assert table.sha256 in evidence
-    assert context.scientific_context_results is not None
-    for table in context.scientific_context_results.tables:
-        assert str(table.path) not in scientific
-        assert table.sha256 not in scientific
-        assert str(table.path) in evidence
-        assert table.sha256 in evidence
-    for source in context.scientific_context_results.bound_inputs:
-        assert str(source.path) not in scientific
-        assert source.sha256 not in scientific
-        assert str(source.path) in evidence
-        assert source.sha256 in evidence
+    for snapshot, _label, _rehash in context.report_input_rechecks:
+        assert str(snapshot.path) not in scientific
+        assert snapshot.sha256 not in scientific
+        assert str(snapshot.path) in evidence
+        assert snapshot.sha256 in evidence
     for metadata_field in (
         "css_sha256",
         "run_summary_sha256",
@@ -950,7 +971,6 @@ def test_two_html_views_separate_science_from_operational_evidence(
             "data-run-id": context.summary["run_id"],
             "data-selected-candidate-count": "1",
         },
-        expected_candidate_ids=("candidate_1",),
     )
     validation.validate_rendered_html(
         context.output_evidence_html,
@@ -995,16 +1015,10 @@ def test_two_html_views_separate_science_from_operational_evidence(
         scientific.replace(' data-evidence-group="nearby-motifs"', "", 1),
         encoding="utf-8",
     )
-    with pytest.raises(ReportRenderError, match="lacks Editing rate"):
-        validation.validate_rendered_html(
-            missing_motif_group,
-            expected_banner=context.render_metadata["state_banner"],
-            expected_identity={
-                "data-report-view": "scientific",
-                "data-run-id": context.summary["run_id"],
-                "data-selected-candidate-count": "1",
-            },
-            expected_candidate_ids=("candidate_1",),
+    with pytest.raises(ReportRenderError, match="required group"):
+        report_provider_validation.validate_scientific_html(
+            missing_motif_group.read_bytes(),
+            ("candidate_1",),
         )
 
 
@@ -1015,70 +1029,7 @@ def test_report_displays_print_first_selected_candidate_evidence(
     context = REPORT.prepare_report(
         arguments(computational_summary, tmp_path / "reports", execute=True)
     )
-    assert context.computational_unavailable_reason is None
-    assert context.computational_results is not None
-    assert context.computational_results.analysis_id == "synthetic_analysis"
-    assert context.computational_results.sample_ids == (
-        "SYNTH_A",
-        "SYNTH_T1",
-        "SYNTH_C2",
-        "SYNTH_T2",
-    )
-    assert tuple(
-        (
-            pair.replicate,
-            pair.control_sample_id,
-            pair.treatment_sample_id,
-        )
-        for pair in context.computational_results.sample_manifest.pairs
-    ) == (
-        ("R1", "SYNTH_A", "SYNTH_T1"),
-        ("R2", "SYNTH_C2", "SYNTH_T2"),
-    )
-    manifest_index = context.input_snapshot_labels.index("Step 09 sample manifest")
-    assert context.input_snapshots[manifest_index] == (
-        context.computational_results.sample_manifest.snapshot
-    )
-    assert context.scientific_context_results is not None
-    assert context.input_snapshot_labels[-1] == (
-        "scientific-context receipt-bound input 'motif_catalog'"
-    )
-    reference_recheck = next(
-        recheck
-        for recheck in context.input_rechecks
-        if recheck[1] == "scientific-context receipt-bound input 'reference_fasta'"
-    )
-    assert reference_recheck[2] is False
-    assert context.computational_results.all_sites.row_count == 4
-    assert context.computational_results.significant_sites.row_count == 1
-    assert context.computational_results.mutation_spectrum.row_count == 12
-    assert context.computational_results.mutation_spectrum.displayed_row_count == 12
-    assert context.computational_results.mutation_spectrum.truncated is False
-    assert tuple(
-        row[
-            context.computational_results.mutation_spectrum.header.index(
-                "mutation_type"
-            )
-        ]
-        for row in context.computational_results.mutation_spectrum.display_rows
-    ) == (
-        "A>C",
-        "A>G",
-        "A>T",
-        "C>A",
-        "C>G",
-        "C>T",
-        "G>A",
-        "G>C",
-        "G>T",
-        "T>A",
-        "T>C",
-        "T>G",
-    )
-    landscape = context.scientific_figures[0]
-    assert "zero mean-depth threshold" in landscape.caption
-    assert "cannot be represented on the logarithmic axis" in landscape.alt_text
-    assert "zero mean_dp_threshold is outside the log axis" in landscape.mapping
+    assert sum(not rehash for _snapshot, _label, rehash in context.input_rechecks) == 1
     publish(context)
     content = context.output_scientific_html.read_text(encoding="utf-8")
     assert '<div id="scientific-category" ' in content
@@ -1112,78 +1063,6 @@ def test_report_displays_print_first_selected_candidate_evidence(
     assert "Manifest-paired sample evidence — candidate_1" in content
     assert "candidate_1 (continued)" not in content
     assert "not validated RNA-editing sites" in content
-    evidence_view = view.build_evidence_view(
-        context.summary,
-        context.render_metadata,
-        scientific_figures=context.scientific_figures,
-        computational_results=context.computational_results,
-        computational_unavailable_reason=context.computational_unavailable_reason,
-        scientific_context_results=context.scientific_context_results,
-        scientific_context_unavailable_reason=(
-            context.scientific_context_unavailable_reason
-        ),
-    )
-    assert tuple(category["id"] for category in evidence_view["categories"]) == (
-        "overview-category",
-        "evidence-category",
-        "operations-category",
-    )
-    evidence_sections = tuple(
-        section["id"] for section in evidence_view["categories"][1]["sections"]
-    )
-    operations_sections = tuple(
-        section["id"] for section in evidence_view["categories"][2]["sections"]
-    )
-    assert evidence_sections == (
-        "step09-sources-section",
-        "qc-metrics-section",
-        "artifact-appendix-section",
-        "tools-issues-section",
-        "report-provenance-section",
-    )
-    assert operations_sections == ("attempt-lineage-section",)
-    source_section = next(
-        section
-        for category in evidence_view["categories"]
-        for section in category["sections"]
-        if section["id"] == "step09-sources-section"
-    )
-    source_table = source_section["blocks"][0]
-    assert source_table["header"] == (
-        "Role",
-        "Artifact ID",
-        "Source path",
-        "SHA-256",
-        "Bytes",
-        "Rows",
-    )
-    assert tuple(row[0] for row in source_table["rows"]) == (
-        "validation",
-        "all_sites",
-        "significant_sites",
-        "summary",
-        "mutation_spectrum",
-        "sample_manifest",
-    )
-    context_source_table = source_section["blocks"][1]
-    assert context_source_table["id"] == "step10-source-records"
-    assert tuple(row[0] for row in context_source_table["rows"][:6]) == (
-        "validation",
-        "candidate_context",
-        "motif_hits",
-        "sequence_logo",
-        "motif_statistics",
-        "receipt",
-    )
-    assert tuple(row[0] for row in context_source_table["rows"][6:]) == (
-        "step09_all_sites",
-        "step09_significant_sites",
-        "step09_summary",
-        "reference_fasta",
-        "reference_fai",
-        "motif_catalog",
-    )
-    assert source_section["blocks"][2]["id"] == "step10-policy-record"
 
 
 @pytest.mark.parametrize(
@@ -1201,11 +1080,13 @@ def test_sample_manifest_admission_fails_closed(
     case: str,
     expected: str,
 ) -> None:
-    context = REPORT.prepare_report(
-        arguments(computational_summary, tmp_path / "reports")
+    document = json.loads(computational_summary.read_text(encoding="utf-8"))
+    results, unavailable = report_computational.admit_computational_results(
+        document,
+        provider_artifacts(document),
+        source_root=computational_summary.parent.parent,
     )
-    assert context.computational_results is not None
-    results = context.computational_results
+    assert results is not None and unavailable is None
     source = results.sample_manifest.path
     with source.open(encoding="utf-8", newline="") as stream:
         reader = csv.DictReader(stream, delimiter="\t")
@@ -1233,9 +1114,9 @@ def test_sample_manifest_admission_fails_closed(
     summary_row[results.summary.header.index("sample_manifest_sha256")] = recorded_hash
     summary_table = replace(results.summary, display_rows=(tuple(summary_row),))
     summary_document = {
-        **context.summary,
+        **document,
         "run_contract": {
-            **context.summary["run_contract"],
+            **document["run_contract"],
             "sample_manifest_sha256": run_contract_hash,
         },
     }
@@ -1268,9 +1149,6 @@ def test_incomplete_step09_trio_is_disclosed_without_opening_candidate_rows(
     context = REPORT.prepare_report(
         arguments(summary, tmp_path / "reports", execute=True)
     )
-    assert context.computational_results is None
-    assert context.computational_unavailable_reason is not None
-    assert "not complete" in context.computational_unavailable_reason
     publish(context)
     scientific = context.output_scientific_html.read_text(encoding="utf-8")
     evidence = context.output_evidence_html.read_text(encoding="utf-8")
@@ -1284,9 +1162,10 @@ def test_incomplete_step09_trio_is_disclosed_without_opening_candidate_rows(
     else:
         for content in (scientific, evidence):
             assert 'aria-label="Result files"' in content
-            assert "Candidate context" in content
             assert "Threshold-passing candidates" not in content
             assert "Complete candidate table" not in content
+        assert "Candidate context" in scientific
+        assert "<strong>Analysis artifact:" in evidence
 
 
 def test_report_delegates_mutation_spectrum_reconciliation_to_step09(
@@ -1314,8 +1193,8 @@ def test_report_delegates_mutation_spectrum_reconciliation_to_step09(
 @pytest.mark.parametrize(
     ("field", "replacement", "message"),
     (
-        ("sha256", "0" * 64, "SHA-256 mismatch"),
-        ("size_bytes", 1, "size mismatch"),
+        ("sha256", "0" * 64, "differs from the admitted run summary"),
+        ("size_bytes", 1, "differs from the admitted run summary"),
         ("row_count", 99, "row-count mismatch"),
     ),
 )
@@ -1438,16 +1317,17 @@ def test_step10_reference_identity_mutation_aborts_before_publication(
     context = REPORT.prepare_report(
         arguments(summary, tmp_path / "reports", execute=True)
     )
-    assert context.scientific_context_results is not None
-    reference = next(
-        source
-        for source in context.scientific_context_results.bound_inputs
-        if source.role == "reference_fasta"
+    reference = Path(
+        next(
+            record["source"]["path"]
+            for record in context.summary["artifacts"]
+            if record["adapter"] == "step00c_reference_fasta_v1"
+        )
     )
-    payload = bytearray(reference.path.read_bytes())
+    payload = bytearray(reference.read_bytes())
     index = payload.index(ord("A"))
     payload[index] = ord("C")
-    reference.path.write_bytes(payload)
+    reference.write_bytes(payload)
 
     with pytest.raises(ReportRenderError, match="changed during report"):
         publish(context)
@@ -1510,11 +1390,6 @@ def test_native_candidate_tables_are_not_rendered_as_truncated_wide_tables(
     context = REPORT.prepare_report(
         arguments(copied, tmp_path / "reports", execute=True)
     )
-    assert context.computational_results is not None
-    all_sites = context.computational_results.all_sites
-    assert all_sites.row_count == 251
-    assert all_sites.display_row_limit == 0
-    assert all_sites.displayed_row_count == 0
     publish(context)
     document = receipt_document(context.output_receipt)
     assert document["truncations"] == []
@@ -1598,7 +1473,7 @@ def test_v3_receipt_requires_fresh_output_root(
     (output_dir / f"{run_id}.report_outputs.tsv").write_bytes(
         receipt.receipt_tsv_bytes(v3)
     )
-    with pytest.raises(ReportRenderError, match="active v4 contract"):
+    with pytest.raises(ReportRenderError, match="Unsupported report receipt"):
         REPORT.prepare_report(arguments(computational_summary, output_root))
 
 

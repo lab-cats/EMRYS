@@ -18,10 +18,11 @@ from emrys.libraries.process_environment import (
 )
 from tests import scientific_evidence_test_support as STEP_FIXTURE
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 PRODUCER = (
     REPO_ROOT
-    / "src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh"
+    / "src/emrys/analyses/paired_cmh_candidate_ranking/"
+    / "scientific_context_projection/scientific_context_projection.sh"
 )
 
 

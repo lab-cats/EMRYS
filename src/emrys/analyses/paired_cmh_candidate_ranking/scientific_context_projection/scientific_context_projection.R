@@ -12,7 +12,7 @@ script_path <- normalizePath(
     sub("^--file=", "", invocation[[1L]]), winslash = "/", mustWork = TRUE
 )
 script_dir <- dirname(script_path)
-source(file.path(script_dir, "../../libraries/input_contract.R"))
+source(file.path(script_dir, "../../../libraries/input_contract.R"))
 
 options(stringsAsFactors = FALSE, scipen = 999, digits = 15)
 

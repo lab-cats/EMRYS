@@ -70,7 +70,8 @@ walkthrough.
 | Create a Project root around synthetic or real inputs | [Quickstart: initialize and ingest](../../quickstart.md#3-initialize-and-ingest-synthetic-or-real-inputs) |
 | Discover and admit the active runtime | [Quickstart: runtime discovery](../../quickstart.md#4-discover-and-admit-the-runtime) and [`configs/README.md`](../../configs/README.md) |
 | Qualify storage, diagnose Project readiness, or repair the managed runtime | [Quickstart: compatibility](../../quickstart.md#5-validate-data-compatibility-without-scientific-tools) and [Doctor](../../quickstart.md#6-diagnose-readiness-and-optionally-repair-the-managed-runtime) |
-| Review and execute the fixed workflow | [Quickstart: plan and execution](../../quickstart.md#7-review-and-confirm-one-immutable-plan) |
+| Select or develop a collaborator analysis module | [`analyses/README.md`](../../src/emrys/analyses/README.md) |
+| Review and execute the immutable selected workflow | [Quickstart: plan and execution](../../quickstart.md#7-review-and-confirm-one-immutable-plan) |
 | Inspect run state or plan a supported resume | Commands below and the [local-pilot owner](../../src/emrys/orchestration/local_pilot/README.md) |
 | Diagnose blocked, partial, locked, or uncertain state | [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) |
 
@@ -105,10 +106,11 @@ Launch a separately identified downstream Analysis from that exact source with:
 ```
 
 The source must be a valid, successful, complete processing Run beneath the
-same Project. Samples, Reference, and the entire Execution Plan identity except
-the source/stopping fields must match; the selected Analysis may change
-partitions or scientific policy. EMRYS reads
-the source artifacts in place, executes only Steps `07`–`10` in the new Run,
+same Project. Samples, Reference, and the Steps `00`–`06`
+processing-compatibility identity must match; the selected Analysis may change
+partitions, scientific policy, or admitted downstream module. EMRYS reads the
+source artifacts in place, executes fixed Steps `07`–`08` plus the selected
+module's Step `09` and optional Step `10` in the new Run,
 and generates that Run's normal Results and reports. It never copies or adopts
 the source Run's task evidence. Use `--execute` for noninteractive execution;
 without it the ordinary no-write planning/confirmation behavior is retained.

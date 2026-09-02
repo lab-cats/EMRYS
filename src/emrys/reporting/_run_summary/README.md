@@ -20,6 +20,11 @@ projection, and publication responsibilities beneath the coordinator.
 
 The package is not an additional supported command surface. Context preparation
 and publication recheck share the same validated artifact transaction.
+Document assembly selects the schema from the admitted Analysis form: existing
+flat paired-CMH Runs retain run-summary v2, while explicit modules use
+module-neutral run-summary v3. V3 carries the analysis-policy path, SHA-256,
+and size without paired-CMH candidate terminology; it does not weaken the
+artifact predecessor or transaction checks.
 Artifact-index parsing, validation, serialization, and shared transaction primitives enter through the narrow
 private [`_artifact_index/api.py`](../_artifact_index/api.py) boundary rather
 than artifact-index context preparation. `builder.prepare_context` imports the
