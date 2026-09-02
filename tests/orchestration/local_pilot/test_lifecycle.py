@@ -1609,11 +1609,12 @@ def test_required_tool_same_path_and_version_rejects_byte_mutation(
     tool.write_bytes(b"first executable bytes\n")
     tool.chmod(0o755)
     identity = {
-        "name": "star",
+        "name": "r_collaborator_tool",
         "version": "2.7.11b",
         "path": str(tool),
         "resolved_path": str(tool),
         "sha256": hashlib.sha256(tool.read_bytes()).hexdigest(),
+        "identity_kind": "file",
     }
 
     lifecycle._admit_required_tool_identity(identity)
@@ -1623,7 +1624,7 @@ def test_required_tool_same_path_and_version_rejects_byte_mutation(
         lifecycle._admit_required_tool_identity(identity)
 
 
-def test_r_package_byte_mutation_before_workflow_retains_ambiguous_lock(
+def test_explicit_package_tree_mutation_before_workflow_retains_ambiguous_lock(
     tmp_path: Path,
 ) -> None:
     built = _build_harness(tmp_path)
@@ -1637,16 +1638,17 @@ def test_r_package_byte_mutation_before_workflow_retains_ambiguous_lock(
     )
     package_identity = installed_package_tree_identity(package)
     attempt = _attempt_record(built.request)
-    attempt["required_tools"].insert(
-        1,
+    attempt["required_tools"].append(
         {
-            "name": "r_variant_annotation",
+            "name": "collaborator_assets",
             "version": "1.0.0",
             "path": str(package),
             "resolved_path": str(package),
             "sha256": package_identity.sha256,
+            "identity_kind": "package_tree",
         },
     )
+    attempt["required_tools"].sort(key=lambda item: item["name"])
     built.request = replace(
         built.request,
         attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
@@ -1667,7 +1669,7 @@ def test_r_package_byte_mutation_before_workflow_retains_ambiguous_lock(
         )
 
     assert isinstance(observed.value.__cause__, lifecycle.LifecycleError)
-    assert "R package tree digest differs" in str(observed.value.__cause__)
+    assert "package tree digest differs" in str(observed.value.__cause__)
     attempt_root = built.built.run_root / "attempts" / identifier
     assert "workflow" not in built.events
     assert (built.built.run_root / "locks/run.lock").is_file()

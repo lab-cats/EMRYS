@@ -108,15 +108,17 @@ The common selected profile contains:
   disabled for execution or generated independently after successful science.
 
 The bounded v1 module descriptor supplies closed configuration normalization,
-typed artifact inputs/outputs, required existing runtime-check IDs, minimum
-memory, and producer/validator plans. Selection authorizes that installed
+typed artifact inputs/outputs, fixed runtime-check references or exact local
+executable/R-namespace/file/package-tree dependencies, minimum memory and
+threads, and producer/validator plans. Selection authorizes that installed
 in-process provider. Existing `TaskDispatch`, failure, validation,
 publication, lock/rollback/recovery, signal, and logging semantics are fixed;
-providers do not declare substitute trust or failure policy. V1 is single-core,
-supports only the declared artifact kinds, and requires providers to be
-installed and self-contained. Module-specific Python/R/native dependencies,
-outside resources, richer resources, and their provisioning and independent
-identity binding remain open under `ANALYSIS-02`.
+providers do not declare substitute trust or failure policy. Doctor composes
+only the selected module's checks onto the fixed runtime profile; exact file
+and package-tree identities are Run-bound, and the existing Step `09`/`10`
+resource policy must meet task minimums. Package managers own installation and
+solving; EMRYS does not execute provider-supplied installers. GPU, disk,
+walltime, remote resources, and new placement semantics are outside v1.
 
 The `02b` and `03` evidence branches do not gate downstream scientific compute,
 but the local profile requires them before workflow completion. Step `10`

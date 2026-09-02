@@ -44,7 +44,7 @@ analyses:
 Selection authorizes importing and executing that installed code. EMRYS does
 not search for a substitute, install a missing module, or choose between
 ambiguous providers. The distribution/version, entry point, configuration
-schema, required runtime checks, and exact computation-package bytes are
+schema, dependency declarations, and exact computation-package bytes are
 persisted or bound to the Run. The normalized scientific configuration enters
 Analysis identity; installation facts do not. Unselected modules do not affect
 identity.
@@ -54,11 +54,13 @@ identity.
 The provider returns one immutable `AnalysisModuleDescriptorV1`. It declares:
 
 - a JSON Schema and one normalizer for scientific configuration;
-- one or two single-core tasks occupying the existing downstream Step `09`
-  and optional Step `10` slots;
+- one or two tasks occupying the existing downstream Step `09` and optional
+  Step `10` slots;
 - typed predecessor artifacts and typed outputs, stable provenance roles,
-  minimum memory, a command planner, producer, and independent validator;
-- required check IDs from the admitted EMRYS runtime profile; and
+  minimum memory and threads, a command planner, producer, and independent
+  validator;
+- fixed EMRYS runtime checks or exact local executable, R namespace, file, and
+  package-tree dependencies; and
 - one self-contained installed package subtree containing its callbacks,
   resources, and review-relevant implementation.
 
@@ -68,15 +70,21 @@ validation, publication, recovery, and logging semantics. Providers are
 trusted in-process installed code; version 1 deliberately has no self-attested
 trust enum or module-defined failure-policy language.
 
-Version 1 also does not define arbitrary stages, parallel resource shapes,
-environment acquisition, or new native-runtime probes. The provider must
-already be installed and self-contained in its admitted package subtree; other
-Python distributions are not independently content-bound. It may use check IDs
-already present in the fixed Project runtime profile. Unknown or failing checks
-block Doctor. Managed repair restores EMRYS's fixed uv/Pixi/renv locks and does
-not provision collaborator-specific dependencies. A module needing a new
-executable, R namespace, or outside resource requires a later dependency-
-admission interface rather than an ad hoc core edit.
+The selected dependencies are composed onto the fixed runtime profile only for
+that Analysis. Doctor probes them with the existing runtime inspector; exact
+files and installed package trees enter Run toolchain identity, and task-used
+files are rechecked through the existing task-input boundary. Unknown,
+unavailable, ambiguous, or changed dependencies block execution. The existing
+resource policy supplies Step `09`/`10` threads and memory and must meet each
+task's declared minimums.
+
+Version 1 does not define arbitrary stages, dependency solving, installer
+commands, GPU/disk/walltime placement, remote resources, or a second runtime
+authority. The selected provider and its dependencies are installed with their
+established package managers. Managed Doctor repair restores only EMRYS's fixed
+uv/Pixi/renv locks; it diagnoses module dependencies and directs the operator
+back to the owning package manager rather than executing provider-supplied
+installation logic.
 
 The persisted profile still carries unique `rule_name` values for historical
 schema compatibility. For module tasks these identify dispatch adapters, not

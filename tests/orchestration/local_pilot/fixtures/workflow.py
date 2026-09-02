@@ -51,7 +51,9 @@ def _resource_policy() -> dict[str, Any]:
         "stage_concurrency": {
             step_id: 1 for step_id in ("01", "02", "02b", "03", "04", "05", "06", "07")
         },
-        "step_threads": {step_id: 1 for step_id in ("00a", "01", "02", "06", "08")},
+        "step_threads": {
+            step_id: 1 for step_id in ("00a", "01", "02", "06", "08", "09", "10")
+        },
         "stage_memory_mb": {
             step_id: 1024
             for step_id in (

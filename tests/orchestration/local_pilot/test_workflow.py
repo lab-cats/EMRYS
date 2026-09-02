@@ -421,6 +421,23 @@ def test_real_snakemake_dry_run_has_exact_owner_job_counts(
     assert not any(source in evidence for source, _ in owner_edges), output
 
 
+def test_analysis_owner_accepts_historical_single_thread_resource_record(
+    built: workflow_fixture.WorkflowFixture,
+) -> None:
+    config = orchestration_contracts.load_json_object(built.config_path)
+    effective = config["resource_policy"]["effective"]
+    effective["step_threads"].pop("09")
+    effective["step_threads"].pop("10")
+    config["resource_policy"]["effective_sha256"] = (
+        orchestration_contracts.canonical_sha256(effective)
+    )
+    _publish_config(built, config)
+
+    nodes, _edges, output = _dag(built, "cohort_slice")
+
+    assert any(label == "analysis_owner" for label in nodes.values()), output
+
+
 def test_real_processing_plan_dry_run_closes_at_step_06(
     tmp_path: Path,
     clean_source_checkout: tuple[Path, str],

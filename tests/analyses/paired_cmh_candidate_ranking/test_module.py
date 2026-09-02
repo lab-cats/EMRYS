@@ -1,9 +1,11 @@
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from emrys import analyses
 from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
+from emrys.contracts.orchestration import api as orchestration_contracts
 
 
 SAMPLES = tuple(
@@ -96,3 +98,82 @@ def test_module_task_planner_includes_an_admitted_background(tmp_path: Path) -> 
         "--background-condition",
         "background",
     )
+
+
+def test_module_dependencies_are_canonical_and_readmitted(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    package = tmp_path / "package"
+    file = tmp_path / "resource.dat"
+    dependencies = (
+        analyses.AnalysisDependencyV1("z_file", "file", str(file)),
+        analyses.AnalysisDependencyV1(
+            "r_collaborator",
+            "r_namespace",
+            "Collaborator",
+            expected=r"^1[.]0$",
+        ),
+        "python",
+        analyses.AnalysisDependencyV1(
+            "collaborator_tool",
+            "executable",
+            str(tmp_path / "tool"),
+            expected=r"^tool 1[.]0$",
+            probe_args=("--version",),
+        ),
+        analyses.AnalysisDependencyV1("a_package", "package_tree", str(package)),
+    )
+    descriptor = replace(analysis_module_v1(), dependencies=dependencies)
+    analyses._validate_descriptor(descriptor)
+    provider = analyses.load_analysis_module(
+        analyses.BUILTIN_PAIRED_CMH_MODULE_ID
+    ).provider
+    loaded = analyses.LoadedAnalysisModuleV1(descriptor, provider)
+    identity = analyses.module_identity_record(loaded)
+    policy = {
+        "schema_version": "emrys.analysis-module-policy.v1",
+        "analysis_id": "primary",
+        "module": identity,
+        "implementation_sha256": provider.package.sha256,
+        "configuration": CONFIG,
+    }
+    persisted = orchestration_contracts.load_json_object_bytes(
+        orchestration_contracts.canonical_json_bytes(policy),
+        "test analysis policy",
+    )
+    orchestration_contracts.validate_record("policy", persisted)
+    monkeypatch.setattr(analyses, "load_analysis_module", lambda _module_id: loaded)
+
+    assert [item["dependency_id"] for item in identity["dependencies"]] == [
+        "a_package",
+        "collaborator_tool",
+        "python",
+        "r_collaborator",
+        "z_file",
+    ]
+    by_id = {item["dependency_id"]: item for item in identity["dependencies"]}
+    assert "target" not in by_id["collaborator_tool"]
+    assert "target" not in by_id["z_file"]
+    assert by_id["r_collaborator"]["target"] == "Collaborator"
+    assert analyses.readmit_analysis_module(persisted) is loaded
+
+    invalid = replace(
+        descriptor,
+        dependencies=(
+            analyses.AnalysisDependencyV1("relative", "file", "resource.dat"),
+        ),
+    )
+    with pytest.raises(analyses.AnalysisModuleLoadError, match="Invalid.*dependency"):
+        analyses._validate_descriptor(invalid)
+
+    reserved = replace(
+        descriptor,
+        dependencies=(
+            analyses.AnalysisDependencyV1(
+                "runtime_profile", "file", str(file)
+            ),
+        ),
+    )
+    with pytest.raises(analyses.AnalysisModuleLoadError, match="reserved"):
+        analyses._validate_descriptor(reserved)

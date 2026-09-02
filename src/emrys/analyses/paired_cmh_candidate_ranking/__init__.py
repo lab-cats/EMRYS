@@ -383,7 +383,7 @@ _DESCRIPTOR = module_api.AnalysisModuleDescriptorV1(
             plan=_step10,
         ),
     ),
-    required_runtime_checks=(
+    dependencies=(
         "bash",
         "python",
         "r_biostrings",

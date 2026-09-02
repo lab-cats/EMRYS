@@ -1093,6 +1093,11 @@ def _dispatches(
                     f"Analysis module Step {requirement.step_id} requires at least "
                     f"{minimum} MiB"
                 )
+            if resources.threads_for(requirement.step_id) < requirement.minimum_threads:
+                raise MaterializationError(
+                    f"Analysis module Step {requirement.step_id} requires at least "
+                    f"{requirement.minimum_threads} threads"
+                )
     reference_id, cohort_id, analysis_id = _scope_ids(source, analysis_revision)
     analysis_identity = (
         None if analysis_revision is None else analysis_revision.record["identity"]
@@ -1238,7 +1243,7 @@ def _dispatches(
                 runtime_paths=MappingProxyType(
                     {
                         check_id: _runtime_path(runtime, check_id)
-                        for check_id in module.required_runtime_checks
+                        for check_id in analysis_modules.dependency_ids(module)
                     }
                 ),
                 python_command=lambda command: controlled_python_argv(
@@ -1251,6 +1256,7 @@ def _dispatches(
                     command,
                 ),
                 validator_command=lambda command: _validator(*command),
+                threads=resources.threads_for(step_id),
             )
             try:
                 commands = module_task.plan(context)
@@ -1277,6 +1283,23 @@ def _dispatches(
                 raise MaterializationError(
                     f"Analysis module returned an invalid task plan for {task.machine_key}"
                 )
+            occupied_paths = {item.path for item in module_inputs}
+            module_inputs = (
+                *module_inputs,
+                *(
+                    analysis_modules.TaskInputV1(
+                        f"dependency.{dependency.dependency_id}",
+                        Path(dependency.target),
+                    )
+                    for dependency in sorted(
+                        module.dependencies,
+                        key=lambda item: item if isinstance(item, str) else item.dependency_id,
+                    )
+                    if isinstance(dependency, analysis_modules.AnalysisDependencyV1)
+                    and dependency.kind in {"executable", "file"}
+                    and Path(dependency.target) not in occupied_paths
+                ),
+            )
             input_roles = [item.role for item in module_inputs]
             input_paths = [item.path for item in module_inputs]
             output_roles = [

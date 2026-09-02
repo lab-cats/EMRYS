@@ -179,6 +179,24 @@ def execution_plan() -> model.ExecutionPlan:
     )
 
 
+def test_explicit_file_identity_overrides_legacy_r_name_inference() -> None:
+    assert model.toolchain_from_required_tools(
+        (
+            {
+                "name": "r_collaborator_tool",
+                "sha256": ZERO_HASH,
+                "identity_kind": "file",
+            },
+        )
+    ) == [
+        {
+            "kind": "tool",
+            "logical_name": "r_collaborator_tool",
+            "content_sha256": ZERO_HASH,
+        }
+    ]
+
+
 def successor_run_fixture() -> tuple[
     model.AnalysisRevision,
     model.ExecutionPlan,

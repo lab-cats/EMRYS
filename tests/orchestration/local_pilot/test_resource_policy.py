@@ -41,6 +41,8 @@ def _document() -> dict[str, Any]:
             "02": 1,
             "06": 4,
             "08": 1,
+            "09": 1,
+            "10": 1,
         },
         "stage_memory_mb": {step_id: "workflow" for step_id in STAGE_IDS},
         "reporting_memory_mb": {kind: "workflow" for kind in REPORTING_KINDS},
@@ -100,6 +102,8 @@ def test_symbolic_declaration_is_allocation_independent_and_persistable() -> Non
         "02": 1,
         "06": 4,
         "08": 1,
+        "09": 1,
+        "10": 1,
     }
     assert set(dict(first.stage_memory_mb).values()) == {16_384}
     assert set(dict(second.reporting_memory_mb).values()) == {32_768}
@@ -115,6 +119,7 @@ def test_symbolic_declaration_is_allocation_independent_and_persistable() -> Non
     assert admitted.effective_document() == first.effective_document()
     reallocated = resume_resource_plan(record, _allocation(memory_mb=32_768))
     assert reallocated.workflow_memory_mb == 32_768
+
 
 def test_reporting_is_not_run_bound_and_resume_applies_explicit_overrides() -> None:
     baseline = _policy(override_labels=("stage_concurrency.01",))
@@ -187,6 +192,23 @@ def test_current_and_historical_persisted_policy_resume() -> None:
         _allocation(slurm_job_id="0")
 
 
+def test_historical_thread_roster_defaults_analysis_steps_to_one() -> None:
+    document = _document()
+    document["step_threads"].pop("09")
+    document["step_threads"].pop("10")
+
+    policy = _policy(document)
+    plan = resolve_resource_policy(policy, _allocation())
+    resumed = resume_resource_policy(
+        policy,
+        overrides=ResourceOverrides(step_threads=(("09", 2),)),
+    )
+
+    assert policy.document() == document
+    assert plan.threads_for("09") == plan.threads_for("10") == 1
+    assert dict(resumed.declaration.step_threads)["09"] == 2
+
+
 @pytest.mark.parametrize(
     ("allocation", "overrides", "message"),
     (
@@ -241,12 +263,16 @@ def test_resolution_rejects_invalid_resource_relationships(
         (lambda record: record.__setitem__("unknown", 1), "Additional properties"),
         (lambda record: record.__setitem__("workflow_cores", 0), "less than"),
         (
-            lambda record: record["step_threads"].__setitem__("09", 1),
+            lambda record: record["step_threads"].__setitem__("11", 1),
             "Additional properties",
         ),
         (
             lambda record: record["stage_concurrency"].pop("07"),
             "Resolved stage_concurrency keys",
+        ),
+        (
+            lambda record: record["step_threads"].pop("08"),
+            "Resolved step_threads keys must include",
         ),
     ),
 )

@@ -77,7 +77,8 @@ STAGE_IDS = {
     "07", "08", "09", "10",
 }
 REPEATABLE_STAGE_IDS = {"01", "02", "02b", "03", "04", "05", "06", "07"}
-THREAD_CAPABLE_STEP_IDS = {"00a", "01", "02", "06", "08"}
+HISTORICAL_THREAD_CAPABLE_STEP_IDS = {"00a", "01", "02", "06", "08"}
+THREAD_CAPABLE_STEP_IDS = HISTORICAL_THREAD_CAPABLE_STEP_IDS | {"09", "10"}
 RESOURCE_POLICY = config.get("resource_policy")
 RESOURCE_POLICY_KEYS = {
     "effective", "effective_sha256", "allocation", "sources",
@@ -102,10 +103,16 @@ for key, value in {
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
         raise WorkflowError(f"Effective resource {key!r} must be a positive integer")
 STEP_THREADS = EFFECTIVE_RESOURCES.get("step_threads")
-if not isinstance(STEP_THREADS, dict) or set(STEP_THREADS) != THREAD_CAPABLE_STEP_IDS:
+if (
+    not isinstance(STEP_THREADS, dict)
+    or not HISTORICAL_THREAD_CAPABLE_STEP_IDS
+    <= set(STEP_THREADS)
+    <= THREAD_CAPABLE_STEP_IDS
+):
     raise WorkflowError(
-        "Workflow config step_threads keys must be exactly "
-        + ", ".join(sorted(THREAD_CAPABLE_STEP_IDS))
+        "Workflow config step_threads keys must include "
+        + ", ".join(sorted(HISTORICAL_THREAD_CAPABLE_STEP_IDS))
+        + "; optional keys: 09, 10"
     )
 for step_id, value in STEP_THREADS.items():
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
@@ -767,6 +774,11 @@ rule analysis_owner:
     params:
         task_argv=_task_argv(
             lambda wildcards: str(wildcards.analysis_owner), ANALYSIS_ID
+        )
+    threads:
+        lambda wildcards: STEP_THREADS.get(
+            str(OWNER_TASKS_BY_KEY[str(wildcards.analysis_owner)]["step_id"]),
+            1,
         )
     resources:
         mem_mb=lambda wildcards: STAGE_MEMORY_MB[

@@ -583,7 +583,13 @@ def toolchain_from_required_tools(
             )
         tools.append(
             {
-                "kind": "environment" if name.startswith("r_") else "tool",
+                "kind": (
+                    "environment"
+                    if item.get("identity_kind") == "package_tree"
+                    or item.get("identity_kind") is None
+                    and name.startswith("r_")
+                    else "tool"
+                ),
                 "logical_name": name,
                 "content_sha256": content_sha256,
             }

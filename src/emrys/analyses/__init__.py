@@ -35,6 +35,7 @@ ANALYSIS_ARTIFACT_KINDS = frozenset(ANALYSIS_ARTIFACT_MEDIA_TYPES)
 
 _SAFE_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 _ARTIFACT_NAME_RE = re.compile(r"[a-z][a-z0-9_]*")
+_RESERVED_DEPENDENCY_IDS = frozenset({"runtime_profile", "storage_qualification"})
 
 JsonObject: TypeAlias = Mapping[str, object]
 
@@ -108,6 +109,7 @@ class TaskPlanningContextV1(NamedTuple):
     python_command: Callable[[tuple[str, ...]], tuple[str, ...]]
     r_owner_command: Callable[[tuple[str, ...]], tuple[str, ...]]
     validator_command: Callable[[tuple[str, ...]], tuple[str, ...]]
+    threads: int = 1
 
 
 ConfigNormalizerV1: TypeAlias = Callable[
@@ -123,6 +125,18 @@ class AnalysisTaskV1(NamedTuple):
     inputs: tuple[AnalysisInputV1, ...]
     outputs: tuple[AnalysisArtifactV1, ...]
     plan: TaskPlannerV1
+    minimum_threads: int = 1
+
+
+class AnalysisDependencyV1(NamedTuple):
+    """One selected-module runtime dependency absent from the fixed profile."""
+
+    dependency_id: str
+    kind: Literal["executable", "r_namespace", "file", "package_tree"]
+    target: str
+    expected: str = ""
+    probe_args: tuple[str, ...] = ()
+    description: str = "analysis module dependency"
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,7 +146,7 @@ class AnalysisModuleDescriptorV1:
     config_schema: JsonObject
     normalize_config: ConfigNormalizerV1
     tasks: tuple[AnalysisTaskV1, ...]
-    required_runtime_checks: tuple[str, ...]
+    dependencies: tuple[str | AnalysisDependencyV1, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -258,6 +272,45 @@ def _safe_artifact(output: AnalysisArtifactV1) -> bool:
     )
 
 
+def _dependency_record(
+    dependency: str | AnalysisDependencyV1,
+) -> dict[str, object]:
+    if isinstance(dependency, str):
+        return {"dependency_id": dependency, "kind": "existing_check"}
+    record: dict[str, object] = {
+        "dependency_id": dependency.dependency_id,
+        "kind": dependency.kind,
+    }
+    if dependency.kind == "r_namespace":
+        record["target"] = dependency.target
+    if dependency.kind in {"executable", "r_namespace"}:
+        record["expected"] = dependency.expected
+    if dependency.kind == "executable":
+        record["probe_args"] = list(dependency.probe_args)
+    return record
+
+
+def dependency_records(
+    descriptor: AnalysisModuleDescriptorV1,
+) -> tuple[dict[str, object], ...]:
+    """Return the canonical, order-neutral dependency declarations."""
+
+    return tuple(
+        sorted(
+            (_dependency_record(item) for item in descriptor.dependencies),
+            key=lambda item: str(item["dependency_id"]),
+        )
+    )
+
+
+def dependency_ids(
+    descriptor: AnalysisModuleDescriptorV1,
+) -> tuple[str, ...]:
+    """Return dependency IDs in their canonical order."""
+
+    return tuple(str(item["dependency_id"]) for item in dependency_records(descriptor))
+
+
 def _validate_descriptor(descriptor: AnalysisModuleDescriptorV1) -> None:
     if not _safe_id(descriptor.module_id) or not _safe_id(descriptor.module_version):
         raise AnalysisModuleLoadError("Analysis module ID and version must be safe IDs")
@@ -286,6 +339,8 @@ def _validate_descriptor(descriptor: AnalysisModuleDescriptorV1) -> None:
                 or type(task.stage_memory_mb) is int
                 and task.stage_memory_mb > 0
             )
+            or type(task.minimum_threads) is not int
+            or task.minimum_threads < 1
             or any(
                 not _safe_id(item.producer)
                 or not item.adapters
@@ -304,9 +359,59 @@ def _validate_descriptor(descriptor: AnalysisModuleDescriptorV1) -> None:
         {output.artifact_name for output in outputs}
     ) != len(outputs):
         raise AnalysisModuleLoadError("Analysis module outputs must be unique")
-    checks = descriptor.required_runtime_checks
-    if len(checks) != len(set(checks)) or not all(_safe_id(item) for item in checks):
-        raise AnalysisModuleLoadError("Analysis module runtime checks must be safe IDs")
+    dependencies = descriptor.dependencies
+    records = dependency_records(descriptor)
+    dependency_ids = [str(item["dependency_id"]) for item in records]
+    if len(dependency_ids) != len(set(dependency_ids)):
+        raise AnalysisModuleLoadError("Analysis module dependencies must be unique")
+    if _RESERVED_DEPENDENCY_IDS.intersection(dependency_ids):
+        raise AnalysisModuleLoadError("Analysis module dependency ID is reserved")
+    for dependency in dependencies:
+        if isinstance(dependency, str):
+            if not _safe_id(dependency):
+                raise AnalysisModuleLoadError(
+                    "Analysis module runtime checks must be safe IDs"
+                )
+            continue
+        if not isinstance(dependency, AnalysisDependencyV1) or not _safe_id(
+            dependency.dependency_id
+        ):
+            raise AnalysisModuleLoadError(
+                "Analysis module dependency IDs must be safe IDs"
+            )
+        if (
+            dependency.kind not in {"executable", "r_namespace", "file", "package_tree"}
+            or not dependency.description
+            or "\x00" in dependency.target
+            or (
+                dependency.kind != "r_namespace"
+                and not Path(dependency.target).is_absolute()
+            )
+        ):
+            raise AnalysisModuleLoadError("Invalid analysis module dependency")
+        if dependency.kind == "executable":
+            if not dependency.expected or not dependency.probe_args:
+                raise AnalysisModuleLoadError(
+                    "Executable dependencies require probe arguments and a version pattern"
+                )
+        elif dependency.kind == "r_namespace":
+            if (
+                re.fullmatch(r"[A-Za-z][A-Za-z0-9.]*", dependency.target) is None
+                or not dependency.expected
+                or dependency.probe_args
+            ):
+                raise AnalysisModuleLoadError("Invalid R namespace dependency")
+        elif dependency.expected or dependency.probe_args:
+            raise AnalysisModuleLoadError(
+                "File and package-tree dependencies do not accept probes"
+            )
+        if dependency.expected:
+            try:
+                re.compile(dependency.expected)
+            except re.error as exc:
+                raise AnalysisModuleLoadError(
+                    "Analysis module dependency version pattern is invalid"
+                ) from exc
 
 
 def load_analysis_module(module_id: str) -> LoadedAnalysisModuleV1:
@@ -392,7 +497,7 @@ def module_identity_record(module: LoadedAnalysisModuleV1) -> dict[str, object]:
         "config_schema_sha256": orchestration_contracts.canonical_sha256(
             descriptor.config_schema
         ),
-        "required_runtime_checks": list(descriptor.required_runtime_checks),
+        "dependencies": list(dependency_records(descriptor)),
     }
 
 
@@ -441,6 +546,7 @@ __all__ = (
     "BUILTIN_PAIRED_CMH_MODULE_ID",
     "VALIDATION_REPORT_HEADER",
     "AnalysisArtifactV1",
+    "AnalysisDependencyV1",
     "AnalysisInputContextV1",
     "AnalysisInputV1",
     "AnalysisModuleDescriptorV1",
@@ -453,6 +559,8 @@ __all__ = (
     "TaskPlanningContextV1",
     "admit_configuration",
     "compose_profile",
+    "dependency_records",
+    "dependency_ids",
     "load_analysis_module",
     "module_admission_record",
     "module_identity_record",

@@ -806,8 +806,9 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
             ).hexdigest(),
         }
     ]
+    required_tool_fields = {"name", "version", "path", "resolved_path", "sha256"}
     assert all(
-        set(item) == {"name", "version", "path", "resolved_path", "sha256"}
+        required_tool_fields <= set(item) <= required_tool_fields | {"identity_kind"}
         for item in plan.attempt_record["required_tools"]
     )
 
@@ -816,10 +817,13 @@ def test_distinct_installed_module_materializes_one_typed_task(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    observed_threads: list[int] = []
+
     def normalize(config, _context):
         return {"label": str(config["label"]).strip().lower()}
 
     def plan_task(context):
+        observed_threads.append(context.threads)
         (summary,) = context.inputs["step08_summary_v1"]
         result = context.outputs["collaborator_result_v1"]
         validation = context.outputs["collaborator_validation_v1"]
@@ -855,6 +859,7 @@ def test_distinct_installed_module_materializes_one_typed_task(
             ),
         ),
         plan_task,
+        2,
     )
     descriptor = analysis_modules.AnalysisModuleDescriptorV1(
         "collaborator.echo",
@@ -904,7 +909,31 @@ def test_distinct_installed_module_materializes_one_typed_task(
         return project_path
 
     monkeypatch.setitem(globals(), "build", build_collaborator_project)
-    readiness, resources, _project, workspace = _readiness(tmp_path / "run")
+    rejected_readiness, rejected_resources, _project, rejected_workspace = _readiness(
+        tmp_path / "rejected"
+    )
+    with pytest.raises(MaterializationError, match="requires at least 2 threads"):
+        build_attempt_plan(
+            _run_candidate(rejected_readiness, rejected_resources),
+            rejected_readiness,
+            rejected_workspace,
+            resources=rejected_resources,
+            operation="execute",
+        )
+
+    readiness, resources, _project, workspace = _readiness(
+        tmp_path / "run",
+        workflow_cores=2,
+        step_threads={
+            "00a": 1,
+            "01": 1,
+            "02": 1,
+            "06": 1,
+            "08": 1,
+            "09": 2,
+            "10": 1,
+        },
+    )
     run = _run_candidate(readiness, resources)
     plan = build_attempt_plan(
         run,
@@ -929,6 +958,7 @@ def test_distinct_installed_module_materializes_one_typed_task(
     assert {item["role"] for item in dispatch["inputs"]} == {"cohort_summary"}
     assert {item["role"] for item in dispatch["outputs"]} == {"collaborator_result_v1"}
     assert dispatch["validation_report_path"].endswith(".validation.tsv")
+    assert observed_threads == [2]
 
 
 def test_processing_plan_is_a_distinct_closed_31_task_run(tmp_path: Path) -> None:
@@ -1231,7 +1261,7 @@ def _runtime_admission_fixture(
     monkeypatch.setattr(
         doctor,
         "validate_runtime_profile_contract",
-        lambda _checks, _source_root: None,
+        lambda _checks, _source_root, **_kwargs: None,
     )
     return request, next(
         binding
@@ -1791,7 +1821,7 @@ def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> Non
         "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
     }
 
-    assert dict(plan.resources.step_threads) == allocation
+    assert dict(plan.resources.step_threads) == {**allocation, "09": 1, "10": 1}
     owner_steps = {
         "emrys.stage.construct_STAR_index.v1": "00a",
         "emrys.stage.align_RNA_reads_with_STAR.v1": "01",
@@ -1835,6 +1865,8 @@ def test_plan_records_stage_specific_concurrency(tmp_path: Path) -> None:
         "02": 2,
         "06": 2,
         "08": 4,
+        "09": 1,
+        "10": 1,
     }
     assert effective["stage_concurrency"]["01"] == 2
 
