@@ -11,6 +11,6 @@ or recovery.
 - `test_reporting_ledger_contracts.py` covers reporting start and verified
   record identity and admission.
 
-Local-pilot execution, resume, inspection, and recovery remain protected under
-`tests/orchestration/local_pilot/`. These fixtures establish local contract
+Run-coordinator execution, resume, inspection, and recovery remain protected under
+`tests/orchestration/run_coordinator/`. These fixtures establish local contract
 behavior only.

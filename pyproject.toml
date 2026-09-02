@@ -19,12 +19,15 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 dependencies = [
+    "coolname==4.1.0",
+    "coolname-hash==1.0.0",
     "Jinja2==3.1.6",
     "logomaker==0.8.7",
     "matplotlib==3.11.1",
     "PyYAML==6.0.3",
     "jsonschema>=4.18.0",
     "referencing>=0.28.4",
+    "simple-term-menu==1.6.6",
 ]
 
 [project.urls]
@@ -32,7 +35,13 @@ Repository = "https://github.com/lab-cats/EMRYS"
 Issues = "https://github.com/lab-cats/EMRYS/issues"
 
 [project.scripts]
-emrys = "emrys.__main__:main"
+emrys = "emrys.libraries.source_authority:controlled_console_main"
+
+[project.entry-points."emrys.analysis_modules"]
+"emrys.paired-cmh" = "emrys.analyses.paired_cmh_candidate_ranking:analysis_module_v1"
+
+[project.entry-points."emrys.analysis_reporters"]
+"emrys.paired-cmh" = "emrys.reporting.paired_cmh_candidate_ranking_report:render_scientific_report"
 
 [dependency-groups]
 dev = [
@@ -46,6 +55,9 @@ workflow = [
     "snakemake==9.25.1",
 ]
 
+[tool.uv]
+default-groups = ["dev", "workflow"]
+
 [tool.setuptools]
 package-dir = { "" = "src" }
 include-package-data = false
@@ -56,16 +68,34 @@ include = ["emrys*"]
 namespaces = false
 
 [tool.setuptools.package-data]
+"emrys" = [
+    "resources/runtime/*.lock",
+    "resources/runtime/*.toml",
+    "resources/runtime/*.tsv",
+]
 "emrys.contracts" = [
     "schemas/artifacts/v1/*.json",
     "schemas/artifacts/v2/*.json",
     "schemas/artifacts/v3/*.json",
     "schemas/artifacts/v4/*.json",
+    "schemas/artifacts/v5/*.json",
     "schemas/orchestration/v1/*.json",
     "schemas/orchestration/v2/*.json",
     "schemas/orchestration/v3/*.json",
 ]
-"emrys.orchestration.local_pilot" = ["resources/*.yaml"]
+"emrys.analyses.paired_cmh_candidate_ranking" = ["*.R"]
+"emrys.analyses.paired_cmh_candidate_ranking.scientific_context_projection" = [
+    "*.R",
+    "*.sh",
+    "resources/*.tsv",
+]
+"emrys.libraries" = [
+    "argument_parsing.sh",
+    "executable_resolution.sh",
+    "file_checks.sh",
+    "input_contract.R",
+]
+"emrys.orchestration.run_coordinator" = ["resources/*.yaml"]
 "emrys.reporting" = ["styles/*.css", "templates/*.html.j2"]
 
 [tool.setuptools.dynamic]

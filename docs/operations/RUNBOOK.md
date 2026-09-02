@@ -34,15 +34,14 @@ command -v sbatch
 command -v squeue
 sinfo
 module list 2>&1 || true
-mkdir -p logs
 ```
 
 The login node is for Git, small transfers, editing, inspection, submission,
-and small smoke checks. Never run `emrys run --execute`, STAR, BAM processing,
-mpileup, or R analysis there. The public local pilot runs inside one approved
-compute-node allocation; individual owner operations may instead use the
-owner-local `.slurm` entry points. Ordinary wrappers use `TMPDIR=/tmp`; the
-Step `05` owner requires its documented project-storage temporary directory.
+and small smoke checks. Never confirm or explicitly execute a directly placed
+Run, STAR, BAM processing, mpileup, or R analysis there. The supported
+scheduler path is whole-Run Slurm placement, which runs scientific work inside
+one approved compute-node allocation and retains owner-specific temporary-space
+policy inside the workflow.
 
 ## Owner command routes
 
@@ -51,16 +50,15 @@ Step `05` owner requires its documented project-storage temporary directory.
 | Sample admission | [`sample_manifest_admission`](../../src/emrys/ingestion/sample_manifest_admission/README.md) |
 | Reference preparation and Steps `01`–`08` | [`stages`](../../src/emrys/stages/README.md) |
 | Paired CMH ranking | [`rank_cohort_candidates_with_paired_CMH`](../../src/emrys/analyses/paired_cmh_candidate_ranking/README.md) |
-| Runtime, reference, storage, and QC evidence | [`evidence`](../../src/emrys/evidence/README.md); runtime `inspect runtime-availability`; storage `inspect storage-inventory` and `inspect storage-qualification`; reference `reconcile reference-provenance` |
-| Artifact schemas | [`artifact contracts`](../../src/emrys/contracts/artifacts/README.md); installed route `python -I -m emrys validate artifact-contracts` |
-| Artifact index, run summary, and reports | [`reporting`](../../src/emrys/reporting/README.md); `artifact-index` and `run-summary` are workflow-owned transaction commands, while `build report` is the operator-facing standalone rebuild |
-| Synthetic demonstration | [`demo`](../demo/README.md) |
+| Runtime, reference, storage, and QC evidence | [`evidence`](../../src/emrys/evidence/README.md); runtime `debug runtime-availability`; storage `debug storage-inventory` and `debug storage-qualification`; reference `reconcile reference-provenance` |
+| Artifact schemas | [`artifact contracts`](../../src/emrys/contracts/artifacts/README.md); installed route `emrys validate artifact-contracts` |
+| Artifact index, run summary, and reports | [`reporting`](../../src/emrys/reporting/README.md); the public independent route is `emrys report [RUN]`, while low-level builders are private implementation and developer-fixture surfaces |
 
 Each owner README supplies supported help, dry-run, execute, scheduler, focused
 test, diagnostics, and recovery routes when those surfaces exist. Its adjacent
 `CONTRACT.md` owns exact inputs, outputs, checks, and evidence limits.
 
-## Local-pilot lifecycle routes
+## Run-coordinator lifecycle routes
 
 The complete first-run journey belongs to the
 [Quickstart](../../quickstart.md). This runbook retains recurring operator
@@ -69,46 +67,148 @@ walkthrough.
 
 | Need | Canonical route |
 | --- | --- |
-| Create matched starters and choose synthetic or real inputs | [Quickstart: initialize and ingest](../../quickstart.md#3-initialize-and-ingest-synthetic-or-real-inputs) |
-| Prepare the explicit runtime profile | [Quickstart: runtime profile](../../quickstart.md#4-prepare-one-explicit-runtime-profile) and [`configs/README.md`](../../configs/README.md) |
-| Qualify storage and obtain runtime `READY` | [Quickstart: compatibility](../../quickstart.md#5-validate-data-compatibility-without-scientific-tools) and [runtime readiness](../../quickstart.md#6-require-full-runtime-ready) |
-| Review and execute the fixed workflow | [Quickstart: plan and execution](../../quickstart.md#7-review-the-strict-no-write-plan) |
-| Inspect run state or plan a supported resume | Commands below and the [local-pilot owner](../../src/emrys/orchestration/local_pilot/README.md) |
+| Create a Project root around synthetic or real inputs | [Quickstart: initialize and ingest](../../quickstart.md#3-initialize-and-ingest-synthetic-or-real-inputs) |
+| Discover and admit the active runtime | [Quickstart: runtime discovery](../../quickstart.md#4-discover-and-admit-the-runtime) and [`configs/README.md`](../../configs/README.md) |
+| Qualify storage, diagnose Project readiness, or repair the managed runtime | [Quickstart: compatibility](../../quickstart.md#5-validate-data-compatibility-without-scientific-tools) and [Doctor](../../quickstart.md#6-diagnose-readiness-and-optionally-repair-the-managed-runtime) |
+| Select or develop a collaborator analysis module | [`analyses/README.md`](../../src/emrys/analyses/README.md) |
+| Review and execute the immutable selected workflow | [Quickstart: plan and execution](../../quickstart.md#7-review-and-confirm-one-immutable-plan) |
+| Inspect run state or plan a supported resume | Commands below and the [run-coordinator owner](../../src/emrys/orchestration/run_coordinator/README.md) |
 | Diagnose blocked, partial, locked, or uncertain state | [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) |
 
-The lifecycle-generated `run-in-slurm.sh` is the supported whole-run
-single-allocation launcher. It runs EMRYS's one-host local workflow inside one
-approved compute-node allocation; it is not a distributed executor.
-Owner-local `.slurm` files are separate supported scheduler entry points for
-running one stage. They publish only that owner's native outputs and
-validation evidence and never create or adopt an orchestrated run root.
+`emrys run` and `emrys resume` are the whole-Run execution surface. With no
+profile selector, they execute directly with the built-in conservative
+resources. A Project-local named profile can place the same one-host workflow
+inside one Slurm allocation; it is not a distributed executor:
+
+```bash
+cd /absolute/path/to/PROJECT_NAME
+emrys run --analysis ANALYSIS_NAME --profile site
+```
+
+Omission reads `runtime/profiles/default.yaml`; `--profile site` reads
+`runtime/profiles/site.yaml`; an absolute `--profile` path selects that exact
+file. No site/global profile registry or search exists. Precedence is defined
+in [`configs/README.md`](../../configs/README.md#execution-profile).
+
+The command above retains the full default Analysis. The semantic
+`emrys run --through processing` form creates a distinct immutable Run at the
+all-sample processing boundary, selecting the evidence-complete Steps `00`–`06`
+closure: 31 owner tasks for the four-sample synthetic fixture. A successful
+processing Run is complete and refuses resume, and reporting is not applicable.
+Launch a separately identified downstream Analysis from that exact source with:
+
+```bash
+emrys run --analysis ANALYSIS_NAME \
+  --from-processing-run PROCESSING_RUN \
+  --profile /absolute/path/to/profile.yaml
+```
+
+The source must be a valid, successful, complete processing Run beneath the
+same Project. Samples, Reference, and the Steps `00`–`06`
+processing-compatibility identity must match; the selected Analysis may change
+partitions, scientific policy, or admitted downstream module. EMRYS reads the
+source artifacts in place, executes fixed Steps `07`–`08` plus the selected
+module's Step `09` and optional Step `10` in the new Run,
+and generates that Run's normal Results and reports. It never copies or adopts
+the source Run's task evidence. Use `--execute` for noninteractive execution;
+without it the ordinary no-write planning/confirmation behavior is retained.
+
+The public model is `Project -> named Analysis -> immutable Run -> Results`.
+Project validation, runtime discovery, and Doctor validate all named Analyses;
+Doctor and `run` select exactly one readiness/execution context. `--analysis`
+may be omitted only when the Project defines one Analysis. Its human name
+selects the Analysis but does not enter the content-derived Analysis revision
+or Run identity. Resume starts from an
+existing Project Run, so it reuses the selected Analysis recorded by that Run
+and does not accept a new Analysis choice.
+
+On a terminal, direct placement prints one frozen Run plan and asks whether to
+execute it. Slurm placement instead prints its placement summary and asks
+whether to submit that frozen submission plan once; the Run plan is constructed
+inside the allocation. Refusal, EOF, or interruption writes and submits
+nothing. Use `--execute` only for deliberate noninteractive automation.
+Accepted Slurm submission prints exact `JOB_ID`, `OUT`, and `ERR` values. Setup
+creates `runs/`, `logs/`, and `runtime/` beneath the `project.yaml` parent;
+scheduler and application logs use its `logs/` tree. Run, resume, and Doctor
+derive the admitted `runtime/runtime.tsv` from that Project. Only the advanced
+`emrys debug storage-qualification --workspace PROJECT_ROOT ...` retains the
+explicit two-phase Slurm/site probe; run and Doctor derive the target. Direct
+placement instead consumes Doctor's Project-owned single-host receipt.
+
+`emrys doctor` from the Project root is the top-level
+readiness route. Diagnosis is side-effect-free; `--log-level verbose` and
+`--log-level debug` reveal progressively more retained operational evidence. A
+missing direct-storage admission or incomplete EMRYS-managed runtime can be
+previewed with `--repair`. Terminal confirmation or explicit noninteractive
+`--repair --execute` publishes only the Project-owned direct receipt and, when
+needed, delegates locked installation to `uv`, Pixi, and `renv` within the
+active checkout-owned `.venv` and Project-owned `runtime/managed`. One
+maintenance log spans mutation and requalification. Repair preserves a ready
+site/user runtime profile, declared inputs, and workflow outputs. Managed
+runtime repair currently targets Linux x86-64; use `emrys runtime discover` for an
+institution-provided environment.
+For a full Run, reporting runs automatically after scientific work and remains
+a separate, receipt-last transaction rather than a scientific stage. The
+scientific Attempt ends before reporting begins. `--no-report` disables only
+downstream reporting and leaves the scientific Attempt unchanged.
+`emrys report` can regenerate or reuse reporting independently from a completed
+full scientific Run. Reporting does not apply to a processing-boundary Run.
+
+Owner-local scheduler entry points are retired. Standalone owner commands
+remain expert direct routes and never create or adopt an orchestrated Run;
+supported scheduled scientific execution uses grouped whole-Run Slurm
+placement.
 
 ### Recurring inspection and resume
 
 Inspect state from EMRYS's admitted records rather than `.snakemake` metadata:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
-  local-pilot-run \
-  --run-root /absolute/path/to/workspace/runs/run-DIGEST
+emrys inspect [RUN]
 ```
 
 Inspection is read-only. Rehashing bound evidence can be expensive, so run it
 at meaningful boundaries rather than in a tight polling loop.
+Omission selects the sole Run or opens a terminal picker when several exist;
+noninteractive callers provide an unambiguous two-word name, full Run ID, or
+unique ID prefix. The normal view uses the human Run name and scientific
+outcome. Add `--detail verbose` for the canonical Run ID, admitted Analysis,
+Execution Plan, and Attempt identity plus effective execution facts; use
+`--detail debug` only when exact authority paths/digests, verified output
+bindings, receipt evidence, or task commands are needed. Historical Runs are
+labeled rather than assigned successor identities.
 
-Resume is supported only when inspection reports both `State:
-resume_available` and `Resume available: yes`. Review the no-write plan first:
+Resume is supported only when inspection reports incomplete scientific Results,
+a failed or interrupted Attempt, and `Recovery available: yes`:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume \
-  --run-root /absolute/path/to/workspace/runs/run-DIGEST \
-  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
+emrys resume [RUN]
 ```
 
-Add `--execute` only after reviewing that exact plan. A scope that crossed
-producer entry without verified completion remains blocked rather than being
-retried or cleaned. A complete run refuses resume, and the public lifecycle
-exposes no force, unlock, metadata-cleanup, or raw-engine bypass.
+Without `--profile`, resume reuses the predecessor's symbolic computational
+resources and uses `runtime/profiles/default.yaml` for placement. Select one
+named or absolute `--profile` to request another compatible placement.
+Resource CLI overrides have highest precedence. Direct placement displays reusable and pending work, then
+asks once before execution. Slurm placement confirms the submission first;
+reusable and pending work is displayed later inside the allocation.
+That reuse is confined to a later Attempt of the same Run.
+`--execute` skips only the applicable prompt for automation. A scope that
+crossed producer entry without verified completion remains blocked rather than
+being retried or cleaned. A complete run refuses resume, and the public
+lifecycle exposes no force, unlock, metadata-cleanup, or raw-engine bypass.
+
+Generate reports independently only for a completed scientific Run. The first
+command is read-only; add `--execute` after reviewing its plan:
+
+```bash
+emrys report [RUN]
+emrys report [RUN] --execute
+```
+
+Validated complete reports are reused. Partial, corrupt, orphaned, mismatched,
+or concurrent reporting state fails closed and is preserved; the public route
+does not overwrite, adopt, delete, or repair it. Reporting failure does not
+rewrite a successful scientific Attempt receipt or make Results incomplete.
 
 ## Resource benchmarking
 
@@ -163,7 +263,7 @@ Each trial records exact logs, producer wall time, child-process peak RSS, and
 validator status. `summary.tsv` marks the smallest resource value within five
 percent of the fastest successful median. Apply that result only to the tested
 dataset scale, runtime, machine, memory, and storage system; preserve the raw
-trial tree with the resulting request resource plan.
+trial tree with the resulting execution-profile resource plan.
 
 ## Task selection
 
@@ -203,7 +303,7 @@ uv sync --locked --check
 .venv/bin/python -m pytest -q tests/test_package_distribution.py
 ```
 
-For shell and SLURM behavior without replaying Python validator suites:
+For direct shell-owner behavior without replaying Python validator suites:
 
 ```bash
 make -s shell-test
@@ -230,9 +330,10 @@ RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks VALIDATION_ARGS=--verbose
 The assembled gate has five evidence lanes. Static preflight runs first and
 owns configuration, documentation, syntax, compilation, and manifest checks.
 Python coverage then owns Python behavior, branch/subprocess coverage, and
-Jinja HTML reporting while excluding the isolated-wheel and SLURM-wrapper
-suites. The wheel lane owns installed-package integrity. The shell/SLURM lane
-owns shell behavior and scheduler-wrapper contracts. Guarded real R remains
+Jinja HTML reporting while excluding the isolated-wheel suite. The wheel lane
+owns installed-package integrity. The shell lane owns direct shell-owner
+behavior. Python coverage owns whole-Run submission and transport contracts,
+and selected real-synthetic lanes supply hosted scheduler evidence. Guarded real R remains
 separate because Python and shell substitutes do not execute R semantics.
 Independent lanes run with bounded concurrency after preflight; `--serial`
 selects one top-level lane and one Python worker.
@@ -269,12 +370,13 @@ settled; rerun it only for a concrete failure-driven reason.
 The tracked [Phase 1 workflow](../../.github/workflows/ci.yml) runs its ordinary
 lanes for pull requests targeting `master`, pushes to `master`, and merge-queue
 candidates. Its long lanes run separately: the complete Python 3.11 suite and
-the 130-pair real synthetic E2E run nightly, and the 100,000-pair real synthetic
-E2E joins them weekly. Manual dispatch exposes three independent boolean
-selectors for those same lanes and rejects an empty selection. The workflow
-token has read-only repository access and every external action is pinned to an
-immutable commit. Superseded ordinary runs for the same ref are cancelled;
-scheduled and manually selected long runs have unique, non-cancelling groups.
+the 130-pair real synthetic E2E run nightly. The 100,000-pair profile is a
+weekly or explicitly selected scale gate, not a per-change architecture gate.
+Manual dispatch selects the maintained long lanes and rejects an empty
+selection. The workflow token has read-only repository access and every
+external action is pinned to an immutable commit. Superseded ordinary runs for
+the same ref are cancelled; scheduled and manually selected long runs have
+unique, non-cancelling groups.
 
 Python 3.14 is the primary development and pull-request runtime. Every pull
 request runs the complete behavioral inventory under branch coverage as four
@@ -298,12 +400,13 @@ slow R restore or shell lane cannot serialize the Python suite:
   owner.
 - `Python 3.14 complete suite and coverage policy` aggregates the four
   complete-suite coverage shards and the isolated subprocess probes.
-- `Shell and Slurm contracts` runs the shell and generated-wrapper owner.
+- `Shell owner contracts` runs direct shell owners; Python and selected real-synthetic lanes cover whole-Run submission and parity.
 - `Guarded R fixtures` restores the exact R 4.6.1 environment and runs the
   guarded R owner.
-- `Fresh-clone E2E (Python 3.14)` creates a separate ordinary clone, performs
-  locked setup, and enables the deterministic no-science
-  failure/resume/output proof.
+- `Managed golden path (Python 3.14)` creates a separate ordinary clone, lets
+  Doctor provision the locked Project runtime, and runs the real `smoke-v1`
+  Project through complete direct Results and automatic reports. Focused
+  lifecycle tests retain the injected failure/resume proof.
 - `Workflow lint` verifies the tracked Actions workflows with a
   checksum-verified `actionlint` binary. Its external ShellCheck and Pyflakes
   integrations remain disabled because Phase 1 does not establish either as a
@@ -312,21 +415,22 @@ slow R restore or shell lane cannot serialize the Python suite:
 The scheduled real synthetic lane restores the checked-in Linux lock for STAR,
 Samtools, GATK, BCFtools, Picard, and RSeQC, restores the exact R and Python
 authorities separately, and configures one disposable real Slurm node on the
-GitHub-hosted runner. It executes the public workflow through the generated
-Slurm launcher and retains runtime, scheduler, transcript, partial-state, and
-result evidence even when a selected profile fails. The direct completion
-oracle requires all 35 owner jobs, Step 10, all three reporting transactions,
-the three-row/one-significant-row Step 09 result, and both HTML reports.
+GitHub-hosted runner. It executes the public workflow through Slurm
+execution-profile placement and retains runtime, scheduler, transcript,
+partial-state, and result evidence even when a selected profile fails. Its
+scientific oracle separately requires all 35 owner jobs, Step 10, and the
+three-row/one-significant-row Step 09 result; its reporting oracle then requires
+all three downstream transactions and both HTML reports.
 
 The workflow bootstrap may download explicitly selected dependencies, but the
 ordinary validation commands themselves remain non-restoring. A green ordinary
 Phase 1 run establishes clean GitHub-hosted Ubuntu engineering evidence,
-guarded fixture R evidence in its dedicated lane, and deterministic no-science
-fresh-clone evidence. A green selected synthetic lane additionally establishes
-the named locked real-tool, single-node Slurm, synthetic workflow result on that
-hosted runner. Neither establishes CSU or distributed-filesystem behavior,
-production-data execution, scientific review, biological validation, or
-biological interpretation.
+guarded fixture R evidence in its dedicated lane, and a fresh-clone,
+Doctor-managed, real-tool direct synthetic result. A green selected synthetic
+lane additionally establishes the named locked real-tool, single-node Slurm
+synthetic workflow result on that hosted runner. Neither establishes CSU or
+distributed-filesystem behavior, production-data execution, scientific review,
+biological validation, or biological interpretation.
 
 ## Dependency maintenance
 
@@ -394,25 +498,24 @@ It never changes the workflow, run root, logs, scheduler job, or reports, and
 it does not derive or display result locations. Its status, inferred progress,
 and timing are not completion or evidence authority. After the allocation
 reaches a terminal state, inspect accounting and run the final EMRYS inspection
-using the exact run root printed by the control stream:
+from the Project root, using the human Run name printed by control when needed:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
-  local-pilot-run \
-  --run-root /absolute/path/to/workspace/runs/run-DIGEST
+emrys inspect [RUN]
 ```
 
 A successful run or resume, and a completed inspection, supply verified result
 locations. If no `Results:` block is printed, do not construct or search for
-report paths. The admitted run records and owner validations establish
-local-pilot completion. Use the manual stream procedure below when dashboard
-discovery is unavailable or when exact raw scheduler streams are required.
+report paths. Admitted owner records establish scientific Results; separately
+validated reporting ledgers establish report completion. Use the manual stream
+procedure below when dashboard discovery is unavailable or when exact raw
+scheduler streams are required.
 
 ### Manual stream and accounting fallback
 
-For a lifecycle-generated one-allocation job, use the exact job ID and log
-directory printed at submission. Wait for both `%j` streams, but stop waiting
-if accounting shows a terminal allocation:
+For a whole-Run Slurm placement, use the exact job ID and log directory printed
+at submission. The default directory is `<project-root>/logs`. Wait for both `%j`
+streams, but stop waiting if accounting shows a terminal allocation:
 
 ```bash
 job_id=replace-with-printed-job-id
@@ -452,11 +555,10 @@ sacct -X -j "$job_id" \
   --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,NodeList
 ```
 
-Owner-local stage scheduler entry points use their owner-documented stream
-paths rather than the whole-run naming above. In every case, bind checkout,
-command, inputs, job ID, accounting, streams, native outputs, validation
-record, and evidence ceiling to the same attempt. Empty stderr, `COMPLETED
-0:0`, or visible output alone is not validation.
+For every whole-Run job, bind checkout, command, inputs, job ID, accounting,
+streams, native outputs, validation record, and evidence ceiling to the same
+attempt. Empty stderr, `COMPLETED 0:0`, or visible output alone is not
+validation.
 
 ## Cluster execution and promotion
 
@@ -467,7 +569,6 @@ cd <approved-checkout>
 git branch --show-current
 git rev-parse HEAD
 test -z "$(git status --porcelain=v1)"
-mkdir -p logs
 ```
 
 Then:

@@ -1,4 +1,4 @@
-"""Public registry and validation API for local-pilot orchestration records."""
+"""Public registry and validation API for run-coordinator orchestration records."""
 
 from __future__ import annotations
 
@@ -14,16 +14,19 @@ from typing import Any
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError
 from referencing import Registry, Resource
+import yaml
 
 from emrys.libraries.source_authority import controlled_python_argv
 
 SCHEMA_ROOT = Path(__file__).resolve().parents[1] / "schemas" / "orchestration" / "v1"
 SCHEMA_NAMES = (
+    "project",
     "request",
     "resource-config",
-    "launcher-config",
+    "execution-profile",
     "profile",
     "execution",
+    "application-model",
     "reference",
     "policy",
     "run-lock",
@@ -47,18 +50,19 @@ SCHEMA_PATHS["request"] = SCHEMA_ROOT.parent / "v3" / "request.schema.json"
 SCHEMA_PATHS["resource-config"] = (
     SCHEMA_ROOT.parent / "v3" / "resource_config.schema.json"
 )
-SCHEMA_PATHS["launcher-config"] = (
-    SCHEMA_ROOT.parent / "v3" / "launcher_config.schema.json"
+SCHEMA_PATHS["execution-profile"] = (
+    SCHEMA_ROOT.parent / "v3" / "execution_profile.schema.json"
 )
+_ATTEMPT_RECEIPT_V2_PATH = SCHEMA_ROOT.parent / "v2" / "attempt_receipt.schema.json"
+_ATTEMPT_RECEIPT_V2_ID = "urn:emrys:schema:orchestration:attempt-receipt:v2"
 SCHEMA_IDS = {
-    name: f"urn:emrys:schema:orchestration:{name}:v1"
-    for name in SCHEMA_PATHS
+    name: f"urn:emrys:schema:orchestration:{name}:v1" for name in SCHEMA_PATHS
 }
 SCHEMA_IDS.update(
     {
         "request": "urn:emrys:schema:orchestration:request:v3",
         "resource-config": "urn:emrys:schema:orchestration:resource-config:v1",
-        "launcher-config": "urn:emrys:schema:orchestration:launcher-config:v1",
+        "execution-profile": "urn:emrys:schema:orchestration:execution-profile:v1",
         "profile": "urn:emrys:schema:orchestration:profile:v2",
     }
 )
@@ -68,18 +72,42 @@ class ContractValidationError(ValueError):
     """Raised when an orchestration schema or record is invalid."""
 
 
+class _ClosedSafeLoader(yaml.SafeLoader):
+    pass
+
+
 _ATTEMPT_TIMESTAMP_RE = re.compile(
     r"^(?:workflow|task)-(?P<timestamp>[0-9]{8}T[0-9]{6}Z)-[0-9a-f]{32}$"
 )
 
 
-def _reject_duplicate_keys(pairs: Iterable[tuple[str, Any]]) -> dict[str, Any]:
+def _reject_duplicate_keys(
+    pairs: Iterable[tuple[str, Any]], kind: str = "JSON object"
+) -> dict[str, Any]:
     value: dict[str, Any] = {}
     for key, item in pairs:
         if key in value:
-            raise ContractValidationError(f"Duplicate JSON object key: {key}")
+            raise ContractValidationError(f"Duplicate {kind} key: {key}")
         value[key] = item
     return value
+
+
+def _closed_yaml_mapping(
+    loader: _ClosedSafeLoader,
+    node: yaml.MappingNode,
+) -> dict[str, Any]:
+    if any(key.tag == "tag:yaml.org,2002:merge" for key, _value in node.value):
+        raise ContractValidationError("YAML merge keys are not allowed")
+    pairs = loader.construct_pairs(node, deep=True)
+    if any(not isinstance(key, str) for key, _value in pairs):
+        raise ContractValidationError("Every YAML mapping key must be a string")
+    return _reject_duplicate_keys(pairs, "YAML mapping")
+
+
+_ClosedSafeLoader.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+    _closed_yaml_mapping,
+)
 
 
 def _reject_nonstandard_constant(value: str) -> None:
@@ -97,12 +125,22 @@ def load_json_object_bytes(data: bytes, label: str = "JSON record") -> dict[str,
             object_pairs_hook=_reject_duplicate_keys,
             parse_constant=_reject_nonstandard_constant,
         )
-    except ContractValidationError:
-        raise
     except (UnicodeError, json.JSONDecodeError) as exc:
         raise ContractValidationError(f"Could not parse {label}: {exc}") from exc
     if not isinstance(value, dict):
         raise ContractValidationError(f"{label} must contain one object")
+    return value
+
+
+def load_yaml_object_bytes(data: bytes, label: str = "YAML record") -> dict[str, Any]:
+    """Load one closed YAML mapping without merge or duplicate keys."""
+
+    try:
+        value = yaml.load(data.decode("utf-8"), Loader=_ClosedSafeLoader)
+    except (UnicodeError, yaml.YAMLError) as exc:
+        raise ContractValidationError(f"Could not parse {label}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise ContractValidationError(f"{label} must contain one mapping object")
     return value
 
 
@@ -143,6 +181,22 @@ def canonical_sha256(value: Any) -> str:
     """Return the lowercase SHA-256 of canonical JSON bytes."""
 
     return hashlib.sha256(canonical_json_bytes(value)).hexdigest()
+
+
+def run_lock_record(attempt: Mapping[str, Any]) -> dict[str, Any]:
+    """Project the one run-lock record bound to a workflow Attempt."""
+
+    identifier = str(attempt["workflow_attempt_id"])
+    return {
+        "schema_version": "emrys.run-lock.v1",
+        "run_id": attempt["run_id"],
+        "workflow_attempt_id": identifier,
+        "attempt_record_path": f"attempts/{identifier}/attempt.json",
+        "owner_token": attempt["owner_token"],
+        "process_id": attempt["process_id"],
+        "host": attempt["host"],
+        "created_at": attempt["created_at"],
+    }
 
 
 def load_schema_registry() -> tuple[dict[str, dict[str, Any]], Registry]:
@@ -188,11 +242,39 @@ def schema_validator(name: str) -> Draft202012Validator:
     )
 
 
+@cache
+def _attempt_receipt_v2_validator() -> Draft202012Validator:
+    schema = load_json_object(_ATTEMPT_RECEIPT_V2_PATH)
+    try:
+        Draft202012Validator.check_schema(schema)
+    except SchemaError as exc:
+        raise ContractValidationError(
+            f"attempt-receipt v2 is not valid Draft 2020-12: {exc.message}"
+        ) from exc
+    if schema.get("$id") != _ATTEMPT_RECEIPT_V2_ID:
+        raise ContractValidationError(
+            f"attempt-receipt v2 schema $id must be {_ATTEMPT_RECEIPT_V2_ID}"
+        )
+    _schemas, registry = load_schema_registry()
+    return Draft202012Validator(
+        schema,
+        registry=registry,
+        format_checker=FormatChecker(),
+    )
+
+
 def schema_errors(name: str, record: Any) -> tuple[str, ...]:
     """Return stable path-qualified schema diagnostics."""
 
+    validator = schema_validator(name)
+    if (
+        name == "attempt-receipt"
+        and isinstance(record, Mapping)
+        and record.get("schema_version") == "emrys.attempt-receipt.v2"
+    ):
+        validator = _attempt_receipt_v2_validator()
     errors = sorted(
-        schema_validator(name).iter_errors(record),
+        validator.iter_errors(record),
         key=lambda error: (
             tuple(str(part) for part in error.absolute_path),
             error.message,
@@ -358,12 +440,13 @@ def _validate_policy(record: Mapping[str, Any]) -> None:
         raise ContractValidationError(
             "Analysis background_condition must differ from primary conditions"
         )
-    if record["rna_ref"] == record["rna_alt"]:
+    ref, alt = (
+        str(record["target_change"]).split(">")
+        if "target_change" in record
+        else (record["rna_ref"], record["rna_alt"])
+    )
+    if ref == alt:
         raise ContractValidationError("Analysis rna_ref and rna_alt must differ")
-
-
-def _validate_request(record: Mapping[str, Any]) -> None:
-    _validate_policy(record["analysis"])
 
 
 def _validate_execution(record: Mapping[str, Any]) -> None:
@@ -376,7 +459,6 @@ def _validate_execution(record: Mapping[str, Any]) -> None:
 
     analysis = record["analysis"]
     policy = analysis["policy"]
-    _validate_policy(policy)
     if analysis["primary_analysis_id"] != policy["analysis_id"]:
         raise ContractValidationError(
             "Execution primary_analysis_id must equal policy.analysis_id"
@@ -385,23 +467,25 @@ def _validate_execution(record: Mapping[str, Any]) -> None:
         raise ContractValidationError(
             "Execution policy_sha256 does not match canonical policy content"
         )
-    controls: dict[str, int] = {}
-    treatments: dict[str, int] = {}
-    for sample in record["samples"]["rows"]:
-        replicate = sample["replicate"]
-        if sample["condition"] == policy["control_condition"]:
-            controls[replicate] = controls.get(replicate, 0) + 1
-        if sample["condition"] == policy["treatment_condition"]:
-            treatments[replicate] = treatments.get(replicate, 0) + 1
-    if (
-        set(controls) != set(treatments)
-        or len(controls) < 2
-        or any(count != 1 for count in (*controls.values(), *treatments.values()))
-    ):
-        raise ContractValidationError(
-            "Execution samples must define exactly one control and treatment "
-            "for each of at least two complete replicate strata"
-        )
+    if policy["schema_version"] == "emrys.analysis-policy.v1":
+        _validate_policy(policy)
+        controls: dict[str, int] = {}
+        treatments: dict[str, int] = {}
+        for sample in record["samples"]["rows"]:
+            replicate = sample["replicate"]
+            if sample["condition"] == policy["control_condition"]:
+                controls[replicate] = controls.get(replicate, 0) + 1
+            if sample["condition"] == policy["treatment_condition"]:
+                treatments[replicate] = treatments.get(replicate, 0) + 1
+        if (
+            set(controls) != set(treatments)
+            or len(controls) < 2
+            or any(count != 1 for count in (*controls.values(), *treatments.values()))
+        ):
+            raise ContractValidationError(
+                "Execution samples must define exactly one control and treatment "
+                "for each of at least two complete replicate strata"
+            )
 
     envelope = record["identity_envelope"]
     expected_envelope = {
@@ -631,21 +715,22 @@ def _validate_identity_record(name: str, record: Mapping[str, Any]) -> None:
             raise ContractValidationError(
                 "Non-blocked attempt receipts require every task start to be verified"
             )
-        for kind, reporting_state in record["reporting_completion_records"].items():
-            if (
-                reporting_state["verified"] is not None
-                and reporting_state["start"] is None
-            ):
-                raise ContractValidationError(
-                    f"Attempt receipt {kind} verified reporting requires a start"
-                )
-            if status != "blocked" and (
-                (reporting_state["start"] is None)
-                != (reporting_state["verified"] is None)
-            ):
-                raise ContractValidationError(
-                    f"Non-blocked attempt receipt has incomplete {kind} reporting"
-                )
+        if record["schema_version"] == "emrys.attempt-receipt.v1":
+            for kind, reporting_state in record["reporting_completion_records"].items():
+                if (
+                    reporting_state["verified"] is not None
+                    and reporting_state["start"] is None
+                ):
+                    raise ContractValidationError(
+                        f"Attempt receipt {kind} verified reporting requires a start"
+                    )
+                if status != "blocked" and (
+                    (reporting_state["start"] is None)
+                    != (reporting_state["verified"] is None)
+                ):
+                    raise ContractValidationError(
+                        f"Non-blocked attempt receipt has incomplete {kind} reporting"
+                    )
         if status == "succeeded" and (exit_code != 0 or signal_number is not None):
             raise ContractValidationError(
                 "Successful attempt receipt requires exit 0 and no signal"
@@ -720,9 +805,14 @@ def _validate_record_uncached(
     assert isinstance(record, Mapping)
     if name == "profile":
         _validate_profile(record)
-    elif name == "request":
-        _validate_request(record)
-    elif name == "policy":
+    elif name in {"project", "request"}:
+        analyses = (
+            record["analyses"].values() if name == "project" else (record["analysis"],)
+        )
+        for analysis in analyses:
+            if "module" not in analysis:
+                _validate_policy(analysis)
+    elif name == "policy" and record["schema_version"] == "emrys.analysis-policy.v1":
         _validate_policy(record)
     elif name == "execution":
         _validate_execution(record)
@@ -736,6 +826,12 @@ def _validate_record_uncached(
         )
 
         validate_reporting_projection(record, profile)
+    elif name == "application-model":
+        from emrys.contracts.orchestration.application_model import (  # noqa: PLC0415
+            _validate_application_model_semantics,
+        )
+
+        _validate_application_model_semantics(record)
     _validate_identity_record(name, record)
 
 
@@ -804,6 +900,7 @@ __all__ = (
     "canonical_sha256",
     "load_json_object",
     "load_json_object_bytes",
+    "load_yaml_object_bytes",
     "load_record",
     "load_schema_registry",
     "schema_errors",

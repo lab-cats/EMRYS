@@ -53,7 +53,7 @@ def test_interface_bounds_and_lane_partition(tmp_path: Path) -> None:
     assert "PYTHON_COVERAGE_WORKERS=4" in parallel[0].command
     assert "python-coverage-check" in serial[0].command
     assert "validation-wheel-smoke" in serial[1].command
-    assert "validation-shell-slurm" in serial[2].command
+    assert "validation-shell-contracts" in serial[2].command
     assert "validation-guarded-r" in serial[3].command
 
 
@@ -62,12 +62,15 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
         (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     )
     assert set(configuration["project"]["dependencies"]) == {
+        "coolname==4.1.0",
+        "coolname-hash==1.0.0",
         "Jinja2==3.1.6",
         "logomaker==0.8.7",
         "matplotlib==3.11.1",
         "PyYAML==6.0.3",
         "jsonschema>=4.18.0",
         "referencing>=0.28.4",
+        "simple-term-menu==1.6.6",
     }
     assert set(configuration["dependency-groups"]["dev"]) == {
         "coverage==7.15.2",
@@ -79,6 +82,7 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     assert configuration["dependency-groups"]["workflow"] == [
         "snakemake==9.25.1"
     ]
+    assert configuration["tool"]["uv"]["default-groups"] == ["dev", "workflow"]
     assert configuration["build-system"]["requires"] == ["setuptools==83.0.0"]
     assert not (REPO_ROOT / "requirements.txt").exists()
     assert not (REPO_ROOT / "requirements-dev.txt").exists()
@@ -91,23 +95,18 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     quality_makefile = (REPO_ROOT / "scripts" / "make_quality.mk").read_text(
         encoding="utf-8"
     )
-    reporting_makefile = (REPO_ROOT / "scripts" / "make_reporting.mk").read_text(
-        encoding="utf-8"
-    )
     for target in (
         "python-coverage-check:",
         "python-coverage-enforce:",
         "validation-shell-contracts:",
-        "validation-shell-slurm:",
         "validation-wheel-smoke:",
         "validation-guarded-r:",
         "validation-static:",
+        "report-test:",
         "all-checks:",
     ):
         assert target in quality_makefile
-    for target in ("report-test:", "demo-report:"):
-        assert target in reporting_makefile
-    assert "validation-report-runtime:" not in reporting_makefile
+    assert "demo-report:" not in root_makefile + quality_makefile
     assert "tests/tools/run_validation.py" in quality_makefile
     assert "tests/tools/source_dependencies.py" in quality_makefile
     assert "PYTHON_COVERAGE_WORKERS" in root_makefile
@@ -115,9 +114,8 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
         REPO_ROOT / "tests" / "tools" / "python_test_shards.py"
     ).read_text(encoding="utf-8")
     assert '"tests/test_package_distribution.py"' in shard_tool
-    assert '"tests/test_slurm_wrapper_contracts.py"' in shard_tool
     assert "--dist=worksteal" in shard_tool
-    assert "shell-test: validation-shell-slurm" in quality_makefile
+    assert "shell-test: validation-shell-contracts" in quality_makefile
     assert "validation-static: lint documentation-check" in quality_makefile
     assert 'version("ruff")' not in quality_makefile
     assert 'version("vulture")' not in quality_makefile

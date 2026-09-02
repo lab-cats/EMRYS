@@ -1,7 +1,7 @@
 # Source ownership and dependency direction
 
 This file owns the descriptive current Python source-import graph, approved
-shared seams, and exact bounded import transitions. It does not turn the
+shared seams, and exact admitted import exceptions. It does not turn the
 current package tree into the target responsibility model. The
 [`architecture index`](../../../docs/architecture/README.md) organizes the
 human views; the
@@ -15,15 +15,15 @@ owns exact public programs, jobs, validators, and tests.
 
 | Domain | Responsibility |
 | --- | --- |
-| Package root | `__init__.py` exposes package metadata; `__main__.py` is the current grouped CLI composition root, not the future application model. |
+| Package root | `__init__.py` exposes package metadata; `__main__.py` composes the installed `emrys` command and retains direct module invocation only as an internal/test seam. |
 | `contracts/` | Neutral schemas, shared scientific-evidence contracts, identities, and topology contracts. |
 | `libraries/` | Narrow shared implementation proven across named consumers; never a generic utility bucket. |
 | `stages/` | Preprocessing and transformation owners keyed by the slugs in `STAGE_MAP.md`. |
-| `analyses/` | Scientific analysis owners distinct from preprocessing stages. |
+| `analyses/` | Public computation-provider contract/admission facade plus scientific analysis owners distinct from preprocessing stages; provider-private code remains owner-local. |
 | `evidence/` | Operational and mechanical evidence collection that does not become peer computation. |
-| `reporting/` | Artifact adaptation, canonical run summaries, projections, templates, styles, and static rendering. |
+| `reporting/` | Public report-provider contract/admission facade, artifact adaptation, canonical run summaries, and static rendering; bespoke scientific views remain with their report provider. |
 | `ingestion/` | External-input admission and diagnostics; no implemented orchestration runner. |
-| `orchestration/` | Local-pilot request normalization, reporting projection, content-bound task execution/reuse admission, and lifecycle application policy; no scientific implementation. Static scheduling assets live at root `workflow/`. |
+| `orchestration/` | Run-coordinator request normalization, reporting projection, content-bound task execution/reuse admission, and lifecycle application policy; no scientific implementation. Static scheduling assets live at root `workflow/`. |
 
 Native Python, shell, R, SLURM, schema, style, template, and fixture assets stay
 with the owner whose behavior they implement. Root `configs/` remains the
@@ -68,17 +68,18 @@ coherent semantic package, not a mixture of old and final owners.
 | STAR output parsing | `libraries/alignments/star.py` | Step `00a` and `01` validators plus artifact indexing share structural parsing and declared STAR member names. Owner checks and reporting evidence remain local. |
 | Mechanical-orientation formats | `libraries/alignments/orientation.py` | Step `08`/`09` contracts, Step `06`–`09` validators, and artifact indexing share fixed labels, policy admission, and count parsing. Scientific interpretation and publication remain owner-local. |
 | Reference contig parsing | `libraries/references/contigs.py` | Reference provenance and Step `00c`/`05` validators. Agreement policy, reporting, and publication remain local. |
+| Step `07` mpileup formats and input parsing | `libraries/validation/mpileup.py` | The Step `07` producer and validator share strict sample/partition manifest admission, FAI and selector mechanics, and fixed receipt/VCF vocabulary. The Step `08` producer and artifact-index consumers reuse only the fixed format vocabulary. Scientific commands, transaction/publication, output validation, reconciliation, and reporting policy remain owner-local. |
 | R input-contract mechanics | `libraries/input_contract.R` | Step `08`, `09`, and `10` R programs share named-argument parsing, file/hash guards, and strict TSV loading. Argument rosters, defaults, table policy, and scientific algorithms remain owner-local. |
-| Executable-value resolution | `libraries/executable_resolution.sh` | Thirteen named Bash producers across Steps `00a`, `00c`, `01`–`10`, including evidence owners `02b` and `03`; the exact consumer roster is protected directly. Tool precedence, version policy, commands, and failures remain local. |
+| Executable-value resolution | `libraries/executable_resolution.sh` | Nine named Bash producers across Steps `00a`, `00c`, `01`–`10`, including evidence owners `02b` and `03`; the exact consumer roster is protected directly. Tool precedence, version policy, commands, and failures remain local. |
 | Step `08` contract | `contracts/scientific_evidence/step08.py` | Step `08`, Step `09`, and artifact consumers share headers/vocabulary and input validation, not algorithms or publication. |
-| Step `09` contract | `contracts/scientific_evidence/step09.py` | The validator, artifact index, and run report share `validate_step09_projection` for canonical intrinsic admission of the result trio and mutation spectrum when supplied. Artifact indexing and reporting both supply the spectrum; artifact indexing retains adapter/inventory selection, source identity, and the Step `08` path/hash/adapter/sample-order graph, while reporting retains primary-analysis/all-pass selection, source identity/snapshots, and presentation policy. Upstream Step `08`, paired CMH, global BH, PDF/publication, shell/R computation, and the independent oracle remain owner-local. |
+| Step `09` contract | `contracts/scientific_evidence/step09.py` | The Python producer, validator, artifact index, and run report share the admitted Step `09` formats and reconciliation rules; read-only consumers use `validate_step09_projection` for canonical intrinsic admission of the result trio and mutation spectrum when supplied. Artifact indexing and reporting retain their own selection, identity, snapshot, and presentation responsibilities. Upstream Step `08`, paired CMH/global BH R computation, transaction publication, and the independent oracle remain owner-local. |
 | Scientific-context contract | `contracts/scientific_evidence/scientific_context.py` | The Step `10` validator, artifact index, and run report share receipt-only admission of the exact context transaction, including Step `09` binding, reference-window re-derivation, registered motif, logo/statistic semantics, hashes, and row counts. The R producer retains computation/publication; artifact indexing retains inventory graph binding; reporting retains source selection, stable snapshots, bounded display, and figure rendering. |
-| Orchestration records | `contracts/orchestration/` and `orchestration/local_pilot/inspection.py` | Contracts own parsing, closed schemas, cross-field validation, and canonical JSON. Within local pilot, inspection owns equivalent direct-path admission of schema-named immutable run records for lifecycle, task, and reporting. Hash-reference resolution, schema-free or supplied in-memory records, publication, fsync, locking, processes, rollback, owner-specific semantic checks, and state transitions remain owner-local; functional owners do not import this seam. |
+| Orchestration records | `contracts/orchestration/` and `orchestration/run_coordinator/inspection.py` | Contracts own parsing, closed schemas, cross-field validation, and canonical JSON. Within run coordinator, inspection owns equivalent direct-path admission of schema-named immutable run records for lifecycle, task, and reporting. Hash-reference resolution, schema-free or supplied in-memory records, publication, fsync, locking, processes, rollback, owner-specific semantic checks, and state transitions remain owner-local; functional owners do not import this seam. |
 | Source and artifact-root authority | `libraries/source_authority.py` | Reporting and the local lifecycle share canonical source-checkout/package identity plus a distinct artifact-source root. Git cleanliness is lifecycle attempt policy, not a reporting-transaction success claim. |
 | Controlled child startup | `libraries/process_environment.py` | Runtime-availability evidence and local orchestration share removal of inherited shell startup hooks, exact guarded R startup/environment selectors, and the selected-Java environment used for GATK. The R seam selects an existing library and never installs, restores, bootstraps, or downloads dependencies; the Java seam selects canonical `<JAVA_HOME>/bin/java` and removes ambient JVM/GATK selectors without owning tool versions or scientific commands. |
 | Selected-Java GATK bridge | `libraries/gatk_invocation.sh` | Step `00c` and Step `05` share only the bound Python handoff into the controlled Java/GATK environment. Each stage retains executable precedence, minimum-version policy, arguments, transaction, validation, and scientific command ownership. |
-| Installed R-package identity | `libraries/installed_package_identity.py` | Local-pilot doctor and lifecycle share deterministic no-follow identity for exact canonical installed-package trees. Namespace/version policy remains in runtime admission; symlinks and special entries fail closed. |
-| Application logging | `libraries/application_logging/` | This neutral, stage-independent two-sink foundation owns resolved controls, attempt records, protected persistence, projection, and redaction primitives. No production operation consumes it yet; the packaged-Python production-import roster is empty and mechanically guarded. Each operation that adopts it remains the single semantic owner of its attempt, computation, publication, rollback, recovery, streams, and exit, and updates this topology with its owner contract and direct tests. |
+| Installed provider identity | `libraries/installed_package_identity.py` | Runtime admission plus computation and report providers share deterministic no-follow identity for exact canonical installed package trees. Namespace/version and entry-point policy remain with each admitting owner; symlinks, special entries, and ambiguous providers fail closed. |
+| Application logging | `libraries/application_logging/` | This neutral, stage-independent two-sink foundation owns resolved controls, attempt records, protected persistence, projection, and redaction primitives. The complete retained adopter roster is grouped run-coordinator `run`/`resume` execution, automatic reporting within that same log, standalone report generation, and confirmed `emrys doctor --repair`. Scheduler submission, dry-run/refusal/reuse, initialization, validation, runtime discovery, diagnosis, inspection, and debug inspection own no application log; delegated tasks open no second log. Application logs default to `<project-root>/logs/application`; scheduler OUT/ERR remain separate under `<project-root>/logs`. Each adopter retains its own computation, rollback, recovery, streams, and exit authority. The packaged-Python production-import roster is mechanically guarded. |
 
 These are the complete approved neutral implementation seams. Similar names or
 two local helpers do not create sharing authority. Keep the first use local;
@@ -99,13 +100,13 @@ imported across peers.
 | Owner | May import | May invoke or consume | Prohibited |
 | --- | --- | --- | --- |
 | Package metadata | standard/external libraries only | none | implementation or composition owners |
-| CLI composition | The exact owner-declared current composition roster plus the exact transitions below | supported grouped public routes over those owner modules | every target outside the two explicit rosters; no seam becomes a general import API |
-| `contracts/` | standard/external libraries and other contracts; only the exact transitions below may reach implementation | none | every other EMRYS implementation dependency |
+| CLI composition | The exact owner-declared composition roster plus the exact exceptions below | supported grouped public routes over those owner modules | every target outside the two explicit rosters; no seam becomes a general import API |
+| `contracts/` | standard/external libraries and other contracts; only the exact exceptions below may reach implementation | none | every other EMRYS implementation dependency |
 | `libraries/` | `contracts/` and lower neutral libraries in an acyclic chain | none | functional, ingestion, application, or reporting owners |
-| `stages/`, `analyses/`, `evidence/` | `contracts/`, approved `libraries/`, owner-local code | owner-local tools and peer artifacts through contracts | peer implementation, ingestion, or reporting implementation |
+| `stages/`, `analyses/`, `evidence/` | `contracts/`, approved `libraries/`, owner-local code, and the exact analysis-module facade seam below | owner-local tools and peer artifacts through contracts | peer-private implementation, ingestion, or reporting implementation |
 | `ingestion/` | `contracts/`, approved `libraries/`, ingestion-local code | external inputs; emitted validated declarations | functional-owner implementation or execution |
-| `orchestration/` | `contracts/`, approved `libraries/`, orchestration-local code, the direct public `reporting.transaction_validation` completion API, and the exact transitions below | public owner commands/capabilities and declared artifacts | peer-private implementation, ingestion, or scientific logic outside a named transition |
-| `reporting/` | `contracts/`, approved `libraries/`, reporting-local code | explicit public artifacts and summaries | functional-owner implementation, input discovery, or analysis execution |
+| `orchestration/` | `contracts/`, approved `libraries/`, orchestration-local code, and the exact capability seams and exceptions below | public owner commands/capabilities and declared artifacts | peer-private implementation, ingestion, or scientific logic outside a named seam or exception |
+| `reporting/` | `contracts/`, approved `libraries/`, reporting-local code, and the exact analysis-module facade seam below | explicit public artifacts and summaries | provider-private implementation, input discovery, or analysis execution |
 
 Scientific functional-owner data flow follows the explicit semantic DAG edges
 in `STAGE_MAP.md`; lifecycle, admission, reporting, and orchestration flows
@@ -116,15 +117,13 @@ Reporting is a downstream projection and never promotes computational
 candidates into an external scientific or biological claim.
 
 Application coordination is intentionally not given blanket import permission
-to functional owners. Its current direct calls are exact transitions while
-`AC-SLICE-03` through `AC-SLICE-05` decide whether the final capability boundary
-uses imports, injected callables, commands, or another representation. One
-transition cannot be copied to justify another edge.
+to functional owners. Its direct capability calls are the exact exceptions
+ratified below. One exception cannot be copied to justify another edge.
 
 ### Current CLI composition seams
 
 The grouped `src/emrys/__main__.py` dispatcher may import only this exact
-current roster plus the two private reporting transitions below. The roster is
+current roster. The roster is
 descriptive current behavior, not the future application API. A new target or
 a stale target fails the source-dependency gate so owner privacy and public CLI
 composition are reviewed together.
@@ -132,22 +131,21 @@ composition are reviewed together.
 | ID | Exact current target | Current grouped-CLI purpose |
 |---|---|---|
 | `CLI-SEAM-001` | `emrys.analyses.paired_cmh_candidate_ranking.validator` | Owner validation command |
-| `CLI-SEAM-002` | `emrys.analyses.scientific_context_projection.validator` | Owner validation command |
+| `CLI-SEAM-002` | `emrys.analyses.paired_cmh_candidate_ranking.scientific_context_projection.validator` | Owner validation command |
 | `CLI-SEAM-003` | `emrys.contracts.artifacts.validator` | Artifact-contract validation command |
 | `CLI-SEAM-004` | `emrys.evidence.canonical_bam_qc.validator` | Owner validation command |
 | `CLI-SEAM-005` | `emrys.evidence.reference_provenance.reconciler` | Reference-provenance reconciliation command |
 | `CLI-SEAM-006` | `emrys.evidence.rseqc_orientation.validator` | Owner validation command |
-| `CLI-SEAM-007` | `emrys.evidence.runtime_availability.inspector` | Runtime inspection command |
-| `CLI-SEAM-008` | `emrys.evidence.storage_inventory.inspector` | Storage inventory command |
-| `CLI-SEAM-009` | `emrys.evidence.storage_inventory.qualification` | Storage qualification command |
+| `CLI-SEAM-007` | `emrys.evidence.runtime_availability.inspector` | Technical runtime inspection command under `emrys debug` |
+| `CLI-SEAM-008` | `emrys.evidence.storage_inventory.inspector` | Technical storage inventory command under `emrys debug` |
+| `CLI-SEAM-009` | `emrys.evidence.storage_inventory.qualification` | Technical storage qualification command under `emrys debug` |
 | `CLI-SEAM-010` | `emrys.ingestion.sample_manifest_admission.validator` | Input-manifest admission command |
-| `CLI-SEAM-011` | `emrys.libraries.source_authority` | Controlled-runtime admission for grouped dispatch |
-| `CLI-SEAM-012` | `emrys.orchestration.local_pilot.all_pass` | Current all-pass inspection command |
-| `CLI-SEAM-013` | `emrys.orchestration.local_pilot.doctor` | Current readiness command |
-| `CLI-SEAM-014` | `emrys.orchestration.local_pilot.control` | Current plan/execute/inspect commands |
-| `CLI-SEAM-015` | `emrys.orchestration.local_pilot.onboarding` | Current onboarding commands |
-| `CLI-SEAM-016` | `emrys.orchestration.local_pilot.synthetic_fixture` | Current synthetic-fixture command |
-| `CLI-SEAM-017` | `emrys.reporting.report` | Current run-report commands |
+| `CLI-SEAM-011` | `emrys.libraries.source_authority` | Controlled-runtime admission behind the installed command |
+| `CLI-SEAM-012` | `emrys.orchestration.run_coordinator.all_pass` | Current all-pass inspection command |
+| `CLI-SEAM-013` | `emrys.orchestration.run_coordinator.doctor` | Current readiness command |
+| `CLI-SEAM-014` | `emrys.orchestration.run_coordinator.control` | Current plan/execute/inspect commands |
+| `CLI-SEAM-015` | `emrys.orchestration.run_coordinator.onboarding` | Current onboarding commands |
+| `CLI-SEAM-016` | `emrys.orchestration.run_coordinator.synthetic_fixture` | Current synthetic-fixture command |
 | `CLI-SEAM-018` | `emrys.stages.canonical_bam.validator` | Owner validation command |
 | `CLI-SEAM-019` | `emrys.stages.cohort_candidate_preprocessing.validator` | Owner validation command |
 | `CLI-SEAM-020` | `emrys.stages.duplicate_marking.validator` | Owner validation command |
@@ -160,30 +158,66 @@ composition are reviewed together.
 | `CLI-SEAM-027` | `emrys.stages.star_alignment.validator` | Owner validation command |
 | `CLI-SEAM-028` | `emrys.stages.star_index.validator` | Owner validation command |
 
-### Bounded current import transitions
+### Analysis-module capability seam
 
-These exceptions preserve observed current behavior while preventing the
-exception roster from becoming the target architecture. The source-dependency
-ratchet admits only the exact source/target pair, rejects any neighboring edge,
-and fails when an entry becomes stale. Resolution means either removing the
-edge after its successor design supplies the final boundary or recording an
-explicit permanent justification in the durable owner.
+Standard Python entry points select the exact installed computation and report
+providers named by an admitted Project Analysis. They are runtime-selected
+capabilities, not an EMRYS registry service, a permission to import
+provider-private code, or a second workflow language. Analysis providers,
+orchestration, and reporting may import only the public `emrys.analyses`
+facade; contracts, libraries, ingestion, and every provider-private target
+remain prohibited.
 
-| ID | Exact current import | Protected current behavior | Successor and exit condition |
+The built-in provider consumes the same public descriptor contract offered to
+collaborator packages. Orchestration admits and freezes the selected provider
+into the immutable Run. Reporting consumes only that admitted descriptor and
+declared artifacts; it never invokes the computation provider. Doctor alone
+may import the public `emrys.reporting` facade to establish reporter readiness
+before a reporting-enabled execution.
+
+### Fixed orchestration-to-reporting seams
+
+The run-coordinator application may cross into reporting only through these exact
+edges. Lifecycle and historical inspection validate receipts; the dedicated
+reporting operation owns the fixed artifact-index → run-summary → HTML sequence.
+No functional owner or grouped command imports reporting internals directly.
+
+| Exact source | Exact target | Purpose |
+|---|---|---|
+| `emrys.orchestration.run_coordinator.doctor` | `emrys.reporting` | Admit the same-ID report provider required by a reporting-enabled run |
+| `emrys.orchestration.run_coordinator.lifecycle` | `emrys.reporting.transaction_validation` | Historical receipt validation during Attempt inspection |
+| `emrys.orchestration.run_coordinator.reporting_boundary` | `emrys.reporting.transaction_validation` | Semantic validation before immutable reporting completion |
+| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting._artifact_index.context` | Prepare the first fixed reporting transaction |
+| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting._artifact_index.publication` | Publish the first fixed reporting transaction |
+| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting._artifact_index.models` | First-transaction error identity |
+| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting._run_summary.builder` | Prepare the second fixed reporting transaction through `prepare_context` |
+| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting._run_summary.publication` | Publish the second fixed reporting transaction |
+| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting._run_summary.models` | Second-transaction error identity |
+| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting.report` | Final fixed HTML transaction |
+| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting._run_report.publication` | Publish the final fixed HTML transaction |
+| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting._run_report.models` | Final-transaction error identity |
+
+### Ratified exact import exceptions
+
+These stable `SRC-TRANS` identifiers preserve the history of the audit that
+admitted them. The source-dependency ratchet permits only the exact
+source/target pair, rejects neighboring edges, and fails when an entry becomes
+stale. They are capability or neutral-mechanic seams, not general import APIs.
+
+| ID | Exact current import | Protected current behavior | Durable boundary justification |
 |---|---|---|---|
-| `SRC-TRANS-001` | `contracts/artifacts/_artifact_contracts/schema.py` → `emrys.libraries.validation` | Artifact-schema path and digest validation | `AC-SLICE-07`: remove the upward contract dependency after lifecycle/admission ownership is selected, or justify the final neutral placement. |
-| `SRC-TRANS-002` | `contracts/orchestration/api.py` → `emrys.libraries.source_authority` | Controlled Python argument construction and admission for the bound `python -m snakemake` command prefix | `AC-SLICE-05`: move command construction behind the selected execution/mechanism boundary or justify the final neutral placement. |
-| `SRC-TRANS-003` | `contracts/scientific_evidence/step08.py` → `emrys.libraries.validation` | Shared failed-attempt normalization and file-digest mechanics | `AC-SLICE-04` and `AC-SLICE-07`: settle operation and artifact-integrity ownership, then remove or permanently justify the dependency. |
-| `SRC-TRANS-004` | `contracts/scientific_evidence/step08.py` → `emrys.libraries.validation.tsv` | Strict TSV contract mechanics | `AC-SLICE-04`: retain strict parsing while selecting the final operation/contract boundary. |
-| `SRC-TRANS-005` | `contracts/scientific_evidence/step08.py` → `emrys.libraries.alignments.orientation` | Fixed mechanical-orientation vocabulary and labels | `AC-SLICE-04`: retain the semantic vocabulary while selecting its final neutral owner. |
-| `SRC-TRANS-006` | `contracts/scientific_evidence/step09.py` → `emrys.libraries.alignments.orientation` | Step `09` orientation-policy admission | `AC-SLICE-04`: preserve the single orientation authority without broadening the dependency. |
-| `SRC-TRANS-007` | `orchestration/local_pilot/doctor.py` → `emrys.evidence.runtime_availability.inspector` | Current readiness composition over runtime inspection | `AC-SLICE-03`, `AC-SLICE-05`, and `AC-SLICE-08`: select the final application, capability, and execution-profile boundary. |
-| `SRC-TRANS-008` | `orchestration/local_pilot/doctor.py` → `emrys.evidence.storage_inventory.qualification` | Current readiness composition over admitted storage qualification | `AC-SLICE-03`, `AC-SLICE-05`, and `AC-SLICE-06`: select the final application, capability, and storage-policy boundary without weakening qualification. |
-| `SRC-TRANS-009` | `orchestration/local_pilot/lifecycle.py` → `emrys.evidence.runtime_availability.inspector` | Runtime re-admission before execution/reuse | `AC-SLICE-03`, `AC-SLICE-05`, and `AC-SLICE-08`: preserve re-admission and evidence attribution while selecting the final boundary. |
-| `SRC-TRANS-010` | `orchestration/local_pilot/lifecycle.py` → `emrys.evidence.storage_inventory.qualification` | Storage re-admission before execution/reuse | `AC-SLICE-05` and `AC-SLICE-06`: preserve fail-closed qualification and recovery while selecting the final boundary. |
-| `SRC-TRANS-011` | `orchestration/local_pilot/onboarding.py` → `emrys.stages.gtf_to_bed12.converter` | Reference GTF/FASTA compatibility using the current normalization implementation | `AC-SLICE-03` and `AC-SLICE-04`: select a public capability/contract boundary without duplicating GTF semantics. |
-| `SRC-TRANS-012` | `__main__.py` → `emrys.reporting._artifact_index.builder` | Current grouped `build artifact-index` composition | `AC-SLICE-03` and `AC-SLICE-12`: route through a public reporting capability or explicitly justify the retained private access. |
-| `SRC-TRANS-013` | `__main__.py` → `emrys.reporting._run_summary.builder` | Current grouped `build run-summary` composition | `AC-SLICE-03` and `AC-SLICE-12`: route through a public reporting capability or explicitly justify the retained private access. |
+| `SRC-TRANS-001` | `contracts/artifacts/_artifact_contracts/schema.py` → `emrys.libraries.validation` | Artifact-schema path and digest validation | Reuse the neutral path/digest implementation without transferring artifact-schema authority. |
+| `SRC-TRANS-002` | `contracts/orchestration/api.py` → `emrys.libraries.source_authority` | Controlled Python argument construction and admission for the bound `python -m snakemake` command prefix | Keep one controlled-interpreter authority for the sole backend command. |
+| `SRC-TRANS-003` | `contracts/scientific_evidence/step08.py` → `emrys.libraries.validation` | Shared failed-attempt normalization and file-digest mechanics | Reuse neutral validation mechanics without transferring the Step `08` contract. |
+| `SRC-TRANS-004` | `contracts/scientific_evidence/step08.py` → `emrys.libraries.validation.tsv` | Strict TSV contract mechanics | Keep one strict TSV implementation while the scientific schema remains owner-local. |
+| `SRC-TRANS-005` | `contracts/scientific_evidence/step08.py` → `emrys.libraries.alignments.orientation` | Fixed mechanical-orientation vocabulary and labels | Keep one neutral mechanical-orientation vocabulary. |
+| `SRC-TRANS-006` | `contracts/scientific_evidence/step09.py` → `emrys.libraries.alignments.orientation` | Step `09` orientation-policy admission | Reuse that same vocabulary without transferring Step `09` policy. |
+| `SRC-TRANS-007` | `orchestration/run_coordinator/doctor.py` → `emrys.evidence.runtime_availability.inspector` | Project Doctor composes the existing runtime inspection capability for diagnosis and post-repair requalification | Compose the existing capability instead of duplicating runtime inspection. |
+| `SRC-TRANS-008` | `orchestration/run_coordinator/doctor.py` → `emrys.evidence.storage_inventory.qualification` | Project Doctor composes admitted final storage qualification without reimplementing storage evidence | Compose the existing capability while retaining its evidence attribution and fail-closed admission. |
+| `SRC-TRANS-009` | `orchestration/run_coordinator/lifecycle.py` → `emrys.evidence.runtime_availability.inspector` | Runtime re-admission before execution/reuse | Re-admit runtime evidence at the execution trust boundary through its existing owner. |
+| `SRC-TRANS-010` | `orchestration/run_coordinator/lifecycle.py` → `emrys.evidence.storage_inventory.qualification` | Storage re-admission before execution/reuse | Re-admit storage evidence at the execution trust boundary through its existing owner. |
+| `SRC-TRANS-011` | `orchestration/run_coordinator/onboarding.py` → `emrys.stages.gtf_to_bed12.converter` | Reference GTF/FASTA compatibility using the current normalization implementation | Reuse the single GTF normalization authority without duplicating scientific semantics. |
+| `SRC-TRANS-012` | `orchestration/run_coordinator/onboarding.py` → `emrys.evidence.runtime_availability.inspector` | Project runtime discovery and admission through the public inspection capability | Let Project orchestration admit the existing runtime-inspection result rather than duplicate its probes. |
 
 ### Automated import projection
 
@@ -194,9 +228,9 @@ standard-library dynamic import forms without importing product modules or
 writing the tree. It enforces the stable negative directions above,
 functional-owner isolation, exact current CLI composition, private-module
 isolation, acyclicity between neutral library owners, explicit classification
-for every product source domain, the single public reporting transaction seam,
-and the exact transition roster. Focused tests keep the executable
-seam/transition rosters equal to the tables above.
+for every product source domain, the exact fixed reporting seams,
+and the exact admitted-exception roster. Focused tests keep both executable
+rosters equal to the tables above.
 
 The checker deliberately does not perform general dynamic-import data-flow
 inference or infer runtime invocation, native shell/R relationships, workflow
@@ -207,17 +241,18 @@ contracts, and direct tests. It does not require future `project`, `run`,
 
 ## Public-interface and future boundary
 
-Owner-specific public shell, Python, R, and SLURM entry points remain with their
-functional owner. The unreleased internal Python distribution packages only
-explicitly migrated import owners and their named resources; it does not imply
-portable repository-root semantics. Its installed `python -I -m emrys` module
-interface contains explicitly migrated owner routes, the read-only semantic
-all-pass/readiness checks, and the source-checkout-bound fixed-profile control
-routes. `orchestration/local_pilot/control.py` and `materialization.py` are the
-single public application owner for that projection; they do not import peer-
-private implementations. The packaged internal task module is invoked only by
-the fixed source-checkout workflow; it is not a public lifecycle command, scheduler
+Owner-specific public shell, Python, and R entry points remain with their
+functional owner. Slurm placement belongs only to the private whole-Run
+transport; owner-local scheduler entry points are retired. The installed Python
+distribution packages only explicitly migrated import owners and their named
+resources; it does not imply portable repository-root semantics. Its `emrys`
+console command contains the admitted ordinary Project routes and keeps
+technical inspectors under `emrys debug`; direct `python -m emrys` invocation
+is an internal/test seam. `orchestration/run_coordinator/control.py` and
+`materialization.py` are the
+single public application owner for that projection. The dedicated
+`reporting_operation.py` coordinator is the only owner allowed to compose the
+three fixed reporting producers; the grouped command does not expose those
+producers separately. The packaged internal task module is invoked only by the
+fixed source-checkout workflow; it is not a public lifecycle command, scheduler
 abstraction, universal transaction framework, or generic stage dispatcher.
-The internal lifecycle consumes only reporting's direct semantic transaction
-validator; it does not import `_artifact_index`, `_run_summary`, or
-`_run_report` internals.

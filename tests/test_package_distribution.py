@@ -18,39 +18,51 @@ from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FI
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_DEPENDENCIES = {
+    "coolname",
+    "coolname-hash",
     "jinja2",
     "jsonschema",
     "logomaker",
     "matplotlib",
     "pyyaml",
     "referencing",
+    "simple-term-menu",
 }
 RUNTIME_REQUIREMENT_SPECIFIERS = {
+    "coolname": "==4.1.0",
+    "coolname-hash": "==1.0.0",
     "jinja2": "==3.1.6",
     "jsonschema": ">=4.18.0",
     "logomaker": "==0.8.7",
     "matplotlib": "==3.11.1",
     "pyyaml": "==6.0.3",
     "referencing": ">=0.28.4",
+    "simple-term-menu": "==1.6.6",
 }
 RESOURCE_PATHS = (
     "emrys/contracts/schemas/artifacts/v2/artifact_record.schema.json",
     "emrys/contracts/schemas/artifacts/v1/common.schema.json",
     "emrys/contracts/schemas/artifacts/v2/run_summary.schema.json",
     "emrys/contracts/schemas/artifacts/v3/report_receipt.schema.json",
+    "emrys/contracts/schemas/artifacts/v3/run_summary.schema.json",
     "emrys/contracts/schemas/artifacts/v4/report_receipt.schema.json",
+    "emrys/contracts/schemas/artifacts/v5/report_receipt.schema.json",
+    "emrys/contracts/schemas/orchestration/v1/project.schema.json",
     "emrys/contracts/schemas/orchestration/v2/profile.schema.json",
     "emrys/contracts/schemas/orchestration/v2/request.schema.json",
     "emrys/contracts/schemas/orchestration/v3/request.schema.json",
     "emrys/contracts/schemas/orchestration/v3/resource_config.schema.json",
-    "emrys/contracts/schemas/orchestration/v3/launcher_config.schema.json",
-    "emrys/orchestration/local_pilot/resources/default_resources.yaml",
-    "emrys/orchestration/local_pilot/resources/default_launcher.yaml",
+    "emrys/contracts/schemas/orchestration/v3/execution_profile.schema.json",
+    "emrys/orchestration/run_coordinator/resources/default_execution.yaml",
+    "emrys/resources/runtime/runtime_policy.tsv",
+    "emrys/resources/runtime/pixi.toml",
+    "emrys/resources/runtime/pixi.lock",
     "emrys/contracts/schemas/orchestration/v1/execution.schema.json",
     "emrys/contracts/schemas/orchestration/v1/reference.schema.json",
     "emrys/contracts/schemas/orchestration/v1/policy.schema.json",
     "emrys/contracts/schemas/orchestration/v1/workflow_attempt.schema.json",
     "emrys/contracts/schemas/orchestration/v1/attempt_receipt.schema.json",
+    "emrys/contracts/schemas/orchestration/v2/attempt_receipt.schema.json",
     "emrys/contracts/schemas/orchestration/v1/run_lock.schema.json",
     "emrys/contracts/schemas/orchestration/v1/task_start.schema.json",
     "emrys/contracts/schemas/orchestration/v1/task_attempt.schema.json",
@@ -58,12 +70,23 @@ RESOURCE_PATHS = (
     "emrys/contracts/schemas/orchestration/v1/reporting_start.schema.json",
     "emrys/contracts/schemas/orchestration/v1/verified_reporting.schema.json",
     "emrys/contracts/schemas/orchestration/v1/common.schema.json",
+    "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_common.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_evaluation.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_output.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_validation.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.R",
+    "emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh",
+    "emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/resources/pum_motifs_v1.tsv",
     "emrys/reporting/styles/run_report.css",
     "emrys/reporting/templates/run_report.html.j2",
 )
 PUBLIC_ONBOARDING_MODULES = {
-    "emrys/orchestration/local_pilot/onboarding.py",
-    "emrys/orchestration/local_pilot/synthetic_fixture.py",
+    "emrys/orchestration/run_coordinator/onboarding.py",
+    "emrys/orchestration/run_coordinator/synthetic_fixture.py",
+}
+PRIVATE_RUNTIME_MODULES = {
+    "emrys/stages/mechanical_orientation/producer.py",
 }
 LICENSE_EXPRESSION = "LicenseRef-EMRYS-Source-Available-1.0"
 LICENSE_FILES = {
@@ -183,9 +206,23 @@ def inspect_wheel(wheel: Path) -> None:
             for name, specifier in RUNTIME_REQUIREMENT_SPECIFIERS.items()
         }
         entry_points = archive.read(entry_points_member).decode().splitlines()
-        assert "emrys = emrys.__main__:main" in entry_points
+        assert (
+            "emrys = emrys.libraries.source_authority:controlled_console_main"
+            in entry_points
+        )
+        assert "[emrys.analysis_modules]" in entry_points
+        assert (
+            "emrys.paired-cmh = "
+            "emrys.analyses.paired_cmh_candidate_ranking:analysis_module_v1"
+        ) in entry_points
+        assert "[emrys.analysis_reporters]" in entry_points
+        assert (
+            "emrys.paired-cmh = "
+            "emrys.reporting.paired_cmh_candidate_ranking_report:render_scientific_report"
+        ) in entry_points
         assert set(RESOURCE_PATHS) <= members
         assert PUBLIC_ONBOARDING_MODULES <= members
+        assert PRIVATE_RUNTIME_MODULES <= members
         for resource in RESOURCE_PATHS:
             assert archive.read(resource) == (REPO_ROOT / "src" / resource).read_bytes()
         license_root = metadata_member.removesuffix("METADATA") + "licenses/"
@@ -288,21 +325,7 @@ def installed_probe(environment_python: Path, cwd: Path) -> dict[str, object]:
 
 def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -> None:
     fixture = FIXTURE.build_fixture(tmp_path / "report-fixture")
-    summary_result = run_command(
-        [
-            sys.executable,
-            "-X",
-            "pycache_prefix=/dev/null",
-            "-I",
-            "-m",
-            "emrys",
-            "build",
-            "run-summary",
-            *fixture.command_args(execute=True),
-        ],
-        cwd=REPO_ROOT,
-    )
-    require_success(summary_result)
+    FIXTURE.publish_run_summary(fixture)
     artifact_source_root = fixture.root
     summary = json.loads(fixture.summary_json_path.read_text(encoding="utf-8"))
     summary["provenance"]["git_commit"] = "upstream-summary-commit"
@@ -336,29 +359,35 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     )
     require_success(module_help)
     assert "usage: emrys" in module_help.stdout
+    producer_help = run_command(
+        [
+            str(environment_python),
+            "-I",
+            "-m",
+            "emrys.stages.mechanical_orientation.producer",
+            "--help",
+        ],
+        cwd=arbitrary_cwd,
+        hostile_pythonpath=True,
+    )
+    require_success(producer_help)
+    assert "Produce one create-absent Step 06" in producer_help.stdout
     for command, usage in (
+        (("init", "--help"), "usage: emrys init"),
+        (("init", "manifests", "--help"), "usage: emrys init manifests"),
         (
-            ("init", "local-pilot", "--help"),
-            "usage: emrys init local-pilot",
+            ("init", "synthetic", "--help"),
+            "usage: emrys init synthetic",
         ),
         (
-            ("init", "synthetic-local-pilot", "--help"),
-            "usage: emrys init synthetic-local-pilot",
+            ("runtime", "discover", "--help"),
+            "usage: emrys runtime discover",
         ),
-        (
-            ("prepare", "local-pilot-runtime", "--help"),
-            "usage: emrys prepare local-pilot-runtime",
-        ),
-        (
-            ("validate", "local-pilot-request", "--help"),
-            "usage: emrys validate local-pilot-request",
-        ),
+        (("validate", "--help"), "usage: emrys validate"),
         (("run", "--help"), "usage: emrys run"),
         (("resume", "--help"), "usage: emrys resume"),
-        (
-            ("inspect", "local-pilot-run", "--help"),
-            "usage: emrys inspect local-pilot-run",
-        ),
+        (("report", "--help"), "usage: emrys report"),
+        (("inspect", "--help"), "usage: emrys inspect"),
     ):
         public_help = run_command(
             [str(environment_python), "-I", "-m", "emrys", *command],
@@ -370,6 +399,14 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     console_help = run_command([str(console), "--help"], cwd=arbitrary_cwd)
     require_success(console_help)
     assert "usage: emrys" in console_help.stdout
+    console_control = run_command(
+        [str(console), "run", "--project", str(arbitrary_cwd / "missing.yaml")],
+        cwd=arbitrary_cwd,
+        hostile_pythonpath=True,
+    )
+    assert console_control.returncode == 2
+    assert "Controlled EMRYS Python children require" not in console_control.stderr
+    assert "missing.yaml" in console_control.stderr
     manifest = arbitrary_cwd / "samples.tsv"
     manifest.write_text(
         "sample_id\tr1_fastq\tr2_fastq\tstrandedness\tcondition\n"
@@ -396,43 +433,43 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     assert "Manifest validation passed." in validation.stdout
     assert "Samples: 1" in validation.stdout
     report_output_root = arbitrary_cwd / "reports"
-    report_help = run_command(
-        [str(environment_python), "-I", "-m", "emrys", "build", "report", "--help"],
-        cwd=arbitrary_cwd,
-        hostile_pythonpath=True,
-    )
-    require_success(report_help)
-    assert "--source-checkout" in report_help.stdout
-    assert "--artifact-source-root" in report_help.stdout
-    assert "--quarto-bin" not in report_help.stdout
+    render_program = """
+import argparse
+import sys
+from pathlib import Path
+
+from emrys.reporting import report
+from emrys.reporting._run_report.publication import publish_report
+
+context = report.prepare_report(argparse.Namespace(
+    source_checkout=Path(sys.argv[1]),
+    artifact_source_root=Path(sys.argv[2]),
+    run_summary=Path(sys.argv[3]),
+    output_root=Path(sys.argv[4]),
+))
+publish_report(context, report.default_publication_ops())
+print(context.output_receipt)
+"""
     rendered = run_command(
         [
             str(environment_python),
             "-X",
             "pycache_prefix=/dev/null",
             "-I",
-            "-m",
-            "emrys",
-            "build",
-            "report",
-            "--source-checkout",
+            "-c",
+            render_program,
             str(REPO_ROOT),
-            "--artifact-source-root",
             str(artifact_source_root),
-            "--run-summary",
             str(fixture.summary_json_path),
-            "--output-root",
             str(report_output_root),
-            "--execute",
         ],
         cwd=arbitrary_cwd,
         hostile_pythonpath=True,
     )
     require_success(rendered)
-    assert f"Source checkout: {REPO_ROOT}" in rendered.stdout
-    assert f"Artifact source root: {artifact_source_root}" in rendered.stdout
     run_id = fixture.run_id
     report_directory = report_output_root / run_id
+    assert str(report_directory / f"{run_id}.report_outputs.tsv") in rendered.stdout
     assert {path.name for path in report_directory.iterdir()} == {
         f"{run_id}.scientific_report.html",
         f"{run_id}.evidence_report.html",
@@ -458,6 +495,11 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     assert 'id="motif-context-enrichment-figure"' in scientific_html
     assert 'id="selected-context-track-figure"' in scientific_html
     assert scientific_html.count("data:image/svg+xml;base64,") == 7
+    for content in (scientific_html, evidence_html):
+        assert f'href="{run_id}.scientific_report.html"' in content
+        assert f'href="{run_id}.evidence_report.html#evidence-category"' in content
+        assert f'href="{run_id}.evidence_report.html#operations-category"' in content
+    assert "EMRYS evidence and operations report" in evidence_html
     assert "Matplotlib 3.11.1" in evidence_html
     assert "Logomaker 0.8.7" in evidence_html
     with (report_directory / f"{run_id}.report_outputs.tsv").open(

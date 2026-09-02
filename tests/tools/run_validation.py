@@ -21,7 +21,7 @@ from typing import Any
 LANE_NAMES = (
     "python-coverage",
     "wheel-smoke",
-    "shell-slurm",
+    "shell-contracts",
     "guarded-r",
 )
 MAX_CONCURRENCY = 4
@@ -196,11 +196,11 @@ def build_lanes(
             ),
         ),
         Lane(
-            "shell-slurm",
+            "shell-contracts",
             (
                 "make",
                 "-s",
-                "validation-shell-slurm",
+                "validation-shell-contracts",
                 *common,
             ),
         ),

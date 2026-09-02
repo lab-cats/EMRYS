@@ -198,6 +198,7 @@
           ]
         },
         "git_commit": {
+          "description": "Core source commit, or null when exact external-provider bytes are the implementation authority.",
           "oneOf": [
             {
               "$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/git_commit"
@@ -213,28 +214,7 @@
             "$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/evidence_reference"
           }
         }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "status": {
-                "const": "implemented"
-              }
-            },
-            "required": [
-              "status"
-            ]
-          },
-          "then": {
-            "properties": {
-              "git_commit": {
-                "$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/git_commit"
-              }
-            }
-          }
-        }
-      ]
+      }
     },
     "local_test_status": {
       "type": "object",

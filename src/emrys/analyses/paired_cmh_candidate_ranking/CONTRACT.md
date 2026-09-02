@@ -81,8 +81,8 @@ hashes, analysis conditions, thresholds, method, provisional policy, and
 reconciled counts. Mutation-spectrum TSV/PDF and depth/delta PDF are derived
 diagnostics. Header-only candidate tables are valid when all counts reconcile.
 
-[`step_09_cmh_editing_site_calling.sh`](step_09_cmh_editing_site_calling.sh)
-is side-effect-free in dry-run. Execute mode hashes and repeatedly rechecks
+Private [`producer.py`](producer.py) is side-effect-free in dry-run. Execute
+mode hashes and repeatedly rechecks
 manifests plus both Step `08` inputs, uses an analysis-owned lock and run-token
 scratch/backups, requires all six previous outputs or none, validates all
 temporaries, publishes the summary last as native commit marker, then
@@ -100,17 +100,9 @@ The summary becomes visible before final post-publication checks and does not
 hash its five sibling outputs, so presence alone is not independent proof that
 the producer returned success or that the current set is immutable.
 
-[`step_09_cmh_editing_site_calling.slurm`](step_09_cmh_editing_site_calling.slurm)
-requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving its repository-owned helper, producer, or dependency environment, so
-SLURM's spool copy is never checkout authority. It owns cluster defaults,
-execution gating, delegation, and final path checks; it does not own statistical
-behavior. Unlike the public script, the wrapper currently creates its `logs/`
-directory even in dry-run.
-
 ## Validation interface
 
-The grouped `python -I -m emrys validate paired-cmh-candidate-ranking` route,
+The grouped `emrys validate paired-cmh-candidate-ranking` route,
 implemented by private [`validator.py`](validator.py), accepts explicit
 manifests, Step `08` inputs, all six native outputs, analysis and cohort IDs,
 and report output. It does not invoke R. Dry-run prints the common report;
@@ -147,12 +139,12 @@ publication failures exit `2`.
 - Artifact adapters register all six outputs and
   `step09_validation_report_v1`; reporting presents them as computational
   candidates rather than treating threshold-passing rows as biological truth.
-- Direct shell/R/validator tests protect manifests and pairing, statuses,
+- Direct producer/R/validator tests protect manifests and pairing, statuses,
   thresholds, method metadata, dry-run, transaction, rollback, plots, and the
   independent validation boundary.
 - Independent Python-oracle and real-R corpus comparisons protect CMH/BH
-  behavior; wrapper, roster, publication-fault, public-CLI, artifact, report,
-  and coverage tests protect cross-boundary behavior.
+  behavior; roster, publication-fault, public-CLI, artifact, report, and
+  coverage tests protect cross-boundary behavior.
 
 This is local fixture and guarded real-R/oracle evidence, not production,
 cluster, completed scientific review, or biological interpretation readiness.
@@ -166,8 +158,9 @@ cluster, completed scientific review, or biological interpretation readiness.
 - Step `09` schemas and reusable validators now belong to neutral
   [`step09.py`](../../contracts/scientific_evidence/step09.py), imported by
   this validator and artifact indexing under one shared ready-owner identity.
-- Method/schema/status logic is duplicated across shell, R, Python, oracle,
-  artifact, and validation surfaces; shared report publication belongs to
+- Method/schema/status logic remains distributed across the R implementation,
+  neutral Python contract, independent oracle, artifact, and validation
+  surfaces; shared report publication belongs to
   neutral [`validation/report.py`](../../libraries/validation/report.py).
 - Producer-recorded relative paths are later interpreted from a consumer's
   working directory, and the summary omits implementation, runtime, R/package,

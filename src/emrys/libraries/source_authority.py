@@ -18,7 +18,7 @@ import tomllib
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 PROJECT_NAME = "emrys-rna-workflow"
 CONTROLLED_PYTHON_CACHE_PREFIX = "/dev/null"
@@ -35,7 +35,8 @@ _RESOURCE_PATTERNS = (
     (Path("contracts"), "schemas/orchestration/v1/*.json"),
     (Path("contracts"), "schemas/orchestration/v2/*.json"),
     (Path("contracts"), "schemas/orchestration/v3/*.json"),
-    (Path("orchestration/local_pilot"), "resources/*.yaml"),
+    (Path("orchestration/run_coordinator"), "resources/*.yaml"),
+    (Path("resources"), "runtime/*"),
     (Path("reporting"), "styles/*.css"),
     (Path("reporting"), "templates/*.html.j2"),
 )
@@ -97,6 +98,15 @@ def controlled_python_argv(
     """Build the one Python launch prefix used by controlled EMRYS children."""
 
     return (str(python_executable), *CONTROLLED_PYTHON_OPTIONS, *arguments)
+
+
+def controlled_console_main() -> NoReturn:
+    """Restart the installed command before importing its functional owners."""
+
+    os.execv(
+        sys.executable,
+        controlled_python_argv(sys.executable, "-m", "emrys", *sys.argv[1:]),
+    )
 
 
 def is_controlled_python_argv(
@@ -674,6 +684,7 @@ __all__ = (
     "admit_source_checkout",
     "attest_source_checkout",
     "controlled_python_argv",
+    "controlled_console_main",
     "inspect_source_checkout",
     "is_controlled_python_argv",
     "matching_checkout_head_commit",

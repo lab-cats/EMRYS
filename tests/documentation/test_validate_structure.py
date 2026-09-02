@@ -22,7 +22,7 @@ CANONICAL_H1S = {
     "docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md": "# Current functional-owner inventory",
     "docs/design/DECISIONS.md": "# Durable decisions",
     "docs/design/LOGGING_CONTRACT.md": "# Application logging contract",
-    "docs/design/ORCHESTRATION_CONTRACT.md": "# Local-pilot orchestration contract",
+    "docs/design/ORCHESTRATION_CONTRACT.md": "# Run-coordinator orchestration contract",
     "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
     "docs/operations/RUNBOOK.md": "# Runbook",
     "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
@@ -36,9 +36,6 @@ CANONICAL_H1S = {
 LEGACY_H1S = {
     "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
     "docs/operations/HANDOFF.md": "# Project handoff",
-    "docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md": (
-        "# Local-pilot launcher regression test plan"
-    ),
 }
 SEMANTIC_OWNERS = (
     ("stage", "construct_STAR_index"),
@@ -64,7 +61,7 @@ SOURCE_OWNER_DIRECTORIES = {
     (
         "analysis",
         "project_candidate_scientific_context",
-    ): "scientific_context_projection",
+    ): "paired_cmh_candidate_ranking/scientific_context_projection",
     ("evidence", "collect_canonical_BAM_QC_evidence"): "canonical_bam_qc",
     ("evidence", "collect_RSeQC_paired_orientation_evidence"): "rseqc_orientation",
     ("stage", "align_RNA_reads_with_STAR"): "star_alignment",
@@ -103,6 +100,7 @@ RETIRED_DOCUMENTS = (
     "docs/design/QUESTIONS.md",
     "docs/design/REFACTOR_AUDIT.md",
     "docs/operations/CONCURRENT_WORK.md",
+    "docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md",
     "docs/operations/TASK_DELIVERY.md",
     "docs/tasks/BACKLOG.md",
     "docs/tasks/cards/README.md",

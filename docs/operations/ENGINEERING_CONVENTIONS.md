@@ -78,15 +78,16 @@ owner. Root `scripts/` remains repository-control tooling.
 
 ## Dry-run and execution
 
-New or changed workflow producers and mature SLURM entry points are
-dry-run-first unless an owner-local contract explicitly records a protected
-current exception. For conforming script interfaces, omitting `--execute`
-validates and prints while `--execute` publishes. Conforming SLURM interfaces
-use `EXECUTE=0` for dry-run and `EXECUTE=1` for execution; every other value
-fails. Dry-run must not publish final artifacts and should avoid creating output
-directories when that could confuse validation. Any currently characterized
-dry-run directory or logging side effect remains current truth until separately
-changed.
+New or changed direct producers and public Run operations are dry-run-first
+unless an owner-local contract explicitly records a protected current
+exception. For conforming owner scripts, omitting `--execute` validates and
+prints while `--execute` publishes. Grouped `emrys run`/`resume` displays an
+immutable plan before terminal confirmation; noninteractive execution requires
+`--execute`. Slurm is placement for that same grouped operation, not a second
+owner interface. Dry-run must not publish final artifacts and should avoid
+creating output directories when that could confuse validation. Any currently
+characterized dry-run directory or logging side effect remains current truth
+until separately changed.
 
 See the [dry-run decision](../design/decisions/execution-evidence-and-reporting.md#default-to-dry-run), the
 [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md),
@@ -118,7 +119,7 @@ stages or miscellaneous application inputs:
 | [`.Rprofile`](../../.Rprofile) | Guarded R startup hook. With the default `EMRYS_USE_RENV=0`, startup is unchanged; `1` opts in and every other value fails. When opted in, the hook defaults sandboxing and automatic snapshots to disabled only when the caller has not set them; supported Make lanes set both controls false explicitly. It then sources the project `renv/activate.R`. Activation does not restore the lockfile, although the activator may bootstrap the pinned `renv` package itself if missing. R can discover this file at the project root, and Make also binds it by absolute path. |
 | [`renv.lock`](../../renv.lock) | Reviewed R and Bioconductor dependency snapshot used by guarded activation plus explicit restore and status checks. Root placement is the conventional and implemented `renv` project boundary; restored libraries and caches remain ignored. See [`renv/README.md`](../../renv/README.md). |
 | [`pyproject.toml`](../../pyproject.toml) | Authoritative Python package metadata: build backend, distribution identity, license expression and packaged legal files, direct runtime dependencies, the `dev` dependency group, package discovery/resources, Ruff configuration, and the installed `emrys` console entry point. Migrated commands use the grouped interface through the selected installed interpreter in isolated mode; unmigrated owner directories and commands enter the distribution only through an owner-local cutover. |
-| [`uv.lock`](../../uv.lock) | Authoritative exact Python dependency graph resolved from `pyproject.toml`. `uv sync --locked` installs the project plus its default `dev` group into `.venv`; the complete gate first uses `uv sync --locked --check` as a read-only congruence check, while validation and runtime owners never mutate the lock or repair the environment. The lock contains transitive packages without making them direct project dependencies. |
+| [`uv.lock`](../../uv.lock) | Authoritative exact Python dependency graph resolved from `pyproject.toml`. `uv sync --locked` installs the project plus its default `dev` and `workflow` groups into `.venv`, including the pinned Snakemake runtime; the complete gate first uses `uv sync --locked --check` as a read-only congruence check, while validation and runtime owners never mutate the lock or repair the environment. The lock contains transitive packages without making them direct project dependencies. |
 | [`.coveragerc`](../../.coveragerc) | Coverage.py measurement configuration for branch, parallel/subprocess, relative-path, and source-scope behavior. Make binds the root file and coverage also supports root discovery. Acceptance thresholds and evidence belong to [`TEST_BASELINE.md`](../design/TEST_BASELINE.md), not this file. |
 
 Presence of these files establishes configuration only. It does not prove that
@@ -140,14 +141,12 @@ owns the rationale; setup and restoration commands remain in the
 
 ## SLURM interfaces
 
-Mature owner-specific SLURM entry points delegate to their functional
-implementation, use strict shell behavior, validate execution control, record
-job context plus resolved inputs and outputs in logs, and load required modules
-inside the job. The current
-[inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md#numbered-workflow-and-evidence-owners)
-and owner-local contracts explicitly preserve jobs that embed a producer, act
-as probes or scaffolding, create dry-run directories, or otherwise depart from
-this convention.
+Slurm placement uses one private whole-Run transport around the same workflow
+backend as direct execution. Its batch bootstrap uses strict shell behavior,
+re-admits execution authority, records scheduler provenance and streams, loads
+the declared modules, owns private scratch, and delegates once to grouped Run
+control. Owner-local scheduler entry points are retired; do not add another
+without a separately reviewed execution boundary and parity case.
 
 Record the loaded module state as part of the cross-cutting
 [cluster procedure](RUNBOOK.md#cluster-execution-and-promotion). Do not add an

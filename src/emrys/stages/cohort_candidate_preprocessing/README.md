@@ -6,15 +6,17 @@ three-output transaction, retained defects, consumers, and evidence semantics.
 
 ## Entry points
 
-- producer: [`step_08_vcf_preprocessing.sh`](step_08_vcf_preprocessing.sh)
+- producer: private Python module [`producer.py`](producer.py)
 - R implementation: [`step_08_vcf_preprocessing.R`](step_08_vcf_preprocessing.R)
-- validator: grouped `python -I -m emrys validate cohort-candidate-preprocessing`,
+- validator: grouped `emrys validate cohort-candidate-preprocessing`,
   implemented by private [`validator.py`](validator.py)
-- scheduler: [`step_08_vcf_preprocessing.slurm`](step_08_vcf_preprocessing.slurm)
 
 Private R modules split input admission, annotation, receipt reconciliation,
 VCF counts, and candidate processing behind the public R coordinator; they are
 not additional commands or package APIs.
+For Slurm execution, use the complete immutable Run through `emrys run` or
+`emrys resume` as documented in the
+[runbook](../../../../docs/operations/RUNBOOK.md#run-coordinator-lifecycle-routes).
 
 ## Operate
 
@@ -22,7 +24,7 @@ Producer no-write dry-run:
 
 ```bash
 : "${EMRYS_RSCRIPT_BIN:?export the admitted Rscript executable path}"
-src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh \
+.venv/bin/python -I -m emrys.stages.cohort_candidate_preprocessing.producer \
   --cohort-id NORAD_EV_PUM1 \
   --sample-manifest data/raw/samples.paired.tsv \
   --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
@@ -75,22 +77,6 @@ repository command or supported import surface. The validator does not rerun
 R/annotation, recompute candidate IDs/order, or reopen Step `07` inputs to
 establish scientific correctness.
 
-```bash
-: "${EMRYS_RSCRIPT_BIN:?export the admitted Rscript executable path}"
-mkdir -p logs
-sbatch \
-  --export=ALL,TMPDIR=/tmp,EXECUTE=0,COHORT_ID=NORAD_EV_PUM1,SAMPLE_MANIFEST=data/raw/samples.paired.tsv,PARTITION_MANIFEST=configs/step_07_partitions.primary_contigs.tsv,STEP07_ROOT=results/mpileup,ANNOTATION_GTF=refs/novogene_ref/genome.gtf,OUTPUT_ROOT=results/vcf_preprocessed,QC_ROOT=results/qc/vcf_preprocessing,RSCRIPT_BIN_OVERRIDE="$EMRYS_RSCRIPT_BIN",THREADS=1 \
-  src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm
-```
-
-The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving repository-owned helpers, the producer, or its optional local R
-environment; an executed spool copy does not become checkout authority.
-
-Change only `EXECUTE=1` after review. The wrapper fails before creating logs
-or outputs when any required dataset, root, or Rscript binding is missing.
-Three stale finals can still produce false scheduler success.
-
 ## Diagnose and verify
 
 Preserve finals, both-root scratch/backups, lock, manifests, Step `07` inputs,
@@ -99,14 +85,12 @@ Never combine attempts or reuse ambiguous roots; incomplete restoration
 retains the owned lock and remaining backups for operator recovery.
 
 ```bash
-bash tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.sh
 .venv/bin/python -m pytest -q \
+  tests/stages/cohort_candidate_preprocessing/test_producer.py \
   tests/contracts/scientific_evidence/test_step08.py \
   tests/stages/cohort_candidate_preprocessing/test_validate_step_08_preprocessing_outputs.py
 RSCRIPT_BIN=/usr/local/bin/Rscript \
   bash tests/stages/cohort_candidate_preprocessing/run_step_08_vcf_preprocessing_tests.sh
-.venv/bin/python -m pytest -q \
-  tests/test_slurm_wrapper_contracts.py -k step_08_vcf_preprocessing
 ```
 
-This is local shell/R/fixture evidence only.
+This is local Python/R/fixture evidence only.

@@ -1,27 +1,21 @@
 # Artifact-index internals
 
-This private package implements the grouped
-`python -X pycache_prefix=/dev/null -I -m emrys build artifact-index` route through
-[`builder.py`](builder.py). The former direct script is retired without a
-compatibility shim. [`api.py`](api.py) is the narrow private import boundary
-used by sibling reporting owners for deliberate artifact parsing, validation,
-serialization, and transaction primitives. It is not another command or
-public application API. Neutral filesystem authorities live directly in
+This private package implements the artifact-index transaction used by the
+Run-level reporting coordinator and developer fixtures through
+[`context.py`](context.py) and [`publication.py`](publication.py). It has no
+installed public command or operator recovery route. [`api.py`](api.py) is the narrow private import boundary used
+by sibling reporting owners for deliberate artifact parsing, validation,
+serialization, and transaction primitives. It is not a command or public
+application API. Neutral filesystem authorities live directly in
 [`libraries/source_authority.py`](../../libraries/source_authority.py); this
 private package does not forward them.
 
-The grouped dispatcher owns the lightweight public parser and imports the
-private builder only after selecting this command. Help, parser failures, and
-unrelated installed commands therefore do not load artifact-index runtime
-dependencies. After argument parsing, the builder admits the required
-`--source-checkout` and independent `--artifact-source-root` before validating
-run inputs or building a context. Checkout admission requires one canonical,
-nonsymlink EMRYS Git top level and exact bytes between the executing package
-and that checkout.
-Help and parser failures therefore remain available without checkout admission;
-after parsing succeeds, a checkout or package mismatch fails closed before an
-input diagnostic. Both admitted values remain on `BuildContext` through
-publication. The artifact root governs relative inventory and native-contract
+The coordinator supplies the source checkout and independent artifact source
+root before `context.py` validates Run inputs and prepares the transaction. Checkout
+admission requires one canonical, nonsymlink EMRYS Git top level and exact
+bytes between the executing package and that checkout. Both admitted values
+remain on `BuildContext` through publication. The artifact root governs
+relative inventory and native-contract
 paths plus predecessor, post-publish, and rollback record validation. The
 checkout governs Git `HEAD` resolution and producer existence and hashing. The
 authority caches neither Git commit nor producer state; the later `HEAD` probe
@@ -29,19 +23,27 @@ ignores ambient `GIT_*` routing while preserving unrelated environment state. Th
 observations stay at their established points in context construction,
 preserving their timing, diagnostics, and serialized evidence.
 
-The grouped `python -X pycache_prefix=/dev/null -I -m emrys build run-summary` route imports both neutral
-authorities directly, not through this package or the artifact-index command
-builder. Its checkout governs producer identity; its artifact root governs
-contract-relative artifact paths plus semantic,
-predecessor, post-publication, and rollback validation.
+The private run-summary preparation imports both neutral authorities directly,
+not through this package or the artifact-index context. Its checkout governs
+producer identity; its artifact root governs contract-relative artifact paths
+plus semantic, predecessor, post-publication, and rollback validation.
 
 The modules keep observed responsibilities separate: the curated run-summary
-API, exact contract loading, models and rosters, explicit adapter registration,
-text and binary readers, inspection, named native reconciliation, record and
-receipt assembly, context construction, receipt-last publication, and
-published-transaction validation.
+API, exact contract loading, models, profile-derived adapter registration and
+rosters, text and binary readers, inspection, named native reconciliation,
+record and receipt assembly, context construction, receipt-last publication,
+and published-transaction validation.
 Stage-specific rules remain in their named reconciliation modules; this
 package is not a generic stage framework.
+
+The admitted immutable analysis-module descriptor supplies typed artifact
+declarations. `registry.py`, `records.py`, and context preparation derive the
+expected adapter closure, producer evidence, and paths from the composed Run
+profile. They do not scan installed modules or discover filesystem outputs.
+This dynamic indexing changes how the existing artifact transaction receives
+its closed roster; it adds no Artifact Store, database, service, authored
+manifest, or public mutable registry. Paired-CMH-specific Step `09`/`10`
+reconciliation remains in the built-in adapter path below.
 
 [`reconcile_step09.py`](reconcile_step09.py) delegates intrinsic admission of
 the exact result trio and mutation-spectrum reconciliation to
@@ -78,10 +80,8 @@ artifact state, or discovery behavior.
 lock, removal, and signal transaction primitives as well as the artifact-index
 coordinator, rollback, recovery, and cleanup order. Its frozen
 `ArtifactPublicationOps` record names only the transaction fault seams and is
-passed explicitly by tests; production uses the immutable default. The private
-builder owns only command coordination and exposes no publication or contract
-modules for patching. Run-summary assembly reaches deliberately shared
+passed explicitly by tests; production uses the immutable default. Context
+preparation exposes no publication or contract modules for patching. Run-summary assembly reaches deliberately shared
 transaction primitives through `api.py`; static reporting imports neutral
-checkout admission and Git identity directly. Neither imports the command
-builder. These internals do not change artifact schemas, serialized bytes,
+checkout admission and Git identity directly. These internals do not change artifact schemas, serialized bytes,
 source discovery policy, evidence states, diagnostics, or publication order.

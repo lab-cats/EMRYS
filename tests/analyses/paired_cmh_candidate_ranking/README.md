@@ -1,7 +1,7 @@
 # Paired-CMH analysis tests
 
-This directory protects the Step 09 paired-CMH analysis through shell
-transaction cases, Python validator cases, an independent count-derived
+This directory protects the Step 09 paired-CMH analysis through focused Python
+producer transaction cases, Python validator cases, an independent count-derived
 oracle, and a committed guarded real-R corpus. The
 [analysis owner](../../../src/emrys/analyses/paired_cmh_candidate_ranking/README.md)
 owns supported commands, while its

@@ -5,7 +5,7 @@ native owner directory. The
 exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
 is the capability-oriented physical owner for that identity and owns the
-producer, validator, and scheduler assets.
+producer and validator.
 
 ## Responsibility and execution dependencies
 
@@ -25,9 +25,7 @@ not overlap downstream reads.
 Inputs are a nonempty sample identifier, canonical BAM, exact `<bam>.bai`,
 output and metrics directories, readable Picard jar, Java and samtools
 executables, and an existing writable `TMPDIR`. The producer does not bind
-sample identity to a manifest or validate path safety. The wrapper currently
-loads Picard `3.1.1`, samtools `1.19.2`, and requires Java 17 or newer; these
-are operational bindings, not future defaults.
+sample identity to a manifest or validate path safety.
 
 Outputs are:
 
@@ -65,19 +63,9 @@ for nonemptiness. That historical route has no lock, staging, stable-input
 recheck, rollback, or all-or-none transaction; failure may leave a partial or
 cross-attempt set.
 
-[`step_04_mark_duplicates.slurm`](step_04_mark_duplicates.slurm)
-requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving its repository-owned helper or producer, so SLURM's spool copy is
-never checkout authority. It resolves modules, Picard, Java, and samtools before
-delegation and checks the three outputs after execute. It creates `logs/` in
-dry-run. Its empty execution-argument array has the characterized Bash 3.2
-dry-run defect; an unset `JAVA_HOME` can abort at the later unguarded diagnostic,
-and a stale nonempty output triplet can mask a zero-exit child that created
-nothing.
-
 ## Validation interface
 
-The grouped `python -I -m emrys validate duplicate-marking` route, implemented
+The grouped `emrys validate duplicate-marking` route, implemented
 by private [`validator.py`](validator.py), accepts explicit BAM, BAI, metrics,
 samtools, scope, and report paths. Dry-run prints the common seven-column TSV;
 `--execute` snapshot-rechecks inputs and publishes it through neutral private
@@ -119,7 +107,7 @@ public package or CLI identity.
   protects CLI, side-effect-free dry-run, exact Picard/samtools commands,
   output presence, missing inputs, and temp-directory failure with mocks.
 - [`test_validate_step_04_mark_duplicates.py`](../../../../tests/stages/duplicate_marking/test_validate_step_04_mark_duplicates.py),
-  wrapper, roster, publication-fault, public-CLI, artifact, report, and coverage
+  roster, publication-fault, public-CLI, artifact, report, and coverage
   tests protect the recorded validation and projection boundaries.
 
 This is local fixture/mock characterization, not new runtime, cluster,

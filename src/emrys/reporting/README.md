@@ -7,46 +7,63 @@ analysis, decide scientific validity, or promote evidence.
 
 | Interface | Supported role | Responsibility |
 | --- | --- | --- |
-| `python -X pycache_prefix=/dev/null -I -m emrys build report` | Operator-facing standalone rebuild | Render one canonical run summary under distinct code and artifact authorities into separate self-contained scientific and evidence HTML views, summary TSV, and a v4 receipt published last. |
-| `python -X pycache_prefix=/dev/null -I -m emrys build artifact-index` | Workflow-owned transaction; advanced diagnosis/recovery | Reconcile one declared artifact root and inventory under an independent producer-checkout authority into a receipt-last artifact index. |
-| `python -X pycache_prefix=/dev/null -I -m emrys build run-summary` | Workflow-owned transaction; advanced diagnosis/recovery | Project one admitted artifact-index receipt into the canonical run summary. |
+| `emrys run` / `emrys resume` | Normal operator path | Close the scientific Attempt at `cohort_slice`, release its Run lock, then invoke reporting automatically unless `--no-report` was selected. |
+| `emrys report [RUN]` | Independent reporting path | From the Project root, re-admit one successful scientific Run and either validate reusable reports or print a no-write generation plan; add `--execute` to generate an absent bundle. |
 
-The normal researcher path is `emrys run`, which invokes all three transactions
-in order. `build report` is also a supported direct operator route for an
-existing canonical summary. The two intermediate commands remain stable and
-documented for workflow execution and bounded diagnosis or recovery; they are
-not a general invitation to assemble or adopt reporting state manually.
+Reporting is downstream of, and not part of, the scientific Attempt. A
+reporting failure returns nonzero but leaves the successful Attempt receipt and
+scientific Results unchanged. `--no-report` disables only this downstream
+operation; it does not change the scientific graph, receipt, or Results.
 
-All three build routes require both `--source-checkout
-ABSOLUTE_CANONICAL_CHECKOUT` and `--artifact-source-root
-ABSOLUTE_CANONICAL_ARTIFACT_ROOT`. The report command is dry-run by default
-and accepts only explicit inputs:
+The independent command is dry-run/read-only by default:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys build report \
-  --source-checkout /absolute/path/to/emrys \
-  --artifact-source-root /absolute/path/to/run-root \
-  --run-summary /absolute/path/to/run-root/products/artifact-summary/RUN_ID/RUN_ID.run_summary.json \
-  --output-root /absolute/path/to/run-root/products/report
+emrys report
 ```
 
-`--source-checkout` names the absolute canonical EMRYS Git top level whose
-Python and packaged-resource bytes match the executing package; it owns
-producer and renderer Git identity. `--artifact-source-root` independently
-resolves contract-relative inventory and native artifact paths. Reporting
-infers neither root from the working directory
-or the run-summary location.
+Omission selects the sole Run or opens a terminal picker when several exist.
+Noninteractive callers provide an unambiguous two-word Run name, full Run ID,
+or unique ID prefix: `emrys report international-jackrabbit`.
 
-Repeat with `--execute` to publish exactly:
+Repeat with `--execute` to publish the ordered artifact-index, run-summary, and
+HTML transactions. The final report transaction publishes exactly:
 
 - `RUN_ID.scientific_report.html`
 - `RUN_ID.evidence_report.html`
 - `RUN_ID.run_summary.tsv`
 - `RUN_ID.report_outputs.tsv`
 
-The last file is the `emrys.report_receipt` v4 receipt. Existing older output
-directories, bare HTML predecessors, and incomplete sets are rejected; use a
-fresh output root unless an explicit migration is separately approved.
+The last file is the `emrys.report_receipt` v4 receipt for the existing flat
+paired-CMH path or v5 for an explicitly selected analysis module. V5 binds the
+computation provider, selected scientific-report provider, and fixed EMRYS core
+renderer separately; report-provider identity never changes Analysis or Run
+identity. Existing older output
+directories, bare HTML predecessors, partial ledgers, and incomplete sets are
+rejected and preserved. A complete existing bundle is reused only after every
+transaction and output is revalidated. New publication begins only when all
+three reporting ledgers and both Run-specific output locations are exactly
+empty; the public command does not overwrite, adopt, delete, or repair state.
+
+The artifact-index, run-summary, and HTML builder modules remain private
+implementation used by the Run-level coordinator and developer fixtures. They
+are not installed public commands or operator recovery routes.
+
+For current Runs, orchestration publishes this bundle only at
+`results/reports/RUN_ID`. An exact historical profile and verified reporting
+ledger may still bind `products/report/RUN_ID` for read-only inspection; current
+publication cannot select or adopt that legacy location. A composed-profile
+content change creates new Run identities, so historical Runs remain readable
+but are not thereby made resumable under the current profile.
+
+Artifact indexing derives its adapter registry, expected roster, producer
+evidence, and paths from the admitted immutable module profile. This dynamic
+indexing is still the same receipt-last artifact transaction; it is not an
+Artifact Store, database, service, or public registry. The following detailed
+scientific-report description is the behavior of the built-in paired-CMH
+reporter. Collaborator reporters provide their own bespoke scientific view
+through `emrys.analysis_reporters`; the fixed evidence/operations view and all
+transaction safety remain core-owned. There is no generic report schema or
+section DSL.
 
 The scientific HTML is the print-oriented reader-facing interpretation view.
 It opens with a concise analysis summary, then presents four primary figures,
@@ -73,10 +90,17 @@ biological strand. The scientific view
 intentionally omits source paths, hashes, attempts, the artifact appendix, tool
 records, renderer provenance, and the artifact-availability figure.
 
-The evidence HTML is the operational and provenance view. It retains run
-identity and status, limitations, expected scopes, artifact-level QC, attempt
-lineage, artifact appendix, tools and issues, renderer provenance, and the
-accessible artifact-availability figure. A compact six-record table binds the
+Both HTML files carry relative navigation to the scientific report, evidence
+and provenance, and operations. The evidence HTML is titled **Evidence and
+operations** and separates those two audiences without introducing another
+artifact. Evidence and provenance owns admitted scientific sources, artifact-
+level QC, the artifact appendix, tools/issues, and renderer provenance. The
+retained Run overview owns run identity, status,
+limitations, expected scopes, and the accessible artifact-availability figure;
+Operations owns Attempt lineage and the existing Run-inspection command. Both
+views also link, using portable relative paths, to every admitted Step `09`
+all-sites and threshold-passing table and Step `10` candidate-context table;
+unavailable inputs produce no dead link. A compact six-record table binds the
 admitted Step `09` all-sites, significant-sites, summary, mutation-spectrum,
 all-pass owner-validation, and its summary-bound sample manifest. A separate
 table binds the Step `10` validation, receipt, four outputs, and all six receipt-
@@ -132,7 +156,11 @@ adjudicated**. Candidate review, adjudication, and biological interpretation
 are external research activities and are not inferred from threshold-passing
 rows.
 
-[`report.py`](report.py) is the one public report owner. The private
+[`report.py`](report.py) is the private HTML coordinator used by the Run-level
+reporting operation and developer fixtures. The built-in bespoke scientific
+provider lives in
+[`paired_cmh_candidate_ranking_report/`](paired_cmh_candidate_ranking_report/).
+The private
 [`_run_report/`](_run_report/README.md) package owns explicit input admission,
 checkout-rooted semantic and table validation, structured view data, Jinja
 rendering, centralized deterministic figure rendering, per-view static HTML
@@ -145,21 +173,31 @@ trusted raw boundary. Validated SVG bytes are base64 data URIs in ordinary
 autoescaped image attributes. There are no scripts, remote assets, sidecars,
 network access, format selection, or report PDF.
 
-Focused protection is `make report-test`; `make demo-report` creates an ignored
-synthetic two-view HTML demonstration beneath `results/demo-report-jinja/`.
+Focused protection is `make report-test`. The supported synthetic Project path
+exercises automatic reporting through the ordinary Run journey.
 Recovery routes are in
 [`TROUBLESHOOTING`](../../../docs/operations/TROUBLESHOOTING.md).
 
 [`transaction_validation.py`](transaction_validation.py) is the public
 read-only completion owner used by local lifecycle and inspection. Its three
-specific validators and fixed-profile `validate_receipt(...)` dispatcher pin
+specific validators and module-aware `validate_receipt(...)` dispatcher pin
 receipt identity by no-follow descriptor before and after semantic validation,
 then revalidate bound native sources, records, indexes, summaries, both HTML
 views, TSV,
 and receipts. A receipt path or hash alone is never completion evidence.
+Current reports are reconstructed byte-for-byte. Read-only inspection of an
+exact verified legacy profile instead re-admits the artifact-index, run-summary,
+and report ledgers against each transaction's recorded producer identity and
+full bound inputs and outputs. Historical artifact records are admitted from
+their receipt-bound roster rather than reconstructed from today's producer
+registry. The current checkout is admitted as the reader, not misrepresented as
+any historical producer. The report read validates
+receipt v4 or v5, its bound run summary, and every declared output path/hash/size; it
+does not misclassify preserved 5.1.0 HTML as a failed 5.2.0 reconstruction or
+permit that legacy location for current publication.
 
 This completion boundary assumes the same single-user, cooperative workspace
-as the local pilot. Pre-existing symlink components, leaf substitution,
+as the run coordinator. Pre-existing symlink components, leaf substitution,
 unstable bytes, and roster drift fail closed; hostile concurrent replacement
 of ancestor directories or mount namespaces requires external isolation and
 lies outside this local evidence claim.

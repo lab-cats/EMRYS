@@ -8,11 +8,15 @@ alias do not change with that layout.
 
 ## Entry points
 
-- producer: [`step_07_bcftools_mpileup_by_chrom_and_strand.sh`](step_07_bcftools_mpileup_by_chrom_and_strand.sh)
+- producer: private [`producer.py`](producer.py), invoked as
+  `python -I -m emrys.stages.partitioned_cohort_mpileup.producer`
 - validator: grouped route
-  `python -I -m emrys validate partitioned-cohort-mpileup`, implemented by
+  `emrys validate partitioned-cohort-mpileup`, implemented by
   private [`validator.py`](validator.py)
-- scheduler: [`step_07_bcftools_mpileup_by_chrom_and_strand.slurm`](step_07_bcftools_mpileup_by_chrom_and_strand.slurm)
+
+For Slurm execution, use the complete immutable Run through `emrys run` or
+`emrys resume` as documented in the
+[runbook](../../../../docs/operations/RUNBOOK.md#run-coordinator-lifecycle-routes).
 
 ## Operate
 
@@ -21,7 +25,8 @@ Dataset, root, partition, and tool bindings are explicit. Dry-run is no-write:
 ```bash
 : "${EMRYS_BCFTOOLS_BIN:?export the admitted bcftools executable path}"
 output_root="$(pwd)/results/mpileup"
-src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
+.venv/bin/python -X pycache_prefix=/dev/null -I \
+  -m emrys.stages.partitioned_cohort_mpileup.producer \
   --cohort-id NORAD_EV_PUM1 \
   --sample-manifest data/raw/samples.paired.tsv \
   --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
@@ -67,22 +72,6 @@ meaning, or publication attempt.
 Do not execute private `validator.py` directly, add `PYTHONPATH`, or restore the
 retired validator path to bypass package selection.
 
-```bash
-: "${EMRYS_BCFTOOLS_BIN:?export the admitted bcftools executable path}"
-mkdir -p logs
-sbatch \
-  --export=ALL,TMPDIR=/tmp,EXECUTE=0,COHORT_ID=NORAD_EV_PUM1,SAMPLE_MANIFEST=data/raw/samples.paired.tsv,PARTITION_MANIFEST=configs/step_07_partitions.primary_contigs.tsv,PARTITION_ID=1,ORIENTATION_ROOT=results/orientation,REFERENCE_FASTA=refs/novogene_ref/genome.fa,OUTPUT_ROOT=results/mpileup,BCFTOOLS_BIN_OVERRIDE="$EMRYS_BCFTOOLS_BIN" \
-  src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
-```
-
-The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving repository-owned helpers or the producer; an executed spool copy does
-not become checkout authority.
-
-Change only `EXECUTE=1` after review. The wrapper fails before creating logs
-or outputs when any required dataset, root, partition, or bcftools binding is
-missing. Stale finals can still produce false scheduler success.
-
 ## Promote, diagnose, and verify
 
 Primary promotion additionally requires the admitted sample manifest to match
@@ -95,11 +84,10 @@ Never combine attempts, trust receipt presence or counts, or delete a foreign
 lock. Use a fresh root for an authorized diagnostic retry.
 
 ```bash
-bash tests/stages/partitioned_cohort_mpileup/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
+.venv/bin/python -m pytest -q \
+  tests/stages/partitioned_cohort_mpileup/test_partitioned_cohort_mpileup_producer.py
 .venv/bin/python -m pytest -q \
   tests/stages/partitioned_cohort_mpileup/test_validate_step_07_mpileup_outputs.py
-.venv/bin/python -m pytest -q \
-  tests/test_slurm_wrapper_contracts.py -k step_07_bcftools_mpileup
 ```
 
 This is local fixture/fake-tool evidence only.

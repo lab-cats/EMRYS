@@ -9,56 +9,8 @@
   ],
   "dashboard": [
     "\"/usr/bin/python3\" -I -B \\",
-    "\t\t\"<REPO_ROOT>/src/emrys/orchestration/local_pilot/dashboard.py\" \\",
+    "\t\t\"<REPO_ROOT>/src/emrys/orchestration/run_coordinator/dashboard.py\" \\",
     "\t\t--refresh \"$EMRYS_DASHBOARD_REFRESH\""
-  ],
-  "demo-report": [
-    "command -v \"<REPO_ROOT>/.venv/bin/python\" >/dev/null 2>&1 || { \\",
-    "\t\tprintf 'ERROR: report Python is unavailable: %s\\n' \\",
-    "\t\t\t\"<REPO_ROOT>/.venv/bin/python\" >&2; \\",
-    "\t\texit 1; \\",
-    "\t}",
-    "\"<REPO_ROOT>/.venv/bin/python\" -c \\",
-    "\t\t'import importlib.metadata, jinja2, jsonschema; assert importlib.metadata.version(\"matplotlib\") == \"3.11.1\"; assert importlib.metadata.version(\"logomaker\") == \"0.8.7\"' || { \\",
-    "\t\tprintf 'ERROR: report Python dependencies are unavailable: %s\\n' \\",
-    "\t\t\t\"<REPO_ROOT>/.venv/bin/python\" >&2; \\",
-    "\t\texit 1; \\",
-    "\t\t}",
-    "\"<REPO_ROOT>/.venv/bin/python\" -m \\",
-    "\t\ttests.reporting.fixtures.artifact_run_summary_v2.build_fixture \\",
-    "\t\t--root \"<REPO_ROOT>/results/demo-report-jinja/full-run-fixture\" \\",
-    "\t\t--run-id \"synthetic_run\"",
-    "SOURCE_DATE_EPOCH=1700000000 \\",
-    "\t\t\"<REPO_ROOT>/.venv/bin/python\" -X pycache_prefix=/dev/null -I -m emrys build run-summary \\",
-    "\t\t--source-checkout \"<REPO_ROOT>\" \\",
-    "\t\t--artifact-source-root \"<REPO_ROOT>/results/demo-report-jinja/full-run-fixture\" \\",
-    "\t\t--run-id \"synthetic_run\" \\",
-    "\t\t--artifact-receipt \\",
-    "\t\t\t\"<REPO_ROOT>/results/demo-report-jinja/full-run-fixture/adapter_fixture/artifacts/synthetic_run/synthetic_run.artifact_receipt.tsv\" \\",
-    "\t\t--output-root \"<REPO_ROOT>/results/demo-report-jinja/full-run-fixture/adapter_fixture/artifacts\" \\",
-    "\t\t--execute",
-    "SOURCE_DATE_EPOCH=1700000000 \\",
-    "\t\t\"<REPO_ROOT>/.venv/bin/python\" -X pycache_prefix=/dev/null -I -m emrys build report \\",
-    "\t\t--source-checkout \"<REPO_ROOT>\" \\",
-    "\t\t--artifact-source-root \"<REPO_ROOT>/results/demo-report-jinja/full-run-fixture\" \\",
-    "\t\t--run-summary \\",
-    "\t\t\t\"<REPO_ROOT>/results/demo-report-jinja/full-run-fixture/adapter_fixture/artifacts/synthetic_run/synthetic_run.run_summary.json\" \\",
-    "\t\t--output-root \"<REPO_ROOT>/results/demo-report-jinja/reports\"",
-    "SOURCE_DATE_EPOCH=1700000000 \\",
-    "\t\t\"<REPO_ROOT>/.venv/bin/python\" -X pycache_prefix=/dev/null -I -m emrys build report \\",
-    "\t\t--source-checkout \"<REPO_ROOT>\" \\",
-    "\t\t--artifact-source-root \"<REPO_ROOT>/results/demo-report-jinja/full-run-fixture\" \\",
-    "\t\t--run-summary \\",
-    "\t\t\t\"<REPO_ROOT>/results/demo-report-jinja/full-run-fixture/adapter_fixture/artifacts/synthetic_run/synthetic_run.run_summary.json\" \\",
-    "\t\t--output-root \"<REPO_ROOT>/results/demo-report-jinja/reports\" \\",
-    "\t\t--execute",
-    "printf 'Demo report transaction: %s\\n' \\",
-    "\t\t\"<REPO_ROOT>/results/demo-report-jinja/reports/synthetic_run\"",
-    "printf '  Scientific HTML: %s\\n  Evidence HTML: %s\\n  Summary: %s\\n  Receipt: %s\\n' \\",
-    "\t\t\"<REPO_ROOT>/results/demo-report-jinja/reports/synthetic_run/synthetic_run.scientific_report.html\" \\",
-    "\t\t\"<REPO_ROOT>/results/demo-report-jinja/reports/synthetic_run/synthetic_run.evidence_report.html\" \\",
-    "\t\t\"<REPO_ROOT>/results/demo-report-jinja/reports/synthetic_run/synthetic_run.run_summary.tsv\" \\",
-    "\t\t\"<REPO_ROOT>/results/demo-report-jinja/reports/synthetic_run/synthetic_run.report_outputs.tsv\""
   ],
   "documentation-check": [
     "./scripts/documentation/validate_structure.py --repo \"<REPO_ROOT>\""
@@ -84,7 +36,7 @@
     "\t\t<MAKE> real-r-test",
     "bash tests/stages/cohort_candidate_preprocessing/run_step_08_vcf_preprocessing_tests.sh",
     "bash tests/analyses/paired_cmh_candidate_ranking/run_step_09_cmh_tests.sh",
-    "bash tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh"
+    "bash tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh"
   ],
   "python-coverage-baseline-update": [
     "mkdir -p \"<REPO_ROOT>/.coverage-work\"",
@@ -319,7 +271,7 @@
   "real-r-test": [
     "bash tests/stages/cohort_candidate_preprocessing/run_step_08_vcf_preprocessing_tests.sh",
     "bash tests/analyses/paired_cmh_candidate_ranking/run_step_09_cmh_tests.sh",
-    "bash tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh"
+    "bash tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh"
   ],
   "report-test": [
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest \\",
@@ -338,18 +290,11 @@
     "bash tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh",
     "bash tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh",
     "bash tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh",
-    "bash tests/stages/mechanical_orientation/test_step_06_split_bam_by_read_orientation.sh",
-    "bash tests/stages/partitioned_cohort_mpileup/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh",
-    "bash tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.sh",
-    "bash tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_editing_site_calling.sh",
-    "bash tests/analyses/scientific_context_projection/test_scientific_context_projection.sh",
-    "bash tests/shell/test_local_r_environment.sh",
-    "\"<REPO_ROOT>/.venv/bin/python\" -m pytest -q --tb=short \\",
-    "\t\ttests/test_slurm_wrapper_contracts.py"
+    "bash tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh",
+    "bash tests/shell/test_local_r_environment.sh"
   ],
   "smoke": [
-    "bash -n src/emrys/libraries/gatk_invocation.sh src/emrys/ingestion/sample_manifest_admission/check_fastq_pairs.sh src/emrys/stages/star_index/step_00a_build_star_index.sh src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh src/emrys/stages/star_alignment/step_01_star_align.sh src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh tests/analyses/scientific_context_projection/test_scientific_context_projection.sh",
-    "bash -n src/emrys/evidence/runtime_availability/tool_check.slurm src/emrys/ingestion/sample_manifest_admission/validate_manifest.slurm src/emrys/stages/star_index/step_00a_build_novogene_star_index.slurm src/emrys/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm src/emrys/stages/star_alignment/step_01_star_align.slurm src/emrys/stages/canonical_bam/step_02_sort_index_bam.slurm src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.slurm src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.slurm src/emrys/stages/duplicate_marking/step_04_mark_duplicates.slurm src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm src/emrys/analyses/scientific_context_projection/scientific_context_projection.slurm"
+    "bash -n src/emrys/libraries/gatk_invocation.sh src/emrys/ingestion/sample_manifest_admission/check_fastq_pairs.sh src/emrys/stages/star_index/step_00a_build_star_index.sh src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh src/emrys/stages/star_alignment/step_01_star_align.sh src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh"
   ],
   "test": [
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest"
@@ -384,7 +329,7 @@
     "\t\t<MAKE> real-r-test",
     "bash tests/stages/cohort_candidate_preprocessing/run_step_08_vcf_preprocessing_tests.sh",
     "bash tests/analyses/paired_cmh_candidate_ranking/run_step_09_cmh_tests.sh",
-    "bash tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh"
+    "bash tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh"
   ],
   "validation-shell-contracts": [
     "bash tests/libraries/test_file_checks.sh",
@@ -395,30 +340,8 @@
     "bash tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh",
     "bash tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh",
     "bash tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh",
-    "bash tests/stages/mechanical_orientation/test_step_06_split_bam_by_read_orientation.sh",
-    "bash tests/stages/partitioned_cohort_mpileup/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh",
-    "bash tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.sh",
-    "bash tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_editing_site_calling.sh",
-    "bash tests/analyses/scientific_context_projection/test_scientific_context_projection.sh",
+    "bash tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh",
     "bash tests/shell/test_local_r_environment.sh"
-  ],
-  "validation-shell-slurm": [
-    "bash tests/libraries/test_file_checks.sh",
-    "bash tests/stages/fasta_sidecars/test_step_00c_prepare_gatk_reference.sh",
-    "bash tests/stages/star_alignment/test_step_01_star_align.sh",
-    "bash tests/stages/canonical_bam/test_step_02_sort_index_bam.sh",
-    "bash tests/evidence/canonical_bam_qc/test_step_02b_bam_qc.sh",
-    "bash tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh",
-    "bash tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh",
-    "bash tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh",
-    "bash tests/stages/mechanical_orientation/test_step_06_split_bam_by_read_orientation.sh",
-    "bash tests/stages/partitioned_cohort_mpileup/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh",
-    "bash tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.sh",
-    "bash tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_editing_site_calling.sh",
-    "bash tests/analyses/scientific_context_projection/test_scientific_context_projection.sh",
-    "bash tests/shell/test_local_r_environment.sh",
-    "\"<REPO_ROOT>/.venv/bin/python\" -m pytest -q --tb=short \\",
-    "\t\ttests/test_slurm_wrapper_contracts.py"
   ],
   "validation-static": [
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/emrys tests",
@@ -428,8 +351,7 @@
     "./scripts/documentation/validate_structure.py --repo \"<REPO_ROOT>\"",
     "\"<REPO_ROOT>/.venv/bin/python\" tests/tools/source_dependencies.py --repo \"<REPO_ROOT>\"",
     "git diff --check",
-    "bash -n src/emrys/libraries/gatk_invocation.sh src/emrys/ingestion/sample_manifest_admission/check_fastq_pairs.sh src/emrys/stages/star_index/step_00a_build_star_index.sh src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh src/emrys/stages/star_alignment/step_01_star_align.sh src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh tests/analyses/scientific_context_projection/test_scientific_context_projection.sh",
-    "bash -n src/emrys/evidence/runtime_availability/tool_check.slurm src/emrys/ingestion/sample_manifest_admission/validate_manifest.slurm src/emrys/stages/star_index/step_00a_build_novogene_star_index.slurm src/emrys/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm src/emrys/stages/star_alignment/step_01_star_align.slurm src/emrys/stages/canonical_bam/step_02_sort_index_bam.slurm src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.slurm src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.slurm src/emrys/stages/duplicate_marking/step_04_mark_duplicates.slurm src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm src/emrys/analyses/scientific_context_projection/scientific_context_projection.slurm",
+    "bash -n src/emrys/libraries/gatk_invocation.sh src/emrys/ingestion/sample_manifest_admission/check_fastq_pairs.sh src/emrys/stages/star_index/step_00a_build_star_index.sh src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh src/emrys/stages/star_alignment/step_01_star_align.sh src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh",
     "PYTHONDONTWRITEBYTECODE=1 \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m compileall -q scripts src/emrys tests",
     "\"<REPO_ROOT>/.venv/bin/python\" -I -m emrys validate manifest \\",

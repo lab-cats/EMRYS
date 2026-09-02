@@ -4,10 +4,9 @@ This is the observed contract of historical Step `06`, now implemented in this
 native owner directory. The exact public identity and historical alias are
 owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is the lowercase physical owner for that public slug and owns the producer,
-validator, and scheduler assets. Its Python validator is installed only
-through the grouped command; the shell producer and scheduler remain explicit
-repository-path interfaces.
+is the lowercase physical owner for that public slug and owns the producer and
+validator. Its Python producer is a private workflow owner; the validator is
+installed only through the grouped command.
 
 ## Responsibility and execution dependencies
 
@@ -37,8 +36,8 @@ transcript strand, library strandedness, sense, or antisense. Unassigned reads
 are allowed; exhaustive partitioning is not claimed.
 
 Inputs are sample ID, nonempty split BAM and exact adjacent BAI, output/QC
-directories, positive threads, and samtools resolved from argument, approved
-override, or PATH. Outputs are:
+directories, positive threads, an admitted owner token, and the absolute
+samtools path selected by the Run runtime. Outputs are:
 
 ```text
 <sample>.FWD_like.bam
@@ -54,43 +53,28 @@ both merged groups must be nonzero; assigned may not exceed input.
 
 ## Orchestration-safe producer boundary
 
-`--no-clobber` is the required local-profile mode. It refuses any member of an
-existing five-file final set before tool work and before publication, hashes
-and rechecks the input BAM/BAI, and retains the existing per-sample owned lock,
-temporary-set validation, ordered publication, and final-path validation. It
-never creates predecessor backups, so interruption cannot enter the retained
-restoration-failure defect. Its finals are create-exclusive and staging inode
-anchors remain through complete-set validation. The counts TSV remains native evidence rather than
-a receipt; tool-version and final-set hashes belong in the workflow verified
-record. Execute without this option preserves replaceable-set behavior.
+The private producer has one create-absent mode. It refuses any member of an
+existing five-file final set before tool work, hashes and rechecks the input
+BAM/BAI, and retains the per-sample owned lock, temporary-set validation,
+ordered publication, and final-path validation. It never creates predecessor
+backups. Finals are hard-link create-exclusive and staging inode anchors remain
+through complete-set validation. The counts TSV remains native evidence rather
+than a receipt; tool-version and final-set hashes belong in the workflow
+verified record.
 
 ## Current execution surfaces
 
-[`step_06_split_bam_by_read_orientation.sh`](step_06_split_bam_by_read_orientation.sh)
-is side-effect-free in dry-run. Execute mode uses a per-sample owned lock,
-run-token temporary and backup paths, rejects stale owned-path candidates,
-validates both temporary pairs and arithmetic, requires an existing final set
-to contain all five files or none, publishes the counts TSV last, and
-revalidates final paths. Failures restore a prior set or remove new partial
-finals.
-
-The historical replacement route has no stable-input recheck, and neither
-route publishes a native receipt binding the set to its source/tool/attempt.
-The counts TSV is a final native output, not a cryptographic transaction
-receipt. Rollback restore moves are best-effort and cleanup can delete backups
-after a failed restoration, leaving the same unprotected recovery boundary as
-other BAM transactions.
-
-[`step_06_split_bam_by_read_orientation.slurm`](step_06_split_bam_by_read_orientation.slurm)
-requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving repository-owned helpers or the producer, so SLURM's spool copy is
-never checkout authority. It owns cluster defaults, samtools loading, execution
-gating, delegation, and post-execute path checks. It has the characterized Bash
-3.2 empty-array dry-run defect.
+[`producer.py`](producer.py) is invoked only by the fixed workflow task. It
+uses one per-sample owned lock and run-token temporary paths, rejects stale
+owned-path candidates, validates both temporary pairs and arithmetic, publishes
+the counts TSV last, and revalidates final paths. Failure removes only partial
+finals still proven to share their staging inode; ambiguous mutation preserves
+the final, staging anchor, and lock for operator inspection. The counts TSV is
+a final native output, not a cryptographic transaction receipt.
 
 ## Validation interface
 
-The grouped `python -I -m emrys validate mechanical-orientation` route,
+The grouped `emrys validate mechanical-orientation` route,
 implemented by private [`validator.py`](validator.py), accepts the four
 explicit BAM/BAI paths, counts TSV, scope, and report output. It does not invoke
 samtools. Dry-run prints the common TSV; `--execute` snapshot-rechecks inputs
@@ -127,11 +111,12 @@ failures exit `2`.
 - Artifact adapters register both pairs, counts, and
   `step06_validation_report_v1`; summaries/reports consume them without
   rerunning samtools.
-- [`test_step_06_split_bam_by_read_orientation.sh`](../../../../tests/stages/mechanical_orientation/test_step_06_split_bam_by_read_orientation.sh)
-  protects flags, counts, dry-run, locks, stale paths, validation, zero-group
-  failures, cleanup, complete-set replacement, and ordinary rollback.
+- [`test_mechanical_orientation_producer.py`](../../../../tests/stages/mechanical_orientation/test_mechanical_orientation_producer.py)
+  protects exact commands and counts, locks, stale paths, input stability,
+  child failures, signals, validation, create-exclusive collisions,
+  counts-last publication, rollback, and ambiguous-residue preservation.
 - [`test_validate_step_06_orientation_outputs.py`](../../../../tests/stages/mechanical_orientation/test_validate_step_06_orientation_outputs.py),
-  wrapper, roster, publication-fault, public-CLI, artifact, report, and coverage
+  roster, publication-fault, public-CLI, artifact, report, and coverage
   tests protect the recorded independent evidence boundary.
 
 This is local fixture/mock characterization, not new runtime, cluster,
@@ -139,24 +124,20 @@ scientific-review, or biological evidence.
 
 ## Current ownership boundaries and retained defects
 
-- Counts schema/arithmetic remains repeated in producer, validator, and artifact
-  reconciliation code; this stage owns its native schema and check roster.
+- The producer and validator share the fixed counts header and mechanical flag
+  vocabulary from `libraries/alignments/orientation.py`; arithmetic decisions
+  and transaction publication remain owner-local.
 - Shared report publication remains in neutral
   [`validation/report.py`](../../libraries/validation/report.py), imported
   through `emrys.libraries.validation`.
-- The producer uses `resolve_overridable_executable` from neutral
-  [`executable_resolution.sh`](../../libraries/executable_resolution.sh); the
-  explicit argument, `SAMTOOLS_BIN_OVERRIDE`, and PATH selection policy,
-  samtools checks, and commands remain owned here.
-- The legacy replacement route lacks stable-input identity; restoration is
-  best-effort and cleanup can erase recovery evidence. The no-clobber path
-  hash-rechecks BAM/BAI inputs and rejects any prior member, but native outputs
-  still lack attempt binding and the output-directory lock does not serialize
-  writers to a shared QC directory.
+- Runtime discovery and Doctor own samtools selection; this producer admits the
+  resulting absolute executable path and owns its commands and failures.
+- The sole materializer supplies the canonical output/QC pairing. Unsupported
+  concurrent direct invocations with distinct output roots and one QC root do
+  not share a lock and can collide on the counts path.
+- Native outputs still lack a native receipt. The immutable task record binds
+  their input, implementation, runtime, final hashes, and independent
+  validation without adding a second receipt authority.
 - The producer does not reconcile flag-subcounts against merged-BAM counts;
   the independent validator may publish failed rows with exit `0` and neither
   quickchecks nor recounts BAM records.
-- Scheduler Bash `3.2`, warning-only samtools preflight, one-CPU versus
-  independently configured threads, dry-run log mutation, version-command,
-  and stale-five-file success remain characterized defects rather than
-  guarantees.

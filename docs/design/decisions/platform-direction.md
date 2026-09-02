@@ -42,23 +42,23 @@ new evidence level.
 
 | ID | Ratified invariant | State | Authority, representative protection, or gap |
 |---|---|---|---|
-| `AC-INV-007` | A result is traceable to exact inputs, scientific configuration, source/package identity, runtime/tool identity, and the execution that produced it. | Target | The fixed local lifecycle binds this chain in the [orchestration contract](../ORCHESTRATION_CONTRACT.md) and [lifecycle tests](../../../tests/orchestration/local_pilot/test_lifecycle.py). Native-owner, installed-control-plane, and site provenance gaps remain under `ARCH-01`, `RUNTIME-01`, and `OPS-02`. |
+| `AC-INV-007` | A result is traceable to exact inputs, scientific configuration, source/package identity, runtime/tool identity, and the execution that produced it. | Target | The fixed local lifecycle binds this chain in the [orchestration contract](../ORCHESTRATION_CONTRACT.md) and [lifecycle tests](../../../tests/orchestration/run_coordinator/test_lifecycle.py). Native-owner, installed-control-plane, and site provenance gaps remain under `ARCH-01`, `RUNTIME-01`, and `OPS-02`. |
 | `AC-INV-008` | Every admitted durable artifact reference binds a stable semantic identity plus exact content digest; changed bytes cannot retain admission under the old binding. | Preserved | The [artifact schemas](../../../src/emrys/contracts/artifacts/) and [artifact contract tests](../../../tests/contracts/artifacts/) keep semantic identity distinct from content identity. |
 | `AC-INV-009` | Mutation of a published artifact invalidates its prior admission and is detected at every required re-admission; physical write prevention is not implied. | Target | Verified-task and reporting paths recheck content identity. Rewrite-blindness and owner transaction defects remain characterized in the test baseline and must be resolved or explicitly preserved by the applicable `ARCH-01` migration. |
-| `AC-INV-010` | Every generated manifest or normalized configuration artifact that affects a run remains inspectable and source-attributed even when a user does not author it. | Preserved | The orchestration materialization contract and [materialization tests](../../../tests/orchestration/local_pilot/test_materialization.py) protect current generated artifacts; `CONFIG-01` and `SETUP-03` inherit the rule. |
-| `AC-INV-011` | Each artifact class and guarantee has one declared admission chain and one final authority; this must not become one global implementation or god object. | Target | The current native publication → owner validation → verified result → explicit adapter/index flow is defined by the [current architecture](../../architecture/ARCHITECTURE.md). `ARCH-01`, `AC-DEC-010`, and `AC-DEC-025` own the generalized lifecycle and boundary decisions. |
+| `AC-INV-010` | Every generated manifest or normalized configuration artifact that affects a run remains inspectable and source-attributed even when a user does not author it. | Preserved | The orchestration materialization contract and [materialization tests](../../../tests/orchestration/run_coordinator/test_materialization.py) protect current generated artifacts; `CONFIG-01` and `SETUP-03` inherit the rule. |
+| `AC-INV-011` | Each artifact class and guarantee has one declared admission chain and one final authority; this must not become one global implementation or god object. | Target | The current native publication → owner validation → verified result → explicit adapter/index flow is defined by the [current architecture](../../architecture/ARCHITECTURE.md). Class-specific authorities remain the accepted default. `ARCH-01` and `AC-DEC-010` own any demonstrated lifecycle gap; `AC-DEC-025` defers a distinct Artifact Store until a concrete trigger requires reconsideration. |
 
 ### Execution and recovery invariants
 
 | ID | Ratified invariant | State | Authority, representative protection, or gap |
 |---|---|---|---|
-| `AC-INV-012` | An execution is complete according to its contract or visibly incomplete, failed, blocked, pending, or running; engine metadata is not completion authority. | Preserved | The orchestration contract and [lifecycle state tests](../../../tests/orchestration/local_pilot/test_lifecycle.py) protect the implemented local lifecycle. |
+| `AC-INV-012` | An execution is complete according to its contract or visibly incomplete, failed, blocked, pending, or running; engine metadata is not completion authority. | Preserved | The orchestration contract and [lifecycle state tests](../../../tests/orchestration/run_coordinator/test_lifecycle.py) protect the implemented local lifecycle. |
 | `AC-INV-013` | Within declared EMRYS-owned transaction and control namespaces, partial or provisional state cannot be admitted as complete; ambiguous or foreign residue fails closed. | Target | Task, lifecycle, and [reporting transaction tests](../../../tests/reporting/test_transaction_validation.py) protect current paths. Owner-local residue, rollback, and rewrite defects remain characterized until their applicable migration resolves them. |
 | `AC-INV-014` | Recovery cannot produce scientifically different work under the same bound identity. | Preserved | Normalization and lifecycle compatibility checks bind scientific changes to a new run identity and reject incompatible reuse. |
-| `AC-INV-015` | Resume reuses only compatible admitted work; timestamps, file presence, and workflow-engine metadata are insufficient. | Preserved | The orchestration contract and [workflow tests](../../../tests/orchestration/local_pilot/test_workflow.py) require content and contract re-admission. |
-| `AC-INV-016` | Local and HPC execution must provide equivalent scientific, artifact-integrity, recovery, and evidence guarantees, not identical mechanisms; each environment requires separate proof. | Target | `OPS-02`, `RUNTIME-01`, and `DOCTOR-01` own realization. Wrapper contracts are not parity, cluster, production, or scientific proof. |
-| `AC-INV-017` | An immutable plan exists internally before the first execution mutation, even when planning and execution become one conceptual user operation. | Preserved | The orchestration contract and materialization tests protect no-write planning and immutable publication; `RUN-03` may simplify the interaction without weakening the order. |
-| `AC-INV-018` | Failure and every supported repair are attributable and auditable. Repair is explicit, bounded to owned safe state, precisely reported, provenance-aware where applicable, and cannot alter declared scientific inputs or invent biology or secrets. | Target | Failure attribution exists in task/lifecycle records. Supported repair does not yet exist and remains `DOCTOR-01`; production adoption of durable application logging remains `LOG-05`. |
+| `AC-INV-015` | Resume reuses only compatible admitted work; timestamps, file presence, and workflow-engine metadata are insufficient. | Preserved | The orchestration contract and [workflow tests](../../../tests/orchestration/run_coordinator/test_workflow.py) require content and contract re-admission. |
+| `AC-INV-016` | Local and HPC execution must provide equivalent scientific, artifact-integrity, recovery, and evidence guarantees, not identical mechanisms; each environment requires separate proof. | Target | Project-aware Doctor readiness and bounded managed repair are implemented. Hosted 130-pair direct/disposable-single-node-SLURM execution proves matching immutable authority, Attempt common fields/task roster, path-neutral science, symbolic resources, controlled pre-task failure/resume, and one application log per execution operation. Effective allocation and scheduler streams differ as intended. `SITE-PARITY-01` retains institutional site/module, multi-node, and production proof; no scheduler result is scientific or biological validation. |
+| `AC-INV-017` | An immutable plan exists internally before the first execution mutation, even when planning and execution become one conceptual user operation. | Preserved | `RUN-03` implements single-invocation terminal confirmation while the orchestration contract and materialization tests preserve no-write planning and immutable publication before mutation. |
+| `AC-INV-018` | Failure and every supported repair are attributable and auditable. Repair is explicit, bounded to owned safe state, precisely reported, provenance-aware where applicable, and cannot alter declared scientific inputs or invent biology or secrets. | Preserved | `emrys doctor` diagnoses without mutation or logging. Its separately authorized managed-runtime repair is bounded to the active checkout-owned `.venv` and Project-owned `runtime/managed`, delegates dependency work to `uv`, Pixi, and `renv`, owns one maintenance log, preserves declared inputs and site/user profiles, and requalifies afterward. The supported repair catalog is intentionally narrow; the retained logging roster is complete under `LOG-05`. |
 
 ### Evidence and reporting invariants
 
@@ -66,25 +66,26 @@ new evidence level.
 |---|---|---|---|
 | `AC-INV-019` | Reported claims derive from admitted artifacts and recorded validation, never discovery or recalculation inside reporting. | Preserved | The execution/evidence decision, reporting contracts, and [reporting tests](../../../tests/reporting/) protect read-only adaptation and receipt-last publication. |
 | `AC-INV-020` | Validation evidence is rerunnable or independently verifiable at its declared level; missing retained inputs, runtime identity, or independent verification is disclosed rather than promoted. | Target | The test baseline, independent goldens, direct validators, and scientific oracles provide bounded protection. Native provenance and validator gaps remain visible under `ARCH-01` and `AC-DEC-022`. |
-| `AC-INV-021` | Scientific, evidence/provenance, and operational evidence remain distinguishable. | Target | Existing scientific and evidence HTML views provide partial separation. The complete three-purpose presentation remains `REPORT-03` and `RESULTS-01`. |
+| `AC-INV-021` | Scientific, evidence/provenance, and operational evidence remain distinguishable. | Target | Completed `RESULTS-01` provides the canonical co-located scientific and combined Evidence/operations surfaces with explicit purpose boundaries. Rendered acceptance remains under `REPORT-03`. |
 | `AC-INV-022` | Local engineering, synthetic end-to-end, runtime, cluster, production, scientific-review, and biological evidence are never promoted into one another. | Preserved | The root evidence guard, test baseline, artifact evidence schema, and reporting boundary tests own this rule. |
-| `AC-INV-023` | Receipts and low-level records required by an evidence or recovery contract may be omitted from ordinary views but remain inspectable subject to explicit retention and redaction policy; expired or unavailable records are disclosed rather than treated as complete. | Target | The logging foundation and task/attempt schemas provide bounded current pieces. `LOG-05`, `OBS-01`, `OBS-02`, `FILESYSTEM-01`, `AC-DEC-013`, and `AC-DEC-017` own adoption, access, retention, and result-bundle decisions. |
+| `AC-INV-023` | Receipts and low-level records required by an evidence or recovery contract may be omitted from ordinary views but remain inspectable subject to explicit retention and redaction policy; expired or unavailable records are disclosed rather than treated as complete. | Target | Completed `LOG-05`, `OBS-01`, and `OBS-02` provide the retained logging and inspection surface. `FILESYSTEM-01`, `AC-DEC-013`, and `AC-DEC-017` retain storage, retention, and access follow-ons without implying a Run Bundle. |
 
 ### User-boundary invariants
 
 | ID | Ratified invariant | State | Authority, representative protection, or gap |
 |---|---|---|---|
-| `AC-INV-024` | Developer-only knowledge is never required for an ordinary scientist task. | Target | Current onboarding still exposes checkout, configuration, wrapper, and run-root mechanics. `CONTROL-01`, `OPS-02`, `SETUP-03`, `RUNTIME-01`, `DOCTOR-01`, `RUN-03`, `OBS-02`, `RESULTS-01`, `DOC-01`, and `REVIEW-UX-03` own the role-level journey. |
+| `AC-INV-024` | Developer-only knowledge is never required for an ordinary scientist task. | Target | Guided Project setup, top-level Doctor, single-invocation Run control, status, and Results are implemented and the generated wrapper is retired. `CONTROL-01`, `OPS-02`, `RUNTIME-01`, `DOC-01`, `REVIEW-UX-03`, and `AC-SLICE-13` own the remaining checkout/runtime exposure and integrated role-level journey. |
 | `AC-INV-025` | Defaults, site policy, project values, and CLI overrides use one documented, inspectable precedence model. Every effective operational value and source is inspectable; an override exists only where its owner defines a safe supported admission boundary. | Target | Current resource and launcher policy implement bounded precedence. `CONFIG-01`, `OPS-01`, `OPS-02`, and `AC-DEC-005` own the complete model and exact merge semantics. |
-| `AC-INV-026` | The system never prints secrets or silently invents biological meaning. | Target | Biological admission is already fail-closed, and the logging foundation redacts admitted secrets. Production paths without logging adoption have no system-wide redaction promise; `SETUP-01`, `SETUP-03`, `DOCTOR-01`, and `LOG-05` own the remaining gap. |
-| `AC-INV-027` | Automatic actions are bounded, observable, and reversible or recoverable where the operation permits it; irreversibility is explicit before mutation. | Preserved | Current dry-run-first publication/recovery contracts and [onboarding tests](../../../tests/orchestration/local_pilot/test_onboarding.py) protect supported mutations. `SETUP-03`, `DOCTOR-01`, `RUN-03`, and every future mutating owner inherit the rule. |
+| `AC-INV-026` | The system never prints secrets or silently invents biological meaning. | Target | Biological admission is fail-closed; setup and Doctor preserve declared meaning; the closed `LOG-05` operation roster redacts admitted secrets. Future public operations inherit this requirement. |
+| `AC-INV-027` | Automatic actions are bounded, observable, and reversible or recoverable where the operation permits it; irreversibility is explicit before mutation. | Preserved | Dry-run-first onboarding, confirmed Doctor repair, immutable-plan Run control, recovery contracts, and [onboarding tests](../../../tests/orchestration/run_coordinator/test_onboarding.py) protect current mutations. Every future mutating owner inherits the rule. |
 
 ### Ratified abstraction, migration, and test guardrails
 
 The following guardrails are binding. `AC-GUARD-001` through `005` are the
 original set; `AC-GUARD-006` through `008` are later campaign-level extensions.
 They do not ratify facade-first sequencing, an exact layer map, the campaign
-phase order, or a public API beyond the settled `Run` meaning below.
+phase order, or a concrete public API. The later application-model section
+settles conceptual vocabulary and semantics, not an API realization.
 
 1. **Inspectable, bounded operational control (`AC-GUARD-001`).** Every
    effective operational value and its source is inspectable. An override
@@ -105,11 +106,18 @@ phase order, or a public API beyond the settled `Run` meaning below.
    compatibility path has a named owner, bounded scope, parity protection, and
    explicit retirement condition; the superseded path retires when that
    condition is met.
-5. **Equal-or-stronger regression defense (`AC-GUARD-005`).** Direct-owner,
-   adversarial, seeded-fault, and synthetic end-to-end defenses may be removed
+5. **Boundary- and risk-aware regression defense (`AC-GUARD-005`).** A
+   protection at an external-input, filesystem, concurrency, crash, recovery,
+   persistence, evidence, or supported public-behavior boundary may be removed
    only through an explicit invariant-to-test mapping that establishes an
-   equal-or-stronger replacement at the same declared evidence level. Coverage
-   or the scientist-facing synthetic golden path alone is insufficient.
+   equal-or-stronger surviving defense at the same declared evidence level.
+   Coverage or the scientist-facing synthetic golden path alone is
+   insufficient. A redundant check or test aimed only at an impossible
+   same-process state may instead retire without replacement when the audit
+   proves one admitted immutable producer, no supported injection or mutation
+   path, no distinct failure mode or claim, and the exact surviving authority.
+   High-risk, ambiguous, or directly user-facing protection retirement requires
+   the user's explicit approval.
 6. **Maintenance-surface compression (`AC-GUARD-006`).** Every architecture
    audit records concrete compression opportunities across implementation,
    compatibility paths, configuration, scripts, schemas, documentation,
@@ -119,22 +127,44 @@ phase order, or a public API beyond the settled `Run` meaning below.
    product-file growth; an exception requires the user's explicit approval of
    quantified growth and its justification, plus an owner and retirement
    condition when temporary.
+   Before new owned machinery, the slice evaluates the existing repository
+   authority, standard library, mature maintained tools/libraries, and the
+   relevant established package manager. Bespoke code records the unmet
+   capability or proves a smaller total maintained surface.
+   A shared policy authority is justified only when at least two
+   production owners make the same decision from equivalent inputs with the
+   same defaults, precedence, override, error, and output semantics; one bounded
+   migration must move every caller and retire the duplicate decisions with a
+   net reduction. Re-admission at a distinct trust or mutation boundary is not
+   duplicate policy.
    The full category-separated closeout in the campaign's
    [per-slice protocol](../../tasks/architecture_campaign.md#131-mandatory-per-slice-compression-and-mutation-protocol)
    is binding; categories never offset one another. File and line counts are
    indicators, not authority to create god modules, displace logic into
    generated/configured form, or weaken a guarantee. Temporary growth remains
    counted until retired.
+   Every touched shell or generated-shell surface is classified `KEEP`,
+   `CONVERT`, or `RETIRE`. Conversion is permitted only when the same slice
+   removes more total product, protection/test, caller, and cross-language
+   surface than it adds; a line-for-line port or parallel shell/Python owner is
+   not compression. `KEEP` is correct when conversion would increase total
+   surface, even if the retained implementation is not intrinsically
+   shell-native; the audit records the reason and reconsideration trigger.
+   Any high-risk, directly user-facing, execution-boundary, or
+   evidence-validation retirement, consolidation, or conversion requires the
+   user's explicit approval whether or not it is classified as a protection.
 7. **Immutable by default; `Run` is the plan (`AC-GUARD-007`).** Boundary
    values are immutable unless the owning contract justifies a narrow mutable
    lifecycle. A `Run` is an immutable plan and is never modified in place; a
    plan change creates a distinct `Run`. Draft and attempt-local state may
    mutate only within their owners and cannot alter the `Run` or reconstruct a
    competing plan from mutable state.
-   This does not settle other public nouns or nesting, identity composition or
-   cardinality, Attempt/Result relationships, APIs, backends, policy,
-   persistence, or storage until after audit review and a separate approved
-   decision.
+   This guardrail did not itself settle other public nouns or nesting,
+   identity composition or cardinality, Attempt/Results relationships, APIs,
+   backends, policy, persistence, or storage. The later
+   [application-model decision](#ratified-application-model-and-run-boundary)
+   settles only the named vocabulary, nesting, and Run-versus-Attempt boundary;
+   its explicit deferrals remain open.
 8. **Explicit evidence-deletion authority (`AC-GUARD-008`).** Identifying
    apparently redundant evidence in an audit, campaign, task, or compression
    proposal does not authorize deletion. Deletion requires separate explicit
@@ -151,7 +181,9 @@ definition is not evidence merely because it can produce a result; a retained
 result may be. Fixtures, goldens, and oracles can be both, so both guardrails
 apply. An existing surviving defense may satisfy `AC-GUARD-005` when the
 mapping establishes equal-or-stronger coverage; replacement does not require a
-new one-for-one test.
+new one-for-one test. Conversely, a proven impossible internal state has no
+independent invariant to re-protect: its redundant check and check-only test
+may retire together under the recorded low-risk disposition.
 
 ## Ratified responsibility and dependency model
 
@@ -178,9 +210,10 @@ admission, recovery safety, or evidence level.
 
 Identity is a responsibility cluster, not a presumed service or package.
 Consumers receive authoritative identity facts through explicit contracts
-rather than reconstructing competing identities. Exact public nouns,
-hierarchy, ownership, and hash composition remain `AC-DEC-001` and the
-applicable identity/application slice.
+rather than reconstructing competing identities. Public nouns and hierarchy
+are settled by the application-model decision below; exact field ownership,
+hash composition, persistence, and subordinate exposure remain `AC-DEC-011`
+and the applicable identity/application slice.
 
 ### Three separate dependency graphs
 
@@ -271,30 +304,40 @@ with the named later slices:
   when present. It must permit multiple analyses over compatible upstream
   work, pass lower owners an explicit immutable contract rather than a broad
   aggregate, and prevent mutable attempt state from altering or reconstructing
-  the Run. This distinction does not settle cardinality or nesting.
+  the Run. The later application-model decision settles the public nesting and
+  minimum cardinalities without choosing representation.
 - A possible Stage boundary stays thin and cannot obscure the distinct
   transformation, analysis, and evidence identities or move review-relevant
   science away from its owner. Functional owners declare needs and semantic
   validity; allocation authority resolves resources; execution enforces the
   result; lifecycle/admission remains logically distinct.
-- Supported execution backends owe equivalent declared scientific,
+- Each supported execution realization owes equivalent declared scientific,
   artifact-integrity, recovery, and evidence guarantees, while mechanisms and
-  environment-specific proof may differ. This guarantee contract does not
-  select a request/result API or Local/SLURM class design.
+  environment-specific proof may differ. Local Snakemake remains the only
+  application backend and Slurm remains outer placement. A generalized backend
+  boundary must be evaluated near campaign closure but is implemented only for
+  a concrete approved extension or demonstrated compression, with parity and
+  no duplicate authority. Compression must be net-negative; extension growth
+  follows the normal quantified-exception gate.
 - Every policy decision has one declared final authority. Repeated equivalent
-  owner-local decisions may move to one shared authority only after inventory
-  demonstrates real net reduction; policy is not a mandatory central layer.
+  owner-local decisions may move to one shared authority only when at least two
+  production owners have equivalent inputs and complete semantics and a
+  caller-complete migration demonstrates net reduction; policy is not a
+  mandatory central layer.
 - Logical artifact lifecycle/admission is distinct from physical storage.
   Storage, copying, publication, or engine success cannot by itself grant
-  scientific completion or admission, and the requirement does not presume a
-  distinct Artifact Store.
+  scientific completion or admission. A distinct Artifact Store is deliberately
+  deferred until a separately approved concrete unmet need cannot be handled
+  cleanly by current class-specific authorities.
 
-Except for `Run` meaning the immutable plan, the exact application nouns,
-nesting, identity composition, and API remain `AC-SLICE-03`; the minimum
-operation representation remains `AC-SLICE-04`; execution request/result and
-backend design remain `AC-SLICE-05`; policy inventory and owners remain
-`AC-SLICE-06`; and artifact states, lifecycle API, and Artifact Store decision
-remain `AC-SLICE-07`.
+The public application vocabulary, nesting, and Run-versus-Attempt boundary are
+now settled below. Exact field and identity composition, persisted authorities,
+recovery ownership, compatibility, and migration remain in `AC-SLICE-03`; the
+minimum operation representation remains `AC-SLICE-04`; execution parity
+remains `AC-SLICE-05`; conditional policy inventory remains `AC-SLICE-06`;
+and demonstrated artifact-lifecycle gaps remain `AC-SLICE-07`. Generalized
+backend evaluation remains a near-closure checkpoint, but implementation is
+conditional; a distinct Artifact Store is not a campaign prerequisite.
 
 ### Enforcement strategy
 
@@ -306,7 +349,7 @@ future APIs. Exact live composition seams and transitions fail when broadened
 and also fail when stale, forcing current-boundary or retirement metadata to
 change with the source. The checker does not perform general dynamic-import
 data-flow inference, infer semantics from filenames, enforce a future package
-map, or treat the current local-pilot topology as the target.
+map, or treat the current run-coordinator topology as the target.
 
 Runtime/control invocation and artifact/evidence flow remain protected by
 their explicit contracts, rosters, fixtures, and producer/consumer tests.
@@ -315,6 +358,76 @@ the Python graph. Authority rules that require semantic review—such as no
 scientific logic in the CLI, reporting's read-only behavior, and mechanism
 non-authority—remain decision and contract obligations until an equally direct
 automated oracle exists.
+
+## Ratified application model and Run boundary
+
+`ARCH-MODEL-DECISION-01` ratified this boundary on 2026-08-26 after the
+read-only `ARCH-MODEL-AUDIT-01` review. It selects the campaign's option C
+without selecting a class hierarchy, serialized schema, package map, storage
+layout, command tree, backend interface, or permanent compatibility facade.
+
+The smallest ordinary public model is:
+
+```text
+Project -> Analysis -> Run -> Results
+                         |
+                         +-- Attempt(s), when operationally relevant
+```
+
+- **Project** is the mutable organizational workspace for drafts, declared
+  inputs, references, and configuration. It is not execution authority.
+- **Analysis** expresses scientist-facing scientific intent. Drafts may evolve;
+  an admitted Analysis revision is immutable. Analysis may use a human-facing
+  name while retaining its internal immutable identity.
+- **Run** is public, has the primary ordinary identifier, and immutably binds
+  exactly one admitted Analysis revision to exactly one internal immutable
+  Execution Plan. An Analysis revision may have multiple Runs when its
+  effective realization differs.
+- **Attempt** is progressively disclosed operational history for executing the
+  same Run. A Run may have zero or more Attempts; Attempt state and metadata
+  cannot alter or reconstruct the Run.
+- **Results** is the read-only discoverable surface of Run-bound committed
+  outputs. It is not a second mutable completion authority or initially a
+  separately managed identity-bearing aggregate.
+
+The internal Execution Plan remains inspectable but is not an ordinary
+user-authored or user-managed public noun. Dataset, Reference, and
+ExperimentalDesign remain meaningful scientific-definition sections rather
+than independent top-level commands or identities by default. Runtime and
+execution-profile selection are operator-facing inputs to Run construction and
+stay out of the ordinary scientist path unless inspected. Artifact is advanced
+inspection vocabulary, Task is an internal implementation detail, and Report
+is a regenerable output capability beneath Results rather than a scientific
+stage or completion authority.
+
+The Run-versus-Attempt boundary is semantic:
+
+| Change | Consequence |
+|---|---|
+| Scientific intent changes | Admit a new Analysis revision and create a new Run. |
+| The declared Execution Plan changes, including selected toolchain, backend, execution profile, or permissible resource policy | Create a new Run. |
+| The same immutable plan is retried or re-executed | Create a new Attempt of the existing Run. |
+| Host, scheduler job identifier, timestamps, or actual allocation vary within the Run's declared permissible envelope | Record Attempt metadata; the Run is unchanged. |
+| A retry requires resources outside that declared envelope | Create a new Run. |
+| Only downstream report enablement or format changes, or a report is generated or regenerated independently | The reporting choice itself creates neither a new Run nor a new Attempt; executing the Run still creates an Attempt. |
+
+Reporting is invoked by default for a full run, can be disabled, and can be
+regenerated independently. Reporting failure or regeneration does not rewrite
+scientific completion semantics.
+
+Each admitted boundary will have one immutable canonical authority; mutable
+dictionaries and cached canonical bytes cannot compete. The application model
+also cannot become a god object: application coordination may bind intent and
+plan and invoke lower capabilities, but scientific, execution, policy,
+artifact, evidence, and reporting authorities remain with their owners.
+
+Still open are the exact fields, identity digest inputs and relocation
+semantics, permissible-envelope representation, serialized and in-memory
+forms, persistence and storage, recovery ownership for an unreceipted run
+skeleton, status vocabulary, APIs and operation signatures, CLI mapping,
+backend and policy interfaces, and bounded compatibility/migration details.
+Those choices require the next `AC-SLICE-03` field-and-authority decision
+package before any model implementation.
 
 ## Organize by functional owner
 
@@ -362,8 +475,9 @@ The first workflow control plane uses Snakemake's local executor because the
 existing semantic owners already expose the scientific operations and artifact
 edges that a general-purpose workflow engine should schedule. EMRYS therefore
 does not build a second scheduler, stage registry, scientific implementation,
-or recovery system. One fixed profile is easier to inspect and prove than a
-generic extension surface before a second real workflow exists.
+or recovery system. The checked-in processing base plus one explicitly
+selected immutable analysis-module tail keeps that inspectable boundary without
+turning provider discovery into another scheduler or workflow language.
 
 Human YAML remains concise while ordered scientific records stay in TSV. A
 normalizer resolves and hashes explicit inputs into canonical JSON so formatting
@@ -386,28 +500,29 @@ rejected. The decision-complete lifecycle and resume rules are in
 work is tracked in the [findings matrix](../../tasks/backlog_matrix.md).
 
 The public control plane remains thin: it reruns read-only admission, prints an
-exact no-write plan by default, materializes only the fixed profile under the
+exact no-write plan by default, materializes only the admitted composed profile under the
 aggregate run lock, and delegates scientific work to public owners. It exposes
 no raw Snakemake flags or automatic owner recovery.
 
-The application-logging foundation is implemented under
-[`LOGGING_CONTRACT.md`](../LOGGING_CONTRACT.md), while production-command
-adoption remains `LOG-05`. Report profiles, analysis modules, public
-acquisition, standalone workflow packaging, and site profiles remain designs,
-not current architecture. Accepted outcomes are in the
+The application-logging foundation and closed production-operation roster are
+implemented under [`LOGGING_CONTRACT.md`](../LOGGING_CONTRACT.md) and completed
+under `LOG-05`. A bounded collaborator analysis-module v1 is current
+architecture: installed providers contribute closed configuration, typed
+artifacts, one Step `09`, optional Step `10`, and a separate bespoke scientific
+reporter while fixed task/reporting guarantees remain. Module-specific
+dependency/resource discovery and admission are complete under `ANALYSIS-02`;
+package managers retain provisioning. Public acquisition, standalone workflow
+packaging, and site profiles remain designs. Accepted outcomes are in the
 [findings matrix](../../tasks/backlog_matrix.md); unsliced alternatives remain
 in the temporary
 [architecture campaign](../../tasks/architecture_campaign.md).
 
 ## Adopt application logging through accepted operations
 
-Application logging migrates incrementally through separately approved semantic
-application-operation slices, not through blanket instrumentation of the
-current command and wrapper surface. This prevents transport and compatibility
-layers from becoming competing lifecycle or logging authorities while allowing
-accepted facades to adopt logging as they land. Planning and conformance work
-may precede production adoption, and unrelated campaign work need not finish
-first. An explicitly approved transitional compatibility operation is eligible
-for bounded support but does not satisfy final retained-operation coverage. The
-broader public-model, execution, identity, status, filesystem, and overall-order
-choices remain open.
+Application logging was adopted through separately approved semantic
+application-operation slices rather than blanket instrumentation. The closed
+roster prevents transport and compatibility layers from becoming competing
+lifecycle or logging authorities. Any future operation seeking a durable
+application log must establish its own operation boundary, ownership,
+placement, projection, and parity without reopening the completed roster by
+default.

@@ -6,92 +6,63 @@ import argparse
 import sys
 import tomllib
 from collections.abc import Callable, Sequence
-from functools import partial
 from pathlib import Path
-from typing import Protocol, cast
+from typing import Any, cast
 
-from emrys.analyses.paired_cmh_candidate_ranking import (
-    validator as paired_cmh_candidate_ranking_validation_command,
-)
-from emrys.analyses.scientific_context_projection import (
-    validator as scientific_context_projection_validation_command,
-)
-from emrys.contracts.artifacts import (
-    validator as artifact_contracts_validation_command,
-)
-from emrys.evidence.canonical_bam_qc import (
-    validator as canonical_bam_qc_validation_command,
-)
-from emrys.evidence.reference_provenance import (
-    reconciler as reference_provenance_reconciliation_command,
-)
-from emrys.evidence.rseqc_orientation import (
-    validator as rseqc_orientation_validation_command,
-)
-from emrys.evidence.runtime_availability import (
-    inspector as runtime_availability_inspection_command,
-)
-from emrys.evidence.storage_inventory import (
-    inspector as storage_inventory_inspection_command,
-)
-from emrys.evidence.storage_inventory import (
-    qualification as storage_qualification_inspection_command,
-)
-from emrys.ingestion.sample_manifest_admission import (
-    validator as manifest_command,
-)
+import emrys.analyses.paired_cmh_candidate_ranking.validator as paired_cmh_candidate_ranking_validation_command
+import emrys.analyses.paired_cmh_candidate_ranking.scientific_context_projection.validator as scientific_context_projection_validation_command
+import emrys.contracts.artifacts.validator as artifact_contracts_validation_command
+import emrys.evidence.canonical_bam_qc.validator as canonical_bam_qc_validation_command
+import emrys.evidence.reference_provenance.reconciler as reference_provenance_reconciliation_command
+import emrys.evidence.rseqc_orientation.validator as rseqc_orientation_validation_command
+import emrys.evidence.runtime_availability.inspector as runtime_availability_inspection_command
+import emrys.evidence.storage_inventory.inspector as storage_inventory_inspection_command
+import emrys.evidence.storage_inventory.qualification as storage_qualification_inspection_command
+import emrys.ingestion.sample_manifest_admission.validator as manifest_command
+import emrys.orchestration.run_coordinator.all_pass as all_pass_validation_command
+import emrys.orchestration.run_coordinator.control as run_coordinator_control_command
+import emrys.orchestration.run_coordinator.doctor as run_coordinator_doctor_command
+import emrys.orchestration.run_coordinator.onboarding as run_coordinator_onboarding_command
+import emrys.orchestration.run_coordinator.synthetic_fixture as run_coordinator_synthetic_fixture_command
+import emrys.stages.canonical_bam.validator as canonical_bam_validation_command
+import emrys.stages.cohort_candidate_preprocessing.validator as cohort_candidate_preprocessing_validation_command
+import emrys.stages.duplicate_marking.validator as duplicate_marking_validation_command
+import emrys.stages.fasta_sidecars.validator as fasta_sidecars_validation_command
+import emrys.stages.gtf_to_bed12.converter as gtf_to_bed12_command
+import emrys.stages.gtf_to_bed12.validator as bed12_validation_command
+import emrys.stages.mechanical_orientation.validator as mechanical_orientation_validation_command
+import emrys.stages.partitioned_cohort_mpileup.validator as partitioned_cohort_mpileup_validation_command
+import emrys.stages.split_n_cigar.validator as split_n_cigar_validation_command
+import emrys.stages.star_alignment.validator as star_alignment_validation_command
+import emrys.stages.star_index.validator as star_index_validation_command
 from emrys.libraries.source_authority import (
     SourceCheckoutError,
     require_controlled_python_runtime,
 )
-from emrys.orchestration.local_pilot import all_pass as all_pass_validation_command
-from emrys.orchestration.local_pilot import doctor as local_pilot_doctor_command
-from emrys.orchestration.local_pilot import control as local_pilot_control_command
-from emrys.orchestration.local_pilot import onboarding as local_pilot_onboarding_command
-from emrys.orchestration.local_pilot import (
-    synthetic_fixture as local_pilot_synthetic_fixture_command,
-)
-from emrys.stages.canonical_bam import validator as canonical_bam_validation_command
-from emrys.stages.cohort_candidate_preprocessing import (
-    validator as cohort_candidate_preprocessing_validation_command,
-)
-from emrys.stages.duplicate_marking import (
-    validator as duplicate_marking_validation_command,
-)
-from emrys.stages.fasta_sidecars import validator as fasta_sidecars_validation_command
-from emrys.stages.gtf_to_bed12 import (
-    converter as gtf_to_bed12_command,
-)
-from emrys.stages.gtf_to_bed12 import validator as bed12_validation_command
-from emrys.stages.mechanical_orientation import (
-    validator as mechanical_orientation_validation_command,
-)
-from emrys.stages.partitioned_cohort_mpileup import (
-    validator as partitioned_cohort_mpileup_validation_command,
-)
-from emrys.stages.split_n_cigar import validator as split_n_cigar_validation_command
-from emrys.stages.star_alignment import validator as star_alignment_validation_command
-from emrys.stages.star_index import validator as star_index_validation_command
 
 CommandHandler = Callable[[argparse.Namespace], int]
+_PROJECT_INIT_SUBJECT = "_project"
 
 
-class _SubparserCollection(Protocol):
-    """Subset of argparse's subparser collection used by this dispatcher."""
-
-    def add_parser(
-        self,
-        name: str,
-        **_options: str,
-    ) -> argparse.ArgumentParser: ...
-
-
-class _ValidationCommand(Protocol):
-    """Owner module interface required by the grouped validation CLI."""
-
-    DESCRIPTION: str
-    configure_parser: Callable[[argparse.ArgumentParser], None]
-    validate_from_args: CommandHandler
+_VALIDATION_OWNERS = (
+    ("all-pass", all_pass_validation_command),
+    ("artifact-contracts", artifact_contracts_validation_command),
+    ("manifest", manifest_command),
+    ("bed12", bed12_validation_command),
+    ("canonical-bam", canonical_bam_validation_command),
+    ("canonical-bam-qc", canonical_bam_qc_validation_command),
+    ("cohort-candidate-preprocessing", cohort_candidate_preprocessing_validation_command),
+    ("duplicate-marking", duplicate_marking_validation_command),
+    ("fasta-sidecars", fasta_sidecars_validation_command),
+    ("mechanical-orientation", mechanical_orientation_validation_command),
+    ("paired-cmh-candidate-ranking", paired_cmh_candidate_ranking_validation_command),
+    ("scientific-context-projection", scientific_context_projection_validation_command),
+    ("partitioned-cohort-mpileup", partitioned_cohort_mpileup_validation_command),
+    ("rseqc-orientation", rseqc_orientation_validation_command),
+    ("split-n-cigar", split_n_cigar_validation_command),
+    ("star-index", star_index_validation_command),
+    ("star-alignment", star_alignment_validation_command),
+)
 
 
 def _find_checkout_root(start: Path) -> Path | None:
@@ -125,65 +96,64 @@ def _checkout_mismatch() -> str | None:
     )
 
 
-def _add_validation_command(
-    validation_parsers: _SubparserCollection,
+def _add_owned_command(
+    parsers: Any,
+    name: str,
+    owner: Any,
+    action: str,
+    help_text: str | None = None,
+    description: str | None = None,
+    configure_action: str | None = None,
     *,
+    controlled: bool = False,
+    **parser_options: object,
+) -> None:
+    description = description or getattr(
+        owner,
+        f"{action.upper()}_DESCRIPTION",
+        getattr(owner, "DESCRIPTION", owner.__doc__),
+    )
+    command_parser = parsers.add_parser(
+        name,
+        help=help_text or description,
+        description=description,
+        **parser_options,
+    )
+    configure = getattr(
+        owner,
+        f"configure_{configure_action or action}_parser",
+        None,
+    ) or owner.configure_parser
+    configure(command_parser)
+    defaults: dict[str, object] = {
+        "_command_handler": getattr(owner, f"{action}_from_args")
+    }
+    if controlled:
+        defaults.update(_command_parser=command_parser, _requires_controlled_runtime=True)
+    command_parser.set_defaults(**defaults)
+
+
+def _add_group(
+    parsers: Any,
     name: str,
     help_text: str,
-    command: _ValidationCommand,
-) -> None:
-    subject_parser = validation_parsers.add_parser(
-        name,
-        help=help_text,
-        description=command.DESCRIPTION,
+    destination: str,
+    commands: Sequence[tuple[Any, ...]],
+    *,
+    required: bool = True,
+) -> argparse.ArgumentParser:
+    parser = parsers.add_parser(name, help=help_text)
+    children = parser.add_subparsers(
+        dest=destination,
+        metavar="SUBJECT",
+        required=required,
     )
-    command.configure_parser(subject_parser)
-    subject_parser.set_defaults(_command_handler=command.validate_from_args)
+    for command in commands:
+        _add_owned_command(children, *command)
+    return parser
 
 
-def _add_storage_inventory_inspection_command(
-    inspection_parsers: _SubparserCollection,
-) -> None:
-    storage_parser = inspection_parsers.add_parser(
-        "storage-inventory",
-        help="Inspect declared storage and retention-policy state without mutation.",
-        description=storage_inventory_inspection_command.DESCRIPTION,
-    )
-    storage_inventory_inspection_command.configure_parser(storage_parser)
-    storage_parser.set_defaults(
-        _command_handler=storage_inventory_inspection_command.inspect_from_args
-    )
-
-
-def _add_storage_qualification_inspection_command(
-    inspection_parsers: _SubparserCollection,
-) -> None:
-    storage_parser = inspection_parsers.add_parser(
-        "storage-qualification",
-        help="Qualify workflow storage across compute and head nodes.",
-        description=storage_qualification_inspection_command.__doc__,
-    )
-    storage_qualification_inspection_command.configure_parser(storage_parser)
-    storage_parser.set_defaults(
-        _command_handler=storage_qualification_inspection_command.qualify_from_args
-    )
-
-
-def _add_local_pilot_doctor_command(
-    doctor_parsers: _SubparserCollection,
-) -> None:
-    local_parser = doctor_parsers.add_parser(
-        "local-pilot",
-        help="Check fixed local-pilot readiness without installation or repair.",
-        description=local_pilot_doctor_command.DESCRIPTION,
-    )
-    local_pilot_doctor_command.configure_parser(local_parser)
-    local_parser.set_defaults(
-        _command_handler=local_pilot_doctor_command.doctor_from_args
-    )
-
-
-def _add_onboarding_commands(command_parsers: _SubparserCollection) -> None:
+def _add_onboarding_commands(command_parsers: Any) -> None:
     init_parser = command_parsers.add_parser(
         "init",
         help="Initialize one explicit create-absent EMRYS input set.",
@@ -193,75 +163,54 @@ def _add_onboarding_commands(command_parsers: _SubparserCollection) -> None:
         metavar="SUBJECT",
         required=True,
     )
-    local_parser = init_parsers.add_parser(
-        "local-pilot",
-        help="Create a matched local-pilot starter set without replacing files.",
-        description=(
-            "Plan or publish one matched request, sample, partition, runtime, "
-            "and single-allocation Slurm starter set. The output directory "
-            "must be absent and outside the EMRYS checkout."
+    _add_owned_command(
+        init_parsers,
+        _PROJECT_INIT_SUBJECT,
+        run_coordinator_onboarding_command,
+        "init_project",
+        argparse.SUPPRESS,
+        (
+            "Collect the current scientific inputs, validate them, then plan or "
+            "publish one absent Project root with owned run, log, and runtime "
+            "directories. Input data remains in place."
+        ),
+        "project_init",
+        prog="emrys init",
+        epilog=(
+            "Specialist routes: `emrys init manifests ...` drafts input tables; "
+            "`emrys init synthetic ...` creates the supported test Project."
         ),
     )
-    local_pilot_onboarding_command.configure_init_parser(local_parser)
-    local_parser.set_defaults(
-        _command_handler=local_pilot_onboarding_command.init_from_args
+    _add_owned_command(
+        init_parsers,
+        "manifests",
+        run_coordinator_onboarding_command,
+        "init_manifests",
+        "Draft strict sample and optional partition manifests from paths.",
+        "Infer structural pairs and require explicit biological metadata.",
+        "manifest_init",
     )
-    synthetic_parser = init_parsers.add_parser(
-        "synthetic-local-pilot",
-        help="Create a deterministic four-library synthetic science fixture.",
-        description=local_pilot_synthetic_fixture_command.DESCRIPTION,
-    )
-    local_pilot_synthetic_fixture_command.configure_parser(synthetic_parser)
-    synthetic_parser.set_defaults(
-        _command_handler=local_pilot_synthetic_fixture_command.init_from_args
-    )
-
-    prepare_parser = command_parsers.add_parser(
-        "prepare",
-        help="Prepare explicit EMRYS configuration bytes without installation.",
-    )
-    prepare_parsers = prepare_parser.add_subparsers(
-        dest="preparation",
-        metavar="SUBJECT",
-        required=True,
-    )
-    runtime_parser = prepare_parsers.add_parser(
-        "local-pilot-runtime",
-        help="Render a fixed-policy local-pilot runtime profile to stdout.",
-        description=(
-            "Render a complete fixed-policy runtime TSV to standard output. "
-            "This command writes nothing, installs nothing, runs no version "
-            "probes, and accepts PATH tools only when resolution is unambiguous."
-        ),
-    )
-    local_pilot_onboarding_command.configure_runtime_parser(runtime_parser)
-    runtime_parser.set_defaults(
-        _command_handler=local_pilot_onboarding_command.prepare_runtime_from_args
+    _add_owned_command(
+        init_parsers,
+        "synthetic",
+        run_coordinator_synthetic_fixture_command,
+        "init",
+        "Create a deterministic four-library synthetic Project.",
     )
 
-
-def _build_artifact_index_from_args(arguments: argparse.Namespace) -> int:
-    if not _admit_controlled_runtime():
-        return 2
-    from emrys.reporting._artifact_index import builder  # noqa: PLC0415
-
-    return builder.build_from_args(arguments)
-
-
-def _build_run_summary_from_args(arguments: argparse.Namespace) -> int:
-    if not _admit_controlled_runtime():
-        return 2
-    from emrys.reporting._run_summary import builder  # noqa: PLC0415
-
-    return builder.build_from_args(arguments)
-
-
-def _build_report_from_args(arguments: argparse.Namespace) -> int:
-    if not _admit_controlled_runtime():
-        return 2
-    from emrys.reporting import report  # noqa: PLC0415
-
-    return report.build_from_args(arguments)
+    _add_group(
+        command_parsers,
+        "runtime",
+        "Discover and admit the active Project runtime.",
+        "runtime_operation",
+        ((
+            "discover", run_coordinator_onboarding_command, "discover_runtime",
+            "Inspect the active environment and admit one Project runtime.",
+            "Discover one unambiguous fixed-workflow runtime, run its readiness "
+            "probes, and optionally publish the Project-owned inventory. Discovery "
+            "is read-only unless --execute is supplied.", "runtime_discovery",
+        ),),
+    )
 
 
 def _admit_controlled_runtime() -> bool:
@@ -273,170 +222,7 @@ def _admit_controlled_runtime() -> bool:
     return True
 
 
-def _run_local_pilot_from_args(
-    arguments: argparse.Namespace,
-    *,
-    ops: local_pilot_control_command.ControlOps = (
-        local_pilot_control_command.DEFAULT_CONTROL_OPS
-    ),
-) -> int:
-    if not _admit_controlled_runtime():
-        return 2
-    return local_pilot_control_command.run_from_args(arguments, ops=ops)
-
-
-def _resume_local_pilot_from_args(
-    arguments: argparse.Namespace,
-    *,
-    ops: local_pilot_control_command.ControlOps = (
-        local_pilot_control_command.DEFAULT_CONTROL_OPS
-    ),
-) -> int:
-    if not _admit_controlled_runtime():
-        return 2
-    return local_pilot_control_command.resume_from_args(arguments, ops=ops)
-
-
-def _inspect_local_pilot_from_args(
-    arguments: argparse.Namespace,
-    *,
-    ops: local_pilot_control_command.ControlOps = (
-        local_pilot_control_command.DEFAULT_CONTROL_OPS
-    ),
-) -> int:
-    if not _admit_controlled_runtime():
-        return 2
-    return local_pilot_control_command.inspect_from_args(arguments, ops=ops)
-
-
-def _add_build_commands(
-    command_parsers: _SubparserCollection,
-) -> None:
-    build_parser = command_parsers.add_parser(
-        "build",
-        help="Build an explicitly declared EMRYS output.",
-    )
-    build_parsers = build_parser.add_subparsers(
-        dest="build",
-        metavar="SUBJECT",
-        required=True,
-    )
-    artifact_parser = build_parsers.add_parser(
-        "artifact-index",
-        help="Build one explicit read-only artifact index.",
-        description=(
-            "Build an explicit read-only EMRYS artifact index. Dry-run is "
-            "the default; add --execute to publish the receipt-last "
-            "transaction."
-        ),
-    )
-    artifact_parser.add_argument(
-        "--source-checkout",
-        required=True,
-        type=Path,
-        help="Absolute canonical EMRYS source checkout owning producer evidence.",
-    )
-    artifact_parser.add_argument(
-        "--artifact-source-root",
-        required=True,
-        type=Path,
-        help="Absolute canonical root resolving contract-relative artifacts.",
-    )
-    artifact_parser.add_argument("--run-id", required=True, help="Immutable run ID.")
-    artifact_parser.add_argument(
-        "--run-contract",
-        required=True,
-        type=Path,
-        help=(
-            "Strict JSON file containing exactly the six-field canonical run contract."
-        ),
-    )
-    artifact_parser.add_argument(
-        "--inventory",
-        required=True,
-        type=Path,
-        help="Explicit expected-artifact inventory TSV.",
-    )
-    artifact_parser.add_argument(
-        "--output-root",
-        required=True,
-        type=Path,
-        help="Parent directory under which <run-id>/ is published.",
-    )
-    artifact_parser.add_argument(
-        "--execute",
-        action="store_true",
-        help="Publish records, index, and receipt. Default is dry-run.",
-    )
-    artifact_parser.set_defaults(
-        _command_handler=_build_artifact_index_from_args,
-        _command_parser=artifact_parser,
-    )
-
-    summary_parser = build_parsers.add_parser(
-        "run-summary",
-        help="Build one deterministic run summary.",
-        description=(
-            "Build a deterministic run summary from one complete EMRYS "
-            "artifact-index receipt. Dry-run is the default; add --execute "
-            "to publish the receipt-last transaction."
-        ),
-    )
-    summary_parser.add_argument(
-        "--source-checkout",
-        required=True,
-        type=Path,
-        help="Absolute canonical EMRYS source checkout owning producer evidence.",
-    )
-    summary_parser.add_argument(
-        "--artifact-source-root",
-        required=True,
-        type=Path,
-        help="Absolute canonical root resolving contract-relative artifacts.",
-    )
-    summary_parser.add_argument("--run-id", required=True, help="Immutable run ID.")
-    summary_parser.add_argument(
-        "--artifact-receipt",
-        required=True,
-        type=Path,
-        help="Exact completed artifact-index receipt TSV.",
-    )
-    summary_parser.add_argument(
-        "--output-root",
-        required=True,
-        type=Path,
-        help="Artifact output root containing <run-id>/.",
-    )
-    summary_parser.add_argument(
-        "--execute",
-        action="store_true",
-        help="Publish the four-file transaction; otherwise only validate.",
-    )
-    summary_parser.set_defaults(
-        _command_handler=_build_run_summary_from_args,
-        _command_parser=summary_parser,
-    )
-
-    from emrys.reporting import report  # noqa: PLC0415
-
-    report_parser = build_parsers.add_parser(
-        "report",
-        help="Build one self-contained scientific/evidence report transaction.",
-        description=report.DESCRIPTION,
-    )
-    report.configure_parser(report_parser)
-    report_parser.set_defaults(
-        _command_handler=_build_report_from_args,
-        _command_parser=report_parser,
-    )
-
-
-def build_parser(
-    *,
-    local_pilot_control_ops: local_pilot_control_command.ControlOps = (
-        local_pilot_control_command.DEFAULT_CONTROL_OPS
-    ),
-) -> argparse.ArgumentParser:
+def build_parser() -> argparse.ArgumentParser:
     """Build the public parser from owner-supplied command definitions."""
     parser = argparse.ArgumentParser(
         prog="emrys",
@@ -448,261 +234,98 @@ def build_parser(
         required=True,
     )
     _add_onboarding_commands(command_parsers)
-    _add_build_commands(command_parsers)
-    doctor_parser = command_parsers.add_parser(
+    _add_owned_command(
+        command_parsers,
         "doctor",
-        help="Check readiness for an explicitly selected EMRYS workflow.",
+        run_coordinator_doctor_command,
+        "doctor",
+        "Diagnose Project readiness and explicitly repair managed runtime state.",
     )
-    doctor_parsers = doctor_parser.add_subparsers(
-        dest="doctor",
-        metavar="SUBJECT",
-        required=True,
-    )
-    _add_local_pilot_doctor_command(doctor_parsers)
-    run_parser = command_parsers.add_parser(
-        "run",
-        help="Plan or execute the fixed local CMH pipeline.",
-        description=local_pilot_control_command.RUN_DESCRIPTION,
-    )
-    local_pilot_control_command.configure_run_parser(run_parser)
-    run_parser.set_defaults(
-        _command_handler=partial(
-            _run_local_pilot_from_args,
-            ops=local_pilot_control_ops,
-        ),
-        _command_parser=run_parser,
-    )
-    resume_parser = command_parsers.add_parser(
-        "resume",
-        help="Plan or resume one failed/interrupted local-pilot run.",
-        description=local_pilot_control_command.RESUME_DESCRIPTION,
-    )
-    local_pilot_control_command.configure_resume_parser(resume_parser)
-    resume_parser.set_defaults(
-        _command_handler=partial(
-            _resume_local_pilot_from_args,
-            ops=local_pilot_control_ops,
-        ),
-        _command_parser=resume_parser,
-    )
-    reconcile_parser = command_parsers.add_parser(
+    for command in (
+        ("run", run_coordinator_control_command, "run", "Plan or execute one selected Project Analysis."),
+        ("resume", run_coordinator_control_command, "resume", "Plan or resume one failed or interrupted Run."),
+        ("report", run_coordinator_control_command, "report", "Plan, generate, or reuse reports for one completed Run."),
+        ("inspect", run_coordinator_control_command, "inspect", "Inspect one Project-local Run without mutation."),
+    ):
+        _add_owned_command(command_parsers, *command, controlled=True)
+    _add_group(
+        command_parsers,
         "reconcile",
-        help="Reconcile explicitly declared EMRYS evidence.",
+        "Reconcile explicitly declared EMRYS evidence.",
+        "reconciliation",
+        ((
+            "reference-provenance",
+            reference_provenance_reconciliation_command,
+            "reconcile",
+            "Reconcile one explicitly declared reference bundle without repair.",
+        ),),
     )
-    reconciliation_parsers = reconcile_parser.add_subparsers(
-        dest="reconciliation",
-        metavar="SUBJECT",
-        required=True,
-    )
-    reference_provenance_parser = reconciliation_parsers.add_parser(
-        "reference-provenance",
-        help="Reconcile one explicitly declared reference bundle without repair.",
-        description=reference_provenance_reconciliation_command.DESCRIPTION,
-    )
-    reference_provenance_reconciliation_command.configure_parser(
-        reference_provenance_parser
-    )
-    reference_provenance_parser.set_defaults(
-        _command_handler=(
-            reference_provenance_reconciliation_command.reconcile_from_args
-        )
-    )
-    inspect_parser = command_parsers.add_parser(
-        "inspect",
-        help="Inspect explicitly declared EMRYS operational evidence.",
-    )
-    inspection_parsers = inspect_parser.add_subparsers(
-        dest="inspection",
-        metavar="SUBJECT",
-        required=True,
-    )
-    runtime_availability_parser = inspection_parsers.add_parser(
-        "runtime-availability",
-        help="Inspect declared runtime availability without installation or repair.",
-        description=runtime_availability_inspection_command.DESCRIPTION,
-    )
-    runtime_availability_inspection_command.configure_parser(
-        runtime_availability_parser
-    )
-    runtime_availability_parser.set_defaults(
-        _command_handler=runtime_availability_inspection_command.inspect_from_args
-    )
-    _add_storage_inventory_inspection_command(inspection_parsers)
-    _add_storage_qualification_inspection_command(inspection_parsers)
-    local_run_parser = inspection_parsers.add_parser(
-        "local-pilot-run",
-        help="Derive one local-pilot run state without repair.",
-        description=local_pilot_control_command.INSPECT_DESCRIPTION,
-    )
-    local_pilot_control_command.configure_inspect_parser(local_run_parser)
-    local_run_parser.set_defaults(
-        _command_handler=partial(
-            _inspect_local_pilot_from_args,
-            ops=local_pilot_control_ops,
+    _add_group(
+        command_parsers,
+        "debug",
+        "Inspect explicitly declared technical EMRYS evidence.",
+        "debug_subject",
+        (
+            ("runtime-availability", runtime_availability_inspection_command, "inspect", "Inspect declared runtime availability without installation or repair."),
+            ("storage-inventory", storage_inventory_inspection_command, "inspect", "Inspect declared storage and retention-policy state without mutation."),
+            ("storage-qualification", storage_qualification_inspection_command, "qualify", "Qualify workflow storage across compute and head nodes."),
         ),
-        _command_parser=local_run_parser,
     )
-    convert_parser = command_parsers.add_parser(
+    _add_group(
+        command_parsers,
         "convert",
-        help="Convert an explicitly selected EMRYS input.",
-    )
-    conversion_parsers = convert_parser.add_subparsers(
-        dest="conversion",
-        metavar="SUBJECT",
-        required=True,
-    )
-    gtf_to_bed12_parser = conversion_parsers.add_parser(
-        "gtf-to-bed12",
-        help="Convert GTF transcript models to BED12.",
-        description=gtf_to_bed12_command.DESCRIPTION,
-    )
-    gtf_to_bed12_command.configure_parser(gtf_to_bed12_parser)
-    gtf_to_bed12_parser.set_defaults(
-        _command_handler=gtf_to_bed12_command.convert_from_args
+        "Convert an explicitly selected EMRYS input.",
+        "conversion",
+        (("gtf-to-bed12", gtf_to_bed12_command, "convert", "Convert GTF transcript models to BED12."),),
     )
 
     validate_parser = command_parsers.add_parser(
         "validate",
-        help="Validate an explicitly selected EMRYS input or artifact.",
+        help="Validate the current Project or one specialist input.",
+        description=run_coordinator_onboarding_command.DESCRIPTION,
+    )
+    run_coordinator_onboarding_command.configure_validation_parser(validate_parser)
+    validate_parser.set_defaults(
+        _command_handler=run_coordinator_onboarding_command.validate_from_args,
+        _command_parser=validate_parser,
     )
     validation_parsers = validate_parser.add_subparsers(
         dest="validation",
-        metavar="SUBJECT",
-        required=True,
+        metavar="[SUBJECT]",
     )
-    _add_validation_command(
-        validation_parsers,
-        name="all-pass",
-        help_text="Require every row in one owner-validation report to pass.",
-        command=all_pass_validation_command,
-    )
-    local_request_parser = validation_parsers.add_parser(
-        "local-pilot-request",
-        help="Validate local-pilot inputs before requiring scientific tools.",
-        description=local_pilot_onboarding_command.DESCRIPTION,
-    )
-    local_pilot_onboarding_command.configure_validation_parser(local_request_parser)
-    local_request_parser.set_defaults(
-        _command_handler=local_pilot_onboarding_command.validate_from_args
-    )
-    _add_validation_command(
-        validation_parsers,
-        name="artifact-contracts",
-        help_text="Validate explicit artifact schemas, records, and inventories.",
-        command=artifact_contracts_validation_command,
-    )
-    _add_validation_command(
-        validation_parsers,
-        name="manifest",
-        help_text="Validate a sample manifest.",
-        command=manifest_command,
-    )
-    _add_validation_command(
-        validation_parsers,
-        name="bed12",
-        help_text="Validate one BED12 against its source GTF.",
-        command=bed12_validation_command,
-    )
-    _add_validation_command(
-        validation_parsers,
-        name="canonical-bam",
-        help_text="Validate one canonical BAM/BAI pair.",
-        command=canonical_bam_validation_command,
-    )
-    _add_validation_command(
-        validation_parsers,
-        name="canonical-bam-qc",
-        help_text="Validate canonical-BAM quickcheck and flagstat evidence.",
-        command=canonical_bam_qc_validation_command,
-    )
-    _add_validation_command(
-        validation_parsers,
-        name="cohort-candidate-preprocessing",
-        help_text="Validate one cohort candidate preprocessing transaction.",
-        command=cohort_candidate_preprocessing_validation_command,
-    )
-    _add_validation_command(
-        validation_parsers,
-        name="duplicate-marking",
-        help_text="Validate duplicate-marked BAM/BAI and Picard metrics.",
-        command=duplicate_marking_validation_command,
-    )
-    _add_validation_command(
-        validation_parsers,
-        name="fasta-sidecars",
-        help_text="Validate FASTA index and dictionary sidecars.",
-        command=fasta_sidecars_validation_command,
-    )
-    _add_validation_command(
-        validation_parsers,
-        name="mechanical-orientation",
-        help_text="Validate mechanical-orientation BAM/BAI pairs and counts.",
-        command=mechanical_orientation_validation_command,
-    )
-    _add_validation_command(
-        validation_parsers,
-        name="paired-cmh-candidate-ranking",
-        help_text="Validate one paired-CMH candidate-ranking transaction.",
-        command=paired_cmh_candidate_ranking_validation_command,
-    )
-    _add_validation_command(
-        validation_parsers,
-        name="scientific-context-projection",
-        help_text="Validate one scientific-context projection transaction.",
-        command=scientific_context_projection_validation_command,
-    )
-    _add_validation_command(
-        validation_parsers,
-        name="partitioned-cohort-mpileup",
-        help_text="Validate one partitioned-cohort mpileup VCF transaction.",
-        command=partitioned_cohort_mpileup_validation_command,
-    )
-    _add_validation_command(
-        validation_parsers,
-        name="rseqc-orientation",
-        help_text="Validate one RSeQC paired-orientation report.",
-        command=rseqc_orientation_validation_command,
-    )
-    _add_validation_command(
-        validation_parsers,
-        name="split-n-cigar",
-        help_text="Validate split-N-cigar BAM/BAI and reference sidecars.",
-        command=split_n_cigar_validation_command,
-    )
-    _add_validation_command(
-        validation_parsers,
-        name="star-index",
-        help_text="Validate one STAR index against its references.",
-        command=star_index_validation_command,
-    )
-    _add_validation_command(
-        validation_parsers,
-        name="star-alignment",
-        help_text="Validate one STAR alignment output set.",
-        command=star_alignment_validation_command,
-    )
+    for name, owner in _VALIDATION_OWNERS:
+        _add_owned_command(validation_parsers, name, owner, "validate")
     return parser
 
 
-def main(
-    argv: Sequence[str] | None = None,
-    *,
-    local_pilot_control_ops: local_pilot_control_command.ControlOps = (
-        local_pilot_control_command.DEFAULT_CONTROL_OPS
-    ),
-) -> int:
+def _normalize_public_argv(argv: Sequence[str]) -> tuple[str, ...]:
+    """Route ordinary named-Project initialization through its private parser."""
+
+    values = tuple(argv)
+    if values[:1] == ("init",) and values[1:2] not in {
+        ("manifests",),
+        ("synthetic",),
+    }:
+        return ("init", _PROJECT_INIT_SUBJECT, *values[1:])
+    return values
+
+
+def main(argv: Sequence[str] | None = None) -> int:
     """Parse and dispatch one supported EMRYS command."""
     if mismatch := _checkout_mismatch():
         print(f"emrys: error: {mismatch}", file=sys.stderr)
         return 2
-    parser = build_parser(local_pilot_control_ops=local_pilot_control_ops)
-    arguments, unrecognized = parser.parse_known_args(argv)
+    parser = build_parser()
+    supplied = sys.argv[1:] if argv is None else argv
+    arguments, unrecognized = parser.parse_known_args(_normalize_public_argv(supplied))
     if unrecognized:
         error_parser = cast(
             argparse.ArgumentParser,
             getattr(arguments, "_command_parser", parser),
         )
         error_parser.error(f"unrecognized arguments: {' '.join(unrecognized)}")
+    if getattr(arguments, "_requires_controlled_runtime", False) and not _admit_controlled_runtime():
+        return 2
     handler = cast(CommandHandler, arguments._command_handler)
     return handler(arguments)
 

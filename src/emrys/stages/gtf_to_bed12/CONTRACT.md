@@ -3,9 +3,9 @@
 This document records the observed current contract of historical Step `00b`.
 The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is now the implemented native source owner for its producer, validator, and
-scheduler entry point. Its Python implementation is an installed owner package;
-its public Python surfaces are only the grouped routes documented below.
+is now the implemented native source owner for its producer and validator. Its
+Python implementation is an installed owner package; its public Python surfaces
+are only the grouped routes documented below.
 
 The adjacent [`README.md`](README.md) routes maintainers and operators to the
 implemented assets, supported commands, diagnostics, and recovery boundary.
@@ -19,12 +19,9 @@ either input.
 
 ## Execution dependencies
 
-The hard data prerequisite is one materialized GTF. Under the current default
-paths, historical Step `00a` is an operational predecessor because its job
-decompresses the GTF into `refs/novogene_ref/genome.gtf`. This stage does not
-consume the STAR index produced by Step `00a`; that apparent stage-to-stage
-dependency is caused only by the current mixed ownership of reference
-materialization.
+The hard data prerequisite is one materialized GTF. Reference materialization
+is outside this owner; this stage does not consume the STAR index produced by
+historical Step `00a`.
 
 If the GTF is already materialized, BED12 conversion can run independently of
 STAR-index construction and FASTA-sidecar construction. Its final BED12 must
@@ -49,10 +46,6 @@ attribute. Malformed or incomplete rows are warned about and skipped. A
 transcript with conflicting chromosome or strand observations is skipped as a
 whole. Conversion fails when no valid transcript records remain.
 
-The current scheduler entrypoint additionally requires a Python executable.
-Its repository-relative Novogene paths are current bindings, not approved
-future defaults.
-
 ## Outputs
 
 The converter writes one BED12 row per valid transcript. It:
@@ -65,13 +58,11 @@ The converter writes one BED12 row per valid transcript. It:
   protected fixed values; and
 - orders records by chromosome, start, end, and name.
 
-The current scheduler job sends the converter output directly to the final
-`genome.bed`, then requires at least one row and exactly 12 fields per row.
 Deterministic ordering is owned by the converter.
 
 ## Current execution surfaces
 
-`python -I -m emrys convert gtf-to-bed12` is the public conversion route,
+`emrys convert gtf-to-bed12` is the public conversion route,
 implemented by [`converter.py`](converter.py). It accepts explicit input/output
 and GTF-selection arguments. It renders complete deterministic BED12 bytes in
 memory and is dry-run by default. `--execute` acquires a create-exclusive lock,
@@ -87,33 +78,9 @@ used by the lock and staging paths; without it, the producer generates a
 private random token. An unhandled interruption can leave both lock and staging
 evidence; a subsequent invocation preserves and reports that ambiguous state.
 
-[`step_00b_gtf_to_bed12.slurm`](step_00b_gtf_to_bed12.slurm)
-is the scheduler entrypoint. It:
-
-- executes implicitly and has no dry-run or explicit execute control;
-- requires `SLURM_SUBMIT_DIR` and changes into that directory;
-- resolves repository-owned helpers from that submitted checkout, including
-  when SLURM executes a spool copy of the wrapper;
-- permits environment overrides for the GTF, final BED, and Python executable;
-- selects the exact producer run token from `EMRYS_RUN_TOKEN`, then
-  `SLURM_JOB_ID`, then the shell process ID as the direct-execution/test
-  fallback, and rejects identifiers outside the producer's safe-token grammar;
-- creates log and output directories before conversion;
-- tolerates a failed diagnostic `module list` without loading a stage tool;
-- invokes the transactional converter with the declared final `--bed`, exact
-  `--run-token`, and `--execute`; and
-- rejects an empty final or a row with a field count other than 12 before
-  printing the completion message.
-
-The converter's create-exclusive transaction and no-clobber boundary therefore
-cover the final BED itself. A postcheck failure occurs after that publication:
-the wrapper exits nonzero and preserves the final as inspection evidence. The
-surrounding verified-task orchestration remains responsible for admitting
-completion evidence only after the owner command and verifier succeed.
-
 ## Validation interface
 
-`python -I -m emrys validate bed12`, implemented by
+`emrys validate bed12`, implemented by
 [`validator.py`](validator.py), accepts explicit scope, BED12, source-GTF, and
 output paths. Validation is dry-run by default; `--execute` publishes
 `<scope-id>.validation.tsv` using the common seven-field step-validation
@@ -166,14 +133,6 @@ No downstream stage should depend on this stage's implementation module.
 - [`test_validate_step_00b_bed12.py`](../../../../tests/stages/gtf_to_bed12/test_validate_step_00b_bed12.py)
   protects dry-run, the five checks, mismatch evidence, structural failures,
   and preservation of foreign locks or invalid predecessors.
-- [`test_step_00b_gtf_to_bed12.py`](../../../../tests/stages/gtf_to_bed12/test_step_00b_gtf_to_bed12.py)
-  protects submit-checkout and spool-copy execution, exact producer arguments,
-  run-token precedence and safe fallback, success, tolerated module-list
-  failure, isolated preflight failures, converter failure, bad-field and empty
-  final checks, and transactional no-clobber residue.
-- [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
-  protects the exact mixed-layout job roster, directives, mode, and generic
-  scheduler boundaries.
 - [`test_validation_check_rosters.py`](../../../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py)
   protects the exact validator inventory and check identities.
 - [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py)
@@ -182,14 +141,14 @@ No downstream stage should depend on this stage's implementation module.
   and [`test_python_coverage_baseline.py`](../../../../tests/test_python_coverage_baseline.py)
   protect the recorded public-CLI and coverage boundaries.
 
-These are local fixture and mocked-wrapper contracts. They do not establish a
+These are local fixture contracts. They do not establish a
 new cluster, production, scientific-review, or biological-evidence result.
 Current evidence status remains owned by the canonical roadmap and handoff.
 
 ## Observed ownership boundaries
 
-- Reference materialization currently belongs incidentally to Step `00a`,
-  creating an operational edge that is not intrinsic to BED12 conversion.
+- Reference materialization is an upstream responsibility and is not intrinsic
+  to BED12 conversion.
 - The validator reuses producer normalization code for its strongest agreement
   check.
 - Cross-cutting validation publication lives in the neutral shared

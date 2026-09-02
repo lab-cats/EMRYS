@@ -20,36 +20,44 @@ Current projections:
 
 All fourteen numbered workflow, analysis, and evidence owners occupy their
 functional homes under `src/emrys/`. Sample-manifest admission, neutral
-contracts and libraries, reporting, local-pilot intake/control, and
+contracts and libraries, reporting, run-coordinator intake/control, and
 reference/runtime/storage evidence occupy separate cross-cutting owners.
 Numeric step labels are historical aliases rather than a complete execution
 order.
 
-EMRYS currently exposes owner-local commands, SLURM entry points, read-only
-local-pilot admission, dry-run-first public run/resume/inspection commands, and
-one fixed source-checkout-bound Snakemake graph for local execution. The static
-graph invokes public owners through hash-bound closed dispatch records,
-schedules only content-bound verified-task records, and feeds the existing
-artifact-index, run-summary, and HTML-report transactions. An internal
+EMRYS currently exposes owner-local commands, read-only run-coordinator admission,
+dry-run-first public run/resume/report/inspection commands, one private
+whole-Run Slurm transport, and one source-checkout-bound Snakemake graph for
+one-host execution. Planning composes the common processing profile with one
+immutable explicitly admitted analysis-module tail. The resulting graph
+invokes public owners through hash-bound closed dispatch records,
+schedules only content-bound verified-task records, and stops at the complete
+scientific/evidence owner closure. After its v2 Attempt receipt, public control
+invokes the artifact-index, run-summary, and HTML-report transactions by default
+as a separate downstream operation. An internal
 filesystem-first lifecycle owns the run lock, immutable workflow attempts,
 terminal receipts, durable producer-entry ledgers, between-task resume, and
-read-only state inspection. The production materializer projects the fixed
-profile to the exact public owner commands and publishes attempt state only
-under the aggregate lifecycle lock. Real science-tool and cluster execution
-remain outside the proven boundary.
+read-only state inspection. The production materializer projects the composed
+profile to the exact public owner commands and publishes Attempt state only
+under the aggregate lifecycle lock. Hosted 130-pair real-tool
+direct/disposable-single-node-Slurm outcome parity is proven; 100,000-pair,
+institutional site/module and collaborator dependency provisioning,
+failure/recovery, multi-node, production,
+scientific-review, and biological-validation evidence remain outside that
+boundary.
 
 | Component group | Implemented owners | Principal inputs | Principal outputs |
 | --- | --- | --- | --- |
 | Input admission | `src/emrys/ingestion/sample_manifest_admission/` | Explicit sample manifest and optional declared FASTQ paths | Schema/admission result and paired-FASTQ diagnostics |
-| Local-pilot orchestration | `src/emrys/orchestration/local_pilot/`, `src/emrys/contracts/orchestration/`, and `workflow/` | Explicit YAML request, ordered TSV manifests, exact runtime profile, reviewed fixed-profile record, canonical execution/config snapshots, and hash-bound task dispatches | Dry-run plans, create-absent run/attempt materialization, canonical execution/reporting identity, semantic all-pass evidence, durable task/reporting start records, task-attempt and verified records, immutable workflow attempts, public derived inspection, and between-task resume; no real-tool or cluster proof |
+| Run-coordinator orchestration | `src/emrys/orchestration/run_coordinator/`, `src/emrys/contracts/orchestration/`, and `workflow/` | Project-v1, ordered TSV manifests, Project-owned runtime inventory, one Project-local execution profile, common processing profile, selected installed module/configuration, canonical execution/config snapshots, and hash-bound task dispatches | Dry-run plans, create-absent Run/Attempt materialization, canonical execution/reporting identity, semantic all-pass evidence, durable task/reporting start records, task-attempt and verified records, immutable workflow attempts, public derived inspection, between-task resume, processing reuse across compatible module selections, and hosted 130-pair direct/disposable-single-node-Slurm successful-outcome parity for the built-in profile; no collaborator-module, institutional-site, production, scientific-review, or biological-validation proof |
 | Reference preparation | Owners `00a`, `00b`, and `00c` under `src/emrys/stages/` | Reference FASTA, GTF, and tool parameters | STAR index, BED12, and FASTA sidecars |
 | Per-sample processing and evidence | Owners `01`–`06` under `src/emrys/stages/` plus evidence owners `02b` and `03` | Declared reads, references, and preceding owner artifacts | Aligned/canonical/duplicate-marked/split BAMs plus QC and orientation evidence |
-| Cohort transformation and analysis | Stage owners `07` and `08`, then analysis owners `09` and `10` | Declared partitions, sample order, reference context, registered PUM motif, and upstream receipts | Cohort VCFs, annotated candidates, paired-CMH ranked candidates, and hash-bound sequence/motif context projections |
-| Reporting | `src/emrys/reporting/` | Admitted source checkout, explicit artifact inventory, and validated computational receipts | Artifact index, canonical run summary, separate self-contained scientific and evidence HTML views, summary TSV, and v4 report receipt |
+| Cohort transformation and analysis | Stage owners `07` and `08`, then one selected `emrys.analysis_modules` provider; built-in owners `09` and `10` remain paired CMH plus context projection | Declared partitions, sample order, selected module configuration, typed upstream artifacts, and receipts | Cohort VCFs and annotated candidates followed by module-declared final Results and validation evidence |
+| Reporting | Fixed reporting core plus one selected `emrys.analysis_reporters` provider under `src/emrys/reporting/` | Admitted source checkout/provider, descriptor-derived artifact inventory, and validated computational receipts | Artifact index, canonical run summary, module-specific scientific HTML, fixed evidence/operations HTML, summary TSV, and v4 or v5 report receipt |
 | Neutral contracts and libraries | `src/emrys/contracts/` and `src/emrys/libraries/` | Owner-declared records or values | Shared schemas, vocabularies, validation, and narrowly reviewed primitives |
 | Operational evidence | Runtime-availability inspection (`runtime_availability`), reference provenance, and storage inventory under `src/emrys/evidence/` | Explicit profiles, reference inventories, storage roots, and retention declarations | Bounded operational observations and receipts |
 
-Exact files, scheduler wrappers, validators, and direct tests are linked from
+Exact files, direct execution surfaces, validators, and tests are linked from
 the [functional-owner inventory](FUNCTIONAL_OWNER_INVENTORY.md).
 
 ## Current-to-target responsibility crosswalk
@@ -64,18 +72,18 @@ not selected a representation. No status authorizes a source move.
 
 | Current owner | Responsibility represented today | Graph(s) | Status | Later decision or exit condition |
 |---|---|---|---|---|
-| Package root `__main__.py` | Grouped CLI composition over owner validation, inspection, onboarding, control, and reporting entry points | Source import and invocation | Transitional | `AC-SLICE-03` plus the public-UX slices select the ordinary application surface. Two private reporting imports remain exact ratcheted transitions until a public capability replaces them or their permanence is explicitly justified. |
+| Package root `__main__.py` | Installed-command composition over owner validation, inspection, onboarding, and Run/report control | Source import and invocation | Aligned | The Project-root ordinary-command cutover is complete. Low-level reporting builders are private; the installed CLI reaches only the Run-oriented reporting operation. |
 | `ingestion/` | External sample/input admission and diagnostics | Import and emitted declarations | Aligned | Public configuration and setup slices may simplify intake without giving ingestion execution or scientific authority. |
-| `contracts/` | Closed schemas, vocabularies, identity facts, and cross-owner records | Import and artifact/evidence contracts | Transitional | The neutral role is aligned, but exact upward imports into shared implementation are ratcheted in `SOURCE_TOPOLOGY.md`; `AC-SLICE-03`, `AC-SLICE-04`, and `AC-SLICE-07` must resolve or permanently justify them. |
-| `libraries/` | Narrow implementation shared only across demonstrated consumers | Import | Aligned | Every seam stays independently justified and acyclic. `AC-SLICE-06` may consolidate repeated decisions only after inventory proves net reduction. |
-| Semantic behavior under `stages/`, `analyses/`, and `evidence/` | Recognizable transformation, analysis, and evidence semantics with adjacent contracts and tests | Import, invocation, and semantic artifact/evidence flow | Aligned | `AC-SLICE-04` and `ANALYSIS-02` may select a thin operation/module representation without erasing owner kinds or scientific visibility. |
-| Owner-local cross-cutting mechanics under `stages/`, `analyses/`, and `evidence/` | Current shell/SLURM wrappers, runtime resolution, filesystem operations, and publication transactions adjacent to the semantic owner | Import and runtime/control invocation | Transitional | `AC-SLICE-04` through `AC-SLICE-07` must inventory these mechanics and move only demonstrated repeated responsibilities behind an owned boundary, with caller migration and equal-or-stronger protection. |
-| Runtime, reference, and storage evidence owners | Explicit operational observations that do not become computation or admission authority | Import and invocation | Transitional | Current application code imports named public modules directly. `AC-SLICE-03`, `AC-SLICE-05`, and the runtime/storage slices select the final capability boundary without broadening these edges by analogy. |
-| `orchestration/local_pilot/` and `contracts/orchestration/` | Request normalization, planning, current application coordination, fixed-profile materialization, execution/reuse admission, lifecycle, inspection, and resource decisions | Import and invocation | Transitional | It remains the current behavior oracle, not a future Run god object. `AC-SLICE-03`, `AC-SLICE-05`, `AC-SLICE-06`, and `AC-SLICE-07` assign final application, execution, policy, and lifecycle interfaces. |
-| `reporting/` | Read-only artifact adaptation, canonical summary, static views, and receipt-last report publication | Import and artifact/evidence flow | Transitional | Its downstream direction is aligned. Current `local_pipeline_complete` still requires three reporting transactions; later Run/report work must separate scientific completion from a visible, default reporting outcome that can be disabled and regenerated independently. |
-| Root `workflow/` and the fixed profile | Snakemake scheduling of public owner commands through hash-bound task records | Runtime/control invocation | Transitional | `AC-SLICE-05` retains one execution guarantee contract while deciding the backend boundary. Snakemake remains a mechanism, not scientific, admission, or recovery authority. |
+| `contracts/` | Closed schemas, vocabularies, identity facts, and cross-owner records | Import and artifact/evidence contracts | Aligned | The neutral role and every exact implementation exception are permanently justified and mechanically ratcheted in `SOURCE_TOPOLOGY.md`. |
+| `libraries/` | Narrow implementation shared only across demonstrated consumers | Import | Aligned | Every seam stays independently justified and acyclic; the closeout audit found no duplicated policy pair that qualified for another shared layer. |
+| Semantic behavior under `stages/`, `analyses/`, and `evidence/` | Recognizable transformation, analysis, and evidence semantics with adjacent contracts and tests; the bounded analysis-module descriptor declares typed inputs/outputs, exact dependencies, minimum resources, and producer/validator plans | Import, invocation, and semantic artifact/evidence flow | Aligned | The collaborator-module boundary is complete without a universal Stage hierarchy or workflow language. |
+| Owner-local cross-cutting mechanics under `stages/`, `analyses/`, and `evidence/` | Current shell producers, runtime resolution, filesystem operations, and publication transactions adjacent to the semantic owner | Import and runtime/control invocation | Aligned | Caller-complete Python migrations retired the qualifying shell owners; distinct trust and mutation boundaries retain their owner-local checks. No universal lifecycle abstraction qualified. |
+| Runtime, reference, and storage evidence owners | Explicit operational observations that do not become computation or admission authority | Import and invocation | Aligned | The application composes the exact capabilities ratified in `SOURCE_TOPOLOGY.md`; no edge may broaden by analogy. |
+| `orchestration/run_coordinator/` and `contracts/orchestration/` | Project admission, planning, application coordination, composed-profile materialization, execution/reuse admission, lifecycle, inspection, and resource decisions | Import and invocation | Aligned | This is the final private application owner, not a Run god object. Module discovery and profile composition do not give it scientific or reporting-renderer authority. |
+| `reporting/` | Profile-derived artifact adaptation, canonical summary, one module-specific scientific view, fixed evidence/operations view, and receipt-last report publication | Import and artifact/evidence flow | Aligned | Reporting is default-on but disable-able, independently regenerable through one Run-oriented operation, and separate from scientific Attempt authority. Reporter identity is receipt-only; exact historical reports remain read-only compatible. |
+| Root `workflow/` and the composed profile | Snakemake scheduling of the common processing graph plus one immutable selected-module tail through hash-bound task records | Runtime/control invocation | Aligned | Snakemake remains the sole backend and a mechanism, not scientific, admission, module-discovery, or recovery authority; Slurm is whole-Run transport around it. |
 | Repository `scripts/`, tests, Git, Make, CI, and environments | Development, validation, restoration, and delivery controls | Outside the product graphs except as test or build consumers | Aligned | These remain repository controls and never become scientific-workflow owners or evidence promotion. |
-| OS, R, Python, filesystem, Snakemake, and SLURM mechanisms | External effects and observations reached through current owner code | Runtime/control invocation | Unresolved | Owned adapter placement remains later design. Equivalent guarantees, attributable observations, and mechanism non-authority are already binding. |
+| OS, R, Python, filesystem, Snakemake, and SLURM mechanisms | External effects and observations reached through current owner code | Runtime/control invocation | Aligned | Existing owner-local adapters retain attributable effects and observations. No generalized backend or mechanism layer is justified without a concrete extension or net-negative replacement. |
 
 The source-import projection and its exact current transitions live in
 [`SOURCE_TOPOLOGY.md`](../../src/emrys/contracts/SOURCE_TOPOLOGY.md). Runtime
@@ -88,7 +96,10 @@ another.
 
 ## Scientist-facing workflow
 
-This view groups the exact semantic owners into nine explanatory phases. The
+This view groups the built-in paired-CMH owners into nine explanatory phases.
+An explicitly selected collaborator module retains the common path through
+candidate preprocessing and supplies its own typed Step `09` plus optional
+Step `10` tail. The
 phase labels are not machine identities, public slugs, or scheduling commands;
 arrows mean data or contract dependency, not automatic execution. The
 [conceptual Mermaid source](diagrams/current_user_pipeline.mmd) and detailed
@@ -115,13 +126,15 @@ arrows mean data or contract dependency, not automatic execution. The
 | BED12 | RSeQC paired-orientation inference. |
 | Sample manifest | Steps `07`, `08`, and `09`. |
 | Partition manifest | Steps `07`, `08`, and `09`. |
-| Analysis declarations | Step `09` thresholds and optional background inputs. |
+| Analysis declarations | The selected module identifier and closed module configuration; for the built-in paired-CMH provider, Step `09` thresholds and optional background inputs. |
 
-Read-only artifact adapters and the canonical run-summary builder project
-explicit native outputs and validation records into reporting inputs. Static
-rendering publishes separate self-contained scientific and operational
-evidence/provenance HTML views plus a deterministic summary TSV and a
-validated, identity-bound v4 receipt last.
+Read-only artifact adapters derive the expected roster from the admitted module
+profile and project native outputs and validation records into reporting
+inputs. The canonical run-summary builder publishes v2 for the existing flat
+paired-CMH path or v3 for an explicit module. The selected reporter publishes
+bespoke scientific HTML while fixed EMRYS reporting publishes the
+evidence/operations view, deterministic summary TSV, and a validated v4 or v5
+receipt last.
 Reporting does not discover inputs, execute analysis, repair artifacts, or
 promote runtime, cluster, scientific-review, or biological evidence.
 
@@ -133,8 +146,8 @@ orientation partitioning. Manifest-declared samples and partitions then enter
 cohort mpileup; the exact VCF set is normalized and annotated before paired-
 CMH ranking. The bounded context owner then projects those fixed calls onto one
 exact indexed reference and registered PUM motif. Read-only reporting may then
-publish the static scientific and evidence HTML report transaction from a
-validated canonical summary.
+publish the selected scientific and fixed evidence/operations HTML report
+transaction from a validated canonical summary.
 
 ### Scientific boundary
 
@@ -156,7 +169,7 @@ caller inputs
     -> owner validation and receipts
     -> neutral artifact adaptation
     -> canonical run summary
-    -> static report rendering
+    -> selected scientific report plus fixed evidence/operations rendering
 ```
 
 Approved shared seams remain narrow: validation-report publication, BAM
@@ -169,28 +182,32 @@ Private bridges and colocated helper packages remain part of their public
 owner; they do not create additional pipeline components or a generic utility
 layer.
 
-Static reporting follows that rule through the private
+Module-aware reporting follows that rule through the private
 [`_run_report/`](../../src/emrys/reporting/_run_report/README.md) package.
-The installed `python -X pycache_prefix=/dev/null -I -m emrys build report` route is owned directly by
-[`report.py`](../../src/emrys/reporting/report.py). Its admitted source checkout
-governs code and renderer identity, while the separately admitted artifact root
-governs contract-relative run inputs. Private owners separate
-immutable models, explicit input/context validation, two structured view
-projections, fixed Matplotlib/Logomaker SVG figures, Jinja rendering, v4
-receipt projection, and one receipt-last transaction. The locked Python
-renderer plus the single packaged HTML template and CSS resource are the
-complete rendering runtime; reporting has no PDF, external renderer,
-compatibility facade, shell wrapper, or format-selection surface.
+The installed `emrys report [RUN]` route admits one successful Project Run
+Run and plans, generates, or reuses the fixed artifact-index → run-summary →
+HTML sequence. Its admitted source checkout and selected installed providers
+govern code and renderer identity,
+while the Run governs the separately admitted artifact root and report output.
+Private owners separate
+immutable models, explicit input/context validation, module-specific scientific
+projection, the fixed evidence/operations projection, Jinja rendering, v4/v5
+receipt projection, and one receipt-last transaction. The built-in paired-CMH
+reporter retains its Matplotlib/Logomaker figures. The locked Python renderer
+plus packaged templates and CSS are the complete rendering runtime; reporting
+has no generic report DSL, PDF selector, external rendering service, shell
+wrapper, or format-selection surface. The three low-level builders remain
+implementation details rather than public recovery commands.
 
-The local lifecycle consumes only the direct public reporting-transaction
-validator in `reporting/transaction_validation.py`; it does not import a
-reporting-private package or turn rendering into completion authority. Source
-checkout identity and the independent artifact-source root are admitted by the
-neutral `libraries/source_authority.py` seam. Completion is derived only after
-every required owner scope has a complete durable start-to-verification chain
-and all three reporting transactions are semantically revalidated through the
-same irreversible-entry policy. An entered but incomplete scope blocks
-automatic resume; an unentered scope remains pending.
+The scientific lifecycle ends after every required owner scope has a complete
+durable start-to-verification chain, releases the Run lock, and publishes a v2
+Attempt receipt. Reporting is then invoked by public control unless disabled;
+it creates neither a Run nor an Attempt and cannot alter that receipt. The
+dedicated reporting operation is the only orchestration owner that composes the
+three private builders. It generates only from fully empty reporting state,
+reuses only a semantically complete transaction, and fails closed on partial or
+ambiguous state. Receipt-v1 Runs remain exactly readable and may reuse complete
+reports, but cannot originate new reports.
 
 ## Identity, inputs, and outputs
 
@@ -212,16 +229,18 @@ The downstream product flow is one-way:
 
 1. Native owners publish their declared artifacts and owner-local validation
    evidence.
-2. Read-only adapters inspect an explicit inventory and publish versioned
-   artifact records, an ordered index, and a receipt.
+2. Read-only adapters derive the inventory from the admitted module profile and
+   publish versioned artifact records, an ordered index, and a receipt.
 3. The run-summary owner consumes one committed adapter receipt and publishes
-   canonical JSON with deterministic TSV projections.
-4. The static report owner consumes that canonical summary under distinct
-   admitted code and artifact roots, then publishes scientific HTML,
-   evidence/provenance HTML, summary TSV, and the v4 receipt last.
-5. The local lifecycle independently re-admits the exact required task-start
-   and verified-task roster plus all three reporting start/completion chains,
-   then publishes the immutable workflow-attempt receipt last.
+   canonical v2 or v3 JSON with deterministic TSV projections.
+4. The selected scientific reporter and fixed reporting core consume that
+   canonical summary under distinct admitted code and artifact roots, then
+   publish scientific HTML, evidence/operations HTML, summary TSV, and the v4
+   or v5 receipt last. Reporter identity is report metadata, not Run identity.
+5. The scientific lifecycle independently re-admits the exact required
+   task-start and verified-task roster, releases the Run lock, and publishes the
+   immutable v2 workflow-attempt receipt last. Public control then invokes the
+   reporting flow by default as a separate downstream operation.
 
 Operational evidence owners sit beside this product flow. Runtime, reference,
 and storage observations can inform execution or review, but do not become

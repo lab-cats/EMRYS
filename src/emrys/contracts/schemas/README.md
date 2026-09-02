@@ -6,8 +6,8 @@ validation interface.
 
 - [`artifacts/`](artifacts/) — artifact, run-summary, and report-receipt schema
   resources.
-- [`orchestration/`](orchestration/) — request, profile, execution, attempt,
-  task, and reporting-ledger resources.
+- [`orchestration/`](orchestration/) — Project, profile, execution, Attempt,
+  task, reporting-ledger, and historical-compatibility resources.
 
 The owning [`artifacts`](../artifacts/README.md) and
 [`orchestration`](../orchestration/README.md) contracts define their selectors,

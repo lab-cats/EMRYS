@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:emrys:schema:orchestration:project:v1",
+  "title": "EMRYS scientist-authored Project v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "dataset",
+    "reference",
+    "analyses"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "emrys.project.v1"
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "samples"
+      ],
+      "properties": {
+        "samples": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/authored_path"
+        }
+      }
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fasta",
+        "gtf",
+        "star_index"
+      ],
+      "properties": {
+        "fasta": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/authored_path"
+        },
+        "gtf": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/authored_path"
+        },
+        "star_index": {
+          "$ref": "urn:emrys:schema:orchestration:reference:v1#/properties/star_index"
+        }
+      }
+    },
+    "analyses": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/analysis"
+      }
+    }
+  },
+  "$defs": {
+    "analysis": {
+      "oneOf": [
+        { "$ref": "#/$defs/paired_cmh_analysis" },
+        { "$ref": "#/$defs/module_analysis" }
+      ]
+    },
+    "paired_cmh_analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "partitions",
+        "control_condition",
+        "treatment_condition",
+        "target_change",
+        "min_sample_dp",
+        "mean_dp_threshold",
+        "fdr_threshold",
+        "common_or_threshold",
+        "absolute_difference_threshold",
+        "background_max_fraction"
+      ],
+      "properties": {
+        "sample_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+          }
+        },
+        "partitions": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/authored_path"
+        },
+        "control_condition": {
+          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/control_condition"
+        },
+        "treatment_condition": {
+          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/treatment_condition"
+        },
+        "target_change": {
+          "type": "string",
+          "pattern": "^[ACGT]>[ACGT]$"
+        },
+        "min_sample_dp": {
+          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/min_sample_dp"
+        },
+        "mean_dp_threshold": {
+          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/mean_dp_threshold"
+        },
+        "fdr_threshold": {
+          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/fdr_threshold"
+        },
+        "common_or_threshold": {
+          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/common_or_threshold"
+        },
+        "absolute_difference_threshold": {
+          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/absolute_difference_threshold"
+        },
+        "background_condition": {
+          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/background_condition"
+        },
+        "background_max_fraction": {
+          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/background_max_fraction"
+        }
+      }
+    },
+    "module_analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["module", "partitions", "config"],
+      "properties": {
+        "module": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+        },
+        "sample_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+          }
+        },
+        "partitions": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/authored_path"
+        },
+        "config": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

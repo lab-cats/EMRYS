@@ -41,7 +41,7 @@ env:
   ACTIONLINT_LINUX_AMD64_SHA256: >-
     8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
   MINIMUM_PYTHON_VERSION: "3.11"
-  MICROMAMBA_VERSION: "2.9.0-0"
+  PIXI_VERSION: "v0.75.0"
   PRIMARY_PYTHON_VERSION: "3.14"
   PYTHON_TEST_SHARD_COUNT: "4"
   UV_VERSION: "0.12.3"
@@ -136,10 +136,11 @@ jobs:
         run: |
           set -euo pipefail
           make -s validation-static
+          .venv/bin/python -m pytest -q tests/test_python_test_shards.py
           make -s validation-wheel-smoke
 
-  shell-slurm:
-    name: Shell and Slurm contracts
+  shell-contracts:
+    name: Shell owner contracts
     if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -165,9 +166,9 @@ jobs:
         shell: bash
         run: uv sync --locked --group workflow --python python
 
-      - name: Run shell and generated Slurm-wrapper contracts
+      - name: Run direct shell-owner contracts
         shell: bash
-        run: make -s validation-shell-slurm
+        run: make -s validation-shell-contracts
 
   guarded-r:
     name: Guarded R fixtures
@@ -258,11 +259,134 @@ jobs:
         shell: bash
         run: make -s validation-guarded-r RSCRIPT_BIN="$(command -v Rscript)"
 
-  fresh-clone-e2e:
-    name: Fresh-clone E2E (Python 3.14)
+  managed-runtime-userspace:
+    name: Managed runtime userspace (${{ matrix.label }})
     if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
+    container:
+      image: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Rocky 8.10
+            image: rockylinux/rockylinux:8.10
+            os_id: rocky
+            os_version: "8.10"
+            glibc: "2.28"
+          - label: Ubuntu 22.04
+            image: ubuntu:22.04
+            os_id: ubuntu
+            os_version: "22.04"
+            glibc: "2.35"
+          - label: Debian 12
+            image: debian:12
+            os_id: debian
+            os_version: "12"
+            glibc: "2.36"
+    steps:
+      - name: Select managed-runtime paths
+        shell: bash
+        run: |
+          printf 'PIXI_WORKSPACE=%s/emrys-managed-runtime\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
+          printf 'PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
+
+      - name: Check out the triggering commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Stage the reviewed lock outside the checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          . /etc/os-release
+          test "${ID}" = "${{ matrix.os_id }}"
+          test "${VERSION_ID}" = "${{ matrix.os_version }}"
+          test "$(getconf GNU_LIBC_VERSION)" = "glibc ${{ matrix.glibc }}"
+          install -d -m 0700 "${PIXI_WORKSPACE}"
+          cp -- \
+            src/emrys/resources/runtime/pixi.toml \
+            src/emrys/resources/runtime/pixi.lock \
+            "${PIXI_WORKSPACE}/"
+          printf 'Container userspace: %s %s; %s\n' \
+            "${ID}" "${VERSION_ID}" "$(getconf GNU_LIBC_VERSION)"
+          printf 'Observed shared runner kernel (not a 4.18-kernel proof): %s\n' \
+            "$(uname -r)"
+
+      - name: Install the distro TLS trust bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          . /etc/os-release
+          if [[ "${ID}" = rocky ]]; then
+            dnf --assumeyes install ca-certificates
+          else
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive \
+              apt-get install --yes --no-install-recommends ca-certificates
+          fi
+
+      - name: Install both managed environments from the unchanged lock
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: ${{ env.PIXI_VERSION }}
+          manifest-path: ${{ env.PIXI_MANIFEST }}
+          environments: native r
+          activate-environment: r
+          locked: true
+          cache: false
+          post-cleanup: true
+
+      - name: Verify locked tools in this container userspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          native_prefix="${PIXI_WORKSPACE}/.pixi/envs/native"
+          r_prefix="${PIXI_WORKSPACE}/.pixi/envs/r"
+          export PATH="${native_prefix}/bin:${PATH}"
+          test "$(sha256sum src/emrys/resources/runtime/pixi.toml | awk '{print $1}')" = \
+            "$(sha256sum "${PIXI_WORKSPACE}/pixi.toml" | awk '{print $1}')"
+          test "$(sha256sum src/emrys/resources/runtime/pixi.lock | awk '{print $1}')" = \
+            "$(sha256sum "${PIXI_WORKSPACE}/pixi.lock" | awk '{print $1}')"
+          test -x "${native_prefix}/bin/STAR"
+          test -x "${native_prefix}/bin/samtools"
+          test -x "${native_prefix}/bin/gatk"
+          test -x "${native_prefix}/bin/bcftools"
+          test -x "${native_prefix}/bin/infer_experiment.py"
+          test -x "${native_prefix}/bin/java"
+          test -x "${native_prefix}/bin/gunzip"
+          test -x "${r_prefix}/bin/Rscript"
+          test -e "${r_prefix}/lib/libxml2.so"
+          test -x "${r_prefix}/bin/xml2-config"
+          "${r_prefix}/bin/pkg-config" --exists libxml-2.0
+          PATH="${native_prefix}/bin" "${native_prefix}/bin/STAR" --version
+          PATH="${native_prefix}/bin" "${r_prefix}/bin/Rscript" \
+            --no-environ --no-site-file --no-restore --no-save \
+            -e 'cat(R.version.string)'
+          shopt -s nullglob
+          picard_jars=("${native_prefix}"/share/picard-slim-3.1.1-*/picard.jar)
+          test "${#picard_jars[@]}" -eq 1
+          test -f "${picard_jars[0]}"
+          test ! -L "${picard_jars[0]}"
+          "${native_prefix}/bin/STAR" --version
+          "${native_prefix}/bin/samtools" --version
+          "${native_prefix}/bin/gatk" --version
+          "${native_prefix}/bin/bcftools" --version
+          "${native_prefix}/bin/infer_experiment.py" --version
+          "${native_prefix}/bin/java" -version
+          "${r_prefix}/bin/Rscript" --version
+          pixi list --locked --manifest-path "${PIXI_MANIFEST}" \
+            --environment native --json > /dev/null
+          pixi list --locked --manifest-path "${PIXI_MANIFEST}" \
+            --environment r --json > /dev/null
+
+  managed-golden-path:
+    name: Managed golden path (Python 3.14)
+    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
     steps:
       - name: Check out the triggering commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -282,32 +406,113 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
 
-      - name: Prepare an ordinary clean clone and locked environment
-        id: fresh-clone
+      - name: Install Pixi without provisioning the scientific runtime
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: ${{ env.PIXI_VERSION }}
+          run-install: false
+          cache: false
+
+      - name: Prepare a clean clone, environment, and synthetic Project
+        id: golden
         shell: bash
         run: |
           set -euo pipefail
-          fresh_clone="${RUNNER_TEMP}/emrys-fresh-clone"
-          git clone --no-hardlinks "${GITHUB_WORKSPACE}" "${fresh_clone}"
-          git -C "${fresh_clone}" checkout --detach "${GITHUB_SHA}"
+          clean_clone="${RUNNER_TEMP}/emrys-golden-clone"
+          evidence_root="${RUNNER_TEMP}/emrys-managed-golden"
+          install -d -m 0700 "${evidence_root}"
+          git clone --no-hardlinks "${GITHUB_WORKSPACE}" "${clean_clone}"
+          git -C "${clean_clone}" checkout --detach "${GITHUB_SHA}"
           uv sync \
-            --project "${fresh_clone}" \
+            --project "${clean_clone}" \
             --locked \
             --group workflow \
             --python python
-          printf 'path=%s\n' "${fresh_clone}" >> "${GITHUB_OUTPUT}"
+          project_root="${evidence_root}/project"
+          emrys=("${clean_clone}/.venv/bin/emrys")
+          cd "${clean_clone}"
+          "${emrys[@]}" init synthetic \
+            --output-dir "${project_root}" --execute \
+            2>&1 | tee "${evidence_root}/01-init.log"
+          printf 'clone=%s\n' "${clean_clone}" >> "${GITHUB_OUTPUT}"
+          printf 'evidence=%s\n' "${evidence_root}" >> "${GITHUB_OUTPUT}"
 
-      - name: Run opt-in clean-clone failure and resume proof
+      - name: Cache managed golden-path R packages
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: ${{ runner.temp }}/emrys-managed-golden/project/runtime/managed/renv/cache
+          key: >-
+            emrys-managed-golden-renv-v1-${{ runner.os }}-${{ runner.arch }}-R-${{ env.R_VERSION }}-${{ hashFiles('renv.lock', 'src/emrys/resources/runtime/pixi.lock') }}
+
+      - name: Repair and exercise the supported managed golden path
         shell: bash
-        env:
-          EMRYS_FRESH_CLONE_E2E: "1"
-          EMRYS_FRESH_CLONE_E2E_SOURCE_ROOT: ${{ github.workspace }}
         run: |
           set -euo pipefail
-          fresh_clone="${{ steps.fresh-clone.outputs.path }}"
-          cd "${fresh_clone}"
-          .venv/bin/python -m pytest -q --tb=short \
-            tests/orchestration/local_pilot/test_fresh_clone_e2e.py
+          clean_clone="${{ steps.golden.outputs.clone }}"
+          evidence_root="${{ steps.golden.outputs.evidence }}"
+          project_root="${evidence_root}/project"
+          emrys=("${clean_clone}/.venv/bin/emrys")
+          cd "${project_root}"
+
+          "${emrys[@]}" validate \
+            2>&1 | tee "${evidence_root}/02-validate.log"
+          "${emrys[@]}" doctor --repair --execute \
+            2>&1 | tee "${evidence_root}/03-doctor.log"
+          "${emrys[@]}" run --execute \
+            2>&1 | tee "${evidence_root}/04-run.log"
+
+          mapfile -d '' -t run_roots < <(
+            find "${project_root}/runs" -mindepth 1 -maxdepth 1 \
+              -type d -name 'run-*' -print0
+          )
+          test "${#run_roots[@]}" -eq 1
+          run_root="${run_roots[0]}"
+          printf '%s\n' "${run_root}" > "${evidence_root}/run-root.txt"
+          "${emrys[@]}" inspect \
+            | tee "${evidence_root}/05-inspect.log"
+          grep --fixed-strings --line-regexp 'Run integrity: valid' \
+            "${evidence_root}/05-inspect.log"
+          grep --fixed-strings --line-regexp 'Attempt outcome: succeeded' \
+            "${evidence_root}/05-inspect.log"
+          grep --fixed-strings --line-regexp 'Scientific Results: complete' \
+            "${evidence_root}/05-inspect.log"
+          grep --fixed-strings --line-regexp 'Reporting: complete' \
+            "${evidence_root}/05-inspect.log"
+          test "$(find "${run_root}/results/reports" -type f -name '*.html' | wc -l)" -eq 2
+
+      - name: Require the clean clone to remain unchanged
+        if: always() && steps.golden.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git -C "${{ steps.golden.outputs.clone }}" status \
+            --porcelain=v1 --untracked-files=all \
+            > "${{ steps.golden.outputs.evidence }}/checkout-after.tsv"
+          test ! -s "${{ steps.golden.outputs.evidence }}/checkout-after.tsv"
+
+      - name: Upload managed golden-path evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: emrys-managed-golden-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/emrys-managed-golden/*.log
+            ${{ runner.temp }}/emrys-managed-golden/*.txt
+            ${{ runner.temp }}/emrys-managed-golden/*.tsv
+            ${{ runner.temp }}/emrys-managed-golden/project/project.yaml
+            ${{ runner.temp }}/emrys-managed-golden/project/samples.tsv
+            ${{ runner.temp }}/emrys-managed-golden/project/partitions.tsv
+            ${{ runner.temp }}/emrys-managed-golden/project/fixture.json
+            ${{ runner.temp }}/emrys-managed-golden/project/fixture.manifest.json
+            ${{ runner.temp }}/emrys-managed-golden/project/inputs
+            ${{ runner.temp }}/emrys-managed-golden/project/logs
+            ${{ runner.temp }}/emrys-managed-golden/project/runs
+            ${{ runner.temp }}/emrys-managed-golden/project/runtime/runtime.tsv
+            ${{ runner.temp }}/emrys-managed-golden/project/runtime/profiles
+            ${{ runner.temp }}/emrys-managed-golden/project/runtime/.emrys-storage-qualification
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
 
   python314-coverage-shards:
     name: Python 3.14 tests + coverage (shard ${{ matrix.shard }})
@@ -569,6 +774,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
+      - name: Select managed-runtime paths
+        shell: bash
+        run: |
+          printf 'PIXI_WORKSPACE=%s/emrys-managed-runtime\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
+          printf 'PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
+
       - name: Seed external evidence roots for selected profiles
         shell: bash
         env:
@@ -612,13 +823,29 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
 
-      - name: Set up exact R version
-        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
-        with:
-          r-version: ${{ env.R_VERSION }}
-          use-public-rspm: false
+      - name: Stage the reviewed runtime lock outside the checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 0700 "${PIXI_WORKSPACE}"
+          cp -- \
+            src/emrys/resources/runtime/pixi.toml \
+            src/emrys/resources/runtime/pixi.lock \
+            "${PIXI_WORKSPACE}/"
 
-      - name: Install R build requirements and disposable Slurm
+      - name: Restore locked native and R base environments
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: ${{ env.PIXI_VERSION }}
+          manifest-path: ${{ env.PIXI_MANIFEST }}
+          environments: native r
+          activate-environment: r
+          locked: true
+          cache: true
+          cache-key: emrys-real-e2e-runtime-
+          post-cleanup: true
+
+      - name: Install disposable Slurm
         shell: bash
         env:
           DEBIAN_FRONTEND: noninteractive
@@ -626,31 +853,8 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
-            libbz2-dev \
-            libcurl4-openssl-dev \
-            liblzma-dev \
-            libpng-dev \
-            libssl-dev \
-            libxml2-dev \
             munge \
-            slurm-wlm \
-            xz-utils \
-            zlib1g-dev
-
-      - name: Restore exact real-tool environment from the Linux lock
-        id: real-tools
-        uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39 # v3.2.1
-        with:
-          environment-file: .github/ci/real-tools.conda-lock.yml
-          environment-name: emrys-real-e2e-tools
-          micromamba-version: ${{ env.MICROMAMBA_VERSION }}
-          micromamba-root-path: ${{ runner.temp }}/emrys-micromamba/root
-          micromamba-binary-path: ${{ runner.temp }}/emrys-micromamba/bin/micromamba
-          init-shell: none
-          generate-run-shell: false
-          cache-environment: true
-          cache-downloads: true
-          post-cleanup: all
+            slurm-wlm
 
       - name: Restore exact R dependency cache
         id: renv-cache
@@ -660,7 +864,7 @@ jobs:
             ${{ runner.temp }}/emrys-renv/cache
             ${{ runner.temp }}/emrys-renv/library
           key: >-
-            emrys-real-e2e-renv-${{ runner.os }}-${{ runner.arch }}-R-${{ env.R_VERSION }}-${{ hashFiles('renv.lock') }}
+            emrys-real-e2e-pixi-renv-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('renv.lock', 'src/emrys/resources/runtime/pixi.lock') }}
 
       - name: Restore locked Python environment
         shell: bash
@@ -697,34 +901,44 @@ jobs:
 
       - name: Record exact runtime authorities outside the checkout
         shell: bash
-        env:
-          REAL_TOOLS_PREFIX: ${{ steps.real-tools.outputs.environment-path }}
         run: |
           set -euo pipefail
+          real_tools_prefix="${PIXI_WORKSPACE}/.pixi/envs/native"
+          r_prefix="${PIXI_WORKSPACE}/.pixi/envs/r"
           runtime_evidence="${E2E_EVIDENCE_ROOT}/runtime"
-          test -d "${REAL_TOOLS_PREFIX}"
+          test -d "${real_tools_prefix}"
+          test -d "${r_prefix}"
+          test "$(sha256sum src/emrys/resources/runtime/pixi.toml | awk '{print $1}')" = \
+            "$(sha256sum "${PIXI_WORKSPACE}/pixi.toml" | awk '{print $1}')"
+          test "$(sha256sum src/emrys/resources/runtime/pixi.lock | awk '{print $1}')" = \
+            "$(sha256sum "${PIXI_WORKSPACE}/pixi.lock" | awk '{print $1}')"
           cp -- \
-            .github/ci/real-tools.environment.yml \
-            .github/ci/real-tools.conda-lock.yml \
+            src/emrys/resources/runtime/pixi.toml \
+            src/emrys/resources/runtime/pixi.lock \
             renv.lock \
             uv.lock \
             "${runtime_evidence}/"
-          cp -a -- "${REAL_TOOLS_PREFIX}/conda-meta" "${runtime_evidence}/conda-meta"
-          "${RUNNER_TEMP}/emrys-micromamba/bin/micromamba" \
-            list --prefix "${REAL_TOOLS_PREFIX}" --json \
-            > "${runtime_evidence}/conda-packages.json"
-          "${RUNNER_TEMP}/emrys-micromamba/bin/micromamba" \
-            list --prefix "${REAL_TOOLS_PREFIX}" --explicit \
-            > "${runtime_evidence}/conda-explicit.txt"
+          cp -a -- \
+            "${real_tools_prefix}/conda-meta" \
+            "${runtime_evidence}/native-conda-meta"
+          cp -a -- \
+            "${r_prefix}/conda-meta" \
+            "${runtime_evidence}/r-conda-meta"
+          pixi list --locked --manifest-path "${PIXI_MANIFEST}" \
+            --environment native --json \
+            > "${runtime_evidence}/pixi-native-packages.json"
+          pixi list --locked --manifest-path "${PIXI_MANIFEST}" \
+            --environment r --json \
+            > "${runtime_evidence}/pixi-r-packages.json"
           {
             printf 'tool\tpath\tsha256\n'
             for tool in STAR samtools gatk bcftools infer_experiment.py java; do
-              path="${REAL_TOOLS_PREFIX}/bin/${tool}"
+              path="${real_tools_prefix}/bin/${tool}"
               test -x "${path}"
               printf '%s\t%s\t%s\n' \
                 "${tool}" "${path}" "$(sha256sum "${path}" | awk '{print $1}')"
             done
-            mapfile -t picard_jars < <(find "${REAL_TOOLS_PREFIX}/share" \
+            mapfile -t picard_jars < <(find "${real_tools_prefix}/share" \
               -type f -path '*/picard-slim-3.1.1-*/picard.jar' -print)
             test "${#picard_jars[@]}" -eq 1
             printf 'picard.jar\t%s\t%s\n' \
@@ -744,21 +958,19 @@ jobs:
         if: github.event_name == 'schedule' || inputs.synthetic_130
         continue-on-error: true
         shell: bash
-        env:
-          REAL_TOOLS_PREFIX: ${{ steps.real-tools.outputs.environment-path }}
         run: |
           set -euo pipefail
+          real_tools_prefix="${PIXI_WORKSPACE}/.pixi/envs/native"
           .venv/bin/python tests/tools/real_synthetic_e2e.py \
             --profile 130 \
             --repo-root "${GITHUB_WORKSPACE}" \
             --operator-root "${E2E_EVIDENCE_ROOT}/130/operator" \
-            --runtime-prefix "${REAL_TOOLS_PREFIX}" \
+            --runtime-prefix "${real_tools_prefix}" \
             --rscript "$(command -v Rscript)" \
             --renv-library "${RENV_LIBRARY}" \
             --storage-compute-launcher-json \
               '["/usr/bin/srun","--partition=emrys-ci","--nodes=1","--ntasks=1","--cpus-per-task=1","--mem=1G","--time=00:05:00","--wait=60"]' \
             --slurm-partition emrys-ci \
-            --slurm-cpus 2 \
             --slurm-memory 6G \
             --slurm-time 02:00:00 \
             --slurm-timeout-seconds 7200 \
@@ -785,21 +997,19 @@ jobs:
           inputs.synthetic_100000
         continue-on-error: true
         shell: bash
-        env:
-          REAL_TOOLS_PREFIX: ${{ steps.real-tools.outputs.environment-path }}
         run: |
           set -euo pipefail
+          real_tools_prefix="${PIXI_WORKSPACE}/.pixi/envs/native"
           .venv/bin/python tests/tools/real_synthetic_e2e.py \
             --profile 100000 \
             --repo-root "${GITHUB_WORKSPACE}" \
             --operator-root "${E2E_EVIDENCE_ROOT}/100000/operator" \
-            --runtime-prefix "${REAL_TOOLS_PREFIX}" \
+            --runtime-prefix "${real_tools_prefix}" \
             --rscript "$(command -v Rscript)" \
             --renv-library "${RENV_LIBRARY}" \
             --storage-compute-launcher-json \
               '["/usr/bin/srun","--partition=emrys-ci","--nodes=1","--ntasks=1","--cpus-per-task=1","--mem=1G","--time=00:05:00","--wait=60"]' \
             --slurm-partition emrys-ci \
-            --slurm-cpus 2 \
             --slurm-memory 6G \
             --slurm-time 02:00:00 \
             --slurm-timeout-seconds 7200 \

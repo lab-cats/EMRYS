@@ -9,7 +9,7 @@ publication policy, or operator state.
 - [`SOURCE_TOPOLOGY.md`](SOURCE_TOPOLOGY.md) owns source domains, approved shared
   seams, and dependency direction.
 - [`artifacts/`](artifacts/) owns public artifact schemas and validation.
-- [`orchestration/`](orchestration/) owns the closed local-pilot request,
+- [`orchestration/`](orchestration/) owns the closed run-coordinator request,
   identity, attempt, task, and verified-record registry and canonical JSON API.
 - [`scientific_evidence/`](scientific_evidence/) owns neutral Step `08` and
   Step `09` computational contracts.

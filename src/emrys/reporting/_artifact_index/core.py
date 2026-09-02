@@ -10,7 +10,7 @@ import re
 import subprocess
 import uuid
 from collections import Counter, defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -27,8 +27,7 @@ from .models import (
     ArtifactIndexError,
     SourceSnapshot,
 )
-from .registry import ADAPTER_REGISTRY
-from .rosters import SCOPE_ADAPTER_ROSTERS
+from .models import AdapterSpec
 
 
 def safe_tsv(value: Any) -> str:
@@ -156,11 +155,29 @@ def load_run_contract(path: Path) -> tuple[dict[str, Any], str]:
     return document, contracts.sha256_file(resolved)
 
 
-def validate_inventory_registry(rows: Sequence[dict[str, str]]) -> None:
+def scope_adapter_rosters(
+    templates: Sequence[Mapping[str, Any]],
+) -> dict[str, Counter[str]]:
+    """Project exact transaction closure from the admitted Run profile."""
+
+    result: dict[str, Counter[str]] = defaultdict(Counter)
+    for template in templates:
+        result[str(template["step_id"])][str(template["adapter"])] += 1
+    return dict(result)
+
+
+def validate_inventory_registry(
+    rows: Sequence[dict[str, str]],
+    *,
+    source_root: Path,
+    adapter_registry: Mapping[str, AdapterSpec],
+    scope_rosters: Mapping[str, Counter[str]],
+    source_path_templates: Mapping[str, str],
+) -> None:
     grouped: dict[tuple[str, str, str], list[dict[str, str]]] = defaultdict(list)
     for row_number, row in enumerate(rows, start=2):
         adapter_id = row["adapter"]
-        spec = ADAPTER_REGISTRY.get(adapter_id)
+        spec = adapter_registry.get(adapter_id)
         if spec is None:
             raise ArtifactIndexError(
                 f"Inventory row {row_number}: unsupported adapter {adapter_id!r}"
@@ -174,6 +191,15 @@ def validate_inventory_registry(rows: Sequence[dict[str, str]]) -> None:
             raise ArtifactIndexError(
                 f"Inventory row {row_number}: adapter {adapter_id!r} requires "
                 f"scope_type {spec.scope_type}, not {row['scope_type']}"
+            )
+        source_path_template = source_path_templates.get(adapter_id)
+        if source_path_template is not None and declared_contract_path(
+            source_path_template.replace("{analysis_id}", row["scope_id"]),
+            source_root=source_root,
+        ) != declared_contract_path(row["source_path"], source_root=source_root):
+            raise ArtifactIndexError(
+                f"Inventory row {row_number}: adapter {adapter_id!r} does not "
+                "use its module-declared source path"
             )
         source_name = Path(row["source_path"]).name
         if spec.basenames and source_name not in spec.basenames:
@@ -190,7 +216,7 @@ def validate_inventory_registry(rows: Sequence[dict[str, str]]) -> None:
 
     for scope, scope_rows in grouped.items():
         step_id = scope[0]
-        expected = SCOPE_ADAPTER_ROSTERS.get(step_id)
+        expected = scope_rosters.get(step_id)
         if expected is None:
             raise ArtifactIndexError(
                 f"No logical transaction roster exists for step {step_id!r}"

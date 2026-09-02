@@ -15,12 +15,9 @@ from emrys import __main__ as emrys_main
 from emrys.evidence.storage_inventory import qualification
 
 ROOT = Path(__file__).resolve().parents[3]
-COMMAND = (sys.executable, "-I", "-m", "emrys", "inspect", "storage-inventory")
+COMMAND = (sys.executable, "-I", "-m", "emrys", "debug", "storage-inventory")
 ROOT_HEADER = "storage_id\tpath\trequired\tpurpose\tquota_bytes_expected\tnotes\n"
-POLICY_HEADER = (
-    "policy_id\tstorage_id\tartifact_class\taction\tretention_days\t"
-    "approval_status\tapproved_by\tapproved_at\tnotes\n"
-)
+POLICY_HEADER = "policy_id\tstorage_id\tartifact_class\taction\tretention_days\tapproval_status\tapproved_by\tapproved_at\tnotes\n"
 
 
 def contracts(tmp_path: Path, *, approved: bool = True) -> tuple[Path, Path, Path]:
@@ -268,7 +265,7 @@ def test_contract_mutation_after_measurement_fails_before_publication(
     monkeypatch.setattr(measurement, "outputs", render_then_mutate)
     status = emrys_main.main(
         [
-            "inspect",
+            "debug",
             "storage-inventory",
             "--roots",
             str(roots),
@@ -474,6 +471,127 @@ def test_two_phase_storage_qualification_is_durable_and_read_only_to_doctor(
     assert len(admitted.receipt_sha256) == 64
     assert not list(tmp_path.glob(".emrys-storage-probe-*"))
     assert not list(reference_root.glob(".emrys-storage-probe-*"))
+
+
+def _direct_qualification(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[Path, Path, qualification.QualifiedStorage]:
+    monkeypatch.setattr(qualification, "_mount_identity", synthetic_mount_identity)
+    workspace = tmp_path / "project"
+    (workspace / "runtime").mkdir(parents=True)
+    reference_root = workspace / "reference"
+    reference_root.mkdir()
+    reference_fasta = reference_root / "genome.fa"
+    reference_fasta.write_text(">1\nA\n", encoding="utf-8")
+    monkeypatch.delenv("SLURM_JOB_ID", raising=False)
+    plan = qualification.plan_direct_qualification(workspace, reference_fasta)
+
+    admitted = qualification.execute_direct_qualification(plan)
+
+    return workspace, reference_fasta, admitted
+
+
+def test_direct_qualification_is_single_host_create_absent_and_not_site_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace, reference_fasta, admitted = _direct_qualification(
+        tmp_path,
+        monkeypatch,
+    )
+    value = json.loads(admitted.receipt_path.read_text(encoding="utf-8"))
+
+    assert admitted.receipt_path.parent == (
+        workspace / "runtime" / qualification.EVIDENCE_DIRECTORY
+    )
+    assert value["schema"] == qualification.DIRECT_SCHEMA
+    assert value["checks"] == list(qualification.CHECKS[:4])
+    assert "compute" not in value and "head" not in value
+    assert not list(workspace.glob(".emrys-storage-probe-*"))
+    assert not list(reference_fasta.parent.glob(".emrys-storage-probe-*"))
+    with pytest.raises(
+        qualification.StorageQualificationError,
+        match="Storage qualification evidence directory",
+    ):
+        qualification.admit_final_qualification(workspace, reference_fasta)
+    with pytest.raises(
+        qualification.StorageQualificationError,
+        match="evidence already exists",
+    ):
+        qualification.plan_direct_qualification(workspace, reference_fasta)
+
+
+def test_direct_requirement_accepts_stronger_site_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    receipt = tmp_path / "site-qualified.json"
+    receipt.write_bytes(b"site qualified\n")
+    expected = qualification.QualifiedStorage(
+        receipt_path=receipt,
+        receipt_sha256="a" * 64,
+        qualification_id="b" * 64,
+    )
+
+    def reject_direct(*_args: object) -> qualification.QualifiedStorage:
+        raise qualification.StorageQualificationError("no direct receipt")
+
+    monkeypatch.setattr(
+        qualification,
+        "admit_direct_qualification",
+        reject_direct,
+    )
+    monkeypatch.setattr(
+        qualification,
+        "admit_final_qualification",
+        lambda *_args: expected,
+    )
+
+    assert (
+        qualification.admit_direct_requirement(
+            tmp_path / "project",
+            tmp_path / "reference.fa",
+        )
+        is expected
+    )
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        ("fields", "invalid fields"),
+        ("identity", "invalid identity or status"),
+        ("host", "Current host"),
+        ("root", "no longer matches workflow_workspace"),
+    ),
+)
+def test_direct_qualification_admission_rejects_mutated_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mutation: str,
+    message: str,
+) -> None:
+    workspace, reference_fasta, admitted = _direct_qualification(
+        tmp_path,
+        monkeypatch,
+    )
+    value = json.loads(admitted.receipt_path.read_text(encoding="utf-8"))
+    if mutation == "fields":
+        value["unexpected"] = True
+    elif mutation == "identity":
+        value["schema"] = qualification.SCHEMA
+    elif mutation == "host":
+        value["context"]["host"] = "other-host"
+    else:
+        value["roots"][0]["root"]["device_id"] += 1
+    admitted.receipt_path.write_text(
+        json.dumps(value, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(qualification.StorageQualificationError, match=message):
+        qualification.admit_direct_qualification(workspace, reference_fasta)
 
 
 def test_storage_finalize_refuses_missing_post_allocation_probe(

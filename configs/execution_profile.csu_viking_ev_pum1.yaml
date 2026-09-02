@@ -1,0 +1,61 @@
+schema_version: emrys.execution-profile.v1
+
+# Retained six-library EV/PUM1 computational policy.
+resources:
+  schema_version: emrys.local-pilot-resources.v1
+  workflow_cores: 12
+  workflow_memory_mb: 524288
+  stage_concurrency:
+    "01": 6
+    "02": 6
+    "02b": 6
+    "03": 6
+    "04": 4
+    "05": 6
+    "06": 6
+    "07": 12
+  step_threads:
+    "00a": 12
+    "01": 2
+    "02": 1
+    "06": 1
+    "08": 4
+    "09": 1
+    "10": 1
+  stage_memory_mb:
+    "00a": 262144
+    "00b": 16384
+    "00c": 16384
+    "01": 40960
+    "02": 4096
+    "02b": 2048
+    "03": 4096
+    "04": 32768
+    "05": 16384
+    "06": 4096
+    "07": 8192
+    "08": 65536
+    "09": 16384
+    "10": 32768
+  reporting_memory_mb:
+    artifact_index: 8192
+    run_summary: 16384
+    html_report: 16384
+
+# The 12-hour walltime is conservative operator headroom, not a benchmark.
+# Viking supplies memory through the exclusive node allocation.
+placement:
+  kind: slurm
+  account: replace-with-site-account
+  partition: replace-with-site-partition
+  qos: null
+  cpus_per_task: 256
+  memory_mb: null
+  time: "12:00:00"
+  exclusive: true
+  nodelist: null
+  scratch_parent: /absolute/path/to/compute-scratch
+  modules:
+    mode: none
+    init: ""
+    load: []

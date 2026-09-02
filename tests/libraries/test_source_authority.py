@@ -27,10 +27,13 @@ RESOURCE_FILES: Mapping[str, bytes] = {
     "contracts/schemas/artifacts/v4/report_receipt.schema.json": b'{"schema": 4}\n',
     "contracts/schemas/orchestration/v1/common.schema.json": b'{"schema": true}\n',
     "contracts/schemas/orchestration/v2/request.schema.json": b'{"schema": true}\n',
-    "contracts/schemas/orchestration/v3/launcher_config.schema.json": b'{"schema": 3}\n',
-    "orchestration/local_pilot/resources/default_launcher.yaml": (
-        b"schema_version: emrys.local-pilot-launcher.v1\n"
+    "contracts/schemas/orchestration/v3/execution_profile.schema.json": b'{"schema": 3}\n',
+    "orchestration/run_coordinator/resources/default_execution.yaml": (
+        b"schema_version: emrys.execution-profile.v1\n"
     ),
+    "resources/runtime/runtime_policy.tsv": b"check_id\tcheck_type\n",
+    "resources/runtime/pixi.toml": b"[workspace]\n",
+    "resources/runtime/pixi.lock": b"version: 7\n",
     "reporting/styles/example.css": b"body { color: black; }\n",
     "reporting/templates/example.html.j2": b"<!doctype html>\n",
     "runtime/data.bin": b"synthetic package data\n",
@@ -123,7 +126,8 @@ def _project_configuration(name: str = PROJECT_NAME) -> bytes:
         "\n"
         "[tool.setuptools.package-data]\n"
         '"emrys.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json", "schemas/artifacts/v3/*.json", "schemas/artifacts/v4/*.json", "schemas/orchestration/v1/*.json", "schemas/orchestration/v2/*.json", "schemas/orchestration/v3/*.json"]\n'
-        '"emrys.orchestration.local_pilot" = ["resources/*.yaml"]\n'
+        '"emrys.orchestration.run_coordinator" = ["resources/*.yaml"]\n'
+        '"emrys" = ["resources/runtime/*"]\n'
         '"emrys.reporting" = ["styles/*.css", "templates/*.html.j2"]\n'
     ).encode()
 
@@ -359,23 +363,38 @@ def test_controlled_python_ignores_timestamp_valid_adjacent_bytecode(
     assert controlled.stdout.strip() == "safe"
 
 
-def test_uncontrolled_reporting_build_rejects_before_lazy_owner_import() -> None:
-    program = (
-        "import sys; "
-        "from emrys import __main__ as cli; "
-        "sys.modules.pop('emrys.reporting._artifact_index.builder', None); "
-        "status = cli._build_artifact_index_from_args(None); "
-        "print(status, 'emrys.reporting._artifact_index.builder' in sys.modules)"
-    )
-    result = subprocess.run(
-        [sys.executable, "-I", "-c", program],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+def test_uncontrolled_python_runtime_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(source_authority.sys, "pycache_prefix", None)
 
-    assert result.stdout.strip() == "2 False"
-    assert "Controlled EMRYS Python children require" in result.stderr
+    with pytest.raises(source_authority.SourceCheckoutError, match="pycache_prefix"):
+        source_authority.require_controlled_python_runtime()
+
+
+def test_console_entry_restarts_with_the_controlled_python_prefix(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: list[tuple[str, tuple[str, ...]]] = []
+
+    def stop_after_exec(executable: str, arguments: tuple[str, ...]) -> None:
+        observed.append((executable, arguments))
+        raise RuntimeError("exec observed")
+
+    monkeypatch.setattr(source_authority.os, "execv", stop_after_exec)
+    monkeypatch.setattr(source_authority.sys, "argv", ["emrys", "run", "--execute"])
+
+    with pytest.raises(RuntimeError, match="exec observed"):
+        source_authority.controlled_console_main()
+
+    assert observed == [
+        (
+            sys.executable,
+            source_authority.controlled_python_argv(
+                sys.executable, "-m", "emrys", "run", "--execute"
+            ),
+        )
+    ]
 
 
 def test_package_identity_rejects_dirty_tracked_checkout_bytes(tmp_path: Path) -> None:
@@ -398,8 +417,9 @@ def test_package_identity_rejects_dirty_tracked_checkout_bytes(tmp_path: Path) -
         Path("contracts/schemas/artifacts/v3/report_receipt.schema.json"),
         Path("contracts/schemas/artifacts/v4/report_receipt.schema.json"),
         Path("contracts/schemas/orchestration/v1/common.schema.json"),
-        Path("contracts/schemas/orchestration/v3/launcher_config.schema.json"),
-        Path("orchestration/local_pilot/resources/default_launcher.yaml"),
+        Path("contracts/schemas/orchestration/v3/execution_profile.schema.json"),
+        Path("orchestration/run_coordinator/resources/default_execution.yaml"),
+        Path("resources/runtime/runtime_policy.tsv"),
     ),
 )
 def test_package_identity_includes_declared_resource_bytes(

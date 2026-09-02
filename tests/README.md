@@ -10,18 +10,19 @@ are in the [operations runbook](../docs/operations/RUNBOOK.md).
 
 - `analyses/`, `stages/`, `evidence/`, `ingestion/`, and `reporting/` protect
   their matching functional owners.
-- `orchestration/local_pilot/` protects request admission, readiness, fixed
+- `orchestration/run_coordinator/` protects Project admission, readiness, fixed
   graph materialization, task/reporting records, lifecycle, inspection, resume,
-  and no-science fresh-clone execution for the local-pilot application owner.
+  and focused failure/resume behavior for the application owner. The tracked
+  CI workflow owns the clean-clone, real-tool managed golden path.
 - `contracts/` and `contract_integration/` protect shared and independent
   public contracts.
 - `libraries/`, `documentation/`, `shell/`, and `data_checks/` own
   cross-cutting support checks.
 - `fixtures/`, `baselines/`, and `tools/` own shared test inputs, accepted
   comparator state, and test-only runners.
-- `pending/` holds non-runnable future scaffolds, not current protection.
 
 The files directly under this directory protect cross-cutting public CLI,
-SLURM-wrapper, validation-runner, coverage-policy, package, and grouped-CLI behavior.
+whole-Run Slurm transport/parity, validation-runner, coverage-policy, package,
+and grouped-CLI behavior.
 All results remain local engineering evidence unless a separate canonical
 owner explicitly establishes a higher evidence state.

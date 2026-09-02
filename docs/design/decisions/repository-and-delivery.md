@@ -12,8 +12,7 @@ referencing the sample TSV.
 ### Local development, SLURM production
 
 Editing, fixtures, mocks, and syntax checks run locally. Heavy production
-computation runs through owner-local SLURM entry points, never on the login
-node.
+computation uses grouped whole-Run SLURM placement, never the login node.
 
 ### Programs stay out of Markdown
 
@@ -113,7 +112,8 @@ The audit establishes these current authority routes:
 
 `HANDOFF.md` and `PIPELINE_PLAN.md` therefore ceased to be current authority at
 the audit cutover. Completed `DOC-03` has since reconciled and retired three of
-the six legacy pages plus both future diagrams. The remaining three pages stay
+the six legacy pages plus both future diagrams, and the partial `DOC-05` cut
+has since retired the launcher transition plan. The remaining two pages stay
 visibly marked until `DOC-04`/`DOC-05` preserve their durable value.
 
 ### Owner-local and repository-support disposition
@@ -130,7 +130,7 @@ is called out rather than hidden inside a group disposition.
 | Operational workspace roots (`data/`, `logs/`, `refs/`, `renv/`, `results/`) | 7 | Retain as current storage, fixture, runtime, logging, and result-location conventions. Accepted setup, filesystem, results, logging, and runtime work owns later changes. |
 | Repository tooling (`scripts/README.md`, `scripts/documentation/README.md`) | 2 | Retain as the current tooling index and documentation-gate owner. |
 | Source implementation and contract documentation (`src/`) | 68 | Retain the 51 owner/index/resource/schema READMEs, 15 adjacent contracts, `STAGE_MAP.md`, and `SOURCE_TOPOLOGY.md`. Exact behavior remains owner-local; `DOC-01` and `OPS-04` own later journey and terminology refreshes. |
-| Test documentation (`tests/`) | 46 | Retain 45 active owner, fixture, oracle, baseline, and support READMEs. `tests/pending/README.md` and its duplicate non-runnable Step 04 scaffold are selected for trace-and-retirement under `CLEAN-02`. |
+| Test documentation (`tests/`) | 46 at audit | Retained 45 active owner, fixture, oracle, baseline, and support READMEs. Completed `CLEAN-02` retired the duplicate non-runnable Step 04 planning README and scaffold after mapping every intent to the active owner suite. |
 | Workflow documentation (`workflow/`) | 4 | Retain as the current workflow, profile, and contract owner set; accepted architecture and naming changes must update these owners with their behavior. |
 
 No retained source in these partitions acts as a second backlog, rolling
@@ -146,9 +146,9 @@ handoff, or stale roadmap authority.
 | `docs/architecture/FUTURE_ARCHITECTURE.md` | Retired by completed `DOC-03` | The section trace below routes durable principles and accepted outcomes to live owners, preserves two still-open alternatives in the campaign, and leaves the final architecture-document set unsettled. |
 | `docs/architecture/README.md` | Retain and refresh routes | Architecture entry point remains necessary after future-document retirement. |
 | `docs/architecture/diagrams/README.md` | Retain and refresh routes | Owns the four retained current-system diagrams after the two future projections retire. |
-| `docs/demo/DEMO_WALKTHROUGH.md` | Rehome or retire under `CLEAN-01` | Preserve only a neutral supported synthetic path and evidence-safe presentation guidance. |
-| `docs/demo/PI_DEMO_REPORT.md` | Rehome or retire under `CLEAN-01` | Same demo-surface decision; it is not current evidence authority. |
-| `docs/demo/README.md` | Rehome or retire under `CLEAN-01` | Demo terminology and public surface remain independently unsettled. |
+| `docs/demo/DEMO_WALKTHROUGH.md` | Retired by `CLEAN-01`; exact-head verification pending | The supported neutral synthetic journey and evidence ceiling now live in `quickstart.md`; advanced placement and recovery remain in the runbook. |
+| `docs/demo/PI_DEMO_REPORT.md` | Retired by `CLEAN-01`; exact-head verification pending | Receipt-bound scientific and evidence/operations reports remain the only product reports; neutral reporting fixtures and exact independent goldens retain validation value. |
+| `docs/demo/README.md` | Retired by `CLEAN-01`; exact-head verification pending | Inbound navigation now routes directly to the supported quickstart and reporting owners; no separate demo authority remains. |
 | `docs/design/DECISIONS.md` | Retain and refresh routes | Durable rationale index; it now records this audit and no longer delegates current state to legacy sources. |
 | `docs/design/LOGGING_CONTRACT.md` | Retain | Accepted logging behavior and adoption boundary remain current. |
 | `docs/design/ORCHESTRATION_CONTRACT.md` | Retain and refresh routes | Durable lifecycle, safety, identity, recovery, and evidence contract remains current. |
@@ -165,7 +165,7 @@ handoff, or stale roadmap authority.
 | `docs/history/README.md` | Retain and refresh routes | Dated evidence policy and future index for unique handoff evidence selected for migration. |
 | `docs/operations/ENGINEERING_CONVENTIONS.md` | Retain | Stable repository dependency, tooling, and implementation conventions. |
 | `docs/operations/HANDOFF.md` | Reconcile durable content, then retire under `DOC-04` | Trace every section. Preserve unique VM, renderer, PORT-NC-01, Viking Step 07–09, cohort/Step 03, artifact-identity, and recovery facts in dated history or live owners with exact provenance and evidence ceilings; discard blockers and immediate-resume prose only after the trace; never promote historical claims to current proof. |
-| `docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md` | Consolidate, then retire under `DOC-05` | Active behavior stays in tests/CI; delivery safety stays in `AGENTS.md`/workflow; commands stay in the runbook; discard the stale transcript and unverifiable short references. |
+| `docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md` | Retired by the partial `DOC-05` execution-profile cut | Current safeguards now live in execution-profile, transport, grouped-control, onboarding, package, contract, test, CI, runbook, and configuration owners. Obsolete `.env`, generated-wrapper, split-config, and Bash-3.2 instructions remain in Git history rather than current documentation. |
 | `docs/operations/README.md` | Retain and refresh routes | Necessary operations index; current-evidence routing is corrected now. |
 | `docs/operations/RUNBOOK.md` | Retain | Supported cross-cutting commands and operator procedures. |
 | `docs/operations/TROUBLESHOOTING.md` | Retain and refresh routes | Common diagnosis and evidence-preserving recovery; exact current evidence no longer routes to the handoff. |
@@ -184,6 +184,15 @@ handoff, or stale roadmap authority.
 | `docs/architecture/diagrams/local_pilot_orchestration.mmd` | Retain | Current non-authoritative local-pilot projection. |
 | `docs/architecture/diagrams/pipeline.mmd` | Retain | Current non-authoritative scientific pipeline projection. |
 | `docs/architecture/diagrams/reliability.mmd` | Retain | Current non-authoritative validation/publication boundary projection. |
+
+### `CLEAN-01` demo-surface trace (2026-08-30)
+
+| Retired surface | Surviving value and owner |
+|---|---|
+| `docs/demo/` | The 177-line root quickstart owns the neutral synthetic Project-to-Results journey and its evidence ceiling; the runbook owns Slurm/site/recovery detail. |
+| `make demo-report` and `scripts/make_reporting.mk` | `make report-test` remains under the consolidated quality Make owner; reporting fixtures, transaction tests, renderer tests, and independent HTML goldens remain unchanged except for the reviewed public inspect-command hash. |
+| Fake-tool fresh-clone harness | Focused lifecycle tests retain failure/resume defenses; the replacement ordinary CI job is configured to prove a clean-clone, Doctor-managed, real-tool direct Run and retain its inputs, receipts, logs, Results, and reports. Exact-head execution remains pending. |
+| Public synthetic/inspection spellings | `emrys init synthetic` and `emrys inspect run` replace the historically coupled names directly; the internal fixture schema remains historical compatibility metadata, not a public command. |
 
 ### `DOC-03` source-to-destination trace (2026-08-25)
 
@@ -205,7 +214,7 @@ deployment state; Git retains the deleted bytes.
 | Principle 5: distinct local, runtime, scheduler, production, scientific-review, and biological evidence | Preserved by `TEST_BASELINE.md`, the runbook's CI evidence boundary, and the execution/evidence decision record. |
 | Principle 6: typed preprocessing and analysis extension rather than one universal RNA/DNA workflow | Preserved as accepted future outcomes under `ANALYSIS-01` and `ANALYSIS-02` and as unsliced context in campaign section 12; no plugin interface is selected. |
 | Local YAML/TSV lifecycle capability | Implemented fixed-profile behavior and the “no inbox, watcher, queue, database, or service” boundary remain in `ORCHESTRATION_CONTRACT.md`; B2/B4/B5/B6 labels are discarded chronology. |
-| Local orchestration capability | Current static graph, lifecycle, resume, reporting tail, and evidence limits remain in `ARCHITECTURE.md`, `ORCHESTRATION_CONTRACT.md`, the workflow profile, and tests; B3/B4/B5/B6 labels are discarded chronology. |
+| Local orchestration capability | Current static graph, scientific lifecycle/resume, downstream reporting operation, and evidence limits remain in `ARCHITECTURE.md`, `ORCHESTRATION_CONTRACT.md`, the workflow profile, and tests; B3/B4/B5/B6 labels are discarded chronology. |
 | Site-execution capability | Accepted outcomes remain under `OPS-02`, `RUNTIME-01`, `DOCTOR-01`, and `CONTAINER-01`. Exact-commit runtime/scheduler evidence remains owned by `.github/ci/README.md`, the runbook, and retained artifacts; this retirement produces no runtime or site proof. |
 | Report-profile capability | Current adapter/view/publication invariants remain in the reporting owner and execution/evidence decision; audience work remains `REPORT-03`. The still-open shared-versus-profile-specific receipt topology moves to campaign `AC-DEC-014`. |
 | Logging capability | The foundation is current under `LOGGING_CONTRACT.md`; production adoption remains `LOG-05`, and observability outcomes remain `OBS-01`/`OBS-02`. The legacy claim that logging was wholly unimplemented is discarded as stale. |
@@ -279,6 +288,6 @@ deployment state; Git retains the deleted bytes.
 This audit performs the bounded authority and routing cutover, records
 dispositions, marks transition sources, and guards them against premature
 deletion. Completed `DOC-03` owns the trace and retirement recorded above;
-`DOC-04`, `DOC-05`, `CLEAN-01`, and `CLEAN-02` own the remaining separately
-reviewable migrations and deletions. `DOC-01` owns the later
+`DOC-04` and `DOC-05` own the remaining separately reviewable documentation
+migrations and deletions. `DOC-01` owns the later
 scientist/operator/developer journey rewrite.

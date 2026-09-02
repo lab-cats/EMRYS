@@ -8,10 +8,12 @@ evidence limits.
 
 - repository producer:
   [`step_00c_prepare_gatk_reference.sh`](step_00c_prepare_gatk_reference.sh)
-- grouped validator: `python -I -m emrys validate fasta-sidecars`, implemented
+- grouped validator: `emrys validate fasta-sidecars`, implemented
   by the private [`validator.py`](validator.py) module
-- repository scheduler:
-  [`step_00c_prepare_gatk_reference.slurm`](step_00c_prepare_gatk_reference.slurm)
+
+For Slurm execution, use the complete immutable Run through `emrys run` or
+`emrys resume` as documented in the
+[runbook](../../../../docs/operations/RUNBOOK.md#run-coordinator-lifecycle-routes).
 
 ## Operate
 
@@ -50,7 +52,7 @@ returns failure and retains the lock plus remaining residue.
 Validator dry-run:
 
 ```bash
-.venv/bin/python -I -m emrys validate fasta-sidecars \
+emrys validate fasta-sidecars \
   --scope-id novogene_ref \
   --reference-fasta refs/novogene_ref/genome.fa \
   --reference-fai refs/novogene_ref/genome.fa.fai \
@@ -64,45 +66,20 @@ absolute input and output paths. The validator shares the neutral contig parser
 with reference provenance and the Step `05` validator; each consumer retains
 its own evidence decision.
 
-SLURM requires explicit final paths. Omit `EXECUTE=1` for dry-run:
-
-```bash
-cd <checkout>
-mkdir -p logs
-REFERENCE_FASTA=/absolute/refs/genome.fa \
-SAMTOOLS_BIN_OVERRIDE=/absolute/path/to/samtools \
-GATK_BIN_OVERRIDE=/absolute/path/to/gatk \
-JAVA_BIN_OVERRIDE=/absolute/java-home/bin/java \
-EMRYS_SHA256_PYTHON=/absolute/path/to/python \
-TMPDIR=/absolute/path/to/tmp \
-EXECUTE=1 \
-  sbatch src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm
-```
-
-The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving repository-owned helpers or the producer; an executed spool copy does
-not become checkout authority.
-
-Site defaults are not portable. In execute mode the wrapper validates the
-controlled Python, then delegates the selected-Java GATK probe and work to the
-producer. It checks only nonempty FAI and DICT after delegation; mocked
-scheduler tests do not prove site runtime.
-
 ## Diagnose and verify
 
-Preserve FASTA, FAI, DICT, validator report, scheduler streams, lock, and
-run-token paths before recovery. A clean controlled failure removes only
-outputs created by its own attempt; ambiguous or failed-rollback residue is
-preserved. Failed staging/lock cleanup and older-token residue are blocking,
-not stale state to delete automatically. Never delete a partial pair
+Preserve FASTA, FAI, DICT, validator report, whole-Run application and scheduler
+streams, lock, and run-token paths before recovery. A clean controlled failure
+removes only outputs created by its own attempt; ambiguous or failed-rollback
+residue is preserved. Failed staging/lock cleanup and older-token residue are
+blocking, not stale state to delete automatically. Never delete a partial pair
 automatically. After provenance and ownership are established, an authorized
 rerun may generate only the missing sidecar.
 
 ```bash
 bash tests/stages/fasta_sidecars/test_step_00c_prepare_gatk_reference.sh
 .venv/bin/python -m pytest -q \
-  tests/stages/fasta_sidecars/test_validate_step_00c_reference_sidecars.py \
-  tests/test_slurm_wrapper_contracts.py
+  tests/stages/fasta_sidecars/test_validate_step_00c_reference_sidecars.py
 ```
 
 Evidence is local fixture/mock only, not real samtools/GATK/Java, scheduler,

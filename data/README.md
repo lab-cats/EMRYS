@@ -9,10 +9,9 @@ data lifecycle.
 
 - `raw/` and `full/` are ignored operator-managed locations for large inputs.
 - [`test/`](test/) is the retained local fixture workspace named by the structural
-  [`sample-manifest starter`](../configs/samples.example.tsv); no orchestrator
-  wires that starter into a run. Independently, the
-  [Step `01` scheduler owner](../src/emrys/stages/star_alignment/README.md)
-  uses only the `sample_001` mate paths as current default dry-run placeholders.
+  [`sample-manifest example`](../configs/samples.example.tsv); no orchestrator
+  wires that example into a Run, and no current owner treats its paths as
+  defaults.
   Directory or placeholder-file presence alone does not establish a runnable
   fixture or production evidence.
 

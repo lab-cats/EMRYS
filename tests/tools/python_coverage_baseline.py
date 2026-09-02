@@ -24,7 +24,7 @@ COUNT_FIELDS = (
 )
 CRITICAL_OWNER_GROUPS: Mapping[str, tuple[str, ...]] = {
     "orchestration_machine_contracts": ("src/emrys/contracts/orchestration/",),
-    "local_pilot_control_plane": ("src/emrys/orchestration/local_pilot/",),
+    "run_coordinator": ("src/emrys/orchestration/run_coordinator/",),
     "source_checkout_admission": ("src/emrys/libraries/source_authority.py",),
     "runtime_availability_admission": ("src/emrys/evidence/runtime_availability/",),
     "emrys.contracts.scientific_evidence": (

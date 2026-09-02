@@ -24,7 +24,14 @@ Candidate review, adjudication, and biological interpretation are external
 work-process records. EMRYS does not model them as pipeline steps, gates,
 artifacts, or completion states.
 
-## What happens to the data
+That paired-CMH path remains the built-in Analysis. A Project may instead
+select an installed collaborator module with explicit module-owned scientific
+configuration; EMRYS retains the same immutable Run, validation, provenance,
+recovery, logging, Results, and reporting boundaries. V1 modules must already
+be installed and self-contained. See the
+[analysis-module contract](src/emrys/analyses/README.md).
+
+## What happens to the data in the built-in Analysis
 
 | Step | Scope | Operation | Principal result |
 | --- | --- | --- | --- |
@@ -48,8 +55,8 @@ Steps `02b` and `03` are required QC leaves but do not gate downstream
 scientific computation. External review or adjudication may use EMRYS's
 computational outputs and provenance, but it is not part of `emrys run`.
 
-The fixed graph contains `3 + 7S + P + 3` scientific-owner jobs for `S`
-samples and `P` genomic partitions. The four-sample, one-partition starter
+The built-in graph contains `3 + 7S + P + 3` scientific-owner jobs for `S`
+samples and `P` genomic partitions. The four-sample, one-partition synthetic fixture
 therefore expands to 35 jobs, followed by three reporting transactions.
 
 ## Supported execution boundary
@@ -58,30 +65,49 @@ Read this before installing:
 
 - The public runtime target is a Linux/POSIX host with Python `3.11` or newer,
   Git, GNU Make, `uv`, and the scientific runtime listed below.
-- The workflow uses Snakemake's **single-host local executor**. It defaults to
-  a packaged resource policy that can be overridden by adjacent
-  `emrys.resources.yaml` and then by explicit CLI values. `workflow_cores` and
-  `workflow_memory_mb` bound the whole scheduler; per-stage concurrency,
-  threads, and memory model each owner class. EMRYS neither submits SLURM jobs
-  nor distributes work across nodes.
-- Run it on a suitably provisioned Linux workstation, or run the same local
-  process inside **one** batch allocation on **one** compute node. Never run the
-  scientific workflow on a cluster login/head node; use that node only to
-  clone, edit, transfer small files, submit, inspect, and tail logs.
-- One cooperative user is required. The exact workspace parent and Step `00c`
-  reference-sidecar parent must pass EMRYS's two-phase site qualification for
-  hard links, `flock`, rename/visibility, fsync, UID/access, and post-allocation
-  durability. No filesystem family—including NFS—is admitted by name alone.
-- Local-pilot inputs, workspace, control logs, and results stay outside the Git
-  checkout. The locked ignored `.venv/`, the default ignored `renv/library/`,
-  and the report-only demo's ignored `results/demo-report-jinja/` are sanctioned
-  checkout-local exceptions; an already provisioned R library may instead be
+- The workflow has one Snakemake **single-host local executor**. With no
+  selector, EMRYS loads the generated Project-local
+  `runtime/profiles/default.yaml`, which uses conservative resources and direct
+  placement. `--profile NAME` selects `runtime/profiles/NAME.yaml`; the same
+  option accepts an absolute profile path for advanced use. A selected closed
+  fragment may supply Run-bound resources and Attempt-local placement; explicit
+  CLI resource values have highest precedence. There is no site or global
+  profile registry.
+- Slurm placement submits the whole Run into **one** allocation on **one**
+  compute node through the same `emrys run` or `emrys resume` command. It is
+  not a distributed backend. A noninteractive dry-run does not submit or write;
+  terminal confirmation or explicit noninteractive `--execute` submits once
+  and prints `JOB_ID`, `OUT`, and `ERR`. Never execute the scientific workflow
+  on a cluster login/head node.
+- One cooperative user is required. Direct placement uses Doctor's
+  single-host qualification (or an existing stronger site receipt) for the
+  exact Project root and Step `00c` reference-sidecar parent, covering hard
+  links, `flock`, rename/visibility, and fsync. Slurm placement requires the
+  existing two-phase
+  compute/head receipt for numeric access and post-allocation durability. No
+  filesystem family—including NFS—is admitted by name alone.
+- The Project, referenced inputs, logs, and results stay outside the Git
+  checkout. Setup creates and owns `runs/`, `logs/`, and `runtime/` beneath the
+  `project.yaml` parent. The locked ignored `.venv/` and the default ignored
+  `renv/library/` are sanctioned checkout-local exceptions; an already provisioned R library may instead be
   selected explicitly. The doctor requires tracked checkout content to be clean
   and binds its exact commit and installed package bytes.
-- EMRYS does not download data, install tools, load modules, restore R
-  packages, estimate runtime, force retries, delete locks, or repair outputs.
-  It does observe the CPU affinity and memory capacity available to its local
-  executor so an impossible resource policy fails before workflow entry.
+- EMRYS never downloads data, force-retries work, deletes locks, repairs
+  outputs, or mutates declared scientific inputs. `emrys doctor` is read-only
+  by default. Its separately authorized `--repair` action can publish the
+  Project-owned direct-storage receipt and restore only the active
+  checkout-owned `.venv` and `<project-root>/runtime/managed`, delegating
+  dependency solving and installation to `uv`, Pixi, and `renv`, then
+  requalifying the Project. Site- or user-owned runtime profiles are preserved,
+  not migrated or overwritten. Direct placement uses the admitted environment;
+  Slurm placement may load only the exact modules declared in its selected
+  profile and uses a private temporary directory. EMRYS observes the CPU
+  affinity and memory capacity available to its local executor so an impossible
+  resource policy fails before workflow entry.
+
+Scheduler streams are created automatically under `<project-root>/logs` and the
+default application-log root is `<project-root>/logs/application`. Reporting runs automatically after scientific
+work and publishes its receipts last; it is not a scientific stage.
 
 Capacity depends on reference size, read count, and selected partitions. Plan
 for the STAR index and several BAM generations per sample, plus orientation
@@ -89,7 +115,7 @@ BAMs, VCFs, logs, and immutable recovery evidence. Before a real run, inspect
 the input size and destination capacity on the execution host:
 
 ```sh
-du -sh /absolute/path/to/emrys-inputs/inputs
+du -sh /absolute/path/to/referenced-fastqs /absolute/path/to/reference
 df -h /absolute/path/to/operator-managed-storage
 free -h
 ```
@@ -101,8 +127,40 @@ representative samples before authorizing the full analysis.
 
 ## Choose a first run
 
+For your own data, create the Project as a named child of the current directory,
+then work from that Project root:
+
+```sh
+emrys init PROJECT_NAME --execute
+cd PROJECT_NAME
+emrys validate
+emrys runtime discover --execute
+emrys doctor
+emrys run
+emrys inspect
+emrys report
+```
+
+`run` plans and displays an immutable Run before terminal confirmation;
+`--execute` is the explicit noninteractive execution path. Reporting runs by
+default after a full Run, can be disabled with `--no-report`, and can be
+regenerated independently with `emrys report [RUN] --execute`. `resume` retries
+a failed or interrupted Run; it does not stop an active Run.
+
+Each Run has a stable two-word human name for ordinary `inspect`, `resume`, and
+`report` selection. The canonical Run ID and a unique ID prefix remain accepted
+advanced selectors. With one Run, omit the selector. With several Runs, a
+terminal presents a selection menu; noninteractive use lists the choices and
+requires an explicit selector. Outside the Project root, use
+`--project PROJECT_NAME_OR_PATH` explicitly.
+
+Low-level runtime and storage evidence routes live under `emrys debug`, for
+example `emrys debug runtime-availability` and
+`emrys debug storage-qualification` (with storage inventory available there as
+well); they are not part of the ordinary journey.
+
 - **Synthetic installation check:** use [`quickstart.md`](quickstart.md),
-  Path A, with `emrys init synthetic-local-pilot`. The default `smoke-v1`
+  Path A, with `emrys init synthetic`. The default `smoke-v1`
   creates small explicit inputs; the closed `production-like-v1` selector
   creates the 100,000-pair-per-library, 5 Mb functional fixture. Both write
   outside the repository and still require the real admitted scientific
@@ -111,13 +169,8 @@ representative samples before authorizing the full analysis.
   validity.
 - **Your data:** follow [`quickstart.md`](quickstart.md), Path B, and replace
   every starter identity and path with your own declared inputs.
-- **Report-only preview:** run `make demo-report` after installation and follow
-  [`docs/demo/README.md`](docs/demo/README.md). This renders bundled reporting
-  fixtures and does not execute ingestion, STAR, samtools, GATK, Picard,
-  RSeQC, bcftools, R analysis, or the workflow.
-
 Use checks and retained artifacts bound to the exact commit for validation
-observations and their evidence ceilings. A demo, dry run, synthetic fixture,
+observations and their evidence ceilings. A dry run, synthetic fixture,
 successful job, or report must not be promoted beyond the evidence it actually
 establishes.
 
@@ -145,7 +198,7 @@ establishes.
 | Need | Canonical guide |
 | --- | --- |
 | Every input and runtime-profile field | [`configs/README.md`](configs/README.md) |
-| Public local-pilot boundary | [`src/emrys/orchestration/local_pilot/README.md`](src/emrys/orchestration/local_pilot/README.md) |
+| Public Project and Run boundary | [`src/emrys/orchestration/run_coordinator/README.md`](src/emrys/orchestration/run_coordinator/README.md) |
 | Recurring operations, scheduler inspection, and recovery | [`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md) |
 | Evidence-preserving recovery | [`docs/operations/TROUBLESHOOTING.md`](docs/operations/TROUBLESHOOTING.md) |
 | Optional external scientific-evaluation checklist | [`docs/reference/EXTERNAL_SCIENTIFIC_EVALUATION.md`](docs/reference/EXTERNAL_SCIENTIFIC_EVALUATION.md) |

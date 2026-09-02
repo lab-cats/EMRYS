@@ -51,7 +51,7 @@ def parse_fai(path: Path) -> list[tuple[str, int]]:
     result = []
     for number, line in enumerate(path.read_text().splitlines(), 1):
         fields = line.split("\t")
-        if len(fields) < 2 or not fields[1].isdigit():
+        if len(fields) < 2 or re.fullmatch(r"[0-9]+", fields[1]) is None:
             _fail(f"FAI row {number} is malformed")
         result.append((fields[0], int(fields[1])))
     return _unique_contigs(result, "FAI")

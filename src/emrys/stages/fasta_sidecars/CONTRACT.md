@@ -5,8 +5,8 @@ The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
 is the lowercase physical source owner for that semantic identity. Its Python
 implementation is an installed owner package; its only public Python surface is
-the grouped validator route. The shell producer and scheduler remain explicit
-repository-path interfaces and are not installed commands.
+the grouped validator route. The shell producer remains an explicit
+repository-path interface and is not an installed command.
 
 ## Responsibility
 
@@ -16,11 +16,9 @@ checked for structural and contig agreement without modifying the reference.
 
 ## Execution dependencies
 
-The hard data prerequisite is one materialized reference FASTA. Under the
-current default paths, historical Step `00a` is an operational predecessor
-only because its scheduler job decompresses the FASTA into
-`refs/novogene_ref/genome.fa`. This stage does not consume the STAR index
-produced by Step `00a`.
+The hard data prerequisite is one materialized reference FASTA. Reference
+materialization is outside this owner; this stage does not consume the STAR
+index produced by historical Step `00a`.
 
 Once the FASTA and GTF are materialized, FASTA-sidecar construction can run in
 parallel with historical Step `00b` BED12 conversion. Both sidecars must exist
@@ -43,11 +41,6 @@ The producer accepts:
 - Java version 17 or newer for GATK; and
 - an optional temporary-directory root and run token used for isolated staged
   files.
-
-The current scheduler entrypoint binds the FASTA, `samtools`, GATK, Java, and
-temporary-directory inputs to CSU- and repository-specific defaults while
-allowing environment overrides. Those bindings describe current behavior;
-they are not approved future interface defaults.
 
 ## Outputs
 
@@ -98,18 +91,9 @@ Failure to remove any owned staging path or the owned lock is also a failed
 cleanup, not a clean retry boundary: the producer exits nonzero when necessary
 and retains the lock plus remaining residue for operator inspection.
 
-[`step_00c_prepare_gatk_reference.slurm`](step_00c_prepare_gatk_reference.slurm)
-requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving repository-owned helpers or the shell entrypoint, so SLURM's spool
-copy is never checkout authority. It maps `EXECUTE=0` to dry-run and `EXECUTE=1`
-to `--execute`, rejects other values, resolves the current cluster tools, and
-checks the two outputs after execution. Its empty-array invocation on Bash 3.2
-can fail in the default dry-run path. That characterized wrapper defect is
-preserved for later correction rather than normalized in this inventory.
-
 ## Validation interface
 
-`python -I -m emrys validate fasta-sidecars`, implemented by the private
+`emrys validate fasta-sidecars`, implemented by the private
 [`validator.py`](validator.py) module, accepts explicit scope, FASTA, `FAI`,
 `DICT`, and output paths. Validation is dry-run by default; `--execute`
 publishes `<scope-id>.validation.tsv` using the common seven-field
@@ -186,9 +170,6 @@ No downstream stage should depend on this stage's implementation module.
   protects the five checks, ordered mismatch evidence, fail-closed structure,
   deterministic publication, lock handling, arbitrary-CWD repeatability, and
   the grouped package route.
-- [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
-  protects the wrapper's delegation, execution control, tool resolution, and
-  characterized Bash 3.2 dry-run behavior with local mocks.
 - [`test_validation_check_rosters.py`](../../../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py)
   protects the exact validator inventory and check identities.
 - [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py)
@@ -197,7 +178,7 @@ No downstream stage should depend on this stage's implementation module.
   and [`test_python_coverage_baseline.py`](../../../../tests/test_python_coverage_baseline.py)
   protect the recorded public-CLI and coverage boundaries.
 
-These are local fixture and mocked-wrapper contracts. They do not establish a
+These are local fixture contracts. They do not establish a
 new cluster, production, scientific-review, or biological-evidence result.
 Current evidence status remains owned by the canonical roadmap and handoff.
 
@@ -212,17 +193,15 @@ Current evidence status remains owned by the canonical roadmap and handoff.
   reuses reference parsers from the neutral `reference_contigs` owner and
   publication helpers from the neutral validation-report owner through shared
   bridges.
-- The scheduler wrapper owns cluster-specific path defaults and controlled-
-  Python admission around the parameterized shell entrypoint. The producer is
-  the sole GATK probe/work authority and owns selected-Java enforcement.
+- The producer is the sole GATK probe/work authority and owns selected-Java
+  enforcement.
 
 The reference-parser extraction is complete through `LIB-02K`; this inventory
-does not choose a transaction redesign or scheduler abstraction.
+does not choose a transaction redesign.
 
 ## Deferred decisions
 
 - Final owner of reference materialization.
 - Whether the two sidecars require one native publication receipt.
-- Final ownership of scheduler templates beyond this colocated native asset.
 - Any reference-provenance transaction redesign; its physical owner home is
   already fixed separately.

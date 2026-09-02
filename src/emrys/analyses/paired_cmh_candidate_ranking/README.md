@@ -6,21 +6,23 @@ six-output transaction, validation, consumer, and evidence semantics.
 
 ## Entry points
 
-- repository transaction owner: [`step_09_cmh_editing_site_calling.sh`](step_09_cmh_editing_site_calling.sh)
+- private repository transaction owner: [`producer.py`](producer.py)
 - repository statistical coordinator: [`step_09_cmh_editing_site_calling.R`](step_09_cmh_editing_site_calling.R)
-- grouped validator: `python -I -m emrys validate paired-cmh-candidate-ranking`,
+- grouped validator: `emrys validate paired-cmh-candidate-ranking`,
   implemented by private [`validator.py`](validator.py)
-- repository scheduler: [`step_09_cmh_editing_site_calling.slurm`](step_09_cmh_editing_site_calling.slurm)
 
 Private R modules sit behind the public coordinator; the historical REMORA
 script is an algorithm reference, not a runtime dependency or parity proof.
+For Slurm execution, use the complete immutable Run through `emrys run` or
+`emrys resume` as documented in the
+[runbook](../../../../docs/operations/RUNBOOK.md#run-coordinator-lifecycle-routes).
 
 ## Operate
 
 The sample manifest is the only pairing authority. Dry-run writes nothing:
 
 ```bash
-src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh \
+.venv/bin/python -I -m emrys.analyses.paired_cmh_candidate_ranking.producer \
   --analysis-id NORAD_EV_vs_PUM1 \
   --cohort-id NORAD_EV_PUM1 \
   --sample-manifest samples.tsv \
@@ -47,7 +49,7 @@ Validator dry-run:
 ```bash
 analysis=NORAD_EV_vs_PUM1 cohort=NORAD_EV_PUM1
 analysis_dir="results/editing/$analysis"
-.venv/bin/python -I -m emrys validate paired-cmh-candidate-ranking \
+emrys validate paired-cmh-candidate-ranking \
   --analysis-id "$analysis" --cohort-id "$cohort" \
   --sample-manifest samples.tsv \
   --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
@@ -67,37 +69,22 @@ Create the report parent and add `--execute`. Exit `0` permits failed rows.
 from reported p-values but does not independently recompute CMH statistics;
 the real-R fixture and independent oracle protect that separate boundary.
 
-```bash
-cd /absolute/path/to/emrys
-mkdir -p logs
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,RSCRIPT_BIN_OVERRIDE=/usr/local/bin/Rscript \
-  src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm
-```
-
-The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving repository-owned helpers, the producer, or its dependency environment;
-an executed spool copy does not become checkout authority.
-
-Change only `EXECUTE=1` after review. Six stale outputs can produce false
-scheduler success.
-
 ## Diagnose and verify
 
 Preserve all six finals, scratch/backups, lock, manifests, Step `08` inputs, R
 program/runtime/library/hashes, streams, job identity, and unrelated bytes.
 Never combine attempts or trust summary visibility, names, hashes, timestamps,
-or stale scheduler success. Use a fresh root for an authorized diagnostic run.
+or scheduler success alone. Use a fresh root for an authorized diagnostic run.
 
 ```bash
-bash tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_editing_site_calling.sh
 .venv/bin/python -m pytest -q \
+  tests/analyses/paired_cmh_candidate_ranking/test_paired_cmh_producer.py \
   tests/contracts/scientific_evidence/test_step08.py \
   tests/contracts/scientific_evidence/test_step09.py \
   tests/analyses/paired_cmh_candidate_ranking/test_validate_step_09_cmh_outputs.py \
   tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_oracle.py
 RSCRIPT_BIN=/usr/local/bin/Rscript \
   bash tests/analyses/paired_cmh_candidate_ranking/run_step_09_cmh_tests.sh
-.venv/bin/python -m pytest -q tests/test_slurm_wrapper_contracts.py -k step_09_cmh
 ```
 
-This is local shell/R/fixture evidence only.
+This is local Python/R/fixture evidence only.

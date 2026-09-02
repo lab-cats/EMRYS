@@ -4,14 +4,14 @@ This document records the observed current contract of historical Step `02b`.
 The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
 is the lowercase physical owner for that frozen semantic identity. Its shell
-producer and scheduler remain repository-path interfaces, while its private
-Python validator is exposed only through the grouped package command.
+producer remains a repository-path interface, while its private Python
+validator is exposed only through the grouped package command.
 
 Historical Step `02b` is classified as an independently runnable evidence
 operation associated with the canonical-BAM stage, not as a peer scientific
-data-transformation stage. The producer, validator, and scheduler entry point
-are colocated here, with supported commands and recovery boundaries in the
-adjacent [`README.md`](README.md).
+data-transformation stage. The producer and validator are colocated here, with
+supported commands and recovery boundaries in the adjacent
+[`README.md`](README.md).
 
 ## Responsibility
 
@@ -51,9 +51,7 @@ The producer accepts:
 
 The producer does not verify that the sample identifier matches BAM read-group
 metadata or bind the evidence to a manifest row. It also does not validate
-sample-identifier path safety. The scheduler entrypoint supplies historical
-sample/path defaults and loads samtools `1.19.2`; those are current bindings,
-not approved future interface defaults.
+sample-identifier path safety.
 
 ## Outputs
 
@@ -110,17 +108,9 @@ or output-set validation. A quickcheck or flagstat failure can leave a partial
 or cross-attempt evidence set, especially when an older sibling file already
 exists.
 
-[`step_02b_bam_qc.slurm`](step_02b_bam_qc.slurm) requires and
-changes to `SLURM_SUBMIT_DIR`, creates log and output directories, loads the
-samtools module, delegates to the shell producer, maps `EXECUTE=0` to dry-run
-and `EXECUTE=1` to `--execute`, and rejects other values. After execution it
-checks only that both paths exist. On Bash 3.2, expansion of its empty
-execution-argument array can prevent the default dry-run from reaching the
-producer.
-
 ## Validation interface
 
-The grouped route `python -I -m emrys validate canonical-bam-qc`, implemented
+The grouped route `emrys validate canonical-bam-qc`, implemented
 by private [`validator.py`](validator.py), accepts an explicit scope,
 quickcheck file, flagstat file, and output path. It does not receive the source
 BAM, BAI, samtools identity, or an attempt receipt. Validation is dry-run by
@@ -178,10 +168,6 @@ make it a prerequisite for later computation.
   protects dry-run, five checks, marker/count mismatch evidence, arbitrary-CWD
   repeatability, post-build input mutation, publication, and foreign-lock
   preservation.
-- [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
-  protects wrapper execution control, module/CWD/delegation behavior,
-  directory creation, the Bash 3.2 defect, child failure propagation, and the
-  stale-final false-success defect.
 - [`test_validation_check_rosters.py`](../../../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py),
   [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py),
   [`test_public_cli_contracts.py`](../../../../tests/test_public_cli_contracts.py),
@@ -191,7 +177,7 @@ make it a prerequisite for later computation.
 - Artifact-adapter, run-summary, and report tests protect downstream Step `02b`
   evidence projection without rerunning samtools.
 
-These are local fixture and mocked-wrapper contracts. They do not establish a
+These are local fixture contracts. They do not establish a
 new real-runtime, cluster, production, scientific-review, or biological-
 evidence result. Current evidence status remains owned by the canonical
 roadmap and handoff.
@@ -206,8 +192,7 @@ roadmap and handoff.
 - Producer success, validator success, and artifact-adapter success are not
   one identical quickcheck contract.
 - Cross-cutting validation-publication code is owned by neutral
-  `src/emrys/libraries/validation/report.py`, while scheduler runtime bindings
-  remain in the wrapper.
+  `src/emrys/libraries/validation/report.py`.
 
 ## Deferred decisions
 

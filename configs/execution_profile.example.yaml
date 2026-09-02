@@ -1,0 +1,21 @@
+schema_version: emrys.execution-profile.v1
+
+# Scientific inputs, workspace, runtime, and execution enablement are deliberately
+# not profile fields. This fragment selects only Attempt-local placement: a new
+# Run inherits packaged resources, while resume inherits predecessor Run resources.
+
+placement:
+  kind: slurm
+  account: replace-with-site-account
+  partition: replace-with-site-partition
+  qos: null
+  cpus_per_task: 4
+  memory_mb: null
+  time: "03:00:00"
+  exclusive: false
+  nodelist: null
+  scratch_parent: /absolute/path/to/compute-scratch
+  modules:
+    mode: none
+    init: ""
+    load: []

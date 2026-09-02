@@ -2,8 +2,7 @@
 
 `refs/` holds prepared reference material and generated indexes used by
 pipeline stages. Most root children are ignored because reference artifacts
-are large, environment-specific, or derived; this README and the local
-`test_star_index/` documentation are tracked.
+are large, environment-specific, or derived; only this README is tracked.
 
 Step `00a` owns reference-index construction, while downstream owners consume
 explicit files beneath this root. Supported preparation commands are routed by

@@ -16,6 +16,7 @@ from emrys.libraries import validation as report
 from .definitions import (
     COMMON_SCHEMA_PATH,
     SCHEMA_FILES,
+    VERSIONED_SCHEMA_FILES,
     ContractValidationError,
 )
 
@@ -37,25 +38,32 @@ def reject_nonstandard_json_constant(value: str) -> None:
     )
 
 
+def load_json_object_bytes(data: bytes, label: str) -> dict[str, Any]:
+    try:
+        value = json.loads(
+            data.decode("utf-8"),
+            object_pairs_hook=reject_duplicate_json_keys,
+            parse_constant=reject_nonstandard_json_constant,
+        )
+    except ContractValidationError:
+        raise
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ContractValidationError(f"Could not parse {label}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise ContractValidationError(f"{label} must contain a JSON object")
+    return value
+
+
 def load_json_object(path: Path, label: str) -> dict[str, Any]:
     if not path.exists():
         raise ContractValidationError(f"{label} does not exist: {path}")
     if not path.is_file():
         raise ContractValidationError(f"{label} is not a file: {path}")
     try:
-        with path.open(encoding="utf-8") as stream:
-            value = json.load(
-                stream,
-                object_pairs_hook=reject_duplicate_json_keys,
-                parse_constant=reject_nonstandard_json_constant,
-            )
-    except ContractValidationError:
-        raise
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        data = path.read_bytes()
+    except OSError as exc:
         raise ContractValidationError(f"Could not parse {label} {path}: {exc}") from exc
-    if not isinstance(value, dict):
-        raise ContractValidationError(f"{label} must contain a JSON object: {path}")
-    return value
+    return load_json_object_bytes(data, f"{label} {path}")
 
 
 def load_schema(name: str) -> dict[str, Any]:
@@ -88,15 +96,36 @@ def load_schema_registry() -> tuple[dict[str, dict[str, Any]], Registry]:
                 f"Could not register local {name} schema: {exc}"
             ) from exc
         schemas[name] = schema
+    for (name, version), schema_path in VERSIONED_SCHEMA_FILES.items():
+        label = f"{name} {version}"
+        schema = load_json_object(schema_path, f"{label} schema")
+        try:
+            Draft202012Validator.check_schema(schema)
+            registry = registry.with_resource(
+                schema["$id"],
+                Resource.from_contents(schema),
+            )
+        except Exception as exc:
+            raise ContractValidationError(
+                f"Could not register local {label} schema: {exc}"
+            ) from exc
     return schemas, registry
 
 
-def schema_validator(name: str) -> Draft202012Validator:
-    """Build a validator from the closed local registry for one named schema."""
+def schema_validator(
+    name: str, version: str | None = None
+) -> Draft202012Validator:
+    """Build the closed validator for one active or explicitly versioned schema."""
 
     schemas, registry = load_schema_registry()
+    versioned = None if version is None else VERSIONED_SCHEMA_FILES.get((name, version))
+    schema = (
+        schemas[name]
+        if versioned is None
+        else load_json_object(versioned, f"{name} {version} schema")
+    )
     return Draft202012Validator(
-        schemas[name],
+        schema,
         registry=registry,
         format_checker=FormatChecker(),
     )

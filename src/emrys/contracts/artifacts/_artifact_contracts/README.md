@@ -1,7 +1,7 @@
 # Artifact-contract validator implementation owners
 
 This private package supports the grouped
-`python -I -m emrys validate artifact-contracts` route through private
+`emrys validate artifact-contracts` route through private
 [`validator.py`](../validator.py) and the curated reporting
 [`api.py`](../api.py). The responsibility modules remain private to the
 artifact-contract owner.

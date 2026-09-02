@@ -6,7 +6,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SCRIPT="$REPO_ROOT/src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
-JOB="$REPO_ROOT/src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm"
 unset EMRYS_RUN_TOKEN
 export EMRYS_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
@@ -419,7 +418,6 @@ write_reference "$reference_fasta"
 
 printf 'Running syntax checks...\n'
 bash -n "$SCRIPT"
-bash -n "$JOB"
 
 printf 'Running help check...\n'
 help_output="$tmp_dir/help.out"
@@ -914,7 +912,7 @@ assert_no_step05_recovery "$restore_failure_dir"
 
 printf 'Running stale path and sidecar non-creation checks...\n'
 stale_output="$tmp_dir/stale.out"
-if grep -F "sorted.md" "$SCRIPT" "$JOB" >"$stale_output"; then
+if grep -F "sorted.md" "$SCRIPT" >"$stale_output"; then
     cat "$stale_output" >&2
     fail "Step 05 files should not use stale sorted.md paths"
 fi

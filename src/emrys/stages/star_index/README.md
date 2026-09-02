@@ -4,15 +4,17 @@ This directory is the implemented native owner for semantic stage
 `construct_STAR_index` (`emrys.stage.construct_STAR_index.v1`, historical alias
 `00a`). Its current public surfaces and direct protection are:
 
-- [`step_00a_build_novogene_star_index.slurm`](step_00a_build_novogene_star_index.slurm),
-  the mode-`0644` scheduler entry point;
 - [`step_00a_build_star_index.sh`](step_00a_build_star_index.sh), the explicit
-  scheduler-independent producer;
-- `python -I -m emrys validate star-index`, implemented by the private
+  producer;
+- `emrys validate star-index`, implemented by the private
   mode-`0644` [`validator.py`](validator.py) module; and
 - the mirrored [validator](../../../../tests/stages/star_index/test_validate_step_00a_star_index.py)
-  and [mocked-job](../../../../tests/stages/star_index/test_step_00a_build_novogene_star_index.py)
+  and [producer](../../../../tests/stages/star_index/test_step_00a_build_star_index.py)
   tests.
+
+For Slurm execution, use the complete immutable Run through `emrys run` or
+`emrys resume` as documented in the
+[runbook](../../../../docs/operations/RUNBOOK.md#run-coordinator-lifecycle-routes).
 
 Plan one local build from any working directory with explicit paths:
 
@@ -37,20 +39,8 @@ residue blocks the invocation and is never replaced automatically. A failure
 after final reservation preserves the partial final, lock, and residue for
 operator inspection.
 
-The current owner-local Novogene scheduler entry point remains supported:
-
-```bash
-cd /absolute/path/to/emrys
-sbatch src/emrys/stages/star_index/step_00a_build_novogene_star_index.slurm
-```
-
-The job executes implicitly on submission. It requires `SLURM_SUBMIT_DIR`,
-changes into that submitted checkout before resolving its repository-owned
-producer, and keeps the hardcoded compressed Novogene inputs and `refs/` outputs
-relative to that checkout even when SLURM executes a spool copy. It materializes
-the legacy reference files and then delegates index construction to the public
-producer with `--execute`. It is a scheduler input, not a directly executable
-file.
+The producer requires already materialized FASTA and GTF inputs. Legacy
+Novogene reference decompression is not part of this owner.
 
 The validator ignores `genomeParameters.txt` rows whose first field is exactly
 `###`; it still checks the exact overhang and `genomeSAindexNbases` values.
@@ -59,7 +49,7 @@ Invoke the validator with the repository Python and explicit inputs. Omitting
 `--execute` is the no-write dry run; adding it publishes the declared output:
 
 ```bash
-.venv/bin/python -I -m emrys validate star-index \
+emrys validate star-index \
   --scope-id novogene_ref \
   --index-dir refs/novogene_star_index \
   --reference-fasta refs/novogene_ref/genome.fa \
@@ -78,7 +68,7 @@ another working directory. Create the validation output parent before an
 ```bash
 .venv/bin/python -m pytest -q \
   tests/stages/star_index/test_validate_step_00a_star_index.py \
-  tests/stages/star_index/test_step_00a_build_novogene_star_index.py
+  tests/stages/star_index/test_step_00a_build_star_index.py
 ```
 
 The artifact index intentionally records the producer's final path while

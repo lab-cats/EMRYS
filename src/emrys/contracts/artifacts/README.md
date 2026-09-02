@@ -1,6 +1,6 @@
 # Artifact-contract owner
 
-The installed `python -I -m emrys validate artifact-contracts` route validates
+The installed `emrys validate artifact-contracts` route validates
 the closed artifact, run-summary, and report-receipt schemas.
 It does not discover artifacts, build indexes, render reports, repair inputs,
 or promote evidence. The route is coordinated by private
@@ -17,7 +17,7 @@ reduction; the former `core.py` compatibility layer is retired.
 Validate the schemas and starter inventory:
 
 ```sh
-python -I -m emrys validate artifact-contracts \
+emrys validate artifact-contracts \
   --check-schemas \
   --inventory configs/artifact_inventory.example.tsv
 ```
@@ -25,7 +25,7 @@ python -I -m emrys validate artifact-contracts \
 Validate one explicit document:
 
 ```sh
-python -I -m emrys validate artifact-contracts \
+emrys validate artifact-contracts \
   --schema artifact-record \
   --document /explicit/path/to/artifact_record.json \
   --inventory /explicit/path/to/artifact_inventory.tsv
@@ -44,11 +44,15 @@ Supported selectors are `artifact-record`, `run-summary`, and
 Packaged resources span [version `1`](../schemas/artifacts/v1/),
 [version `2`](../schemas/artifacts/v2/),
 [version `3`](../schemas/artifacts/v3/), and
-[version `4`](../schemas/artifacts/v4/). Version `1` owns the shared `common`
-resource, version `2` owns the active artifact-record and run-summary schemas,
-version `3` retains the frozen historical single-HTML receipt, and version `4`
-owns the active three-output report-receipt schema. The closed active registry
-does not alias or migrate v3 receipts.
+[version `4`](../schemas/artifacts/v4/), and
+[version `5`](../schemas/artifacts/v5/). Version `1` owns shared definitions.
+Artifact-record v2 remains active and permits null `git_commit` only when exact
+external-provider bytes are the recorded implementation authority. Flat
+paired-CMH reporting uses run-summary v2 and report-receipt v4. Version `3`
+contains both the frozen historical single-HTML receipt and the active
+module-neutral run-summary v3; explicit modules pair that summary with
+report-receipt v5. The closed registry does not alias or migrate historical
+receipts.
 Each registered public `$id` remains one packaged file. Large record schemas
 use local `$defs` to organize one document identity. Those definitions are not
 split into extra files merely to reduce line count: doing so would add registry

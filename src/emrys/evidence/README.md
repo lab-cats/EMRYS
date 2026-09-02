@@ -11,7 +11,7 @@ adjudication, biological interpretation, or neutral contracts.
 | [`collect_RSeQC_paired_orientation_evidence`](rseqc_orientation/README.md) | Numbered evidence operation `03`; collects paired-orientation evidence without selecting a biological strandedness policy. |
 | [`reference_provenance`](reference_provenance/README.md) | Reconciles one explicitly declared reference bundle without repair. |
 | [`runtime_preflight`](runtime_availability/README.md) | Semantic runtime-preflight evidence, physically owned by `runtime_availability`; records declared availability probes and owns a separate manual cluster module/tool smoke probe. Neither installs software or executes the workflow. |
-| [`storage_inventory`](storage_inventory/README.md) | Measures declared roots, records retention policy, and owns two-phase site qualification without staging data. |
+| [`storage_inventory`](storage_inventory/README.md) | Measures declared roots, records retention policy, and owns direct/single-host plus two-phase site qualification without staging data. |
 
 Each child owns its inputs, outputs, publication/recovery behavior, direct
 tests, and evidence boundary. The two numbered operations participate in the
@@ -21,37 +21,39 @@ evidence tools are cross-cutting checks, not additional stages.
 ## Operational role classification
 
 - **Pipeline evidence owners:** Steps `02b` and `03` are required graph
-  operations and remain owner-local producers, validators, and scheduler entry
-  points.
-- **Required readiness:** the local-pilot doctor consumes the direct admitted
-  runtime inspection result and the final two-phase storage-qualification
-  receipt. These protect execution authority without becoming workflow jobs.
+  operations and remain owner-local producers and validators. Slurm placement
+  belongs to the complete immutable Run rather than an evidence-owner entry
+  point.
+- **Required readiness:** Doctor consumes the admitted runtime plus a
+  single-host direct receipt or stronger final two-phase site receipt. Slurm
+  and historical unplaced Attempts require the stronger receipt. These protect
+  execution authority without becoming workflow jobs.
 - **Optional operator diagnostics:** reference-provenance reconciliation,
-  standalone runtime-availability publication, storage inventory, and the
-  manual module/tool probe remain available for inspection. Their results do
-  not by themselves grant doctor readiness or workflow completion.
+  standalone runtime-availability publication, and storage inventory remain
+  available for inspection. Their results do not by themselves grant doctor
+  readiness or workflow completion.
 
 One physical owner may expose both a required direct API and an optional
 operator route; those roles do not make their evidence states interchangeable.
 
 Steps `02b` and `03` keep their shell producers and schedulers as
 repository-path interfaces while exposing their private validators as
-`python -I -m emrys validate canonical-bam-qc` and
-`python -I -m emrys validate rseqc-orientation`, respectively.
+`emrys validate canonical-bam-qc` and
+`emrys validate rseqc-orientation`, respectively.
 
 Reference provenance exposes installed, read-only reconciliation as
-`python -I -m emrys reconcile reference-provenance` through a private
+`emrys reconcile reference-provenance` through a private
 reconciler. Dry-run is the default; `--execute` publishes evidence without
 repairing references, and exit `0` does not mean the resulting summary passed.
 
 Runtime availability exposes installed inspection as
-`python -I -m emrys inspect runtime-availability` through a private inspector.
+`emrys debug runtime-availability` through a private inspector.
 It retains the `runtime_preflight` profile, report, and lock vocabulary.
 Dry-run performs applicable probes without publication; `--execute` publishes
 the requested report, and exit `0` does not mean every probe passed.
 
-Storage inventory exposes `emrys inspect storage-inventory` for read-only
-measurement and `emrys inspect storage-qualification` for an explicit
+Storage inventory exposes `emrys debug storage-inventory` for read-only
+measurement and `emrys debug storage-qualification` for an explicit
 compute/head durability probe. The latter publishes a final receipt only after
 both declared roots pass and never supplies an ad hoc stage-copy path.
 

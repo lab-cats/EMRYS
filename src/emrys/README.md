@@ -5,10 +5,11 @@ ingestion, transformation, analysis, evidence, and reporting owners. The
 canonical dependency rules live in
 [`SOURCE_TOPOLOGY.md`](contracts/SOURCE_TOPOLOGY.md).
 
-Root `pyproject.toml` installs the explicit internal packages and their named
-schema/report resources. The grouped `python -I -m emrys` interface exposes
-only migrated owner routes; it does not expose every source directory
-automatically. Functional owners join the distribution during their own
+Root `pyproject.toml` installs the explicit internal packages, named
+schema/report resources, and the `emrys` console command. That installed
+command exposes only reviewed owner routes; it does not expose every source
+directory automatically. Direct `python -m emrys` invocation remains an
+internal/test seam. Functional owners join the distribution during their own
 reviewed cutover.
 
 - [`contracts/`](contracts/) — semantic identities, schemas, artifact and
@@ -19,7 +20,7 @@ reviewed cutover.
 - [`evidence/`](evidence/) — evidence collection, reconciliation, and review
   packaging.
 - [`ingestion/`](ingestion/) — bounded external-input admission.
-- [`orchestration/`](orchestration/) — local-pilot normalization, semantic
+- [`orchestration/`](orchestration/) — run-coordinator normalization, semantic
   all-pass admission, and internal content-bound task execution; fixed
   scheduling assets live at repository-root [`workflow/`](../../workflow/README.md).
 - [`reporting/`](reporting/) — artifact, run-summary, and static-report

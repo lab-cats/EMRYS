@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from emrys.libraries import validation as report
 from emrys.libraries.references import contigs as reference_contigs
+from emrys.libraries.validation.tsv import read_strict_tsv
 
 VCF_FIXED_COLUMNS = (
     "#CHROM",
@@ -30,10 +32,11 @@ RECEIPT_HEADER = (
     "sample_count",
     "vcf_record_count",
 )
+SAFE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
 def read_sample_ids(path: Path) -> list[str]:
-    header, rows = report.read_tsv(path)
+    header, rows = read_strict_tsv("sample manifest", path, None, _invalid)
     if "sample_id" not in header:
         raise report.ValidationError("Sample manifest lacks sample_id")
     values = [row["sample_id"] for row in rows]
@@ -47,18 +50,31 @@ def read_sample_ids(path: Path) -> list[str]:
 
 
 def read_partition(path: Path, partition_id: str) -> tuple[str, str]:
-    header, rows = report.read_tsv(path)
+    header, rows = read_strict_tsv("partition manifest", path, None, _invalid)
     required = {"partition_id", "selector_type", "selector_value"}
     if not required.issubset(header):
         raise report.ValidationError("Partition manifest lacks required columns")
+    seen: set[str] = set()
+    for row in rows:
+        values = tuple(row[column] for column in required)
+        if not all(values):
+            raise report.ValidationError("Partition manifest has an empty value")
+        declared = row["partition_id"]
+        if not SAFE_ID.fullmatch(declared):
+            raise report.ValidationError(f"Invalid partition ID: {declared}")
+        if declared in seen:
+            raise report.ValidationError(f"Duplicate partition ID: {declared}")
+        seen.add(declared)
+        if row["selector_type"] not in {"region", "regions_file"}:
+            raise report.ValidationError(f"Invalid selector type for {declared}")
     matches = [row for row in rows if row["partition_id"] == partition_id]
     if len(matches) != 1:
         raise report.ValidationError("Expected one declared partition row")
-    selector_type = matches[0]["selector_type"]
-    selector_value = matches[0]["selector_value"]
-    if selector_type not in {"region", "regions_file"} or not selector_value:
-        raise report.ValidationError("Partition selector is invalid")
-    return selector_type, selector_value
+    return matches[0]["selector_type"], matches[0]["selector_value"]
+
+
+def _invalid(message: str) -> None:
+    raise report.ValidationError(message)
 
 
 def read_fai(path: Path) -> dict[str, int]:
@@ -83,11 +99,18 @@ def selector_ok(
                 return False
             if not separator:
                 continue
-            bounds = coordinates.rstrip("-").split("-", 1)
-            if not all(value.isdigit() for value in bounds):
+            match = re.fullmatch(r"([0-9]+)(?:-([0-9]*))?", coordinates)
+            if match is None:
                 return False
-            start = int(bounds[0])
-            end = int(bounds[-1]) if not coordinates.endswith("-") else contigs[contig]
+            start = int(match.group(1))
+            end_text = match.group(2)
+            end = (
+                start
+                if end_text is None
+                else contigs[contig]
+                if end_text == ""
+                else int(end_text)
+            )
             if start < 1 or end < start or end > contigs[contig]:
                 return False
         return True

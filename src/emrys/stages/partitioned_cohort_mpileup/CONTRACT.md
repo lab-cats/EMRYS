@@ -4,10 +4,10 @@ This is the observed contract of historical Step `07`, now implemented in this
 native owner directory. The exact public identity and historical alias are
 owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is the lowercase physical owner for that public slug and owns the producer,
-validator, and scheduler assets. Its Python validator is installed only through
-the grouped command; the shell producer and scheduler remain explicit
-repository-path interfaces.
+is the lowercase physical owner for that public slug and owns the producer and
+validator. Its Python validator is installed only through the grouped command;
+the private Python producer is invoked by orchestration rather than exposed as
+a public command.
 
 ## Responsibility and execution dependencies
 
@@ -70,8 +70,8 @@ record-count checked before the receipt becomes visible. The receipt itself is
 then checked inside the owned rollback boundary; its mere presence is not
 independent proof of a successfully completed immutable computation.
 
-[`step_07_bcftools_mpileup_by_chrom_and_strand.sh`](step_07_bcftools_mpileup_by_chrom_and_strand.sh)
-is side-effect-free in dry-run. Execute mode hashes and later rechecks both
+[`producer.py`](producer.py) is side-effect-free in dry-run. Execute mode hashes
+and later rechecks both
 manifests, uses a cohort/partition lock and run-token temporary/backup paths,
 rejects stale owned paths and partial prior sets, validates temporary VCF
 sample order and counts, then replaces all three outputs with the receipt last.
@@ -82,7 +82,7 @@ stable outputs. A direct invocation hashes the exact sample and partition
 manifests, reference FASTA/FAI pair, selected regions file when applicable,
 and both BAM/BAI pairs for every admitted sample before bcftools, then rechecks
 that roster after tool execution and again before publication. An admitted
-local-pilot task has already hashed the same declared roster twice at producer
+run-coordinator task has already hashed the same declared roster twice at producer
 entry. It supplies a process-lifetime aggregate only to this producer, which
 reconstructs the roster without another initial full pass and rehashes the
 complete roster immediately before publication. The task boundary performs
@@ -101,16 +101,9 @@ manifests only: BAMs, reference, FAI, regions file, tool identity, depth, and
 filter are not durable receipt provenance. The receipt also does not hash
 either output VCF.
 
-[`step_07_bcftools_mpileup_by_chrom_and_strand.slurm`](step_07_bcftools_mpileup_by_chrom_and_strand.slurm)
-requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving its repository-owned helper or producer, so SLURM's spool copy is
-never checkout authority. It owns explicit dataset/tool binding, execution
-gating, delegation, module-state logging, and final path checks; it does not own pileup or publication
-logic.
-
 ## Validation interface
 
-The grouped `python -I -m emrys validate partitioned-cohort-mpileup` route,
+The grouped `emrys validate partitioned-cohort-mpileup` route,
 implemented by private [`validator.py`](validator.py), accepts explicit cohort,
 partition, manifests, FAI, both VCFs, receipt, and report output. It does not
 invoke bcftools. Dry-run prints the common report; `--execute`
@@ -151,12 +144,12 @@ controlled exit-`2` boundary.
 - Artifact adapters register both VCFs, the receipt, and
   `step07_validation_report_v1`; reports consume registered evidence without
   rerunning pileup.
-- [`test_step_07_bcftools_mpileup_by_chrom_and_strand.sh`](../../../../tests/stages/partitioned_cohort_mpileup/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh)
+- [`test_partitioned_cohort_mpileup_producer.py`](../../../../tests/stages/partitioned_cohort_mpileup/test_partitioned_cohort_mpileup_producer.py)
   protects selector modes, manifest order, commands, dry-run, publication,
   locking, stale paths, child failures, transaction ordering, replacement,
   rollback failures, signals, mutation gaps, and provenance omissions.
 - [`test_validate_step_07_mpileup_outputs.py`](../../../../tests/stages/partitioned_cohort_mpileup/test_validate_step_07_mpileup_outputs.py)
-  plus wrapper, roster, publication-fault, public-CLI, artifact, report, and
+  plus roster, publication-fault, public-CLI, artifact, report, and
   coverage tests protect the independent evidence boundary.
 
 This is local mocked-runtime/fixture characterization, not real-runtime,
@@ -170,9 +163,8 @@ cluster, scientific-review, or biological evidence.
 - Shared report publication remains in neutral
   [`validation/report.py`](../../libraries/validation/report.py), imported
   through `emrys.libraries.validation`.
-- The producer uses `resolve_overridable_executable` from neutral
-  [`executable_resolution.sh`](../../libraries/executable_resolution.sh);
-  bcftools precedence, checks, and commands remain owned here.
+- The producer resolves the explicit argument, `BCFTOOLS_BIN_OVERRIDE`, then
+  `PATH`; bcftools precedence, checks, and commands remain owned here.
 - Attempt identity, complete provenance, output hashes, and an automated
   recovery interface remain absent. The native receipt binds only manifests;
   `--no-clobber` adds in-attempt byte stability for all stationary scientific
@@ -182,7 +174,3 @@ cluster, scientific-review, or biological evidence.
   publish failed rows with exit `0`, does not
   invoke bcftools, and does not prove selector-bound coordinates, VCF semantic
   fields, filter compliance, immutable inputs, or current-attempt identity.
-- The scheduler retains warning-only unusable-tool preflight, submit-CWD and
-  body-level log mutations, version-command failure, one-CPU defaults, and
-  stale-three-file false success as characterized defects rather than
-  guarantees.

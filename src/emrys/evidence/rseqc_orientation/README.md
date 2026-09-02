@@ -7,12 +7,13 @@ mechanical-evidence boundary.
 ## Entry points
 
 - producer: [`step_03_infer_strandedness_and_orientation.sh`](step_03_infer_strandedness_and_orientation.sh)
-- validator: grouped route `python -I -m emrys validate rseqc-orientation`,
+- validator: grouped route `emrys validate rseqc-orientation`,
   implemented by private [`validator.py`](validator.py)
-- scheduler: [`step_03_infer_strandedness_and_orientation.slurm`](step_03_infer_strandedness_and_orientation.slurm)
 
-The shell producer and scheduler remain repository-path interfaces.
-`validator.py` is not a direct repository entrypoint.
+The shell producer remains a repository-path interface. `validator.py` is not
+a direct repository entrypoint. For Slurm execution, use the complete immutable
+Run through `emrys run` or `emrys resume` as documented in the
+[runbook](../../../../docs/operations/RUNBOOK.md#run-coordinator-lifecycle-routes).
 
 ## Operate
 
@@ -38,7 +39,7 @@ route. The native report is evidence, not an attempt receipt.
 Validator dry-run:
 
 ```bash
-.venv/bin/python -I -m emrys validate rseqc-orientation \
+emrys validate rseqc-orientation \
   --scope-id ABE_EV_2 \
   --infer-report results/qc/strandedness/ABE_EV_2.infer_experiment.txt \
   --output results/qc/validation/03/ABE_EV_2.validation.tsv
@@ -46,15 +47,6 @@ Validator dry-run:
 
 Create the output parent and add `--execute`. Exit `0` means rendering or
 publication succeeded; a row may still fail.
-
-```bash
-cd /absolute/path/to/emrys
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,SAMPLE_ID=ABE_EV_2,BAM=/absolute/results/bam/ABE_EV_2/ABE_EV_2.sorted.bam,BED12=/absolute/refs/genome.bed,OUTPUT_DIR=/absolute/results/qc/strandedness,INFER_EXPERIMENT_BIN=/absolute/path/to/emrys/.venv/bin/infer_experiment.py \
-  src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.slurm
-```
-
-Change only `EXECUTE=1` after review. Stale nonempty output can make a
-zero-output child look successful.
 
 ## Diagnose and verify
 
@@ -67,8 +59,6 @@ sense/antisense, or approved manifest policy.
 bash tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh
 .venv/bin/python -m pytest -q \
   tests/evidence/rseqc_orientation/test_validate_step_03_rseqc_orientation.py
-.venv/bin/python -m pytest -q \
-  tests/test_slurm_wrapper_contracts.py -k step_03_infer_strandedness_and_orientation
 ```
 
 This is local fixture/mock and guarded-R evidence only.

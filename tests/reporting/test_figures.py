@@ -15,9 +15,11 @@ from pathlib import Path
 
 import pytest
 
-from emrys.reporting._run_report import figures
-from emrys.reporting._run_report import scientific_context_figures as context_figures
-from emrys.reporting._run_report.candidate_display import (
+from emrys.reporting.paired_cmh_candidate_ranking_report import figures
+from emrys.reporting.paired_cmh_candidate_ranking_report import (
+    scientific_context_figures as context_figures,
+)
+from emrys.reporting.paired_cmh_candidate_ranking_report.candidate_display import (
     CandidateLocation,
     CandidateMotifEvidence,
     CandidateMotifHit,
@@ -28,12 +30,16 @@ from emrys.reporting._run_report.candidate_display import (
     SelectedCandidateProjection,
 )
 from emrys.reporting._run_report.inputs import _snapshot_regular
-from emrys.reporting._run_report.models import (
-    SCIENTIFIC_FIGURE_IDS,
+from emrys.reporting._run_report.models import ReportRenderError
+from emrys.reporting.paired_cmh_candidate_ranking_report.computational import (
     ComputationalTable,
-    ReportRenderError,
-    ScientificContextResults,
+)
+from emrys.reporting.paired_cmh_candidate_ranking_report.figure_models import (
+    SCIENTIFIC_FIGURE_IDS,
     ScientificFigurePanel,
+)
+from emrys.reporting.paired_cmh_candidate_ranking_report.scientific_context import (
+    ScientificContextResults,
 )
 from tests import scientific_context_test_support as CONTEXT_FIXTURE
 
@@ -207,7 +213,10 @@ def test_matplotlib_bootstrap_is_clean_and_deterministic_across_processes(
     script = """
 import json
 import os
-from emrys.reporting._run_report.figures import _matplotlib_api, _render_svg
+from emrys.reporting.paired_cmh_candidate_ranking_report.figures import (
+    _matplotlib_api,
+    _render_svg,
+)
 
 keys = ("MPLBACKEND", "MPLCONFIGDIR", "MPL_IGNORE_SYSTEM_FONTS")
 before = {key: os.environ.get(key) for key in keys}

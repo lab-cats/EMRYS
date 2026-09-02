@@ -49,21 +49,25 @@ zero.
 | [`generate_partitioned_cohort_mpileup_VCFs`](../../src/emrys/stages/partitioned_cohort_mpileup/CONTRACT.md), per cohort/partition | Public shell producer; grouped validator | B1 added no-clobber admission, pre-receipt final validation, and failed-restore preservation | `ready` | Full input/output binding, validator all-pass, and verified-task binding remain required for continued rule admission and reuse |
 | [`preprocess_and_annotate_cohort_candidates`](../../src/emrys/stages/cohort_candidate_preprocessing/CONTRACT.md), one cohort | Public shell/R producer; grouped validator | B1 added no-clobber admission and failed-restore preservation | `ready` | Explicit locked `renv`, validator all-pass, and verified-task sibling binding remain required for continued rule admission and reuse |
 | [`rank_cohort_candidates_with_paired_CMH`](../../src/emrys/analyses/paired_cmh_candidate_ranking/CONTRACT.md), one analysis | Public shell/R producer; grouped validator | No owner redesign is known; shared semantic-gate and resume proof remain | `ready` | Explicit locked `renv`, paired-strata admission, complete transaction, semantic all-pass, retained independent test oracle, and failure/resume proof |
-| [Artifact index and run summary](../../src/emrys/reporting/README.md), one run | Grouped public build routes | B4 schedules the deterministic projected inventory and re-admits both complete transactions through the direct reporting validator | `ready` | No-science fixed-profile proof exists; real owner artifacts and production evidence remain separate |
-| [Jinja report bundle](../../src/emrys/reporting/README.md), one run | Grouped public report builder | B4 schedules and semantically re-admits the two-HTML/TSV/v4 receipt transaction under distinct source-code and artifact roots | `ready` | The fixed profile separates scientific results from operational evidence/provenance; production reporting remains separate |
+| [Artifact index and run summary](../../src/emrys/reporting/README.md), one run | Private builders under the Run-oriented reporting operation | The downstream coordinator invokes the deterministic inventory and summary sequence and re-admits both complete transactions | `ready` | No-science fixed-profile proof exists; real owner artifacts and production evidence remain separate |
+| [Jinja report bundle](../../src/emrys/reporting/README.md), one run | Public `emrys report` operation over a private renderer | The downstream coordinator semantically re-admits the two-HTML/TSV/v4 receipt transaction under distinct source-code and artifact roots | `ready` | The fixed profile separates scientific results from operational evidence/provenance; production reporting remains separate |
 
 ## Cross-cutting prerequisites
 
 B2 satisfies prerequisites 1 and 2. B3 satisfies the fixed-profile/DAG,
 closed-dispatch, verified-task, zero-retry local-executor, and no-science
 reference/one-sample/cohort slice requirements. B4 satisfies the run-specific
-inventory, reporting-tail, immutable attempt, aggregate
+inventory, downstream reporting, immutable attempt, aggregate
 failure/interruption/between-task-resume, durable producer-entry, and
 derived-inspection requirements
-for the no-science test-double profile. B5 adds the exact runtime-profile-
-bound public command projection and lock-before-attempt materialization while
-retaining every disposition in this table. Explicit `renv` launch authority and
-exact existing project-library selection are now admitted by the guarded local
+for the no-science test-owned command/effect harness. Current fixture Attempts
+retain `local-science-tools` semantics and their production input/output
+rosters; doubles replace only command effects and their transitive hashes.
+Historical `test-double` schema vocabulary remains readable but has no
+lifecycle admission exception. B5 adds the exact runtime-profile-bound public
+command projection and lock-before-attempt materialization while retaining
+every disposition in this table. Explicit `renv` launch authority and exact
+existing project-library selection are now admitted by the guarded local
 runtime boundary; real-tool behavior remains a prerequisite for a later
 real-runtime proof.
 

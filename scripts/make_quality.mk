@@ -33,31 +33,9 @@ SHELL_SYNTAX_PATHS := \
 	src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh \
 	src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh \
 	src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh \
-	src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh \
-	src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
-	src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh \
-	src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh \
-	src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh \
-	tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh \
-	tests/analyses/scientific_context_projection/test_scientific_context_projection.sh
-
-SLURM_SYNTAX_PATHS := \
-	src/emrys/evidence/runtime_availability/tool_check.slurm \
-	src/emrys/ingestion/sample_manifest_admission/validate_manifest.slurm \
-	src/emrys/stages/star_index/step_00a_build_novogene_star_index.slurm \
-	src/emrys/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm \
-	src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm \
-	src/emrys/stages/star_alignment/step_01_star_align.slurm \
-	src/emrys/stages/canonical_bam/step_02_sort_index_bam.slurm \
-	src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.slurm \
-	src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.slurm \
-	src/emrys/stages/duplicate_marking/step_04_mark_duplicates.slurm \
-	src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm \
-	src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm \
-	src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm \
-	src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm \
-	src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm \
-	src/emrys/analyses/scientific_context_projection/scientific_context_projection.slurm
+	src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh \
+	tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh \
+	tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh
 
 documentation-check:
 	./scripts/documentation/validate_structure.py --repo "$(CURDIR)"
@@ -71,18 +49,10 @@ validation-shell-contracts:
 	bash tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh
 	bash tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh
 	bash tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh
-	bash tests/stages/mechanical_orientation/test_step_06_split_bam_by_read_orientation.sh
-	bash tests/stages/partitioned_cohort_mpileup/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
-	bash tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.sh
-	bash tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_editing_site_calling.sh
-	bash tests/analyses/scientific_context_projection/test_scientific_context_projection.sh
+	bash tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh
 	bash tests/shell/test_local_r_environment.sh
 
-validation-shell-slurm: validation-shell-contracts
-	"$(REPORT_PYTHON_BIN)" -m pytest -q --tb=short \
-		tests/test_slurm_wrapper_contracts.py
-
-shell-test: validation-shell-slurm
+shell-test: validation-shell-contracts
 
 validation-wheel-smoke:
 	"$(REPORT_PYTHON_BIN)" -m pytest -q --tb=short \
@@ -91,7 +61,7 @@ validation-wheel-smoke:
 real-r-test:
 	bash tests/stages/cohort_candidate_preprocessing/run_step_08_vcf_preprocessing_tests.sh
 	bash tests/analyses/paired_cmh_candidate_ranking/run_step_09_cmh_tests.sh
-	bash tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh
+	bash tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh
 
 r-restore:
 	EMRYS_USE_RENV=1 EMRYS_LOCAL_PILOT_R=0 \
@@ -198,9 +168,16 @@ validation-guarded-r:
 	$(MAKE) -s r-check
 	$(MAKE) -s local-real-r-test
 
+report-test:
+	"$(REPORT_PYTHON_BIN)" -m pytest \
+		tests/reporting/test_artifact_run_summary.py \
+		tests/reporting/test_candidate_display.py \
+		tests/reporting/test_figures.py \
+		tests/reporting/test_report.py \
+		tests/reporting/test_transaction_validation.py
+
 define STATIC_SHELL_CHECKS
 bash -n $(SHELL_SYNTAX_PATHS)
-bash -n $(SLURM_SYNTAX_PATHS)
 endef
 
 validation-static: lint documentation-check

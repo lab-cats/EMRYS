@@ -167,17 +167,13 @@ class AttemptLog:
             self._logger.addHandler(self._handler)
             self._state = "open"
             opening_fields = {
-                "entrypoint": field(identity.entrypoint, console=True),
-                "execution_attempt_id": field(
-                    identity.execution_attempt_id, console=True
-                ),
-                "log_level": field(controls.level.value, console=True),
-                "log_level_source": field(controls.level_source, console=True),
-                "log_root_source": field(controls.root_source, console=True),
+                "entrypoint": field(identity.entrypoint),
+                "execution_attempt_id": field(identity.execution_attempt_id),
+                "log_level": field(controls.level.value),
+                "log_level_source": field(controls.level_source),
+                "log_root_source": field(controls.root_source),
                 "log_path": field(str(self.path), console=True),
-                "scope": field(
-                    f"{identity.scope_kind}:{identity.scope_id}", console=True
-                ),
+                "scope": field(f"{identity.scope_kind}:{identity.scope_id}"),
                 **{name: field(value) for name, value in correlation.items()},
             }
             self._transition(
