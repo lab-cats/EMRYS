@@ -59,8 +59,9 @@ exact two-sided 95% confidence interval. The row becomes
 `population_below_minimum`, `background_below_minimum`, or
 `uninformative_table` instead of inventing a fallback. Because v1 registers
 one motif, `fisher_p_value_bh` is `NA` and the receipt records
-`none_single_registered_motif`; a multi-model family requires a future
-versioned approval. Significant-down context remains separate and descriptive.
+`none_single_registered_motif`. Adding a multi-model family requires a new
+versioned contract and approval. Significant-down context remains separate and
+descriptive.
 
 At most eight significant candidates receive a display rank. Selection is
 FDR ascending, absolute treatment-control AF difference descending, then
@@ -129,6 +130,6 @@ candidate window from the bound FASTA/FAI, including orientation, clipping,
 and center-base agreement. It does not rerun R. Focused producer tests and the
 independent contract oracle protect the computation boundary separately.
 
-The owner produces deterministic computational context for scientific
-reporting. Successful local execution or validation is not cluster evidence,
-scientific review, candidate adjudication, or biological proof.
+Repository tests protect this deterministic reporting context under the shared
+[evidence ceiling](../../../../../tests/README.md); local execution or
+validation is not candidate adjudication or biological proof.

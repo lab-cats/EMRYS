@@ -1,14 +1,8 @@
 # `convert_GTF_to_BED12` stage contract
 
-This document records the observed current contract of historical Step `00b`.
-The exact public identity and historical alias are owned by the
-[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is now the implemented native source owner for its producer and validator. Its
-Python implementation is an installed owner package; its public Python surfaces
-are only the grouped routes documented below.
-
-The adjacent [`README.md`](README.md) routes maintainers and operators to the
-implemented assets, supported commands, diagnostics, and recovery boundary.
+This directory owns historical Step `00b`; the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
+identity and alias. The grouped routes below are its public Python surfaces.
 
 ## Responsibility
 
@@ -103,10 +97,8 @@ The GTF-agreement check imports the converter's normalization function, so it
 compares reconstructed BED12 rows against the producer's normalization rather
 than an independent implementation. Its report retains the historical
 `BED12 bytes equal` detail label for byte compatibility. The producer is its
-same-owner sibling. Snapshot, rendering, validation, locking, and publication
-functions come from the neutral shared
-[`validation/`](../../libraries/validation/README.md) facade. Neither dependency
-creates a cross-stage scientific implementation edge.
+same-owner sibling; publication uses the shared
+[`validation`](../../libraries/validation/README.md) facade.
 
 ## Consumers
 
@@ -120,46 +112,9 @@ creates a cross-stage scientific implementation edge.
 - Artifact indexing, canonical summaries, and reports consume those registered
   artifacts and validation evidence without rerunning conversion.
 
-No downstream stage should depend on this stage's implementation module.
+## Protection, evidence ceiling, and retained gap
 
-## Protected behavior and evidence
-
-- [`test_gtf_to_bed12.py`](../../../../tests/stages/gtf_to_bed12/test_gtf_to_bed12.py)
-  protects the public route, exact exon-to-block conversion, sorting, warnings,
-  configurable attributes, invalid-transcript handling, failure with no valid
-  records, side-effect-free dry-run, arbitrary-CWD execution, create-exclusive
-  publication, ownership-checked rollback, cleanup-failure residue, foreign
-  final preservation, and interruption-residue blocking.
-- [`test_validate_step_00b_bed12.py`](../../../../tests/stages/gtf_to_bed12/test_validate_step_00b_bed12.py)
-  protects dry-run, the five checks, mismatch evidence, structural failures,
-  and preservation of foreign locks or invalid predecessors.
-- [`test_validation_check_rosters.py`](../../../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py)
-  protects the exact validator inventory and check identities.
-- [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py)
-  characterizes the imported shared publication and recovery behavior.
-- [`test_public_cli_contracts.py`](../../../../tests/test_public_cli_contracts.py)
-  and [`test_python_coverage_baseline.py`](../../../../tests/test_python_coverage_baseline.py)
-  protect the recorded public-CLI and coverage boundaries.
-
-These are local fixture contracts. They do not establish a
-new cluster, production, scientific-review, or biological-evidence result.
-Current evidence status remains owned by the canonical roadmap and handoff.
-
-## Observed ownership boundaries
-
-- Reference materialization is an upstream responsibility and is not intrinsic
-  to BED12 conversion.
-- The validator reuses producer normalization code for its strongest agreement
-  check.
-- Cross-cutting validation publication lives in the neutral shared
-  [`validation/`](../../libraries/validation/README.md) owner and is imported
-  through its stable facade.
-
-This inventory records the remaining reference-materialization and oracle
-boundaries without choosing an unreviewed correction.
-
-## Deferred decisions
-
-- Final owner of reference materialization.
-- Whether GTF-agreement validation requires a producer-independent oracle.
-- Whether a later descriptor or schema contract is justified.
+Repository tests protect this contract under the shared
+[evidence ceiling](../../../../tests/README.md). As stated under validation,
+`gtf_transcript_agreement` reuses the producer's normalization and is not a
+producer-independent oracle.

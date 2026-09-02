@@ -1,28 +1,24 @@
 # Tests
 
-This tree owns local regression, contract, and characterized-behavior
-protection. The canonical policy, evidence vocabulary, coverage rules, and
-risk routes are in the
-[test baseline](../docs/design/TEST_BASELINE.md); supported validation commands
-are in the [operations runbook](../docs/operations/RUNBOOK.md).
+Tests mirror product owners and protect public behavior, contracts, failures,
+and recovery. Exact owner semantics remain in the adjacent source
+`CONTRACT.md`; cross-cutting policy and supported commands remain in the
+[test baseline](../docs/design/TEST_BASELINE.md) and
+[runbook](../docs/operations/RUNBOOK.md).
 
-## Routes
+Keep independent expectations independent: statistical oracles, literal
+validation rosters, and
+[contract goldens](contract_integration/independent_contract_goldens/README.md)
+must not derive expected values from the production implementation under test.
+Tracked fixtures are reviewed literal inputs; do not regenerate them merely to
+make a failure pass. The public-Make fixture has its own
+[normalization contract](fixtures/public_cli_contracts/README.md). A skipped
+guarded real-runtime test supplies no real-runtime evidence, and a coverage
+baseline must never be updated to conceal lost protection.
 
-- `analyses/`, `stages/`, `evidence/`, `ingestion/`, and `reporting/` protect
-  their matching functional owners.
-- `orchestration/run_coordinator/` protects Project admission, readiness, fixed
-  graph materialization, task/reporting records, lifecycle, inspection, resume,
-  and focused failure/resume behavior for the application owner. The tracked
-  CI workflow owns the clean-clone, real-tool managed golden path.
-- `contracts/` and `contract_integration/` protect shared and independent
-  public contracts.
-- `libraries/`, `documentation/`, `shell/`, and `data_checks/` own
-  cross-cutting support checks.
-- `fixtures/`, `baselines/`, and `tools/` own shared test inputs, accepted
-  comparator state, and test-only runners.
-
-The files directly under this directory protect cross-cutting public CLI,
-whole-Run Slurm transport/parity, validation-runner, coverage-policy, package,
-and grouped-CLI behavior.
-All results remain local engineering evidence unless a separate canonical
-owner explicitly establishes a higher evidence state.
+`tools/` contains test-only validation, sharding, dependency, coverage, and
+synthetic-E2E support. The files directly under this directory protect
+cross-cutting CLI, packaging, scheduler, and policy behavior. Passing tests are
+local engineering evidence unless a named higher evidence lane says otherwise;
+they do not establish production, cluster, scientific-review, or biological
+validity.

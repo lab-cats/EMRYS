@@ -1,9 +1,8 @@
 # `preprocess_and_annotate_cohort_candidates` stage contract
 
-This is the observed contract of historical Step `08`, now implemented in this
-native owner directory. The exact public identity and historical alias are owned by the
-[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug and owns the shell/R producer and validator.
+This directory owns historical Step `08`; the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
+identity and alias.
 
 ## Responsibility and execution dependencies
 
@@ -150,11 +149,7 @@ candidate IDs or prove deterministic row order.
 Content mismatches publish `status=fail`; unsafe structure or report-
 publication failures exit `2`.
 
-Package selection is owned by the grouped command; direct execution of private
-`validator.py`, ambient `PYTHONPATH` injection, compatibility imports, and
-peer-stage implementation dependencies are not supported interfaces.
-
-## Consumers and protected evidence
+## Consumers, protection, and evidence ceiling
 
 - Step `09` requires exact Step `08` sites and input receipt paths, hashes and
   schemas, preserves the entire candidate order/universe in its all-sites
@@ -162,42 +157,16 @@ peer-stage implementation dependencies are not supported interfaces.
 - Artifact adapters register all three outputs and
   `step08_validation_report_v1`; reporting consumes registered evidence
   without rerunning R.
-- Direct producer, R, and Python validator suites protect the cohort barrier,
-  schema, allele/count rules, annotation, policy, dry-run, locks, replacement,
-  rollback, and independent validation boundary.
-- Roster, publication-fault, public-CLI, artifact, report, coverage, and Step
-  `09` consumer tests protect cross-boundary behavior.
 
-The guarded real-R fixtures compare exact candidate order and byte equality
-across worker counts. The Python producer fault fixtures prove structural and
-reconciliation admission, not independent reconstruction of candidate order.
-This is local fixture characterization, including guarded real-R fixtures, not
-production, cluster, scientific-review, or biological evidence.
+Repository tests protect this contract under the shared
+[evidence ceiling](../../../../tests/README.md). Guarded real-R fixtures compare
+candidate order and bytes across worker counts; Python fault fixtures prove
+structural admission, not independent candidate-order reconstruction.
 
-## Current ownership boundaries and retained defects
-
-- Shared Step `08` manifest/table schemas and reconciliation belong to neutral
-  [`step08.py`](../../contracts/scientific_evidence/step08.py). The validator
-  imports that package module, as do neutral
-  [`step09.py`](../../contracts/scientific_evidence/step09.py), the Step `09`
-  validator, and artifact index, preserving one
-  `ContractError` and `Table` identity.
-- The producer and artifact adapter both treat the input receipt as the native
-  transaction marker.
-- Receipt and candidate checks remain duplicated across Python, R, Step `09`,
-  and artifact adapters. Shared report publication remains in
-  neutral [`validation/report.py`](../../libraries/validation/report.py),
-  imported through `emrys.libraries.validation`.
-- The Python producer resolves its explicit argument, `RSCRIPT_BIN_OVERRIDE`,
-  then `PATH`; precedence, checks, and commands remain owned here.
-- The validator does not reopen the upstream Step `07` files to recompute
-  their declared hashes.
-- The producer preserves the supplied annotation path spelling, while the
-  validator compares it with a resolved absolute path; equivalent relative
-  paths can therefore yield failed annotation-identity evidence.
-- The commit marker does not hash its sibling sites or summary outputs, and
-  provenance omits R/package versions and Step `07` tool/reference/filter
-  parameters.
-- The orientation policy mixes compatibility behavior with preprocessing and
-  remains explicitly provisional.
-- Policy/schema ownership and recovery design remain deferred.
+Two implementation defects remain: receipt/candidate reconciliation is still
+duplicated across Python, R, Step `09`, and artifact adapters; and the producer
+preserves annotation path spelling while the validator compares a resolved
+absolute path, so equivalent paths can fail identity evidence. The validator
+also trusts the Step `07` identities bound by the Step `08` transaction rather
+than reopening those upstream files. The orientation mapping remains the
+explicitly provisional policy defined above.

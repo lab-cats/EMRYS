@@ -1,24 +1,36 @@
 # Documentation
 
-This tree contains repository guidance, architecture and design authority,
-operator procedures, task routing, reference material, and
-frozen historical evidence. It does not own executable behavior or replace the
-functional `README.md` and `CONTRACT.md` beside an implementation.
+Start with the document for your role. Exact functional behavior remains with
+the implementation's adjacent `README.md` and `CONTRACT.md`; this tree should
+route to those owners rather than repeat them.
 
-- [`architecture/`](architecture/) — implemented and future system views,
-  owner inventory, dependency direction, and diagrams.
-- [`design/`](design/) — durable decisions, plans, questions, test policy, and
-  cross-cutting application contracts.
-- [`operations/`](operations/) — development workflow, supported commands,
-  troubleshooting, engineering conventions, and a visibly marked legacy
-  handoff retained only for `DOC-04` evidence and recovery reconciliation.
-- [`reference/`](reference/) — terminology and other non-authoritative lookup
-  aids that link back to subject owners.
-- [`history/`](history/) — frozen dated evidence that does not own current
-  state.
-- [`tasks/`](tasks/) — the canonical findings matrix, temporary architecture
-  campaign, provisional architecture ranking, and planning rules.
-- [`sitemap/`](sitemap/) — audience routes and canonical documentation roles.
+| Reader | Start | Continue |
+| --- | --- | --- |
+| Scientist or new user | [Project overview](../README.md) | [Quickstart](../quickstart.md) and [configuration](../configs/README.md) |
+| Operator | [Runbook](operations/RUNBOOK.md) | [Troubleshooting](operations/TROUBLESHOOTING.md) and the affected owner contract |
+| Scientific reviewer | [Current architecture](architecture/ARCHITECTURE.md) | [Semantic stage map](../src/emrys/contracts/STAGE_MAP.md) and [external evaluation](reference/EXTERNAL_SCIENTIFIC_EVALUATION.md) |
+| Maintainer | [Safety guard](../AGENTS.md) | [Workflow kernel](operations/WORKFLOW.md), [engineering conventions](operations/ENGINEERING_CONVENTIONS.md), and the selected backlog item |
 
-Start with the [documentation sitemap](sitemap/) when the correct subject owner
-is not already known.
+## Authorities
+
+| Subject | Authority |
+| --- | --- |
+| Product purpose and supported boundary | [Root README](../README.md) |
+| First successful Run | [Quickstart](../quickstart.md) |
+| Scientist-authored Project and configuration | [Configuration guide](../configs/README.md) |
+| Current system structure | [Architecture index](architecture/README.md) |
+| Semantic identities and workflow edges | [Stage map](../src/emrys/contracts/STAGE_MAP.md) |
+| Source ownership and allowed dependencies | [Source topology](../src/emrys/contracts/SOURCE_TOPOLOGY.md) |
+| Durable cross-cutting rationale | [Decision index](design/DECISIONS.md) |
+| Run and recovery procedures | [Runbook](operations/RUNBOOK.md) and [troubleshooting](operations/TROUBLESHOOTING.md) |
+| EMRYS-specific terminology | [Glossary](reference/GLOSSARY.md) |
+| Test and evidence vocabulary | [Test baseline](design/TEST_BASELINE.md) |
+| Accepted work and completion criteria | [Findings matrix](tasks/backlog_matrix.md) |
+| Current checkout and validation status | Live Git plus checks and retained artifacts bound to the exact commit |
+| Retained historical validation observations | [Dated validation evidence](history/validation-evidence.md), never current authority |
+
+Overview prose yields to versioned schemas, owner contracts, direct tests, and
+live source at the exact commit. Implementation alone does not silently amend
+a declared contract; disagreement is a finding. Historical planning and
+completed gate narratives remain in Git history rather than a second live
+archive. `make -s documentation-check` checks structural documentation rules.

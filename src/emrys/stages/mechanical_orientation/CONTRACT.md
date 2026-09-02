@@ -1,12 +1,9 @@
 # `partition_BAM_by_mechanical_read_orientation` stage contract
 
-This is the observed contract of historical Step `06`, now implemented in this
-native owner directory. The exact public identity and historical alias are
-owned by the
-[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is the lowercase physical owner for that public slug and owns the producer and
-validator. Its Python producer is a private workflow owner; the validator is
-installed only through the grouped command.
+This directory owns historical Step `06`; the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
+identity and alias. The producer is workflow-private and the validator is
+grouped under `emrys validate`.
 
 ## Responsibility and execution dependencies
 
@@ -95,14 +92,10 @@ not quickcheck BAMs, recount records, inspect flags, verify BAM/BAI
 correspondence, or validate sort/read-group metadata. Producer and independent
 validator therefore protect different evidence layers.
 
-Package selection is owned by the grouped command; direct execution of private
-`validator.py`, ambient `PYTHONPATH` injection, compatibility imports, and
-peer-stage implementation dependencies are not supported interfaces.
-
 Content mismatches publish `status=fail`; unsafe input or report-publication
 failures exit `2`.
 
-## Consumers and protected evidence
+## Consumers, protection, and evidence ceiling
 
 - The final
   [`generate_partitioned_cohort_mpileup_VCFs`](../partitioned_cohort_mpileup/README.md)
@@ -111,33 +104,9 @@ failures exit `2`.
 - Artifact adapters register both pairs, counts, and
   `step06_validation_report_v1`; summaries/reports consume them without
   rerunning samtools.
-- [`test_mechanical_orientation_producer.py`](../../../../tests/stages/mechanical_orientation/test_mechanical_orientation_producer.py)
-  protects exact commands and counts, locks, stale paths, input stability,
-  child failures, signals, validation, create-exclusive collisions,
-  counts-last publication, rollback, and ambiguous-residue preservation.
-- [`test_validate_step_06_orientation_outputs.py`](../../../../tests/stages/mechanical_orientation/test_validate_step_06_orientation_outputs.py),
-  roster, publication-fault, public-CLI, artifact, report, and coverage
-  tests protect the recorded independent evidence boundary.
 
-This is local fixture/mock characterization, not new runtime, cluster,
-scientific-review, or biological evidence.
-
-## Current ownership boundaries and retained defects
-
-- The producer and validator share the fixed counts header and mechanical flag
-  vocabulary from `libraries/alignments/orientation.py`; arithmetic decisions
-  and transaction publication remain owner-local.
-- Shared report publication remains in neutral
-  [`validation/report.py`](../../libraries/validation/report.py), imported
-  through `emrys.libraries.validation`.
-- Runtime discovery and Doctor own samtools selection; this producer admits the
-  resulting absolute executable path and owns its commands and failures.
-- The sole materializer supplies the canonical output/QC pairing. Unsupported
-  concurrent direct invocations with distinct output roots and one QC root do
-  not share a lock and can collide on the counts path.
-- Native outputs still lack a native receipt. The immutable task record binds
-  their input, implementation, runtime, final hashes, and independent
-  validation without adding a second receipt authority.
-- The producer does not reconcile flag-subcounts against merged-BAM counts;
-  the independent validator may publish failed rows with exit `0` and neither
-  quickchecks nor recounts BAM records.
+Repository tests protect this contract under the shared
+[evidence ceiling](../../../../tests/README.md). The producer does not reconcile
+flag-subcounts against merged-BAM counts; the independent validator may publish
+failed rows with exit `0` and, as stated above, neither quickchecks nor recounts
+BAM records.

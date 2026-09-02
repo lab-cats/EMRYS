@@ -1,99 +1,18 @@
 # Sample-manifest admission owner
 
-This directory owns the existing, deliberately narrow sample-manifest admission
-family. Its public assets are:
+`emrys validate manifest` requires `sample_id`, `r1_fastq`, `r2_fastq`,
+`strandedness`, and `condition`; only `notes` and `replicate` are optional.
+It rejects duplicate/empty identities, malformed rows, empty manifests, and
+strandedness outside `forward`, `reverse`, `unstranded`, and `unknown`.
+`--check-files` additionally checks path existence relative to `--base-dir`.
+The command publishes no normalized manifest or receipt.
 
-- `emrys validate manifest`, the installed module command
-  implemented by [`validator.py`](validator.py), which validates a TSV manifest
-  and optionally checks that its declared FASTQ paths exist;
-- [`check_fastq_pairs.sh`](check_fastq_pairs.sh), the mode-`0755` operator-run
-  paired-FASTQ diagnostic.
+[`check_fastq_pairs.sh`](check_fastq_pairs.sh) checks one plain or gzip FASTQ
+pair for record-count agreement and a requested number of leading normalized
+read IDs. It writes nothing and does not prove full pairing, sequence/quality
+integrity, sample identity, or provenance. The stricter `emrys init manifests`
+Project route requires `replicate` and delegates scientific admission to the
+current downstream contracts.
 
-The committed
-[`samples.example.tsv`](../../../../configs/samples.example.tsv) is the public
-starter used by `make validate`. It is an example, not an admitted production
-manifest or evidence. Direct validator protection lives in
-[`test_validate_manifest.py`](../../../../tests/ingestion/sample_manifest_admission/test_validate_manifest.py),
-the paired-FASTQ diagnostic is characterized with tiny generated inputs in
-[`test_check_fastq_pairs.py`](../../../../tests/ingestion/sample_manifest_admission/test_check_fastq_pairs.py).
-Those local tests do not replace operator review of real data.
-
-## Manifest validator
-
-The validator requires the tab-separated columns `sample_id`, `r1_fastq`,
-`r2_fastq`, `strandedness`, and `condition`; it permits only `notes` and
-`replicate` as optional columns. It rejects duplicate sample IDs, empty required
-identities or paths, unsupported strandedness values, malformed rows, and
-manifests with no sample rows. Accepted strandedness values are `forward`,
-`reverse`, `unstranded`, and `unknown`.
-
-By default the validator checks manifest structure and values but does not
-access the FASTQ files. `--check-files` adds existence checks only. Relative
-FASTQ paths are resolved against `--base-dir`, whose default is the process
-working directory; absolute FASTQ paths are checked directly. The validator
-does not inspect FASTQ contents or invoke the paired-FASTQ checker.
-
-From the repository root:
-
-```bash
-emrys validate manifest \
-  --manifest configs/samples.example.tsv \
-  --base-dir .
-```
-
-Add `--check-files` only when the manifest's declared FASTQ paths are available
-under the selected base directory. From another working directory, select the
-installed interpreter and make the manifest and base directory absolute:
-
-```bash
-repo=/absolute/path/to/emrys
-emrys validate manifest \
-  --manifest "$repo/configs/samples.example.tsv" \
-  --base-dir "$repo"
-```
-
-Exit `0` means the selected checks passed. Exit nonzero reports admission
-errors; no receipt, normalized manifest, hash, frozen copy, or other output is
-published. This admission schema intentionally continues to permit a missing
-`replicate` column. Stricter sample-manifest requirements owned by downstream
-neutral scientific-evidence contracts are separate and are not weakened or
-replaced by this validator. The strict Project draft route is `emrys init
-manifests`; it requires `replicate` and delegates final admission back to those
-current contracts.
-For Slurm execution, use the admitted Project through the complete immutable
-Run as documented in the
-[runbook](../../../../docs/operations/RUNBOOK.md#run-coordinator-lifecycle-routes).
-
-## Paired-FASTQ diagnostic
-
-From the repository root, provide one explicit pair:
-
-```bash
-src/emrys/ingestion/sample_manifest_admission/check_fastq_pairs.sh \
-  --r1-fastq /absolute/path/sample_R1.fastq.gz \
-  --r2-fastq /absolute/path/sample_R2.fastq.gz \
-  --sample-id sample_001 \
-  --num-reads 20
-```
-
-The diagnostic accepts plain or gzip-suffixed FASTQ files. It requires each
-line count to be divisible by four, requires equal total read counts, and
-compares the requested number of leading normalized read IDs. `--num-reads`
-defaults to `20`; gzip-suffixed input requires `gunzip` on `PATH`. Input paths
-are interpreted from the process working directory unless absolute. The check
-reads the declared files and writes no result artifact or receipt.
-
-Passing this diagnostic establishes only those pair-count and leading-ID
-checks for the two selected files. It does not establish complete record-level
-pairing, sequence or quality integrity, sample identity, provenance, or
-production readiness.
-
-## Boundary and evidence ceiling
-
-These interfaces validate only the explicitly selected manifest or FASTQ pair.
-They do not discover or acquire inputs, normalize content, calculate or bind
-hashes, freeze a request, claim an inbox item, manage run or attempt lifecycle,
-select profiles or policies, launch computational stages, or create, publish,
-approve, or promote evidence. A passing admission check is not workflow
-execution, scientific review, validated RNA editing, or biological readiness.
-No autonomous ingestion runner is implemented here.
+Neither interface discovers or acquires inputs, chooses policy, freezes a Run,
+executes a stage, or establishes production, scientific, or biological state.

@@ -1,15 +1,11 @@
 # Source ownership and dependency direction
 
-This file owns the descriptive current Python source-import graph, approved
-shared seams, and exact admitted import exceptions. It does not turn the
-current package tree into the target responsibility model. The
-[`architecture index`](../../../docs/architecture/README.md) organizes the
-human views; the
-[`platform-direction decision`](../../../docs/design/decisions/platform-direction.md#ratified-responsibility-and-dependency-model)
-owns target responsibilities and forbidden authority transfers;
-[`STAGE_MAP.md`](STAGE_MAP.md) owns semantic identities and artifact edges; the
-[`functional-owner inventory`](../../../docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md)
-owns exact public programs, jobs, validators, and tests.
+This file owns current Python import boundaries, approved shared seams, and
+exact admitted exceptions. [`STAGE_MAP.md`](STAGE_MAP.md) owns semantic
+identities and artifact edges; the [platform decision](../../../docs/design/decisions/platform-direction.md#ratified-responsibility-and-dependency-model)
+owns target responsibilities; the [functional-owner inventory](../../../docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md)
+routes high-level responsibility. Parsers, owner contracts, and direct tests
+own exact commands and behavior.
 
 ## Current source domains
 
@@ -25,39 +21,17 @@ owns exact public programs, jobs, validators, and tests.
 | `ingestion/` | External-input admission and diagnostics; no implemented orchestration runner. |
 | `orchestration/` | Run-coordinator request normalization, reporting projection, content-bound task execution/reuse admission, and lifecycle application policy; no scientific implementation. Static scheduling assets live at root `workflow/`. |
 
-Native Python, shell, R, SLURM, schema, style, template, and fixture assets stay
-with the owner whose behavior they implement. Root `configs/` remains the
-public home for explicit starter inputs and reference tables. Repository Git,
-documentation, quality-gate, dependency-restoration, and environment tooling
-under `scripts/` is not scientific-workflow orchestration.
+Native assets stay with their behavioral owner. Root `configs/` holds explicit
+starter inputs and reference tables; repository tooling under `scripts/` is not
+scientific-workflow orchestration.
 
 ## Functional-owner shape
 
-Every semantic stage, analysis, or evidence owner has one directory under its
-domain, an operator `README.md`, an adjacent `CONTRACT.md`, owned native assets,
-and a mirrored test directory. The documentation gate derives these expected
-homes from `STAGE_MAP.md`.
-
-Owner-local tests protect public entry points, local schemas, failure behavior,
-and fixtures. `tests/contracts/` protects neutral contracts;
-`tests/contract_integration/` checks producer/consumer agreement using public
-artifacts; repository-wide scheduler, CLI, coverage, and validation-gate tests
-remain cross-owner development protection.
-
-## Owner cutovers
-
-A physical ownership move is one semantic package: final-owner implementation,
-mirrored direct tests, affected callers, contracts, owner documentation, and
-coverage or tooling configuration move together. Capture the old public
-boundary first, including faults, then prove the final path preserves declared
-bytes, streams, exits, modes, arbitrary-CWD behavior, side effects,
-transactions, recovery, and unrelated files.
-
-An accepted cutover leaves one live implementation. Remove the embedded or old
-helper in the same package; do not retain a temporary re-export, forwarding
-wrapper, duplicate test owner, or compatibility shadow unless that exact public
-surface is separately approved as a continuing contract. Rollback is the
-coherent semantic package, not a mixture of old and final owners.
+Each semantic owner has an adjacent `README.md`, `CONTRACT.md`, native assets,
+and mirrored tests; the documentation gate derives these homes from
+`STAGE_MAP.md`. Neutral contracts live under `tests/contracts/`, public
+producer/consumer agreement under `tests/contract_integration/`, and broader
+CLI, scheduler, coverage, and gate protection remains cross-owner.
 
 ## Approved shared seams
 
@@ -81,21 +55,15 @@ coherent semantic package, not a mixture of old and final owners.
 | Installed provider identity | `libraries/installed_package_identity.py` | Runtime admission plus computation and report providers share deterministic no-follow identity for exact canonical installed package trees. Namespace/version and entry-point policy remain with each admitting owner; symlinks, special entries, and ambiguous providers fail closed. |
 | Application logging | `libraries/application_logging/` | This neutral, stage-independent two-sink foundation owns resolved controls, attempt records, protected persistence, projection, and redaction primitives. The complete retained adopter roster is grouped run-coordinator `run`/`resume` execution, automatic reporting within that same log, standalone report generation, and confirmed `emrys doctor --repair`. Scheduler submission, dry-run/refusal/reuse, initialization, validation, runtime discovery, diagnosis, inspection, and debug inspection own no application log; delegated tasks open no second log. Application logs default to `<project-root>/logs/application`; scheduler OUT/ERR remain separate under `<project-root>/logs`. Each adopter retains its own computation, rollback, recovery, streams, and exit authority. The packaged-Python production-import roster is mechanically guarded. |
 
-These are the complete approved neutral implementation seams. Similar names or
-two local helpers do not create sharing authority. Keep the first use local;
-extract only proven equivalent behavior into the narrowest neutral owner with
-independent API and consumer tests.
-
-`libraries/alignments/bed.py` currently serves only the Step `00b` validator and
-is not an approved cross-owner seam. Its present placement does not authorize a
-second consumer or generic BED API; any relocation or reuse requires a bounded
-consolidation decision.
+This table is exhaustive. Similar names do not create sharing authority;
+extraction requires proven equivalent consumers and one narrow tested owner.
+`libraries/alignments/bed.py` serves only Step `00b` and is not an approved
+cross-owner seam.
 
 ## Dependency direction
 
-Invocation and artifact consumption are distinct from source imports. Public
-entry points may be invoked across owners; private implementation may not be
-imported across peers.
+Invocation and artifact consumption are distinct from imports. Public entry
+points may cross owners; peer-private implementation may not.
 
 | Owner | May import | May invoke or consume | Prohibited |
 | --- | --- | --- | --- |
@@ -108,25 +76,16 @@ imported across peers.
 | `orchestration/` | `contracts/`, approved `libraries/`, orchestration-local code, and the exact capability seams and exceptions below | public owner commands/capabilities and declared artifacts | peer-private implementation, ingestion, or scientific logic outside a named seam or exception |
 | `reporting/` | `contracts/`, approved `libraries/`, reporting-local code, and the exact analysis-module facade seam below | explicit public artifacts and summaries | provider-private implementation, input discovery, or analysis execution |
 
-Scientific functional-owner data flow follows the explicit semantic DAG edges
-in `STAGE_MAP.md`; lifecycle, admission, reporting, and orchestration flows
-remain with their artifact and owner contracts and the current architecture.
-No owner infers dependency order from numeric aliases, filenames, globs,
-neighboring directories, validator imports, or historical execution order.
-Reporting is a downstream projection and never promotes computational
-candidates into an external scientific or biological claim.
-
-Application coordination is intentionally not given blanket import permission
-to functional owners. Its direct capability calls are the exact exceptions
-ratified below. One exception cannot be copied to justify another edge.
+Scientific data flow follows `STAGE_MAP.md`; lifecycle, admission, orchestration,
+and reporting follow their owner contracts. Numeric aliases, paths, validator
+imports, and historical order do not create dependencies. Application
+coordination has only the exact capability exceptions below; one exception does
+not authorize another.
 
 ### Current CLI composition seams
 
-The grouped `src/emrys/__main__.py` dispatcher may import only this exact
-current roster. The roster is
-descriptive current behavior, not the future application API. A new target or
-a stale target fails the source-dependency gate so owner privacy and public CLI
-composition are reviewed together.
+The grouped `src/emrys/__main__.py` dispatcher may import only this exact roster.
+The source-dependency gate rejects additions and stale entries.
 
 | ID | Exact current target | Current grouped-CLI purpose |
 |---|---|---|
@@ -160,27 +119,19 @@ composition are reviewed together.
 
 ### Analysis-module capability seam
 
-Standard Python entry points select the exact installed computation and report
-providers named by an admitted Project Analysis. They are runtime-selected
-capabilities, not an EMRYS registry service, a permission to import
-provider-private code, or a second workflow language. Analysis providers,
-orchestration, and reporting may import only the public `emrys.analyses`
-facade; contracts, libraries, ingestion, and every provider-private target
-remain prohibited.
-
-The built-in provider consumes the same public descriptor contract offered to
-collaborator packages. Orchestration admits and freezes the selected provider
-into the immutable Run. Reporting consumes only that admitted descriptor and
-declared artifacts; it never invokes the computation provider. Doctor alone
-may import the public `emrys.reporting` facade to establish reporter readiness
-before a reporting-enabled execution.
+Python entry points select the exact computation and report providers named by
+an admitted Analysis. Providers, orchestration, and reporting may import only
+the public `emrys.analyses` facade; this is not a registry, private-code access,
+or a second workflow language. Orchestration freezes the provider descriptor in
+the Run; reporting reads that descriptor and declared artifacts without invoking
+computation. Doctor alone may import the public `emrys.reporting` facade for
+readiness.
 
 ### Fixed orchestration-to-reporting seams
 
-The run-coordinator application may cross into reporting only through these exact
-edges. Lifecycle and historical inspection validate receipts; the dedicated
-reporting operation owns the fixed artifact-index → run-summary → HTML sequence.
-No functional owner or grouped command imports reporting internals directly.
+Run coordination crosses into reporting only through these exact edges. The
+reporting operation owns artifact-index → run-summary → HTML; no functional
+owner or grouped command imports reporting internals.
 
 | Exact source | Exact target | Purpose |
 |---|---|---|
@@ -199,10 +150,8 @@ No functional owner or grouped command imports reporting internals directly.
 
 ### Ratified exact import exceptions
 
-These stable `SRC-TRANS` identifiers preserve the history of the audit that
-admitted them. The source-dependency ratchet permits only the exact
-source/target pair, rejects neighboring edges, and fails when an entry becomes
-stale. They are capability or neutral-mechanic seams, not general import APIs.
+Each stable `SRC-TRANS` identifier admits only its exact source/target pair. The
+gate rejects neighboring and stale edges; none is a general import API.
 
 | ID | Exact current import | Protected current behavior | Durable boundary justification |
 |---|---|---|---|
@@ -222,37 +171,8 @@ stale. They are capability or neutral-mechanic seams, not general import APIs.
 ### Automated import projection
 
 [`tests/tools/source_dependencies.py`](../../../tests/tools/source_dependencies.py)
-uses the standard-library AST and Git's tracked-plus-untracked, non-ignored
-inventory to check statically declared imports and recognized literal
-standard-library dynamic import forms without importing product modules or
-writing the tree. It enforces the stable negative directions above,
-functional-owner isolation, exact current CLI composition, private-module
-isolation, acyclicity between neutral library owners, explicit classification
-for every product source domain, the exact fixed reporting seams,
-and the exact admitted-exception roster. Focused tests keep both executable
-rosters equal to the tables above.
-
-The checker deliberately does not perform general dynamic-import data-flow
-inference or infer runtime invocation, native shell/R relationships, workflow
-scheduling, artifact flow, scientific semantics, or authority from an import
-alone. Those remain with the current architecture, `STAGE_MAP.md`, owner
-contracts, and direct tests. It does not require future `project`, `run`,
-`stage`, `execution`, `policy`, or `artifact_store` packages.
-
-## Public-interface and future boundary
-
-Owner-specific public shell, Python, and R entry points remain with their
-functional owner. Slurm placement belongs only to the private whole-Run
-transport; owner-local scheduler entry points are retired. The installed Python
-distribution packages only explicitly migrated import owners and their named
-resources; it does not imply portable repository-root semantics. Its `emrys`
-console command contains the admitted ordinary Project routes and keeps
-technical inspectors under `emrys debug`; direct `python -m emrys` invocation
-is an internal/test seam. `orchestration/run_coordinator/control.py` and
-`materialization.py` are the
-single public application owner for that projection. The dedicated
-`reporting_operation.py` coordinator is the only owner allowed to compose the
-three fixed reporting producers; the grouped command does not expose those
-producers separately. The packaged internal task module is invoked only by the
-fixed source-checkout workflow; it is not a public lifecycle command, scheduler
-abstraction, universal transaction framework, or generic stage dispatcher.
+checks tracked source imports, owner isolation, acyclic libraries, CLI and
+reporting rosters, and exact exceptions without importing product code or
+writing the tree. It does not infer runtime invocation, native-code relations,
+workflow scheduling, artifact flow, or scientific semantics; those remain with
+`STAGE_MAP.md`, owner contracts, and direct tests.

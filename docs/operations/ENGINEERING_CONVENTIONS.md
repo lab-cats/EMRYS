@@ -1,176 +1,86 @@
 # Engineering conventions
 
-This document owns neutral, cross-language engineering conventions for new or
-changed EMRYS implementation in the currently supported workflow. It is not an
-inventory of current executable behavior and does not claim that every legacy
-entry point already conforms. When a convention conflicts with characterized
-current behavior, the applicable colocated `CONTRACT.md` and the
-[`functional-owner inventory`](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
-describe current truth; preserve that behavior until a separately approved
-implementation changes it.
+These are neutral implementation rules for changed EMRYS code. Exact current
+behavior and characterized exceptions remain in the applicable owner contract
+and tests; this guide does not normalize legacy behavior by assertion.
 
-The [architecture index](../architecture/README.md) organizes current system
-views. [`SOURCE_TOPOLOGY.md`](../../src/emrys/contracts/SOURCE_TOPOLOGY.md)
-owns current source domains and dependency direction. Exact commands belong in
-the applicable owner README, cross-cutting commands in [`RUNBOOK.md`](RUNBOOK.md),
-and durable rationale in [`DECISIONS.md`](../design/DECISIONS.md).
+## Ownership and dependencies
 
-## Authority and owner boundaries
+- Functional implementation, native assets, diagnostics, recovery, contract,
+  and direct tests stay with one owner under `src/emrys/<domain>/<owner>/` and
+  the mirrored test area.
+- Cross-owner data uses explicit contracts and admitted artifacts. Do not import
+  a peer's private implementation or create a generic utility bucket.
+- Neutral contracts have no implementation dependencies. Neutral libraries are
+  narrow, acyclic, and shared only after equivalent production reuse is proved.
+- [`SOURCE_TOPOLOGY.md`](../../src/emrys/contracts/SOURCE_TOPOLOGY.md) owns
+  current import direction; [`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md)
+  owns scientific identities and artifact edges.
+- Root scripts, Git, Make, CI, package metadata, and environments are repository
+  controls, not scientific workflow owners.
 
-- The [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
-  and its linked contracts own exact current interfaces, side effects, defects,
-  and legacy exceptions. Documentation must not normalize those exceptions.
-- The [source topology](../../src/emrys/contracts/SOURCE_TOPOLOGY.md) owns
-  current source domains and dependency direction.
-- Owner READMEs own exact invocations; the [runbook](RUNBOOK.md) owns only
-  genuinely cross-cutting operations.
-- The [decision record](../design/DECISIONS.md) owns rationale and rejected
-  alternatives. This document owns the resulting neutral working rules.
+## Inputs and public entry points
 
-## Owner-local entry points
+Declare scientific inputs; never discover them by glob or infer biological
+meaning, sample order, pairing, or partitions from names. Ordered TSV manifests
+retain their exact schemas. Paths come from arguments or admitted configuration,
+not user-, checkout-, or machine-specific literals.
 
-Workflow, analysis, evidence, ingestion, and scheduler assets live with their
-functional owner under `src/emrys/<domain>/<owner>/`; direct tests mirror that
-owner under `tests/<domain>/<owner>/`. Root `jobs/` and numbered root
-`scripts/` paths are retired. Exact current names and protected exceptions
-belong to the
-[functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
-and adjacent contracts. Non-runnable future test plans remain separate under
-the [test-placement rationale](../design/decisions/repository-and-delivery.md#active-and-future-tests-remain-distinct).
+New or changed entry points should validate before expensive work, show the
+effective supported plan, use explicit destinations, fail with actionable
+diagnostics, work with tiny fixtures or test-owned effects, validate before
+publication, and avoid hidden mutable state. Python uses `argparse`, `pathlib`,
+and a guarded `main`; Bash uses strict portable syntax and quoted values; R
+validates arguments and does not depend on ambient working directory.
 
-## Declared inputs, manifests, and paths
+Public producers are dry-run-first unless their owner contract records an
+approved exception. Grouped `run` and `resume` display one immutable plan before
+terminal confirmation; automation uses `--execute`. Slurm is placement for the
+same operation, not a second owner interface.
 
-The declared sample manifest owns sample identity, metadata, and order. Other
-typed manifests retain their own contracts for partitions, inventory,
-approvals, or evidence. Use explicit, tab-separated manifests and
-manifest-driven selection; never infer pairings, sample order, or partitions
-from filenames.
+## Validation, publication, and recovery
 
-Use command-line arguments, explicit configuration, environment overrides, and
-resolved output roots instead of user- or machine-specific paths. Scientific
-and report inputs must be declared rather than discovered by glob. Exact fields
-and refinements remain owner-local; the durable rationale is in the
-[manifest rationale](../design/decisions/repository-and-delivery.md#explicit-manifests).
+Validate inputs before computation and outputs before publication. A multi-file
+transaction declares its roster, lock, staging, stable-input rechecks,
+no-clobber rule, rollback/recovery behavior, and receipt or summary published
+last. Do not assume that one owner's transaction is interchangeable with
+another or extract a universal lifecycle merely because vocabulary overlaps.
 
-## Public entry-point design
+Preserve foreign, partial, or ambiguous output and recovery evidence. Do not
+infer success from process exit, file presence, timestamps, logs, scheduler
+state, or workflow-engine metadata. Exact rules belong to the owner; durable
+rationale is in the
+[`execution decision`](../design/decisions/execution-evidence-and-reporting.md).
 
-New or changed entry points should:
+## Dependencies and environments
 
-- accept explicit arguments and provide useful help;
-- validate inputs before expensive work;
-- print resolved context and the exact command or commands it would run;
-- use explicit output paths;
-- fail loudly with actionable messages;
-- support tiny local fixtures or mocked tools;
-- validate outputs before publication; and
-- avoid hidden global state.
+| Root authority | Purpose |
+|---|---|
+| `.Rprofile`, `renv.lock` | Opt-in, reviewed R environment. Activation does not authorize restore or lock mutation. |
+| `pyproject.toml`, `uv.lock` | Python package, direct dependency, installed command, tool configuration, and exact resolved graph. |
+| `.coveragerc` | Branch/subprocess coverage configuration; acceptance remains in the test baseline. |
 
-Bash uses strict mode, portable syntax, quoted variables, and arrays where
-helpful. Python uses `argparse`, `pathlib`, a guarded `main`, and separable
-parsing, validation, and publication logic. R entry points validate arguments
-and avoid hard-coded working directories. Owner-local contracts remain
-authoritative for exact arguments and characterized behavior.
+Dependency restoration is an explicit setup or Doctor-repair action. Compute,
+validators, report renderers, and tests never bootstrap packages or change
+locks. `EMRYS_USE_RENV=1` is the only repository-R opt-in; invalid values fail,
+automatic snapshots remain disabled, and lock changes require review.
 
-Documentation must link canonical standalone Mermaid sources rather than keep
-inline copies. Keep only short supported invocations in Markdown; substantive
-executable logic belongs in tested, parameterized files beside its functional
-owner. Root `scripts/` remains repository-control tooling.
+## Slurm and reporting
 
-## Dry-run and execution
+Whole-Run Slurm transport re-admits execution authority, records scheduler
+provenance and streams, loads only declared modules, owns private scratch, and
+delegates once to grouped control. Do not add owner-local scheduler wrappers.
+Omitted site policy remains omitted; explicit resource settings must reconcile
+with the allocation.
 
-New or changed direct producers and public Run operations are dry-run-first
-unless an owner-local contract explicitly records a protected current
-exception. For conforming owner scripts, omitting `--execute` validates and
-prints while `--execute` publishes. Grouped `emrys run`/`resume` displays an
-immutable plan before terminal confirmation; noninteractive execution requires
-`--execute`. Slurm is placement for that same grouped operation, not a second
-owner interface. Dry-run must not publish final artifacts and should avoid
-creating output directories when that could confuse validation. Any currently
-characterized dry-run directory or logging side effect remains current truth
-until separately changed.
+Reporting consumes one admitted canonical summary and explicitly authorized
+supplemental tables. It does not discover inputs, run analysis, install tools,
+mutate upstream state, or promote evidence. Module-specific scientific renderers
+remain separate from fixed evidence/operations presentation.
 
-See the [dry-run decision](../design/decisions/execution-evidence-and-reporting.md#default-to-dry-run), the
-[functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md),
-and its linked contracts for the boundary between convention and current
-exceptions. Supported invocations remain in the applicable owner README.
+## Applying a convention
 
-## Validation and publication
-
-Validate before expensive work and before publication. Multi-file publication
-uses an owned lock, run-token staging, stable-input rechecks, an explicit
-no-clobber rule including any owner-contract-authorized replacement boundary,
-rollback and recovery, and a receipt or summary published last as the
-transaction marker. The applicable contract owns exact current transaction
-semantics and any characterized defect.
-
-The durable boundaries are recorded in the
-[validated-publication](../design/decisions/execution-evidence-and-reporting.md#publish-validated-transactions)
-and [recovery-evidence](../design/decisions/execution-evidence-and-reporting.md#preserve-recovery-evidence)
-decisions. This convention does not imply that an owner-specific validator is a
-neutral shared library.
-
-## Repository dependency and test configuration
-
-Six retained root files are project/tool configuration surfaces, not workflow
-stages or miscellaneous application inputs:
-
-| Root file | Purpose and placement boundary |
-| --- | --- |
-| [`.Rprofile`](../../.Rprofile) | Guarded R startup hook. With the default `EMRYS_USE_RENV=0`, startup is unchanged; `1` opts in and every other value fails. When opted in, the hook defaults sandboxing and automatic snapshots to disabled only when the caller has not set them; supported Make lanes set both controls false explicitly. It then sources the project `renv/activate.R`. Activation does not restore the lockfile, although the activator may bootstrap the pinned `renv` package itself if missing. R can discover this file at the project root, and Make also binds it by absolute path. |
-| [`renv.lock`](../../renv.lock) | Reviewed R and Bioconductor dependency snapshot used by guarded activation plus explicit restore and status checks. Root placement is the conventional and implemented `renv` project boundary; restored libraries and caches remain ignored. See [`renv/README.md`](../../renv/README.md). |
-| [`pyproject.toml`](../../pyproject.toml) | Authoritative Python package metadata: build backend, distribution identity, license expression and packaged legal files, direct runtime dependencies, the `dev` dependency group, package discovery/resources, Ruff configuration, and the installed `emrys` console entry point. Migrated commands use the grouped interface through the selected installed interpreter in isolated mode; unmigrated owner directories and commands enter the distribution only through an owner-local cutover. |
-| [`uv.lock`](../../uv.lock) | Authoritative exact Python dependency graph resolved from `pyproject.toml`. `uv sync --locked` installs the project plus its default `dev` and `workflow` groups into `.venv`, including the pinned Snakemake runtime; the complete gate first uses `uv sync --locked --check` as a read-only congruence check, while validation and runtime owners never mutate the lock or repair the environment. The lock contains transitive packages without making them direct project dependencies. |
-| [`.coveragerc`](../../.coveragerc) | Coverage.py measurement configuration for branch, parallel/subprocess, relative-path, and source-scope behavior. Make binds the root file and coverage also supports root discovery. Acceptance thresholds and evidence belong to [`TEST_BASELINE.md`](../design/TEST_BASELINE.md), not this file. |
-
-Presence of these files establishes configuration only. It does not prove that
-dependencies were restored, tests passed, or a local, cluster, production,
-scientific-review, or biological environment is ready. Moving one requires an
-explicitly bounded review of every caller, discovery assumption, and direct
-contract test.
-
-Dependency restoration is an explicit operator action. Compute scripts,
-validators, SLURM jobs, report renderers, and tests must not bootstrap or
-install R, system packages, or analysis dependencies.
-
-The repository-local R environment is opt-in only through
-`EMRYS_USE_RENV=1`; `0` leaves normal startup unchanged and any other value
-must fail. Automatic snapshots remain disabled, and lockfile changes require
-review. The [R-environment decision](../design/decisions/execution-evidence-and-reporting.md#guard-the-repository-local-r-environment)
-owns the rationale; setup and restoration commands remain in the
-[runbook](RUNBOOK.md).
-
-## SLURM interfaces
-
-Slurm placement uses one private whole-Run transport around the same workflow
-backend as direct execution. Its batch bootstrap uses strict shell behavior,
-re-admits execution authority, records scheduler provenance and streams, loads
-the declared modules, owns private scratch, and delegates once to grouped Run
-control. Owner-local scheduler entry points are retired; do not add another
-without a separately reviewed execution boundary and parity case.
-
-Record the loaded module state as part of the cross-cutting
-[cluster procedure](RUNBOOK.md#cluster-execution-and-promotion). Do not add an
-explicit memory request without confirmation in the relevant cluster contract.
-Current scheduler placement and dependency boundaries are described by
-[source topology](../../src/emrys/contracts/SOURCE_TOPOLOGY.md).
-
-## Reporting consumers
-
-A report renderer consumes one explicit validated canonical run summary plus
-only supplemental tables authorized by exact path, hash, row count, and role.
-It does not discover inputs, run analysis, install tools, or promote evidence
-state. Current reporting surfaces remain in the
-[functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md#cross-cutting-product-and-operational-owners);
-rationale remains in the
-[reporting](../design/decisions/execution-evidence-and-reporting.md#decouple-reporting-from-computation) and
-[supplemental-table](../design/decisions/execution-evidence-and-reporting.md#authorize-supplemental-report-tables-explicitly)
-decisions.
-
-## Applying or changing a convention
-
-Changing existing behavior follows the short
-[workflow kernel](WORKFLOW.md). Update the
-functional-owner inventory or applicable contract in the same coherent change
-when its roster, interface, protection, or characterized exception is affected.
-A source move requires a separately reviewed owner-boundary change; this
-document does not authorize implementation.
+Follow the [`workflow kernel`](WORKFLOW.md). Update the exact owner contract and
+direct tests when behavior changes, and the architecture inventory only when
+ownership or public routing changes. A convention does not authorize a source
+move, public change, deletion, dependency installation, or execution.

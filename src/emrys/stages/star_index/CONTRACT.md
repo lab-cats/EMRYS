@@ -1,14 +1,9 @@
 # `construct_STAR_index` stage contract
 
-This document records the observed current contract of historical Step `00a`.
-The exact public identity and historical alias are owned by the
-[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is now the implemented native source owner for its producer and validator.
-Its Python implementation is an installed owner package; its public Python
-surface is only the grouped validator route documented below.
-
-The adjacent [`README.md`](README.md) routes maintainers and operators to the
-implemented assets and exact supported commands.
+This directory owns historical Step `00a`; the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
+identity and alias. The grouped validator route is its only public Python
+surface.
 
 ## Responsibility
 
@@ -27,10 +22,9 @@ computational stage. BED12 and FASTA-sidecar construction may run in parallel
 from the same materialized references. STAR alignment may run after the STAR
 index is complete and receives the index through its explicit input.
 
-If reference materialization becomes a separate owner, STAR-index, BED12, and
-FASTA-sidecar construction can branch from that shared prerequisite. Historical
-numeric order records provenance; the data dependencies above define required
-execution.
+STAR-index, BED12, and FASTA-sidecar construction can branch from their shared
+materialized references. Historical numeric order records provenance; data
+dependencies define execution.
 
 ## Inputs
 
@@ -131,42 +125,7 @@ implementation supports it.
 - Artifact indexing, canonical summaries, and reports consume those registered
   artifacts and validation evidence without rerunning this stage.
 
-No downstream stage should depend on this stage's implementation module.
+## Protection and evidence ceiling
 
-## Protected behavior and evidence
-
-- [`test_step_00a_build_star_index.py`](../../../../tests/stages/star_index/test_step_00a_build_star_index.py)
-  protects public producer help, dry-run, arbitrary-CWD execution, exact STAR
-  arguments, declared-member publication, no-clobber, controlled rollback,
-  and late-final and foreign-lock preservation with local mocks.
-- [`test_validate_step_00a_star_index.py`](../../../../tests/stages/star_index/test_validate_step_00a_star_index.py)
-  protects dry-run, the six checks, STAR metadata admission, mismatch reporting,
-  repeat publication,
-  contract failures, and preservation of foreign locks or invalid
-  predecessors.
-- [`test_validation_check_rosters.py`](../../../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py)
-  protects the exact validator inventory and check identities.
-- [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py)
-  characterizes shared publication, rollback, cleanup, and recovery behavior.
-- [`test_public_cli_contracts.py`](../../../../tests/test_public_cli_contracts.py)
-  protects the public validator CLI, and
-  [`test_python_coverage_baseline.py`](../../../../tests/test_python_coverage_baseline.py)
-  protects its recorded coverage boundary.
-
-These are local fixture contracts. They do not establish a
-new cluster, production, scientific-review, or biological-evidence result.
-Current evidence status remains owned by the canonical roadmap and handoff.
-
-## Neutral publication dependency
-
-General report rendering, validation, snapshot, locking, and publication live
-in the neutral shared owner
-[`validation/report.py`](../../libraries/validation/report.py). This validator
-imports the validation facade while its five checks remain stage-local. The
-shared module has no public CLI.
-
-## Deferred decisions
-
-- Whether EMRYS later adds a separate reference-materialization route.
-- Final serialization and placement of machine-readable stage contracts.
-- Whether a later descriptor, schema, or package contract is justified.
+Repository tests protect this contract under the shared
+[evidence ceiling](../../../../tests/README.md).

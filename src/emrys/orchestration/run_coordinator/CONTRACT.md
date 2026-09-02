@@ -1,489 +1,249 @@
 # Run-coordinator intake contract
 
-## Public onboarding boundary
+This private application owner connects the scientist-facing Project model to
+immutable Run planning, direct or whole-Run Slurm execution, Attempt lifecycle,
+inspection, recovery, Results, and reporting. Scientific algorithms, native
+artifact publication, validation meaning, report rendering, dependency solving,
+and package installation remain with their owners. The
+[current architecture](../../../../docs/architecture/ARCHITECTURE.md) defines
+responsibility layers; the [runbook](../../../../docs/operations/RUNBOOK.md)
+owns operator instructions; and the
+[logging contract](../../../../docs/design/LOGGING_CONTRACT.md) owns application
+log semantics.
+
+## Public model and admission
+
+The public model is `Project -> named Analysis -> immutable Run -> Results`:
+
+- The authored `project.yaml` is mutable input. Admission snapshots its exact
+  bytes and referenced manifests, normalizes scientific content, and produces
+  immutable Project and Analysis revisions.
+- An Analysis names one admitted scientific comparison and module
+  configuration. Its map key is a human selector and Attempt metadata, not
+  content-derived identity.
+- A Run immutably binds one Analysis revision and one Execution Plan. Changing
+  scientific intent or planned tasks creates another Run.
+- Each execution or resume creates a new Attempt. It cannot mutate the Run.
+- Results are the admitted final scientific artifacts beneath that Run.
+  Reporting is a downstream transaction, not a scientific stage or completion
+  authority.
+
+Ordinary Project-aware commands derive the exact current directory's
+`project.yaml`. Optional `--project` accepts one named Project directory or an
+exact `project.yaml`; no parent-directory or global lookup occurs. The file's
+parent is the Project root. Active commands reject request-v3; its closed
+schema survives only to read exact historical Runs.
+
+Admission uses a closed safe YAML loader, resolves paths against the Project
+root, and binds regular non-symlink file bytes through descriptor/path identity
+checks before and after reading. Duplicate keys, custom tags, merge keys,
+globs, templates, environment/home interpolation, unknown fields, and ambiguous
+paths fail. Shared Dataset and Reference inputs are admitted once; each named
+Analysis separately binds its partition, comparison, target, thresholds, and
+selected installed providers. Omitted Analysis selection is valid only when
+the Project contains exactly one Analysis.
+
+Run selectors accept the deterministic two-word human name, full Run ID, or a
+unique ID prefix. With no selector, the sole Run is selected; an interactive
+terminal offers an exact choice when several exist. Automation must provide an
+unambiguous selector. EMRYS never infers the latest Run. The human name is
+presentation only; the content-derived Run ID remains authority.
+
+## No-write and publication boundaries
 
 `emrys init PROJECT_NAME` is dry-run-first and publishes only with `--execute`
-into that absent child of the current canonical writable/searchable directory. It
-validates supplied strict manifests and referenced data, records the manifests'
-admitted absolute paths without copying inputs, creates mode-`0700` `runs/`,
-`logs/`, `runtime/`, and `runtime/profiles/`, publishes a placement-only
-`runtime/profiles/default.yaml`, publishes generated `emrys.project.v1` `project.yaml` last,
-then re-admits exact tree types, modes, sizes, and bytes before full Project
-validation. Beyond that default placement file, no runtime inventory, Results,
-Run, Attempt, or log is created. Failure preserves the partial root and never
-overwrites or adopts it.
+into an absent child of the current canonical writable/searchable directory.
+It validates referenced inputs without copying them, creates Project-owned
+`runs/`, `logs/`, `runtime/`, and `runtime/profiles/` with mode `0700`, and
+publishes `project.yaml` last. Failure preserves the partial root and never
+overwrites or adopts it. Success re-admits the published tree's exact types,
+modes, sizes, and bytes.
 
-The canonical `project.yaml` parent is the Project root derived by ordinary
-run and Doctor routes. Results exist only under `runs/<run-id>/results`.
-Every Project-aware route defaults to the exact current directory's
-`project.yaml`; optional `--project` accepts one named Project directory or
-exact `project.yaml` path. No parent-directory or global lookup occurs.
+`emrys validate` re-admits every selected Analysis and its reference,
+annotation, sample, and partition compatibility. It invokes no external tool
+and writes nothing. Runtime discovery is also dry-run-first; publication writes
+one create-absent `<project-root>/runtime/runtime.tsv`. Doctor diagnosis and
+repair follow the durable boundaries in
+[`execution-evidence-and-reporting.md`](../../../../docs/design/decisions/execution-evidence-and-reporting.md):
+diagnosis is read-only, while confirmed repair mutates only declared
+EMRYS-owned locations through existing package managers and requalifies.
 
-From the exact Project root, `emrys validate` calls canonical Project admission with
-the tracked processing-profile base and each explicitly selected installed
-analysis-module descriptor, validates every named Analysis, then reuses
-the reference-contig and GTF-to-BED12 owners to require nonempty FASTA contigs,
-usable exon transcript models, matching contig names, in-bounds transcript
-coordinates, and in-bounds `region` or `regions_file` partition selectors. It
-rechecks every reference/selector content snapshot after compatibility parsing.
-It writes nothing and invokes no external tool. Success is input/configuration
-compatibility evidence only, not readiness, execution, or scientific evidence.
+For direct placement, `run` and `resume` construct and display one frozen plan,
+then ask once before executing that same object. Refusal, EOF, interruption, or
+noninteractive omission of `--execute` writes nothing, submits nothing, and
+opens no application log. `--execute` is the explicit automation path.
 
-`emrys runtime discover [--project FILE]` derives one Project and resolves the
-active environment against the tracked fixed runtime policy. It loads no
-module, installs nothing, and silently selects nothing: a missing or ambiguous
-tool, jar, Python/Snakemake environment, R installation, library, or required
-namespace fails closed. The default is a no-write inventory. `--execute`
-publishes the admitted bytes only at `<project-root>/runtime/runtime.tsv` and
-re-admits that file; it does not create another runtime identity or accept a
-caller-selected output path. Any existing profile is preserved and fails
-publication, including byte-identical content. Ordinary run, resume, and Doctor
-routes derive the canonical runtime inventory from the Project. The generic
-inventory-driven `emrys debug runtime-availability` route remains the advanced evidence
-surface and does not establish the ordinary Project runtime inventory.
+For Slurm placement, the terminal instead confirms one frozen submission plan
+before its single `sbatch` call. Submission owns no Run attempt or application
+log. Ambient `SBATCH_*` and private transport variables are removed; omitted
+site fields remain site policy rather than being fabricated. The private
+compute delegate validates its exact profile binding,
+submitter identity, and positive scheduler job ID inside the allocation before
+module, scratch, Doctor, or workflow work. It uses one owned scratch directory,
+removes it on exit, loads only an explicitly admitted module
+initializer/roster, and delegates to the same grouped Run path. Scheduler
+streams and job identity are operational provenance, never scientific or
+completion authority.
 
-`emrys init synthetic` uses the same external, dry-run-first,
-create-absent publication policy. Its closed `--dataset-profile` selector
-defaults to `smoke-v1` (130 pairs per library on 100 kb) and also admits
-`production-like-v1` (100,000 pairs per library on 5 Mb). The larger profile
-retains the exact engineered core while adding globally disjoint deterministic
-neutral templates and an explicit deliberate-duplicate subset. Dry-run plans
-either profile without generating its reference or FASTQs. Execute writes the
-reference, annotation, four paired libraries, matched manifests, and explicit
-metadata, validates its own Project before publishing `fixture.manifest.json`
-last, and then re-admits the complete transaction. The metadata's expected
-    three Step 09 computational candidates, one significant candidate, complete
-    scientific Results through Step 10, and complete default reporting are
-    deterministic synthetic expectations, not production
-data, scientific review, or biological interpretation.
+## Profiles and immutable planning
 
-`emrys run` and `emrys resume` accept at most one selected closed
-`emrys.execution-profile.v1` YAML fragment. Omission resolves
-`<project-root>/runtime/profiles/default.yaml`; `--profile NAME` resolves one
-safe name exactly to `<project-root>/runtime/profiles/NAME.yaml`; and an
-absolute `--profile PATH` selects that exact source. No site/global registry or
-scan exists. The default fragment supplies conservative resources and direct
-placement. A selected fragment may
-replace the Run-bound computational declaration and select Attempt-local direct
-or Slurm placement; resource CLI flags have highest precedence. The name is not
-identity or a runtime mode.
+`run` and `resume` accept at most one closed
+`emrys.execution-profile.v1` fragment:
 
-Slurm placement submits the whole Run as exactly one node/task/allocation and
-delegates back to the same grouped control path inside it. EMRYS constructs one
-frozen submission plan; a terminal displays its placement summary and asks
-before submitting that same object once. Refusal, EOF,
-interruption, or noninteractive omission of `--execute` does not submit or
-create logs. Confirmation or explicit `--execute` admits the canonical
-`<project-root>/logs` directory, calls `sbatch` once with an exact
-argument vector and stdin batch program, and prints `JOB_ID`, `OUT`, and `ERR`.
-Ambient `SBATCH_*` and private transport variables are removed before
-submission. Omitted account, partition, QOS, memory, and node-list fields defer
-to site policy; explicit values are emitted once.
+- omission reads `<project-root>/runtime/profiles/default.yaml`;
+- `--profile NAME` reads exactly
+  `<project-root>/runtime/profiles/NAME.yaml`; and
+- an absolute `--profile PATH` reads that exact file.
 
-The private compute delegate requires the binding over exact profile-source
-bytes and effective semantics, the submit UID, internal marker, and a canonical
-positive `SLURM_JOB_ID` before module,
-scratch, doctor, or workflow work. Module mode is closed to `none` or `exact`;
-exact mode loads only its admitted initializer and roster. The delegate creates
-one mode-`0700` directory below the admitted scratch parent, exports it as
-`TMPDIR`, and removes it on exit. Doctor and resource/allocation resolution run
-inside the allocation. The effective workflow totals must fit the observed
-CPU and memory capacity.
+There is no site/global registry or profile scan. Resource CLI values have
+highest precedence. Placement is Attempt-local provenance; the admitted
+scientific computation and task roster remain Run authority.
 
-Placement source/digest, Project source, and scheduler job ID are Attempt provenance,
-not Run identity or completion authority. Direct and Slurm use one scientific
-backend and one materialization/lifecycle contract. Hosted 130-pair
-direct/disposable-single-node-Slurm execution proves matching immutable
-authority, Attempt common fields/task roster, path-neutral science, symbolic
-resources, and controlled pre-task failure/resume behavior. Each placement
-separately admits successful and failed receipts, final reporting, and one
-application log per execution operation; effective allocation and scheduler
-streams differ as intended. It does not establish the 100,000-pair case,
-institutional site/module portability, multi-node or production execution,
-scientific review, or biological validation. Owner-local scheduler entry
-points are retired; the private whole-Run batch bootstrap remains.
+Planning composes the fixed common processing profile with the selected
+analysis provider's admitted task tail, declared inputs/outputs, validation
+reports, resources, and reporting projection. It materializes one immutable
+dispatch per task and invokes the sole source-bound Snakemake backend. The
+public surface exposes no raw engine force, unlock, cleanup, retry, plugin, or
+alternate-workflow escape hatch.
 
-## Project admission and execution
+## Processing reuse and provider boundary
 
-`normalization.admit_project` is a read-only public Python boundary. It
-admits the mutable authored file into an immutable `ProjectAdmission` snapshot,
-uses the closed safe YAML loader, resolves paths against the Project directory,
-reuses the public Step `08`/`09` manifest contracts, requires at least two
-exact control/treatment strata, requires each paired FASTQ row to use one
-matching compression mode, snapshots declared regular non-symlink inputs, and
-validates the closed project-v1 contract. Shared Dataset and Reference inputs
-are admitted once; every named Analysis separately binds its partition
-semantics and policy, with repeated partition-manifest spellings cached during
-that admission. Exact Project and manifest bytes remain parse/provenance
-snapshots; canonical normalized scientific content is the order-neutral
-Analysis identity authority. Duplicate keys, custom tags, merge
-keys, globs, templates, environment/home interpolation, unknown fields, and
-ambiguous paths fail admission. The Analysis mapping key is a human selector
-and retained Attempt metadata; it does not enter the content-derived Analysis
-identity. `ProjectAdmission` retains the immutable admitted source snapshot and all
-immutable Analysis revisions; `ProjectAdmission.select_analysis()` selects by
-name and permits omission only when exactly one Analysis exists. Active Project
-commands reject request-v3. Its schema and admission path remain private solely
-for exact historical resume compatibility.
+`run --through processing` creates a distinct Run ending at the complete
+predecessor-closed Steps `00`-`06` processing boundary. It owns its Attempts
+and evidence but has no applicable report and cannot later resume into a larger
+plan.
 
-`doctor.diagnose_project` is the read-only internal readiness capability used
-by Run and resume. The top-level `emrys doctor` route composes it into one
-Project-aware readiness and explicit managed-repair boundary. They derive
-`<project-root>/runtime/runtime.tsv`, reuse Project admission plus the runtime-
-availability owner's direct API, require the exact fixed local runtime roster
-and policy fields before any probe, run R namespace probes with explicit
-guarded `renv` variables, compare the selected Python/Snakemake identity, bind
-admitted tool/jar bytes and installed R-package trees, and reject a Project
-root overlapping the source checkout. The Java path must resolve to canonical
-`<JAVA_HOME>/bin/java`; doctor, lifecycle, and GATK owner work share that
-selected launcher after ambient JVM/GATK selectors are removed. The Project
-root must be canonical, real, writable, searchable, and external to the source
-checkout. Diagnosis, detail projection, help, repair preview, refusal, EOF, and
-interruption before repair authority write nothing and open no application
-log. Diagnosis never loads modules, mutates a Run, executes
-Snakemake/scientific owners, or promotes readiness into local-runtime,
-scheduler, cluster, scientific-review, or biological evidence.
+`run --from-processing-run RUN` creates another same-Project Run. The source
+must be a successful processing Run with an admitted receipt, compatible
+Reference and processing semantics, and samples that exactly contain the
+target Analysis rows and content. Reference paths may relocate only when the
+admitted content remains identical; processing semantics may not change.
+Reused artifacts remain at their source paths and are rebound by exact size,
+hash, and source Run/Attempt identity; they are never copied, adopted, or
+mutated. A proper subset uses one private Attempt-bound sample projection, not
+a second scientist-authored manifest. Drift, missing state, incompatible
+content, or incomplete evidence fails closed. The downstream Run owns Steps
+`07` onward, its Attempts, Results, reports, and log.
 
-`emrys doctor --repair` separately plans the supported managed-runtime repair.
-Terminal mutation requires confirmation; noninteractive mutation requires the
-combined `--repair --execute`. Repair may create one Project-owned direct
-storage receipt after bounded single-host probes. Managed-runtime repair
-supports Linux x86-64 only, requires the active checkout-owned `.venv`, and
-permits writes only to that environment and Project-owned `runtime/managed`,
-plus create-absent publication of `runtime/runtime.tsv`. `uv`, Pixi, and `renv`
-remain the package-solving and installation authorities. Doctor orchestrates
-the selected storage/runtime actions, owns one maintenance application log
-beginning after authority and before mutation, and re-runs complete Project
-readiness afterward. A ready site/user profile is never overwritten, migrated,
-or passed through package-manager repair; declared input files and workflow
-outputs are outside repair ownership. Ambient Pixi configuration is disabled
-and Project-local Pixi configuration is rejected so it cannot redirect managed
-environments beyond that boundary.
-The advanced storage-evidence command retains
-`emrys debug storage-qualification --workspace PROJECT_ROOT`; this explicit
-two-phase Slurm/site probe is not an ordinary Project/workspace choice.
-Ordinary executable and hash probes are bounded at 30 seconds. Each guarded R
-namespace load has a separate 120-second bound and records elapsed/configured
-timing in its diagnostic; timeouts remain readiness failures. The selected
-`renv_library` is canonical and real, while one installed-package entry may
-resolve through a cache symlink only when the loaded namespace and exact
-canonical package-tree binding agree on its target.
+An installed computation provider contributes closed normalized
+configuration, typed artifacts, one Step `09` task, optional Step `10`, exact
+dependencies, and minimum resources through the public analysis facade. A
+separately selected report provider owns bespoke presentation. Neither creates
+a second scheduler, workflow language, Artifact Store, mutable registry, or
+scientific authority outside its declared tasks and artifacts.
 
-The installed `emrys run`, `emrys resume [RUN]`, `emrys report [RUN]`, and
-`emrys inspect [RUN]` routes are the supported control surface; their planning
-helpers are private implementation details. Their public model is
-`Project -> named Analysis -> immutable Run -> Results`. `run --analysis NAME`
-selects exactly one Analysis, with omission allowed only for a single-Analysis
-Project. Resume selects an existing Project Run and cannot change that Analysis.
-Omitting `[RUN]` selects the sole Run or presents a terminal picker when several
-exist. A noninteractive caller must provide an unambiguous deterministic
-two-word name, full Run ID, or unique ID prefix; no latest-Run inference exists.
-`emrys run --through processing` creates a distinct immutable Execution Plan
-and Run whose nonempty predecessor-closed stopping roster selects the
-evidence-complete Steps `00`–`06` closure for its selected Analysis. The fixed four-sample
-fixture expands this closure to 31 owner tasks. The default full Run contains
-the common path through Step `08` plus the selected module's Step `09` and
-optional Step `10`. Reporting is not applicable to a processing-boundary Run;
-successful completion is terminal and not resumable. This slice establishes
-the reusable processing authority. `run --from-processing-run RUN` admits one
-exact successful processing Run from the same Project and creates a distinct
-complete downstream Run. The target plan binds the source Run, successful
-workflow Attempt, and receipt; normalized samples, Reference, and execution
-processing semantics must match exactly except that target samples may be an
-exact subset of the source Analysis and the plan's source/stopping fields
-differ; the selected downstream module and unrelated whole-workflow caps may
-differ. Source
-Steps `00`–`06` artifacts remain stationary and
-content-bound, while the target executes and owns fixed Steps `07`–`08`, its
-selected Step `09`/optional Step `10`, evidence, Results, reports, and log.
-Resume preserves the immutable source
-relationship. No source task record is copied or adopted, and no Artifact Store
-or second scientist-authored manifest authority is introduced. A proper subset
-uses one private Attempt-bound TSV projection for the unchanged backend. The
-bounded collaborator-module v1 inherits existing task, publication, failure,
-recovery, and logging semantics. Doctor composes its declared dependencies,
-exact file/package identities bind the Run, and the existing resource policy
-must satisfy its minimum memory and threads; package managers retain
-installation and solving authority.
-The installed command performs the controlled-runtime handoff. With direct
-placement, a terminal builds and prints one frozen Run
-plan, asks once, and executes that same object only after confirmation. Slurm
-placement instead confirms the frozen submission plan described above; Run
-planning occurs later inside the allocation. Refusal, EOF, or interruption
-mutates nothing and opens no log; noninteractive omission of `--execute`
-remains no-write, while `--execute` is the explicit automation path. Direct
-planning reruns the Doctor, admits the authored Project again, derives the
-deterministic Run identity, and prints concise Run identity, combined
-pending/reusable work within that Run, and reporting information. Verbose output
-adds the Run root, admitted Analysis and Execution-Plan identity, and
-resources/allocation; debug output adds exact engine and task commands.
-Slurm submission output instead adds placement detail, profile and stream paths
-at verbose level, and the scheduler command at debug level.
-Read-only Run inspection follows the same disclosure boundary: normal uses the
-stable human Run name, verbose adds the canonical Run ID, admitted Analysis,
-Execution Plan, and Attempt identity plus effective execution facts, and debug
-adds canonical authority paths/digests, verified output bindings, receipts, and task evidence.
-Historical Runs are labeled and never receive fabricated successor identities.
-The fixed four-sample, one-partition synthetic fixture expands to 35 owner jobs
-for the default full Run and 31 for the processing boundary; other admitted
-sample/partition counts expand according to the common profile and selected
-module descriptor. The
-control surface exposes no raw Snakemake flags, force, unlock, cleanup, retry,
-plugin, or alternate-profile escape hatch.
+## Task and Attempt lifecycle
 
-Each executing Run Attempt owns exactly one application log under the selected
-root, which defaults to `<project-root>/logs/application`; Slurm scheduler
-streams live under `<project-root>/logs`. After minimal Project-root/control admission, the
-compute delegate and explicit direct `--execute` path open that log before
-semantic planning; confirmed terminal direct execution opens it immediately
-after consent and before lifecycle admission. The submission process and
-unconfirmed plan own none. The log records publication readiness
-before the authoritative Attempt receipt and observes the receipt only after
-its durable commit. After initialization, log degradation cannot alter
-lifecycle, receipt, recovery, or exit; the log is never completion authority.
-After every selected scientific/evidence task is verified, lifecycle releases
-the Run lock and publishes the v2 Attempt receipt. For a full Run, reporting
-then runs automatically unless `run` or `resume` receives `--no-report`; it is
-separately receipt-bound, creates no Run or Attempt, and cannot change the
-scientific receipt. A processing Run has no applicable reporting transaction.
-`emrys report [RUN]` plans independently without writes and generates only with
-`--execute`. Successful default run/resume reporting,
-successful independent generation or reuse, and completed final inspection
-print a short `Results:` block with the scientific report first and evidence
-report second. Those absolute locations are carried from the fully revalidated
-report receipt; dry-run, failed, blocked, incomplete, or unverified state prints
-no result locations. Inspection also prints one deterministic next supported
-action derived from the separated Run, Attempt, Results, reporting, and recovery
-domains; blocked evidence is preserved and never presented as resumable. The
-dashboard does not derive or display result locations or recovery guidance.
+Initial Run structure and each Attempt directory are create-absent. Lifecycle
+holds the persistent advisory acquisition mutex while it revalidates the
+prepared Attempt, then publishes the evidence-bearing aggregate Run lock before
+Attempt-specific dispatch, config, or record state. A stale waiting contender
+exits before materialization and leaves no new Attempt residue.
 
-`materialization.build_attempt_plan` is the sole production projection from
-the composed processing/module profile to owner commands, declared inputs/outputs, validation
-reports, immutable task dispatches, reporting projections, workflow config,
-and workflow-attempt record. Initial run skeleton creation is create-absent.
-For successor Runs, the Attempt executor value comes from the admitted
-immutable Execution Plan; historical Runs retain their fixed `local` value.
-Lifecycle first holds the persistent zero-byte `locks/acquire.mutex` advisory
-mutex and revalidates the exact prepared attempt under that serialization
-boundary. The mutex is infrastructure, not run evidence. Only an admissible
-current execute/resume then publishes the evidence-bearing aggregate run lock
-before attempt-specific directories, dispatches, config, request snapshot, or
-attempt record. A stale waiting contender exits before its materializer runs
-and leaves no attempt, dispatch, config, or released-lock residue. Resume
-retains only independently revalidated predecessor dispatches for verified
-scopes and materializes new dispatches for the unentered remainder.
+Each closed dispatch binds the admitted Execution Plan, composed profile,
+owner scope, exact public producer and validator commands, declared inputs and
+outputs, runtime/tool identities, and validation report. Immediately before
+producer entry, the task publishes an immutable start record. Its stdout and
+stderr files are create-exclusive, no-follow, drained through EOF, byte- and
+order-preserving within each stream, synchronized, hash-bound, and revalidated.
+No ordering between streams is claimed.
 
-Every authored file path passes one lexical policy before access. Admission
-opens the file without following a final symbolic link, verifies that the open
-descriptor and pathname name the same inode before and after reading, and binds
-the exact descriptor bytes. Project YAML, path-based profile JSON, and sample
-and partition TSV parsing consume those admitted bytes without reopening the
-pathname.
+A task publishes an immutable failed or succeeded attempt after entry and a
+verified-task record only after producer success, output and native-receipt
+admission, validator completion, and semantic all-pass. A pre-entry failure may
+retain its exact bound diagnostics without marking the scope entered, so a
+later Attempt may retry it. Unexpected interruption after stream creation may
+leave partial diagnostics but no terminal or verified record. Log presence or
+content never establishes success.
 
-The neutral `emrys.contracts.orchestration.projection.project_reporting` API
-deterministically derives the applicable artifact run contract and explicit
-inventory bytes from the immutable selected profile. The built-in flat path
-retains its paired-CMH projection; explicit modules use the module-neutral
-run-summary v3 projection. Generated paths are run-root-relative; stationary
-Step `00c` FASTA and sidecar paths may be absolute normalized external paths.
-The projection does not discover files or promote reporter identity into
-Analysis, Run, or workflow identity. Deriving the roster from the profile is
-dynamic artifact indexing, not a store or second manifest authority.
+Snakemake schedules only verified-task targets. Native artifacts, validation
+reports, receipts, streams, and recovery evidence are not disposable engine
+outputs. Same-Run reuse requires fresh schema, identity, content, Attempt,
+receipt, and semantic-report admission. The only stationary outputs outside a
+Run are the exact Step `00c` FAI/dictionary pair beside their canonical FASTA;
+partial or changed pairs fail before owner entry.
 
-The public `emrys validate all-pass` route reads one explicit
-owner-validation report and writes nothing. It requires the exact shared
-seven-column validation header, at least one well-formed check row, the
-declared step and scope on every row, unique nonempty `check_id` values, and
-`status=pass` for every row.
+The Attempt binds canonical Project, Execution Plan, composed-profile,
+workflow-config, backend, source checkout, runtime, tools, and storage evidence.
+Source/runtime/tool identity is checked before mutation and after delegated
+execution. Direct placement requires an admitted same-host storage receipt;
+Slurm requires the stronger two-phase head/compute-node receipt. Neither
+permits implicit staging or copying.
 
-Success exits `0` and reports the absolute lexical input path, SHA-256 of the
-exact parsed bytes, row count, and ordered check IDs. A malformed, mismatched,
-empty, or nonpassing report exits `1`; argument-usage errors exit `2`. The
-checker publishes no receipt and does not infer success from validator exit,
-output presence, Snakemake metadata, or timestamps.
+Lifecycle retains its Run lock until the delegated process group is proved
+absent and terminal success, failure, interruption, or blocker evidence is
+durable. Catchable termination is forwarded at most once, with bounded TERM
+then KILL escalation. If lock release is safe, the exact lock inode and bytes
+are retained as immutable released-lock evidence and bound by the Attempt
+receipt. Ambiguous release, process-group state, collision, or partial
+establishment keeps the public lock or recovery residue and publishes no
+resumable success.
 
-The internal task module consumes one closed, run-contained dispatch. It binds
-the canonical execution/profile snapshots and selected owner scope; captures
-the exact public producer, validator, and semantic commands; rechecks inputs,
-outputs, validation report, and native receipt; publishes an immutable task
-attempt on admitted success or failure; and publishes a create-exclusive
-verified-task record only on complete success. Only the exact Step `00c`
-FAI/dictionary pair may be stationary external outputs, and its FASTA and
-parent must be canonical before producer invocation. That pair may be reused
-only when both files already exist as stable regular files; a partial pair is a
-pre-entry failure. Reused bytes and file identities are rechecked across
-producer execution, validation, semantic gating, and immediately before
-verified-task publication. Every other native destination remains
-create-absent.
+After every selected task is verified, the scientific Attempt receipt is
+published last. Application logging follows the separate logging contract and
+cannot change task, receipt, rollback, recovery, or exit authority.
 
-After identity and owner-native preflight, the task boundary durably publishes
-the fixed `state/task-starts/<machine>/<scope>.json` record immediately before
-producer invocation and applies the binding [task-stream
-rules](../../../../docs/design/ORCHESTRATION_CONTRACT.md#filesystem-layout):
-create-exclusive/no-follow files, bounded draining through EOF, exact bytes and
-order within each stream, fsync/close, descriptor/path identity, bounded hashes,
-and post-attempt revalidation. No ordering between streams is claimed. A
-post-start task attempt must bind that exact start record and end in a succeeded
-task-attempt plus verified-task chain to be reusable.
-If admission fails before start publication, the exact failed task attempt and
-its two logs are retained as a bound pre-entry diagnostic; because the owner
-never entered, a later attempt may retry that scope without erasing the earlier
-record. An unexpected interruption after stream creation preserves available
-partial bytes but publishes no terminal attempt or verified record. Every task
-attempt binds both log paths and SHA-256 values; later mutation or truncation
-blocks completion and resume. Log presence or content never establishes task
-success.
+## Resume, inspection, Results, and reporting
 
-Snakemake schedules only verified-task records. Native artifacts, validation
-reports, receipts, logs, and recovery evidence are never disposable workflow
-outputs. Within the same Run, existing verified records are reusable only after
-read-only schema, identity, content, attempt, receipt, and semantic-report
-revalidation.
+Only a failed or interrupted scientific between-task boundary is automatically
+resumable. Resume must preserve the same Run, source, Execution Plan, profile,
+backend, execution mode, and ordered tool identities. Every entered task must
+have a complete succeeded-attempt/verified chain; every retryable unentered
+scope must lack a start record. Successful processing Runs are complete, and
+blocked ambiguity requires explicit reconciliation rather than inference or
+cleanup.
 
-The internal lifecycle owns aggregate serialization before Snakemake. It holds
-the admitted advisory mutex from stale-attempt revalidation through receipt or
-recovery publication. A create-exclusive run lock is acquired only after that
-revalidation and before an exact absent attempt directory is created. Lock
-release creates the exact absent attempt-local immutable
-`released-run-lock.json` as a no-replace hard link to the owned public lock,
-re-admits the shared inode and bytes, durably synchronizes the evidence, and
-then rechecks and unlinks the public name while the advisory mutex remains
-held. A colliding evidence name preserves both it and the public lock and fails
-closed; no rename or replacement publication may overwrite foreign evidence.
-Correctness assumes every sanctioned lifecycle writer holds the mutex.
-Descriptor/path checks reject observed changes, but a hostile concurrent leaf
-replacement in the narrow post-link, pre-unlink interval is outside the threat
-model and invalidates the evidence. The retained inode and bytes are bound by
-the terminal receipt published after release.
-The attempt binds canonical
-execution, profile, and attempt-local workflow-config bytes; the config
-transitively binds each dispatch. The executor argument binds the exact reviewed
-`workflow/Snakefile`, absolute checked-in processing-profile base, and exact
-immutable composed-profile bytes, preventing run-directory profile shadowing. It invokes
-Snakemake only as `<bound-python> -X pycache_prefix=/dev/null -I -m snakemake`;
-the exact lexical venv
-launcher, its stable executable target, Python version, Snakemake module
-version, normalizer path, and config are admitted as one runtime identity.
-Runtime source checkout and required-tool identities are observed before
-mutation and again after the child exits. The subprocess environment removes
-inherited noninteractive-shell startup hooks before Snakemake starts.
-For a scientific Attempt, those observations include fresh semantic admission
-of the placement-appropriate storage receipt for the Project root and canonical
-normalized reference FASTA. Direct placement accepts the Doctor-owned
-single-host receipt or the stronger final two-phase site receipt; Slurm
-placement requires the latter.
-The observed receipt path, digest, qualification identifier, and qualified root
-identities must reproduce the one immutable `storage_qualification` tool
-identity before and after the child; copying the declared identity into the
-observed roster is not admission. Historical Attempts without placement retain
-the two-phase requirement, and a direct receipt can never admit Slurm.
-SIGINT/SIGTERM is controlled from before mutex acquisition through durable
-receipt or recovery disposition and is forwarded at most once to the delegated
-process group. Terminal success, failure, interruption, or a diagnosed state
-blocker may release the lock and publish a receipt only after that group is
-proved absent. A missing terminal observation or inability to prove process-
-group quiescence retains the public run lock and publishes no resumable
-receipt. Bounded TERM then KILL escalation covers members that remain in the
-original process group after the leader exits; SIGKILL, power loss, and a
-descendant deliberately escaping the delegated session/group are excluded.
+Inspection is read-only. It admits the immutable record chain, live lock,
+receipts, verified content, Results, reporting, and recovery state without
+using timestamps, raw output presence, task logs, or `.snakemake/` as
+authority. Historical Runs are never rewritten or assigned successor
+identities. The version-aware compatibility path may resume only an explicitly
+supported historical layout whose current Project, retained request/execution
+and profile, source/runtime/tool identities, and prior evidence re-admit
+exactly; it does not make any other old layout resumable.
 
-This implementation requires POSIX signal masking and a Doctor-admitted
-placement-appropriate receipt for the Project root and Step `00c` sidecar
-parent. Direct qualification proves same-host hard links, advisory `flock`
-contention, atomic rename visibility, and write/fsync under the current
-host/UID/GID and exact root identities; it makes no cross-node or
-post-allocation claim. Slurm's two-phase compute/head probe additionally
-reconciles numeric access, mount identity, and post-allocation durability.
-Network/distributed storage remains unsupported for Slurm until that exact
-site receipt finalizes. A node-local root invisible after the allocation cannot
-qualify Slurm; there is no implicit stage-in/stage-out or copy exception.
+Public state has four separate domains: Run integrity is `valid|blocked`;
+Attempt is `not_started|running|succeeded|failed|interrupted|blocked`;
+scientific Results is `incomplete|complete|blocked`; and reporting is
+`not applicable|incomplete|complete|blocked`. Recovery availability is a
+separate fact. A successful processing-only Run has complete Results for its
+plan and reporting is not applicable.
 
-If attempt establishment fails after the public lock is acquired but before a
-complete attempt record exists, lifecycle still atomically retains the lock as
-`locks/released-<workflow-attempt-id>-run-lock.json`. That aggregate recovery
-evidence is never auto-deleted; inspection treats it, the partial attempt
-directory, or both as blocked state requiring explicit reconciliation.
-The retained filename alone never proves reconciliation.
+A successful full Run invokes reporting after scientific Attempt completion
+unless `--no-report` is selected. `emrys report` can independently plan,
+generate, or reuse the receipt-bound report transaction. Reporting failure or
+regeneration cannot invalidate science and creates neither a Run nor an
+Attempt. Result locations are shown only from a fully revalidated report
+receipt; incomplete, failed, blocked, or dry-run state prints none.
 
-Only failed/interrupted scientific between-task boundaries are automatically
-resumable. A successful processing-boundary Run is complete and cannot be
-resumed into downstream work; that work requires a new Run. Resume requires
-the same run, profile, execution, source commit, executor, execution
-mode, and ordered tool identities. The closed task-start ledger must prove that
-every entered scope has a succeeded task-attempt and verified-task chain; an
-unverified scope must have no start, though an exact receipt-bound pre-entry
-failure may remain in an earlier attempt. Independent reporting state does not
-gate scientific resume. Its fixed Snakemake arguments add
-`--rerun-triggers input --ignore-incomplete`; this accepts already-admitted
-EMRYS evidence despite engine metadata, but does not rerun or repair incomplete
-owner state. Blocked attempts remain blocked: the lifecycle defines no reconciliation
-record that can supersede their historical ambiguity.
+## Run-root contract
 
-The contract package owns JSON parsing, validation, and canonical bytes;
-inspection owns reusable direct-path admission for schema-named immutable
-orchestration records. It reads the attempt chain, bound configs and receipts,
-closed ledgers, verified content, and the live lock. Hash-bound, schema-free,
-in-memory, mutation, and owner-specific semantics remain owner-local. Inspection
-ignores `.snakemake/`, performs no repair, and treats deletion as a blocker
-rather than inferring state from timestamps or output presence.
-
-## Run-root output contract
-
-The run root is one durable, content-bound execution history. Preserve it as a
-unit; a copied result or report without its bound records is not adopted as a
-completed EMRYS run.
+The Run root is one durable, content-bound execution history. Preserve it as a
+unit; an extracted result or report is not independently adopted as a completed
+EMRYS Run.
 
 | Location | Durable contents |
 | --- | --- |
-| `contract/` | Successor Analysis, Execution Plan, and Run records (or historical normalized execution), immutable composed profile, admitted runtime snapshot, reporting inputs, workflow configs, and task dispatches. |
-| `attempts/<workflow-attempt-id>/` | Attempt record, owner-task attempts and terminal logs, and the attempt receipt published last. |
+| `contract/` | Immutable Analysis, Execution Plan, Run, profile, runtime, reporting projection, workflow configs, and task dispatches. |
+| `attempts/<workflow-attempt-id>/` | Attempt record, task attempts and streams, and receipt published last. |
 | `state/task-starts/` | Immutable producer-entry records. |
-| `state/verified/` | Hash-bound successful owner-task records. |
-| `state/reporting/` | Start and verified records for artifact index, run summary, and report publication. |
-| `results/` | The sole scientist-facing Results authority. Modules declare final paths beneath it; scratch and nonfinal workflow products do not belong here. |
-| `results/editing/` | Built-in paired-CMH Step `09` candidate tables, summary, mutation spectrum, and diagnostic PDFs. |
-| `results/scientific_context/` | Built-in paired-CMH Step `10` candidate context, motif, population, enrichment, and receipt. |
-| `results/reports/<run-id>/` | Self-contained scientific and evidence-and-operations reports, renderer summary TSV, and the report receipt published last. |
-| `products/native/` | Nonfinal native workflow artifacts and owner QC/validation outputs required for evidence, same-Run resume, and selected downstream computation. |
-| `products/artifact-summary/<run-id>/records/` | Canonical records for every declared artifact, including explicit incomplete or unavailable state. |
+| `state/verified/` | Hash-bound successful task records. |
+| `state/reporting/` | Start and verified records for reporting transactions. |
+| `results/` | Sole scientist-facing Results authority; modules declare final paths beneath it. |
+| `results/editing/` | Built-in paired-CMH candidate tables, summary, spectrum, and diagnostics. |
+| `results/scientific_context/` | Built-in context, motif, population, enrichment, and receipt. |
+| `results/reports/<run-id>/` | Self-contained scientific and evidence/operations reports, summary, and receipt published last. |
+| `products/native/` | Nonfinal native artifacts and QC/validation evidence needed for resume or downstream work. |
+| `products/artifact-summary/<run-id>/records/` | Canonical record for every declared artifact, including unavailable or incomplete state. |
 | `products/artifact-summary/<run-id>/<run-id>.artifacts.tsv` | Deterministic artifact index. |
-| `products/artifact-summary/<run-id>/<run-id>.artifact_receipt.tsv` | Artifact-index receipt, published last for that transaction. |
-| `products/artifact-summary/<run-id>/<run-id>.run_summary.json` | Canonical machine-readable run summary. |
-| `products/artifact-summary/<run-id>/<run-id>.run_summary.tsv` | Tabular run-status summary. |
+| `products/artifact-summary/<run-id>/<run-id>.artifact_receipt.tsv` | Artifact-index receipt published last. |
+| `products/artifact-summary/<run-id>/<run-id>.run_summary.json` | Canonical machine-readable Run summary. |
+| `products/artifact-summary/<run-id>/<run-id>.run_summary.tsv` | Tabular Run-status summary. |
 | `products/artifact-summary/<run-id>/<run-id>.qc_summary.tsv` | Consolidated QC projection. |
-| `products/artifact-summary/<run-id>/<run-id>.run_summary_receipt.tsv` | Run-summary receipt, published last. |
-| Beside the declared FASTA | Step `00c` `.fai` and `.dict`, the only owner outputs outside the run root. |
+| `products/artifact-summary/<run-id>/<run-id>.run_summary_receipt.tsv` | Run-summary receipt published last. |
+| Beside the declared FASTA | Step `00c` `.fai` and `.dict`, the only owner outputs outside the Run root. |
 
-Locks, released-lock evidence, partials, backups, task logs, and failed attempts
-are not disposable merely because a later output exists. Exact report-bundle
-members and their receipt semantics belong to the
-[`reporting` owner](../../reporting/README.md).
-
-An exactly bound historical profile may retain a verified report transaction at
-`products/report/<run-id>/`; that location is read-only historical evidence, not
-a second current publication root. Changed composed-profile bytes deliberately
-produce new Run identities. Historical Runs remain inspectable, but current
-Project admission does not make an old-layout Run automatically resumable. During
-that read-only inspection, artifact-index, run-summary, and report ledgers use
-their receipt-bound artifact roster and recorded producer identities rather
-than today's producer registry, while the current checkout acts only as the
-reader; current-profile validation and all publication paths retain strict
-current-checkout attestation.
-
-Every new or historical Attempt retains the exact
-`emrys.workflow-attempt.v1` record shape. Its
-`attempts/<workflow-attempt-id>/request.yaml` member stores the exact admitted
-Project source under the established historical evidence name; the record's
-request-era field names likewise remain evidence metadata rather than a public
-request-v3 interface.
-
-The clean fresh-clone proof exercises public control with the locked workflow
-environment and explicit repository-only no-science collaborators. It leaves
-the shipped command default unchanged, with no fake mode or raw-engine option.
-Separate clean-success and
-controlled between-task failure/resume paths cover all 35 owner jobs, the three
-downstream reporting transactions, byte-preserving reuse, final inspection, and
-completed-run refusal. Separate hosted real-synthetic evidence covers direct
-and disposable single-node Slurm success plus controlled pre-task
-failure/resume parity. Neither establishes institutional-site, multi-node,
-production-data, completed scientific-review, or biological proof.
+Locks, released-lock evidence, partials, backups, streams, and failed Attempts
+remain evidence even after later success. Historical report locations and
+request-era field names remain read-only evidence, not additional current
+publication roots or public configuration interfaces.
