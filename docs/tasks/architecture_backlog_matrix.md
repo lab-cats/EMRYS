@@ -4,10 +4,10 @@
 
 Last ranked: **2026-08-25**
 
-Architecture-campaign implementation is complete through `ARCH-CLOSE-03`;
-exact-head closeout CI is pending. The original scores remain historical and
-must not substitute for the separate user disposition and final
-Importance/Complexity scoring pass over retained post-campaign work.
+Architecture-campaign implementation and exact-head verification are complete
+through `ARCH-CLOSE-03`. The original scores remain historical and must not
+substitute for the separate user disposition and final Importance/Complexity
+scoring pass over retained post-campaign work.
 
 This file is a scoped planning view of the candidate cards in the
 [architecture campaign](architecture_campaign.md). It records a cursory,
@@ -127,10 +127,10 @@ implementation order, dependencies, or approval.
 
 | Card | Track | Architecture Priority | Indicative Complexity | Campaign outcome | Likely routing | Sizing note |
 |---|---|---:|---:|---|---|---|
-| `AC-SLICE-01` | Foundations | `5` | `3` | Ratified an architectural-invariants constitution against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` is implementation-complete pending closeout CI | Original provisional ranking retained for traceability |
-| `AC-SLICE-02` | Foundations | `5` | `3` | Ratified responsibility clusters, three graph semantics, forbidden authority transfers, and fast source-boundary enforcement over exact current CLI seams and transitional imports | Completed as `ARCH-LAYER-01`; broad `ARCH-01` is implementation-complete pending closeout CI | Original provisional ranking retained for traceability |
+| `AC-SLICE-01` | Foundations | `5` | `3` | Ratified an architectural-invariants constitution against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` is Complete | Original provisional ranking retained for traceability |
+| `AC-SLICE-02` | Foundations | `5` | `3` | Ratified responsibility clusters, three graph semantics, forbidden authority transfers, and fast source-boundary enforcement over exact current CLI seams and transitional imports | Completed as `ARCH-LAYER-01`; broad `ARCH-01` is Complete | Original provisional ranking retained for traceability |
 | `AC-SLICE-03` | Public model | `5` | `4` | **Complete.** Closed project-v1 persists shared Dataset/Reference inputs and named Analyses; validation admits all, while Run and Doctor select one. The selected immutable Analysis flows through the existing Execution Plan, Run, Attempt, and read-only Results authorities. New work rejects request-v3; exact historical resume retains it. | Attempt-v1 and Results/report semantics are unchanged; no evidence is deleted. Active request-v3 intake, duplicate readers/projections, and user-facing request-era setup retire with a meaningful maintained-product reduction. Generalized storage/package APIs require a concrete follow-on need; the profile-registry and backend additions close as no-ops. |
-| `AC-SLICE-04` | Scientific boundary | `3` | `4` | **Complete.** Retain private `TaskDispatch`; do not add a universal Stage/Operation representation. Step `08` now uses one owner-local Python coordinator while native R science and independent validation remain. | Completed; `ANALYSIS-02` is Complete and `ARCH-01` is implementation-complete pending closeout CI | Transformation, scientific-analysis, and evidence owners mapped; reporting correctly remained separate. Caller, Slurm, provenance, docs, and tests migrated without a compatibility wrapper. |
+| `AC-SLICE-04` | Scientific boundary | `3` | `4` | **Complete.** Retain private `TaskDispatch`; do not add a universal Stage/Operation representation. Step `08` now uses one owner-local Python coordinator while native R science and independent validation remain. | Completed; `ANALYSIS-02` and `ARCH-01` are Complete | Transformation, scientific-analysis, and evidence owners mapped; reporting correctly remained separate. Caller, Slurm, provenance, docs, and tests migrated without a compatibility wrapper. |
 | `AC-SLICE-05` | Execution | `4` | `5` | Complete the declared guarantee and parity contract across direct and Slurm placement of the current backend, then evaluate the generalized-backend boundary near campaign closure | **Complete through `ARCH-CLOSE-02`.** Hosted success and controlled failure/resume parity are proven across direct and disposable single-node Slurm placement. The generalized-backend evaluation is complete as a no-op: Slurm remains transport around the sole Snakemake backend. Institutional-site/module, multi-node, and production proof remain `SITE-PARITY-01`. | No second backend or net-negative consolidation case was found; do not add an abstraction |
 | `AC-SLICE-06` | Policy ownership | `3` | `3` | Inventory duplicated policy decisions and centralize only candidates that pass the resolved equivalent-two-production-owner, caller-complete, net-negative gate | **Complete as an audited no-op.** Zero same-semantics production-owner pairs qualify. | Distinct trust-boundary re-admission is not duplication; no shared policy object is added. |
 | `AC-SLICE-07` | Artifact lifecycle | `4` | `5` | Define demonstrated artifact-class lifecycle/admission gaps and migrate one path only if the selected design requires a boundary change | **Complete as an audited no-op.** Three deliberately distinct transaction authorities remain. | No universal lifecycle or Artifact Store is justified; a demonstrated future class gap becomes `ARTIFACT-LIFECYCLE-01`. |
@@ -159,7 +159,7 @@ the pending post-campaign disposition/scoring pass.
 |---|---|---|
 | `ARCH-CLOSE-01` | `AC-SLICE-08`, `AC-SLICE-13`, residual `OPS-02`, `RUNTIME-01`, `ANALYSIS-02` | **Complete.** One path-light installed-command journey from the exact Project root; Project-local named profiles; deterministic human Run names and selection; managed runtime, Doctor, collaborator dependencies/resources, reporting, no-write refusal, and the golden path are verified together. Exact-head evidence is recorded below. |
 | `ARCH-CLOSE-02` | `AC-SLICE-05`, residual `OPS-02`, `LOG-05` | **Complete.** The 130-pair driver causes a deterministic Snakemake profile-admission failure before task entry, then resumes direct and Slurm Runs through the public command without mutating inputs or creating incomplete task state. Exact-head evidence closes failure/recovery, provenance, and logging parity. The generalized-backend evaluation is a no-op: Slurm remains transport around the sole Snakemake backend. No scheduler `cancel` command is added without durable pre-Run submission ownership; a future demonstrated need requires a separate task. |
-| `ARCH-CLOSE-03` | `AC-SLICE-06`, `AC-SLICE-07`, `AC-SLICE-14`, `CONTROL-01`, `OPS-04`, `FILESYSTEM-01`, `REVIEW-UX-03`, `ARCH-01`, final `AC-SLICE-17` reconciliation | **Implementation complete; exact-head CI pending.** Five role journeys and the baseline are recorded; the private package becomes `run_coordinator` caller-completely; low-risk unread outcome mirrors and stale fixture constants retire; every remaining concern is closed or named below. No retained evidence is deleted. |
+| `ARCH-CLOSE-03` | `AC-SLICE-06`, `AC-SLICE-07`, `AC-SLICE-14`, `CONTROL-01`, `OPS-04`, `FILESYSTEM-01`, `REVIEW-UX-03`, `ARCH-01`, final `AC-SLICE-17` reconciliation | **Complete.** Five role journeys and the baseline are recorded; the private package becomes `run_coordinator` caller-completely; low-risk unread outcome mirrors and stale fixture constants retire; every remaining concern is closed or named below; exact-head ordinary CI and CodeQL pass. No retained evidence is deleted. |
 
 `ARCH-CLOSE-01` passed at exact revision
 `f85379edef0440266c1e97e97be5324e364812cb`: ordinary CI
@@ -187,7 +187,7 @@ scientific-review, or biological proof.
 |---|---|
 | `AC-SLICE-11` / `FILESYSTEM-01` | **Complete.** No Run Bundle; retain the current layout, whose required directories are owned and created automatically. A future demonstrated portability/archive/share need requires separately approved `RUN-BUNDLE-01`. |
 | `OPS-01` | **Complete through `ARCH-CLOSE-01`.** Ratified no-op for any site/global registry; Project-local named profiles and exact absolute paths are the complete selected lookup model. |
-| `OPS-04` | **Complete pending exact-head CI.** The private application owner is renamed caller-completely to `run_coordinator`; historical evidence spellings and stable serialized identifiers remain unchanged, with no compatibility package. |
+| `OPS-04` | **Complete.** The private application owner is renamed caller-completely to `run_coordinator`; historical evidence spellings and stable serialized identifiers remain unchanged, with no compatibility package. |
 | `AC-SLICE-15` / `AC-SLICE-16` | Scientific follow-ons `SCI-AUDIT-01` and `SCI-ORACLE-01`; not architecture gates. |
 | `AC-SLICE-18` / `OPS-03` / former `AC-SLICE-17` remainder | Post-campaign `DOC-COMPRESS-01`, `INLINE-OWNERS-01`, `DASHBOARD-RETIRE-01`, and `REPORT-ROSTER-01`. Final scoring and user disposition remain pending; evidence deletion still requires explicit approval. |
 | `CONTAINER-01` / institutional execution | Independent `MANAGED-CONTAINER-01` and `SITE-PARITY-01`; neither is an architecture-campaign closure gate. |
