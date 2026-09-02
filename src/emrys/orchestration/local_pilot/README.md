@@ -89,10 +89,11 @@ allocation. Placement request, profile source/digest, observed allocation, and
 scheduler job ID are Attempt provenance and do not make scheduler success
 workflow completion. Hosted 130-pair direct/disposable-single-node-Slurm
 execution proves matching immutable authority, Attempt common fields/task
-roster, path-neutral science, and symbolic resources. Each placement separately
-admits successful receipt/reporting and one application log; effective
-allocation and scheduler streams differ as intended. It does not establish the
-100,000-pair case, institutional site/module portability, failure/recovery,
+roster, path-neutral science, symbolic resources, and controlled pre-task
+failure/resume behavior. Each placement separately admits successful and failed
+receipts, final reporting, and one application log per execution operation;
+effective allocation and scheduler streams differ as intended. It does not
+establish the 100,000-pair case, institutional site/module portability,
 multi-node, production, scientific-review, or biological-validation evidence.
 Owner-local scheduler entry points are retired; the private whole-Run batch
 bootstrap remains the sole Slurm delegation boundary.
@@ -395,7 +396,7 @@ readiness, no-write planning, separate clean success, controlled
 between-task failure, byte-preserving resume, inspection, reporting, and
 completed-run refusal. The E2E supplies explicit repository-only collaborators;
 the shipped command has no fake mode or engine escape hatch. Hosted
-real-synthetic direct and disposable single-node Slurm success is recorded
-separately; CSU/site, multi-node, production-data, scientific-review, and
-biological evidence remain unclaimed.
+real-synthetic direct and disposable single-node Slurm success plus controlled
+pre-task failure/resume parity are recorded separately; CSU/site, multi-node,
+production-data, scientific-review, and biological evidence remain unclaimed.
 See [`CONTRACT.md`](CONTRACT.md) for the exact boundary.

@@ -56,9 +56,9 @@ new evidence level.
 | `AC-INV-013` | Within declared EMRYS-owned transaction and control namespaces, partial or provisional state cannot be admitted as complete; ambiguous or foreign residue fails closed. | Target | Task, lifecycle, and [reporting transaction tests](../../../tests/reporting/test_transaction_validation.py) protect current paths. Owner-local residue, rollback, and rewrite defects remain characterized until their applicable migration resolves them. |
 | `AC-INV-014` | Recovery cannot produce scientifically different work under the same bound identity. | Preserved | Normalization and lifecycle compatibility checks bind scientific changes to a new run identity and reject incompatible reuse. |
 | `AC-INV-015` | Resume reuses only compatible admitted work; timestamps, file presence, and workflow-engine metadata are insufficient. | Preserved | The orchestration contract and [workflow tests](../../../tests/orchestration/local_pilot/test_workflow.py) require content and contract re-admission. |
-| `AC-INV-016` | Local and HPC execution must provide equivalent scientific, artifact-integrity, recovery, and evidence guarantees, not identical mechanisms; each environment requires separate proof. | Target | Project-aware Doctor readiness and bounded managed repair are implemented. Hosted 130-pair direct/disposable-single-node-SLURM execution proves matching immutable authority, Attempt common fields/task roster, path-neutral science, and symbolic resources. Each placement separately admits successful receipt/reporting and one application log; effective allocation and scheduler streams differ as intended. `OPS-02` and `RUNTIME-01` retain 100,000-pair, institutional site/module, failure/recovery, multi-node, and production proof; no scheduler result is scientific or biological validation. |
+| `AC-INV-016` | Local and HPC execution must provide equivalent scientific, artifact-integrity, recovery, and evidence guarantees, not identical mechanisms; each environment requires separate proof. | Target | Project-aware Doctor readiness and bounded managed repair are implemented. Hosted 130-pair direct/disposable-single-node-SLURM execution proves matching immutable authority, Attempt common fields/task roster, path-neutral science, symbolic resources, controlled pre-task failure/resume, and one application log per execution operation. Effective allocation and scheduler streams differ as intended. `SITE-PARITY-01` retains institutional site/module, multi-node, and production proof; no scheduler result is scientific or biological validation. |
 | `AC-INV-017` | An immutable plan exists internally before the first execution mutation, even when planning and execution become one conceptual user operation. | Preserved | `RUN-03` implements single-invocation terminal confirmation while the orchestration contract and materialization tests preserve no-write planning and immutable publication before mutation. |
-| `AC-INV-018` | Failure and every supported repair are attributable and auditable. Repair is explicit, bounded to owned safe state, precisely reported, provenance-aware where applicable, and cannot alter declared scientific inputs or invent biology or secrets. | Preserved | `emrys doctor` diagnoses without mutation or logging. Its separately authorized managed-runtime repair is bounded to the active checkout-owned `.venv` and Project-owned `runtime/managed`, delegates dependency work to `uv`, Pixi, and `renv`, owns one maintenance log, preserves declared inputs and site/user profiles, and requalifies afterward. The supported repair catalog is intentionally narrow; broader logging adoption remains Open under `LOG-05`. |
+| `AC-INV-018` | Failure and every supported repair are attributable and auditable. Repair is explicit, bounded to owned safe state, precisely reported, provenance-aware where applicable, and cannot alter declared scientific inputs or invent biology or secrets. | Preserved | `emrys doctor` diagnoses without mutation or logging. Its separately authorized managed-runtime repair is bounded to the active checkout-owned `.venv` and Project-owned `runtime/managed`, delegates dependency work to `uv`, Pixi, and `renv`, owns one maintenance log, preserves declared inputs and site/user profiles, and requalifies afterward. The supported repair catalog is intentionally narrow; the retained logging roster is complete under `LOG-05`. |
 
 ### Evidence and reporting invariants
 
@@ -68,7 +68,7 @@ new evidence level.
 | `AC-INV-020` | Validation evidence is rerunnable or independently verifiable at its declared level; missing retained inputs, runtime identity, or independent verification is disclosed rather than promoted. | Target | The test baseline, independent goldens, direct validators, and scientific oracles provide bounded protection. Native provenance and validator gaps remain visible under `ARCH-01` and `AC-DEC-022`. |
 | `AC-INV-021` | Scientific, evidence/provenance, and operational evidence remain distinguishable. | Target | Completed `RESULTS-01` provides the canonical co-located scientific and combined Evidence/operations surfaces with explicit purpose boundaries. Rendered acceptance remains under `REPORT-03`. |
 | `AC-INV-022` | Local engineering, synthetic end-to-end, runtime, cluster, production, scientific-review, and biological evidence are never promoted into one another. | Preserved | The root evidence guard, test baseline, artifact evidence schema, and reporting boundary tests own this rule. |
-| `AC-INV-023` | Receipts and low-level records required by an evidence or recovery contract may be omitted from ordinary views but remain inspectable subject to explicit retention and redaction policy; expired or unavailable records are disclosed rather than treated as complete. | Target | The logging foundation and task/attempt schemas provide bounded current pieces. `LOG-05`, `OBS-01`, `OBS-02`, `FILESYSTEM-01`, `AC-DEC-013`, and `AC-DEC-017` own adoption, access, retention, and result-bundle decisions. |
+| `AC-INV-023` | Receipts and low-level records required by an evidence or recovery contract may be omitted from ordinary views but remain inspectable subject to explicit retention and redaction policy; expired or unavailable records are disclosed rather than treated as complete. | Target | Completed `LOG-05`, `OBS-01`, and `OBS-02` provide the retained logging and inspection surface. `FILESYSTEM-01`, `AC-DEC-013`, and `AC-DEC-017` retain storage, retention, and access follow-ons without implying a Run Bundle. |
 
 ### User-boundary invariants
 
@@ -76,7 +76,7 @@ new evidence level.
 |---|---|---|---|
 | `AC-INV-024` | Developer-only knowledge is never required for an ordinary scientist task. | Target | Guided Project setup, top-level Doctor, single-invocation Run control, status, and Results are implemented and the generated wrapper is retired. `CONTROL-01`, `OPS-02`, `RUNTIME-01`, `DOC-01`, `REVIEW-UX-03`, and `AC-SLICE-13` own the remaining checkout/runtime exposure and integrated role-level journey. |
 | `AC-INV-025` | Defaults, site policy, project values, and CLI overrides use one documented, inspectable precedence model. Every effective operational value and source is inspectable; an override exists only where its owner defines a safe supported admission boundary. | Target | Current resource and launcher policy implement bounded precedence. `CONFIG-01`, `OPS-01`, `OPS-02`, and `AC-DEC-005` own the complete model and exact merge semantics. |
-| `AC-INV-026` | The system never prints secrets or silently invents biological meaning. | Target | Biological admission is fail-closed; setup and Doctor preserve declared meaning; adopted application logs redact admitted secrets. `LOG-05` owns the remaining production-path adoption gap and its system-wide redaction claim. |
+| `AC-INV-026` | The system never prints secrets or silently invents biological meaning. | Target | Biological admission is fail-closed; setup and Doctor preserve declared meaning; the closed `LOG-05` operation roster redacts admitted secrets. Future public operations inherit this requirement. |
 | `AC-INV-027` | Automatic actions are bounded, observable, and reversible or recoverable where the operation permits it; irreversibility is explicit before mutation. | Preserved | Dry-run-first onboarding, confirmed Doctor repair, immutable-plan Run control, recovery contracts, and [onboarding tests](../../../tests/orchestration/local_pilot/test_onboarding.py) protect current mutations. Every future mutating owner inherits the rule. |
 
 ### Ratified abstraction, migration, and test guardrails
@@ -504,28 +504,25 @@ exact no-write plan by default, materializes only the admitted composed profile 
 aggregate run lock, and delegates scientific work to public owners. It exposes
 no raw Snakemake flags or automatic owner recovery.
 
-The application-logging foundation is implemented under
-[`LOGGING_CONTRACT.md`](../LOGGING_CONTRACT.md), while production-command
-adoption remains `LOG-05`. A bounded collaborator analysis-module v1 is current
+The application-logging foundation and closed production-operation roster are
+implemented under [`LOGGING_CONTRACT.md`](../LOGGING_CONTRACT.md) and completed
+under `LOG-05`. A bounded collaborator analysis-module v1 is current
 architecture: installed providers contribute closed configuration, typed
 artifacts, one Step `09`, optional Step `10`, and a separate bespoke scientific
 reporter while fixed task/reporting guarantees remain. Module-specific
-dependency/resource discovery and provisioning remain open under
-`ANALYSIS-02`. Public acquisition, standalone workflow packaging, and site
-profiles remain designs. Accepted outcomes are in the
+dependency/resource discovery and admission are complete under `ANALYSIS-02`;
+package managers retain provisioning. Public acquisition, standalone workflow
+packaging, and site profiles remain designs. Accepted outcomes are in the
 [findings matrix](../../tasks/backlog_matrix.md); unsliced alternatives remain
 in the temporary
 [architecture campaign](../../tasks/architecture_campaign.md).
 
 ## Adopt application logging through accepted operations
 
-Application logging migrates incrementally through separately approved semantic
-application-operation slices, not through blanket instrumentation of the
-current command and transport surfaces. This prevents transport and compatibility
-layers from becoming competing lifecycle or logging authorities while allowing
-accepted facades to adopt logging as they land. Planning and conformance work
-may precede production adoption, and unrelated campaign work need not finish
-first. An explicitly approved transitional compatibility operation is eligible
-for bounded support but does not satisfy final retained-operation coverage. The
-broader realization choices—fields, execution, identity composition, status,
-filesystem, APIs, compatibility, and overall order—remain open.
+Application logging was adopted through separately approved semantic
+application-operation slices rather than blanket instrumentation. The closed
+roster prevents transport and compatibility layers from becoming competing
+lifecycle or logging authorities. Any future operation seeking a durable
+application log must establish its own operation boundary, ownership,
+placement, projection, and parity without reopening the completed roster by
+default.

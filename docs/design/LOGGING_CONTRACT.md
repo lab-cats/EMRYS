@@ -7,11 +7,11 @@ The complete retained-operation roster is executing `run` and `resume`, their
 automatic reporting in the same log, standalone report generation, and
 confirmed `emrys doctor --repair`. A Run execute owns exactly one compute-side
 application attempt; scheduler submission transport and valid dry-run own none.
-The roster is closed, while direct/Slurm failure-and-resume parity remains
-pending under `LOG-05` in the [findings matrix](../tasks/backlog_matrix.md). A
-command implements this contract only when its owner documentation and direct
-tests say so. Foundation code remains stage-independent and never imports a
-stage.
+The roster and direct/Slurm success plus controlled failure-and-resume parity
+are complete under `LOG-05` in the
+[findings matrix](../tasks/backlog_matrix.md). A command implements this
+contract only when its owner documentation and direct tests say so. Foundation
+code remains stage-independent and never imports a stage.
 
 ## Adoption boundary
 
