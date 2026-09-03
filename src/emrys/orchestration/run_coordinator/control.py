@@ -162,7 +162,7 @@ def _select_project_run(
     )
     if not interactive:
         raise ControlError(
-            "Multiple Runs exist; select one explicitly:\n" + "\n".join(choices)
+            "Multiple Runs exist; select one explicitly: " + ", ".join(choices)
         )
     try:
         selected = TerminalMenu(choices, title="Select a Run:").show()
@@ -1489,12 +1489,11 @@ def _attempt_elapsed_line(
 
 
 def _print_safe(value: object, *, file: TextIO | None = None) -> None:
-    for line in str(value).splitlines() or ("",):
-        rendered = "".join(
-            character if character.isprintable() else ascii(character)[1:-1]
-            for character in line
-        )
-        print(rendered, file=file)
+    rendered = "".join(
+        character if character.isprintable() else ascii(character)[1:-1]
+        for character in str(value)
+    )
+    print(rendered, file=file)
 
 
 def _run_or_resume_from_args(

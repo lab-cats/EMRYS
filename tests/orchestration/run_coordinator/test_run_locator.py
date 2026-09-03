@@ -164,8 +164,11 @@ def test_noninteractive_multiple_runs_prints_readable_human_names(
 
     assert result == 2
     lines = capsys.readouterr().err.splitlines()
-    assert lines[0] == "emrys: error: Multiple Runs exist; select one explicitly:"
-    assert lines[1:] == [
-        inspection.human_run_name(run_id) for run_id in (ZERO_RUN_ID, ALPHA_RUN_ID)
+    assert lines == [
+        "emrys: error: Multiple Runs exist; select one explicitly: "
+        + ", ".join(
+            inspection.human_run_name(run_id)
+            for run_id in (ZERO_RUN_ID, ALPHA_RUN_ID)
+        )
     ]
     assert not (tmp_path / "logs").exists()

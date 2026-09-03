@@ -2138,7 +2138,7 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
 
     historical = replace(
         observed,
-        run_root=Path("/tmp/café\\historical\x1b[31m-run"),
+        run_root=Path("/tmp/café\\historical\n\x1b[31m-run"),
         authority=None,
     )
     monkeypatch.setattr(control.inspection, "inspect_run", lambda _root: historical)
@@ -2149,7 +2149,7 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     assert "Analysis ID:" not in historical_output
     assert "Execution Plan ID:" not in historical_output
     assert "\x1b" not in historical_output
-    assert "Run root: /tmp/café\\historical\\x1b[31m-run" in historical_output
+    assert "Run root: /tmp/café\\historical\\n\\x1b[31m-run" in historical_output
 
     arguments.detail = "debug"
     assert control.inspect_from_args(arguments) == 0
@@ -2162,12 +2162,14 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
         control.inspection,
         "inspect_run",
         lambda _root: (_ for _ in ()).throw(
-            inspection.InspectionError("invalid /tmp/run\x1b[31m-root")
+            inspection.InspectionError("invalid /tmp/run\n\x1b[31m-root")
         ),
     )
     assert control.inspect_from_args(arguments) == 2
     unsafe_error = capsys.readouterr().err
     assert "\x1b" not in unsafe_error
+    assert len(unsafe_error.splitlines()) == 1
+    assert r"\n" in unsafe_error
     assert r"\x1b" in unsafe_error
 
     with pytest.raises(MaterializationError, match="inspect or resume"):
