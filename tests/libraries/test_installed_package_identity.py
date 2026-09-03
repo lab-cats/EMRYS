@@ -98,6 +98,20 @@ def test_provider_admission_rejects_missing_selection(
         admit_installed_provider("emrys.analysis_modules", "missing", label="Module")
 
 
+def test_provider_admission_rejects_a_non_package_entry_point(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entry_point = SimpleNamespace(name="bad", value="module:provider.factory")
+    monkeypatch.setattr(
+        package_identity.importlib.metadata,
+        "entry_points",
+        lambda **_: (entry_point,),
+    )
+
+    with pytest.raises(InstalledPackageIdentityError, match="must be package-level"):
+        admit_installed_provider("emrys.analysis_modules", "bad", label="Module")
+
+
 def test_provider_admission_reloads_exact_files_on_repeated_admission(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
