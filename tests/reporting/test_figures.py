@@ -212,16 +212,16 @@ def test_matplotlib_bootstrap_is_clean_and_deterministic_across_processes(
 ) -> None:
     script = """
 import json
+import importlib
 import os
-from emrys.reporting.paired_cmh_candidate_ranking_report.figures import (
-    _matplotlib_api,
-    _render_svg,
-)
+from emrys.reporting.paired_cmh_candidate_ranking_report import figures
 
 keys = ("MPLBACKEND", "MPLCONFIGDIR", "MPL_IGNORE_SYSTEM_FONTS")
 before = {key: os.environ.get(key) for key in keys}
-matplotlib, _figure, _canvas = _matplotlib_api()
-_svg, digest, size = _render_svg(
+matplotlib, _figure, _canvas = figures._matplotlib_api()
+reloaded = importlib.reload(figures)
+reloaded_matplotlib, _figure, _canvas = reloaded._matplotlib_api()
+_svg, digest, size = reloaded._render_svg(
     "cache-probe",
     lambda figure: figure.add_subplot(1, 1, 1).plot([0, 1], [0, 1]),
 )
@@ -232,6 +232,7 @@ print(json.dumps({
     "digest": digest,
     "size": size,
     "version": matplotlib.__version__,
+    "reload_reused": reloaded_matplotlib is matplotlib,
     "logomaker_loaded": "logomaker" in __import__("sys").modules,
 }, sort_keys=True))
 """
@@ -270,6 +271,7 @@ print(json.dumps({
         assert result.returncode == 0, result.stdout + result.stderr
         probe = json.loads(result.stdout)
         assert probe["version"] == "3.11.1"
+        assert probe["reload_reused"] is True
         assert probe["logomaker_loaded"] is True
         assert (
             probe["before"]

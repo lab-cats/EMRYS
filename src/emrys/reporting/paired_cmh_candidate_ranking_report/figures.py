@@ -80,21 +80,15 @@ def _matplotlib_api() -> tuple[Any, Any, Any]:
     global _LOGOMAKER_API, _MPL_API
     if _MPL_API is not None:
         return _MPL_API
-    preloaded = tuple(
-        name
-        for name in (
-            "matplotlib",
-            "matplotlib.font_manager",
-            "matplotlib.figure",
-            "matplotlib.backends.backend_svg",
-            "logomaker",
-        )
-        if name in sys.modules
-    )
-    if preloaded:
+    preloaded = sys.modules.get("matplotlib")
+    if preloaded is not None:
+        controlled = getattr(preloaded, "_emrys_controlled_svg_runtime", None)
+        if controlled is not None:
+            _MPL_API, _LOGOMAKER_API = controlled
+            return _MPL_API
         _fail(
             "Matplotlib was imported before EMRYS established its controlled "
-            "temporary renderer cache: " + ", ".join(preloaded)
+            "temporary renderer cache"
         )
 
     environment_keys = (
@@ -150,6 +144,7 @@ def _matplotlib_api() -> tuple[Any, Any, Any]:
     if config_path is None or config_path.exists() or renderer_api is None:
         _fail("Matplotlib temporary renderer cache was not removed")
     _MPL_API = renderer_api
+    setattr(matplotlib, "_emrys_controlled_svg_runtime", (_MPL_API, _LOGOMAKER_API))
     return _MPL_API
 
 
