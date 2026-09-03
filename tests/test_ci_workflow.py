@@ -17,17 +17,17 @@ MANAGED_RUNTIME_MANIFEST_PATH = MANAGED_RUNTIME_ROOT / "pixi.toml"
 SLURM_SETUP_PATH = REPO_ROOT / "tests" / "tools" / "configure_ci_slurm.sh"
 SHELL_RECEIPT_ROOT = "${RUNNER_TEMP}/emrys-python311-test-shards"
 ACTION_RECEIPT_ROOT = "${{ runner.temp }}/emrys-python311-test-shards"
-ORDINARY_JOB_IDS = (
-    "workflow-lint",
-    "static-wheel",
-    "shell-contracts",
-    "guarded-r",
-    "managed-runtime-userspace",
-    "managed-golden-path",
-    "python314-coverage-shards",
-    "python314-coverage",
-    "python311-smoke",
-)
+MANUALLY_SELECTABLE_JOB_INPUTS = {
+    "workflow-lint": "workflow_static_docs_wheel",
+    "static-wheel": "workflow_static_docs_wheel",
+    "shell-contracts": "shell",
+    "guarded-r": "guarded_r",
+    "managed-runtime-userspace": "managed_runtime_golden_path",
+    "managed-golden-path": "managed_runtime_golden_path",
+    "python314-coverage-shards": "python314",
+    "python314-coverage": "python314",
+    "python311-smoke": "python311",
+}
 
 
 def _workflow_document() -> dict[str | bool, Any]:
@@ -57,14 +57,23 @@ def _expression(value: object) -> str:
     return " ".join(str(value).split())
 
 
-def test_long_lane_triggers_are_closed_and_independently_selectable() -> None:
+def test_manual_lane_triggers_are_closed_and_independently_selectable() -> None:
     triggers = _workflow_triggers()
     assert triggers["schedule"] == [
         {"cron": "17 5 * * 1-6"},
         {"cron": "17 5 * * 0"},
     ]
     inputs = triggers["workflow_dispatch"]["inputs"]
-    assert set(inputs) == {"python311", "synthetic_130", "synthetic_100000"}
+    assert set(inputs) == {
+        "workflow_static_docs_wheel",
+        "shell",
+        "guarded_r",
+        "managed_runtime_golden_path",
+        "python314",
+        "python311",
+        "synthetic_130",
+        "synthetic_100000",
+    }
     for value in inputs.values():
         assert value["type"] == "boolean"
         assert value["required"] is True
@@ -73,21 +82,27 @@ def test_long_lane_triggers_are_closed_and_independently_selectable() -> None:
     jobs = _workflow_jobs()
     manual = jobs["manual-selection"]
     assert _expression(manual["if"]) == "github.event_name == 'workflow_dispatch'"
-    guard = _named_step(manual, "Require at least one selected long lane")
+    guard = _named_step(manual, "Require at least one selected CI lane")
     assert set(guard["env"]) == {
+        "RUN_WORKFLOW_STATIC_DOCS_WHEEL",
+        "RUN_SHELL",
+        "RUN_GUARDED_R",
+        "RUN_MANAGED_RUNTIME_GOLDEN_PATH",
+        "RUN_PYTHON314",
         "RUN_PYTHON311",
         "RUN_SYNTHETIC_130",
         "RUN_SYNTHETIC_100000",
     }
-    assert "select at least one lane" in guard["run"]
+    assert "select at least one CI lane" in guard["run"]
 
 
-def test_ordinary_jobs_do_not_run_for_schedules_or_manual_long_lanes() -> None:
+def test_ordinary_jobs_keep_automatic_runs_and_support_manual_selection() -> None:
     jobs = _workflow_jobs()
-    for job_id in ORDINARY_JOB_IDS:
+    for job_id, input_name in MANUALLY_SELECTABLE_JOB_INPUTS.items():
         condition = _expression(jobs[job_id]["if"])
         assert "github.event_name != 'workflow_dispatch'" in condition
         assert "github.event_name != 'schedule'" in condition
+        assert f"inputs.{input_name}" in condition
 
 
 def test_long_runs_have_unique_non_cancelling_concurrency() -> None:

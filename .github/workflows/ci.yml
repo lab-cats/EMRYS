@@ -10,6 +10,31 @@ on:
   merge_group:
   workflow_dispatch:
     inputs:
+      workflow_static_docs_wheel:
+        description: Run workflow lint plus static, docs, and wheel checks
+        required: true
+        default: false
+        type: boolean
+      shell:
+        description: Run shell owner contracts
+        required: true
+        default: false
+        type: boolean
+      guarded_r:
+        description: Run guarded R fixtures
+        required: true
+        default: false
+        type: boolean
+      managed_runtime_golden_path:
+        description: Run managed-runtime and golden-path checks
+        required: true
+        default: false
+        type: boolean
+      python314:
+        description: Run the complete Python 3.14 suite and coverage policy
+        required: true
+        default: false
+        type: boolean
       python311:
         description: Run the complete Python 3.11 suite
         required: true
@@ -49,30 +74,43 @@ env:
 
 jobs:
   manual-selection:
-    name: Validate manually selected long lanes
+    name: Validate manually selected CI lanes
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Require at least one selected long lane
+      - name: Require at least one selected CI lane
         shell: bash
         env:
+          RUN_WORKFLOW_STATIC_DOCS_WHEEL: ${{ inputs.workflow_static_docs_wheel }}
+          RUN_SHELL: ${{ inputs.shell }}
+          RUN_GUARDED_R: ${{ inputs.guarded_r }}
+          RUN_MANAGED_RUNTIME_GOLDEN_PATH: ${{ inputs.managed_runtime_golden_path }}
+          RUN_PYTHON314: ${{ inputs.python314 }}
           RUN_PYTHON311: ${{ inputs.python311 }}
           RUN_SYNTHETIC_130: ${{ inputs.synthetic_130 }}
           RUN_SYNTHETIC_100000: ${{ inputs.synthetic_100000 }}
         run: |
           set -euo pipefail
-          if [[ "${RUN_PYTHON311}" != true &&
+          if [[ "${RUN_WORKFLOW_STATIC_DOCS_WHEEL}" != true &&
+                "${RUN_SHELL}" != true &&
+                "${RUN_GUARDED_R}" != true &&
+                "${RUN_MANAGED_RUNTIME_GOLDEN_PATH}" != true &&
+                "${RUN_PYTHON314}" != true &&
+                "${RUN_PYTHON311}" != true &&
                 "${RUN_SYNTHETIC_130}" != true &&
                 "${RUN_SYNTHETIC_100000}" != true ]]; then
             printf '%s\n' \
-              'ERROR: select at least one lane: Python 3.11, 130-pair E2E, or 100,000-pair E2E.' >&2
+              'ERROR: select at least one CI lane.' >&2
             exit 2
           fi
 
   workflow-lint:
     name: Workflow lint
-    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+    if: >-
+      github.event_name != 'schedule' &&
+      (github.event_name != 'workflow_dispatch' ||
+      inputs.workflow_static_docs_wheel)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -106,7 +144,10 @@ jobs:
 
   static-wheel:
     name: Static, lint, docs, and wheel
-    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+    if: >-
+      github.event_name != 'schedule' &&
+      (github.event_name != 'workflow_dispatch' ||
+      inputs.workflow_static_docs_wheel)
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -141,7 +182,9 @@ jobs:
 
   shell-contracts:
     name: Shell owner contracts
-    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+    if: >-
+      github.event_name != 'schedule' &&
+      (github.event_name != 'workflow_dispatch' || inputs.shell)
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -172,7 +215,9 @@ jobs:
 
   guarded-r:
     name: Guarded R fixtures
-    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+    if: >-
+      github.event_name != 'schedule' &&
+      (github.event_name != 'workflow_dispatch' || inputs.guarded_r)
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -261,7 +306,10 @@ jobs:
 
   managed-runtime-userspace:
     name: Managed runtime userspace (${{ matrix.label }})
-    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+    if: >-
+      github.event_name != 'schedule' &&
+      (github.event_name != 'workflow_dispatch' ||
+      inputs.managed_runtime_golden_path)
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     container:
@@ -384,7 +432,10 @@ jobs:
 
   managed-golden-path:
     name: Managed golden path (Python 3.14)
-    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+    if: >-
+      github.event_name != 'schedule' &&
+      (github.event_name != 'workflow_dispatch' ||
+      inputs.managed_runtime_golden_path)
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
@@ -516,7 +567,9 @@ jobs:
 
   python314-coverage-shards:
     name: Python 3.14 tests + coverage (shard ${{ matrix.shard }})
-    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+    if: >-
+      github.event_name != 'schedule' &&
+      (github.event_name != 'workflow_dispatch' || inputs.python314)
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
@@ -570,8 +623,8 @@ jobs:
     needs: python314-coverage-shards
     if: >-
       always() &&
-      github.event_name != 'workflow_dispatch' &&
-      github.event_name != 'schedule'
+      github.event_name != 'schedule' &&
+      (github.event_name != 'workflow_dispatch' || inputs.python314)
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -628,7 +681,9 @@ jobs:
 
   python311-smoke:
     name: Python 3.11 compatibility smoke
-    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+    if: >-
+      github.event_name != 'schedule' &&
+      (github.event_name != 'workflow_dispatch' || inputs.python311)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
