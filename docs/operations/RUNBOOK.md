@@ -1,32 +1,10 @@
 # Runbook
 
-This guide owns cross-cutting operator and maintainer procedures. The
-[`quickstart`](../../quickstart.md) owns the first synthetic journey;
-[`configs/README.md`](../../configs/README.md) owns authored configuration;
-exact producer, validator, transaction, and recovery behavior remains with each
-functional owner.
-
-Dry-runs, fixtures, availability probes, scheduler exits, and synthetic reports
-do not establish production, institutional-site, scientific-review, or
-biological proof. Execution, dependency changes, cleanup, and publication need
-the applicable authority.
-
-## Checkout and site orientation
-
-Confirm the intended clean source and execution context:
-
-```bash
-git rev-parse --show-toplevel
-git branch --show-current
-git rev-parse HEAD
-git status --short
-command -v emrys
-```
-
-Before Slurm work, also inspect `hostname`, `command -v sbatch`, `sinfo`, and
-the loaded module set. Login nodes are for source control, small transfers,
-inspection, and submission—not direct scientific execution. A remembered path,
-alias, module name, or login-node executable is not compute-node evidence.
+This guide explains the commands available after an EMRYS Project has been set
+up. The [`quickstart`](../../quickstart.md) owns the first successful journey;
+[`configs/README.md`](../../configs/README.md) defines Project inputs and
+execution settings; exact component recovery behavior stays beside the code
+that owns it.
 
 ## Project and Run operations
 
@@ -43,13 +21,13 @@ emrys resume [RUN]
 emrys report [RUN]
 ```
 
-`runtime discover --execute` publishes the admitted inventory at
-`runtime/runtime.tsv`; it does not install or load modules. Doctor derives
-Project, input, runtime, storage, and execution readiness. `doctor --repair`
-previews a bounded managed repair and asks on a terminal; automation requires
-`--repair --execute`. Repair delegates to `uv`, Pixi, and `renv`, mutates only
-the active checkout-owned `.venv`, Project `runtime/managed`, admitted storage
-evidence, and one maintenance log, then requalifies.
+`runtime discover --execute` saves the checked inventory at
+`runtime/runtime.tsv`; it does not install or load modules. Doctor checks the
+Project, inputs, runtime, storage, and execution setup. `doctor --repair`
+previews a managed repair and asks on a terminal; automation requires
+`--repair --execute`. Repair delegates to `uv`, Pixi, and `renv`, changes only
+the active checkout-owned `.venv`, Project `runtime/managed`, storage-check
+records, and one maintenance log, then checks readiness again.
 
 The packaged [`runtime_policy.tsv`](../../src/emrys/resources/runtime/runtime_policy.tsv)
 is the exact required-check roster. `runtime discover` reports mismatches; it
@@ -65,7 +43,7 @@ scientific execution.
 `run` displays one immutable plan before terminal execution. Refusal, EOF, or
 interruption writes and logs nothing. Full Runs invoke reporting after the
 scientific receipt unless `--no-report` is supplied. `report` can independently
-generate or reuse the receipt-bound report transaction without changing Run or
+generate or reuse the report tied to the completed Run without changing Run or
 Attempt identity.
 
 Omitting `[RUN]` selects the sole Run or offers a terminal picker. Automation
@@ -74,10 +52,11 @@ inferred. Inspection is read-only. Add verbose detail for canonical identities,
 profile, allocation, and aggregates; use debug detail for exact paths, hashes,
 receipts, task commands, and scheduler/engine facts.
 
-Resume is valid only when inspection says recovery is available for a failed or
-interrupted between-task boundary. It creates a new Attempt for the same Run,
-re-admits completed work, and exposes no force, unlock, cleanup, or raw-engine
-bypass. Blocked state requires explicit owner-level reconciliation.
+Resume is valid only when inspection says recovery is available after a failed
+or interrupted task boundary. It creates a new Attempt for the same Run and
+checks completed work before reuse. It offers no force, unlock, cleanup, or raw
+Snakemake bypass. A blocked state requires the named component's recovery
+procedure.
 
 ### Reusable processing
 
@@ -86,11 +65,12 @@ emrys run --analysis NAME --through processing
 emrys run --analysis NAME --from-processing-run PROCESSING_RUN
 ```
 
-The first command creates a complete evidence-bearing Steps 00–06 Run with no
-reporting. The second creates a distinct downstream Run. It requires the same
-Project, compatible Reference and processing declaration, and an exact source
-sample subset. Source artifacts remain stationary and content-bound; the new
-Run owns Steps 07 onward, Results, reports, Attempts, and logs.
+The first command creates a complete Steps 00–06 Run with its supporting
+records and no report. The second creates a distinct downstream Run. It
+requires the same Project, a compatible Reference and processing definition,
+and an exact subset of the source samples. Source artifacts remain in the
+original Run and are checked by content; the new Run owns Steps 07 onward,
+Results, reports, Attempts, and logs.
 
 ### Advanced owner routes
 
@@ -107,7 +87,12 @@ The CSU-oriented live dashboard is stale and frozen. It is not the supported
 status, Results, recovery, or completion surface. Use `emrys inspect` and exact
 Slurm accounting/streams; its code and final disposition remain separate work.
 
-## Slurm inspection and promotion
+## Inspecting a Slurm Run
+
+Before submission, confirm that `sbatch` and `sinfo` refer to the intended
+cluster and that the required modules will be available on the compute node.
+Login nodes are for source control, small transfers, inspection, and
+submission—not scientific execution.
 
 Use the exact job ID and `OUT`/`ERR` paths printed by submission:
 
@@ -118,14 +103,14 @@ tail -n +1 -F /exact/OUT /exact/ERR
 ```
 
 Control-C stops `tail`, not the allocation. Empty stderr, visible output, or
-`COMPLETED 0:0` is not EMRYS completion. Bind the source commit, command, input
-identities, job ID, accounting, streams, native artifacts, validation records,
-receipts, and evidence ceiling to the same Attempt before promotion.
+`COMPLETED 0:0` means only that Slurm finished successfully; use `emrys inspect`
+to determine whether EMRYS completed. Keep the source commit, command, inputs,
+job ID, accounting, streams, outputs, validation records, and receipts tied to
+the same Attempt.
 
-Promotion is upstream-sequential. Never mix Attempts, delete a foreign lock,
-hand-edit a receipt, or advance a downstream owner before required upstream
-evidence passes. Use [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) before cleanup
-or retry.
+Never mix Attempts, delete an unfamiliar lock, hand-edit a receipt, or start
+downstream work before the required upstream checks pass. Use
+[`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) before cleanup or retry.
 
 ## Dependency maintenance
 
@@ -141,70 +126,15 @@ RENV_LIBRARY=/absolute/path/to/library \
   RSCRIPT_BIN=/absolute/path/to/Rscript make r-check
 ```
 
-Online freshness checks, lock updates, and snapshots require a separately
-approved dependency-maintenance review. A local restored environment proves
-only that configured environment.
+Checking for newer packages, updating locks, and creating new snapshots are
+separate maintenance work. A successful local restore applies only to that
+configured environment.
 
 ## Resource benchmarking
 
-`scripts/benchmark_stage_resources.py` is an opt-in low-level harness. It
-accepts a closed manifest of exact setup, producer, and validator argument
-vectors; previews by default; and writes trials only with `--execute`. It records
-logs, wall time, peak child RSS, and validator status. Its five-percent summary
-is advisory for the tested data, host, runtime, memory, and storage only and is
-never silently applied. The higher-level setup integration remains backlog
-work.
-
-## Local validation
-
-Use focused tests for feedback:
-
-```bash
-.venv/bin/python -m pytest -q --tb=short <focused-test-paths>
-.venv/bin/python tests/tools/source_dependencies.py --repo "$PWD"
-uv lock --check
-uv sync --locked --check
-make -s shell-test
-```
-
-Run the assembled gate once against a final executable state when proportionate:
-
-```bash
-RSCRIPT_BIN=/absolute/path/to/Rscript make -s all-checks
-```
-
-Use `VALIDATION_ARGS=--serial` or `--verbose` only for diagnosis. Long suites
-run in CI. A documentation-only change normally uses:
-
-```bash
-git diff --check
-make -s documentation-check
-git status --short
-git diff --name-status
-```
-
-The documentation gate checks the canonical kernel, derived semantic-owner
-contracts, retired paths, repository-local links and anchors, and basic Mermaid
-source shape. It does not review prose, external destinations, or rendered diagrams.
-
-## CI evidence
-
-The executable workflow at [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)
-is authoritative. Pull requests run static/docs/wheel checks, Python 3.14
-behavior and branch coverage, Python 3.11 compatibility, shell-owner contracts,
-guarded R fixtures, workflow lint, and the managed direct golden path. Complete
-Python 3.11 and 130-pair real-synthetic direct/Slurm lanes are scheduled or
-manually selected; the 100,000-pair lane is weekly or explicit, not per-change.
-
-CI may restore its selected dependencies, but validation commands themselves do
-not. Green hosted CI is engineering evidence for the exact revision. The
-selected real-synthetic lane adds locked-tool, single-node disposable-Slurm
-evidence on that hosted runner. Neither establishes CSU/site filesystem or
-module behavior, multi-node execution, production data, scientific review, nor
-biological interpretation.
-
-## Task selection
-
-[`backlog_matrix.md`](../tasks/backlog_matrix.md) is the only durable backlog.
-Select one accepted row or state one bounded objective, obtain its authority,
-and follow the [`workflow kernel`](WORKFLOW.md).
+`scripts/benchmark_stage_resources.py` is an optional low-level tool. Its input
+lists the exact setup, production, and validation commands to measure. It
+previews by default and writes trials only with `--execute`. It records logs,
+wall time, peak child memory, and validation status. Its recommendation applies
+only to the tested data, host, runtime, memory, and storage, and EMRYS never
+applies it automatically.

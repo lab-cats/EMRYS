@@ -1,4 +1,4 @@
-# Repository and delivery rationale
+# Repository and delivery decisions
 
 ## Representation and execution
 
@@ -70,7 +70,8 @@ Documentation exists only when it has a clear audience and durable owner:
 | Need | Authority |
 |---|---|
 | Scientist purpose, setup, run, and Results journey | Root [`README.md`](../../../README.md) and [`quickstart.md`](../../../quickstart.md) |
-| Operator commands, recovery, dependencies, CI, and site boundaries | [`RUNBOOK.md`](../../operations/RUNBOOK.md) and [`TROUBLESHOOTING.md`](../../operations/TROUBLESHOOTING.md) |
+| Operator commands, recovery, and site boundaries | [`RUNBOOK.md`](../../operations/RUNBOOK.md) and [`TROUBLESHOOTING.md`](../../operations/TROUBLESHOOTING.md) |
+| Development, dependencies, tests, and CI | [`ENGINEERING_CONVENTIONS.md`](../../operations/ENGINEERING_CONVENTIONS.md) and [`TEST_BASELINE.md`](../TEST_BASELINE.md) |
 | Current system relationships | [`ARCHITECTURE.md`](../../architecture/ARCHITECTURE.md) |
 | Exact owner behavior | Owner-local `CONTRACT.md`, schemas, implementation, and direct tests |
 | Durable rationale and safety rules | [`DECISIONS.md`](../DECISIONS.md) and its focused decision records |
@@ -78,21 +79,10 @@ Documentation exists only when it has a clear audience and durable owner:
 | Accepted work and acceptance | [`backlog_matrix.md`](../../tasks/backlog_matrix.md) |
 | Dated validation observations | Compact records under [`docs/history`](../../history/) or retained artifacts |
 
-The 2026-09-02 repository-wide audit applied these rules to every tracked
-Markdown file. At this recorded boundary, the maintained set fell from 163
-files and 17,929 lines to 80 files and 5,711 lines. Those figures are observed
-outcomes, not deletion quotas. It retired the temporary campaign and ranking,
-legacy handoff/readiness pages, duplicate cross-cutting orchestration contract,
-redundant directory and private-package indexes, routine test READMEs, and
-placeholder workspace placards. Durable campaign decisions moved into the
-architecture and decision records; unique dated handoff observations moved to
-[`validation-evidence.md`](../../history/validation-evidence.md); active work
-moved into the scored findings matrix. Detailed source-to-destination ledgers,
-completed-package chronology, superseded options, and deleted bytes remain in
-Git history rather than a second permanent documentation system.
-
-This audit intentionally preserves concise prose for intent, rationale, trust
-boundaries, non-goals, evidence meaning, and recovery. Machine-verifiable
-schemas and behavior should be referenced, generated, or tested instead of
-copied into Markdown. Implementation code does not become its own independent
-specification, and direct conformance protection remains required.
+Do not preserve routine progress, branch names, audit totals, completed-work
+chronology, or source-to-destination ledgers in permanent documentation; Git
+history already owns that information. Keep concise prose for purpose,
+rationale, trust boundaries, non-goals, evidence meaning, and recovery.
+Reference schemas and tests instead of copying machine-checkable details into
+Markdown. Source code is not an independent specification, and direct contract
+tests remain required.

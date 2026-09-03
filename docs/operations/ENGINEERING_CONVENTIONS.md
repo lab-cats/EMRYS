@@ -65,6 +65,29 @@ validators, report renderers, and tests never bootstrap packages or change
 locks. `EMRYS_USE_RENV=1` is the only repository-R opt-in; invalid values fail,
 automatic snapshots remain disabled, and lock changes require review.
 
+## Development validation
+
+Use focused tests while changing one owner:
+
+```bash
+.venv/bin/python -m pytest -q --tb=short <focused-test-paths>
+.venv/bin/python tests/tools/source_dependencies.py --repo "$PWD"
+uv lock --check
+uv sync --locked --check
+make -s shell-test
+```
+
+Run the assembled applicable gate once against the final executable state:
+
+```bash
+RSCRIPT_BIN=/absolute/path/to/Rscript make -s all-checks
+```
+
+Long suites run in CI. Documentation-only work normally needs `git diff
+--check`, `make -s documentation-check`, and a review of the final changed-file
+list. State exactly which checks ran and do not promote focused evidence to a
+broader claim.
+
 ## Slurm and reporting
 
 Whole-Run Slurm transport re-admits execution authority, records scheduler

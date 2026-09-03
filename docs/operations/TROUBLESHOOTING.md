@@ -30,6 +30,8 @@ completion authority.
 | Failure or interruption says recovery is available | Review `emrys resume [RUN]`. It creates a new Attempt for the same immutable Run and re-admits prior work before reuse. |
 | State is `blocked` | Preserve everything. No public command reconciles or erases ambiguous evidence; route the named domain to its owner. |
 | Science is complete but reports are missing/incomplete | Review `emrys report [RUN]`, then execute only from the admitted empty or reusable reporting state. The scientific receipt remains unchanged. |
+| A results table contains only its header | Check the upstream receipt and candidate counts. An empty table can be valid when those records agree. |
+| A report omits or truncates expected rows | Use the linked machine-readable result for the complete data. Silent truncation is a defect; missing sections must be traced to the checked Analysis outputs and reporting records. |
 | Run root already exists | Inspect or resume it. Never delete or rename it merely to make a new initial Run start. |
 | Step 00c sidecars fail | Preserve the FASTA, FAI, dictionary, and adjacent lock/staging state. Do not recreate one member independently. |
 
@@ -37,7 +39,7 @@ Direct owner invocations publish native outputs and do not create an admissible
 Run or report. Use the grouped Run path when immutable orchestration and default
 reporting are required.
 
-## Project and runtime admission
+## Project and runtime checks
 
 | Symptom | Meaning and response |
 |---|---|
@@ -66,20 +68,3 @@ prove locking, hard-link, rename, visibility, or durability semantics.
 | Scheduler stream absent | Inspect the exact job with `squeue`/`sacct`; Slurm may not have opened the stream yet. Scheduler state is not Run completion. |
 | Scratch is unwritable | Point `scratch_parent` at an existing approved compute path and verify capacity. Do not rely on silent `/tmp` fallback. |
 | Network/distributed root is unqualified | Stop. Run both storage-qualification phases for the exact roots; there is no implicit staging or copy exception. |
-
-## Results and scientific meaning
-
-- `FWD_like` and `REV_like` are mechanical SAM-flag groups, not biological
-  strand, sense, or antisense.
-- Significant Step 09 rows satisfy the declared computational thresholds; they
-  remain CMH-ranked candidates, not validated editing sites.
-- Header-only Step 08/09 tables can be valid when upstream receipts and zero
-  counts reconcile.
-- If a report truncates a human table, use its bound machine-readable artifact
-  for the complete data. Silent truncation is a defect.
-- Missing context or figures must be diagnosed from the exact admitted Step 09,
-  optional Step 10, validation, and receipt records. Reporting never
-  reconstructs science.
-
-A successful command, receipt, report, log, scheduler job, or synthetic fixture
-does not establish scientific adjudication or biological interpretation.

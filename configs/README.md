@@ -1,33 +1,23 @@
 # Configuration and input guide
 
-This guide defines the scientist-authored Project, manifests, and optional
-execution profile. The [quickstart](../quickstart.md) owns the first-run
-sequence; the [runbook](../docs/operations/RUNBOOK.md) owns runtime admission,
-Slurm, resume, and recovery procedures.
+This directory contains examples of scientist-authored inputs and optional
+execution settings. The [quickstart](../quickstart.md) explains how to create
+and run a Project; the [runbook](../docs/operations/RUNBOOK.md) explains the
+commands available after setup.
 
-## Project root
+## What belongs here
 
-From the intended parent directory, `emrys init PROJECT_NAME` collects and
-validates the initial scientific definition. It plans without writing and
-publishes only with `--execute`.
+| Files | Purpose |
+| --- | --- |
+| `samples.example.tsv` | Example Dataset manifest. |
+| `step_07_partitions*.tsv` | Example region partitions for cohort processing. |
+| `execution_profile*.yaml` | Example local or Slurm execution settings. |
+| Other `.example.*` files | Specialist formats owned by the component that consumes them. |
 
-```text
-PROJECT_NAME/
-|-- project.yaml
-|-- logs/
-|-- runtime/
-|   |-- runtime.tsv
-|   `-- profiles/
-|       `-- default.yaml
-`-- runs/
-    `-- RUN-ID/
-        `-- results/
-```
-
-The `project.yaml` parent is the Project root. EMRYS owns `logs/`, `runtime/`,
-and `runs/`; FASTQs, references, and manifests remain at their declared
-locations. Ordinary commands derive the Project from the current directory or
-accept `--project NAME_OR_PATH`.
+The scientist-authored `project.yaml` normally lives in the Project root, not
+in this directory. Its parent is the Project root. EMRYS manages that Project's
+`logs/`, `runtime/`, and `runs/` directories; FASTQs, references, and manifests
+stay at their declared locations.
 
 Paths declared by `project.yaml` and its sample manifest, including FASTQ
 entries, resolve from the Project root. A partition `regions_file` entry resolves
@@ -119,8 +109,9 @@ publication, recovery, logging, and Results contracts. See
 
 ## Sample manifest
 
-`samples.tsv` is literal tab-separated data. `emrys init manifests` can draft
-it from supplied paths and explicit metadata without inventing biology.
+`samples.tsv` is literal tab-separated data. Project setup can draft it from
+supplied paths and explicit metadata, but EMRYS never guesses biological
+conditions or replicate relationships from filenames.
 
 | Column | Contract |
 | --- | --- |
@@ -172,16 +163,10 @@ larger than the visible allocation. See
 [`execution_profile.example.yaml`](execution_profile.example.yaml) for a Slurm
 shape and the generated default profile for direct placement.
 
-`runtime/runtime.tsv` is a Project-owned admitted inventory, not a
-scientist-authored configuration. Create it with `emrys runtime discover` or
-managed Doctor repair; do not edit its fixed roster to manufacture readiness.
-
 ## Specialist examples
 
-Other tracked files in this directory belong to the owner named by their
-purpose: sample admission, artifact/report projection, reference provenance,
-runtime or storage inspection, Step `07` partitions, or retained Step `09`
-pairing evidence. An `.example` file is a structural starter, not production
-evidence. Do not mix specialist inputs into a Project unless the consuming
-owner requires them, and do not edit tracked examples to manufacture passing
-status, provenance, or results.
+The remaining examples show the shape of inputs used for artifact/report
+projection, reference provenance, retention, runtime or storage inspection,
+and retained pairing evidence. An `.example` file is a structural starter, not
+proof from a real Run. Use one only when the component that consumes it asks
+for that format.

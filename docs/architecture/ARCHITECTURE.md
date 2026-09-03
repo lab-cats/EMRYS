@@ -17,27 +17,16 @@ Project -> Analysis -> Run -> Results
 ```
 
 A Project supplies one shared Dataset and Reference plus one or more named
-Analyses. Admission freezes the selected Analysis revision and the generated
-Execution Plan. Their content-derived identities form an immutable Run. A new
-plan is a new Run; retrying the same plan creates another Attempt. Results is
-the read-only home of committed scientist-facing outputs and reports.
-
-From a Project root, ordinary operation is:
-
-```text
-emrys validate
-emrys doctor
-emrys run [--analysis NAME] [--profile NAME|ABSOLUTE_PATH]
-emrys inspect [RUN]
-emrys resume [RUN]
-emrys report [RUN]
-```
+Analyses. EMRYS validates the selected Analysis and records its execution plan
+as an immutable Run. A changed plan creates a new Run; retrying an unchanged
+plan creates another Attempt. Results is the read-only home of completed
+scientist-facing outputs and reports.
 
 The Project root owns `project.yaml`, `runs/`, `logs/`, and `runtime/`.
-Execution profiles live beneath `runtime/profiles/`; the admitted runtime
-inventory lives at `runtime/runtime.tsv`. EMRYS generates normalized records,
-task dispatches, receipts, and workflow configuration. Scientists do not author
-or transfer those implementation details.
+Execution profiles live beneath `runtime/profiles/`; the checked runtime
+inventory lives at `runtime/runtime.tsv`. EMRYS generates the lower-level
+records and workflow settings. Scientists do not have to author or transfer
+those implementation details.
 
 The deterministic two-word Run name is the normal selector and presentation.
 The content-derived Run ID remains canonical and appears in advanced views.
@@ -97,31 +86,20 @@ workflow language, report DSL, installer DSL, or mutable plugin registry.
 
 ## Execution, lifecycle, and evidence
 
-Planning is no-write. Interactive execution displays one immutable plan and
-asks before mutation; automation uses `--execute`. Direct and single-node
-whole-Run Slurm placement use the same Snakemake backend and scientific graph.
-Slurm is transport around the Run, not another backend.
+Planning does not write anything. Interactive execution shows the immutable
+plan and asks before starting; automation uses `--execute`. Direct and
+single-node Slurm execution use the same Snakemake workflow. Slurm only places
+the whole Run on a compute node.
 
-For each scope, the task boundary records entry, invokes the public producer,
-invokes its validator, requires every validation row to pass, and only then
-publishes a content-bound verified-task record. The lifecycle owns Run locking,
-immutable Attempt records, failure/interruption evidence, between-task resume,
-and the terminal receipt published last. Inspection derives status from those
-records and owner evidence, never from `.snakemake`, timestamps, logs, or
-scheduler state alone.
+Each task records its start, runs its scientific owner, validates the outputs,
+and records completion only after every required check passes. The Run
+lifecycle owns locking, immutable Attempts, failure and interruption records,
+and resume between completed tasks. Inspection reads those records and the
+owner evidence instead of guessing from timestamps, logs, scheduler state, or
+Snakemake's private files.
 
-After a successful full Attempt, reporting derives the module-declared artifact
-roster, publishes the artifact index and canonical summary, then publishes the
-scientific and evidence/operations HTML transaction. The scientific report asks
-what was found; the evidence section asks why the result is trustworthy; the
-operations section asks how execution proceeded. Candidate review,
-adjudication, and biological interpretation remain external work processes.
-
-## Evidence ceiling
-
-Hosted synthetic runs establish bounded engineering behavior for the exact
-commits that produced them. Direct/disposable-single-node-Slurm parity does not
-prove CSU Viking portability, multi-node behavior, production data, scientific
-review, or biology. Current site and scientific follow-ons are tracked only in
-the [`findings matrix`](../tasks/backlog_matrix.md); dated historical executions
-are retained under [`docs/history`](../history/).
+After a successful full Attempt, reporting indexes the Analysis outputs and
+publishes the scientific and evidence/operations views together. The scientific
+view explains what was found, the evidence view explains why the output can be
+trusted, and the operations view explains how the Run proceeded. Scientific
+review and biological interpretation remain outside EMRYS.

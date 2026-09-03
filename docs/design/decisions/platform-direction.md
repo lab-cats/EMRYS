@@ -185,6 +185,9 @@ latest Run, second Results root, or Run Bundle.
 - Artifact classes retain their separate admission and transaction owners.
   Add neither a universal lifecycle nor an Artifact Store without a concrete
   unmet class-level need.
+- There is no public stop/cancel command until queued and running submission
+  ownership plus a safe terminal interruption contract exist across supported
+  placements. Resume remains bounded to an already interrupted or failed Run.
 - Execution profiles resolve from `runtime/profiles/NAME.yaml`, with an exact
   absolute path allowed. There is no site/global registry; reconsider only for
   a demonstrated cross-Project/site need.
@@ -199,6 +202,8 @@ latest Run, second Results root, or Run Bundle.
 - Candidate review and biological interpretation remain outside EMRYS. A
   future Steps 07–09 scientific audit and independent-oracle expansion are
   backlog work, not evidence that a defect exists.
+- Add no broader package API or generalized storage facade without a concrete
+  extension need or a measured caller-complete reduction in maintained code.
 
 Current package ownership and public routes are summarized in the
 [`architecture index`](../../architecture/README.md). The

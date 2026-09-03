@@ -79,15 +79,16 @@ side effects.
 environment without repairing it, runs static preflight first, then the
 independent Python coverage, installed-wheel, shell-owner, and guarded-real-R
 lanes. CI may run the same inventory in verified shards and supplies selected
-long real-synthetic lanes. Exact commands and evidence ceilings are in the
-[`runbook`](../operations/RUNBOOK.md#local-validation).
+long real-synthetic lanes.
 
 Use focused owner tests during implementation and the complete applicable gate
-once on the final affected state. Long checks run in CI. Quiet successful logs
-may be ephemeral; failed, interrupted, and peer-cancelled lanes retain bounded
-diagnostics. Nox remains rejected because matching the current process-group
-cancellation and retained-failure behavior would require a larger custom
-supervisor; `uv` remains the environment authority.
+once on the final affected state. Exact development commands live in the
+[`engineering conventions`](../operations/ENGINEERING_CONVENTIONS.md#development-validation).
+Long checks run in CI. Quiet successful logs may be ephemeral; failed,
+interrupted, and peer-cancelled lanes retain bounded diagnostics. Nox remains
+rejected because matching the current process-group cancellation and retained-
+failure behavior would require a larger custom supervisor; `uv` remains the
+environment authority.
 
 ## Contract-risk checklist
 

@@ -136,3 +136,15 @@ automatically restored. Guarded checks bind `RENV_PATHS_LIBRARY` to the
 project-library root. At the time, the installed project library used `renv`
 `1.2.3` while metadata advertised `1.2.4`; dependency maintenance remained a
 separate operation rather than an incidental environment mutation.
+
+## Architecture closeout hosted CI
+
+These runs establish bounded hosted engineering behavior for their exact
+revisions. They do not establish institutional-site or multi-node execution,
+production-data correctness, scientific review, or biological validity.
+
+| Tranche | Exact revision and evidence | Established boundary |
+|---|---|---|
+| `ARCH-CLOSE-01` | `f85379edef0440266c1e97e97be5324e364812cb`; [ordinary CI 33630887395](https://github.com/lab-cats/EMRYS/actions/runs/33630887395); [selected 130-pair CI 33630899403](https://github.com/lab-cats/EMRYS/actions/runs/33630899403) | Managed real-tool direct journey, Rocky/Ubuntu/Debian lock installation, Python 3.11 shards, and hosted direct/disposable-Slurm success. |
+| `ARCH-CLOSE-02` | `4a165038b3d164d6ace59b9e9bb21add086d07df`; [ordinary CI 33640599154](https://github.com/lab-cats/EMRYS/actions/runs/33640599154); [selected recovery CI 33640622974](https://github.com/lab-cats/EMRYS/actions/runs/33640622974) | Hosted direct/disposable-Slurm controlled failure, resume, provenance, Results, and logging parity at 130 pairs. |
+| `ARCH-CLOSE-03` | `f3622f791e90fd6ed15079abcbcbe9b7003cbb6a`; [ordinary CI 33653717181](https://github.com/lab-cats/EMRYS/actions/runs/33653717181); [CodeQL 33653716112](https://github.com/lab-cats/EMRYS/actions/runs/33653716112) | Role, ownership, baseline, closeout, ordinary CI, and static-security evidence; long lanes were not selected. |

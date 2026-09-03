@@ -28,7 +28,7 @@ CANONICAL_DOCUMENTS = {
     "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
     "docs/operations/WORKFLOW.md": "# Workflow kernel",
     "docs/tasks/README.md": "# Task planning",
-    "docs/tasks/backlog_matrix.md": "# EMRYS findings matrix and backlog",
+    "docs/tasks/backlog_matrix.md": "# EMRYS backlog matrix",
     "src/emrys/contracts/SOURCE_TOPOLOGY.md": (
         "# Source ownership and dependency direction"
     ),
