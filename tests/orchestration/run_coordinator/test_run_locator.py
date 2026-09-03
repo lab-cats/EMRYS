@@ -72,6 +72,25 @@ def test_run_locator_rejects_unknown_selector(tmp_path: Path) -> None:
             inspection.resolve_run_root(run_roots, selector)
 
 
+def test_followup_uses_full_id_only_when_friendly_name_collides(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runs = tmp_path / "runs"
+    target = runs / ZERO_RUN_ID
+    target.mkdir(parents=True)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(inspection, "human_run_name", lambda _run_id: "shared-name")
+
+    assert control._run_followup("resume", target, ZERO_RUN_ID) == (
+        "emrys resume shared-name"
+    )
+
+    (runs / ONE_RUN_ID).mkdir()
+    assert control._run_followup("resume", target, ZERO_RUN_ID) == (
+        f"emrys resume {ZERO_RUN_ID}"
+    )
+
+
 def test_control_selects_zero_one_and_multiple_project_runs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

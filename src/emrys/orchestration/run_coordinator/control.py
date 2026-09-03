@@ -612,10 +612,17 @@ def _verified_report_location_lines(
 
 
 def _run_followup(command: str, run_root: Path, run_id: str, *options: str) -> str:
-    """Render one human-name Run command that remains complete outside its Project."""
+    """Render one unambiguous Run command that works outside its Project."""
 
     project_path = run_root.parent.parent / "project.yaml"
-    argv = ["emrys", command, inspection.human_run_name(run_id)]
+    selector = inspection.human_run_name(run_id)
+    try:
+        run_roots = inspection.project_run_roots(project_path.parent)
+        if run_roots and inspection.resolve_run_root(run_roots, selector) != run_root:
+            selector = run_id
+    except inspection.InspectionError:
+        selector = run_id
+    argv = ["emrys", command, selector]
     if _absolute(Path.cwd()) != project_path.parent:
         argv.extend(("--project", str(project_path)))
     return shlex.join((*argv, *options))
