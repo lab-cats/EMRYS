@@ -349,7 +349,6 @@ def run_reporting(
             "workflow_config_path": identity.root
             / str(identity.attempt["workflow_config"]["path"]),
         }
-        locations: tuple[tuple[str, Path], ...] = ()
         for kind in reporting_boundary.REPORTING_KINDS:
             try:
                 context = _prepare_transaction(kind, _arguments(identity, kind))
@@ -375,7 +374,7 @@ def run_reporting(
                 raise _producer_error(
                     kind, "producer failed after ledger entry", exc
                 ) from exc
-            locations = reporting_boundary.publish_verified(
+            reporting_boundary.publish_verified(
                 kind=kind,
                 receipt_path=receipt_path,
                 **identity_paths,
@@ -386,9 +385,15 @@ def run_reporting(
                     else None
                 ),
             )
+        confirmed = inspection.inspect_run(identity.root)
+        _require_successful_results(confirmed)
+        if confirmed.reporting_status != "complete":
+            raise ReportingOperationError(
+                "Generated reporting state did not admit as complete"
+            )
         return ReportingOperationOutcome(
             status="generated",
-            verified_report_locations=locations,
+            verified_report_locations=confirmed.verified_report_locations,
         )
     except (
         inspection.InspectionError,

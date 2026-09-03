@@ -272,9 +272,20 @@ def test_processing_source_mismatch_fails_before_reporting_start(
         reporting_operation.run_reporting(root, execute=True)
 
 
-def test_execute_prepares_and_publishes_each_fixed_transaction_once(
+@pytest.mark.parametrize(
+    ("final_field", "final_value", "message"),
+    (
+        (None, None, None),
+        ("results_status", "blocked", "requires a successful Attempt"),
+        ("reporting_status", "blocked", "did not admit as complete"),
+    ),
+)
+def test_execute_requires_fresh_final_admission_after_fixed_transactions(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    final_field: str | None,
+    final_value: str | None,
+    message: str | None,
 ) -> None:
     root = (tmp_path / "run-execute").resolve()
     root.mkdir()
@@ -285,10 +296,15 @@ def test_execute_prepares_and_publishes_each_fixed_transaction_once(
         ("scientific-report-html", root / "results" / "scientific.html"),
         ("evidence-report-html", root / "results" / "evidence.html"),
     )
+    complete = _state(root, reporting_status="complete")
+    complete.verified_report_locations = locations
+    if final_field is not None:
+        setattr(complete, final_field, final_value)
+    inspections = iter((initial, complete))
     monkeypatch.setattr(
         reporting_operation.inspection,
         "inspect_run",
-        lambda _root: initial,
+        lambda _root: next(inspections),
     )
     identity = _identity(root, initial)
     monkeypatch.setattr(
@@ -337,10 +353,14 @@ def test_execute_prepares_and_publishes_each_fixed_transaction_once(
         verified,
     )
 
-    outcome = reporting_operation.run_reporting(root, execute=True)
+    if message is None:
+        outcome = reporting_operation.run_reporting(root, execute=True)
+        assert outcome.status == "generated"
+        assert outcome.verified_report_locations == locations
+    else:
+        with pytest.raises(reporting_operation.ReportingOperationError, match=message):
+            reporting_operation.run_reporting(root, execute=True)
 
-    assert outcome.status == "generated"
-    assert outcome.verified_report_locations == locations
     assert observed == [
         "prepare:artifact_index:1",
         "start:artifact_index",
@@ -365,10 +385,11 @@ def test_generation_observer_runs_only_after_first_published_start(
     root = (tmp_path / "run-observed").resolve()
     root.mkdir()
     initial = _state(root)
+    inspections = iter((initial, _state(root, reporting_status="complete")))
     monkeypatch.setattr(
         reporting_operation.inspection,
         "inspect_run",
-        lambda _root: initial,
+        lambda _root: next(inspections),
     )
     identity = _identity(root, initial)
     monkeypatch.setattr(
