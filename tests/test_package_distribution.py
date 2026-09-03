@@ -497,8 +497,8 @@ print(context.output_receipt)
     assert scientific_html.count("data:image/svg+xml;base64,") == 7
     for content in (scientific_html, evidence_html):
         assert f'href="{run_id}.scientific_report.html"' in content
-        assert f'href="{run_id}.evidence_report.html#evidence-category"' in content
-        assert f'href="{run_id}.evidence_report.html#operations-category"' in content
+        assert f'href="{run_id}.evidence_report.html#analysis-sources-section"' in content
+        assert f'href="{run_id}.evidence_report.html#attempt-lineage-section"' in content
     assert "EMRYS evidence and operations report" in evidence_html
     assert "Matplotlib 3.11.1" in evidence_html
     assert "Logomaker 0.8.7" in evidence_html
