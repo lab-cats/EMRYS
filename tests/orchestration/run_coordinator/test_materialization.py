@@ -3572,6 +3572,55 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
     else:
         assert len(submissions) == 1
         assert captured.out.startswith("JOB_ID=812345\n")
+        selected_profile = load_execution_profile(config_path=Path(arguments.profile))
+        inherited_profile = replace(
+            selected_profile,
+            resource_policy=first.resources.policy,
+        )
+        assert inherited_profile.binding_sha256 != selected_profile.binding_sha256
+        assert any(
+            f"{control.slurm_submission.PROFILE_SHA256_ENV}="
+            f"{inherited_profile.binding_sha256}" in value
+            for value in submissions[0].argv
+        )
+
+        monkeypatch.setenv(
+            control.slurm_submission.DELEGATE_MARKER_ENV,
+            control.slurm_submission.DELEGATE_MARKER,
+        )
+        monkeypatch.setenv(
+            control.slurm_submission.PROFILE_SHA256_ENV,
+            inherited_profile.binding_sha256,
+        )
+        monkeypatch.setenv(
+            control.slurm_submission.SUBMIT_UID_ENV,
+            str(os.getuid()),
+        )
+        monkeypatch.setenv("SLURM_JOB_ID", "812345")
+        delegated, job_id = control._resolve_execution_profile(
+            arguments,
+            first.run.analysis.source_path,
+            ResourceOverrides(),
+            resume_run_root=first.run_root,
+        )
+        assert (delegated.binding_sha256, job_id) == (
+            inherited_profile.binding_sha256,
+            "812345",
+        )
+        monkeypatch.setenv(
+            control.slurm_submission.PROFILE_SHA256_ENV,
+            selected_profile.binding_sha256,
+        )
+        with pytest.raises(
+            control.ExecutionProfileError,
+            match="Execution-profile binding SHA-256 differs",
+        ):
+            control._resolve_execution_profile(
+                arguments,
+                first.run.analysis.source_path,
+                ResourceOverrides(),
+                resume_run_root=first.run_root,
+            )
 
 
 def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(

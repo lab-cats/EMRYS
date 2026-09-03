@@ -600,6 +600,7 @@ def _resolve_execution_profile(
     arguments: argparse.Namespace,
     project_path: Path,
     overrides: ResourceOverrides,
+    resume_run_root: Path | None = None,
 ) -> tuple[ExecutionProfile, str | None]:
     """Admit one selected profile and any private Slurm delegate binding."""
 
@@ -626,8 +627,33 @@ def _resolve_execution_profile(
             getattr(arguments, "profile", None),
         ),
         resource_overrides=overrides,
-        expected_binding_sha256=expected_sha256,
+        expected_binding_sha256=(
+            None if resume_run_root is not None else expected_sha256
+        ),
     )
+    if (
+        resume_run_root is not None
+        and isinstance(profile.placement, SlurmPlacement)
+        and not profile.computational_resources_explicit
+    ):
+        observed, _previous, predecessor_config = _admit_resume_predecessor(
+            resume_run_root
+        )
+        profile = replace(
+            profile,
+            resource_policy=_resume_predecessor_policy(
+                observed,
+                predecessor_config,
+                overrides,
+                profile.selected_reporting_memory,
+            ),
+        )
+    if (
+        resume_run_root is not None
+        and expected_sha256 is not None
+        and profile.binding_sha256 != expected_sha256
+    ):
+        raise ExecutionProfileError("Execution-profile binding SHA-256 differs")
     if not delegated:
         return profile, None
     if not isinstance(profile.placement, SlurmPlacement):
@@ -1433,6 +1459,7 @@ def _run_or_resume_from_args(
             arguments,
             project_path,
             overrides,
+            resume_run_root=run_root,
         )
         effective_workflow_cores = profile.resource_policy.declaration.workflow_cores
         report_enabled = not getattr(arguments, "no_report", False)
@@ -1457,19 +1484,6 @@ def _run_or_resume_from_args(
                 report_enabled=report_enabled,
             )
         else:
-            if (
-                isinstance(profile.placement, SlurmPlacement)
-                and scheduler_job_id is None
-                and not profile.computational_resources_explicit
-            ):
-                observed, _previous, predecessor_config = _admit_resume_predecessor(
-                    run_root
-                )
-                effective_workflow_cores = _resume_predecessor_policy(
-                    observed,
-                    predecessor_config,
-                    overrides,
-                ).declaration.workflow_cores
             build_plan = partial(
                 _plan_resume,
                 run_root,
