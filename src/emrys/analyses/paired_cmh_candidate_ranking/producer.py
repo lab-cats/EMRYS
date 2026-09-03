@@ -543,6 +543,13 @@ class Publication:
             self.discard("tmp")
         if self.scratch and self.committed:
             self.discard("backup")
+            if any(lexists(self.p[f"backup_{name}"]) for name in self.names):
+                print(
+                    "ERROR: Step 09 committed backup cleanup was incomplete; "
+                    f"retaining the owned lock for operator recovery: {self.p['lock']}",
+                    file=sys.stderr,
+                )
+                return
         if rollback_failed:
             print(
                 f"ERROR: Step 09 rollback was incomplete; retaining the owned lock for operator recovery: {self.p['lock']}",
@@ -665,6 +672,8 @@ def execute(context: Context, command: Sequence[str]) -> None:
                 fail("Step 09 could not remove an owned publication anchor.")
         tx.committed = True
         tx.discard("backup")
+        if any(lexists(p[f"backup_{name}"]) for name in tx.names):
+            fail("Step 09 could not remove a committed backup; preserving lock.")
         tx.release()
         failed = False
     finally:
