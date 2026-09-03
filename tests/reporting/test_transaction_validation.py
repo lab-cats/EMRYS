@@ -770,7 +770,18 @@ def test_fixed_dispatcher_accepts_successor_run_authority(
     assert observed["profile"] == profile
 
 
-def test_fixed_dispatcher_rechecks_cached_predecessor_roster(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("fault", "message"),
+    (
+        ("native", "roster changed during semantic validation"),
+        ("residue", "artifact_index transaction retains owner control residue"),
+    ),
+)
+def test_fixed_dispatcher_rechecks_cached_predecessor(
+    tmp_path: Path,
+    fault: str,
+    message: str,
+) -> None:
     _analysis, _plan, run, profile, attempt, _resources = successor_run_fixture()
     run_root = (tmp_path / run.run_id).resolve()
     output_dir = run_root / "products" / "artifact-summary" / run.run_id
@@ -789,21 +800,25 @@ def test_fixed_dispatcher_rechecks_cached_predecessor_roster(tmp_path: Path) -> 
         transaction_validation._snapshot_receipt(artifact_receipt),
         roster,
         _fixture_receipt_ops(),
-        lambda: None,
+        lambda: transaction_validation._reject_reporting_control_residue(
+            kind="artifact_index",
+            output_dir=output_dir,
+            run_id=run.run_id,
+        ),
         reusable_expandable_directories=(output_dir,),
     )
     summary_receipt = output_dir / f"{run.run_id}.run_summary_receipt.tsv"
     summary_receipt.write_bytes(b"run summary receipt\n")
-    assert predecessor._roster is not None
-    transaction_validation._recheck_bound_roster(
-        predecessor._roster,
-        expandable_directory_paths=predecessor._expandable_directory_paths,
-    )
-    native.write_bytes(b"mutated native evidence\n")
+    assert predecessor._recheck is not None
+    predecessor._recheck()
+    if fault == "native":
+        native.write_bytes(b"mutated native evidence\n")
+    else:
+        (output_dir / f".{run.run_id}.artifact-index.lock").write_bytes(b"locked\n")
 
     with pytest.raises(
         transaction_validation.ReportingTransactionError,
-        match="roster changed during semantic validation",
+        match=message,
     ):
         transaction_validation.validate_receipt(
             "run_summary",

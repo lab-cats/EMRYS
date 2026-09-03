@@ -55,15 +55,7 @@ class ValidatedTransaction:
     receipt_path: Path
     receipt_sha256: str
     verified_report_locations: tuple[tuple[str, Path], ...] = ()
-    _roster: _BoundRosterSnapshot | None = field(
-        default=None, repr=False, compare=False
-    )
-    _identity_only_paths: frozenset[Path] = field(
-        default_factory=frozenset, repr=False, compare=False
-    )
-    _expandable_directory_paths: frozenset[Path] = field(
-        default_factory=frozenset, repr=False, compare=False
-    )
+    _recheck: Callable[[], None] | None = field(default=None, repr=False, compare=False)
 
 
 def _no_transaction_fault(_paths: tuple[Path, ...]) -> None:
@@ -419,16 +411,23 @@ def _validated_result(
         )
     paths = tuple(item.path for item in roster.files)
     ops.before_final_snapshot(paths)
-    reject_control_residue()
     identity_only = frozenset(identity_only_paths)
-    _recheck_bound_roster(roster, identity_only_paths=identity_only)
+    expandable = frozenset(reusable_expandable_directories)
+
+    def recheck() -> None:
+        reject_control_residue()
+        _recheck_bound_roster(
+            roster,
+            identity_only_paths=identity_only,
+            expandable_directory_paths=expandable,
+        )
+
+    recheck()
     return ValidatedTransaction(
         receipt_path=receipt.path,
         receipt_sha256=receipt.sha256,
         verified_report_locations=verified_report_locations,
-        _roster=roster,
-        _identity_only_paths=identity_only,
-        _expandable_directory_paths=frozenset(reusable_expandable_directories),
+        _recheck=recheck,
     )
 
 
@@ -1637,16 +1636,10 @@ def validate_receipt(
             raise ReportingTransactionError(
                 "Previously validated reporting predecessor no longer matches"
             )
-        if validated_predecessor._roster is None:
+        if validated_predecessor._recheck is None:
             reuse_predecessor = False
         else:
-            _recheck_bound_roster(
-                validated_predecessor._roster,
-                identity_only_paths=validated_predecessor._identity_only_paths,
-                expandable_directory_paths=(
-                    validated_predecessor._expandable_directory_paths
-                ),
-            )
+            validated_predecessor._recheck()
     declared_checkout = attempt["source_checkout"]
     source_checkout = Path(str(declared_checkout["path"]))
     package_root = Path(__file__).resolve().parents[1]
