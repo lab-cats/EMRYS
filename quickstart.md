@@ -1,71 +1,44 @@
 # EMRYS quickstart: synthetic Project to Results
 
 This is the shortest supported path through the real EMRYS workflow. It creates
-a deterministic synthetic Project, admits a managed runtime, executes one
-immutable Run, generates reports, and inspects the retained result.
-
-The public model is `Project -> named Analysis -> immutable Run -> Results`.
-The synthetic Project contains one Analysis named `primary`; a Project may
-contain more, but each `run` executes exactly one selected Analysis.
+a deterministic synthetic Project, admits an EMRYS-managed runtime, executes
+one immutable Run, generates reports, and inspects the retained Results.
 
 Use an intended Linux compute host, a clean EMRYS checkout, and durable storage
 outside that checkout. Do not run scientific work on a cluster login node.
 
-## Evidence boundary
+## What this proves
 
-Completing this guide shows that the exact synthetic inputs, source commit,
-admitted runtime, storage, and execution path worked for that Run. It is not
-production-data, cluster/site, distributed-scheduler, scientific-review,
-biological-validation, or biological-interpretation evidence. EMRYS reports
-**CMH-ranked computational candidates**, not validated editing sites.
+Success shows that the exact synthetic inputs, source commit, admitted runtime,
+storage, and execution path worked together for one Run. It is not production,
+institutional-site, distributed-scheduler, scientific-review, or biological
+evidence. The fixture's expected three Step `09` rows and one significant row
+are a regression oracle, not biological truth.
 
-The default `smoke-v1` fixture contains four paired libraries. Its engineered
-oracle is three Step `09` all-sites rows and one significant computational row.
-That oracle detects workflow regressions; it does not establish biological
-truth. Reporting presents retained evidence and creates no new scientific
-evidence.
+## 1. Install the locked command
 
-## 1. Clone and install the locked Python workflow
-
-Select the intended commit. Install Python 3.11 or newer and
-[`uv`](https://docs.astral.sh/uv/getting-started/installation/) through your
-site's approved route, then bootstrap the locked EMRYS command:
+Select the intended release or commit. With Python 3.11 or newer and
+[`uv`](https://docs.astral.sh/uv/getting-started/installation/) installed by an
+approved route:
 
 ```sh
 git clone https://github.com/lab-cats/EMRYS.git
 cd EMRYS
 git checkout --detach FULL_COMMIT_OR_RELEASE_TAG
 uv sync --locked --group workflow
-```
-
-Activate the locked environment so the installed `emrys` command remains bound
-to this checkout:
-
-```sh
 source .venv/bin/activate
+
 emrys --help
 git status --short
 ```
 
-Stop if the selected commit is wrong, help fails, or tracked files are dirty.
-Do not relock dependencies as an incidental setup action.
+Stop if the commit is wrong, help fails, or tracked files are dirty. Do not
+relock dependencies as part of setup.
 
-## 2. Provide the scientific runtime
+## 2. Create the synthetic Project
 
-The managed path uses existing package managers rather than an EMRYS-specific
-installer. Install [Pixi](https://pixi.sh/latest/installation/) through site
-policy before asking Doctor to repair the runtime. Doctor delegates the locked
-Python, native/R, and R-library work to `uv`, Pixi, and `renv`.
-
-Managed repair currently supports Linux x86-64. For institution-provided tools,
-modules, or Slurm placement, use the [operations runbook](docs/operations/RUNBOOK.md)
-instead of changing the managed Project by hand.
-
-## 3. Initialize and ingest synthetic or real inputs
-
-Choose an absolute, absent Project directory under an existing writable,
-durable parent. EMRYS creates the Project and its owned directories; do not put
-it inside the source checkout.
+Choose an absolute, absent directory under an existing writable, durable
+parent. The first command displays the no-write plan; the second publishes it.
 
 ```sh
 EMRYS_PROJECT_ROOT=/absolute/durable/path/emrys-smoke
@@ -75,129 +48,92 @@ emrys init synthetic --output-dir "$EMRYS_PROJECT_ROOT" --execute
 cd "$EMRYS_PROJECT_ROOT"
 ```
 
-The first command is a no-write plan. The second publishes the create-absent
-`smoke-v1` Project and its completion manifest. If the destination already
-exists or publication is interrupted, preserve it for inspection and choose a
-new absent destination; do not delete uncertain state to force a retry.
+If creation is interrupted, preserve the partial directory for inspection and
+choose a new absent destination. For the larger 100,000-pair synthetic
+exercise, add `--dataset-profile production-like-v1` to both commands.
 
-For the larger synthetic exercise, add
-`--dataset-profile production-like-v1` to both commands. It uses 100,000 pairs
-per library and a 5 Mb reference, remains synthetic, and is intentionally much
-slower.
+For real data, first create strict manifest drafts with `emrys init manifests`,
+then run `emrys init PROJECT_NAME` from the intended parent. The
+[configuration guide](configs/README.md) defines the Project and input fields.
 
-For real FASTQs and references, create manifest drafts, move to the intended
-parent directory, then run `emrys init PROJECT_NAME`. Review the no-write plan
-before repeating it with `--execute`, then `cd PROJECT_NAME`. Setup requires
-explicit biological assignments and scientific thresholds and leaves inputs in
-place. See the
-[configuration guide](configs/README.md); this quickstart does not duplicate
-that advanced intake.
+## 3. Admit a runtime
 
-## 4. Discover and admit the runtime
-
-The managed golden path lets Doctor create and admit the single Project runtime
-profile. Do not author or edit that generated profile manually.
-
-If the institution owns the tools, use `emrys runtime discover` in the intended
-execution environment. It refuses missing or ambiguous installations and does
-not load modules or install software. Site-runtime selection and exact tool
-requirements are documented in the [runbook](docs/operations/RUNBOOK.md).
-
-## 5. Validate data compatibility without scientific tools
-
-An optional early check admits and validates the Project definition, every
-named Analysis, and their declared files without running scientific tools or
-writing workflow output:
+The managed path needs Pixi installed through site policy. Doctor delegates
+dependency installation to `uv`, Pixi, and `renv`; EMRYS does not implement a
+package manager.
 
 ```sh
 emrys validate
-```
-
-Continue only after `Project validation: PASS`. Doctor remains the authority
-for complete execution readiness, including the admitted runtime and storage
-checks. Do not manufacture or bypass readiness evidence.
-
-## 6. Diagnose readiness and optionally repair the managed runtime
-
-Run the bounded managed repair and requalification:
-
-```sh
 emrys doctor --repair --execute
 ```
 
-Doctor diagnoses first, changes only supported EMRYS-owned runtime state when
-repair is needed, delegates installation to the package managers, and then
-rechecks the Project. It does not modify declared inputs or overwrite an
-institution- or user-owned runtime profile. Omit `--execute` to preview and
-confirm interactively.
+Continue only after `Project validation: PASS` and `EMRYS is ready.` Repair
+touches only supported EMRYS-owned environment state, then rechecks readiness.
+Omit `--execute` to preview and confirm interactively.
 
-Continue only after Doctor prints `EMRYS is ready.` Readiness is bounded
-admission evidence, not a capacity estimate or proof that the workflow ran. If
-Doctor reports a blocker, stop and use the
-[troubleshooting guide](docs/operations/TROUBLESHOOTING.md).
+If the institution provides the tools, load that environment on the execution
+host and use:
 
-## 7. Review and confirm one immutable plan
+```sh
+emrys runtime discover
+emrys runtime discover --execute
+emrys doctor
+```
 
-For explicit noninteractive execution, run:
+Discovery refuses missing or ambiguous installations and never loads modules
+or installs software. The [runbook](docs/operations/RUNBOOK.md) covers
+institutional modules, Slurm placement, and exact runtime requirements.
+
+Readiness is bounded admission evidence, not a capacity estimate or proof that
+the workflow ran.
+
+## 4. Run one Analysis
+
+The synthetic Project contains one Analysis, so its name may be omitted:
+
+```sh
+emrys run
+```
+
+On a terminal, EMRYS displays the immutable plan and asks once before writing
+or executing. Refusal, EOF, or interruption before confirmation writes
+nothing, submits nothing, and opens no application log. Automation uses the
+same plan with explicit execution:
 
 ```sh
 emrys run --analysis primary --execute
 ```
 
-That command retains the full default Analysis through Step `10`. To create a
-distinct Run that stops after evidence-complete processing for every sample,
-use the semantic boundary explicitly:
+Reporting follows successful full scientific work. Add `--no-report` only when
+it should be skipped. A named or absolute `--profile` can place the same
+single-host executor inside one Slurm allocation; use the runbook rather than
+running on the login node.
 
-```sh
-emrys run --analysis primary --through processing --execute
-```
+## 5. Inspect and report
 
-The semantic `emrys run --through processing` form selects 31 owner tasks
-across Steps `00`–`06` for this four-sample fixture. A successful processing
-Run is complete and not resumable; reporting is not applicable. Later
-downstream work uses a new immutable Run selected with
-`--from-processing-run`; see the runbook for its compatibility boundary.
-
-Because the synthetic Project has exactly one Analysis, `--analysis primary`
-may be omitted. For a Project with multiple Analyses it is required.
-
-The Analysis name selects human intent but does not enter the content-derived
-immutable Analysis identity. EMRYS prints the resulting immutable Run plan
-before executing it. On a terminal, omit `--execute` to review the same plan
-and answer one confirmation prompt. Refusal, EOF, or interruption before
-confirmation writes nothing, submits nothing, and opens no application log.
-
-Reporting runs automatically after successful full scientific work. Add
-`--no-report` only when reporting should be skipped; this does not change the
-scientific Run or its Results. A Project-local named or absolute `--profile`
-may place the same one-host workflow in one Slurm allocation; follow the
-[runbook](docs/operations/RUNBOOK.md) rather than adapting this direct golden
-path.
-
-## 8. Inspect Results
-
-Inspect EMRYS's admitted records rather than inferring completion from process
-or scheduler status:
+Inspect admitted state instead of inferring completion from a process, Slurm
+job, or visible file:
 
 ```sh
 emrys inspect
 ```
 
-With one Run, omission selects it. With several Runs, a terminal offers their
-stable two-word names for selection; scripts must supply an unambiguous human
-name, full Run ID, or unique ID prefix, for example
-`emrys inspect international-jackrabbit`.
+With one Run, omission selects it. With several, a terminal offers their stable
+two-word names; automation must supply a human name, full Run ID, or unique ID
+prefix. Inspection is read-only and reports the retained Results and report
+locations beneath the Run.
 
-Inspection is read-only. A successful process, scheduler job, or visible file
-does not replace `complete` admitted Results. Scientist-facing outputs and the
-automatic reports are retained beneath the Run's `results/` tree.
+If reports were skipped or failed after scientific Results completed, preview
+and then publish an admissible absent report bundle:
 
-If scientific Results are complete but reports were skipped or failed, preview
-`emrys report [RUN]`, then add `--execute` only for an admissible absent report
-bundle. Preserve partial or ambiguous report state.
+```sh
+emrys report
+emrys report --execute
+```
 
-For failure classification, resume rules, exact Slurm/site setup, or detailed
-inspection, use the [runbook](docs/operations/RUNBOOK.md) and
-[troubleshooting guide](docs/operations/TROUBLESHOOTING.md). Never delete or
-rename a Run root, lock, partial result, log, or retained receipt merely to make
-a command proceed.
+Do not delete or rename a Run root, lock, partial result, log, or receipt to
+make a command proceed. Inspect first; use `emrys resume [RUN]` only for a
+supported failed or interrupted state. The
+[troubleshooting guide](docs/operations/TROUBLESHOOTING.md) owns recovery, and
+the [runbook](docs/operations/RUNBOOK.md) covers processing-only Runs,
+downstream reuse, Slurm, and advanced operation.

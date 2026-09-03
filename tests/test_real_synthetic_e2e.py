@@ -80,6 +80,56 @@ def test_operator_root_is_external_empty_and_never_adopts_contents(
     assert marker.read_text() == "keep\n"
 
 
+def test_production_like_profile_selects_only_slurm_workspace(tmp_path: Path) -> None:
+    paths = driver.Paths(
+        tmp_path,
+        tmp_path / "direct",
+        tmp_path / "slurm",
+        tmp_path / "scratch",
+        tmp_path / "profile.yaml",
+        tmp_path / "adapters",
+        tmp_path / "transcripts",
+    )
+
+    assert driver._selected_workspaces(paths, "130") == {
+        "direct": paths.direct_workspace,
+        "slurm": paths.slurm_workspace,
+    }
+    assert driver._selected_workspaces(paths, "100000") == {
+        "slurm": paths.slurm_workspace
+    }
+
+
+def test_step09_oracle_rejects_unknown_significant_status(tmp_path: Path) -> None:
+    all_sites = tmp_path / "all.tsv"
+    significant = tmp_path / "significant.tsv"
+    all_sites.write_text(
+        "candidate_id\tcall_status\n"
+        "candidate-a\tsignificant_sideways\n"
+        "candidate-b\tnot_significant\n"
+        "candidate-c\tnot_significant\n",
+        encoding="utf-8",
+    )
+    significant.write_text(
+        "candidate_id\tcall_status\n"
+        "candidate-a\tsignificant_sideways\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(driver.DriverError, match="independent Step09 3/1 oracle"):
+        driver.validate_step09_oracle(
+            all_sites,
+            significant,
+            {
+                "expected_terminal_computational_result": {
+                    "all_sites_rows": 3,
+                    "significant_sites_rows": 1,
+                    "significant_candidate_id": "candidate-a",
+                }
+            },
+        )
+
+
 def test_launcher_adapters_and_default_resource_projection(tmp_path: Path) -> None:
     launcher = tmp_path / "srun"
     launcher.write_text("#!/bin/sh\n", encoding="utf-8")
@@ -120,7 +170,7 @@ def test_launcher_adapters_and_default_resource_projection(tmp_path: Path) -> No
     assert observed.stdout == str(missing_profile)
     assert not marker.exists()
 
-    from emrys.orchestration.local_pilot.execution_profile import load_execution_profile
+    from emrys.orchestration.run_coordinator.execution_profile import load_execution_profile
 
     project = tmp_path / "project.yaml"
     project.write_text("fixture\n", encoding="utf-8")
@@ -283,7 +333,7 @@ def test_completed_results_use_inspection_reports_and_direct_step09_oracle(
             ("evidence-report-html", evidence),
         ),
     )
-    from emrys.orchestration.local_pilot import inspection
+    from emrys.orchestration.run_coordinator import inspection
 
     monkeypatch.setattr(inspection, "inspect_run", lambda _root: observed)
     result = driver.assert_completed_run(
@@ -301,6 +351,36 @@ def test_completed_results_use_inspection_reports_and_direct_step09_oracle(
         "scientific-report-html",
         "evidence-report-html",
     }
+
+
+def test_step09_summary_projection_ignores_only_local_paths(tmp_path: Path) -> None:
+    from emrys.contracts.scientific_evidence.step09 import STEP09_SUMMARY_HEADER
+
+    def summary(name: str, *, local_root: str, candidate_count: str) -> Path:
+        path = tmp_path / name
+        values = {field: f"value-{field}" for field in STEP09_SUMMARY_HEADER}
+        values["candidate_count"] = candidate_count
+        for field in driver.STEP09_LOCAL_PATH_FIELDS:
+            values[field] = f"{local_root}/{field}"
+        path.write_text(
+            "\t".join(STEP09_SUMMARY_HEADER)
+            + "\n"
+            + "\t".join(values[field] for field in STEP09_SUMMARY_HEADER)
+            + "\n",
+            encoding="utf-8",
+        )
+        return path
+
+    direct = summary("direct.tsv", local_root="/direct", candidate_count="3")
+    scheduled = summary("slurm.tsv", local_root="/slurm", candidate_count="3")
+    divergent = summary("divergent.tsv", local_root="/slurm", candidate_count="4")
+
+    assert driver._step09_summary_projection(
+        direct
+    ) == driver._step09_summary_projection(scheduled)
+    assert driver._step09_summary_projection(
+        direct
+    ) != driver._step09_summary_projection(divergent)
 
 
 def _completion(attempt_id: str, memory_mb: int) -> dict[str, object]:
@@ -375,6 +455,45 @@ def test_application_log_snapshot_binds_run_attempt_and_scheduler(
 
     assert observed["path"]["path"] == str(path)
     assert observed["scheduler_job_id"] == "42"
+
+
+@pytest.mark.parametrize("mutated", ("attempt", "scheduler"))
+def test_predecessor_snapshot_covers_attempt_tree_and_scheduler_streams(
+    tmp_path: Path,
+    mutated: str,
+) -> None:
+    run_root, attempt_id = tmp_path / "run", "workflow-1"
+    attempt_root = run_root / "attempts" / attempt_id
+    attempt_root.mkdir(parents=True)
+    attempt = attempt_root / "attempt.json"
+    attempt.write_text("attempt\n")
+    stdout, stderr = tmp_path / "job.out", tmp_path / "job.err"
+    stdout.write_text("stdout\n")
+    stderr.write_text("stderr\n")
+    snapshot = driver._predecessor_evidence(
+        run_root,
+        attempt_id,
+        driver.Job("42", stdout, stderr),
+        driver._artifact(attempt),
+    )
+    driver._assert_predecessor_preserved(snapshot)
+
+    (attempt if mutated == "attempt" else stdout).write_text("changed\n")
+    with pytest.raises(driver.DriverError, match="changed predecessor evidence"):
+        driver._assert_predecessor_preserved(snapshot)
+
+
+@pytest.mark.parametrize("field", driver.TASK_ENTRY_EVIDENCE_FIELDS)
+def test_preentry_failure_rejects_every_task_entry_evidence_collection(
+    field: str,
+) -> None:
+    roster = [{"state": "pending"}]
+    receipt = {name: [] for name in driver.TASK_ENTRY_EVIDENCE_FIELDS}
+    driver._assert_no_task_entry(roster, receipt)
+
+    receipt[field] = [{"record": {"path": "entered.json"}}]
+    with pytest.raises(driver.DriverError, match="retained task-entry evidence"):
+        driver._assert_no_task_entry(roster, receipt)
 
 
 def test_transcripts_and_failure_summary_retain_streams(tmp_path: Path) -> None:

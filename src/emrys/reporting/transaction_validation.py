@@ -17,7 +17,7 @@ import os
 import re
 import stat
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
 from typing import Any, Literal
@@ -55,6 +55,7 @@ class ValidatedTransaction:
     receipt_path: Path
     receipt_sha256: str
     verified_report_locations: tuple[tuple[str, Path], ...] = ()
+    _recheck: Callable[[], None] | None = field(default=None, repr=False, compare=False)
 
 
 def _no_transaction_fault(_paths: tuple[Path, ...]) -> None:
@@ -401,6 +402,7 @@ def _validated_result(
     reject_control_residue: Callable[[], None],
     *,
     identity_only_paths: Iterable[Path] = (),
+    reusable_expandable_directories: Iterable[Path] = (),
     verified_report_locations: tuple[tuple[str, Path], ...] = (),
 ) -> ValidatedTransaction:
     if not _receipt_is_in_roster(receipt, roster):
@@ -409,10 +411,38 @@ def _validated_result(
         )
     paths = tuple(item.path for item in roster.files)
     ops.before_final_snapshot(paths)
+    identity_only = frozenset(identity_only_paths)
+    expandable = frozenset(reusable_expandable_directories)
     reject_control_residue()
+    _recheck_bound_roster(roster, identity_only_paths=identity_only)
+
+    def recheck() -> None:
+        reject_control_residue()
+        _recheck_bound_roster(
+            roster,
+            identity_only_paths=identity_only,
+            expandable_directory_paths=expandable,
+        )
+
+    return ValidatedTransaction(
+        receipt_path=receipt.path,
+        receipt_sha256=receipt.sha256,
+        verified_report_locations=verified_report_locations,
+        _recheck=recheck,
+    )
+
+
+def _recheck_bound_roster(
+    roster: _BoundRosterSnapshot,
+    *,
+    identity_only_paths: Iterable[Path] = (),
+    expandable_directory_paths: Iterable[Path] = (),
+) -> None:
+    """Require an admitted transaction roster to retain the same identities."""
+
     identity_only = set(identity_only_paths)
     observed = _snapshot_bound_roster(
-        paths,
+        (item.path for item in roster.files),
         (item.path for item in roster.directories),
         identity_only_files=identity_only,
     )
@@ -440,15 +470,20 @@ def _validated_result(
         and (before.path in identity_only or before.sha256 == after.sha256)
         for before, after in zip(roster.files, observed.files, strict=True)
     )
-    if not files_match or observed.directories != roster.directories:
+    expandable = set(expandable_directory_paths)
+    directories_match = len(observed.directories) == len(roster.directories) and all(
+        before == after
+        if before.path not in expandable
+        else (before.path, before.device, before.inode, before.mode)
+        == (after.path, after.device, after.inode, after.mode)
+        for before, after in zip(
+            roster.directories, observed.directories, strict=True
+        )
+    )
+    if not files_match or not directories_match:
         raise ReportingTransactionError(
             "Reporting transaction roster changed during semantic validation"
         )
-    return ValidatedTransaction(
-        receipt_path=receipt.path,
-        receipt_sha256=receipt.sha256,
-        verified_report_locations=verified_report_locations,
-    )
 
 
 def recheck_run_summary_inputs(context: Any) -> None:
@@ -863,6 +898,7 @@ def _validate_historical_artifact_index_transaction(
         roster,
         receipt_ops,
         reject_control_residue,
+        reusable_expandable_directories=(output_dir,),
     )
 
 
@@ -995,6 +1031,7 @@ def validate_artifact_index_transaction(
         roster,
         receipt_ops,
         reject_control_residue,
+        reusable_expandable_directories=(context.output_dir,),
     )
 
 
@@ -1600,6 +1637,10 @@ def validate_receipt(
             raise ReportingTransactionError(
                 "Previously validated reporting predecessor no longer matches"
             )
+        if validated_predecessor._recheck is None:
+            reuse_predecessor = False
+        else:
+            validated_predecessor._recheck()
     declared_checkout = attempt["source_checkout"]
     source_checkout = Path(str(declared_checkout["path"]))
     package_root = Path(__file__).resolve().parents[1]

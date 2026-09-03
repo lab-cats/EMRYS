@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Callable
 
 import pytest
@@ -95,6 +96,67 @@ def test_provider_admission_rejects_missing_selection(
 
     with pytest.raises(InstalledPackageIdentityError, match="not installed"):
         admit_installed_provider("emrys.analysis_modules", "missing", label="Module")
+
+
+def test_provider_admission_rejects_a_non_package_entry_point(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entry_point = SimpleNamespace(name="bad", value="module:provider.factory")
+    monkeypatch.setattr(
+        package_identity.importlib.metadata,
+        "entry_points",
+        lambda **_: (entry_point,),
+    )
+
+    with pytest.raises(InstalledPackageIdentityError, match="must be package-level"):
+        admit_installed_provider("emrys.analysis_modules", "bad", label="Module")
+
+
+def test_provider_admission_reloads_exact_files_on_repeated_admission(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    package = tmp_path / "cached_provider"
+    package.mkdir()
+    source = package / "__init__.py"
+    source.write_text('VALUE = "old"\n\ndef provider():\n    return VALUE\n')
+    monkeypatch.syspath_prepend(str(tmp_path))
+    imported = package_identity.importlib.import_module(package.name)
+    old_state = source.stat()
+    source.write_text('VALUE = "new"\n\ndef provider():\n    return VALUE\n')
+    os.utime(source, ns=(old_state.st_atime_ns, old_state.st_mtime_ns))
+
+    entry_point = SimpleNamespace(
+        name="cached-provider",
+        value="cached_provider:provider",
+        dist=SimpleNamespace(name="cached-provider", version="1"),
+        load=lambda: package_identity.importlib.import_module(package.name).provider,
+    )
+    monkeypatch.setattr(
+        package_identity.importlib.metadata,
+        "entry_points",
+        lambda **_: (entry_point,),
+    )
+    monkeypatch.setattr(package_identity, "_ADMITTED_PROVIDERS", {})
+    admitted = admit_installed_provider(
+        "emrys.analysis_modules", "cached-provider", label="Module"
+    )
+    assert imported.provider() == "old"
+    assert admitted.provider() == "new"
+    assert (
+        admit_installed_provider(
+            "emrys.analysis_modules", "cached-provider", label="Module"
+        )
+        is admitted
+    )
+
+    source.write_text('VALUE = "bad"\n\ndef provider():\n    return VALUE\n')
+    os.utime(source, ns=(old_state.st_atime_ns, old_state.st_mtime_ns))
+    repeated = admit_installed_provider(
+        "emrys.analysis_modules", "cached-provider", label="Module"
+    )
+    assert repeated.provider() == "bad"
+    assert repeated.package.sha256 != admitted.package.sha256
 
 
 def test_provider_rejects_a_callable_outside_its_admitted_tree(tmp_path: Path) -> None:

@@ -423,6 +423,25 @@ def test_term_cleans_owned_state_and_returns_143(
     assert not list(paths["output"].rglob(".*.step08.*"))
 
 
+def test_term_during_child_spawn_is_deferred_and_forwarded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    arguments, paths = _fixture(tmp_path)
+    child: FakeProcess | None = None
+
+    def launch(command: list[str], **_kwargs: Any) -> FakeProcess:
+        nonlocal child
+        child = FakeProcess(command)
+        os.kill(os.getpid(), signal.SIGTERM)
+        return child
+
+    monkeypatch.setattr(producer.subprocess, "Popen", launch)
+
+    assert producer.main([*arguments, "--execute"]) == 143
+    assert child is not None and child.terminated
+    assert not list(paths["output"].rglob(".*.step08.*"))
+
+
 def test_no_clobber_residue_fails_in_dry_run_without_mutation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

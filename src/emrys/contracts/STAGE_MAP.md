@@ -1,34 +1,17 @@
 # Semantic workflow identity and DAG
 
-This file is the canonical cross-stage owner for semantic workflow identities,
-historical aliases, direct artifact dependencies, edge semantics, typed
-external inputs, and the concise DAG. Individual stage, analysis, and evidence
-contracts own their local interfaces and link here instead of copying the
-complete map.
-
-The map describes the currently supported default workflow. It does not claim
-that every future assay has one universal sequence, and it does not define
-preprocessing profiles, optional-stage policy, ingestion, orchestration, or
-archival behavior.
-
-The identities below remain the built-in paired-CMH map. For an explicit
-collaborator module, the immutable admitted module descriptor owns the
-Run-specific Step `09` and optional Step `10` tail composed onto the common
-processing profile. This document is neither the installed-provider registry
-nor a universal Stage hierarchy.
+This file owns the built-in paired-CMH workflow's semantic identities,
+historical aliases, typed inputs, and direct artifact edges. Owner contracts
+define local behavior. An admitted collaborator descriptor owns its Run-specific
+Step `09` and optional Step `10` tail; this map is not a provider registry,
+universal Stage hierarchy, orchestration contract, or archival policy.
 
 ## Identity rules
 
-- Every functional owner has exactly one kind: `stage`, `analysis`, or
-  `evidence`.
-- The public slug is the established semantic working name, unchanged.
-- The display title humanizes that slug while preserving scientific acronyms.
-- The machine key is generated once as `emrys.<kind>.<slug>.v1` and then
-  frozen. Historical or execution order is never encoded in the key.
-- A title, path, implementation, or DAG-position change does not by itself
-  change or bump the frozen machine key.
-- Numeric identifiers are historical aliases and provenance only. They do not
-  define identity or order.
+Each owner has one `stage`, `analysis`, or `evidence` kind, one public slug, and
+one frozen `emrys.<kind>.<slug>.v1` key. Display titles may change without
+changing identity. Paths, implementations, DAG position, and numeric historical
+aliases define neither identity nor order.
 
 ## Identity map
 
@@ -51,25 +34,12 @@ nor a universal Stage hierarchy.
 
 ## Edge semantics
 
-A direct DAG edge exists only when one functional owner produces an artifact
-required by another functional owner. Validators remain within their
-functional owner and are not DAG nodes.
-
-- `required artifact` records direct producer-to-consumer necessity.
-- `fan-in` requires the named artifacts from distinct upstream owners.
-- `barrier` requires the complete declared set named by the consumer contract,
-  not merely one available artifact.
-- `evidence branch` distinguishes non-gating evidence flow from a gating
-  transformation.
-- A typed external input enters one or more owners without creating a producer
-  stage in this DAG.
-- Current operational coupling is recorded separately and never promoted to a
-  permanent semantic dependency merely because one execution path
-  materializes a shared input.
-
-Parallelism follows from the absence of a required edge; numeric aliases,
-filename order, narrative order, shared directories, and validator imports do
-not create edges.
+A direct edge exists only when one owner produces an artifact required by
+another; validators are not nodes. `fan-in` names distinct upstream artifacts,
+`barrier` requires the consumer's complete declared set, and `evidence branch`
+is non-gating. External inputs create no producer node. Operational coupling,
+aliases, filenames, prose order, directories, and imports create no semantic
+edge.
 
 ## Typed external inputs
 
@@ -109,47 +79,7 @@ supported default workflow.
 
 ## Current operational coupling that is not a semantic edge
 
-The retired Step `00a` scheduler wrapper formerly decompressed and materialized
-the shared FASTA and GTF used by historical Steps `00b` and `00c`. That
-reference-materialization coupling never created `00a -> 00b` or `00a -> 00c`
-DAG edges because neither downstream owner consumes the STAR index. The
-current workflow admits the FASTA and GTF as typed external inputs rather than
-as outputs of a new reference-preparation stage.
-
-## Concise DAG
-
-Node labels use public slugs; machine keys remain in the identity map.
-
-```mermaid
-flowchart LR
-    construct_STAR_index["Construct STAR Index"]
-    convert_GTF_to_BED12["Convert GTF to BED12"]
-    construct_FASTA_sidecars["Construct FASTA Sidecars"]
-    align_RNA_reads_with_STAR["Align RNA Reads with STAR"]
-    construct_canonical_BAM["Construct Canonical BAM"]
-    collect_canonical_BAM_QC_evidence["Collect Canonical BAM QC Evidence"]
-    collect_RSeQC_paired_orientation_evidence["Collect RSeQC Paired Orientation Evidence"]
-    mark_BAM_duplicates_with_Picard["Mark BAM Duplicates with Picard"]
-    split_N_cigar_reads_with_GATK["Split N-Cigar Reads with GATK"]
-    partition_BAM_by_mechanical_read_orientation["Partition BAM by Mechanical Read Orientation"]
-    generate_partitioned_cohort_mpileup_VCFs["Generate Partitioned Cohort Mpileup VCFs"]
-    preprocess_and_annotate_cohort_candidates["Preprocess and Annotate Cohort Candidates"]
-    rank_cohort_candidates_with_paired_CMH["Rank Cohort Candidates with Paired CMH"]
-    project_candidate_scientific_context["Project Candidate Scientific Context"]
-
-    construct_STAR_index -->|STAR index| align_RNA_reads_with_STAR
-    align_RNA_reads_with_STAR -->|STAR BAM| construct_canonical_BAM
-    construct_canonical_BAM -.->|BAM/BAI; non-gating| collect_canonical_BAM_QC_evidence
-    construct_canonical_BAM -.->|BAM/BAI; fan-in| collect_RSeQC_paired_orientation_evidence
-    convert_GTF_to_BED12 -.->|BED12; fan-in| collect_RSeQC_paired_orientation_evidence
-    construct_canonical_BAM -->|canonical BAM/BAI| mark_BAM_duplicates_with_Picard
-    mark_BAM_duplicates_with_Picard -->|marked BAM/BAI; fan-in| split_N_cigar_reads_with_GATK
-    construct_FASTA_sidecars -->|FAI/DICT; fan-in| split_N_cigar_reads_with_GATK
-    split_N_cigar_reads_with_GATK -->|split BAM/BAI| partition_BAM_by_mechanical_read_orientation
-    partition_BAM_by_mechanical_read_orientation -->|all samples; both BAM/BAI pairs| generate_partitioned_cohort_mpileup_VCFs
-    construct_FASTA_sidecars -->|FAI; FASTA is external| generate_partitioned_cohort_mpileup_VCFs
-    generate_partitioned_cohort_mpileup_VCFs -->|all partitions and orientations| preprocess_and_annotate_cohort_candidates
-    preprocess_and_annotate_cohort_candidates -->|sites and input receipt| rank_cohort_candidates_with_paired_CMH
-    rank_cohort_candidates_with_paired_CMH -->|complete candidate transaction| project_candidate_scientific_context
-    construct_FASTA_sidecars -->|FAI; FASTA is external| project_candidate_scientific_context
-```
+The retired Step `00a` scheduler wrapper materialized shared FASTA/GTF inputs for
+historical Steps `00b` and `00c`; it created no `00a -> 00b` or `00a -> 00c`
+edge because neither consumer used the STAR index. The current workflow admits
+those references as typed external inputs, not outputs of another stage.

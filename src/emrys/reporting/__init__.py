@@ -15,6 +15,9 @@ from emrys.libraries.installed_package_identity import (
 from emrys.reporting._files import FileSnapshot as ReportInputSnapshot
 
 ANALYSIS_REPORTER_ENTRY_POINT_GROUP = "emrys.analysis_reporters"
+COMPUTATIONAL_BOUNDARY_BANNER = (
+    "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE EMRYS."
+)
 JsonObject: TypeAlias = Mapping[str, object]
 
 
@@ -53,9 +56,8 @@ class AnalysisReportContextV1(NamedTuple):
 
 
 class AnalysisScientificReportV1(NamedTuple):
-    """One bespoke scientific view and its explicit interpretation boundary."""
+    """One bespoke scientific view within the core-owned evidence boundary."""
 
-    interpretation_boundary: str
     html_bytes: bytes
     inputs: tuple[AnalysisReportInputV1, ...] = ()
     renderer_details: tuple[tuple[str, str], ...] = ()

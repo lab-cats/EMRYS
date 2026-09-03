@@ -1,12 +1,6 @@
 # Transformation-stage owners
 
-This directory contains the ten final native owners for computational
-transformation stages. It is a routing layer, not a shared implementation
-package, generic dispatcher, or complete list of numbered pipeline activities.
-Only explicitly migrated children enter the installed Python distribution and
-grouped module interface.
-
-| Historical alias | Native owner |
+| Step | Owner |
 | --- | --- |
 | `00a` | [`construct_STAR_index`](star_index/README.md) |
 | `00b` | [`convert_GTF_to_BED12`](gtf_to_bed12/README.md) |
@@ -19,32 +13,8 @@ grouped module interface.
 | `07` | [`generate_partitioned_cohort_mpileup_VCFs`](partitioned_cohort_mpileup/README.md) |
 | `08` | [`preprocess_and_annotate_cohort_candidates`](cohort_candidate_preprocessing/README.md) |
 
-The canonical identities and dependency edges live in
-[`STAGE_MAP.md`](../contracts/STAGE_MAP.md). Evidence operations `02b` and `03`
-live under [`evidence/`](../evidence/README.md); analysis `09` lives under
-[`analyses/`](../analyses/paired_cmh_candidate_ranking/README.md).
-
-## Owner convention
-
-Each child directory owns its declared producer, validator, native outputs,
-publication/recovery behavior, and known limitations. Its adjacent
-`CONTRACT.md` is the canonical interface and evidence boundary; its `README.md`
-provides local operator orientation. Direct tests mirror the owner under
-[`tests/stages/`](../../../tests/stages/), while cross-owner contract tests
-retain their own neutral or repository-level ownership.
-
-Slurm placement belongs to the complete immutable Run through `emrys run` or
-`emrys resume`, not to individual stage entry points. See the
-[runbook](../../../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes).
-
-Each owner declares and governs the outputs produced through its interfaces,
-normally under ignored `results/` or declared reference storage. A file,
-scheduler success, receipt, or validation row is not by itself proof of a
-complete valid attempt. Current protection is predominantly local fixture/mock
-evidence, with guarded local real-R evidence for Step `08`; it is not new
-scheduler, cluster, production, scientific-review, editing-site, or
-biological-readiness proof.
-
-Use the [`RUNBOOK`](../../../docs/operations/RUNBOOK.md) for supported commands,
-[`TROUBLESHOOTING`](../../../docs/operations/TROUBLESHOOTING.md) for recovery,
-and each adjacent contract for exact behavior.
+[`STAGE_MAP.md`](../contracts/STAGE_MAP.md) owns semantic identities and edges;
+adjacent `CONTRACT.md` files own exact behavior. Evidence operations `02b` and
+`03` live under [`evidence/`](../evidence/README.md), and downstream analyses
+under [`analyses/`](../analyses/README.md). Slurm placement and whole-Run
+lifecycle belong to the run coordinator rather than owner-local wrappers.

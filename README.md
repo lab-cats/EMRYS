@@ -1,231 +1,110 @@
 # EMRYS: Epic Molecular Read Yield System
-## Evidence-bound analysis of DNA and RNA sequencing data.
 
-EMRYS is an evidence-bound workflow for paired-end RNA-seq alignment, QC,
-mechanical read-orientation partitioning, cohort mpileup, candidate annotation,
-paired CMH ranking, and bounded sequence/motif context projection. You provide
-declared reads, a matching FASTA/GTF
-reference, paired experimental strata, genomic partitions, analysis thresholds,
-and exact scientific-tool identities. EMRYS produces validated native outputs,
-an immutable task history, a deterministic artifact index, a machine-readable
-run summary, QC tables, and separate self-contained scientific and
-evidence/provenance HTML views.
+EMRYS is an evidence-bound RNA-seq workflow for reference preparation,
+paired-read alignment and QC, cohort candidate generation, modular analysis,
+and static reporting. Its public model is:
 
-EMRYS is alpha research software, not a clinical or diagnostic system. It is
-not a general RNA-seq expression workflow: it does not demultiplex, trim or
-quality-filter reads, merge technical lanes, quantify transcripts, test
-differential expression, discover samples, or infer experimental pairing.
-Provide analysis-ready paired FASTQs and author the intended design explicitly.
-
-The automatic workflow produces **CMH-ranked computational candidates**. It
-does not prove that a candidate is an RNA-editing site, infer biological strand
-from the mechanical orientation labels, or make a biological conclusion.
-Candidate review, adjudication, and biological interpretation are external
-work-process records. EMRYS does not model them as pipeline steps, gates,
-artifacts, or completion states.
-
-That paired-CMH path remains the built-in Analysis. A Project may instead
-select an installed collaborator module with explicit module-owned scientific
-configuration; EMRYS retains the same immutable Run, validation, provenance,
-recovery, logging, Results, and reporting boundaries. V1 modules must already
-be installed and self-contained. See the
-[analysis-module contract](src/emrys/analyses/README.md).
-
-## What happens to the data in the built-in Analysis
-
-| Step | Scope | Operation | Principal result |
-| --- | --- | --- | --- |
-| `00a` | Reference | Build and validate a STAR genome index. | STAR index directory |
-| `00b` | Reference | Convert the declared GTF deterministically to BED12. | BED12 annotation |
-| `00c` | Reference | Create or re-admit the FASTA index and sequence dictionary. | `.fai` and `.dict` beside the FASTA |
-| `01` | Each sample | Align paired reads with STAR. | Coordinate-sorted STAR BAM |
-| `02` | Each sample | Construct and validate a canonical BAM/BAI pair. | Canonical BAM and index |
-| `02b` | Each sample | Collect flagstat, quickcheck, and alignment QC evidence. | QC evidence branch |
-| `03` | Each sample | Measure paired-read orientation with RSeQC. | Orientation evidence branch |
-| `04` | Each sample | Mark duplicates with Picard. | Duplicate-marked BAM, BAI, and metrics |
-| `05` | Each sample | Apply GATK `SplitNCigarReads`. | Split BAM and BAI |
-| `06` | Each sample | Partition reads into legacy mechanical flag groups. | `FWD_like` and `REV_like` BAM/BAI pairs |
-| `07` | Each partition | Run cohort bcftools mpileup for both mechanical groups. | Two VCFs and a bound receipt |
-| `08` | Cohort | Normalize SNV candidates, attach per-sample counts and GTF overlaps. | Candidate, input-receipt, and QC tables |
-| `09` | Analysis | Perform paired two-sided CMH tests and global BH correction. | All-sites, significant-sites, summary, spectrum, and plots |
-| `10` | Analysis | Project fixed Step `09` calls onto an indexed reference and registered PUM motif. | Candidate context, motif hits, logo frequencies, motif statistics, and receipt |
-| Reporting | Run | Index artifacts, assemble the run summary, and render both report views. | Scientific HTML, evidence/provenance HTML, summary TSV, and receipt-last publication |
-
-Steps `02b` and `03` are required QC leaves but do not gate downstream
-scientific computation. External review or adjudication may use EMRYS's
-computational outputs and provenance, but it is not part of `emrys run`.
-
-The built-in graph contains `3 + 7S + P + 3` scientific-owner jobs for `S`
-samples and `P` genomic partitions. The four-sample, one-partition synthetic fixture
-therefore expands to 35 jobs, followed by three reporting transactions.
-
-## Supported execution boundary
-
-Read this before installing:
-
-- The public runtime target is a Linux/POSIX host with Python `3.11` or newer,
-  Git, GNU Make, `uv`, and the scientific runtime listed below.
-- The workflow has one Snakemake **single-host local executor**. With no
-  selector, EMRYS loads the generated Project-local
-  `runtime/profiles/default.yaml`, which uses conservative resources and direct
-  placement. `--profile NAME` selects `runtime/profiles/NAME.yaml`; the same
-  option accepts an absolute profile path for advanced use. A selected closed
-  fragment may supply Run-bound resources and Attempt-local placement; explicit
-  CLI resource values have highest precedence. There is no site or global
-  profile registry.
-- Slurm placement submits the whole Run into **one** allocation on **one**
-  compute node through the same `emrys run` or `emrys resume` command. It is
-  not a distributed backend. A noninteractive dry-run does not submit or write;
-  terminal confirmation or explicit noninteractive `--execute` submits once
-  and prints `JOB_ID`, `OUT`, and `ERR`. Never execute the scientific workflow
-  on a cluster login/head node.
-- One cooperative user is required. Direct placement uses Doctor's
-  single-host qualification (or an existing stronger site receipt) for the
-  exact Project root and Step `00c` reference-sidecar parent, covering hard
-  links, `flock`, rename/visibility, and fsync. Slurm placement requires the
-  existing two-phase
-  compute/head receipt for numeric access and post-allocation durability. No
-  filesystem family—including NFS—is admitted by name alone.
-- The Project, referenced inputs, logs, and results stay outside the Git
-  checkout. Setup creates and owns `runs/`, `logs/`, and `runtime/` beneath the
-  `project.yaml` parent. The locked ignored `.venv/` and the default ignored
-  `renv/library/` are sanctioned checkout-local exceptions; an already provisioned R library may instead be
-  selected explicitly. The doctor requires tracked checkout content to be clean
-  and binds its exact commit and installed package bytes.
-- EMRYS never downloads data, force-retries work, deletes locks, repairs
-  outputs, or mutates declared scientific inputs. `emrys doctor` is read-only
-  by default. Its separately authorized `--repair` action can publish the
-  Project-owned direct-storage receipt and restore only the active
-  checkout-owned `.venv` and `<project-root>/runtime/managed`, delegating
-  dependency solving and installation to `uv`, Pixi, and `renv`, then
-  requalifying the Project. Site- or user-owned runtime profiles are preserved,
-  not migrated or overwritten. Direct placement uses the admitted environment;
-  Slurm placement may load only the exact modules declared in its selected
-  profile and uses a private temporary directory. EMRYS observes the CPU
-  affinity and memory capacity available to its local executor so an impossible
-  resource policy fails before workflow entry.
-
-Scheduler streams are created automatically under `<project-root>/logs` and the
-default application-log root is `<project-root>/logs/application`. Reporting runs automatically after scientific
-work and publishes its receipts last; it is not a scientific stage.
-
-Capacity depends on reference size, read count, and selected partitions. Plan
-for the STAR index and several BAM generations per sample, plus orientation
-BAMs, VCFs, logs, and immutable recovery evidence. Before a real run, inspect
-the input size and destination capacity on the execution host:
-
-```sh
-du -sh /absolute/path/to/referenced-fastqs /absolute/path/to/reference
-df -h /absolute/path/to/operator-managed-storage
-free -h
+```text
+Project -> named Analysis -> immutable Run -> Results
 ```
 
-`free` is Linux-specific. `READY` confirms bounded admission checks only; it is
-not a memory, storage, wall-time, throughput, scheduler, or science estimate.
-For an unfamiliar reference or cohort, begin with a small declared region and
-representative samples before authorizing the full analysis.
+A Project references an explicit Dataset and Reference. Each Analysis selects
+its cohort, regions, method, and scientific policy. A Run freezes that admitted
+content and its execution policy; retrying creates an Attempt rather than
+changing the Run. Results and their provenance remain together beneath the Run.
 
-## Choose a first run
+EMRYS is alpha research software, not a clinical or diagnostic system. Its
+built-in paired-CMH Analysis produces **CMH-ranked computational candidates**,
+not validated RNA-editing sites or biological conclusions. `FWD_like` and
+`REV_like` are mechanical alignment groups, not biological strand labels.
+Scientific review and interpretation remain outside the pipeline.
 
-For your own data, create the Project as a named child of the current directory,
-then work from that Project root:
+## Built-in workflow
+
+| Boundary | Work |
+| --- | --- |
+| Reference | Build or admit STAR, BED12, FASTA-index, and dictionary artifacts. |
+| Per sample | Align, canonicalize, collect QC, mark duplicates, split spliced reads, and partition mechanical orientations. |
+| Cohort | Generate partitioned mpileups and normalize annotated candidates. |
+| Analysis | Rank candidates with paired CMH and project sequence/motif context. |
+| Reporting | Index admitted artifacts and publish scientific and evidence/provenance HTML views. |
+
+BAM QC and orientation inspection are required leaves; they do not gate
+downstream scientific computation. Installed collaborator modules may replace
+the downstream Analysis while retaining EMRYS's Run, validation, recovery,
+logging, Results, and reporting boundaries. See the
+[analysis-module contract](src/emrys/analyses/README.md).
+
+## Supported environment
+
+- Linux/POSIX with Python 3.11 or newer and the admitted scientific runtime.
+- One Snakemake local executor, either directly on one host or inside one Slurm
+  allocation on one compute node. EMRYS is not a distributed backend and must
+  not run scientific work on a cluster login node.
+- One cooperative user and storage that passes Doctor's checks for links,
+  locking, atomic publication, visibility, durability, and access.
+- Inputs and Projects outside the source checkout. EMRYS owns each Project's
+  `runs/`, `logs/`, and `runtime/` directories but leaves source data in place.
+
+`emrys doctor` diagnoses without mutation. Explicit managed repair delegates
+dependency work to `uv`, Pixi, and `renv` and may modify only EMRYS-owned
+environment state. EMRYS does not download scientific inputs, force retries,
+delete uncertain locks, or repair result artifacts.
+
+Readiness is bounded admission evidence, not a storage, performance, scheduler,
+scientific-review, or biological claim. Capacity depends on the reference,
+reads, and selected regions; plan for the STAR index and multiple BAM
+generations per sample.
+
+## Start here
+
+The [quickstart](quickstart.md) runs the managed synthetic golden path. For a
+real Project, the ordinary journey is:
 
 ```sh
+emrys init PROJECT_NAME
 emrys init PROJECT_NAME --execute
 cd PROJECT_NAME
 emrys validate
+emrys runtime discover
 emrys runtime discover --execute
 emrys doctor
 emrys run
 emrys inspect
-emrys resume
 emrys report
 ```
 
-`run` plans and displays an immutable Run before terminal confirmation;
-`--execute` is the explicit noninteractive execution path. Reporting runs by
-default after a full Run, can be disabled with `--no-report`, and can be
-regenerated independently with `emrys report [RUN] --execute`. `resume` retries
-a failed or interrupted Run; it does not stop an active Run.
+Commands that can publish or execute expose a no-write plan; automation uses
+explicit `--execute`. Interactive Run execution asks for confirmation.
+Reporting follows a full Run by default, can be skipped with `--no-report`, and
+can be regenerated with `emrys report [RUN] --execute`.
 
-Each Run has a stable two-word human name for ordinary `inspect`, `resume`, and
-`report` selection. The canonical Run ID and a unique ID prefix remain accepted
-advanced selectors. With one Run, omit the selector. With several Runs, a
-terminal presents a selection menu; noninteractive use lists the choices and
-requires an explicit selector. Outside the Project root, use
-`--project PROJECT_NAME_OR_PATH` explicitly.
+Each Run also receives a stable two-word name for `inspect`, `resume`, and
+`report`. Full Run IDs and unique prefixes remain available for automation.
+Outside a Project root, select it with `--project NAME_OR_PATH`.
 
-Low-level runtime and storage evidence routes live under `emrys debug`, for
-example `emrys debug runtime-availability` and
-`emrys debug storage-qualification` (with storage inventory available there as
-well); they are not part of the ordinary journey.
+## Documentation
 
-- **Synthetic installation check:** use [`quickstart.md`](quickstart.md),
-  Path A, with `emrys init synthetic`. The default `smoke-v1`
-  creates small explicit inputs; the closed `production-like-v1` selector
-  creates the 100,000-pair-per-library, 5 Mb functional fixture. Both write
-  outside the repository and still require the real admitted scientific
-  runtime. A synthetic result
-  demonstrates that exact runtime and request, not production or biological
-  validity.
-- **Your data:** follow [`quickstart.md`](quickstart.md), Path B, and replace
-  every starter identity and path with your own declared inputs.
-Use checks and retained artifacts bound to the exact commit for validation
-observations and their evidence ceilings. A dry run, synthetic fixture,
-successful job, or report must not be promoted beyond the evidence it actually
-establishes.
-
-## Glossary
-
-| Term | Meaning in EMRYS |
+| Need | Start here |
 | --- | --- |
-| `AD` | Alternate-allele read depth reported for one sample/candidate. |
-| `AF` | Alternate fraction, normally `AD / DP`, for one sample/candidate. |
-| `DP` | Total read depth used for the candidate calculation. |
-| Candidate | A computationally represented SNV row. It is not automatically an editing site. |
-| CMH | Cochran-Mantel-Haenszel test combining paired replicate strata while retaining their pairing. |
-| FDR / BH | Benjamini-Hochberg-adjusted p-value across the tested target-change candidates. |
-| Stratum / replicate | One manifest identifier pairing exactly one control and one treatment sample. |
-| Common odds ratio | CMH effect estimate shared across the paired strata; values above `1` favor treatment enrichment and below `1` favor control, subject to the declared thresholds. |
-| `FWD_like`, `REV_like` | Legacy mechanical SAM-flag groups; not biological strand labels. |
-| Computational call | A Step `09` threshold classification such as `significant_up`; still pending scientific adjudication. |
-| External review or adjudication | A research work process that may reference EMRYS outputs but is not an EMRYS step, gate, artifact, or completion state. |
-| Create-absent / no-clobber | Publication that requires the destination not to exist and refuses replacement or adoption. |
-| Receipt-last | The transaction receipt is published only after its declared payload has been checked; the receipt still must be semantically re-admitted. |
-| Run root | The immutable/evidence-bearing directory for one deterministic normalized run ID. |
+| First successful Run | [Quickstart](quickstart.md) |
+| Project, Analysis, manifest, and execution-profile fields | [Configuration guide](configs/README.md) |
+| Routine operation, Slurm, resume, and report regeneration | [Runbook](docs/operations/RUNBOOK.md) |
+| Diagnosis and recovery | [Troubleshooting](docs/operations/TROUBLESHOOTING.md) |
+| Scientific and system boundaries | [Architecture](docs/architecture/README.md) |
+| Development workflow | [Documentation index](docs/README.md) |
+| Accepted remaining work | [Findings matrix](docs/tasks/backlog_matrix.md) |
 
-## Further guidance
+## License and data policy
 
-| Need | Canonical guide |
-| --- | --- |
-| Every input and runtime-profile field | [`configs/README.md`](configs/README.md) |
-| Public Project and Run boundary | [`src/emrys/orchestration/local_pilot/README.md`](src/emrys/orchestration/local_pilot/README.md) |
-| Recurring operations, scheduler inspection, and recovery | [`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md) |
-| Evidence-preserving recovery | [`docs/operations/TROUBLESHOOTING.md`](docs/operations/TROUBLESHOOTING.md) |
-| Optional external scientific-evaluation checklist | [`docs/reference/EXTERNAL_SCIENTIFIC_EVALUATION.md`](docs/reference/EXTERNAL_SCIENTIFIC_EVALUATION.md) |
-| Operator report build and workflow-owned reporting transactions | [`src/emrys/reporting/README.md`](src/emrys/reporting/README.md) |
-| Architecture and complete owner DAG | [`docs/architecture/README.md`](docs/architecture/README.md) |
-| Accepted open outcomes and remaining work | [`docs/tasks/backlog_matrix.md`](docs/tasks/backlog_matrix.md) |
-| CI runtime contract and retained long-lane artifacts | [`.github/ci/README.md`](.github/ci/README.md) and checks for the exact commit |
-| Local test routes | [`tests/README.md`](tests/README.md) |
+EMRYS is **source-available**, not open-source software. Academic, nonprofit,
+research, and internal commercial use and modification are permitted without
+charge, as is commercialization of scientific outputs and analysis services.
+Selling, relicensing, rebranding, or providing EMRYS or substantially
+equivalent functionality as a paid hosted product is prohibited. The complete
+[`LICENSE`](LICENSE) controls; third-party terms remain separate in
+[`NOTICE`](NOTICE) and [`LICENSES/`](LICENSES/).
 
-## License
-
-EMRYS is **source-available**, not open-source software. You may use and modify
-EMRYS without charge for academic, nonprofit, research, and internal commercial
-work. You may also commercialize the scientific data, results, reports,
-visualizations, interpretations, discoveries, and other outputs produced using
-EMRYS, and you may charge for research, compute, or analysis services that
-deliver those outputs.
-
-You may not sell EMRYS itself, including through paid rebranding, licensing, or
-sublicensing, or by offering EMRYS or substantially equivalent EMRYS
-functionality as a paid hosted or managed product or service. The complete
-terms in [`LICENSE`](LICENSE) control. Third-party software, tools, data, and
-references retain their own terms; see [`NOTICE`](NOTICE) and
-[`LICENSES/`](LICENSES/).
-
-Do not commit FASTQ, BAM, CRAM, VCF, production result tables, logs,
-credentials, restored tools/libraries, or caches. Before deleting ignored data,
-results, locks, or logs, establish their owner, active consumers, recovery
-state, and retention requirements.
+Do not commit production reads, BAM/CRAM/VCF data, results, logs, credentials,
+restored tools or libraries, or caches. Preserve uncertain run state and its
+recovery evidence until its ownership and disposition are known.

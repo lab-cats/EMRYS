@@ -1159,6 +1159,72 @@ def test_output_directory_and_owned_component_symlinks_are_rejected(
     assert list(records_target.iterdir()) == []
 
 
+@pytest.mark.parametrize("component", ("products", "artifact-summary"))
+def test_publication_rejects_symlinked_output_ancestor(
+    artifact_fixture: Any,
+    tmp_path: Path,
+    component: str,
+) -> None:
+    products = artifact_fixture.root / "products"
+    output_root = products / "artifact-summary"
+    context = context_for(dataclasses.replace(artifact_fixture, output_root=output_root))
+    products.mkdir()
+    external = tmp_path / f"external-{component}"
+    external.mkdir()
+    target = products if component == "products" else output_root
+    if target == products:
+        target.rmdir()
+    target.symlink_to(external, target_is_directory=True)
+
+    with pytest.raises(
+        ARTIFACT_MODELS.ArtifactIndexError,
+        match="output boundary is unsafe",
+    ):
+        ARTIFACT_PUBLICATION.publish_context(context)
+
+    assert list(external.iterdir()) == []
+
+
+def test_publication_directory_creation_does_not_follow_swapped_ancestor(
+    artifact_fixture: Any,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    products = artifact_fixture.root / "products"
+    output_root = products / "artifact-summary"
+    context = context_for(dataclasses.replace(artifact_fixture, output_root=output_root))
+    products.mkdir()
+    displaced = artifact_fixture.root / "displaced-products"
+    external = tmp_path / "external-race-target"
+    external_output = external / "artifact-summary" / artifact_fixture.run_id
+    external_output.mkdir(parents=True)
+    real_mkdir = os.mkdir
+    swapped = False
+
+    def swap_before_create(
+        path: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+        mode: int = 0o777,
+        *,
+        dir_fd: int | None = None,
+    ) -> None:
+        nonlocal swapped
+        if path == "artifact-summary" and not swapped:
+            products.rename(displaced)
+            products.symlink_to(external, target_is_directory=True)
+            swapped = True
+        real_mkdir(path, mode, dir_fd=dir_fd)
+
+    monkeypatch.setattr(ARTIFACT_PUBLICATION.os, "mkdir", swap_before_create)
+    with pytest.raises(
+        ARTIFACT_MODELS.ArtifactIndexError,
+        match="output boundary changed during admission",
+    ):
+        ARTIFACT_PUBLICATION.publish_context(context)
+
+    assert swapped
+    assert list(external_output.iterdir()) == []
+
+
 def test_declared_source_symlink_retarget_is_detected(
     artifact_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,

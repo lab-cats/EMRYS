@@ -1,12 +1,9 @@
 # `split_N_cigar_reads_with_GATK` stage contract
 
-This is the observed contract of historical Step `05`, now implemented in this
-native owner directory. The exact public identity and historical alias are
-owned by the
-[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is the lowercase physical owner for that public slug and owns the producer and
-validator. Its Python validator is installed only through the grouped command;
-the shell producer remains an explicit repository-path interface.
+This directory owns historical Step `05`; the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
+identity and alias. The private validator is grouped under `emrys validate`;
+the producer remains an explicit repository-path command.
 
 ## Responsibility and execution dependencies
 
@@ -87,30 +84,17 @@ Exact checks are:
 The validator checks BAM/BAI magic, quickcheck exit, coordinate order, one
 matching `ID`/`SM` read group, and exact ordered FASTA/FAI/DICT contig/length
 agreement. It does not prove BAM/BAI correspondence, output relation to the
-marked input, or GATK split-N-cigar semantics. It imports
-report/BAM helpers from neutral
-[`validation/report.py`](../../libraries/validation/report.py) and
-[`alignments/bam.py`](../../libraries/alignments/bam.py), and reference parsers
-from neutral [`references/contigs.py`](../../libraries/references/contigs.py).
-Package selection is owned by the grouped command; direct execution of private
-`validator.py`, ambient `PYTHONPATH` injection, compatibility imports, and
-peer-stage implementation dependencies are not supported interfaces.
-
-The producer shares executable-value resolution through neutral
-[`executable_resolution.sh`](../../libraries/executable_resolution.sh) and the
-bound-Python selected-Java handoff through neutral
-[`gatk_invocation.sh`](../../libraries/gatk_invocation.sh) and
-[`process_environment.py`](../../libraries/process_environment.py). Execute
-mode requires absolute Python 3.11+ in `EMRYS_SHA256_PYTHON`, requires Java to
-resolve to canonical `<JAVA_HOME>/bin/java`, and removes ambient JVM/GATK
-selectors before both the GATK version probe and work. This stage retains
-GATK/samtools/Java precedence, minimum versions, exact SplitNCigarReads
-arguments, transaction, validation, and output policy.
+marked input, or GATK split-n-cigar semantics. It uses the shared validation,
+BAM, and reference-contig helpers. Shared process helpers require execute mode
+to use absolute Python 3.11+ in `EMRYS_SHA256_PYTHON`, canonical
+`<JAVA_HOME>/bin/java`, and a JVM/GATK-selector-scrubbed environment for both
+the GATK probe and work. This stage still owns tool precedence and versions,
+exact SplitNCigarReads arguments, transaction, validation, and output policy.
 
 Content mismatches publish `status=fail`; unsafe inputs, required tool-call
 failures, and report-publication failures exit `2`.
 
-## Consumers and protected evidence
+## Consumers, protection, and evidence ceiling
 
 - The final
   [`partition_BAM_by_mechanical_read_orientation`](../mechanical_orientation/README.md)
@@ -118,24 +102,8 @@ failures, and report-publication failures exit `2`.
 - Artifact adapters register `step05_split_bam_v1`, `step05_split_bai_v1`, and
   `step05_validation_report_v1`; summary/report code consumes them without
   rerunning GATK.
-- [`test_step_05_split_n_cigar_reads.sh`](../../../../tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh)
-  protects dry-run, tools/Java, reference prerequisites, locks, temp cleanup,
-  staged validation, complete-pair rules, and ordinary rollback fault paths.
-- [`test_validate_step_05_split_ncigar.py`](../../../../tests/stages/split_n_cigar/test_validate_step_05_split_ncigar.py),
-  roster, publication-fault, public-CLI, artifact, report, data-check,
-  and coverage tests protect the recorded boundaries.
 
-This is local fixture/mock characterization, not new runtime, cluster,
-scientific-review, or biological evidence.
-
-## Current ownership boundaries and retained defects
-
-- Reference-contig parsing, BAM validation, and report publication remain
-  neutral private libraries. Reference provenance remains a separate public
-  cross-cutting evidence owner. This stage owns its three caller-local exact-
-  file loaders, check roster, CLI, and transformation journey.
-- The legacy replacement transaction lacks stable-input identity and robust
-  rollback-failure recovery evidence. The no-clobber path hash-rechecks its
-  admitted BAM, BAI, FASTA, FAI, and DICT but still lacks a native receipt and
-  wider verified-task binding.
-- Producer and validator prove structure but not the GATK-specific transform.
+Repository tests protect this contract under the shared
+[evidence ceiling](../../../../tests/README.md). The legacy replacement route
+retains the restoration defect described above. Producer and validator prove
+structure, not the GATK-specific transformation.

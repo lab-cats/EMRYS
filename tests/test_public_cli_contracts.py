@@ -181,7 +181,6 @@ DOCUMENTATION_PYTHON_ENTRYPOINTS = frozenset(
     }
 )
 DOCUMENTATION_SHELL_ENTRYPOINTS = frozenset()
-DOCUMENTATION_PRIVATE_FILES = frozenset({"README.md"})
 
 MAKE_TARGET_DECISIONS = {
     "test": "local_gate",
@@ -452,7 +451,6 @@ def test_documentation_tool_inventory_is_explicit() -> None:
     assert live_files == (
         DOCUMENTATION_PYTHON_ENTRYPOINTS
         | DOCUMENTATION_SHELL_ENTRYPOINTS
-        | DOCUMENTATION_PRIVATE_FILES
     )
 
 

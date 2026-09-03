@@ -128,7 +128,6 @@ def render_scientific_report(
         if source.role == "reference_fasta"
     }
     return AnalysisScientificReportV1(
-        BOUNDARY_BANNER,
         html_bytes,
         tuple(
             AnalysisReportInputV1(

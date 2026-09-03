@@ -17,11 +17,11 @@
       "covered_branches": 1030,
       "covered_lines": 3385,
       "line_rate": "0.818028",
-      "name": "local_pilot_control_plane",
+      "name": "run_coordinator",
       "num_branches": 1498,
       "num_statements": 4138,
       "prefixes": [
-        "src/emrys/orchestration/local_pilot/"
+        "src/emrys/orchestration/run_coordinator/"
       ]
     },
     {
@@ -136,8 +136,8 @@
   },
   "policy": {
     "critical_owner_non_regression": {
-      "local_pilot_control_plane": [
-        "src/emrys/orchestration/local_pilot/"
+      "run_coordinator": [
+        "src/emrys/orchestration/run_coordinator/"
       ],
       "emrys.contracts.scientific_evidence": [
         "src/emrys/contracts/scientific_evidence/"

@@ -1,17 +1,11 @@
 # `collect_canonical_BAM_QC_evidence` operation contract
 
-This document records the observed current contract of historical Step `02b`.
-The exact public identity and historical alias are owned by the
-[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is the lowercase physical owner for that frozen semantic identity. Its shell
-producer remains a repository-path interface, while its private Python
-validator is exposed only through the grouped package command.
-
-Historical Step `02b` is classified as an independently runnable evidence
-operation associated with the canonical-BAM stage, not as a peer scientific
-data-transformation stage. The producer and validator are colocated here, with
-supported commands and recovery boundaries in the adjacent
-[`README.md`](README.md).
+This directory owns historical Step `02b`; the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
+identity and alias. It is an independently runnable canonical-BAM evidence
+operation, not a peer data-transformation stage. The private validator is
+grouped under `emrys validate`; the producer remains an explicit
+repository-path command.
 
 ## Responsibility
 
@@ -157,49 +151,14 @@ No current computational stage consumes any Step `02b` output or validation
 row. Requiring this evidence for a complete Step `02b` artifact scope does not
 make it a prerequisite for later computation.
 
-## Protected behavior and evidence
+## Protection, evidence ceiling, and retained mismatches
 
-- [`test_step_02b_bam_qc.sh`](../../../../tests/evidence/canonical_bam_qc/test_step_02b_bam_qc.sh)
-  protects the public CLI, both index-name conventions, PATH absence,
-  side-effect-free dry-run, exact paths, silent/nonempty success, the two
-  predecessor-bearing legacy faults, and orchestration-safe staged pair
-  publication.
-- [`test_validate_step_02b_bam_qc.py`](../../../../tests/evidence/canonical_bam_qc/test_validate_step_02b_bam_qc.py)
-  protects dry-run, five checks, marker/count mismatch evidence, arbitrary-CWD
-  repeatability, post-build input mutation, publication, and foreign-lock
-  preservation.
-- [`test_validation_check_rosters.py`](../../../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py),
-  [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py),
-  [`test_public_cli_contracts.py`](../../../../tests/test_public_cli_contracts.py),
-  and [`test_python_coverage_baseline.py`](../../../../tests/test_python_coverage_baseline.py)
-  protect the validator roster, shared publication, public surfaces, and
-  coverage boundary.
-- Artifact-adapter, run-summary, and report tests protect downstream Step `02b`
-  evidence projection without rerunning samtools.
+Repository tests protect this contract under the shared
+[evidence ceiling](../../../../tests/README.md).
 
-These are local fixture contracts. They do not establish a
-new real-runtime, cluster, production, scientific-review, or biological-
-evidence result. Current evidence status remains owned by the canonical
-roadmap and handoff.
-
-## Observed ownership boundaries
-
-- BAM/BAI completeness is checked even though the index is not consumed or
-  validated by the evidence operation.
-- Sample identity controls output paths but is not checked against the BAM.
-- Execution and native serialization live in a numbered shell step; semantic
-  interpretation lives in a separate validator and artifact adapter.
-- Producer success, validator success, and artifact-adapter success are not
-  one identical quickcheck contract.
-- Cross-cutting validation-publication code is owned by neutral
-  `src/emrys/libraries/validation/report.py`.
-
-## Deferred decisions
-
-- Whether the unused BAI admission requirement remains part of the operation.
-- One authoritative quickcheck-success serialization.
-- Binding of native evidence to BAM/BAI identity, manifest sample, tool
-  identity, and attempt.
-- A native receipt and wider verified-task binding for the staged no-clobber
-  pair; legacy direct execution retains its predecessor-bearing fault policy.
-- Final separation of evidence execution, interpretation, and publication.
+The adjacent BAI remains an admission prerequisite although neither command
+uses or validates it. Producer zero-exit quickcheck output is preserved, but
+the validator and artifact adapter accept only the synthetic empty-success
+marker. The unsafe legacy direct route remains exactly as described above;
+immutable Run task records supply wider input, tool, attempt, and output
+identity for the no-clobber route.

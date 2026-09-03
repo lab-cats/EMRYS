@@ -252,7 +252,11 @@ def _safe_artifact(output: AnalysisArtifactV1) -> bool:
         and "{" not in path.replace("{analysis_id}", "")
         and "}" not in path.replace("{analysis_id}", "")
         and "\\" not in path
-        and path.startswith(("results/", "products/native/"))
+        and path.startswith(
+            "products/native/"
+            if output.kind == "validation_report"
+            else ("results/", "products/native/")
+        )
         and all(part not in {"", ".", ".."} for part in path.split("/"))
         and (
             output.expected_header is None

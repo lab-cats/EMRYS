@@ -1,12 +1,9 @@
 # `align_RNA_reads_with_STAR` stage contract
 
-This document records the observed current contract of historical Step `01`.
-The exact public identity and historical alias are owned by the
-[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is now the implemented native owner and an installed Python package for its
-private validator. The shell producer remains an exact repository-path surface.
-Supported commands and diagnostics are adjacent in the
-[owner README](README.md).
+This directory owns historical Step `01`; the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
+identity and alias. The private validator is installed; the producer remains
+an explicit repository-path command.
 
 ## Responsibility
 
@@ -138,12 +135,10 @@ the STAR outputs. Missing, unreadable, or unsafe input, an invalid CLI/output
 contract, or unsafe publication state exits with code `2` without publishing a
 new report.
 
-The validator imports general report rendering, snapshot, validation,
-locking, and publication functions from the neutral
-[`validation/report.py`](../../libraries/validation/report.py) owner through the
-installed `emrys` package. The grouped command resolves independently of caller
-CWD, rejects a different installed checkout when invoked from an EMRYS worktree,
-and excludes ambient `PYTHONPATH` under isolated invocation.
+Validation publication uses the shared
+[`validation`](../../libraries/validation/README.md) facade. Grouped invocation
+binds the selected installed package independently of caller CWD and ambient
+`PYTHONPATH`, rejecting a different installed checkout from an EMRYS worktree.
 
 ## Consumers
 
@@ -157,53 +152,12 @@ and excludes ambient `PYTHONPATH` under isolated invocation.
 - Artifact indexing, canonical summaries, and reports consume those registered
   artifacts and validation evidence without rerunning alignment.
 
-No downstream stage should depend on this stage's implementation module.
+## Protection, evidence ceiling, and retained question
 
-## Protected behavior and evidence
-
-- [`test_step_01_star_align.sh`](../../../../tests/stages/star_alignment/test_step_01_star_align.sh)
-  protects the public CLI, command construction, side-effect-free dry-run,
-  execute invocation, compression handling, thread validation, missing-input
-  failures, deterministic STAR-index admission and mutation rejection, and
-  orchestration-safe staging/no-clobber behavior, including deterministic late
-  appearance and replacement races, with local tool mocks.
-- [`test_validate_step_01_star_alignment.py`](../../../../tests/stages/star_alignment/test_validate_step_01_star_alignment.py)
-  protects dry-run, the five checks, failed mapping and splice-junction
-  evidence, fail-closed missing inputs, publication, and foreign-lock
-  preservation, including deterministic execute/repeat behavior from a
-  non-repository CWD.
-- [`test_validation_check_rosters.py`](../../../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py)
-  protects the exact validator inventory and check identities.
-- [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py)
-  characterizes the imported shared publication and recovery behavior.
-- [`test_public_cli_contracts.py`](../../../../tests/test_public_cli_contracts.py)
-  and [`test_python_coverage_baseline.py`](../../../../tests/test_python_coverage_baseline.py)
-  protect the recorded public-CLI and coverage boundaries.
-
-These are local fixture contracts. They do not establish a
-new real-runtime, cluster, production, scientific-review, or biological-
-evidence result. Current evidence status remains owned by the canonical
-roadmap and handoff.
-
-## Observed ownership boundaries
-
-- Sample and mate identity arrive as direct arguments; the producer does not
-  consume or verify the manifest that canonically owns sample metadata.
-- The producer transaction protects the declared minimum output set; the
-  separate validator remains responsible for structural output checks.
-- STAR emits coordinate-sorted BAMs with the canonical sample read group. The
-  canonical-BAM stage validates and publishes those bytes without rewriting
-  when hard linking is available; its direct-input fallback still sorts and/or
-  retags noncanonical inputs.
-- Cross-cutting validation-publication code is owned by the neutral shared
-  library under `src/emrys/libraries/`.
-This inventory records those current boundaries without changing behavior.
-
-## Deferred decisions
-
-- How the future run request and manifest bind sample/mate identity to this
-  stage without filename inference.
-- Whether the staged five-file transaction needs a native receipt; the future
-  verified-task record remains the wider input/output/tool binding authority.
-- Whether canonical-BAM construction remains a distinct stage when its
-  remaining ownership is validation, indexing, publication, and recovery.
+Repository tests protect this contract under the shared
+[evidence ceiling](../../../../tests/README.md). Run materialization binds the
+manifest-selected sample and mates to
+the explicit arguments; this owner does not reopen the manifest. STAR already
+emits the canonical sort/read-group form, so whether canonical-BAM
+construction should remain a distinct validation, indexing, publication, and
+recovery stage is unresolved.

@@ -74,6 +74,7 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     }
     assert set(configuration["dependency-groups"]["dev"]) == {
         "coverage==7.15.2",
+        "markdown-it-py==4.2.0",
         "pytest",
         "pytest-xdist",
         "ruff",

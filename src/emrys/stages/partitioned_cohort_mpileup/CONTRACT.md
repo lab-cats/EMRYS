@@ -1,13 +1,9 @@
 # `generate_partitioned_cohort_mpileup_VCFs` stage contract
 
-This is the observed contract of historical Step `07`, now implemented in this
-native owner directory. The exact public identity and historical alias are
-owned by the
-[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is the lowercase physical owner for that public slug and owns the producer and
-validator. Its Python validator is installed only through the grouped command;
-the private Python producer is invoked by orchestration rather than exposed as
-a public command.
+This directory owns historical Step `07`; the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
+identity and alias. The producer is workflow-private and the validator is
+grouped under `emrys validate`.
 
 ## Responsibility and execution dependencies
 
@@ -82,7 +78,7 @@ stable outputs. A direct invocation hashes the exact sample and partition
 manifests, reference FASTA/FAI pair, selected regions file when applicable,
 and both BAM/BAI pairs for every admitted sample before bcftools, then rechecks
 that roster after tool execution and again before publication. An admitted
-local-pilot task has already hashed the same declared roster twice at producer
+run-coordinator task has already hashed the same declared roster twice at producer
 entry. It supplies a process-lifetime aggregate only to this producer, which
 reconstructs the roster without another initial full pass and rehashes the
 complete roster immediately before publication. The task boundary performs
@@ -128,14 +124,11 @@ for `regions_file` detail.
 Content mismatches publish `status=fail`; unsafe structure or report-
 publication failures exit `2`.
 
-Package selection is owned by the grouped command; direct execution of private
-`validator.py`, ambient `PYTHONPATH` injection, compatibility imports, and
-peer-stage implementation dependencies are not supported interfaces. Receipt
-TSV parsing remains permissive: some missing-field shapes can currently escape
+Receipt TSV parsing remains permissive: some missing-field shapes can escape
 as `KeyError` or `AttributeError` with a traceback and exit `1` rather than the
 controlled exit-`2` boundary.
 
-## Consumers and protected evidence
+## Consumers, protection, and evidence ceiling
 
 - The final
   [`preprocess_and_annotate_cohort_candidates`](../cohort_candidate_preprocessing/CONTRACT.md)
@@ -144,33 +137,9 @@ controlled exit-`2` boundary.
 - Artifact adapters register both VCFs, the receipt, and
   `step07_validation_report_v1`; reports consume registered evidence without
   rerunning pileup.
-- [`test_partitioned_cohort_mpileup_producer.py`](../../../../tests/stages/partitioned_cohort_mpileup/test_partitioned_cohort_mpileup_producer.py)
-  protects selector modes, manifest order, commands, dry-run, publication,
-  locking, stale paths, child failures, transaction ordering, replacement,
-  rollback failures, signals, mutation gaps, and provenance omissions.
-- [`test_validate_step_07_mpileup_outputs.py`](../../../../tests/stages/partitioned_cohort_mpileup/test_validate_step_07_mpileup_outputs.py)
-  plus roster, publication-fault, public-CLI, artifact, report, and
-  coverage tests protect the independent evidence boundary.
 
-This is local mocked-runtime/fixture characterization, not real-runtime,
-cluster, scientific-review, or biological evidence.
-
-## Current ownership boundaries and retained defects
-
-- Receipt, manifest, selector, and VCF reconciliation logic spans producer,
-  validator, downstream preprocessing, and artifact adapters; this owner keeps
-  its native receipt and five-check roster.
-- Shared report publication remains in neutral
-  [`validation/report.py`](../../libraries/validation/report.py), imported
-  through `emrys.libraries.validation`.
-- The producer resolves the explicit argument, `BCFTOOLS_BIN_OVERRIDE`, then
-  `PATH`; bcftools precedence, checks, and commands remain owned here.
-- Attempt identity, complete provenance, output hashes, and an automated
-  recovery interface remain absent. The native receipt binds only manifests;
-  `--no-clobber` adds in-attempt byte stability for all stationary scientific
-  inputs without extending that receipt. Incomplete restoration now retains
-  the owned lock and backups.
-- Producer/validator selector detail remains asymmetric. The validator may
-  publish failed rows with exit `0`, does not
-  invoke bcftools, and does not prove selector-bound coordinates, VCF semantic
-  fields, filter compliance, immutable inputs, or current-attempt identity.
+Repository tests protect this contract under the shared
+[evidence ceiling](../../../../tests/README.md). The exact receipt-provenance
+limits, selector asymmetry, validation ceiling, and uncontrolled malformed-
+receipt exception above remain retained defects rather than inferred
+guarantees.

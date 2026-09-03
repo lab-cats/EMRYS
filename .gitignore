@@ -5,11 +5,8 @@
 data/raw/
 data/full/
 refs/*
-!refs/README.md
 results/*
-!results/README.md
 logs/*
-!logs/README.md
 *.out
 *.err
 *.bam

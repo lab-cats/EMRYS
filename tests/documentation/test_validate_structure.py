@@ -17,25 +17,23 @@ VALIDATOR = REPO_ROOT / "scripts" / "documentation" / "validate_structure.py"
 CANONICAL_H1S = {
     "AGENTS.md": "# EMRYS safety guard",
     "README.md": "# EMRYS: Epic Molecular Read Yield System",
+    "quickstart.md": "# EMRYS quickstart: synthetic Project to Results",
+    "configs/README.md": "# Configuration and input guide",
+    "docs/README.md": "# Documentation",
     "docs/architecture/README.md": "# Architecture index",
     "docs/architecture/ARCHITECTURE.md": "# Current architecture",
     "docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md": "# Current functional-owner inventory",
     "docs/design/DECISIONS.md": "# Durable decisions",
     "docs/design/LOGGING_CONTRACT.md": "# Application logging contract",
-    "docs/design/ORCHESTRATION_CONTRACT.md": "# Local-pilot orchestration contract",
     "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
+    "docs/history/validation-evidence.md": "# Dated validation evidence",
     "docs/operations/RUNBOOK.md": "# Runbook",
     "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
     "docs/operations/WORKFLOW.md": "# Workflow kernel",
-    "docs/sitemap/README.md": "# Documentation sitemap",
     "docs/tasks/README.md": "# Task planning",
-    "docs/tasks/backlog_matrix.md": "# EMRYS Findings Matrix and Working Backlog",
+    "docs/tasks/backlog_matrix.md": "# EMRYS backlog matrix",
     "src/emrys/contracts/SOURCE_TOPOLOGY.md": "# Source ownership and dependency direction",
     "src/emrys/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
-}
-LEGACY_H1S = {
-    "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
-    "docs/operations/HANDOFF.md": "# Project handoff",
 }
 SEMANTIC_OWNERS = (
     ("stage", "construct_STAR_index"),
@@ -84,14 +82,6 @@ SOURCE_OWNER_DIRECTORIES = {
     ): "cohort_candidate_preprocessing",
     ("stage", "split_N_cigar_reads_with_GATK"): "split_n_cigar",
 }
-CROSS_CUTTING_DOCS = (
-    "src/emrys/contracts/artifacts/README.md",
-    "src/emrys/evidence/reference_provenance/README.md",
-    "src/emrys/evidence/runtime_availability/README.md",
-    "src/emrys/evidence/storage_inventory/README.md",
-    "src/emrys/ingestion/sample_manifest_admission/README.md",
-    "src/emrys/reporting/README.md",
-)
 RETIRED_DOCUMENTS = (
     "docs/architecture/FUTURE_ARCHITECTURE.md",
     "docs/architecture/diagrams/future_modular_pipeline.mmd",
@@ -99,9 +89,15 @@ RETIRED_DOCUMENTS = (
     "docs/design/PIPELINE_PLAN.md",
     "docs/design/QUESTIONS.md",
     "docs/design/REFACTOR_AUDIT.md",
+    "docs/design/ORCHESTRATION_CONTRACT.md",
+    "docs/design/ORCHESTRATION_READINESS.md",
     "docs/operations/CONCURRENT_WORK.md",
+    "docs/operations/HANDOFF.md",
     "docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md",
     "docs/operations/TASK_DELIVERY.md",
+    "docs/sitemap/README.md",
+    "docs/tasks/architecture_backlog_matrix.md",
+    "docs/tasks/architecture_campaign.md",
     "docs/tasks/BACKLOG.md",
     "docs/tasks/cards/README.md",
     "src/emrys/contracts/MIGRATION_MECHANICS.md",
@@ -143,9 +139,6 @@ def write_fixture(root: Path) -> Path:
         "docs/fixture.mmd": "flowchart LR\n    A --> B\n",
     }
     files.update({path: f"{h1}\n" for path, h1 in CANONICAL_H1S.items()})
-    files.update(
-        {path: f"{h1}\n\n> **Legacy fixture.**\n" for path, h1 in LEGACY_H1S.items()}
-    )
     identity_rows = [
         f"| {kind} | Fixture | `{slug}` | `emrys.{kind}.{slug}.v1` | `00` |"
         for kind, slug in SEMANTIC_OWNERS
@@ -153,7 +146,6 @@ def write_fixture(root: Path) -> Path:
     files["src/emrys/contracts/STAGE_MAP.md"] = (
         "# Semantic workflow identity and DAG\n\n" + "\n".join(identity_rows) + "\n"
     )
-    files.update({path: "# Owner\n" for path in CROSS_CUTTING_DOCS})
     domain_by_kind = {"stage": "stages", "analysis": "analyses", "evidence": "evidence"}
     for kind, slug in SEMANTIC_OWNERS:
         domain = domain_by_kind[kind]
@@ -217,37 +209,6 @@ def test_rejects_missing_or_mislabeled_canonical_documents(tmp_path: Path) -> No
     assert "canonical document H1 mismatch: docs/operations/RUNBOOK.md" in result.stderr
 
 
-@pytest.mark.parametrize("relative", tuple(LEGACY_H1S))
-def test_rejects_unmarked_or_mislabeled_legacy_documents(
-    tmp_path: Path,
-    relative: str,
-) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / relative).write_text(
-        "# Wrong legacy H1\n\nOrdinary prose before the warning.\n\n"
-        "> **Legacy fixture.**\n",
-        encoding="utf-8",
-    )
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert f"legacy document lacks visible warning: {relative}" in result.stderr
-    assert f"legacy document H1 mismatch: {relative}" in result.stderr
-
-
-@pytest.mark.parametrize("relative", tuple(LEGACY_H1S))
-def test_rejects_early_legacy_source_deletion(
-    tmp_path: Path,
-    relative: str,
-) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / relative).unlink()
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert f"missing legacy transition document: {relative}" in result.stderr
-
-
 @pytest.mark.parametrize("roster_defect", ("short", "duplicate"))
 def test_rejects_invalid_stage_map_roster(
     tmp_path: Path,
@@ -266,19 +227,6 @@ def test_rejects_invalid_stage_map_roster(
 
     assert result.returncode == 1
     assert "STAGE_MAP identity roster must contain 14 unique owners" in result.stderr
-
-
-@pytest.mark.parametrize("relative", CROSS_CUTTING_DOCS)
-def test_rejects_missing_cross_cutting_owner_document(
-    tmp_path: Path,
-    relative: str,
-) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / relative).unlink()
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert f"missing cross-cutting owner documentation: {relative}" in result.stderr
 
 
 @pytest.mark.parametrize("missing_kind", ("README.md", "CONTRACT.md", "tests"))
@@ -383,16 +331,35 @@ def test_fails_closed_when_git_inventory_fails(tmp_path: Path) -> None:
     assert result.stderr == "ERROR: could not inventory *.md: inventory exploded\n"
 
 
-def test_ignores_general_markdown_links_but_rejects_bad_mermaid(tmp_path: Path) -> None:
+def test_rejects_bad_local_links_and_mermaid_but_ignores_external_links(
+    tmp_path: Path,
+) -> None:
     repository = write_fixture(tmp_path)
     readme = repository / "README.md"
+    (repository / "guide(1).md").write_text("# Guide\n", encoding="utf-8")
     readme.write_text(
         readme.read_text(encoding="utf-8")
-        + "\n[Missing](missing.md)\n[External](https://example.test)\n",
+        + "\n[Runbook](docs/operations/RUNBOOK.md#runbook)\n"
+        + '[Guide](guide(1).md "Guide")\n'
+        + '[Missing](missing(1).md "Missing")\n'
+        + "[Bad anchor](docs/operations/RUNBOOK.md#missing)\n"
+        + "[External](https://example.test)\n",
         encoding="utf-8",
     )
-    assert validate(repository, cwd=tmp_path).returncode == 0
+    result = validate(repository, cwd=tmp_path)
+    assert "guide(1)" not in result.stderr
+    assert "missing local link target: README.md: missing(1).md" in result.stderr
+    assert (
+        "missing local link anchor: README.md: "
+        "docs/operations/RUNBOOK.md#missing"
+    ) in result.stderr
 
+    readme.write_text(
+        readme.read_text(encoding="utf-8")
+        .replace('[Missing](missing(1).md "Missing")\n', "")
+        .replace("[Bad anchor](docs/operations/RUNBOOK.md#missing)\n", ""),
+        encoding="utf-8",
+    )
     (repository / "docs/fixture.mmd").write_text(
         "sequenceDiagram\n```\n", encoding="utf-8"
     )

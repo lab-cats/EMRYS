@@ -21,6 +21,7 @@ from emrys.libraries.source_authority import (
     SourceCheckout,
 )
 from emrys.reporting import AnalysisReportArtifactV1
+from emrys.reporting import COMPUTATIONAL_BOUNDARY_BANNER
 from emrys.reporting import report as REPORT
 from emrys.reporting.paired_cmh_candidate_ranking_report import (
     computational as report_computational,
@@ -498,6 +499,37 @@ def test_success_publishes_two_html_views_summary_and_v4_receipt_last(
     assert document["validation_claimed"] is False
 
 
+@pytest.mark.parametrize(
+    "active_markup",
+    (' onclick="alert(1)"', '><a href="javascript:alert(1)">bad</a><div'),
+)
+def test_report_validation_rejects_provider_active_markup(
+    computational_summary: Path,
+    tmp_path: Path,
+    active_markup: str,
+) -> None:
+    context = REPORT.prepare_report(
+        arguments(computational_summary, tmp_path / "reports")
+    )
+    path = tmp_path / "active.html"
+    path.write_bytes(
+        context.scientific_html_bytes.replace(
+            b"<main ", f"<main{active_markup} ".encode(), 1
+        )
+    )
+
+    with pytest.raises(ReportRenderError, match="active resources"):
+        validation.validate_rendered_html(
+            path,
+            expected_banner=COMPUTATIONAL_BOUNDARY_BANNER,
+            expected_identity={
+                "data-report-view": "scientific",
+                "data-run-id": context.summary["run_id"],
+                "data-selected-candidate-count": "1",
+            },
+        )
+
+
 def test_report_rejects_a_run_summary_without_the_computational_boundary(
     computational_summary: Path,
     tmp_path: Path,
@@ -784,12 +816,12 @@ def test_two_html_views_separate_science_from_operational_evidence(
         (
             "Evidence and provenance",
             "Why should the reader trust this result?",
-            f"{run_id}.evidence_report.html#evidence-category",
+            f"{run_id}.evidence_report.html#analysis-sources-section",
         ),
         (
             "Operations",
             "How did execution proceed?",
-            f"{run_id}.evidence_report.html#operations-category",
+            f"{run_id}.evidence_report.html#attempt-lineage-section",
         ),
     )
     for content in (scientific, evidence):

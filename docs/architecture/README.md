@@ -1,24 +1,17 @@
 # Architecture index
 
-This is the authoritative organizer for EMRYS system documentation. It owns
-only the boundary between views; implementation and scientific detail remain
-with the relevant child and functional owner.
+This directory explains the implemented system. It does not override source,
+schemas, owner contracts, or validation evidence.
 
 | Question | Authority |
 | --- | --- |
-| What system is implemented now? | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
-| How do current owners map to target responsibilities? | [Current-to-target responsibility crosswalk](ARCHITECTURE.md#current-to-target-responsibility-crosswalk) |
-| How does a scientist understand the workflow? | [Scientist-facing workflow](ARCHITECTURE.md#scientist-facing-workflow) and [`current_user_pipeline.mmd`](diagrams/current_user_pipeline.mmd) |
-| Which public programs, jobs, validators, and tests exist? | [`FUNCTIONAL_OWNER_INVENTORY.md`](FUNCTIONAL_OWNER_INVENTORY.md) |
-| What are the semantic identities and artifact edges? | [`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md) |
-| Which source dependencies and shared seams are allowed? | [`SOURCE_TOPOLOGY.md`](../../src/emrys/contracts/SOURCE_TOPOLOGY.md) |
-| How is the implemented source-checkout local pilot designed? | [`ORCHESTRATION_CONTRACT.md`](../design/ORCHESTRATION_CONTRACT.md), workflow profile, stage map, owner contracts/tests, and [`local_pilot_orchestration.mmd`](diagrams/local_pilot_orchestration.mmd) |
-| Which invariants and migration guardrails constrain architecture changes? | [Ratified architectural invariant constitution](../design/decisions/platform-direction.md#ratified-architectural-invariant-constitution) |
-| What target responsibilities, dependency graphs, and forbidden authority transfers bind architecture work? | [Ratified responsibility and dependency model](../design/decisions/platform-direction.md#ratified-responsibility-and-dependency-model) |
-| What accepted work remains? | [`backlog_matrix.md`](../tasks/backlog_matrix.md) |
-| Where are unsliced architecture alternatives preserved? | Temporary [`architecture_campaign.md`](../tasks/architecture_campaign.md) |
-| What are the exact local interfaces and defects? | The applicable owner `README.md` and `CONTRACT.md` |
+| What is the current Project-to-Results system? | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
+| What are the scientific identities and dependency edges? | [`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md) |
+| Which package owns each responsibility? | [`FUNCTIONAL_OWNER_INVENTORY.md`](FUNCTIONAL_OWNER_INVENTORY.md) |
+| Which dependencies and shared seams are allowed? | [`SOURCE_TOPOLOGY.md`](../../src/emrys/contracts/SOURCE_TOPOLOGY.md) |
+| What is the exact Run lifecycle? | [Run-coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md) |
+| Which cross-cutting decisions constrain changes? | [Decision index](../design/DECISIONS.md) |
+| What accepted architecture work remains? | [Findings matrix](../tasks/backlog_matrix.md) |
 
-The detailed current system, user pipeline, and reliability projections remain
-in [`diagrams/`](diagrams/). Diagrams do not override contracts, prove
-implementation, or authorize future work.
+[`diagrams/`](diagrams/) contains supporting views. Diagrams are explanatory;
+they do not prove implementation or authorize future work.

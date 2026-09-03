@@ -217,6 +217,35 @@ def test_read_rejects_path_replacement_after_open(
         reader(source, "Replaced fixture")
 
 
+@READERS
+def test_read_rejects_path_metadata_change_after_final_descriptor_snapshot(
+    reader: Reader,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "input.txt"
+    source.write_text("admitted")
+    real_stat = INPUTS.os.stat
+    path_checks = 0
+
+    def stat_then_change(
+        path: str | bytes | os.PathLike[str],
+        *args: object,
+        **kwargs: object,
+    ) -> os.stat_result:
+        nonlocal path_checks
+        if Path(path) == source and kwargs.get("follow_symlinks") is False:
+            path_checks += 1
+            if path_checks == 2:
+                source.chmod(0o600)
+        return real_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(INPUTS.os, "stat", stat_then_change)
+
+    with pytest.raises(REPORT.ValidationError, match="pathname changed while read"):
+        reader(source, "Metadata-mutated fixture")
+
+
 def test_read_prefix_handles_short_descriptor_reads(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

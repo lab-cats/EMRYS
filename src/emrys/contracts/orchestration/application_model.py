@@ -614,6 +614,7 @@ def processing_compatibility_sha256(
     toolchain: Iterable[Mapping[str, Any]],
     backend: str,
     engine: str,
+    backend_semantics_sha256: str,
     star_index: Mapping[str, Any],
     computational_resources: Mapping[str, Any],
 ) -> str:
@@ -693,6 +694,7 @@ def processing_compatibility_sha256(
             "backend": {
                 "backend": backend,
                 "engine": engine,
+                "semantics_sha256": backend_semantics_sha256,
             },
             "star_index": _closed_copy(
                 star_index,

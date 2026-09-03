@@ -1,11 +1,8 @@
 # `mark_BAM_duplicates_with_Picard` stage contract
 
-This is the observed contract of historical Step `04`, now implemented in this
-native owner directory. The
-exact public identity and historical alias are owned by the
-[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is the capability-oriented physical owner for that identity and owns the
-producer and validator.
+This directory owns historical Step `04`; the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
+identity and alias.
 
 ## Responsibility and execution dependencies
 
@@ -91,11 +88,9 @@ diagnostics are nonempty.
 
 Content mismatches publish `status=fail` rows; unsafe inputs, evidence-building
 tool failures, and publication-contract failures exit `2`. BAM tool/header
-helpers are privately imported from neutral
-[`alignments/bam.py`](../../libraries/alignments/bam.py); neither helper has a
-public package or CLI identity.
+operations use the shared BAM helper.
 
-## Consumers and protected evidence
+## Consumers, protection, and evidence ceiling
 
 - The final [`split_N_cigar_reads_with_GATK`](../split_n_cigar/README.md)
   owner consumes the marked BAM/BAI.
@@ -103,25 +98,10 @@ public package or CLI identity.
   `step04_markdup_bai_v1`, `step04_markdup_metrics_v1`, and
   `step04_validation_report_v1`; summary/report code consumes those artifacts
   without rerunning Picard.
-- [`test_step_04_mark_duplicates.sh`](../../../../tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh)
-  protects CLI, side-effect-free dry-run, exact Picard/samtools commands,
-  output presence, missing inputs, and temp-directory failure with mocks.
-- [`test_validate_step_04_mark_duplicates.py`](../../../../tests/stages/duplicate_marking/test_validate_step_04_mark_duplicates.py),
-  roster, publication-fault, public-CLI, artifact, report, and coverage
-  tests protect the recorded validation and projection boundaries.
 
-This is local fixture/mock characterization, not new runtime, cluster,
-scientific-review, or biological evidence.
+Repository tests protect this contract under the shared
+[evidence ceiling](../../../../tests/README.md).
 
-## Ownership gaps and deferred decisions
-
-- Producer validation, independent validation, and artifact interpretation are
-  not one identical contract.
-- Legacy direct execution lacks transactional ownership; the no-clobber route
-  owns a staged three-file publication boundary.
-- Sample/library/platform metadata is hardcoded or scope-derived rather than
-  manifest-bound.
-- The neutral BAM and report helpers remain private shared owners rather
-  than installed or public package APIs.
-- A native receipt, manifest-level sample binding, and wider verified-task
-  tool/output identity remain deferred.
+The unsafe legacy direct route remains exactly as described above. Run
+materialization supplies the sample argument, but library and platform remain
+scope-derived or hardcoded rather than separately admitted manifest metadata.

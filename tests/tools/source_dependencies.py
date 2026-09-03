@@ -56,19 +56,19 @@ KNOWN_RULE_IDS = frozenset(
         RULE_SOURCE_CLASSIFICATION,
     }
 )
-_REPORTING_OPERATION = "emrys.orchestration.local_pilot.reporting_operation"
+_REPORTING_OPERATION = "emrys.orchestration.run_coordinator.reporting_operation"
 ORCHESTRATION_REPORTING_SEAMS = frozenset(
     {
         (
-            "emrys.orchestration.local_pilot.doctor",
+            "emrys.orchestration.run_coordinator.doctor",
             "emrys.reporting",
         ),
         (
-            "emrys.orchestration.local_pilot.lifecycle",
+            "emrys.orchestration.run_coordinator.lifecycle",
             "emrys.reporting.transaction_validation",
         ),
         (
-            "emrys.orchestration.local_pilot.reporting_boundary",
+            "emrys.orchestration.run_coordinator.reporting_boundary",
             "emrys.reporting.transaction_validation",
         ),
         *(
@@ -105,11 +105,11 @@ COMPOSITION_SEAMS: tuple[tuple[str, str], ...] = (
     ("CLI-SEAM-009", "emrys.evidence.storage_inventory.qualification"),
     ("CLI-SEAM-010", "emrys.ingestion.sample_manifest_admission.validator"),
     ("CLI-SEAM-011", "emrys.libraries.source_authority"),
-    ("CLI-SEAM-012", "emrys.orchestration.local_pilot.all_pass"),
-    ("CLI-SEAM-013", "emrys.orchestration.local_pilot.doctor"),
-    ("CLI-SEAM-014", "emrys.orchestration.local_pilot.control"),
-    ("CLI-SEAM-015", "emrys.orchestration.local_pilot.onboarding"),
-    ("CLI-SEAM-016", "emrys.orchestration.local_pilot.synthetic_fixture"),
+    ("CLI-SEAM-012", "emrys.orchestration.run_coordinator.all_pass"),
+    ("CLI-SEAM-013", "emrys.orchestration.run_coordinator.doctor"),
+    ("CLI-SEAM-014", "emrys.orchestration.run_coordinator.control"),
+    ("CLI-SEAM-015", "emrys.orchestration.run_coordinator.onboarding"),
+    ("CLI-SEAM-016", "emrys.orchestration.run_coordinator.synthetic_fixture"),
     ("CLI-SEAM-018", "emrys.stages.canonical_bam.validator"),
     ("CLI-SEAM-019", "emrys.stages.cohort_candidate_preprocessing.validator"),
     ("CLI-SEAM-020", "emrys.stages.duplicate_marking.validator"),
@@ -123,8 +123,8 @@ COMPOSITION_SEAMS: tuple[tuple[str, str], ...] = (
     ("CLI-SEAM-028", "emrys.stages.star_index.validator"),
 )
 
-# (documented ID, exact source path, exact target, violated durable rule).
-# Successors and exit conditions remain authoritative in SOURCE_TOPOLOGY.md.
+# (stable audit ID, exact source path, exact target, violated durable rule).
+# Durable boundary justifications remain authoritative in SOURCE_TOPOLOGY.md.
 TRANSITIONS: tuple[tuple[str, str, str, str], ...] = (
     ("SRC-TRANS-001", "src/emrys/contracts/artifacts/_artifact_contracts/schema.py", "emrys.libraries.validation", RULE_CONTRACT_NEUTRAL),
     ("SRC-TRANS-002", "src/emrys/contracts/orchestration/api.py", "emrys.libraries.source_authority", RULE_CONTRACT_NEUTRAL),
@@ -132,12 +132,12 @@ TRANSITIONS: tuple[tuple[str, str, str, str], ...] = (
     ("SRC-TRANS-004", "src/emrys/contracts/scientific_evidence/step08.py", "emrys.libraries.validation.tsv", RULE_CONTRACT_NEUTRAL),
     ("SRC-TRANS-005", "src/emrys/contracts/scientific_evidence/step08.py", "emrys.libraries.alignments.orientation", RULE_CONTRACT_NEUTRAL),
     ("SRC-TRANS-006", "src/emrys/contracts/scientific_evidence/step09.py", "emrys.libraries.alignments.orientation", RULE_CONTRACT_NEUTRAL),
-    ("SRC-TRANS-007", "src/emrys/orchestration/local_pilot/doctor.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-008", "src/emrys/orchestration/local_pilot/doctor.py", "emrys.evidence.storage_inventory.qualification", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-009", "src/emrys/orchestration/local_pilot/lifecycle.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-010", "src/emrys/orchestration/local_pilot/lifecycle.py", "emrys.evidence.storage_inventory.qualification", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-011", "src/emrys/orchestration/local_pilot/onboarding.py", "emrys.stages.gtf_to_bed12.converter", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-012", "src/emrys/orchestration/local_pilot/onboarding.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-007", "src/emrys/orchestration/run_coordinator/doctor.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-008", "src/emrys/orchestration/run_coordinator/doctor.py", "emrys.evidence.storage_inventory.qualification", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-009", "src/emrys/orchestration/run_coordinator/lifecycle.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-010", "src/emrys/orchestration/run_coordinator/lifecycle.py", "emrys.evidence.storage_inventory.qualification", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-011", "src/emrys/orchestration/run_coordinator/onboarding.py", "emrys.stages.gtf_to_bed12.converter", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-012", "src/emrys/orchestration/run_coordinator/onboarding.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
 )
 
 

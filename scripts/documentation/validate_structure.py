@@ -7,10 +7,16 @@ import argparse
 import re
 import subprocess
 from pathlib import Path
+from urllib.parse import unquote
+
+from markdown_it import MarkdownIt
 
 CANONICAL_DOCUMENTS = {
     "AGENTS.md": "# EMRYS safety guard",
     "README.md": "# EMRYS: Epic Molecular Read Yield System",
+    "quickstart.md": "# EMRYS quickstart: synthetic Project to Results",
+    "configs/README.md": "# Configuration and input guide",
+    "docs/README.md": "# Documentation",
     "docs/architecture/README.md": "# Architecture index",
     "docs/architecture/ARCHITECTURE.md": "# Current architecture",
     "docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md": (
@@ -18,23 +24,17 @@ CANONICAL_DOCUMENTS = {
     ),
     "docs/design/DECISIONS.md": "# Durable decisions",
     "docs/design/LOGGING_CONTRACT.md": "# Application logging contract",
-    "docs/design/ORCHESTRATION_CONTRACT.md": "# Local-pilot orchestration contract",
     "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
+    "docs/history/validation-evidence.md": "# Dated validation evidence",
     "docs/operations/RUNBOOK.md": "# Runbook",
     "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
     "docs/operations/WORKFLOW.md": "# Workflow kernel",
-    "docs/sitemap/README.md": "# Documentation sitemap",
     "docs/tasks/README.md": "# Task planning",
-    "docs/tasks/backlog_matrix.md": "# EMRYS Findings Matrix and Working Backlog",
+    "docs/tasks/backlog_matrix.md": "# EMRYS backlog matrix",
     "src/emrys/contracts/SOURCE_TOPOLOGY.md": (
         "# Source ownership and dependency direction"
     ),
     "src/emrys/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
-}
-
-LEGACY_TRANSITION_DOCUMENTS = {
-    "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
-    "docs/operations/HANDOFF.md": "# Project handoff",
 }
 
 RETIRED_DOCUMENTS = (
@@ -44,9 +44,15 @@ RETIRED_DOCUMENTS = (
     "docs/design/PIPELINE_PLAN.md",
     "docs/design/QUESTIONS.md",
     "docs/design/REFACTOR_AUDIT.md",
+    "docs/design/ORCHESTRATION_CONTRACT.md",
+    "docs/design/ORCHESTRATION_READINESS.md",
     "docs/operations/CONCURRENT_WORK.md",
+    "docs/operations/HANDOFF.md",
     "docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md",
     "docs/operations/TASK_DELIVERY.md",
+    "docs/sitemap/README.md",
+    "docs/tasks/architecture_backlog_matrix.md",
+    "docs/tasks/architecture_campaign.md",
     "docs/tasks/BACKLOG.md",
     "docs/tasks/cards/README.md",
     "src/emrys/contracts/MIGRATION_MECHANICS.md",
@@ -59,14 +65,6 @@ RETIRED_TASK_DIRECTORIES = (
     "cards",
 )
 
-CROSS_CUTTING_OWNER_DOCS = (
-    "src/emrys/contracts/artifacts/README.md",
-    "src/emrys/evidence/reference_provenance/README.md",
-    "src/emrys/evidence/runtime_availability/README.md",
-    "src/emrys/evidence/storage_inventory/README.md",
-    "src/emrys/ingestion/sample_manifest_admission/README.md",
-    "src/emrys/reporting/README.md",
-)
 SOURCE_OWNER_DIRECTORY_NAMES = {
     (
         "analysis",
@@ -159,6 +157,67 @@ def first_heading(path: Path) -> str:
     return ""
 
 
+def markdown_anchors(path: Path) -> set[str]:
+    """Return GitHub-style heading anchors outside fenced code blocks."""
+    anchors: set[str] = set()
+    occurrences: dict[str, int] = {}
+    fenced = False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        match = None if fenced else re.match(r"^#{1,6}\s+(.+?)\s*#*$", line)
+        if match is None:
+            continue
+        plain = re.sub(r"<[^>]+>", "", match.group(1)).lower()
+        base = re.sub(r"[^\w\- ]", "", plain)
+        base = re.sub(r"\s+", "-", base.strip())
+        count = occurrences.get(base, 0)
+        occurrences[base] = count + 1
+        anchors.add(base if count == 0 else f"{base}-{count}")
+    return anchors
+
+
+def markdown_destinations(value: str) -> list[str]:
+    """Return CommonMark link and image destinations."""
+    destinations: list[str] = []
+    for token in MarkdownIt("commonmark").parse(value):
+        for child in token.children or ():
+            attribute = {"link_open": "href", "image": "src"}.get(child.type)
+            if attribute is not None and (target := child.attrGet(attribute)) is not None:
+                destinations.append(target)
+    return destinations
+
+
+def validate_local_links(
+    documents: list[Path], root: Path, problems: list[str]
+) -> None:
+    """Reject missing repository-local Markdown destinations and anchors."""
+    anchor_cache: dict[Path, set[str]] = {}
+    for document in documents:
+        relative = document.relative_to(root)
+        for raw_target in markdown_destinations(document.read_text(encoding="utf-8")):
+            target = raw_target.strip().strip("<>")
+            if target.startswith(("http://", "https://", "mailto:", "tel:", "data:")):
+                continue
+            path_text, _, fragment = target.partition("#")
+            path_text = unquote(path_text.split("?", 1)[0])
+            destination = document if not path_text else document.parent / path_text
+            try:
+                destination = destination.resolve()
+                destination.relative_to(root)
+            except (OSError, ValueError):
+                problems.append(f"local link leaves repository: {relative}: {target}")
+                continue
+            if not destination.exists():
+                problems.append(f"missing local link target: {relative}: {target}")
+                continue
+            if fragment and destination.is_file() and destination.suffix.lower() == ".md":
+                anchors = anchor_cache.setdefault(destination, markdown_anchors(destination))
+                if unquote(fragment).lower() not in anchors:
+                    problems.append(f"missing local link anchor: {relative}: {target}")
+
+
 def validate_canonical_ownership(root: Path, problems: list[str]) -> None:
     """Validate the small canonical kernel and mechanically derived owners."""
     for relative, expected_h1 in CANONICAL_DOCUMENTS.items():
@@ -171,10 +230,6 @@ def validate_canonical_ownership(root: Path, problems: list[str]) -> None:
     for relative in RETIRED_DOCUMENTS:
         if (root / relative).is_file():
             problems.append(f"retired documentation owner returned: {relative}")
-
-    for relative in CROSS_CUTTING_OWNER_DOCS:
-        if not (root / relative).is_file():
-            problems.append(f"missing cross-cutting owner documentation: {relative}")
 
     stage_map = root / "src" / "emrys" / "contracts" / "STAGE_MAP.md"
     if not stage_map.is_file():
@@ -201,28 +256,6 @@ def validate_canonical_ownership(root: Path, problems: list[str]) -> None:
                 )
         if not tests.is_dir():
             problems.append(f"missing mirrored test owner: {tests.relative_to(root)}")
-
-
-def validate_legacy_transitions(root: Path, problems: list[str]) -> None:
-    """Keep legacy migration inputs present and visibly marked until retirement."""
-    for relative, expected_h1 in LEGACY_TRANSITION_DOCUMENTS.items():
-        path = root / relative
-        if not path.is_file():
-            problems.append(f"missing legacy transition document: {relative}")
-            continue
-        if first_heading(path) != expected_h1:
-            problems.append(f"legacy document H1 mismatch: {relative}")
-        lines = path.read_text(encoding="utf-8").splitlines()
-        heading_index = next(
-            (index for index, line in enumerate(lines) if line.startswith("# ")),
-            -1,
-        )
-        opening = next(
-            (line for line in lines[heading_index + 1 :] if line.strip()),
-            "",
-        )
-        if not opening.startswith("> **Legacy "):
-            problems.append(f"legacy document lacks visible warning: {relative}")
 
 
 def validate_retired_task_directories(root: Path, problems: list[str]) -> None:
@@ -258,8 +291,8 @@ def validate(root: Path) -> tuple[int, int]:
     diagrams = git_paths(root, "*.mmd")
     problems: list[str] = []
     validate_canonical_ownership(root, problems)
-    validate_legacy_transitions(root, problems)
     validate_retired_task_directories(root, problems)
+    validate_local_links(documents, root, problems)
     diagram_count = validate_diagrams(diagrams, root, problems)
     if problems:
         raise DocumentationError("Documentation gate failures:\n" + "\n".join(problems))

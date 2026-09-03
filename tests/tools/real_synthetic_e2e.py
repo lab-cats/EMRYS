@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-SUMMARY_SCHEMA = "emrys.ci-real-synthetic-e2e-summary.v4"
+SUMMARY_SCHEMA = "emrys.ci-real-synthetic-e2e-summary.v5"
 PROFILE_DATASETS = {"130": "smoke-v1", "100000": "production-like-v1"}
 DISCOVERY_UTILITIES = ("basename", "dirname", "grep", "rm", "uname")
 TERMINAL_STATES = frozenset(
@@ -42,7 +42,7 @@ OUT = re.compile(r"^OUT=(/.+)$", re.MULTILINE)
 ERR = re.compile(r"^ERR=(/.+)$", re.MULTILINE)
 STATE = re.compile(r"(?:^| )JobState=([A-Z_]+)")
 EXIT = re.compile(r"(?:^| )ExitCode=([0-9]+:[0-9]+)")
-# The Step09 summary is excluded because it carries Project-local locator evidence.
+# The Step09 summary is compared separately after removing only local locators.
 SCIENTIFIC_RESULT_SUFFIXES = (
     ".cmh_all_sites.tsv",
     ".cmh_significant_sites.tsv",
@@ -51,6 +51,19 @@ SCIENTIFIC_RESULT_SUFFIXES = (
     ".motif_hits.tsv",
     ".sequence_logo.tsv",
     ".motif_statistics.tsv",
+)
+STEP09_LOCAL_PATH_FIELDS = frozenset(
+    {
+        "sample_manifest_path",
+        "partition_manifest_path",
+        "step08_sites_path",
+        "step08_inputs_path",
+    }
+)
+TASK_ENTRY_EVIDENCE_FIELDS = (
+    "preentry_task_attempt_records",
+    "task_start_records",
+    "verified_tasks",
 )
 APPLICATION_EVENTS = (
     "attempt_opened",
@@ -217,6 +230,12 @@ def require_operator_root(operator_root: Path, repo_root: Path) -> Paths:
         root / "runtime-adapters",
         root / "driver-transcripts",
     )
+
+
+def _selected_workspaces(paths: Paths, profile: str) -> dict[str, Path]:
+    if profile == "130":
+        return {"direct": paths.direct_workspace, "slurm": paths.slurm_workspace}
+    return {"slurm": paths.slurm_workspace}
 
 
 def resolve_runtime(prefix: Path, rscript: Path, renv: Path) -> Runtime:
@@ -388,7 +407,7 @@ def slurm_execution_profile_bytes(
     module_init: Path | None = None,
 ) -> bytes:
     from emrys.contracts.orchestration import api as contracts
-    from emrys.orchestration.local_pilot.execution_profile import SCHEMA_VERSION
+    from emrys.orchestration.run_coordinator.execution_profile import SCHEMA_VERSION
 
     try:
         document = {
@@ -646,7 +665,8 @@ def validate_step09_oracle(
         or len(set(all_ids)) != 3
         or significant[0]["candidate_id"] != candidate
         or candidate not in all_ids
-        or not significant[0]["call_status"].startswith("significant_")
+        or significant[0]["call_status"]
+        not in {"significant_up", "significant_down"}
     ):
         raise DriverError("assert-results", "independent Step09 3/1 oracle differs")
     return {
@@ -664,7 +684,7 @@ def assert_completed_run(
     *,
     observed: Any | None = None,
 ) -> dict[str, Any]:
-    from emrys.orchestration.local_pilot import inspection
+    from emrys.orchestration.run_coordinator import inspection
 
     observed = inspection.inspect_run(run_root) if observed is None else observed
     if (
@@ -715,14 +735,96 @@ def _scientific_result_hashes(run_root: Path) -> dict[str, dict[str, Any]]:
             "size_bytes": artifact["size_bytes"],
             "sha256": artifact["sha256"],
         }
+    summaries = tuple(results.rglob("*.cmh_summary.tsv"))
+    if len(summaries) != 1:
+        raise DriverError(
+            "assert-parity",
+            f"expected one Step09 summary; observed {len(summaries)}",
+        )
+    selected[summaries[0].relative_to(results).as_posix()] = {
+        "semantic_fields": _step09_summary_projection(summaries[0])
+    }
     return selected
+
+
+def _step09_summary_projection(path: Path) -> dict[str, str]:
+    from emrys.contracts.scientific_evidence.step09 import STEP09_SUMMARY_HEADER
+
+    with path.open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle, delimiter="\t", strict=True)
+        rows = list(reader)
+    if tuple(reader.fieldnames or ()) != STEP09_SUMMARY_HEADER or len(rows) != 1:
+        raise DriverError("assert-parity", f"Step09 summary shape differs: {path}")
+    return {
+        field: rows[0][field]
+        for field in STEP09_SUMMARY_HEADER
+        if field not in STEP09_LOCAL_PATH_FIELDS
+    }
+
+
+def _tree_artifacts(root: Path) -> dict[str, dict[str, Any]]:
+    if root.is_symlink() or not root.is_dir():
+        raise DriverError("assert-parity", f"retained evidence root differs: {root}")
+    return {
+        path.relative_to(root).as_posix(): _artifact(path)
+        for path in sorted(root.rglob("*"))
+        if path.is_file() or path.is_symlink()
+    }
+
+
+def _predecessor_evidence(
+    run_root: Path,
+    attempt_id: str,
+    job: Job | None,
+    application_log: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "attempt_root": str(run_root / "attempts" / attempt_id),
+        "attempt_artifacts": _tree_artifacts(run_root / "attempts" / attempt_id),
+        "application_log": application_log,
+        "scheduler_streams": {
+            name: _artifact(path)
+            for name, path in (
+                () if job is None else (("stdout", job.stdout), ("stderr", job.stderr))
+            )
+        },
+    }
+
+
+def _assert_predecessor_preserved(snapshot: dict[str, Any]) -> None:
+    attempt_root = Path(str(snapshot["attempt_root"]))
+    streams = snapshot["scheduler_streams"]
+    observed = {
+        "attempt_root": str(attempt_root),
+        "attempt_artifacts": _tree_artifacts(attempt_root),
+        "application_log": _artifact(Path(str(snapshot["application_log"]["path"]))),
+        "scheduler_streams": {
+            name: _artifact(Path(str(artifact["path"])))
+            for name, artifact in streams.items()
+        },
+    }
+    if observed != snapshot:
+        raise DriverError("assert-parity", "Resume changed predecessor evidence")
+
+
+def _assert_no_task_entry(
+    task_roster: list[dict[str, Any]],
+    receipt: dict[str, Any],
+) -> None:
+    if {item["state"] for item in task_roster} != {"pending"}:
+        raise DriverError("assert-parity", "Controlled pre-entry failure entered a task")
+    if any(receipt.get(field) for field in TASK_ENTRY_EVIDENCE_FIELDS):
+        raise DriverError(
+            "assert-parity",
+            "Controlled pre-entry failure retained task-entry evidence",
+        )
 
 
 def _resource_snapshot(
     run_root: Path,
     attempt: dict[str, Any],
 ) -> dict[str, Any]:
-    from emrys.orchestration.local_pilot.resource_policy import (
+    from emrys.orchestration.run_coordinator.resource_policy import (
         admit_resource_policy_record,
     )
 
@@ -877,7 +979,7 @@ def _attempt_snapshot(
     expected_exit_code: int,
     operation: str,
 ) -> dict[str, Any]:
-    from emrys.orchestration.local_pilot import inspection
+    from emrys.orchestration.run_coordinator import inspection
 
     if (
         receipt.get("status") != expected_status
@@ -933,7 +1035,7 @@ def _assert_scheduler_streams(workspace: Path, jobs: tuple[Job, ...]) -> None:
 
 
 def _admitted_failure(run_root: Path, *, job: Job | None) -> dict[str, Any]:
-    from emrys.orchestration.local_pilot import inspection
+    from emrys.orchestration.run_coordinator import inspection
 
     observed = inspection.inspect_run(run_root)
     if (
@@ -960,8 +1062,7 @@ def _admitted_failure(run_root: Path, *, job: Job | None) -> dict[str, Any]:
     if blockers or len(attempts) != 1 or set(receipts) != {attempt_id}:
         raise DriverError("assert-parity", "Failed Run Attempt chain differs")
     task_roster = _task_roster(observed)
-    if {item["state"] for item in task_roster} != {"pending"}:
-        raise DriverError("assert-parity", "Controlled pre-entry failure entered a task")
+    _assert_no_task_entry(task_roster, receipt)
     expected_reporting = {"artifact_index", "run_summary", "html_report"}
     if set(observed.reporting_completion_records) != expected_reporting or any(
         records["start"] is not None or records["verified"] is not None
@@ -981,6 +1082,12 @@ def _admitted_failure(run_root: Path, *, job: Job | None) -> dict[str, Any]:
     return {
         "authority": _authority_snapshot(authority),
         "attempt": snapshot,
+        "predecessor_evidence": _predecessor_evidence(
+            run_root,
+            attempt_id,
+            job,
+            snapshot["application_log"]["path"],
+        ),
     }
 
 
@@ -991,7 +1098,7 @@ def _admitted_completion(
     jobs: tuple[Job, ...],
     failure: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    from emrys.orchestration.local_pilot import inspection
+    from emrys.orchestration.run_coordinator import inspection
 
     observed = inspection.inspect_run(run_root)
     completion = assert_completed_run(run_root, fixture, observed=observed)
@@ -1029,19 +1136,12 @@ def _admitted_completion(
     authority_summary = _authority_snapshot(authority)
     if failure is not None:
         failed_id = str(failure["attempt"]["id"])
-        failed_receipt = _artifact(
-            run_root / "attempts" / failed_id / "attempt-receipt.json"
-        )
-        failed_log = _artifact(
-            Path(str(failure["attempt"]["application_log"]["path"]["path"]))
-        )
+        _assert_predecessor_preserved(failure["predecessor_evidence"])
         if (
             authority_summary != failure["authority"]
             or str(attempts[0]["workflow_attempt_id"]) != failed_id
             or attempts[1]["operation"] != "resume"
             or attempts[1]["supersedes_workflow_attempt_id"] != failed_id
-            or failed_receipt != failure["attempt"]["receipt"]
-            or failed_log != failure["attempt"]["application_log"]["path"]
         ):
             raise DriverError("assert-parity", "Resume changed predecessor evidence or Run authority")
     return {
@@ -1133,11 +1233,9 @@ def run_driver(
 
     profile = str(arguments.profile)
     dataset = PROFILE_DATASETS[profile]
-    recovery_journey = profile == "130"
-    workspaces = {
-        "direct": paths.direct_workspace,
-        "slurm": paths.slurm_workspace,
-    }
+    parity_journey = profile == "130"
+    recovery_journey = parity_journey
+    workspaces = _selected_workspaces(paths, profile)
     failure_profile = paths.scratch / "controlled-missing-snakemake-profile"
     failure_module_init = paths.scratch / "controlled-failure-module-init.sh"
     slurm_failure_marker = paths.scratch / "slurm-fail-once"
@@ -1247,24 +1345,28 @@ def run_driver(
             cwd=repo,
         )
 
-    direct = _emrys(
-        python,
-        "run",
-        "--project",
-        str(projects["direct"]),
-        "--log-level",
-        "verbose",
-    )
-    planned = transcripts.run("run-plan", direct, cwd=repo)
-    direct_run_root = parse_run_plan(
-        planned.stderr,
-        paths.direct_workspace,
-        no_write=True,
-    )
-    if planned.stdout or any(
-        any((paths.direct_workspace / name).iterdir()) for name in ("runs", "logs")
-    ):
-        raise DriverError("run-plan", "direct dry-run wrote state")
+    direct: list[str] | None = None
+    direct_run_root: Path | None = None
+    if parity_journey:
+        direct = _emrys(
+            python,
+            "run",
+            "--project",
+            str(projects["direct"]),
+            "--log-level",
+            "verbose",
+        )
+        planned = transcripts.run("run-plan", direct, cwd=repo)
+        direct_run_root = parse_run_plan(
+            planned.stderr,
+            paths.direct_workspace,
+            no_write=True,
+        )
+        if planned.stdout or any(
+            any((paths.direct_workspace / name).iterdir())
+            for name in ("runs", "logs")
+        ):
+            raise DriverError("run-plan", "direct dry-run wrote state")
     scheduled = _emrys(
         python,
         "run",
@@ -1290,25 +1392,30 @@ def run_driver(
     failure_environment = None
     if recovery_journey:
         failure_environment = {**os.environ, "SNAKEMAKE_PROFILE": str(failure_profile)}
-    direct_execution = transcripts.run(
-        "direct-execute",
-        [*direct, "--execute"],
-        cwd=repo,
-        environment=failure_environment,
-        expected_returncode=1 if recovery_journey else 0,
-    )
-    if (
-        parse_run_plan(
-            direct_execution.stderr,
-            paths.direct_workspace,
-            no_write=False,
-        )
-        != direct_run_root
-    ):
-        raise DriverError("direct-execute", "Direct execution selected a different Run")
     failure_signature = "but no profile.yaml (or config.yaml) found"
-    if recovery_journey and failure_signature not in direct_execution.stderr:
-        raise DriverError("direct-execute", "controlled engine failure was not observed")
+    if direct is not None and direct_run_root is not None:
+        direct_execution = transcripts.run(
+            "direct-execute",
+            [*direct, "--execute"],
+            cwd=repo,
+            environment=failure_environment,
+            expected_returncode=1 if recovery_journey else 0,
+        )
+        if (
+            parse_run_plan(
+                direct_execution.stderr,
+                paths.direct_workspace,
+                no_write=False,
+            )
+            != direct_run_root
+        ):
+            raise DriverError(
+                "direct-execute", "Direct execution selected a different Run"
+            )
+        if recovery_journey and failure_signature not in direct_execution.stderr:
+            raise DriverError(
+                "direct-execute", "controlled engine failure was not observed"
+            )
 
     submission = transcripts.run(
         "slurm-submit",
@@ -1334,12 +1441,16 @@ def run_driver(
         paths.slurm_workspace,
         no_write=False,
     )
-    if direct_run_root.name != slurm_run_root.name:
+    if direct_run_root is not None and direct_run_root.name != slurm_run_root.name:
         raise DriverError("plan-parity", "Direct and Slurm selected different Runs")
 
-    failures: dict[str, dict[str, Any] | None] = {"direct": None, "slurm": None}
+    failures: dict[str, dict[str, Any] | None] = {
+        label: None for label in workspaces
+    }
     slurm_jobs = (initial_job,)
     if recovery_journey:
+        if direct_run_root is None:
+            raise DriverError("internal", "recovery parity lacks a direct Run")
         for label, run_root, job in (
             ("direct", direct_run_root, None),
             ("slurm", slurm_run_root, initial_job),
@@ -1391,10 +1502,10 @@ def run_driver(
             raise DriverError("assert-parity", "Slurm resume reused the failed job")
         slurm_jobs = (initial_job, resumed_job)
 
-    for label, run_root in (
-        ("direct", direct_run_root),
-        ("slurm", slurm_run_root),
-    ):
+    run_roots = {"slurm": slurm_run_root}
+    if direct_run_root is not None:
+        run_roots = {"direct": direct_run_root, **run_roots}
+    for label, run_root in run_roots.items():
         inspected = transcripts.run(
             f"{label}-inspect",
             _emrys(
@@ -1423,17 +1534,22 @@ def run_driver(
         label: json.loads((workspace / "fixture.json").read_text())
         for label, workspace in workspaces.items()
     }
-    if fixtures["direct"] != fixtures["slurm"] or any(
+    fixture_values = tuple(fixtures.values())
+    if any(fixture != fixture_values[0] for fixture in fixture_values[1:]) or any(
         fixture.get("dataset_profile") != dataset
         or fixture.get("read_pairs_per_library") != int(profile)
-        for fixture in fixtures.values()
+        for fixture in fixture_values
     ):
         raise DriverError("assert-results", "synthetic fixture identity or scale differs")
-    direct_completion = _admitted_completion(
-        direct_run_root,
-        fixtures["direct"],
-        jobs=(),
-        failure=failures["direct"],
+    direct_completion = (
+        _admitted_completion(
+            direct_run_root,
+            fixtures["direct"],
+            jobs=(),
+            failure=failures["direct"],
+        )
+        if direct_run_root is not None
+        else None
     )
     slurm_completion = _admitted_completion(
         slurm_run_root,
@@ -1441,13 +1557,17 @@ def run_driver(
         jobs=slurm_jobs,
         failure=failures["slurm"],
     )
-    parity = _assert_direct_slurm_parity(direct_completion, slurm_completion)
+    parity = (
+        _assert_direct_slurm_parity(direct_completion, slurm_completion)
+        if direct_completion is not None
+        else None
+    )
     return {
         "schema_version": SUMMARY_SCHEMA,
         "status": "passed",
         "profile": profile,
         "dataset_profile": dataset,
-        "fixture_id": fixtures["direct"].get("fixture_id"),
+        "fixture_id": fixtures["slurm"].get("fixture_id"),
         "operator_root": str(paths.root),
         "runtime_profiles": {
             label: _artifact(workspace / "runtime/runtime.tsv")
@@ -1474,10 +1594,14 @@ def run_driver(
             }
             for label, qualified in qualifications.items()
         },
-        "direct": {
-            "dry_run": {"submitted": False, "wrote_state": False},
-            "completion": direct_completion,
-        },
+        "direct": (
+            {
+                "dry_run": {"submitted": False, "wrote_state": False},
+                "completion": direct_completion,
+            }
+            if direct_completion is not None
+            else {"selected": False}
+        ),
         "slurm": {
             "partition": arguments.slurm_partition,
             "dry_run": {"submitted": False},
@@ -1497,8 +1621,12 @@ def run_driver(
         "commands": transcripts.records,
         "retention": "complete operator root retained; no cleanup or repair performed",
         "evidence_boundary": (
-            "real-tool hosted direct and disposable single-node Slurm synthetic "
-            "evidence only; no production, scientific-review, or biological claim"
+            "real-tool hosted direct and disposable single-node Slurm parity "
+            if parity_journey
+            else "real-tool disposable single-node Slurm production-like exercise "
+        )
+        + (
+            "only; no production, scientific-review, or biological claim"
         ),
         "biological_interpretation_claimed": False,
     }

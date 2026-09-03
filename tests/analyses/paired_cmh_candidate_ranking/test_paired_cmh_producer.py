@@ -419,7 +419,7 @@ def test_path_basename_rscript_works_from_an_arbitrary_cwd(
     assert list(cwd.iterdir()) == []
 
 
-def test_local_pilot_r_command_uses_the_controlled_environment(
+def test_run_coordinator_r_command_uses_the_controlled_environment(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fixture = _fixture(tmp_path)
@@ -710,3 +710,27 @@ def test_failed_restore_retains_lock_and_backup_for_recovery(
     backups = list(fixture.paths["analysis"].glob("*.previous"))
     assert backups
     assert not any(".tmp." in path.name for path in fixture.paths["analysis"].iterdir())
+
+
+def test_committed_backup_cleanup_failure_retains_lock_and_reports_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fixture = _fixture(tmp_path)
+    monkeypatch.setenv("EMRYS_RUN_TOKEN", "owner09")
+    _inject_process(monkeypatch, fixture)
+    assert _execute(fixture) == 0
+    backup = fixture.paths["analysis"] / (
+        f".{fixture.paths['all'].name}.owner09.previous"
+    )
+    original_unlink = Path.unlink
+
+    def fail_backup_cleanup(path: Path, *args: Any, **kwargs: Any) -> None:
+        if Path(path) == backup:
+            raise OSError("injected backup cleanup failure")
+        original_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", fail_backup_cleanup)
+
+    assert _execute(fixture) == 1
+    assert backup.is_file()
+    assert fixture.paths["lock"].joinpath("owner").is_file()

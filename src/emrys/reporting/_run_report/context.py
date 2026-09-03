@@ -23,6 +23,7 @@ from emrys.reporting import (
     AnalysisReportContextV1,
     AnalysisReportInputV1,
     AnalysisScientificReportV1,
+    COMPUTATIONAL_BOUNDARY_BANNER,
     admit_analysis_reporter,
 )
 from emrys.libraries.installed_package_identity import (
@@ -287,9 +288,6 @@ def _render_scientific_report(
         not isinstance(rendered, AnalysisScientificReportV1)
         or not isinstance(rendered.html_bytes, bytes)
         or not rendered.html_bytes
-        or not isinstance(rendered.interpretation_boundary, str)
-        or rendered.interpretation_boundary.strip() != rendered.interpretation_boundary
-        or not rendered.interpretation_boundary
         or any(
             len(item) != 2 or any(not isinstance(value, str) for value in item)
             for item in rendered.renderer_details
@@ -511,7 +509,7 @@ def prepare_context(
         "renderer_package_sha256": _core_renderer_sha256(),
         "run_summary_path": str(run_summary_snapshot.path),
         "run_summary_sha256": run_summary_snapshot.sha256,
-        "state_banner": scientific_report.interpretation_boundary,
+        "state_banner": COMPUTATIONAL_BOUNDARY_BANNER,
         "source_checkout": str(source_checkout.root),
         "artifact_source_root": str(artifact_source_root.root),
         "template_path": f"emrys.reporting/{TEMPLATE_RESOURCE}",
@@ -536,7 +534,7 @@ def prepare_context(
         build_evidence_view(
             summary,
             metadata,
-            banner=scientific_report.interpretation_boundary,
+            banner=COMPUTATIONAL_BOUNDARY_BANNER,
             result_links=_result_links(report_artifacts, output_dir),
             inspect_command=_inspect_command(source_root, output_root),
             analysis_policy=analysis_policy,
@@ -586,7 +584,7 @@ def prepare_context(
         interpretation_boundary=(
             str(summary["interpretation_boundary"])
             if summary["schema_version"] == HISTORICAL_RUN_SUMMARY_SCHEMA_VERSION
-            else scientific_report.interpretation_boundary
+            else COMPUTATIONAL_BOUNDARY_BANNER
         ),
     )
     for recheck in context.input_rechecks:

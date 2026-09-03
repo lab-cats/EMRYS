@@ -25,7 +25,7 @@ from emrys.reporting._run_summary import publication as summary_publication
 from tests.contracts.orchestration.test_application_model_contracts import (
     successor_run_fixture,
 )
-from tests.orchestration.local_pilot.fixtures import workflow as workflow_fixture
+from tests.orchestration.run_coordinator.fixtures import workflow as workflow_fixture
 from tests.reporting.fixtures.artifact_adapters_v1 import (
     build_fixture as adapter_fixture,
 )
@@ -770,6 +770,68 @@ def test_fixed_dispatcher_accepts_successor_run_authority(
     assert observed["profile"] == profile
 
 
+@pytest.mark.parametrize(
+    ("fault", "message"),
+    (
+        ("native", "roster changed during semantic validation"),
+        ("residue", "artifact_index transaction retains owner control residue"),
+    ),
+)
+def test_fixed_dispatcher_rechecks_cached_predecessor(
+    tmp_path: Path,
+    fault: str,
+    message: str,
+) -> None:
+    _analysis, _plan, run, profile, attempt, _resources = successor_run_fixture()
+    run_root = (tmp_path / run.run_id).resolve()
+    output_dir = run_root / "products" / "artifact-summary" / run.run_id
+    artifact_receipt = output_dir / f"{run.run_id}.artifact_receipt.tsv"
+    native = run_root / "products" / "native" / "evidence.tsv"
+    for path, data in (
+        (artifact_receipt, b"artifact receipt\n"),
+        (native, b"admitted native evidence\n"),
+    ):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+    roster = transaction_validation._snapshot_bound_roster(
+        (artifact_receipt, native), (output_dir,)
+    )
+    predecessor = transaction_validation._validated_result(
+        transaction_validation._snapshot_receipt(artifact_receipt),
+        roster,
+        _fixture_receipt_ops(),
+        lambda: transaction_validation._reject_reporting_control_residue(
+            kind="artifact_index",
+            output_dir=output_dir,
+            run_id=run.run_id,
+        ),
+        reusable_expandable_directories=(output_dir,),
+    )
+    summary_receipt = output_dir / f"{run.run_id}.run_summary_receipt.tsv"
+    summary_receipt.write_bytes(b"run summary receipt\n")
+    assert predecessor._recheck is not None
+    predecessor._recheck()
+    if fault == "native":
+        native.write_bytes(b"mutated native evidence\n")
+    else:
+        (output_dir / f".{run.run_id}.artifact-index.lock").write_bytes(b"locked\n")
+
+    with pytest.raises(
+        transaction_validation.ReportingTransactionError,
+        match=message,
+    ):
+        transaction_validation.validate_receipt(
+            "run_summary",
+            summary_receipt,
+            run_root,
+            run.record,
+            profile,
+            attempt,
+            {},
+            validated_predecessor=predecessor,
+        )
+
+
 def test_fixed_dispatcher_admits_historical_report_only_at_legacy_root(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -1154,11 +1216,18 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
         target.write_bytes(original)
 
 
-def test_artifact_validator_rejects_record_roster_membership_fault(
+@pytest.mark.parametrize("location", ("records", "output"))
+def test_artifact_validator_rejects_roster_membership_fault(
     complete_reporting: tuple[Any, Path],
+    location: str,
 ) -> None:
     built, _report_root = complete_reporting
-    unexpected = built.adapter_fixture.records_dir / "unexpected.json"
+    parent = (
+        built.adapter_fixture.records_dir
+        if location == "records"
+        else built.artifact_receipt.parent
+    )
+    unexpected = parent / "unexpected.json"
 
     def add_record(paths: tuple[Path, ...]) -> None:
         assert built.adapter_fixture.artifacts_path in paths

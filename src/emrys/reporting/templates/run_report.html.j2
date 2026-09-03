@@ -196,8 +196,8 @@
 {% endif %}>
   <nav class="fact-grid" aria-label="Report purposes">
     <a class="fact-item" href="{{ view.run_id }}.scientific_report.html"><strong>Scientific report</strong><span class="candidate-status">What did the analysis find?</span></a>
-    <a class="fact-item" href="{{ view.run_id }}.evidence_report.html#evidence-category"><strong>Evidence and provenance</strong><span class="candidate-status">Why should the reader trust this result?</span></a>
-    <a class="fact-item" href="{{ view.run_id }}.evidence_report.html#operations-category"><strong>Operations</strong><span class="candidate-status">How did execution proceed?</span></a>
+    <a class="fact-item" href="{{ view.run_id }}.evidence_report.html#analysis-sources-section"><strong>Evidence and provenance</strong><span class="candidate-status">Why should the reader trust this result?</span></a>
+    <a class="fact-item" href="{{ view.run_id }}.evidence_report.html#attempt-lineage-section"><strong>Operations</strong><span class="candidate-status">How did execution proceed?</span></a>
   </nav>
 {% if view.result_links %}
   <nav class="fact-grid" aria-label="Result files">

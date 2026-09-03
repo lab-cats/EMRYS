@@ -147,6 +147,7 @@ def project_rows(
     profile: Mapping[str, Any],
     analysis: AnalysisRevision | None = None,
     processing_source_root: Path | None = None,
+    processing_artifact_paths: Mapping[tuple[str, str, str], Path] | None = None,
 ) -> tuple[dict[str, str], ...]:
     """Expand the fixed artifact templates into their admitted inventory rows."""
 
@@ -186,8 +187,22 @@ def project_rows(
                     context,
                     "source_path_template",
                 )
+                source_artifact = (
+                    None
+                    if processing_artifact_paths is None
+                    else processing_artifact_paths.get(
+                        (
+                            str(template["step_id"]),
+                            context["scope_id"],
+                            str(template["adapter"]),
+                        )
+                    )
+                )
+                if source_artifact is not None:
+                    source_path = str(source_artifact)
                 if (
-                    processing_source_root is not None
+                    source_artifact is None
+                    and processing_source_root is not None
                     and str(template["step_id"]) in PROCESSING_STEP_IDS
                     and not Path(source_path).is_absolute()
                 ):
