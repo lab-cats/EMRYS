@@ -1405,8 +1405,11 @@ def _attempt_elapsed_line(
 
 
 def _print_safe(value: object, *, file: TextIO | None = None) -> None:
-    for line in str(value).splitlines() or ("",):
-        print(ascii(line)[1:-1], file=file)
+    rendered = "".join(
+        character if character.isprintable() else ascii(character)[1:-1]
+        for character in str(value)
+    )
+    print(rendered, file=file)
 
 
 def _run_or_resume_from_args(
