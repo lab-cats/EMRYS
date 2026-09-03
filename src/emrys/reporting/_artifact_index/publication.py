@@ -167,6 +167,55 @@ class ArtifactPublicationOps:
 DEFAULT_ARTIFACT_PUBLICATION_OPS = ArtifactPublicationOps()
 
 
+def _admit_output_directory(context: BuildContext) -> None:
+    """Create and re-admit output ancestry beneath the artifact source root."""
+
+    root = context.artifact_source_root.root
+    try:
+        relative = context.output_dir.relative_to(root)
+    except ValueError as exc:
+        raise ArtifactIndexError(
+            "Artifact-index output directory must be beneath its admitted source root"
+        ) from exc
+    if not relative.parts:
+        raise ArtifactIndexError("Artifact-index output directory cannot be its root")
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    flags |= getattr(os, "O_CLOEXEC", 0)
+    descriptor = -1
+    cursor = root
+    try:
+        descriptor = os.open(root, flags)
+        for part in relative.parts:
+            cursor /= part
+            try:
+                child = os.open(part, flags, dir_fd=descriptor)
+            except FileNotFoundError:
+                try:
+                    os.mkdir(part, 0o700, dir_fd=descriptor)
+                except FileExistsError:
+                    pass
+                child = os.open(part, flags, dir_fd=descriptor)
+            os.close(descriptor)
+            descriptor = child
+        opened = os.fstat(descriptor)
+        current = context.output_dir.lstat()
+        if context.output_dir.resolve(strict=True) != context.output_dir:
+            raise ArtifactIndexError(
+                "Artifact-index output boundary changed during admission"
+            )
+        if (current.st_dev, current.st_ino) != (opened.st_dev, opened.st_ino):
+            raise ArtifactIndexError(
+                "Artifact-index output boundary changed during admission"
+            )
+    except OSError as exc:
+        raise ArtifactIndexError(
+            f"Artifact-index output boundary is unsafe: {cursor}: {exc}"
+        ) from exc
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+
+
 def _validate_existing_transaction(
     *,
     ops: ArtifactPublicationOps,
@@ -202,20 +251,7 @@ def publish_context(
 ) -> None:
     """Publish with explicit immutable fault operations."""
 
-    if context.output_dir.is_symlink():
-        raise ArtifactIndexError(
-            "Artifact-index output directory became a symlink after initial "
-            f"validation: {context.output_dir}"
-        )
-    if context.output_dir.exists() and not context.output_dir.is_dir():
-        raise ArtifactIndexError(
-            f"Artifact-index output path is not a directory: {context.output_dir}"
-        )
-    context.output_dir.mkdir(parents=True, exist_ok=True)
-    if context.output_dir.is_symlink() or not context.output_dir.is_dir():
-        raise ArtifactIndexError(
-            f"Artifact-index output directory is unsafe: {context.output_dir}"
-        )
+    _admit_output_directory(context)
     run_token = f"{os.getpid()}-{uuid.uuid4().hex}"
     temp_records = context.output_dir / f".artifact-index.{run_token}.tmp.records"
     temp_index = context.output_dir / f".artifact-index.{run_token}.tmp.tsv"
