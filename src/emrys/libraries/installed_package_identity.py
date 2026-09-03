@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import importlib.metadata
-import importlib.resources
+import importlib.util
 import inspect
 import os
 import re
 import stat
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -74,6 +75,9 @@ class InstalledProviderV1:
                 raise InstalledPackageIdentityError(
                     f"{label} callable is outside its admitted package"
                 )
+
+
+_ADMITTED_PROVIDERS: dict[tuple[object, ...], InstalledProviderV1] = {}
 
 
 def _metadata_identity(value: os.stat_result) -> tuple[int, ...]:
@@ -311,18 +315,6 @@ def admit_installed_provider(
     matched = _PROVIDER_RE.fullmatch(entry_point.value)
     if matched is None:
         raise InstalledPackageIdentityError(f"{label} provider must be package-level")
-    try:
-        provider = entry_point.load()
-        if not callable(provider):
-            raise TypeError("entry point is not callable")
-        root = Path(
-            os.path.abspath(os.fspath(importlib.resources.files(matched["package"])))
-        )
-        package = installed_python_package_identity(root)
-    except Exception as exc:
-        raise InstalledPackageIdentityError(
-            f"{label} provider could not be loaded: {name!r}"
-        ) from exc
     distribution = getattr(entry_point, "dist", None)
     distribution_name = getattr(distribution, "name", None) or (
         distribution.metadata.get("Name") if distribution is not None else None
@@ -332,6 +324,54 @@ def admit_installed_provider(
         raise InstalledPackageIdentityError(
             f"{label} entry point has no distribution provenance"
         )
+    try:
+        package_name = matched["package"]
+        spec = importlib.util.find_spec(package_name)
+        locations = None if spec is None else spec.submodule_search_locations
+        if locations is None or len(locations) != 1:
+            raise TypeError("provider package location is ambiguous")
+        root = Path(os.path.abspath(os.fspath(next(iter(locations)))))
+        package = installed_python_package_identity(root)
+        cache_key = (
+            entry_point.value,
+            str(distribution_name),
+            str(distribution_version),
+            root,
+            package.sha256,
+        )
+        if cached := _ADMITTED_PROVIDERS.get(cache_key):
+            return cached
+        for module_name, module in tuple(sys.modules.items()):
+            try:
+                source = Path(os.path.abspath(os.fspath(module.__file__)))
+                owned_path = source.is_relative_to(root)
+            except (AttributeError, TypeError):
+                owned_path = False
+            if (
+                module_name == package_name
+                or module_name.startswith(f"{package_name}.")
+                or owned_path
+            ):
+                sys.modules.pop(module_name, None)
+        importlib.invalidate_caches()
+        old_cache_settings = sys.pycache_prefix, sys.dont_write_bytecode
+        try:
+            sys.pycache_prefix, sys.dont_write_bytecode = os.devnull, True
+            provider = entry_point.load()
+        finally:
+            sys.pycache_prefix, sys.dont_write_bytecode = old_cache_settings
+        if not callable(provider):
+            raise TypeError("entry point is not callable")
+        reloaded_package = installed_python_package_identity(root)
+        if reloaded_package.sha256 != package.sha256:
+            raise InstalledPackageIdentityError(
+                f"{label} provider changed while it was loaded: {name!r}"
+            )
+        package = reloaded_package
+    except Exception as exc:
+        raise InstalledPackageIdentityError(
+            f"{label} provider could not be loaded: {name!r}"
+        ) from exc
     admitted = InstalledProviderV1(
         provider=provider,
         entry_point_value=entry_point.value,
@@ -340,6 +380,7 @@ def admit_installed_provider(
         package=package,
     )
     admitted.require_callables(label=label)
+    _ADMITTED_PROVIDERS[cache_key] = admitted
     return admitted
 
 
