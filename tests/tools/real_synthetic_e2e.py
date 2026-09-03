@@ -665,7 +665,8 @@ def validate_step09_oracle(
         or len(set(all_ids)) != 3
         or significant[0]["candidate_id"] != candidate
         or candidate not in all_ids
-        or not significant[0]["call_status"].startswith("significant_")
+        or significant[0]["call_status"]
+        not in {"significant_up", "significant_down"}
     ):
         raise DriverError("assert-results", "independent Step09 3/1 oracle differs")
     return {

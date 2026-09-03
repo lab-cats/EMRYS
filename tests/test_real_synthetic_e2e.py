@@ -100,6 +100,36 @@ def test_production_like_profile_selects_only_slurm_workspace(tmp_path: Path) ->
     }
 
 
+def test_step09_oracle_rejects_unknown_significant_status(tmp_path: Path) -> None:
+    all_sites = tmp_path / "all.tsv"
+    significant = tmp_path / "significant.tsv"
+    all_sites.write_text(
+        "candidate_id\tcall_status\n"
+        "candidate-a\tsignificant_sideways\n"
+        "candidate-b\tnot_significant\n"
+        "candidate-c\tnot_significant\n",
+        encoding="utf-8",
+    )
+    significant.write_text(
+        "candidate_id\tcall_status\n"
+        "candidate-a\tsignificant_sideways\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(driver.DriverError, match="independent Step09 3/1 oracle"):
+        driver.validate_step09_oracle(
+            all_sites,
+            significant,
+            {
+                "expected_terminal_computational_result": {
+                    "all_sites_rows": 3,
+                    "significant_sites_rows": 1,
+                    "significant_candidate_id": "candidate-a",
+                }
+            },
+        )
+
+
 def test_launcher_adapters_and_default_resource_projection(tmp_path: Path) -> None:
     launcher = tmp_path / "srun"
     launcher.write_text("#!/bin/sh\n", encoding="utf-8")
