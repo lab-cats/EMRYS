@@ -1037,7 +1037,10 @@ def _readmit_storage_runtime_binding(
         if len(bound_storage) != 1:
             raise LifecycleError("Direct workflow Attempt must bind one storage qualification")
         bound_path = Path(str(bound_storage[0].get("path", "")))
-        if bound_path.name.endswith(".direct-qualified.json"):
+        if re.search(
+            r"\.direct-qualified(?:\.[1-9][0-9]*)?\.json\Z",
+            bound_path.name,
+        ):
             inspector = inspect_direct_storage
         else:
             inspector = inspect_storage

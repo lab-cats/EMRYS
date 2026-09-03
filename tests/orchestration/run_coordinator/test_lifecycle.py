@@ -142,12 +142,17 @@ def test_storage_readmission_uses_normalized_reference_identity(
     )
 
 
+@pytest.mark.parametrize(
+    "receipt_name",
+    ("storage.direct-qualified.json", "storage.direct-qualified.1.json"),
+)
 def test_direct_storage_readmission_uses_the_bound_receipt_class(
     tmp_path: Path,
+    receipt_name: str,
 ) -> None:
     workspace = tmp_path / "workspace"
     reference = tmp_path / "reference.fa"
-    receipt = tmp_path / "storage.direct-qualified.json"
+    receipt = tmp_path / receipt_name
     receipt_bytes = b"direct storage\n"
     receipt.write_bytes(receipt_bytes)
     calls: list[str] = []
