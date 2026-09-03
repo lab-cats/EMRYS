@@ -816,12 +816,12 @@ def test_two_html_views_separate_science_from_operational_evidence(
         (
             "Evidence and provenance",
             "Why should the reader trust this result?",
-            f"{run_id}.evidence_report.html#evidence-category",
+            f"{run_id}.evidence_report.html#analysis-sources-section",
         ),
         (
             "Operations",
             "How did execution proceed?",
-            f"{run_id}.evidence_report.html#operations-category",
+            f"{run_id}.evidence_report.html#attempt-lineage-section",
         ),
     )
     for content in (scientific, evidence):
