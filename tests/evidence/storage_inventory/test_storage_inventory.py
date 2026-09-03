@@ -547,6 +547,28 @@ def test_direct_qualification_supersedes_invalid_evidence_without_deleting_it(
     assert original.receipt_path.read_bytes() == preserved
 
 
+def test_direct_admission_rejects_a_pending_successor_generation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace, reference_fasta, _original = _direct_qualification(
+        tmp_path,
+        monkeypatch,
+    )
+    staged = qualification._direct_layout(
+        workspace,
+        reference_fasta,
+        generation=1,
+    ).staged_path
+    staged.write_bytes(b"pending successor\n")
+
+    with pytest.raises(
+        qualification.StorageQualificationError,
+        match="Incomplete direct qualification publication",
+    ):
+        qualification.admit_direct_qualification(workspace, reference_fasta)
+
+
 def test_direct_requirement_accepts_stronger_site_evidence(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

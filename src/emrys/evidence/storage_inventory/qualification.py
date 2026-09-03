@@ -210,6 +210,8 @@ def _direct_receipt_generations(plan: DirectQualificationPlan) -> tuple[int, ...
     prefix = f"{plan.qualification_id}.direct-qualified"
     generations: list[int] = []
     for path in plan.evidence_root.iterdir():
+        if path.name.startswith(f".{prefix}") and path.name.endswith(".tmp"):
+            fail(f"Incomplete direct qualification publication is present: {path}")
         if path.name == f"{prefix}.json":
             generations.append(0)
         elif path.name.startswith(f"{prefix}.") and path.name.endswith(".json"):
@@ -246,19 +248,9 @@ def plan_direct_qualification(
                 "Direct qualification evidence already exists; preserve and inspect it: "
                 f"{latest.receipt_path}"
             )
-    staged_residue = ()
-    if os.path.lexists(plan.evidence_root):
-        staged_residue = tuple(
-            path
-            for path in plan.evidence_root.iterdir()
-            if path.name.startswith(
-                f".{plan.qualification_id}.direct-qualified"
-            )
-            and path.name.endswith(".tmp")
-        )
     occupied = tuple(
         path
-        for path in (*plan.probe_paths, *staged_residue)
+        for path in plan.probe_paths
         if os.path.lexists(path)
     )
     if occupied:
