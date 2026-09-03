@@ -13,7 +13,7 @@
     "\t\t--refresh \"$EMRYS_DASHBOARD_REFRESH\""
   ],
   "documentation-check": [
-    "./scripts/documentation/validate_structure.py --repo \"<REPO_ROOT>\""
+    "\"<REPO_ROOT>/.venv/bin/python\" ./scripts/documentation/validate_structure.py --repo \"<REPO_ROOT>\""
   ],
   "lint": [
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/emrys tests",
@@ -348,7 +348,7 @@
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"vulture\" \\",
     "\t\t--min-confidence 95 \\",
     "\t\tscripts src/emrys",
-    "./scripts/documentation/validate_structure.py --repo \"<REPO_ROOT>\"",
+    "\"<REPO_ROOT>/.venv/bin/python\" ./scripts/documentation/validate_structure.py --repo \"<REPO_ROOT>\"",
     "\"<REPO_ROOT>/.venv/bin/python\" tests/tools/source_dependencies.py --repo \"<REPO_ROOT>\"",
     "git diff --check",
     "bash -n src/emrys/libraries/gatk_invocation.sh src/emrys/ingestion/sample_manifest_admission/check_fastq_pairs.sh src/emrys/stages/star_index/step_00a_build_star_index.sh src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh src/emrys/stages/star_alignment/step_01_star_align.sh src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh",

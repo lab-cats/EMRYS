@@ -9,6 +9,8 @@ import subprocess
 from pathlib import Path
 from urllib.parse import unquote
 
+from markdown_it import MarkdownIt
+
 CANONICAL_DOCUMENTS = {
     "AGENTS.md": "# EMRYS safety guard",
     "README.md": "# EMRYS: Epic Molecular Read Yield System",
@@ -176,15 +178,25 @@ def markdown_anchors(path: Path) -> set[str]:
     return anchors
 
 
+def markdown_destinations(value: str) -> list[str]:
+    """Return CommonMark link and image destinations."""
+    destinations: list[str] = []
+    for token in MarkdownIt("commonmark").parse(value):
+        for child in token.children or ():
+            attribute = {"link_open": "href", "image": "src"}.get(child.type)
+            if attribute is not None and (target := child.attrGet(attribute)) is not None:
+                destinations.append(target)
+    return destinations
+
+
 def validate_local_links(
     documents: list[Path], root: Path, problems: list[str]
 ) -> None:
     """Reject missing repository-local Markdown destinations and anchors."""
-    link_pattern = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
     anchor_cache: dict[Path, set[str]] = {}
     for document in documents:
         relative = document.relative_to(root)
-        for raw_target in link_pattern.findall(document.read_text(encoding="utf-8")):
+        for raw_target in markdown_destinations(document.read_text(encoding="utf-8")):
             target = raw_target.strip().strip("<>")
             if target.startswith(("http://", "https://", "mailto:", "tel:", "data:")):
                 continue

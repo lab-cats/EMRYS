@@ -336,16 +336,19 @@ def test_rejects_bad_local_links_and_mermaid_but_ignores_external_links(
 ) -> None:
     repository = write_fixture(tmp_path)
     readme = repository / "README.md"
+    (repository / "guide(1).md").write_text("# Guide\n", encoding="utf-8")
     readme.write_text(
         readme.read_text(encoding="utf-8")
         + "\n[Runbook](docs/operations/RUNBOOK.md#runbook)\n"
-        + "[Missing](missing.md)\n"
+        + '[Guide](guide(1).md "Guide")\n'
+        + '[Missing](missing(1).md "Missing")\n'
         + "[Bad anchor](docs/operations/RUNBOOK.md#missing)\n"
         + "[External](https://example.test)\n",
         encoding="utf-8",
     )
     result = validate(repository, cwd=tmp_path)
-    assert "missing local link target: README.md: missing.md" in result.stderr
+    assert "guide(1)" not in result.stderr
+    assert "missing local link target: README.md: missing(1).md" in result.stderr
     assert (
         "missing local link anchor: README.md: "
         "docs/operations/RUNBOOK.md#missing"
@@ -353,7 +356,7 @@ def test_rejects_bad_local_links_and_mermaid_but_ignores_external_links(
 
     readme.write_text(
         readme.read_text(encoding="utf-8")
-        .replace("[Missing](missing.md)\n", "")
+        .replace('[Missing](missing(1).md "Missing")\n', "")
         .replace("[Bad anchor](docs/operations/RUNBOOK.md#missing)\n", ""),
         encoding="utf-8",
     )

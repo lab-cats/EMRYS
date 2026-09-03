@@ -46,6 +46,7 @@ emrys = "emrys.libraries.source_authority:controlled_console_main"
 [dependency-groups]
 dev = [
     "coverage==7.15.2",
+    "markdown-it-py==4.2.0",
     "pytest",
     "pytest-xdist",
     "ruff",

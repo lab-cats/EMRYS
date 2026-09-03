@@ -38,7 +38,7 @@ SHELL_SYNTAX_PATHS := \
 	tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh
 
 documentation-check:
-	./scripts/documentation/validate_structure.py --repo "$(CURDIR)"
+	"$(REPORT_PYTHON_BIN)" ./scripts/documentation/validate_structure.py --repo "$(CURDIR)"
 
 validation-shell-contracts:
 	bash tests/libraries/test_file_checks.sh
