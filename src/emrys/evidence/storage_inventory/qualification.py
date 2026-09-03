@@ -87,7 +87,7 @@ class QualifiedStorage:
 
 @dataclass(frozen=True, slots=True)
 class DirectQualificationPlan:
-    """One create-absent single-host qualification plan."""
+    """One create-absent single-host qualification plan or successor."""
 
     workspace: Path
     reference_fasta: Path
@@ -164,6 +164,8 @@ def _storage_roots(workspace: Path, reference_fasta: Path) -> tuple[Path, Path]:
 def _direct_layout(
     workspace: Path,
     reference_fasta: Path,
+    *,
+    generation: int = 0,
 ) -> DirectQualificationPlan:
     workspace_root = _canonical_directory(workspace, "Project workspace")
     runtime_root = _canonical_directory(
@@ -174,8 +176,13 @@ def _direct_layout(
     payload = "\0".join(("direct", *(str(path) for path in roots))).encode()
     qualification_id = hashlib.sha256(payload).hexdigest()
     evidence_root = runtime_root / EVIDENCE_DIRECTORY
-    receipt = evidence_root / f"{qualification_id}.direct-qualified.json"
-    staged = evidence_root / f".{qualification_id}.direct-qualified.tmp"
+    generation_suffix = "" if generation == 0 else f".{generation}"
+    receipt = evidence_root / (
+        f"{qualification_id}.direct-qualified{generation_suffix}.json"
+    )
+    staged = evidence_root / (
+        f".{qualification_id}.direct-qualified{generation_suffix}.tmp"
+    )
     probes = tuple(
         root / f".emrys-storage-probe-{qualification_id[:16]}-{role}" for role, root in zip(ROLES, roots, strict=True)
     )
@@ -191,14 +198,69 @@ def _direct_layout(
     )
 
 
+def _direct_receipt_generations(plan: DirectQualificationPlan) -> tuple[int, ...]:
+    """Return immutable receipt generations without following directory entries."""
+
+    if not os.path.lexists(plan.evidence_root):
+        return ()
+    _canonical_directory(
+        plan.evidence_root,
+        "Direct storage qualification evidence directory",
+    )
+    prefix = f"{plan.qualification_id}.direct-qualified"
+    generations: list[int] = []
+    for path in plan.evidence_root.iterdir():
+        if path.name == f"{prefix}.json":
+            generations.append(0)
+        elif path.name.startswith(f"{prefix}.") and path.name.endswith(".json"):
+            value = path.name[len(prefix) + 1 : -len(".json")]
+            if value.isdigit() and int(value) > 0:
+                generations.append(int(value))
+    return tuple(sorted(set(generations)))
+
+
 def plan_direct_qualification(
     workspace: Path,
     reference_fasta: Path,
 ) -> DirectQualificationPlan:
-    """Plan one create-absent single-host qualification without writing."""
+    """Plan one create-absent or evidence-preserving successor qualification."""
 
     plan = _direct_layout(workspace, reference_fasta)
-    occupied = tuple(path for path in (*plan.probe_paths, plan.receipt_path, plan.staged_path) if os.path.lexists(path))
+    generations = _direct_receipt_generations(plan)
+    if generations:
+        latest = _direct_layout(
+            workspace,
+            reference_fasta,
+            generation=generations[-1],
+        )
+        try:
+            _admit_direct_plan(latest)
+        except StorageQualificationError:
+            plan = _direct_layout(
+                workspace,
+                reference_fasta,
+                generation=generations[-1] + 1,
+            )
+        else:
+            fail(
+                "Direct qualification evidence already exists; preserve and inspect it: "
+                f"{latest.receipt_path}"
+            )
+    staged_residue = ()
+    if os.path.lexists(plan.evidence_root):
+        staged_residue = tuple(
+            path
+            for path in plan.evidence_root.iterdir()
+            if path.name.startswith(
+                f".{plan.qualification_id}.direct-qualified"
+            )
+            and path.name.endswith(".tmp")
+        )
+    occupied = tuple(
+        path
+        for path in (*plan.probe_paths, *staged_residue)
+        if os.path.lexists(path)
+    )
     if occupied:
         fail(
             "Direct qualification evidence already exists; preserve and inspect it: "
@@ -602,6 +664,19 @@ def admit_direct_qualification(
     """Admit one exact single-host qualification without broader site claims."""
 
     plan = _direct_layout(workspace, reference_fasta)
+    generations = _direct_receipt_generations(plan)
+    if generations:
+        plan = _direct_layout(
+            workspace,
+            reference_fasta,
+            generation=generations[-1],
+        )
+    return _admit_direct_plan(plan)
+
+
+def _admit_direct_plan(plan: DirectQualificationPlan) -> QualifiedStorage:
+    """Admit the exact immutable receipt selected by a direct plan."""
+
     _canonical_directory(
         plan.evidence_root,
         "Direct storage qualification evidence directory",

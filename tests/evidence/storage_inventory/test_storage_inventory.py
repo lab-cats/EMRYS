@@ -522,6 +522,31 @@ def test_direct_qualification_is_single_host_create_absent_and_not_site_evidence
         qualification.plan_direct_qualification(workspace, reference_fasta)
 
 
+def test_direct_qualification_supersedes_invalid_evidence_without_deleting_it(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace, reference_fasta, original = _direct_qualification(
+        tmp_path,
+        monkeypatch,
+    )
+    stale = json.loads(original.receipt_path.read_bytes())
+    stale["context"]["host"] = "stale-host"
+    original.receipt_path.write_bytes(qualification._json_bytes(stale))
+    preserved = original.receipt_path.read_bytes()
+
+    plan = qualification.plan_direct_qualification(workspace, reference_fasta)
+    assert plan.receipt_path.name.endswith(".direct-qualified.1.json")
+    replacement = qualification.execute_direct_qualification(plan)
+
+    assert replacement.receipt_path == plan.receipt_path
+    assert qualification.admit_direct_qualification(
+        workspace,
+        reference_fasta,
+    ) == replacement
+    assert original.receipt_path.read_bytes() == preserved
+
+
 def test_direct_requirement_accepts_stronger_site_evidence(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
