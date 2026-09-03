@@ -1216,11 +1216,18 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
         target.write_bytes(original)
 
 
-def test_artifact_validator_rejects_record_roster_membership_fault(
+@pytest.mark.parametrize("location", ("records", "output"))
+def test_artifact_validator_rejects_roster_membership_fault(
     complete_reporting: tuple[Any, Path],
+    location: str,
 ) -> None:
     built, _report_root = complete_reporting
-    unexpected = built.adapter_fixture.records_dir / "unexpected.json"
+    parent = (
+        built.adapter_fixture.records_dir
+        if location == "records"
+        else built.artifact_receipt.parent
+    )
+    unexpected = parent / "unexpected.json"
 
     def add_record(paths: tuple[Path, ...]) -> None:
         assert built.adapter_fixture.artifacts_path in paths

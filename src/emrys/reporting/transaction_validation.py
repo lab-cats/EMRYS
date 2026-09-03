@@ -413,6 +413,8 @@ def _validated_result(
     ops.before_final_snapshot(paths)
     identity_only = frozenset(identity_only_paths)
     expandable = frozenset(reusable_expandable_directories)
+    reject_control_residue()
+    _recheck_bound_roster(roster, identity_only_paths=identity_only)
 
     def recheck() -> None:
         reject_control_residue()
@@ -422,7 +424,6 @@ def _validated_result(
             expandable_directory_paths=expandable,
         )
 
-    recheck()
     return ValidatedTransaction(
         receipt_path=receipt.path,
         receipt_sha256=receipt.sha256,
