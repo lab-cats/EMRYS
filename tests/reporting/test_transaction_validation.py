@@ -770,6 +770,53 @@ def test_fixed_dispatcher_accepts_successor_run_authority(
     assert observed["profile"] == profile
 
 
+def test_fixed_dispatcher_rechecks_cached_predecessor_roster(tmp_path: Path) -> None:
+    _analysis, _plan, run, profile, attempt, _resources = successor_run_fixture()
+    run_root = (tmp_path / run.run_id).resolve()
+    output_dir = run_root / "products" / "artifact-summary" / run.run_id
+    artifact_receipt = output_dir / f"{run.run_id}.artifact_receipt.tsv"
+    native = run_root / "products" / "native" / "evidence.tsv"
+    for path, data in (
+        (artifact_receipt, b"artifact receipt\n"),
+        (native, b"admitted native evidence\n"),
+    ):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+    roster = transaction_validation._snapshot_bound_roster(
+        (artifact_receipt, native), (output_dir,)
+    )
+    predecessor = transaction_validation._validated_result(
+        transaction_validation._snapshot_receipt(artifact_receipt),
+        roster,
+        _fixture_receipt_ops(),
+        lambda: None,
+        reusable_expandable_directories=(output_dir,),
+    )
+    summary_receipt = output_dir / f"{run.run_id}.run_summary_receipt.tsv"
+    summary_receipt.write_bytes(b"run summary receipt\n")
+    assert predecessor._roster is not None
+    transaction_validation._recheck_bound_roster(
+        predecessor._roster,
+        expandable_directory_paths=predecessor._expandable_directory_paths,
+    )
+    native.write_bytes(b"mutated native evidence\n")
+
+    with pytest.raises(
+        transaction_validation.ReportingTransactionError,
+        match="roster changed during semantic validation",
+    ):
+        transaction_validation.validate_receipt(
+            "run_summary",
+            summary_receipt,
+            run_root,
+            run.record,
+            profile,
+            attempt,
+            {},
+            validated_predecessor=predecessor,
+        )
+
+
 def test_fixed_dispatcher_admits_historical_report_only_at_legacy_root(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
