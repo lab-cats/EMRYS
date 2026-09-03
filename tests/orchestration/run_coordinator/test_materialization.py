@@ -4706,6 +4706,31 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     failed = inspection.inspect_run(target_root)
     assert failed.recovery_available
 
+    predecessor_manifest = next(
+        target_root.glob("contract/workflow-inputs/*/samples.tsv")
+    ).read_bytes()
+    samples_path = project.parent / authored["dataset"]["samples"]
+    header, *rows = samples_path.read_text(encoding="utf-8").splitlines()
+    samples_path.write_text(
+        f"{header}\tnotes\n"
+        + "".join(
+            f"{row}\tidentity-neutral resume edit\n" for row in reversed(rows)
+        ),
+        encoding="utf-8",
+    )
+    resumed_project = admit_project(
+        project,
+        checkout / "workflow/contracts/local_cmh_v2.json",
+    )
+    resumed_analysis = resumed_project.select_analysis("sensitivity")
+    assert resumed_analysis.revision == sensitivity.analysis.revision
+    assert resumed_analysis.selected_sample_manifest_bytes != predecessor_manifest
+    sensitivity = replace(
+        sensitivity,
+        project=resumed_project,
+        analysis=resumed_analysis,
+    )
+
     assert (
         control.resume_from_args(
             argparse.Namespace(
@@ -4734,6 +4759,9 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         target_root.glob("contract/workflow-inputs/*/samples.tsv")
     )
     assert len(selected_manifests) == 2
+    assert {path.read_bytes() for path in selected_manifests} == {
+        predecessor_manifest
+    }
     assert all(
         step08.validate_sample_manifest(path)[1] == selected_ids
         for path in selected_manifests

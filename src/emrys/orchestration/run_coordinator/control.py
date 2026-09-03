@@ -47,6 +47,7 @@ from emrys.orchestration.run_coordinator import (
     lifecycle,
     onboarding,
     reporting_operation,
+    task as task_boundary,
 )
 from emrys.orchestration.run_coordinator.execution_profile import (
     ExecutionProfile,
@@ -337,32 +338,72 @@ def _resume_predecessor_policy(
 def _retained_dispatches(
     observed: inspection.RunInspection,
     config: Mapping[str, Any],
-) -> dict[tuple[str, str], dict[str, str]]:
+) -> tuple[dict[tuple[str, str], dict[str, str]], bytes | None]:
     dispatches = config.get("dispatch_paths")
     if not isinstance(dispatches, dict):
         raise ControlError("Prior workflow config has no closed dispatch map")
     retained: dict[tuple[str, str], dict[str, str]] = {}
-    for task in observed.tasks:
-        if task.state != "verified":
+    selected_manifest: bytes | None = None
+    selected_projection: bool | None = None
+    for inspected in observed.tasks:
+        if inspected.state != "verified":
             continue
         try:
-            reference = dispatches[task.expected.machine_key][task.expected.scope_id]
+            reference = dispatches[inspected.expected.machine_key][
+                inspected.expected.scope_id
+            ]
         except (KeyError, TypeError) as exc:
             raise ControlError(
                 "Prior workflow config omits a reusable verified dispatch: "
-                f"{task.expected.machine_key}/{task.expected.scope_id}"
+                f"{inspected.expected.machine_key}/{inspected.expected.scope_id}"
             ) from exc
         if not isinstance(reference, dict) or set(reference) != {"path", "sha256"}:
             raise ControlError("Prior reusable dispatch reference is malformed")
         path = Path(str(reference["path"]))
         try:
-            data = read_bytes(path, "reusable dispatch")
+            dispatch = task_boundary.load_dispatch(
+                path,
+                expected_sha256=str(reference["sha256"]),
+            )
+        except task_boundary.TaskBoundaryError as exc:
+            raise ControlError(f"Reusable dispatch is unavailable: {path}: {exc}") from exc
+        retained[(inspected.expected.machine_key, inspected.expected.scope_id)] = dict(
+            reference
+        )
+        if inspected.expected.step_id != "07":
+            continue
+        manifest_path = (
+            observed.run_root
+            / "contract"
+            / "workflow-inputs"
+            / dispatch.workflow_attempt_id
+            / "samples.tsv"
+        )
+        declaration = next(
+            (item for item in dispatch.inputs if item.path == manifest_path),
+            None,
+        )
+        projected = declaration is not None
+        if selected_projection is not None and projected != selected_projection:
+            raise ControlError("Reusable Step 07 dispatches disagree on sample projection")
+        selected_projection = projected
+        if not projected:
+            continue
+        if declaration.expected_binding is None:
+            raise ControlError("Reusable Step 07 sample projection is not content-bound")
+        try:
+            data = read_bytes(manifest_path, "reusable Step 07 sample projection")
         except ValidationError as exc:
-            raise ControlError(f"Reusable dispatch is unavailable: {path}") from exc
-        if hashlib.sha256(data).hexdigest() != reference["sha256"]:
-            raise ControlError(f"Reusable dispatch bytes changed: {path}")
-        retained[(task.expected.machine_key, task.expected.scope_id)] = dict(reference)
-    return retained
+            raise ControlError(
+                f"Reusable Step 07 sample projection is unavailable: {manifest_path}"
+            ) from exc
+        binding = (len(data), hashlib.sha256(data).hexdigest())
+        if binding != declaration.expected_binding:
+            raise ControlError("Reusable Step 07 sample projection differs from its binding")
+        if selected_manifest is not None and data != selected_manifest:
+            raise ControlError("Reusable Step 07 dispatches disagree on sample projection")
+        selected_manifest = data
+    return retained, selected_manifest
 
 
 def _retained_runtime_profile_path(
@@ -481,6 +522,16 @@ def _plan_resume(
         )
         _require_ready(readiness)
         analysis = readiness.analysis
+        retained_dispatches, retained_sample_manifest = _retained_dispatches(
+            observed,
+            predecessor_config,
+        )
+        if retained_sample_manifest is not None:
+            analysis = replace(
+                analysis,
+                selected_sample_manifest_bytes=retained_sample_manifest,
+            )
+            readiness = replace(readiness, analysis=analysis)
         policy = execution_profile.resource_policy
         if not execution_profile.computational_resources_explicit:
             policy = _resume_predecessor_policy(
@@ -533,7 +584,7 @@ def _plan_resume(
             resources=resources,
             operation="resume",
             supersedes_workflow_attempt_id=str(previous["workflow_attempt_id"]),
-            retained_dispatches=_retained_dispatches(observed, predecessor_config),
+            retained_dispatches=retained_dispatches,
             retained_runtime_profile_path=retained_runtime_profile,
             placement=execution_profile.attempt_placement(scheduler_job_id),
             processing_source=processing_source,

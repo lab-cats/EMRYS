@@ -11,6 +11,7 @@ from pathlib import Path
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.projection import build_reporting_bundle
+from emrys.contracts.scientific_evidence import step08
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.orchestration.run_coordinator.materialization import AttemptPlan
 from tests.orchestration.run_coordinator.fixtures import workflow
@@ -20,6 +21,34 @@ def with_owner_doubles(plan: AttemptPlan) -> AttemptPlan:
     """Replace only owner command effects in an otherwise unchanged plan."""
 
     source = {**plan.run.analysis.workflow_inputs, "run_id": plan.run.run_id}
+    selected_path = (
+        plan.run_root
+        / "contract"
+        / "workflow-inputs"
+        / plan.workflow_attempt_id
+        / "samples.tsv"
+    )
+    selected = next(
+        (item for item in plan.attempt_files if item.path == selected_path),
+        None,
+    )
+    if selected is not None:
+        _, _, selected_rows = step08.validate_sample_manifest_bytes(
+            selected.data,
+            selected.path,
+        )
+        rows_by_id = {
+            str(row["sample_id"]): row for row in source["samples"]["rows"]
+        }
+        source["samples"] = {
+            **source["samples"],
+            "rows": [rows_by_id[str(row["sample_id"])] for row in selected_rows],
+            "manifest": {
+                "path": str(selected.path),
+                "size_bytes": len(selected.data),
+                "sha256": hashlib.sha256(selected.data).hexdigest(),
+            },
+        }
     reporting = build_reporting_bundle(
         source,
         plan.run.analysis.profile,
