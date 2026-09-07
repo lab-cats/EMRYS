@@ -27,14 +27,21 @@ CONTROLLED_PYTHON_OPTIONS = (
     f"pycache_prefix={CONTROLLED_PYTHON_CACHE_PREFIX}",
     "-I",
 )
+_PAIRED_CMH_RESOURCES = Path("analyses/paired_cmh_candidate_ranking")
+_SCIENTIFIC_CONTEXT_RESOURCES = (
+    _PAIRED_CMH_RESOURCES / "scientific_context_projection"
+)
 _RESOURCE_PATTERNS = (
-    (Path("contracts"), "schemas/artifacts/v1/*.json"),
-    (Path("contracts"), "schemas/artifacts/v2/*.json"),
-    (Path("contracts"), "schemas/artifacts/v3/*.json"),
-    (Path("contracts"), "schemas/artifacts/v4/*.json"),
-    (Path("contracts"), "schemas/orchestration/v1/*.json"),
-    (Path("contracts"), "schemas/orchestration/v2/*.json"),
-    (Path("contracts"), "schemas/orchestration/v3/*.json"),
+    (Path("contracts"), "schemas/artifacts/v*/*.json"),
+    (Path("contracts"), "schemas/orchestration/v*/*.json"),
+    (_PAIRED_CMH_RESOURCES, "*.R"),
+    (_SCIENTIFIC_CONTEXT_RESOURCES, "*.R"),
+    (_SCIENTIFIC_CONTEXT_RESOURCES, "*.sh"),
+    (_SCIENTIFIC_CONTEXT_RESOURCES, "resources/*.tsv"),
+    (Path("libraries"), "argument_parsing.sh"),
+    (Path("libraries"), "executable_resolution.sh"),
+    (Path("libraries"), "file_checks.sh"),
+    (Path("libraries"), "input_contract.R"),
     (Path("orchestration/run_coordinator"), "resources/*.yaml"),
     (Path("resources"), "runtime/*"),
     (Path("reporting"), "styles/*.css"),

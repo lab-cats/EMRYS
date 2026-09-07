@@ -126,10 +126,20 @@ def test_provider_admission_reloads_exact_files_on_repeated_admission(
     source.write_text('VALUE = "new"\n\ndef provider():\n    return VALUE\n')
     os.utime(source, ns=(old_state.st_atime_ns, old_state.st_mtime_ns))
 
+    distribution = SimpleNamespace(
+        name="cached-provider",
+        version="1",
+        locate_file=lambda path: tmp_path / path,
+    )
+    installed_source = package_identity.importlib.metadata.PackagePath(
+        "cached_provider/__init__.py"
+    )
+    installed_source.dist = distribution
+    distribution.files = (installed_source,)
     entry_point = SimpleNamespace(
         name="cached-provider",
         value="cached_provider:provider",
-        dist=SimpleNamespace(name="cached-provider", version="1"),
+        dist=distribution,
         load=lambda: package_identity.importlib.import_module(package.name).provider,
     )
     monkeypatch.setattr(
@@ -157,6 +167,68 @@ def test_provider_admission_reloads_exact_files_on_repeated_admission(
     )
     assert repeated.provider() == "bad"
     assert repeated.package.sha256 != admitted.package.sha256
+
+
+def test_collaborator_provider_identity_includes_distribution_siblings(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plugin = tmp_path / "vendor" / "plugin"
+    plugin.mkdir(parents=True)
+    (tmp_path / "vendor" / "__init__.py").write_text("", encoding="utf-8")
+    shared = plugin.parent / "shared.py"
+    shared.write_text('VALUE = "old"\n', encoding="utf-8")
+    (plugin / "__init__.py").write_text(
+        "from vendor.shared import VALUE\n\n"
+        "def provider():\n"
+        "    return VALUE\n",
+        encoding="utf-8",
+    )
+    distribution = SimpleNamespace(
+        name="collaborator-provider",
+        version="1",
+        locate_file=lambda path: tmp_path / path,
+    )
+    distribution.files = tuple(
+        package_identity.importlib.metadata.PackagePath(relative)
+        for relative in (
+            "vendor/__init__.py",
+            "vendor/shared.py",
+            "vendor/plugin/__init__.py",
+            "collaborator_provider-1.dist-info/METADATA",
+        )
+    )
+    for path in distribution.files:
+        path.dist = distribution
+    entry_point = SimpleNamespace(
+        name="collaborator-provider",
+        value="vendor.plugin:provider",
+        dist=distribution,
+        load=lambda: package_identity.importlib.import_module(
+            "vendor.plugin"
+        ).provider,
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.setattr(
+        package_identity.importlib.metadata,
+        "entry_points",
+        lambda **_: (entry_point,),
+    )
+    monkeypatch.setattr(package_identity, "_ADMITTED_PROVIDERS", {})
+
+    first = admit_installed_provider(
+        "emrys.analysis_modules", "collaborator-provider", label="Module"
+    )
+    previous = shared.stat()
+    shared.write_text('VALUE = "new"\n', encoding="utf-8")
+    os.utime(shared, ns=(previous.st_atime_ns, previous.st_mtime_ns))
+    second = admit_installed_provider(
+        "emrys.analysis_modules", "collaborator-provider", label="Module"
+    )
+
+    assert first.provider() == "old"
+    assert second.provider() == "new"
+    assert second.package.sha256 != first.package.sha256
 
 
 def test_provider_rejects_a_callable_outside_its_admitted_tree(tmp_path: Path) -> None:

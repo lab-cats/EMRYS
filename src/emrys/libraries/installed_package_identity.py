@@ -19,6 +19,8 @@ from typing import Protocol
 # cannot be mistaken for a pre-cutover installed-package identity.
 _DIGEST_DOMAIN = b"emrys-installed-package-tree-v2\0"
 _PYTHON_DIGEST_DOMAIN = b"emrys-installed-python-package-tree-v1\0"
+_PROVIDER_DISTRIBUTION_DIGEST_DOMAIN = b"emrys-provider-distribution-v1\0"
+_CORE_DISTRIBUTION_NAME = "emrys-rna-workflow"
 _READ_CHUNK_BYTES = 1024 * 1024
 _PROVIDER_RE = re.compile(
     r"(?P<package>[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*):"
@@ -300,6 +302,53 @@ def installed_python_package_identity(root: Path) -> InstalledPackageTreeIdentit
     )
 
 
+def _provider_distribution_identity(
+    package: InstalledPackageTreeIdentity,
+    distribution: object,
+) -> InstalledPackageTreeIdentity:
+    """Extend a collaborator package identity across its installed distribution."""
+
+    declared = getattr(distribution, "files", None)
+    if not declared:
+        raise InstalledPackageIdentityError(
+            "Provider distribution does not enumerate its installed files"
+        )
+    entries: dict[Path, Path] = {}
+    for item in declared:
+        relative = Path(str(item))
+        if (
+            ".." in relative.parts
+            or "__pycache__" in relative.parts
+            or relative.suffix in {".pyc", ".pyo"}
+            or any(part.endswith((".dist-info", ".egg-info")) for part in relative.parts)
+        ):
+            continue
+        entries[relative] = Path(item.locate()).resolve(strict=True)
+    owned = set(entries.values())
+    if not set(package.files).issubset(owned):
+        raise InstalledPackageIdentityError(
+            "Provider distribution does not own its complete package tree"
+        )
+    digest = hashlib.sha256(_PROVIDER_DISTRIBUTION_DIGEST_DOMAIN)
+    _framed(digest, package.sha256.encode("ascii"))
+    for relative, path in sorted(
+        entries.items(), key=lambda item: os.fsencode(item[0].as_posix())
+    ):
+        state = path.stat(follow_symlinks=False)
+        _entry_frame(
+            digest,
+            kind=b"file",
+            relative=relative.as_posix().encode("utf-8", errors="surrogateescape"),
+            metadata=state,
+            content_sha256=hashlib.sha256(_read_regular_file(path, state)).digest(),
+        )
+    return InstalledPackageTreeIdentity(
+        root=package.root,
+        sha256=digest.hexdigest(),
+        files=tuple(sorted(owned)),
+    )
+
+
 def admit_installed_provider(
     group: str, name: str, *, label: str
 ) -> InstalledProviderV1:
@@ -324,6 +373,9 @@ def admit_installed_provider(
         raise InstalledPackageIdentityError(
             f"{label} entry point has no distribution provenance"
         )
+    collaborator_distribution = re.sub(
+        r"[-_.]+", "-", str(distribution_name).lower()
+    ) != _CORE_DISTRIBUTION_NAME
     try:
         package_name = matched["package"]
         spec = importlib.util.find_spec(package_name)
@@ -332,6 +384,8 @@ def admit_installed_provider(
             raise TypeError("provider package location is ambiguous")
         root = Path(os.path.abspath(os.fspath(next(iter(locations)))))
         package = installed_python_package_identity(root)
+        if collaborator_distribution:
+            package = _provider_distribution_identity(package, distribution)
         cache_key = (
             entry_point.value,
             str(distribution_name),
@@ -344,7 +398,7 @@ def admit_installed_provider(
         for module_name, module in tuple(sys.modules.items()):
             try:
                 source = Path(os.path.abspath(os.fspath(module.__file__)))
-                owned_path = source.is_relative_to(root)
+                owned_path = package.owns(source)
             except (AttributeError, TypeError):
                 owned_path = False
             if (
@@ -363,6 +417,10 @@ def admit_installed_provider(
         if not callable(provider):
             raise TypeError("entry point is not callable")
         reloaded_package = installed_python_package_identity(root)
+        if collaborator_distribution:
+            reloaded_package = _provider_distribution_identity(
+                reloaded_package, distribution
+            )
         if reloaded_package.sha256 != package.sha256:
             raise InstalledPackageIdentityError(
                 f"{label} provider changed while it was loaded: {name!r}"
