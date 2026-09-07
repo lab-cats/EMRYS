@@ -23,8 +23,10 @@ from emrys.analyses import (
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
     AnalysisRevision,
+    _analysis_partition_from_execution_fields,
     analysis_revision_from_execution_fields,
 )
+from emrys.libraries.validation.mpileup import selector_file_semantics
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.contracts.scientific_evidence import step08
 from emrys.libraries.validation.errors import ValidationError
@@ -293,12 +295,21 @@ def _normalize_partitions(
                 f"Partition manifest row {index} regions file",
             )
             selector_value = str(path)
+            selector_format, selector_compression = selector_file_semantics(path)
         normalized_rows.append(
             {
                 "partition_id": row["partition_id"],
                 "selector_type": row["selector_type"],
                 "selector_value": selector_value,
                 "selector_file": selector_file,
+                **(
+                    {
+                        "selector_format": selector_format,
+                        "selector_compression": selector_compression,
+                    }
+                    if selector_file is not None
+                    else {}
+                ),
             }
         )
     return {
@@ -460,19 +471,7 @@ def _admit_project_data(
                             for row in selected_samples["rows"]
                         ),
                         partitions=tuple(
-                            {
-                                "partition_id": row["partition_id"],
-                                "selector_type": row["selector_type"],
-                                **(
-                                    {"selector_value": row["selector_value"]}
-                                    if row["selector_type"] == "region"
-                                    else {
-                                        "selector_file_sha256": row[
-                                            "selector_file"
-                                        ]["sha256"]
-                                    }
-                                ),
-                            }
+                            _analysis_partition_from_execution_fields(row)
                             for row in partitions["rows"]
                         ),
                         reference={

@@ -35,6 +35,16 @@ RECEIPT_HEADER = (
 SAFE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 
 
+def selector_file_semantics(path: Path) -> tuple[str, str]:
+    """Return the filename-controlled format and compression semantics."""
+
+    name = path.name.removesuffix(".gz")
+    file_format = (
+        "bed" if name.endswith(".bed") else "vcf" if name.endswith(".vcf") else "tab"
+    )
+    return file_format, "gzip" if path.name.endswith(".gz") else "plain"
+
+
 def read_sample_ids(path: Path) -> list[str]:
     header, rows = read_strict_tsv("sample manifest", path, None, _invalid)
     if "sample_id" not in header:

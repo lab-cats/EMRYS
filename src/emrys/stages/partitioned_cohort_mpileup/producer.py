@@ -139,10 +139,7 @@ def _selector_lines(path: Path) -> Iterable[str]:
 
 
 def _validate_regions_file(path: Path, contigs: dict[str, int]) -> None:
-    name = path.name.removesuffix(".gz")
-    file_type = (
-        "bed" if name.endswith(".bed") else "vcf" if name.endswith(".vcf") else "tab"
-    )
+    file_type, _compression = mpileup.selector_file_semantics(path)
     row_mode: int | None = None
     data_rows = 0
     for row_number, raw in enumerate(_selector_lines(path), start=1):

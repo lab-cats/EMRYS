@@ -75,6 +75,14 @@ def test_explicit_module_normalizes_once_without_provider_facts_in_identity(
 ) -> None:
     project_path = fixture.build(tmp_path / "project-root")
     flat_revision = admit_project(project_path, fixture.profile()).select_analysis().revision
+    (project_path.parent / "target.bed").write_text(
+        "chrSynthetic\t0\t10\n", encoding="utf-8"
+    )
+    (project_path.parent / "partitions.tsv").write_text(
+        "partition_id\tselector_type\tselector_value\n"
+        "primary\tregions_file\ttarget.bed\n",
+        encoding="utf-8",
+    )
     definition = yaml.safe_load(project_path.read_text(encoding="utf-8"))
     authored = definition["analyses"]["primary"]
     partitions = authored.pop("partitions")
@@ -88,10 +96,12 @@ def test_explicit_module_normalizes_once_without_provider_facts_in_identity(
     descriptor = analysis_module_v1()
     original_normalize = descriptor.normalize_config
     calls = 0
+    contexts = []
 
     def normalize(config, context):
         nonlocal calls
         calls += 1
+        contexts.append(context)
         return original_normalize(config, context)
 
     descriptor = replace(descriptor, normalize_config=normalize)
@@ -121,6 +131,8 @@ def test_explicit_module_normalizes_once_without_provider_facts_in_identity(
     second = admit_project(project_path, fixture.profile()).select_analysis()
 
     assert calls == 2
+    assert contexts[0].partitions[0]["selector_format"] == "bed"
+    assert contexts[0].partitions[0]["selector_compression"] == "plain"
     assert flat_revision.record["schema_version"] == "emrys.analysis-revision.v1"
     assert first.revision.record["schema_version"] == "emrys.analysis-revision.v2"
     assert first.revision == second.revision
@@ -299,6 +311,8 @@ def test_regions_file_resolves_from_nested_partition_manifest(
         "size_bytes": selector.stat().st_size,
         "sha256": hashlib.sha256(selector.read_bytes()).hexdigest(),
     }
+    assert row["selector_format"] == "bed"
+    assert row["selector_compression"] == "plain"
 
 
 def test_bound_input_change_creates_a_new_analysis_revision(tmp_path: Path) -> None:

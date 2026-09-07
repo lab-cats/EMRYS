@@ -32,6 +32,7 @@ from emrys.libraries.references.contigs import (
     parse_fasta_lines,
 )
 from emrys.libraries.validation.errors import ValidationError
+from emrys.libraries.validation.mpileup import selector_file_semantics
 from emrys.libraries.validation.inputs import (
     read_bytes_with_identity,
     sha256_with_identity,
@@ -744,14 +745,7 @@ def _regions_lines(path: Path) -> Iterator[str]:
 
 
 def _validate_regions_file(path: Path, lengths: Mapping[str, int]) -> None:
-    uncompressed_name = path.name.removesuffix(".gz")
-    mode = (
-        "bed"
-        if uncompressed_name.endswith(".bed")
-        else "vcf"
-        if uncompressed_name.endswith(".vcf")
-        else "tab"
-    )
+    mode, _compression = selector_file_semantics(path)
     row_mode: int | None = None
     count = 0
     for row_number, raw in enumerate(_regions_lines(path), start=1):
@@ -915,16 +909,8 @@ def validate_from_args(arguments: argparse.Namespace) -> int:
     print(f"  Analyses: {len(project.analyses)}")
     for analysis in project.analyses:
         source = analysis.workflow_inputs
-        control = source["analysis"]["policy"]["control_condition"]
-        pair_count = len(
-            {
-                row["replicate"]
-                for row in source["samples"]["rows"]
-                if row["condition"] == control
-            }
-        )
         print(
-            f"    {analysis.name}: {pair_count} paired strata, "
+            f"    {analysis.name}: {len(source['samples']['rows'])} samples, "
             f"{len(source['partitions']['rows'])} partitions"
         )
     print(

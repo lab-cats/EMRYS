@@ -344,11 +344,13 @@ def _build_analysis_revision(
     partition_rows: list[dict[str, Any]] = []
     for partition in partitions:
         selector_type = partition.get("selector_type")
-        fields = (
-            ("partition_id", "selector_type", "selector_value")
-            if selector_type == "region"
-            else ("partition_id", "selector_type", "selector_file_sha256")
-        )
+        if selector_type == "region":
+            fields = ("partition_id", "selector_type", "selector_value")
+        else:
+            fields = ("partition_id", "selector_type", "selector_file_sha256")
+            semantics = ("selector_format", "selector_compression")
+            if any(field in partition for field in semantics):
+                fields += semantics
         partition_rows.append(_closed_copy(partition, fields, "Analysis partition"))
     partition_rows.sort(key=lambda row: row["partition_id"])
     _require_unique(
@@ -431,6 +433,27 @@ def build_module_analysis_revision(
     )
 
 
+def _analysis_partition_from_execution_fields(
+    row: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Project one normalized partition into path-neutral Analysis identity."""
+
+    partition = {
+        "partition_id": row["partition_id"],
+        "selector_type": row["selector_type"],
+    }
+    if row["selector_type"] == "region":
+        partition["selector_value"] = row["selector_value"]
+    else:
+        partition["selector_file_sha256"] = row["selector_file"]["sha256"]
+        partition.update(
+            (field, row[field])
+            for field in ("selector_format", "selector_compression")
+            if field in row
+        )
+    return partition
+
+
 def analysis_revision_from_execution_fields(
     execution: Mapping[str, Any],
 ) -> AnalysisRevision:
@@ -453,16 +476,7 @@ def analysis_revision_from_execution_fields(
             for row in samples
         ),
         "partitions": (
-            {
-                "partition_id": row["partition_id"],
-                "selector_type": row["selector_type"],
-                **(
-                    {"selector_value": row["selector_value"]}
-                    if row["selector_type"] == "region"
-                    else {"selector_file_sha256": row["selector_file"]["sha256"]}
-                ),
-            }
-            for row in partitions
+            _analysis_partition_from_execution_fields(row) for row in partitions
         ),
         "reference": {
             "fasta_sha256": reference["fasta"]["sha256"],

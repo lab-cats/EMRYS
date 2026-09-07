@@ -296,6 +296,24 @@ def test_analysis_content_and_versioned_scope_formulas_are_bound() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("field", "changed"),
+    (("selector_format", "vcf"), ("selector_compression", "gzip")),
+)
+def test_regions_file_identity_binds_filename_controlled_semantics(
+    field: str, changed: str
+) -> None:
+    inputs = analysis_inputs()
+    partition = inputs["partitions"][0]  # type: ignore[index]
+    partition.update(  # type: ignore[union-attr]
+        selector_format="bed", selector_compression="plain"
+    )
+    first = model.build_analysis_revision(**inputs)
+    partition[field] = changed  # type: ignore[index]
+
+    assert model.build_analysis_revision(**inputs) != first
+
+
 def test_execution_plan_canonicalizes_sets_graphs_tools_and_resource_maps() -> None:
     first = execution_plan()
     functional = functional_specification()

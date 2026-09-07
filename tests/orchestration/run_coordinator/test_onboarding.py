@@ -10,6 +10,7 @@ import os
 import stat
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import yaml
@@ -829,6 +830,38 @@ def test_project_validation_is_read_only(tmp_path: Path) -> None:
     )
 
     assert _tree_bytes(output) == before
+
+
+def test_project_validation_summary_is_analysis_module_neutral(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_path = tmp_path / "project.yaml"
+    project_path.write_text("project: fixture\n", encoding="utf-8")
+    analysis = SimpleNamespace(
+        name="collaborator",
+        workflow_inputs={
+            "samples": {"rows": [{"sample_id": "sample"}]},
+            "partitions": {"rows": [{"partition_id": "all"}]},
+            "reference": {"fasta": {"path": "/reference.fa"}},
+        },
+    )
+    result = onboarding.ProjectValidation(
+        project=SimpleNamespace(
+            source_path=project_path,
+            source_sha256="0" * 64,
+            analyses=(analysis,),
+        ),
+        fasta_contigs=(("chr1", 1),),
+        transcript_count=1,
+        sample_count=1,
+        gtf_warnings=(),
+    )
+    monkeypatch.setattr(onboarding, "validate_project", lambda _path: result)
+
+    assert onboarding.validate_from_args(argparse.Namespace(project=project_path)) == 0
+    assert "collaborator: 1 samples, 1 partitions" in capsys.readouterr().out
 
 
 def test_project_validation_reports_invalid_project(

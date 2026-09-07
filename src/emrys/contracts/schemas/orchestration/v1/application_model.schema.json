@@ -42,7 +42,13 @@
           "properties": {
             "partition_id": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
             "selector_type": { "const": "regions_file" },
-            "selector_file_sha256": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256" }
+            "selector_file_sha256": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256" },
+            "selector_format": { "enum": ["bed", "vcf", "tab"] },
+            "selector_compression": { "enum": ["plain", "gzip"] }
+          },
+          "dependentRequired": {
+            "selector_format": ["selector_compression"],
+            "selector_compression": ["selector_format"]
           }
         }
       ]
