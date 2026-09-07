@@ -325,13 +325,14 @@ def validate_runtime_profile_contract(
         ):
             raise DoctorInputError(f"Runtime check changes fixed policy: {check.check_id}")
     renv_library = Path(selected["renv_library"].target)
-    try:
-        state = renv_library.lstat()
-        canonical_library = renv_library.resolve(strict=True)
-    except OSError as exc:
-        raise DoctorInputError(f"renv library is unavailable: {renv_library}: {exc}") from exc
-    if stat.S_ISLNK(state.st_mode) or not stat.S_ISDIR(state.st_mode) or canonical_library != renv_library:
-        raise DoctorInputError(f"renv library must be a canonical real directory: {renv_library}")
+    if os.path.lexists(renv_library):
+        try:
+            state = renv_library.lstat()
+            canonical_library = renv_library.resolve(strict=True)
+        except OSError as exc:
+            raise DoctorInputError(f"renv library is unavailable: {renv_library}: {exc}") from exc
+        if stat.S_ISLNK(state.st_mode) or not stat.S_ISDIR(state.st_mode) or canonical_library != renv_library:
+            raise DoctorInputError(f"renv library must be a canonical real directory: {renv_library}")
     python = selected["python"].target
     relations = (
         selected["snakemake"].target == python

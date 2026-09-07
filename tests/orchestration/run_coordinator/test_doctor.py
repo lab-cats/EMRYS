@@ -387,7 +387,9 @@ def test_runtime_contract_refuses_a_truncated_fixed_roster(tmp_path: Path) -> No
         doctor.validate_runtime_profile_contract(policy[:-1], source)
 
 
-def test_runtime_contract_refuses_a_symlinked_renv_library(tmp_path: Path) -> None:
+def test_runtime_contract_allows_missing_but_refuses_symlinked_renv_library(
+    tmp_path: Path,
+) -> None:
     source = tmp_path / "source"
     source.mkdir()
     real_library = tmp_path / "real-library"
@@ -431,6 +433,8 @@ def test_runtime_contract_refuses_a_symlinked_renv_library(tmp_path: Path) -> No
 
     with pytest.raises(doctor.DoctorInputError, match="canonical real directory"):
         doctor.validate_runtime_profile_contract(checks, source)
+    linked_library.unlink()
+    doctor.validate_runtime_profile_contract(checks, source)
 
 
 def test_absent_runtime_diagnosis_is_read_only_and_opens_no_log(
@@ -643,7 +647,7 @@ def test_repair_refuses_a_site_owned_runtime_without_mutation(
     assert _snapshot(tmp_path) == before
 
 
-def test_managed_repair_binds_base_profile_not_derived_module_bytes(
+def test_managed_repair_accepts_missing_library_and_binds_base_profile(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -654,6 +658,10 @@ def test_managed_repair_binds_base_profile_not_derived_module_bytes(
     tool = tmp_path / "collaborator-tool"
     tool.write_bytes(b"tool\n")
     python_check = _check("python", "tool_version", sys.executable)
+    missing_library = project.source_path.parent / "runtime/managed/renv/library"
+    renv_check = _check(
+        "renv_library", "path_visibility", str(missing_library)
+    )
     dependency_check = _check(
         "collaborator_tool", "tool_version", str(tool)
     )
@@ -695,13 +703,14 @@ def test_managed_repair_binds_base_profile_not_derived_module_bytes(
     monkeypatch.setattr(
         doctor,
         "load_runtime_profile_contract",
-        lambda _path: (base_bytes, (python_check.check,)),
+        lambda _path: (base_bytes, (python_check.check, renv_check.check)),
     )
 
     plan = doctor._build_repair_plan(result)
 
     assert plan.runtime is not None
     assert plan.runtime.profile_bytes == base_bytes
+    assert not missing_library.exists()
 
 
 def test_managed_repair_refuses_module_specific_dependency_installation(
