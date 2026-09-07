@@ -8,6 +8,7 @@ import csv
 import dataclasses
 import hashlib
 import importlib
+import io
 import json
 import os
 import signal
@@ -317,7 +318,7 @@ def test_prepare_context_uses_local_build_for_unattributable_package(
         deps=build_deps(matching_checkout_head_commit=lambda **_kwargs: None),
     )
 
-    assert context.git_commit == "local_build"
+    assert context.receipt_row["git_commit"] == "local_build"
     assert context.document["provenance"]["git_commit"] == "local_build"
 
 
@@ -491,7 +492,11 @@ def test_live_run_summary_header_owner_controls_serialized_bytes(
     assert context.summary_tsv_bytes.splitlines()[0] == ("\t".join(mutated).encode())
     assert context.summary_tsv_bytes != ARTIFACT_INDEX_API.tsv_bytes(
         original,
-        context.summary_rows,
+        list(
+            csv.DictReader(
+                io.StringIO(context.summary_tsv_bytes.decode()), delimiter="\t"
+            )
+        ),
     )
 
 
@@ -1191,7 +1196,9 @@ def test_post_commit_cleanup_failure_preserves_new_transaction_and_lock(
     assert all(path.is_file() for path in run_summary_fixture.summary_paths)
     RUN_SUMMARY_PUBLICATION.validate_published_run_summary(context)
     receipt = read_tsv(run_summary_fixture.summary_receipt_path)[0]
-    assert receipt["run_summary_attempt_id"] == context.attempt_id
+    assert receipt["run_summary_attempt_id"] == (
+        context.receipt_row["run_summary_attempt_id"]
+    )
     assert run_summary_fixture.lock_path.is_file()
     assert any(
         path.name.endswith(".RECOVERY.txt")
