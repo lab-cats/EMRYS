@@ -1,6 +1,6 @@
 # EMRYS backlog matrix
 
-Last reconciled: **2026-09-02**
+Last reconciled: **2026-09-07**
 
 This is EMRYS's only work backlog. It owns accepted current work, status,
 cursory Importance and Complexity, required outcomes, and acceptance. Git
@@ -66,6 +66,7 @@ authority or impose ordering.
 | ID | Kind | Status | Importance | Complexity | Required outcome | Acceptance |
 |---|---|---|---:|---:|---|---|
 | `SITE-PARITY-01` | Site qualification | Open | `4` | `5` | Qualify the current whole-Run path on CSU Viking or another named institutional site. | Exact site modules/tools, Project storage semantics, locking/rename/durability, runtime discovery, Doctor, submission, failure/resume, resource and scheduler provenance, one-log ownership, Results, and direct/Slurm scientific parity are evidenced at one exact revision. Hosted single-node proof is not promoted to institutional, multi-node, production, scientific-review, or biological proof. |
+| `SCHED-01` | Scheduler preflight | Open | `3` | `2` | Reject an explicitly undersized Slurm memory request before submission. | When both placement memory and the applicable workflow or stage minimum are explicit, admission rejects insufficient capacity before `sbatch`; unknown capacity remains unknown, the existing CPU check remains authoritative, and no generalized resource solver or duplicate scheduler policy is introduced. |
 | `CONTAINER-01` | Managed platform | Open | `3` | `5` | Evaluate and, if justified, provide a supported broadly compatible Linux container without coupling it to project setup. | Compare against the existing Pixi-managed path; cover architecture/ABI support, Slurm and storage integration, security, reproducibility, licenses, tool and R identities, updates, provenance, site coexistence, and escape hatches. Any implementation has explicit local and site evidence and replaces rather than duplicates setup/runtime authority. |
 | `OPS-03` | Maintenance | Open | `3` | `4` | Audit inline, generated, legacy-direct, and shell programs and keep only substantive reusable owners. | Every program receives retain/extract/migrate/retire rationale; independently useful logic has one tested owner; normal operation requires no internal helper choreography; shell-to-Python conversion occurs only when total surface falls. Retained programs receive semantic names during caller-complete migration rather than a repository-wide cosmetic rename, and standalone owner routes remain only when independently useful. Legacy replacement routes across canonical BAM, BAM QC, RSeQC, duplicate marking, split-N-cigar, and paired CMH retire only after their current orchestrated owner and failure/recovery protections demonstrably supersede them. `INLINE-OWNERS-01` is absorbed here. |
 | `FUT-INDEX-01` | Data reuse | Open | `4` | `4` | Admit and reuse an explicitly declared prebuilt STAR index. | Required members bind to FASTA/GTF identity, STAR parameters/version, and exact hashes; directory existence never authorizes reuse, repair, merge, or mutation. |
