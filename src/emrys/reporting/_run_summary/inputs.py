@@ -154,24 +154,3 @@ def _require_explicit_regular_file(
     if resolved != lexical:
         _fail(f"{label} must not traverse a symbolic link: {value}")
     return resolved
-
-
-def _require_contract_regular_file(
-    label: str,
-    value: str,
-    *,
-    source_root: Path,
-) -> Path:
-    try:
-        contracts.validate_resolved_path(value, label)
-    except contracts.ContractValidationError as exc:
-        _fail(str(exc))
-    declared = Path(value)
-    lexical = (
-        declared if declared.is_absolute() else source_root / declared
-    ).absolute()
-    _reject_symlink_components(lexical, label)
-    resolved = _require_regular_file(label, lexical)
-    if resolved != lexical:
-        _fail(f"{label} must not traverse a symbolic link: {value}")
-    return resolved
