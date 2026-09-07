@@ -425,13 +425,9 @@ def pipeline_commands(
 def _run_pipeline(context: Context, orientation_index: int, tx: Publication) -> None:
     mpileup_command, filter_command = pipeline_commands(context, orientation_index)
     try:
-        producer = subprocess.Popen(
-            mpileup_command, stdout=subprocess.PIPE, process_group=0
-        )
+        producer = subprocess.Popen(mpileup_command, stdout=subprocess.PIPE)
         tx.children = [producer]
-        consumer = subprocess.Popen(
-            filter_command, stdin=producer.stdout, process_group=0
-        )
+        consumer = subprocess.Popen(filter_command, stdin=producer.stdout)
         tx.children.append(consumer)
         producer.stdout.close()
         filter_status = consumer.wait()
@@ -457,7 +453,6 @@ def _bcftools(
             [context.bcftools, *arguments],
             stdout=subprocess.PIPE,
             text=True,
-            process_group=0,
         )
         tx.children = [process]
         output: str | int = (
