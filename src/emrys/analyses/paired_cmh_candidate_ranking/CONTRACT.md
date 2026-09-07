@@ -93,6 +93,8 @@ supplied.
 First publication in that mode is create-exclusive and retains all six staging
 inode anchors through validation; ambiguous replacement preserves the owner
 lock and residue.
+Rollback follows the shared
+[no-clobber rule](../../../../docs/design/decisions/execution-evidence-and-reporting.md#no-clobber-rollback).
 
 The summary becomes visible before final post-publication checks and does not
 hash its five sibling outputs, so presence alone is not independent proof that

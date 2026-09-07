@@ -596,6 +596,8 @@ class Publication:
             results = []
             for name in self.names:
                 staged, final = self.p[f"tmp_{name}"], self.p[name]
+                if not lexists(final):
+                    continue
                 if not self.same(staged, final):
                     results.append(False)
                 else:

@@ -10,7 +10,14 @@ single-host direct receipt after probing hard links, `flock`, atomic rename,
 fsync, permissions, and identity at the exact Project/reference roots. Slurm
 requires `emrys debug storage-qualification`: compute creates private probes in
 the allocation and head-node finalize re-admits them, publishes the content-
-bound receipt, and removes only those probe directories.
+bound receipt, and removes only those probe directories. Both qualification
+paths make the final receipt durable before removing the staged receipt and
+probe evidence. Final-link or initial directory-fsync failure preserves the
+staged receipt and probes; any surviving staged marker still blocks admission
+and re-execution. After the final receipt is durable and the staged name is
+removed, a cleanup failure leaves final authority intact, even if probe cleanup
+is partial. Preserve remaining evidence for inspection; an error does not
+authorize deleting, replacing, or adopting qualification artifacts.
 
 The two-phase receipt binds canonical paths, inode and UID/GID observations,
 mount source/type, capacity, locking, rename visibility, and post-allocation

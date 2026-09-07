@@ -1,9 +1,11 @@
 import argparse
 import csv
+import hashlib
 import json
 import subprocess
 import sys
 from collections.abc import Sequence
+from functools import partial
 from pathlib import Path
 
 import pytest
@@ -473,10 +475,10 @@ def test_two_phase_storage_qualification_is_durable_and_read_only_to_doctor(
     assert not list(reference_root.glob(".emrys-storage-probe-*"))
 
 
-def _direct_qualification(
+def _direct_qualification_plan(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-) -> tuple[Path, Path, qualification.QualifiedStorage]:
+) -> qualification.DirectQualificationPlan:
     monkeypatch.setattr(qualification, "_mount_identity", synthetic_mount_identity)
     workspace = tmp_path / "project"
     (workspace / "runtime").mkdir(parents=True)
@@ -485,11 +487,18 @@ def _direct_qualification(
     reference_fasta = reference_root / "genome.fa"
     reference_fasta.write_text(">1\nA\n", encoding="utf-8")
     monkeypatch.delenv("SLURM_JOB_ID", raising=False)
-    plan = qualification.plan_direct_qualification(workspace, reference_fasta)
+    return qualification.plan_direct_qualification(workspace, reference_fasta)
+
+
+def _direct_qualification(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[Path, Path, qualification.QualifiedStorage]:
+    plan = _direct_qualification_plan(tmp_path, monkeypatch)
 
     admitted = qualification.execute_direct_qualification(plan)
 
-    return workspace, reference_fasta, admitted
+    return plan.workspace, plan.reference_fasta, admitted
 
 
 def test_direct_qualification_is_single_host_create_absent_and_not_site_evidence(
@@ -715,6 +724,143 @@ def _final_qualification(
     arguments.phase = "finalize"
     assert qualification.qualify_from_args(arguments) == 0
     return workspace, reference_fasta, compute, final
+
+
+@pytest.fixture(params=("direct", "two-phase"))
+def qualification_attempt(
+    request: pytest.FixtureRequest,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> argparse.Namespace:
+    if request.param == "direct":
+        plan = _direct_qualification_plan(tmp_path, monkeypatch)
+        execute = partial(qualification.execute_direct_qualification, plan)
+        admit = partial(qualification.admit_direct_qualification, plan.workspace, plan.reference_fasta)
+        final, staged, probes, compute = plan.receipt_path, plan.staged_path, plan.probe_paths, None
+    else:
+        _arguments, workspace, reference, compute, final = _compute_qualification(tmp_path, monkeypatch)
+        staged = qualification._evidence_paths(qualification._storage_roots(workspace, reference))[-1]
+        probes = tuple(Path(row["probe_directory"]) for row in json.loads(compute.read_bytes())["roots"])
+        execute = partial(qualification._run_finalize, workspace, reference)
+        admit = partial(qualification.admit_final_qualification, workspace, reference)
+    monkeypatch.delenv("SLURM_JOB_ID", raising=False)
+    return argparse.Namespace(execute=execute, admit=admit, final=final, staged=staged, probes=probes, compute=compute)
+
+
+@pytest.mark.parametrize("fault", ("link", "foreign-final", "first-fsync", "stage-unlink", "second-fsync"))
+def test_qualification_publication_failure_preserves_evidence(
+    qualification_attempt: argparse.Namespace,
+    monkeypatch: pytest.MonkeyPatch,
+    fault: str,
+) -> None:
+    attempt = qualification_attempt
+    compute_bytes = None if attempt.compute is None else attempt.compute.read_bytes()
+    real_link = qualification.os.link
+    real_fsync = qualification._fsync_directory
+    real_unlink = Path.unlink
+    fsync_calls = 0
+
+    def link(source: Path, destination: Path, **kwargs: object) -> None:
+        if Path(destination) == attempt.final:
+            if fault == "link":
+                raise OSError("injected final link failure")
+            if fault == "foreign-final":
+                attempt.final.write_bytes(b"foreign receipt\n")
+        real_link(source, destination, **kwargs)
+
+    def fsync(path: Path) -> None:
+        nonlocal fsync_calls
+        if path == attempt.final.parent:
+            fsync_calls += 1
+            if (fault, fsync_calls) in (("first-fsync", 1), ("second-fsync", 2)):
+                raise OSError("injected final directory fsync failure")
+        real_fsync(path)
+
+    def unlink(path: Path, **kwargs: object) -> None:
+        if path == attempt.staged and fault == "stage-unlink":
+            raise OSError("injected staged receipt cleanup failure")
+        real_unlink(path, **kwargs)
+
+    with monkeypatch.context() as injection:
+        injection.setattr(qualification.os, "link", link)
+        injection.setattr(qualification, "_fsync_directory", fsync)
+        injection.setattr(Path, "unlink", unlink)
+        with pytest.raises((qualification.StorageQualificationError, OSError)):
+            attempt.execute()
+
+    assert attempt.staged.exists() == (fault != "second-fsync")
+    receipt = attempt.staged if attempt.staged.exists() else attempt.final
+    receipt_bytes = receipt.read_bytes()
+    assert json.loads(receipt_bytes)["status"] == "qualified"
+    if fault == "link":
+        assert not attempt.final.exists()
+    elif fault == "foreign-final":
+        assert attempt.final.read_bytes() == b"foreign receipt\n"
+    else:
+        assert attempt.final.read_bytes() == receipt_bytes
+        if attempt.staged.exists():
+            assert attempt.final.samefile(attempt.staged)
+    rows = json.loads((attempt.compute or receipt).read_bytes())["roots"]
+    for probe, row in zip(attempt.probes, rows, strict=True):
+        assert {path.name for path in probe.iterdir()} == {"flock.lock", "fsync-source.bin", "hardlink.bin", "visible.bin"}
+        source = probe / "fsync-source.bin"
+        assert source.samefile(probe / "hardlink.bin")
+        assert hashlib.sha256(source.read_bytes()).hexdigest() == row["source_sha256"]
+        assert hashlib.sha256((probe / "visible.bin").read_bytes()).hexdigest() == row["visible_sha256"]
+    if fault == "second-fsync":
+        assert attempt.admit().receipt_path == attempt.final
+    else:
+        with pytest.raises(qualification.StorageQualificationError, match="Incomplete"):
+            attempt.admit()
+    with pytest.raises(qualification.StorageQualificationError, match="already exists|Incomplete"):
+        attempt.execute()
+    assert receipt.read_bytes() == receipt_bytes
+    if attempt.compute is not None:
+        assert attempt.compute.read_bytes() == compute_bytes
+
+
+@pytest.mark.parametrize("fault", ("first-probe", "partial-probe", "second-probe"))
+def test_qualification_cleanup_failure_preserves_receipt(
+    qualification_attempt: argparse.Namespace,
+    monkeypatch: pytest.MonkeyPatch,
+    fault: str,
+) -> None:
+    attempt = qualification_attempt
+    compute_bytes = None if attempt.compute is None else attempt.compute.read_bytes()
+    real_unlink = Path.unlink
+    real_cleanup = qualification._cleanup_probe
+    receipt_bytes = b""
+
+    def cleanup(probe: Path) -> None:
+        nonlocal receipt_bytes
+        receipt_bytes = attempt.final.read_bytes()
+        assert not attempt.staged.exists()
+        assert attempt.admit().receipt_path == attempt.final
+        if (fault, probe) in (("first-probe", attempt.probes[0]), ("second-probe", attempt.probes[1])):
+            raise OSError("injected probe cleanup failure")
+        real_cleanup(probe)
+
+    def unlink(path: Path, **kwargs: object) -> None:
+        if path == attempt.probes[0] / "fsync-source.bin" and fault == "partial-probe":
+            raise OSError("injected partial probe cleanup failure")
+        real_unlink(path, **kwargs)
+
+    with monkeypatch.context() as injection:
+        injection.setattr(qualification, "_cleanup_probe", cleanup)
+        injection.setattr(Path, "unlink", unlink)
+        with pytest.raises(OSError, match="injected .*probe cleanup failure"):
+            attempt.execute()
+
+    assert not attempt.staged.exists()
+    assert attempt.final.read_bytes() == receipt_bytes
+    assert attempt.admit().receipt_sha256 == hashlib.sha256(receipt_bytes).hexdigest()
+    assert attempt.probes[1].is_dir()
+    assert attempt.probes[0].exists() == (fault != "second-probe")
+    if fault == "partial-probe":
+        assert not (attempt.probes[0] / "flock.lock").exists()
+        assert (attempt.probes[0] / "fsync-source.bin").is_file()
+    if attempt.compute is not None:
+        assert attempt.compute.read_bytes() == compute_bytes
 
 
 def test_storage_roots_reject_relative_links_and_noncanonical_inputs(

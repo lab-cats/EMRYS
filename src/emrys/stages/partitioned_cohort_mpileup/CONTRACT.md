@@ -89,6 +89,8 @@ unless `--no-clobber` is supplied.
 First publication in that mode is create-exclusive; VCF and receipt staging
 inode anchors remain through final validation, and ambiguous replacement
 preserves the owner lock and residue.
+Rollback follows the shared
+[no-clobber rule](../../../../docs/design/decisions/execution-evidence-and-reporting.md#no-clobber-rollback).
 
 Ordinary rollback restores the prior three-file set. If restoration itself
 fails, backup paths and the owned lock are preserved for operator recovery;

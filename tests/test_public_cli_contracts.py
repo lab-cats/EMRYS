@@ -451,6 +451,7 @@ def test_documentation_tool_inventory_is_explicit() -> None:
     assert live_files == (
         DOCUMENTATION_PYTHON_ENTRYPOINTS
         | DOCUMENTATION_SHELL_ENTRYPOINTS
+        | {"README.md"}
     )
 
 
