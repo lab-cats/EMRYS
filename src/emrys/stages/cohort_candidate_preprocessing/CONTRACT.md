@@ -97,10 +97,8 @@ supplied.
 First publication in that mode is create-exclusive and retains all three
 staging inode anchors through validation; ambiguous replacement preserves the
 owner lock and residue.
-No-clobber rollback treats an absent final as never published and removes only
-present finals that still match their staging inode. A clean rollback removes
-owned staging and releases the lock so an ordinary rerun is admitted. An
-ownership mismatch or failed removal retains residue for operator inspection.
+Rollback follows the shared
+[no-clobber rule](../../../../docs/design/decisions/execution-evidence-and-reporting.md#no-clobber-rollback).
 
 The receipt is therefore visible briefly before final post-publication checks;
 presence alone is not independent proof that the producer returned success.

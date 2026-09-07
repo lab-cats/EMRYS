@@ -1,7 +1,7 @@
 # Execution, evidence, and reporting decisions
 
-Exact interfaces and failure behavior remain with their functional owners. This
-record preserves the reasons that span owners.
+Owner-specific interfaces and failure behavior remain with their functional
+owners. This record owns shared safety rules and the reasons that span owners.
 
 ## Execution and publication
 
@@ -24,6 +24,16 @@ Preserve locks, backups, partials, and recovery markers whenever ownership or
 cleanup cannot be proved. Characterize unsafe states before correcting them.
 An observed defect is neither an approved contract nor evidence that unlike
 transaction implementations should share one abstraction.
+
+#### No-clobber rollback
+
+Steps 07–09 follow this rule when `--no-clobber` is selected. An output path
+that is already absent needs no cleanup. Remove a present output only if it
+still identifies the same file as this attempt's staging entry, proven by
+matching device and inode. A complete, unambiguous rollback removes owned
+staging and releases the lock so an ordinary rerun can proceed. If an output's
+ownership cannot be proved or removal fails, preserve the lock and remaining
+files for inspection.
 
 ### Separate placement from authority
 
