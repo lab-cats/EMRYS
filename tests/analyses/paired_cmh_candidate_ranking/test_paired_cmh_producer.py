@@ -653,6 +653,102 @@ def test_failure_after_backup_restores_complete_predecessor(
     assert not _residue(fixture)
 
 
+@pytest.mark.parametrize("index", range(6))
+@pytest.mark.parametrize("boundary", ("before", "after", "term-before", "term-after"))
+def test_no_clobber_link_failure_allows_clean_rerun(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, index: int, boundary: str
+) -> None:
+    fixture = _fixture(tmp_path)
+    _inject_process(monkeypatch, fixture)
+    finals = _finals(fixture)
+    roots = (fixture.paths["analysis"],)
+    arguments = [*fixture.arguments, "--no-clobber", "--execute"]
+    original_link = os.link
+
+    def interrupt_link(source: Path, destination: Path) -> None:
+        if Path(destination) != finals[index]:
+            original_link(source, destination)
+            return
+        if boundary.endswith("after"):
+            original_link(source, destination)
+        if boundary.startswith("term"):
+            os.kill(os.getpid(), signal.SIGTERM)
+        raise OSError("injected link-boundary failure")
+
+    with monkeypatch.context() as injected:
+        injected.setattr(producer.os, "link", interrupt_link)
+        assert producer.main(arguments) == (143 if boundary.startswith("term") else 1)
+    assert not any(os.path.lexists(path) for path in finals)
+    assert not any(list(root.rglob(".*")) for root in roots)
+    assert producer.main(arguments) == 0
+    assert all(path.is_file() for path in finals)
+    assert not any(list(root.rglob(".*")) for root in roots)
+
+
+@pytest.mark.parametrize(
+    "fault", ("foreign-file", "foreign-symlink", "missing-anchor", "unlink")
+)
+def test_no_clobber_ambiguous_rollback_preserves_state_and_refuses_rerun(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str
+) -> None:
+    fixture = _fixture(tmp_path)
+    _inject_process(monkeypatch, fixture)
+    finals = _finals(fixture)
+    roots = (fixture.paths["analysis"],)
+    arguments = [*fixture.arguments, "--no-clobber", "--execute"]
+    original_link, original_unlink = os.link, Path.unlink
+    anchors: dict[Path, Path] = {}
+    preserved: dict[Path, bytes] = {}
+    expected_final: list[bytes] = []
+    foreign = roots[0].parent / "foreign-target"
+
+    def interrupt_second_link(source: Path, destination: Path) -> None:
+        anchors[Path(destination)] = Path(source)
+        if Path(destination) != finals[1]:
+            original_link(source, destination)
+            return
+        if fault.startswith("foreign"):
+            foreign.write_bytes(b"foreign output\n")
+            original_unlink(finals[0])
+            if fault == "foreign-symlink":
+                finals[0].symlink_to(foreign)
+            else:
+                finals[0].write_bytes(foreign.read_bytes())
+        elif fault == "missing-anchor":
+            original_unlink(anchors[finals[0]])
+        expected_final.append(finals[0].read_bytes())
+        preserved.update(
+            (path, path.read_bytes())
+            for root in roots
+            for path in root.rglob(".*")
+            if path.is_file()
+        )
+        raise OSError("injected second-link failure")
+
+    def refuse_owned_unlink(path: Path, *, missing_ok: bool = False) -> None:
+        if fault == "unlink" and path == finals[0]:
+            raise OSError("injected owned-final unlink failure")
+        original_unlink(path, missing_ok=missing_ok)
+
+    with monkeypatch.context() as injected:
+        injected.setattr(producer.os, "link", interrupt_second_link)
+        injected.setattr(Path, "unlink", refuse_owned_unlink)
+        assert producer.main(arguments) == 1
+    assert finals[0].is_symlink() == (fault == "foreign-symlink")
+    assert finals[0].read_bytes() == expected_final[0]
+    if fault == "foreign-symlink":
+        assert finals[0].readlink() == foreign
+    assert not any(os.path.lexists(path) for path in finals[1:])
+    assert preserved and all(
+        path.read_bytes() == data for path, data in preserved.items()
+    )
+    owner = (fixture.paths["lock"]) / "owner"
+    owner_bytes, final_bytes = owner.read_bytes(), finals[0].read_bytes()
+    assert producer.main(arguments) == 1
+    assert owner.read_bytes() == owner_bytes and finals[0].read_bytes() == final_bytes
+    assert all(path.read_bytes() == data for path, data in preserved.items())
+
+
 def test_first_publication_failure_removes_partial_set(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

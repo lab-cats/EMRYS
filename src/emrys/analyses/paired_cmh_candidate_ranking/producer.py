@@ -499,6 +499,8 @@ class Publication:
             )
             try:
                 if self.context.arguments.no_clobber:
+                    if not lexists(final):
+                        continue
                     if not self.same(staged, final):
                         success = False
                     else:

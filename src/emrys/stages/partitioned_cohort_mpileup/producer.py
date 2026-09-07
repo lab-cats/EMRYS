@@ -619,6 +619,8 @@ class Publication:
             try:
                 if self.context.arguments.no_clobber:
                     staged = self.p[f"tmp_{name}"]
+                    if not lexists(final):
+                        continue
                     if not self.same(staged, final):
                         success = False
                         continue

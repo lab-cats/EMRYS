@@ -89,6 +89,10 @@ unless `--no-clobber` is supplied.
 First publication in that mode is create-exclusive; VCF and receipt staging
 inode anchors remain through final validation, and ambiguous replacement
 preserves the owner lock and residue.
+No-clobber rollback treats an absent final as never published and removes only
+present finals that still match their staging inode. A clean rollback removes
+owned staging and releases the lock so an ordinary rerun is admitted. An
+ownership mismatch or failed removal retains residue for operator inspection.
 
 Ordinary rollback restores the prior three-file set. If restoration itself
 fails, backup paths and the owned lock are preserved for operator recovery;
