@@ -17,11 +17,11 @@
       "covered_branches": 1030,
       "covered_lines": 3385,
       "line_rate": "0.818028",
-      "name": "local_pilot_control_plane",
+      "name": "run_coordinator",
       "num_branches": 1498,
       "num_statements": 4138,
       "prefixes": [
-        "src/emrys/orchestration/local_pilot/"
+        "src/emrys/orchestration/run_coordinator/"
       ]
     },
     {
@@ -101,13 +101,13 @@
       ]
     },
     {
-      "branch_rate": "0.888889",
-      "covered_branches": 16,
-      "covered_lines": 85,
-      "line_rate": "1.000000",
+      "branch_rate": "0.841772",
+      "covered_branches": 133,
+      "covered_lines": 428,
+      "line_rate": "0.889813",
       "name": "paired_cmh_analysis_contracts",
-      "num_branches": 18,
-      "num_statements": 85,
+      "num_branches": 158,
+      "num_statements": 481,
       "prefixes": [
         "src/emrys/analyses/paired_cmh_candidate_ranking/"
       ]
@@ -136,8 +136,8 @@
   },
   "policy": {
     "critical_owner_non_regression": {
-      "local_pilot_control_plane": [
-        "src/emrys/orchestration/local_pilot/"
+      "run_coordinator": [
+        "src/emrys/orchestration/run_coordinator/"
       ],
       "emrys.contracts.scientific_evidence": [
         "src/emrys/contracts/scientific_evidence/"

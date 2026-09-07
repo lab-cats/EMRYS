@@ -199,7 +199,17 @@
               "type": "null"
             }
           ]
+        },
+        "selector_format": {
+          "enum": ["bed", "vcf", "tab"]
+        },
+        "selector_compression": {
+          "enum": ["plain", "gzip"]
         }
+      },
+      "dependentRequired": {
+        "selector_format": ["selector_compression"],
+        "selector_compression": ["selector_format"]
       },
       "allOf": [
         {
@@ -382,6 +392,9 @@
               "type": "null"
             }
           ]
+        },
+        "identity_kind": {
+          "enum": ["file", "package_tree"]
         }
       }
     },

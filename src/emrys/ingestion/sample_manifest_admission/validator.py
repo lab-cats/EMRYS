@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 import csv
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 from emrys.libraries.validation import ValidationError, lexical_path, resolve_from_base
@@ -32,22 +32,6 @@ class ManifestSummary:
     sample_count: int
     conditions: frozenset[str]
     strandedness_values: frozenset[str]
-
-
-@dataclass
-class _ManifestState:
-    errors: list[str] = field(default_factory=list)
-    sample_rows: dict[str, int] = field(default_factory=dict)
-    conditions: set[str] = field(default_factory=set)
-    strandedness_values: set[str] = field(default_factory=set)
-    sample_count: int = 0
-
-    def summary(self) -> ManifestSummary:
-        return ManifestSummary(
-            sample_count=self.sample_count,
-            conditions=frozenset(self.conditions),
-            strandedness_values=frozenset(self.strandedness_values),
-        )
 
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:
@@ -77,141 +61,6 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _validate_header(reader: csv.DictReader, manifest: Path) -> None:
-    if reader.fieldnames is None:
-        raise ValidationError(f"Manifest is empty or missing a header: {manifest}")
-
-    fieldnames = [column.strip() for column in reader.fieldnames]
-    reader.fieldnames = fieldnames
-    errors: list[str] = []
-
-    duplicate_columns = sorted(
-        column for column in set(fieldnames) if fieldnames.count(column) > 1
-    )
-    if duplicate_columns:
-        errors.append(f"Duplicate column name(s): {', '.join(duplicate_columns)}")
-    if "" in fieldnames:
-        errors.append("Header contains an empty column name")
-
-    missing_columns = [
-        column for column in REQUIRED_COLUMNS if column not in fieldnames
-    ]
-    if missing_columns:
-        errors.append(f"Missing required column(s): {', '.join(missing_columns)}")
-
-    unexpected_columns = sorted(
-        column for column in fieldnames if column not in ALLOWED_COLUMNS
-    )
-    if unexpected_columns:
-        errors.append(f"Unexpected column(s): {', '.join(unexpected_columns)}")
-    if errors:
-        raise ValidationError(format_errors(errors))
-
-
-def _record_extra_fields(
-    row_number: int,
-    row: dict[str | None, str | list[str] | None],
-    state: _ManifestState,
-) -> None:
-    raw_extra_values = row.get(None)
-    if not isinstance(raw_extra_values, list):
-        return
-
-    extra_values = [value.strip() for value in raw_extra_values if value.strip()]
-    message = f"Row {row_number}: too many tab-separated fields"
-    if extra_values:
-        message = f"{message}: {', '.join(extra_values)}"
-    state.errors.append(message)
-
-
-def _normalized_values(
-    row: dict[str | None, str | list[str] | None],
-) -> dict[str, str]:
-    return {
-        column: value.strip() if isinstance(value := row.get(column), str) else ""
-        for column in ALLOWED_COLUMNS
-    }
-
-
-def _record_sample_id(
-    row_number: int,
-    sample_id: str,
-    state: _ManifestState,
-) -> None:
-    if not sample_id:
-        state.errors.append(f"Row {row_number}: sample_id must be non-empty")
-    elif sample_id in state.sample_rows:
-        state.errors.append(
-            f"Row {row_number}: duplicate sample_id '{sample_id}' "
-            f"(first seen on row {state.sample_rows[sample_id]})"
-        )
-    else:
-        state.sample_rows[sample_id] = row_number
-
-
-def _record_required_fastq_paths(
-    row_number: int,
-    values: dict[str, str],
-    state: _ManifestState,
-) -> None:
-    for column in ("r1_fastq", "r2_fastq"):
-        if not values[column]:
-            state.errors.append(f"Row {row_number}: {column} must be non-empty")
-
-
-def _record_strandedness(
-    row_number: int,
-    strandedness: str,
-    state: _ManifestState,
-) -> None:
-    if strandedness not in VALID_STRANDEDNESS:
-        state.errors.append(
-            f"Row {row_number}: strandedness must be one of "
-            f"{', '.join(sorted(VALID_STRANDEDNESS))}; got '{strandedness}'"
-        )
-    else:
-        state.strandedness_values.add(strandedness)
-
-
-def _record_missing_fastq_files(
-    row_number: int,
-    values: dict[str, str],
-    base_dir: Path,
-    state: _ManifestState,
-) -> None:
-    for column in ("r1_fastq", "r2_fastq"):
-        fastq_path = values[column]
-        if not fastq_path:
-            continue
-        resolved_path = resolve_from_base(base_dir, fastq_path)
-        if not resolved_path.exists():
-            state.errors.append(
-                f"Row {row_number}: {column} file does not exist: {resolved_path}"
-            )
-
-
-def _validate_row(
-    row_number: int,
-    row: dict[str | None, str | list[str] | None],
-    base_dir: Path,
-    check_files: bool,
-    state: _ManifestState,
-) -> None:
-    _record_extra_fields(row_number, row, state)
-    values = _normalized_values(row)
-    if not any(values.values()):
-        return
-
-    state.sample_count += 1
-    _record_sample_id(row_number, values["sample_id"], state)
-    _record_required_fastq_paths(row_number, values, state)
-    _record_strandedness(row_number, values["strandedness"], state)
-    if values["condition"]:
-        state.conditions.add(values["condition"])
-    if check_files:
-        _record_missing_fastq_files(row_number, values, base_dir, state)
-
-
 def validate_manifest(
     manifest: Path, base_dir: Path, check_files: bool
 ) -> ManifestSummary:
@@ -220,18 +69,83 @@ def validate_manifest(
     if not manifest.is_file():
         raise ValidationError(f"Manifest is not a file: {manifest}")
 
-    state = _ManifestState()
+    errors: list[str] = []
+    sample_rows: dict[str, int] = {}
+    conditions: set[str] = set()
+    strandedness_values: set[str] = set()
+    sample_count = 0
     with manifest.open(newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
-        _validate_header(reader, manifest)
+        if reader.fieldnames is None:
+            raise ValidationError(f"Manifest is empty or missing a header: {manifest}")
+        fieldnames = [column.strip() for column in reader.fieldnames]
+        reader.fieldnames = fieldnames
+        duplicate_columns = sorted(
+            column for column in set(fieldnames) if fieldnames.count(column) > 1
+        )
+        if duplicate_columns:
+            errors.append(f"Duplicate column name(s): {', '.join(duplicate_columns)}")
+        if "" in fieldnames:
+            errors.append("Header contains an empty column name")
+        missing_columns = [column for column in REQUIRED_COLUMNS if column not in fieldnames]
+        if missing_columns:
+            errors.append(f"Missing required column(s): {', '.join(missing_columns)}")
+        unexpected_columns = sorted(column for column in fieldnames if column not in ALLOWED_COLUMNS)
+        if unexpected_columns:
+            errors.append(f"Unexpected column(s): {', '.join(unexpected_columns)}")
+        if errors:
+            raise ValidationError(format_errors(errors))
         for row_number, row in enumerate(reader, start=2):
-            _validate_row(row_number, row, base_dir, check_files, state)
+            raw_extra_values = row.get(None)
+            if isinstance(raw_extra_values, list):
+                extra_values = [value.strip() for value in raw_extra_values if value.strip()]
+                message = f"Row {row_number}: too many tab-separated fields"
+                if extra_values:
+                    message = f"{message}: {', '.join(extra_values)}"
+                errors.append(message)
+            values = {
+                column: value.strip() if isinstance(value := row.get(column), str) else ""
+                for column in ALLOWED_COLUMNS
+            }
+            if not any(values.values()):
+                continue
+            sample_count += 1
+            sample_id = values["sample_id"]
+            if not sample_id:
+                errors.append(f"Row {row_number}: sample_id must be non-empty")
+            elif sample_id in sample_rows:
+                errors.append(
+                    f"Row {row_number}: duplicate sample_id '{sample_id}' "
+                    f"(first seen on row {sample_rows[sample_id]})"
+                )
+            else:
+                sample_rows[sample_id] = row_number
+            for column in ("r1_fastq", "r2_fastq"):
+                fastq_path = values[column]
+                if not fastq_path:
+                    errors.append(f"Row {row_number}: {column} must be non-empty")
+                elif check_files and not (
+                    resolved_path := resolve_from_base(base_dir, fastq_path)
+                ).exists():
+                    errors.append(
+                        f"Row {row_number}: {column} file does not exist: {resolved_path}"
+                    )
+            strandedness = values["strandedness"]
+            if strandedness not in VALID_STRANDEDNESS:
+                errors.append(
+                    f"Row {row_number}: strandedness must be one of "
+                    f"{', '.join(sorted(VALID_STRANDEDNESS))}; got '{strandedness}'"
+                )
+            else:
+                strandedness_values.add(strandedness)
+            if values["condition"]:
+                conditions.add(values["condition"])
 
-    if state.sample_count == 0:
-        state.errors.append("Manifest must contain at least one sample row")
-    if state.errors:
-        raise ValidationError(format_errors(state.errors))
-    return state.summary()
+    if sample_count == 0:
+        errors.append("Manifest must contain at least one sample row")
+    if errors:
+        raise ValidationError(format_errors(errors))
+    return ManifestSummary(sample_count, frozenset(conditions), frozenset(strandedness_values))
 
 
 def format_errors(errors: list[str]) -> str:

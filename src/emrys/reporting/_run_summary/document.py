@@ -7,6 +7,8 @@ from typing import Any
 
 from emrys.reporting._run_summary.models import (
     INTERPRETATION_BOUNDARY,
+    MODULAR_PRODUCER_VERSION,
+    MODULAR_RUN_SUMMARY_SCHEMA_VERSION,
     PRODUCER,
     PRODUCER_VERSION,
     RUN_SUMMARY_SCHEMA_VERSION,
@@ -38,6 +40,7 @@ def _build_document(
     artifacts: list[dict[str, Any]],
     generated_at: str,
     git_commit: str,
+    analysis_policy_binding: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, int]]:
     expected_scopes, artifact_scope_order = _build_expected_scopes(artifacts)
     attempts, superseded_attempt_ids = _build_attempts(artifacts)
@@ -72,9 +75,14 @@ def _build_document(
             ],
         },
     }
+    modular = analysis_policy_binding is not None
     document = {
         "schema_name": "emrys.run_summary",
-        "schema_version": RUN_SUMMARY_SCHEMA_VERSION,
+        "schema_version": (
+            MODULAR_RUN_SUMMARY_SCHEMA_VERSION
+            if modular
+            else RUN_SUMMARY_SCHEMA_VERSION
+        ),
         "record_type": "run_summary",
         "run_id": run_id,
         "run_contract": run_contract,
@@ -103,15 +111,20 @@ def _build_document(
         "parameters": parameters,
         "qc_metrics": qc_metrics,
         "limitations": _build_limitations(artifacts=artifacts),
-        "candidate_terminology": "CMH-ranked candidates",
-        "interpretation_boundary": INTERPRETATION_BOUNDARY,
         "warnings": _stable_unique(warnings),
         "errors": errors,
         "provenance": {
             "producer": PRODUCER,
-            "producer_version": PRODUCER_VERSION,
+            "producer_version": (
+                MODULAR_PRODUCER_VERSION if modular else PRODUCER_VERSION
+            ),
             "git_commit": git_commit,
             "created_at": generated_at,
         },
     }
+    if modular:
+        document["analysis_policy"] = analysis_policy_binding
+    else:
+        document["candidate_terminology"] = "CMH-ranked candidates"
+        document["interpretation_boundary"] = INTERPRETATION_BOUNDARY
     return document, artifact_scope_order

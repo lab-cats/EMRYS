@@ -11,7 +11,7 @@ caches, staging, sandbox, and related restored state remain ignored.
 ## Restoration and cleanup
 
 Restoration is an explicit operator action. Use the
-[explicit dependency procedure](../docs/operations/RUNBOOK.md#explicit-dependency-setup)
+[dependency-maintenance procedure](../docs/operations/RUNBOOK.md#dependency-maintenance)
 rather than editing the library, activation script, settings, or lockfile to
 silence drift. Do not blanket-clean `renv/library/` or other ignored dependency
 state: it may be required for local validation and can be expensive to restore.
@@ -29,4 +29,3 @@ explicit R 4.6.1 executable. After restoration, pass the exact existing
 platform library as `RENV_LIBRARY` to `make r-check`. The check selects that
 library without running the renv autoloader, changes no dependencies, and fails
 on any lock, version, or library-identity drift.
-

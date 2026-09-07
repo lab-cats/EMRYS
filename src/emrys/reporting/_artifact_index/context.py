@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import argparse
-from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from emrys import analyses
 from emrys.contracts.artifacts import api as contracts
+from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.libraries.source_authority import matching_clean_checkout_head_commit
 
 from .core import (
@@ -17,6 +18,7 @@ from .core import (
     canonical_json_bytes,
     load_run_contract,
     new_attempt_id,
+    scope_adapter_rosters,
     sha256_bytes,
     stat_source,
     utc_now,
@@ -44,7 +46,7 @@ from .records import (
     validate_existing_identity,
     validate_record_in_memory,
 )
-from .registry import ADAPTER_REGISTRY
+from .registry import build_adapter_registry
 from .validation import validate_existing_transaction
 
 if TYPE_CHECKING:
@@ -77,11 +79,62 @@ def prepare_context(
     inventory_path = arguments.inventory.expanduser().resolve()
     output_root = arguments.output_root.expanduser().resolve()
     run_contract, run_contract_file_sha256 = load_run_contract(run_contract_path)
+    authored_policy_path = getattr(arguments, "analysis_policy", None)
+    analysis_policy_path = (
+        None
+        if authored_policy_path is None
+        else authored_policy_path.expanduser().resolve()
+    )
+    analysis_policy = (
+        {"schema_version": "emrys.analysis-policy.v1"}
+        if analysis_policy_path is None
+        else contracts.load_json_object(analysis_policy_path, "analysis policy")
+    )
+    if analysis_policy_path is not None:
+        try:
+            orchestration_contracts.validate_record("policy", analysis_policy)
+        except orchestration_contracts.ContractValidationError as exc:
+            raise ArtifactIndexError(str(exc)) from exc
+    analysis_policy_sha256 = (
+        None
+        if analysis_policy_path is None
+        else contracts.sha256_file(analysis_policy_path)
+    )
+    if analysis_policy_sha256 is not None and analysis_policy_sha256 != (
+        run_contract["primary_analysis_policy_sha256"]
+    ):
+        raise ArtifactIndexError(
+            "Analysis policy does not match the reporting run contract"
+        )
+    try:
+        analysis_module = analyses.readmit_analysis_module(analysis_policy)
+    except analyses.AnalysisModuleLoadError as exc:
+        raise ArtifactIndexError(str(exc)) from exc
+    adapter_registry = build_adapter_registry(analysis_module.descriptor)
+    profile = getattr(arguments, "profile", None)
+    if profile is None:
+        raise ArtifactIndexError(
+            "Artifact indexing requires the Run's immutable workflow profile"
+        )
+    scope_rosters = scope_adapter_rosters(profile["artifact_templates"])
+    module_steps = {task.step_id for task in analysis_module.descriptor.tasks}
+    source_path_templates = {
+        str(template["adapter"]): str(template["source_path_template"])
+        for template in profile["artifact_templates"]
+        if template["step_id"] in module_steps
+        and template.get("source_path_template") is not None
+    }
     inventory_rows = contracts.validate_inventory(
         inventory_path,
         source_root=source_root,
     )
-    validate_inventory_registry(inventory_rows)
+    validate_inventory_registry(
+        inventory_rows,
+        source_root=source_root,
+        adapter_registry=adapter_registry,
+        scope_rosters=scope_rosters,
+        source_path_templates=source_path_templates,
+    )
     inventory_sha256 = contracts.sha256_file(inventory_path)
     output_dir = output_root / arguments.run_id
     records_dir = output_dir / "records"
@@ -96,10 +149,13 @@ def prepare_context(
         raise ArtifactIndexError(
             f"Artifact-index output is locked; inspect owner metadata: {lock_path}"
         )
-    for label, path in (
+    contract_inputs = [
         ("run contract", run_contract_path),
         ("inventory", inventory_path),
-    ):
+    ]
+    if analysis_policy_path is not None:
+        contract_inputs.append(("analysis policy", analysis_policy_path))
+    for label, path in contract_inputs:
         if path == output_dir or output_dir in path.parents:
             raise ArtifactIndexError(
                 f"The {label} must not live inside its generated run directory"
@@ -141,11 +197,15 @@ def prepare_context(
         raise ArtifactIndexError(
             "Artifact-index provenance requires a stable clean source checkout"
         )
-    evidence = producer_evidence(git_commit, source_root=source_checkout.root)
+    evidence = producer_evidence(
+        git_commit,
+        source_root=source_checkout.root,
+        analysis_module=analysis_module,
+    )
     inspections = [
         inspect_source(
             row,
-            ADAPTER_REGISTRY[row["adapter"]],
+            adapter_registry[row["adapter"]],
             source_root=source_root,
         )
         for row in inventory_rows
@@ -211,6 +271,8 @@ def prepare_context(
         run_contract_path=run_contract_path,
         run_contract=run_contract,
         run_contract_file_sha256=run_contract_file_sha256,
+        analysis_policy_path=analysis_policy_path,
+        analysis_policy_sha256=analysis_policy_sha256,
         inventory_path=inventory_path,
         inventory_sha256=inventory_sha256,
         inventory_rows=inventory_rows,
@@ -260,6 +322,12 @@ def recheck_inputs(context: BuildContext) -> None:
         context.run_contract_file_sha256
     ):
         raise ArtifactIndexError("Run-contract file changed after initial validation")
+    if (
+        context.analysis_policy_path is not None
+        and contracts.sha256_file(context.analysis_policy_path)
+        != context.analysis_policy_sha256
+    ):
+        raise ArtifactIndexError("Analysis policy changed after initial validation")
     if contracts.sha256_file(context.inventory_path) != context.inventory_sha256:
         raise ArtifactIndexError("Inventory changed after initial validation")
     for inspection in context.inspections:
@@ -292,59 +360,3 @@ def recheck_source_identity(context: BuildContext) -> None:
         raise ArtifactIndexError(
             "Artifact-index producer checkout changed after provenance attribution"
         )
-
-
-def print_context(context: BuildContext, execute: bool) -> None:
-    availability = Counter(
-        inspection.availability_status for inspection in context.inspections
-    )
-    completion = Counter(
-        inspection.completion_status for inspection in context.inspections
-    )
-    print("EMRYS artifact-index context")
-    print(f"  Mode: {'execute' if execute else 'dry-run'}")
-    print(f"  Run ID: {context.run_id}")
-    print(f"  Run contract SHA-256: {context.run_contract['run_contract_sha256']}")
-    print(f"  Run contract: {context.run_contract_path}")
-    print(f"  Inventory: {context.inventory_path}")
-    print(f"  Inventory artifacts: {len(context.inventory_rows)}")
-    print(f"  Output directory: {context.output_dir}")
-    print(f"  Records directory: {context.records_dir}")
-    print(f"  Artifact index: {context.artifacts_path}")
-    print(f"  Receipt (published last): {context.receipt_path}")
-    print(f"  Adapter attempt ID: {context.attempt_id}")
-    print(
-        "  Availability: "
-        + ", ".join(
-            f"{status}={availability[status]}"
-            for status in (
-                "present",
-                "missing",
-                "externally_unavailable",
-                "unknown",
-            )
-        )
-    )
-    print(
-        "  Completion: "
-        + ", ".join(
-            f"{status}={completion[status]}"
-            for status in (
-                "complete",
-                "not_attempted",
-                "in_progress",
-                "incomplete",
-                "failed",
-            )
-        )
-    )
-    for inspection in context.inspections:
-        print(
-            "  Artifact: "
-            f"{inspection.row['artifact_id']} "
-            f"availability={inspection.availability_status} "
-            f"completion={inspection.completion_status} "
-            f"source={inspection.row['source_path']}"
-        )
-    if not execute:
-        print("Dry-run only. Add --execute to publish the artifact-index transaction.")

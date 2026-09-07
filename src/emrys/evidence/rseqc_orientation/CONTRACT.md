@@ -1,17 +1,11 @@
 # `collect_RSeQC_paired_orientation_evidence` operation contract
 
-This document records the observed current contract of historical Step `03`.
-The exact public identity and historical alias are owned by the
-[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is the lowercase physical source location for that frozen semantic identity.
-Its shell producer and scheduler remain repository-path interfaces; its Python
-package exists only to expose a private validator through the grouped command,
-not as a public import API.
-
-Step `03` is classified as an independently runnable scientific-evidence
-operation, not as a primary-data transformation or an implemented control-
-policy stage. The producer, validator, scheduler asset, owner README, and
-direct tests are colocated with this contract.
+This directory owns historical Step `03`; the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
+identity and alias. It is an independently runnable scientific-evidence
+operation, not a primary-data transformation or control-policy stage. The
+private validator is grouped under `emrys validate`; the producer remains an
+explicit repository-path command.
 
 ## Responsibility
 
@@ -101,21 +95,11 @@ is the public producer entrypoint. It:
 - checks only that the final file is nonempty before previewing it.
 
 The file has a shell shebang but is not executable in the current tree; public
-tests and the scheduler invoke it explicitly through Bash.
-
-[`step_03_infer_strandedness_and_orientation.slurm`](step_03_infer_strandedness_and_orientation.slurm)
-requires literal `SLURM_SUBMIT_DIR` and changes into the submitted checkout
-before resolving its repository-owned helper, virtual environment, or producer.
-It optionally activates that checkout's virtual environment, selects the RSeQC
-executable, and delegates to the shell producer without treating SLURM's spool
-copy as checkout authority. It creates the scheduler log directory in dry-run
-mode but leaves the scientific output directory to the producer. On Bash 3.2,
-expansion of its empty execution-argument array can prevent the default dry-run
-from reaching the producer.
+tests and orchestration invoke it explicitly through Bash.
 
 ## Validation interface
 
-The grouped route `python -I -m emrys validate rseqc-orientation`, implemented
+The grouped route `emrys validate rseqc-orientation`, implemented
 by private [`validator.py`](validator.py), accepts an explicit scope, native
 report, sum tolerance, and output path. It does not receive the BAM, index,
 BED12, RSeQC identity, or attempt receipt. Validation is dry-run by default;
@@ -168,61 +152,15 @@ turns orientation fractions into library-strandedness metadata must be defined
 by an external assay-design and interpretation process. EMRYS does not turn
 that process into a computational gate.
 
-## Protected behavior and evidence
+## Protection, evidence ceiling, and retained questions
 
-- [`test_step_03_infer_strandedness_and_orientation.sh`](../../../../tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh)
-  protects the public CLI, both executable-resolution paths, both BAI naming
-  conventions, side-effect-free dry-run, exact RSeQC arguments, successful
-  capture, missing-input failures, and empty-output rejection with local mocks.
-- [`test_validate_step_03_rseqc_orientation.py`](../../../../tests/evidence/rseqc_orientation/test_validate_step_03_rseqc_orientation.py)
-  protects dry-run, the five checks, fraction/range/sum failures, fail-closed
-  missing input, publication, and foreign-lock preservation.
-- [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
-  protects wrapper execution control, virtual-environment/tool selection,
-  CWD/delegation behavior, the Bash 3.2 defect, and child failure propagation.
-- [`test_validation_check_rosters.py`](../../../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py),
-  [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py),
-  [`test_public_cli_contracts.py`](../../../../tests/test_public_cli_contracts.py),
-  and [`test_python_coverage_baseline.py`](../../../../tests/test_python_coverage_baseline.py)
-  protect the validator roster, shared publication, public surfaces, and
-  coverage boundary.
-- Artifact-adapter, run-summary, and report tests protect downstream Step `03`
-  evidence projection without interpreting biological strand.
+Repository tests protect this contract under the shared
+[evidence ceiling](../../../../tests/README.md).
 
-These are local fixture and mocked-wrapper contracts. They do not establish a
-new real-runtime, cluster, production, scientific-review, or biological-
-evidence result. Current evidence status remains owned by the canonical
-roadmap and handoff.
-
-## Observed ownership boundaries
-
-- The producer labels the operation as strandedness inference, while its
-  machine-checked output remains mechanical paired-read orientation fractions.
-- Producer comments say the result tells later steps whether a library is
-  forward, reverse, or unstranded, but no implemented threshold or conversion
-  performs that classification.
-- BAM/BAI identity, BED12 identity, tool identity, sample identity, and attempt
-  are not bound into the native report or its validation interface.
-- Native report production and semantic validation are separate, and the
-  producer checks only nonemptiness.
-- The manifest owns declared strandedness, but no in-code conversion connects
-  this evidence to that field.
-- Cross-cutting validation-publication code remains owned by neutral
-  `src/emrys/libraries/validation/report.py`; scheduler environment selection
-  remains in the wrapper.
-
-This inventory preserves the neutral evidence boundary without selecting a
-biological interpretation policy or changing behavior.
-
-## Deferred decisions
-
-- Whether a future computational contract should accept externally authored
-  strandedness metadata without inferring it from these fractions.
-- Whether the configurable `0.1` maximum sum tolerance is appropriate for the
-  durable evidence contract.
-- Binding of native evidence to BAM/BAI, BED12, sample, tool, and attempt
-  identity.
-- Transaction, collision, and failure-artifact policy for the native report.
-- Whether this scientific-evidence operation remains separate from a future
-  ingestion/manifest review workflow.
-- Any future compatibility surface or scheduler abstraction.
+The producer's historical name claims strandedness inference, while its
+machine-checked output remains only mechanical paired-read orientation. No
+implemented conversion updates the manifest's independently declared
+strandedness. The configurable `0.1` maximum sum tolerance also lacks a
+recorded scientific rationale. The unsafe legacy direct route remains exactly
+as described above; immutable Run task records supply wider input, tool,
+attempt, and output identity for the no-clobber route.

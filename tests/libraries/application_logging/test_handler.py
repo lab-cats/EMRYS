@@ -82,10 +82,19 @@ def test_attempt_writes_exact_schema_to_protected_path_before_stderr(
     )
     path = attempt.path
     assert path == tmp_path / "logs/run-run-7/attempt-1/emrys-run.jsonl"
-    assert "Application logging attempt opened" in stderr.getvalue()
+    projection = stderr.getvalue()
+    assert "Application logging attempt opened" in projection
+    assert f'log_path="{path}"' in projection
     assert all(
-        identity in stderr.getvalue()
-        for identity in ("run:run-7", "attempt-1", "emrys-run")
+        label not in projection
+        for label in (
+            "entrypoint=",
+            "execution_attempt_id=",
+            "log_level=",
+            "log_level_source=",
+            "log_root_source=",
+            "scope=",
+        )
     )
 
     attempt.logger(component="alignment", phase="execute").info(
@@ -102,6 +111,15 @@ def test_attempt_writes_exact_schema_to_protected_path_before_stderr(
     assert [record["sequence"] for record in records] == [1, 2]
     assert records[0]["schema_version"] == APPLICATION_LOG_SCHEMA_VERSION
     assert records[0]["timestamp_utc"] == "2026-08-25T12:00:00.000000Z"
+    assert records[0]["fields"] == {
+        "entrypoint": "emrys-run",
+        "execution_attempt_id": "attempt-1",
+        "log_level": "normal",
+        "log_level_source": "command_line",
+        "log_root_source": "command_line",
+        "log_path": str(path),
+        "scope": "run:run-7",
+    }
     assert records[1]["event"] == "alignment_completed"
     assert records[1]["fields"] == {"samples": 2}
 

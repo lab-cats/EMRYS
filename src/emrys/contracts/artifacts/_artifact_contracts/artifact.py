@@ -29,6 +29,20 @@ def validate_artifact_semantics(
     source_root: Path = REPO_ROOT,
 ) -> None:
     artifact_label = f"artifact {document['artifact_id']!r}"
+    implementation = document["implementation"]
+    if (
+        implementation["status"] == "implemented"
+        and implementation["git_commit"] is None
+        and not any(
+            item["evidence_id"] == "implementation_module"
+            and item["role"] == "implementation"
+            and item["sha256"] is not None
+            for item in implementation["evidence"]
+        )
+    ):
+        raise ContractValidationError(
+            f"{artifact_label} external implementation must bind exact module bytes"
+        )
     validate_run_contract(
         document["run_contract"],
         artifact_label,

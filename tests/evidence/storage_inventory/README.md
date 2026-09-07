@@ -5,7 +5,7 @@ two-phase storage qualification for the
 [storage-inventory owner](../../../src/emrys/evidence/storage_inventory/README.md)
 and its grouped routes. Inventory records caller-declared roots, measurements,
 and retention-policy state for operator diagnosis. Qualification performs the
-compute/finalize site checks whose final receipt is consumed by local-pilot
+compute/finalize site checks whose final receipt is consumed by run-coordinator
 doctor.
 
 The suite covers admission, deterministic outputs, publication, rollback, and

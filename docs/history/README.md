@@ -7,9 +7,12 @@ contracts, or evidence promotion.
 
 ## Current index
 
-No historical child record is currently indexed. Testing transcripts, obsolete
-matrices, superseded baselines, and completed gate narratives remain available
-through Git history rather than the live documentation tree.
+- [`validation-evidence.md`](validation-evidence.md) retains bounded, dated
+  validation observations and their explicit evidence ceilings.
+
+Testing transcripts, obsolete matrices, superseded baselines, and completed
+gate narratives otherwise remain available through Git history rather than the
+live documentation tree.
 
 Create a topic child only when a dated record has repository-backed provenance,
 unique ongoing value, and no adequate current subject owner or Git record.

@@ -40,12 +40,17 @@ def _parse_probe_args(raw: str, row_number: int) -> tuple[str, ...]:
     return tuple(value)
 
 
-def load_profile(path: Path) -> tuple[bytes, list[Check]]:
-    data = _read_regular_file(path, "Runtime profile")
+def load_profile_bytes(
+    data: bytes,
+    *,
+    label: str = "Runtime profile",
+) -> tuple[bytes, list[Check]]:
+    """Validate exact profile bytes without requiring a temporary file."""
+
     try:
         text = data.decode("utf-8")
     except UnicodeDecodeError as exc:
-        _fail(f"Runtime profile is not UTF-8: {path}: {exc}")
+        _fail(f"{label} is not UTF-8: {exc}")
     reader = csv.DictReader(text.splitlines(), delimiter="\t")
     if reader.fieldnames is None:
         _fail("Runtime profile is empty")
@@ -108,6 +113,13 @@ def load_profile(path: Path) -> tuple[bytes, list[Check]]:
     if not checks:
         _fail("Runtime profile must contain at least one check")
     return data, checks
+
+
+def load_profile(path: Path) -> tuple[bytes, list[Check]]:
+    return load_profile_bytes(
+        _read_regular_file(path, "Runtime profile"),
+        label=f"Runtime profile {path}",
+    )
 
 
 def _validate_regex(pattern: str, row_number: int) -> None:

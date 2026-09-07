@@ -5,17 +5,17 @@ for EMRYS's fixed one-host workflow. It selects Snakemake's local executor,
 uses a deterministic scheduling baseline, disables engine retries, preserves
 incomplete-output evidence, and exposes commands and failed logs.
 
-The admitted request and attempt supply total workflow cores, sample
-concurrency, and thread counts for capable owners. Those resource values do not
-change scientific identity.
+The immutable Execution Plan and Attempt-local resolution supply total workflow
+cores, sample concurrency, and thread counts for capable owners. Those resource
+values do not change scientific identity.
 
 “Local” means every Snakemake job runs on the same host or allocation. This is
-not a Slurm submission profile. Full-pipeline scheduled execution enters
-through the lifecycle-generated one-allocation wrapper; standalone scientific
-stages retain their owner-local scheduler entry points.
+not a Slurm executor profile. Scheduled execution enters through EMRYS's
+private whole-Run transport and re-enters this same one-host profile inside the
+allocation; there are no standalone owner-local scheduler entry points.
 
 Materialization selects this exact checkout file and lifecycle passes it to
 Snakemake. Operators should use `emrys run` and `emrys resume`, not invoke the
 profile directly. See the parent [workflow overview](../../README.md), the
-[local-pilot owner](../../../src/emrys/orchestration/local_pilot/README.md), and
+[run-coordinator owner](../../../src/emrys/orchestration/run_coordinator/README.md), and
 the [Runbook](../../../docs/operations/RUNBOOK.md).

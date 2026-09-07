@@ -90,6 +90,7 @@ def resolve_log_controls(
     cli_level: str | None = None,
     cli_root: str | Path | None = None,
     environment: Mapping[str, str] | None = None,
+    default_root: Path | None = None,
 ) -> LogControls:
     """Resolve command line, environment, then repository-derived defaults."""
 
@@ -100,8 +101,13 @@ def resolve_log_controls(
     level_value, level_source = _select(
         cli_level, environ.get(EMRYS_LOG_LEVEL), LogLevel.NORMAL.value
     )
+    fallback_root = (
+        checkout_root / "logs" / "application"
+        if default_root is None
+        else _absolute_path(default_root)
+    )
     root_value, root_source = _select(
-        cli_root, environ.get(EMRYS_LOG_ROOT), checkout_root / "logs" / "application"
+        cli_root, environ.get(EMRYS_LOG_ROOT), fallback_root
     )
     try:
         level = LogLevel(_nonempty(level_value))

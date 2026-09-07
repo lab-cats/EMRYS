@@ -13,13 +13,7 @@ from emrys.reporting.report import ReportPublicationOps
 
 from .context import expected_html_identity
 from .inputs import _assert_input_recheck, _assert_snapshot, _fail, _snapshot_regular
-from .models import (
-    BOUNDARY_BANNER,
-    FileSnapshot,
-    LockOwnership,
-    ReportContext,
-    ReportRenderError,
-)
+from .models import FileSnapshot, LockOwnership, ReportContext, ReportRenderError
 from .receipt import (
     read_receipt_tsv,
     receipt_document,
@@ -38,16 +32,6 @@ from .validation import validate_rendered_html
 def _recheck_inputs(context: ReportContext) -> None:
     for recheck in context.input_rechecks:
         _assert_input_recheck(*recheck)
-
-
-def _expected_candidate_ids(context: ReportContext) -> tuple[str, ...]:
-    return (
-        tuple(
-            candidate.candidate_id for candidate in context.candidate_display.candidates
-        )
-        if context.candidate_display is not None
-        else ()
-    )
 
 
 def _assert_predecessors(context: ReportContext) -> None:
@@ -128,9 +112,8 @@ def publish_report(context: ReportContext, ops: ReportPublicationOps) -> None:
         )
         validate_rendered_html(
             staged_scientific_html,
-            expected_banner=BOUNDARY_BANNER,
+            expected_banner=context.render_metadata["state_banner"],
             expected_identity=expected_html_identity(context, "scientific"),
-            expected_candidate_ids=_expected_candidate_ids(context),
         )
         staged_evidence_html = stage / context.output_evidence_html.name
         ops.write_owned_file(staged_evidence_html, context.evidence_html_bytes)
@@ -141,7 +124,7 @@ def publish_report(context: ReportContext, ops: ReportPublicationOps) -> None:
         )
         validate_rendered_html(
             staged_evidence_html,
-            expected_banner=BOUNDARY_BANNER,
+            expected_banner=context.render_metadata["state_banner"],
             expected_identity=expected_html_identity(context, "evidence"),
         )
         staged_summary = stage / context.output_summary_tsv.name
@@ -254,13 +237,12 @@ def publish_report(context: ReportContext, ops: ReportPublicationOps) -> None:
         _assert_receipted_outputs(document)
         validate_rendered_html(
             context.output_scientific_html,
-            expected_banner=BOUNDARY_BANNER,
+            expected_banner=context.render_metadata["state_banner"],
             expected_identity=expected_html_identity(context, "scientific"),
-            expected_candidate_ids=_expected_candidate_ids(context),
         )
         validate_rendered_html(
             context.output_evidence_html,
-            expected_banner=BOUNDARY_BANNER,
+            expected_banner=context.render_metadata["state_banner"],
             expected_identity=expected_html_identity(context, "evidence"),
         )
         validate_summary_tsv(context.output_summary_tsv, context)

@@ -1,4 +1,4 @@
-"""Neutral local-pilot orchestration contracts."""
+"""Neutral run-coordinator orchestration contracts."""
 
 from .api import (
     SCHEMA_IDS,

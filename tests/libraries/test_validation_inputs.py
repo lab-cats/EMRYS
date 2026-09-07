@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import subprocess
 import sys
@@ -29,9 +30,106 @@ def _read_prefix(path: Path, label: str) -> bytes:
     return INPUTS.read_prefix(path, label, 4)
 
 
+def _read_sha256(path: Path, label: str) -> bytes:
+    return INPUTS.sha256_with_identity(path, label)[0].encode()
+
+
 READERS = pytest.mark.parametrize(
-    "reader", (_read_all, _read_prefix), ids=("all-bytes", "prefix")
+    "reader",
+    (_read_all, _read_prefix, _read_sha256),
+    ids=("all-bytes", "prefix", "sha256"),
 )
+
+
+def test_read_bytes_with_identity_returns_bound_file_and_allows_declared_empty(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "empty.lock"
+    source.touch()
+
+    data, identity = INPUTS.read_bytes_with_identity(
+        source,
+        "Empty lock",
+        nonempty=False,
+    )
+
+    assert data == b""
+    assert (identity.st_dev, identity.st_ino) == (
+        source.stat().st_dev,
+        source.stat().st_ino,
+    )
+
+
+def test_sha256_with_identity_streams_bound_file_and_allows_declared_empty(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "input.bin"
+    source.write_bytes(b"fixture")
+
+    digest, identity = INPUTS.sha256_with_identity(source, "Input")
+
+    assert digest == hashlib.sha256(b"fixture").hexdigest()
+    assert identity.st_size == len(b"fixture")
+
+    source.write_bytes(b"")
+    digest, identity = INPUTS.sha256_with_identity(
+        source,
+        "Empty input",
+        nonempty=False,
+    )
+    assert digest == hashlib.sha256(b"").hexdigest()
+    assert identity.st_size == 0
+
+
+def test_directory_entries_with_identity_lists_one_real_stable_directory(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "b").touch()
+    (tmp_path / "a").touch()
+
+    entries, identity = INPUTS.directory_entries_with_identity(tmp_path, "Directory")
+
+    assert entries == ("a", "b")
+    assert (identity.st_dev, identity.st_ino) == (
+        tmp_path.stat().st_dev,
+        tmp_path.stat().st_ino,
+    )
+    alias = tmp_path.with_name("directory-alias")
+    alias.symlink_to(tmp_path, target_is_directory=True)
+    with pytest.raises(REPORT.ValidationError, match="is unavailable"):
+        INPUTS.directory_entries_with_identity(alias, "Directory")
+
+
+def test_directory_entries_requires_no_follow_support(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(INPUTS.os, "O_NOFOLLOW", None)
+
+    with pytest.raises(REPORT.ValidationError, match="symbolic-link protection"):
+        INPUTS.directory_entries_with_identity(tmp_path, "Directory")
+
+
+def test_directory_entries_rejects_path_replacement_during_inspection(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    directory = tmp_path / "directory"
+    held = tmp_path / "held"
+    directory.mkdir()
+    (directory / "entry").touch()
+    real_listdir = INPUTS.os.listdir
+
+    def list_then_replace(descriptor: int) -> list[str]:
+        entries = real_listdir(descriptor)
+        directory.rename(held)
+        directory.mkdir()
+        return entries
+
+    monkeypatch.setattr(INPUTS.os, "listdir", list_then_replace)
+
+    with pytest.raises(REPORT.ValidationError, match="changed while inspected"):
+        INPUTS.directory_entries_with_identity(directory, "Directory")
 
 
 def test_require_executable_rejects_non_executable_file(tmp_path: Path) -> None:
@@ -117,6 +215,35 @@ def test_read_rejects_path_replacement_after_open(
         match="pathname changed while read",
     ):
         reader(source, "Replaced fixture")
+
+
+@READERS
+def test_read_rejects_path_metadata_change_after_final_descriptor_snapshot(
+    reader: Reader,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "input.txt"
+    source.write_text("admitted")
+    real_stat = INPUTS.os.stat
+    path_checks = 0
+
+    def stat_then_change(
+        path: str | bytes | os.PathLike[str],
+        *args: object,
+        **kwargs: object,
+    ) -> os.stat_result:
+        nonlocal path_checks
+        if Path(path) == source and kwargs.get("follow_symlinks") is False:
+            path_checks += 1
+            if path_checks == 2:
+                source.chmod(0o600)
+        return real_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(INPUTS.os, "stat", stat_then_change)
+
+    with pytest.raises(REPORT.ValidationError, match="pathname changed while read"):
+        reader(source, "Metadata-mutated fixture")
 
 
 def test_read_prefix_handles_short_descriptor_reads(

@@ -1,4 +1,4 @@
-"""Focused contract tests for the closed local-pilot schema registry."""
+"""Focused contract tests for the closed run-coordinator schema registry."""
 
 from __future__ import annotations
 
@@ -11,6 +11,8 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from emrys.contracts import orchestration
+from emrys.contracts.orchestration import application_model
+from emrys.contracts.orchestration import artifact_inventory
 from emrys.contracts.orchestration import projection as reporting_projection
 
 ZERO_HASH = "0" * 64
@@ -69,6 +71,36 @@ def request() -> dict[str, Any]:
     }
 
 
+def project() -> dict[str, Any]:
+    return {
+        "schema_version": "emrys.project.v1",
+        "dataset": {"samples": "samples.tsv"},
+        "reference": {
+            "fasta": "reference/genome.fa",
+            "gtf": "reference/genome.gtf",
+            "star_index": {
+                "sjdb_overhang": 149,
+                "genome_sa_index_nbases": 14,
+            },
+        },
+        "analyses": {
+            "primary": {
+                "partitions": "partitions.tsv",
+                "control_condition": "EV",
+                "treatment_condition": "PUM1",
+                "target_change": "A>G",
+                "min_sample_dp": 1,
+                "mean_dp_threshold": 50,
+                "fdr_threshold": 0.05,
+                "common_or_threshold": 1.2,
+                "absolute_difference_threshold": 0.005,
+                "background_condition": None,
+                "background_max_fraction": 0.01,
+            }
+        },
+    }
+
+
 def resource_config() -> dict[str, Any]:
     return {
         "schema_version": "emrys.local-pilot-resources.v1",
@@ -81,31 +113,11 @@ def resource_config() -> dict[str, Any]:
     }
 
 
-def launcher_config() -> dict[str, Any]:
+def execution_profile() -> dict[str, Any]:
     return {
-        "schema_version": "emrys.local-pilot-launcher.v1",
-        "slurm": {
-            "account": {"env": "EMRYS_SLURM_ACCOUNT"},
-            "partition": "example-partition",
-            "qos": {"env": "EMRYS_SLURM_QOS"},
-            "cpus_per_task": 4,
-            "memory": "site-default",
-            "time": "00:30:00",
-            "exclusive": False,
-            "nodelist": {"env": "EMRYS_SLURM_NODELIST"},
-        },
-        "paths": {
-            "log_dir": {"env": "EMRYS_LOG_DIR"},
-            "request": "/absolute/path/to/request.yaml",
-            "workspace": {"env": "EMRYS_WORKSPACE"},
-            "runtime_profile": {"env": "EMRYS_RUNTIME_PROFILE"},
-            "scratch_parent": "/absolute/path/to/scratch",
-        },
-        "modules": {
-            "mode": "none",
-            "init": "",
-            "load": [],
-        },
+        "schema_version": "emrys.execution-profile.v1",
+        "resources": resource_config(),
+        "placement": {"kind": "direct"},
     }
 
 
@@ -302,7 +314,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
             "-m",
             "snakemake",
             "--",
-            "local_pipeline_slice",
+            "cohort_slice",
         ],
         "workflow_config": record_reference("contract/workflow-config.json"),
         "host": "localhost",
@@ -512,14 +524,23 @@ def test_registry_is_closed_and_every_schema_is_draft_2020_12() -> None:
                 stack.extend(value)
 
 
-def test_launcher_config_schema_is_registered_as_v3() -> None:
-    assert "launcher-config" in orchestration.SCHEMA_NAMES
-    assert orchestration.SCHEMA_PATHS["launcher-config"].name == (
-        "launcher_config.schema.json"
-    )
-    assert orchestration.SCHEMA_PATHS["launcher-config"].parent.name == "v3"
-    assert orchestration.SCHEMA_IDS["launcher-config"] == (
-        "urn:emrys:schema:orchestration:launcher-config:v1"
+@pytest.mark.parametrize(
+    ("name", "directory", "identifier_version"),
+    (
+        ("execution-profile", "v3", "v1"),
+        ("project", "v1", "v1"),
+        ("request", "v3", "v3"),
+    ),
+)
+def test_versioned_schema_registration_is_exact(
+    name: str,
+    directory: str,
+    identifier_version: str,
+) -> None:
+    assert orchestration.SCHEMA_PATHS[name].name == f"{name.replace('-', '_')}.schema.json"
+    assert orchestration.SCHEMA_PATHS[name].parent.name == directory
+    assert orchestration.SCHEMA_IDS[name] == (
+        f"urn:emrys:schema:orchestration:{name}:{identifier_version}"
     )
 
 
@@ -541,12 +562,11 @@ def test_unknown_schema_selector_and_nonstandard_json_constant_are_rejected(
         orchestration.load_json_object(record_path)
 
 
-def test_request_resource_launcher_profile_reference_policy_and_execution_records_pass(
-) -> None:
+def test_project_resource_execution_profile_and_run_records_pass() -> None:
     records = {
-        "request": request(),
+        "project": project(),
         "resource-config": resource_config(),
-        "launcher-config": launcher_config(),
+        "execution-profile": execution_profile(),
         "profile": profile(),
         "reference": reference(),
         "policy": policy(),
@@ -559,46 +579,36 @@ def test_request_resource_launcher_profile_reference_policy_and_execution_record
             profile=profile() if name == "execution" else None,
         )
 
-    request_without_background = request()
-    request_without_background["analysis"].pop("background_condition")
-    orchestration.validate_record("request", request_without_background)
-
-
-def test_launcher_config_accepts_a_schema_only_authored_fragment() -> None:
-    orchestration.validate_record(
-        "launcher-config",
-        {"schema_version": "emrys.local-pilot-launcher.v1"},
-    )
+    project_without_background = project()
+    project_without_background["analyses"]["primary"].pop("background_condition")
+    project_without_background["analyses"]["secondary"] = {
+        **project_without_background["analyses"]["primary"],
+        "target_change": "C>T",
+        "sample_ids": ["EV-1", "PUM1-1", "EV-2", "PUM1-2"],
+    }
+    orchestration.validate_record("project", project_without_background)
 
 
 @pytest.mark.parametrize(
-    "mutate",
-    (
-        lambda record: record.__setitem__("unknown", True),
-        lambda record: record["slurm"].__setitem__("unknown", True),
-        lambda record: record["slurm"].__setitem__(
-            "account",
-            {"env": "EMRYS_SLURM_ACCOUNT", "fallback": "example"},
-        ),
-    ),
+    "sample_ids",
+    ([], ["EV-1", "EV-1"], ["unsafe sample"], [1]),
 )
-def test_launcher_config_rejects_unknown_fields(mutate: Any) -> None:
-    record = launcher_config()
-    mutate(record)
+def test_project_rejects_invalid_analysis_sample_ids(
+    sample_ids: list[object],
+) -> None:
+    record = project()
+    record["analyses"]["primary"]["sample_ids"] = sample_ids
 
-    with pytest.raises(
-        orchestration.ContractValidationError,
-        match="Additional properties|not valid under any of the given schemas",
-    ):
-        orchestration.validate_record("launcher-config", record)
+    with pytest.raises(orchestration.ContractValidationError):
+        orchestration.validate_record("project", record)
 
 
-def test_launcher_config_rejects_an_environment_reference_for_another_field() -> None:
-    record = launcher_config()
-    record["slurm"]["account"] = {"env": "EMRYS_WORKSPACE"}
+def test_request_v3_remains_valid_only_as_an_exact_historical_contract() -> None:
+    historical = request()
+    orchestration.validate_record("request", historical)
 
-    with pytest.raises(orchestration.ContractValidationError, match="EMRYS_WORKSPACE"):
-        orchestration.validate_record("launcher-config", record)
+    historical["analysis"].pop("background_condition")
+    orchestration.validate_record("request", historical)
 
 
 def test_lifecycle_and_verified_records_pass() -> None:
@@ -606,13 +616,96 @@ def test_lifecycle_and_verified_records_pass() -> None:
         orchestration.validate_record(name, record)
 
 
+def test_workflow_attempt_accepts_closed_direct_and_slurm_placement() -> None:
+    direct = lifecycle_records()["workflow-attempt"]
+    direct["placement"] = {
+        "kind": "direct",
+        "source": {"path": "/profiles/direct.yaml", "sha256": ZERO_HASH},
+        "effective_sha256": ONE_HASH,
+        "request": {"kind": "direct"},
+        "scheduler_job_id": None,
+    }
+    orchestration.validate_record("workflow-attempt", direct)
+
+    scheduled = lifecycle_records()["workflow-attempt"]
+    scheduled["placement"] = {
+        "kind": "slurm",
+        "source": {"path": "/profiles/site.yaml", "sha256": ZERO_HASH},
+        "effective_sha256": ONE_HASH,
+        "request": {
+            "kind": "slurm",
+            "account": "research",
+            "partition": "compute",
+            "qos": None,
+            "cpus_per_task": 8,
+            "memory_mb": None,
+            "time": "02:00:00",
+            "exclusive": True,
+            "nodelist": None,
+            "scratch_parent": "/scratch",
+            "modules": {"mode": "none", "init": "", "load": []},
+        },
+        "scheduler_job_id": "700123",
+    }
+    orchestration.validate_record("workflow-attempt", scheduled)
+
+    malformed_source = copy.deepcopy(direct)
+    malformed_source["placement"]["source"]["unexpected"] = True
+    with pytest.raises(orchestration.ContractValidationError, match="Additional"):
+        orchestration.validate_record("workflow-attempt", malformed_source)
+
+    mismatched_kind = copy.deepcopy(scheduled)
+    mismatched_kind["placement"]["kind"] = "direct"
+    with pytest.raises(orchestration.ContractValidationError):
+        orchestration.validate_record("workflow-attempt", mismatched_kind)
+
+
+@pytest.mark.parametrize("job_id", ("0", "00", "01", "-1", 1, True))
+def test_workflow_attempt_rejects_noncanonical_scheduler_job_ids(
+    job_id: object,
+) -> None:
+    attempt = lifecycle_records()["workflow-attempt"]
+    attempt["placement"] = {
+        "kind": "direct",
+        "source": {"path": "/profiles/direct.yaml", "sha256": ZERO_HASH},
+        "effective_sha256": ONE_HASH,
+        "request": {"kind": "direct"},
+        "scheduler_job_id": job_id,
+    }
+
+    with pytest.raises(
+        orchestration.ContractValidationError,
+        match="scheduler_job_id",
+    ):
+        orchestration.validate_record("workflow-attempt", attempt)
+
+
 @pytest.mark.parametrize(
     ("name", "mutate", "message"),
     [
         (
-            "request",
+            "project",
             lambda record: record.__setitem__("unknown", True),
             "Additional properties",
+        ),
+        (
+            "project",
+            lambda record: record["analyses"]["primary"].__setitem__(
+                "target_change", "A>A"
+            ),
+            "rna_ref and rna_alt",
+        ),
+        (
+            "project",
+            lambda record: record["reference"].__setitem__("id", "retired-alias"),
+            "Additional properties",
+        ),
+        (
+            "project",
+            lambda record: record["analyses"].__setitem__(
+                "unsafe name", record["analyses"].pop("primary")
+            ),
+            "does not match",
         ),
         (
             "profile",
@@ -636,7 +729,7 @@ def test_closed_and_semantic_record_mutations_fail(
     mutate: Any,
     message: str,
 ) -> None:
-    base = {"request": request(), "profile": profile(), **lifecycle_records()}[name]
+    base = {"project": project(), "profile": profile(), **lifecycle_records()}[name]
     mutate(base)
     with pytest.raises(orchestration.ContractValidationError, match=message):
         orchestration.validate_record(name, base)
@@ -667,9 +760,9 @@ def test_step09_threshold_boundaries_match_owner_semantics(
     field: str,
     value: int,
 ) -> None:
-    records = {"request": request(), "policy": policy()}
+    records = {"project": project(), "policy": policy()}
     for name, record in records.items():
-        target = record["analysis"] if name == "request" else record
+        target = record["analyses"]["primary"] if name == "project" else record
         target[field] = value
         with pytest.raises(orchestration.ContractValidationError, match=field):
             orchestration.validate_record(name, record)
@@ -864,6 +957,24 @@ def test_attempt_receipt_terminal_semantics_and_unique_scope_references() -> Non
         orchestration.validate_record("attempt-receipt", receipt)
 
 
+def test_attempt_receipt_v2_closes_science_without_reporting_fields() -> None:
+    receipt = lifecycle_records()["attempt-receipt"]
+    receipt["schema_version"] = "emrys.attempt-receipt.v2"
+    receipt.pop("reporting_completion_records")
+    receipt.pop("local_pipeline_complete")
+
+    orchestration.validate_record("attempt-receipt", receipt)
+
+    for retired_field in ("reporting_completion_records", "local_pipeline_complete"):
+        incompatible = copy.deepcopy(receipt)
+        incompatible[retired_field] = True
+        with pytest.raises(
+            orchestration.ContractValidationError,
+            match=f"{retired_field}.*unexpected",
+        ):
+            orchestration.validate_record("attempt-receipt", incompatible)
+
+
 def test_workflow_attempt_requires_clean_checkout_and_named_tools() -> None:
     attempt = lifecycle_records()["workflow-attempt"]
     attempt["source_checkout"]["clean"] = False
@@ -982,7 +1093,7 @@ def test_workflow_attempt_requires_exact_internal_resume_controls() -> None:
             "input",
             "--ignore-incomplete",
             "--",
-            "local_pipeline_slice",
+            "cohort_slice",
         ],
     )
     orchestration.validate_record("workflow-attempt", resume)
@@ -1059,10 +1170,39 @@ def test_execution_requires_profile_and_complete_projection_match() -> None:
     with pytest.raises(orchestration.ContractValidationError, match="projection"):
         orchestration.validate_record("execution", record, profile=profile())
 
-    record = execution()
-    record["reporting_projection"]["artifact_inventory"]["sha256"] = ONE_HASH
-    with pytest.raises(orchestration.ContractValidationError, match="projection"):
-        orchestration.validate_record("execution", record, profile=profile())
+
+@pytest.mark.parametrize(
+    ("case", "message"),
+    (
+        ("unsupported-selector", "Unsupported profile scope_selector"),
+        ("unresolved-template", "Unresolved template syntax"),
+        ("empty", "projects no artifact inventory rows"),
+        ("unsafe-id", "artifact_id is not a safe ID"),
+        ("duplicate", "duplicate artifact_id"),
+        ("scope-mismatch", "scope_selector/scope_type mismatch"),
+    ),
+)
+def test_artifact_inventory_rejects_invalid_projection(
+    case: str,
+    message: str,
+) -> None:
+    candidate = profile()
+    template = candidate["artifact_templates"][0]
+    if case == "unsupported-selector":
+        template["scope_selector"] = "unsupported"
+    elif case == "unresolved-template":
+        template["artifact_id_template"] = "{{sample_id}}"
+    elif case == "empty":
+        candidate["artifact_templates"] = []
+    elif case == "unsafe-id":
+        template["artifact_id_template"] = "bad id.{sample_id}"
+    elif case == "duplicate":
+        candidate["artifact_templates"].append(copy.deepcopy(template))
+    else:
+        template["scope_type"] = "analysis"
+
+    with pytest.raises(orchestration.ContractValidationError, match=message):
+        artifact_inventory.project_rows(execution(), candidate)
 
 
 def test_strict_json_loader_rejects_duplicate_keys_and_non_object(

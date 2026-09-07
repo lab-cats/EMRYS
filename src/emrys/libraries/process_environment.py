@@ -46,6 +46,18 @@ class ProcessEnvironmentError(RuntimeError):
     """A selected child-process launcher or environment is inadmissible."""
 
 
+def process_is_alive(process_id: int) -> bool:
+    """Return whether the host can still observe one process identifier."""
+
+    try:
+        os.kill(process_id, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
 @dataclass(frozen=True, slots=True)
 class AdmittedJavaLauncher:
     """One canonical Java launcher and its derived Java home."""

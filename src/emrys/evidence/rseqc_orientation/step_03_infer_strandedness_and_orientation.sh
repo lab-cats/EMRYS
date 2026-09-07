@@ -76,7 +76,7 @@ execute=false
 no_clobber=false
 
 # Parse explicit file paths instead of assuming a machine-specific directory
-# layout. The SLURM wrapper supplies default cluster-validation paths.
+# layout.
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --sample-id) assign_option_value "$1" "${2:-}" sample_id; shift 2 ;;

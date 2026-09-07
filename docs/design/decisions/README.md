@@ -14,6 +14,4 @@ provide subject detail without owning current status or commands.
   direction, including the ratified architectural invariant constitution.
 
 Accepted open outcomes and acceptance remain in the
-[findings matrix](../../tasks/backlog_matrix.md). Unsliced architecture choices
-remain temporarily in the
-[architecture campaign](../../tasks/architecture_campaign.md).
+[findings matrix](../../tasks/backlog_matrix.md).

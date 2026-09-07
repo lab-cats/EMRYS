@@ -52,6 +52,13 @@ def validate_run_summary_semantics(
 ) -> None:
     validate_run_contract(document["run_contract"], "run summary")
     validate_document_paths(document)
+    if document.get("schema_version") == "3.0.0" and (
+        document["analysis_policy"]["sha256"]
+        != document["run_contract"]["primary_analysis_policy_sha256"]
+    ):
+        raise ContractValidationError(
+            "modular run summary analysis policy differs from its run contract"
+        )
 
     attempts = validate_attempt_graph(
         document["attempts"],

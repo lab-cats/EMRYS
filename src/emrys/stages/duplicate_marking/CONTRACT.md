@@ -1,11 +1,8 @@
 # `mark_BAM_duplicates_with_Picard` stage contract
 
-This is the observed contract of historical Step `04`, now implemented in this
-native owner directory. The
-exact public identity and historical alias are owned by the
-[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is the capability-oriented physical owner for that identity and owns the
-producer, validator, and scheduler assets.
+This directory owns historical Step `04`; the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
+identity and alias.
 
 ## Responsibility and execution dependencies
 
@@ -25,9 +22,7 @@ not overlap downstream reads.
 Inputs are a nonempty sample identifier, canonical BAM, exact `<bam>.bai`,
 output and metrics directories, readable Picard jar, Java and samtools
 executables, and an existing writable `TMPDIR`. The producer does not bind
-sample identity to a manifest or validate path safety. The wrapper currently
-loads Picard `3.1.1`, samtools `1.19.2`, and requires Java 17 or newer; these
-are operational bindings, not future defaults.
+sample identity to a manifest or validate path safety.
 
 Outputs are:
 
@@ -65,19 +60,9 @@ for nonemptiness. That historical route has no lock, staging, stable-input
 recheck, rollback, or all-or-none transaction; failure may leave a partial or
 cross-attempt set.
 
-[`step_04_mark_duplicates.slurm`](step_04_mark_duplicates.slurm)
-requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving its repository-owned helper or producer, so SLURM's spool copy is
-never checkout authority. It resolves modules, Picard, Java, and samtools before
-delegation and checks the three outputs after execute. It creates `logs/` in
-dry-run. Its empty execution-argument array has the characterized Bash 3.2
-dry-run defect; an unset `JAVA_HOME` can abort at the later unguarded diagnostic,
-and a stale nonempty output triplet can mask a zero-exit child that created
-nothing.
-
 ## Validation interface
 
-The grouped `python -I -m emrys validate duplicate-marking` route, implemented
+The grouped `emrys validate duplicate-marking` route, implemented
 by private [`validator.py`](validator.py), accepts explicit BAM, BAI, metrics,
 samtools, scope, and report paths. Dry-run prints the common seven-column TSV;
 `--execute` snapshot-rechecks inputs and publishes it through neutral private
@@ -103,11 +88,9 @@ diagnostics are nonempty.
 
 Content mismatches publish `status=fail` rows; unsafe inputs, evidence-building
 tool failures, and publication-contract failures exit `2`. BAM tool/header
-helpers are privately imported from neutral
-[`alignments/bam.py`](../../libraries/alignments/bam.py); neither helper has a
-public package or CLI identity.
+operations use the shared BAM helper.
 
-## Consumers and protected evidence
+## Consumers, protection, and evidence ceiling
 
 - The final [`split_N_cigar_reads_with_GATK`](../split_n_cigar/README.md)
   owner consumes the marked BAM/BAI.
@@ -115,25 +98,10 @@ public package or CLI identity.
   `step04_markdup_bai_v1`, `step04_markdup_metrics_v1`, and
   `step04_validation_report_v1`; summary/report code consumes those artifacts
   without rerunning Picard.
-- [`test_step_04_mark_duplicates.sh`](../../../../tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh)
-  protects CLI, side-effect-free dry-run, exact Picard/samtools commands,
-  output presence, missing inputs, and temp-directory failure with mocks.
-- [`test_validate_step_04_mark_duplicates.py`](../../../../tests/stages/duplicate_marking/test_validate_step_04_mark_duplicates.py),
-  wrapper, roster, publication-fault, public-CLI, artifact, report, and coverage
-  tests protect the recorded validation and projection boundaries.
 
-This is local fixture/mock characterization, not new runtime, cluster,
-scientific-review, or biological evidence.
+Repository tests protect this contract under the shared
+[evidence ceiling](../../../../tests/README.md).
 
-## Ownership gaps and deferred decisions
-
-- Producer validation, independent validation, and artifact interpretation are
-  not one identical contract.
-- Legacy direct execution lacks transactional ownership; the no-clobber route
-  owns a staged three-file publication boundary.
-- Sample/library/platform metadata is hardcoded or scope-derived rather than
-  manifest-bound.
-- The neutral BAM and report helpers remain private shared owners rather
-  than installed or public package APIs.
-- A native receipt, manifest-level sample binding, and wider verified-task
-  tool/output identity remain deferred.
+The unsafe legacy direct route remains exactly as described above. Run
+materialization supplies the sample argument, but library and platform remain
+scope-derived or hardcoded rather than separately admitted manifest metadata.

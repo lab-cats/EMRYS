@@ -93,3 +93,14 @@ Retain every eligible and ineligible candidate with an explicit status. Use the
 declared two-sided continuity-corrected CMH direction and one BH family across
 successfully tested target candidates. Outputs are CMH-ranked candidates, not
 validated editing sites.
+
+### Keep context projection downstream of ranking
+
+The built-in Step 10 projects report-ready sequence and registered PUM-motif
+context from fixed Step 09 candidates. Version 1 uses mechanically
+RNA-change-oriented continuous genomic windows, the registered
+`PUM_UGUANA`/`TGTANA` model, significant-up foreground, tested
+non-significant background, and two-sided Fisher enrichment. It performs no
+motif discovery, editing call, binding claim, strand inference, or biological
+validation. Display limits are presentation policy and must never silently
+truncate the admitted machine-readable result.

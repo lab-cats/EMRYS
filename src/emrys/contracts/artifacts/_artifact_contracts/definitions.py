@@ -15,6 +15,10 @@ SCHEMA_FILES = {
     "run-summary": SCHEMA_ROOT / "v2" / "run_summary.schema.json",
     "report-receipt": SCHEMA_ROOT / "v4" / "report_receipt.schema.json",
 }
+VERSIONED_SCHEMA_FILES = {
+    ("run-summary", "3.0.0"): SCHEMA_ROOT / "v3" / "run_summary.schema.json",
+    ("report-receipt", "5.0.0"): SCHEMA_ROOT / "v5" / "report_receipt.schema.json",
+}
 INVENTORY_HEADER = (
     "artifact_id",
     "step_id",

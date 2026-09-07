@@ -42,6 +42,8 @@ assert_not_exists() {
     [[ ! -e "$path" ]] || fail "path should not exist: $path"
 }
 
+assert_not_exists "$REPO_ROOT/tests/pending"
+
 assert_exit() {
     local output_file="$1"
     local expected="$2"
@@ -470,6 +472,7 @@ assert_contains "$cleanup_output" "Step 04 no-clobber cleanup was incomplete"
 
 printf 'Running missing BAM failure check...\n'
 missing_bam_output="$tmp_dir/missing_bam.out"
+rm -f "$java_log"
 assert_exit "$missing_bam_output" 1 bash "$SCRIPT" \
     --sample-id sample_missing_bam \
     --input-bam "$missing_bam" \
@@ -477,8 +480,10 @@ assert_exit "$missing_bam_output" 1 bash "$SCRIPT" \
     --metrics-dir "$tmp_dir/results/missing_bam/qc" \
     --picard-jar "$picard_jar" \
     --java-bin "$fake_bin/java" \
-    --samtools-bin "$fake_bin/samtools"
+    --samtools-bin "$fake_bin/samtools" \
+    --execute
 assert_contains "$missing_bam_output" "Input BAM does not exist"
+assert_not_exists "$java_log"
 
 printf 'Running missing BAM index failure check...\n'
 missing_index_bam="$fixture_dir/missing_index.sorted.bam"

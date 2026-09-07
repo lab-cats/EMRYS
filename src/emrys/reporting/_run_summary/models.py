@@ -14,6 +14,8 @@ from emrys.reporting._files import FileSnapshot
 PRODUCER = "build_run_summary"
 PRODUCER_VERSION = "2.0.0"
 RUN_SUMMARY_SCHEMA_VERSION = "2.0.0"
+MODULAR_PRODUCER_VERSION = "3.0.0"
+MODULAR_RUN_SUMMARY_SCHEMA_VERSION = "3.0.0"
 RUN_SUMMARY_TSV_SCHEMA_VERSION = "2.0.0"
 QC_SUMMARY_TSV_SCHEMA_VERSION = "1.0.0"
 RUN_SUMMARY_RECEIPT_SCHEMA_VERSION = "2.0.0"
@@ -131,7 +133,6 @@ class OutputPaths:
 @dataclass
 class BuildContext:
     run_id: str
-    execute: bool
     artifact_receipt_path: Path
     artifact_receipt: dict[str, str]
     run_contract_path: Path
@@ -142,6 +143,8 @@ class BuildContext:
     inventory_rows: list[dict[str, str]]
     artifacts_path: Path
     records_dir: Path
+    analysis_policy_path: Path | None
+    analysis_policy: dict[str, Any] | None
     input_snapshots: tuple[FileSnapshot, ...]
     artifacts: list[dict[str, Any]]
     document: dict[str, Any]

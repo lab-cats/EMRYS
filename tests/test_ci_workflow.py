@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -10,20 +11,23 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
-REAL_TOOLS_LOCK_PATH = REPO_ROOT / ".github" / "ci" / "real-tools.conda-lock.yml"
+MANAGED_RUNTIME_ROOT = REPO_ROOT / "src" / "emrys" / "resources" / "runtime"
+MANAGED_RUNTIME_LOCK_PATH = MANAGED_RUNTIME_ROOT / "pixi.lock"
+MANAGED_RUNTIME_MANIFEST_PATH = MANAGED_RUNTIME_ROOT / "pixi.toml"
 SLURM_SETUP_PATH = REPO_ROOT / "tests" / "tools" / "configure_ci_slurm.sh"
 SHELL_RECEIPT_ROOT = "${RUNNER_TEMP}/emrys-python311-test-shards"
 ACTION_RECEIPT_ROOT = "${{ runner.temp }}/emrys-python311-test-shards"
-ORDINARY_JOB_IDS = (
-    "workflow-lint",
-    "static-wheel",
-    "shell-slurm",
-    "guarded-r",
-    "fresh-clone-e2e",
-    "python314-coverage-shards",
-    "python314-coverage",
-    "python311-smoke",
-)
+MANUALLY_SELECTABLE_JOB_INPUTS = {
+    "workflow-lint": "workflow_static_docs_wheel",
+    "static-wheel": "workflow_static_docs_wheel",
+    "shell-contracts": "shell",
+    "guarded-r": "guarded_r",
+    "managed-runtime-userspace": "managed_runtime_golden_path",
+    "managed-golden-path": "managed_runtime_golden_path",
+    "python314-coverage-shards": "python314",
+    "python314-coverage": "python314",
+    "python311-smoke": "python311",
+}
 
 
 def _workflow_document() -> dict[str | bool, Any]:
@@ -53,14 +57,23 @@ def _expression(value: object) -> str:
     return " ".join(str(value).split())
 
 
-def test_long_lane_triggers_are_closed_and_independently_selectable() -> None:
+def test_manual_lane_triggers_are_closed_and_independently_selectable() -> None:
     triggers = _workflow_triggers()
     assert triggers["schedule"] == [
         {"cron": "17 5 * * 1-6"},
         {"cron": "17 5 * * 0"},
     ]
     inputs = triggers["workflow_dispatch"]["inputs"]
-    assert set(inputs) == {"python311", "synthetic_130", "synthetic_100000"}
+    assert set(inputs) == {
+        "workflow_static_docs_wheel",
+        "shell",
+        "guarded_r",
+        "managed_runtime_golden_path",
+        "python314",
+        "python311",
+        "synthetic_130",
+        "synthetic_100000",
+    }
     for value in inputs.values():
         assert value["type"] == "boolean"
         assert value["required"] is True
@@ -69,21 +82,27 @@ def test_long_lane_triggers_are_closed_and_independently_selectable() -> None:
     jobs = _workflow_jobs()
     manual = jobs["manual-selection"]
     assert _expression(manual["if"]) == "github.event_name == 'workflow_dispatch'"
-    guard = _named_step(manual, "Require at least one selected long lane")
+    guard = _named_step(manual, "Require at least one selected CI lane")
     assert set(guard["env"]) == {
+        "RUN_WORKFLOW_STATIC_DOCS_WHEEL",
+        "RUN_SHELL",
+        "RUN_GUARDED_R",
+        "RUN_MANAGED_RUNTIME_GOLDEN_PATH",
+        "RUN_PYTHON314",
         "RUN_PYTHON311",
         "RUN_SYNTHETIC_130",
         "RUN_SYNTHETIC_100000",
     }
-    assert "select at least one lane" in guard["run"]
+    assert "select at least one CI lane" in guard["run"]
 
 
-def test_ordinary_jobs_do_not_run_for_schedules_or_manual_long_lanes() -> None:
+def test_ordinary_jobs_keep_automatic_runs_and_support_manual_selection() -> None:
     jobs = _workflow_jobs()
-    for job_id in ORDINARY_JOB_IDS:
+    for job_id, input_name in MANUALLY_SELECTABLE_JOB_INPUTS.items():
         condition = _expression(jobs[job_id]["if"])
         assert "github.event_name != 'workflow_dispatch'" in condition
         assert "github.event_name != 'schedule'" in condition
+        assert f"inputs.{input_name}" in condition
 
 
 def test_long_runs_have_unique_non_cancelling_concurrency() -> None:
@@ -121,14 +140,23 @@ def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
     assert "${RUNNER_TEMP}/emrys-synthetic-e2e" in seed["run"]
     assert "${GITHUB_WORKSPACE}" not in seed["run"]
 
-    tools = _named_step(job, "Restore exact real-tool environment from the Linux lock")
+    paths = _named_step(job, "Select managed-runtime paths")
+    assert "PIXI_WORKSPACE=%s/emrys-managed-runtime" in paths["run"]
+    assert "PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml" in paths["run"]
+    assert "${RUNNER_TEMP}" in paths["run"]
+    stage = _named_step(job, "Stage the reviewed runtime lock outside the checkout")
+    assert "src/emrys/resources/runtime/pixi.toml" in stage["run"]
+    assert "src/emrys/resources/runtime/pixi.lock" in stage["run"]
+    tools = _named_step(job, "Restore locked native and R base environments")
     assert tools["uses"] == (
-        "mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39"
+        "prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e"
     )
-    assert tools["with"]["environment-file"] == (".github/ci/real-tools.conda-lock.yml")
-    assert tools["with"]["environment-name"] == "emrys-real-e2e-tools"
-    assert tools["with"]["micromamba-version"] == "${{ env.MICROMAMBA_VERSION }}"
-    assert "create-args" not in tools["with"]
+    assert tools["with"]["pixi-version"] == "${{ env.PIXI_VERSION }}"
+    assert tools["with"]["manifest-path"] == "${{ env.PIXI_MANIFEST }}"
+    assert tools["with"]["environments"] == "native r"
+    assert tools["with"]["activate-environment"] == "r"
+    assert tools["with"]["locked"] is True
+    assert "setup-micromamba" not in WORKFLOW_PATH.read_text(encoding="utf-8")
 
     slurm = _named_step(job, "Configure and prove one disposable Slurm node")
     assert "tests/tools/configure_ci_slurm.sh" in slurm["run"]
@@ -136,6 +164,10 @@ def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
     authorities = _named_step(
         job, "Record exact runtime authorities outside the checkout"
     )
+    assert "pixi-native-packages.json" in authorities["run"]
+    assert "pixi-r-packages.json" in authorities["run"]
+    assert "uv.lock" in authorities["run"]
+    assert "renv.lock" in authorities["run"]
     assert "picard-slim-3.1.1-*/picard.jar" in authorities["run"]
     assert "*/picard-3.1.1-*/picard.jar" not in authorities["run"]
 
@@ -177,39 +209,178 @@ def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
         assert profile_argument in step["run"]
         assert "tests/tools/real_synthetic_e2e.py" in step["run"]
         assert '"/usr/bin/srun"' in step["run"]
+        assert "--slurm-cpus" not in step["run"]
         assert "--execute" in step["run"]
 
     weekly = _named_step(job, "Run the selected 100,000-pair real synthetic E2E")
     assert "github.event.schedule == '17 5 * * 0'" in _expression(weekly["if"])
 
 
-def test_real_tool_lock_is_linux_only_and_keeps_exact_science_versions() -> None:
-    lock = yaml.safe_load(REAL_TOOLS_LOCK_PATH.read_text(encoding="utf-8"))
-    assert lock["metadata"]["platforms"] == ["linux-64"]
-    packages = {
-        row["name"]: row for row in lock["package"] if row["platform"] == "linux-64"
-    }
-    expected = {
-        "star": "2.7.11b",
-        "samtools": "1.19.2",
-        "bcftools": "1.21",
-        "gatk4": "4.6.1.0",
-        "gzip": "1.14",
-        "openjdk": "17.0.11",
-        "picard-slim": "3.1.1",
-        "rseqc": "5.0.4",
-    }
-    assert {name: packages[name]["version"] for name in expected} == expected
-    assert {row["manager"] for row in lock["package"]} == {"conda"}
-    assert {row["platform"] for row in lock["package"]} == {"linux-64"}
-    for row in lock["package"]:
-        assert row["hash"]["sha256"]
-        assert row["url"].startswith(
-            (
-                "https://conda.anaconda.org/bioconda/",
-                "https://conda.anaconda.org/conda-forge/",
-            )
-        )
+def test_managed_runtime_lock_has_one_linux_floor_and_exact_science_versions() -> None:
+    manifest = tomllib.loads(MANAGED_RUNTIME_MANIFEST_PATH.read_text(encoding="utf-8"))
+    platform = manifest["workspace"]["platforms"]
+    assert platform == [
+        {
+            "name": "linux-x86-64-floor",
+            "platform": "linux-64",
+            "linux": "4.18",
+            "glibc": "2.28",
+        }
+    ]
+    assert manifest["environments"] == {"native": ["native"], "r": ["r"]}
+    native_dependencies = manifest["feature"]["native"]["dependencies"]
+    assert {"coreutils", "grep"} <= native_dependencies.keys()
+    r_dependencies = manifest["feature"]["r"]["dependencies"]
+    assert "libxml2-devel" in r_dependencies
+    assert "libxml2" not in r_dependencies
+
+    lock = yaml.safe_load(MANAGED_RUNTIME_LOCK_PATH.read_text(encoding="utf-8"))
+    assert lock["platforms"] == [
+        {
+            "name": "p1",
+            "subdir": "linux-64",
+            "virtual-packages": [
+                "__glibc=2.28",
+                "__linux=4.18",
+                "__unix=0=0",
+                "__archspec=0=x86_64",
+            ],
+        }
+    ]
+    native = [item["conda"] for item in lock["environments"]["native"]["packages"]["p1"]]
+    for fragment in (
+        "/star-2.7.11b-",
+        "/samtools-1.19.2-",
+        "/bcftools-1.21-",
+        "/gatk4-4.6.1.0-",
+        "/gzip-1.14-",
+        "/openjdk-17.0.11-",
+        "/picard-slim-3.1.1-",
+        "/rseqc-5.0.4-",
+    ):
+        assert sum(fragment in url for url in native) == 1
+    r_environment = [
+        item["conda"] for item in lock["environments"]["r"]["packages"]["p1"]
+    ]
+    r_bases = [url for url in r_environment if "/r-base-" in url]
+    assert len(r_bases) == 1
+    assert "/r-base-4.6.1-" in r_bases[0]
+    assert sum("/libxml2-devel-" in url for url in r_environment) == 1
+    assert sum("/coreutils-" in url for url in native) == 1
+    assert sum("/grep-" in url for url in native) == 1
+    metadata = {row["conda"]: row for row in lock["packages"]}
+    locked_environment = {*native, *r_environment}
+    assert locked_environment <= metadata.keys()
+    assert all(metadata[url]["sha256"] for url in locked_environment)
+
+
+def test_managed_runtime_userspace_matrix_proves_the_same_lock() -> None:
+    job = _workflow_jobs()["managed-runtime-userspace"]
+    assert job["container"]["image"] == "${{ matrix.image }}"
+    assert job["strategy"]["fail-fast"] is False
+    assert job["strategy"]["matrix"]["include"] == [
+        {
+            "label": "Rocky 8.10",
+            "image": "rockylinux/rockylinux:8.10",
+            "os_id": "rocky",
+            "os_version": "8.10",
+            "glibc": "2.28",
+        },
+        {
+            "label": "Ubuntu 22.04",
+            "image": "ubuntu:22.04",
+            "os_id": "ubuntu",
+            "os_version": "22.04",
+            "glibc": "2.35",
+        },
+        {
+            "label": "Debian 12",
+            "image": "debian:12",
+            "os_id": "debian",
+            "os_version": "12",
+            "glibc": "2.36",
+        },
+    ]
+    paths = _named_step(job, "Select managed-runtime paths")
+    assert "PIXI_WORKSPACE=%s/emrys-managed-runtime" in paths["run"]
+    assert "PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml" in paths["run"]
+    assert "${RUNNER_TEMP}" in paths["run"]
+    trust = _named_step(job, "Install the distro TLS trust bundle")
+    assert "dnf --assumeyes install ca-certificates" in trust["run"]
+    assert "apt-get install --yes --no-install-recommends ca-certificates" in trust["run"]
+    setup = _named_step(job, "Install both managed environments from the unchanged lock")
+    assert setup["uses"] == (
+        "prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e"
+    )
+    assert setup["with"]["environments"] == "native r"
+    assert setup["with"]["locked"] is True
+    verify = _named_step(job, "Verify locked tools in this container userspace")
+    assert "src/emrys/resources/runtime/pixi.lock" in verify["run"]
+    assert 'test -e "${r_prefix}/lib/libxml2.so"' in verify["run"]
+    assert '"${r_prefix}/bin/pkg-config" --exists libxml-2.0' in verify["run"]
+    assert 'PATH="${native_prefix}/bin" "${native_prefix}/bin/STAR" --version' in verify["run"]
+    assert 'PATH="${native_prefix}/bin" "${r_prefix}/bin/Rscript"' in verify["run"]
+    assert 'pixi list --locked --manifest-path "${PIXI_MANIFEST}"' in verify["run"]
+
+
+def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
+    job = _workflow_jobs()["managed-golden-path"]
+    assert job["runs-on"] == "ubuntu-24.04"
+    assert job["timeout-minutes"] == 180
+    setup = _named_step(job, "Install Pixi without provisioning the scientific runtime")
+    assert setup["uses"] == (
+        "prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e"
+    )
+    assert setup["with"]["run-install"] is False
+    assert setup["with"]["cache"] is False
+
+    prepare = _named_step(job, "Prepare a clean clone, environment, and synthetic Project")
+    cache = _named_step(job, "Cache managed golden-path R packages")
+    journey = _named_step(job, "Repair and exercise the supported managed golden path")
+    step_names = [step.get("name") for step in job["steps"]]
+    assert step_names.index(prepare["name"]) < step_names.index(cache["name"])
+    assert step_names.index(cache["name"]) < step_names.index(journey["name"])
+
+    assert prepare["run"].index('cd "${clean_clone}"') < prepare["run"].index(
+        '"${emrys[@]}" init synthetic'
+    )
+    assert cache["uses"] == (
+        "actions/cache@caa296126883cff596d87d8935842f9db880ef25"
+    )
+    assert cache["with"]["path"] == (
+        "${{ runner.temp }}/emrys-managed-golden/project/runtime/managed/renv/cache"
+    )
+    assert "renv.lock" in cache["with"]["key"]
+    assert "src/emrys/resources/runtime/pixi.lock" in cache["with"]["key"]
+
+    path = journey["run"]
+    assert "init synthetic" not in path
+    assert 'emrys=("${clean_clone}/.venv/bin/emrys")' in path
+    assert 'cd "${project_root}"' in path
+    assert "-m emrys" not in path
+    assert "--project" not in path
+    for command in (
+        "doctor",
+        "validate",
+        "--repair --execute",
+        "run",
+        "inspect",
+    ):
+        assert command in path
+    for retired in (
+        "storage-qualification",
+        "runtime discover",
+        "execution-profile",
+        "synthetic-local-pilot",
+        "local-pilot-run",
+        "test_fresh_clone_e2e.py",
+    ):
+        assert retired not in path
+    upload = _named_step(job, "Upload managed golden-path evidence")
+    assert _expression(upload["if"]) == "always()"
+    assert upload["with"]["include-hidden-files"] is True
+    assert upload["with"]["if-no-files-found"] == "error"
+    assert "project/runtime/profiles" in upload["with"]["path"]
 
 
 def test_synthetic_evidence_is_always_uploaded_with_hidden_state() -> None:

@@ -1,7 +1,7 @@
 # Mechanical-orientation partition tests
 
-This directory protects Step 06 flag grouping, five-output publication and
-rollback, count arithmetic, and structural validator behavior. The
+This directory protects Step 06 flag grouping, create-absent five-output
+publication and rollback, count arithmetic, and structural validator behavior. The
 [stage owner](../../../src/emrys/stages/mechanical_orientation/README.md)
 owns commands, recovery, and exact evidence meaning. Validator tests exercise
 the grouped package route; private `validator.py` is not a direct command.

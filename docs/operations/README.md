@@ -8,8 +8,6 @@ retained artifacts bound to a commit, not from a rolling handoff document.
 
 - [`WORKFLOW.md`](WORKFLOW.md) defines context selection, approval, delivery,
   validation, and publication boundaries.
-- [`HANDOFF.md`](HANDOFF.md) is a visibly marked legacy source retained only
-  for bounded historical-evidence and recovery reconciliation under `DOC-04`.
 - [`RUNBOOK.md`](RUNBOOK.md) owns supported cross-cutting commands.
 - [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) routes symptoms, diagnosis, and
   common recovery without authorizing destructive cleanup.

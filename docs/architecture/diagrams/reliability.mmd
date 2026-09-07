@@ -1,11 +1,22 @@
 flowchart LR
-    inputs["Explicit inputs<br/>paths + identities + hashes"] --> dryrun["Dry-run-first interface<br/>legacy exceptions documented per stage"]
-    dryrun --> modern["Modern multi-file publisher"]
-    dryrun --> legacy["Legacy or single-output stage<br/>stage-specific validation and recovery"]
-    modern --> lock["Owned lock"]
-    lock --> stage["Run-token staging"]
-    stage --> validate["Validate outputs and recheck inputs"]
-    validate --> publish["Validated producer-specific publication"]
-    publish --> marker["Receipt or summary published last<br/>(marker alone may not prove final producer success)"]
-    validate --> rollback["Rollback on failure"]
-    rollback --> recovery["Preserve recovery evidence when uncertain"]
+    intent["Admitted Project + Analysis"] --> plan["Construct and display<br/>immutable Run plan"]
+    plan --> authority{"Execution authorized?"}
+    authority -->|"no / EOF / interrupt"| no_write["No write, submission, or log"]
+    authority -->|"confirm or --execute"| attempt["Create immutable Attempt<br/>and acquire Run lock"]
+    attempt --> task["Record task start<br/>and invoke owner"]
+    task --> staging["Owner-local staging"]
+    staging --> validate["Validate outputs<br/>and recheck bound inputs"]
+    validate --> publish["No-clobber publication"]
+    publish --> verified["Publish verified-task record last"]
+    verified --> more{"More tasks?"}
+    more -->|yes| task
+    more -->|no| receipt["Publish terminal scientific receipt"]
+    receipt --> results["Admit Results"]
+    results --> report["Generate reports by default<br/>or later with emrys report"]
+
+    task -->|failure or signal| quiesce["Quiesce owned processes"]
+    validate -->|failure| recovery["Owner rollback or retained recovery evidence"]
+    quiesce --> recovery
+    recovery --> failed["Retain failed or interrupted Attempt"]
+    failed --> resume["emrys resume creates a new Attempt<br/>from the admitted between-task boundary"]
+    resume --> task

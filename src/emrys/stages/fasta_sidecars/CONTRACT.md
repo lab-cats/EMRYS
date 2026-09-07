@@ -1,12 +1,9 @@
 # `construct_FASTA_sidecars` stage contract
 
-This document records the observed current contract of historical Step `00c`.
-The exact public identity and historical alias are owned by the
-[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is the lowercase physical source owner for that semantic identity. Its Python
-implementation is an installed owner package; its only public Python surface is
-the grouped validator route. The shell producer and scheduler remain explicit
-repository-path interfaces and are not installed commands.
+This directory owns historical Step `00c`; the
+[semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
+identity and alias. Its only public Python surface is the grouped validator;
+the producer remains an explicit repository-path command.
 
 ## Responsibility
 
@@ -16,11 +13,9 @@ checked for structural and contig agreement without modifying the reference.
 
 ## Execution dependencies
 
-The hard data prerequisite is one materialized reference FASTA. Under the
-current default paths, historical Step `00a` is an operational predecessor
-only because its scheduler job decompresses the FASTA into
-`refs/novogene_ref/genome.fa`. This stage does not consume the STAR index
-produced by Step `00a`.
+The hard data prerequisite is one materialized reference FASTA. Reference
+materialization is outside this owner; this stage does not consume the STAR
+index produced by historical Step `00a`.
 
 Once the FASTA and GTF are materialized, FASTA-sidecar construction can run in
 parallel with historical Step `00b` BED12 conversion. Both sidecars must exist
@@ -28,10 +23,9 @@ and agree with the FASTA before historical Step `05` runs GATK
 `SplitNCigarReads`. They are not prerequisites for BED12 conversion or STAR
 alignment.
 
-If reference materialization becomes a separate owner, STAR-index, BED12, and
-FASTA-sidecar construction can branch from that shared prerequisite.
-Historical numeric order records provenance; the data dependencies above
-define required execution.
+STAR-index, BED12, and FASTA-sidecar construction can branch from their shared
+materialized references. Historical numeric order records provenance; data
+dependencies define execution.
 
 ## Inputs
 
@@ -43,11 +37,6 @@ The producer accepts:
 - Java version 17 or newer for GATK; and
 - an optional temporary-directory root and run token used for isolated staged
   files.
-
-The current scheduler entrypoint binds the FASTA, `samtools`, GATK, Java, and
-temporary-directory inputs to CSU- and repository-specific defaults while
-allowing environment overrides. Those bindings describe current behavior;
-they are not approved future interface defaults.
 
 ## Outputs
 
@@ -98,18 +87,9 @@ Failure to remove any owned staging path or the owned lock is also a failed
 cleanup, not a clean retry boundary: the producer exits nonzero when necessary
 and retains the lock plus remaining residue for operator inspection.
 
-[`step_00c_prepare_gatk_reference.slurm`](step_00c_prepare_gatk_reference.slurm)
-requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving repository-owned helpers or the shell entrypoint, so SLURM's spool
-copy is never checkout authority. It maps `EXECUTE=0` to dry-run and `EXECUTE=1`
-to `--execute`, rejects other values, resolves the current cluster tools, and
-checks the two outputs after execution. Its empty-array invocation on Bash 3.2
-can fail in the default dry-run path. That characterized wrapper defect is
-preserved for later correction rather than normalized in this inventory.
-
 ## Validation interface
 
-`python -I -m emrys validate fasta-sidecars`, implemented by the private
+`emrys validate fasta-sidecars`, implemented by the private
 [`validator.py`](validator.py) module, accepts explicit scope, FASTA, `FAI`,
 `DICT`, and output paths. Validation is dry-run by default; `--execute`
 publishes `<scope-id>.validation.tsv` using the common seven-field
@@ -132,27 +112,14 @@ boundary, exit with code `2`, and publish nothing. Unexpected publication I/O
 errors retain their separate hard-error boundary rather than being normalized
 after report output or possible filesystem mutation.
 
-The validator imports FASTA, `FAI`, and `DICT` parsers from the neutral
-[`references/contigs.py`](../../libraries/references/contigs.py) owner and report
-rendering, locking, and publication from the neutral
-[`validation/report.py`](../../libraries/validation/report.py) owner. Both
-lookups resolve through the installed `emrys` package independently of caller
-CWD. The grouped command rejects a different installed checkout when invoked
-from an EMRYS worktree, and isolated invocation excludes ambient `PYTHONPATH`.
-Reference provenance and the final Step `05` validator share the same parser
-module identity while this stage retains its per-role aggregation and
-agreement rows.
-
-The producer shares executable-value resolution through neutral
-[`executable_resolution.sh`](../../libraries/executable_resolution.sh) and the
-bound-Python selected-Java handoff through neutral
-[`gatk_invocation.sh`](../../libraries/gatk_invocation.sh) and
-[`process_environment.py`](../../libraries/process_environment.py). Execute
-mode requires absolute Python 3.11+ in `EMRYS_SHA256_PYTHON`, requires Java to
-resolve to canonical `<JAVA_HOME>/bin/java`, and removes ambient JVM/GATK
-selectors before both the GATK version probe and work. This stage retains
-samtools/GATK/Java precedence, minimum versions, exact GATK arguments,
-transaction, validation, and sidecar policy.
+The validator shares reference-contig parsers with reference provenance and
+Step `05`, and uses the common validation publisher. Grouped invocation binds
+the selected installed `emrys` package independently of caller CWD and ambient
+`PYTHONPATH`. Shared process helpers require execute mode to use absolute
+Python 3.11+ in `EMRYS_SHA256_PYTHON`, canonical `<JAVA_HOME>/bin/java`, and a
+JVM/GATK-selector-scrubbed environment for both the GATK probe and work. This
+stage still owns tool precedence and versions, exact arguments, transaction,
+validation, and sidecar policy.
 
 ## Consumers
 
@@ -168,61 +135,10 @@ transaction, validation, and sidecar policy.
 - Artifact indexing, canonical summaries, and reports consume those registered
   artifacts and validation evidence without rerunning this stage.
 
-No downstream stage should depend on this stage's implementation module.
+## Protection, evidence ceiling, and related retained defect
 
-## Protected behavior and evidence
-
-- [`test_step_00c_prepare_gatk_reference.sh`](../../../../tests/stages/fasta_sidecars/test_step_00c_prepare_gatk_reference.sh)
-  protects help and argument handling, side-effect-free dry-run, execution,
-  reuse, generation of one missing sidecar, mismatch failures, Java failures,
-  foreign-lock preservation, complete controlled rollback after final-DICT
-  publication failure, create-exclusive late-collision rejection, foreign-
-  replacement preservation, and lock/residue preservation when ownership or
-  rollback cannot be proved. It rejects unsafe run tokens and older-token
-  staging residue, and injects staging- and lock-removal failures to prove they
-  cannot report a clean boundary. It also deterministically mutates the
-  reference during fake GATK execution and proves no sidecar is published.
-- [`test_validate_step_00c_reference_sidecars.py`](../../../../tests/stages/fasta_sidecars/test_validate_step_00c_reference_sidecars.py)
-  protects the five checks, ordered mismatch evidence, fail-closed structure,
-  deterministic publication, lock handling, arbitrary-CWD repeatability, and
-  the grouped package route.
-- [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
-  protects the wrapper's delegation, execution control, tool resolution, and
-  characterized Bash 3.2 dry-run behavior with local mocks.
-- [`test_validation_check_rosters.py`](../../../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py)
-  protects the exact validator inventory and check identities.
-- [`test_validation_report.py`](../../../../tests/libraries/test_validation_report.py)
-  characterizes the imported shared publication and recovery behavior.
-- [`test_public_cli_contracts.py`](../../../../tests/test_public_cli_contracts.py)
-  and [`test_python_coverage_baseline.py`](../../../../tests/test_python_coverage_baseline.py)
-  protect the recorded public-CLI and coverage boundaries.
-
-These are local fixture and mocked-wrapper contracts. They do not establish a
-new cluster, production, scientific-review, or biological-evidence result.
-Current evidence status remains owned by the canonical roadmap and handoff.
-
-## Observed ownership boundaries
-
-- Reference materialization currently belongs incidentally to Step `00a`,
-  creating an operational edge that is not intrinsic to sidecar construction.
-- The shell producer owns sidecar generation, validation, locking, reuse, and
-  rollback-aware multi-file publication. It does not publish a native receipt;
-  validators and the future verified-task layer remain separate authorities.
-- The private validator module remains inside this installed stage package but
-  reuses reference parsers from the neutral `reference_contigs` owner and
-  publication helpers from the neutral validation-report owner through shared
-  bridges.
-- The scheduler wrapper owns cluster-specific path defaults and controlled-
-  Python admission around the parameterized shell entrypoint. The producer is
-  the sole GATK probe/work authority and owns selected-Java enforcement.
-
-The reference-parser extraction is complete through `LIB-02K`; this inventory
-does not choose a transaction redesign or scheduler abstraction.
-
-## Deferred decisions
-
-- Final owner of reference materialization.
-- Whether the two sidecars require one native publication receipt.
-- Final ownership of scheduler templates beyond this colocated native asset.
-- Any reference-provenance transaction redesign; its physical owner home is
-  already fixed separately.
+Repository tests protect this contract under the shared
+[evidence ceiling](../../../../tests/README.md). The separate
+[reference-provenance owner](../../evidence/reference_provenance/README.md)
+records its own unresolved restoration-evidence defect; this sidecar
+transaction does not inherit that defect.

@@ -2,8 +2,7 @@
 
 This directory protects manifest structure and value rejection, optional path
 existence checks, arbitrary-working-directory behavior, and paired-FASTQ count
-and leading-ID diagnostics. Scheduler syntax and delegation remain protected
-by the central SLURM-wrapper suite.
+and leading-ID diagnostics.
 
 The
 [production owner](../../../src/emrys/ingestion/sample_manifest_admission/README.md)

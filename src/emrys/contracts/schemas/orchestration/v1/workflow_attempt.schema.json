@@ -175,6 +175,91 @@
       "items": {
         "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/tool_identity"
       }
+    },
+    "placement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "source",
+        "effective_sha256",
+        "request",
+        "scheduler_job_id"
+      ],
+      "properties": {
+        "kind": {
+          "enum": ["direct", "slurm"]
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["path", "sha256"],
+          "properties": {
+            "path": {
+              "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/absolute_path"
+            },
+            "sha256": {
+              "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256"
+            }
+          }
+        },
+        "effective_sha256": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256"
+        },
+        "request": {
+          "$ref": "urn:emrys:schema:orchestration:execution-profile:v1#/$defs/placement"
+        },
+        "scheduler_job_id": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {"const": "direct"}
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "request": {
+                "$ref": "urn:emrys:schema:orchestration:execution-profile:v1#/$defs/direct_placement"
+              },
+              "scheduler_job_id": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {"const": "slurm"}
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": {
+              "request": {
+                "$ref": "urn:emrys:schema:orchestration:execution-profile:v1#/$defs/slurm_placement"
+              },
+              "scheduler_job_id": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]*$"
+              }
+            }
+          }
+        }
+      ]
     }
   },
   "allOf": [

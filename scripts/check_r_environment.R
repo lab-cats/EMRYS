@@ -12,7 +12,7 @@ if (!identical(Sys.getenv("EMRYS_USE_RENV", unset = "0"), "1")) {
 }
 if (!identical(Sys.getenv("EMRYS_LOCAL_PILOT_R", unset = "0"), "1")) {
     stop(
-        "R checks require non-bootstrapping local-pilot library selection."
+        "R checks require non-bootstrapping run-coordinator library selection."
     )
 }
 selected_library_request <- Sys.getenv("EMRYS_RENV_LIBRARY", unset = "")

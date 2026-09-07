@@ -4,7 +4,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SCRIPT="$REPO_ROOT/src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"
-JOB="$REPO_ROOT/src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm"
 unset EMRYS_RUN_TOKEN
 export EMRYS_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
@@ -249,7 +248,6 @@ write_fasta "$reference_fasta"
 
 printf 'Running syntax checks...\n'
 bash -n "$SCRIPT"
-bash -n "$JOB"
 
 printf 'Running help check...\n'
 help_output="$tmp_dir/help.out"
@@ -753,7 +751,7 @@ assert_contains "$lock_cleanup_output" "rollback or cleanup was incomplete"
 
 printf 'Running stale Step 05 path check...\n'
 stale_output="$tmp_dir/stale.out"
-if grep -F "sorted.md" "$SCRIPT" "$JOB" >"$stale_output"; then
+if grep -F "sorted.md" "$SCRIPT" >"$stale_output"; then
     cat "$stale_output" >&2
     fail "Step 00c files should not use stale Step 05 sorted.md paths"
 fi

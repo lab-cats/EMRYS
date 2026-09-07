@@ -43,9 +43,6 @@ class RunSummaryPublicationOps:
         adapter.install_publication_signal_handlers
     )
     restore_signal_handlers: Callable[..., Any] = adapter.restore_signal_handlers
-    validate_artifact_transaction: Callable[..., Any] = (
-        adapter.validate_published_transaction
-    )
     load_existing_summary_receipt: Callable[..., Any] = _load_existing_summary_receipt
     validate_document: Callable[..., Any] = _validate_document
     validate_existing_summary: Callable[..., Any] = _validate_existing_summary
@@ -177,7 +174,7 @@ def publish_context(
                 expected_run_contract=context.run_contract,
                 source_root=context.artifact_source_root.root,
             )
-        transaction_validation.recheck_run_summary_inputs(context, ops=ops)
+        transaction_validation.recheck_run_summary_inputs(context)
 
         payloads = (
             context.summary_json_bytes,
@@ -218,7 +215,7 @@ def publish_context(
             _assert_output_directory_identity(context.paths)
         ops.fsync_directory(context.paths.output_dir)
         validate_published_run_summary(context, ops=ops)
-        transaction_validation.recheck_run_summary_inputs(context, ops=ops)
+        transaction_validation.recheck_run_summary_inputs(context)
         committed = True
     except Exception as exc:
         rollback_errors: list[str] = []

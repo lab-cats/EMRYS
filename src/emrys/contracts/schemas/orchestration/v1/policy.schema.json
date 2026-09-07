@@ -1,81 +1,133 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:emrys:schema:orchestration:policy:v1",
-  "title": "EMRYS primary analysis policy v1",
-  "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "schema_version",
-    "analysis_id",
-    "control_condition",
-    "treatment_condition",
-    "rna_ref",
-    "rna_alt",
-    "min_sample_dp",
-    "mean_dp_threshold",
-    "fdr_threshold",
-    "common_or_threshold",
-    "absolute_difference_threshold",
-    "background_condition",
-    "background_max_fraction"
-  ],
-  "properties": {
-    "schema_version": {
-      "const": "emrys.analysis-policy.v1"
+  "title": "EMRYS admitted analysis policy",
+  "$defs": {
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "module_id", "interface_version", "module_version",
+        "distribution_name", "distribution_version", "entry_point",
+        "config_schema_sha256", "dependencies"
+      ],
+      "properties": {
+        "module_id": {"$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"},
+        "interface_version": {"const": "emrys.analysis-module.v1"},
+        "module_version": {"$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"},
+        "distribution_name": {"type": "string", "minLength": 1},
+        "distribution_version": {"type": "string", "minLength": 1},
+        "entry_point": {"type": "string", "minLength": 1},
+        "config_schema_sha256": {"$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256"},
+        "dependencies": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/dependency"}
+        }
+      }
     },
-    "analysis_id": {
-      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
-    },
-    "control_condition": {
-      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
-    },
-    "treatment_condition": {
-      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
-    },
-    "rna_ref": {
-      "type": "string",
-      "pattern": "^[ACGT]$"
-    },
-    "rna_alt": {
-      "type": "string",
-      "pattern": "^[ACGT]$"
-    },
-    "min_sample_dp": {
-      "type": "integer",
-      "minimum": 1
-    },
-    "mean_dp_threshold": {
-      "type": "number",
-      "minimum": 0
-    },
-    "fdr_threshold": {
-      "type": "number",
-      "exclusiveMinimum": 0,
-      "maximum": 1
-    },
-    "common_or_threshold": {
-      "type": "number",
-      "exclusiveMinimum": 1
-    },
-    "absolute_difference_threshold": {
-      "type": "number",
-      "minimum": 0,
-      "maximum": 1
-    },
-    "background_condition": {
+    "dependency": {
       "oneOf": [
+        {"$ref": "#/$defs/existing_check_dependency"},
+        {"$ref": "#/$defs/probed_dependency"},
+        {"$ref": "#/$defs/path_dependency"}
+      ]
+    },
+    "existing_check_dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dependency_id", "kind"],
+      "properties": {
+        "dependency_id": {"$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"},
+        "kind": {"const": "existing_check"}
+      }
+    },
+    "probed_dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dependency_id", "kind", "expected"],
+      "properties": {
+        "dependency_id": {"$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"},
+        "kind": {"enum": ["executable", "r_namespace"]},
+        "target": {"type": "string", "minLength": 1},
+        "expected": {"type": "string", "minLength": 1},
+        "probe_args": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string"}
+        }
+      },
+      "allOf": [
         {
-          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
-        },
-        {
-          "type": "null"
+          "if": {"properties": {"kind": {"const": "executable"}}},
+          "then": {
+            "required": ["probe_args"],
+            "not": {"required": ["target"]}
+          },
+          "else": {
+            "required": ["target"],
+            "not": {"required": ["probe_args"]}
+          }
         }
       ]
     },
-    "background_max_fraction": {
-      "type": "number",
-      "exclusiveMinimum": 0,
-      "exclusiveMaximum": 1
+    "path_dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dependency_id", "kind"],
+      "properties": {
+        "dependency_id": {"$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"},
+        "kind": {"enum": ["file", "package_tree"]}
+      }
+    },
+    "module_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "analysis_id", "module",
+        "implementation_sha256", "configuration"
+      ],
+      "properties": {
+        "schema_version": {"const": "emrys.analysis-module-policy.v1"},
+        "analysis_id": {"$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"},
+        "module": {"$ref": "#/$defs/module"},
+        "implementation_sha256": {"$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256"},
+        "configuration": {"type": "object"}
+      }
+    },
+    "paired_cmh_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "analysis_id", "control_condition", "treatment_condition",
+        "rna_ref", "rna_alt", "min_sample_dp", "mean_dp_threshold",
+        "fdr_threshold", "common_or_threshold", "absolute_difference_threshold",
+        "background_condition", "background_max_fraction"
+      ],
+      "properties": {
+        "schema_version": {"const": "emrys.analysis-policy.v1"},
+        "analysis_id": {"$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"},
+        "control_condition": {"$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"},
+        "treatment_condition": {"$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"},
+        "rna_ref": {"type": "string", "pattern": "^[ACGT]$"},
+        "rna_alt": {"type": "string", "pattern": "^[ACGT]$"},
+        "min_sample_dp": {"type": "integer", "minimum": 1},
+        "mean_dp_threshold": {"type": "number", "minimum": 0},
+        "fdr_threshold": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "common_or_threshold": {"type": "number", "exclusiveMinimum": 1},
+        "absolute_difference_threshold": {"type": "number", "minimum": 0, "maximum": 1},
+        "background_condition": {
+          "oneOf": [
+            {"$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"},
+            {"type": "null"}
+          ]
+        },
+        "background_max_fraction": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1}
+      }
     }
-  }
+  },
+  "oneOf": [
+    {"$ref": "#/$defs/paired_cmh_policy"},
+    {"$ref": "#/$defs/module_policy"}
+  ]
 }

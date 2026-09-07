@@ -11,6 +11,29 @@ from .identity import require_unique_key, validate_document_paths
 
 def validate_report_receipt_semantics(document: dict[str, Any]) -> None:
     validate_document_paths(document)
+    if document["schema_version"] == "5.0.0":
+        scientific = document["scientific_renderer"]
+        package, separator, callable_name = scientific["entry_point"].partition(":")
+        if (
+            package != scientific["package"]
+            or separator != ":"
+            or not callable_name
+            or ":" in callable_name
+        ):
+            raise ContractValidationError(
+                "scientific renderer entry point must name its admitted package callable"
+            )
+        evidence = document["evidence_renderer"]
+        provenance = document["provenance"]
+        if (
+            scientific["core_support"] != evidence
+            or evidence["producer"] != provenance["producer"]
+            or evidence["producer_version"] != provenance["producer_version"]
+            or evidence["template_engine"] != "Jinja2"
+        ):
+            raise ContractValidationError(
+                "core scientific support, evidence renderer, and provenance must match"
+            )
     outputs = document["outputs"]
     require_unique_key(outputs, "output_id", "report outputs")
     output_kinds = {output["kind"] for output in outputs}

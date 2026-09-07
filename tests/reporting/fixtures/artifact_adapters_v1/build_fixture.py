@@ -22,12 +22,16 @@ from pathlib import Path
 
 from emrys.contracts.scientific_evidence import step09
 from emrys.contracts.scientific_evidence import scientific_context
-from emrys.reporting._artifact_index.registry import ADAPTER_REGISTRY
+from emrys import analyses
+from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
+from emrys.reporting._artifact_index.registry import build_adapter_registry
 from tests.scientific_context_test_support import (
     build_transaction as build_scientific_context_transaction,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
+ADAPTER_REGISTRY = build_adapter_registry(analysis_module_v1())
 INVENTORY_TEMPLATE = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
 INVENTORY_HEADER = (
     "artifact_id",
@@ -58,6 +62,26 @@ COHORT_ID = "synthetic_cohort"
 CANONICAL_BGZF_EOF_BLOCK = bytes.fromhex(
     "1f8b08040000000000ff0600424302001b0003000000000000000000"
 )
+
+
+def analysis_profile_v1() -> dict[str, object]:
+    base = orchestration_contracts.load_json_object(
+        REPO_ROOT / "workflow/contracts/local_cmh_v2.json"
+    )
+    descriptor = analysis_module_v1()
+    profile = analyses.compose_profile(base, descriptor)
+    for template in profile["artifact_templates"]:
+        template["source_path_template"] = (
+            "source/" + template["source_path_template"]
+        )
+        if template["adapter"].endswith("_validation_report_v1") and template[
+            "step_id"
+        ] in {"09", "10"}:
+            template["source_path_template"] = template[
+                "source_path_template"
+            ].replace("products/native/qc", "results/qc")
+    orchestration_contracts.validate_record("profile", profile)
+    return profile
 
 
 @dataclass(frozen=True)

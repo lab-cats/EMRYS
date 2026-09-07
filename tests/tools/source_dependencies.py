@@ -56,12 +56,46 @@ KNOWN_RULE_IDS = frozenset(
         RULE_SOURCE_CLASSIFICATION,
     }
 )
-PUBLIC_REPORTING_SEAM = "emrys.reporting.transaction_validation"
+_REPORTING_OPERATION = "emrys.orchestration.run_coordinator.reporting_operation"
+ORCHESTRATION_REPORTING_SEAMS = frozenset(
+    {
+        (
+            "emrys.orchestration.run_coordinator.doctor",
+            "emrys.reporting",
+        ),
+        (
+            "emrys.orchestration.run_coordinator.lifecycle",
+            "emrys.reporting.transaction_validation",
+        ),
+        (
+            "emrys.orchestration.run_coordinator.reporting_boundary",
+            "emrys.reporting.transaction_validation",
+        ),
+        *(
+            (_REPORTING_OPERATION, target)
+            for target in (
+                "emrys.reporting._artifact_index.context",
+                "emrys.reporting._artifact_index.models",
+                "emrys.reporting._artifact_index.publication",
+                "emrys.reporting._run_summary.builder",
+                "emrys.reporting._run_summary.models",
+                "emrys.reporting._run_summary.publication",
+                "emrys.reporting.report",
+                "emrys.reporting._run_report.models",
+                "emrys.reporting._run_report.publication",
+            )
+        ),
+    }
+)
 
 # (documented ID, exact target); descriptive current behavior, not target APIs.
 COMPOSITION_SEAMS: tuple[tuple[str, str], ...] = (
     ("CLI-SEAM-001", "emrys.analyses.paired_cmh_candidate_ranking.validator"),
-    ("CLI-SEAM-002", "emrys.analyses.scientific_context_projection.validator"),
+    (
+        "CLI-SEAM-002",
+        "emrys.analyses.paired_cmh_candidate_ranking."
+        "scientific_context_projection.validator",
+    ),
     ("CLI-SEAM-003", "emrys.contracts.artifacts.validator"),
     ("CLI-SEAM-004", "emrys.evidence.canonical_bam_qc.validator"),
     ("CLI-SEAM-005", "emrys.evidence.reference_provenance.reconciler"),
@@ -71,12 +105,11 @@ COMPOSITION_SEAMS: tuple[tuple[str, str], ...] = (
     ("CLI-SEAM-009", "emrys.evidence.storage_inventory.qualification"),
     ("CLI-SEAM-010", "emrys.ingestion.sample_manifest_admission.validator"),
     ("CLI-SEAM-011", "emrys.libraries.source_authority"),
-    ("CLI-SEAM-012", "emrys.orchestration.local_pilot.all_pass"),
-    ("CLI-SEAM-013", "emrys.orchestration.local_pilot.doctor"),
-    ("CLI-SEAM-014", "emrys.orchestration.local_pilot.control"),
-    ("CLI-SEAM-015", "emrys.orchestration.local_pilot.onboarding"),
-    ("CLI-SEAM-016", "emrys.orchestration.local_pilot.synthetic_fixture"),
-    ("CLI-SEAM-017", "emrys.reporting.report"),
+    ("CLI-SEAM-012", "emrys.orchestration.run_coordinator.all_pass"),
+    ("CLI-SEAM-013", "emrys.orchestration.run_coordinator.doctor"),
+    ("CLI-SEAM-014", "emrys.orchestration.run_coordinator.control"),
+    ("CLI-SEAM-015", "emrys.orchestration.run_coordinator.onboarding"),
+    ("CLI-SEAM-016", "emrys.orchestration.run_coordinator.synthetic_fixture"),
     ("CLI-SEAM-018", "emrys.stages.canonical_bam.validator"),
     ("CLI-SEAM-019", "emrys.stages.cohort_candidate_preprocessing.validator"),
     ("CLI-SEAM-020", "emrys.stages.duplicate_marking.validator"),
@@ -90,8 +123,8 @@ COMPOSITION_SEAMS: tuple[tuple[str, str], ...] = (
     ("CLI-SEAM-028", "emrys.stages.star_index.validator"),
 )
 
-# (documented ID, exact source path, exact target, violated durable rule).
-# Successors and exit conditions remain authoritative in SOURCE_TOPOLOGY.md.
+# (stable audit ID, exact source path, exact target, violated durable rule).
+# Durable boundary justifications remain authoritative in SOURCE_TOPOLOGY.md.
 TRANSITIONS: tuple[tuple[str, str, str, str], ...] = (
     ("SRC-TRANS-001", "src/emrys/contracts/artifacts/_artifact_contracts/schema.py", "emrys.libraries.validation", RULE_CONTRACT_NEUTRAL),
     ("SRC-TRANS-002", "src/emrys/contracts/orchestration/api.py", "emrys.libraries.source_authority", RULE_CONTRACT_NEUTRAL),
@@ -99,13 +132,12 @@ TRANSITIONS: tuple[tuple[str, str, str, str], ...] = (
     ("SRC-TRANS-004", "src/emrys/contracts/scientific_evidence/step08.py", "emrys.libraries.validation.tsv", RULE_CONTRACT_NEUTRAL),
     ("SRC-TRANS-005", "src/emrys/contracts/scientific_evidence/step08.py", "emrys.libraries.alignments.orientation", RULE_CONTRACT_NEUTRAL),
     ("SRC-TRANS-006", "src/emrys/contracts/scientific_evidence/step09.py", "emrys.libraries.alignments.orientation", RULE_CONTRACT_NEUTRAL),
-    ("SRC-TRANS-007", "src/emrys/orchestration/local_pilot/doctor.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-008", "src/emrys/orchestration/local_pilot/doctor.py", "emrys.evidence.storage_inventory.qualification", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-009", "src/emrys/orchestration/local_pilot/lifecycle.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-010", "src/emrys/orchestration/local_pilot/lifecycle.py", "emrys.evidence.storage_inventory.qualification", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-011", "src/emrys/orchestration/local_pilot/onboarding.py", "emrys.stages.gtf_to_bed12.converter", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-012", "src/emrys/__main__.py", "emrys.reporting._artifact_index.builder", RULE_PRIVATE_OWNER),
-    ("SRC-TRANS-013", "src/emrys/__main__.py", "emrys.reporting._run_summary.builder", RULE_PRIVATE_OWNER),
+    ("SRC-TRANS-007", "src/emrys/orchestration/run_coordinator/doctor.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-008", "src/emrys/orchestration/run_coordinator/doctor.py", "emrys.evidence.storage_inventory.qualification", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-009", "src/emrys/orchestration/run_coordinator/lifecycle.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-010", "src/emrys/orchestration/run_coordinator/lifecycle.py", "emrys.evidence.storage_inventory.qualification", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-011", "src/emrys/orchestration/run_coordinator/onboarding.py", "emrys.stages.gtf_to_bed12.converter", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-012", "src/emrys/orchestration/run_coordinator/onboarding.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
 )
 
 
@@ -305,6 +337,14 @@ def forbidden_rule(
 ) -> tuple[str, str] | None:
     source_kind, source_owner = owner(edge.source_module)
     target_kind, target_owner = owner(edge.target_module)
+    declared_reporting_seam = (
+        edge.source_module,
+        edge.target_module,
+    ) in ORCHESTRATION_REPORTING_SEAMS
+    declared_analysis_module_seam = (
+        edge.target_module == "emrys.analyses"
+        and source_kind in {"functional", "orchestration", "reporting"}
+    )
     if target_kind == "unclassified":
         return RULE_SOURCE_CLASSIFICATION, "target belongs to an unclassified domain"
     if source_kind == "root" and target_kind != "root":
@@ -315,7 +355,7 @@ def forbidden_rule(
         part.startswith("_") and not part.startswith("__")
         for part in edge.target_module.split(".")[2:]
     )
-    if source_owner != target_owner and private:
+    if source_owner != target_owner and private and not declared_reporting_seam:
         return RULE_PRIVATE_OWNER, "private modules are owner-local"
     if source_kind == "composition":
         if edge.target_module not in composition_targets:
@@ -328,17 +368,19 @@ def forbidden_rule(
     if source_kind == "functional" and (
         (target_kind == "functional" and source_owner != target_owner)
         or target_kind in {"ingestion", "orchestration", "reporting", "composition"}
-    ):
+    ) and not declared_analysis_module_seam:
         return RULE_FUNCTIONAL_OWNER, "functional owners cannot import peer/product owners"
     blocked = {
         "ingestion": {"functional", "orchestration", "reporting", "composition"},
         "reporting": {"functional", "ingestion", "orchestration", "composition"},
     }
     if target_kind in blocked.get(source_kind, set()):
+        if declared_analysis_module_seam:
+            return None
         rule = RULE_INGESTION_BOUNDARY if source_kind == "ingestion" else RULE_REPORTING_DOWNSTREAM
         return rule, f"{source_kind} dependency direction is reversed"
     if source_kind == "orchestration" and target_kind in {"functional", "ingestion", "reporting"}:
-        if edge.target_module != PUBLIC_REPORTING_SEAM:
+        if not (declared_reporting_seam or declared_analysis_module_seam):
             return RULE_ORCHESTRATION_BOUNDARY, "target is not a declared public capability"
     return None
 

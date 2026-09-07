@@ -352,6 +352,33 @@ def test_invalid_inventory_and_symlink_fail(tmp_path: Path) -> None:
     assert "non-symlink" in result.stderr
 
 
+def test_inventory_rejects_symlinked_artifacts_and_relative_escape(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    inventory = make_fixture(project)
+    original = inventory.read_text()
+    output = project / "out"
+    output.mkdir()
+
+    artifact_link = project / "ref" / "linked.fa"
+    artifact_link.symlink_to("genome.fa")
+    inventory.write_text(original.replace("ref/genome.fa\t", "ref/linked.fa\t", 1))
+    result = run_reconciliation(inventory, output, "--execute")
+    assert result.returncode == 2
+    assert "path must not be a symbolic link" in result.stderr
+
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "genome.fa").write_text(">1\nACGT\n")
+    (project / "escape").symlink_to(outside, target_is_directory=True)
+    inventory.write_text(original.replace("ref/genome.fa\t", "escape/genome.fa\t", 1))
+    result = run_reconciliation(inventory, output, "--execute")
+    assert result.returncode == 2
+    assert "must not leave Reference base directory" in result.stderr
+
+
 def test_partial_prior_and_foreign_lock_are_preserved(tmp_path: Path) -> None:
     inventory = make_fixture(tmp_path)
     output = tmp_path / "out"

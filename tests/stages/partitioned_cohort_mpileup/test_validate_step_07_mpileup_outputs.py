@@ -212,6 +212,23 @@ def test_execute_publishes_five_passes(tmp_path: Path) -> None:
     assert {row["status"] for row in rows} == {"pass"}
 
 
+def test_explicit_report_scope_preserves_scientific_validation(tmp_path: Path) -> None:
+    evidence = build_validation_fixture(tmp_path)
+    scope_id = "scope-cohort-partition-content-bound"
+    evidence = replace(
+        evidence,
+        output=evidence.output.with_name(f"{scope_id}.validation.tsv"),
+    )
+
+    result = run_validator(evidence, "--scope-id", scope_id, "--execute")
+
+    assert result.returncode == 0, result.stderr
+    rows = report_rows(evidence.output)
+    assert_exact_check_roster(rows, "07")
+    assert {row["scope_id"] for row in rows} == {scope_id}
+    assert {row["status"] for row in rows} == {"pass"}
+
+
 def test_relative_receipt_paths_match_absolute_admitted_vcfs(tmp_path: Path) -> None:
     evidence = build_validation_fixture(tmp_path / "fixture")
     write_receipt(

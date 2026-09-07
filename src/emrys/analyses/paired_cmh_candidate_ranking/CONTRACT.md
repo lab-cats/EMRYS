@@ -1,11 +1,9 @@
 # `rank_cohort_candidates_with_paired_CMH` analysis contract
 
-This is the observed contract of historical Step `09` for `ARCH-02A`. It is an
-analysis operation rather than another preprocessing stage. The exact public
-identity and historical alias are owned by the
-[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-retains that semantic identity while the physical/package owner uses the
-capability-oriented name `paired_cmh_candidate_ranking`.
+This directory owns the paired-CMH analysis historically executed as Step
+`09`; the [semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns
+its public identity and alias. It is an analysis, not another preprocessing
+stage.
 
 ## Responsibility and execution dependencies
 
@@ -81,8 +79,8 @@ hashes, analysis conditions, thresholds, method, provisional policy, and
 reconciled counts. Mutation-spectrum TSV/PDF and depth/delta PDF are derived
 diagnostics. Header-only candidate tables are valid when all counts reconcile.
 
-[`step_09_cmh_editing_site_calling.sh`](step_09_cmh_editing_site_calling.sh)
-is side-effect-free in dry-run. Execute mode hashes and repeatedly rechecks
+Private [`producer.py`](producer.py) is side-effect-free in dry-run. Execute
+mode hashes and repeatedly rechecks
 manifests plus both Step `08` inputs, uses an analysis-owned lock and run-token
 scratch/backups, requires all six previous outputs or none, validates all
 temporaries, publishes the summary last as native commit marker, then
@@ -100,17 +98,9 @@ The summary becomes visible before final post-publication checks and does not
 hash its five sibling outputs, so presence alone is not independent proof that
 the producer returned success or that the current set is immutable.
 
-[`step_09_cmh_editing_site_calling.slurm`](step_09_cmh_editing_site_calling.slurm)
-requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
-resolving its repository-owned helper, producer, or dependency environment, so
-SLURM's spool copy is never checkout authority. It owns cluster defaults,
-execution gating, delegation, and final path checks; it does not own statistical
-behavior. Unlike the public script, the wrapper currently creates its `logs/`
-directory even in dry-run.
-
 ## Validation interface
 
-The grouped `python -I -m emrys validate paired-cmh-candidate-ranking` route,
+The grouped `emrys validate paired-cmh-candidate-ranking` route,
 implemented by private [`validator.py`](validator.py), accepts explicit
 manifests, Step `08` inputs, all six native outputs, analysis and cohort IDs,
 and report output. It does not invoke R. Dry-run prints the common report;
@@ -142,41 +132,21 @@ otherwise admitted native table, which is recorded as failed evidence rather
 than rejected as a runtime error. Unsafe filesystem structure or report-
 publication failures exit `2`.
 
-## Consumers and protected evidence
+## Consumers, protection, and evidence ceiling
 
 - Artifact adapters register all six outputs and
   `step09_validation_report_v1`; reporting presents them as computational
   candidates rather than treating threshold-passing rows as biological truth.
-- Direct shell/R/validator tests protect manifests and pairing, statuses,
-  thresholds, method metadata, dry-run, transaction, rollback, plots, and the
-  independent validation boundary.
-- Independent Python-oracle and real-R corpus comparisons protect CMH/BH
-  behavior; wrapper, roster, publication-fault, public-CLI, artifact, report,
-  and coverage tests protect cross-boundary behavior.
 
-This is local fixture and guarded real-R/oracle evidence, not production,
-cluster, completed scientific review, or biological interpretation readiness.
+Repository tests protect this contract under the shared
+[evidence ceiling](../../../../tests/README.md), including an independent
+Python oracle and guarded real-R corpus.
 
-## Current ownership boundaries and deferred decisions
-
-- The Step `08` input contract now belongs to neutral
-  [`step08.py`](../../contracts/scientific_evidence/step08.py), imported by
-  neutral Step `09`, this validator, and the artifact index under one
-  shared module/error/table identity.
-- Step `09` schemas and reusable validators now belong to neutral
-  [`step09.py`](../../contracts/scientific_evidence/step09.py), imported by
-  this validator and artifact indexing under one shared ready-owner identity.
-- Method/schema/status logic is duplicated across shell, R, Python, oracle,
-  artifact, and validation surfaces; shared report publication belongs to
-  neutral [`validation/report.py`](../../libraries/validation/report.py).
-- Producer-recorded relative paths are later interpreted from a consumer's
-  working directory, and the summary omits implementation, runtime, R/package,
-  attempt, and sibling-output identities.
-- The analysis boundary requires ingestion-oriented FASTQ and strandedness
-  manifest columns that its method does not use, and it trusts rather than
-  dereferences the Step `07`/annotation identities recorded by Step `08`.
-- A complete predecessor is checked for six-file presence, not semantic
-  validity, before replacement.
-- Analysis-policy versioning, method-module interface, sibling-output binding,
-  target files, recovery tooling, and migration mechanics
-  remain deferred.
+Three retained boundaries remain. Producer-recorded relative paths are later
+interpreted from the consumer's working directory. The analysis requires the
+shared sample manifest's FASTQ and strandedness columns although this method
+does not use them. Finally, the legacy replacement path admits a predecessor
+by six-file presence rather than semantic validity; the orchestration-safe
+no-clobber path does not replace it. The summary's narrower native provenance
+is supplemented by immutable Run task records rather than a second owner-local
+receipt.

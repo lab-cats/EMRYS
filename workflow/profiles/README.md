@@ -11,7 +11,7 @@ one host. That host may be a workstation or a single allocated Slurm node.
 Execution profiles do not define the scientific graph, public owner commands,
 scientific resource identity, standalone-stage scheduling, Slurm submission,
 or recovery admission. Requests own capacity, functional owners own their work,
-and local-pilot lifecycle owns invocation and recovery.
+and run-coordinator lifecycle owns invocation and recovery.
 
 Operators select no profile directly: `emrys run` and `emrys resume` bind the
 supported file from the exact source checkout. Adding a family or selectable

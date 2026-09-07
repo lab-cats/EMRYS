@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import io
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
@@ -10,6 +11,7 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
+from emrys import analyses
 from emrys.contracts.artifacts import api as contracts
 from emrys.libraries.validation.tsv import tsv_bytes as render_tsv_bytes
 
@@ -26,7 +28,24 @@ from .models import (
     ArtifactIndexError,
     Inspection,
 )
-from .rosters import STEP_PRODUCERS
+
+STEP_PRODUCERS = {
+    "00a": "src/emrys/stages/star_index/step_00a_build_star_index.sh",
+    "00b": "src/emrys/stages/gtf_to_bed12/converter.py",
+    "00c": "src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
+    "01": "src/emrys/stages/star_alignment/step_01_star_align.sh",
+    "02": "src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh",
+    "02b": "src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
+    "03": (
+        "src/emrys/evidence/rseqc_orientation/"
+        "step_03_infer_strandedness_and_orientation.sh"
+    ),
+    "04": "src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh",
+    "05": "src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
+    "06": "src/emrys/stages/mechanical_orientation/producer.py",
+    "07": "src/emrys/stages/partitioned_cohort_mpileup/producer.py",
+    "08": "src/emrys/stages/cohort_candidate_preprocessing/producer.py",
+}
 
 
 def record_manifest(
@@ -46,6 +65,7 @@ def record_manifest(
 def producer_evidence(
     git_commit: str,
     *,
+    analysis_module: analyses.LoadedAnalysisModuleV1,
     source_root: Path = contracts.REPO_ROOT,
 ) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
@@ -66,6 +86,36 @@ def producer_evidence(
                     "sha256": contracts.sha256_file(path),
                 }
             ],
+        }
+    module_evidence = [
+        {
+            "evidence_id": "implementation_module",
+            "role": "implementation",
+            "path": (
+                f"{analysis_module.provider.distribution_name}@"
+                f"{analysis_module.provider.distribution_version}/"
+                f"{analysis_module.provider.entry_point_value}"
+            ),
+            "sha256": analysis_module.provider.package.sha256,
+        }
+    ]
+    checked_out_builtin = (
+        source_root / "src/emrys/analyses/paired_cmh_candidate_ranking"
+    )
+    for step_id in dict.fromkeys(
+        task.step_id for task in analysis_module.descriptor.tasks
+    ):
+        module_git_commit = (
+            git_commit
+            if analysis_module.descriptor.module_id
+            == analyses.BUILTIN_PAIRED_CMH_MODULE_ID
+            and analysis_module.provider.package.root == checked_out_builtin
+            else None
+        )
+        result[step_id] = {
+            "status": "implemented",
+            "git_commit": module_git_commit,
+            "evidence": module_evidence,
         }
     return result
 
@@ -244,6 +294,32 @@ def load_existing_receipt(
     return rows[0]
 
 
+def read_exact_tsv_bytes(
+    payload: bytes,
+    path: Path,
+    header: Sequence[str],
+    *,
+    exact_rows: int | None = None,
+) -> list[dict[str, str]]:
+    try:
+        reader = csv.DictReader(
+            io.StringIO(payload.decode("utf-8"), newline=""),
+            delimiter="\t",
+        )
+        if tuple(reader.fieldnames or ()) != tuple(header):
+            raise ArtifactIndexError(f"TSV header is invalid: {path}")
+        rows = list(reader)
+    except ArtifactIndexError:
+        raise
+    except (UnicodeError, csv.Error) as exc:
+        raise ArtifactIndexError(f"Could not read TSV {path}: {exc}") from exc
+    if exact_rows is not None and len(rows) != exact_rows:
+        raise ArtifactIndexError(
+            f"TSV {path} must contain {exact_rows} rows; observed {len(rows)}"
+        )
+    return rows
+
+
 def read_exact_tsv(
     path: Path,
     header: Sequence[str],
@@ -251,20 +327,15 @@ def read_exact_tsv(
     exact_rows: int | None = None,
 ) -> list[dict[str, str]]:
     try:
-        with path.open(encoding="utf-8", newline="") as stream:
-            reader = csv.DictReader(stream, delimiter="\t")
-            if tuple(reader.fieldnames or ()) != tuple(header):
-                raise ArtifactIndexError(f"TSV header is invalid: {path}")
-            rows = list(reader)
-    except ArtifactIndexError:
-        raise
-    except (OSError, UnicodeError, csv.Error) as exc:
+        payload = path.read_bytes()
+    except OSError as exc:
         raise ArtifactIndexError(f"Could not read TSV {path}: {exc}") from exc
-    if exact_rows is not None and len(rows) != exact_rows:
-        raise ArtifactIndexError(
-            f"TSV {path} must contain {exact_rows} rows; observed {len(rows)}"
-        )
-    return rows
+    return read_exact_tsv_bytes(
+        payload,
+        path,
+        header,
+        exact_rows=exact_rows,
+    )
 
 
 def validate_existing_identity(

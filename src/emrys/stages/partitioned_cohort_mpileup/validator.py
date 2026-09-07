@@ -59,6 +59,7 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     """Add partitioned-cohort mpileup validator arguments to a parser."""
     parser.add_argument("--cohort-id", required=True)
     parser.add_argument("--partition-id", required=True)
+    parser.add_argument("--scope-id")
     parser.add_argument("--sample-manifest", required=True, type=Path)
     parser.add_argument("--partition-manifest", required=True, type=Path)
     parser.add_argument("--reference-fai", required=True, type=Path)
@@ -222,7 +223,9 @@ def build_validation_report(
     }
     input_snapshots = snapshots(input_paths, label="Step 07")
     evidence = _read_evidence(arguments, input_paths)
-    scope_id = f"{arguments.cohort_id}__{arguments.partition_id}"
+    scope_id = arguments.scope_id or (
+        f"{arguments.cohort_id}__{arguments.partition_id}"
+    )
     return build_report(
         "07",
         scope_id,
@@ -234,10 +237,13 @@ def build_validation_report(
 
 def validate_from_args(arguments: argparse.Namespace) -> int:
     """Validate and report one parsed Step 07 transaction request."""
+    scope_id = arguments.scope_id or (
+        f"{arguments.cohort_id}__{arguments.partition_id}"
+    )
     return run_from_args(
         arguments,
         build_validation_report,
         "07",
         CHECK_IDS,
-        scope_id=f"{arguments.cohort_id}__{arguments.partition_id}",
+        scope_id=scope_id,
     )

@@ -3,7 +3,7 @@
 # Step 08: validate the complete declared Step 07 VCF set, expand alternate
 # alleles, apply the provisional legacy orientation policy, annotate candidates,
 # and write deterministic cohort-level TSVs. Publication and locking belong to
-# src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh; this program writes only its three
+# src/emrys/stages/cohort_candidate_preprocessing/producer.py; this program writes only its three
 # explicitly supplied output paths.
 
 options(stringsAsFactors = FALSE, scipen = 999, digits = 15)
@@ -308,7 +308,7 @@ main <- function() {
     sites <- sites[, expected_site_columns, drop = FALSE]
 
     # R owns deterministic candidate construction and TSV serialization. The
-    # shell owner performs post-serialization admission on these staged outputs
+    # Python owner performs post-serialization admission on these staged outputs
     # before publication; it does not reconstruct within-VCF candidate order.
     write_tsv(sites, output_paths[[1L]])
     write_tsv(summary, output_paths[[3L]])

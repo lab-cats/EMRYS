@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared argument parsing helpers for Bash stage wrappers.
+# Shared argument parsing helpers for Bash stage owners.
 
 : "${DIE_PREFIX:=ERROR}"
 

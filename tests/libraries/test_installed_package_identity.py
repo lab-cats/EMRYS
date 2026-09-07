@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Callable
 
 import pytest
@@ -12,7 +13,9 @@ import pytest
 import emrys.libraries.installed_package_identity as package_identity
 from emrys.libraries.installed_package_identity import (
     InstalledPackageIdentityError,
+    admit_installed_provider,
     installed_package_tree_identity,
+    installed_python_package_identity,
 )
 
 
@@ -63,6 +66,179 @@ def test_tree_identity_is_order_stable_and_ignores_timestamps(tmp_path: Path) ->
     assert first_identity.root == first
     assert second_identity.root == second
     assert first_identity.sha256 == second_identity.sha256
+
+
+def test_python_package_identity_ignores_interpreter_cache(tmp_path: Path) -> None:
+    package = _package(tmp_path / "package")
+    before = installed_python_package_identity(package).sha256
+    cache = package / "__pycache__"
+    cache.mkdir()
+    (cache / "module.cpython-314.pyc").write_bytes(b"interpreter-cache")
+
+    assert installed_python_package_identity(package).sha256 == before
+
+
+def test_python_package_identity_binds_sourceless_bytecode(tmp_path: Path) -> None:
+    package = _package(tmp_path / "package")
+    module = package / "module.pyc"
+    module.write_bytes(b"first-bytecode")
+    before = installed_python_package_identity(package).sha256
+
+    module.write_bytes(b"second-bytecode")
+
+    assert installed_python_package_identity(package).sha256 != before
+
+
+def test_provider_admission_rejects_missing_selection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(package_identity.importlib.metadata, "entry_points", lambda **_: ())
+
+    with pytest.raises(InstalledPackageIdentityError, match="not installed"):
+        admit_installed_provider("emrys.analysis_modules", "missing", label="Module")
+
+
+def test_provider_admission_rejects_a_non_package_entry_point(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    entry_point = SimpleNamespace(name="bad", value="module:provider.factory")
+    monkeypatch.setattr(
+        package_identity.importlib.metadata,
+        "entry_points",
+        lambda **_: (entry_point,),
+    )
+
+    with pytest.raises(InstalledPackageIdentityError, match="must be package-level"):
+        admit_installed_provider("emrys.analysis_modules", "bad", label="Module")
+
+
+def test_provider_admission_reloads_exact_files_on_repeated_admission(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    package = tmp_path / "cached_provider"
+    package.mkdir()
+    source = package / "__init__.py"
+    source.write_text('VALUE = "old"\n\ndef provider():\n    return VALUE\n')
+    monkeypatch.syspath_prepend(str(tmp_path))
+    imported = package_identity.importlib.import_module(package.name)
+    old_state = source.stat()
+    source.write_text('VALUE = "new"\n\ndef provider():\n    return VALUE\n')
+    os.utime(source, ns=(old_state.st_atime_ns, old_state.st_mtime_ns))
+
+    distribution = SimpleNamespace(
+        name="cached-provider",
+        version="1",
+        locate_file=lambda path: tmp_path / path,
+    )
+    installed_source = package_identity.importlib.metadata.PackagePath(
+        "cached_provider/__init__.py"
+    )
+    installed_source.dist = distribution
+    distribution.files = (installed_source,)
+    entry_point = SimpleNamespace(
+        name="cached-provider",
+        value="cached_provider:provider",
+        dist=distribution,
+        load=lambda: package_identity.importlib.import_module(package.name).provider,
+    )
+    monkeypatch.setattr(
+        package_identity.importlib.metadata,
+        "entry_points",
+        lambda **_: (entry_point,),
+    )
+    monkeypatch.setattr(package_identity, "_ADMITTED_PROVIDERS", {})
+    admitted = admit_installed_provider(
+        "emrys.analysis_modules", "cached-provider", label="Module"
+    )
+    assert imported.provider() == "old"
+    assert admitted.provider() == "new"
+    assert (
+        admit_installed_provider(
+            "emrys.analysis_modules", "cached-provider", label="Module"
+        )
+        is admitted
+    )
+
+    source.write_text('VALUE = "bad"\n\ndef provider():\n    return VALUE\n')
+    os.utime(source, ns=(old_state.st_atime_ns, old_state.st_mtime_ns))
+    repeated = admit_installed_provider(
+        "emrys.analysis_modules", "cached-provider", label="Module"
+    )
+    assert repeated.provider() == "bad"
+    assert repeated.package.sha256 != admitted.package.sha256
+
+
+def test_collaborator_provider_identity_includes_distribution_siblings(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plugin = tmp_path / "vendor" / "plugin"
+    plugin.mkdir(parents=True)
+    (tmp_path / "vendor" / "__init__.py").write_text("", encoding="utf-8")
+    shared = plugin.parent / "shared.py"
+    shared.write_text('VALUE = "old"\n', encoding="utf-8")
+    (plugin / "__init__.py").write_text(
+        "from vendor.shared import VALUE\n\n"
+        "def provider():\n"
+        "    return VALUE\n",
+        encoding="utf-8",
+    )
+    distribution = SimpleNamespace(
+        name="collaborator-provider",
+        version="1",
+        locate_file=lambda path: tmp_path / path,
+    )
+    distribution.files = tuple(
+        package_identity.importlib.metadata.PackagePath(relative)
+        for relative in (
+            "vendor/__init__.py",
+            "vendor/shared.py",
+            "vendor/plugin/__init__.py",
+            "collaborator_provider-1.dist-info/METADATA",
+        )
+    )
+    for path in distribution.files:
+        path.dist = distribution
+    entry_point = SimpleNamespace(
+        name="collaborator-provider",
+        value="vendor.plugin:provider",
+        dist=distribution,
+        load=lambda: package_identity.importlib.import_module(
+            "vendor.plugin"
+        ).provider,
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.setattr(
+        package_identity.importlib.metadata,
+        "entry_points",
+        lambda **_: (entry_point,),
+    )
+    monkeypatch.setattr(package_identity, "_ADMITTED_PROVIDERS", {})
+
+    first = admit_installed_provider(
+        "emrys.analysis_modules", "collaborator-provider", label="Module"
+    )
+    previous = shared.stat()
+    shared.write_text('VALUE = "new"\n', encoding="utf-8")
+    os.utime(shared, ns=(previous.st_atime_ns, previous.st_mtime_ns))
+    second = admit_installed_provider(
+        "emrys.analysis_modules", "collaborator-provider", label="Module"
+    )
+
+    assert first.provider() == "old"
+    assert second.provider() == "new"
+    assert second.package.sha256 != first.package.sha256
+
+
+def test_provider_rejects_a_callable_outside_its_admitted_tree(tmp_path: Path) -> None:
+    identity = installed_python_package_identity(_package(tmp_path / "package"))
+    provider = package_identity.InstalledProviderV1(
+        lambda: None, "fixture:provider", "fixture", "1", identity
+    )
+
+    with pytest.raises(InstalledPackageIdentityError, match="outside its admitted package"):
+        provider.require_callables(label="Module")
 
 
 @pytest.mark.parametrize(

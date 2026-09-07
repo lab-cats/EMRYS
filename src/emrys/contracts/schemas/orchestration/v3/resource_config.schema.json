@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:emrys:schema:orchestration:resource-config:v1",
-  "title": "EMRYS local-pilot resource configuration v1",
+  "title": "EMRYS run-coordinator resource configuration v1",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -54,7 +54,9 @@
         "01": { "$ref": "#/$defs/positive_integer" },
         "02": { "$ref": "#/$defs/positive_integer" },
         "06": { "$ref": "#/$defs/positive_integer" },
-        "08": { "$ref": "#/$defs/positive_integer" }
+        "08": { "$ref": "#/$defs/positive_integer" },
+        "09": { "$ref": "#/$defs/positive_integer" },
+        "10": { "$ref": "#/$defs/positive_integer" }
       }
     },
     "stage_memory": {
