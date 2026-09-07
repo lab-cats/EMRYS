@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import stat
 from pathlib import Path
 
 from emrys.evidence.reference_provenance._reference_model import (
@@ -67,10 +68,27 @@ def load_inventory(path: Path, base_dir: Path) -> tuple[bytes, list[Item]]:
         declared_path = Path(declared)
         if ".." in declared_path.parts or "." in declared_path.parts:
             fail(f"Inventory row {number} path must not contain traversal components")
-        resolved = (
+        lexical = (
             declared_path if declared_path.is_absolute() else (base / declared_path)
         )
-        resolved = resolved.resolve()
+        try:
+            declared_state = lexical.lstat()
+        except FileNotFoundError:
+            declared_state = None
+        except OSError as exc:
+            fail(f"Inventory row {number} path cannot be inspected: {exc}")
+        if declared_state is not None and stat.S_ISLNK(declared_state.st_mode):
+            fail(f"Inventory row {number} path must not be a symbolic link")
+        try:
+            resolved = lexical.resolve()
+        except (OSError, RuntimeError) as exc:
+            fail(f"Inventory row {number} path cannot be resolved: {exc}")
+        if (
+            not declared_path.is_absolute()
+            and resolved != base
+            and base not in resolved.parents
+        ):
+            fail(f"Inventory row {number} path must not leave Reference base directory")
         if resolved in paths:
             fail(f"Inventory row {number} resolves to a duplicate path")
         paths.add(resolved)
