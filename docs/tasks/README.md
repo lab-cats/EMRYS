@@ -12,3 +12,7 @@ after its outcome, evidence at the correct level, and affected contracts and
 documentation agree. Git history—not a parallel card registry, campaign
 ledger, or handoff document—retains completed work, superseded planning, and
 chronology.
+
+The [optimization campaign](optimization_campaign.md) records the pipeline
+resource audit, candidate tradeoffs, and proposed measurement approach. It
+supplies evidence for selection; accepted work and status remain in the backlog.
