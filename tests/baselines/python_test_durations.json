@@ -2,7 +2,8 @@
   "default_seconds": 1.0,
   "durations_seconds": {
     "tests/orchestration/run_coordinator/test_materialization.py::test_every_projected_owner_command_is_accepted_by_public_help": 22.0,
-    "tests/orchestration/run_coordinator/test_materialization.py::test_public_adapter_executes_failure_and_byte_preserving_resume": 220.37,
+    "tests/orchestration/run_coordinator/test_materialization.py::test_public_adapter_executes_failure_and_byte_preserving_resume": 446.58,
+    "tests/orchestration/run_coordinator/test_materialization.py::test_public_downstream_run_reuses_processing_without_mutating_its_source": 555.32,
     "tests/orchestration/run_coordinator/test_workflow.py::test_resume_reuses_every_completed_file_with_existing_engine_metadata": 181.25
   },
   "schema_version": "1.0.0"
