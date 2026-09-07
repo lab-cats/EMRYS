@@ -5,7 +5,7 @@ import os
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import replace
+from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 
 import pytest
@@ -24,9 +24,11 @@ from emrys.evidence.runtime_availability._runtime_model import (
     HASH_PAYLOAD,
     R_NAMESPACE_PROBE_TIMEOUT_SECONDS,
     TOOL_PROBE_TIMEOUT_SECONDS,
-    Check,
     PreflightError,
-    Result,
+)
+from emrys.evidence.runtime_availability.inspector import (
+    RuntimeCheck,
+    RuntimeObservation,
 )
 from emrys.libraries.source_authority import controlled_python_argv
 
@@ -95,7 +97,7 @@ def read_rows(path: Path) -> list[dict[str, str]]:
 
 def publication_values(
     tmp_path: Path,
-) -> tuple[str, list[Check], bytes]:
+) -> tuple[str, list[RuntimeCheck], bytes]:
     profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
     profile_data, checks = load_profile(profile)
     digest = hashlib.sha256(profile_data).hexdigest()
@@ -239,6 +241,48 @@ def test_missing_tool_and_version_mismatch_are_failures(tmp_path: Path) -> None:
     assert rows["mismatch"]["status"] == "fail"
 
 
+def test_loaded_observations_preserve_exact_ordered_tsv_bytes(tmp_path: Path) -> None:
+    tool = tmp_path / "version-tool"
+    tool.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    tool.chmod(0o755)
+    profile = write_profile(
+        tmp_path / "profile.tsv",
+        [
+            tool_row("passed", target=str(tool)),
+            tool_row("failed", target=str(tool)),
+            tool_row("blocked", "cluster_batch", target=str(tool)),
+            tool_row("skipped", "cluster_batch", "false", target=str(tool)),
+        ],
+    )
+    data, checks = load_profile(profile)
+    outputs = iter(("Python 3.11.0", "wrong version"))
+    observations = run_checks(
+        checks,
+        "local",
+        command_runner=lambda _argv, _stdin, _environment, _timeout: (
+            0, next(outputs), 0.0, False
+        ),
+    )
+    assert all(type(check) is RuntimeCheck for check in checks)
+    assert all(type(item) is RuntimeObservation for item in observations)
+    assert all(item.check is check for item, check in zip(observations, checks, strict=True))
+    assert all(item.resolved_path is None for item in observations)
+    digest = hashlib.sha256(data).hexdigest()
+    expected = (
+        "profile_sha256\truntime_context\tcheck_id\tcheck_type\ttarget\trequired\t"
+        "status\tobserved\texpected\tdetail\n"
+        f"{digest}\tlocal\tpassed\ttool_version\t{tool}\ttrue\tpass\tPython 3.11.0\t"
+        f"^Python 3[.]\tResolved executable: {tool}\n"
+        f"{digest}\tlocal\tfailed\ttool_version\t{tool}\ttrue\tfail\twrong version\t"
+        "^Python 3[.]\tVersion output did not match expected regex\n"
+        f"{digest}\tlocal\tblocked\ttool_version\t{tool}\ttrue\tblocked\tcurrent_context=local\t"
+        "^Python 3[.]\tCheck requires runtime_context=cluster_batch\n"
+        f"{digest}\tlocal\tskipped\ttool_version\t{tool}\tfalse\tnot_checked\tcurrent_context=local\t"
+        "^Python 3[.]\tCheck requires runtime_context=cluster_batch\n"
+    ).encode("utf-8")
+    assert result_bytes(digest, "local", observations) == expected
+
+
 def test_hash_utility_and_path_visibility(tmp_path: Path) -> None:
     visible = tmp_path / "visible"
     visible.mkdir()
@@ -287,7 +331,7 @@ def test_hash_utility_and_path_visibility(tmp_path: Path) -> None:
 
 
 def test_python_hash_probe_uses_the_controlled_python_prefix() -> None:
-    check = Check(
+    check = RuntimeCheck(
         check_id="sha256_python",
         check_type="hash_utility",
         runtime_context="local",
@@ -333,7 +377,7 @@ def test_python_hash_probe_uses_the_controlled_python_prefix() -> None:
 
 
 def test_gatk_probe_requires_exactly_one_declared_java_launcher() -> None:
-    gatk = Check(
+    gatk = RuntimeCheck(
         check_id="gatk",
         check_type="tool_version",
         runtime_context="local",
@@ -365,7 +409,7 @@ def test_guarded_rscript_version_probe_uses_its_standalone_information_mode(
         encoding="utf-8",
     )
     rscript.chmod(0o755)
-    check = Check(
+    check = RuntimeCheck(
         check_id="rscript",
         check_type="tool_version",
         runtime_context="local",
@@ -392,7 +436,7 @@ def test_gatk_probe_reports_an_invalid_declared_java_environment(
     java_path = tmp_path / "java"
     java_path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     java_path.chmod(0o755)
-    java = Check(
+    java = RuntimeCheck(
         check_id="java",
         check_type="tool_version",
         runtime_context="local",
@@ -402,7 +446,7 @@ def test_gatk_probe_reports_an_invalid_declared_java_environment(
         expected=r"^openjdk version",
         description="Java runtime",
     )
-    gatk = Check(
+    gatk = RuntimeCheck(
         check_id="gatk",
         check_type="tool_version",
         runtime_context="local",
@@ -494,7 +538,7 @@ def test_tracked_gatk_policy_handles_official_launcher_prelude(
 def test_tool_probe_normalizes_launch_and_version_failures(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    check = Check(
+    check = RuntimeCheck(
         check_id="tool",
         check_type="tool_version",
         runtime_context="local",
@@ -559,7 +603,7 @@ def test_default_runner_forwards_distinct_timeout_and_records_elapsed(
     executable = tmp_path / "runtime-tool"
     executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     executable.chmod(0o755)
-    check = Check(
+    check = RuntimeCheck(
         check_id="bounded",
         check_type=check_type,
         runtime_context="local",
@@ -609,7 +653,7 @@ def test_picard_version_probe_accepts_only_its_exact_exit_one_contract(
     java.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     java.chmod(0o755)
     jar.write_bytes(b"bound picard jar")
-    picard = Check(
+    picard = RuntimeCheck(
         check_id="picard",
         check_type="tool_version_exit_1",
         runtime_context="local",
@@ -689,7 +733,7 @@ def test_namespace_and_hash_probes_reject_missing_executables_without_running(
     probe_args: tuple[str, ...],
     expected_detail: str,
 ) -> None:
-    check = Check(
+    check = RuntimeCheck(
         check_id="missing",
         check_type=check_type,
         runtime_context="local",
@@ -719,7 +763,7 @@ def test_hash_probe_binds_declared_adapter_and_reports_command_failure(
     executable = tmp_path / "sha256sum"
     executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     executable.chmod(0o755)
-    check = Check(
+    check = RuntimeCheck(
         check_id="sha256",
         check_type="hash_utility",
         runtime_context="local",
@@ -848,7 +892,7 @@ def test_guarded_r_namespace_probe_binds_startup_and_selected_library(
     fake.chmod(0o755)
     library = tmp_path / "library"
     library.mkdir()
-    check = Check(
+    check = RuntimeCheck(
         check_id="r_guarded",
         check_type="r_namespace",
         runtime_context="local",
@@ -912,7 +956,7 @@ def test_guarded_r_namespace_probe_binds_startup_and_selected_library(
     assert observed_environment == environment
     assert timeout_seconds == R_NAMESPACE_PROBE_TIMEOUT_SECONDS
     assert result.observed == "1.2.3"
-    assert result.resolved_path == str(resolved_package)
+    assert result.resolved_path == resolved_package
     assert result.detail == (
         f"Resolved R package root: {resolved_package}; "
         "elapsed_seconds=12.500; "
@@ -936,7 +980,7 @@ def test_guarded_r_namespace_rejects_missing_or_malformed_root_identity(
     fake = tmp_path / "Rscript"
     fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     fake.chmod(0o755)
-    check = Check(
+    check = RuntimeCheck(
         check_id="r_guarded",
         check_type="r_namespace",
         runtime_context="local",
@@ -977,7 +1021,7 @@ def test_r_namespace_timeout_is_distinct_bounded_and_fail_closed(
     fake = tmp_path / "Rscript"
     fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     fake.chmod(0o755)
-    check = Check(
+    check = RuntimeCheck(
         check_id="r_timeout",
         check_type="r_namespace",
         runtime_context="local",
@@ -1015,7 +1059,7 @@ def test_r_namespace_real_exit_124_is_not_misclassified_as_timeout(
     fake = tmp_path / "Rscript"
     fake.write_text("#!/bin/sh\nexit 124\n", encoding="utf-8")
     fake.chmod(0o755)
-    check = Check(
+    check = RuntimeCheck(
         check_id="r_exit_124",
         check_type="r_namespace",
         runtime_context="local",
@@ -1050,7 +1094,7 @@ def test_unguarded_r_namespace_probe_suppresses_only_load_warnings(
     fake = tmp_path / "Rscript"
     fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     fake.chmod(0o755)
-    check = Check(
+    check = RuntimeCheck(
         check_id="r_unguarded",
         check_type="r_namespace",
         runtime_context="local",
@@ -1083,7 +1127,7 @@ def test_r_namespace_keeps_strict_version_output_matching(tmp_path: Path) -> Non
     fake = tmp_path / "Rscript"
     fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     fake.chmod(0o755)
-    check = Check(
+    check = RuntimeCheck(
         check_id="r_warning",
         check_type="r_namespace",
         runtime_context="local",
@@ -1133,7 +1177,7 @@ def test_r_namespace_failure_detail_distinguishes_guarded_selection(
     fake = tmp_path / "Rscript"
     fake.write_text("#!/bin/sh\nexit 42\n", encoding="utf-8")
     fake.chmod(0o755)
-    check = Check(
+    check = RuntimeCheck(
         check_id="r_fixture",
         check_type="r_namespace",
         runtime_context="local",
@@ -1214,9 +1258,19 @@ def test_direct_inspection_uses_explicit_probe_environment(tmp_path: Path) -> No
 
     assert inspection.required_ready
     assert inspection.profile_bytes == profile.read_bytes()
-    assert inspection.observations[0].status == "pass"
-    assert inspection.observations[0].observed == "1.2.3"
-    assert inspection.observations[0].resolved_path == package_root.resolve(strict=True)
+    observation = inspection.observations[0]
+    assert type(observation) is RuntimeObservation
+    assert type(observation.check) is RuntimeCheck
+    assert observation.check.target == "GuardedPackage"
+    assert observation.check.probe_args == (str(fake),)
+    assert observation.status == "pass"
+    assert observation.observed == "1.2.3"
+    assert isinstance(observation.resolved_path, Path)
+    assert observation.resolved_path == package_root.resolve(strict=True)
+    with pytest.raises(FrozenInstanceError):
+        observation.check.target = "ChangedPackage"
+    with pytest.raises(FrozenInstanceError):
+        observation.status = "fail"
 
 
 def test_r_namespace_requires_package_name(tmp_path: Path) -> None:
@@ -1301,11 +1355,11 @@ def test_profile_symlink_and_changed_profile_fail_closed(
     original_run_checks = inspector.run_checks
 
     def mutate(
-        checks: Sequence[Check],
+        checks: Sequence[RuntimeCheck],
         runtime_context: str,
         *,
         environment: Mapping[str, str] | None = None,
-    ) -> list[Result]:
+    ) -> list[RuntimeObservation]:
         results = original_run_checks(
             checks,
             runtime_context,
@@ -1410,7 +1464,7 @@ def test_publish_failure_rolls_back_valid_prior(
         data: bytes,
         profile_sha256: str,
         runtime_context: str,
-        expected_checks: Sequence[Check],
+        expected_checks: Sequence[RuntimeCheck],
     ) -> None:
         nonlocal calls
         calls += 1

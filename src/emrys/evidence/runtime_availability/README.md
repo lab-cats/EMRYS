@@ -6,6 +6,11 @@ read-only tool-version, R-namespace, hash, and path-visibility probes, and
 returns deterministic observations without publication. Doctor consumes this
 API directly.
 
+Profile loading, probes, and inspection share immutable `RuntimeCheck` and
+`RuntimeObservation` values, defined in `_runtime_model.py` and exposed through
+`inspector.py`. An observation's resolved location stays a `Path` or `None`;
+profile targets and serialized evidence retain their declared text.
+
 Dry-run probes but writes nothing; `--execute` publishes the requested TSV.
 Exit zero means probing/publication completed, not that required checks passed.
 Tool/hash processes have a 30-second bound and R namespace loads a 120-second

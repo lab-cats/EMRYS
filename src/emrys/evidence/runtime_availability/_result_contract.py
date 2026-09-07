@@ -8,8 +8,8 @@ from collections.abc import Sequence
 from ._runtime_model import (
     RESULT_HEADER,
     RESULT_STATUSES,
-    Check,
-    Result,
+    RuntimeCheck,
+    RuntimeObservation,
     _fail,
     _single_line,
 )
@@ -18,7 +18,7 @@ from ._runtime_model import (
 def result_bytes(
     profile_sha256: str,
     runtime_context: str,
-    results: Sequence[Result],
+    results: Sequence[RuntimeObservation],
 ) -> bytes:
     rows = ["\t".join(RESULT_HEADER)]
     for result in results:
@@ -42,7 +42,7 @@ def validate_result_bytes(
     data: bytes,
     profile_sha256: str,
     runtime_context: str,
-    checks: Sequence[Check],
+    checks: Sequence[RuntimeCheck],
 ) -> None:
     try:
         text = data.decode("utf-8")

@@ -25,8 +25,8 @@ from ._runtime_model import (
     RESULT_STATUSES,
     TOOL_PROBE_TIMEOUT_SECONDS,
     VERSION_TEXT_LIMIT,
-    Check,
-    Result,
+    RuntimeCheck,
+    RuntimeObservation,
     _fail,
     _single_line,
 )
@@ -109,13 +109,13 @@ def _run_command(
 
 
 def _probe_tool(
-    check: Check,
+    check: RuntimeCheck,
     environment: Mapping[str, str] | None,
     run_command: CommandRunner,
-) -> Result:
+) -> RuntimeObservation:
     executable = _resolve_executable(check.target)
     if executable is None:
-        return Result(check, "fail", "unavailable", "Executable was not found")
+        return RuntimeObservation(check, "fail", "unavailable", "Executable was not found")
     command = [executable, *check.probe_args]
     if (
         check.check_id == "rscript"
@@ -134,7 +134,7 @@ def _probe_tool(
     )
     expected_code = 1 if check.check_type == "tool_version_exit_1" else 0
     if timed_out:
-        return Result(
+        return RuntimeObservation(
             check,
             "fail",
             output or f"timeout after {TOOL_PROBE_TIMEOUT_SECONDS} seconds",
@@ -142,22 +142,22 @@ def _probe_tool(
             f"{_timing_detail(elapsed, TOOL_PROBE_TIMEOUT_SECONDS)}",
         )
     if code != expected_code:
-        return Result(check, "fail", output or f"exit {code}", "Version probe failed")
+        return RuntimeObservation(check, "fail", output or f"exit {code}", "Version probe failed")
     if re.search(check.expected, output) is None:
-        return Result(
+        return RuntimeObservation(
             check, "fail", output, "Version output did not match expected regex"
         )
-    return Result(check, "pass", output, f"Resolved executable: {executable}")
+    return RuntimeObservation(check, "pass", output, f"Resolved executable: {executable}")
 
 
 def _probe_r_namespace(
-    check: Check,
+    check: RuntimeCheck,
     environment: Mapping[str, str] | None,
     run_command: CommandRunner,
-) -> Result:
+) -> RuntimeObservation:
     rscript = _resolve_executable(check.probe_args[0])
     if rscript is None:
-        return Result(check, "fail", "unavailable", "Rscript executable was not found")
+        return RuntimeObservation(check, "fail", "unavailable", "Rscript executable was not found")
     guarded = environment is not None and environment.get("EMRYS_LOCAL_PILOT_R") == "1"
     if guarded:
         expression = (
@@ -203,7 +203,7 @@ def _probe_r_namespace(
     )
     elapsed_detail = _timing_detail(elapsed, R_NAMESPACE_PROBE_TIMEOUT_SECONDS)
     if timed_out:
-        return Result(
+        return RuntimeObservation(
             check,
             "fail",
             output or f"timeout after {R_NAMESPACE_PROBE_TIMEOUT_SECONDS} seconds",
@@ -220,13 +220,13 @@ def _probe_r_namespace(
             else {42: "R namespace is unavailable"}
         )
         detail = f"{details.get(code, 'R namespace probe failed')}; {elapsed_detail}"
-        return Result(check, "fail", output or f"exit {code}", detail)
+        return RuntimeObservation(check, "fail", output or f"exit {code}", detail)
     version_output = output
     resolved_root: Path | None = None
     if guarded:
         parsed = _guarded_namespace_output(output)
         if parsed is None:
-            return Result(
+            return RuntimeObservation(
                 check,
                 "fail",
                 output,
@@ -235,7 +235,7 @@ def _probe_r_namespace(
             )
         version_output, resolved_root = parsed
     if re.fullmatch(check.expected, version_output) is None:
-        return Result(
+        return RuntimeObservation(
             check,
             "fail",
             version_output,
@@ -250,23 +250,23 @@ def _probe_r_namespace(
             f"Resolved Rscript: {rscript}; {elapsed_detail}"
         )
     )
-    return Result(
+    return RuntimeObservation(
         check,
         "pass",
         version_output,
         detail,
-        None if resolved_root is None else str(resolved_root),
+        resolved_root,
     )
 
 
 def _probe_hash_utility(
-    check: Check,
+    check: RuntimeCheck,
     environment: Mapping[str, str] | None,
     run_command: CommandRunner,
-) -> Result:
+) -> RuntimeObservation:
     executable = _resolve_executable(check.target)
     if executable is None:
-        return Result(check, "fail", "unavailable", "Hash executable was not found")
+        return RuntimeObservation(check, "fail", "unavailable", "Hash executable was not found")
     adapter = check.probe_args[0]
     if adapter == "python_hashlib":
         command = list(
@@ -288,7 +288,7 @@ def _probe_hash_utility(
     )
     observed = output.split()[0].lower() if output else ""
     if timed_out:
-        return Result(
+        return RuntimeObservation(
             check,
             "fail",
             output or f"timeout after {TOOL_PROBE_TIMEOUT_SECONDS} seconds",
@@ -296,23 +296,23 @@ def _probe_hash_utility(
             f"{_timing_detail(elapsed, TOOL_PROBE_TIMEOUT_SECONDS)}",
         )
     if code != 0:
-        return Result(check, "fail", output or f"exit {code}", "SHA-256 probe failed")
+        return RuntimeObservation(check, "fail", output or f"exit {code}", "SHA-256 probe failed")
     if observed != HASH_EXPECTED:
-        return Result(check, "fail", observed or "empty", "SHA-256 digest mismatch")
-    return Result(check, "pass", observed, f"Resolved executable: {executable}")
+        return RuntimeObservation(check, "fail", observed or "empty", "SHA-256 digest mismatch")
+    return RuntimeObservation(check, "pass", observed, f"Resolved executable: {executable}")
 
 
 def _probe_path_visibility(
-    check: Check,
+    check: RuntimeCheck,
     _environment: Mapping[str, str] | None,
     _run_command: CommandRunner,
-) -> Result:
+) -> RuntimeObservation:
     path = Path(check.target)
     mode = check.probe_args[0]
     try:
         metadata = path.stat()
     except OSError as exc:
-        return Result(check, "fail", "unavailable", _single_line(str(exc)))
+        return RuntimeObservation(check, "fail", "unavailable", _single_line(str(exc)))
     if mode == "file_readable":
         passed = stat.S_ISREG(metadata.st_mode) and os.access(path, os.R_OK)
     elif mode == "directory_readable":
@@ -321,12 +321,12 @@ def _probe_path_visibility(
         passed = stat.S_ISREG(metadata.st_mode) and os.access(path, os.X_OK)
     observed = f"{mode}:{'yes' if passed else 'no'}"
     detail = f"Resolved path: {path.resolve(strict=False)}"
-    return Result(check, "pass" if passed else "fail", observed, detail)
+    return RuntimeObservation(check, "pass" if passed else "fail", observed, detail)
 
 
 PROBES: dict[
     str,
-    Callable[[Check, Mapping[str, str] | None, CommandRunner], Result],
+    Callable[[RuntimeCheck, Mapping[str, str] | None, CommandRunner], RuntimeObservation],
 ] = {
     "tool_version": _probe_tool,
     "tool_version_exit_1": _probe_tool,
@@ -337,18 +337,18 @@ PROBES: dict[
 
 
 def run_checks(
-    checks: Sequence[Check],
+    checks: Sequence[RuntimeCheck],
     runtime_context: str,
     *,
     environment: Mapping[str, str] | None = None,
     command_runner: CommandRunner = _run_command,
-) -> list[Result]:
-    results: list[Result] = []
+) -> list[RuntimeObservation]:
+    results: list[RuntimeObservation] = []
     for check in checks:
         if check.runtime_context not in {"any", runtime_context}:
             status = "blocked" if check.required else "not_checked"
             results.append(
-                Result(
+                RuntimeObservation(
                     check,
                     status,
                     f"current_context={runtime_context}",
@@ -360,7 +360,7 @@ def run_checks(
         if check.check_id == "gatk":
             java_targets = [item.target for item in checks if item.check_id == "java"]
             if len(java_targets) != 1:
-                result = Result(
+                result = RuntimeObservation(
                     check,
                     "fail",
                     "unavailable",
@@ -374,7 +374,7 @@ def run_checks(
                     base_environment=environment,
                 )
             except ProcessEnvironmentError as exc:
-                result = Result(check, "fail", "unavailable", _single_line(str(exc)))
+                result = RuntimeObservation(check, "fail", "unavailable", _single_line(str(exc)))
                 results.append(result)
                 continue
         result = PROBES[check.check_type](

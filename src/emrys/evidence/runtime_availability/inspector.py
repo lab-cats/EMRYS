@@ -27,37 +27,18 @@ from ._result_contract import (
     result_bytes,
     validate_result_bytes,
 )
-from ._runtime_model import PROFILE_HEADER, Check, PreflightError, _fail
+from ._runtime_model import (
+    PROFILE_HEADER,
+    PreflightError,
+    RuntimeCheck,
+    RuntimeObservation,
+    _fail,
+)
 
 DESCRIPTION = (
     "Run explicit, read-only runtime checks and optionally publish "
     "one deterministic TSV report."
 )
-
-
-@dataclass(frozen=True, slots=True)
-class RuntimeCheck:
-    """One normalized check admitted from an explicit runtime profile."""
-
-    check_id: str
-    check_type: str
-    runtime_context: str
-    required: bool
-    target: str
-    probe_args: tuple[str, ...]
-    expected: str
-    description: str
-
-
-@dataclass(frozen=True, slots=True)
-class RuntimeObservation:
-    """One completed availability observation without publication authority."""
-
-    check: RuntimeCheck
-    status: str
-    observed: str
-    detail: str
-    resolved_path: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,19 +84,6 @@ def runtime_profile_bytes(checks: Iterable[RuntimeCheck]) -> bytes:
             }
             for check in checks
         ),
-    )
-
-
-def _public_check(check: Check) -> RuntimeCheck:
-    return RuntimeCheck(
-        check_id=check.check_id,
-        check_type=check.check_type,
-        runtime_context=check.runtime_context,
-        required=check.required,
-        target=check.target,
-        probe_args=check.probe_args,
-        expected=check.expected,
-        description=check.description,
     )
 
 
@@ -167,26 +135,12 @@ def inspect_runtime_profile_bytes(
         )
     except PreflightError as exc:
         raise RuntimeInspectionError(str(exc)) from exc
-    observations = tuple(
-        RuntimeObservation(
-            check=_public_check(result.check),
-            status=result.status,
-            observed=result.observed,
-            detail=result.detail,
-            resolved_path=(
-                None
-                if result.resolved_path is None
-                else Path(result.resolved_path)
-            ),
-        )
-        for result in results
-    )
     return RuntimeInspection(
         profile_path=profile_path,
         profile_sha256=profile_sha256,
         profile_bytes=profile_data,
         runtime_context=runtime_context,
-        observations=observations,
+        observations=tuple(results),
         rendered_bytes=rendered,
     )
 
@@ -200,7 +154,7 @@ def load_runtime_profile_contract(
         data, checks = load_profile(profile)
     except PreflightError as exc:
         raise RuntimeInspectionError(str(exc)) from exc
-    return data, tuple(_public_check(check) for check in checks)
+    return data, tuple(checks)
 
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:
@@ -252,7 +206,7 @@ def publish(
     data: bytes,
     profile_sha256: str,
     runtime_context: str,
-    checks: Sequence[Check],
+    checks: Sequence[RuntimeCheck],
 ) -> None:
     _ensure_output_parent(output)
     lock = output.with_name(f".{output.name}.lock")

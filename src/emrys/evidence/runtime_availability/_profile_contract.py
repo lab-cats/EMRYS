@@ -16,7 +16,7 @@ from ._runtime_model import (
     RUNTIME_CONTEXTS,
     SAFE_ID,
     VISIBILITY_PROBES,
-    Check,
+    RuntimeCheck,
     _fail,
 )
 
@@ -44,7 +44,7 @@ def load_profile_bytes(
     data: bytes,
     *,
     label: str = "Runtime profile",
-) -> tuple[bytes, list[Check]]:
+) -> tuple[bytes, list[RuntimeCheck]]:
     """Validate exact profile bytes without requiring a temporary file."""
 
     try:
@@ -56,7 +56,7 @@ def load_profile_bytes(
         _fail("Runtime profile is empty")
     if tuple(reader.fieldnames) != PROFILE_HEADER:
         _fail("Runtime profile header must be exactly: " + "\t".join(PROFILE_HEADER))
-    checks: list[Check] = []
+    checks: list[RuntimeCheck] = []
     seen: set[str] = set()
     for row_number, row in enumerate(reader, start=2):
         if None in row:
@@ -98,7 +98,7 @@ def load_profile_bytes(
                 "description must be nonempty"
             )
         probe_args = _parse_probe_args(values["probe_args"], row_number)
-        check = Check(
+        check = RuntimeCheck(
             check_id=check_id,
             check_type=check_type,
             runtime_context=runtime_context,
@@ -115,7 +115,7 @@ def load_profile_bytes(
     return data, checks
 
 
-def load_profile(path: Path) -> tuple[bytes, list[Check]]:
+def load_profile(path: Path) -> tuple[bytes, list[RuntimeCheck]]:
     return load_profile_bytes(
         _read_regular_file(path, "Runtime profile"),
         label=f"Runtime profile {path}",
@@ -129,7 +129,7 @@ def _validate_regex(pattern: str, row_number: int) -> None:
         _fail(f"Runtime profile row {row_number} expected regex is invalid: {exc}")
 
 
-def _validate_check_contract(check: Check, row_number: int) -> None:
+def _validate_check_contract(check: RuntimeCheck, row_number: int) -> None:
     if check.check_type in {"tool_version", "tool_version_exit_1"}:
         if not check.probe_args:
             _fail(
