@@ -22,103 +22,63 @@ from ._storage_contract import (
 
 
 def measure(root: Root) -> tuple[object, ...]:
+    metrics: tuple[object, ...] = ("NA",) * 7
     try:
         metadata = root.path.lstat()
     except OSError as exc:
         status = "missing_required" if root.required else "missing_optional"
-        return (
-            root.storage_id,
-            root.declared_path,
-            str(root.path),
-            str(root.required).lower(),
-            root.purpose,
-            status,
-            "NA",
-            "NA",
-            "NA",
-            "NA",
-            "NA",
-            "NA",
-            "NA",
-            root.quota,
-            report.clean(exc),
-        )
-    if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
-        return (
-            root.storage_id,
-            root.declared_path,
-            str(root.path),
-            str(root.required).lower(),
-            root.purpose,
-            "invalid",
-            "NA",
-            "NA",
-            "NA",
-            "NA",
-            "NA",
-            "NA",
-            "NA",
-            root.quota,
-            "root is not a real directory",
-        )
-    tree_bytes = 0
-    file_count = 0
-    directory_count = 1
-    symlink_count = 0
-    try:
-        for current, directories, files in os.walk(root.path, followlinks=False):
-            kept_directories = []
-            for name in directories:
-                candidate = Path(current) / name
-                if candidate.is_symlink():
-                    symlink_count += 1
-                else:
-                    directory_count += 1
-                    kept_directories.append(name)
-            directories[:] = kept_directories
-            for name in files:
-                candidate = Path(current) / name
-                item = candidate.lstat()
-                if stat.S_ISLNK(item.st_mode):
-                    symlink_count += 1
-                elif stat.S_ISREG(item.st_mode):
-                    file_count += 1
-                    tree_bytes += item.st_size
-        fs = os.statvfs(root.path)
-    except OSError as exc:
-        return (
-            root.storage_id,
-            root.declared_path,
-            str(root.path),
-            str(root.required).lower(),
-            root.purpose,
-            "measurement_error",
-            "NA",
-            "NA",
-            "NA",
-            "NA",
-            "NA",
-            "NA",
-            "NA",
-            root.quota,
-            report.clean(exc),
-        )
+        detail = report.clean(exc)
+    else:
+        if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
+            status, detail = "invalid", "root is not a real directory"
+        else:
+            tree_bytes = 0
+            file_count = 0
+            directory_count = 1
+            symlink_count = 0
+            try:
+                for current, directories, files in os.walk(root.path, followlinks=False):
+                    kept_directories = []
+                    for name in directories:
+                        candidate = Path(current) / name
+                        if candidate.is_symlink():
+                            symlink_count += 1
+                        else:
+                            directory_count += 1
+                            kept_directories.append(name)
+                    directories[:] = kept_directories
+                    for name in files:
+                        candidate = Path(current) / name
+                        item = candidate.lstat()
+                        if stat.S_ISLNK(item.st_mode):
+                            symlink_count += 1
+                        elif stat.S_ISREG(item.st_mode):
+                            file_count += 1
+                            tree_bytes += item.st_size
+                fs = os.statvfs(root.path)
+            except OSError as exc:
+                status, detail = "measurement_error", report.clean(exc)
+            else:
+                status, detail = "available", root.notes
+                metrics = (
+                    tree_bytes,
+                    file_count,
+                    directory_count,
+                    symlink_count,
+                    fs.f_blocks * fs.f_frsize,
+                    fs.f_bfree * fs.f_frsize,
+                    fs.f_bavail * fs.f_frsize,
+                )
     return (
         root.storage_id,
         root.declared_path,
         str(root.path),
         str(root.required).lower(),
         root.purpose,
-        "available",
-        tree_bytes,
-        file_count,
-        directory_count,
-        symlink_count,
-        fs.f_blocks * fs.f_frsize,
-        fs.f_bfree * fs.f_frsize,
-        fs.f_bavail * fs.f_frsize,
+        status,
+        *metrics,
         root.quota,
-        root.notes,
+        detail,
     )
 
 

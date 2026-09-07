@@ -7,6 +7,7 @@ import sys
 from collections.abc import Sequence
 from functools import partial
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -200,6 +201,137 @@ def test_execute_measures_without_following_symlinks(tmp_path: Path) -> None:
     assert run_cli(roots, policy, output, "--execute").returncode == 0
     assert first_policy == (output / "retention_policy.tsv").read_bytes()
     assert first_summary == (output / "storage_retention_summary.tsv").read_bytes()
+
+
+@pytest.mark.parametrize(
+    ("outcome", "required", "status", "detail"),
+    (
+        ("available", "true", "available", "fixture"),
+        ("missing_required", "true", "missing_required", "root missing"),
+        ("missing_optional", "false", "missing_optional", "root missing"),
+        ("invalid_file", "true", "invalid", "root is not a real directory"),
+        ("invalid_symlink", "true", "invalid", "root is not a real directory"),
+        ("walk_error", "true", "measurement_error", "walk failed"),
+        ("file_error", "true", "measurement_error", "file inspection failed"),
+        ("capacity_error", "true", "measurement_error", "capacity failed"),
+    ),
+)
+def test_storage_measurement_preserves_complete_rows_and_io_order(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    outcome: str,
+    required: str,
+    status: str,
+    detail: str,
+) -> None:
+    roots_path, policy_path, storage = contracts(tmp_path)
+    storage = storage.resolve()
+    declared = f"{storage}/."
+    roots_path.write_text(
+        ROOT_HEADER + f"project\t{declared}\t{required}\tdurable\t1000\tfixture\n"
+    )
+    roots_data, roots = contract.load_roots(roots_path)
+    policy_data, policies = contract.load_policy(policy_path, {"project"})
+    before_walk = outcome.startswith(("missing_", "invalid_"))
+    nested = storage / "nested"
+    linked_directory = storage / "linked_directory"
+    child = nested / "child"
+    if before_walk:
+        (storage / "link").unlink()
+        (storage / "file").unlink()
+        storage.rmdir()
+        if outcome == "invalid_file":
+            storage.write_bytes(b"not a directory")
+        elif outcome == "invalid_symlink":
+            target = tmp_path / "elsewhere"
+            target.mkdir()
+            storage.symlink_to(target, target_is_directory=True)
+    else:
+        nested.mkdir()
+        child.write_bytes(b"abcdef")
+        linked_directory.symlink_to(nested, target_is_directory=True)
+
+    calls: list[tuple[str, Path]] = []
+    real_lstat = Path.lstat
+
+    def observed_lstat(path: Path):
+        calls.append(("lstat", path))
+        if path == storage and outcome.startswith("missing_"):
+            raise FileNotFoundError("root\tmissing\n\x00")
+        if path == child and outcome == "file_error":
+            raise OSError("file inspection failed")
+        return real_lstat(path)
+
+    def observed_walk(path: Path, *, followlinks: bool):
+        assert followlinks is False
+        calls.append(("walk", path))
+        directories = ["nested", "linked_directory"]
+        yield str(storage), directories, ["file", "link"]
+        assert directories == ["nested"]
+        if outcome == "walk_error":
+            raise OSError("walk failed")
+        yield str(nested), [], ["child"]
+
+    def observed_capacity(path: Path):
+        calls.append(("statvfs", path))
+        if outcome == "capacity_error":
+            raise OSError("capacity failed")
+        return SimpleNamespace(f_blocks=1000, f_bfree=300, f_bavail=200, f_frsize=4)
+
+    monkeypatch.setattr(Path, "lstat", observed_lstat)
+    monkeypatch.setattr(measurement.os, "walk", observed_walk)
+    monkeypatch.setattr(measurement.os, "statvfs", observed_capacity)
+    generated = measurement.outputs(roots_data, policy_data, roots, policies)
+
+    metrics = (
+        ["10", "2", "2", "2", "4000", "1200", "800"]
+        if outcome == "available"
+        else ["NA", "NA", "NA", "NA", "NA", "NA", "NA"]
+    )
+    assert list(csv.reader(generated["inventory"].decode().splitlines(), delimiter="\t")) == [
+        [
+            "storage_id", "declared_path", "resolved_path", "required", "purpose",
+            "status", "tree_bytes", "file_count", "directory_count", "symlink_count",
+            "filesystem_total_bytes", "filesystem_free_bytes",
+            "filesystem_available_bytes", "quota_bytes_expected", "detail",
+        ],
+        [
+            "project", declared, str(storage), required, "durable", status,
+            *metrics, "1000", detail,
+        ],
+    ]
+    expected_calls = [("lstat", storage)]
+    if not before_walk:
+        expected_calls.extend(
+            [
+                ("walk", storage),
+                ("lstat", nested),
+                ("lstat", linked_directory),
+                ("lstat", storage / "file"),
+                ("lstat", storage / "link"),
+            ]
+        )
+        if outcome != "walk_error":
+            expected_calls.append(("lstat", child))
+            if outcome != "file_error":
+                expected_calls.append(("statvfs", storage))
+    assert calls == expected_calls
+
+
+def test_storage_capacity_attribute_errors_escape_measurement(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    roots, policy, _storage = contracts(tmp_path)
+
+    class UnreadableCapacity:
+        @property
+        def f_blocks(self):
+            raise OSError("capacity attribute failed")
+
+    monkeypatch.setattr(measurement.os, "statvfs", lambda _path: UnreadableCapacity())
+    with pytest.raises(OSError, match="capacity attribute failed"):
+        publication_data(roots, policy)
 
 
 def test_pending_policy_and_missing_required_are_reported(tmp_path: Path) -> None:
