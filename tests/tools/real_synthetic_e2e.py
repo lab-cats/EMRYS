@@ -42,7 +42,8 @@ OUT = re.compile(r"^OUT=(/.+)$", re.MULTILINE)
 ERR = re.compile(r"^ERR=(/.+)$", re.MULTILINE)
 STATE = re.compile(r"(?:^| )JobState=([A-Z_]+)")
 EXIT = re.compile(r"(?:^| )ExitCode=([0-9]+:[0-9]+)")
-# The Step09 summary is compared separately after removing only local locators.
+# Step09 is compared after removing placement-local locators and the digest of
+# the Step08 receipt that contains those locators.
 SCIENTIFIC_RESULT_SUFFIXES = (
     ".cmh_all_sites.tsv",
     ".cmh_significant_sites.tsv",
@@ -58,6 +59,7 @@ STEP09_LOCAL_PATH_FIELDS = frozenset(
         "partition_manifest_path",
         "step08_sites_path",
         "step08_inputs_path",
+        "step08_inputs_sha256",
     }
 )
 TASK_ENTRY_EVIDENCE_FIELDS = (

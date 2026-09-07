@@ -353,7 +353,9 @@ def test_completed_results_use_inspection_reports_and_direct_step09_oracle(
     }
 
 
-def test_step09_summary_projection_ignores_only_local_paths(tmp_path: Path) -> None:
+def test_step09_summary_projection_ignores_placement_local_provenance(
+    tmp_path: Path,
+) -> None:
     from emrys.contracts.scientific_evidence.step09 import STEP09_SUMMARY_HEADER
 
     def summary(name: str, *, local_root: str, candidate_count: str) -> Path:
