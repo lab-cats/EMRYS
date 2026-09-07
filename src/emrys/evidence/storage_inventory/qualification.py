@@ -609,9 +609,9 @@ def _run_finalize(workspace: Path, reference_fasta: Path) -> Path:
         "checks": list(CHECKS),
     }
     publish_exclusive(staged, _json_bytes(final_value), StorageQualificationError)
+    _publish_staged_receipt(staged, final, "final")
     for probe in probes:
         _cleanup_probe(probe)
-    _publish_staged_receipt(staged, final, "final")
     return final
 
 
@@ -643,9 +643,9 @@ def execute_direct_qualification(plan: DirectQualificationPlan) -> QualifiedStor
         "checks": list(CHECKS[:4]),
     }
     publish_exclusive(plan.staged_path, _json_bytes(receipt), StorageQualificationError)
+    _publish_staged_receipt(plan.staged_path, plan.receipt_path, "direct")
     for probe in plan.probe_paths:
         _cleanup_probe(probe)
-    _publish_staged_receipt(plan.staged_path, plan.receipt_path, "direct")
     return admit_direct_qualification(plan.workspace, plan.reference_fasta)
 
 
