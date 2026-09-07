@@ -1,0 +1,26 @@
+flowchart LR
+    project["Project<br/>Dataset + Reference + named Analyses"] --> admission["validate + Doctor"]
+    runtime["Admitted runtime<br/>optional execution profile"] --> admission
+    admission --> plan["Immutable Run plan"]
+    plan --> attempt["Attempt<br/>direct or whole-Run Slurm"]
+
+    subgraph workflow["Selected scientific workflow"]
+        reference["Prepare reference<br/>00a-00c"]
+        processing["Per-sample processing<br/>01-06"]
+        cohort["Cohort evidence<br/>07-08"]
+        module["Selected Analysis module<br/>09 and optional 10"]
+
+        reference --> processing --> cohort --> module
+        reference --> cohort
+    end
+
+    attempt --> reference
+    project --> reference
+    project --> processing
+    project --> cohort
+    analysis_provider["Installed Analysis provider"] --> module
+    module --> results["Admitted Results"]
+    results --> scientific["Bespoke scientific report"]
+    results --> evidence["Evidence and operations report"]
+
+    prior["Compatible completed processing Run"] -. "re-admit stationary 00-06 artifacts" .-> cohort

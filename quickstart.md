@@ -58,9 +58,10 @@ then run `emrys init PROJECT_NAME` from the intended parent. The
 
 ## 3. Admit a runtime
 
-The managed path needs Pixi installed through site policy. Doctor delegates
-dependency installation to `uv`, Pixi, and `renv`; EMRYS does not implement a
-package manager.
+The managed path needs [Pixi](https://pixi.sh/latest/installation/) installed
+through its official route and site policy. Doctor delegates dependency
+installation to `uv`, Pixi, and `renv`; EMRYS does not implement a package
+manager.
 
 ```sh
 emrys validate

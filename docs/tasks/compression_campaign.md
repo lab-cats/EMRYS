@@ -56,13 +56,28 @@ to the backlog, and this file will be deleted.
 | Analysis extension guidance | Multiple named Analyses are supported, but there is no practical walk-through for adding an external computation provider and bespoke reporter. | Retain as a future documentation deliverable based on one minimal working provider, without creating a generic workflow or report DSL. |
 | Golden-path workspace behavior | The operator should not manually create required Project directories and should not need internal manifests or execution machinery. | Already a permanent Project/setup requirement. Do not add checkout-level `data/raw` or `data/full`; scientific inputs remain referenced, and filenames cannot safely infer conditions or replicates. |
 
+## Quantified deferred findings
+
+These measurements define future audit boundaries; file length alone is not a
+defect or authority to split a cohesive owner.
+
+| Finding | Evidence | Disposition at intake exit |
+|---|---|---|
+| Large-file surface | 101 tracked files exceed 500 lines: 42 product, 52 test, and 7 other files. Of the 37 over 1,000 lines, 15 are hand-maintained product files, 17 are tests, and 5 are generated lock, CI, or third-party bootstrap files. | Under `COMPRESS-01`, rank owners by duplicated responsibility and removable behavior, not line count. Transfer only finite, net-negative owner changes. |
+| Run-coordinator concentration | `run_coordinator` contains about 20,225 product lines and 20,824 test lines. `task.py`, `lifecycle.py`, `materialization.py`, `dashboard.py`, `control.py`, `doctor.py`, `onboarding.py`, and `reporting_boundary.py` each exceed 1,000 product lines. `materialization.py` devotes about 1,086 lines to repeated task command and dispatch declarations; its main test file is about 4,959 lines. | Define a finite coordinator-compression row: derive repeated processing-owner plans from one typed roster, remove duplicate declarations and low-value defensive cases, and preserve exact arguments, ordering, identity, reuse, recovery, and fault behavior. Do not mechanically split files or add one-caller wrappers. `DASHBOARD-RETIRE-01` remains separate. |
+| Generated dependency lock | `pixi.lock` is about 3,881 lines/140 KB and binds the managed Linux native/R environment used by Doctor and CI. | Retain it as generated reproducibility input; it is not maintained product-code bloat. |
+| Repeated constants | Persisted filenames such as `run.json`, `normalized.json`, and `attempt.json` are repeated contract vocabulary, while the three reporting kinds recur across five owners. Small path/publication helpers have similar spelling but different trust and error semantics. | Do not add constants or helpers merely to replace strings. `REPORT-ROSTER-01` owns derivation of reporting declarations; consolidate other values only when one semantic authority deletes validation or branches. |
+| Schema layout | The 27 JSON schemas occupy about 5,353 lines across artifact `v1`-`v5` and orchestration `v1`-`v3`, but those directories are family-specific physical revisions rather than five whole-system generations. Active schemas intentionally reuse definitions across directories. | Audit current and historical readers, then compare the present version directories with a flatter resource layout; pre-release paths are not protected merely because they exist. Prefer whichever model reduces cognitive and maintenance surface while preserving required identities and historical reads. `CONTRACT-API-01` owns the current admission mismatch. Consider a finite caller-complete retirement audit for apparently historical resources; do not bulk-renumber or delete retained evidence without approval. |
+| Numeric stage and resource identities | Fourteen historical stage IDs and related rosters appear in resource policy, profile schema, and the Snakefile; Analysis admission currently permits one Step `09` and optional Step `10`. Some historical profiles intentionally omit newer task IDs. | Propose a finite semantic task/resource-key migration only when module extension needs it: derive current rosters from admitted task descriptors, preserve exact historical profile reads, and remove duplicated stage lists. `QUAL-04` and `PROFILE-CONTRACT-01` own narrower existing derivations; avoid a cosmetic global rename. |
+
 ## Addressed before this intake
 
 The following cited instances no longer require work unless the remaining
 review finds a broader live pattern:
 
-- obsolete diagrams and stale architecture-index links were removed; one
-  current-user pipeline diagram remains;
+- the obsolete Run-coordinator diagram and stale links were removed, while the
+  current-user, grouped-pipeline, and reliability diagrams remain as concise
+  reader aids rather than contract authorities;
 - the functional-owner repository exception and `docs/demo` were removed;
 - the global orchestration contract and orchestration-readiness document were
   retired;
@@ -71,7 +86,11 @@ review finds a broader live pattern:
   substantially compressed;
 - the stale sitemap, rolling handoff, resource README, and path-heavy standalone
   scientific-context command were removed;
-- the glossary was retained as the concise terminology authority;
+- directory orientation removed too broadly during compression was restored for
+  the current tracked tree without reviving retired checkout-level storage
+  directories or the stale sitemap;
+- the glossary remains the comprehensive terminology authority and describes
+  the current public model without replacing owner contracts;
 - `data/test` and `refs/test_star_index` have no tracked contents; and
 - `project.yaml` already supports multiple named Analyses, with one Analysis
   selected per Run.
