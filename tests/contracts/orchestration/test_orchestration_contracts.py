@@ -506,7 +506,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
 def test_registry_is_closed_and_every_schema_is_draft_2020_12() -> None:
     schemas, _ = orchestration.load_schema_registry()
 
-    assert tuple(schemas) == ("common", *orchestration.SCHEMA_NAMES)
+    assert tuple(schemas) == ("common", *orchestration.SCHEMA_NAMES, "attempt-receipt-v2")
     assert set(schemas) == set(orchestration.SCHEMA_IDS)
     for name, schema in schemas.items():
         assert schema["$id"] == orchestration.SCHEMA_IDS[name]
@@ -547,11 +547,12 @@ def test_versioned_schema_registration_is_exact(
 def test_unknown_schema_selector_and_nonstandard_json_constant_are_rejected(
     tmp_path: Path,
 ) -> None:
-    with pytest.raises(
-        orchestration.ContractValidationError,
-        match="Unknown orchestration schema",
-    ):
-        orchestration.schema_validator("unknown")
+    for name in ("unknown", "attempt-receipt-v2"):
+        with pytest.raises(
+            orchestration.ContractValidationError,
+            match="Unknown orchestration schema",
+        ):
+            orchestration.schema_validator(name)
 
     record_path = tmp_path / "record.json"
     record_path.write_bytes(b'{"value":NaN}')
@@ -923,6 +924,10 @@ def test_attempt_receipt_terminal_semantics_and_unique_scope_references() -> Non
 
     receipt = lifecycle_records()["attempt-receipt"]
     receipt["reporting_completion_records"]["html_report"]["verified"] = None
+    assert not orchestration.schema_validator("attempt-receipt").is_valid(receipt)
+    assert orchestration.schema_errors("attempt-receipt", receipt) == (
+        "$.reporting_completion_records.html_report.verified: None is not of type 'object'",
+    )
     receipt.update(
         status="failed",
         snakemake_exit_code=0,
@@ -963,16 +968,55 @@ def test_attempt_receipt_v2_closes_science_without_reporting_fields() -> None:
     receipt.pop("reporting_completion_records")
     receipt.pop("local_pipeline_complete")
 
+    validator = orchestration.schema_validator("attempt-receipt")
+    assert validator.is_valid(receipt)
     orchestration.validate_record("attempt-receipt", receipt)
 
     for retired_field in ("reporting_completion_records", "local_pipeline_complete"):
         incompatible = copy.deepcopy(receipt)
         incompatible[retired_field] = True
+        assert not validator.is_valid(incompatible)
         with pytest.raises(
             orchestration.ContractValidationError,
             match=f"{retired_field}.*unexpected",
         ):
             orchestration.validate_record("attempt-receipt", incompatible)
+
+
+@pytest.mark.parametrize("version", ("v1", "v2"))
+@pytest.mark.parametrize(
+    ("field", "value", "diagnostic"),
+    (
+        ("status", "unknown", "$.status: 'unknown' is not one of"),
+        ("finished_at", 0, "$.finished_at: 0 is not of type 'string'"),
+        ("attempt_record", {"path": "attempt.json", "sha256": "bad"}, "$.attempt_record.sha256:"),
+        ("schema_version", "emrys.attempt-receipt.v99", "$.schema_version: 'emrys.attempt-receipt.v1' was expected"),
+    ),
+)
+def test_attempt_receipt_public_validator_preserves_field_diagnostics(
+    version: str, field: str, value: Any, diagnostic: str,
+) -> None:
+    receipt = lifecycle_records()["attempt-receipt"]
+    receipt["schema_version"] = f"emrys.attempt-receipt.{version}"
+    if version == "v2":
+        receipt.pop("reporting_completion_records")
+        receipt.pop("local_pipeline_complete")
+    validator = orchestration.schema_validator("attempt-receipt")
+    assert validator.is_valid(receipt)
+    receipt[field] = value
+
+    assert not validator.is_valid(receipt)
+    assert any(error.startswith(diagnostic) for error in orchestration.schema_errors("attempt-receipt", receipt))
+    with pytest.raises(orchestration.ContractValidationError):
+        orchestration.validate_record("attempt-receipt", receipt)
+
+
+@pytest.mark.parametrize("record", ({}, [], None))
+def test_attempt_receipt_public_validator_rejects_missing_version_and_nonobjects(
+    record: Any,
+) -> None:
+    assert not orchestration.schema_validator("attempt-receipt").is_valid(record)
+    assert orchestration.schema_errors("attempt-receipt", record)
 
 
 def test_workflow_attempt_requires_clean_checkout_and_named_tools() -> None:
