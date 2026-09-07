@@ -12,6 +12,7 @@ import pytest
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.orchestration.run_coordinator import inspection, reporting_boundary
+from emrys.orchestration.run_coordinator._inspection_evidence import _inspect_reporting_ledger_with_locations
 from emrys.reporting import transaction_validation
 from tests.contracts.orchestration.test_application_model_contracts import (
     successor_run_fixture,
@@ -373,6 +374,16 @@ def test_start_and_completion_publish_fixed_closed_records(
         "verified-reporting",
     )
     assert start["kind"] == verified["kind"] == "artifact_index"
+    assert _inspect_reporting_ledger_with_locations(
+        built.run_root, built.execution, built.profile, validate
+    )[1] == ["run_summary reporting is absent after a verified transaction prefix"]
+    assert _inspect_reporting_ledger_with_locations(
+        built.run_root,
+        built.execution,
+        built.profile,
+        validate,
+        allow_incomplete_origin=str(start["origin_workflow_attempt_id"]),
+    )[1] == []
     assert start["run_lock"] == {
         "path": (
             built.workflow_attempt_path.with_name("released-run-lock.json")

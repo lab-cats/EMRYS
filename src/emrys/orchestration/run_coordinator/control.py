@@ -645,6 +645,8 @@ def _next_supported_action(observed: inspection.RunInspection) -> str:
         return "Wait for the active Attempt to finish, then inspect the Run again."
     if observed.recovery_available:
         return "Use emrys resume for this Run; review and confirm the plan."
+    if observed.latest_receipt is not None and observed.latest_receipt.get("status") != "succeeded":
+        return "Preserve this Run; review the latest Attempt receipt. Do not generate reports."
     if observed.results_status == "complete":
         if observed.reporting_status == "not applicable":
             return "Inspect this Run's verified scientific artifacts with --detail debug."
@@ -1183,8 +1185,8 @@ def _execute_plan(
                 status="failed",
                 run_scope=plan.run.run_id,
                 next_action=(
-                    "Scientific Results remain complete. Inspect the Run, then "
-                    f"use {_run_followup('report', plan.run_root, plan.run.run_id, '--execute')}."
+                    "Scientific Results remain complete. Inspect the Run and follow "
+                    "its admitted next action."
                 ),
             )
             return 1

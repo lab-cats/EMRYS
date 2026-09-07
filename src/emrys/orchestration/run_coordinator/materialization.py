@@ -1450,6 +1450,30 @@ def _dispatches(
     return tuple(planned), references, tuple(sorted(directories))
 
 
+def _admitted_input_snapshots(
+    source: Mapping[str, Any],
+) -> dict[Path, Mapping[str, Any]]:
+    """Index the external file bytes already bound by Analysis admission."""
+
+    snapshots = (
+        source["samples"]["manifest"],
+        source["partitions"]["manifest"],
+        source["reference"]["fasta"],
+        source["reference"]["gtf"],
+        *(
+            row[key]
+            for row in source["samples"]["rows"]
+            for key in ("r1_fastq", "r2_fastq")
+        ),
+        *(
+            row["selector_file"]
+            for row in source["partitions"]["rows"]
+            if row["selector_file"] is not None
+        ),
+    )
+    return {Path(str(snapshot["path"])): snapshot for snapshot in snapshots}
+
+
 def build_attempt_plan(
     run: MaterializedRun,
     readiness: doctor.DoctorResult,
@@ -1534,10 +1558,15 @@ def build_attempt_plan(
         None if processing_source is None else processing_source.root
     )
     bound_input_snapshots = {
-        Path(str(snapshot["path"])): snapshot
-        for snapshot in (
-            () if processing_source is None else processing_source.artifact_snapshots
-        )
+        **_admitted_input_snapshots(source),
+        **{
+            Path(str(snapshot["path"])): snapshot
+            for snapshot in (
+                ()
+                if processing_source is None
+                else processing_source.artifact_snapshots
+            )
+        },
     }
     processing_artifact_paths = {
         (
@@ -1551,10 +1580,6 @@ def build_attempt_plan(
         if snapshot.get("role")
         in {"step00c_reference_fai_v1", "step00c_reference_dict_v1"}
     }
-    if selected_sample_file is not None:
-        bound_input_snapshots[selected_sample_file.path] = source["samples"][
-            "manifest"
-        ]
     source_root = readiness.source_root
     if retained_runtime_profile_path is not None:
         if successor or operation != "resume":

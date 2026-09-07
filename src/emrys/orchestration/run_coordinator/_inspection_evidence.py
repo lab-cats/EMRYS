@@ -80,7 +80,7 @@ def _inspect_reporting_ledger_with_locations(
 
     from emrys.orchestration.run_coordinator import reporting_boundary  # noqa: PLC0415
 
-    kinds = ("artifact_index", "run_summary", "html_report")
+    kinds = reporting_boundary.REPORTING_KINDS
     state_root = root / "state" / "reporting"
     result = {kind: {"start": None, "verified": None} for kind in kinds}
     origins: dict[str, str | None] = dict.fromkeys(kinds)
@@ -108,6 +108,7 @@ def _inspect_reporting_ledger_with_locations(
                     blockers.append(f"Unexpected reporting ledger state: {child}")
 
     run_id = str(execution["run_id"])
+    verified_prefix_origin: str | None = None
     for kind in kinds:
         kind_root = state_root / kind
         start_path = kind_root / "start.json"
@@ -126,6 +127,9 @@ def _inspect_reporting_ledger_with_locations(
         start_exists = start_path.exists() or start_path.is_symlink()
         verified_exists = verified_path.exists() or verified_path.is_symlink()
         if not start_exists:
+            if verified_prefix_origin not in {None, allow_incomplete_origin}:
+                blockers.append(f"{kind} reporting is absent after a verified transaction prefix")
+                verified_prefix_origin = None
             if verified_exists:
                 blockers.append(f"{kind} verified reporting exists without a start")
             if semantic_path.exists() or semantic_path.is_symlink():
@@ -149,6 +153,7 @@ def _inspect_reporting_ledger_with_locations(
             origins[kind] = admission.origin_workflow_attempt_id
             if verified_exists:
                 result[kind]["verified"] = admission.verified_reference
+                verified_prefix_origin = admission.origin_workflow_attempt_id
                 if kind == "html_report":
                     verified_report_locations = admission.verified_report_locations
             elif admission.origin_workflow_attempt_id != allow_incomplete_origin:

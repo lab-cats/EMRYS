@@ -140,6 +140,7 @@ def _readiness(
     legacy: bool = False,
     replicate_count: int = 2,
     sample_ids: list[str] | None = None,
+    regions_file: bool = False,
 ) -> tuple[doctor.DoctorResult, object, Path, Path]:
     tmp_path.mkdir(parents=True, exist_ok=True)
     workspace = tmp_path / "project"
@@ -149,6 +150,15 @@ def _readiness(
         if legacy
         else build(workspace, replicate_count=replicate_count)
     )
+    if regions_file:
+        (workspace / "target.bed").write_text(
+            "chrSynthetic\t0\t12\n", encoding="utf-8"
+        )
+        (workspace / "partitions.tsv").write_text(
+            "partition_id\tselector_type\tselector_value\n"
+            "p1\tregions_file\ttarget.bed\n",
+            encoding="utf-8",
+        )
     if sample_ids is not None:
         definition = yaml.safe_load(request.read_text(encoding="utf-8"))
         definition["analyses"]["primary"]["sample_ids"] = sample_ids
@@ -326,6 +336,7 @@ def _plan(
     stage_concurrency: dict[str, int] | None = None,
     legacy: bool = False,
     through: str = "analysis",
+    regions_file: bool = False,
 ):
     readiness, resources, _request, workspace = _readiness(
         tmp_path,
@@ -333,6 +344,7 @@ def _plan(
         stage_concurrency=stage_concurrency,
         step_threads=step_threads,
         legacy=legacy,
+        regions_file=regions_file,
     )
     return build_attempt_plan(
         _run_candidate(readiness, resources, through=through),
@@ -447,6 +459,42 @@ def _dispatch_records(plan) -> list[dict[str, object]]:
 def _workflow_config(plan) -> dict[str, object]:
     return json.loads(
         next(item.data for item in plan.attempt_files if item.path == plan.config_path)
+    )
+
+
+def test_dispatches_bind_every_admitted_project_input(
+    tmp_path: Path,
+) -> None:
+    plan = _plan(tmp_path, regions_file=True)
+    source = plan.run.analysis.workflow_inputs
+    expected_snapshots = (
+        source["samples"]["manifest"],
+        source["partitions"]["manifest"],
+        source["reference"]["fasta"],
+        source["reference"]["gtf"],
+        *(
+            row[key]
+            for row in source["samples"]["rows"]
+            for key in ("r1_fastq", "r2_fastq")
+        ),
+        source["partitions"]["rows"][0]["selector_file"],
+    )
+    expected = {Path(str(item["path"])): item for item in expected_snapshots}
+    declarations = [
+        item
+        for dispatch in _dispatch_records(plan)
+        for item in dispatch["inputs"]
+        if Path(str(item["path"])) in expected
+    ]
+
+    assert {Path(str(item["path"])) for item in declarations} == set(expected)
+    assert all(
+        (item["size_bytes"], item["sha256"])
+        == (
+            expected[Path(str(item["path"]))]["size_bytes"],
+            expected[Path(str(item["path"]))]["sha256"],
+        )
+        for item in declarations
     )
 
 
@@ -3905,10 +3953,8 @@ def test_direct_execution_owns_receipt_ordered_reporting_log(
     assert f"Evidence: {receipt_path}" in captured.err
     if report_mode == "failure":
         assert "Scientific Results remain complete" in captured.err
-        assert (
-            f"emrys report {inspection.human_run_name(plan.run.run_id)} "
-            f"--project {plan.run_root.parent.parent / 'project.yaml'} --execute"
-        ) in captured.err
+        assert "Inspect the Run and follow its admitted next action" in captured.err
+        assert "emrys report" not in captured.err
 
 
 @pytest.mark.parametrize(
@@ -4097,6 +4143,7 @@ def test_next_supported_action_uses_separated_status_domains() -> None:
         results: str = "complete",
         reporting: str = "complete",
         recovery: bool = False,
+        receipt: str = "succeeded",
     ) -> str:
         return control._next_supported_action(
             SimpleNamespace(
@@ -4105,6 +4152,10 @@ def test_next_supported_action_uses_separated_status_domains() -> None:
                 results_status=results,
                 reporting_status=reporting,
                 recovery_available=recovery,
+                latest_receipt={
+                    "schema_version": "emrys.attempt-receipt.v1",
+                    "status": receipt,
+                },
                 run_root=Path.cwd() / "runs" / ("run-" + "a" * 64),
                 run_id="run-" + "a" * 64,
             )
@@ -4149,6 +4200,9 @@ def test_next_supported_action_uses_separated_status_domains() -> None:
             recovery=True,
         )
         == resume
+    )
+    assert action(receipt="failed", reporting="incomplete") == (
+        "Preserve this Run; review the latest Attempt receipt. Do not generate reports."
     )
     assert action() == "Review the verified Results and report paths."
     assert action(reporting="incomplete") == (
