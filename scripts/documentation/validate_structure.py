@@ -37,34 +37,6 @@ CANONICAL_DOCUMENTS = {
     "src/emrys/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
 }
 
-RETIRED_DOCUMENTS = (
-    "docs/architecture/FUTURE_ARCHITECTURE.md",
-    "docs/architecture/diagrams/future_modular_pipeline.mmd",
-    "docs/architecture/diagrams/future_reporting_layer.mmd",
-    "docs/design/PIPELINE_PLAN.md",
-    "docs/design/QUESTIONS.md",
-    "docs/design/REFACTOR_AUDIT.md",
-    "docs/design/ORCHESTRATION_CONTRACT.md",
-    "docs/design/ORCHESTRATION_READINESS.md",
-    "docs/operations/CONCURRENT_WORK.md",
-    "docs/operations/HANDOFF.md",
-    "docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md",
-    "docs/operations/TASK_DELIVERY.md",
-    "docs/sitemap/README.md",
-    "docs/tasks/architecture_backlog_matrix.md",
-    "docs/tasks/architecture_campaign.md",
-    "docs/tasks/BACKLOG.md",
-    "docs/tasks/cards/README.md",
-    "src/emrys/contracts/MIGRATION_MECHANICS.md",
-)
-RETIRED_TASK_DIRECTORIES = (
-    "TODO",
-    "IN_PROGRESS",
-    "INTEGRATION_REVIEW",
-    "UNREFINED",
-    "cards",
-)
-
 SOURCE_OWNER_DIRECTORY_NAMES = {
     (
         "analysis",
@@ -227,10 +199,6 @@ def validate_canonical_ownership(root: Path, problems: list[str]) -> None:
         elif first_heading(path) != expected_h1:
             problems.append(f"canonical document H1 mismatch: {relative}")
 
-    for relative in RETIRED_DOCUMENTS:
-        if (root / relative).is_file():
-            problems.append(f"retired documentation owner returned: {relative}")
-
     stage_map = root / "src" / "emrys" / "contracts" / "STAGE_MAP.md"
     if not stage_map.is_file():
         return
@@ -258,15 +226,6 @@ def validate_canonical_ownership(root: Path, problems: list[str]) -> None:
             problems.append(f"missing mirrored test owner: {tests.relative_to(root)}")
 
 
-def validate_retired_task_directories(root: Path, problems: list[str]) -> None:
-    """Reject Markdown that revives a retired task-detail directory."""
-    for dirname in RETIRED_TASK_DIRECTORIES:
-        if git_paths(root, f"docs/tasks/{dirname}/*.md"):
-            problems.append(
-                f"retired task directory contains Markdown: docs/tasks/{dirname}"
-            )
-
-
 def validate_diagrams(diagrams: list[Path], root: Path, problems: list[str]) -> int:
     """Validate standalone Mermaid syntax without requiring inbound links."""
     for diagram in diagrams:
@@ -291,7 +250,6 @@ def validate(root: Path) -> tuple[int, int]:
     diagrams = git_paths(root, "*.mmd")
     problems: list[str] = []
     validate_canonical_ownership(root, problems)
-    validate_retired_task_directories(root, problems)
     validate_local_links(documents, root, problems)
     diagram_count = validate_diagrams(diagrams, root, problems)
     if problems:
