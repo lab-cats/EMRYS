@@ -397,7 +397,7 @@ def test_exact_r_command_and_no_clobber_publish_summary_last(
     assert not _residue(fixture)
 
 
-def test_path_basename_rscript_works_from_an_arbitrary_cwd(
+def test_path_basename_and_relative_inputs_work_from_an_arbitrary_cwd(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fixture = _fixture(tmp_path)
@@ -411,6 +411,15 @@ def test_path_basename_rscript_works_from_an_arbitrary_cwd(
     arguments = [
         "fake-r" if value == "/usr/bin/true" else value for value in fixture.arguments
     ]
+    for option in (
+        "--sample-manifest",
+        "--partition-manifest",
+        "--step08-root",
+        "--output-root",
+        "--r-script",
+    ):
+        index = arguments.index(option) + 1
+        arguments[index] = os.path.relpath(arguments[index], cwd)
     processes, _calls = _inject_process(monkeypatch, fixture)
     monkeypatch.chdir(cwd)
 

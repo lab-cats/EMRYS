@@ -867,7 +867,7 @@ def validate_step09_summary(
         "step08_inputs_path": step08_inputs,
     }
     for column, expected in expected_paths.items():
-        if resolve_recorded_path(row[column]) != expected:
+        if resolve_recorded_path(row[column]) != expected.resolve():
             fail(f"Step 09 summary {column} differs from the explicit input.")
     expected_hashes = {
         "sample_manifest_sha256": sample_hash,
