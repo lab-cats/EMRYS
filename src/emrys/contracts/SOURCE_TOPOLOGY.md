@@ -127,31 +127,14 @@ the Run; reporting reads that descriptor and declared artifacts without invoking
 computation. Doctor alone may import the public `emrys.reporting` facade for
 readiness.
 
-### Fixed orchestration-to-reporting seams
-
-Run coordination crosses into reporting only through these exact edges. The
-reporting operation owns artifact-index → run-summary → HTML; no functional
-owner or grouped command imports reporting internals.
-
-| Exact source | Exact target | Purpose |
-|---|---|---|
-| `emrys.orchestration.run_coordinator.doctor` | `emrys.reporting` | Admit the same-ID report provider required by a reporting-enabled run |
-| `emrys.orchestration.run_coordinator.lifecycle` | `emrys.reporting.transaction_validation` | Historical receipt validation during Attempt inspection |
-| `emrys.orchestration.run_coordinator.reporting_boundary` | `emrys.reporting.transaction_validation` | Semantic validation before immutable reporting completion |
-| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting._artifact_index.context` | Prepare the first fixed reporting transaction |
-| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting._artifact_index.publication` | Publish the first fixed reporting transaction |
-| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting._artifact_index.models` | First-transaction error identity |
-| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting._run_summary.builder` | Prepare the second fixed reporting transaction through `prepare_context` |
-| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting._run_summary.publication` | Publish the second fixed reporting transaction |
-| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting._run_summary.models` | Second-transaction error identity |
-| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting.report` | Final fixed HTML transaction |
-| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting._run_report.publication` | Publish the final fixed HTML transaction |
-| `emrys.orchestration.run_coordinator.reporting_operation` | `emrys.reporting._run_report.models` | Final-transaction error identity |
-
 ### Ratified exact import exceptions
 
 Each stable `SRC-TRANS` identifier admits only its exact source/target pair. The
 gate rejects neighboring and stale edges; none is a general import API.
+
+Run coordination crosses into reporting only through its listed exceptions.
+The reporting operation owns artifact-index → run-summary → HTML; no functional
+owner or grouped command imports reporting internals.
 
 | ID | Exact current import | Protected current behavior | Durable boundary justification |
 |---|---|---|---|
@@ -167,12 +150,24 @@ gate rejects neighboring and stale edges; none is a general import API.
 | `SRC-TRANS-010` | `orchestration/run_coordinator/lifecycle.py` → `emrys.evidence.storage_inventory.qualification` | Storage re-admission before execution/reuse | Re-admit storage evidence at the execution trust boundary through its existing owner. |
 | `SRC-TRANS-011` | `orchestration/run_coordinator/onboarding.py` → `emrys.stages.gtf_to_bed12.converter` | Reference GTF/FASTA compatibility using the current normalization implementation | Reuse the single GTF normalization authority without duplicating scientific semantics. |
 | `SRC-TRANS-012` | `orchestration/run_coordinator/onboarding.py` → `emrys.evidence.runtime_availability.inspector` | Project runtime discovery and admission through the public inspection capability | Let Project orchestration admit the existing runtime-inspection result rather than duplicate its probes. |
+| `SRC-TRANS-013` | `orchestration/run_coordinator/doctor.py` → `emrys.reporting` | Admit the same-ID report provider required by a reporting-enabled run | Admit the selected reporting capability through its public facade without authorizing other orchestration importers. |
+| `SRC-TRANS-014` | `orchestration/run_coordinator/lifecycle.py` → `emrys.reporting.transaction_validation` | Historical receipt validation during Attempt inspection | Keep historical reporting-receipt semantics with the reporting owner. |
+| `SRC-TRANS-015` | `orchestration/run_coordinator/reporting_boundary.py` → `emrys.reporting.transaction_validation` | Semantic validation before immutable reporting completion | Keep reporting completion admission with its existing owner before immutable publication. |
+| `SRC-TRANS-016` | `orchestration/run_coordinator/reporting_operation.py` → `emrys.reporting._artifact_index.context` | Prepare the first fixed reporting transaction | Keep artifact-index preparation with reporting through the exact coordinator boundary. |
+| `SRC-TRANS-017` | `orchestration/run_coordinator/reporting_operation.py` → `emrys.reporting._artifact_index.publication` | Publish the first fixed reporting transaction | Reuse the existing artifact-index publication implementation through the exact coordinator boundary. |
+| `SRC-TRANS-018` | `orchestration/run_coordinator/reporting_operation.py` → `emrys.reporting._artifact_index.models` | First-transaction error identity | Let the coordinator recognize the reporting owner's artifact-index errors without duplicating their definition. |
+| `SRC-TRANS-019` | `orchestration/run_coordinator/reporting_operation.py` → `emrys.reporting._run_summary.builder` | Prepare the second fixed reporting transaction through `prepare_context` | Keep run-summary preparation with reporting through the exact coordinator boundary. |
+| `SRC-TRANS-020` | `orchestration/run_coordinator/reporting_operation.py` → `emrys.reporting._run_summary.publication` | Publish the second fixed reporting transaction | Reuse the existing run-summary publication implementation through the exact coordinator boundary. |
+| `SRC-TRANS-021` | `orchestration/run_coordinator/reporting_operation.py` → `emrys.reporting._run_summary.models` | Second-transaction error identity | Let the coordinator recognize the reporting owner's run-summary errors without duplicating their definition. |
+| `SRC-TRANS-022` | `orchestration/run_coordinator/reporting_operation.py` → `emrys.reporting.report` | Final fixed HTML transaction | Keep HTML rendering with reporting and preserve the fixed transaction order. |
+| `SRC-TRANS-023` | `orchestration/run_coordinator/reporting_operation.py` → `emrys.reporting._run_report.publication` | Publish the final fixed HTML transaction | Reuse the existing HTML publication implementation through the exact coordinator boundary. |
+| `SRC-TRANS-024` | `orchestration/run_coordinator/reporting_operation.py` → `emrys.reporting._run_report.models` | Final-transaction error identity | Let the coordinator recognize the reporting owner's rendering errors without duplicating their definition. |
 
 ### Automated import projection
 
 [`tests/tools/source_dependencies.py`](../../../tests/tools/source_dependencies.py)
-checks tracked source imports, owner isolation, acyclic libraries, CLI and
-reporting rosters, and exact exceptions without importing product code or
+checks tracked source imports, owner isolation, acyclic libraries, the CLI
+roster, and exact exceptions without importing product code or
 writing the tree. It does not infer runtime invocation, native-code relations,
 workflow scheduling, artifact flow, or scientific semantics; those remain with
 `STAGE_MAP.md`, owner contracts, and direct tests.
