@@ -307,7 +307,7 @@
           "additionalProperties": false,
           "required": ["sjdb_overhang", "genome_sa_index_nbases"],
           "properties": {
-            "sjdb_overhang": { "type": "integer", "minimum": 1 },
+            "sjdb_overhang": { "type": "integer", "minimum": 0 },
             "genome_sa_index_nbases": { "type": "integer", "minimum": 1 }
           }
         },

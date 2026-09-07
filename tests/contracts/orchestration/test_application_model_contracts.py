@@ -168,7 +168,7 @@ def execution_plan() -> model.ExecutionPlan:
         backend="local",
         engine="snakemake",
         backend_semantics_sha256=ZERO_HASH,
-        star_index={"sjdb_overhang": 149, "genome_sa_index_nbases": 14},
+        star_index={"sjdb_overhang": 0, "genome_sa_index_nbases": 14},
         computational_resources={
             "workflow_cores": 4,
             "workflow_memory_mb": "allocation",
@@ -309,7 +309,7 @@ def test_execution_plan_canonicalizes_sets_graphs_tools_and_resource_maps() -> N
         backend="local",
         engine="snakemake",
         backend_semantics_sha256=ZERO_HASH,
-        star_index={"genome_sa_index_nbases": 14, "sjdb_overhang": 149},
+        star_index={"genome_sa_index_nbases": 14, "sjdb_overhang": 0},
         computational_resources={
             "workflow_cores": 4,
             "workflow_memory_mb": "allocation",
