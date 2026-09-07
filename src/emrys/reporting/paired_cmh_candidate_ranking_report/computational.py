@@ -28,26 +28,14 @@ COMPUTATIONAL_SIGNIFICANT_DISPLAY_LIMIT = 0
 
 @dataclass(frozen=True)
 class ComputationalTable:
-    role: str
-    table_id: str
     artifact_id: str
-    title: str
     path: Path
     sha256: str
     size_bytes: int
     row_count: int
-    display_row_limit: int
     header: tuple[str, ...]
     display_rows: tuple[tuple[str, ...], ...]
     snapshot: FileSnapshot
-
-    @property
-    def displayed_row_count(self) -> int:
-        return len(self.display_rows)
-
-    @property
-    def truncated(self) -> bool:
-        return self.displayed_row_count < self.row_count
 
 
 @dataclass(frozen=True)
@@ -112,34 +100,22 @@ _VALIDATION_CHECK_IDS = (
 _ROLE_SPECS = (
     (
         "all_sites",
-        "computational_all_sites",
         "step09_cmh_all_sites_v1",
-        "cmh_all_sites",
-        "Step 09 all CMH-ranked candidates",
         COMPUTATIONAL_ALL_SITES_DISPLAY_LIMIT,
     ),
     (
         "significant_sites",
-        "computational_significant_sites",
         "step09_cmh_significant_sites_v1",
-        "cmh_significant_sites",
-        "Step 09 threshold-passing CMH-ranked candidates",
         COMPUTATIONAL_SIGNIFICANT_DISPLAY_LIMIT,
     ),
     (
         "summary",
-        "computational_summary",
         "step09_cmh_summary_v1",
-        "cmh_summary",
-        "Step 09 computational-analysis summary",
         1,
     ),
     (
         "mutation_spectrum",
-        "computational_mutation_spectrum",
         "step09_mutation_spectrum_tsv_v1",
-        "mutation_spectrum",
-        "Step 09 canonical mutation spectrum",
         len(step09.CANONICAL_MUTATIONS),
     ),
 )
@@ -150,7 +126,7 @@ def _select_artifacts(
 ) -> tuple[dict[str, AnalysisReportArtifactV1], str | None]:
     selected = {
         role: artifacts[adapter]
-        for role, _table_id, adapter, _suffix, _title, _limit in _ROLE_SPECS
+        for role, adapter, _limit in _ROLE_SPECS
         if adapter in artifacts
     }
     if _VALIDATION_ADAPTER in artifacts:
@@ -158,7 +134,7 @@ def _select_artifacts(
     missing = [
         adapter
         for adapter in (
-            *(spec[2] for spec in _ROLE_SPECS),
+            *(spec[1] for spec in _ROLE_SPECS),
             _VALIDATION_ADAPTER,
         )
         if adapter not in artifacts
@@ -213,15 +189,11 @@ def _inspect_validation(
                 f"{expected_check_id}={row['status'] or '<empty>'}"
             )
     return ComputationalTable(
-        role="validation",
-        table_id="computational_validation",
         artifact_id=record.artifact_id,
-        title="Step 09 owner-validation report",
         path=path,
         sha256=snapshot.sha256,
         size_bytes=snapshot.size_bytes,
         row_count=len(rows),
-        display_row_limit=len(_VALIDATION_CHECK_IDS),
         header=header,
         display_rows=tuple(rows),
         snapshot=snapshot,
@@ -310,9 +282,6 @@ def _source_table(
 def _projection_table(
     record: AnalysisReportArtifactV1,
     *,
-    role: str,
-    table_id: str,
-    title: str,
     display_limit: int,
     admitted_source: tuple[Path, Any],
     canonical_path: Path,
@@ -341,15 +310,11 @@ def _projection_table(
             f"observed {observed_row_count}; expected {record.row_count}"
         )
     return ComputationalTable(
-        role=role,
-        table_id=table_id,
         artifact_id=record.artifact_id,
-        title=title,
         path=path,
         sha256=snapshot.sha256,
         size_bytes=snapshot.size_bytes,
         row_count=observed_row_count,
-        display_row_limit=display_limit,
         header=header,
         display_rows=tuple(displayed),
         snapshot=snapshot,
@@ -501,13 +466,10 @@ def admit_computational_results(
         ),
     }
     tables: dict[str, ComputationalTable] = {}
-    for role, table_id, _adapter, _suffix, title, display_limit in _ROLE_SPECS:
+    for role, _adapter, display_limit in _ROLE_SPECS:
         canonical_path, canonical_header, canonical_row_count = projections[role]
         tables[role] = _projection_table(
             records[role],
-            role=role,
-            table_id=table_id,
-            title=title,
             display_limit=display_limit,
             admitted_source=admitted[role],
             canonical_path=canonical_path,

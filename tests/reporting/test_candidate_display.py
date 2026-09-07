@@ -53,15 +53,11 @@ def _write_table(
         writer.writerows(rows)
     snapshot = _snapshot_regular(path, f"{role} candidate-display fixture")
     return ComputationalTable(
-        role=role,
-        table_id=f"candidate_display_{role}",
         artifact_id=f"analysis.synthetic.{role}",
-        title=role,
         path=path,
         sha256=snapshot.sha256,
         size_bytes=snapshot.size_bytes,
         row_count=len(rows),
-        display_row_limit=0,
         header=header,
         display_rows=(),
         snapshot=snapshot,
