@@ -17,12 +17,11 @@ from emrys.reporting._signals import restore as restore_signal_handlers
 
 from .context import recheck_inputs, recheck_source_identity
 from .models import ArtifactIndexError, BuildContext, LockOwnership
-from .records import (
-    inventory_rows_from_published_index,
-    load_existing_receipt,
-    validate_existing_identity,
+from .records import load_existing_receipt, validate_existing_identity
+from .validation import (
+    validate_existing_transaction,
+    validate_published_transaction,
 )
-from .validation import validate_published_transaction
 
 
 def write_bytes_exclusive(path: Path, payload: bytes) -> None:
@@ -216,34 +215,6 @@ def _admit_output_directory(context: BuildContext) -> None:
             os.close(descriptor)
 
 
-def _validate_existing_transaction(
-    *,
-    ops: ArtifactPublicationOps,
-    existing: dict[str, str],
-    run_id: str,
-    run_contract: dict[str, Any],
-    records_dir: Path,
-    artifacts_path: Path,
-    receipt_path: Path,
-    source_root: Path,
-) -> None:
-    previous_inventory_rows = inventory_rows_from_published_index(artifacts_path)
-    ops.validate_published_transaction(
-        run_id=run_id,
-        run_contract=run_contract,
-        run_contract_path=Path(existing["run_contract_path"]),
-        run_contract_file_sha256=existing["run_contract_file_sha256"],
-        inventory_path=Path(existing["inventory_path"]),
-        inventory_sha256=existing["inventory_sha256"],
-        inventory_rows=previous_inventory_rows,
-        records_dir=records_dir,
-        artifacts_path=artifacts_path,
-        receipt_path=receipt_path,
-        require_current_source_locations=False,
-        source_root=source_root,
-    )
-
-
 def publish_context(
     context: BuildContext,
     *,
@@ -328,8 +299,7 @@ def publish_context(
                 "retry from a fresh dry-run/context"
             )
         if existing is not None:
-            _validate_existing_transaction(
-                ops=ops,
+            validate_existing_transaction(
                 existing=existing,
                 run_id=context.run_id,
                 run_contract=context.run_contract,
@@ -337,6 +307,7 @@ def publish_context(
                 artifacts_path=context.artifacts_path,
                 receipt_path=context.receipt_path,
                 source_root=context.artifact_source_root.root,
+                validator=ops.validate_published_transaction,
             )
 
         temp_records.mkdir()
@@ -432,8 +403,7 @@ def publish_context(
                 validation_error_count = len(rollback_errors)
                 attempt_rollback(
                     "validate restored prior transaction",
-                    lambda: _validate_existing_transaction(
-                        ops=ops,
+                    lambda: validate_existing_transaction(
                         existing=ops.load_existing_receipt(
                             context.receipt_path,
                             context.artifacts_path,
@@ -446,6 +416,7 @@ def publish_context(
                         artifacts_path=context.artifacts_path,
                         receipt_path=context.receipt_path,
                         source_root=context.artifact_source_root.root,
+                        validator=ops.validate_published_transaction,
                     ),
                 )
                 if len(rollback_errors) > validation_error_count and (
