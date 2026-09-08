@@ -8,15 +8,18 @@ interfaces and checks remain in each functional owner's contract.
 
 ### Use the Novogene-provided reference
 
-Use the delivered reference unless a separate migration is approved. The FASTA,
-annotation, sidecars, BED, and STAR index must reconcile to explicit declared
+For the original Novogene EV/PUM1 study, use the delivered reference unless a
+separate migration is approved. This study-specific decision does not select
+a reference for other Projects. Each Project explicitly declares its FASTA
+and annotation; sidecars, BED, and STAR index must reconcile to those
 identities.
 
 ### Build STAR with the declared read-length overhang
 
-Build the reference index with `sjdbOverhang=149` for the declared 150-base
-reads. Validators inspect the configured value rather than infer it from a
-filename.
+The original study declares 150-base reads and `sjdbOverhang=149`. Other
+Projects supply their own explicit index parameters through
+[`project.yaml`](../../../configs/README.md#projectyaml). Validators inspect
+the configured value rather than infer it from a filename.
 
 ### Generate BED12 from GTF
 

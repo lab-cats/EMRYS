@@ -6,8 +6,13 @@ concrete enough to select and scope. It covers correctness, operator experience,
 architecture reduction, developer feedback, dependency maintenance, and release
 presentation.
 
-The user requested this document; implementation of its candidates has not been
-authorized. The [backlog matrix](backlog_matrix.md) remains the only authority
+The companion [optimization campaign](optimization_campaign.md) covers pipeline
+wall time, disk usage, I/O, and memory with its own measurement boundaries.
+
+The user requested this document and its integration with the optimization
+campaign and revised quickstart. Follow-on product and tooling implementation
+still requires separate selection and authority. The
+[backlog matrix](backlog_matrix.md) remains the only authority
 for accepted work, execution status, scores, and final acceptance. Existing row
 references below identify coverage, not duplicate tasks. Numbered headings are
 navigation references, not new backlog IDs. Proposed acceptance below becomes
@@ -24,6 +29,14 @@ contracts, tests, configuration, and documentation were inspected. No product
 tests, benchmarks, scientific runs, or institutional-site execution were
 performed for the audit. Previously recorded local reproductions are identified
 as such; reading their records is not a new reproduction.
+
+The combined documentation change also incorporates the optimization campaign
+from [PR #127](https://github.com/lab-cats/EMRYS/pull/127) at `b59661a3` and the
+scientist quickstart from [PR #130](https://github.com/lab-cats/EMRYS/pull/130) at
+`17e6ed2b`. PR #130 records documentation checks, source/parser review, and five
+focused setup/Doctor tests. Those are its original evidence, not new execution
+performed during this integration. Its completed documentation narrows the
+remaining work in items 9–11 below; institutional qualification remains open.
 
 References to local source below identify the inspected owner at that revision.
 Before selecting a candidate, reconcile its current source, backlog coverage,
@@ -151,6 +164,8 @@ a proposed dependency/correctness correction, not an established reduction.
 **Finding:** [Initialization](../../src/emrys/orchestration/run_coordinator/onboarding.py)
 collects fifteen fields and generates admitted Project bytes, but its preview
 shows only the output root, owned directories, and no-copy policy.
+The revised quickstart explains the scientific suggestions and repeated setup
+answers; the command's generated preview is unchanged.
 
 **Outcome and acceptance:** Display a faithful, readable preview of the already
 generated definition, including reference paths, analysis/cohort choices,
@@ -178,39 +193,50 @@ proposal is adjacent to, but distinct from, the storage-repair issue below.
 constructs a direct qualification plan when storage is unready. Source predicts
 that this cannot satisfy the Slurm qualification requirement; this audit did
 not reproduce a site failure.
+The runbook now documents the supported route: retain a direct default during
+initial preparation, perform compute/finalize storage qualification, and select
+the separate Slurm profile. Doctor's repair-plan implementation is unchanged.
 
-**Outcome and acceptance:** First verify the mismatch through the existing plan
-and admission paths. Then provide a placement-appropriate authorized repair or
-an actionable route to the required qualification. Preserve profile ownership
-and the preview/execute boundary. Local plan proof and institutional execution
-are separate. This is the existing compression-intake discussion 6, still a
-proposed bounded defect investigation.
+**Outcome and acceptance:** Reassess the remaining command-level problem against
+that documented route and verify it through the existing plan and admission
+paths before selecting a repair change. Any selected correction must make
+repair intent and qualification requirements agree without duplicating setup
+machinery. Preserve profile ownership and the preview/execute boundary. Local
+plan proof and institutional execution are separate. This is the existing
+compression-intake discussion 6, still a proposed bounded defect investigation.
 
 ### 10. Complete a novice institutional walkthrough
 
 **Finding:** [Quickstart](../../quickstart.md), [Runbook](../operations/RUNBOOK.md),
-and [profile examples](../../configs/execution_profile.example.yaml) do not yet
-provide a demonstrated fresh-clone-to-Results journey at a named institution.
+and [profile examples](../../configs/execution_profile.example.yaml) now cover
+installation, real-data setup, institution-provided runtimes, compute-node
+preparation, both storage-qualification phases, Slurm profiles, submission,
+recovery, and opening reports. This procedure has not yet been demonstrated by
+a novice operator at a named institution.
 
 **Outcome and acceptance:** Under existing **`SITE-PARITY-01`**, an operator
 without repository-development context follows the maintained instructions
 through site modules, Project creation, profile selection, storage/runtime
 admission, Slurm execution, inspection/recovery when needed, and Results.
 Record concrete friction and qualify the required site semantics at one exact
-revision. Consolidate procedures in their existing homes; hosted success alone
-does not close the site outcome. Site execution needs its own authorization.
+revision. Use the maintained procedures and correct friction observed during
+the walkthrough; hosted success alone does not close the site outcome. Site
+execution needs its own authorization.
 
 ### 11. Align the initial operator environment with Doctor
 
-**Finding:** Quickstart and its hosted golden path install default developer
-groups, while Doctor already uses `--no-default-groups --group workflow`.
+**Finding:** Quickstart now selects `--no-default-groups --group workflow`,
+matching Doctor. The hosted golden-path clone still installs default groups.
+The remaining work is to align that CI bootstrap and verify the documented
+operator environment through the existing golden path.
 
 **Outcome and acceptance:** Start operators with the same admitted runtime
 groups Doctor selects, retaining development dependencies for repository
 checks. A clean environment reaches help, Project creation, Doctor, execution,
-reporting, and inspection. Update the existing quickstart and CI setup; measure
-installation savings before quantifying them. This documentation/configuration
-slice supports `SITE-PARITY-01` without independently closing site acceptance.
+reporting, and inspection. Preserve the updated quickstart and align the
+existing golden-path CI setup; measure installation savings before quantifying
+them. This configuration/verification slice supports `SITE-PARITY-01` without
+independently closing site acceptance.
 
 ### 12. Draft manifests from explicit mate paths
 
@@ -225,6 +251,8 @@ authored biological metadata; preserve missing-mate, duplicate-file, symlink,
 compression, and publication defenses. Prefer retiring inference over adding
 more naming patterns or parallel input modes. This is a new capability
 proposal adjacent to `OPS-03`; hand-authored manifests already remain usable.
+The revised quickstart explicitly documents that route for arbitrary filenames;
+the drafting helper's input restriction remains unchanged.
 
 ## Architecture reduction
 
