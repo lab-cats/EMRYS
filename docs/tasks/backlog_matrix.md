@@ -100,7 +100,6 @@ Every reporting row inherits the [shared report acceptance](#shared-report-accep
 
 | ID | Kind | Status | Importance | Complexity | Required outcome | Acceptance |
 |---|---|---|---:|---:|---|---|
-| `COMPRESS-IMPORT-01` | Developer tooling | Verification pending | `2` | `2` | Consolidate fixed reporting import permissions into the existing exact-exception mechanism. | Preserve all 12 current source/target permissions and their durable purposes, reject neighboring imports, and newly reject stale reporting permissions through existing validation. Retire the separate reporting bypass; add no dependency, policy registry, or checker. Approved tooling-only exception: product code stays unchanged; reduce developer-tool code and preserve independent policy tests. |
 | `COMPRESS-01` | Campaign intake | In progress | `4` | `3` | Select and scope findings from the completed repository review into finite maintenance work. | Reconcile findings with current source and overlapping work; classify each as addressed, current defect, accepted follow-on, or dismissed with rationale. Group examples by root cause, retain unresolved decisions explicitly, and transfer only selected implementation outcomes into scored matrix rows. Verify that every useful decision and accepted outcome has its durable home before deleting the temporary [compression campaign intake](compression_campaign.md). Recording a finding does not select or authorize implementation. |
 
 ## Shared report acceptance
