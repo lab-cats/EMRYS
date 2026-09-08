@@ -829,12 +829,16 @@ that every surrounding owner has been exhaustively audited.
 
 ### Reconciliation, validation, and stopping conditions
 
-The related polish and optimization campaign documents were reviewed through
-[PR #131](https://github.com/lab-cats/EMRYS/pull/131). Their correctness,
-operator-UX, developer-checking, and performance proposals are overlapping
-subject work, not extra compression outcomes to count again. When that work
-is integrated, use links to its durable home rather than copying full
-candidate histories. Reconcile source changes before selecting a slice.
+The related [polish](polish-campaign.md) and
+[optimization](optimization_campaign.md) campaign documents are included
+from [PR #131](https://github.com/lab-cats/EMRYS/pull/131), together with its
+expanded [quickstart](../../quickstart.md) and operator guidance. Their
+correctness, operator-UX, developer-checking, and performance proposals
+remain in those subject homes rather than being counted again as compression
+outcomes. Reconcile documentation findings with the included guidance before
+selection; the broader reader review and institutional walkthrough are not
+completed merely by expanding the quickstart. Reconcile product-source
+changes separately before implementing a slice.
 
 In particular, the four previously recorded recovery owners, artifact CLI
 version admission, timestamp checking, reporting-memory control, and dashboard
