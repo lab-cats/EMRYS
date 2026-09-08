@@ -47,6 +47,11 @@ reads inform item 33; hosted settings are an audit-time observation and must be
 rechecked before selection. No installed-command reproduction, rendered report
 review, performance measurement, or new product test ran during either pass.
 
+The third pass used the same product revision and the campaign at `63effce4`,
+checking open work through PR #137. It refined items 12, 29, and 30 and added
+items 40–44. These findings also come from source/documentation review, without
+new product tests, input-reuse reproductions, installations, or upgrade trials.
+
 References to local source below identify the inspected owner at that revision.
 Before selecting a candidate, reconcile its current source, backlog coverage,
 and overlapping PRs. The [compression intake](compression_campaign.md) contains
@@ -85,6 +90,11 @@ The second pass prioritizes the installed-package journey and runtime identity
 audits, followed by rendered report review. The merge-rule gap is concrete;
 performance additions require complete-command measurements before selecting
 an implementation. Existing backlog coverage stays with its current rows.
+
+The third pass prioritizes the FASTQ admission-parity audit, checks for
+documented commands, and scientific-output discoverability. Provider and
+upgrade evidence refine the existing extension and release outcomes rather
+than create parallel initiatives.
 
 ## Correctness and recovery
 
@@ -267,6 +277,24 @@ more naming patterns or parallel input modes. This is a new capability
 proposal adjacent to `OPS-03`; hand-authored manifests already remain usable.
 The revised quickstart explicitly documents that route for arbitrary filenames;
 the drafting helper's input restriction remains unchanged.
+
+**Admission parity audit:** The [drafting guard][fastq-draft-identity] rejects
+one physical FASTQ reused across sample/mate roles using device and inode;
+its [hard-link test][fastq-draft-test] protects this behavior. By contrast,
+[hand-authored Project normalization][fastq-project-identity] checks only that
+each row's R1 and R2 paths differ. Sample/replicate admission checks labels and
+strata, not equivalent physical-file uniqueness. Source predicts that repeated
+paths across sample rows or hard-linked mate paths can bypass the drafting
+guard; this admission-policy discrepancy was not reproduced through a Run.
+
+Decide the intended physical-file reuse policy, then apply it consistently
+through the existing Project admission owner. Diagnostics should identify both
+conflicting roles. Cover repeated paths across rows, hard-linked mates,
+distinct files, and legitimate reuse of the same Dataset by multiple Analyses.
+Reuse existing descriptor-bound metadata; do not equate identical content
+hashes with biological identity or create another input registry. Scope this
+parity correction separately from the filename-interface decision above and
+quantify any product growth before implementation selection.
 
 ## Architecture reduction
 
@@ -466,6 +494,11 @@ finding or authorization to scan unrelated private data.
 
 **Finding:** [Analysis extension interfaces](../../src/emrys/analyses/README.md)
 exist, but a practical end-to-end provider/reporter walkthrough is missing.
+The [sampled collaborator composition test][provider-composition-test]
+constructs an installed-provider identity and substitutes its loaders. That
+usefully tests composition, but does not demonstrate a separately packaged
+collaborator loading through the real entry points. Existing loader and
+package-identity checks remain complementary evidence.
 
 **Outcome and acceptance:** Demonstrate one minimal working external provider
 and bespoke reporter using the existing entry points. Explain installation,
@@ -475,6 +508,15 @@ example through public production interfaces without a generic workflow DSL
 or test-only production behavior. Consolidate existing extension guidance;
 this is the compression intake's existing documentation candidate, still
 requiring bounded selection and footprint accounting.
+
+Make the example separately installable and exercise actual discovery,
+configuration admission, planning, production, independent validation, and
+reporting without replacing the loader. Retain a small set of literal expected
+outcomes that collaborators can verify against the supported EMRYS version.
+Include rejection of incompatible or changed provider identity. Use the public
+[versioned interface][provider-interface] and its bounded `09`/optional `10`
+capability; add no conformance service, registry, or second plugin framework.
+This sharpens the existing example's acceptance, not a second extension task.
 
 ### 30. Establish a reviewed alpha release path
 
@@ -498,10 +540,16 @@ the versions in `uv.lock`.
 `jsonschema` and `referencing`; the test does not establish compatibility across
 those ranges or their lower bounds. No dependency incompatibility is established.
 
+Historical-schema tests can use [current fixture builders][historical-reader-test],
+while [provider readmission][provider-readmission] intentionally rejects changed
+metadata or implementation. Schema-read support alone therefore does not
+promise that a newer installation can inspect, report on, or resume an older
+Run. This distinction does not invalidate the existing per-schema tests.
+
 **Outcome and acceptance:** Define the supported distributed artifact and an
 exact reviewed revision, then produce coherent versioning, release notes,
 installation instructions, and evidence boundaries. Strengthen the existing
-release outcome with two decisions and their corresponding evidence:
+release outcome with three decisions and their corresponding evidence:
 
 - Decide whether the wheel supports standalone operation, selected utilities,
   or operation paired with an exact checkout. From an isolated installation
@@ -517,6 +565,14 @@ release outcome with two decisions and their corresponding evidence:
   dependency check to inform accurate metadata. Keep one explicit support
   policy; do not multiply platform and dependency matrices without a promise
   they verify. Item 6 retains the separate timestamp-checker issue.
+- For the first supported upgrade transition, state compatibility separately
+  for Project admission, inspection, report regeneration, and resume. Identify
+  which operations require the original environment. Retain a tiny artifact
+  actually produced by the named predecessor revision and exercise promised
+  operations through the new public command. Verify that unsupported resume
+  or provider changes fail closed without modifying the Run. Reconcile
+  `QUAL-05` and historical-reader contracts; do not imply universal backward
+  compatibility, automatic migration, or weaker source identity.
 
 Reuse existing package checks and environment owners. These are release
 acceptance details, separate from update bots and vulnerability scanning;
@@ -686,6 +742,104 @@ status database, persistent digest cache, or weaker verification mode. This is
 an optional public output contract requiring explicit selection and footprint
 approval, not a dashboard replacement or a latency optimization.
 
+## Documented workflows and contributor experience
+
+### 40. Keep documented commands working
+
+**Finding:** The [documentation gate][documentation-gate] validates ownership,
+links, headings, and diagram structure, not fenced command examples. Public
+CLI tests exercise their own fixtures. PR #130's command/parser review was
+evidence for that revision, not an ongoing check against later documentation
+or command changes.
+
+**Outcome and acceptance:** Select a finite set of maintained quickstart and
+runbook examples for repeatable parser and safe-fixture checks, using the
+existing Markdown parser, public CLI, documentation-check owner, and golden
+path where applicable. Verify quoting, continuation, placeholders, command
+forms, and associated example manifests/configuration without maintaining a
+second copy of the tutorial. A broken selected command must fail the applicable
+gate. Distinguish syntax/admission checks from an executed user journey; never
+execute arbitrary fenced blocks, installation commands, or scheduler examples
+as a documentation check. Evaluate established tools before any bespoke
+extraction machinery. This proposed tooling outcome complements items 10 and
+11 without claiming institutional execution or a new documentation framework.
+
+### 41. Show scientific output locations when reports are absent
+
+**Finding:** Normal [inspection output][inspect-output] derives its Results
+locations from verified reports. Scientific artifact paths appear in the debug
+task-record dump. A completed processing-only Run directs the user to debug
+detail, while a completed full Run without reports offers report generation.
+Users who deliberately skip HTML or complete processing for reuse should be
+able to locate their admitted outputs directly.
+
+**Outcome and acceptance:** Project a concise set of scientific output
+locations from existing admitted task/module declarations in normal human
+inspection. Review the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+alongside presentation changes. Cover processing-only, reporting-skipped,
+reporting-failed-but-science-complete, blocked, and collaborator-module cases;
+expose only correctly admitted output locations. Preserve distinct scientific
+and reporting status and report-receipt checks. Add no copying, report,
+registry, cache, or artifact store. This is a human-usability proposal separate
+from item 39's optional machine output; quantify any product growth.
+
+### 42. Give Run selection meaningful Analysis context
+
+**Finding:** The [Run picker][run-picker] lists deterministic two-word names,
+adding full IDs only for collisions; an [existing test][run-picker-test]
+asserts that menu. This makes several Analyses or parameter revisions hard to
+distinguish before selection. [Attempt materialization][attempt-context]
+already records creation time and request label.
+
+**Outcome and acceptance:** Enrich the current selector with admitted Analysis
+context and recorded creation time where available. Preserve name/full-ID/
+prefix selection, collision handling, cancellation, historical reads, and
+explicit automation selection. Missing or malformed context must remain
+visible rather than hide a Run. Labels and times aid orientation and never
+establish completion or fresh integrity. Reuse existing admission helpers;
+avoid full scientific-file hashing for every menu entry, coordinating with
+optimization item 11. Add no mutable metadata or Run-list registry. This is a
+bounded optional presentation change requiring a quantified footprint proposal.
+
+### 43. Report the installed package version through the public CLI
+
+**Finding:** The package [defines its version][package-version], but the
+[public parser][public-command-parser] requires a command and provides no
+conventional `emrys --version` option. No version invocation was attempted
+during this audit.
+
+**Outcome and acceptance:** The installed command reports its actual package
+version from an arbitrary directory without requiring a Project, probing
+scientific tools, or writing state. If source identity is included, reuse
+existing source authority, distinguish known from unavailable information, and
+never infer the installed package's commit from an unrelated current directory.
+Audit the checkout-mismatch guard that currently runs before argument parsing;
+decide the informational option's behavior explicitly without silently bypassing
+that boundary. Preserve existing command dispatch. A version response does not
+prove runtime readiness, cleanliness, or reproducibility. This small public-CLI
+proposal supports item 30 and needs its own quantified product-footprint decision.
+
+### 44. Provide a concise contributor and problem-reporting route
+
+**Finding:** The audited repository has no repository-owned issue forms or PR
+template. Maintainer guidance already lives in the workflow kernel and
+engineering conventions; troubleshooting already identifies useful diagnostic
+facts and protects study data. The missing outcome is a clear public route
+that connects those existing instructions to an actionable report.
+
+**Outcome and acceptance:** Reconcile effective inherited GitHub defaults, then
+use [native issue forms][issue-forms] or the smallest suitable template for
+bugs/setup problems, plus a concise contribution/PR entry point. Request the
+revision, command, expected/observed behavior, and a minimal synthetic
+reproduction. Link the existing [workflow](../operations/WORKFLOW.md),
+[engineering conventions](../operations/ENGINEERING_CONVENTIONS.md), and
+[troubleshooting](../operations/TROUBLESHOOTING.md) rather than duplicate them.
+Route protected material only through an explicitly selected appropriate
+channel; do not solicit raw study data, credentials, or full logs in public
+forms or invent a maintainer contact. Review rendered forms and links with
+synthetic examples. Keep this small documentation/GitHub-configuration outcome
+separate from new diagnostic collectors, telemetry, or automatic uploads.
+
 ## Existing capabilities and overlapping work
 
 The following were already present at audit time: guided Project creation,
@@ -753,3 +907,17 @@ campaign document only after its useful content has a verified durable home.
 [inspect-output]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/control.py#L1684-L1830
 [inspect-result]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/inspection.py#L127-L143
 [release-constraints]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/tests/test_package_distribution.py#L235-L288
+[fastq-draft-identity]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/onboarding.py#L538-L554
+[fastq-draft-test]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/tests/orchestration/run_coordinator/test_onboarding.py#L342-L364
+[fastq-project-identity]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/normalization.py#L231-L275
+[provider-composition-test]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/tests/orchestration/run_coordinator/test_materialization.py#L861-L939
+[provider-interface]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/analyses/__init__.py#L23-L149
+[historical-reader-test]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/tests/contracts/orchestration/test_application_model_contracts.py#L503-L517
+[provider-readmission]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/analyses/__init__.py#L517-L540
+[documentation-gate]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/scripts/documentation/validate_structure.py#L289-L300
+[run-picker]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/control.py#L144-L173
+[run-picker-test]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/tests/orchestration/run_coordinator/test_run_locator.py#L120-L144
+[attempt-context]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/materialization.py#L1682-L1688
+[package-version]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/__init__.py#L9
+[public-command-parser]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/__main__.py#L225-L298
+[issue-forms]: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/configuring-issue-templates-for-your-repository
