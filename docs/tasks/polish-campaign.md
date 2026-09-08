@@ -331,14 +331,11 @@ deferred status and evidence-deletion authority remain with the existing row.
 
 ### 15. Check every script in the Bash syntax gate
 
-**Finding:** [Make's static gate](../../scripts/make_quality.mk) passes thirteen
-filenames to one `bash -n` invocation, which parses only the first script.
-
-**Outcome and acceptance:** Parse each declared script and propagate failures
-through both `smoke` and `validation-static`. A syntax error in a non-first
-entry must fail both callers. Reconcile the existing Make expansion fixture.
-This is a small new tooling/test correction, separate from ShellCheck and
-formatting; no product changes are needed.
+**Disposition:** The approved correction makes [Make's shared syntax gate](../../scripts/make_quality.mk)
+parse each declared script separately and stop on failure. Both `smoke` and
+`validation-static` use that gate; a malformed second or third script is a
+regression case. The thirteen-path roster is preserved. ShellCheck, formatting,
+and any roster expansion remain separate selections.
 
 ### 16. Integrate ShellCheck
 

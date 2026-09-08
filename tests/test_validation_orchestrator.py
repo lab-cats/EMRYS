@@ -126,6 +126,46 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     assert "skipping dead-code scan" not in quality_makefile
 
 
+@pytest.mark.parametrize("target", ["smoke", "validation-static"])
+@pytest.mark.parametrize("invalid_index", [None, 1, 2])
+def test_shell_syntax_gates_parse_each_script_without_execution(
+    tmp_path: Path,
+    target: str,
+    invalid_index: int | None,
+) -> None:
+    scripts = [tmp_path / f"script-{index}.sh" for index in range(3)]
+    for index, script in enumerate(scripts):
+        script.write_text(
+            '#!/bin/bash\n: > "${0}.executed"\nexit 97\n'
+            + ("if true; then\n" if index == invalid_index else ""),
+            encoding="utf-8",
+        )
+
+    result = subprocess.run(
+        [
+            "make",
+            "-s",
+            "-f",
+            str(REPO_ROOT / "scripts" / "make_quality.mk"),
+            target,
+            "REPORT_PYTHON_BIN=true",
+            "SHELL_SYNTAX_PATHS=" + " ".join(str(script) for script in scripts),
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if invalid_index is None:
+        assert result.returncode == 0, result.stdout + result.stderr
+    else:
+        assert result.returncode != 0, result.stdout + result.stderr
+        assert str(scripts[invalid_index]) in result.stderr
+        assert "syntax error" in result.stderr
+    assert not list(tmp_path.glob("*.executed"))
+
+
 def test_selected_environment_lock_check_is_read_only_and_explicit() -> None:
     observed: dict[str, object] = {}
 

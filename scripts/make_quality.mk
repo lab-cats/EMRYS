@@ -177,7 +177,7 @@ report-test:
 		tests/reporting/test_transaction_validation.py
 
 define STATIC_SHELL_CHECKS
-bash -n $(SHELL_SYNTAX_PATHS)
+for script in $(SHELL_SYNTAX_PATHS); do bash -n "$$script" || exit $$?; done
 endef
 
 validation-static: lint documentation-check
