@@ -253,14 +253,26 @@ def test_storage_measurement_preserves_complete_rows_and_io_order(
 
     calls: list[tuple[str, Path]] = []
     real_lstat = Path.lstat
+    real_is_symlink = Path.is_symlink
+    inside_is_symlink = False
 
     def observed_lstat(path: Path):
-        calls.append(("lstat", path))
+        if not inside_is_symlink:
+            calls.append(("lstat", path))
         if path == storage and outcome.startswith("missing_"):
             raise FileNotFoundError("root\tmissing\n\x00")
         if path == child and outcome == "file_error":
             raise OSError("file inspection failed")
         return real_lstat(path)
+
+    def observed_is_symlink(path: Path):
+        nonlocal inside_is_symlink
+        calls.append(("is_symlink", path))
+        inside_is_symlink = True
+        try:
+            return real_is_symlink(path)
+        finally:
+            inside_is_symlink = False
 
     def observed_walk(path: Path, *, followlinks: bool):
         assert followlinks is False
@@ -279,6 +291,7 @@ def test_storage_measurement_preserves_complete_rows_and_io_order(
         return SimpleNamespace(f_blocks=1000, f_bfree=300, f_bavail=200, f_frsize=4)
 
     monkeypatch.setattr(Path, "lstat", observed_lstat)
+    monkeypatch.setattr(Path, "is_symlink", observed_is_symlink)
     monkeypatch.setattr(measurement.os, "walk", observed_walk)
     monkeypatch.setattr(measurement.os, "statvfs", observed_capacity)
     generated = measurement.outputs(roots_data, policy_data, roots, policies)
@@ -305,8 +318,8 @@ def test_storage_measurement_preserves_complete_rows_and_io_order(
         expected_calls.extend(
             [
                 ("walk", storage),
-                ("lstat", nested),
-                ("lstat", linked_directory),
+                ("is_symlink", nested),
+                ("is_symlink", linked_directory),
                 ("lstat", storage / "file"),
                 ("lstat", storage / "link"),
             ]
