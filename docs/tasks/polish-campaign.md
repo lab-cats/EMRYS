@@ -408,17 +408,12 @@ tooling-only correction adjacent to `CI-01`, not a new test registry.
 
 ### 22. Run ordinary CI automatically on supported stacked PRs
 
-**Finding:** [PR triggers](../../.github/workflows/ci.yml) restrict automatic
-checks to a `master` base. PR #117 records manual dispatch compensating for that
-restriction.
-
-**Outcome and acceptance:** Settle the supported PR-base policy, then make a PR
-against a development branch receive the agreed ordinary checks automatically.
-Preserve intended master, merge-group, push, scheduled, and manual behavior,
-including opt-in long checks and hosted rules. This is a proposed extension of
-`CI-01`; manual lane selection and nonblocking stacked-work procedures already
-exist and are not this outcome. Item 33 separately addresses which completed
-checks GitHub requires before a merge.
+**Disposition:** The approved `CI-01` correction removes the `master`-only PR
+base filter. The [validation policy](../design/TEST_BASELINE.md#validation-lanes)
+now covers all PR bases while retaining master-only push runs and the existing
+merge-group, scheduled, and manual behavior. Acceptance requires an actual
+stacked PR to start ordinary hosted CI automatically; configuration checks
+alone do not prove dispatch. Item 33 separately addresses required merge checks.
 
 ### 23. Reduce the measured CI critical path
 

@@ -81,6 +81,11 @@ independent Python coverage, installed-wheel, shell-owner, and guarded-real-R
 lanes. CI may run the same inventory in verified shards and supplies selected
 long real-synthetic lanes.
 
+Ordinary CI runs for pull requests against any base branch, including stacked
+development branches, and for merge groups. Push-triggered CI remains limited
+to `master`. Scheduled and manually selected long lanes retain their existing
+selection rules; a stacked PR does not opt into them.
+
 Use focused owner tests during implementation and the complete applicable gate
 once on the final affected state. Exact development commands live in the
 [`engineering conventions`](../operations/ENGINEERING_CONVENTIONS.md#development-validation).

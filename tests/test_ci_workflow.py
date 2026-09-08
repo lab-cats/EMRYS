@@ -57,6 +57,13 @@ def _expression(value: object) -> str:
     return " ".join(str(value).split())
 
 
+def test_automatic_ci_accepts_every_pr_base_but_only_master_pushes() -> None:
+    triggers = _workflow_triggers()
+    assert triggers["pull_request"] is None
+    assert triggers["push"] == {"branches": ["master"]}
+    assert "merge_group" in triggers
+
+
 def test_manual_lane_triggers_are_closed_and_independently_selectable() -> None:
     triggers = _workflow_triggers()
     assert triggers["schedule"] == [

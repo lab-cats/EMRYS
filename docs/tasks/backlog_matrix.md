@@ -1,6 +1,6 @@
 # EMRYS backlog matrix
 
-Last reconciled: **2026-09-07**
+Last reconciled: **2026-09-08**
 
 This is EMRYS's only work backlog. It owns accepted current work, status,
 cursory Importance and Complexity, required outcomes, and acceptance. Git
@@ -50,7 +50,7 @@ authority or impose ordering.
 
 | ID | Kind | Status | Importance | Complexity | Required outcome | Acceptance |
 |---|---|---|---:|---:|---|---|
-| `CI-01` | CI usability and performance | In progress | `4` | `3` | Make exact-head validation easy to select manually and shorten routine CI feedback. | Manual dispatch independently composes the ordinary static/documentation/wheel, shell, guarded-R, managed-runtime/golden-path, Python 3.14, Python 3.11, 130-pair, and 100,000-pair groups; long lanes remain opt-in; automatic merge evidence and test semantics do not weaken. Measure the remaining critical path and remove duplicated setup or work before setting a justified duration target. |
+| `CI-01` | CI usability and performance | In progress | `4` | `3` | Make validation automatic for stacked PRs, easy to select manually, and faster to return routine feedback. | PRs against any base automatically receive ordinary CI; push runs remain master-only. Manual dispatch independently composes the ordinary static/documentation/wheel, shell, guarded-R, managed-runtime/golden-path, Python 3.14, Python 3.11, 130-pair, and 100,000-pair groups; long lanes remain opt-in; automatic merge evidence and test semantics do not weaken. Measure the remaining critical path and remove duplicated setup or work before setting a justified duration target. |
 | `QUAL-01` | Test performance | Open | `3` | `3` | Make qualification-test selection fast enough for routine development. | Measure duration and subprocess/NFS cost, set a justified target, and meet it without dropping coverage or fault cases. |
 | `QUAL-02` | Defect verification | Verification pending | `4` | `2` | Replace the brittle resume-fixture startup deadline with bounded readiness and useful failure diagnostics. | The retained qualification environment proves bounded readiness, early-exit output, and guaranteed cleanup. |
 | `QUAL-03` | Compatibility verification | Verification pending | `4` | `2` | Admit the accepted GNU Make 3.81 and 4.3 dry-run renderings without normalizing malformed output. | GNU Make 4.3 passes and mixed or otherwise invalid renderings still fail. |
