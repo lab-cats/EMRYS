@@ -232,10 +232,10 @@ public-policy, dependency, evidence-deletion, or cluster authority.
 
 ### Recommended continuation and existing ownership
 
-The strongest next primary objective is completing reporting ownership and
-declaration consolidation. The next larger retirement family is the older
-stage-publication modes. Small construction cleanups remain bounded options;
-they do not establish that the larger campaign is finished.
+Reporting ownership and declaration consolidation remain open. The selected
+larger retirement is canonical BAM's replacement mode; the remaining older
+publication modes require their own qualification and policy decisions.
+Small construction cleanups do not establish that the campaign is finished.
 
 | Proposed order | Finite outcome | Existing coverage and next gate |
 |---|---|---|
@@ -420,10 +420,16 @@ owners into one slice.
 
 ### Older publication modes
 
-**Proposed public policy, not yet approved.** Retain independently useful
-standalone commands, but make their publication create-exclusive: existing
-outputs are preserved and replacement is refused. Normal Run materialization
-already selects `--no-clobber` for the shell owners below, and the paired-CMH
+Canonical BAM uses one create-exclusive publication path under its approved
+[owner contract](../../src/emrys/stages/canonical_bam/CONTRACT.md#producer-publication-boundary).
+Its replacement, backup, and restoration mode is retired. Existing backups and
+ambiguous residue remain operator-owned recovery state; the contract preserves
+the historical restoration defect and the surviving cleanup limitations.
+
+**Proposed policy for the remaining owners, not yet approved.** Retain
+independently useful standalone commands, but make their publication
+create-exclusive: existing outputs are preserved and replacement is refused.
+Normal Run materialization already selects `--no-clobber` for the shell owners below, and the paired-CMH
 provider selects it for its producer. This does not establish that the
 standalone interfaces are unused or that every surviving failure path is
 already sufficient.
@@ -451,13 +457,11 @@ five separate versions of the common rollback rule.
 | RSeQC first | [RSeQC producer](../../src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh): always use existing staged report capture, retiring direct-to-final capture and mode-dependent publication. | One tool invocation and one report make this the smallest initial proof boundary. Preserve native report text, orientation evidence, sample-ID admission decisions, and failure diagnostics. Approximate branch opportunity: 10–20 product lines. |
 | BAM QC second | [QC producer](../../src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh): retire final-versus-staged capture for its two outputs. | Preserve empty quickcheck success-marker semantics, nonempty success behavior, native flagstat text, and producer/validator interpretation differences. Approximate branch opportunity: 12–22 product lines. |
 | Duplicate marking | [Picard producer](../../src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh): retire direct destinations and mode branches for BAM, index, and metrics. | Preserve `REMOVE_DUPLICATES=false`, Java/Picard admission, indexing, three-output validation, input/JAR identities, and partial-publication recovery. Approximate branch opportunity: 15–25 product lines. |
-| Canonical BAM | [Canonicalization producer](../../src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh): retire predecessor backup creation, replacement, restoration, and backup cleanup. | Retain sort bypass, canonical-input reuse, exact read-group/record checks, indexing, input hashes, staged-file identity, and final checks. Approximate replacement opportunity: 60–90 product lines, excluding the separate print-array proposal. |
 | Paired CMH | [CMH producer](../../src/emrys/analyses/paired_cmh_candidate_ranking/producer.py): retire six-file predecessor backup/replacement and restoration. | Retain R computation, paired strata, statistical/threshold admission, six outputs and headers, summary-last publication, process-group handling, and native/historical readers. Recognize existing `.previous` recovery residue even if new attempts cease creating it. Approximate branch opportunity: 35–60 product lines. |
 
-The revised rough total is 132–217 product lines before recovery and
-compatibility costs. A closer branch review narrowed the earlier 205–345
-estimate: QC, RSeQC, and duplicate marking primarily shed mode conditionals,
-sentinel digest values, and target aliases; their substantive staging and
+The remaining rough total is 72–127 product lines before recovery and
+compatibility costs. QC, RSeQC, and duplicate marking primarily shed mode
+conditionals, sentinel digest values, and target aliases; their substantive staging and
 protection code remains. Their main additional value is a consistent safer
 publication policy. Qualify each slice against Rule 5 rather than treating
 that policy value as an automatic compression exception.
