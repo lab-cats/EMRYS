@@ -350,14 +350,12 @@ syntax checks. Add a maintained tool integration, not another shell framework.
 
 ### 17. Broaden Ruff correctness checks
 
-**Finding:** [Ruff configuration](../../pyproject.toml) currently selects only
-`E9`.
-
-**Outcome and acceptance:** Enable a reviewed correctness subset, including
-useful undefined-name detection, through the existing lint command. Triage
-actual findings and verify affected behavior in its owner. Use the installed
-[Ruff linter](https://docs.astral.sh/ruff/linter/); quantify fixes before approving
-a broader scope. This outcome is separate from formatting.
+**Disposition:** The approved [Ruff configuration](../../pyproject.toml) selects
+`E9`, `F63`, `F7`, and `F82` through the existing lint command. This subset passes
+unchanged product source using the locked Ruff version. Broader lint groups
+still need owner-specific review: unused-import diagnostics include live
+re-exports, and some suggested fixes change exception or iteration semantics.
+Formatting remains a separate selection.
 
 ### 18. Adopt consistent Python formatting
 
