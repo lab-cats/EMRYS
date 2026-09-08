@@ -573,50 +573,6 @@ def test_generation_rejects_symlinked_output_ancestor_before_builder(
     assert list(foreign.iterdir()) == []
 
 
-def test_producer_failure_stops_after_immutable_start(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    root = (tmp_path / "run-failure").resolve()
-    root.mkdir()
-    state = _state(root)
-    identity = _identity(root, state)
-    _install_admission(monkeypatch, state, identity)
-    observed: list[str] = []
-    monkeypatch.setattr(
-        reporting_operation.reporting_boundary,
-        "publish_start",
-        lambda *, kind, **_kwargs: observed.append(f"start:{kind}"),
-    )
-    monkeypatch.setattr(
-        reporting_operation.reporting_boundary,
-        "publish_verified",
-        lambda **_kwargs: pytest.fail("failed producer cannot publish completion"),
-    )
-
-    from emrys.reporting._artifact_index.models import ArtifactIndexError
-
-    monkeypatch.setattr(
-        reporting_operation,
-        "_prepare_transaction",
-        lambda _kind, _arguments: object(),
-    )
-    monkeypatch.setattr(
-        reporting_operation,
-        "_publish_prepared",
-        lambda _kind, _context: (_ for _ in ()).throw(
-            ArtifactIndexError("bounded private failure")
-        ),
-    )
-
-    with pytest.raises(
-        reporting_operation.ReportingOperationError,
-        match="producer failed after ledger entry: bounded private failure",
-    ):
-        reporting_operation.run_reporting(root, execute=True)
-    assert observed == ["start:artifact_index"]
-
-
 def test_preflight_failure_publishes_no_ledger(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

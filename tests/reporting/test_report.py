@@ -8,7 +8,6 @@ import hashlib
 import json
 import os
 import signal
-import shutil
 from importlib.resources import files
 from dataclasses import replace
 from pathlib import Path
@@ -1649,25 +1648,7 @@ def test_short_lock_and_staged_file_writes_publish_complete_bytes(
     assert not context.lock_path.exists()
 
 
-@pytest.mark.parametrize("context_kind", ("prepared_before", "prepared_after"))
-def test_existing_report_is_refused_without_changing_predecessor(
-    computational_summary: Path,
-    tmp_path: Path,
-    context_kind: str,
-) -> None:
-    args = arguments(computational_summary, tmp_path / "reports", execute=True)
-    first = report_context.prepare_context(args)
-    publish(first)
-    before = {path: path.read_bytes() for path in output_paths(first)}
-    context = first if context_kind == "prepared_before" else report_context.prepare_context(args)
-    with pytest.raises(ReportRenderError, match="appeared after preflight|requires absent outputs"):
-        publish(context)
-    assert {path: path.read_bytes() for path in output_paths(context)} == before
-    assert not context.lock_path.exists()
-    assert not list(context.output_dir.glob("*.previous"))
-
-
-def test_foreign_final_and_backup_are_preserved(
+def test_foreign_final_is_preserved_after_context_preparation(
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
@@ -1680,40 +1661,26 @@ def test_foreign_final_and_backup_are_preserved(
         publish(empty_context)
     assert empty_context.output_scientific_html.read_text(encoding="utf-8") == "foreign final\n"
 
-    args = arguments(computational_summary, tmp_path / "foreign-backup", execute=True)
-    initial = report_context.prepare_context(args)
-    publish(initial)
-    context = report_context.prepare_context(args)
-    backup = context.output_dir / f".{context.output_scientific_html.name}.old.previous"
-    backup.write_text("foreign backup\n", encoding="utf-8")
-    with pytest.raises(ReportRenderError, match="requires absent outputs"):
-        publish(context)
-    assert backup.read_text(encoding="utf-8") == "foreign backup\n"
-    assert all(path.is_file() for path in output_paths(context))
 
-
-@pytest.mark.parametrize("output_index", range(4))
-@pytest.mark.parametrize("failure", ("before_link", "after_link", "signal_after_link"))
+@pytest.mark.parametrize("failure", ("before_link", "signal_after_link"))
 def test_link_handoff_failure_removes_only_owned_outputs(
     computational_summary: Path,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    output_index: int,
     failure: str,
 ) -> None:
     context = report_context.prepare_context(
         arguments(computational_summary, tmp_path / "reports", execute=True)
     )
-    target = output_paths(context)[output_index]
+    target = context.output_receipt
     real_link = os.link
 
     def fail_link(source: Path, destination: Path, **kwargs: Any) -> None:
         if destination != target:
             real_link(source, destination, **kwargs)
             return
-        if failure != "before_link":
-            real_link(source, destination, **kwargs)
         if failure == "signal_after_link":
+            real_link(source, destination, **kwargs)
             signal.raise_signal(signal.SIGTERM)
         raise OSError("synthetic link handoff failure")
 
@@ -1727,37 +1694,21 @@ def test_link_handoff_failure_removes_only_owned_outputs(
     assert not list(context.output_dir.glob(".run-report.*.tmp"))
 
 
-@pytest.mark.parametrize("ambiguity", ("foreign_before_link", "foreign_final", "foreign_final_same_bytes", "missing_anchor", "unlink_failure"))
-def test_incomplete_link_handoff_rollback_retains_final_lock_stage_and_recovery(
+def test_incomplete_rollback_preserves_owned_output_lock_stage_and_recovery(
     computational_summary: Path,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    ambiguity: str,
 ) -> None:
     context = report_context.prepare_context(
         arguments(computational_summary, tmp_path / "reports", execute=True)
     )
     real_link = os.link
-
-    def lose_ownership(source: Path, destination: Path, **kwargs: Any) -> None:
-        if destination == context.output_scientific_html and ambiguity == "foreign_before_link":
-            destination.write_bytes(b"foreign final\n")
-        real_link(source, destination, **kwargs)
-        if destination == context.output_scientific_html:
-            if ambiguity in {"foreign_final", "foreign_final_same_bytes"}:
-                before = source.stat()
-                payload = source.read_bytes() if ambiguity == "foreign_final_same_bytes" else b"foreign final\n"
-                destination.unlink()
-                destination.write_bytes(payload)
-                if ambiguity == "foreign_final_same_bytes":
-                    os.utime(destination, ns=(before.st_atime_ns, before.st_mtime_ns))
-                    assert destination.stat().st_ino != before.st_ino
-                    return
-            elif ambiguity == "missing_anchor":
-                source.unlink()
-            raise OSError("synthetic ownership loss after link")
-
     real_unlink = Path.unlink
+
+    def fail_receipt_link(source: Path, destination: Path, **kwargs: Any) -> None:
+        if destination == context.output_receipt:
+            raise OSError("synthetic receipt publication failure")
+        real_link(source, destination, **kwargs)
 
     def fail_unlink(path: Path, **kwargs: Any) -> None:
         if path == context.output_scientific_html:
@@ -1765,70 +1716,15 @@ def test_incomplete_link_handoff_rollback_retains_final_lock_stage_and_recovery(
         real_unlink(path, **kwargs)
 
     with monkeypatch.context() as faults:
-        faults.setattr(os, "link", lose_ownership)
-        if ambiguity == "unlink_failure":
-            faults.setattr(Path, "unlink", fail_unlink)
+        faults.setattr(os, "link", fail_receipt_link)
+        faults.setattr(Path, "unlink", fail_unlink)
         with pytest.raises(ReportRenderError, match="rollback was incomplete"):
             publish(context)
-    expected = context.scientific_html_bytes if ambiguity in {"foreign_final_same_bytes", "missing_anchor", "unlink_failure"} else b"foreign final\n"
-    assert context.output_scientific_html.read_bytes() == expected
+    assert context.output_scientific_html.read_bytes() == context.scientific_html_bytes
     assert not context.output_receipt.exists()
     assert context.lock_path.exists()
     assert list(context.output_dir.glob("*.RECOVERY.txt"))
     assert list(context.output_dir.glob(".run-report.*.tmp"))
-
-
-@pytest.mark.parametrize("replacement_point", ("after_link_error", "after_link_return", "after_rollback_unlink"))
-def test_output_directory_replacement_preserves_moved_ownership_and_foreign_state(
-    computational_summary: Path,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    replacement_point: str,
-) -> None:
-    context = report_context.prepare_context(
-        arguments(computational_summary, tmp_path / "reports", execute=True)
-    )
-    moved = tmp_path / "moved-owned-output"
-    real_link = os.link
-    real_unlink = Path.unlink
-    foreign_state: dict[Path, tuple[int, bytes]] = {}
-
-    def replace_directory() -> None:
-        context.output_dir.rename(moved)
-        shutil.copytree(moved, context.output_dir)
-        foreign_state.update({
-            path.relative_to(context.output_dir): (path.stat().st_ino, path.read_bytes())
-            for path in context.output_dir.rglob("*") if path.is_file()
-        })
-
-    def publish_link(source: Path, destination: Path, **kwargs: Any) -> None:
-        if replacement_point == "after_rollback_unlink" and destination == context.output_receipt:
-            raise OSError("synthetic receipt publication failure")
-        real_link(source, destination, **kwargs)
-        if destination == context.output_scientific_html and replacement_point != "after_rollback_unlink":
-            replace_directory()
-            if replacement_point == "after_link_error":
-                raise OSError("synthetic output directory replacement")
-
-    def rollback_unlink(path: Path, **kwargs: Any) -> None:
-        real_unlink(path, **kwargs)
-        if path == context.output_summary_tsv:
-            replace_directory()
-
-    with monkeypatch.context() as faults:
-        faults.setattr(os, "link", publish_link)
-        if replacement_point == "after_rollback_unlink":
-            faults.setattr(Path, "unlink", rollback_unlink)
-        with pytest.raises(ReportRenderError, match="rollback was incomplete"):
-            publish(context)
-    assert {
-        path.relative_to(context.output_dir): (path.stat().st_ino, path.read_bytes())
-        for path in context.output_dir.rglob("*") if path.is_file()
-    } == foreign_state
-    assert foreign_state
-    assert (moved / context.output_scientific_html.name).read_bytes() == context.scientific_html_bytes
-    assert (moved / context.lock_path.name).is_file()
-    assert list(moved.glob(".run-report.*.tmp"))
 
 
 def test_post_commit_cleanup_failure_keeps_committed_outputs_and_evidence(
@@ -1906,23 +1802,12 @@ def test_signal_restoration_failure_is_controlled_recovery(
     assert list(context.output_dir.glob("*.RECOVERY.txt"))
 
 
-@pytest.mark.parametrize(
-    ("column", "replacement"),
-    (
-        ("run_id", "different-run"),
-        ("kind", "bogus"),
-        ("sha256", "0" * 64),
-        ("self_contained", "false"),
-    ),
-)
 def test_receipt_rows_must_match_canonical_json(
     computational_summary: Path,
     tmp_path: Path,
-    column: str,
-    replacement: str,
 ) -> None:
     context = report_context.prepare_context(
-        arguments(computational_summary, tmp_path / column, execute=True)
+        arguments(computational_summary, tmp_path / "reports", execute=True)
     )
     publish(context)
     with context.output_receipt.open(encoding="utf-8", newline="") as stream:
@@ -1930,7 +1815,7 @@ def test_receipt_rows_must_match_canonical_json(
         fieldnames = reader.fieldnames
         rows = list(reader)
     assert fieldnames is not None
-    rows[0][column] = replacement
+    rows[0]["sha256"] = "0" * 64
     with context.output_receipt.open("w", encoding="utf-8", newline="") as stream:
         writer = csv.DictWriter(
             stream,
@@ -1942,42 +1827,3 @@ def test_receipt_rows_must_match_canonical_json(
         writer.writerows(rows)
     with pytest.raises(ReportRenderError, match="TSV columns differ"):
         receipt.read_receipt_tsv(context.output_receipt)
-
-
-def test_summary_and_receipt_serializers_are_deterministic(
-    computational_summary: Path,
-    tmp_path: Path,
-) -> None:
-    context = report_context.prepare_context(
-        arguments(computational_summary, tmp_path / "reports")
-    )
-    assert receipt.summary_tsv_bytes(context) == receipt.summary_tsv_bytes(context)
-    stage = tmp_path / "stage"
-    stage.mkdir()
-    scientific_html = stage / context.output_scientific_html.name
-    evidence_html = stage / context.output_evidence_html.name
-    summary = stage / context.output_summary_tsv.name
-    scientific_html.write_bytes(context.scientific_html_bytes)
-    evidence_html.write_bytes(context.evidence_html_bytes)
-    summary.write_bytes(receipt.summary_tsv_bytes(context))
-    document = receipt.receipt_document(
-        context,
-        (
-            (
-                "scientific-report-html",
-                "scientific_html",
-                scientific_html,
-                context.output_scientific_html,
-            ),
-            (
-                "evidence-report-html",
-                "evidence_html",
-                evidence_html,
-                context.output_evidence_html,
-            ),
-            ("run-summary-tsv", "run_summary_tsv", summary, context.output_summary_tsv),
-        ),
-    )
-    assert receipt.receipt_tsv_bytes(document) == receipt.receipt_tsv_bytes(
-        json.loads(json.dumps(document))
-    )

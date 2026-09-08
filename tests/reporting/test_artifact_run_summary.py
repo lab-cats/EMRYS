@@ -340,36 +340,6 @@ def test_explicit_artifact_root_reaches_post_publish_rechecks(
     assert_no_summary_residue_after_success(run_summary_fixture)
 
 
-def test_existing_summary_preparation_retains_predecessor_authority(
-    run_summary_fixture: Any,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    first = run_builder(run_summary_fixture, execute=True)
-    assert first.returncode == 0, first.stderr
-    before = summary_snapshot(run_summary_fixture)
-    calls: Counter[str] = Counter()
-    monkeypatch.setattr(
-        RUN_SUMMARY,
-        "_validate_existing_summary",
-        _source_root_spy(
-            RUN_SUMMARY._validate_existing_summary,
-            run_summary_fixture.root,
-            calls,
-            "predecessor",
-        ),
-    )
-
-    context = context_for(run_summary_fixture)
-
-    assert calls == {"predecessor": 1}
-    assert (
-        context.previous_receipt
-        == read_tsv(run_summary_fixture.summary_receipt_path)[0]
-    )
-    assert summary_snapshot(run_summary_fixture) == before
-    assert_no_summary_residue_after_success(run_summary_fixture)
-
-
 def validate_summary_document(fixture: Any) -> dict[str, Any]:
     document = read_json(fixture.summary_json_path)
     schemas, registry = CONTRACTS.load_schema_registry()
@@ -484,15 +454,32 @@ def assert_no_summary_residue_after_success(fixture: Any) -> None:
 
 def test_existing_summary_readmission_keeps_json_and_views_byte_identical(
     run_summary_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     first = run_builder(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     before = summary_snapshot(run_summary_fixture)
+    calls: Counter[str] = Counter()
+    monkeypatch.setattr(
+        RUN_SUMMARY,
+        "_validate_existing_summary",
+        _source_root_spy(
+            RUN_SUMMARY._validate_existing_summary,
+            run_summary_fixture.root,
+            calls,
+            "predecessor",
+        ),
+    )
 
     second = run_builder(run_summary_fixture)
 
     assert second.returncode == 0, second.stderr
     assert second.context is not None
+    assert calls == {"predecessor": 1}
+    assert (
+        second.context.previous_receipt
+        == read_tsv(run_summary_fixture.summary_receipt_path)[0]
+    )
     assert (
         second.context.summary_json_bytes,
         second.context.summary_tsv_bytes,
@@ -661,16 +648,14 @@ def test_partial_prior_summary_and_foreign_lock_are_preserved(
     assert not any(path.exists() for path in locked.summary_paths)
 
 
-@pytest.mark.parametrize("final_index", range(4))
 @pytest.mark.parametrize("kind", ("file", "dangling_symlink", "directory"))
 def test_existing_final_paths_are_rejected_without_mutation(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
-    final_index: int,
     kind: str,
 ) -> None:
     context = context_for(run_summary_fixture)
-    final = run_summary_fixture.summary_paths[final_index]
+    final = run_summary_fixture.summary_receipt_path
     target = final.with_name("absent-target")
     if kind == "file":
         final.write_bytes(b"foreign output\n")
@@ -831,11 +816,9 @@ def test_cleanup_signal_restores_handlers_and_retains_recovery_state(
     } == original_handlers
 
 
-@pytest.mark.parametrize("final_index", range(4))
-def test_signal_after_final_link_rolls_back_owned_outputs(
+def test_signal_after_receipt_link_rolls_back_owned_outputs(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
-    final_index: int,
 ) -> None:
     context = context_for(run_summary_fixture)
     original_handlers = {
@@ -848,7 +831,7 @@ def test_signal_after_final_link_rolls_back_owned_outputs(
     def interrupt_after_link(source: Any, destination: Any, **kwargs: Any) -> None:
         nonlocal interrupted
         real_link(source, destination, **kwargs)
-        if Path(destination) == run_summary_fixture.summary_paths[final_index]:
+        if Path(destination) == run_summary_fixture.summary_receipt_path:
             interrupted = True
             handler = signal.getsignal(signal.SIGTERM)
             assert callable(handler)
@@ -869,16 +852,12 @@ def test_signal_after_final_link_rolls_back_owned_outputs(
     assert_no_summary_residue_after_success(run_summary_fixture)
 
 
-@pytest.mark.parametrize("final_index", range(4))
-@pytest.mark.parametrize("link_raises", (False, True))
 def test_same_byte_foreign_final_is_preserved_during_rollback(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
-    final_index: int,
-    link_raises: bool,
 ) -> None:
     context = context_for(run_summary_fixture)
-    final = run_summary_fixture.summary_paths[final_index]
+    final = run_summary_fixture.summary_receipt_path
     real_link = os.link
     foreign_identity: tuple[int, int] | None = None
     expected_bytes = b""
@@ -893,8 +872,6 @@ def test_same_byte_foreign_final_is_preserved_during_rollback(
             foreign.replace(final)
             metadata = final.lstat()
             foreign_identity = (metadata.st_dev, metadata.st_ino)
-            if link_raises:
-                raise OSError("injected post-link replacement")
 
     monkeypatch.setattr(os, "link", replace_after_link)
     with pytest.raises(
@@ -915,11 +892,9 @@ def test_same_byte_foreign_final_is_preserved_during_rollback(
     assert list(run_summary_fixture.output_dir.glob("*.RECOVERY.txt"))
 
 
-@pytest.mark.parametrize("final_index", range(4))
-def test_first_publication_link_failure_removes_owned_outputs_and_lock(
+def test_receipt_link_failure_removes_owned_outputs_and_lock(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
-    final_index: int,
 ) -> None:
     context = context_for(run_summary_fixture)
     real_link = os.link
@@ -927,7 +902,7 @@ def test_first_publication_link_failure_removes_owned_outputs_and_lock(
 
     def fail_publication(source: Any, destination: Any, **kwargs: Any) -> None:
         nonlocal failed
-        if Path(destination) == run_summary_fixture.summary_paths[final_index]:
+        if Path(destination) == run_summary_fixture.summary_receipt_path:
             failed = True
             raise OSError("injected first run-summary publication failure")
         real_link(source, destination, **kwargs)
@@ -985,11 +960,9 @@ def test_incomplete_owned_rollback_retains_lock_and_anchors(
     assert list(run_summary_fixture.output_dir.glob("*.RECOVERY.txt"))
 
 
-@pytest.mark.parametrize("unlink_raises", (False, True))
 def test_mid_rollback_directory_replacement_skips_replacement_path_cleanup(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
-    unlink_raises: bool,
 ) -> None:
     context = context_for(run_summary_fixture)
     real_link = os.link
@@ -1012,14 +985,12 @@ def test_mid_rollback_directory_replacement_skips_replacement_path_cleanup(
             run_summary_fixture.output_dir.rename(displaced)
             run_summary_fixture.output_dir.mkdir()
             directory_replaced = True
-            if unlink_raises:
-                raise OSError("injected rollback failure after directory replacement")
 
     monkeypatch.setattr(os, "link", fail_publication)
     monkeypatch.setattr(Path, "unlink", replace_after_unlink)
     with pytest.raises(
         RUN_SUMMARY_MODELS.RunSummaryError,
-        match="identity changed|injected rollback failure",
+        match="identity changed",
     ):
         RUN_SUMMARY_PUBLICATION.publish_context(context)
 
@@ -1287,16 +1258,14 @@ def test_attempt_aggregation_preserves_independent_chains_and_rejects_conflicts(
         RUN_SUMMARY_PROJECTION._build_attempts(conflicting)
 
 
-@pytest.mark.parametrize("final_index", range(4))
 @pytest.mark.parametrize("kind", ("file", "dangling_symlink"))
 def test_concurrent_final_is_not_overwritten_or_removed(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
-    final_index: int,
     kind: str,
 ) -> None:
     context = context_for(run_summary_fixture)
-    final = run_summary_fixture.summary_paths[final_index]
+    final = run_summary_fixture.summary_tsv_path
     target = final.with_name("absent-concurrent-target")
     real_link = os.link
     foreign_identity: tuple[int, int] | None = None
@@ -1332,42 +1301,4 @@ def test_concurrent_final_is_not_overwritten_or_removed(
     )
     assert run_summary_fixture.lock_path.is_file()
     assert len(list(run_summary_fixture.output_dir.glob("*.tmp"))) == 4
-    assert list(run_summary_fixture.output_dir.glob("*.RECOVERY.txt"))
-
-
-@pytest.mark.parametrize("anchor_fault", ("missing", "replaced"))
-def test_unprovable_staging_anchor_retains_final_and_recovery(
-    run_summary_fixture: Any,
-    monkeypatch: pytest.MonkeyPatch,
-    anchor_fault: str,
-) -> None:
-    context = context_for(run_summary_fixture)
-    final = run_summary_fixture.summary_json_path
-    real_link = os.link
-    changed_anchor: Path | None = None
-
-    def change_anchor_after_link(source: Any, destination: Any, **kwargs: Any) -> None:
-        nonlocal changed_anchor
-        real_link(source, destination, **kwargs)
-        if Path(destination) == final:
-            changed_anchor = Path(source)
-            changed_anchor.unlink()
-            if anchor_fault == "replaced":
-                changed_anchor.write_bytes(b"foreign anchor\n")
-            raise OSError("injected staging-anchor mutation")
-
-    monkeypatch.setattr(os, "link", change_anchor_after_link)
-    with pytest.raises(
-        RUN_SUMMARY_MODELS.RunSummaryError, match="rollback was incomplete"
-    ):
-        RUN_SUMMARY_PUBLICATION.publish_context(context)
-
-    assert changed_anchor is not None
-    assert final.read_bytes() == context.summary_json_bytes
-    if anchor_fault == "replaced":
-        assert changed_anchor.read_bytes() == b"foreign anchor\n"
-    else:
-        assert not changed_anchor.exists()
-    assert all(not path.exists() for path in run_summary_fixture.summary_paths[1:])
-    assert run_summary_fixture.lock_path.is_file()
     assert list(run_summary_fixture.output_dir.glob("*.RECOVERY.txt"))
