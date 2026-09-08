@@ -239,7 +239,7 @@ they do not establish that the larger campaign is finished.
 
 | Proposed order | Finite outcome | Existing coverage and next gate |
 |---|---|---|
-| Reporting ownership | Settle the reporting source-identity boundary; consolidate the fixed HTML outputs and transaction layout. | `REPORT-ROSTER-01`; identity and historical-resume decision precedes implementation. |
+| Reporting ownership | Decide the fixed-output consolidation policy, then consolidate its equivalent declarations. | `REPORT-ROSTER-01`; the [decision proposal](../design/decisions/execution-evidence-and-reporting.md#proposed-fixed-report-output-consolidation) is ready for review. Broader identity and transaction-layout work remain separate. |
 | Ineffective report resource control | Remove active reporting-memory configuration and transport while retaining exact historical policy admission. | `REPORT-ROSTER-01`; select new-input and persisted-policy behavior. |
 | Stage publication | Qualify surviving publication, then retire replacement/direct-write modes one owner at a time. | `OPS-03`; reproduce the handoff finding and approve the public policy. |
 | Processing declarations | Find one caller-complete removal using existing admitted task/output facts, or retain the mechanism with evidence. | `COMPRESS-01` discovery, with reporting adapter work under `REPORT-ROSTER-01`; no general registry is preselected. |
@@ -252,76 +252,24 @@ authority for accepted outcomes, status, scores, and acceptance.
 
 ### Reporting source-identity prerequisite
 
-**Observed.** Report-only materialization has already moved outside the
-explicit scientific implementation roster. However,
-[`run_implementation.py`](../../src/emrys/orchestration/run_coordinator/run_implementation.py)
-includes all of `contracts/artifacts`, orchestration
-`application_model.py`, `artifact_inventory.py`, the resource schema,
-and inspection owners in `_ADMISSION_ROOTS`. Those files contribute to
-the implementation fingerprint in a Run's plan. A reporting-only edit there
-can therefore affect new Run identity or admission of a compatible resume.
-
-**Required proposal.** Identify the exact reporting-only responsibilities,
-their scientific admission dependencies, and their rightful existing owners.
-Define new Run and historical resume behavior before consolidating across
-this boundary. Any narrowed identity protection requires explicit approval
-and equally strong surviving provenance and re-admission protections.
-Excluding a whole directory from hashing is not a justified substitute for
-that ownership analysis.
-
-**Acceptance.** Demonstrate which changes must affect scientific identity,
-which reporting changes may regenerate independently, and how each supported
-historical Run is read and resumed without rewriting its records. Exercise
-scientific-source changes, reporting-source changes, changed artifact
-admission, direct execution, and Slurm planning separately. Use the existing
-[materialization tests](../../tests/orchestration/run_coordinator/test_materialization.py),
-especially `test_run_identity_excludes_attempt_reporting_and_cli_adapter_code`
-and `test_run_identity_binds_semantic_admission_code`, alongside the
-[runtime identity tests](../../tests/orchestration/run_coordinator/test_runtime_identity.py),
-[reporting boundary tests](../../tests/orchestration/run_coordinator/test_reporting_boundary.py),
-and Run/Attempt admission tests; keep their expected identities independent
-of any new derivation.
-
-This is a prerequisite design decision, with no qualified deletion estimate.
-The first two reporting packages below preserve report behavior but are not
-fully implementation-ready until this boundary is resolved.
+The approved first decision package now lives in the
+[fixed report-output proposal](../design/decisions/execution-evidence-and-reporting.md#proposed-fixed-report-output-consolidation).
+It contains the exact ownership map, current/historical read and resume rules,
+report-source restrictions, alternatives, and surviving defenses. The proposed
+bounded choice preserves current Run identity and reporting-producer rules for
+the output consolidation; it does not close the broader identity goal or
+approve a different reporting producer. That specific policy still requires
+approval before product changes.
 
 ### One fixed HTML output declaration
 
-**Observed owners.** The ordered scientific HTML, evidence HTML, and summary
-TSV outputs are described repeatedly in
-[`report_receipt.py`](../../src/emrys/contracts/artifacts/_artifact_contracts/report_receipt.py),
-[`context.py`](../../src/emrys/reporting/_run_report/context.py),
-[`publication.py`](../../src/emrys/reporting/_run_report/publication.py),
-[`transaction_validation.py`](../../src/emrys/reporting/transaction_validation.py),
-and
-[`reporting_boundary.py`](../../src/emrys/orchestration/run_coordinator/reporting_boundary.py).
-The receipt validator's `expected_output_ids` and `expected_outputs`
-are local declarations, not an existing exported roster that callers can
-already reuse unchanged.
-
-**Proposed outcome.** Make the existing receipt contract the authority for
-equivalent output IDs, kinds, basenames, and order; migrate all duplicated
-production declarations in the slice. Retire repeated tuple/dictionary
-assembly without adding a report catalog, output wrapper, or product file.
-Preserve the distinction between three receipt outputs and two user-facing
-HTML locations.
-
-**Preserved behavior and proof.** Keep filenames, output bytes, receipt
-interpretation, historical reads, output order, local publication checks,
-and owner-specific diagnostics. Compare current and historical receipt
-fixtures, materialized paths, and publication failures. Existing
-[report tests](../../tests/reporting/test_report.py),
-[transaction tests](../../tests/reporting/test_transaction_validation.py),
-and
-[independent contract goldens](../../tests/contract_integration/independent_contract_goldens/test_independent_contract_goldens.py)
-must continue to contain literal expectations rather than derive their
-expected output roster from the production declaration.
-
-**Economics and stop condition.** Approximately 25–50 net product lines
-appear removable, subject to a caller-complete draft and the identity
-decision. Dismiss the draft if it merely replaces literals with forwarding
-machinery or cannot remove the equivalent declarations together.
+The same [decision proposal](../design/decisions/execution-evidence-and-reporting.md#complete-consolidation-after-the-recommended-policy-is-approved)
+owns the complete receipt-contract/API/caller edit set, three-output versus
+two-HTML distinction, historical version pairs, independent tests, and stopping
+conditions. The original 25–50-line estimate is refined to approximately
+30–35 net product lines using the existing frozen context's path order; this
+is an unexecuted source sketch, not a deletion commitment. No new product file,
+wrapper, catalog, schema, or identity-translation mechanism is selected.
 
 ### One three-transaction reporting layout
 
@@ -353,9 +301,10 @@ reporting-boundary tests, transaction-validation tests, and
 [ledger contract tests](../../tests/contracts/orchestration/test_reporting_ledger_contracts.py).
 
 **Economics and gate.** No defensible net estimate is available yet.
-Qualify a complete negative draft after the source-identity decision.
-Abandon a proposed shared representation if equivalent declarations do not
-retire or it creates an inspection/reporting dependency cycle.
+This is outside the first fixed-output slice. Qualify a complete negative
+draft and its shared-owner identity policy separately. Abandon a proposed
+shared representation if equivalent declarations do not retire or it creates
+an inspection/reporting dependency cycle.
 
 ### Retire active reporting-memory control
 
@@ -867,11 +816,11 @@ checks and make bounded fixes. Acceptance remains pending until the final
 required evidence passes; rerun only evidence invalidated by later changes.
 Do not pause useful work solely to wait for hosted CI.
 
-The immediate recommended planning deliverables are the reporting
-source-identity/historical-resume proposal, a caller-complete fixed-output
-consolidation draft after that decision, and the reporting-memory policy
-decision. Publication qualification can proceed as a separately selected
-owner investigation before its public retirement decision.
+The immediate deliverable is review of the completed
+[fixed-output policy proposal](../design/decisions/execution-evidence-and-reporting.md#proposed-fixed-report-output-consolidation),
+then a caller-complete consolidation after the specific policy is approved.
+Reporting-memory policy and publication qualification remain separately
+selected work; neither is absorbed into that first output slice.
 
 An audit package stops with either a qualified bounded proposal or a reasoned
 retain/defer decision. An implementation stops at its approved scope and
