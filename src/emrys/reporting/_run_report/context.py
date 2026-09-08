@@ -17,6 +17,7 @@ from typing import Literal
 from urllib.parse import quote
 
 from emrys import analyses
+from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.reporting import (
     AnalysisReportArtifactV1,
@@ -457,16 +458,13 @@ def prepare_context(
     output_root = _explicit_path(arguments.output_root, "report output root")
     _reject_symlink_components(output_root, "report output root")
     output_dir = output_root / run_id
-    output_scientific_html = output_dir / f"{run_id}.scientific_report.html"
-    output_evidence_html = output_dir / f"{run_id}.evidence_report.html"
-    output_summary_tsv = output_dir / f"{run_id}.run_summary.tsv"
-    output_receipt = output_dir / f"{run_id}.report_outputs.tsv"
-    stable_paths = (
-        output_scientific_html,
-        output_evidence_html,
-        output_summary_tsv,
-        output_receipt,
+    output_paths = tuple(
+        output_dir / f"{run_id}.{suffix}"
+        for _output_id, _kind, suffix in artifact_contracts.REPORT_OUTPUTS
     )
+    output_scientific_html, output_evidence_html, output_summary_tsv = output_paths
+    output_receipt = output_dir / f"{run_id}.report_outputs.tsv"
+    stable_paths = (*output_paths, output_receipt)
     retired_paths = (
         output_dir / f"{run_id}.run_report.html",
         output_dir / f"{run_id}.run_report.pdf",

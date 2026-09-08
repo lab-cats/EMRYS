@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.reporting.report import ReportPublicationOps
 
 from .context import expected_html_identity
@@ -132,25 +133,14 @@ def publish_report(context: ReportContext, ops: ReportPublicationOps) -> None:
         ops.write_owned_file(staged_summary, summary_bytes)
         _assert_expected_bytes(staged_summary, summary_bytes, "staged run-summary TSV")
         validate_summary_tsv(staged_summary, context)
-        staged_outputs = (
-            (
-                "scientific-report-html",
-                "scientific_html",
-                staged_scientific_html,
-                context.output_scientific_html,
-            ),
-            (
-                "evidence-report-html",
-                "evidence_html",
-                staged_evidence_html,
-                context.output_evidence_html,
-            ),
-            (
-                "run-summary-tsv",
-                "run_summary_tsv",
-                staged_summary,
-                context.output_summary_tsv,
-            ),
+        staged_outputs = tuple(
+            (output_id, kind, staged, final)
+            for (output_id, kind, _suffix), staged, final in zip(
+                artifact_contracts.REPORT_OUTPUTS,
+                (staged_scientific_html, staged_evidence_html, staged_summary),
+                context.stable_paths[:3],
+                strict=True,
+            )
         )
         document = receipt_document(context, staged_outputs)
         staged_receipt = stage / context.output_receipt.name

@@ -12,6 +12,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any, Literal, Protocol, cast
 
+from emrys.contracts.artifacts.api import REPORT_OUTPUTS
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.application_model import (
@@ -78,7 +79,7 @@ def _semantic_report_locations(
     if kind != "html_report":
         return ()
     locations = getattr(semantic, "verified_report_locations", ())
-    expected_ids = ("scientific-report-html", "evidence-report-html")
+    expected_ids = tuple(output_id for output_id, _kind, _suffix in REPORT_OUTPUTS[:2])
     try:
         admitted = tuple((output_id, path) for output_id, path in locations)
     except (TypeError, ValueError) as exc:

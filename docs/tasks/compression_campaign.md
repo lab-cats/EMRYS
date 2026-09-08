@@ -239,7 +239,7 @@ they do not establish that the larger campaign is finished.
 
 | Proposed order | Finite outcome | Existing coverage and next gate |
 |---|---|---|
-| Reporting ownership | Decide the fixed-output consolidation policy, then consolidate its equivalent declarations. | `REPORT-ROSTER-01`; the [decision proposal](../design/decisions/execution-evidence-and-reporting.md#proposed-fixed-report-output-consolidation) is ready for review. Broader identity and transaction-layout work remain separate. |
+| Reporting ownership | Consolidate equivalent declarations while preserving the existing identity rules. | `REPORT-ROSTER-01`; the [fixed-output declaration](../design/decisions/execution-evidence-and-reporting.md#fixed-report-output-consolidation) is the bounded first slice. Broader identity and transaction-layout work remain separate. |
 | Ineffective report resource control | Remove active reporting-memory configuration and transport while retaining exact historical policy admission. | `REPORT-ROSTER-01`; select new-input and persisted-policy behavior. |
 | Stage publication | Qualify surviving publication, then retire replacement/direct-write modes one owner at a time. | `OPS-03`; reproduce the handoff finding and approve the public policy. |
 | Processing declarations | Find one caller-complete removal using existing admitted task/output facts, or retain the mechanism with evidence. | `COMPRESS-01` discovery, with reporting adapter work under `REPORT-ROSTER-01`; no general registry is preselected. |
@@ -250,26 +250,22 @@ This is a recommendation for selecting bounded work, not a dependency graph
 or a second status table. The [backlog](backlog_matrix.md) retains sole
 authority for accepted outcomes, status, scores, and acceptance.
 
-### Reporting source-identity prerequisite
+### Reporting source-identity boundary
 
-The approved first decision package now lives in the
-[fixed report-output proposal](../design/decisions/execution-evidence-and-reporting.md#proposed-fixed-report-output-consolidation).
-It contains the exact ownership map, current/historical read and resume rules,
-report-source restrictions, alternatives, and surviving defenses. The proposed
-bounded choice preserves current Run identity and reporting-producer rules for
-the output consolidation; it does not close the broader identity goal or
-approve a different reporting producer. That specific policy still requires
-approval before product changes.
+The [fixed report-output decision](../design/decisions/execution-evidence-and-reporting.md#fixed-report-output-consolidation)
+owns the identity map, current/historical read and resume rules, report-source
+restrictions, alternatives, and surviving defenses. The approved consolidation
+preserves those rules; it does not close the broader identity goal or approve
+a different reporting producer. Changing those policies remains a separate
+decision.
 
 ### One fixed HTML output declaration
 
-The same [decision proposal](../design/decisions/execution-evidence-and-reporting.md#complete-consolidation-after-the-recommended-policy-is-approved)
-owns the complete receipt-contract/API/caller edit set, three-output versus
-two-HTML distinction, historical version pairs, independent tests, and stopping
-conditions. The original 25–50-line estimate is refined to approximately
-30–35 net product lines using the existing frozen context's path order; this
-is an unexecuted source sketch, not a deletion commitment. No new product file,
-wrapper, catalog, schema, or identity-translation mechanism is selected.
+The [declaration owner and consumers](../design/decisions/execution-evidence-and-reporting.md#declaration-owner-and-consumers)
+use one immutable output tuple and the existing frozen context's path objects.
+That decision owns the three-output versus two-HTML distinction, historical
+version pairs, independent tests, and stopping conditions. The bounded change
+adds no product file, wrapper, catalog, schema, or identity-translation mechanism.
 
 ### One three-transaction reporting layout
 
@@ -816,9 +812,9 @@ checks and make bounded fixes. Acceptance remains pending until the final
 required evidence passes; rerun only evidence invalidated by later changes.
 Do not pause useful work solely to wait for hosted CI.
 
-The immediate deliverable is review of the completed
-[fixed-output policy proposal](../design/decisions/execution-evidence-and-reporting.md#proposed-fixed-report-output-consolidation),
-then a caller-complete consolidation after the specific policy is approved.
+The first implementation stops with the caller-complete
+[fixed-output consolidation](../design/decisions/execution-evidence-and-reporting.md#fixed-report-output-consolidation)
+and its required checks.
 Reporting-memory policy and publication qualification remain separately
 selected work; neither is absorbed into that first output slice.
 

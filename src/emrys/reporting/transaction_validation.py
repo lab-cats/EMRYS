@@ -1214,12 +1214,9 @@ def validate_report_transaction(
         if not analysis_policy.is_absolute():
             analysis_policy = artifact_source_root / analysis_policy
     output_dir = output_root / run_id
-    output_names = (
-        f"{run_id}.scientific_report.html",
-        f"{run_id}.evidence_report.html",
-        f"{run_id}.run_summary.tsv",
-        f"{run_id}.report_outputs.tsv",
-    )
+    output_names = tuple(
+        f"{run_id}.{suffix}" for _id, _kind, suffix in artifact_contracts.REPORT_OUTPUTS
+    ) + (f"{run_id}.report_outputs.tsv",)
     reject_control_residue = partial(
         _reject_reporting_control_residue,
         kind="html_report",
@@ -1252,11 +1249,7 @@ def validate_report_transaction(
         context.summary,
         run_summary_path=context.run_summary_path,
         output_dir=context.output_dir,
-        output_paths=(
-            context.output_scientific_html,
-            context.output_evidence_html,
-            context.output_summary_tsv,
-        ),
+        output_paths=context.stable_paths[:3],
         report_receipt=context.output_receipt,
         source_checkout=context.source_checkout.root,
         artifact_source_root=context.artifact_source_root.root,
@@ -1304,40 +1297,26 @@ def validate_report_transaction(
     document = receipt.read_receipt_tsv(context.output_receipt)
     expected_document = receipt.receipt_document(
         context,
-        (
-            (
-                "scientific-report-html",
-                "scientific_html",
-                context.output_scientific_html,
-                context.output_scientific_html,
-            ),
-            (
-                "evidence-report-html",
-                "evidence_html",
-                context.output_evidence_html,
-                context.output_evidence_html,
-            ),
-            (
-                "run-summary-tsv",
-                "run_summary_tsv",
-                context.output_summary_tsv,
-                context.output_summary_tsv,
-            ),
+        tuple(
+            (output_id, kind, path, path)
+            for (output_id, kind, _suffix), path in zip(
+                artifact_contracts.REPORT_OUTPUTS, context.stable_paths[:3], strict=True
+            )
         ),
     )
     if document != expected_document:
         raise ReportingTransactionError(
             "Published report receipt differs from the current projection"
         )
+    html_ids = tuple(
+        output_id for output_id, _kind, _suffix in artifact_contracts.REPORT_OUTPUTS[:2]
+    )
     verified_report_locations = tuple(
         (str(output["output_id"]), Path(str(output["path"])))
         for output in document["outputs"]
-        if output["output_id"] in {"scientific-report-html", "evidence-report-html"}
+        if output["output_id"] in html_ids
     )
-    if tuple(output_id for output_id, _path in verified_report_locations) != (
-        "scientific-report-html",
-        "evidence-report-html",
-    ):
+    if tuple(output_id for output_id, _path in verified_report_locations) != html_ids:
         raise ReportingTransactionError(
             "Published report receipt does not identify both verified HTML outputs"
         )
@@ -1421,12 +1400,9 @@ def _validate_historical_report_transaction(
         if not analysis_policy.is_absolute():
             analysis_policy = artifact_source_root / analysis_policy
     output_dir = output_root / run_id
-    output_names = (
-        f"{run_id}.scientific_report.html",
-        f"{run_id}.evidence_report.html",
-        f"{run_id}.run_summary.tsv",
-        f"{run_id}.report_outputs.tsv",
-    )
+    output_names = tuple(
+        f"{run_id}.{suffix}" for _id, _kind, suffix in artifact_contracts.REPORT_OUTPUTS
+    ) + (f"{run_id}.report_outputs.tsv",)
     reject_control_residue = partial(
         _reject_reporting_control_residue,
         kind="html_report",
@@ -1479,9 +1455,8 @@ def _validate_historical_report_transaction(
             "Historical report receipt binds another run summary"
         )
     expected_outputs = {
-        "scientific-report-html": output_dir / output_names[0],
-        "evidence-report-html": output_dir / output_names[1],
-        "run-summary-tsv": output_dir / output_names[2],
+        output_id: output_dir / f"{run_id}.{suffix}"
+        for output_id, _kind, suffix in artifact_contracts.REPORT_OUTPUTS
     }
     if any(
         Path(output["path"]) != expected_outputs[output["output_id"]]
