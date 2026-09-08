@@ -8,55 +8,35 @@ with their own owners.
 
 ## Ordinary journey
 
-Create or enter a Project, then use the path-light public commands:
-
-```bash
-emrys init PROJECT_NAME
-cd PROJECT_NAME
-emrys validate
-emrys doctor
-emrys run [--analysis NAME] [--profile NAME|ABSOLUTE_PATH]
-emrys inspect [RUN]
-emrys resume [RUN]
-emrys report [RUN]
-```
+Follow the [quickstart](../../../../quickstart.md) for installation, Project
+creation, runtime and storage preparation, execution, and completed reports.
+The [runbook](../../../../docs/operations/RUNBOOK.md) owns commands for existing
+Projects, site setup, inspection, and recovery. The adjacent
+[`CONTRACT.md`](CONTRACT.md) defines exact selectors and state transitions.
 
 `init` and `runtime discover` are dry-run-first; publication requires
-`--execute`. `run` and `resume` display one frozen plan and ask before terminal
-execution. Noninteractive mutation requires `--execute`. Refusal, EOF, or
+`--execute`. `run` and `resume` show a direct execution plan or a Slurm
+submission preview and ask before terminal execution. Noninteractive mutation
+requires `--execute`. Refusal, EOF, or
 interruption before authority writes nothing, submits nothing, and opens no
 application log.
 
-Omitting the Analysis is valid only for a singleton Project. Omitted Run
-selection chooses the sole Run or offers a terminal picker. Automation supplies
-an unambiguous two-word Run name, full ID, or unique ID prefix; EMRYS never
-infers the latest Run. Omitted execution profile reads
-`runtime/profiles/default.yaml`; a safe name reads the matching Project-local
-file, and an absolute path is exact. There is no site/global registry.
-
 Full Runs invoke reporting after scientific completion unless `--no-report` is
-selected. `emrys report` can regenerate or reuse the reporting transaction
-independently. Reporting creates neither a Run nor an Attempt.
+selected. `emrys report` can create an absent reporting transaction or verify
+and reuse a complete one independently; it does not overwrite arbitrary
+partial bundles. Reporting creates neither a Run nor an Attempt.
 
 ## Specialized setup and reuse
 
-```bash
-emrys init manifests ...
-emrys init synthetic [--dataset-profile smoke-v1|production-like-v1]
-emrys runtime discover [--execute]
-emrys doctor --repair [--execute]
-emrys run --through processing
-emrys run --from-processing-run PROCESSING_RUN
-```
-
-Manifest initialization requires explicit biological assignments and never
+`emrys init manifests` requires explicit biological assignments and never
 infers pairing metadata from names. Synthetic initialization produces either
-the small 130-pair fixture or the separately selected 100,000-pair/5-Mb fixture;
-neither is production or biological evidence. Runtime discovery admits the
-active environment into `runtime/runtime.tsv` without installing or loading
-modules. Doctor repair is separately confirmed, delegates dependency solving
-to `uv`, Pixi, and `renv`, mutates only declared EMRYS-owned locations, and
-requalifies.
+the small 130-pair-per-library fixture or the separately selected
+100,000-pair-per-library/5-Mb fixture, each with four libraries; neither is
+production or biological evidence. Runtime discovery admits the
+active environment into an absent `runtime/runtime.tsv` without installing,
+loading modules, or replacing an existing inventory. Doctor repair is
+separately confirmed, delegates dependency solving to `uv`, Pixi, and `renv`,
+mutates only declared EMRYS-owned locations, and requalifies.
 
 A processing Run closes the evidence-complete Steps 00–06 boundary and has no
 report. A downstream Run may reuse those stationary artifacts only after exact

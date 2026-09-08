@@ -23,9 +23,12 @@ The repository policy is fixed: Bioconductor 3.23 packages are resolved through
 canonical `Source: Bioconductor`, `RemoteType: bioconductor`, and
 `Repository: Bioconductor 3.23` metadata.
 
-`make r-restore` is the only route allowed to bootstrap or install. Point
-`RENV_PATHS_LIBRARY` at an operator-owned library root and run it with the
-explicit R 4.6.1 executable. After restoration, pass the exact existing
-platform library as `RENV_LIBRARY` to `make r-check`. The check selects that
+`make r-restore` and explicit managed `emrys doctor --repair` both use the
+repository's R restoration script; workflow execution never installs packages.
+For operator-owned restoration, point `RENV_PATHS_LIBRARY` at your library root
+and run `make r-restore` with the explicit R 4.6.1 executable. Doctor instead
+selects its Project-owned managed library. After operator-owned restoration,
+pass the exact existing platform library as `RENV_LIBRARY` to `make r-check`.
+The check selects that
 library without running the renv autoloader, changes no dependencies, and fails
 on any lock, version, or library-identity drift.

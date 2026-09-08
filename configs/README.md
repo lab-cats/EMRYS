@@ -9,7 +9,7 @@ commands available after setup.
 
 | Files | Purpose |
 | --- | --- |
-| `samples.example.tsv` | Example Dataset manifest. |
+| `samples.example.tsv` | Five-column fixture for the generic manifest validator; not a complete paired-CMH Project manifest. Use the [Project sample format](#sample-manifest) below. |
 | `step_07_partitions*.tsv` | Example region partitions for cohort processing. |
 | `execution_profile*.yaml` | Example local or Slurm execution settings. |
 | Other `.example.*` files | Specialist formats owned by the component that consumes them. |
@@ -56,6 +56,11 @@ analyses:
     background_max_fraction: 0.01
 ```
 
+The paths, conditions, and numeric values above are illustrative. Supply the
+reference, STAR index parameters, and Analysis policy selected for your study;
+EMRYS does not infer them from the reads. The `star_index` fields configure
+index construction, not admission of an external prebuilt index.
+
 Unknown fields, duplicate keys, merge keys, and legacy request-v3 documents
 are rejected by current Project commands. The FASTA parent must permit the
 Step `00c` `.fai` and `.dict` sidecars. Safe identifiers begin with an ASCII
@@ -64,8 +69,10 @@ letter or digit and contain only letters, digits, `.`, `_`, or `-`.
 ### Built-in Analysis fields
 
 The built-in Analysis uses paired, two-sided, continuity-corrected
-Cochran-Mantel-Haenszel tests and one global Benjamini-Hochberg correction.
-Threshold comparisons are strict.
+Cochran-Mantel-Haenszel tests and one global Benjamini-Hochberg correction over
+all successfully tested target candidates. Minimum sample depth is inclusive;
+the subsequent depth, FDR, effect, and background-fraction comparisons below
+are strict.
 
 | Field | Contract |
 | --- | --- |
@@ -74,13 +81,13 @@ Threshold comparisons are strict.
 | `sample_ids` | Optional nonempty, unique subset of Dataset IDs. Omission selects all samples; manifest order is preserved. |
 | `control_condition` / `treatment_condition` | Distinct conditions with exactly the same replicate strata. |
 | `target_change` | Two distinct canonical bases, such as `A>G`. Other changes remain non-target rows. |
-| `min_sample_dp` | Minimum depth required in every Analysis sample before testing. |
-| `mean_dp_threshold` | Tested candidates advance only when mean depth is greater than this value. |
+| `min_sample_dp` | Every paired control/treatment sample needs usable counts and depth at least this value for testing. Background samples are checked separately. |
+| `mean_dp_threshold` | Tested candidates advance only when mean depth across paired control/treatment samples is greater than this value. |
 | `fdr_threshold` | Candidates advance only when global BH-adjusted p-value is less than this value. |
 | `common_or_threshold` | Must exceed `1`; up calls require a greater OR and down calls an OR below its reciprocal. |
-| `absolute_difference_threshold` | Minimum absolute treatment-minus-control mean allele-fraction change. |
-| `background_condition` | Optional non-paired condition used only as a background filter. |
-| `background_max_fraction` | Every usable background sample must have AF below this value and meet `min_sample_dp`. |
+| `absolute_difference_threshold` | Up calls require treatment-minus-control mean AF greater than this value; down calls require it below the negative of this value, alongside the corresponding OR criterion. |
+| `background_condition` | Optional distinct non-paired condition. It filters calls without changing paired CMH testing or the BH family. |
+| `background_max_fraction` | Every background sample must have usable counts, depth at least `min_sample_dp`, and AF below this value. Missing or insufficient counts fail the background filter. |
 
 These fields define computational ranking policy, not a universal editing
 standard or biological conclusion. A selected subset or changed policy creates
@@ -113,13 +120,26 @@ publication, recovery, logging, and Results contracts. See
 supplied paths and explicit metadata, but EMRYS never guesses biological
 conditions or replicate relationships from filenames.
 
+This example has the six required columns and two explicit control/treatment
+pairs matching the `EV`/`PUM1` example above. The separators are literal tabs.
+Replace the example paths and metadata with your own; `unknown` is an allowed
+strandedness value, not a measured result.
+
+```tsv
+sample_id	r1_fastq	r2_fastq	strandedness	condition	replicate
+EV_1	/data/EV_1_R1.fastq.gz	/data/EV_1_R2.fastq.gz	unknown	EV	pair1
+PUM1_1	/data/PUM1_1_R1.fastq.gz	/data/PUM1_1_R2.fastq.gz	unknown	PUM1	pair1
+EV_2	/data/EV_2_R1.fastq.gz	/data/EV_2_R2.fastq.gz	unknown	EV	pair2
+PUM1_2	/data/PUM1_2_R1.fastq.gz	/data/PUM1_2_R2.fastq.gz	unknown	PUM1	pair2
+```
+
 | Column | Contract |
 | --- | --- |
 | `sample_id` | Required unique safe identifier. |
 | `r1_fastq` / `r2_fastq` | Required distinct files with the same plain or gzip compression mode. |
 | `strandedness` | Exactly `forward`, `reverse`, `unstranded`, or `unknown`. |
 | `condition` | Authored experimental condition. |
-| `replicate` | Required pairing-stratum identity; row order and filenames do not establish pairing. |
+| `replicate` | Required pairing-stratum identity: the control and treatment belonging to the same pair share this value. Row order and filenames do not establish pairing. |
 | `notes` | Optional final column, present on every row when used. |
 
 The built-in Analysis requires at least two strata, each containing exactly one
