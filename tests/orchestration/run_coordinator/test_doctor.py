@@ -537,6 +537,89 @@ def test_foundation_readiness_requires_reporter_only_when_enabled(
     )
 
 
+@pytest.mark.parametrize("storage_ready", (False, True))
+def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    storage_ready: bool,
+) -> None:
+    project = _project(tmp_path)
+    qualified = _patch_foundations(monkeypatch, project)
+    source = doctor.onboarding.source_root()
+    profile = doctor.onboarding.runtime_profile_path(project.source_path)
+    _data, policy = doctor.load_runtime_profile_contract(
+        doctor.onboarding.runtime_policy_path()
+    )
+    checks = tuple(
+        replace(
+            check,
+            target=(
+                sys.executable
+                if check.check_id in {"python", "snakemake", "sha256_python"}
+                else str(source) if check.check_id == "renv_project" else check.target
+            ),
+        )
+        for check in policy
+    )
+    profile.write_bytes(doctor.runtime_profile_bytes(checks))
+    observations = (
+        replace(_check("bash", "tool_version", "/bin/bash"), status="fail", observed="unavailable"),
+        _check("python", "tool_version", sys.executable),
+        _check("renv_library", "path_visibility", str(tmp_path / "library")),
+    )
+    inspection = _inspection(tmp_path, observations, profile=profile)
+    monkeypatch.setattr(
+        doctor, "inspect_runtime_profile_bytes", lambda *_args, **_kwargs: inspection
+    )
+    runtime_remediation = (
+        "Run `emrys doctor --repair` for an EMRYS-managed runtime, or repair "
+        "and re-admit the selected site environment without editing runtime.tsv."
+    )
+    monkeypatch.setattr(
+        doctor, "workspace_location_blockers",
+        lambda *_args: (["workspace diagnosis"], [runtime_remediation, runtime_remediation]),
+    )
+    if not storage_ready:
+        def unavailable_storage(*_args: object) -> None:
+            raise doctor.storage_qualification.StorageQualificationError("unavailable")
+
+        monkeypatch.setattr(
+            doctor.storage_qualification, "admit_direct_requirement", unavailable_storage
+        )
+
+    def unavailable_execution(**_kwargs: object) -> None:
+        raise doctor.ExecutionProfileError("unavailable")
+
+    monkeypatch.setattr(doctor, "load_execution_profile", unavailable_execution)
+    before = _snapshot(tmp_path)
+
+    result = doctor.diagnose_project(project.source_path, require_reporter=False)
+
+    assert result.inspection is inspection
+    assert (result.ready, result.storage_ready, result.runtime_ready, result.execution_ready) == (
+        False, storage_ready, False, False,
+    )
+    assert result.blockers == (
+        "workspace diagnosis",
+        *(("single-host storage is not qualified: unavailable",) if not storage_ready else ()),
+        "bash: fail (unavailable)",
+        "default execution profile is not admitted: unavailable",
+    )
+    assert result.remediations == (
+        runtime_remediation,
+        *(("Run `emrys doctor --repair` in the intended direct execution context.",) if not storage_ready else ()),
+        "Restore a valid Project-owned runtime/profiles/default.yaml; "
+        "Doctor preserves operator execution policy.",
+    )
+    assert tuple(binding.check_id for binding in result.bindings) == (
+        "python", *(("storage_qualification",) if storage_ready else ()),
+    )
+    assert result.bindings[0].path == Path(sys.executable)
+    if storage_ready:
+        assert result.bindings[-1] == doctor.storage_runtime_binding(qualified)
+    assert _snapshot(tmp_path) == before
+
+
 @pytest.mark.parametrize(
     ("execute", "repair", "expected_status"),
     ((False, False, 1), (True, False, 2), (False, True, 1)),

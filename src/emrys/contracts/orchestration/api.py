@@ -53,8 +53,7 @@ SCHEMA_PATHS["resource-config"] = (
 SCHEMA_PATHS["execution-profile"] = (
     SCHEMA_ROOT.parent / "v3" / "execution_profile.schema.json"
 )
-_ATTEMPT_RECEIPT_V2_PATH = SCHEMA_ROOT.parent / "v2" / "attempt_receipt.schema.json"
-_ATTEMPT_RECEIPT_V2_ID = "urn:emrys:schema:orchestration:attempt-receipt:v2"
+SCHEMA_PATHS["attempt-receipt-v2"] = SCHEMA_ROOT.parent / "v2" / "attempt_receipt.schema.json"
 SCHEMA_IDS = {
     name: f"urn:emrys:schema:orchestration:{name}:v1" for name in SCHEMA_PATHS
 }
@@ -64,6 +63,7 @@ SCHEMA_IDS.update(
         "resource-config": "urn:emrys:schema:orchestration:resource-config:v1",
         "execution-profile": "urn:emrys:schema:orchestration:execution-profile:v1",
         "profile": "urn:emrys:schema:orchestration:profile:v2",
+        "attempt-receipt-v2": "urn:emrys:schema:orchestration:attempt-receipt:v2",
     }
 )
 
@@ -235,27 +235,16 @@ def schema_validator(name: str) -> Draft202012Validator:
     if name not in SCHEMA_NAMES:
         raise ContractValidationError(f"Unknown orchestration schema: {name}")
     schemas, registry = load_schema_registry()
-    return Draft202012Validator(
-        schemas[name],
-        registry=registry,
-        format_checker=FormatChecker(),
-    )
-
-
-@cache
-def _attempt_receipt_v2_validator() -> Draft202012Validator:
-    schema = load_json_object(_ATTEMPT_RECEIPT_V2_PATH)
-    try:
-        Draft202012Validator.check_schema(schema)
-    except SchemaError as exc:
-        raise ContractValidationError(
-            f"attempt-receipt v2 is not valid Draft 2020-12: {exc.message}"
-        ) from exc
-    if schema.get("$id") != _ATTEMPT_RECEIPT_V2_ID:
-        raise ContractValidationError(
-            f"attempt-receipt v2 schema $id must be {_ATTEMPT_RECEIPT_V2_ID}"
-        )
-    _schemas, registry = load_schema_registry()
+    schema = schemas[name]
+    if name == "attempt-receipt":
+        schema = {
+            "if": {
+                "properties": {"schema_version": {"const": "emrys.attempt-receipt.v2"}},
+                "required": ["schema_version"],
+            },
+            "then": {"$ref": SCHEMA_IDS["attempt-receipt-v2"]},
+            "else": {"$ref": SCHEMA_IDS[name]},
+        }
     return Draft202012Validator(
         schema,
         registry=registry,
@@ -267,12 +256,6 @@ def schema_errors(name: str, record: Any) -> tuple[str, ...]:
     """Return stable path-qualified schema diagnostics."""
 
     validator = schema_validator(name)
-    if (
-        name == "attempt-receipt"
-        and isinstance(record, Mapping)
-        and record.get("schema_version") == "emrys.attempt-receipt.v2"
-    ):
-        validator = _attempt_receipt_v2_validator()
     errors = sorted(
         validator.iter_errors(record),
         key=lambda error: (

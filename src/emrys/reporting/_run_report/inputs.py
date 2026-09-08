@@ -43,8 +43,6 @@ def _reject_symlink_components(path: Path, label: str) -> None:
 def _snapshot_regular(
     path: Path,
     label: str,
-    *,
-    executable: bool = False,
 ) -> FileSnapshot:
     path = _explicit_path(path, label)
     _reject_symlink_components(path, label)
@@ -59,8 +57,6 @@ def _snapshot_regular(
             before = os.fstat(stream.fileno())
             if not stat.S_ISREG(before.st_mode):
                 _fail(f"{label} must be a regular non-symlink file: {path}")
-            if executable and not before.st_mode & stat.S_IXUSR:
-                _fail(f"{label} is not executable: {path}")
             digest = hashlib.sha256()
             for chunk in iter(lambda: stream.read(1024 * 1024), b""):
                 digest.update(chunk)

@@ -23,7 +23,7 @@ Scientific review and interpretation remain outside the pipeline.
 
 | Boundary | Work |
 | --- | --- |
-| Reference | Build or admit STAR, BED12, FASTA-index, and dictionary artifacts. |
+| Reference | Build STAR and BED12; prepare or validate the FASTA-index and dictionary pair. |
 | Per sample | Align, canonicalize, collect QC, mark duplicates, split spliced reads, and partition mechanical orientations. |
 | Cohort | Generate partitioned mpileups and normalize annotated candidates. |
 | Analysis | Rank candidates with paired CMH and project sequence/motif context. |
@@ -34,6 +34,10 @@ downstream scientific computation. Installed collaborator modules may replace
 the downstream Analysis while retaining EMRYS's Run, validation, recovery,
 logging, Results, and reporting boundaries. See the
 [analysis-module contract](src/emrys/analyses/README.md).
+
+The Project interface does not accept an external prebuilt STAR index.
+Compatible processing Runs can supply reusable processing artifacts through
+the [runbook's reuse procedure](docs/operations/RUNBOOK.md#reusable-processing).
 
 ## Supported environment
 
@@ -46,10 +50,12 @@ logging, Results, and reporting boundaries. See the
 - Inputs and Projects outside the source checkout. EMRYS owns each Project's
   `runs/`, `logs/`, and `runtime/` directories but leaves source data in place.
 
-`emrys doctor` diagnoses without mutation. Explicit managed repair delegates
-dependency work to `uv`, Pixi, and `renv` and may modify only EMRYS-owned
-environment state. EMRYS does not download scientific inputs, force retries,
-delete uncertain locks, or repair result artifacts.
+`emrys doctor` diagnoses without mutation. Managed dependency repair currently
+supports x86-64 Linux and requires installed `uv` and Pixi. It delegates
+dependency work to `uv`, Pixi, and `renv` within declared EMRYS-owned locations;
+an existing site environment is admitted through runtime discovery. EMRYS does
+not download scientific inputs, force retries, delete uncertain locks, or
+repair result artifacts.
 
 Readiness is bounded admission evidence, not a storage, performance, scheduler,
 scientific-review, or biological claim. Capacity depends on the reference,
@@ -58,21 +64,10 @@ generations per sample.
 
 ## Start here
 
-The [quickstart](quickstart.md) runs the managed synthetic golden path. For a
-real Project, the ordinary journey is:
-
-```sh
-emrys init PROJECT_NAME
-emrys init PROJECT_NAME --execute
-cd PROJECT_NAME
-emrys validate
-emrys runtime discover
-emrys runtime discover --execute
-emrys doctor
-emrys run
-emrys inspect
-emrys report
-```
+Follow the [quickstart](quickstart.md) from installation through completed
+reports. It provides a synthetic first Run and explains how to prepare a
+Project with your own data. The [runbook](docs/operations/RUNBOOK.md) owns site
+setup and operation of existing Projects.
 
 Commands that can publish or execute expose a no-write plan; automation uses
 explicit `--execute`. Interactive Run execution asks for confirmation.

@@ -88,3 +88,11 @@ Push, merge, cluster execution, dependency installation, destructive cleanup,
 and evidence promotion remain separate unless explicitly included in the
 approved scope. After publication, verify the intended remote ref and exact
 upstream equality.
+
+For an approved autonomous stack, publish each locally verified bounded slice,
+start its applicable CI on the published commit, and proceed directly to the
+next authorized slice without waiting for CI completion. After completing that
+work, inspect the outstanding stack checks and make bounded fixes where needed.
+Keep acceptance pending until the required checks pass; bind every result to
+its exact commit and rerun only checks invalidated by a later change. At the
+authorized stopping point, report any unfinished checks and unresolved failures.

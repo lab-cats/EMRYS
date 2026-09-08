@@ -13,7 +13,7 @@ import sys
 import uuid
 from collections.abc import Callable
 from contextlib import suppress
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
@@ -524,39 +524,19 @@ def diagnose_project(
         bindings = ()
         blockers.append(f"{storage_label}: {exc}")
         remediations.append(storage_remediation)
-    foundations = DoctorResult(
-        project=admitted_project,
-        analysis=analysis,
-        source_root=root,
-        source_commit=source_commit,
-        inspection=None,
-        bindings=bindings,
-        blockers=tuple(blockers),
-        remediations=tuple(remediations),
-        storage_ready=bool(bindings),
-        runtime_ready=False,
-    )
+    storage_ready = bool(bindings)
+    inspection: RuntimeInspection | None = None
+    runtime_ready = False
     profile_path = (
         onboarding.runtime_profile_path(project)
         if runtime_inventory is None
         else _absolute_path(runtime_inventory)
     )
     if runtime_inventory is None and not os.path.lexists(profile_path):
-        result = replace(
-            foundations,
-            blockers=(
-                *foundations.blockers,
-                f"runtime inventory is not admitted: {profile_path}",
-            ),
-            remediations=tuple(
-                dict.fromkeys(
-                    (
-                        *foundations.remediations,
-                        "Run `emrys doctor --repair`, or admit a complete site runtime "
-                        "with `emrys runtime discover --execute`.",
-                    )
-                )
-            ),
+        blockers.append(f"runtime inventory is not admitted: {profile_path}")
+        remediations.append(
+            "Run `emrys doctor --repair`, or admit a complete site runtime "
+            "with `emrys runtime discover --execute`."
         )
     else:
         try:
@@ -568,7 +548,7 @@ def diagnose_project(
             raise DoctorInputError(str(exc)) from exc
         fixed_checks = declared_checks[: len(fixed_policy)]
         additions, package_tree_ids, explicit_file_ids = _module_dependency_checks(
-            foundations.analysis.module.descriptor,
+            analysis.module.descriptor,
             fixed_checks,
         )
         selected_checks = (
@@ -578,7 +558,7 @@ def diagnose_project(
         )
         validate_runtime_profile_contract(
             selected_checks,
-            foundations.source_root,
+            root,
             expected_additions=additions,
         )
         if selected_checks != declared_checks:
@@ -594,14 +574,12 @@ def diagnose_project(
                 profile_path,
                 "local",
                 environment=guarded_r_environment(
-                    foundations.source_root,
+                    root,
                     renv_library,
                 ),
             )
         except RuntimeInspectionError as exc:
             raise DoctorInputError(str(exc)) from exc
-        blockers = list(foundations.blockers)
-        remediations = list(foundations.remediations)
         python = next(
             item for item in inspection.observations if item.check.check_id == "python"
         )
@@ -626,7 +604,7 @@ def diagnose_project(
         fixed_ids = {check.check_id for check in fixed_checks}
         custom_ids = {
             dependency.dependency_id
-            for dependency in foundations.analysis.module.descriptor.dependencies
+            for dependency in analysis.module.descriptor.dependencies
             if isinstance(dependency, analysis_modules.AnalysisDependencyV1)
         }
         if any(item.check.check_id in fixed_ids for item in failed):
@@ -640,39 +618,35 @@ def diagnose_project(
                 "with their package manager, then rerun Doctor; managed repair "
                 "restores only the fixed EMRYS runtime."
             )
-        result = replace(
-            foundations,
-            inspection=inspection,
-            bindings=(
-                *runtime_file_bindings(
-                    inspection,
-                    package_tree_ids=package_tree_ids,
-                    explicit_file_ids=explicit_file_ids,
-                ),
-                *foundations.bindings,
+        bindings = (
+            *runtime_file_bindings(
+                inspection,
+                package_tree_ids=package_tree_ids,
+                explicit_file_ids=explicit_file_ids,
             ),
-            blockers=tuple(blockers),
-            remediations=tuple(dict.fromkeys(remediations)),
-            runtime_ready=python_ready and not failed,
+            *bindings,
         )
-    if execution_error is None:
-        return result
-    return replace(
-        result,
-        blockers=(
-            *result.blockers,
-            f"default execution profile is not admitted: {execution_error}",
-        ),
-        remediations=tuple(
-            dict.fromkeys(
-                (
-                    *result.remediations,
-                    "Restore a valid Project-owned runtime/profiles/default.yaml; "
-                    "Doctor preserves operator execution policy.",
-                )
-            )
-        ),
-        execution_ready=False,
+        runtime_ready = python_ready and not failed
+    if execution_error is not None:
+        blockers.append(
+            f"default execution profile is not admitted: {execution_error}"
+        )
+        remediations.append(
+            "Restore a valid Project-owned runtime/profiles/default.yaml; "
+            "Doctor preserves operator execution policy."
+        )
+    return DoctorResult(
+        project=admitted_project,
+        analysis=analysis,
+        source_root=root,
+        source_commit=source_commit,
+        inspection=inspection,
+        bindings=bindings,
+        blockers=tuple(blockers),
+        remediations=tuple(dict.fromkeys(remediations)),
+        storage_ready=storage_ready,
+        runtime_ready=runtime_ready,
+        execution_ready=execution_error is None,
     )
 
 

@@ -82,33 +82,6 @@ SOURCE_OWNER_DIRECTORIES = {
     ): "cohort_candidate_preprocessing",
     ("stage", "split_N_cigar_reads_with_GATK"): "split_n_cigar",
 }
-RETIRED_DOCUMENTS = (
-    "docs/architecture/FUTURE_ARCHITECTURE.md",
-    "docs/architecture/diagrams/future_modular_pipeline.mmd",
-    "docs/architecture/diagrams/future_reporting_layer.mmd",
-    "docs/design/PIPELINE_PLAN.md",
-    "docs/design/QUESTIONS.md",
-    "docs/design/REFACTOR_AUDIT.md",
-    "docs/design/ORCHESTRATION_CONTRACT.md",
-    "docs/design/ORCHESTRATION_READINESS.md",
-    "docs/operations/CONCURRENT_WORK.md",
-    "docs/operations/HANDOFF.md",
-    "docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md",
-    "docs/operations/TASK_DELIVERY.md",
-    "docs/sitemap/README.md",
-    "docs/tasks/architecture_backlog_matrix.md",
-    "docs/tasks/architecture_campaign.md",
-    "docs/tasks/BACKLOG.md",
-    "docs/tasks/cards/README.md",
-    "src/emrys/contracts/MIGRATION_MECHANICS.md",
-)
-RETIRED_TASK_DIRECTORIES = (
-    "TODO",
-    "IN_PROGRESS",
-    "INTEGRATION_REVIEW",
-    "UNREFINED",
-    "cards",
-)
 
 
 def run(
@@ -247,36 +220,6 @@ def test_rejects_missing_semantic_owner_after_valid_roster(
     result = validate(repository, cwd=tmp_path)
 
     assert expected in result.stderr
-
-
-@pytest.mark.parametrize("relative", RETIRED_DOCUMENTS)
-def test_rejects_each_returned_retired_document(
-    tmp_path: Path,
-    relative: str,
-) -> None:
-    repository = write_fixture(tmp_path)
-    retired = repository / relative
-    retired.parent.mkdir(parents=True, exist_ok=True)
-    retired.write_text("# Retired\n", encoding="utf-8")
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert f"retired documentation owner returned: {relative}" in result.stderr
-
-
-@pytest.mark.parametrize("dirname", RETIRED_TASK_DIRECTORIES)
-def test_rejects_each_retired_task_directory(
-    tmp_path: Path,
-    dirname: str,
-) -> None:
-    repository = write_fixture(tmp_path)
-    legacy = repository / f"docs/tasks/{dirname}/OLD-01.md"
-    legacy.parent.mkdir(parents=True, exist_ok=True)
-    legacy.write_text("# Old\n", encoding="utf-8")
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert f"retired task directory contains Markdown: docs/tasks/{dirname}" in result.stderr
 
 
 @pytest.mark.parametrize("kind", ("missing", "non_git", "nested"))

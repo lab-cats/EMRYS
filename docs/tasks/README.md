@@ -12,3 +12,11 @@ after its outcome, evidence at the correct level, and affected contracts and
 documentation agree. Git history—not a parallel card registry, campaign
 ledger, or handoff document—retains completed work, superseded planning, and
 chronology.
+
+The [polish campaign](polish-campaign.md) collects the September 2026 audit's
+candidate scope, evidence, and proposed acceptance. It is a selection aid;
+accepted work and execution status remain in the backlog matrix.
+
+The [optimization campaign](optimization_campaign.md) records the pipeline
+resource audit, candidate tradeoffs, and proposed measurement approach. It
+supplies evidence for selection; accepted work and status remain in the backlog.

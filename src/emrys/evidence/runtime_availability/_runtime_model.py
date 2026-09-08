@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 PROFILE_HEADER = (
     "check_id",
@@ -55,8 +56,10 @@ class PreflightError(RuntimeError):
     """Raised for invalid inputs or unsafe publication state."""
 
 
-@dataclass(frozen=True)
-class Check:
+@dataclass(frozen=True, slots=True)
+class RuntimeCheck:
+    """One normalized check admitted from an explicit runtime profile."""
+
     check_id: str
     check_type: str
     runtime_context: str
@@ -67,13 +70,15 @@ class Check:
     description: str
 
 
-@dataclass(frozen=True)
-class Result:
-    check: Check
+@dataclass(frozen=True, slots=True)
+class RuntimeObservation:
+    """One completed availability observation without publication authority."""
+
+    check: RuntimeCheck
     status: str
     observed: str
     detail: str
-    resolved_path: str | None = None
+    resolved_path: Path | None = None
 
 
 def _fail(message: str) -> None:

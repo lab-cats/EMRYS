@@ -551,6 +551,52 @@ def _task_commands(
         star_bam = _one(all_paths["01", scope_id], "step01_star_bam_v1")
         canonical_bam = _one(all_paths["02", scope_id], "step02_canonical_bam_v1")
         canonical_bai = _one(all_paths["02", scope_id], "step02_canonical_bai_v1")
+        if step_id == "06":
+            split_bam = _one(all_paths["05", scope_id], "step05_split_bam_v1")
+            split_bai = _one(all_paths["05", scope_id], "step05_split_bai_v1")
+            fwd = _one(paths, "step06_fwd_bam_v1")
+            fwd_bai = _one(paths, "step06_fwd_bai_v1")
+            rev = _one(paths, "step06_rev_bam_v1")
+            rev_bai = _one(paths, "step06_rev_bai_v1")
+            counts = _one(paths, "step06_orientation_counts_v1")
+            producer = controlled_python_argv(
+                sys.executable,
+                "-m",
+                "emrys.stages.mechanical_orientation.producer",
+                "--sample-id",
+                scope_id,
+                "--input-bam",
+                str(split_bam),
+                "--output-dir",
+                str(fwd.parent),
+                "--qc-dir",
+                str(counts.parent),
+                "--threads",
+                str(declared_threads()),
+                "--samtools-bin",
+                samtools,
+                "--no-clobber",
+                "--execute",
+            )
+            validator = _validator(
+                "mechanical-orientation",
+                "--scope-id",
+                scope_id,
+                "--fwd-bam",
+                str(fwd),
+                "--fwd-bai",
+                str(fwd_bai),
+                "--rev-bam",
+                str(rev),
+                "--rev-bai",
+                str(rev_bai),
+                "--counts",
+                str(counts),
+                "--output",
+                str(validation),
+            )
+            return producer, validator, (split_bam, split_bai)
+
         if step_id == "01":
             index_paths = tuple(all_paths["00a", reference_id]["step00a_star_index_v1"])
             index_dir = index_paths[0].parent
@@ -559,14 +605,8 @@ def _task_commands(
             log_out = _one(paths, "step01_star_log_v1")
             log_progress = _one(paths, "step01_star_log_progress_v1")
             sj_out = _one(paths, "step01_star_sj_v1")
-            producer = (
-                bash,
-                str(
-                    source_root
-                    / "src/emrys/stages/star_alignment/step_01_star_align.sh"
-                ),
-                "--sample-id",
-                scope_id,
+            script = "src/emrys/stages/star_alignment/step_01_star_align.sh"
+            producer_arguments = (
                 "--r1-fastq",
                 str(sample["r1_fastq"]["path"]),
                 "--r2-fastq",
@@ -581,13 +621,9 @@ def _task_commands(
                 star,
                 "--gunzip-bin",
                 gunzip,
-                "--no-clobber",
-                "--execute",
             )
-            validator = _validator(
-                "star-alignment",
-                "--scope-id",
-                scope_id,
+            validator_name = "star-alignment"
+            validator_arguments = (
                 "--bam",
                 str(bam),
                 "--log-final",
@@ -598,29 +634,17 @@ def _task_commands(
                 str(log_progress),
                 "--sj-out",
                 str(sj_out),
-                "--output",
-                str(validation),
             )
-            return (
-                producer,
-                validator,
-                (
-                    Path(str(sample["r1_fastq"]["path"])),
-                    Path(str(sample["r2_fastq"]["path"])),
-                    *index_paths,
-                ),
+            input_paths = (
+                Path(str(sample["r1_fastq"]["path"])),
+                Path(str(sample["r2_fastq"]["path"])),
+                *index_paths,
             )
-        if step_id == "02":
+        elif step_id == "02":
             bam = _one(paths, "step02_canonical_bam_v1")
             bai = _one(paths, "step02_canonical_bai_v1")
-            producer = (
-                bash,
-                str(
-                    source_root
-                    / "src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh"
-                ),
-                "--sample-id",
-                scope_id,
+            script = "src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh"
+            producer_arguments = (
                 "--input-alignment",
                 str(star_bam),
                 "--output-dir",
@@ -629,66 +653,44 @@ def _task_commands(
                 str(declared_threads()),
                 "--samtools-bin",
                 samtools,
-                "--no-clobber",
-                "--execute",
             )
-            validator = _validator(
-                "canonical-bam",
-                "--scope-id",
-                scope_id,
+            validator_name = "canonical-bam"
+            validator_arguments = (
                 "--bam",
                 str(bam),
                 "--bai",
                 str(bai),
                 "--samtools-bin",
                 samtools,
-                "--output",
-                str(validation),
             )
-            return producer, validator, (star_bam,)
-        if step_id == "02b":
+            input_paths = (star_bam,)
+        elif step_id == "02b":
             quickcheck = _one(paths, "step02b_quickcheck_v1")
             flagstat = _one(paths, "step02b_flagstat_v1")
-            producer = (
-                bash,
-                str(
-                    source_root
-                    / "src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh"
-                ),
-                "--sample-id",
-                scope_id,
+            script = "src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh"
+            producer_arguments = (
                 "--bam",
                 str(canonical_bam),
                 "--output-dir",
                 str(quickcheck.parent),
                 "--samtools-bin",
                 samtools,
-                "--no-clobber",
-                "--execute",
             )
-            validator = _validator(
-                "canonical-bam-qc",
-                "--scope-id",
-                scope_id,
+            validator_name = "canonical-bam-qc"
+            validator_arguments = (
                 "--quickcheck",
                 str(quickcheck),
                 "--flagstat",
                 str(flagstat),
-                "--output",
-                str(validation),
             )
-            return producer, validator, (canonical_bam, canonical_bai)
-        if step_id == "03":
+            input_paths = (canonical_bam, canonical_bai)
+        elif step_id == "03":
             infer = _one(paths, "step03_rseqc_infer_v1")
             bed = _one(all_paths["00b", reference_id], "step00b_bed12_v1")
-            producer = (
-                bash,
-                str(
-                    source_root
-                    / "src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"
-                ),
-                "--sample-id",
-                scope_id,
+            script = (
+                "src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"
+            )
+            producer_arguments = (
                 "--input-bam",
                 str(canonical_bam),
                 "--bed12",
@@ -697,31 +699,16 @@ def _task_commands(
                 str(infer.parent),
                 "--infer-experiment-bin",
                 infer_experiment,
-                "--no-clobber",
-                "--execute",
             )
-            validator = _validator(
-                "rseqc-orientation",
-                "--scope-id",
-                scope_id,
-                "--infer-report",
-                str(infer),
-                "--output",
-                str(validation),
-            )
-            return producer, validator, (canonical_bam, canonical_bai, bed)
-        if step_id == "04":
+            validator_name = "rseqc-orientation"
+            validator_arguments = ("--infer-report", str(infer))
+            input_paths = (canonical_bam, canonical_bai, bed)
+        elif step_id == "04":
             bam = _one(paths, "step04_markdup_bam_v1")
             bai = _one(paths, "step04_markdup_bai_v1")
             metrics = _one(paths, "step04_markdup_metrics_v1")
-            producer = (
-                bash,
-                str(
-                    source_root
-                    / "src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh"
-                ),
-                "--sample-id",
-                scope_id,
+            script = "src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh"
+            producer_arguments = (
                 "--input-bam",
                 str(canonical_bam),
                 "--output-dir",
@@ -734,13 +721,9 @@ def _task_commands(
                 java,
                 "--samtools-bin",
                 samtools,
-                "--no-clobber",
-                "--execute",
             )
-            validator = _validator(
-                "duplicate-marking",
-                "--scope-id",
-                scope_id,
+            validator_name = "duplicate-marking"
+            validator_arguments = (
                 "--bam",
                 str(bam),
                 "--bai",
@@ -749,11 +732,9 @@ def _task_commands(
                 str(metrics),
                 "--samtools-bin",
                 samtools,
-                "--output",
-                str(validation),
             )
-            return producer, validator, (canonical_bam, canonical_bai, Path(picard_jar))
-        if step_id == "05":
+            input_paths = (canonical_bam, canonical_bai, Path(picard_jar))
+        elif step_id == "05":
             markdup_bam = _one(all_paths["04", scope_id], "step04_markdup_bam_v1")
             markdup_bai = _one(all_paths["04", scope_id], "step04_markdup_bai_v1")
             bam = _one(paths, "step05_split_bam_v1")
@@ -762,14 +743,8 @@ def _task_commands(
             dictionary = _one(
                 all_paths["00c", reference_id], "step00c_reference_dict_v1"
             )
-            producer = (
-                bash,
-                str(
-                    source_root
-                    / "src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
-                ),
-                "--sample-id",
-                scope_id,
+            script = "src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
+            producer_arguments = (
                 "--input-bam",
                 str(markdup_bam),
                 "--reference-fasta",
@@ -782,13 +757,9 @@ def _task_commands(
                 samtools,
                 "--java-bin",
                 java,
-                "--no-clobber",
-                "--execute",
             )
-            validator = _validator(
-                "split-n-cigar",
-                "--scope-id",
-                scope_id,
+            validator_name = "split-n-cigar"
+            validator_arguments = (
                 "--bam",
                 str(bam),
                 "--bai",
@@ -801,58 +772,26 @@ def _task_commands(
                 str(dictionary),
                 "--samtools-bin",
                 samtools,
-                "--output",
-                str(validation),
             )
-            return (
-                producer,
-                validator,
-                (markdup_bam, markdup_bai, fasta, fai, dictionary),
-            )
-        split_bam = _one(all_paths["05", scope_id], "step05_split_bam_v1")
-        split_bai = _one(all_paths["05", scope_id], "step05_split_bai_v1")
-        fwd = _one(paths, "step06_fwd_bam_v1")
-        fwd_bai = _one(paths, "step06_fwd_bai_v1")
-        rev = _one(paths, "step06_rev_bam_v1")
-        rev_bai = _one(paths, "step06_rev_bai_v1")
-        counts = _one(paths, "step06_orientation_counts_v1")
-        producer = controlled_python_argv(
-            sys.executable,
-            "-m",
-            "emrys.stages.mechanical_orientation.producer",
+            input_paths = (markdup_bam, markdup_bai, fasta, fai, dictionary)
+        producer = (
+            bash,
+            str(source_root / script),
             "--sample-id",
             scope_id,
-            "--input-bam",
-            str(split_bam),
-            "--output-dir",
-            str(fwd.parent),
-            "--qc-dir",
-            str(counts.parent),
-            "--threads",
-            str(declared_threads()),
-            "--samtools-bin",
-            samtools,
+            *producer_arguments,
             "--no-clobber",
             "--execute",
         )
         validator = _validator(
-            "mechanical-orientation",
+            validator_name,
             "--scope-id",
             scope_id,
-            "--fwd-bam",
-            str(fwd),
-            "--fwd-bai",
-            str(fwd_bai),
-            "--rev-bam",
-            str(rev),
-            "--rev-bai",
-            str(rev_bai),
-            "--counts",
-            str(counts),
+            *validator_arguments,
             "--output",
             str(validation),
         )
-        return producer, validator, (split_bam, split_bai)
+        return producer, validator, input_paths
 
     if step_id == "07":
         try:

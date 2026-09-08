@@ -149,18 +149,6 @@ def _install_publication_signal_handlers() -> dict[int, Any]:
     )
 
 
-def _snapshot_at(snapshot: FileSnapshot, path: Path) -> FileSnapshot:
-    return FileSnapshot(
-        path=path,
-        sha256=snapshot.sha256,
-        device=snapshot.device,
-        inode=snapshot.inode,
-        size_bytes=snapshot.size_bytes,
-        mtime_ns=snapshot.mtime_ns,
-        ctime_ns=snapshot.ctime_ns,
-    )
-
-
 def _capture_moved_snapshot(
     path: Path,
     expected: FileSnapshot,

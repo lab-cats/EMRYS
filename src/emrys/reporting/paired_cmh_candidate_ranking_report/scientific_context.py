@@ -26,17 +26,6 @@ from .computational import (
 
 
 @dataclass(frozen=True)
-class ScientificContextSource:
-    role: str
-    artifact_id: str
-    path: Path
-    sha256: str
-    size_bytes: int
-    row_count: int | None
-    snapshot: FileSnapshot
-
-
-@dataclass(frozen=True)
 class ScientificContextResults:
     analysis_id: str
     validation: ComputationalTable
@@ -45,8 +34,8 @@ class ScientificContextResults:
     sequence_logo: ComputationalTable
     motif_statistics: ComputationalTable
     receipt: ComputationalTable
-    bound_inputs: tuple[ScientificContextSource, ...]
-    receipt_metadata: Mapping[str, str]
+    bound_inputs: tuple[FileSnapshot, ...]
+    reference_fasta_path: Path
 
     @property
     def tables(self) -> tuple[ComputationalTable, ...]:
@@ -63,7 +52,7 @@ class ScientificContextResults:
     def input_snapshots(self) -> tuple[FileSnapshot, ...]:
         return (
             *(table.snapshot for table in self.tables),
-            *(source.snapshot for source in self.bound_inputs),
+            *self.bound_inputs,
         )
 
 
@@ -73,24 +62,18 @@ _ROLE_SPECS = (
     (
         "candidate_context",
         "step10_candidate_context_v1",
-        "scientific_context_candidate_context",
-        "Step 10 candidate context",
         owner_context.CANDIDATE_CONTEXT_HEADER,
         0,
     ),
     (
         "motif_hits",
         "step10_motif_hits_v1",
-        "scientific_context_motif_hits",
-        "Step 10 exact registered-motif hits",
         owner_context.MOTIF_HITS_HEADER,
         0,
     ),
     (
         "sequence_logo",
         "step10_sequence_logo_v1",
-        "scientific_context_sequence_logo",
-        "Step 10 observed sequence-logo frequencies",
         owner_context.SEQUENCE_LOGO_HEADER,
         len(owner_context.CONTEXT_POPULATIONS)
         * (2 * owner_context.LOGO_RADIUS + 1)
@@ -99,8 +82,6 @@ _ROLE_SPECS = (
     (
         "motif_statistics",
         "step10_motif_statistics_v1",
-        "scientific_context_motif_statistics",
-        "Step 10 registered-motif position and enrichment statistics",
         owner_context.MOTIF_STATISTICS_HEADER,
         1
         + len(owner_context.CONTEXT_POPULATIONS)
@@ -177,15 +158,11 @@ def _validation_table(
             f"{_VALIDATION_CHECK_ID}={row['status'] or '<empty>'}"
         )
     return ComputationalTable(
-        role="validation",
-        table_id="scientific_context_validation",
         artifact_id=record.artifact_id,
-        title="Step 10 owner-validation report",
         path=path,
         sha256=snapshot.sha256,
         size_bytes=snapshot.size_bytes,
         row_count=1,
-        display_row_limit=1,
         header=header,
         display_rows=tuple(rows),
         snapshot=snapshot,
@@ -195,9 +172,6 @@ def _validation_table(
 def _canonical_table(
     record: AnalysisReportArtifactV1,
     *,
-    role: str,
-    table_id: str,
-    title: str,
     expected_header: tuple[str, ...],
     display_limit: int,
     canonical: owner_context.ContextTable,
@@ -224,15 +198,11 @@ def _canonical_table(
             "from the canonical receipt transaction"
         )
     return ComputationalTable(
-        role=role,
-        table_id=table_id,
         artifact_id=record.artifact_id,
-        title=title,
         path=path,
         sha256=snapshot.sha256,
         size_bytes=snapshot.size_bytes,
         row_count=observed_count,
-        display_row_limit=display_limit,
         header=header,
         display_rows=tuple(displayed),
         snapshot=snapshot,
@@ -254,15 +224,11 @@ def _receipt_table(
     ):
         _fail("Primary Step 10 receipt record differs from its canonical transaction")
     return ComputationalTable(
-        role="receipt",
-        table_id="scientific_context_receipt",
         artifact_id=record.artifact_id,
-        title="Step 10 receipt-last scientific-context transaction",
         path=path,
         sha256=snapshot.sha256,
         size_bytes=snapshot.size_bytes,
         row_count=1,
-        display_row_limit=1,
         header=header,
         display_rows=tuple(rows),
         snapshot=snapshot,
@@ -272,7 +238,7 @@ def _receipt_table(
 def _bound_inputs(
     receipt_row: Mapping[str, str],
     computational_results: ComputationalResults | None,
-) -> tuple[ScientificContextSource, ...]:
+) -> tuple[FileSnapshot, ...]:
     reusable = (
         {
             "step09_all_sites": computational_results.all_sites,
@@ -282,7 +248,7 @@ def _bound_inputs(
         if computational_results is not None
         else {}
     )
-    sources: list[ScientificContextSource] = []
+    sources: list[FileSnapshot] = []
     for role in _BOUND_INPUT_ROLES:
         path = Path(receipt_row[f"{role}_path"])
         prior = reusable.get(role)
@@ -295,23 +261,7 @@ def _bound_inputs(
         )
         if snapshot.sha256 != receipt_row[f"{role}_sha256"]:
             _fail(f"Scientific-context bound input {role!r} changed after admission")
-        sources.append(
-            ScientificContextSource(
-                role=role,
-                artifact_id="Step 10 receipt-bound input",
-                path=path,
-                sha256=snapshot.sha256,
-                size_bytes=snapshot.size_bytes,
-                row_count=(
-                    prior.row_count
-                    if prior is not None
-                    else 1
-                    if role == "motif_catalog"
-                    else None
-                ),
-                snapshot=snapshot,
-            )
-        )
+        sources.append(snapshot)
     return tuple(sources)
 
 
@@ -377,14 +327,11 @@ def admit_scientific_context_results(
     tables = {
         role: _canonical_table(
             records[role],
-            role=role,
-            table_id=table_id,
-            title=title,
             expected_header=header,
             display_limit=display_limit,
             canonical=output_by_role[role],
         )
-        for role, _adapter, table_id, title, header, display_limit in _ROLE_SPECS
+        for role, _adapter, header, display_limit in _ROLE_SPECS
     }
     bound_inputs = _bound_inputs(receipt_row, computational_results)
     return (
@@ -397,7 +344,7 @@ def admit_scientific_context_results(
             motif_statistics=tables["motif_statistics"],
             receipt=receipt,
             bound_inputs=bound_inputs,
-            receipt_metadata=dict(receipt_row),
+            reference_fasta_path=Path(receipt_row["reference_fasta_path"]),
         ),
         None,
     )

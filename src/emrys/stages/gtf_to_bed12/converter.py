@@ -96,16 +96,6 @@ class _GtfSelection:
     gene_attribute: str
 
 
-@dataclass(frozen=True, slots=True)
-class _ExonObservation:
-    transcript_id: str
-    gene_id: str | None
-    chrom: str
-    strand: str
-    exon: Exon
-    row_number: int
-
-
 def configure_parser(parser: argparse.ArgumentParser) -> None:
     """Add the converter owner's arguments to a command parser."""
     parser.add_argument(
@@ -194,12 +184,14 @@ def _build_bed_name(transcript_id: str, gene_id: str | None) -> str:
     return clean_transcript_id
 
 
-def _parse_exon_row(
+def _accumulate_exon(
     raw_line: str,
     row_number: int,
     selection: _GtfSelection,
+    transcripts: dict[str, Transcript],
+    warned_gene_conflicts: set[str],
     on_warning: WarningHandler | None,
-) -> _ExonObservation | None:
+) -> None:
     line = raw_line.rstrip("\n")
     if not line or line.startswith("#"):
         return None
@@ -248,53 +240,39 @@ def _parse_exon_row(
             f"'{selection.name_attribute}'; skipping row",
         )
         return None
-    return _ExonObservation(
-        transcript_id=transcript_id,
-        gene_id=attributes.get(selection.gene_attribute, "").strip() or None,
-        chrom=chrom,
-        strand=strand,
-        exon=Exon(start=gtf_start - 1, end=gtf_end),
-        row_number=row_number,
-    )
-
-
-def _accumulate_exon(
-    transcripts: dict[str, Transcript],
-    observation: _ExonObservation,
-    warned_gene_conflicts: set[str],
-    on_warning: WarningHandler | None,
-) -> None:
-    transcript = transcripts.get(observation.transcript_id)
+    gene_id = attributes.get(selection.gene_attribute, "").strip() or None
+    exon = Exon(start=gtf_start - 1, end=gtf_end)
+    transcript = transcripts.get(transcript_id)
     if transcript is None:
-        transcripts[observation.transcript_id] = Transcript(
-            transcript_id=observation.transcript_id,
-            chrom=observation.chrom,
-            strand=observation.strand,
-            gene_id=observation.gene_id,
-            exons=[observation.exon],
+        transcripts[transcript_id] = Transcript(
+            transcript_id=transcript_id,
+            chrom=chrom,
+            strand=strand,
+            gene_id=gene_id,
+            exons=[exon],
         )
         return
 
-    if transcript.chrom != observation.chrom or transcript.strand != observation.strand:
+    if transcript.chrom != chrom or transcript.strand != strand:
         transcript.invalid_reason = (
             "conflicting chromosome or strand for transcript "
-            f"'{observation.transcript_id}' at row {observation.row_number}"
+            f"'{transcript_id}' at row {row_number}"
         )
-    if observation.gene_id:
+    if gene_id:
         if transcript.gene_id is None:
-            transcript.gene_id = observation.gene_id
+            transcript.gene_id = gene_id
         elif (
-            transcript.gene_id != observation.gene_id
-            and observation.transcript_id not in warned_gene_conflicts
+            transcript.gene_id != gene_id
+            and transcript_id not in warned_gene_conflicts
         ):
             _report_warning(
                 on_warning,
-                f"transcript '{observation.transcript_id}' has multiple non-empty "
+                f"transcript '{transcript_id}' has multiple non-empty "
                 f"gene IDs; keeping first gene ID '{transcript.gene_id}' and ignoring "
-                f"'{observation.gene_id}'",
+                f"'{gene_id}'",
             )
-            warned_gene_conflicts.add(observation.transcript_id)
-    transcript.exons.append(observation.exon)
+            warned_gene_conflicts.add(transcript_id)
+    transcript.exons.append(exon)
 
 
 def _collect_transcripts(
@@ -311,19 +289,14 @@ def _collect_transcripts(
     warned_gene_conflicts: set[str] = set()
     with gtf_path.open(encoding="utf-8") as handle:
         for row_number, raw_line in enumerate(handle, start=1):
-            observation = _parse_exon_row(
+            _accumulate_exon(
                 raw_line,
                 row_number,
                 selection,
+                transcripts,
+                warned_gene_conflicts,
                 on_warning,
             )
-            if observation is not None:
-                _accumulate_exon(
-                    transcripts,
-                    observation,
-                    warned_gene_conflicts,
-                    on_warning,
-                )
     return transcripts
 
 

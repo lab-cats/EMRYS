@@ -52,15 +52,11 @@ def computational_table(
         rows = list(reader)
     snapshot = _snapshot_regular(path, "scientific figure fixture")
     return ComputationalTable(
-        role=role,
-        table_id=f"computational_{role}",
         artifact_id=f"analysis.synthetic.{role}",
-        title=role,
         path=path,
         sha256=snapshot.sha256,
         size_bytes=snapshot.size_bytes,
         row_count=len(rows) - 1,
-        display_row_limit=250,
         header=tuple(rows[0]),
         display_rows=(),
         snapshot=snapshot,
@@ -73,15 +69,11 @@ def context_table(path: Path, role: str, *, materialize: bool) -> ComputationalT
         rows = list(reader)
     snapshot = _snapshot_regular(path, "scientific-context figure fixture")
     return ComputationalTable(
-        role=role,
-        table_id=f"scientific_context_{role}",
         artifact_id=f"analysis.synthetic.{role}",
-        title=role,
         path=path,
         sha256=snapshot.sha256,
         size_bytes=snapshot.size_bytes,
         row_count=len(rows) - 1,
-        display_row_limit=len(rows) - 1 if materialize else 0,
         header=tuple(rows[0]),
         display_rows=tuple(tuple(row) for row in rows[1:]) if materialize else (),
         snapshot=snapshot,
@@ -312,7 +304,7 @@ def test_available_step10_logos_and_enrichment_are_deterministic(
         motif_statistics=statistics,
         receipt=candidate,
         bound_inputs=(),
-        receipt_metadata={},
+        reference_fasta_path=tmp_path / "reference.fa",
     )
 
     first = context_figures.build_scientific_context_figures(
@@ -350,7 +342,7 @@ def test_scientific_figure_assets_bind_shape_hash_size_and_unique_panel_ids(
             motif_statistics=logo,
             receipt=logo,
             bound_inputs=(),
-            receipt_metadata={},
+            reference_fasta_path=tmp_path / "reference.fa",
         )
     )
     rendered.validate()
@@ -561,15 +553,11 @@ def test_candidate_grid_is_population_complete_and_size_bounded(
             )
     snapshot = _snapshot_regular(path, "large candidate fixture")
     table = ComputationalTable(
-        role="all_sites",
-        table_id="computational_all_sites",
         artifact_id="analysis.synthetic.cmh_all_sites",
-        title="All candidates",
         path=path,
         sha256=snapshot.sha256,
         size_bytes=snapshot.size_bytes,
         row_count=row_count,
-        display_row_limit=250,
         header=header,
         display_rows=(),
         snapshot=snapshot,

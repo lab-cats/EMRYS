@@ -94,55 +94,106 @@ def test_forbidden_dependency_projection(
     assert problem.render().startswith(f"{problem.source_path}:{line}: [{rule_id}]")
 
 
-def test_exact_public_reporting_seam_is_allowed(tmp_path: Path) -> None:
-    repository = write_repository(
-        tmp_path,
-        {
-            "src/emrys/orchestration/run_coordinator/reporting_boundary.py": (
-                "from emrys.reporting import transaction_validation\n"
-            ),
-            "src/emrys/reporting/transaction_validation.py": "",
-        },
-    )
-
-    assert inspect(repository) == ()
-
-
 @pytest.mark.parametrize(
-    ("statement", "target_path"),
+    ("transition_id", "source_path", "target", "rule_id"),
     (
-        (
-            "from emrys.reporting._artifact_index.context import prepare_context\n",
-            "src/emrys/reporting/_artifact_index/context.py",
-        ),
-        (
-            "from emrys.reporting._artifact_index.publication import publish_context\n",
-            "src/emrys/reporting/_artifact_index/publication.py",
-        ),
-        (
-            "from emrys.reporting._run_summary.builder import prepare_context\n",
-            "src/emrys/reporting/_run_summary/builder.py",
-        ),
-        (
-            "from emrys.reporting._run_summary.publication import publish_context\n",
-            "src/emrys/reporting/_run_summary/publication.py",
-        ),
+        ("SRC-TRANS-013", "src/emrys/orchestration/run_coordinator/doctor.py", "emrys.reporting", TOOL.RULE_ORCHESTRATION_BOUNDARY),
+        ("SRC-TRANS-014", "src/emrys/orchestration/run_coordinator/lifecycle.py", "emrys.reporting.transaction_validation", TOOL.RULE_ORCHESTRATION_BOUNDARY),
+        ("SRC-TRANS-015", "src/emrys/orchestration/run_coordinator/reporting_boundary.py", "emrys.reporting.transaction_validation", TOOL.RULE_ORCHESTRATION_BOUNDARY),
+        ("SRC-TRANS-016", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._artifact_index.context", TOOL.RULE_PRIVATE_OWNER),
+        ("SRC-TRANS-017", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._artifact_index.publication", TOOL.RULE_PRIVATE_OWNER),
+        ("SRC-TRANS-018", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._artifact_index.models", TOOL.RULE_PRIVATE_OWNER),
+        ("SRC-TRANS-019", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.builder", TOOL.RULE_PRIVATE_OWNER),
+        ("SRC-TRANS-020", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.publication", TOOL.RULE_PRIVATE_OWNER),
+        ("SRC-TRANS-021", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.models", TOOL.RULE_PRIVATE_OWNER),
+        ("SRC-TRANS-022", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting.report", TOOL.RULE_ORCHESTRATION_BOUNDARY),
+        ("SRC-TRANS-023", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_report.publication", TOOL.RULE_PRIVATE_OWNER),
+        ("SRC-TRANS-024", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_report.models", TOOL.RULE_PRIVATE_OWNER),
     ),
 )
-def test_exact_reporting_coordinator_private_seam_is_allowed(
+def test_reporting_exceptions_are_exact_and_stale_failing(
     tmp_path: Path,
-    statement: str,
-    target_path: str,
+    transition_id: str,
+    source_path: str,
+    target: str,
+    rule_id: str,
 ) -> None:
+    transitions = tuple(row for row in TOOL.TRANSITIONS if row[0] == transition_id)
+    assert transitions == ((transition_id, source_path, target, rule_id),)
+    target_path = (
+        "src/emrys/reporting/__init__.py"
+        if target == "emrys.reporting"
+        else f"src/{target.replace('.', '/')}.py"
+    )
+    statement = f"import {target}\n"
     repository = write_repository(
         tmp_path,
         {
-            "src/emrys/orchestration/run_coordinator/reporting_operation.py": statement,
-            target_path: "",
+            source_path: statement,
+            target_path: "raise RuntimeError('source must not execute')\n",
         },
     )
 
-    assert inspect(repository) == ()
+    assert inspect(repository, transitions=transitions) == ()
+    unpermitted = inspect(repository)
+    assert len(unpermitted) == 1
+    assert (unpermitted[0].source_path, unpermitted[0].line, unpermitted[0].rule_id) == (
+        source_path,
+        1,
+        rule_id,
+    )
+    assert unpermitted[0].detail.endswith(f" -> {target}")
+
+    neighbor_source = source_path.removesuffix(".py") + "_unapproved.py"
+    neighbor_target = (
+        "emrys.reporting.unapproved"
+        if target == "emrys.reporting"
+        else target + "_unapproved"
+    )
+    neighbors = write_repository(
+        tmp_path,
+        {
+            source_path: statement + f"import {neighbor_target}\n",
+            neighbor_source: statement,
+            target_path: "",
+            f"src/{neighbor_target.replace('.', '/')}.py": "",
+        },
+        name="neighboring-reporting-imports",
+    )
+    problems = inspect(neighbors, transitions=transitions)
+    assert tuple(
+        (
+            problem.source_path,
+            problem.line,
+            problem.rule_id,
+            problem.detail.rsplit(" -> ", 1)[-1],
+        )
+        for problem in problems
+    ) == tuple(
+        sorted(
+            (
+                (source_path, 2, rule_id, neighbor_target),
+                (neighbor_source, 1, rule_id, target),
+            )
+        )
+    )
+
+    stale = inspect(
+        write_repository(
+            tmp_path,
+            {source_path: "", target_path: ""},
+            name="stale-reporting-import",
+        ),
+        transitions=transitions,
+    )
+    assert stale == (
+        TOOL.Problem(
+            source_path,
+            0,
+            rule_id,
+            f"stale transition {transition_id} to {target}; remove or reconcile it in SOURCE_TOPOLOGY.md",
+        ),
+    )
 
 
 @pytest.mark.parametrize(
@@ -257,6 +308,10 @@ def test_neutral_library_cycle_scope(tmp_path: Path, cross_owner: bool) -> None:
 
 
 def test_executable_rosters_match_documented_topology() -> None:
+    assert sum(
+        target == "emrys.reporting" or target.startswith("emrys.reporting.")
+        for _transition_id, _source, target, _rule_id in TOOL.TRANSITIONS
+    ) == 12
     topology = SOURCE_TOPOLOGY.read_text(encoding="utf-8")
     seam_rows = re.findall(
         r"^\| `(CLI-SEAM-\d{3})` \| `([^`]+)` \|",

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -303,9 +303,12 @@ def validate_existing_transaction(
     artifacts_path: Path,
     receipt_path: Path,
     source_root: Path,
+    validator: Callable[..., None] | None = None,
 ) -> None:
     previous_inventory_rows = inventory_rows_from_published_index(artifacts_path)
-    validate_published_transaction(
+    if validator is None:
+        validator = validate_published_transaction
+    validator(
         run_id=run_id,
         run_contract=run_contract,
         run_contract_path=Path(existing["run_contract_path"]),

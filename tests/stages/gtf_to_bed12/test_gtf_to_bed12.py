@@ -8,7 +8,9 @@ import pytest
 from emrys.stages.gtf_to_bed12.converter import (
     PublicationOperations,
     convert_from_args,
+    normalize_gtf,
     publish_bed,
+    render_bed,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -192,6 +194,42 @@ def test_multiple_gene_ids_warns_and_keeps_first(tmp_path: Path) -> None:
     assert result.returncode == 0
     assert "multiple non-empty gene IDs" in result.stderr
     assert read_bed(bed)[0].split("\t")[3] == "tx1|gene1"
+
+
+def test_normalization_preserves_admission_accumulation_and_warning_order(
+    tmp_path: Path,
+) -> None:
+    gtf = write_gtf(
+        tmp_path / "accumulation.gtf",
+        [
+            gtf_row("chr1", (1, 5), "+", 'transcript_id "keep";'),
+            gtf_row("chr1", ("bad", 8), "+", 'gene_id "ignored"; transcript_id "keep";'),
+            gtf_row("chr1", (11, 15), "+", 'gene_id "geneA"; transcript_id "keep";'),
+            gtf_row("chr1", (21, 25), "+", 'gene_id "geneB"; transcript_id "keep";'),
+            gtf_row("chr1", (31, 35), "+", 'gene_id "geneC"; transcript_id "keep";'),
+            gtf_row("chr2", (1, 5), "+", 'gene_id "geneX"; transcript_id "drop";'),
+            gtf_row("chr3", (11, 15), "+", 'gene_id "geneY"; transcript_id "drop";'),
+            gtf_row("chr2", (21, 25), "-", 'gene_id "geneZ"; transcript_id "drop";'),
+            "malformed",
+        ],
+    )
+    warnings: list[str] = []
+
+    records = normalize_gtf(gtf, "exon", "transcript_id", "gene_id", warnings.append)
+
+    assert render_bed(records) == (
+        b"chr1\t0\t35\tkeep|geneA\t0\t+\t0\t35\t0\t4\t5,5,5,5,\t0,10,20,30,\n"
+    )
+    assert warnings == [
+        "row 2: start and end must be integers; skipping row",
+        "transcript 'keep' has multiple non-empty gene IDs; keeping first gene ID "
+        "'geneA' and ignoring 'geneB'",
+        "transcript 'drop' has multiple non-empty gene IDs; keeping first gene ID "
+        "'geneX' and ignoring 'geneY'",
+        "row 9: expected 9 tab-separated columns; skipping row",
+        "conflicting chromosome or strand for transcript 'drop' at row 8; "
+        "skipping entire transcript",
+    ]
 
 
 def test_custom_feature_and_attribute_names(tmp_path: Path) -> None:

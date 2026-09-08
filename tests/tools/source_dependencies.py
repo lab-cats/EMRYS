@@ -56,37 +56,6 @@ KNOWN_RULE_IDS = frozenset(
         RULE_SOURCE_CLASSIFICATION,
     }
 )
-_REPORTING_OPERATION = "emrys.orchestration.run_coordinator.reporting_operation"
-ORCHESTRATION_REPORTING_SEAMS = frozenset(
-    {
-        (
-            "emrys.orchestration.run_coordinator.doctor",
-            "emrys.reporting",
-        ),
-        (
-            "emrys.orchestration.run_coordinator.lifecycle",
-            "emrys.reporting.transaction_validation",
-        ),
-        (
-            "emrys.orchestration.run_coordinator.reporting_boundary",
-            "emrys.reporting.transaction_validation",
-        ),
-        *(
-            (_REPORTING_OPERATION, target)
-            for target in (
-                "emrys.reporting._artifact_index.context",
-                "emrys.reporting._artifact_index.models",
-                "emrys.reporting._artifact_index.publication",
-                "emrys.reporting._run_summary.builder",
-                "emrys.reporting._run_summary.models",
-                "emrys.reporting._run_summary.publication",
-                "emrys.reporting.report",
-                "emrys.reporting._run_report.models",
-                "emrys.reporting._run_report.publication",
-            )
-        ),
-    }
-)
 
 # (documented ID, exact target); descriptive current behavior, not target APIs.
 COMPOSITION_SEAMS: tuple[tuple[str, str], ...] = (
@@ -138,6 +107,18 @@ TRANSITIONS: tuple[tuple[str, str, str, str], ...] = (
     ("SRC-TRANS-010", "src/emrys/orchestration/run_coordinator/lifecycle.py", "emrys.evidence.storage_inventory.qualification", RULE_ORCHESTRATION_BOUNDARY),
     ("SRC-TRANS-011", "src/emrys/orchestration/run_coordinator/onboarding.py", "emrys.stages.gtf_to_bed12.converter", RULE_ORCHESTRATION_BOUNDARY),
     ("SRC-TRANS-012", "src/emrys/orchestration/run_coordinator/onboarding.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-013", "src/emrys/orchestration/run_coordinator/doctor.py", "emrys.reporting", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-014", "src/emrys/orchestration/run_coordinator/lifecycle.py", "emrys.reporting.transaction_validation", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-015", "src/emrys/orchestration/run_coordinator/reporting_boundary.py", "emrys.reporting.transaction_validation", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-016", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._artifact_index.context", RULE_PRIVATE_OWNER),
+    ("SRC-TRANS-017", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._artifact_index.publication", RULE_PRIVATE_OWNER),
+    ("SRC-TRANS-018", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._artifact_index.models", RULE_PRIVATE_OWNER),
+    ("SRC-TRANS-019", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.builder", RULE_PRIVATE_OWNER),
+    ("SRC-TRANS-020", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.publication", RULE_PRIVATE_OWNER),
+    ("SRC-TRANS-021", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.models", RULE_PRIVATE_OWNER),
+    ("SRC-TRANS-022", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting.report", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-023", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_report.publication", RULE_PRIVATE_OWNER),
+    ("SRC-TRANS-024", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_report.models", RULE_PRIVATE_OWNER),
 )
 
 
@@ -337,10 +318,6 @@ def forbidden_rule(
 ) -> tuple[str, str] | None:
     source_kind, source_owner = owner(edge.source_module)
     target_kind, target_owner = owner(edge.target_module)
-    declared_reporting_seam = (
-        edge.source_module,
-        edge.target_module,
-    ) in ORCHESTRATION_REPORTING_SEAMS
     declared_analysis_module_seam = (
         edge.target_module == "emrys.analyses"
         and source_kind in {"functional", "orchestration", "reporting"}
@@ -355,7 +332,7 @@ def forbidden_rule(
         part.startswith("_") and not part.startswith("__")
         for part in edge.target_module.split(".")[2:]
     )
-    if source_owner != target_owner and private and not declared_reporting_seam:
+    if source_owner != target_owner and private:
         return RULE_PRIVATE_OWNER, "private modules are owner-local"
     if source_kind == "composition":
         if edge.target_module not in composition_targets:
@@ -380,7 +357,7 @@ def forbidden_rule(
         rule = RULE_INGESTION_BOUNDARY if source_kind == "ingestion" else RULE_REPORTING_DOWNSTREAM
         return rule, f"{source_kind} dependency direction is reversed"
     if source_kind == "orchestration" and target_kind in {"functional", "ingestion", "reporting"}:
-        if not (declared_reporting_seam or declared_analysis_module_seam):
+        if not declared_analysis_module_seam:
             return RULE_ORCHESTRATION_BOUNDARY, "target is not a declared public capability"
     return None
 

@@ -133,31 +133,21 @@ class OutputPaths:
 @dataclass
 class BuildContext:
     run_id: str
-    artifact_receipt_path: Path
-    artifact_receipt: dict[str, str]
     run_contract_path: Path
-    run_contract_file_sha256: str
     run_contract: dict[str, Any]
     inventory_path: Path
-    inventory_sha256: str
     inventory_rows: list[dict[str, str]]
-    artifacts_path: Path
     records_dir: Path
     analysis_policy_path: Path | None
-    analysis_policy: dict[str, Any] | None
     input_snapshots: tuple[FileSnapshot, ...]
     artifacts: list[dict[str, Any]]
     document: dict[str, Any]
     summary_json_bytes: bytes
-    summary_rows: list[dict[str, Any]]
     summary_tsv_bytes: bytes
     qc_summary_bytes: bytes
     paths: OutputPaths
     previous_receipt: dict[str, str] | None
     previous_receipt_sha256: str | None
-    previous_attempt_id: str | None
-    attempt_id: str
-    git_commit: str
     receipt_row: dict[str, Any]
     receipt_bytes: bytes
     source_checkout: SourceCheckout = field(

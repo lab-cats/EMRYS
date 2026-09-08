@@ -346,6 +346,7 @@ def test_historical_summary_discloses_step10_unavailability_in_candidate_evidenc
     )
 
     context = REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+    assert all(rehash for _snapshot, _label, rehash in context.input_rechecks)
     html = context.scientific_html_bytes.decode("utf-8")
     assert "sequence-context and motif-enrichment figures are unavailable" in html
     assert "Selected-candidate editing-rate and location evidence remains" in html
@@ -356,11 +357,25 @@ def test_historical_summary_discloses_step10_unavailability_in_candidate_evidenc
     assert "Candidate context" not in html
 
 
+@pytest.mark.parametrize("reuse_computational", (False, True))
 def test_step10_report_admission_calls_the_canonical_transaction_once(
     computational_summary: Path,
     monkeypatch: pytest.MonkeyPatch,
+    reuse_computational: bool,
 ) -> None:
     document = json.loads(computational_summary.read_text(encoding="utf-8"))
+    artifacts = provider_artifacts(document)
+    computational = None
+    if reuse_computational:
+        computational, computational_unavailable = (
+            report_computational.admit_computational_results(
+                document,
+                artifacts,
+                source_root=computational_summary.parent.parent,
+            )
+        )
+        assert computational is not None
+        assert computational_unavailable is None
     original = (
         report_scientific_context.owner_context.validate_scientific_context_transaction
     )
@@ -377,13 +392,50 @@ def test_step10_report_admission_calls_the_canonical_transaction_once(
     )
     results, unavailable = report_scientific_context.admit_scientific_context_results(
         document,
-        provider_artifacts(document),
-        computational_results=None,
+        artifacts,
+        computational_results=computational,
     )
 
     assert results is not None
     assert unavailable is None
     assert observed == [results.receipt.path]
+    with results.receipt.path.open(encoding="utf-8", newline="") as stream:
+        receipt_row = next(csv.DictReader(stream, delimiter="\t"))
+    expected_roles = (
+        "step09_all_sites",
+        "step09_significant_sites",
+        "step09_summary",
+        "reference_fasta",
+        "reference_fai",
+        "motif_catalog",
+    )
+    assert tuple(
+        (snapshot.path, snapshot.sha256) for snapshot in results.bound_inputs
+    ) == tuple(
+        (Path(receipt_row[f"{role}_path"]), receipt_row[f"{role}_sha256"])
+        for role in expected_roles
+    )
+    assert results.reference_fasta_path == Path(receipt_row["reference_fasta_path"])
+    assert results.input_snapshots == (
+        results.validation.snapshot,
+        results.candidate_context.snapshot,
+        results.motif_hits.snapshot,
+        results.sequence_logo.snapshot,
+        results.motif_statistics.snapshot,
+        results.receipt.snapshot,
+        *results.bound_inputs,
+    )
+    if computational is not None:
+        for snapshot, table in zip(
+            results.bound_inputs[:3],
+            (
+                computational.all_sites,
+                computational.significant_sites,
+                computational.summary,
+            ),
+            strict=True,
+        ):
+            assert snapshot is table.snapshot
 
 
 def publish(context: Any, ops: REPORT.ReportPublicationOps | None = None) -> None:
@@ -1059,6 +1111,16 @@ def test_report_displays_print_first_selected_candidate_evidence(
         arguments(computational_summary, tmp_path / "reports", execute=True)
     )
     assert sum(not rehash for _snapshot, _label, rehash in context.input_rechecks) == 1
+    reference_fasta = Path(
+        next(
+            artifact["source"]["path"]
+            for artifact in context.summary["artifacts"]
+            if artifact["adapter"] == "step00c_reference_fasta_v1"
+        )
+    )
+    assert [
+        snapshot.path for snapshot, _label, rehash in context.input_rechecks if not rehash
+    ] == [reference_fasta]
     publish(context)
     content = context.output_scientific_html.read_text(encoding="utf-8")
     assert '<div id="scientific-category" ' in content
