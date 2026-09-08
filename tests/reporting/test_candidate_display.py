@@ -254,7 +254,7 @@ def _context_results(
         motif_statistics=context,
         receipt=context,
         bound_inputs=(),
-        receipt_metadata={},
+        reference_fasta_path=tmp_path / "reference.fa",
     )
 
 

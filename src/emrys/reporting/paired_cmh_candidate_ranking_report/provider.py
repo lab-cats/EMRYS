@@ -120,13 +120,6 @@ def render_scientific_report(
         if results is not None
         for snapshot in results.input_snapshots
     }
-    identity_only = {
-        source.path
-        for source in (
-            scientific_context.bound_inputs if scientific_context is not None else ()
-        )
-        if source.role == "reference_fasta"
-    }
     return AnalysisScientificReportV1(
         html_bytes,
         tuple(
@@ -134,7 +127,8 @@ def render_scientific_report(
                 f"paired-CMH scientific input {path.name!r}",
                 path,
                 snapshot.sha256,
-                path not in identity_only,
+                scientific_context is None
+                or path != scientific_context.reference_fasta_path,
             )
             for path, snapshot in sorted(
                 input_snapshots.items(), key=lambda item: str(item[0])

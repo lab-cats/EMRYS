@@ -304,7 +304,7 @@ def test_available_step10_logos_and_enrichment_are_deterministic(
         motif_statistics=statistics,
         receipt=candidate,
         bound_inputs=(),
-        receipt_metadata={},
+        reference_fasta_path=tmp_path / "reference.fa",
     )
 
     first = context_figures.build_scientific_context_figures(
@@ -342,7 +342,7 @@ def test_scientific_figure_assets_bind_shape_hash_size_and_unique_panel_ids(
             motif_statistics=logo,
             receipt=logo,
             bound_inputs=(),
-            receipt_metadata={},
+            reference_fasta_path=tmp_path / "reference.fa",
         )
     )
     rendered.validate()
