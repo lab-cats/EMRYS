@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -53,25 +52,13 @@ if TYPE_CHECKING:
     from emrys.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
 
 
-@dataclass(frozen=True, slots=True)
-class ArtifactIdentityOps:
-    """Explicit source-provenance observation used throughout publication."""
-
-    matching_clean_checkout_head_commit: Callable[..., str | None] = (
-        matching_clean_checkout_head_commit
-    )
-
-
-DEFAULT_ARTIFACT_IDENTITY_OPS = ArtifactIdentityOps()
-
-
 def prepare_context(
     arguments: argparse.Namespace,
     *,
     source_checkout: SourceCheckout,
     artifact_source_root: ArtifactSourceRoot,
-    identity_ops: ArtifactIdentityOps = DEFAULT_ARTIFACT_IDENTITY_OPS,
 ) -> BuildContext:
+    source_identity_observer = matching_clean_checkout_head_commit
     source_root = artifact_source_root.root
     if not contracts.SAFE_ID_RE.fullmatch(arguments.run_id):
         raise ArtifactIndexError("run_id must match [A-Za-z0-9][A-Za-z0-9._-]*")
@@ -189,7 +176,7 @@ def prepare_context(
 
     started_at = utc_now()
     attempt_id = new_attempt_id(started_at)
-    git_commit = identity_ops.matching_clean_checkout_head_commit(
+    git_commit = source_identity_observer(
         source_checkout=source_checkout,
         package_root=Path(__file__).resolve().parents[2],
     )
@@ -292,7 +279,7 @@ def prepare_context(
         previous_attempt_id=previous_attempt_id,
         attempt_history=attempt_history,
         previous_receipt=existing,
-        source_identity_observer=identity_ops.matching_clean_checkout_head_commit,
+        source_identity_observer=source_identity_observer,
     )
     validate_context_in_memory(context)
     return context

@@ -33,7 +33,6 @@ from emrys.libraries.source_authority import (
     admit_artifact_source_root,
     admit_source_checkout,
     attest_source_checkout,
-    matching_clean_checkout_head_commit,
 )
 from emrys.libraries.validation.errors import ValidationError
 from emrys.libraries.validation.inputs import (
@@ -56,31 +55,6 @@ class ValidatedTransaction:
     receipt_sha256: str
     verified_report_locations: tuple[tuple[str, Path], ...] = ()
     _recheck: Callable[[], None] | None = field(default=None, repr=False, compare=False)
-
-
-def _no_transaction_fault(_paths: tuple[Path, ...]) -> None:
-    return None
-
-
-@dataclass(frozen=True, slots=True)
-class ReceiptValidationOps:
-    """Explicit source observation and race seam for focused validation tests."""
-
-    before_final_snapshot: Callable[[tuple[Path, ...]], None] = _no_transaction_fault
-    matching_clean_checkout_head_commit: Callable[..., str | None] = (
-        matching_clean_checkout_head_commit
-    )
-
-
-DEFAULT_RECEIPT_VALIDATION_OPS = ReceiptValidationOps()
-
-
-def _predecessor_receipt_ops(ops: ReceiptValidationOps) -> ReceiptValidationOps:
-    """Preserve source identity without applying an outer transaction fault."""
-
-    return ReceiptValidationOps(
-        matching_clean_checkout_head_commit=(ops.matching_clean_checkout_head_commit),
-    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -398,7 +372,6 @@ def _admit_authorities(
 def _validated_result(
     receipt: _ReceiptSnapshot,
     roster: _BoundRosterSnapshot,
-    ops: ReceiptValidationOps,
     reject_control_residue: Callable[[], None],
     *,
     identity_only_paths: Iterable[Path] = (),
@@ -409,8 +382,6 @@ def _validated_result(
         raise ReportingTransactionError(
             f"Reporting receipt changed before roster admission: {receipt.path}"
         )
-    paths = tuple(item.path for item in roster.files)
-    ops.before_final_snapshot(paths)
     identity_only = frozenset(identity_only_paths)
     expandable = frozenset(reusable_expandable_directories)
     reject_control_residue()
@@ -720,7 +691,6 @@ def _validate_historical_artifact_index_transaction(
     run_contract: Path,
     inventory: Path,
     output_root: Path,
-    receipt_ops: ReceiptValidationOps = DEFAULT_RECEIPT_VALIDATION_OPS,
 ) -> ValidatedTransaction:
     """Validate an immutable artifact ledger without today's producer registry."""
 
@@ -896,7 +866,6 @@ def _validate_historical_artifact_index_transaction(
     return _validated_result(
         receipt_snapshot,
         roster,
-        receipt_ops,
         reject_control_residue,
         reusable_expandable_directories=(output_dir,),
     )
@@ -912,7 +881,6 @@ def validate_artifact_index_transaction(
     output_root: Path,
     analysis_policy: Path | None = None,
     profile: Mapping[str, Any] | None = None,
-    receipt_ops: ReceiptValidationOps = DEFAULT_RECEIPT_VALIDATION_OPS,
 ) -> ValidatedTransaction:
     """Revalidate one artifact index plus current native artifact sources."""
 
@@ -949,11 +917,6 @@ def validate_artifact_index_transaction(
         arguments,
         source_checkout=checkout,
         artifact_source_root=source_root,
-        identity_ops=artifact_context.ArtifactIdentityOps(
-            matching_clean_checkout_head_commit=(
-                receipt_ops.matching_clean_checkout_head_commit
-            ),
-        ),
     )
     if context.previous_receipt is None:
         raise ReportingTransactionError(
@@ -1029,7 +992,6 @@ def validate_artifact_index_transaction(
     return _validated_result(
         receipt_snapshot,
         roster,
-        receipt_ops,
         reject_control_residue,
         reusable_expandable_directories=(context.output_dir,),
     )
@@ -1042,7 +1004,6 @@ def validate_run_summary_transaction(
     run_id: str,
     artifact_receipt: Path,
     output_root: Path,
-    receipt_ops: ReceiptValidationOps = DEFAULT_RECEIPT_VALIDATION_OPS,
     recorded_producer_commit: str | None = None,
     expected_run_contract: Path | None = None,
     expected_inventory: Path | None = None,
@@ -1159,7 +1120,6 @@ def validate_run_summary_transaction(
             "run_contract": context.run_contract_path,
             "inventory": context.inventory_path,
             "output_root": output_root,
-            "receipt_ops": _predecessor_receipt_ops(receipt_ops),
         }
         if not historical_read:
             artifact_options["profile"] = profile
@@ -1185,7 +1145,6 @@ def validate_run_summary_transaction(
     return _validated_result(
         receipt_snapshot,
         roster,
-        receipt_ops,
         reject_control_residue,
     )
 
@@ -1196,14 +1155,12 @@ def validate_report_transaction(
     artifact_source_root: Path,
     run_summary: Path,
     output_root: Path,
-    receipt_ops: ReceiptValidationOps = DEFAULT_RECEIPT_VALIDATION_OPS,
     analysis_policy: Path | None = None,
     profile: Mapping[str, Any] | None = None,
     validate_upstream: bool = True,
 ) -> ValidatedTransaction:
     """Revalidate both HTML views, TSV, receipt, and bound inputs."""
 
-    from emrys.reporting import report
     from emrys.reporting._run_report import context as report_context
     from emrys.reporting._run_report import receipt, validation
 
@@ -1227,7 +1184,7 @@ def validate_report_transaction(
     reject_control_residue()
     receipt_snapshot = _snapshot_receipt(output_dir / f"{run_id}.report_outputs.tsv")
     try:
-        context = report.prepare_report(
+        context = report_context.prepare_context(
             argparse.Namespace(
                 source_checkout=source_checkout,
                 artifact_source_root=artifact_source_root,
@@ -1237,7 +1194,7 @@ def validate_report_transaction(
                 execute=False,
             )
         )
-    except report.ReportRenderError as exc:
+    except report_context.ReportRenderError as exc:
         raise ReportingTransactionError(
             f"Report transaction failed semantic validation: {exc}"
         ) from exc
@@ -1265,7 +1222,6 @@ def validate_report_transaction(
             output_root=artifact_receipt.parent.parent,
             analysis_policy=analysis_policy,
             profile=profile,
-            receipt_ops=_predecessor_receipt_ops(receipt_ops),
         )
     admitted_snapshot = context.previous_snapshots.get(context.output_receipt)
     if admitted_snapshot is None or (
@@ -1341,7 +1297,6 @@ def validate_report_transaction(
     return _validated_result(
         receipt_snapshot,
         roster,
-        receipt_ops,
         reject_control_residue,
         identity_only_paths=(
             snapshot.path
@@ -1363,7 +1318,6 @@ def _validate_historical_report_transaction(
     expected_run_contract: Path,
     expected_inventory: Path,
     analysis_policy: Path | None = None,
-    receipt_ops: ReceiptValidationOps = DEFAULT_RECEIPT_VALIDATION_OPS,
     validate_upstream: bool = True,
 ) -> ValidatedTransaction:
     """Admit a ledger-bound legacy report without re-rendering it as current."""
@@ -1508,7 +1462,6 @@ def _validate_historical_report_transaction(
             expected_run_contract=expected_run_contract,
             expected_inventory=expected_inventory,
             analysis_policy=analysis_policy,
-            receipt_ops=_predecessor_receipt_ops(receipt_ops),
         )
     locations = tuple(
         (str(output["output_id"]), Path(str(output["path"])))
@@ -1517,7 +1470,6 @@ def _validate_historical_report_transaction(
     return _validated_result(
         receipt_snapshot,
         roster,
-        receipt_ops,
         reject_control_residue,
         verified_report_locations=locations,
     )
@@ -1727,7 +1679,6 @@ def validate_receipt(
 
 __all__ = (
     "ReportingTransactionError",
-    "ReceiptValidationOps",
     "ValidatedTransaction",
     "recheck_run_summary_inputs",
     "validate_artifact_index_transaction",

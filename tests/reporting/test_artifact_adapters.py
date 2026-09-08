@@ -95,10 +95,14 @@ ARTIFACT_VALIDATION = importlib.import_module(
 )
 
 
-def publication_ops(**overrides: Any) -> Any:
-    return dataclasses.replace(
-        ARTIFACT_PUBLICATION.DEFAULT_ARTIFACT_PUBLICATION_OPS,
-        **overrides,
+@pytest.fixture(autouse=True)
+def fixture_source_observer(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        ARTIFACT_CONTEXT,
+        "matching_clean_checkout_head_commit",
+        lambda **_kwargs: ARTIFACT_CORE.get_git_commit(
+            source_root=REPO_ROOT, sanitize_git_routing=True
+        ),
     )
 
 
@@ -160,14 +164,6 @@ def run_builder(
                 artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(
                     root=prepared_arguments.artifact_source_root
                 ),
-                identity_ops=ARTIFACT_CONTEXT.ArtifactIdentityOps(
-                    matching_clean_checkout_head_commit=(
-                        lambda **_kwargs: ARTIFACT_CORE.get_git_commit(
-                            source_root=REPO_ROOT,
-                            sanitize_git_routing=True,
-                        )
-                    )
-                ),
             )
             if prepared_arguments.execute:
                 ARTIFACT_PUBLICATION.publish_context(context)
@@ -224,14 +220,6 @@ def context_for(fixture: Any) -> Any:
         ),
         source_checkout=SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT),
         artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(root=fixture.root),
-        identity_ops=ARTIFACT_CONTEXT.ArtifactIdentityOps(
-            matching_clean_checkout_head_commit=(
-                lambda **_kwargs: ARTIFACT_CORE.get_git_commit(
-                    source_root=REPO_ROOT,
-                    sanitize_git_routing=True,
-                )
-            )
-        ),
     )
 
 
@@ -291,9 +279,7 @@ def test_fixture_covers_exact_tracked_inventory_and_adapter_registry(
     assert [row["artifact_id"] for row in rows] == [
         row["artifact_id"] for row in FIXTURE.read_inventory_template()
     ]
-    registry = ARTIFACT_REGISTRY.build_adapter_registry(
-        FIXTURE.analysis_module_v1()
-    )
+    registry = ARTIFACT_REGISTRY.build_adapter_registry(FIXTURE.analysis_module_v1())
     assert {row["adapter"] for row in rows} == set(registry)
     assert len(artifact_fixture.source_paths) == 74
     assert all(path.is_file() for path in artifact_fixture.source_paths.values())
@@ -352,9 +338,7 @@ def test_checkout_local_wheel_does_not_claim_the_core_commit() -> None:
     )
 
     assert evidence["09"]["git_commit"] is None
-    assert evidence["09"]["evidence"][0]["sha256"] == (
-        module.provider.package.sha256
-    )
+    assert evidence["09"]["evidence"][0]["sha256"] == (module.provider.package.sha256)
 
 
 def test_git_commit_routing_sanitization_is_explicit_and_complete(
@@ -472,6 +456,11 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
         validate_artifact_semantics,
     )
 
+    monkeypatch.setattr(
+        ARTIFACT_CONTEXT,
+        "matching_clean_checkout_head_commit",
+        matching_clean_checkout_head_commit,
+    )
     context = ARTIFACT_CONTEXT.prepare_context(
         argparse.Namespace(
             run_id=artifact_fixture.run_id,
@@ -483,9 +472,6 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
         ),
         source_checkout=source_checkout,
         artifact_source_root=artifact_source_root,
-        identity_ops=ARTIFACT_CONTEXT.ArtifactIdentityOps(
-            matching_clean_checkout_head_commit=(matching_clean_checkout_head_commit)
-        ),
     )
 
     assert context.source_checkout == source_checkout
@@ -498,7 +484,11 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
 
 def test_prepare_context_rejects_unattributable_dirty_checkout(
     artifact_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(
+        ARTIFACT_CONTEXT, "matching_clean_checkout_head_commit", lambda **_kwargs: None
+    )
     with pytest.raises(
         ARTIFACT_MODELS.ArtifactIndexError,
         match="requires a stable clean source checkout",
@@ -516,14 +506,12 @@ def test_prepare_context_rejects_unattributable_dirty_checkout(
             artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(
                 root=artifact_fixture.root
             ),
-            identity_ops=ARTIFACT_CONTEXT.ArtifactIdentityOps(
-                matching_clean_checkout_head_commit=lambda **_kwargs: None
-            ),
         )
 
 
 def test_publication_rechecks_source_identity_before_terminal_receipt(
     artifact_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     context = context_for(artifact_fixture)
     calls = 0
@@ -534,10 +522,12 @@ def test_publication_rechecks_source_identity_before_terminal_receipt(
         if calls == 2:
             raise ARTIFACT_MODELS.ArtifactIndexError("fixture source drift")
 
+    monkeypatch.setattr(
+        ARTIFACT_PUBLICATION, "recheck_source_identity", recheck_source_identity
+    )
     with pytest.raises(ARTIFACT_MODELS.ArtifactIndexError, match="source drift"):
         ARTIFACT_PUBLICATION.publish_context(
             context,
-            ops=publication_ops(recheck_source_identity=recheck_source_identity),
         )
 
     assert calls == 2
@@ -620,37 +610,40 @@ def test_execute_publishes_inventory_ordered_schema_valid_transaction(
     )
 
 
-def test_fixed_time_retry_keeps_records_and_index_deterministic(
+def test_repreparation_is_deterministic_and_repeat_publication_is_refused(
     artifact_fixture: Any,
 ) -> None:
     first = run_builder(artifact_fixture, execute=True)
     assert first.returncode == 0, first.stderr
-    first_record_bytes = {
-        path.name: path.read_bytes()
-        for path in sorted(artifact_fixture.records_dir.glob("*.json"))
-    }
-    first_index = artifact_fixture.artifacts_path.read_bytes()
-    first_receipt = read_tsv(artifact_fixture.receipt_path)[0]
-
-    second = run_builder(artifact_fixture, execute=True)
+    before = owned_snapshot(artifact_fixture)
+    second = run_builder(artifact_fixture)
     assert second.returncode == 0, second.stderr
-    second_record_bytes = {
-        path.name: path.read_bytes()
-        for path in sorted(artifact_fixture.records_dir.glob("*.json"))
-    }
-    second_receipt = read_tsv(artifact_fixture.receipt_path)[0]
-
-    assert second_record_bytes == first_record_bytes
-    assert artifact_fixture.artifacts_path.read_bytes() == first_index
-    assert second_receipt["adapter_attempt_id"] != (first_receipt["adapter_attempt_id"])
+    prepared = second.context
+    assert prepared is not None
+    assert prepared.index_bytes == artifact_fixture.artifacts_path.read_bytes()
+    for record, payload in zip(prepared.records, prepared.record_bytes, strict=True):
+        assert (
+            payload
+            == (
+                artifact_fixture.records_dir / f"{record['artifact_id']}.json"
+            ).read_bytes()
+        )
+    old = read_tsv(artifact_fixture.receipt_path)[0]
+    assert prepared.previous_receipt == old
     assert (
-        second_receipt["supersedes_adapter_attempt_id"]
-        == (first_receipt["adapter_attempt_id"])
+        prepared.receipt_row["supersedes_adapter_attempt_id"]
+        == old["adapter_attempt_id"]
     )
-    assert second_receipt["adapter_attempt_history"].split(",") == [
-        first_receipt["adapter_attempt_id"],
-        second_receipt["adapter_attempt_id"],
+    assert prepared.receipt_row["adapter_attempt_history"].split(",") == [
+        old["adapter_attempt_id"],
+        prepared.attempt_id,
     ]
+    with pytest.raises(
+        ARTIFACT_MODELS.ArtifactIndexError, match="output already exists"
+    ):
+        ARTIFACT_PUBLICATION.publish_context(prepared)
+    assert owned_snapshot(artifact_fixture) == before
+    assert not artifact_fixture.lock_path.exists()
 
 
 def test_missing_and_malformed_sources_are_explicit_and_scope_reconciled(
@@ -864,7 +857,7 @@ def test_undeclared_source_and_unrelated_run_outputs_are_ignored_and_preserved(
     unrelated.write_bytes(unrelated_payload)
 
     first = run_builder(artifact_fixture, execute=True)
-    second = run_builder(artifact_fixture, execute=True)
+    second = run_builder(artifact_fixture)
 
     assert first.returncode == 0, first.stderr
     assert second.returncode == 0, second.stderr
@@ -910,72 +903,56 @@ def test_foreign_lock_and_partial_prior_transaction_are_preserved(
     assert not partial.lock_path.exists()
 
 
-def test_first_publication_rename_failure_rolls_back_owned_outputs(
+def test_first_publication_link_failure_rolls_back_owned_outputs(
     artifact_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
     context = context_for(artifact_fixture)
-    real_replace = ARTIFACT_PUBLICATION.DEFAULT_ARTIFACT_PUBLICATION_OPS.replace
+    real_link = os.link
 
-    def fail_index_publication(source: Any, destination: Any) -> None:
-        if (
-            Path(destination) == context.artifacts_path
-            and ".tmp.tsv" in Path(source).name
-        ):
+    def fail_index_publication(source: Any, destination: Any, **kwargs: Any) -> None:
+        if Path(destination) == context.artifacts_path:
             raise OSError("injected index publication failure")
-        real_replace(source, destination)
+        real_link(source, destination, **kwargs)
 
+    monkeypatch.setattr(os, "link", fail_index_publication)
     with pytest.raises(
         ARTIFACT_MODELS.ArtifactIndexError,
         match="injected index publication failure",
     ):
         ARTIFACT_PUBLICATION.publish_context(
             context,
-            ops=publication_ops(replace=fail_index_publication),
         )
 
     assert_no_owned_outputs(artifact_fixture)
 
 
-def test_replacement_rename_failure_restores_prior_transaction_byte_for_byte(
+@pytest.mark.parametrize("prepared_first", [False, True])
+def test_existing_transaction_refusal_preserves_every_byte_and_inode(
     artifact_fixture: Any,
-    monkeypatch: pytest.MonkeyPatch,
+    prepared_first: bool,
 ) -> None:
-    monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
+    stale = context_for(artifact_fixture) if prepared_first else None
     ARTIFACT_PUBLICATION.publish_context(context_for(artifact_fixture))
+    context = stale if stale is not None else context_for(artifact_fixture)
     before = owned_snapshot(artifact_fixture)
-    replacement = context_for(artifact_fixture)
-    real_replace = ARTIFACT_PUBLICATION.DEFAULT_ARTIFACT_PUBLICATION_OPS.replace
-    failed = False
-
-    def fail_replacement_index(source: Any, destination: Any) -> None:
-        nonlocal failed
-        if (
-            not failed
-            and Path(destination) == replacement.artifacts_path
-            and ".tmp.tsv" in Path(source).name
-        ):
-            failed = True
-            raise OSError("injected replacement index failure")
-        real_replace(source, destination)
-
+    paths = [
+        artifact_fixture.records_dir,
+        artifact_fixture.artifacts_path,
+        artifact_fixture.receipt_path,
+        *artifact_fixture.records_dir.iterdir(),
+    ]
+    identities = {path: (path.stat().st_dev, path.stat().st_ino) for path in paths}
     with pytest.raises(
-        ARTIFACT_MODELS.ArtifactIndexError,
-        match="injected replacement index failure",
+        ARTIFACT_MODELS.ArtifactIndexError, match="output already exists"
     ):
-        ARTIFACT_PUBLICATION.publish_context(
-            replacement,
-            ops=publication_ops(replace=fail_replacement_index),
-        )
-
-    assert failed
+        ARTIFACT_PUBLICATION.publish_context(context)
     assert owned_snapshot(artifact_fixture) == before
+    assert {
+        path: (path.stat().st_dev, path.stat().st_ino) for path in paths
+    } == identities
     assert not artifact_fixture.lock_path.exists()
-    assert not any(
-        path.name.startswith((".artifact-index.", ".artifact-receipt."))
-        for path in artifact_fixture.output_dir.iterdir()
-    )
 
 
 def test_source_mutation_between_inspection_and_publication_aborts_cleanly(
@@ -1077,7 +1054,7 @@ def test_run_contract_is_order_independent_but_strict_json(
     assert not artifact_fixture.output_root.exists()
 
 
-def test_semantically_identical_moved_run_contract_can_retry(
+def test_semantically_identical_moved_run_contract_can_be_readmitted(
     artifact_fixture: Any,
 ) -> None:
     first = run_builder(artifact_fixture, execute=True)
@@ -1093,7 +1070,7 @@ def test_semantically_identical_moved_run_contract_can_retry(
         + "\n",
         encoding="utf-8",
     )
-    arguments = artifact_index_arguments(artifact_fixture, execute=True)
+    arguments = artifact_index_arguments(artifact_fixture)
     arguments.run_contract = moved_contract
 
     second = run_builder(
@@ -1102,7 +1079,7 @@ def test_semantically_identical_moved_run_contract_can_retry(
     )
 
     assert second.returncode == 0, second.stderr
-    receipt = read_tsv(artifact_fixture.receipt_path)[0]
+    receipt = second.context.receipt_row
     assert receipt["run_contract_path"] == str(moved_contract)
     assert receipt["run_contract_file_sha256"] == sha256_file(moved_contract)
     assert (
@@ -1167,7 +1144,9 @@ def test_publication_rejects_symlinked_output_ancestor(
 ) -> None:
     products = artifact_fixture.root / "products"
     output_root = products / "artifact-summary"
-    context = context_for(dataclasses.replace(artifact_fixture, output_root=output_root))
+    context = context_for(
+        dataclasses.replace(artifact_fixture, output_root=output_root)
+    )
     products.mkdir()
     external = tmp_path / f"external-{component}"
     external.mkdir()
@@ -1192,7 +1171,9 @@ def test_publication_directory_creation_does_not_follow_swapped_ancestor(
 ) -> None:
     products = artifact_fixture.root / "products"
     output_root = products / "artifact-summary"
-    context = context_for(dataclasses.replace(artifact_fixture, output_root=output_root))
+    context = context_for(
+        dataclasses.replace(artifact_fixture, output_root=output_root)
+    )
     products.mkdir()
     displaced = artifact_fixture.root / "displaced-products"
     external = tmp_path / "external-race-target"
@@ -1341,22 +1322,16 @@ def test_tampered_receipt_and_extra_record_entry_block_retry(
     assert "non-regular owned entry" in symlinked_record.stderr
 
 
-def test_stale_predecessor_context_cannot_overwrite_newer_retry(
+def test_stale_empty_context_cannot_overwrite_a_new_transaction(
     artifact_fixture: Any,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
-    ARTIFACT_PUBLICATION.publish_context(context_for(artifact_fixture))
     stale = context_for(artifact_fixture)
     ARTIFACT_PUBLICATION.publish_context(context_for(artifact_fixture))
     before = owned_snapshot(artifact_fixture)
-
     with pytest.raises(
-        ARTIFACT_MODELS.ArtifactIndexError,
-        match="predecessor changed",
+        ARTIFACT_MODELS.ArtifactIndexError, match="output already exists"
     ):
         ARTIFACT_PUBLICATION.publish_context(stale)
-
     assert owned_snapshot(artifact_fixture) == before
     assert not artifact_fixture.lock_path.exists()
 
@@ -1400,7 +1375,7 @@ def test_post_publication_source_mutation_rolls_back(
 ) -> None:
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
     context = context_for(artifact_fixture)
-    real_validate = ARTIFACT_PUBLICATION.DEFAULT_ARTIFACT_PUBLICATION_OPS.validate_published_transaction
+    real_validate = ARTIFACT_PUBLICATION.validate_published_transaction
     source = artifact_fixture.source_for("sample.SYNTH_A.star_log")
     mutated = False
 
@@ -1412,65 +1387,48 @@ def test_post_publication_source_mutation_rolls_back(
             source.write_text("mutated after publication\n", encoding="utf-8")
             mutated = True
 
+    monkeypatch.setattr(
+        ARTIFACT_PUBLICATION, "validate_published_transaction", mutate_after_validation
+    )
     with pytest.raises(
         ARTIFACT_MODELS.ArtifactIndexError,
         match="changed after initial inspection",
     ):
         ARTIFACT_PUBLICATION.publish_context(
             context,
-            ops=publication_ops(validate_published_transaction=mutate_after_validation),
         )
 
     assert mutated
     assert_no_owned_outputs(artifact_fixture)
 
 
-def test_post_commit_backup_cleanup_failure_preserves_new_transaction(
+def test_post_commit_stage_cleanup_failure_preserves_new_transaction(
     artifact_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
-    ARTIFACT_PUBLICATION.publish_context(context_for(artifact_fixture))
-    prior_receipt = read_tsv(artifact_fixture.receipt_path)[0]
-    replacement = context_for(artifact_fixture)
-    real_remove_owned = (
-        ARTIFACT_PUBLICATION.DEFAULT_ARTIFACT_PUBLICATION_OPS.remove_owned
-    )
-    injected = False
+    context = context_for(artifact_fixture)
+    real_remove = ARTIFACT_PUBLICATION.remove_owned
 
-    def fail_backup_index_cleanup(path: Path) -> None:
-        nonlocal injected
-        if (
-            not injected
-            and path.name.startswith(".artifact-index.")
-            and path.name.endswith(".previous.tsv")
-        ):
-            injected = True
-            raise OSError("injected backup cleanup failure")
-        real_remove_owned(path)
+    def fail_stage_cleanup(path: Path) -> None:
+        if path.name.endswith(".tmp.records"):
+            raise OSError("injected stage cleanup failure")
+        real_remove(path)
 
-    with pytest.raises(
-        ARTIFACT_MODELS.ArtifactIndexError,
-        match="cleanup failed",
-    ):
-        ARTIFACT_PUBLICATION.publish_context(
-            replacement,
-            ops=publication_ops(remove_owned=fail_backup_index_cleanup),
-        )
-
-    assert injected
-    current_receipt = read_tsv(artifact_fixture.receipt_path)[0]
-    assert current_receipt["adapter_attempt_id"] == replacement.attempt_id
+    monkeypatch.setattr(ARTIFACT_PUBLICATION, "remove_owned", fail_stage_cleanup)
+    with pytest.raises(ARTIFACT_MODELS.ArtifactIndexError, match="cleanup failed"):
+        ARTIFACT_PUBLICATION.publish_context(context)
     assert (
-        current_receipt["supersedes_adapter_attempt_id"]
-        == (prior_receipt["adapter_attempt_id"])
+        read_tsv(artifact_fixture.receipt_path)[0]["adapter_attempt_id"]
+        == context.attempt_id
     )
-    assert artifact_fixture.records_dir.is_dir()
-    assert artifact_fixture.artifacts_path.is_file()
-    assert artifact_fixture.receipt_path.is_file()
+    assert_published_records_are_valid(artifact_fixture)
     assert artifact_fixture.lock_path.is_file()
     assert any(
         path.name.endswith(".RECOVERY.txt")
+        for path in artifact_fixture.output_dir.iterdir()
+    )
+    assert any(
+        path.name.endswith(".tmp.records")
         for path in artifact_fixture.output_dir.iterdir()
     )
 
@@ -1594,116 +1552,72 @@ def test_all_missing_sources_publish_complete_index_transaction(
     assert receipt["transaction_state"] == "complete"
 
 
-def test_incomplete_replacement_rollback_retains_lock_and_recovery(
+def test_incomplete_first_publication_rollback_retains_lock_and_anchors(
     artifact_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
-    ARTIFACT_PUBLICATION.publish_context(context_for(artifact_fixture))
-    replacement = context_for(artifact_fixture)
-    real_replace = ARTIFACT_PUBLICATION.DEFAULT_ARTIFACT_PUBLICATION_OPS.replace
-    publication_failed = False
-    restoration_failed = False
+    context = context_for(artifact_fixture)
+    real_link, real_unlink = os.link, Path.unlink
+    record = context.records_dir / f"{context.records[0]['artifact_id']}.json"
 
-    def fail_publication_and_restoration(
-        source: Any,
-        destination: Any,
-    ) -> None:
-        nonlocal publication_failed, restoration_failed
-        source_path = Path(source)
-        destination_path = Path(destination)
-        if (
-            not publication_failed
-            and destination_path == replacement.artifacts_path
-            and ".tmp.tsv" in source_path.name
-        ):
-            publication_failed = True
-            raise OSError("injected new-index publication failure")
-        if (
-            not restoration_failed
-            and destination_path == replacement.records_dir
-            and source_path.name.endswith(".previous.records")
-        ):
-            restoration_failed = True
-            raise OSError("injected prior-record restoration failure")
-        real_replace(source, destination)
+    def fail_index(source: Any, destination: Any, **kwargs: Any) -> None:
+        if Path(destination) == context.artifacts_path:
+            raise OSError("injected index publication failure")
+        real_link(source, destination, **kwargs)
 
+    def fail_record_cleanup(path: Path, *args: Any, **kwargs: Any) -> None:
+        if path == record:
+            raise OSError("injected owned record cleanup failure")
+        real_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "link", fail_index)
+    monkeypatch.setattr(Path, "unlink", fail_record_cleanup)
     with pytest.raises(
-        ARTIFACT_MODELS.ArtifactIndexError,
-        match="rollback was incomplete",
+        ARTIFACT_MODELS.ArtifactIndexError, match="rollback was incomplete"
     ):
-        ARTIFACT_PUBLICATION.publish_context(
-            replacement,
-            ops=publication_ops(replace=fail_publication_and_restoration),
-        )
-
-    assert publication_failed
-    assert restoration_failed
+        ARTIFACT_PUBLICATION.publish_context(context)
+    assert record.is_file()
+    assert not context.receipt_path.exists()
     assert artifact_fixture.lock_path.is_file()
-    assert not artifact_fixture.receipt_path.exists()
     assert any(
         path.name.endswith(".RECOVERY.txt")
         for path in artifact_fixture.output_dir.iterdir()
     )
     assert any(
-        path.name.endswith(".previous.tsv")
-        and path.name.startswith(".artifact-receipt.")
+        path.name.endswith(".tmp.records")
         for path in artifact_fixture.output_dir.iterdir()
     )
-    assert any(
-        path.name.endswith(".previous.records")
-        for path in artifact_fixture.output_dir.iterdir()
-    )
-    assert not artifact_fixture.records_dir.exists()
 
 
-def test_failed_restored_transaction_validation_requarantines_receipt(
+def test_failed_published_validation_removes_receipt_before_owned_data(
     artifact_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
-    ARTIFACT_PUBLICATION.publish_context(context_for(artifact_fixture))
-    replacement = context_for(artifact_fixture)
-    real_validate = ARTIFACT_PUBLICATION.DEFAULT_ARTIFACT_PUBLICATION_OPS.validate_published_transaction
-    prior_validation_count = 0
+    context = context_for(artifact_fixture)
+    removed: list[Path] = []
+    real_unlink = Path.unlink
 
-    def fail_new_and_restored_validation(**kwargs: Any) -> None:
-        nonlocal prior_validation_count
-        assert kwargs["source_root"] == replacement.artifact_source_root.root
-        if kwargs["require_current_source_locations"]:
-            raise ARTIFACT_MODELS.ArtifactIndexError(
-                "injected new-transaction validation failure"
-            )
-        prior_validation_count += 1
-        if prior_validation_count == 2:
-            raise ARTIFACT_MODELS.ArtifactIndexError(
-                "injected restored-transaction validation failure"
-            )
-        real_validate(**kwargs)
-
-    with pytest.raises(
-        ARTIFACT_MODELS.ArtifactIndexError,
-        match="rollback was incomplete",
-    ):
-        ARTIFACT_PUBLICATION.publish_context(
-            replacement,
-            ops=publication_ops(
-                validate_published_transaction=fail_new_and_restored_validation
-            ),
+    def fail_validation(**kwargs: Any) -> None:
+        assert kwargs["source_root"] == context.artifact_source_root.root
+        assert kwargs["require_current_source_locations"] is True
+        raise ARTIFACT_MODELS.ArtifactIndexError(
+            "injected transaction validation failure"
         )
 
-    assert prior_validation_count == 2
-    assert not artifact_fixture.receipt_path.exists()
-    assert artifact_fixture.lock_path.is_file()
-    assert any(
-        path.name.startswith(".artifact-receipt.")
-        and path.name.endswith(".previous.tsv")
-        for path in artifact_fixture.output_dir.iterdir()
+    def observe_unlink(path: Path, *args: Any, **kwargs: Any) -> None:
+        removed.append(path)
+        real_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(
+        ARTIFACT_PUBLICATION, "validate_published_transaction", fail_validation
     )
-    assert any(
-        path.name.endswith(".RECOVERY.txt")
-        for path in artifact_fixture.output_dir.iterdir()
-    )
+    monkeypatch.setattr(Path, "unlink", observe_unlink)
+    with pytest.raises(
+        ARTIFACT_MODELS.ArtifactIndexError, match="transaction validation failure"
+    ):
+        ARTIFACT_PUBLICATION.publish_context(context)
+    assert removed[0] == context.receipt_path
+    assert_no_owned_outputs(artifact_fixture)
 
 
 @pytest.mark.parametrize(
@@ -1827,7 +1741,10 @@ def test_contract_and_inventory_mutation_after_context_is_rejected(
         else "Inventory changed"
     )
     with pytest.raises(ARTIFACT_MODELS.ArtifactIndexError, match=expected):
-        ARTIFACT_PUBLICATION.publish_context(context)
+        if replacement:
+            ARTIFACT_CONTEXT.recheck_inputs(context)
+        else:
+            ARTIFACT_PUBLICATION.publish_context(context)
 
     if replacement:
         assert owned_snapshot(artifact_fixture) == before
@@ -1836,7 +1753,7 @@ def test_contract_and_inventory_mutation_after_context_is_rejected(
         assert_no_owned_outputs(artifact_fixture)
 
 
-def test_inventory_revision_creates_new_attempt_without_changing_run_identity(
+def test_inventory_revision_prepares_lineage_without_changing_existing_outputs(
     artifact_fixture: Any,
 ) -> None:
     first = run_builder(artifact_fixture, execute=True)
@@ -1860,10 +1777,11 @@ def test_inventory_revision_creates_new_attempt_without_changing_run_identity(
         revised,
     )
 
-    second = run_builder(artifact_fixture, execute=True)
+    before = owned_snapshot(artifact_fixture)
+    second = run_builder(artifact_fixture)
 
     assert second.returncode == 0, second.stderr
-    second_receipt = read_tsv(artifact_fixture.receipt_path)[0]
+    second_receipt = second.context.receipt_row
     assert second_receipt["run_id"] == first_receipt["run_id"]
     assert (
         second_receipt["run_contract_sha256"] == (first_receipt["run_contract_sha256"])
@@ -1873,9 +1791,11 @@ def test_inventory_revision_creates_new_attempt_without_changing_run_identity(
         second_receipt["supersedes_adapter_attempt_id"]
         == (first_receipt["adapter_attempt_id"])
     )
-    assert [
-        row["artifact_id"] for row in read_tsv(artifact_fixture.artifacts_path)
-    ] == [row["artifact_id"] for row in revised]
+    assert [row["artifact_id"] for row in second.context.index_rows] == [
+        row["artifact_id"] for row in revised
+    ]
+
+    assert owned_snapshot(artifact_fixture) == before
 
 
 def test_native_dependency_order_is_independent_of_inventory_scope_order(
@@ -2082,7 +2002,7 @@ def test_first_publication_rollback_fsync_failure_retains_recovery_lock(
 ) -> None:
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
     context = context_for(artifact_fixture)
-    default_ops = ARTIFACT_PUBLICATION.DEFAULT_ARTIFACT_PUBLICATION_OPS
+    default_ops = ARTIFACT_PUBLICATION
     real_validate = default_ops.validate_published_transaction
     real_fsync_directory = default_ops.fsync_directory
     output_sync_count = 0
@@ -2102,16 +2022,18 @@ def test_first_publication_rollback_fsync_failure_retains_recovery_lock(
                 raise OSError("injected rollback directory fsync failure")
         real_fsync_directory(path)
 
+    monkeypatch.setattr(
+        ARTIFACT_PUBLICATION,
+        "validate_published_transaction",
+        fail_post_publication_validation,
+    )
+    monkeypatch.setattr(ARTIFACT_PUBLICATION, "fsync_directory", fail_rollback_sync)
     with pytest.raises(
         ARTIFACT_MODELS.ArtifactIndexError,
         match="rollback was incomplete",
     ):
         ARTIFACT_PUBLICATION.publish_context(
             context,
-            ops=publication_ops(
-                validate_published_transaction=fail_post_publication_validation,
-                fsync_directory=fail_rollback_sync,
-            ),
         )
 
     assert output_sync_count == 2
@@ -2143,3 +2065,259 @@ def test_publication_rechecks_sources_by_metadata_without_rehashing(
     ARTIFACT_PUBLICATION.publish_context(context)
 
     assert rehashed_sources == []
+
+
+@pytest.mark.parametrize("output", ["record", "index", "receipt"])
+@pytest.mark.parametrize("timing", ["before", "after"])
+def test_publication_link_failure_preserves_owned_cleanup_at_each_boundary(
+    artifact_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    output: str,
+    timing: str,
+) -> None:
+    context = context_for(artifact_fixture)
+    selected = {
+        "record": context.records_dir / f"{context.records[0]['artifact_id']}.json",
+        "index": context.artifacts_path,
+        "receipt": context.receipt_path,
+    }[output]
+    real_link = os.link
+    reached = False
+
+    def interrupt_link(source: Any, destination: Any, **kwargs: Any) -> None:
+        nonlocal reached
+        if Path(destination) == selected:
+            reached = True
+            if timing == "after":
+                real_link(source, destination, **kwargs)
+            raise OSError(f"injected {timing}-link failure")
+        real_link(source, destination, **kwargs)
+
+    monkeypatch.setattr(os, "link", interrupt_link)
+    with pytest.raises(
+        ARTIFACT_MODELS.ArtifactIndexError, match=f"{timing}-link failure"
+    ):
+        ARTIFACT_PUBLICATION.publish_context(context)
+    assert reached
+    assert_no_owned_outputs(artifact_fixture)
+
+
+@pytest.mark.parametrize("output", ["record", "index", "receipt"])
+def test_concurrent_file_is_preserved_when_exclusive_link_fails(
+    artifact_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    output: str,
+) -> None:
+    context = context_for(artifact_fixture)
+    selected = {
+        "record": context.records_dir / f"{context.records[0]['artifact_id']}.json",
+        "index": context.artifacts_path,
+        "receipt": context.receipt_path,
+    }[output]
+    real_link = os.link
+    foreign_identity = None
+
+    def create_concurrent_file(source: Any, destination: Any, **kwargs: Any) -> None:
+        nonlocal foreign_identity
+        if Path(destination) == selected:
+            selected.write_bytes(b"concurrent output; preserve\n")
+            foreign_identity = selected.stat().st_ino
+        real_link(source, destination, **kwargs)
+
+    monkeypatch.setattr(os, "link", create_concurrent_file)
+    with pytest.raises(
+        ARTIFACT_MODELS.ArtifactIndexError, match="rollback was incomplete"
+    ):
+        ARTIFACT_PUBLICATION.publish_context(context)
+    assert selected.read_bytes() == b"concurrent output; preserve\n"
+    assert selected.stat().st_ino == foreign_identity
+    assert context.lock_path.is_file()
+    assert any(
+        path.name.endswith(".RECOVERY.txt") for path in context.output_dir.iterdir()
+    )
+    assert any(
+        path.name.endswith(".tmp.records") for path in context.output_dir.iterdir()
+    )
+
+
+@pytest.mark.parametrize("empty", [False, True])
+def test_concurrent_records_directory_is_never_replaced(
+    artifact_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    empty: bool,
+) -> None:
+    context = context_for(artifact_fixture)
+    real_mkdir = Path.mkdir
+    foreign_identity = None
+
+    def create_concurrent_directory(path: Path, *args: Any, **kwargs: Any) -> None:
+        nonlocal foreign_identity
+        if path == context.records_dir:
+            real_mkdir(path, *args, **kwargs)
+            foreign_identity = path.stat().st_ino
+            if not empty:
+                (path / "keep").write_bytes(b"concurrent directory\n")
+        real_mkdir(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "mkdir", create_concurrent_directory)
+    with pytest.raises(
+        ARTIFACT_MODELS.ArtifactIndexError, match="rollback was incomplete"
+    ):
+        ARTIFACT_PUBLICATION.publish_context(context)
+    assert context.records_dir.stat().st_ino == foreign_identity
+    if empty:
+        assert list(context.records_dir.iterdir()) == []
+    else:
+        assert (context.records_dir / "keep").read_bytes() == b"concurrent directory\n"
+    assert not context.artifacts_path.exists()
+    assert not context.receipt_path.exists()
+    assert context.lock_path.is_file()
+
+
+def test_directory_replacement_preserves_foreign_namespace_and_owned_evidence(
+    artifact_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    context = context_for(artifact_fixture)
+    displaced = context.output_dir.with_name("displaced-artifact-output")
+    real_link = os.link
+
+    def replace_directory(source: Any, destination: Any, **kwargs: Any) -> None:
+        if Path(destination) == context.artifacts_path:
+            context.output_dir.rename(displaced)
+            context.output_dir.mkdir()
+            (context.output_dir / "keep").write_bytes(b"foreign directory\n")
+            raise OSError("injected directory replacement")
+        real_link(source, destination, **kwargs)
+
+    monkeypatch.setattr(os, "link", replace_directory)
+    with pytest.raises(
+        ARTIFACT_MODELS.ArtifactIndexError, match="rollback was incomplete"
+    ):
+        ARTIFACT_PUBLICATION.publish_context(context)
+    assert [path.name for path in context.output_dir.iterdir()] == ["keep"]
+    assert (context.output_dir / "keep").read_bytes() == b"foreign directory\n"
+    assert (displaced / context.lock_path.name).is_file()
+    assert any(path.name.endswith(".tmp.records") for path in displaced.iterdir())
+
+
+def test_signal_immediately_after_artifact_link_rolls_back_owned_outputs(
+    artifact_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import signal
+
+    context = context_for(artifact_fixture)
+    real_link = os.link
+    previous = signal.getsignal(signal.SIGTERM)
+
+    def signal_after_link(source: Any, destination: Any, **kwargs: Any) -> None:
+        real_link(source, destination, **kwargs)
+        if Path(destination) == context.artifacts_path:
+            os.kill(os.getpid(), signal.SIGTERM)
+
+    monkeypatch.setattr(os, "link", signal_after_link)
+    with pytest.raises(ARTIFACT_MODELS.ArtifactIndexError, match="signal"):
+        ARTIFACT_PUBLICATION.publish_context(context)
+    assert signal.getsignal(signal.SIGTERM) == previous
+    assert_no_owned_outputs(artifact_fixture)
+
+
+@pytest.mark.parametrize("output", ["record", "index", "receipt"])
+def test_same_byte_foreign_replacement_cannot_commit(
+    artifact_fixture: Any, monkeypatch: pytest.MonkeyPatch, output: str
+) -> None:
+    context = context_for(artifact_fixture)
+    selected = {
+        "record": context.records_dir / f"{context.records[0]['artifact_id']}.json",
+        "index": context.artifacts_path,
+        "receipt": context.receipt_path,
+    }[output]
+    real_link = os.link
+    foreign_identity = None
+    expected = b""
+
+    def replace_link(source: Any, destination: Any, **kwargs: Any) -> None:
+        nonlocal foreign_identity, expected
+        real_link(source, destination, **kwargs)
+        if Path(destination) == selected:
+            expected = selected.read_bytes()
+            selected.unlink()
+            selected.write_bytes(expected)
+            foreign_identity = selected.stat().st_ino
+
+    monkeypatch.setattr(os, "link", replace_link)
+    with pytest.raises(
+        ARTIFACT_MODELS.ArtifactIndexError, match="rollback was incomplete"
+    ):
+        ARTIFACT_PUBLICATION.publish_context(context)
+    assert selected.read_bytes() == expected
+    assert selected.stat().st_ino == foreign_identity
+    assert context.lock_path.is_file()
+    assert any(
+        path.name.endswith(".tmp.records") for path in context.output_dir.iterdir()
+    )
+    assert any(
+        path.name.endswith(".RECOVERY.txt") for path in context.output_dir.iterdir()
+    )
+
+
+def test_records_directory_replaced_after_last_link_cannot_commit(
+    artifact_fixture: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    context = context_for(artifact_fixture)
+    displaced = context.output_dir / "displaced-records"
+    real_link = os.link
+    foreign_identity = None
+
+    def replace_records(source: Any, destination: Any, **kwargs: Any) -> None:
+        nonlocal foreign_identity
+        real_link(source, destination, **kwargs)
+        if Path(destination) == context.receipt_path:
+            context.records_dir.rename(displaced)
+            context.records_dir.mkdir()
+            foreign_identity = context.records_dir.stat().st_ino
+            for record in displaced.iterdir():
+                real_link(record, context.records_dir / record.name)
+
+    monkeypatch.setattr(os, "link", replace_records)
+    with pytest.raises(
+        ARTIFACT_MODELS.ArtifactIndexError, match="rollback was incomplete"
+    ):
+        ARTIFACT_PUBLICATION.publish_context(context)
+    assert context.records_dir.stat().st_ino == foreign_identity
+    assert {p.name: p.stat().st_ino for p in context.records_dir.iterdir()} == {
+        p.name: p.stat().st_ino for p in displaced.iterdir()
+    }
+    assert context.lock_path.is_file()
+    assert any(
+        path.name.endswith(".tmp.records") for path in context.output_dir.iterdir()
+    )
+
+
+def test_missing_stage_anchor_preserves_unproved_final(
+    artifact_fixture: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    context = context_for(artifact_fixture)
+    real_link = os.link
+    final_identity = None
+
+    def remove_anchor(source: Any, destination: Any, **kwargs: Any) -> None:
+        nonlocal final_identity
+        real_link(source, destination, **kwargs)
+        if Path(destination) == context.artifacts_path:
+            final_identity = context.artifacts_path.stat().st_ino
+            Path(source).unlink()
+            raise OSError("injected lost stage anchor")
+
+    monkeypatch.setattr(os, "link", remove_anchor)
+    with pytest.raises(
+        ARTIFACT_MODELS.ArtifactIndexError, match="rollback was incomplete"
+    ):
+        ARTIFACT_PUBLICATION.publish_context(context)
+    assert context.artifacts_path.stat().st_ino == final_identity
+    assert context.artifacts_path.read_bytes() == context.index_bytes
+    assert context.lock_path.is_file()
+    assert any(
+        path.name.endswith(".tmp.records") for path in context.output_dir.iterdir()
+    )

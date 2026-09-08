@@ -116,7 +116,7 @@ TRANSITIONS: tuple[tuple[str, str, str, str], ...] = (
     ("SRC-TRANS-019", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.builder", RULE_PRIVATE_OWNER),
     ("SRC-TRANS-020", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.publication", RULE_PRIVATE_OWNER),
     ("SRC-TRANS-021", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.models", RULE_PRIVATE_OWNER),
-    ("SRC-TRANS-022", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting.report", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-022", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_report.context", RULE_PRIVATE_OWNER),
     ("SRC-TRANS-023", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_report.publication", RULE_PRIVATE_OWNER),
     ("SRC-TRANS-024", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_report.models", RULE_PRIVATE_OWNER),
 )

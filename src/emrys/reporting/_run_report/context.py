@@ -9,8 +9,7 @@ import os
 import re
 import shlex
 import stat
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from collections.abc import Mapping
 from importlib.resources import files
 from pathlib import Path
 from typing import Literal
@@ -32,9 +31,10 @@ from emrys.libraries.installed_package_identity import (
     installed_python_package_identity,
 )
 from emrys.libraries.source_authority import (
-    ArtifactSourceRoot,
-    SourceCheckout,
+    ArtifactSourceRootError,
     SourceCheckoutError,
+    admit_artifact_source_root,
+    admit_source_checkout,
     matching_checkout_head_commit,
 )
 
@@ -60,22 +60,11 @@ from .models import (
     TEMPLATE_RESOURCE,
     FileSnapshot,
     ReportContext,
+    ReportRenderError,
 )
 from .receipt import read_receipt_tsv
 from .validation import render_html
 from .view import build_evidence_view
-
-
-@dataclass(frozen=True, slots=True)
-class ReportIdentityOps:
-    """Explicit source-provenance observation for focused tests."""
-
-    matching_checkout_head_commit: Callable[..., str | None]
-
-
-DEFAULT_REPORT_IDENTITY_OPS = ReportIdentityOps(
-    matching_checkout_head_commit=matching_checkout_head_commit,
-)
 
 
 def _resource_snapshot(resource: str, label: str) -> FileSnapshot:
@@ -415,13 +404,17 @@ def _result_links(
     )
 
 
-def prepare_context(
-    arguments: argparse.Namespace,
-    *,
-    source_checkout: SourceCheckout,
-    artifact_source_root: ArtifactSourceRoot,
-    identity_ops: ReportIdentityOps = DEFAULT_REPORT_IDENTITY_OPS,
-) -> ReportContext:
+def prepare_context(arguments: argparse.Namespace) -> ReportContext:
+    try:
+        source_checkout = admit_source_checkout(
+            root=arguments.source_checkout,
+            package_root=Path(__file__).resolve().parents[2],
+        )
+        artifact_source_root = admit_artifact_source_root(
+            root=arguments.artifact_source_root,
+        )
+    except (ArtifactSourceRootError, SourceCheckoutError) as exc:
+        raise ReportRenderError(str(exc)) from exc
     source_root = artifact_source_root.root
     run_summary_path = _explicit_path(arguments.run_summary, "run-summary path")
     run_summary_snapshot = _snapshot_regular(run_summary_path, "run-summary document")
@@ -443,7 +436,7 @@ def prepare_context(
     )
     try:
         producer_git_commit = (
-            identity_ops.matching_checkout_head_commit(
+            matching_checkout_head_commit(
                 source_checkout=source_checkout,
                 package_root=Path(__file__).resolve().parents[2],
             )

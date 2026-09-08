@@ -48,13 +48,6 @@ def build_deps(**overrides: Any) -> Any:
     )
 
 
-def publication_ops(**overrides: Any) -> Any:
-    return dataclasses.replace(
-        RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS,
-        **overrides,
-    )
-
-
 @pytest.fixture
 def run_summary_fixture(tmp_path: Path) -> Any:
     return FIXTURE.build_fixture(tmp_path / "fixture")
@@ -322,124 +315,57 @@ def test_prepare_context_uses_local_build_for_unattributable_package(
     assert context.document["provenance"]["git_commit"] == "local_build"
 
 
-def test_explicit_artifact_root_reaches_predecessor_and_post_publish_rechecks(
+def test_explicit_artifact_root_reaches_post_publish_rechecks(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Publication retains the prepared authority through its success checks."""
+    context = context_for(run_summary_fixture)
+    root_calls: Counter[str] = Counter()
+    for owner, attribute, label in (
+        (CONTRACTS, "validate_run_summary_semantics", "semantics"),
+        (RUN_SUMMARY_PUBLICATION, "_validate_document", "document"),
+        (RUN_SUMMARY_PUBLICATION, "_validate_existing_summary", "published"),
+    ):
+        monkeypatch.setattr(
+            owner,
+            attribute,
+            _source_root_spy(
+                getattr(owner, attribute), run_summary_fixture.root, root_calls, label
+            ),
+        )
+
+    RUN_SUMMARY_PUBLICATION.publish_context(context)
+
+    assert root_calls == {"semantics": 2, "document": 1, "published": 1}
+    assert_no_summary_residue_after_success(run_summary_fixture)
+
+
+def test_existing_summary_preparation_retains_predecessor_authority(
+    run_summary_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     first = run_builder(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
-    authority = SOURCE_AUTHORITY.ArtifactSourceRoot(root=run_summary_fixture.root)
-    monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
-    arguments = run_summary_arguments(run_summary_fixture, execute=True)
-    context = RUN_SUMMARY.prepare_context(
-        arguments,
-        source_checkout=SOURCE_CHECKOUT,
-        artifact_source_root=authority,
-    )
-    root_calls: Counter[str] = Counter()
+    before = summary_snapshot(run_summary_fixture)
+    calls: Counter[str] = Counter()
     monkeypatch.setattr(
-        CONTRACTS,
-        "validate_run_summary_semantics",
+        RUN_SUMMARY,
+        "_validate_existing_summary",
         _source_root_spy(
-            CONTRACTS.validate_run_summary_semantics,
-            authority.root,
-            root_calls,
-            "semantic_validation",
-        ),
-    )
-    default_ops = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS
-    ops = publication_ops(
-        validate_document=_source_root_spy(
-            default_ops.validate_document,
-            authority.root,
-            root_calls,
-            "post_publish_document",
-        ),
-        validate_existing_summary=_source_root_spy(
-            default_ops.validate_existing_summary,
-            authority.root,
-            root_calls,
+            RUN_SUMMARY._validate_existing_summary,
+            run_summary_fixture.root,
+            calls,
             "predecessor",
         ),
     )
 
-    RUN_SUMMARY_PUBLICATION.publish_context(context, ops=ops)
+    context = context_for(run_summary_fixture)
 
-    expected_predecessor_and_published_checks = 2
-    expected_semantic_checks = 3
-    assert root_calls["post_publish_document"] == 1
-    assert root_calls["predecessor"] == expected_predecessor_and_published_checks
-    assert root_calls["semantic_validation"] == expected_semantic_checks
-    assert_no_summary_residue_after_success(run_summary_fixture)
-
-
-def test_explicit_artifact_root_reaches_restored_rollback_validation(
-    run_summary_fixture: Any,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Rollback validates the restored predecessor with the retained root."""
-    first = run_builder(run_summary_fixture, execute=True)
-    assert first.returncode == 0, first.stderr
-    before = summary_snapshot(run_summary_fixture)
-    authority = SOURCE_AUTHORITY.ArtifactSourceRoot(root=run_summary_fixture.root)
-    monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
-    arguments = run_summary_arguments(run_summary_fixture, execute=True)
-    context = RUN_SUMMARY.prepare_context(
-        arguments,
-        source_checkout=SOURCE_CHECKOUT,
-        artifact_source_root=authority,
-    )
-    default_ops = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS
-    real_replace = default_ops.replace
-    root_calls: Counter[str] = Counter()
-    failed = False
-
-    def fail_qc_publication(source: Any, destination: Any) -> None:
-        nonlocal failed
-        if (
-            not failed
-            and Path(destination) == run_summary_fixture.qc_summary_path
-            and ".tmp" in Path(source).name
-        ):
-            failed = True
-            message = "injected authority rollback failure"
-            raise OSError(message)
-        real_replace(source, destination)
-
-    monkeypatch.setattr(
-        CONTRACTS,
-        "validate_run_summary_semantics",
-        _source_root_spy(
-            CONTRACTS.validate_run_summary_semantics,
-            authority.root,
-            root_calls,
-            "restored_semantics",
-        ),
-    )
-    with pytest.raises(
-        RUN_SUMMARY_MODELS.RunSummaryError,
-        match="injected authority rollback failure",
-    ):
-        RUN_SUMMARY_PUBLICATION.publish_context(
-            context,
-            ops=publication_ops(
-                replace=fail_qc_publication,
-                validate_existing_summary=_source_root_spy(
-                    default_ops.validate_existing_summary,
-                    authority.root,
-                    root_calls,
-                    "restored_predecessor",
-                ),
-            ),
-        )
-
-    expected_predecessor_and_restored_checks = 2
-    assert failed
+    assert calls == {"predecessor": 1}
     assert (
-        root_calls["restored_predecessor"] == expected_predecessor_and_restored_checks
+        context.previous_receipt
+        == read_tsv(run_summary_fixture.summary_receipt_path)[0]
     )
-    assert root_calls["restored_semantics"] == expected_predecessor_and_restored_checks
     assert summary_snapshot(run_summary_fixture) == before
     assert_no_summary_residue_after_success(run_summary_fixture)
 
@@ -556,22 +482,29 @@ def assert_no_summary_residue_after_success(fixture: Any) -> None:
     )
 
 
-def test_fixed_epoch_rerender_keeps_json_and_views_byte_identical(
+def test_existing_summary_readmission_keeps_json_and_views_byte_identical(
     run_summary_fixture: Any,
 ) -> None:
     first = run_builder(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
-    before = {
-        path.name: path.read_bytes() for path in run_summary_fixture.summary_paths[:3]
-    }
+    before = summary_snapshot(run_summary_fixture)
 
-    second = run_builder(run_summary_fixture, execute=True)
+    second = run_builder(run_summary_fixture)
 
     assert second.returncode == 0, second.stderr
-    assert {
-        path.name: path.read_bytes() for path in run_summary_fixture.summary_paths[:3]
-    } == before
+    assert second.context is not None
+    assert (
+        second.context.summary_json_bytes,
+        second.context.summary_tsv_bytes,
+        second.context.qc_summary_bytes,
+    ) == tuple(before[path.name] for path in run_summary_fixture.summary_paths[:3])
+    with pytest.raises(
+        RUN_SUMMARY_MODELS.RunSummaryError, match="requires absent outputs"
+    ):
+        RUN_SUMMARY_PUBLICATION.publish_context(second.context)
+    assert summary_snapshot(run_summary_fixture) == before
     validate_summary_document(run_summary_fixture)
+    assert_no_summary_residue_after_success(run_summary_fixture)
 
 
 def test_unrelated_files_are_ignored_and_preserved(
@@ -728,40 +661,49 @@ def test_partial_prior_summary_and_foreign_lock_are_preserved(
     assert not any(path.exists() for path in locked.summary_paths)
 
 
-def test_replacement_publication_failure_restores_prior_transaction(
+@pytest.mark.parametrize("final_index", range(4))
+@pytest.mark.parametrize("kind", ("file", "dangling_symlink", "directory"))
+def test_existing_final_paths_are_rejected_without_mutation(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
+    final_index: int,
+    kind: str,
 ) -> None:
-    first = run_builder(run_summary_fixture, execute=True)
-    assert first.returncode == 0, first.stderr
-    before = summary_snapshot(run_summary_fixture)
     context = context_for(run_summary_fixture)
-    real_replace = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.replace
-    failed = False
+    final = run_summary_fixture.summary_paths[final_index]
+    target = final.with_name("absent-target")
+    if kind == "file":
+        final.write_bytes(b"foreign output\n")
+    elif kind == "dangling_symlink":
+        final.symlink_to(target)
+    else:
+        final.mkdir()
+        (final / "foreign").write_bytes(b"foreign output\n")
+    original = final.lstat()
 
-    def fail_qc_publication(source: Any, destination: Any) -> None:
-        nonlocal failed
-        if (
-            not failed
-            and Path(destination) == run_summary_fixture.qc_summary_path
-            and ".tmp" in Path(source).name
-        ):
-            failed = True
-            raise OSError("injected run-summary replacement failure")
-        real_replace(source, destination)
+    def unexpected_write(*args: Any, **kwargs: Any) -> None:
+        pytest.fail("present output was not refused before staging")
 
+    monkeypatch.setattr(ARTIFACT_INDEX_API, "write_bytes_exclusive", unexpected_write)
     with pytest.raises(
-        Exception,
-        match="injected run-summary replacement failure",
+        RUN_SUMMARY_MODELS.RunSummaryError, match="requires absent outputs"
     ):
-        RUN_SUMMARY_PUBLICATION.publish_context(
-            context,
-            ops=publication_ops(replace=fail_qc_publication),
-        )
+        RUN_SUMMARY_PUBLICATION.publish_context(context)
 
-    assert failed
-    assert summary_snapshot(run_summary_fixture) == before
-    assert_no_summary_residue_after_success(run_summary_fixture)
+    assert final.lstat() == original
+    assert not target.exists()
+    if kind == "file":
+        assert final.read_bytes() == b"foreign output\n"
+    elif kind == "directory":
+        assert (final / "foreign").read_bytes() == b"foreign output\n"
+    else:
+        assert final.readlink() == target
+    assert not run_summary_fixture.lock_path.exists()
+    assert all(
+        not os.path.lexists(path)
+        for path in run_summary_fixture.summary_paths
+        if path != final
+    )
 
 
 def test_publication_installs_and_restores_signal_handlers(
@@ -770,9 +712,8 @@ def test_publication_installs_and_restores_signal_handlers(
 ) -> None:
     watched = (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
     original = {signum: signal.getsignal(signum) for signum in watched}
-    default_ops = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS
-    real_install = default_ops.install_signal_handlers
-    real_restore = default_ops.restore_signal_handlers
+    real_install = ARTIFACT_INDEX_API.install_publication_signal_handlers
+    real_restore = ARTIFACT_INDEX_API.restore_signal_handlers
     events: list[tuple[str, Any]] = []
 
     def track_install() -> dict[int, Any]:
@@ -786,13 +727,11 @@ def test_publication_installs_and_restores_signal_handlers(
         real_restore(handlers)
 
     context = context_for(run_summary_fixture)
-    RUN_SUMMARY_PUBLICATION.publish_context(
-        context,
-        ops=publication_ops(
-            install_signal_handlers=track_install,
-            restore_signal_handlers=track_restore,
-        ),
+    monkeypatch.setattr(
+        ARTIFACT_INDEX_API, "install_publication_signal_handlers", track_install
     )
+    monkeypatch.setattr(ARTIFACT_INDEX_API, "restore_signal_handlers", track_restore)
+    RUN_SUMMARY_PUBLICATION.publish_context(context)
 
     assert [event[0] for event in events] == ["install", "restore"]
     assert events[0][1] == original
@@ -811,15 +750,11 @@ def test_signal_handler_install_failure_releases_owned_lock(
     def fail_install() -> dict[int, Any]:
         raise ValueError("injected signal-handler installation failure")
 
-    with pytest.raises(
-        RUN_SUMMARY_MODELS.RunSummaryError,
-        match="Could not install",
-    ):
-        RUN_SUMMARY_PUBLICATION.publish_context(
-            context,
-            ops=publication_ops(install_signal_handlers=fail_install),
-        )
-
+    monkeypatch.setattr(
+        ARTIFACT_INDEX_API, "install_publication_signal_handlers", fail_install
+    )
+    with pytest.raises(RUN_SUMMARY_MODELS.RunSummaryError, match="Could not install"):
+        RUN_SUMMARY_PUBLICATION.publish_context(context)
     assert_no_summary_outputs(run_summary_fixture)
 
 
@@ -860,9 +795,7 @@ def test_cleanup_signal_restores_handlers_and_retains_recovery_state(
         signum: signal.getsignal(signum)
         for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
     }
-    real_remove_owned = (
-        RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.remove_owned
-    )
+    real_remove_owned = ARTIFACT_INDEX_API.remove_owned
     interrupted = False
 
     def interrupt_first_temp_cleanup(path: Path) -> None:
@@ -875,14 +808,14 @@ def test_cleanup_signal_restores_handlers_and_retains_recovery_state(
             raise AssertionError("signal handler unexpectedly returned")
         real_remove_owned(path)
 
+    monkeypatch.setattr(
+        ARTIFACT_INDEX_API, "remove_owned", interrupt_first_temp_cleanup
+    )
     with pytest.raises(
         RUN_SUMMARY_MODELS.RunSummaryError,
         match="cleanup failed",
     ):
-        RUN_SUMMARY_PUBLICATION.publish_context(
-            context,
-            ops=publication_ops(remove_owned=interrupt_first_temp_cleanup),
-        )
+        RUN_SUMMARY_PUBLICATION.publish_context(context)
 
     assert interrupted
     assert all(path.is_file() for path in run_summary_fixture.summary_paths)
@@ -898,263 +831,199 @@ def test_cleanup_signal_restores_handlers_and_retains_recovery_state(
     } == original_handlers
 
 
-def test_signal_after_receipt_backup_rename_restores_prior_transaction(
+@pytest.mark.parametrize("final_index", range(4))
+def test_signal_after_final_link_rolls_back_owned_outputs(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
+    final_index: int,
 ) -> None:
-    first = run_builder(run_summary_fixture, execute=True)
-    assert first.returncode == 0, first.stderr
-    before = summary_snapshot(run_summary_fixture)
+    context = context_for(run_summary_fixture)
     original_handlers = {
         signum: signal.getsignal(signum)
         for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
     }
-    context = context_for(run_summary_fixture)
-    real_replace = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.replace
+    real_link = os.link
     interrupted = False
 
-    def interrupt_after_receipt_backup(source: Any, destination: Any) -> None:
+    def interrupt_after_link(source: Any, destination: Any, **kwargs: Any) -> None:
         nonlocal interrupted
-        source_path = Path(source)
-        destination_path = Path(destination)
-        if (
-            not interrupted
-            and source_path == run_summary_fixture.summary_receipt_path
-            and destination_path.name.endswith(".previous")
-        ):
-            real_replace(source, destination)
+        real_link(source, destination, **kwargs)
+        if Path(destination) == run_summary_fixture.summary_paths[final_index]:
             interrupted = True
             handler = signal.getsignal(signal.SIGTERM)
             assert callable(handler)
             handler(signal.SIGTERM, None)
             raise AssertionError("signal handler unexpectedly returned")
-        real_replace(source, destination)
 
+    monkeypatch.setattr(os, "link", interrupt_after_link)
     with pytest.raises(
-        RUN_SUMMARY_MODELS.RunSummaryError,
-        match="interrupted by signal SIGTERM",
+        RUN_SUMMARY_MODELS.RunSummaryError, match="interrupted by signal SIGTERM"
     ):
-        RUN_SUMMARY_PUBLICATION.publish_context(
-            context,
-            ops=publication_ops(replace=interrupt_after_receipt_backup),
-        )
+        RUN_SUMMARY_PUBLICATION.publish_context(context)
 
     assert interrupted
-    assert summary_snapshot(run_summary_fixture) == before
     assert {
-        signum: signal.getsignal(signum)
-        for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
+        signum: signal.getsignal(signum) for signum in original_handlers
     } == original_handlers
+    assert_no_summary_outputs(run_summary_fixture)
     assert_no_summary_residue_after_success(run_summary_fixture)
 
 
-def test_corrupted_restored_receipt_is_quarantined_and_retains_recovery(
+@pytest.mark.parametrize("final_index", range(4))
+@pytest.mark.parametrize("link_raises", (False, True))
+def test_same_byte_foreign_final_is_preserved_during_rollback(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
+    final_index: int,
+    link_raises: bool,
 ) -> None:
-    first = run_builder(run_summary_fixture, execute=True)
-    assert first.returncode == 0, first.stderr
-    before = summary_snapshot(run_summary_fixture)
     context = context_for(run_summary_fixture)
-    real_replace = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.replace
-    publication_failed = False
-    receipt_corrupted = False
+    final = run_summary_fixture.summary_paths[final_index]
+    real_link = os.link
+    foreign_identity: tuple[int, int] | None = None
+    expected_bytes = b""
 
-    def fail_then_corrupt_restored_receipt(
-        source: Any,
-        destination: Any,
-    ) -> None:
-        nonlocal publication_failed, receipt_corrupted
-        source_path = Path(source)
-        destination_path = Path(destination)
-        if (
-            not publication_failed
-            and destination_path == run_summary_fixture.qc_summary_path
-            and ".tmp" in source_path.name
-        ):
-            publication_failed = True
-            raise OSError("injected replacement publication failure")
-        if (
-            publication_failed
-            and not receipt_corrupted
-            and destination_path == run_summary_fixture.summary_receipt_path
-            and source_path.name.endswith(".previous")
-        ):
-            header = read_tsv_header(source_path)
-            rows = read_tsv(source_path)
-            rows[0]["git_commit"] = "f" * 40
-            write_tsv(source_path, header, rows)
-            receipt_corrupted = True
-        real_replace(source, destination)
+    def replace_after_link(source: Any, destination: Any, **kwargs: Any) -> None:
+        nonlocal foreign_identity, expected_bytes
+        real_link(source, destination, **kwargs)
+        if Path(destination) == final:
+            expected_bytes = final.read_bytes()
+            foreign = final.with_name("foreign-replacement")
+            foreign.write_bytes(expected_bytes)
+            foreign.replace(final)
+            metadata = final.lstat()
+            foreign_identity = (metadata.st_dev, metadata.st_ino)
+            if link_raises:
+                raise OSError("injected post-link replacement")
 
+    monkeypatch.setattr(os, "link", replace_after_link)
     with pytest.raises(
-        RUN_SUMMARY_MODELS.RunSummaryError,
-        match="rollback was incomplete",
+        RUN_SUMMARY_MODELS.RunSummaryError, match="rollback was incomplete"
     ):
-        RUN_SUMMARY_PUBLICATION.publish_context(
-            context,
-            ops=publication_ops(replace=fail_then_corrupt_restored_receipt),
-        )
+        RUN_SUMMARY_PUBLICATION.publish_context(context)
 
-    assert publication_failed
-    assert receipt_corrupted
-    for path in run_summary_fixture.summary_paths[:3]:
-        assert path.read_bytes() == before[path.name]
-    assert not run_summary_fixture.summary_receipt_path.exists()
+    assert foreign_identity is not None
+    assert (final.lstat().st_dev, final.lstat().st_ino) == foreign_identity
+    assert final.read_bytes() == expected_bytes
+    assert all(
+        not os.path.lexists(path)
+        for path in run_summary_fixture.summary_paths
+        if path != final
+    )
     assert run_summary_fixture.lock_path.is_file()
-    assert any(
-        path.name.endswith(".RECOVERY.txt")
-        for path in run_summary_fixture.output_dir.iterdir()
-    )
-    assert any(
-        path.name.endswith(".previous") and "run_summary_receipt.tsv" in path.name
-        for path in run_summary_fixture.output_dir.iterdir()
-    )
+    assert len(list(run_summary_fixture.output_dir.glob("*.tmp"))) == 4
+    assert list(run_summary_fixture.output_dir.glob("*.RECOVERY.txt"))
 
 
-def test_first_publication_failure_removes_owned_outputs_and_lock(
+@pytest.mark.parametrize("final_index", range(4))
+def test_first_publication_link_failure_removes_owned_outputs_and_lock(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
+    final_index: int,
 ) -> None:
     context = context_for(run_summary_fixture)
-    real_replace = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.replace
+    real_link = os.link
     failed = False
 
-    def fail_qc_publication(source: Any, destination: Any) -> None:
+    def fail_publication(source: Any, destination: Any, **kwargs: Any) -> None:
         nonlocal failed
-        if (
-            not failed
-            and Path(destination) == run_summary_fixture.qc_summary_path
-            and ".tmp" in Path(source).name
-        ):
+        if Path(destination) == run_summary_fixture.summary_paths[final_index]:
             failed = True
             raise OSError("injected first run-summary publication failure")
-        real_replace(source, destination)
+        real_link(source, destination, **kwargs)
 
+    monkeypatch.setattr(os, "link", fail_publication)
     with pytest.raises(
         RUN_SUMMARY_MODELS.RunSummaryError,
         match="injected first run-summary publication failure",
     ):
-        RUN_SUMMARY_PUBLICATION.publish_context(
-            context,
-            ops=publication_ops(replace=fail_qc_publication),
-        )
+        RUN_SUMMARY_PUBLICATION.publish_context(context)
 
     assert failed
     assert_no_summary_outputs(run_summary_fixture)
+    assert_no_summary_residue_after_success(run_summary_fixture)
 
 
-def test_incomplete_replacement_rollback_retains_lock_and_recovery_paths(
+def test_incomplete_owned_rollback_retains_lock_and_anchors(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    first = run_builder(run_summary_fixture, execute=True)
-    assert first.returncode == 0, first.stderr
     context = context_for(run_summary_fixture)
-    real_replace = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.replace
+    real_link = os.link
+    real_unlink = Path.unlink
     publication_failed = False
-    restoration_failed = False
+    rollback_failed = False
 
-    def fail_publication_and_restoration(
-        source: Any,
-        destination: Any,
-    ) -> None:
-        nonlocal publication_failed, restoration_failed
-        source_path = Path(source)
-        destination_path = Path(destination)
-        if (
-            not publication_failed
-            and destination_path == run_summary_fixture.qc_summary_path
-            and ".tmp" in source_path.name
-        ):
+    def fail_publication(source: Any, destination: Any, **kwargs: Any) -> None:
+        nonlocal publication_failed
+        if Path(destination) == run_summary_fixture.qc_summary_path:
             publication_failed = True
-            raise OSError("injected replacement publication failure")
-        if (
-            publication_failed
-            and not restoration_failed
-            and destination_path == run_summary_fixture.summary_json_path
-            and source_path.name.endswith(".previous")
-        ):
-            restoration_failed = True
-            raise OSError("injected prior-summary restoration failure")
-        real_replace(source, destination)
+            raise OSError("injected publication failure")
+        real_link(source, destination, **kwargs)
 
+    def fail_rollback(path: Path, *args: Any, **kwargs: Any) -> None:
+        nonlocal rollback_failed
+        if publication_failed and path == run_summary_fixture.summary_json_path:
+            rollback_failed = True
+            raise OSError("injected owned-output removal failure")
+        real_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "link", fail_publication)
+    monkeypatch.setattr(Path, "unlink", fail_rollback)
     with pytest.raises(
-        RUN_SUMMARY_MODELS.RunSummaryError,
-        match="rollback was incomplete",
+        RUN_SUMMARY_MODELS.RunSummaryError, match="rollback was incomplete"
     ):
-        RUN_SUMMARY_PUBLICATION.publish_context(
-            context,
-            ops=publication_ops(replace=fail_publication_and_restoration),
-        )
+        RUN_SUMMARY_PUBLICATION.publish_context(context)
 
-    assert publication_failed
-    assert restoration_failed
+    assert publication_failed and rollback_failed
+    assert (
+        run_summary_fixture.summary_json_path.read_bytes() == context.summary_json_bytes
+    )
+    assert all(not path.exists() for path in run_summary_fixture.summary_paths[1:])
     assert run_summary_fixture.lock_path.is_file()
-    assert not run_summary_fixture.summary_json_path.exists()
-    assert not run_summary_fixture.summary_receipt_path.exists()
-    assert any(
-        path.name.endswith(".RECOVERY.txt")
-        for path in run_summary_fixture.output_dir.iterdir()
-    )
-    assert any(
-        path.name.endswith(".previous") and "run_summary_receipt.tsv" in path.name
-        for path in run_summary_fixture.output_dir.iterdir()
-    )
-    assert any(
-        path.name.endswith(".previous") and "run_summary.json" in path.name
-        for path in run_summary_fixture.output_dir.iterdir()
-    )
+    assert len(list(run_summary_fixture.output_dir.glob("*.tmp"))) == 4
+    assert list(run_summary_fixture.output_dir.glob("*.RECOVERY.txt"))
 
 
+@pytest.mark.parametrize("unlink_raises", (False, True))
 def test_mid_rollback_directory_replacement_skips_replacement_path_cleanup(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
+    unlink_raises: bool,
 ) -> None:
     context = context_for(run_summary_fixture)
-    default_ops = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS
-    real_replace = default_ops.replace
-    real_remove_owned = default_ops.remove_owned
+    real_link = os.link
+    real_unlink = Path.unlink
     publication_failed = False
     directory_replaced = False
-    displaced = (
-        run_summary_fixture.output_dir.parent
-        / f"{run_summary_fixture.output_dir.name}.rollback-displaced"
-    )
+    displaced = run_summary_fixture.output_dir.with_name("rollback-displaced")
 
-    def fail_qc_publication(source: Any, destination: Any) -> None:
+    def fail_publication(source: Any, destination: Any, **kwargs: Any) -> None:
         nonlocal publication_failed
-        if (
-            not publication_failed
-            and Path(destination) == run_summary_fixture.qc_summary_path
-            and ".tmp" in Path(source).name
-        ):
+        if Path(destination) == run_summary_fixture.qc_summary_path:
             publication_failed = True
-            raise OSError("injected replacement publication failure")
-        real_replace(source, destination)
+            raise OSError("injected publication failure")
+        real_link(source, destination, **kwargs)
 
-    def replace_directory_after_first_rollback_remove(path: Path) -> None:
+    def replace_after_unlink(path: Path, *args: Any, **kwargs: Any) -> None:
         nonlocal directory_replaced
-        real_remove_owned(path)
+        real_unlink(path, *args, **kwargs)
         if publication_failed and not directory_replaced:
             run_summary_fixture.output_dir.rename(displaced)
             run_summary_fixture.output_dir.mkdir()
             directory_replaced = True
+            if unlink_raises:
+                raise OSError("injected rollback failure after directory replacement")
 
+    monkeypatch.setattr(os, "link", fail_publication)
+    monkeypatch.setattr(Path, "unlink", replace_after_unlink)
     with pytest.raises(
         RUN_SUMMARY_MODELS.RunSummaryError,
-        match="identity changed",
+        match="identity changed|injected rollback failure",
     ):
-        RUN_SUMMARY_PUBLICATION.publish_context(
-            context,
-            ops=publication_ops(
-                replace=fail_qc_publication,
-                remove_owned=replace_directory_after_first_rollback_remove,
-            ),
-        )
+        RUN_SUMMARY_PUBLICATION.publish_context(context)
 
-    assert publication_failed
-    assert directory_replaced
+    assert publication_failed and directory_replaced
     assert list(run_summary_fixture.output_dir.iterdir()) == []
     assert (displaced / run_summary_fixture.lock_path.name).is_file()
     assert any(path.name.endswith(".tmp") for path in displaced.iterdir())
@@ -1164,46 +1033,34 @@ def test_post_commit_cleanup_failure_preserves_new_transaction_and_lock(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    first = run_builder(run_summary_fixture, execute=True)
-    assert first.returncode == 0, first.stderr
     context = context_for(run_summary_fixture)
-    real_remove_owned = (
-        RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.remove_owned
-    )
+    real_remove = ARTIFACT_INDEX_API.remove_owned
     cleanup_failed = False
 
-    def fail_one_backup_cleanup(path: Path) -> None:
+    def fail_temp_cleanup(path: Path) -> None:
         nonlocal cleanup_failed
         if (
             not cleanup_failed
-            and path.name.endswith(".previous")
+            and path.name.endswith(".tmp")
             and "run_summary.tsv" in path.name
         ):
             cleanup_failed = True
-            raise OSError("injected run-summary backup cleanup failure")
-        real_remove_owned(path)
+            raise OSError("injected run-summary anchor cleanup failure")
+        real_remove(path)
 
-    with pytest.raises(
-        RUN_SUMMARY_MODELS.RunSummaryError,
-        match="cleanup failed",
-    ):
-        RUN_SUMMARY_PUBLICATION.publish_context(
-            context,
-            ops=publication_ops(remove_owned=fail_one_backup_cleanup),
-        )
+    monkeypatch.setattr(ARTIFACT_INDEX_API, "remove_owned", fail_temp_cleanup)
+    with pytest.raises(RUN_SUMMARY_MODELS.RunSummaryError, match="cleanup failed"):
+        RUN_SUMMARY_PUBLICATION.publish_context(context)
 
     assert cleanup_failed
     assert all(path.is_file() for path in run_summary_fixture.summary_paths)
     RUN_SUMMARY_PUBLICATION.validate_published_run_summary(context)
-    receipt = read_tsv(run_summary_fixture.summary_receipt_path)[0]
-    assert receipt["run_summary_attempt_id"] == (
-        context.receipt_row["run_summary_attempt_id"]
+    assert (
+        read_tsv(run_summary_fixture.summary_receipt_path)[0]["run_summary_attempt_id"]
+        == context.receipt_row["run_summary_attempt_id"]
     )
     assert run_summary_fixture.lock_path.is_file()
-    assert any(
-        path.name.endswith(".RECOVERY.txt")
-        for path in run_summary_fixture.output_dir.iterdir()
-    )
+    assert list(run_summary_fixture.output_dir.glob("*.RECOVERY.txt"))
 
 
 @pytest.mark.parametrize(
@@ -1351,20 +1208,15 @@ def test_receipt_is_the_last_published_summary_output(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     context = context_for(run_summary_fixture)
-    real_replace = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.replace
-    final_paths = set(run_summary_fixture.summary_paths)
+    real_link = os.link
     publication_order: list[Path] = []
 
-    def track_publication(source: Any, destination: Any) -> None:
-        destination_path = Path(destination)
-        if destination_path in final_paths and ".tmp" in Path(source).name:
-            publication_order.append(destination_path)
-        real_replace(source, destination)
+    def track_publication(source: Any, destination: Any, **kwargs: Any) -> None:
+        publication_order.append(Path(destination))
+        real_link(source, destination, **kwargs)
 
-    RUN_SUMMARY_PUBLICATION.publish_context(
-        context,
-        ops=publication_ops(replace=track_publication),
-    )
+    monkeypatch.setattr(os, "link", track_publication)
+    RUN_SUMMARY_PUBLICATION.publish_context(context)
 
     assert publication_order == list(run_summary_fixture.summary_paths)
     assert publication_order[-1] == run_summary_fixture.summary_receipt_path
@@ -1433,3 +1285,89 @@ def test_attempt_aggregation_preserves_independent_chains_and_rejects_conflicts(
         match="conflicting definitions",
     ):
         RUN_SUMMARY_PROJECTION._build_attempts(conflicting)
+
+
+@pytest.mark.parametrize("final_index", range(4))
+@pytest.mark.parametrize("kind", ("file", "dangling_symlink"))
+def test_concurrent_final_is_not_overwritten_or_removed(
+    run_summary_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    final_index: int,
+    kind: str,
+) -> None:
+    context = context_for(run_summary_fixture)
+    final = run_summary_fixture.summary_paths[final_index]
+    target = final.with_name("absent-concurrent-target")
+    real_link = os.link
+    foreign_identity: tuple[int, int] | None = None
+
+    def insert_before_link(source: Any, destination: Any, **kwargs: Any) -> None:
+        nonlocal foreign_identity
+        if Path(destination) == final:
+            if kind == "file":
+                final.write_bytes(b"concurrent foreign output\n")
+            else:
+                final.symlink_to(target)
+            metadata = final.lstat()
+            foreign_identity = (metadata.st_dev, metadata.st_ino)
+        real_link(source, destination, **kwargs)
+
+    monkeypatch.setattr(os, "link", insert_before_link)
+    with pytest.raises(
+        RUN_SUMMARY_MODELS.RunSummaryError, match="rollback was incomplete"
+    ):
+        RUN_SUMMARY_PUBLICATION.publish_context(context)
+
+    assert foreign_identity is not None
+    assert (final.lstat().st_dev, final.lstat().st_ino) == foreign_identity
+    if kind == "file":
+        assert final.read_bytes() == b"concurrent foreign output\n"
+    else:
+        assert final.readlink() == target
+        assert not target.exists()
+    assert all(
+        not os.path.lexists(path)
+        for path in run_summary_fixture.summary_paths
+        if path != final
+    )
+    assert run_summary_fixture.lock_path.is_file()
+    assert len(list(run_summary_fixture.output_dir.glob("*.tmp"))) == 4
+    assert list(run_summary_fixture.output_dir.glob("*.RECOVERY.txt"))
+
+
+@pytest.mark.parametrize("anchor_fault", ("missing", "replaced"))
+def test_unprovable_staging_anchor_retains_final_and_recovery(
+    run_summary_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    anchor_fault: str,
+) -> None:
+    context = context_for(run_summary_fixture)
+    final = run_summary_fixture.summary_json_path
+    real_link = os.link
+    changed_anchor: Path | None = None
+
+    def change_anchor_after_link(source: Any, destination: Any, **kwargs: Any) -> None:
+        nonlocal changed_anchor
+        real_link(source, destination, **kwargs)
+        if Path(destination) == final:
+            changed_anchor = Path(source)
+            changed_anchor.unlink()
+            if anchor_fault == "replaced":
+                changed_anchor.write_bytes(b"foreign anchor\n")
+            raise OSError("injected staging-anchor mutation")
+
+    monkeypatch.setattr(os, "link", change_anchor_after_link)
+    with pytest.raises(
+        RUN_SUMMARY_MODELS.RunSummaryError, match="rollback was incomplete"
+    ):
+        RUN_SUMMARY_PUBLICATION.publish_context(context)
+
+    assert changed_anchor is not None
+    assert final.read_bytes() == context.summary_json_bytes
+    if anchor_fault == "replaced":
+        assert changed_anchor.read_bytes() == b"foreign anchor\n"
+    else:
+        assert not changed_anchor.exists()
+    assert all(not path.exists() for path in run_summary_fixture.summary_paths[1:])
+    assert run_summary_fixture.lock_path.is_file()
+    assert list(run_summary_fixture.output_dir.glob("*.RECOVERY.txt"))

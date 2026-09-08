@@ -260,6 +260,46 @@ its required checks. Transaction-layout consolidation, reporting-memory
 removal, check-ID corrections, and independent-producer reporting remain
 outside this slice. `REPORT-ROSTER-01` stays open for its remaining outcomes.
 
+### Reporting lifecycle compression
+
+The three private publishers now implement only the create-only behavior
+already selected by the Run coordinator. A complete bundle is revalidated and
+reused through the public reporting operation; a prepared predecessor cannot
+be republished over its existing files. The shared
+[publication contract](../../../src/emrys/reporting/README.md#publication-and-recovery)
+owns ordering, ownership, cleanup, and recovery rules for all three producers.
+
+This bounded retirement was approved against
+`0ece377ca2b285d6ec2a46f7d2441c78f16409e1`, the head of
+[PR #146](https://github.com/lab-cats/EMRYS/pull/146). Its acceptance requires
+at least 200 net product lines removed and no product-file growth; tests,
+documentation, tooling, configuration, and retained evidence are accounted
+separately in the implementation PR. It completes one reporting lifecycle
+change under `REPORT-ROSTER-01`, not the broader campaign.
+
+| Behavior | Classification and decision |
+|---|---|
+| Public `run`, `resume`, and `report` operations | Preserved: reporting follows successful computation, empty owned state can be published, complete state is revalidated, and ambiguous state remains preserved and refused. |
+| Scientific content and identities | Preserved: immutable Run plans, schemas, output order, historical preparation and reads, attempt lineage, source/package attribution, independent goldens, and input rechecks. Actual source commits and package hashes still change with their implementation; they are not falsified for byte equality. |
+| Private replacement lifecycle | Intentionally retired: existing-output overwrite, predecessor backup/restoration, and repeat private publication. Preparing or validating a historical transaction remains supported. Existing recovery residue remains protected; this change authorizes no evidence deletion. |
+| Callback carriers and facade | Intentionally retired: the three publication operation records, two identity operation records, `ReceiptValidationOps` and its callback arguments, and the `report.py` facade. Source admission moves into the existing HTML context owner. The logical receipt producer string `emrys.reporting.report` remains unchanged. |
+| Interrupted or concurrent publication | Corrected within the surviving create-only path: file ownership is recorded before exclusive linking, successful links are checked against that identity, and directory replacement prevents subsequent path-based cleanup. Fault tests exercise actual filesystem and signal boundaries. |
+| Broader reporting policy | Undecided and outside this change: reporting-memory inputs, independent reporting producers, transaction-layout declarations, and validation-check roster policy. The dashboard remains until a replacement dashboard is implemented and validated. |
+| Environment and scientific evidence | Deferred: local fault fixtures do not establish Slurm or institutional filesystem behavior, production use, scientific review, or biological validity. Hosted and installed-wheel checks retain separate evidence labels. |
+
+Repository callers move directly to existing preparation, publication, and
+read-only validation owners. Tests use pytest or standard-library patching of
+those actual boundaries; production carries no replacement fault-hook API.
+The captured artifact source observer and validated transaction recheck closure
+remain because they carry real preparation and reuse semantics. The separate
+`RunSummaryBuildDeps` preparation record is outside this six-carrier retirement.
+
+Replacement-specific tests are adapted to existing-output refusal and
+first-publication failure/recovery behavior. Their historical characterization
+remains in the pinned predecessor commit above. Current receipt/schema
+admission, predecessor lineage, independent scientific oracles, and retained
+fixture and recovery evidence are not retired with that private writer mode.
+
 ## Console, logs, and status
 
 Normal output presents Run identity, scientific milestones, actionable failure,
@@ -277,4 +317,5 @@ Status is derived from immutable Run, Attempt, task, reporting, receipt, and
 lock records. No mutable status cache competes with them. Elapsed time belongs
 to one current or latest Attempt; resumes are not silently summed and no ETA is
 invented. The stale dashboard is not a status or Results authority and remains
-frozen under `DASHBOARD-RETIRE-01` pending separately approved retirement.
+frozen under `DASHBOARD-RETIRE-01` until a replacement dashboard is implemented
+and validated; retirement then requires its own approved scope.
