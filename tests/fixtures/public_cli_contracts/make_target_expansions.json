@@ -355,7 +355,8 @@
     "PYTHONDONTWRITEBYTECODE=1 \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m compileall -q scripts src/emrys tests",
     "\"<REPO_ROOT>/.venv/bin/python\" -I -m emrys validate manifest \\",
-    "\t\t--manifest configs/samples.example.tsv"
+    "\t\t--manifest configs/samples.example.tsv",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m pytest -q tests/test_python_test_shards.py"
   ],
   "validation-wheel-smoke": [
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest -q --tb=short \\",
