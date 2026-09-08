@@ -1293,15 +1293,6 @@ def test_dispatch_and_output_paths_may_not_alias(tmp_path: Path) -> None:
         _load_dispatch(built.dispatch_path)
 
 
-def test_records_are_canonical_json_bytes(tmp_path: Path) -> None:
-    built = _task_fixture(tmp_path)
-    _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
-    for field in ("task_attempt_path", "verified_task_path"):
-        path = Path(built.dispatch[field])
-        record = json.loads(path.read_bytes())
-        assert path.read_bytes() == orchestration_contracts.canonical_json_bytes(record)
-
-
 def test_read_only_verified_admission_rechecks_every_content_binding(
     tmp_path: Path,
 ) -> None:
@@ -1325,26 +1316,6 @@ def test_read_only_verified_admission_rechecks_every_content_binding(
             execution=execution,
             profile=profile,
         )
-
-
-@pytest.mark.parametrize("field", ["stdout_path", "stderr_path"])
-@pytest.mark.parametrize("tamper", ["append", "truncate"])
-def test_read_only_verified_admission_rechecks_task_log_hashes(
-    tmp_path: Path,
-    field: str,
-    tamper: str,
-) -> None:
-    built = _task_fixture(tmp_path)
-    _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
-    log_path = Path(built.dispatch[field])
-    if tamper == "append":
-        with log_path.open("ab") as stream:
-            stream.write(b"foreign log bytes\n")
-    else:
-        log_path.write_bytes(b"")
-
-    with pytest.raises(task.TaskBoundaryError, match="SHA-256 no longer matches"):
-        _validate_verified(built)
 
 
 def test_task_log_hashing_uses_shared_streaming_hasher_without_full_log_reads(

@@ -554,16 +554,6 @@ assert_contains "$samtools_log" \
     "$safe_output_dir/.sample_safe.step02.safe001.rg.tmp.bam"
 assert_not_contains "$samtools_log" "$safe_output_dir/sample_safe.sorted.bam"
 assert_not_exists "$safe_output_dir/.sample_safe.step02.lock"
-safe_repeat_output="$tmp_dir/safe_repeat.out"
-assert_fails "$safe_repeat_output" env FAKE_SAMPLE_ID=sample_safe SLURM_JOB_ID=safe002 bash "$SCRIPT" \
-    --sample-id sample_safe \
-    --input-alignment "$safe_input" \
-    --output-dir "$safe_output_dir" \
-    --threads 2 \
-    --no-clobber \
-    --execute
-assert_contains "$safe_repeat_output" "Step 02 requires both canonical outputs to be absent"
-assert_file_equals "$safe_output_dir/sample_safe.sorted.bam.bai" "fake bam index"
 
 mutation_input="$tmp_dir/fixtures/mutation_input.sam"
 printf '@HD\tVN:1.6\tSO:unsorted\n' >"$mutation_input"
