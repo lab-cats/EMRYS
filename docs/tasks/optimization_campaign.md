@@ -1,7 +1,8 @@
 # EMRYS optimization campaign
 
-Reduce pipeline wall time, peak and retained disk usage, I/O, and memory while
-preserving scientific results, provenance, recovery, and supported behavior.
+Reduce pipeline and operator command wall time, peak and retained disk usage,
+I/O, and memory while preserving scientific results, provenance, recovery, and
+supported behavior.
 Prefer eliminating repeated work and unnecessary allocations over adding
 machinery or changing computational methods.
 
@@ -21,6 +22,12 @@ It covered processing, analysis, validation, orchestration, reporting, resource
 configuration, and retention. Source citations below are pinned to that revision;
 recheck the relevant production path and adjacent owners before selecting work.
 Open-PR observations are also an audit-time snapshot.
+
+The second read-only pass used the same source revision and added candidates
+11–13 for inspection, source attribution, and runtime startup. It reconciled
+the existing campaigns and overlapping work without running new experiments.
+These additions identify costs to measure, not established redundant defenses
+or completed optimization designs.
 
 No new tests, benchmarks, cluster jobs, or production-artifact inventory ran in
 the audit. Static repetition and allocation findings establish mechanisms, not
@@ -53,6 +60,9 @@ proposal. Step 08 retention and Step 07 hashing merit larger investigations.
 | 8 | Use qualified fast scratch for GATK spill | Shared-storage I/O and wall time | Environment-deferred; preserve capacity and recovery protections. |
 | 9 | Reduce Step 09 validation allocations | Memory | Preserve AF validation, pairing, global BH correction, and reconciliation. |
 | 10 | Evaluate compressed retained VCFs and tables | Persistent disk; potentially physical I/O | Undecided representation contract, requiring complete consumer migration. |
+| 11 | Measure inspection, resume, and report startup hashing | Operator command wall time and read I/O | Preserve content verification; reuse across mutation windows remains undecided. |
+| 12 | Audit source attribution before task entry | Startup wall time, filesystem work, and subprocess overhead | Preserve package/commit attribution and distinct publication boundaries. |
+| 13 | Measure R runtime-probe startup overhead | Readiness and execution-startup wall time | Preserve probe isolation and admitted dependency closure; execution changes need evidence. |
 
 None of these resource costs alone establishes a scientific defect.
 
@@ -221,6 +231,75 @@ scientific values and ordering and explicitly approve changed representation
 and identity contracts. Do not keep parallel permanent formats by default, or
 silently remove retained originals to obtain a favorable disk result.
 
+### 11. Measure inspection, resume, and report startup hashing
+
+[Run inspection][inspection-admission] admits every expected task, and
+[verified-task admission][verified-reuse] hashes every recorded input and
+output. The same task admission runs during
+[Snakemake graph construction][workflow-reuse]; [resume][resume-inspection] and
+[reporting][report-inspection] also invoke full inspection. Their latency can
+therefore grow with scientific data volume and repeated shared inputs, beyond
+the number of status records.
+This operator command cost is distinct from candidate 6's producer-entry
+observations, although measurements must avoid counting the same work twice.
+
+Measure complete `emrys inspect`, resume planning, and report startup across
+sample count, partitions, retained Attempts, and cold/warm storage. Identify
+which files are read repeatedly within one invocation and whether those reads
+guard different mutation windows. Investigate sharing an admitted observation
+only where an existing owner can preserve equal-or-stronger change detection
+and retire the duplicate work. Preserve current verified-state meaning,
+historical admission, deterministic diagnostics, and recovery. Do not introduce
+a persistent digest cache, second status registry, or silently weaker inspect
+mode. Separating recorded status from fresh integrity verification would be a
+distinct product decision. Reconcile active reporting-predecessor work before
+selecting any report-startup slice.
+
+### 12. Audit source attribution before task entry
+
+The [normal task-entry path][task-source-entry] calls source attestation four
+times before scientific production, including the call made while constructing
+the task-start record. Each [attestation][source-attestation] performs two
+working/package comparisons and a [Git-object comparison][source-object-check].
+Together with its top-level and HEAD observations, this makes six Git
+subprocess calls per successful attestation, or 24 per normal task entry, plus
+repeated package-tree traversal and byte reads. These are source-derived call
+counts, not measured startup time or evidence that the checks are redundant.
+
+Measure task-start latency, Git invocations, and filesystem work on the selected
+local or institutional storage. Map each observation to its exact trust and
+publication boundary before proposing consolidation. The
+[package comparison][source-package-check] also reads both sides when their
+canonical roots are the same; determine whether that case can be simplified
+without losing a currently detected change. Retire only equivalent work inside
+the existing source-authority owner. Preserve executing-package bytes, exact
+commit binding, changed HEAD/package detection, and task-start publication
+checks. An immutable Run does not make its source filesystem immutable and
+does not authorize caching across those boundaries. Related assurance work
+remains in the [polish campaign](polish-campaign.md).
+
+### 13. Measure R runtime-probe startup overhead
+
+The [packaged runtime policy][runtime-probe-policy] declares ten R namespace
+checks. [Probe dispatch][runtime-probe-dispatch] runs them sequentially, and
+each [namespace check][runtime-namespace-probe] launches a separate `Rscript`.
+One examination of that inventory therefore starts R ten times for namespace
+checks in addition to its R-version probe; module dependencies can add checks.
+This establishes process multiplicity, not how much of Doctor or execution
+startup it consumes.
+
+Measure the complete readiness path and separate interpreter startup,
+namespace loading, and package-identity I/O. Compare bounded concurrency of
+independent probes before considering a combined R process, which changes
+fresh-process isolation and namespace load-order behavior. Preserve per-check
+attribution, report order, deadlines, failure isolation, selected-library/root/
+version checks, and read-only dependency state. Use the existing probe owner
+and established process facilities; add no runtime service or probe framework.
+Reconcile Doctor assembly and runtime-model work before selection. Existing
+[`RUNTIME-CLOSURE-01`](backlog_matrix.md#reliability-and-qualification) owns the
+recursive R dependency closure and automatic-snapshot policy; this performance
+candidate must preserve that outcome rather than redefine its acceptance.
+
 ## Prior work and scope boundaries
 
 - STAR/canonical BAM handling already avoids unnecessary sorting and uses
@@ -269,12 +348,16 @@ and filesystem block counters do not establish aggregate concurrent memory,
 network-filesystem traffic, or peak allocated disk occupancy. Failed repetitions
 must not disappear from a recommendation based only on successful rows.
 
+For operator command candidates, time the complete public invocation and
+attribute its admission, subprocess, hashing, and rendering costs separately;
+a producer-only benchmark cannot establish inspection or readiness latency.
+
 For each selected experiment, record:
 
 | Dimension | Required observation |
 |---|---|
 | Identity | Exact baseline/candidate commits, input hashes, reference/annotation, tool versions, node, storage, and resource profiles. |
-| Wall time | Complete task and whole-Run elapsed time, with producer, validation, publication, and queue delay distinguished where available. |
+| Wall time | Complete task, whole-Run, or selected public-command elapsed time; distinguish producer, admission, validation, publication, rendering, and queue delay where applicable. |
 | Memory | Individual process peaks and aggregate concurrent usage; distinguish reserved memory from consumption. |
 | I/O | Logical traversal counts, physical bytes/operations, cache conditions, and storage/network counters appropriate to the filesystem. |
 | Disk | Peak temporary occupancy and retained allocated bytes, accounting for hard links and comparing equivalent artifact sets. |
@@ -338,6 +421,17 @@ adding a progress ledger or duplicating backlog statuses.
 [pr45]: https://github.com/lab-cats/EMRYS/pull/45
 [pr45-run]: https://github.com/lab-cats/EMRYS/actions/runs/33090518708
 [verified-reuse]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/task.py#L1605-L1617
+[inspection-admission]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/_inspection_evidence.py#L183-L215
+[workflow-reuse]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/workflow/Snakefile#L485-L503
+[resume-inspection]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/control.py#L286-L307
+[report-inspection]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/reporting_operation.py#L298-L311
+[task-source-entry]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/task.py#L1828-L1908
+[source-attestation]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/libraries/source_authority.py#L531-L597
+[source-object-check]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/libraries/source_authority.py#L297-L357
+[source-package-check]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/libraries/source_authority.py#L449-L527
+[runtime-probe-policy]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/resources/runtime/runtime_policy.tsv#L18-L27
+[runtime-probe-dispatch]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/evidence/runtime_availability/_probes.py#L339-L387
+[runtime-namespace-probe]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/evidence/runtime_availability/_probes.py#L153-L203
 [benchmark-helper]: ../../scripts/benchmark_stage_resources.py
 [cgroup-accounting]: https://www.kernel.org/doc/html/latest/admin-guide/cgroup-v2.html
 [guardrails]: ../design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails

@@ -7,7 +7,8 @@ architecture reduction, developer feedback, dependency maintenance, and release
 presentation.
 
 The companion [optimization campaign](optimization_campaign.md) covers pipeline
-wall time, disk usage, I/O, and memory with its own measurement boundaries.
+and operator-command wall time, disk usage, I/O, and memory with its own
+measurement boundaries.
 
 The user requested this document and its integration with the optimization
 campaign and revised quickstart. Follow-on product and tooling implementation
@@ -37,6 +38,14 @@ scientist quickstart from [PR #130](https://github.com/lab-cats/EMRYS/pull/130) 
 focused setup/Doctor tests. Those are its original evidence, not new execution
 performed during this integration. Its completed documentation narrows the
 remaining work in items 9–11 below; institutional qualification remains open.
+
+The second pass reviewed the combined documents at `dbb11a3b`, whose product
+source still matches the audited master, and relevant open work through PR
+#136. It added release acceptance detail and the assurance/usability findings
+below. Live GitHub ruleset, effective-branch-rule, and legacy branch-protection
+reads inform item 33; hosted settings are an audit-time observation and must be
+rechecked before selection. No installed-command reproduction, rendered report
+review, performance measurement, or new product test ran during either pass.
 
 References to local source below identify the inspected owner at that revision.
 Before selecting a candidate, reconcile its current source, backlog coverage,
@@ -71,6 +80,11 @@ admission, one publication-recovery owner, and the Project preview. For added
 tooling, start with ShellCheck, one type checker, and stronger Ruff integration;
 add local hooks after their participating checks have clear owners. These are
 selection recommendations, not a required dependency graph.
+
+The second pass prioritizes the installed-package journey and runtime identity
+audits, followed by rendered report review. The merge-rule gap is concrete;
+performance additions require complete-command measurements before selecting
+an implementation. Existing backlog coverage stays with its current rows.
 
 ## Correctness and recovery
 
@@ -375,7 +389,8 @@ against a development branch receive the agreed ordinary checks automatically.
 Preserve intended master, merge-group, push, scheduled, and manual behavior,
 including opt-in long checks and hosted rules. This is a proposed extension of
 `CI-01`; manual lane selection and nonblocking stacked-work procedures already
-exist and are not this outcome.
+exist and are not this outcome. Item 33 separately addresses which completed
+checks GitHub requires before a merge.
 
 ### 23. Reduce the measured CI critical path
 
@@ -467,12 +482,47 @@ requiring bounded selection and footprint accounting.
 releases endpoint returned no published releases during the audit. Package
 version is `0.1.0.dev0`. No claim was made that Git tags are absent.
 
+The [isolated wheel test][release-wheel] covers
+installation, packaged resources, public help, and manifest validation. Its
+report exercise calls private publication code and supplies the original
+checkout as `REPO_ROOT`. [Onboarding][release-root]
+derives a checkout-relative root, and
+[source admission][release-source] requires a
+matching Git checkout. This is installed-component evidence, not proof that an
+independently installed wheel supports the whole public Project-to-Results
+journey. No standalone-install failure was reproduced in this audit.
+
+The [wheel installer][release-constraints] also constrains dependencies to
+the versions in `uv.lock`.
+[Package metadata][release-dependencies] expresses broader ranges for
+`jsonschema` and `referencing`; the test does not establish compatibility across
+those ranges or their lower bounds. No dependency incompatibility is established.
+
 **Outcome and acceptance:** Define the supported distributed artifact and an
 exact reviewed revision, then produce coherent versioning, release notes,
-installation instructions, and evidence boundaries. Reuse existing isolated
-wheel checks and validate the actual artifact before publication. Release
-automation is justified only for the selected repeatable process; publication
-and any package-index registration require explicit authority.
+installation instructions, and evidence boundaries. Strengthen the existing
+release outcome with two decisions and their corresponding evidence:
+
+- Decide whether the wheel supports standalone operation, selected utilities,
+  or operation paired with an exact checkout. From an isolated installation
+  and arbitrary working directory, exercise every promised operation through
+  the public installed command using only documented resources. Cover Project
+  initialization and report regeneration if promised; a tiny complete Run is
+  necessary only if full wheel operation is selected. Unsupported use should
+  fail early with useful instructions. Preserve source attribution rather than
+  silently broadening supported installation paths.
+- Decide whether support requires the released lock or includes installations
+  resolved from wheel metadata alone. Demonstrate the locked route from the
+  actual release artifact, or use a bounded independently resolved/minimum-
+  dependency check to inform accurate metadata. Keep one explicit support
+  policy; do not multiply platform and dependency matrices without a promise
+  they verify. Item 6 retains the separate timestamp-checker issue.
+
+Reuse existing package checks and environment owners. These are release
+acceptance details, separate from update bots and vulnerability scanning;
+they do not close `SITE-PARITY-01`. Release automation is justified only for
+the selected repeatable process. Publication, package-index registration, and
+any new product/platform support require their own explicit authority.
 
 ### 31. Provide authoritative citation guidance
 
@@ -496,6 +546,145 @@ to that exact tested artifact. Source, version, artifact identity, and stated
 inventory scope must agree; verify the attestation as a consumer. A Python
 inventory does not imply complete native/R coverage. This is later release
 tooling, with separate publication authority and no bespoke framework.
+
+## Additional assurance and usability
+
+### 33. Make the required merge checks explicit
+
+**Finding:** The two active repository rulesets and the effective rules for
+`master` include PR review, CodeQL, code-quality, and coverage requirements,
+but no `required_status_checks` rule naming the ordinary CI suites. The legacy
+branch-protection endpoint reports no separate configuration. These findings
+do not mean the branch has no protections or that its CI is failing.
+[Required status checks](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-status-checks-to-pass-before-merging)
+are distinct from the other hosted rules.
+
+**Outcome and acceptance:** Select the ordinary checks that must succeed for
+the intended merge and bind their actual emitted check names to the effective
+policy. Reconcile overlapping rulesets and document intentional administrative
+bypasses without weakening unrelated protections. Verify failure, cancellation,
+missing results, intended skips, and updates to the PR head; preserve opt-in
+long lanes and the supported stacked-PR policy from item 22. Any consolidation
+must preserve the combined intended protections. This is a proposed hosted
+configuration outcome adjacent to `CI-01`, not approval to change settings or
+another CI inventory. No merge-blocking experiment was performed in the audit.
+
+### 34. Cover the complete admitted R dependency closure
+
+**Finding:** Existing **`RUNTIME-CLOSURE-01`** owns recursive R dependency
+binding and disabling automatic snapshots across supported activation paths,
+but this outcome was absent from the first campaign pass.
+[Doctor's bindings][r-bindings]
+hash the selected namespace trees from runtime observations; that loop does
+not itself derive the recursive dependency roots.
+
+**Outcome and acceptance:** Use the existing backlog row and its full acceptance
+as the authority. Audit runtime policy, installed package metadata, Doctor,
+Run/resume admission, child execution, and supported R activation paths
+together. Bind only the scientific dependency closure, preserve normal `renv`
+cache symlinks, and prevent automatic snapshots from mutating the environment.
+Reuse the current runtime/package owner rather than another dependency registry.
+The optimization campaign's R-probe measurements must preserve this guarantee;
+fewer probes cannot substitute for complete dependency identification.
+
+### 35. Settle the installed Snakemake content guarantee
+
+**Finding:** [Doctor][snakemake-binding]
+records the selected Python executable as the Snakemake probe target and file
+binding. [Lifecycle admission][snakemake-admission]
+requires that equality, and the
+[Doctor test][snakemake-test] asserts
+equal Python and Snakemake file hashes. This establishes the representation,
+not that a package change escapes every other defense. The existing
+[compression intake](compression_campaign.md#discovery-findings-for-selection)
+already records this as undecided discovery 9 under `COMPRESS-01`; it is
+separate from the R closure in item 34.
+
+**Outcome and acceptance:** Trace installed Snakemake and execution-relevant
+Python dependencies through setup, Doctor, Run creation, resume, and child
+entry. Determine whether existing identities already cover package contents,
+and decide whether content identity or pinned versions with the environment
+contract is the intended guarantee. A controlled same-version package-content
+change must have an explicit, tested disposition across fresh execution and
+resume. Preserve unchanged installations. If stronger binding is selected,
+reuse existing installed-package authority and retire redundant representations;
+do not assume a new digest, receipt, schema, or cache is needed. This remains
+an assurance audit and contract decision, with no demonstrated escape or
+preselected implementation.
+
+### 36. Reject explicitly insufficient Slurm memory before submission
+
+**Finding:** [Submission control][slurm-preflight]
+checks requested CPUs against workflow cores. Existing **`SCHED-01`** owns the
+corresponding missing preflight for explicitly undersized memory requests.
+
+**Outcome and acceptance:** Reference `SCHED-01` and its full acceptance rather
+than creating another scheduler-policy task. Trace placement, resource
+overrides, and the applicable workflow/stage minimum through the existing
+submission path. Reject known insufficient capacity before `sbatch`; unknown
+capacity remains unknown. Preserve the CPU authority, dry-run/confirmation
+boundary, and absence of scheduler/workspace writes on rejection. Reuse the
+current resource owners without a general resource solver. Local submission
+proof does not establish institutional execution or memory performance.
+
+### 37. Verify reports in browsers, copied Results, and print
+
+**Finding:** [HTML validation][report-structure]
+checks structural accessibility, while the
+[report tests][report-print-tests] include stylesheet-string
+and relative-link assertions. They do not establish rendered keyboard use,
+zoom/reflow, links into closed evidence sections, screen-reader meaning,
+printed completeness, or usability of the documented copied Results directory.
+The reporting cleanup in PRs #129, #132, and #133 does not supply that review.
+No rendering or accessibility defect was reproduced in this audit.
+
+**Outcome and acceptance:** Connect existing **`REPORT-01`**, **`REPORT-02`**,
+**`REPORT-03`**, and shared report acceptance to a rendered review of both the
+scientific and Evidence/operations reports. Use representative existing
+fixtures, including long content and closed sections, and exercise navigation,
+keyboard access, narrow layouts/zoom, print output, and copied-bundle links in
+the selected supported browsers. Retain review evidence bound to the tested
+revision. Fix observed problems in current templates/styles, preserving
+independent data and HTML checks; add no third report or parallel renderer.
+This covers omitted verification, not a duplicate backlog or proof of
+scientific validation.
+
+### 38. Handle expected pre-execution cancellation consistently
+
+**Finding:** Some [initialization prompts][init-cancellation]
+and [Run/resume confirmations][execution-cancellation]
+let `KeyboardInterrupt` propagate. Doctor and the Run picker handle expected
+cancellation. [Existing tests][cancellation-test]
+explicitly expect propagation while proving that execution has not written
+state. An installed-command traceback is source-predicted, not newly reproduced.
+
+**Outcome and acceptance:** First decide the public cancellation message and
+exit behavior, then handle expected interruption at existing pre-execution
+boundaries. Verify the installed command and preserve no writes, logs, or
+submission, EOF refusal, and confirmation of the exact plan. Leave post-start
+interruption and recovery with their current owners; add no universal
+exception wrapper. This is a characterized usability-policy change rather
+than a demonstrated data-safety defect. Quantify any product growth before
+implementation selection.
+
+### 39. Consider machine-readable inspection for a concrete consumer
+
+**Finding:** [Inspect][inspect-output]
+provides human-readable detail levels. A successful inspection returns zero
+even when the observed Run is blocked or failed; that is command-success
+semantics, not a defect. An existing immutable
+[Run inspection result][inspect-result]
+already supplies the facts.
+
+**Outcome and acceptance:** Identify an actual automation consumer before
+selecting a stable machine-readable projection of existing facts: Run/Attempt
+identity, integrity, execution/scientific/reporting state, blockers, recovery
+availability, and verified paths. Preserve human output and existing exit
+semantics. Verify agreement across running, failed, blocked, complete, and
+supported historical Runs through the same inspection authority. Add no
+status database, persistent digest cache, or weaker verification mode. This is
+an optional public output contract requiring explicit selection and footprint
+approval, not a dashboard replacement or a latency optimization.
 
 ## Existing capabilities and overlapping work
 
@@ -524,12 +713,14 @@ an overlap reference, not a completion ledger.
 | Attempt-receipt validator consolidation | [PR #117](https://github.com/lab-cats/EMRYS/pull/117) |
 | Shared processing command framing | [PR #118](https://github.com/lab-cats/EMRYS/pull/118) |
 | Unused private reporting-input helpers | [PR #119](https://github.com/lab-cats/EMRYS/pull/119) |
-| Compression selection and findings reconciliation | [PR #120](https://github.com/lab-cats/EMRYS/pull/120), [PR #123](https://github.com/lab-cats/EMRYS/pull/123) |
+| Compression selection and findings reconciliation | [PR #120](https://github.com/lab-cats/EMRYS/pull/120), [PR #123](https://github.com/lab-cats/EMRYS/pull/123), [PR #135](https://github.com/lab-cats/EMRYS/pull/135) |
 | Historical documentation-path bans | [PR #121](https://github.com/lab-cats/EMRYS/pull/121) |
 | Reporting import-permission consolidation | [PR #122](https://github.com/lab-cats/EMRYS/pull/122) |
 | Long-test duration estimates | [PR #124](https://github.com/lab-cats/EMRYS/pull/124) |
 | Continuing stacked work while CI runs | [PR #125](https://github.com/lab-cats/EMRYS/pull/125) |
 | Unused reporting-table presentation metadata | [PR #126](https://github.com/lab-cats/EMRYS/pull/126) |
+| Unconsumed summary context, predecessor validation, and scientific input snapshots | [PR #129](https://github.com/lab-cats/EMRYS/pull/129), [PR #132](https://github.com/lab-cats/EMRYS/pull/132), [PR #133](https://github.com/lab-cats/EMRYS/pull/133) |
+| Single construction of the Doctor readiness result | [PR #136](https://github.com/lab-cats/EMRYS/pull/136) |
 | Step 05 BAM I/O and Step 08 VCF performance | [PR #44](https://github.com/lab-cats/EMRYS/pull/44), [PR #45](https://github.com/lab-cats/EMRYS/pull/45) |
 
 ## Campaign disposition
@@ -544,3 +735,21 @@ At campaign close, every proposal must have a disposition in the authoritative
 backlog or durable owner documentation: accepted and completed, retained for
 later selection, or dismissed with its useful rationale preserved. Retire this
 campaign document only after its useful content has a verified durable home.
+
+[release-wheel]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/tests/test_package_distribution.py#L375-L468
+[release-root]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/onboarding.py#L96-L99
+[release-source]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/libraries/source_authority.py#L495-L527
+[release-dependencies]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/pyproject.toml#L28-L29
+[r-bindings]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/doctor.py#L374-L385
+[snakemake-binding]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/doctor.py#L336-L438
+[snakemake-admission]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/lifecycle.py#L1087-L1099
+[snakemake-test]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/tests/orchestration/run_coordinator/test_doctor.py#L179-L223
+[slurm-preflight]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/control.py#L878-L923
+[report-structure]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/reporting/_run_report/validation.py#L155-L202
+[report-print-tests]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/tests/reporting/test_report.py#L752-L865
+[init-cancellation]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/onboarding.py#L384-L415
+[execution-cancellation]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/control.py#L1337-L1346
+[cancellation-test]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/tests/orchestration/run_coordinator/test_materialization.py#L3178-L3244
+[inspect-output]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/control.py#L1684-L1830
+[inspect-result]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/inspection.py#L127-L143
+[release-constraints]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/tests/test_package_distribution.py#L235-L288
