@@ -16,17 +16,12 @@ admission requires one canonical, nonsymlink EMRYS Git top level and exact
 bytes between the executing package and that checkout. Both admitted values
 remain on `BuildContext` through publication. The artifact root governs
 relative inventory and native-contract
-paths plus predecessor, post-publish, and rollback record validation. The
+paths plus historical and post-publication record validation. The
 checkout governs Git `HEAD` resolution and producer existence and hashing. The
 authority caches neither Git commit nor producer state; the later `HEAD` probe
 ignores ambient `GIT_*` routing while preserving unrelated environment state. Those
 observations stay at their established points in context construction,
 preserving their timing, diagnostics, and serialized evidence.
-
-The private run-summary preparation imports both neutral authorities directly,
-not through this package or the artifact-index context. Its checkout governs
-producer identity; its artifact root governs contract-relative artifact paths
-plus semantic, predecessor, post-publication, and rollback validation.
 
 The modules keep observed responsibilities separate: the curated run-summary
 API, exact contract loading, models, profile-derived adapter registration and
@@ -78,10 +73,9 @@ artifact state, or discovery behavior.
 
 [`publication.py`](publication.py) owns the shared byte-write, durability-sync,
 lock, removal, and signal transaction primitives as well as the artifact-index
-coordinator, rollback, recovery, and cleanup order. Its frozen
-`ArtifactPublicationOps` record names only the transaction fault seams and is
-passed explicitly by tests; production uses the immutable default. Context
-preparation exposes no publication or contract modules for patching. Run-summary assembly reaches deliberately shared
-transaction primitives through `api.py`; static reporting imports neutral
-checkout admission and Git identity directly. These internals do not change artifact schemas, serialized bytes,
-source discovery policy, evidence states, diagnostics, or publication order.
+publication order. It follows the shared
+[publication and recovery contract](../README.md#publication-and-recovery).
+One `.artifact-index.<token>.tmp.records` directory holds staged record files,
+the index, and receipt, retaining their file anchors through publication. An
+exclusive `mkdir` reserves the final records directory before files are linked.
+Run-summary publication reaches shared transaction primitives through `api.py`.

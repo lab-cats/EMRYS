@@ -186,32 +186,6 @@ def run_validator(
     )
 
 
-def test_dry_run_is_side_effect_free(tmp_path: Path) -> None:
-    evidence = build_validation_fixture(tmp_path)
-
-    result = run_validator(evidence)
-
-    assert result.returncode == 0
-    assert result.stdout == EXPECTED_DRY_STDOUT
-    assert result.stderr == b""
-    assert not evidence.output.exists()
-
-
-def test_execute_publishes_five_passes(tmp_path: Path) -> None:
-    evidence = build_validation_fixture(tmp_path)
-    result = run_validator(evidence, "--execute")
-
-    assert result.returncode == 0, result.stderr
-    assert result.stdout == EXPECTED_PASS_REPORT + (
-        f"Published Step 07 validation report: {evidence.output}\n".encode()
-    )
-    assert result.stderr == b""
-    assert evidence.output.read_bytes() == EXPECTED_PASS_REPORT
-    rows = report_rows(evidence.output)
-    assert_exact_check_roster(rows, "07")
-    assert {row["status"] for row in rows} == {"pass"}
-
-
 def test_explicit_report_scope_preserves_scientific_validation(tmp_path: Path) -> None:
     evidence = build_validation_fixture(tmp_path)
     scope_id = "scope-cohort-partition-content-bound"

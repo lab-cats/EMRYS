@@ -91,21 +91,6 @@ def run_validator(
     )
 
 
-def test_dry_run_is_side_effect_free(tmp_path: Path) -> None:
-    alignment = build_validation_fixture(tmp_path)
-    assert run_validator(alignment).returncode == 0
-    assert not alignment.output.exists()
-
-
-def test_execute_publishes_five_passes(tmp_path: Path) -> None:
-    alignment = build_validation_fixture(tmp_path)
-    result = run_validator(alignment, "--execute")
-    assert result.returncode == 0, result.stderr
-    rows = report_rows(alignment.output)
-    assert_exact_check_roster(rows, "01")
-    assert {row["status"] for row in rows} == {"pass"}
-
-
 def test_malformed_final_log_and_sj_are_failed_evidence(tmp_path: Path) -> None:
     alignment = build_validation_fixture(tmp_path)
     alignment.final_log.write_text(

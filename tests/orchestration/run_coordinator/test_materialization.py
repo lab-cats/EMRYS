@@ -1744,7 +1744,7 @@ def test_run_identity_excludes_attempt_reporting_and_cli_adapter_code(
     baseline = _run_candidate(readiness, resources)
     baseline_backend = backend_semantics_identity(checkout)
 
-    report_renderer = checkout / "src/emrys/reporting/report.py"
+    report_renderer = checkout / "src/emrys/reporting/_run_report/context.py"
     report_renderer.write_bytes(
         report_renderer.read_bytes() + b"\n# reporting-only change\n"
     )

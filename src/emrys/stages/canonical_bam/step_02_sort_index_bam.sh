@@ -4,7 +4,7 @@
 # Dry-run mode validates inputs and prints the exact samtools, validation,
 # locking, and publish actions without creating directories or files. Passing
 # --execute runs the workflow and publishes the canonical BAM/BAI only after
-# replacement files pass validation.
+# staged files pass validation, refusing to replace existing outputs.
 set -euo pipefail
 
 usage() {
@@ -33,7 +33,7 @@ Required arguments:
 
 Options:
   --samtools-bin     samtools executable or path. Defaults to samtools on PATH.
-  --no-clobber       Refuse an existing canonical pair. Required by orchestration.
+  --no-clobber       Accepted for existing callers; replacement is always refused.
   --execute          Execute samtools after validation. Without this, dry-run only.
   -h, --help         Show this help message and exit.
 USAGE
@@ -55,7 +55,6 @@ source "$script_dir/../../libraries/file_checks.sh"
 # Defaults are empty so missing required arguments fail loudly below.
 declare_required_arguments sample_id input_alignment output_dir threads
 execute=false
-no_clobber=false
 requested_samtools_bin=""
 
 # Keep the CLI explicit so the same script works locally and under SLURM.
@@ -66,7 +65,7 @@ while [[ $# -gt 0 ]]; do
         --output-dir) assign_option_value "$1" "${2:-}" output_dir; shift 2 ;;
         --threads) assign_option_value "$1" "${2:-}" threads; shift 2 ;;
         --samtools-bin) assign_option_value "$1" "${2:-}" requested_samtools_bin; shift 2 ;;
-        --no-clobber) no_clobber=true; shift ;;
+        --no-clobber) shift ;;
         *)
             handle_execute_or_help "$1"
             shift
@@ -81,11 +80,8 @@ require_arguments
 samtools_bin="$(resolve_executable_value "samtools" "$requested_samtools_bin" "samtools")"
 
 validate_positive_integer "--threads" "$threads"
-input_alignment_sha256="not-bound"
-if [[ "$no_clobber" == true ]]; then
-    validate_safe_id "--sample-id" "$sample_id"
-    input_alignment_sha256="$(sha256_file "$input_alignment")"
-fi
+validate_safe_id "--sample-id" "$sample_id"
+input_alignment_sha256="$(sha256_file "$input_alignment")"
 
 run_token="${EMRYS_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
 validate_safe_id "Step 02 run token" "$run_token"
@@ -98,20 +94,14 @@ output_bai="$output_bam.bai"
 lock_path="$output_dir/.${sample_id}.step02.lock"
 lock_owner_file="$lock_path/owner"
 
-# Temporary and backup paths include the current run token to avoid collisions.
+# Temporary paths include the current run token to avoid collisions.
 tmp_sorted_bam="$output_dir/.${sample_id}.step02.${run_token}.sorted.tmp.bam"
 tmp_rg_bam="$output_dir/.${sample_id}.step02.${run_token}.rg.tmp.bam"
 tmp_rg_bai="$tmp_rg_bam.bai"
 
-backup_bam="$output_dir/.${sample_id}.step02.${run_token}.previous.bam"
-backup_bai="$output_dir/.${sample_id}.step02.${run_token}.previous.bam.bai"
-
-# Track publish state explicitly so cleanup can rollback before deleting backups.
+# Track publication before the first link so failed ownership checks retain evidence.
 lock_acquired=false
-previous_pair_present=false
-backup_started=false
-bam_backed_up=false
-bai_backed_up=false
+publication_started=false
 final_publish_complete=false
 reused_input_alignment=false
 
@@ -243,59 +233,26 @@ input_has_canonical_bam_contract() {
 }
 
 confirm_canonical_pair_state() {
-    if [[ "$no_clobber" == true ]]; then
-        [[ ! -e "$output_bam" && ! -e "$output_bai" ]] ||
-            die "Step 02 --no-clobber requires both canonical outputs to be absent: $output_bam $output_bai"
-        previous_pair_present=false
-        return
-    fi
-
-    # A single existing file is unsafe: there would be no complete rollback target.
-    if [[ -e "$output_bam" && -e "$output_bai" ]]; then
-        previous_pair_present=true
-    elif [[ ! -e "$output_bam" && ! -e "$output_bai" ]]; then
-        previous_pair_present=false
-    else
-        die "Canonical outputs are inconsistent; expected both BAM and BAI or neither: $output_bam $output_bai"
-    fi
+    [[ ! -e "$output_bam" && ! -e "$output_bai" ]] ||
+        die "Step 02 requires both canonical outputs to be absent: $output_bam $output_bai"
 }
 
 rollback_publish() {
-    if [[ "$backup_started" != true || "$final_publish_complete" == true ]]; then
+    if [[ "$publication_started" != true || "$final_publish_complete" == true ]]; then
         return 0
     fi
 
     printf 'Rolling back Step 02 canonical outputs...\n' >&2
 
-    if [[ "$no_clobber" == true ]]; then
-        local rollback_ok=true
-        remove_owned_published_file \
-            "Step 02 BAM" "$tmp_rg_bam" "$output_bam" || rollback_ok=false
-        remove_owned_published_file \
-            "Step 02 BAI" "$tmp_rg_bai" "$output_bai" || rollback_ok=false
-        if [[ "$rollback_ok" == true ]]; then
-            return 0
-        fi
-        return 1
+    local rollback_ok=true
+    remove_owned_published_file \
+        "Step 02 BAM" "$tmp_rg_bam" "$output_bam" || rollback_ok=false
+    remove_owned_published_file \
+        "Step 02 BAI" "$tmp_rg_bai" "$output_bai" || rollback_ok=false
+    if [[ "$rollback_ok" == true ]]; then
+        return 0
     fi
-
-    if [[ "$previous_pair_present" == true ]]; then
-        # Restore only the files that were actually moved to backup.
-        if [[ "$bam_backed_up" == true && -e "$backup_bam" ]]; then
-            rm -f "$output_bam"
-            mv "$backup_bam" "$output_bam" || true
-            bam_backed_up=false
-        fi
-
-        if [[ "$bai_backed_up" == true && -e "$backup_bai" ]]; then
-            rm -f "$output_bai"
-            mv "$backup_bai" "$output_bai" || true
-            bai_backed_up=false
-        fi
-    else
-        # With no prior pair, rollback means no canonical files should remain.
-        rm -f "$output_bam" "$output_bai"
-    fi
+    return 1
 }
 
 cleanup() {
@@ -305,7 +262,7 @@ cleanup() {
     # Cleanup should be best-effort and must not mask the original failure.
     set +e
 
-    # Rollback must run before backup cleanup so prior canonical files are usable.
+    # Rollback needs the staging identity anchors before scratch cleanup.
     if [[ "$status" -ne 0 ]]; then
         rollback_publish || rollback_ok=false
     fi
@@ -313,10 +270,6 @@ cleanup() {
     if [[ "$rollback_ok" == true ]]; then
         rm -f "$tmp_sorted_bam" "$tmp_rg_bam" "$tmp_rg_bai"
         rm -f "$tmp_sorted_bam.bai"
-
-        if [[ "$status" -eq 0 || "$backup_started" == true ]]; then
-            rm -f "$backup_bam" "$backup_bai"
-        fi
 
         remove_owned_lock
     else
@@ -345,10 +298,8 @@ printf '  Lock owner file: %s\n' "$lock_owner_file"
 printf '  Temporary sorted BAM: %s\n' "$tmp_sorted_bam"
 printf '  Temporary read-group BAM: %s\n' "$tmp_rg_bam"
 printf '  Temporary read-group BAI: %s\n' "$tmp_rg_bai"
-printf '  Backup BAM: %s\n' "$backup_bam"
-printf '  Backup BAI: %s\n' "$backup_bai"
 printf '  Read group: ID=%s SM=%s LB=%s PL=ILLUMINA\n' "$sample_id" "$sample_id" "$sample_id"
-printf '  No-clobber transaction: %s\n' "$no_clobber"
+printf '  No-clobber transaction: true\n'
 printf '  Mode: %s\n' "$mode"
 
 printf 'Lock acquisition action:\n'
@@ -384,20 +335,16 @@ printf 'samtools index command:\n'
 print_command "${index_command[@]}"
 
 printf 'Publish plan:\n'
-printf '  1. Validate replacement BAM and BAI: %s %s\n' "$tmp_rg_bam" "$tmp_rg_bai"
-printf '  2. Confirm canonical outputs are a complete pair or both absent.\n'
-printf '  3. Back up existing pair to: %s %s\n' "$backup_bam" "$backup_bai"
-printf '  4. Publish replacement BAM to: %s\n' "$output_bam"
-printf '  5. Publish replacement BAI to: %s\n' "$output_bai"
-printf '  6. Under --no-clobber, prove final paths are the validated staging inodes and recheck reused input bytes; legacy replacement mode revalidates final paths.\n'
-printf '  7. Remove backups and owned lock after successful publication validation.\n'
+printf '  1. Validate staged BAM and BAI: %s %s\n' "$tmp_rg_bam" "$tmp_rg_bai"
+printf '  2. Require both canonical outputs to be absent.\n'
+printf '  3. Create the canonical BAM and BAI without replacement: %s %s\n' "$output_bam" "$output_bai"
+printf '  4. Prove final paths are the validated staging inodes and recheck reused input bytes.\n'
+printf '  5. Remove staging anchors and the owned lock after successful publication validation.\n'
 printf 'Rollback plan:\n'
-printf '  Restore backups before cleanup on failures after backup begins; remove new canonical files if no prior pair existed.\n'
+printf '  Remove only provably owned new outputs; preserve unresolved paths and recovery residue.\n'
 
-if [[ "$no_clobber" == true ]]; then
-    require_no_owner_residue \
-        "Step 02" "$output_dir" ".${sample_id}.step02.*"
-fi
+require_no_owner_residue \
+    "Step 02" "$output_dir" ".${sample_id}.step02.*"
 
 if [[ "$execute" != true ]]; then
     # Dry-runs are intentionally side-effect-free: no output directory or lock.
@@ -409,11 +356,9 @@ mkdir -p "$output_dir"
 
 set_exit_trap cleanup
 acquire_lock "Step 02"
-if [[ "$no_clobber" == true ]]; then
-    confirm_canonical_pair_state
-fi
+confirm_canonical_pair_state
 
-# Build and validate the replacement completely before touching canonical paths.
+# Build and validate the staged pair completely before touching canonical paths.
 input_header="$("${input_header_command[@]}")" ||
     die "Could not inspect input alignment header: $input_alignment"
 if grep -q '^@HD.*SO:coordinate' <<< "$input_header"; then
@@ -439,63 +384,37 @@ fi
 [[ -s "$tmp_rg_bam" ]] || die "Temporary read-group BAM is missing or empty: $tmp_rg_bam"
 "${index_command[@]}"
 validate_bam_pair "$tmp_rg_bam" "$tmp_rg_bai" "Replacement"
-if [[ "$no_clobber" == true ]]; then
-    [[ "$(sha256_file "$input_alignment")" == "$input_alignment_sha256" ]] ||
-        die "Input alignment changed during Step 02."
-fi
+[[ "$(sha256_file "$input_alignment")" == "$input_alignment_sha256" ]] ||
+    die "Input alignment changed during Step 02."
 
 confirm_canonical_pair_state
 
-# Backups begin the rollback-protected region.
-if [[ "$previous_pair_present" == true ]]; then
-    backup_started=true
-    mv "$output_bam" "$backup_bam"
-    bam_backed_up=true
-    mv "$output_bai" "$backup_bai"
-    bai_backed_up=true
-else
-    backup_started=true
+publication_started=true
+publish_file_create_exclusive "Step 02 BAM" "$tmp_rg_bam" "$output_bam"
+publish_file_create_exclusive "Step 02 BAI" "$tmp_rg_bai" "$output_bai"
+
+# Create-exclusive publication hard-links the already validated staging
+# files. Prove both finals still resolve to those exact inodes instead of
+# repeating quickcheck, header inspection, and two whole-BAM count scans.
+require_owned_published_file "Step 02 BAM" "$tmp_rg_bam" "$output_bam"
+require_owned_published_file "Step 02 BAI" "$tmp_rg_bai" "$output_bai"
+
+# A reused input remains writable through its original path even while the
+# staging and final paths still share its inode. Rebind the published bytes
+# to the admitted input digest after both links exist so an in-place change
+# in the publication window fails before the staging anchors are removed.
+if [[ "$reused_input_alignment" == true ]]; then
+    [[ "$(sha256_file "$output_bam")" == "$input_alignment_sha256" ]] ||
+        die "Canonical BAM changed after create-exclusive publication: $output_bam"
 fi
-
-if [[ "$no_clobber" == true ]]; then
-    publish_file_create_exclusive "Step 02 BAM" "$tmp_rg_bam" "$output_bam"
-    publish_file_create_exclusive "Step 02 BAI" "$tmp_rg_bai" "$output_bai"
-
-    # Create-exclusive publication hard-links the already validated staging
-    # files. Prove both finals still resolve to those exact inodes instead of
-    # repeating quickcheck, header inspection, and two whole-BAM count scans.
-    require_owned_published_file "Step 02 BAM" "$tmp_rg_bam" "$output_bam"
-    require_owned_published_file "Step 02 BAI" "$tmp_rg_bai" "$output_bai"
-
-    # A reused input remains writable through its original path even while the
-    # staging and final paths still share its inode. Rebind the published bytes
-    # to the admitted input digest after both links exist so an in-place change
-    # in the publication window fails before the staging anchors are removed.
-    if [[ "$reused_input_alignment" == true ]]; then
-        [[ "$(sha256_file "$output_bam")" == "$input_alignment_sha256" ]] ||
-            die "Canonical BAM changed after create-exclusive publication: $output_bam"
-    fi
-    require_owned_published_file "Step 02 BAM" "$tmp_rg_bam" "$output_bam"
-    require_owned_published_file "Step 02 BAI" "$tmp_rg_bai" "$output_bai"
-else
-    mv "$tmp_rg_bam" "$output_bam"
-    mv "$tmp_rg_bai" "$output_bai"
-
-    # The legacy replacement route drops the staging identity anchors, so it
-    # retains final-path semantic revalidation.
-    validate_bam_pair "$output_bam" "$output_bai" "Canonical"
-fi
-if [[ "$no_clobber" == true ]]; then
-    rm -f -- "$tmp_rg_bam" "$tmp_rg_bai"
-    [[ ! -e "$tmp_rg_bam" && ! -L "$tmp_rg_bam" &&
-       ! -e "$tmp_rg_bai" && ! -L "$tmp_rg_bai" ]] ||
-        die "Step 02 could not remove owned publication anchors."
-fi
+require_owned_published_file "Step 02 BAM" "$tmp_rg_bam" "$output_bam"
+require_owned_published_file "Step 02 BAI" "$tmp_rg_bai" "$output_bai"
+rm -f -- "$tmp_rg_bam" "$tmp_rg_bai"
+[[ ! -e "$tmp_rg_bam" && ! -L "$tmp_rg_bam" &&
+   ! -e "$tmp_rg_bai" && ! -L "$tmp_rg_bai" ]] ||
+    die "Step 02 could not remove owned publication anchors."
 final_publish_complete=true
 
-rm -f "$backup_bam" "$backup_bai"
-bam_backed_up=false
-bai_backed_up=false
 remove_owned_lock
 
 printf 'Canonical Step 02 output details:\n'

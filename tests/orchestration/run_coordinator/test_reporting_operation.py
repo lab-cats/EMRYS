@@ -573,50 +573,6 @@ def test_generation_rejects_symlinked_output_ancestor_before_builder(
     assert list(foreign.iterdir()) == []
 
 
-def test_producer_failure_stops_after_immutable_start(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    root = (tmp_path / "run-failure").resolve()
-    root.mkdir()
-    state = _state(root)
-    identity = _identity(root, state)
-    _install_admission(monkeypatch, state, identity)
-    observed: list[str] = []
-    monkeypatch.setattr(
-        reporting_operation.reporting_boundary,
-        "publish_start",
-        lambda *, kind, **_kwargs: observed.append(f"start:{kind}"),
-    )
-    monkeypatch.setattr(
-        reporting_operation.reporting_boundary,
-        "publish_verified",
-        lambda **_kwargs: pytest.fail("failed producer cannot publish completion"),
-    )
-
-    from emrys.reporting._artifact_index.models import ArtifactIndexError
-
-    monkeypatch.setattr(
-        reporting_operation,
-        "_prepare_transaction",
-        lambda _kind, _arguments: object(),
-    )
-    monkeypatch.setattr(
-        reporting_operation,
-        "_publish_prepared",
-        lambda _kind, _context: (_ for _ in ()).throw(
-            ArtifactIndexError("bounded private failure")
-        ),
-    )
-
-    with pytest.raises(
-        reporting_operation.ReportingOperationError,
-        match="producer failed after ledger entry: bounded private failure",
-    ):
-        reporting_operation.run_reporting(root, execute=True)
-    assert observed == ["start:artifact_index"]
-
-
 def test_preflight_failure_publishes_no_ledger(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -646,3 +602,69 @@ def test_preflight_failure_publishes_no_ledger(
         match="preflight failed before ledger entry",
     ):
         reporting_operation.run_reporting(root, execute=True)
+
+
+def test_real_artifact_publisher_failure_stops_reporting_after_start(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from emrys.reporting._artifact_index import context, publication
+    from tests.orchestration.run_coordinator.fixtures import workflow
+    from tests.reporting.fixtures.artifact_adapters_v1 import build_fixture
+
+    root = (tmp_path / "run-real-producer-failure").resolve()
+    built = build_fixture.build_fixture(root, run_id=root.name)
+    state = _state(root)
+    identity = _identity(root, state)
+    identity.profile = build_fixture.analysis_profile_v1()
+    identity.attempt["source_checkout"]["path"] = str(build_fixture.REPO_ROOT)
+    identity.config["reporting_run_contract_path"]["path"] = (
+        built.run_contract.relative_to(root).as_posix()
+    )
+    identity.config["artifact_inventory_path"]["path"] = (
+        built.inventory.relative_to(root).as_posix()
+    )
+    _install_admission(monkeypatch, state, identity)
+    monkeypatch.setattr(
+        context,
+        "matching_clean_checkout_head_commit",
+        lambda **_kwargs: workflow.source_checkout_commit(),
+    )
+    events: list[str] = []
+    monkeypatch.setattr(
+        reporting_operation.reporting_boundary,
+        "publish_start",
+        lambda *, kind, **_kwargs: events.append(f"start:{kind}"),
+    )
+    monkeypatch.setattr(
+        reporting_operation.reporting_boundary,
+        "publish_verified",
+        lambda **_kwargs: pytest.fail("failed producer cannot publish completion"),
+    )
+    real_write = publication.write_bytes_exclusive
+    failed = False
+
+    def fail_after_staged_index(path: Path, payload: bytes) -> None:
+        nonlocal failed
+        real_write(path, payload)
+        if (
+            path.name == f"{root.name}.artifacts.tsv"
+            and path.parent.name.startswith(".artifact-index.")
+            and path.parent.name.endswith(".tmp.records")
+        ):
+            failed = True
+            raise OSError("injected staged artifact-index failure")
+
+    monkeypatch.setattr(publication, "write_bytes_exclusive", fail_after_staged_index)
+
+    with pytest.raises(
+        reporting_operation.ReportingOperationError,
+        match="artifact_index producer failed after ledger entry: injected staged",
+    ):
+        reporting_operation.run_reporting(root, execute=True)
+
+    assert failed
+    assert events == ["start:artifact_index"]
+    output = root / "products" / "artifact-summary" / root.name
+    assert output.is_dir()
+    assert list(output.iterdir()) == []
