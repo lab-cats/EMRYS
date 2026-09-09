@@ -1,19 +1,20 @@
-# Compression campaign intake
-
-Status: **temporary discovery record**
+# Compression campaign findings and decisions
 
 Started: **2026-09-02**
 
-This file preserves findings discovered while reviewing the cumulative
-architecture change. It is not a second backlog, a design specification, or
-authority to implement a proposed change. The
-[`COMPRESS-01`](backlog_matrix.md#repository-maintenance) row owns the intake;
-the backlog remains the only task authority.
+This file reconciles the completed repository review and executed compression
+slices with the findings that remain. It preserves audit rationale, rejected
+shortcuts, compatibility decisions, and evidence limits. It is not a second
+backlog or authority to implement a proposal: the
+[`COMPRESS-01`](backlog_matrix.md#repository-maintenance) row and related
+backlog rows own selection, status, and acceptance.
 
-The user has completed the repository review. Examples below record recurring
-patterns; repairing one example does not resolve its whole family. Remaining
-work is to select findings, define finite outcomes, transfer accepted work to
-the backlog, and retire this temporary record after verifying the transfer.
+Completed examples do not resolve their entire finding family. Remaining
+work is to qualify finite outcomes, preserve their decisions in the relevant
+owner or subject home, and reconcile the findings with that accepted work.
+This record can retire only after its useful context has been transferred
+and that transfer verified; delivery of individual slices is not campaign
+completion.
 
 The [continued code-compression audit](#continued-code-compression-audit)
 records the later owner reviews, proposed packages, unresolved decisions,
@@ -38,11 +39,62 @@ discussion labels, not additional backlog IDs or implementation approval.
 - Documentation and code must explain their purpose to the intended reader in
   common language without requiring campaign history.
 
+## Delivered scope and integration evidence
+
+[PR #139](https://github.com/lab-cats/EMRYS/pull/139), merged at
+`446802c06ebceee8328a5cb4b542eea9fb2ed398`, integrated the work from
+PRs #116–138. Those original PRs were closed without individual merges;
+their changes are present through the integration PR. The delivered outcomes
+include:
+
+- one immutable runtime check/observation model and shared Attempt schema
+  admission, with the existing public contracts and diagnostic ordering;
+- one command frame for the six sample-scoped shell stages, preserving their
+  explicit argument/input order and the distinct Step 06 Python path;
+- removal of unused reporting input helpers, table metadata, summary-context
+  copies, and the scientific-context source carrier, plus shared artifact
+  predecessor validation through its existing owner;
+- single assembly of storage-measurement rows and Doctor results, and direct
+  admission/accumulation of GTF exon rows without the intermediate carrier;
+- retirement of completed documentation bans and the separate reporting-import
+  permission bypass, preserving active structure checks and rejecting stale
+  authored permissions; and
+- corrected storage I/O test observations across Python versions, reviewed
+  long-test scheduling estimates, the autonomous-stack workflow, and the
+  incorporated quickstart, polish, and optimization guidance.
+
+[PR #140](https://github.com/lab-cats/EMRYS/pull/140) is the subsequent
+integration boundary. At this reconciliation it is open at
+`2fb8f5ef5a297f3778fd2dd7a5046eec0ab21fa5`, containing PRs #141–147; its
+source tree is identical to `8034c2112d5f5572f7e21c32818ebc6da7b40b53`.
+[Ordinary CI run 34301289787](https://github.com/lab-cats/EMRYS/actions/runs/34301289787)
+succeeded on that head. This establishes hosted CI for the integrated source,
+not a merge into master or institutional, scientific, or biological validation.
+The implemented scope includes:
+
+- ordinary CI on stacked PRs, parsing every declared Bash file, broader Ruff
+  correctness checks, and shared local/CI sharder self-tests;
+- [fixed report-output declarations](../design/decisions/execution-evidence-and-reporting.md#fixed-report-output-consolidation)
+  in PR #145, preserving the existing identity and historical-resume rules;
+- [canonical BAM create-exclusive publication](../../src/emrys/stages/canonical_bam/CONTRACT.md#producer-publication-boundary)
+  in PR #146, retiring replacement while preserving historical defect evidence
+  and documenting surviving recovery limits; and
+- [direct create-only reporting publication](../design/decisions/execution-evidence-and-reporting.md#reporting-lifecycle-compression)
+  in PR #147, retiring the three publishers' predecessor lifecycle, six callback
+  carriers, and HTML facade. The logical producer identifier, historical
+  read/preparation paths, source admission, and ownership-proved recovery remain.
+  Its subsequent test consolidation retired approved redundant or obsolete
+  cases while retaining distinct scientific, historical, and recovery oracles.
+
+These outcomes must not be selected or counted again. Broader reporting
+identity, roster authority, resource-policy, and other publication-owner
+findings below remain separate.
+
 ## Current finding families
 
 | Family | Representative observations | Present disposition |
 |---|---|---|
-| CI control and latency | Manual dispatch independently selects the ordinary and long CI groups. Reviewed estimates in the [duration baseline](../../tests/baselines/python_test_durations.json) now place the two long end-to-end tests on separate shards. | `CI-01` owns the remaining measured critical path and duplicated setup or work. Estimated balance is not measured wall-clock improvement. Preserve complete, disjoint test selection and coverage checks; scheduling estimates are not a reason to delete slow production-path tests. Do not propose manual lane selection again. |
+| CI control and latency | Manual dispatch independently selects ordinary and long CI groups; ordinary checks cover stacked PRs. The shared Bash gate parses every declared file, Ruff correctness checks are broader, and local/CI sharder self-tests share one path. Reviewed [duration estimates](../../tests/baselines/python_test_durations.json) place the two long end-to-end tests on separate shards. | `CI-01` owns the remaining measured critical path and duplicated setup or work. Estimated balance is not measured wall-clock improvement. Preserve complete, disjoint test selection and coverage checks; scheduling estimates are not a reason to delete slow production-path tests. These delivered feedback changes and manual lane selection are not new proposals. |
 | Reader-oriented documentation | Much of the documentation assumes complete EMRYS context or uses internal vocabulary before explaining purpose. | Record as a repository-wide future pass. Individual wording edits do not close it. |
 | Documentation ownership | `configs/README.md` contains setup/runtime procedure; Architecture contains validation-status prose; Runbook contains developer CI/task-selection material; Troubleshooting contains scientific interpretation; logging and Run-coordinator contracts may mix context with exact owner behavior. | Reconcile these examples with current documentation before selecting changes. Audit every surviving document, contract, and directory guide as a future family. |
 | Examples and configuration guidance | Execution-profile examples do not explain fields or top-level resource groups; `qos` is unexplained. | Audit all human-authored examples for self-explanation. Retain the standard Slurm `qos` spelling and explain Quality of Service rather than add a cosmetic schema migration. |
@@ -83,14 +135,14 @@ references to existing rows identify coverage rather than duplicate it.
 | 5. Input snapshots | [Validation inputs](../../src/emrys/libraries/validation/inputs.py) use device, inode, size, and modification time to recognize an unchanged input. An existing [test](../../tests/libraries/test_validation_report.py) changes bytes while preserving size and restoring modification time. Compare this with the existing descriptor-based checks that also retain change time, and consolidate only after matching the required stability guarantee across callers. | A follow-up caller audit found different active guarantees: the simple snapshot omits change time and mode, while descriptor-bound reads retain them. Consolidation needs an explicit stability decision; do not replace it with another wrapper or claim that metadata proves content identity. |
 | 6. Doctor storage repair | [Doctor](../../src/emrys/orchestration/run_coordinator/doctor.py) admits qualification for the selected direct or Slurm profile but constructs a direct repair when storage is unready. Source inspection predicts that this repair cannot satisfy a Slurm Project's qualification requirement. | Proposed bounded defect investigation. Local plan checks and institutional-site execution remain distinct evidence. |
 | 7. Empty FASTA header | [Contig parsing](../../src/emrys/libraries/references/contigs.py) indexes the first header token before checking that it exists; an empty header produces `IndexError`, as the existing [test](../../tests/libraries/test_reference_contigs.py) expects. Return the parser's normal input error and review affected callers. | Proposed bounded input-validation correction. |
-| 8. Artifact CLI version admission | The [artifact schema API](../../src/emrys/contracts/artifacts/_artifact_contracts/schema.py) uses default schema versions when its unversioned validation helper is called. A follow-up local reproduction published and readmitted current module reports through the existing production path: their v3 summary and v5 receipt decoded to JSON passed explicit schemas and semantic validation, but `emrys validate artifact-contracts` rejected both against older defaults. | Confirmed local defect; artifact CLI admission remains a separate, unselected change. Orchestration admission already uses its [shared schema validator](../../src/emrys/contracts/orchestration/api.py). Preserve supported historical versions when selecting the artifact correction. |
+| 8. Artifact CLI version admission | The [artifact schema API](../../src/emrys/contracts/artifacts/_artifact_contracts/schema.py) uses default schema versions when its unversioned validation helper is called. A follow-up local reproduction published and readmitted current module reports through the existing production path: their v3 summary and v5 receipt decoded to JSON passed explicit schemas and semantic validation, but `emrys validate artifact-contracts` rejected both against older defaults. | Confirmed local defect; this correction remains unselected and is not part of the current maintenance tranche. Preserve supported historical versions and version-error precedence; the [bounded correction](#artifact-cli-document-version-admission) remains the acceptance boundary. Orchestration admission already uses its shared schema validator. |
 | 9. Snakemake content identity | [Doctor](../../src/emrys/orchestration/run_coordinator/doctor.py) obtains the Snakemake version through Python and records the Python executable as its file binding. [Runtime admission](../../src/emrys/orchestration/run_coordinator/lifecycle.py) requires that same executable identity. Determine whether Snakemake package contents must also be bound, and whether another existing identity already covers them. | Undecided guarantee; no demonstrated package-change reproduction or complete identity audit. `RUNTIME-CLOSURE-01` concerns the separate R closure. |
 | 10. Duplicate runtime definitions | Runtime inspection now uses one immutable check definition and one observation definition throughout loading, probing, rendering, and public inspection. Resolved observation locations remain path objects internally. | Addressed; the [runtime owner](../../src/emrys/evidence/runtime_availability/README.md) documents the surviving model. Public imports, report bytes, validation, and publication behavior are preserved. |
 | 11. Whole reference reads | [Reference inspection](../../src/emrys/evidence/reference_provenance/_reference_contigs.py) reads whole FASTA and STAR Genome files to calculate hashes and lengths, and builds whole-text input for parsing. Existing streaming hash and iterable parsing mechanisms may remove these allocations. Preserve the second observation where it detects changes during inspection. | Existing stable streaming hashing can remove the hash-only allocation, but yields little maintained-code reduction. Parser streaming also needs to preserve decoding, newline, and error order. Keep this as a separate memory-reduction candidate; no timing or peak-memory measurements were taken. |
 | 12. Repeated FASTQ scans | The [FASTQ check](../../src/emrys/ingestion/sample_manifest_admission/check_fastq_pairs.sh) counts each complete file and then scans it again for each selected read ID: the default prefix of 20 requires 21 passes per mate. A single pass could preserve complete record counts, decompression failures, and the explicitly limited prefix comparison. | Retain this independently useful read-only diagnostic under `OPS-03`. A single-pass `awk` draft changed embedded-zero-byte header handling in a local comparison, and no input-encoding rule excludes those bytes. Defer that implementation until the behavior is decided; no benchmark was run. |
 | 13. Repeated processing declarations | [Materialization](../../src/emrys/orchestration/run_coordinator/materialization.py) repeats task commands, inputs, outputs, and validation details in command and dispatch construction. Investigate deriving equivalent declarations from existing admitted facts. | The six sample-scoped shell owners (Steps 01, 02, 02b, 03, 04, and 05) now share command framing inside the existing materializer, retaining explicit ordered arguments and inputs. Passing already admitted validation paths and scope IDs could remove about 18 more lines, but is too small for a separate substantial slice. Module provenance roles, reused predecessor scopes, and positional Step 00c outputs remain distinct; do not combine them into a new registry. |
 | 14. Source-topology rosters | [Dependency checks](../../tests/tools/source_dependencies.py), tests, and [source topology](../../src/emrys/contracts/SOURCE_TOPOLOGY.md) maintain overlapping path and composition rosters. Determine which can be derived or replaced by a maintained boundary-checking tool while preserving real dependency rules. | The 12 fixed reporting permissions now use the [existing exact-exception mechanism](../../tests/tools/source_dependencies.py); the separate bypass is retired, and stale reporting permissions fail. Imports are already discovered from source; CLI targets and allowed exceptions are policy. A larger maintained-tool migration remains unqualified for dynamic imports, private-module rules, repository admission, and logging consumers. |
-| 15. Historical output replacement | The Run coordinator selects no-clobber publication, while standalone owners retain historical replacement routes with different recovery behavior; the [Step 08 contract](../../src/emrys/stages/cohort_candidate_preprocessing/CONTRACT.md) is one example. Audit supported callers and whether the orchestrated path fully replaces each route. | Existing `OPS-03`. Retiring public behavior requires a decision; absence of external use has not been proved. |
+| 15. Historical output replacement | Canonical BAM now uses create-exclusive publication for standalone and Run invocations. Other standalone owners retain replacement routes with different recovery behavior; the [Step 08 contract](../../src/emrys/stages/cohort_candidate_preprocessing/CONTRACT.md) is one example. | Existing `OPS-03`. Canonical BAM retirement is delivered; qualify the remaining owners independently. Retiring their public behavior still requires a decision, and absence of external use has not been proved. |
 | 16. Parallel configuration normalization | [Project normalization](../../src/emrys/orchestration/run_coordinator/normalization.py) and [application modeling](../../src/emrys/contracts/orchestration/application_model.py) retain overlapping flat paired-CMH configuration and module-policy forms. Trace current and historical inputs before proposing one surviving representation. | Revision construction and partition projection already share their existing owner. Flat and module forms bind different identity and admission semantics; no preserving helper retirement was found. Public migration and any broader paired-replicate validation consolidation remain undecided. |
 | 17. Repeated reporting declarations | Reporting arguments, outputs, and kinds recur across owners. Current reporting uses direct producer APIs and one ordered execution loop; its materialization is already delegated outside the explicit scientific implementation roster. A follow-up caller audit found that `reporting_memory_mb` is validated, persisted, hashed, and overlaid on resume, but no scheduler or reporting execution consumes it for memory allocation. | Report preparation retains consumed values: unused presentation and summary-context fields are retired, and scientific-context bound inputs reuse existing immutable file snapshots. Ordered inputs, source identities, actual row limits, prepared bytes, and the FASTA-only identity recheck remain. `REPORT-ROSTER-01` owns the remaining work. Retiring the active memory control requires a decision on accepted YAML/CLI inputs and exact historical policy admission. Its value is excluded from computational resource identity, but changing its schema/admission implementation can still change new Run identities. Preserve immutable Runs, historical reads, report regeneration, and module-specific reporting. |
 | 18. Report check identities | Existing [artifact-adapter tests](../../tests/reporting/test_artifact_adapters.py) show that reordered or different unique check IDs can still be treated as complete. Completion should follow the admitted roster's actual identity and order when that roster is defined. | Existing `REPORT-ROSTER-01`. No neutral contract owner currently publishes a check-ID roster. Step 09 validation checks membership while reporting also checks order; importing its private validator or tightening generic artifact admission is not a preserving consolidation. External-module rosters need a contract decision; preserve independent expected-result tests. |
@@ -189,21 +241,22 @@ cohesive owner.
 | Run-coordinator concentration | `run_coordinator` contains about 20,225 product lines and 20,824 test lines. `task.py`, `lifecycle.py`, `materialization.py`, `dashboard.py`, `control.py`, `doctor.py`, `onboarding.py`, and `reporting_boundary.py` each exceed 1,000 product lines. `materialization.py` devotes about 1,086 lines to repeated task command and dispatch declarations; its main test file is about 4,959 lines. | Investigate deriving repeated processing-owner plans from existing admitted facts and removing duplicate declarations and low-value defensive cases while preserving exact arguments, ordering, identity, reuse, recovery, and fault behavior. Select a finite outcome before committing to a shared representation; do not mechanically split files or add one-caller wrappers. `DASHBOARD-RETIRE-01` remains separate. |
 | Generated dependency lock | `pixi.lock` is about 3,881 lines/140 KB and binds the managed Linux native/R environment used by Doctor and CI. | Retain it as generated reproducibility input; it is not maintained product-code bloat. |
 | Repeated constants | Persisted filenames such as `run.json`, `normalized.json`, and `attempt.json` are repeated contract vocabulary, while the three reporting kinds recur across five owners. Small path/publication helpers have similar spelling but different trust and error semantics. | Do not add constants or helpers merely to replace strings. `REPORT-ROSTER-01` owns derivation of reporting declarations; consolidate other values only when one semantic authority deletes validation or branches. |
-| Schema layout | The 27 JSON schemas occupy about 5,353 lines across artifact `v1`-`v5` and orchestration `v1`-`v3`, but those directories are family-specific physical revisions rather than five whole-system generations. Active schemas intentionally reuse definitions across directories. | Audit current and historical readers, then compare the present version directories with a flatter resource layout; pre-release paths are not protected merely because they exist. Prefer whichever model reduces cognitive and maintenance surface while preserving required identities and historical reads. Orchestration admission already uses its [shared schema validator](../../src/emrys/contracts/orchestration/api.py); artifact admission remains separately unselected. Consider a finite caller-complete retirement audit for apparently historical resources; do not bulk-renumber or delete retained evidence without approval. |
+| Schema layout | The 27 JSON schemas occupy about 5,353 lines across artifact `v1`-`v5` and orchestration `v1`-`v3`, but those directories are family-specific physical revisions rather than five whole-system generations. Active schemas intentionally reuse definitions across directories. | Audit current and historical readers, then compare the present version directories with a flatter resource layout; pre-release paths are not protected merely because they exist. Prefer whichever model reduces cognitive and maintenance surface while preserving required identities and historical reads. Orchestration admission already uses its [shared schema validator](../../src/emrys/contracts/orchestration/api.py); an artifact document-version correction would not authorize a layout or historical-reader migration. Consider a finite caller-complete retirement audit for apparently historical resources; do not bulk-renumber or delete retained evidence without approval. |
 | Numeric stage and resource identities | Fourteen historical stage IDs and related rosters appear in resource policy, profile schema, and the Snakefile; Analysis admission currently permits one Step `09` and optional Step `10`. Some historical profiles intentionally omit newer task IDs. | Propose a finite semantic task/resource-key migration only when module extension needs it: derive current rosters from admitted task descriptors, preserve exact historical profile reads, and remove duplicated stage lists. `QUAL-04` and `PROFILE-CONTRACT-01` own narrower existing derivations; avoid a cosmetic global rename. |
 
 ## Continued code-compression audit
 
 ### Source, authority, and evidence boundary
 
-This continuation reviewed source at
+This continuation originally reviewed source at
 `d64baed27a7315aa585dd336dac43c177b837e7e`, the cumulative implementation
 through [PR #137](https://github.com/lab-cats/EMRYS/pull/137), on
-2026-09-07. The checkout was clean before this documentation change. Remote
-master was separately verified as
-`fdf76760311e6c8076320a289ef3956d754c190d`; these findings describe the
-audited cumulative source, not an assertion that its open PRs are merged.
-Reconcile changed owners with the selected source revision before implementation.
+2026-09-07. The [integration reconciliation](#delivered-scope-and-integration-evidence)
+records where that work and subsequent slices are now present. This
+reconciliation used the unchanged product tree and implementation history at
+`2fb8f5ef5a297f3778fd2dd7a5046eec0ab21fa5`; the original measured blocks
+remain historical audit evidence, not a fresh whole-repository inventory.
+Reconcile changed owners with the selected revision before implementation.
 
 The review traced producers, callers, admission, persistence, contracts,
 configuration, tests, and adjacent owners. It did not run new product tests,
@@ -222,7 +275,8 @@ Classify behavior within each selected slice before changing structure:
 | Undecided | Supported inputs, execution modes, historical treatment, or protection boundaries need an explicit decision. A code-size estimate cannot settle that decision. |
 | Environment-deferred | Institutional storage, Slurm, production use, scientific review, and biological validity need their own environment and authority. Local or hosted fixtures cannot substitute for them. |
 
-All size figures below refer to the audited revision. A counted block is a
+Unless explicitly updated, size figures below refer to the original audited
+revision. A counted block is a
 review surface, not a deletion budget. A provisional reduction excludes
 unwritten compatibility or recovery work until a caller-complete draft
 establishes the net result. Product, tests/protections, documentation,
@@ -230,28 +284,28 @@ configuration, tooling, and retained evidence must be accounted separately.
 This documentation request selects no new backlog item and grants no product,
 public-policy, dependency, evidence-deletion, or cluster authority.
 
-### Recommended continuation and existing ownership
+### Remaining scope and existing ownership
 
-Reporting ownership and declaration consolidation remain open. Following
-canonical BAM's replacement-mode retirement, the approved larger reporting
-tranche removes its private replacement lifecycle, six callback carriers, and
-the HTML facade. The [reporting lifecycle decision](../design/decisions/execution-evidence-and-reporting.md#reporting-lifecycle-compression)
-records its exact boundary, preserved behavior, retired interfaces, historical
-test context, and evidence limits. The remaining older publication modes
-require their own qualification and policy decisions.
-Small construction cleanups do not establish that the campaign is finished.
+Fixed report outputs, canonical BAM replacement retirement, and the larger
+reporting lifecycle retirement are implemented. The
+[reporting lifecycle decision](../design/decisions/execution-evidence-and-reporting.md#reporting-lifecycle-compression)
+owns the preserved behavior, retired interfaces, historical test context, and
+evidence limits; those mechanisms are no longer compression candidates.
+Broader reporting identity and declarations remain open, as do the separate
+qualification and policy decisions for other publication owners. Small
+construction cleanups do not establish that the campaign is finished.
 
-| Proposed order | Finite outcome | Existing coverage and next gate |
+| Remaining subject | Finite outcome | Existing coverage and next gate |
 |---|---|---|
-| Reporting ownership | Complete direct create-only publication across the three existing producers. | `REPORT-ROSTER-01`; the [lifecycle retirement](../design/decisions/execution-evidence-and-reporting.md#reporting-lifecycle-compression) follows the fixed-output declaration, with at least 200 net product lines removed and no new product files. Broader identity and transaction-layout work remain separate. |
+| Reporting declarations and identity | Qualify equivalent transaction-layout declarations and an explicit reporting-source identity design. | `REPORT-ROSTER-01`; fixed outputs and direct create-only publication are delivered. Neither changes the existing Run identity policy or establishes a qualified broader layout migration. |
 | Ineffective report resource control | Remove active reporting-memory configuration and transport while retaining exact historical policy admission. | `REPORT-ROSTER-01`; select new-input and persisted-policy behavior. |
 | Stage publication | Qualify surviving publication, then retire replacement/direct-write modes one owner at a time. | `OPS-03`; reproduce the handoff finding and approve the public policy. |
 | Processing declarations | Find one caller-complete removal using existing admitted task/output facts, or retain the mechanism with evidence. | `COMPRESS-01` discovery, with reporting adapter work under `REPORT-ROSTER-01`; no general registry is preselected. |
 | Dashboard | Keep the frozen display until a replacement dashboard is implemented and validated. | `DASHBOARD-RETIRE-01`; the replacement and later retirement require their own approved scope. |
 | Compatibility | Select exact schema, configuration, or TSV changes whose full migration is worthwhile. | Existing `PROFILE-CONTRACT-01` where applicable; other findings remain unselected. |
 
-This is a recommendation for selecting bounded work, not a dependency graph
-or a second status table. The [backlog](backlog_matrix.md) retains sole
+These are remaining scope boundaries, not an execution order or a second
+status table. The [backlog](backlog_matrix.md) retains sole
 authority for accepted outcomes, status, scores, and acceptance.
 
 ### Reporting source-identity boundary
@@ -267,7 +321,7 @@ decision.
 
 The [declaration owner and consumers](../design/decisions/execution-evidence-and-reporting.md#declaration-owner-and-consumers)
 use one immutable output tuple and the existing frozen context's path objects.
-That decision owns the three-output versus two-HTML distinction, historical
+Implemented in PR #145, that decision owns the three-output versus two-HTML distinction, historical
 version pairs, independent tests, and stopping conditions. The bounded change
 adds no product file, wrapper, catalog, schema, or identity-translation mechanism.
 
@@ -301,7 +355,8 @@ reporting-boundary tests, transaction-validation tests, and
 [ledger contract tests](../../tests/contracts/orchestration/test_reporting_ledger_contracts.py).
 
 **Economics and gate.** No defensible net estimate is available yet.
-This is outside the first fixed-output slice. Qualify a complete negative
+This remains separate from the delivered fixed-output and lifecycle slices.
+Qualify a complete negative
 draft and its shared-owner identity policy separately. Abandon a proposed
 shared representation if equivalent declarations do not retire or it creates
 an inspection/reporting dependency cycle.
@@ -454,7 +509,7 @@ artifacts, provenance, original inputs, historical readers, and recovery
 evidence. Validate present outputs, partial publication, input changes,
 replacement by another process, tool failure, cleanup failure, and retained
 ambiguous state. Owner-specific requirements follow; they do not create
-five separate versions of the common rollback rule.
+four separate versions of the common rollback rule.
 
 | Proposed slice | Audited owner and removable mode | Owner-specific requirements and size |
 |---|---|---|
@@ -588,14 +643,15 @@ their explicit schemas but fail the unversioned artifact CLI. The default
 does not select the document's version, although `schema_validator`
 already supports the closed versioned schema map.
 
-**Proposed correction.** For an object document, pass its declared version
+**Proposed correction, not selected.** For an object document, pass its declared version
 through the existing schema selection owner. Reuse the resulting ordered
 error collection at the two manual call sites in
 [`_run_summary/validation.py`](../../src/emrys/reporting/_run_summary/validation.py)
 and the one in
 [`_run_report/inputs.py`](../../src/emrys/reporting/_run_report/inputs.py).
 This could remove about 9–13 net product lines across three existing files.
-It is a public correctness change requiring selection, not pure preservation.
+This would change public correctness behavior; it requires a separate
+selection and the checks below before acceptance.
 
 **Preserve.** Keep default `schema_validator` behavior, raw registry keys
 and schema IDs, local references, deterministic diagnostic ordering,
@@ -723,9 +779,8 @@ and the all-pass reader: their accepted forms and status semantics differ.
 
 **Canonical BAM print arrays.** Four arrays in the canonical BAM producer
 are used only to print quickcheck, header, record-count, and sample-tag-count
-commands. Their declarations occupy exactly 30 lines at audited lines
-148–177, including the comment; their sole reads are `print_command`
-calls at lines 372, 375, 378, and 381. Replace those calls with the same
+commands. The 30-line declaration block remains after replacement retirement;
+its sole reads remain four `print_command` calls. Replace those calls with the same
 directly quoted arguments and retire the declarations. Keep executable sort,
 read-group, index, and input-header command arrays.
 
@@ -802,8 +857,19 @@ runtime/memory benefit is their main purpose. Compression makes no speed,
 RAM, storage, or institutional-validation claim from code size.
 The existing dependency checker and documentation gate may merit a separate
 maintained-tool comparison, but no replacement has qualified full policy
-parity. Tooling-only work needs an explicit Rule 5 exception; the previous
-two tooling approvals do not authorize a general tooling campaign.
+parity. Tooling-only work needs an explicit Rule 5 exception; a bounded
+tooling approval does not authorize a general tooling campaign.
+
+The current approved maintenance scope is documentation reconciliation,
+removal of the duplicate 35-task Python fixture setup, bounded two-child
+execution of Step 08's independent negative R fixtures, ShellCheck integration,
+Ruff formatting, developer hooks, and `emrys --version [-v]`. At this
+documentation boundary those implementations and their final checks are
+pending. Keep distinct guarded and managed runtime coverage, real per-case R
+process isolation, every scientific case and oracle, and explicit parallel-child
+failure propagation. CI scheduling
+and tooling changes must show their own footprint and evidence; they are not
+additional product compression or a measured speedup until validated.
 
 Each selected package must state its one observable outcome, production
 owner boundary, complete caller migration, behavior classification, removed
@@ -821,11 +887,10 @@ checks and make bounded fixes. Acceptance remains pending until the final
 required evidence passes; rerun only evidence invalidated by later changes.
 Do not pause useful work solely to wait for hosted CI.
 
-The first implementation stops with the caller-complete
-[fixed-output consolidation](../design/decisions/execution-evidence-and-reporting.md#fixed-report-output-consolidation)
-and its required checks.
-Reporting-memory policy and publication qualification remain separately
-selected work; neither is absorbed into that first output slice.
+The delivered fixed-output and reporting lifecycle slices stop at their
+documented owner and evidence boundaries. Reporting-memory policy, broader
+identity/layout changes, and the remaining publication owners are not absorbed
+into those completed changes or the approved maintenance scope above.
 
 An audit package stops with either a qualified bounded proposal or a reasoned
 retain/defer decision. An implementation stops at its approved scope and
@@ -874,15 +939,17 @@ review finds a broader live pattern:
 
 ## Selection boundary
 
-The architecture stack is integrated and the repository review is complete.
-Recording a finding here does not select its implementation. Each selected
+The earlier architecture/compression stack is integrated through PR #139;
+the later delivered slices have the separate integration boundary recorded
+above. The repository review is complete. Recording a finding here does not
+select its implementation. Each selected
 outcome still needs a bounded plan, the full affected-owner review, separate
 footprint accounting, and the authority required by the
 [workflow](../operations/WORKFLOW.md).
 
 ## Intake exit
 
-The intake is complete only when:
+This campaign record can retire only when:
 
 1. the completed review is reconciled with current source and overlapping work;
 2. every finding has one evidenced disposition;
@@ -890,4 +957,4 @@ The intake is complete only when:
 4. each selected implementation family has a finite outcome, acceptance criteria,
    importance, complexity, and evidence boundary in the backlog;
 5. useful decisions and accepted outcomes each have one durable authority; and
-6. this temporary file is deleted after the transfer is verified.
+6. retirement of this file is explicitly scoped after the transfer is verified.
