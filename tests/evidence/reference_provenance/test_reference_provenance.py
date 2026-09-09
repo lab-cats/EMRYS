@@ -227,23 +227,6 @@ def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path: Path) -> None:
 
     first = run_reconciliation(inventory, output, "--execute", cwd=invocation)
     assert first.returncode == 0, first.stderr
-    before = {path.name: path.read_bytes() for path in (output / "ref1").iterdir()}
-    repeated = run_reconciliation(inventory, output, "--execute", cwd=invocation)
-    assert repeated.returncode == 0, repeated.stderr
-    assert first.stdout == repeated.stdout
-    assert first.stderr == repeated.stderr == ""
-    assert before == {
-        path.name: path.read_bytes() for path in (output / "ref1").iterdir()
-    }
-    assert not any(invocation.iterdir())
-
-
-def test_execute_publishes_summary_last_contract(tmp_path: Path) -> None:
-    inventory = make_fixture(tmp_path)
-    output = tmp_path / "out"
-    output.mkdir()
-    result = run_reconciliation(inventory, output, "--execute")
-    assert result.returncode == 0, result.stderr
     directory = output / "ref1"
     artifacts = read_rows(directory / "ref1.reference_artifacts.tsv")
     contigs = read_rows(directory / "ref1.reference_contigs.tsv")
@@ -271,9 +254,15 @@ def test_execute_publishes_summary_last_contract(tmp_path: Path) -> None:
     ]
     assert summary["overall_status"] == "pass"
     assert summary["star_agreement"] == "pass"
-    original = {path.name: path.read_bytes() for path in directory.iterdir()}
-    assert run_reconciliation(inventory, output, "--execute").returncode == 0
-    assert original == {path.name: path.read_bytes() for path in directory.iterdir()}
+    before = {path.name: path.read_bytes() for path in (output / "ref1").iterdir()}
+    repeated = run_reconciliation(inventory, output, "--execute", cwd=invocation)
+    assert repeated.returncode == 0, repeated.stderr
+    assert first.stdout == repeated.stdout
+    assert first.stderr == repeated.stderr == ""
+    assert before == {
+        path.name: path.read_bytes() for path in (output / "ref1").iterdir()
+    }
+    assert not any(invocation.iterdir())
 
 
 def test_parser_error_is_role_local_and_preserves_other_contig_rows(

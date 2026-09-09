@@ -188,6 +188,7 @@ validation-static: lint documentation-check
 		"$(REPORT_PYTHON_BIN)" -m compileall -q scripts src/emrys tests
 	"$(REPORT_PYTHON_BIN)" -I -m emrys validate manifest \
 		--manifest configs/samples.example.tsv
+	"$(REPORT_PYTHON_BIN)" -m pytest -q tests/test_python_test_shards.py
 
 validate:
 	"$(REPORT_PYTHON_BIN)" -I -m emrys validate manifest \

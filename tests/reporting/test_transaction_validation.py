@@ -6,6 +6,8 @@ import argparse
 import copy
 import hashlib
 from dataclasses import replace
+from contextlib import contextmanager
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +19,9 @@ from emrys.libraries.source_authority import (
     ArtifactSourceRoot,
     SourceCheckout,
 )
-from emrys.reporting import report, transaction_validation
+from emrys.reporting import transaction_validation
+from emrys.reporting._artifact_index import context as artifact_context
+from emrys.reporting._run_report import context as report_context_owner
 from emrys.reporting._run_report import publication as report_publication
 from emrys.reporting._run_report import receipt
 from emrys.reporting._run_summary import builder as summary_builder
@@ -34,15 +38,34 @@ from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as fi
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-def _fixture_receipt_ops(
-    **overrides: Any,
-) -> transaction_validation.ReceiptValidationOps:
-    return transaction_validation.ReceiptValidationOps(
-        matching_clean_checkout_head_commit=(
-            lambda **_kwargs: workflow_fixture.source_checkout_commit()
-        ),
-        **overrides,
+@pytest.fixture(autouse=True)
+def fixture_source_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        artifact_context,
+        "matching_clean_checkout_head_commit",
+        lambda **_kwargs: workflow_fixture.source_checkout_commit(),
     )
+
+
+@contextmanager
+def fault_before_validation(
+    receipt_path: Path,
+    fault: Callable[[tuple[Path, ...]], None],
+) -> Iterator[None]:
+    original = transaction_validation._validated_result
+    reached = False
+
+    def validate(snapshot: Any, roster: Any, *args: Any, **kwargs: Any) -> Any:
+        nonlocal reached
+        if snapshot.path == receipt_path:
+            reached = True
+            fault(tuple(item.path for item in roster.files))
+        return original(snapshot, roster, *args, **kwargs)
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(transaction_validation, "_validated_result", validate)
+        yield
+        assert reached, f"Target receipt did not reach final validation: {receipt_path}"
 
 
 def _publish_summary(built: Any) -> None:
@@ -50,8 +73,8 @@ def _publish_summary(built: Any) -> None:
 
 
 def _publish_report(arguments: argparse.Namespace) -> None:
-    context = report.prepare_report(arguments)
-    report_publication.publish_report(context, report.default_publication_ops())
+    context = report_context_owner.prepare_context(arguments)
+    report_publication.publish_report(context)
 
 
 def _publish_summary_with_commit(built: Any, commit: str) -> None:
@@ -103,7 +126,6 @@ def test_direct_validators_recheck_each_complete_transaction(
         inventory=built.adapter_fixture.inventory,
         output_root=built.adapter_fixture.output_root,
         profile=adapter_fixture.analysis_profile_v1(),
-        receipt_ops=_fixture_receipt_ops(),
     )
     summary = transaction_validation.validate_run_summary_transaction(
         source_checkout=REPO_ROOT,
@@ -112,7 +134,6 @@ def test_direct_validators_recheck_each_complete_transaction(
         artifact_receipt=built.artifact_receipt,
         output_root=built.output_root,
         profile=adapter_fixture.analysis_profile_v1(),
-        receipt_ops=_fixture_receipt_ops(),
     )
     rendered = transaction_validation.validate_report_transaction(
         source_checkout=REPO_ROOT,
@@ -120,7 +141,6 @@ def test_direct_validators_recheck_each_complete_transaction(
         run_summary=built.summary_json_path,
         output_root=report_root,
         profile=adapter_fixture.analysis_profile_v1(),
-        receipt_ops=_fixture_receipt_ops(),
     )
 
     assert adapter.receipt_path == built.artifact_receipt
@@ -182,7 +202,6 @@ def test_summary_revalidates_relative_artifacts_from_admitted_root(
         artifact_receipt=built.artifact_receipt,
         output_root=built.output_root,
         profile=adapter_fixture.analysis_profile_v1(),
-        receipt_ops=_fixture_receipt_ops(),
     )
 
     assert validated.receipt_path == built.summary_receipt_path
@@ -191,8 +210,6 @@ def test_summary_revalidates_relative_artifacts_from_admitted_root(
 def test_explicit_module_publishes_and_readmits_v3_v5_reporting(
     tmp_path: Path,
 ) -> None:
-    from emrys.reporting._artifact_index import context as artifact_context
-    from emrys.reporting._artifact_index import core as artifact_core
     from emrys.reporting._artifact_index import publication as artifact_publication
     from emrys.reporting._run_report import receipt as report_receipt
 
@@ -245,14 +262,6 @@ def test_explicit_module_publishes_and_readmits_v3_v5_reporting(
         ),
         source_checkout=SourceCheckout(root=REPO_ROOT),
         artifact_source_root=ArtifactSourceRoot(root=root),
-        identity_ops=artifact_context.ArtifactIdentityOps(
-            matching_clean_checkout_head_commit=lambda **_kwargs: (
-                artifact_core.get_git_commit(
-                    source_root=REPO_ROOT,
-                    sanitize_git_routing=True,
-                )
-            )
-        ),
     )
     artifact_publication.publish_context(artifact)
     built = fixture.RunSummaryFixture(
@@ -292,10 +301,9 @@ def test_explicit_module_publishes_and_readmits_v3_v5_reporting(
         output_root=report_root,
         execute=True,
     )
-    report_context = report.prepare_report(report_arguments)
+    report_context = report_context_owner.prepare_context(report_arguments)
     report_publication.publish_report(
         report_context,
-        report.default_publication_ops(),
     )
     document = report_receipt.read_receipt_tsv(report_context.output_receipt)
     assert document["schema_version"] == "5.0.0"
@@ -317,7 +325,6 @@ def test_explicit_module_publishes_and_readmits_v3_v5_reporting(
         analysis_policy=policy_path,
         profile=profile,
         output_root=report_root,
-        receipt_ops=_fixture_receipt_ops(),
     )
     assert validated.receipt_path == report_context.output_receipt
 
@@ -356,36 +363,31 @@ def test_historical_artifact_validation_uses_recorded_producer_roster(
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
             profile=adapter_fixture.analysis_profile_v1(),
-            receipt_ops=_fixture_receipt_ops(),
         )
 
-    historical_artifact = (
-        transaction_validation._validate_historical_artifact_index_transaction(
+    with fault_before_validation(built.artifact_receipt, reject_live_producer_binding):
+        historical_artifact = (
+            transaction_validation._validate_historical_artifact_index_transaction(
+                source_checkout=REPO_ROOT,
+                artifact_source_root=built.root,
+                run_id=built.run_id,
+                run_contract=built.adapter_fixture.run_contract,
+                inventory=built.adapter_fixture.inventory,
+                output_root=built.adapter_fixture.output_root,
+            )
+        )
+    with fault_before_validation(built.summary_receipt_path, reject_live_producer_binding):
+        historical_summary = transaction_validation.validate_run_summary_transaction(
             source_checkout=REPO_ROOT,
             artifact_source_root=built.root,
             run_id=built.run_id,
-            run_contract=built.adapter_fixture.run_contract,
-            inventory=built.adapter_fixture.inventory,
-            output_root=built.adapter_fixture.output_root,
-            receipt_ops=_fixture_receipt_ops(
-                before_final_snapshot=reject_live_producer_binding,
-            ),
+            artifact_receipt=built.artifact_receipt,
+            output_root=built.output_root,
+            profile=adapter_fixture.analysis_profile_v1(),
+            recorded_producer_commit=str(summary["provenance"]["git_commit"]),
+            expected_run_contract=built.adapter_fixture.run_contract,
+            expected_inventory=built.adapter_fixture.inventory,
         )
-    )
-    historical_summary = transaction_validation.validate_run_summary_transaction(
-        source_checkout=REPO_ROOT,
-        artifact_source_root=built.root,
-        run_id=built.run_id,
-        artifact_receipt=built.artifact_receipt,
-        output_root=built.output_root,
-        profile=adapter_fixture.analysis_profile_v1(),
-        receipt_ops=_fixture_receipt_ops(
-            before_final_snapshot=reject_live_producer_binding,
-        ),
-        recorded_producer_commit=str(summary["provenance"]["git_commit"]),
-        expected_run_contract=built.adapter_fixture.run_contract,
-        expected_inventory=built.adapter_fixture.inventory,
-    )
 
     assert historical_artifact.receipt_path == built.artifact_receipt
     assert historical_summary.receipt_path == built.summary_receipt_path
@@ -453,7 +455,6 @@ def test_historical_artifact_validation_binds_one_record_generation(
             run_contract=built.adapter_fixture.run_contract,
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
-            receipt_ops=_fixture_receipt_ops(),
         )
 
 
@@ -508,7 +509,6 @@ def test_historical_artifact_validation_never_opens_index_selected_path(
             run_contract=built.adapter_fixture.run_contract,
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
-            receipt_ops=_fixture_receipt_ops(),
         )
 
 
@@ -541,7 +541,6 @@ def test_historical_report_admission_preserves_noncurrent_verified_bytes(
             run_summary=built.summary_json_path,
             output_root=report_root,
             profile=adapter_fixture.analysis_profile_v1(),
-            receipt_ops=_fixture_receipt_ops(),
         )
 
     admitted = transaction_validation._validate_historical_report_transaction(
@@ -553,7 +552,6 @@ def test_historical_report_admission_preserves_noncurrent_verified_bytes(
         expected_source_commit=document["provenance"]["git_commit"],
         expected_run_contract=built.adapter_fixture.run_contract,
         expected_inventory=built.adapter_fixture.inventory,
-        receipt_ops=_fixture_receipt_ops(),
     )
     assert admitted.receipt_path == receipt_path
     assert admitted.verified_report_locations == (
@@ -608,7 +606,6 @@ def test_historical_report_admission_uses_each_recorded_producer_identity(
         expected_source_commit=report_commit,
         expected_run_contract=built.adapter_fixture.run_contract,
         expected_inventory=built.adapter_fixture.inventory,
-        receipt_ops=_fixture_receipt_ops(),
     )
     assert admitted.receipt_path == receipt_path
 
@@ -625,7 +622,7 @@ def test_historical_report_admission_rechecks_transitive_native_inputs(
         assert native_source in paths
         native_source.write_text("mutated during historical read\n", encoding="utf-8")
 
-    with pytest.raises(
+    with fault_before_validation(receipt_path, mutate_native), pytest.raises(
         transaction_validation.ReportingTransactionError,
         match="roster changed during semantic validation",
     ):
@@ -638,7 +635,6 @@ def test_historical_report_admission_rechecks_transitive_native_inputs(
             expected_source_commit=document["provenance"]["git_commit"],
             expected_run_contract=built.adapter_fixture.run_contract,
             expected_inventory=built.adapter_fixture.inventory,
-            receipt_ops=_fixture_receipt_ops(before_final_snapshot=mutate_native),
         )
 
 
@@ -667,7 +663,6 @@ def test_report_validator_rechecks_bound_reference_identity_without_rereading(
         run_summary=built.summary_json_path,
         output_root=report_root,
         profile=adapter_fixture.analysis_profile_v1(),
-        receipt_ops=_fixture_receipt_ops(),
     )
 
     assert True in hash_modes
@@ -799,7 +794,6 @@ def test_fixed_dispatcher_rechecks_cached_predecessor(
     predecessor = transaction_validation._validated_result(
         transaction_validation._snapshot_receipt(artifact_receipt),
         roster,
-        _fixture_receipt_ops(),
         lambda: transaction_validation._reject_reporting_control_residue(
             kind="artifact_index",
             output_dir=output_dir,
@@ -1079,7 +1073,6 @@ def test_artifact_validator_rejects_native_source_mutation(
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
             profile=adapter_fixture.analysis_profile_v1(),
-            receipt_ops=_fixture_receipt_ops(),
         )
 
 
@@ -1105,7 +1098,6 @@ def test_report_validator_rejects_each_receipted_html_mutation(
             run_summary=built.summary_json_path,
             output_root=report_root,
             profile=adapter_fixture.analysis_profile_v1(),
-            receipt_ops=_fixture_receipt_ops(),
         )
 
 
@@ -1121,7 +1113,7 @@ def test_receipt_identity_replacement_during_validation_fails_closed(
         replacement.write_bytes(path.read_bytes())
         replacement.replace(path)
 
-    with pytest.raises(
+    with fault_before_validation(built.artifact_receipt, replace_receipt), pytest.raises(
         transaction_validation.ReportingTransactionError,
         match="changed during semantic validation",
     ):
@@ -1133,9 +1125,6 @@ def test_receipt_identity_replacement_during_validation_fails_closed(
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
             profile=adapter_fixture.analysis_profile_v1(),
-            receipt_ops=_fixture_receipt_ops(
-                before_final_snapshot=replace_receipt,
-            ),
         )
 
 
@@ -1153,7 +1142,7 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
     )
     evidence_html = report_root / built.run_id / f"{built.run_id}.evidence_report.html"
 
-    def validate_artifact(ops: transaction_validation.ReceiptValidationOps) -> None:
+    def validate_artifact() -> None:
         transaction_validation.validate_artifact_index_transaction(
             source_checkout=REPO_ROOT,
             artifact_source_root=built.root,
@@ -1162,10 +1151,9 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
             profile=adapter_fixture.analysis_profile_v1(),
-            receipt_ops=ops,
         )
 
-    def validate_summary(ops: transaction_validation.ReceiptValidationOps) -> None:
+    def validate_summary() -> None:
         transaction_validation.validate_run_summary_transaction(
             source_checkout=REPO_ROOT,
             artifact_source_root=built.root,
@@ -1173,46 +1161,41 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
             artifact_receipt=built.artifact_receipt,
             output_root=built.output_root,
             profile=adapter_fixture.analysis_profile_v1(),
-            receipt_ops=ops,
         )
 
-    def validate_report(ops: transaction_validation.ReceiptValidationOps) -> None:
+    def validate_report() -> None:
         transaction_validation.validate_report_transaction(
             source_checkout=REPO_ROOT,
             artifact_source_root=built.root,
             run_summary=built.summary_json_path,
             output_root=report_root,
             profile=adapter_fixture.analysis_profile_v1(),
-            receipt_ops=ops,
         )
 
+    report_receipt = report_root / built.run_id / f"{built.run_id}.report_outputs.tsv"
     cases = (
-        (validate_artifact, built.adapter_fixture.artifacts_path),
-        (validate_artifact, native_source),
-        (validate_summary, built.summary_tsv_path),
-        (validate_summary, native_source),
-        (validate_report, scientific_html),
-        (validate_report, evidence_html),
-        (validate_report, native_source),
-        (validate_report, mutation_spectrum),
-        (validate_report, reference_fasta),
+        (validate_artifact, built.artifact_receipt, built.adapter_fixture.artifacts_path),
+        (validate_artifact, built.artifact_receipt, native_source),
+        (validate_summary, built.summary_receipt_path, built.summary_tsv_path),
+        (validate_summary, built.summary_receipt_path, native_source),
+        (validate_report, report_receipt, scientific_html),
+        (validate_report, report_receipt, evidence_html),
+        (validate_report, report_receipt, native_source),
+        (validate_report, report_receipt, mutation_spectrum),
+        (validate_report, report_receipt, reference_fasta),
     )
-    for validator, target in cases:
+    for validator, receipt_path, target in cases:
         original = target.read_bytes()
 
         def mutate(paths: tuple[Path, ...], *, selected: Path = target) -> None:
             assert selected in paths
             selected.write_bytes(original + b"mutation-fault\n")
 
-        with pytest.raises(
+        with fault_before_validation(receipt_path, mutate), pytest.raises(
             transaction_validation.ReportingTransactionError,
             match="roster changed during semantic validation",
         ):
-            validator(
-                _fixture_receipt_ops(
-                    before_final_snapshot=mutate,
-                )
-            )
+            validator()
         target.write_bytes(original)
 
 
@@ -1233,7 +1216,7 @@ def test_artifact_validator_rejects_roster_membership_fault(
         assert built.adapter_fixture.artifacts_path in paths
         unexpected.write_text("{}\n", encoding="utf-8")
 
-    with pytest.raises(
+    with fault_before_validation(built.artifact_receipt, add_record), pytest.raises(
         transaction_validation.ReportingTransactionError,
         match="roster changed during semantic validation",
     ):
@@ -1245,9 +1228,6 @@ def test_artifact_validator_rejects_roster_membership_fault(
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
             profile=adapter_fixture.analysis_profile_v1(),
-            receipt_ops=_fixture_receipt_ops(
-                before_final_snapshot=add_record,
-            ),
         )
 
 
@@ -1280,7 +1260,6 @@ def test_artifact_validator_binds_nested_missing_source_to_existing_ancestor(
         inventory=adapter.inventory,
         output_root=adapter.output_root,
         profile=adapter_fixture.analysis_profile_v1(),
-        receipt_ops=_fixture_receipt_ops(),
     )
     assert validated.receipt_path == adapter.receipt_path
 
@@ -1288,7 +1267,7 @@ def test_artifact_validator_binds_nested_missing_source_to_existing_ancestor(
         assert missing in paths
         missing_parent.mkdir()
 
-    with pytest.raises(
+    with fault_before_validation(adapter.receipt_path, create_intermediate_parent), pytest.raises(
         transaction_validation.ReportingTransactionError,
         match="roster changed during semantic validation",
     ):
@@ -1300,9 +1279,6 @@ def test_artifact_validator_binds_nested_missing_source_to_existing_ancestor(
             inventory=adapter.inventory,
             output_root=adapter.output_root,
             profile=adapter_fixture.analysis_profile_v1(),
-            receipt_ops=_fixture_receipt_ops(
-                before_final_snapshot=create_intermediate_parent,
-            ),
         )
 
 
@@ -1314,7 +1290,7 @@ def test_each_validator_rejects_control_residue_injected_before_return(
     artifact_dir = built.artifact_receipt.parent
     report_dir = report_root / built.run_id
 
-    def validate_artifact(ops: transaction_validation.ReceiptValidationOps) -> None:
+    def validate_artifact() -> None:
         transaction_validation.validate_artifact_index_transaction(
             source_checkout=REPO_ROOT,
             artifact_source_root=built.root,
@@ -1323,10 +1299,9 @@ def test_each_validator_rejects_control_residue_injected_before_return(
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
             profile=adapter_fixture.analysis_profile_v1(),
-            receipt_ops=ops,
         )
 
-    def validate_summary(ops: transaction_validation.ReceiptValidationOps) -> None:
+    def validate_summary() -> None:
         transaction_validation.validate_run_summary_transaction(
             source_checkout=REPO_ROOT,
             artifact_source_root=built.root,
@@ -1334,33 +1309,38 @@ def test_each_validator_rejects_control_residue_injected_before_return(
             artifact_receipt=built.artifact_receipt,
             output_root=built.output_root,
             profile=adapter_fixture.analysis_profile_v1(),
-            receipt_ops=ops,
         )
 
-    def validate_report(ops: transaction_validation.ReceiptValidationOps) -> None:
+    def validate_report() -> None:
         transaction_validation.validate_report_transaction(
             source_checkout=REPO_ROOT,
             artifact_source_root=built.root,
             run_summary=built.summary_json_path,
             output_root=report_root,
             profile=adapter_fixture.analysis_profile_v1(),
-            receipt_ops=ops,
         )
 
     cases = (
         (
             validate_artifact,
+            built.artifact_receipt,
             artifact_dir / f".artifact-index.{token}.tmp.tsv",
             False,
         ),
         (
             validate_summary,
+            built.summary_receipt_path,
             artifact_dir / f".{built.run_id}.run-summary.{token}.RECOVERY.txt",
             False,
         ),
-        (validate_report, report_dir / f".run-report.{token}.tmp", True),
+        (
+            validate_report,
+            report_dir / f"{built.run_id}.report_outputs.tsv",
+            report_dir / f".run-report.{token}.tmp",
+            True,
+        ),
     )
-    for validator, residue, is_directory in cases:
+    for validator, receipt_path, residue, is_directory in cases:
 
         def inject_residue(
             paths: tuple[Path, ...],
@@ -1374,15 +1354,11 @@ def test_each_validator_rejects_control_residue_injected_before_return(
             else:
                 target.write_text("fault residue\n", encoding="utf-8")
 
-        with pytest.raises(
+        with fault_before_validation(receipt_path, inject_residue), pytest.raises(
             transaction_validation.ReportingTransactionError,
             match="owner control residue",
         ):
-            validator(
-                _fixture_receipt_ops(
-                    before_final_snapshot=inject_residue,
-                )
-            )
+            validator()
         if is_directory:
             residue.rmdir()
         else:
@@ -1408,5 +1384,4 @@ def test_preexisting_reporting_control_residue_fails_closed(
             inventory=built.adapter_fixture.inventory,
             output_root=built.adapter_fixture.output_root,
             profile=adapter_fixture.analysis_profile_v1(),
-            receipt_ops=_fixture_receipt_ops(),
         )

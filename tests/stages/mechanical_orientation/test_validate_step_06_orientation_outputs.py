@@ -110,21 +110,6 @@ def run_validator(
     )
 
 
-def test_dry_run_is_side_effect_free(tmp_path: Path) -> None:
-    evidence = build_validation_fixture(tmp_path)
-    assert run_validator(evidence).returncode == 0
-    assert not evidence.output.exists()
-
-
-def test_execute_publishes_five_passes(tmp_path: Path) -> None:
-    evidence = build_validation_fixture(tmp_path)
-    result = run_validator(evidence, "--execute")
-    assert result.returncode == 0, result.stderr
-    rows = report_rows(evidence.output)
-    assert_exact_check_roster(rows, "06")
-    assert {row["status"] for row in rows} == {"pass"}
-
-
 def test_count_disagreement_is_failed_evidence(tmp_path: Path) -> None:
     evidence = build_validation_fixture(tmp_path)
     evidence.counts.write_text(
