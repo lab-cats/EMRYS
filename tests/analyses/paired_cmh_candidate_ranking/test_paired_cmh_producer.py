@@ -1,13 +1,13 @@
-"""Focused transaction tests for the private Step 09 Python producer."""
+"""Scientific computation checks for the private Step 09 worker."""
 
 from __future__ import annotations
 
 import os
 import shutil
-import signal
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -91,8 +91,18 @@ def _fixture(tmp_path: Path) -> Fixture:
         str(built.partition_manifest),
         "--step08-root",
         str(step08_dir.parent),
-        "--output-root",
-        str(output),
+        "--all-sites-output",
+        str(paths["all"]),
+        "--significant-sites-output",
+        str(paths["significant"]),
+        "--summary-output",
+        str(paths["summary"]),
+        "--mutation-output",
+        str(paths["mutation"]),
+        "--mutation-pdf-output",
+        str(paths["mutation_pdf"]),
+        "--depth-pdf-output",
+        str(paths["depth_pdf"]),
         "--rscript-bin",
         "/usr/bin/true",
         "--r-script",
@@ -126,66 +136,27 @@ def _write_outputs(command: list[str], fixture: Fixture) -> None:
             destination.write_bytes(fixture.templates[name])
 
 
-class FakeProcess:
-    pid = 42009
-
-    def __init__(
-        self,
-        command: list[str],
-        fixture: Fixture,
-        *,
-        status: int = 0,
-        interrupt: bool = False,
-        mutate: Callable[[], None] | None = None,
-    ) -> None:
-        self.command = command
-        self.status = status
-        self.returncode: int | None = None
-        self.interrupt = interrupt
-        if status == 0:
-            _write_outputs(command, fixture)
-            if mutate is not None:
-                mutate()
-
-    def wait(self, timeout: float | None = None) -> int:
-        del timeout
-        if self.interrupt:
-            self.interrupt = False
-            os.kill(os.getpid(), signal.SIGTERM)
-        self.returncode = self.status
-        return self.status
-
-    def poll(self) -> int | None:
-        return self.returncode
-
-
 def _inject_process(
     monkeypatch: pytest.MonkeyPatch,
     fixture: Fixture,
     *,
     status: int = 0,
-    interrupt: bool = False,
     mutate: Callable[[], None] | None = None,
-    launch: Callable[[], None] | None = None,
-) -> tuple[list[FakeProcess], list[dict[str, Any]]]:
-    processes: list[FakeProcess] = []
+) -> tuple[list[Any], list[dict[str, Any]]]:
+    processes: list[Any] = []
     calls: list[dict[str, Any]] = []
 
-    def popen(command: list[str], **kwargs: Any) -> FakeProcess:
-        if launch is not None:
-            launch()
-        process = FakeProcess(
-            command,
-            fixture,
-            status=status,
-            interrupt=interrupt,
-            mutate=mutate,
-        )
-        processes.append(process)
+    def run(command: list[str], **kwargs: Any) -> Any:
+        if not status:
+            _write_outputs(command, fixture)
+            if mutate is not None:
+                mutate()
+        result = SimpleNamespace(command=command, returncode=status)
+        processes.append(result)
         calls.append(kwargs)
-        return process
+        return result
 
-    monkeypatch.setattr(producer.subprocess, "Popen", popen)
+    monkeypatch.setattr(producer.subprocess, "run", run)
     return processes, calls
 
 
@@ -193,38 +164,19 @@ def _finals(fixture: Fixture) -> tuple[Path, ...]:
     return tuple(fixture.paths[name] for name, _suffix, _option_name in OUTPUTS)
 
 
-def _residue(fixture: Fixture) -> list[Path]:
-    analysis = fixture.paths["analysis"]
-    return (
-        list(analysis.glob(f".{evidence.PRIMARY_ANALYSIS_ID}.step09.*"))
-        if analysis.exists()
-        else []
-    )
-
-
 def _execute(
     fixture: Fixture,
     *extra: str,
 ) -> int:
-    return producer.main([*fixture.arguments, *extra, "--execute"])
-
-
-def test_dry_run_validates_without_writing_or_invoking_r(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    fixture = _fixture(tmp_path)
-    monkeypatch.setattr(
-        producer.subprocess, "Popen", lambda *_a, **_k: pytest.fail("R invoked")
-    )
-
-    assert producer.main(fixture.arguments) == 0
-    assert not fixture.paths["output"].exists()
+    return producer.main([*fixture.arguments, *extra])
 
 
 def test_threshold_boundaries_remain_admitted(tmp_path: Path) -> None:
     fixture = _fixture(tmp_path)
-    assert (
-        producer.main(
+    parser = producer.argparse.ArgumentParser()
+    producer.configure_parser(parser)
+    context = producer.build_context(
+        parser.parse_args(
             [
                 *fixture.arguments,
                 "--mean-dp-threshold",
@@ -235,8 +187,8 @@ def test_threshold_boundaries_remain_admitted(tmp_path: Path) -> None:
                 "1",
             ]
         )
-        == 0
     )
+    assert context.thresholds == (1, 0, 1, 1.2, 1, 0.01)
     assert not fixture.paths["output"].exists()
 
 
@@ -295,30 +247,12 @@ def test_invalid_scientific_roles_fail_without_writing(
     assert not fixture.paths["output"].exists()
 
 
-def test_exact_r_command_and_no_clobber_publish_summary_last(
+def test_worker_preserves_exact_scientific_r_command(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fixture = _fixture(tmp_path)
-    monkeypatch.setenv("EMRYS_RUN_TOKEN", "owner09")
-    observed_owner: list[str] = []
-    competing_status: list[int] = []
-
-    def inspect_owner() -> None:
-        observed_owner.extend(
-            fixture.paths["lock"].joinpath("owner").read_text().splitlines()
-        )
-        competing_status.append(_execute(fixture))
-
-    processes, calls = _inject_process(monkeypatch, fixture, launch=inspect_owner)
-    links: list[tuple[str, bool]] = []
-    original_link = os.link
-
-    def record_link(source: Path, destination: Path) -> None:
-        original_link(source, destination)
-        links.append((Path(destination).name, Path(source).samefile(destination)))
-
-    monkeypatch.setattr(producer.os, "link", record_link)
-    assert _execute(fixture, "--no-clobber") == 0
+    processes, calls = _inject_process(monkeypatch, fixture)
+    assert _execute(fixture) == 0
 
     p = fixture.paths
     expected_command = [
@@ -365,36 +299,22 @@ def test_exact_r_command_and_no_clobber_publish_summary_last(
         "--background-max-fraction",
         "0.01",
         "--all-sites-output",
-        str(p["analysis"] / ".analysis_primary.step09.owner09.all.tmp.tsv"),
+        str(p["all"]),
         "--significant-sites-output",
-        str(p["analysis"] / ".analysis_primary.step09.owner09.significant.tmp.tsv"),
+        str(p["significant"]),
         "--summary-output",
-        str(p["analysis"] / ".analysis_primary.step09.owner09.summary.tmp.tsv"),
+        str(p["summary"]),
         "--mutation-spectrum-output",
-        str(p["analysis"] / ".analysis_primary.step09.owner09.mutation.tmp.tsv"),
+        str(p["mutation"]),
         "--mutation-spectrum-pdf-output",
-        str(p["analysis"] / ".analysis_primary.step09.owner09.mutation.tmp.pdf"),
+        str(p["mutation_pdf"]),
         "--depth-delta-pdf-output",
-        str(p["analysis"] / ".analysis_primary.step09.owner09.depth.tmp.pdf"),
+        str(p["depth_pdf"]),
     ]
     assert processes[0].command == expected_command
     assert len(calls) == 1
-    assert calls[0]["start_new_session"] is True
-    assert observed_owner == ["run_token\towner09", f"pid\t{os.getpid()}"]
-    assert competing_status == [1]
-    assert links == [
-        (path.name, True)
-        for path in (
-            p["all"],
-            p["significant"],
-            p["mutation"],
-            p["mutation_pdf"],
-            p["depth_pdf"],
-            p["summary"],
-        )
-    ]
+    assert calls == [{}]
     assert len({path.stat().st_ino for path in _finals(fixture)}) == 6
-    assert not _residue(fixture)
 
 
 def test_path_basename_and_relative_inputs_work_from_an_arbitrary_cwd(
@@ -415,7 +335,12 @@ def test_path_basename_and_relative_inputs_work_from_an_arbitrary_cwd(
         "--sample-manifest",
         "--partition-manifest",
         "--step08-root",
-        "--output-root",
+        "--all-sites-output",
+        "--significant-sites-output",
+        "--summary-output",
+        "--mutation-output",
+        "--mutation-pdf-output",
+        "--depth-pdf-output",
         "--r-script",
     ):
         index = arguments.index(option) + 1
@@ -423,7 +348,7 @@ def test_path_basename_and_relative_inputs_work_from_an_arbitrary_cwd(
     processes, _calls = _inject_process(monkeypatch, fixture)
     monkeypatch.chdir(cwd)
 
-    assert producer.main([*arguments, "--execute"]) == 0
+    assert producer.main(arguments) == 0
     assert processes[0].command[0] == str(rscript)
     assert list(cwd.iterdir()) == []
 
@@ -446,28 +371,8 @@ def test_run_coordinator_r_command_uses_the_controlled_environment(
     ]
 
 
-def test_owner_metadata_failure_removes_unowned_lock(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    fixture = _fixture(tmp_path)
-    original_write_text = Path.write_text
-
-    def fail_owner(path: Path, *args: Any, **kwargs: Any) -> int:
-        if path.parent == fixture.paths["lock"] and path.name.startswith(".owner."):
-            raise OSError("injected owner write failure")
-        return original_write_text(path, *args, **kwargs)
-
-    monkeypatch.setattr(Path, "write_text", fail_owner)
-    monkeypatch.setattr(
-        producer.subprocess, "Popen", lambda *_a, **_k: pytest.fail("R invoked")
-    )
-    assert _execute(fixture) == 1
-    assert not fixture.paths["lock"].exists()
-    assert not _residue(fixture)
-
-
 @pytest.mark.parametrize("mode", ("r-failure", "missing-summary", "bad-pdf"))
-def test_r_or_temporary_output_failure_publishes_nothing(
+def test_worker_rejects_r_or_scientific_output_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     mode: str,
@@ -476,253 +381,9 @@ def test_r_or_temporary_output_failure_publishes_nothing(
     mutation = None
     status = 73 if mode == "r-failure" else 0
     if mode == "missing-summary":
-        mutation = lambda: next(
-            path
-            for path in fixture.paths["analysis"].iterdir()
-            if "summary.tmp" in path.name
-        ).unlink()
+        mutation = lambda: fixture.paths["summary"].unlink()
     elif mode == "bad-pdf":
-        mutation = lambda: next(
-            path
-            for path in fixture.paths["analysis"].iterdir()
-            if "mutation.tmp.pdf" in path.name
-        ).write_text("not a PDF\n")
+        mutation = lambda: fixture.paths["mutation_pdf"].write_text("not a PDF\n")
     _inject_process(monkeypatch, fixture, status=status, mutate=mutation)
 
     assert _execute(fixture) == 1
-    assert not any(path.exists() for path in _finals(fixture))
-    assert not _residue(fixture)
-
-
-@pytest.mark.parametrize(
-    "name", ("sample", "partition", "step08_sites", "step08_inputs")
-)
-def test_input_mutation_during_r_refuses_publication(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    name: str,
-) -> None:
-    fixture = _fixture(tmp_path)
-    path = fixture.paths[name]
-    _inject_process(
-        monkeypatch, fixture, mutate=lambda: path.write_bytes(path.read_bytes() + b"\n")
-    )
-
-    assert _execute(fixture) == 1
-    assert not any(path.exists() for path in _finals(fixture))
-    assert not _residue(fixture)
-
-
-def test_selected_r_program_is_not_a_transaction_input(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    fixture = _fixture(tmp_path)
-    r_script = fixture.paths["r_script"]
-    _inject_process(
-        monkeypatch,
-        fixture,
-        mutate=lambda: r_script.write_text(r_script.read_text() + "# changed\n"),
-    )
-
-    assert _execute(fixture) == 0
-    header = fixture.paths["summary"].read_text().splitlines()[0].split("\t")
-    assert not {"r_script_path", "r_script_sha256"} & set(header)
-
-
-def test_existing_sets_are_preserved_without_r(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    fixture = _fixture(tmp_path)
-    _inject_process(monkeypatch, fixture)
-    assert _execute(fixture) == 0
-    before = {path: path.read_bytes() for path in _finals(fixture)}
-    monkeypatch.setattr(
-        producer.subprocess, "Popen", lambda *_a, **_k: pytest.fail("R invoked")
-    )
-
-    for flag in ((), ("--no-clobber",)):
-        assert _execute(fixture, *flag) == 1
-        assert {path: path.read_bytes() for path in _finals(fixture)} == before
-    fixture.paths["summary"].unlink()
-    remaining = {path: path.read_bytes() for path in _finals(fixture) if path.exists()}
-    assert _execute(fixture) == 1
-    assert {path: path.read_bytes() for path in remaining} == remaining
-
-
-def test_foreign_lock_and_no_clobber_residue_are_preserved(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    fixture = _fixture(tmp_path)
-    lock = fixture.paths["lock"]
-    lock.mkdir(parents=True)
-    owner = lock / "owner"
-    owner.write_text("run_token\tforeign\npid\t99\n")
-    monkeypatch.setattr(
-        producer.subprocess, "Popen", lambda *_a, **_k: pytest.fail("R invoked")
-    )
-
-    assert _execute(fixture) == 1
-    assert owner.read_text() == "run_token\tforeign\npid\t99\n"
-    owner.unlink()
-    lock.rmdir()
-    residue = (
-        fixture.paths["analysis"]
-        / ".analysis_primary.step09_all_sites.tsv.abandoned.previous"
-    )
-    residue.write_text("operator evidence\n")
-    assert producer.main(fixture.arguments) == 1
-    assert residue.read_text() == "operator evidence\n"
-    assert not lock.exists()
-
-
-def test_term_reaches_process_group_and_cleans_owned_state(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    fixture = _fixture(tmp_path)
-    processes, _calls = _inject_process(monkeypatch, fixture, interrupt=True)
-    forwarded: list[tuple[int, signal.Signals]] = []
-
-    def killpg(pid: int, signum: signal.Signals) -> None:
-        forwarded.append((pid, signum))
-        processes[0].returncode = -int(signum)
-
-    monkeypatch.setattr(producer.os, "getpgid", lambda pid: pid)
-    monkeypatch.setattr(producer.os, "killpg", killpg)
-    assert _execute(fixture) == 143
-    assert forwarded == [(FakeProcess.pid, signal.SIGTERM)]
-    assert not any(path.exists() for path in _finals(fixture))
-    assert not _residue(fixture)
-
-
-def test_final_validation_failure_removes_owned_outputs(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    fixture = _fixture(tmp_path)
-    _inject_process(monkeypatch, fixture)
-    original_validate = producer.validate_outputs
-
-    def fail_final(context: producer.Context, prefix: str = "") -> None:
-        original_validate(context, prefix)
-        if not prefix:
-            raise producer.ProducerError("injected final validation failure")
-
-    monkeypatch.setattr(producer, "validate_outputs", fail_final)
-    assert _execute(fixture) == 1
-    assert not any(path.exists() for path in _finals(fixture))
-    assert not _residue(fixture)
-
-
-@pytest.mark.parametrize("index", range(6))
-@pytest.mark.parametrize("boundary", ("before", "after", "term-before", "term-after"))
-def test_no_clobber_link_failure_allows_clean_rerun(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, index: int, boundary: str
-) -> None:
-    fixture = _fixture(tmp_path)
-    _inject_process(monkeypatch, fixture)
-    finals = _finals(fixture)
-    roots = (fixture.paths["analysis"],)
-    arguments = [*fixture.arguments, "--no-clobber", "--execute"]
-    original_link = os.link
-
-    def interrupt_link(source: Path, destination: Path) -> None:
-        if Path(destination) != finals[index]:
-            original_link(source, destination)
-            return
-        if boundary.endswith("after"):
-            original_link(source, destination)
-        if boundary.startswith("term"):
-            os.kill(os.getpid(), signal.SIGTERM)
-        raise OSError("injected link-boundary failure")
-
-    with monkeypatch.context() as injected:
-        injected.setattr(producer.os, "link", interrupt_link)
-        assert producer.main(arguments) == (143 if boundary.startswith("term") else 1)
-    assert not any(os.path.lexists(path) for path in finals)
-    assert not any(list(root.rglob(".*")) for root in roots)
-    assert producer.main(arguments) == 0
-    assert all(path.is_file() for path in finals)
-    assert not any(list(root.rglob(".*")) for root in roots)
-
-
-@pytest.mark.parametrize(
-    "fault", ("foreign-file", "foreign-symlink", "missing-anchor", "unlink")
-)
-def test_no_clobber_ambiguous_rollback_preserves_state_and_refuses_rerun(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str
-) -> None:
-    fixture = _fixture(tmp_path)
-    _inject_process(monkeypatch, fixture)
-    finals = _finals(fixture)
-    roots = (fixture.paths["analysis"],)
-    arguments = [*fixture.arguments, "--no-clobber", "--execute"]
-    original_link, original_unlink = os.link, Path.unlink
-    anchors: dict[Path, Path] = {}
-    preserved: dict[Path, bytes] = {}
-    expected_final: list[bytes] = []
-    foreign = roots[0].parent / "foreign-target"
-
-    def interrupt_second_link(source: Path, destination: Path) -> None:
-        anchors[Path(destination)] = Path(source)
-        if Path(destination) != finals[1]:
-            original_link(source, destination)
-            return
-        if fault.startswith("foreign"):
-            foreign.write_bytes(b"foreign output\n")
-            original_unlink(finals[0])
-            if fault == "foreign-symlink":
-                finals[0].symlink_to(foreign)
-            else:
-                finals[0].write_bytes(foreign.read_bytes())
-        elif fault == "missing-anchor":
-            original_unlink(anchors[finals[0]])
-        expected_final.append(finals[0].read_bytes())
-        preserved.update(
-            (path, path.read_bytes())
-            for root in roots
-            for path in root.rglob(".*")
-            if path.is_file()
-        )
-        raise OSError("injected second-link failure")
-
-    def refuse_owned_unlink(path: Path, *, missing_ok: bool = False) -> None:
-        if fault == "unlink" and path == finals[0]:
-            raise OSError("injected owned-final unlink failure")
-        original_unlink(path, missing_ok=missing_ok)
-
-    with monkeypatch.context() as injected:
-        injected.setattr(producer.os, "link", interrupt_second_link)
-        injected.setattr(Path, "unlink", refuse_owned_unlink)
-        assert producer.main(arguments) == 1
-    assert finals[0].is_symlink() == (fault == "foreign-symlink")
-    assert finals[0].read_bytes() == expected_final[0]
-    if fault == "foreign-symlink":
-        assert finals[0].readlink() == foreign
-    assert not any(os.path.lexists(path) for path in finals[1:])
-    assert preserved and all(
-        path.read_bytes() == data for path, data in preserved.items()
-    )
-    owner = (fixture.paths["lock"]) / "owner"
-    owner_bytes, final_bytes = owner.read_bytes(), finals[0].read_bytes()
-    assert producer.main(arguments) == 1
-    assert owner.read_bytes() == owner_bytes and finals[0].read_bytes() == final_bytes
-    assert all(path.read_bytes() == data for path, data in preserved.items())
-
-
-def test_valid_looking_output_corruption_fails_hash_and_removes_owned_outputs(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    fixture = _fixture(tmp_path)
-    _inject_process(monkeypatch, fixture)
-    original_link = os.link
-
-    def corrupt_pdf(source: Path, destination: Path) -> None:
-        original_link(source, destination)
-        if Path(destination) == fixture.paths["mutation_pdf"]:
-            Path(destination).write_bytes(
-                Path(destination).read_bytes() + b"% valid-looking padding\n"
-            )
-
-    monkeypatch.setattr(os, "link", corrupt_pdf)
-    assert _execute(fixture) == 1
-    assert not any(path.exists() for path in _finals(fixture))
-    assert not _residue(fixture)

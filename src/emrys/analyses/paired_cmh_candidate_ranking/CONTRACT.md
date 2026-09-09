@@ -24,7 +24,7 @@ have exactly one sample for each identical replicate label and at least two
 paired strata; pairing is never inferred from filenames. An optional background
 condition must be distinct and present. Step `08` candidate order, sample
 columns, counts, manifest identities, and `legacy_provisional_v1` are
-independently reconciled and stability-checked.
+independently reconciled; the runner checks input stability.
 
 Defaults are:
 
@@ -51,7 +51,7 @@ filename's “calling” does not elevate the scientific evidence state.
 
 ## Inputs and six-output transaction
 
-Inputs are safe analysis/cohort IDs, manifests, Step `08` root, output root,
+Inputs are safe analysis/cohort IDs, manifests, Step `08` root, staged output paths,
 control/treatment and optional background conditions, target RNA alleles,
 coverage/FDR/effect/background thresholds, and explicit Rscript/R-program
 resolution. The six outputs under `<output-root>/<analysis-id>/` are:
@@ -73,18 +73,14 @@ hashes, analysis conditions, thresholds, method, provisional policy, and
 reconciled counts. Mutation-spectrum TSV/PDF and depth/delta PDF are derived
 diagnostics. Header-only candidate tables are valid when all counts reconcile.
 
-Private [`producer.py`](producer.py) is side-effect-free in dry-run. Execute
-mode hashes and repeatedly rechecks
-manifests plus both Step `08` inputs, uses an analysis-owned lock and
-run-token staging, validates all temporary outputs, publishes the summary last
-as the native commit marker, then revalidates contents and hashes. It follows
-the shared
-[create-only publication policy](../../../../docs/design/decisions/execution-evidence-and-reporting.md#standalone-scientific-output-policy).
-Old backup and staging files still block execution for operator inspection.
+Private [`producer.py`](producer.py) invokes R with six explicit staged paths
+and checks their scientific contents. The runner publishes the five result
+files before the summary, then invokes the independent validator. Execution,
+input stability, publication, and recovery belong to the [runner contract](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
-The summary becomes visible before final post-publication checks and does not
-hash its five sibling outputs, so presence alone is not independent proof that
-the producer returned success or that the current set is immutable.
+The summary does not hash its five sibling outputs; its presence alone is not
+proof of a verified task. The immutable task record supplies that wider
+execution evidence.
 
 ## Validation interface
 

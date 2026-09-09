@@ -370,7 +370,9 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         hostile_pythonpath=True,
     )
     require_success(producer_help)
-    assert "Produce one create-absent Step 06" in producer_help.stdout
+    assert "--input-bam" in producer_help.stdout
+    assert "--output-dir" in producer_help.stdout
+    assert "--execute" not in producer_help.stdout
     for command, usage in (
         (("init", "--help"), "usage: emrys init"),
         (("init", "manifests", "--help"), "usage: emrys init manifests"),

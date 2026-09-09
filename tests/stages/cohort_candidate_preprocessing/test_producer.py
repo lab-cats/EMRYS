@@ -1,11 +1,10 @@
-"""Focused transaction tests for the private Step 08 Python producer."""
+"""Scientific computation checks for the private Step 08 worker."""
 
 from __future__ import annotations
 
-import os
-import signal
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -93,10 +92,12 @@ def _fixture(tmp_path: Path) -> tuple[list[str], dict[str, Path]]:
         str(paths["step07"]),
         "--annotation-gtf",
         str(annotation),
-        "--output-root",
-        str(paths["output"]),
-        "--qc-root",
-        str(paths["qc"]),
+        "--sites-output",
+        str(paths["output"] / "cohort/cohort.step08_sites.tsv"),
+        "--inputs-output",
+        str(paths["output"] / "cohort/cohort.step08_inputs.tsv"),
+        "--summary-output",
+        str(paths["qc"] / "cohort.step08_summary.tsv"),
         "--rscript-bin",
         "/usr/bin/true",
         "--r-script",
@@ -206,55 +207,24 @@ def _outputs(command: list[str]) -> None:
     )
 
 
-class FakeProcess:
-    def __init__(
-        self,
-        command: list[str],
-        *,
-        status: int = 0,
-        interrupt: bool = False,
-        mutate: Callable[[], None] | None = None,
-    ) -> None:
-        self.status, self.terminated = status, False
-        if not status and not interrupt:
-            _outputs(command)
-            if mutate is not None:
-                mutate()
-        self.interrupt = interrupt
-
-    def wait(self) -> int:
-        if self.interrupt:
-            os.kill(os.getpid(), signal.SIGTERM)
-        return self.status
-
-    def poll(self) -> int | None:
-        return None if not self.terminated else -signal.SIGTERM
-
-    def send_signal(self, _signum: int) -> None:
-        self.terminated = True
-
-
 def _inject_process(
     monkeypatch: pytest.MonkeyPatch,
     *,
     status: int = 0,
-    interrupt: bool = False,
     mutate: Callable[[], None] | None = None,
-) -> list[FakeProcess]:
-    processes: list[FakeProcess] = []
+) -> list[list[str]]:
+    commands: list[list[str]] = []
 
-    def launch(command: list[str], **_kwargs: Any) -> FakeProcess:
-        process = FakeProcess(
-            command,
-            status=status,
-            interrupt=interrupt,
-            mutate=mutate,
-        )
-        processes.append(process)
-        return process
+    def run(command: list[str]) -> Any:
+        commands.append(command)
+        if not status:
+            _outputs(command)
+            if mutate is not None:
+                mutate()
+        return SimpleNamespace(returncode=status)
 
-    monkeypatch.setattr(producer.subprocess, "Popen", launch)
-    return processes
+    monkeypatch.setattr(producer.subprocess, "run", run)
+    return commands
 
 
 def _finals(paths: dict[str, Path]) -> tuple[Path, Path, Path]:
@@ -265,253 +235,41 @@ def _finals(paths: dict[str, Path]) -> tuple[Path, Path, Path]:
     )
 
 
-def test_dry_run_validates_without_writing_or_invoking_r(
+def test_worker_computes_all_scientific_outputs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     arguments, paths = _fixture(tmp_path)
-    monkeypatch.setattr(
-        producer.subprocess, "Popen", lambda *_a, **_k: pytest.fail("R invoked")
-    )
+    commands = _inject_process(monkeypatch)
     assert producer.main(arguments) == 0
-    assert not paths["output"].exists()
-    assert not paths["qc"].exists()
-
-
-def test_execute_and_no_clobber_preserve_receipt_last_transaction(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    arguments, paths = _fixture(tmp_path)
-    _inject_process(monkeypatch)
-    links: list[str] = []
-    original_link = os.link
-
-    def record_link(source: Path, destination: Path) -> None:
-        links.append(Path(destination).name)
-        original_link(source, destination)
-
-    monkeypatch.setattr(producer.os, "link", record_link)
-    assert producer.main([*arguments, "--no-clobber", "--execute"]) == 0
-    assert links == [
-        "cohort.step08_sites.tsv",
-        "cohort.step08_summary.tsv",
-        "cohort.step08_inputs.tsv",
-    ]
+    assert len(commands) == 1
+    values = dict(zip(commands[0][2::2], commands[0][3::2], strict=True))
+    assert tuple(
+        Path(values[key])
+        for key in ("--sites-output", "--summary-output", "--inputs-output")
+    ) == _finals(paths)
     assert all(path.is_file() for path in _finals(paths))
-    assert not list(paths["output"].rglob(".*.step08.*"))
-    assert not list(paths["qc"].glob(".*.step08.*"))
 
 
-def test_complete_set_is_unchanged_without_r(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("fault", ("r-failure", "bad-count"))
+def test_worker_rejects_r_failure_or_invalid_scientific_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    fault: str,
 ) -> None:
     arguments, paths = _fixture(tmp_path)
-    _inject_process(monkeypatch)
-    assert producer.main([*arguments, "--execute"]) == 0
-    before = [path.read_bytes() for path in _finals(paths)]
-    monkeypatch.setattr(
-        producer.subprocess, "Popen", lambda *_a, **_k: pytest.fail("R invoked")
-    )
-    for flag in ([], ["--no-clobber"]):
-        assert producer.main([*arguments, *flag, "--execute"]) == 1
-        assert [path.read_bytes() for path in _finals(paths)] == before
 
+    def corrupt_summary() -> None:
+        path = _finals(paths)[1]
+        header, rows = producer.report.read_tsv(path)
+        rows[0]["published_candidate_count"] = "99"
+        _write_tsv(path, tuple(header), rows)
 
-@pytest.mark.parametrize("index", range(3))
-@pytest.mark.parametrize("boundary", ("before", "after", "term-before", "term-after"))
-def test_no_clobber_link_failure_allows_clean_rerun(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, index: int, boundary: str
-) -> None:
-    arguments, paths = _fixture(tmp_path)
-    _inject_process(monkeypatch)
-    finals = _finals(paths)
-    roots = (paths["output"], paths["qc"])
-    arguments = [*arguments, "--no-clobber", "--execute"]
-    original_link = os.link
-
-    def interrupt_link(source: Path, destination: Path) -> None:
-        if Path(destination) != finals[index]:
-            original_link(source, destination)
-            return
-        if boundary.endswith("after"):
-            original_link(source, destination)
-        if boundary.startswith("term"):
-            os.kill(os.getpid(), signal.SIGTERM)
-        raise OSError("injected link-boundary failure")
-
-    with monkeypatch.context() as injected:
-        injected.setattr(producer.os, "link", interrupt_link)
-        assert producer.main(arguments) == (143 if boundary.startswith("term") else 1)
-    assert not any(os.path.lexists(path) for path in finals)
-    assert not any(list(root.rglob(".*")) for root in roots)
-    assert producer.main(arguments) == 0
-    assert all(path.is_file() for path in finals)
-    assert not any(list(root.rglob(".*")) for root in roots)
-
-
-@pytest.mark.parametrize(
-    "fault", ("foreign-file", "foreign-symlink", "missing-anchor", "unlink")
-)
-def test_no_clobber_ambiguous_rollback_preserves_state_and_refuses_rerun(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str
-) -> None:
-    arguments, paths = _fixture(tmp_path)
-    _inject_process(monkeypatch)
-    finals = _finals(paths)
-    roots = (paths["output"], paths["qc"])
-    arguments = [*arguments, "--no-clobber", "--execute"]
-    original_link, original_unlink = os.link, Path.unlink
-    anchors: dict[Path, Path] = {}
-    preserved: dict[Path, bytes] = {}
-    expected_final: list[bytes] = []
-    foreign = roots[0].parent / "foreign-target"
-
-    def interrupt_second_link(source: Path, destination: Path) -> None:
-        anchors[Path(destination)] = Path(source)
-        if Path(destination) != finals[1]:
-            original_link(source, destination)
-            return
-        if fault.startswith("foreign"):
-            foreign.write_bytes(b"foreign output\n")
-            original_unlink(finals[0])
-            if fault == "foreign-symlink":
-                finals[0].symlink_to(foreign)
-            else:
-                finals[0].write_bytes(foreign.read_bytes())
-        elif fault == "missing-anchor":
-            original_unlink(anchors[finals[0]])
-        expected_final.append(finals[0].read_bytes())
-        preserved.update(
-            (path, path.read_bytes())
-            for root in roots
-            for path in root.rglob(".*")
-            if path.is_file()
-        )
-        raise OSError("injected second-link failure")
-
-    def refuse_owned_unlink(path: Path, *, missing_ok: bool = False) -> None:
-        if fault == "unlink" and path == finals[0]:
-            raise OSError("injected owned-final unlink failure")
-        original_unlink(path, missing_ok=missing_ok)
-
-    with monkeypatch.context() as injected:
-        injected.setattr(producer.os, "link", interrupt_second_link)
-        injected.setattr(Path, "unlink", refuse_owned_unlink)
-        assert producer.main(arguments) == 1
-    assert finals[0].is_symlink() == (fault == "foreign-symlink")
-    assert finals[0].read_bytes() == expected_final[0]
-    if fault == "foreign-symlink":
-        assert finals[0].readlink() == foreign
-    assert not any(os.path.lexists(path) for path in finals[1:])
-    assert preserved and all(
-        path.read_bytes() == data for path, data in preserved.items()
-    )
-    owner = (paths["output"] / "cohort/.cohort.step08.lock") / "owner"
-    owner_bytes, final_bytes = owner.read_bytes(), finals[0].read_bytes()
-    assert producer.main(arguments) == 1
-    assert owner.read_bytes() == owner_bytes and finals[0].read_bytes() == final_bytes
-    assert all(path.read_bytes() == data for path, data in preserved.items())
-
-
-def test_input_mutation_during_r_refuses_publication(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    arguments, paths = _fixture(tmp_path)
     _inject_process(
         monkeypatch,
-        mutate=lambda: paths["annotation"].write_text("mutated annotation\n"),
+        status=73 if fault == "r-failure" else 0,
+        mutate=corrupt_summary if fault == "bad-count" else None,
     )
-
-    assert producer.main([*arguments, "--execute"]) == 1
-    assert not any(path.exists() for path in _finals(paths))
-    assert not list(paths["output"].rglob(".*.step08.*"))
-
-
-def test_postpublication_validation_failure_removes_owned_outputs(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    arguments, paths = _fixture(tmp_path)
-    _inject_process(monkeypatch)
-    original_validate = producer.validate_outputs
-
-    def fail_final(context: producer.Context, prefix: str = "") -> None:
-        original_validate(context, prefix)
-        if not prefix:
-            raise producer.ProducerError("injected postpublication failure")
-
-    monkeypatch.setattr(producer, "validate_outputs", fail_final)
-    assert producer.main([*arguments, "--execute"]) == 1
-    assert not any(path.exists() for path in _finals(paths))
-    assert not list(paths["output"].rglob(".*.step08.*"))
-    assert not list(paths["qc"].glob(".*.step08.*"))
-
-
-def test_ambiguous_lock_and_incomplete_set_are_preserved(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    arguments, paths = _fixture(tmp_path)
-    cohort = paths["output"] / "cohort"
-    lock = cohort / ".cohort.step08.lock"
-    lock.mkdir(parents=True)
-    (lock / "owner").write_text("run_token\tforeign\npid\t99\n")
-    monkeypatch.setattr(
-        producer.subprocess, "Popen", lambda *_a, **_k: pytest.fail("R invoked")
-    )
-    assert producer.main([*arguments, "--execute"]) == 1
-    assert (lock / "owner").read_text().startswith("run_token\tforeign")
-    (lock / "owner").unlink()
-    lock.rmdir()
-    _finals(paths)[0].write_text("foreign\n")
-    assert producer.main([*arguments, "--execute"]) == 1
-    assert _finals(paths)[0].read_text() == "foreign\n"
-
-
-def test_term_cleans_owned_state_and_returns_143(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    arguments, paths = _fixture(tmp_path)
-    processes = _inject_process(monkeypatch, interrupt=True)
-    assert producer.main([*arguments, "--execute"]) == 143
-    assert processes[0].terminated
-    assert not list(paths["output"].rglob(".*.step08.*"))
-
-
-def test_term_during_child_spawn_is_deferred_and_forwarded(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    arguments, paths = _fixture(tmp_path)
-    child: FakeProcess | None = None
-
-    def launch(command: list[str], **_kwargs: Any) -> FakeProcess:
-        nonlocal child
-        child = FakeProcess(command)
-        os.kill(os.getpid(), signal.SIGTERM)
-        return child
-
-    monkeypatch.setattr(producer.subprocess, "Popen", launch)
-
-    assert producer.main([*arguments, "--execute"]) == 143
-    assert child is not None and child.terminated
-    assert not list(paths["output"].rglob(".*.step08.*"))
-
-
-def test_old_backup_after_lock_acquisition_is_preserved(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    arguments, paths = _fixture(tmp_path)
-    residue = paths["qc"] / ".cohort.step08.abandoned.previous.summary.tsv"
-    original_acquire = producer.Publication.acquire
-
-    def acquire(tx: producer.Publication) -> None:
-        original_acquire(tx)
-        residue.write_text("operator evidence\n")
-
-    monkeypatch.setattr(producer.Publication, "acquire", acquire)
-    monkeypatch.setattr(
-        producer.subprocess, "Popen", lambda *_a, **_k: pytest.fail("R invoked")
-    )
-    assert producer.main([*arguments, "--execute"]) == 1
-    assert residue.read_text() == "operator evidence\n"
-    assert not (paths["output"] / "cohort/.cohort.step08.lock").exists()
+    assert producer.main(arguments) == 1
 
 
 def test_step07_receipt_rejects_blank_physical_row(
@@ -522,7 +280,7 @@ def test_step07_receipt_rejects_blank_physical_row(
     lines = receipt.read_text().splitlines(keepends=True)
     receipt.write_text("".join((lines[0], "\n", *lines[1:])))
     monkeypatch.setattr(
-        producer.subprocess, "Popen", lambda *_a, **_k: pytest.fail("R invoked")
+        producer.subprocess, "run", lambda *_a, **_k: pytest.fail("R invoked")
     )
 
     assert producer.main(arguments) == 1
@@ -545,7 +303,7 @@ def test_annotation_path_spelling_is_preserved_in_outputs(
     relative_arguments = [replacements.get(value, value) for value in arguments]
     _inject_process(monkeypatch)
 
-    assert producer.main([*relative_arguments, "--execute"]) == 0
+    assert producer.main(relative_arguments) == 0
     _, inputs = producer.report.read_tsv(_finals(paths)[2])
     _, summary = producer.report.read_tsv(_finals(paths)[1])
     assert {row["annotation_gtf"] for row in inputs} == {"./annotation.gtf"}

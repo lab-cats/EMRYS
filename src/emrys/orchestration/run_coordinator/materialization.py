@@ -367,6 +367,7 @@ def _task_commands(
     scope_id: str,
     paths: Mapping[str, list[Path]],
     validation: Path,
+    working_paths: Mapping[Path, Path],
     source: Mapping[str, Any],
     analysis_revision: AnalysisRevision | None,
     run_root: Path,
@@ -428,7 +429,7 @@ def _task_commands(
             *command_flags(
                 ("reference-fasta", fasta),
                 ("reference-gtf", gtf),
-                ("index-dir", index_dir),
+                ("index-dir", working_paths[index_members[0]].parent),
                 ("threads", declared_threads()),
                 ("sjdb-overhang", reference["star_index"]["sjdb_overhang"]),
                 (
@@ -437,7 +438,6 @@ def _task_commands(
                 ),
                 ("star-bin", star),
             ),
-            "--execute",
         )
         validator = _validator(
             "star-index",
@@ -465,14 +465,11 @@ def _task_commands(
         producer = controlled_python_argv(
             sys.executable,
             "-m",
-            "emrys",
-            "convert",
-            "gtf-to-bed12",
+            "emrys.stages.gtf_to_bed12.converter",
             *command_flags(
                 ("gtf", gtf),
-                ("bed", bed),
+                ("bed", working_paths[bed]),
             ),
-            "--execute",
         )
         validator = _validator(
             "bed12",
@@ -493,11 +490,12 @@ def _task_commands(
             str(source_root / producer_path),
             *command_flags(
                 ("reference-fasta", fasta),
+                ("reference-fai-output", working_paths[fai]),
+                ("reference-dict-output", working_paths[dictionary]),
                 ("samtools-bin", samtools),
                 ("gatk-bin", gatk),
                 ("java-bin", java),
             ),
-            "--execute",
         )
         validator = _validator(
             "fasta-sidecars",
@@ -531,13 +529,11 @@ def _task_commands(
                 *command_flags(
                     ("sample-id", scope_id),
                     ("input-bam", split_bam),
-                    ("output-dir", fwd.parent),
-                    ("qc-dir", counts.parent),
+                    ("output-dir", working_paths[fwd].parent),
+                    ("qc-dir", working_paths[counts].parent),
                     ("threads", declared_threads()),
                     ("samtools-bin", samtools),
                 ),
-                "--no-clobber",
-                "--execute",
             )
             validator = _validator(
                 "mechanical-orientation",
@@ -566,7 +562,7 @@ def _task_commands(
                     ("r1-fastq", sample["r1_fastq"]["path"]),
                     ("r2-fastq", sample["r2_fastq"]["path"]),
                     ("star-index", index_dir),
-                    ("output-dir", bam.parent),
+                    ("output-dir", working_paths[bam].parent),
                     ("threads", declared_threads()),
                     ("star-bin", star),
                     ("gunzip-bin", gunzip),
@@ -593,7 +589,7 @@ def _task_commands(
             producer_arguments = (
                 *command_flags(
                     ("input-alignment", star_bam),
-                    ("output-dir", bam.parent),
+                    ("output-dir", working_paths[bam].parent),
                     ("threads", declared_threads()),
                     ("samtools-bin", samtools),
                 ),
@@ -613,7 +609,7 @@ def _task_commands(
             producer_arguments = (
                 *command_flags(
                     ("bam", canonical_bam),
-                    ("output-dir", quickcheck.parent),
+                    ("output-dir", working_paths[quickcheck].parent),
                     ("samtools-bin", samtools),
                 ),
             )
@@ -632,7 +628,7 @@ def _task_commands(
                 *command_flags(
                     ("input-bam", canonical_bam),
                     ("bed12", bed),
-                    ("output-dir", infer.parent),
+                    ("output-dir", working_paths[infer].parent),
                     ("infer-experiment-bin", infer_experiment),
                 ),
             )
@@ -646,8 +642,8 @@ def _task_commands(
             producer_arguments = (
                 *command_flags(
                     ("input-bam", canonical_bam),
-                    ("output-dir", bam.parent),
-                    ("metrics-dir", metrics.parent),
+                    ("output-dir", working_paths[bam].parent),
+                    ("metrics-dir", working_paths[metrics].parent),
                     ("picard-jar", picard_jar),
                     ("java-bin", java),
                     ("samtools-bin", samtools),
@@ -676,7 +672,7 @@ def _task_commands(
                 *command_flags(
                     ("input-bam", markdup_bam),
                     ("reference-fasta", fasta),
-                    ("output-dir", bam.parent),
+                    ("output-dir", working_paths[bam].parent),
                     ("gatk-bin", gatk),
                     ("samtools-bin", samtools),
                     ("java-bin", java),
@@ -700,8 +696,6 @@ def _task_commands(
             "--sample-id",
             scope_id,
             *producer_arguments,
-            "--no-clobber",
-            "--execute",
         )
         validator = _validator(
             validator_name,
@@ -742,7 +736,6 @@ def _task_commands(
                 )
             )
         orientation_root = orientation_inputs[0].parents[1]
-        mpileup_root = fwd.parents[2]
         fai = _one(all_paths["00c", reference_id], "step00c_reference_fai_v1")
         producer = controlled_python_argv(
             sys.executable,
@@ -755,11 +748,13 @@ def _task_commands(
                 ("partition-id", partition_id),
                 ("orientation-root", orientation_root),
                 ("reference-fasta", fasta),
-                ("output-root", mpileup_root),
+                ("fwd-vcf-output", working_paths[fwd]),
+                ("rev-vcf-output", working_paths[rev]),
+                ("receipt-output", working_paths[receipt]),
+                ("fwd-vcf-final", fwd),
+                ("rev-vcf-final", rev),
                 ("bcftools-bin", bcftools),
             ),
-            "--no-clobber",
-            "--execute",
         )
         validator = _validator(
             "partitioned-cohort-mpileup",
@@ -809,8 +804,9 @@ def _task_commands(
                 ("partition-manifest", partition_manifest),
                 ("step07-root", step07_root),
                 ("annotation-gtf", gtf),
-                ("output-root", sites.parents[1]),
-                ("qc-root", summary.parent),
+                ("sites-output", working_paths[sites]),
+                ("inputs-output", working_paths[inputs]),
+                ("summary-output", working_paths[summary]),
                 ("threads", declared_threads()),
                 ("rscript-bin", rscript),
                 (
@@ -819,8 +815,6 @@ def _task_commands(
                     / "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R",
                 ),
             ),
-            "--no-clobber",
-            "--execute",
         )
         producer = _r_owner_command(
             bash,
@@ -853,6 +847,76 @@ def _task_commands(
         )
 
     raise MaterializationError(f"Unsupported core processing Step: {step_id}")
+
+
+def _publication_plan(
+    step_id: str,
+    scope_id: str,
+    outputs: Sequence[Path],
+    source: Mapping[str, Any],
+    all_paths: Mapping[tuple[str, str], Mapping[str, list[Path]]],
+    reference_id: str,
+) -> dict[str, Any]:
+    """Bind native publication and retained recovery locations to this plan."""
+    parents = tuple(dict.fromkeys(path.parent for path in outputs))
+    directory = outputs[0].parent if step_id == "00a" else None
+    input_directories = (
+        [all_paths["00a", reference_id]["step00a_star_index_v1"][0].parent]
+        if step_id == "01"
+        else []
+    )
+    if step_id == "00a":
+        assert directory is not None
+        lock = directory.parent / f".{directory.name}.step00a.lock"
+        forbidden = [directory.parent / f".{directory.name}.step00a.*"]
+    elif step_id == "00b":
+        bed = outputs[0]
+        lock = bed.parent / f".{bed.name}.step00b.lock"
+        forbidden = [bed.parent / f".{bed.name}.step00b.*"]
+    elif step_id == "00c":
+        fasta = Path(str(source["reference"]["fasta"]["path"]))
+        dictionary = next(path for path in outputs if path.suffix == ".dict")
+        lock = fasta.parent / ".step_00c_prepare_gatk_reference.lock"
+        forbidden = [
+            lock,
+            *(
+                fasta.parent / pattern
+                for pattern in (
+                    f"{fasta.name}.fai.tmp.*",
+                    f"{dictionary.name}.tmp.*",
+                    f"{fasta.name}.tmp.*.faidx_input",
+                    f"{fasta.name}.tmp.*.faidx_input.fai",
+                )
+            ),
+        ]
+    else:
+        stem = scope_id
+        if step_id == "07":
+            receipt = next(
+                path for path in outputs if path.name.endswith(".step07_outputs.tsv")
+            )
+            stem = receipt.name.removesuffix(".step07_outputs.tsv")
+        elif step_id == "08":
+            stem = next(
+                path for path in outputs if path.name.endswith(".step08_sites.tsv")
+            ).name.removesuffix(".step08_sites.tsv")
+        label = "scientific-context" if step_id == "10" else f"step{step_id}"
+        lock_parent = next(
+            (path.parent for path in outputs if path.suffix == ".bam"), parents[0]
+        )
+        lock = lock_parent / f".{stem}.{label}.lock"
+        pattern = f".{stem}.*" if step_id == "09" else f".{stem}.{label}.*"
+        forbidden = [parent / pattern for parent in parents]
+        if step_id == "05":
+            forbidden.append(lock_parent / ".step_05_split_n_cigar_reads.lock")
+        if step_id == "10":
+            forbidden.extend(parent / f".{stem}.*.previous" for parent in parents)
+    return {
+        "locks": [str(lock)],
+        "forbidden_paths": [str(path) for path in forbidden],
+        "output_directory": None if directory is None else str(directory),
+        "input_directories": [str(path) for path in input_directories],
+    }
 
 
 def _dispatches(
@@ -997,6 +1061,32 @@ def _dispatches(
             if adapter != validation_adapter and adapter != "step00c_reference_fasta_v1"
             for path in values
         )
+        if step_id == "08":
+            outputs = tuple(
+                _one(adapters, adapter)
+                for adapter in (
+                    "step08_sites_v1",
+                    "step08_summary_v1",
+                    "step08_inputs_v1",
+                )
+            )
+        elif step_id == "07":
+            outputs = tuple(sorted(adapters["step07_mpileup_vcf_v1"])) + (
+                _one(adapters, "step07_mpileup_receipt_v1"),
+            )
+        suffix = hashlib.sha256(
+            f"{attempt_id}:{task.machine_key}:{task.scope_id}".encode()
+        ).hexdigest()[:32]
+        owner_run_token = f"owner-{suffix}"
+        working_paths = {
+            path: (
+                path.parent.parent / f".{path.parent.name}.{owner_run_token}.work"
+                if step_id == "00a"
+                else path.parent / f".emrys-{owner_run_token}.work"
+            )
+            / path.name
+            for path in outputs
+        }
         if module_task is None:
             producer, validator, input_paths = _task_commands(
                 step_id=step_id,
@@ -1004,6 +1094,7 @@ def _dispatches(
                 scope_id=task.scope_id,
                 paths=adapters,
                 validation=validation,
+                working_paths=working_paths,
                 source=source,
                 analysis_revision=analysis_revision,
                 run_root=run_root,
@@ -1058,7 +1149,7 @@ def _dispatches(
                 orchestration_contracts.canonical_json_bytes(configuration),
                 "analysis-module planning configuration",
             )
-            context = analysis_modules.TaskPlanningContextV1(
+            context = analysis_modules.TaskPlanningContextV2(
                 reference_id=reference_id,
                 cohort_id=cohort_id,
                 analysis_id=analysis_id,
@@ -1070,6 +1161,13 @@ def _dispatches(
                 configuration=_frozen_json(planning_configuration),
                 inputs=MappingProxyType(declared_inputs),
                 outputs=MappingProxyType(declared_outputs),
+                working_outputs=MappingProxyType(
+                    {
+                        adapter: working_paths[path]
+                        for adapter, path in declared_outputs.items()
+                        if adapter != validation_adapter
+                    }
+                ),
                 runtime_paths=MappingProxyType(
                     {
                         check_id: _runtime_path(runtime, check_id)
@@ -1094,7 +1192,7 @@ def _dispatches(
                 raise MaterializationError(
                     f"Analysis module task planning failed for {task.machine_key}: {exc}"
                 ) from exc
-            if not isinstance(commands, analysis_modules.TaskCommandPlanV1):
+            if not isinstance(commands, analysis_modules.TaskCommandPlanV2):
                 raise MaterializationError(
                     f"Analysis module returned no task plan for {task.machine_key}"
                 )
@@ -1160,19 +1258,11 @@ def _dispatches(
                 for output in module_task.outputs
                 if output.adapter != validation_adapter
             )
-        suffix = hashlib.sha256(
-            f"{attempt_id}:{task.machine_key}:{task.scope_id}".encode()
-        ).hexdigest()[:32]
-        owner_run_token = f"owner-{suffix}"
-        if step_id == "00b":
-            producer = (*producer, "--run-token", owner_run_token)
         producer = (
             _runtime_path(runtime, "bash"),
             "-c",
-            'export EMRYS_RUN_TOKEN="$1" EMRYS_SHA256_PYTHON="$2" '
-            'EMRYS_REQUIRE_BOUND_SHA256=1; shift 2; exec "$@"',
-            "emrys-owner",
-            owner_run_token,
+            'export EMRYS_SHA256_PYTHON="$1" EMRYS_REQUIRE_BOUND_SHA256=1; shift; exec "$@"',
+            "emrys-scientific-worker",
             _runtime_path(runtime, "sha256_python"),
             *producer,
         )
@@ -1217,7 +1307,7 @@ def _dispatches(
                 )
             input_declarations.append(declaration)
         record = {
-            "schema_version": "emrys.local-task-dispatch.v1",
+            "schema_version": "emrys.local-task-dispatch.v2",
             "run_root": str(run_root),
             "execution_path": str(_execution_path(run, run_root)),
             "profile_path": str(run_root / "contract/profile.json"),
@@ -1230,8 +1320,16 @@ def _dispatches(
             "validator_argv": list(validator),
             "inputs": input_declarations,
             "outputs": [
-                {"role": role, "path": str(path)} for role, path in planned_outputs
+                {
+                    "role": role,
+                    "path": str(path),
+                    "working_path": str(working_paths[path]),
+                }
+                for role, path in planned_outputs
             ],
+            "publication": _publication_plan(
+                step_id, task.scope_id, outputs, source, paths_by_scope, reference_id
+            ),
             "validation_report_path": str(validation),
             "native_receipt_path": None,
             "task_start_path": str(

@@ -1,10 +1,9 @@
 # RSeQC orientation tests
 
-Shell cases check the Step 03 producer; Python cases check its reports through
-`python -I -m emrys validate rseqc-orientation`. The private `validator.py` is
-not a separate command. The [owner contract](../../../src/emrys/evidence/rseqc_orientation/CONTRACT.md)
-defines publication and the meaning of its mechanical-orientation evidence.
+Native RSeQC arguments, empty or failed output, and grouped fraction validation are covered. Fixture fractions do not establish transcript strand, sense/antisense assignment, or an approved manifest policy.
 
-Fixture fractions do not establish transcript strand, sense/antisense assignment,
-or an approved manifest policy. Mocked tools also have the
-[shared evidence limits](../../README.md#evidence-limits).
+Shell cases invoke the internal worker with runner-style scratch and staging.
+The [common runner suite](../../orchestration/run_coordinator/test_task.py) owns
+publication, input stability, interruption, and recovery checks. Python
+validator cases retain the public grouped command. The
+[shared evidence limits](../../README.md#evidence-limits) apply.

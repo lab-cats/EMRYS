@@ -549,3 +549,22 @@ def convert_from_args(
 
     print(f"Wrote {len(records)} transcript BED12 record(s) to {arguments.bed}")
     return 0
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Internal Run worker: normalize GTF to BED12."
+    )
+    parser.add_argument("--gtf", type=Path, required=True)
+    parser.add_argument("--bed", type=Path, required=True)
+    arguments = parser.parse_args()
+    try:
+        records = normalize_gtf(
+            arguments.gtf, "exon", "transcript_id", "gene_id", _stderr_warning
+        )
+        if not records:
+            raise ValueError("No valid transcripts were produced")
+        with arguments.bed.open("xb") as output:
+            output.write(render_bed(records))
+    except (OSError, ValueError) as exc:
+        parser.exit(1, f"ERROR: {exc}\n")

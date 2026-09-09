@@ -8,15 +8,18 @@ from __future__ import annotations
 
 import argparse
 import errno
+import glob
 import hashlib
 import os
 import re
 import selectors
+import shutil
+import signal
 import stat
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from functools import partial
 from operator import attrgetter
@@ -50,7 +53,8 @@ from emrys.orchestration.run_coordinator._inspection_admission import (
     expected_tasks,
 )
 
-DISPATCH_SCHEMA_VERSION = "emrys.local-task-dispatch.v1"
+DISPATCH_SCHEMA_VERSION = "emrys.local-task-dispatch.v2"
+_HISTORICAL_DISPATCH_SCHEMA_VERSION = "emrys.local-task-dispatch.v1"
 _DISPATCH_FIELDS = frozenset(
     {
         "schema_version",
@@ -77,15 +81,21 @@ _DISPATCH_FIELDS = frozenset(
 )
 _DECLARATION_FIELDS = frozenset({"role", "path"})
 _BOUND_DECLARATION_FIELDS = frozenset({"role", "path", "size_bytes", "sha256"})
+_WORKING_DECLARATION_FIELDS = _DECLARATION_FIELDS | {"working_path"}
+_PUBLICATION_FIELDS = frozenset(
+    {"locks", "forbidden_paths", "output_directory", "input_directories"}
+)
 _SCOPE_FIELDS = frozenset({"scope_type", "scope_id"})
 _SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _STREAM_CHUNK_BYTES = 1024 * 1024
-_STEP07_INPUT_IDENTITY_ENV = "EMRYS_STEP07_INPUT_IDENTITY_SHA256"
-_STEP07_MACHINE_KEY = "emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1"
 
 
 class TaskBoundaryError(RuntimeError):
     """Raised when a task cannot prove one verified owner result."""
+
+
+class TaskProcessGroupAmbiguity(TaskBoundaryError):
+    """Worker descendants may still be writing their owned workspace."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,6 +105,7 @@ class FileDeclaration:
     role: str
     path: Path
     expected_binding: tuple[int, str] | None = None
+    working_path: Path | None = None
 
 
 _FileIdentity = tuple[int, int, int, int, int]
@@ -115,6 +126,16 @@ class TaskBackend:
 
     producer_argv: tuple[str, ...]
     validator_argv: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class PublicationPlan:
+    """The exact native output locations and existing owner boundaries."""
+
+    locks: tuple[Path, ...]
+    forbidden_paths: tuple[Path, ...]
+    output_directory: Path | None
+    input_directories: tuple[Path, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,6 +162,7 @@ class TaskDispatch:
     verified_task_path: Path
     stdout_path: Path
     stderr_path: Path
+    publication: PublicationPlan | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -246,6 +268,7 @@ def _declarations(
     label: str,
     *,
     allow_binding: bool = False,
+    working: bool = False,
 ) -> tuple[FileDeclaration, ...]:
     if not isinstance(value, list) or not value:
         raise TaskBoundaryError(f"{label} must be a nonempty declaration array")
@@ -255,7 +278,13 @@ def _declarations(
     for index, raw in enumerate(value):
         observed = frozenset(raw) if isinstance(raw, Mapping) else frozenset()
         bound = allow_binding and observed == _BOUND_DECLARATION_FIELDS
-        fields = _BOUND_DECLARATION_FIELDS if bound else _DECLARATION_FIELDS
+        fields = (
+            _WORKING_DECLARATION_FIELDS
+            if working
+            else _BOUND_DECLARATION_FIELDS
+            if bound
+            else _DECLARATION_FIELDS
+        )
         item = _closed_object(
             raw,
             fields=fields,
@@ -289,6 +318,13 @@ def _declarations(
                 role=role,
                 path=path,
                 expected_binding=(expected_size, expected_sha256) if bound else None,
+                working_path=(
+                    _absolute_path(
+                        item["working_path"], f"{label}[{index}].working_path"
+                    )
+                    if working
+                    else None
+                ),
             )
         )
     return tuple(declarations)
@@ -343,8 +379,16 @@ def load_dispatch(path: Path, *, expected_sha256: str) -> TaskDispatch:
         raise TaskBoundaryError(
             f"task dispatch must use canonical JSON bytes: {dispatch_path}"
         )
-    record = _closed_object(raw, fields=_DISPATCH_FIELDS, label="task dispatch")
-    if record["schema_version"] != DISPATCH_SCHEMA_VERSION:
+    current = raw.get("schema_version") == DISPATCH_SCHEMA_VERSION
+    record = _closed_object(
+        raw,
+        fields=_DISPATCH_FIELDS | {"publication"} if current else _DISPATCH_FIELDS,
+        label="task dispatch",
+    )
+    if record["schema_version"] not in {
+        DISPATCH_SCHEMA_VERSION,
+        _HISTORICAL_DISPATCH_SCHEMA_VERSION,
+    }:
         raise TaskBoundaryError(
             f"task dispatch schema_version must be {DISPATCH_SCHEMA_VERSION}"
         )
@@ -367,6 +411,32 @@ def load_dispatch(path: Path, *, expected_sha256: str) -> TaskDispatch:
         if native_value is None
         else _absolute_path(native_value, "native_receipt_path")
     )
+    publication = None
+    if current:
+        declared = _closed_object(
+            record["publication"], fields=_PUBLICATION_FIELDS, label="publication"
+        )
+        sequences = {}
+        for name in ("locks", "forbidden_paths", "input_directories"):
+            values = declared[name]
+            if not isinstance(values, list):
+                raise TaskBoundaryError(f"publication.{name} must be an array")
+            paths = tuple(
+                _absolute_path(value, f"publication.{name}") for value in values
+            )
+            if len(set(paths)) != len(paths):
+                raise TaskBoundaryError(f"publication.{name} repeats a path")
+            sequences[name] = paths
+        publication = PublicationPlan(
+            **sequences,
+            output_directory=(
+                None
+                if declared["output_directory"] is None
+                else _absolute_path(
+                    declared["output_directory"], "publication.output_directory"
+                )
+            ),
+        )
     result = TaskDispatch(
         path=dispatch_path,
         dispatch_sha256=expected_sha256,
@@ -385,7 +455,7 @@ def load_dispatch(path: Path, *, expected_sha256: str) -> TaskDispatch:
             validator_argv=_command(record["validator_argv"], "validator_argv"),
         ),
         inputs=_declarations(record["inputs"], "inputs", allow_binding=True),
-        outputs=_declarations(record["outputs"], "outputs"),
+        outputs=_declarations(record["outputs"], "outputs", working=current),
         validation_report_path=_absolute_path(
             record["validation_report_path"], "validation_report_path"
         ),
@@ -399,6 +469,7 @@ def load_dispatch(path: Path, *, expected_sha256: str) -> TaskDispatch:
         ),
         stdout_path=_absolute_path(record["stdout_path"], "stdout_path"),
         stderr_path=_absolute_path(record["stderr_path"], "stderr_path"),
+        publication=publication,
     )
 
     mutable_paths = {
@@ -412,8 +483,15 @@ def load_dispatch(path: Path, *, expected_sha256: str) -> TaskDispatch:
     }
     if result.native_receipt_path is not None:
         mutable_paths.add(result.native_receipt_path)
+    declared_native = current and result.native_receipt_path is not None
+    if declared_native and result.native_receipt_path not in {
+        item.path for item in result.outputs
+    }:
+        raise TaskBoundaryError("Current native receipt must be a declared output")
     expected_mutable_count = (
-        len(result.outputs) + 6 + (result.native_receipt_path is not None)
+        len(result.outputs)
+        + 6
+        + (result.native_receipt_path is not None and not declared_native)
     )
     if len(mutable_paths) != expected_mutable_count:
         raise TaskBoundaryError("task dispatch aliases mutable destination paths")
@@ -427,6 +505,45 @@ def load_dispatch(path: Path, *, expected_sha256: str) -> TaskDispatch:
         raise TaskBoundaryError(
             "task dispatch aliases an input and mutable destination"
         )
+    if publication is not None:
+        working_paths = {item.working_path for item in result.outputs}
+        if len(working_paths) != len(result.outputs) or working_paths & (
+            mutable_paths | admitted_inputs
+        ):
+            raise TaskBoundaryError("Task working paths repeat or alias a bound path")
+        directory = publication.output_directory
+        if directory is not None and (
+            {item.path.parent for item in result.outputs} != {directory}
+            or len({item.working_path.parent for item in result.outputs}) != 1
+        ):
+            raise TaskBoundaryError(
+                "Directory publication must contain every declared output"
+            )
+        for output in result.outputs:
+            assert output.working_path is not None
+            parent = directory.parent if directory is not None else output.path.parent
+            if (
+                output.working_path.parent.parent != parent
+                or output.working_path.name != output.path.name
+            ):
+                raise TaskBoundaryError(
+                    "Working outputs must retain final basenames in an adjacent staging directory"
+                )
+        working_parents = {path.parent for path in working_paths}
+        if (
+            working_parents & (mutable_paths | admitted_inputs)
+            or directory in working_parents
+        ):
+            raise TaskBoundaryError("Staging directory aliases a bound path")
+        for lock in publication.locks:
+            if (
+                lock
+                in mutable_paths | admitted_inputs | working_paths | working_parents
+            ):
+                raise TaskBoundaryError("Publication lock aliases a bound path")
+        for pattern in publication.forbidden_paths:
+            if glob.has_magic(str(pattern.parent)):
+                raise TaskBoundaryError("Recovery patterns may match only a basename")
     in_run_paths = mutable_paths - {item.path for item in result.outputs}
     for mutable in in_run_paths:
         _safe_in_run_destination(mutable, result.run_root, "mutable task path")
@@ -772,6 +889,12 @@ def _default_run_command(
     stdout_descriptor: int = -1,
     stderr_descriptor: int = -1,
 ) -> CommandResult:
+    from emrys.orchestration.run_coordinator.lifecycle import (
+        DEFAULT_PROCESS_GROUP_OPS,
+        ProcessGroupAmbiguity,
+        quiesce_process_group,
+    )
+
     if stdout_descriptor < 0 or stderr_descriptor < 0:
         raise TaskBoundaryError(
             "Task command execution requires both stream descriptors"
@@ -784,6 +907,7 @@ def _default_run_command(
             stderr=subprocess.PIPE,
             bufsize=0,
             env=sanitized_subprocess_environment(environment),
+            start_new_session=True,
         )
     except OSError as exc:
         message = f"Could not execute {argv[0]}: {exc}\n".encode(
@@ -793,6 +917,7 @@ def _default_run_command(
         _write_descriptor(stderr_descriptor, message, "task stderr log")
         return CommandResult(argv, exit_code)
     selector: selectors.BaseSelector | None = None
+    group_quiesced = False
     try:
         if process.stdout is None or process.stderr is None:
             raise TaskBoundaryError("Task command did not expose both captured streams")
@@ -808,8 +933,16 @@ def _default_run_command(
             (stderr_descriptor, "task stderr log"),
         )
         while selector.get_map():
+            if process.poll() not in (None, 0) and not group_quiesced:
+                try:
+                    quiesce_process_group(
+                        process.pid, process, DEFAULT_PROCESS_GROUP_OPS
+                    )
+                except ProcessGroupAmbiguity as exc:
+                    raise TaskProcessGroupAmbiguity(str(exc)) from exc
+                group_quiesced = True
             try:
-                ready = selector.select()
+                ready = selector.select(timeout=0.1)
             except OSError as exc:
                 raise TaskBoundaryError(
                     f"Could not wait for task command streams: {exc}"
@@ -825,23 +958,23 @@ def _default_run_command(
                 else:
                     selector.unregister(key.fileobj)
         return_code = process.wait()
-    except BaseException:
-        try:
-            process.kill()
-        finally:
-            process.wait()
-        raise
     finally:
         try:
-            if selector is not None:
-                selector.close()
+            if not group_quiesced:
+                quiesce_process_group(process.pid, process, DEFAULT_PROCESS_GROUP_OPS)
+        except ProcessGroupAmbiguity as exc:
+            raise TaskProcessGroupAmbiguity(str(exc)) from exc
         finally:
             try:
-                if process.stdout is not None:
-                    process.stdout.close()
+                if selector is not None:
+                    selector.close()
             finally:
-                if process.stderr is not None:
-                    process.stderr.close()
+                try:
+                    if process.stdout is not None:
+                        process.stdout.close()
+                finally:
+                    if process.stderr is not None:
+                        process.stderr.close()
     exit_code = return_code if 0 <= return_code <= 255 else 128
     return CommandResult(argv, exit_code)
 
@@ -1134,6 +1267,231 @@ def _recheck_reused_outputs(
             raise TaskBoundaryError(
                 f"A reused Step 00c sidecar changed or was replaced {phase}: "
                 f"{declaration.path}"
+            )
+
+
+def _directory_members(
+    path: Path, *, nonempty: bool = True
+) -> tuple[tuple[Path, _BoundFileSnapshot], ...]:
+    _require_real_directory(path, "task input directory")
+    before = path.stat()
+    members = tuple(
+        (member, _bound_snapshot(FileDeclaration("directory_member", member)))
+        for member in sorted(path.iterdir())
+    )
+    after = path.stat()
+    if nonempty and any(snapshot.record["size_bytes"] == 0 for _, snapshot in members):
+        raise TaskBoundaryError(
+            f"Task input directory contains an empty member: {path}"
+        )
+    if not members or _file_identity(before) != _file_identity(after):
+        raise TaskBoundaryError(
+            f"Task directory is empty or changed while read: {path}"
+        )
+    return members
+
+
+@dataclass
+class _NativePublication:
+    """Own worker scratch and publish its completed files without replacement."""
+
+    dispatch: TaskDispatch
+    parents: dict[Path, tuple[int, int]] = field(default_factory=dict)
+    staging: dict[Path, tuple[int, int]] = field(default_factory=dict)
+    locks: dict[Path, tuple[int, int]] = field(default_factory=dict)
+    attempted: dict[Path, tuple[Path, _BoundFileSnapshot]] = field(default_factory=dict)
+    output_directory_identity: tuple[int, int] | None = None
+    committed: bool = False
+
+    @property
+    def plan(self) -> PublicationPlan:
+        assert self.dispatch.publication is not None
+        return self.dispatch.publication
+
+    @staticmethod
+    def identity(path: Path) -> tuple[int, int]:
+        _require_real_directory(path, "publication directory")
+        state = path.stat()
+        return state.st_dev, state.st_ino
+
+    def recheck_directories(self) -> None:
+        for path, expected in (
+            *self.parents.items(),
+            *self.staging.items(),
+            *self.locks.items(),
+        ):
+            if self.identity(path) != expected:
+                raise TaskBoundaryError(
+                    f"Publication directory changed identity; preserve: {path}"
+                )
+        for lock in self.locks:
+            if (
+                _read_bound_file(lock / "owner", "owner lock metadata")[0]
+                != f"run_token={self.dispatch.owner_run_token}\n".encode()
+            ):
+                raise TaskBoundaryError(f"Owner lock changed; preserve: {lock}")
+        if self.output_directory_identity is not None:
+            if (
+                self.identity(self.plan.output_directory)
+                != self.output_directory_identity
+            ):
+                raise TaskBoundaryError(
+                    "Published directory changed identity; preserve outputs"
+                )
+
+    def reject_residue(self) -> None:
+        for pattern in self.plan.forbidden_paths:
+            for value in glob.iglob(str(pattern)):
+                path = Path(value)
+                if path not in self.locks:
+                    raise TaskBoundaryError(
+                        f"Owner residue requires inspection: {path}"
+                    )
+
+    def prepare(self, *, reused: bool) -> Path | None:
+        working_parents = tuple(
+            dict.fromkeys(
+                output.working_path.parent for output in self.dispatch.outputs
+            )
+        )
+        destinations = {
+            *(parent.parent for parent in working_parents),
+            *(path.parent for path in self.plan.locks),
+            *(pattern.parent for pattern in self.plan.forbidden_paths),
+        }
+        self.parents = {path: self.identity(path) for path in destinations}
+        self.reject_residue()
+        for lock in self.plan.locks:
+            self.recheck_directories()
+            lock.mkdir(mode=0o700)
+            self.locks[lock] = self.identity(lock)
+            _publish_bytes(
+                lock / "owner", f"run_token={self.dispatch.owner_run_token}\n".encode()
+            )
+            _sync_directory(lock.parent, "owner lock parent")
+        self.recheck_directories()
+        self.reject_residue()
+        if reused:
+            return None
+        if self.plan.output_directory is not None:
+            _require_absent(self.plan.output_directory, "native output directory")
+        for parent in working_parents:
+            self.recheck_directories()
+            parent.mkdir(mode=0o700)
+            self.staging[parent] = self.identity(parent)
+            _sync_directory(parent.parent, "worker staging parent")
+        scratch = working_parents[0].with_name(working_parents[0].name + ".scratch")
+        scratch.mkdir(mode=0o700)
+        self.staging[scratch] = self.identity(scratch)
+        return scratch
+
+    def publish(self) -> tuple[FileDeclaration, ...]:
+        self.recheck_directories()
+        outputs = self.dispatch.outputs
+        if self.plan.output_directory is not None:
+            directory = self.plan.output_directory
+            working = outputs[0].working_path.parent
+            members = tuple(sorted(working.iterdir()))
+            declared = {output.working_path for output in outputs}
+            outputs = (
+                *outputs,
+                *(
+                    FileDeclaration(
+                        f"directory_output_{index:03d}",
+                        directory / path.name,
+                        working_path=path,
+                    )
+                    for index, path in enumerate(members, 1)
+                    if path not in declared
+                ),
+            )
+            directory.mkdir(mode=0o700)
+            self.output_directory_identity = self.identity(directory)
+        prepared = tuple(
+            (output, _bound_snapshot(FileDeclaration(output.role, output.working_path)))
+            for output in outputs
+        )
+        for output, _snapshot_value in prepared:
+            descriptor = os.open(output.working_path, os.O_RDONLY | os.O_NOFOLLOW)
+            try:
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+        for parent in self.staging:
+            _sync_directory(parent, "worker staging")
+        for output, snapshot in prepared:
+            self.recheck_directories()
+            self.attempted[output.path] = (output.working_path, snapshot)
+            os.link(output.working_path, output.path, follow_symlinks=False)
+            self._require_owned(output.path, output.working_path, snapshot)
+        for parent in {output.path.parent for output in outputs}:
+            _sync_directory(parent, "native output parent")
+        for final, (working, snapshot) in self.attempted.items():
+            self._require_owned(final, working, snapshot)
+        self.recheck_directories()
+        return outputs
+
+    @staticmethod
+    def _require_owned(
+        final: Path, working: Path, expected: _BoundFileSnapshot
+    ) -> None:
+        # A hard link changes ctime; identity, size, mtime and content must survive.
+        for path in (final, working):
+            observed = _bound_snapshot(FileDeclaration(expected.record["role"], path))
+            if (
+                observed.identity[:4] != expected.identity[:4]
+                or observed.record["sha256"] != expected.record["sha256"]
+            ):
+                raise TaskBoundaryError(
+                    f"Native output ownership changed; preserve: {path}"
+                )
+
+    def close(self) -> None:
+        errors = []
+        try:
+            self.recheck_directories()
+            if not self.committed:
+                for final, (working, expected) in reversed(
+                    tuple(self.attempted.items())
+                ):
+                    if not os.path.lexists(final):
+                        continue
+                    try:
+                        self._require_owned(final, working, expected)
+                        self.recheck_directories()
+                        final.unlink()
+                    except (OSError, TaskBoundaryError) as exc:
+                        errors.append(str(exc))
+                if self.output_directory_identity is not None:
+                    self.recheck_directories()
+                    self.plan.output_directory.rmdir()
+                    self.output_directory_identity = None
+                for parent in self.parents:
+                    _sync_directory(parent, "rollback parent")
+            if not errors:
+                for path in tuple(self.staging):
+                    self.recheck_directories()
+                    shutil.rmtree(path)
+                    del self.staging[path]
+                    _sync_directory(path.parent, "staging cleanup parent")
+                for lock in tuple(self.locks):
+                    self.recheck_directories()
+                    owner = lock / "owner"
+                    expected = f"run_token={self.dispatch.owner_run_token}\n".encode()
+                    if _read_bound_file(owner, "owner lock metadata")[
+                        0
+                    ] != expected or set(lock.iterdir()) != {owner}:
+                        raise TaskBoundaryError(f"Owner lock changed; preserve: {lock}")
+                    owner.unlink()
+                    lock.rmdir()
+                    del self.locks[lock]
+                    _sync_directory(lock.parent, "owner lock cleanup parent")
+        except (OSError, TaskBoundaryError) as exc:
+            errors.append(str(exc))
+        if errors:
+            raise TaskBoundaryError(
+                "Native publication cleanup is incomplete; preserve locks and staging: "
+                + "; ".join(errors)
             )
 
 
@@ -1654,6 +2012,30 @@ def validate_verified_task(
         machine_key=owner_key,
         scope=expected_scope,
     )
+    dispatch_reference = start["task_dispatch_record"]
+    dispatch = load_dispatch(
+        canonical_root / dispatch_reference["path"],
+        expected_sha256=dispatch_reference["sha256"],
+    )
+    if dispatch.publication is not None:
+        directories = [
+            (path, "inputs") for path in dispatch.publication.input_directories
+        ]
+        if dispatch.publication.output_directory is not None:
+            directories.append((dispatch.publication.output_directory, "outputs"))
+        for directory, group in directories:
+            expected_paths = {
+                Path(item["path"])
+                for item in record[group]
+                if Path(item["path"]).parent == directory
+            }
+            if {
+                path
+                for path, _ in _directory_members(directory, nonempty=group == "inputs")
+            } != expected_paths:
+                raise TaskBoundaryError(
+                    f"Verified task directory membership differs: {directory}"
+                )
     for field in (
         "workflow_attempt_id",
         "task_attempt_id",
@@ -1776,6 +2158,10 @@ def run_task(
 
     if backend != dispatch.backend:
         raise TaskBoundaryError("Task backend does not match the admitted dispatch")
+    if dispatch.publication is None:
+        raise TaskBoundaryError(
+            "Historical task dispatch is read-only; execute it with its original bound source checkout"
+        )
     started_at = _timestamp_from_task_id(dispatch.task_attempt_id)
     profile: dict[str, Any] = {}
     execution: dict[str, Any] = {}
@@ -1789,12 +2175,20 @@ def run_task(
     task_start_reference: dict[str, str] | None = None
     task_scope_materialized = False
     reused_outputs: dict[FileDeclaration, _BoundFileSnapshot] = {}
+    native_publication: _NativePublication | None = None
+    output_declarations = dispatch.outputs
+    directory_inputs: dict[Path, tuple[tuple[Path, _BoundFileSnapshot], ...]] = {}
+    extra_inputs: tuple[FileDeclaration, ...] = ()
     streams = _TaskStreamCapture(
         dispatch.stdout_path,
         dispatch.stderr_path,
         dispatch.run_root,
     )
     failure: TaskBoundaryError | None = None
+    previous_handlers: dict[int, Any] = {}
+
+    def interrupted(signum: int, _frame: Any) -> None:
+        raise TaskBoundaryError(f"Task interrupted by signal {signum}")
 
     protected = (
         dispatch.task_start_path,
@@ -1817,6 +2211,8 @@ def run_task(
         _require_absent(path, label)
 
     try:
+        for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
+            previous_handlers[signum] = signal.signal(signum, interrupted)
         profile, execution, execution_sha256, profile_sha256, step_id = _admit_identity(
             dispatch
         )
@@ -1835,6 +2231,19 @@ def run_task(
         )
         _materialize_task_scope(dispatch)
         task_scope_materialized = True
+        directory_inputs = {
+            directory: _directory_members(directory)
+            for directory in dispatch.publication.input_directories
+        }
+        existing_input_paths = {item.path for item in dispatch.inputs}
+        extra_inputs = tuple(
+            FileDeclaration(f"directory_input_{index:03d}", path)
+            for index, path in enumerate(
+                (path for members in directory_inputs.values() for path, _ in members),
+                1,
+            )
+            if path not in existing_input_paths
+        )
         initial_inputs = tuple(
             _snapshot(item)
             for item in (
@@ -1842,6 +2251,7 @@ def run_task(
                 FileDeclaration("execution_contract", dispatch.execution_path),
                 FileDeclaration("workflow_profile", dispatch.profile_path),
                 *dispatch.inputs,
+                *extra_inputs,
             )
         )
         if initial_inputs[0]["sha256"] != dispatch.dispatch_sha256:
@@ -1858,10 +2268,18 @@ def run_task(
                 FileDeclaration("execution_contract", dispatch.execution_path),
                 FileDeclaration("workflow_profile", dispatch.profile_path),
                 *dispatch.inputs,
+                *extra_inputs,
             )
         )
         if entry_inputs != initial_inputs:
             raise TaskBoundaryError("A stable task input changed before producer entry")
+        if any(
+            _directory_members(path) != members
+            for path, members in directory_inputs.items()
+        ):
+            raise TaskBoundaryError(
+                "A task input directory changed before producer entry"
+            )
         _recheck_reused_outputs(reused_outputs, phase="before producer entry")
         _admit_step00c_external_parent_access(
             dispatch,
@@ -1912,31 +2330,72 @@ def run_task(
             raise TaskBoundaryError("Workflow run lock changed before producer entry")
         _recheck_reused_outputs(reused_outputs, phase="before producer entry")
         command_environment = sanitized_subprocess_environment()
-        command_environment.pop(_STEP07_INPUT_IDENTITY_ENV, None)
         producer_environment = dict(command_environment)
-        if dispatch.machine_key == _STEP07_MACHINE_KEY:
-            identity = hashlib.sha256(b"emrys.step07-input-identity.v1\0")
-            for item in entry_inputs[3:]:
-                identity.update(os.fsencode(f"{item['path']}\0{item['sha256']}\0"))
-            producer_environment[_STEP07_INPUT_IDENTITY_ENV] = identity.hexdigest()
         stream_descriptors = streams.open()
         command_arguments = (
             dispatch.run_root,
             command_environment,
             *stream_descriptors,
         )
-        producer = ops.run_command(
-            backend.producer_argv,
-            dispatch.run_root,
-            producer_environment,
-            *stream_descriptors,
-        )
+        native_publication = _NativePublication(dispatch)
+        work_directory = native_publication.prepare(reused=bool(reused_outputs))
+        _recheck_reused_outputs(reused_outputs, phase="before producer entry")
+        if work_directory is None:
+            _write_descriptor(
+                stream_descriptors[0],
+                b"Reusing the complete FAI/DICT pair; producer command skipped.\n",
+                "task stdout log",
+            )
+            producer = CommandResult(backend.producer_argv, 0)
+        else:
+            producer_environment["EMRYS_TASK_WORK_DIR"] = str(work_directory)
+            producer_environment["TMPDIR"] = str(work_directory)
+            producer = ops.run_command(
+                backend.producer_argv,
+                dispatch.run_root,
+                producer_environment,
+                *stream_descriptors,
+            )
         if producer.exit_code != 0:
             raise TaskBoundaryError(
                 f"Producer command exited with status {producer.exit_code}"
             )
-        _recheck_reused_outputs(reused_outputs, phase="during producer execution")
-        producer_outputs = tuple(_snapshot(output) for output in dispatch.outputs)
+
+        def recheck_native_authority() -> None:
+            _recheck_reused_outputs(reused_outputs, phase="during native publication")
+            if any(
+                _directory_members(path) != members
+                for path, members in directory_inputs.items()
+            ):
+                raise TaskBoundaryError(
+                    "A task input directory changed during producer execution"
+                )
+            if (
+                tuple(_snapshot(item) for item in (*dispatch.inputs, *extra_inputs))
+                != initial_inputs[3:]
+            ):
+                raise TaskBoundaryError("A stable task input changed during execution")
+            _attempt_ref, _config_ref, current_lock = _admit_start_origins(
+                dispatch,
+                execution=execution,
+                execution_sha256=execution_sha256,
+                profile_sha256=profile_sha256,
+                require_active_attempt=True,
+                attest_source=ops.attest_source_checkout,
+            )
+            if current_lock != _task_start["run_lock"]:
+                raise TaskBoundaryError(
+                    "Workflow run lock changed during native publication"
+                )
+
+        recheck_native_authority()
+        if not reused_outputs:
+            output_declarations = native_publication.publish()
+            recheck_native_authority()
+        native_publication.committed = True
+        native_publication.close()
+        native_publication = None
+        producer_outputs = tuple(_snapshot(output) for output in output_declarations)
         producer_native_receipt = (
             None
             if dispatch.native_receipt_path is None
@@ -1971,12 +2430,18 @@ def run_task(
                 FileDeclaration("execution_contract", dispatch.execution_path),
                 FileDeclaration("workflow_profile", dispatch.profile_path),
                 *dispatch.inputs,
+                *extra_inputs,
             )
         )
         if final_inputs != initial_inputs:
             raise TaskBoundaryError("A stable task input changed during execution")
         stable_inputs_rechecked = True
-        outputs = tuple(_snapshot(item) for item in dispatch.outputs)
+        if any(
+            _directory_members(path) != members
+            for path, members in directory_inputs.items()
+        ):
+            raise TaskBoundaryError("A task input directory changed during validation")
+        outputs = tuple(_snapshot(item) for item in output_declarations)
         if outputs != producer_outputs:
             raise TaskBoundaryError(
                 "A producer output changed during validation or semantic gating"
@@ -1997,11 +2462,28 @@ def run_task(
             raise TaskBoundaryError(
                 "The validation report changed during semantic all-pass gating"
             )
+    except TaskProcessGroupAmbiguity as exc:
+        # The process-group owner could not prove every writer stopped.
+        # Preserve the entire native workspace and locks for operator recovery.
+        native_publication = None
+        failure = exc
     except TaskBoundaryError as exc:
         failure = exc
+    except OSError as exc:
+        failure = TaskBoundaryError(f"Native task publication failed: {exc}")
     except BaseException:
         streams.preserve_incomplete()
         raise
+    finally:
+        if native_publication is not None:
+            try:
+                native_publication.close()
+            except TaskBoundaryError as exc:
+                if sys.exc_info()[1] is not None and failure is None:
+                    streams.preserve_incomplete()
+                failure = TaskBoundaryError(f"{failure or 'Task interrupted'}; {exc}")
+        for signum, handler in previous_handlers.items():
+            signal.signal(signum, handler)
 
     if failure is not None:
         message = str(failure).strip() or type(failure).__name__
@@ -2072,8 +2554,15 @@ def run_task(
     }
     orchestration_contracts.validate_record("verified-task", verified)
     _recheck_reused_outputs(reused_outputs, phase="before verified publication")
-    if tuple(_snapshot(item) for item in dispatch.outputs) != outputs:
+    if tuple(_snapshot(item) for item in output_declarations) != outputs:
         raise TaskBoundaryError("A producer output changed before verified publication")
+    if any(
+        _directory_members(path) != members
+        for path, members in directory_inputs.items()
+    ):
+        raise TaskBoundaryError(
+            "A task input directory changed before verified publication"
+        )
     ops.publish_bytes(
         dispatch.verified_task_path,
         orchestration_contracts.canonical_json_bytes(verified),
@@ -2108,7 +2597,7 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
         "--dispatch",
         required=True,
         type=Path,
-        help="Absolute path to one materialized emrys.local-task-dispatch.v1 JSON file.",
+        help="Absolute path to one materialized task dispatch JSON file.",
     )
     parser.add_argument(
         "--dispatch-sha256",

@@ -2,8 +2,9 @@
 
 The Run coordinator turns a scientist's Project into an immutable execution
 plan. It manages direct or whole-Run Slurm execution, Attempts, inspection,
-recovery, Results, and the request to generate reports. Scientific algorithms, native
-artifact publication, validation meaning, report rendering, dependency solving,
+recovery, Results, scientific-worker execution and publication, and the request to
+generate reports. Scientific algorithms, output contents and provenance,
+validation meaning, report rendering, dependency solving,
 and package installation remain with their owners. The
 [current architecture](../../../../docs/architecture/ARCHITECTURE.md) defines
 responsibility layers; the [runbook](../../../../docs/operations/RUNBOOK.md)
@@ -160,7 +161,7 @@ whose prepared state became stale while waiting exits before these writes and
 leaves no new Attempt residue.
 
 Each task dispatch is a closed record binding the admitted Execution Plan,
-composed profile, owner scope, exact public producer and validator commands,
+composed profile, owner scope, exact worker and public validator commands,
 declared inputs and outputs, runtime/tool identities, and validation report. Immediately before
 producer entry, the task publishes an immutable start record. Its stdout and
 stderr files are create-exclusive, no-follow, drained through EOF, byte- and
@@ -201,6 +202,45 @@ resumable success.
 After every selected task is verified, the scientific Attempt receipt is
 published last. Application logging follows the separate logging contract and
 cannot change task, receipt, rollback, recovery, or exit authority.
+
+## Scientific worker execution
+
+All first-party scientific tasks execute through this runner, including reference
+construction, sample processing, cohort preprocessing, paired CMH, and scientific
+context. Producers compute the scientific outputs, perform their native checks,
+and write provenance. They receive explicit working destinations and scratch
+space; they do not choose final working paths, acquire locks, publish results,
+supervise process groups, or implement operational recovery. There is no separate
+manager per producer. The independently useful `emrys convert gtf-to-bed12`
+utility keeps its public conversion interface; the Run uses its normalization
+code through a private worker entry point.
+
+New task dispatches use v2 and bind working paths, final paths, publication order,
+locks, old recovery locations, and any complete directory input. Working files
+sit beside their final destination's parent, so publication can link large files
+without a second copy. The runner creates these directories, captures streams,
+and stops and reaps the worker's process group before attempting cleanup.
+Historical v1 dispatches remain readable; executing them requires the software
+bound by their original immutable plan. Current code never rewrites their argv.
+
+Before publication, the runner rechecks admitted inputs and the producer's
+checked working files. It also rechecks inputs after linking, before native
+commit and release of the rollback anchors. It publishes files exclusively in declared
+order, with any native receipt last. The complete STAR index includes additional
+regular native files, not just its fifteen required members; alignment binds
+that entire input directory's membership and contents. Shared FAI/dictionary
+sidecars retain their cross-Run lock. The Run reuses a complete unchanged pair
+and still runs the independent validator; a partial pair is refused.
+
+The independent validator and semantic all-pass gate run against final files
+after native publication. Failure at that point preserves the committed native
+outputs, validation report, and failed task evidence. A native receipt alone is
+not verified task completion. Before native commit, rollback may remove only
+files still proved to belong to this task by their retained working-file anchors.
+An ambiguous identity, failed cleanup, or changed lock preserves remaining files
+and recovery evidence for inspection. Old backup and staging residues are never
+adopted or automatically deleted. These rules apply once here across the workers;
+their contracts retain scientific checks, formats, and provenance requirements.
 
 ## Resume, inspection, Results, and reporting
 

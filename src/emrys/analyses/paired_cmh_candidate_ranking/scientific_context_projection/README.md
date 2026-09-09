@@ -7,9 +7,9 @@ logo counts, motif statistics, and a receipt for later report rendering.
 
 Normal execution uses `emrys run` or `resume` in the
 [Runbook](../../../../../docs/operations/RUNBOOK.md#project-and-run-operations).
-The [shell producer](scientific_context_projection.sh) coordinates
-[the R computation](scientific_context_projection.R). For standalone help
-from the checkout root:
+The internal [shell worker](scientific_context_projection.sh) invokes
+[the R computation](scientific_context_projection.R). Its help describes the
+runner interface; the validator remains directly available:
 
 ```bash
 bash src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh --help

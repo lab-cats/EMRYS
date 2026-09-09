@@ -1,9 +1,10 @@
 # Paired-CMH analysis tests
 
-These tests cover Step 09 publication and validation, an independent oracle
-calculated from counts, and a committed guarded real-R corpus. The
+These tests cover Step 09 scientific worker arguments and outputs, independent
+validation, an oracle calculated from counts, and a committed guarded real-R
+corpus. Shared runner tests cover publication and recovery. The
 [analysis contract](../../../src/emrys/analyses/paired_cmh_candidate_ranking/CONTRACT.md)
-defines the method, inputs, outputs, and recovery behavior; its
+defines the method, inputs, and outputs; its
 [README](../../../src/emrys/analyses/paired_cmh_candidate_ranking/README.md)
 explains the supported commands.
 

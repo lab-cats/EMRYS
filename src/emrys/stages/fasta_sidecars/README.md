@@ -6,17 +6,17 @@ beside an existing reference FASTA. These support
 alignment or BED12 conversion.
 
 It uses samtools `faidx`, GATK `CreateSequenceDictionary`, and Java 17+.
-Existing valid sidecars are reused; missing ones are generated and checked
-against the FASTA. The reference itself is not modified or selected here.
+The Run reuses a complete admitted pair or generates both missing sidecars.
+A partial existing pair requires inspection. The reference itself is not modified or selected here.
 
-Normal execution uses the [Project Run](../README.md#running-a-stage). For
-standalone help from the checkout root:
+Execution uses the [Project Run](../README.md#running-a-stage). The shell
+script is an internal worker; its help describes the runner interface. The
+validator remains directly available:
 
 ```bash
 bash src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh --help
 emrys validate fasta-sidecars --help
 ```
 
-The producer previews by default. Treat the FASTA and sidecars as one set when
-investigating failure. The [contract](CONTRACT.md) defines contig checks,
+Treat the FASTA and sidecars as one set when investigating failure. The [contract](CONTRACT.md) defines contig checks,
 existing-file handling, publication ownership, and retained recovery state.

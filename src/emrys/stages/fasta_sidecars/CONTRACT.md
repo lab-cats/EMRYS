@@ -3,7 +3,7 @@
 This directory owns historical Step `00c`; the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
 identity and alias. Its only public Python surface is the grouped validator;
-the producer remains an explicit repository-path command.
+the shell producer is an internal Run worker.
 
 ## Responsibility
 
@@ -29,8 +29,7 @@ The producer accepts:
 - a `samtools` executable providing `faidx`;
 - a GATK executable providing `CreateSequenceDictionary`;
 - Java version 17 or newer for GATK; and
-- an optional temporary-directory root and run token used for isolated staged
-  files.
+- explicit staging destinations and runner-owned scratch space.
 
 ## Outputs
 
@@ -49,37 +48,21 @@ The current producer publishes no receipt or transaction summary. Downstream
 readiness is therefore established by explicit output and validation checks,
 not by the mere existence of the target paths.
 
-## Current execution surfaces
+## Scientific worker
 
-[`step_00c_prepare_gatk_reference.sh`](step_00c_prepare_gatk_reference.sh)
-is the public producer entrypoint. It:
+[`step_00c_prepare_gatk_reference.sh`](step_00c_prepare_gatk_reference.sh) is an internal worker of the
+[Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
-- validates its declared inputs and tools before generation;
-- is dry-run by default and requires `--execute` to publish;
-- validates the inherited run token before deriving paths, uses an owned lock
-  directory and run-token temporary files, and rejects matching staging residue
-  from every prior token in both dry-run and execute mode;
-- reuses each existing valid sidecar and generates only a missing sidecar;
-- runs `samtools faidx` and GATK `CreateSequenceDictionary` as needed; and
-- hashes the reference FASTA before execute-mode tool work, rejects any byte
-  change after generation or during publication, and cleans owned unpublished
-  artifacts; and
-- validates both sidecars and their FASTA agreement after publication.
+The worker runs samtools `faidx` and GATK `CreateSequenceDictionary`, writing
+`--reference-fai-output` and `--reference-dict-output` staging files. A FASTA
+symlink in runner scratch accommodates samtools' output naming without writing
+beside the input. It checks each sidecar's format and compares their contig
+names and lengths before returning. The independent validator then checks
+ordered agreement with the FASTA.
 
-When both sidecars are generated, the script create-exclusively hard-links the
-staged `FAI` into place before doing the same for the staged `DICT`; a sidecar
-that appears after the locked state check therefore blocks publication rather
-than being overwritten. The staged links remain as ownership anchors through
-final validation. A controlled failure removes a published final only while it
-is still the same regular-file inode as its invocation-owned anchor. A missing
-anchor, disappeared final, foreign replacement, or rollback-removal failure
-preserves the final path, lock, and staging residue as blocking recovery
-evidence. Existing and late foreign sidecars are never rollback targets.
-Unhandled process death can likewise leave residue for the orchestrator to
-classify as blocked; the producer never breaks or silently adopts it.
-Failure to remove any owned staging path or the owned lock is also a failed
-cleanup, not a clean retry boundary: the producer exits nonzero when necessary
-and retains the lock plus remaining residue for operator inspection.
+A Run may reuse a complete admitted sidecar pair without starting the worker.
+A partial pre-existing pair remains an error. The retired standalone script
+could create only a missing sidecar; that is not the Run execution contract.
 
 ## Validation interface
 
@@ -109,10 +92,10 @@ after report output or possible filesystem mutation.
 The validator shares reference-contig parsers with reference provenance and
 Step `05`, and uses the common validation publisher. Grouped invocation binds
 the selected installed `emrys` package independently of caller CWD and ambient
-`PYTHONPATH`. Shared process helpers require execute mode to use absolute
+`PYTHONPATH`. Shared process helpers require absolute
 Python 3.11+ in `EMRYS_SHA256_PYTHON`, canonical `<JAVA_HOME>/bin/java`, and a
 JVM/GATK-selector-scrubbed environment for both the GATK probe and work. This
-stage still owns tool precedence and versions, exact arguments, transaction,
+stage still owns tool precedence and versions, exact arguments,
 validation, and sidecar policy.
 
 ## Consumers

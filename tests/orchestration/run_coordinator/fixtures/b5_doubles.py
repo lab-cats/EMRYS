@@ -74,7 +74,7 @@ def with_owner_doubles(plan: AttemptPlan) -> AttemptPlan:
         payload_record = {
             "producer": [
                 {
-                    "path": output["path"],
+                    "path": output["working_path"],
                     "data_base64": base64.b64encode(
                         payloads[Path(output["path"])]
                     ).decode(),

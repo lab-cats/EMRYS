@@ -1,219 +1,62 @@
 #!/usr/bin/env bash
-# Run basic integrity/QC checks on one canonical sorted BAM with samtools.
-#
-# The script validates the BAM and index, then prints the samtools commands in
-# dry-run mode by default. Passing --execute runs the same commands.
+# shellcheck disable=SC2154
+# Internal scientific worker; the Run task runner owns publication and recovery.
 set -euo pipefail
+# Required argument variables are initialized by declare_required_arguments.
 
 usage() {
     cat <<'USAGE'
-Usage:
-  src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh \
-    --sample-id SAMPLE_ID \
-    --bam BAM \
-    --output-dir OUTPUT_DIR \
-    [--samtools-bin SAMTOOLS_BIN] \
-    [--no-clobber] \
-    [--execute]
+Record samtools quickcheck and flagstat evidence for one BAM.
 
-Run basic BAM integrity/QC checks on a canonical sorted BAM from Step 02.
+Usage: src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh \
+  --sample-id SAMPLE_ID \
+  --bam BAM \
+  --output-dir OUTPUT_DIR \
+  [--samtools-bin SAMTOOLS_BIN]
 
-By default this script runs in dry-run mode: it validates inputs and prints the
-samtools commands without executing them. Add --execute to run samtools.
-
-Required arguments:
-  --sample-id    Sample identifier used in output filenames.
-  --bam          Input sorted BAM file from Step 02.
-  --output-dir   Directory where BAM QC outputs will be written.
-
-Options:
-  --samtools-bin  samtools executable or path. Defaults to samtools on PATH.
-  --no-clobber    Require absent final outputs and publish a staged pair.
-                  Required by orchestration.
-  --execute      Execute samtools after validation. Without this, dry-run only.
-  -h, --help     Show this help message and exit.
+Internal worker: requires an existing EMRYS_TASK_WORK_DIR supplied by the runner.
+Output destinations are staging paths supplied by the runner.
+  -h, --help  Show this help message and exit.
 USAGE
 }
 
+script_dir="$(dirname -- "${BASH_SOURCE[0]}")"
 # shellcheck source=../../libraries/argument_parsing.sh
-script_dir="${BASH_SOURCE[0]%/*}"
-if [[ "$script_dir" == "${BASH_SOURCE[0]}" ]]; then
-    script_dir="."
-fi
 source "$script_dir/../../libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/executable_resolution.sh
 source "$script_dir/../../libraries/executable_resolution.sh"
 # shellcheck source=../../libraries/file_checks.sh
 source "$script_dir/../../libraries/file_checks.sh"
-# shellcheck source=../../libraries/signal_traps.sh
-source "$script_dir/../../libraries/signal_traps.sh"
 
 declare_required_arguments sample_id bam output_dir
-execute=false
-no_clobber=false
-requested_samtools_bin=""
+samtools_bin=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --sample-id) assign_option_value "$1" "${2:-}" sample_id; shift 2 ;;
         --bam) assign_option_value "$1" "${2:-}" bam; shift 2 ;;
         --output-dir) assign_option_value "$1" "${2:-}" output_dir; shift 2 ;;
-        --samtools-bin) assign_option_value "$1" "${2:-}" requested_samtools_bin; shift 2 ;;
-        --no-clobber) no_clobber=true; shift ;;
-        *)
-            handle_execute_or_help "$1"
-            shift
-            ;;
+        --samtools-bin) assign_option_value "$1" "${2:-}" samtools_bin; shift 2 ;;
+        -h|--help) usage; exit 0 ;;
+        *) die "Unknown argument: $1" ;;
     esac
 done
-
 require_arguments
+require_task_work_dir
 
-# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
-[[ -f "$bam" ]] || die "BAM does not exist or is not a file: $bam"
-
-if [[ -f "$bam.bai" ]]; then
-    bam_index="$bam.bai"
-elif [[ -f "${bam%.bam}.bai" ]]; then
-    bam_index="${bam%.bam}.bai"
-else
-    die "BAM index does not exist. Expected either: $bam.bai or ${bam%.bam}.bai"
+validate_safe_id "--sample-id" "$sample_id"
+validate_nonempty_file "BAM" "$bam"
+[[ -s "$bam.bai" || -s "${bam%.bam}.bai" ]] || die "BAM index is missing: $bam"
+samtools_bin="$(resolve_executable_value "samtools" "$samtools_bin" "samtools")"
+quickcheck="$output_dir/$sample_id.quickcheck.txt"
+flagstat="$output_dir/$sample_id.flagstat.txt"
+if ! "$samtools_bin" quickcheck -v "$bam" >"$quickcheck" 2>&1; then
+    cat "$quickcheck" >&2
+    die "samtools quickcheck failed: $bam"
 fi
-
-samtools_bin="$(resolve_executable_value "samtools" "$requested_samtools_bin" "samtools")"
-bam_sha256="not-bound"
-bam_index_sha256="not-bound"
-if [[ "$no_clobber" == true ]]; then
-    # shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
-    validate_safe_id "--sample-id" "$sample_id"
-    bam_sha256="$(sha256_file "$bam")"
-    bam_index_sha256="$(sha256_file "$bam_index")"
+if [[ ! -s "$quickcheck" ]]; then
+    printf 'PASS: samtools quickcheck completed with no errors.\n' >"$quickcheck"
 fi
-
-# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
-QUICKCHECK_OUT="$output_dir/${sample_id}.quickcheck.txt"
-FLAGSTAT_OUT="$output_dir/${sample_id}.flagstat.txt"
-run_token="${EMRYS_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
-validate_safe_id "Step 02b run token" "$run_token"
-lock_path="$output_dir/.${sample_id}.step02b.lock"
-lock_owner_file="$lock_path/owner"
-tmp_quickcheck="$output_dir/.${sample_id}.step02b.${run_token}.quickcheck.tmp"
-tmp_flagstat="$output_dir/.${sample_id}.step02b.${run_token}.flagstat.tmp"
-lock_acquired=false
-publication_started=false
-
-require_absent_outputs() {
-    [[ ! -e "$QUICKCHECK_OUT" && ! -e "$FLAGSTAT_OUT" ]] ||
-        die "Step 02b --no-clobber requires both final outputs to be absent: $QUICKCHECK_OUT $FLAGSTAT_OUT"
-}
-
-cleanup_no_clobber() {
-    cleanup_no_clobber_outputs "$1" "Step 02b" \
-        "Step 02b quickcheck" "$tmp_quickcheck" "$QUICKCHECK_OUT" \
-        "Step 02b flagstat" "$tmp_flagstat" "$FLAGSTAT_OUT"
-}
-
-mode="dry-run"
-if [[ "$execute" == true ]]; then
-    mode="execute"
-fi
-
-printf 'BAM QC context\n'
-printf '  Sample ID: %s\n' "$sample_id"
-printf '  BAM: %s\n' "$bam"
-printf '  BAM index found: %s\n' "$bam_index"
-printf '  BAM SHA-256: %s\n' "$bam_sha256"
-printf '  BAM index SHA-256: %s\n' "$bam_index_sha256"
-printf '  samtools bin: %s\n' "$samtools_bin"
-printf '  Output directory: %s\n' "$output_dir"
-printf '  Quickcheck output: %s\n' "$QUICKCHECK_OUT"
-printf '  Flagstat output: %s\n' "$FLAGSTAT_OUT"
-printf '  No-clobber transaction: %s\n' "$no_clobber"
-printf '  Lock directory: %s\n' "$lock_path"
-printf '  Run token: %s\n' "$run_token"
-printf '  Temporary quickcheck: %s\n' "$tmp_quickcheck"
-printf '  Temporary flagstat: %s\n' "$tmp_flagstat"
-printf '  Mode: %s\n' "$mode"
-
-quickcheck_command=(
-    "$samtools_bin"
-    quickcheck
-    -v
-    "$bam"
-)
-
-flagstat_command=(
-    "$samtools_bin"
-    flagstat
-    "$bam"
-)
-
-printf 'samtools quickcheck command:\n'
-print_command "${quickcheck_command[@]}"
-
-printf 'samtools flagstat command:\n'
-print_command "${flagstat_command[@]}"
-
-if [[ "$no_clobber" == true ]]; then
-    require_no_owner_residue \
-        "Step 02b" "$output_dir" ".${sample_id}.step02b.*"
-fi
-
-if [[ "$execute" != true ]]; then
-    printf 'Dry-run only. Add --execute to run samtools.\n'
-    exit 0
-fi
-
-mkdir -p "$output_dir"
-
-quickcheck_target="$QUICKCHECK_OUT"
-flagstat_target="$FLAGSTAT_OUT"
-if [[ "$no_clobber" == true ]]; then
-    require_absent_outputs
-    [[ ! -e "$tmp_quickcheck" && ! -e "$tmp_flagstat" ]] ||
-        die "Step 02b temporary output already exists: $tmp_quickcheck $tmp_flagstat"
-    set_exit_trap cleanup_no_clobber
-    acquire_lock "Step 02b"
-    quickcheck_target="$tmp_quickcheck"
-    flagstat_target="$tmp_flagstat"
-fi
-
-if ! "${quickcheck_command[@]}" >"$quickcheck_target" 2>&1; then
-    printf 'ERROR: samtools quickcheck failed. Output preserved at: %s\n' "$quickcheck_target" >&2
-    exit 1
-fi
-
-if [[ ! -s "$quickcheck_target" ]]; then
-    printf 'PASS: samtools quickcheck completed with no errors.\n' >"$quickcheck_target"
-fi
-
-"${flagstat_command[@]}" >"$flagstat_target"
-[[ -s "$quickcheck_target" ]] || die "Step 02b quickcheck evidence is missing or empty: $quickcheck_target"
-[[ -s "$flagstat_target" ]] || die "Step 02b flagstat evidence is missing or empty: $flagstat_target"
-
-if [[ "$no_clobber" == true ]]; then
-    [[ "$(sha256_file "$bam")" == "$bam_sha256" ]] || die "BAM changed during Step 02b."
-    [[ "$(sha256_file "$bam_index")" == "$bam_index_sha256" ]] || die "BAM index changed during Step 02b."
-    require_absent_outputs
-    publication_started=true
-    publish_file_create_exclusive \
-        "Step 02b quickcheck" "$tmp_quickcheck" "$QUICKCHECK_OUT"
-    publish_file_create_exclusive \
-        "Step 02b flagstat" "$tmp_flagstat" "$FLAGSTAT_OUT"
-    require_owned_published_file \
-        "Step 02b quickcheck" "$tmp_quickcheck" "$QUICKCHECK_OUT"
-    require_owned_published_file \
-        "Step 02b flagstat" "$tmp_flagstat" "$FLAGSTAT_OUT"
-    rm -f -- "$tmp_quickcheck" "$tmp_flagstat"
-    [[ ! -e "$tmp_quickcheck" && ! -L "$tmp_quickcheck" &&
-       ! -e "$tmp_flagstat" && ! -L "$tmp_flagstat" ]] ||
-        die "Step 02b could not remove owned publication anchors."
-    publication_started=false
-    remove_owned_lock
-fi
-
-printf 'BAM QC output details:\n'
-ls -lh "$QUICKCHECK_OUT" "$FLAGSTAT_OUT"
-
-printf 'samtools flagstat output:\n'
-cat "$FLAGSTAT_OUT"
+"$samtools_bin" flagstat "$bam" >"$flagstat"
+validate_nonempty_file "quickcheck report" "$quickcheck"
+validate_nonempty_file "flagstat report" "$flagstat"

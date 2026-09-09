@@ -24,8 +24,9 @@ orientation result set regardless of partition completion order.
 ## Inputs and selector contract
 
 Inputs are a safe cohort ID, sample manifest, partition manifest, requested
-partition ID, Step `06` orientation root, reference FASTA plus FAI, output
-root, bcftools, positive maximum depth, and filter expression. Sample IDs must
+partition ID, Step `06` orientation root, reference FASTA plus FAI, staged
+output paths and final VCF paths for the receipt, bcftools, positive maximum
+depth, and filter expression. Sample IDs must
 be unique and nonempty. The requested partition must have exactly one manifest
 row with one of these selector types:
 
@@ -56,31 +57,15 @@ For `<cohort>` and `<partition>`, the output directory contains:
 Header-only VCFs are valid. The receipt has exactly two rows, ordered
 `FWD_like` then `REV_like`, and records cohort, partition, selector type/value,
 orientation, VCF path, both manifest SHA-256 values, sample count, and VCF
-record count. It is renamed last among the three outputs and is the native
-completion marker. Both published VCFs are structurally revalidated and
-record-count checked before the receipt becomes visible. The receipt itself is
-then checked inside the owned rollback boundary; its mere presence is not
-independent proof of a successfully completed immutable computation.
+record count. The worker checks both staged VCFs for structure, sample order,
+and record counts, then writes and checks the receipt using the supplied final
+VCF paths. The runner publishes both VCFs before the receipt and verifies that
+publication preserves the checked bytes. The independent validator then checks
+the visible set. Receipt presence alone is not proof of a verified task.
 
-[`producer.py`](producer.py) does not write in dry-run. Execute uses a
-cohort/partition lock and run-token staging paths. It checks temporary VCF
-sample order and counts, publishes both VCFs before the receipt, and validates
-the visible set before removing the staging files. It follows the shared
-[create-only publication policy](../../../../docs/design/decisions/execution-evidence-and-reporting.md#standalone-scientific-output-policy).
-Old backup and staging files still block execution for operator inspection.
-
-Input checking differs by route:
-
-- A standalone invocation hashes the sample/partition manifests, FASTA/FAI,
-  selected regions file when used, and both BAM/BAI pairs for every sample
-  before bcftools. It rechecks that set after tool execution and before
-  publication.
-- A Run task has already hashed the same declared inputs twice at producer
-  entry. It passes a process-lifetime aggregate only to this producer. The
-  producer reconstructs the roster without another initial full scan, then
-  rehashes every input immediately before publication. The task rechecks its
-  declared inputs again after validation. The aggregate is not persisted or
-  added to the receipt.
+[`producer.py`](producer.py) runs only through the existing runner. Its
+scientific work is the two bcftools pipelines and their output checks;
+input stability, publication, and recovery belong to the [runner contract](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
 The receipt hashes only the two manifests. BAMs, reference, FAI, regions file,
 tool identity, depth, filter, and output VCF hashes are not durable receipt

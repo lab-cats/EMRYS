@@ -10,7 +10,9 @@ and skipped; the [contract](CONTRACT.md) defines transcript-level rejection,
 coordinates, ordering, and publication/recovery rules.
 
 Use the [Project Run](../README.md#running-a-stage) for normal processing.
-The standalone commands expose their arguments through:
+The Run uses the shared normalization code through its internal worker. The
+independently useful conversion and validation commands expose their arguments
+through:
 
 ```bash
 emrys convert gtf-to-bed12 --help

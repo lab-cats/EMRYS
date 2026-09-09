@@ -1,11 +1,9 @@
 # FASTA-sidecar tests
 
-These cases check Step 00c two-file rollback, exclusive publication, preservation
-of sidecars created by another process, and retained files after failed rollback.
-They also cover unsafe run tokens, staging files from older tokens, lock/cleanup
-failures, and structural FAI/dictionary validation.
+Native samtools/GATK sidecar generation, selected Java, contig checks, and grouped validation are covered. Complete-pair reuse belongs to the Run task runner.
 
-Shell cases invoke the repository producer with fake tools; Python cases use
-`python -I -m emrys validate fasta-sidecars`. Neither adds a public command.
-The [stage contract](../../../src/emrys/stages/fasta_sidecars/CONTRACT.md)
-defines tool selection and recovery.
+Shell cases invoke the internal worker with runner-style scratch and staging.
+The [common runner suite](../../orchestration/run_coordinator/test_task.py) owns
+publication, input stability, interruption, and recovery checks. Python
+validator cases retain the public grouped command. The
+[shared evidence limits](../../README.md#evidence-limits) apply.

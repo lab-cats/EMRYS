@@ -1,12 +1,10 @@
-"""Coordinate Step 09 paired-CMH analysis and its six-file transaction."""
+"""Compute paired-CMH scientific outputs in runner-owned working paths."""
 
 from __future__ import annotations
 
 import argparse
 import os
-import shlex
 import shutil
-import signal
 import subprocess
 import sys
 from collections.abc import Mapping, Sequence
@@ -18,15 +16,6 @@ from emrys.libraries.alignments.orientation import (
     LEGACY_PROVISIONAL_ORIENTATION_POLICY as POLICY,
 )
 
-SIGNALS = (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
-OUTPUTS = (
-    ("all", "cmh_all_sites.tsv", "all.tmp.tsv"),
-    ("significant", "cmh_significant_sites.tsv", "significant.tmp.tsv"),
-    ("mutation", "mutation_spectrum.tsv", "mutation.tmp.tsv"),
-    ("mutation_pdf", "mutation_spectrum.pdf", "mutation.tmp.pdf"),
-    ("depth_pdf", "depth_delta.pdf", "depth.tmp.pdf"),
-    ("summary", "cmh_summary.tsv", "summary.tmp.tsv"),
-)
 DEFAULTS = {
     "control-condition": "EV",
     "treatment-condition": "PUM1",
@@ -46,12 +35,6 @@ class ProducerError(RuntimeError):
     """Step 09 admission, execution, or publication failed."""
 
 
-class Interrupted(ProducerError):
-    def __init__(self, signum: int) -> None:
-        super().__init__(f"Step 09 interrupted by signal {signum}.")
-        self.signum = signum
-
-
 @dataclass(frozen=True)
 class Context:
     arguments: argparse.Namespace
@@ -61,7 +44,6 @@ class Context:
     hashes: tuple[str, str, str, str]
     step08_sites: tuple[Mapping[str, str], ...]
     thresholds: tuple[int, float, float, float, float, float]
-    token: str
     rscript: str
     paths: dict[str, Path]
 
@@ -73,7 +55,6 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
         "sample-manifest",
         "partition-manifest",
         "step08-root",
-        "output-root",
     ):
         parser.add_argument(f"--{name}", required=True)
     for name, default in DEFAULTS.items():
@@ -86,19 +67,21 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
             str(Path(__file__).with_name("step_09_cmh_editing_site_calling.R")),
         ),
     )
-    parser.add_argument(
-        "--no-clobber",
-        action="store_true",
-        help="Accepted for existing callers; replacement is always refused.",
-    )
-    parser.add_argument("--execute", action="store_true")
+    for name in (
+        "all-sites-output",
+        "significant-sites-output",
+        "summary-output",
+        "mutation-output",
+        "mutation-pdf-output",
+        "depth-pdf-output",
+    ):
+        parser.add_argument(f"--{name}", required=True, type=Path)
 
 
 def fail(message: str) -> None:
     raise ProducerError(message)
 
 
-lexists = os.path.lexists
 digest = step08.sha256_file
 
 
@@ -145,25 +128,6 @@ def executable(requested: str | None) -> str:
     return value
 
 
-def _paths(a: argparse.Namespace, token: str) -> dict[str, Path]:
-    root, cohort = Path(a.output_root) / a.analysis_id, a.cohort_id
-    upstream = Path(a.step08_root) / cohort
-    result = {
-        "root": root,
-        "step08_sites": upstream / f"{cohort}.step08_sites.tsv",
-        "step08_inputs": upstream / f"{cohort}.step08_inputs.tsv",
-        "lock": root / f".{a.analysis_id}.step09.lock",
-    }
-    for name, final_suffix, temporary_suffix in OUTPUTS:
-        final = root / f"{a.analysis_id}.{final_suffix}"
-        result[name] = final
-        result[f"tmp_{name}"] = (
-            root / f".{a.analysis_id}.step09.{token}.{temporary_suffix}"
-        )
-    result["lock_owner_tmp"] = result["lock"] / f".owner.{token}.tmp"
-    return result
-
-
 def build_context(a: argparse.Namespace) -> Context:
     for label in (
         "analysis_id",
@@ -183,16 +147,20 @@ def build_context(a: argparse.Namespace) -> Context:
     if a.rna_ref == a.rna_alt:
         fail("rna_ref and rna_alt must differ.")
     thresholds = _thresholds(a)
-    token = (
-        os.environ.get("EMRYS_RUN_TOKEN")
-        or os.environ.get("SLURM_JOB_ID")
-        or str(os.getpid())
-    )
-    step08.validate_safe_id("run token", token)
     if not Path(a.step08_root).is_dir():
         fail(f"Step 08 root does not exist or is not a directory: {a.step08_root}")
     step08.require_file("Step 09 R script", a.r_script)
-    paths = _paths(a, token)
+    upstream = Path(a.step08_root) / a.cohort_id
+    paths = {
+        "step08_sites": upstream / f"{a.cohort_id}.step08_sites.tsv",
+        "step08_inputs": upstream / f"{a.cohort_id}.step08_inputs.tsv",
+        "all": a.all_sites_output,
+        "significant": a.significant_sites_output,
+        "summary": a.summary_output,
+        "mutation": a.mutation_output,
+        "mutation_pdf": a.mutation_pdf_output,
+        "depth_pdf": a.depth_pdf_output,
+    }
     fixed = (
         Path(a.sample_manifest),
         Path(a.partition_manifest),
@@ -228,25 +196,10 @@ def build_context(a: argparse.Namespace) -> Context:
         (hashes[0], hashes[1], hashes[2], hashes[3]),
         tuple(map(dict, sites.rows)),
         thresholds,
-        token,
         executable(a.rscript_bin),
         paths,
     )
-    confirm_inputs(context)
     return context
-
-
-def confirm_inputs(context: Context) -> None:
-    a, p = context.arguments, context.paths
-    inputs = (
-        ("Sample manifest", Path(a.sample_manifest)),
-        ("Partition manifest", Path(a.partition_manifest)),
-        ("Step 08 sites table", p["step08_sites"]),
-        ("Step 08 input receipt", p["step08_inputs"]),
-    )
-    for (label, path), expected in zip(inputs, context.hashes, strict=True):
-        if digest(path) != expected:
-            fail(f"{label} changed during Step 09: {path}")
 
 
 def r_command(context: Context) -> list[str]:
@@ -270,12 +223,12 @@ def r_command(context: Context) -> list[str]:
             for name in DEFAULTS
             if name != "background-condition"
         ),
-        ("all-sites-output", p["tmp_all"]),
-        ("significant-sites-output", p["tmp_significant"]),
-        ("summary-output", p["tmp_summary"]),
-        ("mutation-spectrum-output", p["tmp_mutation"]),
-        ("mutation-spectrum-pdf-output", p["tmp_mutation_pdf"]),
-        ("depth-delta-pdf-output", p["tmp_depth_pdf"]),
+        ("all-sites-output", p["all"]),
+        ("significant-sites-output", p["significant"]),
+        ("summary-output", p["summary"]),
+        ("mutation-spectrum-output", p["mutation"]),
+        ("mutation-spectrum-pdf-output", p["mutation_pdf"]),
+        ("depth-delta-pdf-output", p["depth_pdf"]),
     )
     command += [
         a.r_script,
@@ -286,48 +239,18 @@ def r_command(context: Context) -> list[str]:
     return command
 
 
-def print_plan(context: Context, command: Sequence[str]) -> None:
+def validate_outputs(context: Context) -> None:
     a, p = context.arguments, context.paths
-    print("Step 09 paired CMH context:")
-    for label, value in (
-        ("Mode", "execute" if a.execute else "dry-run"),
-        ("Run token", context.token),
-        ("Analysis ID", a.analysis_id),
-        ("Cohort ID", a.cohort_id),
-        ("Samples / paired strata", f"{len(context.samples)} / {len(context.pairs)}"),
-    ):
-        print(f"  {label}: {value}")
-    print("  Manifest-defined pairs:")
-    for replicate, control, treatment in context.pairs:
-        print(f"    replicate={replicate} control={control} treatment={treatment}")
-    print(
-        f"  Control / treatment: {a.control_condition} / {a.treatment_condition}\n  RNA change: {a.rna_ref}>{a.rna_alt}"
-    )
-    print(
-        f"  Step 08 sites: {p['step08_sites']}\n  Step 08 inputs: {p['step08_inputs']}\n  Output directory: {p['root']}"
-    )
-    print(f"  Background condition: {a.background_condition or 'disabled'}")
-    print("  Existing-output policy: refuse existing outputs")
-    print(
-        "  Orientation policy: legacy_provisional_v1 (provisional; not biologically validated)"
-    )
-    print(f"R command:\n  {shlex.join(command)}")
-
-
-def validate_outputs(context: Context, prefix: str = "") -> None:
-    confirm_inputs(context)
-    a, p = context.arguments, context.paths
-    path = lambda name: p[f"{prefix}{name}"]  # noqa: E731
     all_sites = step09.validate_step09_results(
         "Step 09 all-sites table",
-        path("all"),
+        p["all"],
         context.samples,
         a.analysis_id,
         context.step08_sites,
     )
     significant = step09.validate_step09_results(
         "Step 09 significant-sites table",
-        path("significant"),
+        p["significant"],
         context.samples,
         a.analysis_id,
         context.step08_sites,
@@ -336,11 +259,11 @@ def validate_outputs(context: Context, prefix: str = "") -> None:
         row["candidate_id"] for row in context.step08_sites
     ]:
         fail(
-            f"Step 09 all-sites rows do not preserve the Step 08 source/analysis contract: {path('all')}"
+            f"Step 09 all-sites rows do not preserve the Step 08 source/analysis contract: {p['all']}"
         )
     step09.validate_significant_subset(all_sites.rows, significant.rows)
     summary = step09.validate_step09_summary(
-        path("summary"),
+        p["summary"],
         a.analysis_id,
         a.cohort_id,
         context.samples,
@@ -376,306 +299,23 @@ def validate_outputs(context: Context, prefix: str = "") -> None:
     ):
         fail("Step 09 summary provenance/policy fields are invalid.")
     step09.validate_step09_result_semantics(all_sites.rows, row, context.sample_rows)
-    step09.validate_mutation_spectrum(path("mutation"), a.analysis_id, all_sites.rows)
-    step09.validate_pdf("Step 09 mutation-spectrum PDF", path("mutation_pdf"))
-    step09.validate_pdf("Step 09 depth-delta PDF", path("depth_pdf"))
-    confirm_inputs(context)
+    step09.validate_mutation_spectrum(p["mutation"], a.analysis_id, all_sites.rows)
+    step09.validate_pdf("Step 09 mutation-spectrum PDF", p["mutation_pdf"])
+    step09.validate_pdf("Step 09 depth-delta PDF", p["depth_pdf"])
 
 
-class Publication:
-    names = tuple(item[0] for item in OUTPUTS)
-
-    def __init__(self, context: Context) -> None:
-        self.context, self.p = context, context.paths
-        self.locked = self.scratch = False
-        self.started = self.committed = False
-        self.child: subprocess.Popen[bytes] | None = None
-        self.pending = 0
-
-    @property
-    def owner(self) -> Path:
-        return self.p["lock"] / "owner"
-
-    def defer(self, signum: int, _frame: object) -> None:
-        self.pending = signum
-
-    def honor(self) -> None:
-        if self.pending:
-            signum, self.pending = self.pending, 0
-            self.interrupted(signum, None)
-
-    def acquire(self) -> None:
-        try:
-            self.p["lock"].mkdir()
-        except FileExistsError as exc:
-            raise ProducerError(
-                f"Step 09 lock already exists: {self.p['lock']}"
-            ) from exc
-        self.locked = True
-        try:
-            self.p["lock_owner_tmp"].write_text(
-                f"run_token\t{self.context.token}\npid\t{os.getpid()}\n",
-                encoding="utf-8",
-            )
-            self.p["lock_owner_tmp"].replace(self.owner)
-        except OSError as exc:
-            raise ProducerError(
-                f"Could not publish Step 09 lock owner metadata: {self.owner}"
-            ) from exc
-
-    def release(self) -> None:
-        if not self.locked:
-            return
-        try:
-            owned = (
-                f"run_token\t{self.context.token}"
-                in self.owner.read_text(encoding="utf-8").splitlines()
-            )
-            unexpected = [
-                path for path in self.p["lock"].iterdir() if path != self.owner
-            ]
-        except OSError as exc:
-            raise ProducerError(
-                f"Step 09 cannot prove lock ownership for release: {self.p['lock']}"
-            ) from exc
-        if not owned or unexpected:
-            fail(f"Step 09 lock ownership changed; preserving lock: {self.p['lock']}")
-        try:
-            self.owner.unlink()
-            self.p["lock"].rmdir()
-        except OSError as exc:
-            if not lexists(self.owner) and self.p["lock"].is_dir():
-                try:
-                    with self.owner.open("x", encoding="utf-8") as stream:
-                        stream.write(
-                            f"run_token\t{self.context.token}\npid\t{os.getpid()}\n"
-                        )
-                except OSError:
-                    pass
-            raise ProducerError(
-                f"Could not remove Step 09 lock directory; preserving residue: {self.p['lock']}"
-            ) from exc
-        self.locked = False
-
-    @staticmethod
-    def same(left: Path, right: Path) -> bool:
-        try:
-            return (
-                left.is_file()
-                and right.is_file()
-                and not left.is_symlink()
-                and not right.is_symlink()
-                and left.samefile(right)
-            )
-        except OSError:
-            return False
-
-    def exclusive(self, name: str) -> None:
-        staged, final = self.p[f"tmp_{name}"], self.p[name]
-        if (
-            not staged.is_file()
-            or staged.is_symlink()
-            or not staged.stat().st_size
-            or lexists(final)
-        ):
-            fail(f"Step 09 output cannot be published create-exclusively: {final}")
-        try:
-            os.link(staged, final)
-        except OSError as exc:
-            raise ProducerError(
-                f"Step 09 output final appeared during publication: {final}"
-            ) from exc
-        if not self.same(staged, final):
-            fail(
-                f"Step 09 output publication did not preserve the staged inode: {final}"
-            )
-
-    def rollback(self) -> bool:
-        success = True
-        for name in self.names:
-            staged, final = self.p[f"tmp_{name}"], self.p[name]
-            try:
-                if not lexists(final):
-                    continue
-                if not self.same(staged, final):
-                    success = False
-                else:
-                    final.unlink()
-                    success &= not lexists(final)
-            except OSError:
-                success = False
-        return success
-
-    def discard(self, kind: str) -> None:
-        for name in self.names:
-            try:
-                self.p[f"{kind}_{name}"].unlink(missing_ok=True)
-            except OSError:
-                pass
-
-    def cleanup(self, failed: bool) -> None:
-        if self.child is not None and self.child.poll() is None:
-            print(
-                f"ERROR: Step 09 child remains active; retaining lock and scratch: {self.p['lock']}",
-                file=sys.stderr,
-            )
-            return
-        rollback_failed = (
-            failed and self.started and not self.committed and not self.rollback()
-        )
-        if self.scratch and not rollback_failed:
-            self.discard("tmp")
-        if rollback_failed:
-            print(
-                f"ERROR: Step 09 rollback was incomplete; retaining the owned lock for operator recovery: {self.p['lock']}",
-                file=sys.stderr,
-            )
-            return
-        if not self.locked:
-            return
-        if not lexists(self.owner):
-            try:
-                self.p["lock_owner_tmp"].unlink(missing_ok=True)
-                self.p["lock"].rmdir()
-                self.locked = False
-            except OSError:
-                pass
-            if not self.locked:
-                return
-        try:
-            self.release()
-        except ProducerError as exc:
-            print(f"ERROR: {exc}", file=sys.stderr)
-
-    @staticmethod
-    def signal_child(child: subprocess.Popen[bytes], signum: int) -> None:
-        try:
-            os.killpg(child.pid, signum)
-        except OSError:
-            try:
-                child.send_signal(signum)
-            except ProcessLookupError:
-                pass
-
-    def interrupted(self, signum: int, _frame: object) -> None:
-        for number in SIGNALS:
-            signal.signal(number, signal.SIG_IGN)
-        if self.child is not None and self.child.poll() is None:
-            self.signal_child(self.child, signum)
-            try:
-                self.child.wait(timeout=1)
-            except subprocess.TimeoutExpired:
-                self.signal_child(self.child, signal.SIGKILL)
-                self.child.wait()
-            self.child = None
-        raise Interrupted(signum)
-
-
-def require_no_residue(context: Context, *, owned_lock: Path | None = None) -> None:
-    root = context.paths["root"]
-    if root.is_dir():
-        match = next(
-            (
-                path
-                for path in root.glob(f".{context.arguments.analysis_id}.*")
-                if path != owned_lock
-            ),
-            None,
-        )
-        if match is not None:
-            fail(f"Step 09 residue requires operator inspection: {match}")
-
-
-def execute(context: Context, command: Sequence[str]) -> None:
-    p = context.paths
-    p["root"].mkdir(parents=True, exist_ok=True)
-    tx, handlers, failed = (
-        Publication(context),
-        {number: signal.getsignal(number) for number in SIGNALS},
-        True,
-    )
-    try:
-        for number in handlers:
-            signal.signal(number, tx.defer)
-        tx.acquire()
-        for number in handlers:
-            signal.signal(number, tx.interrupted)
-        tx.honor()
-        require_no_residue(context, owned_lock=p["lock"])
-        tx.scratch = True
-        existing = sum(lexists(p[name]) for name in tx.names)
-        if existing not in (0, 6):
-            fail(
-                f"Existing Step 09 outputs are incomplete; expected all six or none for analysis: {context.arguments.analysis_id}"
-            )
-        if existing:
-            fail(
-                f"Refusing to replace an existing complete Step 09 output set for analysis: {context.arguments.analysis_id}"
-            )
-        confirm_inputs(context)
-        sys.stdout.flush()
-        for number in handlers:
-            signal.signal(number, tx.defer)
-        try:
-            tx.child = subprocess.Popen(command, start_new_session=True)
-        except OSError as exc:
-            raise ProducerError("Step 09 R CMH analysis failed.") from exc
-        for number in handlers:
-            signal.signal(number, tx.interrupted)
-        tx.honor()
-        status = tx.child.wait()
-        tx.child = None
-        if status:
-            fail("Step 09 R CMH analysis failed.")
-        validate_outputs(context, "tmp_")
-        staged = tuple(digest(p[f"tmp_{name}"]) for name in tx.names)
-        tx.started = True
-        for name in tx.names:
-            tx.exclusive(name)
-        validate_outputs(context)
-        if tuple(digest(p[name]) for name in tx.names) != staged:
-            fail("Published Step 09 output changed during publication.")
-        if any(not tx.same(p[f"tmp_{name}"], p[name]) for name in tx.names):
-            fail("Step 09 output final no longer matches its owned staging anchor.")
-        tx.discard("tmp")
-        if any(lexists(p[f"tmp_{name}"]) for name in tx.names):
-            fail("Step 09 could not remove an owned publication anchor.")
-        tx.committed = True
-        tx.release()
-        failed = False
-    finally:
-        for number in handlers:
-            signal.signal(number, signal.SIG_IGN)
-        try:
-            tx.cleanup(failed)
-        finally:
-            for number, handler in handlers.items():
-                signal.signal(number, handler)
-
-
-def run(arguments: argparse.Namespace) -> int:
-    context = build_context(arguments)
-    command = r_command(context)
-    print_plan(context, command)
-    require_no_residue(context)
-    if not arguments.execute:
-        print("Dry-run only. No R process was invoked and no output path was created.")
-        return 0
-    execute(context, command)
-    print("Step 09 execute complete. Published six-output transaction:")
-    for name in Publication.names:
-        print(f"  {context.paths[name]}")
-    return 0
+def execute(context: Context) -> None:
+    if subprocess.run(r_command(context)).returncode:
+        fail("Step 09 R CMH analysis failed.")
+    validate_outputs(context)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     configure_parser(parser)
     try:
-        return run(parser.parse_args(argv))
-    except Interrupted as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 128 + exc.signum
+        execute(build_context(parser.parse_args(argv)))
+        return 0
     except (ProducerError, OSError, UnicodeError, step08.ContractError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1

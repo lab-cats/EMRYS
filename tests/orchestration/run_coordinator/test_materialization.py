@@ -599,7 +599,7 @@ def test_owner_doubles_use_successor_scopes_inside_reporting_payloads(
     assert analysis_id in one(".context_receipt.tsv")
 
 
-def test_plan_is_no_write_and_projects_exact_public_owner_roster(
+def test_plan_is_no_write_and_projects_exact_worker_roster(
     tmp_path: Path,
 ) -> None:
     plan = _plan(tmp_path)
@@ -618,7 +618,13 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     records = _dispatch_records(plan)
     assert len(records) == 35
     assert len({record["machine_key"] for record in records}) == 14
-    assert all("--execute" in record["producer_argv"] for record in records)
+    assert all(
+        record["schema_version"] == "emrys.local-task-dispatch.v2" for record in records
+    )
+    for record in records:
+        assert "--execute" not in record["producer_argv"]
+        for output in record["outputs"]:
+            assert output["working_path"] != output["path"]
     assert all("--execute" in record["validator_argv"] for record in records)
     owners = {
         str(item["machine_key"]): str(item["step_id"])
@@ -700,8 +706,14 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert "step_06_split_bam_by_read_orientation.sh" not in " ".join(
         step06["producer_argv"]
     )
-    assert_root(step06, "--output-dir", ".FWD_like.bam", 0)
-    assert_root(step06, "--qc-dir", ".orientation_counts.tsv", 0)
+    for flag, suffix in (
+        ("--output-dir", ".FWD_like.bam"),
+        ("--qc-dir", ".orientation_counts.tsv"),
+    ):
+        output = next(
+            item for item in step06["outputs"] if item["path"].endswith(suffix)
+        )
+        assert producer_argument(step06, flag) == Path(output["working_path"]).parent
 
     step07 = next(
         record
@@ -730,7 +742,15 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
         step07["producer_argv"]
     )
     assert_root(step07, "--orientation-root", ".FWD_like.bam", 1)
-    assert_root(step07, "--output-root", ".FWD_like.mpileup.vcf", 2)
+    fwd_output = next(
+        item
+        for item in step07["outputs"]
+        if item["path"].endswith(".FWD_like.mpileup.vcf")
+    )
+    assert producer_argument(step07, "--fwd-vcf-output") == Path(
+        fwd_output["working_path"]
+    )
+    assert producer_argument(step07, "--fwd-vcf-final") == Path(fwd_output["path"])
     assert not any("--unlock" in record["producer_argv"] for record in records)
     assert not {
         "--unlock",
@@ -750,9 +770,8 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
         for record in records
         if record["machine_key"] == "emrys.stage.convert_GTF_to_BED12.v1"
     )
-    assert (
-        step00b["producer_argv"][step00b["producer_argv"].index("--run-token") + 1]
-        == step00b["owner_run_token"]
+    assert producer_argument(step00b, "--bed") == Path(
+        step00b["outputs"][0]["working_path"]
     )
     step01 = next(
         record
@@ -774,12 +793,11 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
         str(tmp_path / "tool"),
         "-c",
         (
-            'export EMRYS_RUN_TOKEN="$1" EMRYS_SHA256_PYTHON="$2" EMRYS_REQUIRE_BOUND_SHA256=1; shift 2; exec "$@"'
+            'export EMRYS_SHA256_PYTHON="$1" EMRYS_REQUIRE_BOUND_SHA256=1; shift; exec "$@"'
         ),
-        "emrys-owner",
+        "emrys-scientific-worker",
     ]
-    assert producer[4] == step08["owner_run_token"]
-    assert producer[5] == sys.executable
+    assert producer[4] == sys.executable
     r_bootstrap = next(item for item in producer if "EMRYS_LOCAL_PILOT_R" in item)
     assert "R_LIBS*|R_PROFILE*|R_ENVIRON*|RENV_*|R_DEFAULT_PACKAGES" in r_bootstrap
     assert "EMRYS_USE_RENV" in r_bootstrap
@@ -788,8 +806,14 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert "--no-environ" not in producer
     assert str(tmp_path / "renv-library") in producer
     assert_root(step08, "--step07-root", ".FWD_like.mpileup.vcf", 2)
-    assert_root(step08, "--output-root", ".step08_sites.tsv", 1)
-    assert_root(step08, "--qc-root", ".step08_summary.tsv", 0)
+    for flag, suffix in (
+        ("--sites-output", ".step08_sites.tsv"),
+        ("--summary-output", ".step08_summary.tsv"),
+    ):
+        output = next(
+            item for item in step08["outputs"] if item["path"].endswith(suffix)
+        )
+        assert producer_argument(step08, flag) == Path(output["working_path"])
     step09 = next(
         record
         for record in records
@@ -814,7 +838,9 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
         step09["producer_argv"]
     )
     assert_root(step09, "--step08-root", ".step08_sites.tsv", 1)
-    assert_root(step09, "--output-root", ".cmh_all_sites.tsv", 1)
+    assert producer_argument(step09, "--all-sites-output") == Path(
+        step09["outputs"][0]["working_path"]
+    )
     step10 = next(
         record
         for record in records
@@ -824,7 +850,12 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert "scientific_context_projection.sh" in " ".join(step10["producer_argv"])
     assert "--motif-catalog" in step10["producer_argv"]
     assert "scientific-context-projection" in step10["validator_argv"]
-    assert_root(step10, "--output-root", ".candidate_context.tsv", 1)
+    assert producer_argument(step10, "--candidate-context-output") == Path(
+        step10["outputs"][0]["working_path"]
+    )
+    assert producer_argument(step10, "--candidate-context-final") == Path(
+        step10["outputs"][0]["path"]
+    )
     assert len(step10["inputs"]) == 6
     assert len(step10["outputs"]) == 5
     assert plan.attempt_record["execution_mode"] == "local-science-tools"
@@ -868,9 +899,9 @@ def test_distinct_installed_module_materializes_one_typed_task(
     def plan_task(context):
         observed_threads.append(context.threads)
         (summary,) = context.inputs["step08_summary_v1"]
-        result = context.outputs["collaborator_result_v1"]
+        result = context.working_outputs["collaborator_result_v1"]
         validation = context.outputs["collaborator_validation_v1"]
-        return analysis_modules.TaskCommandPlanV1(
+        return analysis_modules.TaskCommandPlanV2(
             context.python_command(("collaborator-produce", str(result))),
             context.python_command(("collaborator-validate", str(validation))),
             (analysis_modules.TaskInputV1("cohort_summary", summary),),
@@ -1829,7 +1860,6 @@ def test_implementation_identity_closes_direct_scientific_dependencies(
         "src/emrys/libraries/file_checks.sh",
         "src/emrys/libraries/gatk_invocation.sh",
         "src/emrys/libraries/input_contract.R",
-        "src/emrys/libraries/signal_traps.sh",
         "src/emrys/contracts/orchestration/artifact_inventory.py",
         "workflow/contracts/local_cmh_v2.json",
     )

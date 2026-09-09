@@ -8,15 +8,14 @@ sense/antisense conclusions; they never update manifest `strandedness`.
 Inputs are the sample ID, BAM with adjacent BAI, BED12, output directory, and
 RSeQC executable. The output is `<sample>.infer_experiment.txt`.
 
-The normal Run includes this operation. For standalone help from the checkout
-root, invoke the script through Bash:
+The Run includes this operation. The shell script is an internal worker;
+its help describes that interface. The validator remains directly available:
 
 ```bash
 bash src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh --help
 emrys validate rseqc-orientation --help
 ```
 
-The producer previews by default and refuses an existing report. The
-[contract](CONTRACT.md) owns exact labels, fraction tolerance, publication,
+The [contract](CONTRACT.md) owns exact labels, fraction tolerance, publication,
 recovery, and historical behavior. Passing validation does not select a
 biological interpretation or make this evidence a computational gate.

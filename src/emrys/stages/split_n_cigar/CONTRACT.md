@@ -3,7 +3,7 @@
 This directory owns historical Step `05`; the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
 identity and alias. The private validator is grouped under `emrys validate`;
-the producer remains an explicit repository-path command.
+the shell producer is an internal Run worker.
 
 ## Responsibility and execution dependencies
 
@@ -23,7 +23,8 @@ Inputs are sample ID, marked BAM and exact `<bam>.bai`, reference FASTA/FAI/
 DICT, output directory, GATK, samtools, Java 17 or newer, and project-storage
 temporary space. Tool values resolve through explicit arguments, approved
 environment overrides, or PATH/JAVA_HOME. Sample identity is not manifest-
-bound or path-safety checked.
+bound by the worker; the Run supplies the admitted sample and the worker
+requires a path-safe identifier.
 
 Outputs are:
 
@@ -37,32 +38,25 @@ matching `ID`/`SM` read group, at least one alignment, all alignments tagged
 with that group, and a nonempty index. It does not publish a receipt or prove
 that CIGAR-N transformation semantics occurred.
 
-## Orchestration-safe producer boundary
+## Scientific worker
 
-`--no-clobber` is the required local-profile mode. It changes lock scope from
-the output directory to the declared sample, refuses either existing final,
-hashes and rechecks the input BAM/BAI plus reference FASTA/FAI/DICT, and uses
-the existing staged validation and final-path revalidation. This path never
-creates predecessor backups; it publishes create-exclusively with staging
-inode anchors, so an interruption cannot enter the retained
-restoration-failure defect. Tool paths are explicit; observed GATK, samtools,
-and Java versions and output hashes belong in the workflow verified record.
-Execute without this option preserves the replacement transaction below.
+[`step_05_split_n_cigar_reads.sh`](step_05_split_n_cigar_reads.sh) is an internal worker of the
+[Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
-## Current execution surfaces
+The worker runs GATK with runner scratch supplied consistently as Java's
+`java.io.tmpdir`, GATK `--tmp-dir`, and `TMPDIR`. It retains the selected-Java
+17+ probe and isolated GATK environment, creates the canonical `.bam.bai`
+index with samtools, and applies the native BAM checks above. A GATK-created
+alternate `.bai` may remain in scratch; it is not a second published index.
 
-[`step_05_split_n_cigar_reads.sh`](step_05_split_n_cigar_reads.sh)
-is side-effect-free in dry-run. Historical execute mode uses run-token BAM,
-BAI, GATK temp, and backup paths; an owned output-directory lock;
-pre-publication validation; complete-pair predecessor checks; sequential final
-moves; final revalidation; and rollback to a prior pair or removal of a new
-partial pair. Existing valid pairs are replaceable. That route does not
-snapshot-recheck inputs, and neither route publishes a native attempt receipt.
+### Historical replacement defect
 
-Rollback restoration moves are best-effort (`|| true`), after which cleanup
-can remove backups and the lock. Ordinary backup/publication rollback is
-tested, but a failure inside restoration can lose predecessor and recovery
-evidence. The lock is output-directory-wide rather than sample-scoped.
+The retired standalone writer used predecessor backups and best-effort
+restoration. A failure during restoration could be ignored before cleanup
+removed backups and the lock, losing predecessor and recovery evidence. The
+old implementation and its fault characterization remain in
+[revision 88522d0a](https://github.com/lab-cats/EMRYS/tree/88522d0a/src/emrys/stages/split_n_cigar).
+This records the old defect; it does not authorize deleting old residue.
 
 ## Validation interface
 
@@ -88,7 +82,7 @@ BAM, and reference-contig helpers. Shared process helpers require execute mode
 to use absolute Python 3.11+ in `EMRYS_SHA256_PYTHON`, canonical
 `<JAVA_HOME>/bin/java`, and a JVM/GATK-selector-scrubbed environment for both
 the GATK probe and work. This stage still owns tool precedence and versions,
-exact SplitNCigarReads arguments, transaction, validation, and output policy.
+exact SplitNCigarReads arguments, validation, and output policy.
 
 Content mismatches publish `status=fail`; unsafe inputs, required tool-call
 failures, and report-publication failures exit `2`.
@@ -103,6 +97,6 @@ failures, and report-publication failures exit `2`.
   rerunning GATK.
 
 Repository tests protect this contract under the shared
-[evidence ceiling](../../../../tests/README.md). The legacy replacement route
-retains the restoration defect described above. Producer and validator prove
+[evidence ceiling](../../../../tests/README.md). The historical replacement
+defect is retained above. Producer and validator prove
 structure, not the GATK-specific transformation.

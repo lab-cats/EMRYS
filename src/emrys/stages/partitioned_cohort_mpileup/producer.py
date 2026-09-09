@@ -1,15 +1,12 @@
-"""Produce one receipt-last Step 07 partitioned cohort mpileup transaction."""
+"""Compute partitioned cohort VCFs and their scientific receipt in working paths."""
 
 from __future__ import annotations
 
 import argparse
 import gzip
-import hashlib
 import os
 import re
-import shlex
 import shutil
-import signal
 import subprocess
 import sys
 from collections.abc import Iterable, Sequence
@@ -25,22 +22,11 @@ ANNOTATIONS = (
 )
 DEFAULT_FILTER = "INFO/AD[1-]>2 & MAX(FORMAT/DP)>20"
 DEFAULT_MAX_DEPTH = 10_000_000
-INPUT_IDENTITY_ENV = "EMRYS_STEP07_INPUT_IDENTITY_SHA256"
 SAFE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
-SIGNALS = (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
 
 
 class ProducerError(RuntimeError):
-    """Step 07 admission, execution, or publication failed."""
-
-
-class Interrupted(ProducerError):
-    def __init__(self, signum: int) -> None:
-        super().__init__(f"Step 07 interrupted by signal {signum}.")
-        self.signum = signum
-
-
-ScientificInput = tuple[str, Path]
+    """Step 07 scientific preparation or computation failed."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,11 +38,9 @@ class Context:
     selector_path: Path | None
     manifest_hashes: tuple[str, str]
     bams: tuple[tuple[Path, ...], tuple[Path, ...]]
-    scientific_inputs: tuple[ScientificInput, ...]
-    bound_input_identity: str | None
     bcftools: str
-    token: str
     paths: dict[str, Path]
+    final_vcfs: tuple[Path, Path]
 
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:
@@ -67,26 +51,23 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
         "partition-id",
         "orientation-root",
         "reference-fasta",
-        "output-root",
     ):
         parser.add_argument(f"--{name}", required=True)
     parser.add_argument("--bcftools-bin")
     parser.add_argument("--max-depth", default=str(DEFAULT_MAX_DEPTH))
     parser.add_argument("--filter-expression", default=DEFAULT_FILTER)
-    parser.add_argument(
-        "--no-clobber",
-        action="store_true",
-        help="Accepted for existing callers; replacement is always refused.",
-    )
-    parser.add_argument("--execute", action="store_true")
+    for name in (
+        "fwd-vcf-output",
+        "rev-vcf-output",
+        "receipt-output",
+        "fwd-vcf-final",
+        "rev-vcf-final",
+    ):
+        parser.add_argument(f"--{name}", required=True, type=Path)
 
 
 def fail(message: str) -> None:
     raise ProducerError(message)
-
-
-def lexists(path: Path) -> bool:
-    return os.path.lexists(path)
 
 
 def _safe_id(label: str, value: str) -> None:
@@ -226,50 +207,6 @@ def _selector(
     return selector_type, selector_value, path
 
 
-def _paths(arguments: argparse.Namespace, token: str) -> dict[str, Path]:
-    root = Path(arguments.output_root) / arguments.cohort_id / arguments.partition_id
-    stem = f"{arguments.cohort_id}.{arguments.partition_id}"
-    prefix = root / f".{stem}.step07.{token}"
-    return {
-        "root": root,
-        "fwd": root / f"{stem}.{ORIENTATIONS[0]}.mpileup.vcf",
-        "rev": root / f"{stem}.{ORIENTATIONS[1]}.mpileup.vcf",
-        "receipt": root / f"{stem}.step07_outputs.tsv",
-        "tmp_fwd": Path(f"{prefix}.{ORIENTATIONS[0]}.tmp.vcf"),
-        "tmp_rev": Path(f"{prefix}.{ORIENTATIONS[1]}.tmp.vcf"),
-        "tmp_receipt": Path(f"{prefix}.outputs.tmp.tsv"),
-        "lock": root / f".{stem}.step07.lock",
-    }
-
-
-def _scientific_inputs(
-    arguments: argparse.Namespace,
-    sample_ids: Sequence[str],
-    selector_path: Path | None,
-    bams: tuple[tuple[Path, ...], tuple[Path, ...]],
-) -> tuple[ScientificInput, ...]:
-    paths = [
-        ("Sample manifest", Path(arguments.sample_manifest)),
-        ("Partition manifest", Path(arguments.partition_manifest)),
-        ("Reference FASTA", Path(arguments.reference_fasta)),
-        ("Reference FASTA index", Path(f"{arguments.reference_fasta}.fai")),
-    ]
-    if selector_path is not None:
-        paths.append(
-            (f"Regions file for partition {arguments.partition_id}", selector_path)
-        )
-    for index, sample_id in enumerate(sample_ids):
-        for orientation_index, orientation in enumerate(ORIENTATIONS):
-            bam = bams[orientation_index][index]
-            paths.extend(
-                (
-                    (f"{orientation} BAM for {sample_id}", bam),
-                    (f"{orientation} BAI for {sample_id}", Path(f"{bam}.bai")),
-                )
-            )
-    return tuple(paths)
-
-
 def build_context(arguments: argparse.Namespace) -> Context:
     _safe_id("--cohort-id", arguments.cohort_id)
     _safe_id("--partition-id", arguments.partition_id)
@@ -310,18 +247,6 @@ def build_context(arguments: argparse.Namespace) -> Context:
         for sample_id, bam in zip(sample_ids, members, strict=True):
             _nonempty(f"{orientation} BAM for {sample_id}", bam)
             _nonempty(f"{orientation} BAI for {sample_id}", Path(f"{bam}.bai"))
-    bound = os.environ.pop(INPUT_IDENTITY_ENV, "") or None
-    if bound is not None and (
-        os.environ.get("EMRYS_REQUIRE_BOUND_SHA256", "0") != "1"
-        or re.fullmatch(r"[0-9a-f]{64}", bound) is None
-    ):
-        fail("The internal Step 07 input identity is not admitted.")
-    token = (
-        os.environ.get("EMRYS_RUN_TOKEN")
-        or os.environ.get("SLURM_JOB_ID")
-        or str(os.getpid())
-    )
-    _safe_id("Step 07 run token", token)
     context = Context(
         arguments=arguments,
         sample_ids=sample_ids,
@@ -330,56 +255,21 @@ def build_context(arguments: argparse.Namespace) -> Context:
         selector_path=selector_path,
         manifest_hashes=manifest_hashes,
         bams=bams,
-        scientific_inputs=_scientific_inputs(
-            arguments, sample_ids, selector_path, bams
-        ),
-        bound_input_identity=bound,
         bcftools=_executable(arguments.bcftools_bin),
-        token=token,
-        paths=_paths(arguments, token),
+        paths={
+            "fwd": arguments.fwd_vcf_output,
+            "rev": arguments.rev_vcf_output,
+            "receipt": arguments.receipt_output,
+        },
+        final_vcfs=(arguments.fwd_vcf_final, arguments.rev_vcf_final),
     )
-    _confirm_manifest_hashes(context)
     return context
-
-
-def _confirm_manifest_hashes(context: Context) -> None:
-    for (label, path), expected in zip(
-        context.scientific_inputs[:2], context.manifest_hashes, strict=True
-    ):
-        if _digest(path) != expected:
-            fail(f"{label} changed during Step 07: {path}")
-
-
-def _input_digest(item: ScientificInput) -> str:
-    label, path = item
-    _nonempty(label, path)
-    return _digest(path)
-
-
-def _snapshot_inputs(context: Context) -> tuple[str, ...]:
-    return tuple(map(_input_digest, context.scientific_inputs))
-
-
-def _confirm_inputs(context: Context, snapshot: tuple[str, ...]) -> None:
-    if context.bound_input_identity is not None:
-        digest = hashlib.sha256(b"emrys.step07-input-identity.v1\0")
-        for item in context.scientific_inputs:
-            digest.update(os.fsencode(f"{item[1]}\0{_input_digest(item)}\0"))
-        if digest.hexdigest() != context.bound_input_identity:
-            fail(
-                "Scientific inputs changed after run-coordinator admission during "
-                "Step 07 execution."
-            )
-        return
-    for item, expected in zip(context.scientific_inputs, snapshot, strict=True):
-        if _input_digest(item) != expected:
-            fail(f"{item[0]} changed during Step 07 execution: {item[1]}")
 
 
 def pipeline_commands(
     context: Context, orientation_index: int
 ) -> tuple[list[str], list[str]]:
-    output = context.paths["tmp_fwd" if orientation_index == 0 else "tmp_rev"]
+    output = context.paths["fwd" if orientation_index == 0 else "rev"]
     selector = (
         ("-r", context.selector_value)
         if context.selector_type == "region"
@@ -412,21 +302,14 @@ def pipeline_commands(
     return mpileup_command, filter_command
 
 
-def _run_pipeline(context: Context, orientation_index: int, tx: Publication) -> None:
+def _run_pipeline(context: Context, orientation_index: int) -> None:
     mpileup_command, filter_command = pipeline_commands(context, orientation_index)
+    source = subprocess.Popen(mpileup_command, stdout=subprocess.PIPE)
     try:
-        producer = subprocess.Popen(mpileup_command, stdout=subprocess.PIPE)
-        tx.children = [producer]
-        consumer = subprocess.Popen(filter_command, stdin=producer.stdout)
-        tx.children.append(consumer)
-        producer.stdout.close()
-        filter_status = consumer.wait()
-        producer_status = producer.wait()
-        tx.children = []
-    except OSError as exc:
-        tx.stop_children(signal.SIGTERM)
-        raise ProducerError(f"Could not execute bcftools pipeline: {exc}") from exc
-    if producer_status or filter_status:
+        consumer = subprocess.Popen(filter_command, stdin=source.stdout)
+    finally:
+        source.stdout.close()
+    if consumer.wait() or source.wait():
         fail(
             f"{ORIENTATIONS[orientation_index]} bcftools mpileup/filter pipeline failed."
         )
@@ -434,35 +317,28 @@ def _run_pipeline(context: Context, orientation_index: int, tx: Publication) -> 
 
 def _bcftools(
     context: Context,
-    tx: Publication,
     *arguments: str,
     count_lines: bool = False,
 ) -> str | int:
-    try:
-        process = subprocess.Popen(
-            [context.bcftools, *arguments],
-            stdout=subprocess.PIPE,
-            text=True,
-        )
-        tx.children = [process]
-        output: str | int = (
+    with subprocess.Popen(
+        [context.bcftools, *arguments],
+        stdout=subprocess.PIPE,
+        text=True,
+    ) as process:
+        output = (
             sum(1 for _ in process.stdout) if count_lines else process.stdout.read()
         )
         process.stdout.close()
         status = process.wait()
-        tx.children = []
-    except (OSError, UnicodeError) as exc:
-        tx.stop_children(signal.SIGTERM)
-        raise ProducerError(f"Could not execute bcftools: {exc}") from exc
     if status:
         fail(f"bcftools {' '.join(arguments[:2])} failed.")
     return output
 
 
-def _validate_vcf(context: Context, tx: Publication, label: str, path: Path) -> int:
+def _validate_vcf(context: Context, label: str, path: Path) -> int:
     _nonempty(f"{label} VCF", path)
-    _bcftools(context, tx, "view", "-h", str(path))
-    sample_output = _bcftools(context, tx, "query", "-l", str(path))
+    _bcftools(context, "view", "-h", str(path))
+    sample_output = _bcftools(context, "query", "-l", str(path))
     samples = tuple(sample_output.splitlines())
     if samples != context.sample_ids:
         expected_text = "\n".join(context.sample_ids)
@@ -472,7 +348,7 @@ def _validate_vcf(context: Context, tx: Publication, label: str, path: Path) -> 
             f"Expected samples:\n{expected_text}\n"
             f"Observed samples:\n{observed_text}"
         )
-    count = _bcftools(context, tx, "view", "-H", str(path), count_lines=True)
+    count = _bcftools(context, "view", "-H", str(path), count_lines=True)
     return count
 
 
@@ -485,15 +361,13 @@ def _receipt_bytes(context: Context, counts: tuple[int, int]) -> bytes:
                 context.selector_type,
                 context.selector_value,
                 orientation,
-                str(context.paths[name]),
+                str(context.final_vcfs[index]),
                 *context.manifest_hashes,
                 str(len(context.sample_ids)),
                 str(counts[index]),
             )
         )
-        for index, (orientation, name) in enumerate(
-            zip(ORIENTATIONS, ("fwd", "rev"), strict=True)
-        )
+        for index, orientation in enumerate(ORIENTATIONS)
     )
     return ("\t".join(mpileup.RECEIPT_HEADER) + "\n" + "\n".join(rows) + "\n").encode()
 
@@ -504,382 +378,24 @@ def _validate_receipt(path: Path) -> None:
         fail(f"Step 07 receipt must contain exactly two data rows: {path}")
 
 
-class Publication:
-    """Owner-local Step 07 publication state; not a shared operation model."""
-
-    names = ("fwd", "rev", "receipt")
-
-    def __init__(self, context: Context) -> None:
-        self.context, self.p = context, context.paths
-        self.locked = self.scratch = self.committed = False
-        self.started = False
-        self.children: list[subprocess.Popen[bytes]] = []
-
-    @property
-    def owner(self) -> Path:
-        return self.p["lock"] / "owner"
-
-    def acquire(self) -> None:
-        try:
-            self.p["lock"].mkdir()
-        except FileExistsError as exc:
-            raise ProducerError(
-                f"Step 07 lock already exists: {self.p['lock']}"
-            ) from exc
-        self.locked = True
-        try:
-            self.owner.write_text(
-                f"run_token\t{self.context.token}\npid\t{os.getpid()}\n"
-            )
-        except OSError:
-            try:
-                self.owner.unlink(missing_ok=True)
-                self.p["lock"].rmdir()
-            except OSError:
-                pass
-            else:
-                self.locked = False
-            raise
-
-    def release(self) -> None:
-        if not self.locked:
-            return
-        try:
-            owned = (
-                f"run_token\t{self.context.token}"
-                in self.owner.read_text().splitlines()
-            )
-            unexpected = [
-                path for path in self.p["lock"].iterdir() if path != self.owner
-            ]
-        except OSError as exc:
-            raise ProducerError(
-                f"Cannot prove Step 07 lock ownership: {self.p['lock']}"
-            ) from exc
-        if not owned or unexpected:
-            fail(f"Step 07 lock ownership changed; preserving lock: {self.p['lock']}")
-        self.owner.unlink()
-        try:
-            self.p["lock"].rmdir()
-        except OSError as exc:
-            try:
-                with self.owner.open("x") as stream:
-                    stream.write(
-                        f"run_token\t{self.context.token}\npid\t{os.getpid()}\n"
-                    )
-            except OSError:
-                pass
-            raise ProducerError(
-                f"Could not remove Step 07 lock: {self.p['lock']}"
-            ) from exc
-        self.locked = False
-
-    @staticmethod
-    def same(left: Path, right: Path) -> bool:
-        try:
-            return (
-                left.is_file()
-                and right.is_file()
-                and not left.is_symlink()
-                and not right.is_symlink()
-                and left.samefile(right)
-            )
-        except OSError:
-            return False
-
-    def exclusive(self, name: str) -> None:
-        staged, final = self.p[f"tmp_{name}"], self.p[name]
-        if (
-            not staged.is_file()
-            or staged.is_symlink()
-            or staged.stat().st_size == 0
-            or lexists(final)
-        ):
-            fail(f"Step 07 {name} cannot be published create-exclusively: {final}")
-        try:
-            os.link(staged, final)
-        except OSError as exc:
-            raise ProducerError(
-                f"Step 07 {name} final appeared during publication: {final}"
-            ) from exc
-        if not self.same(staged, final):
-            fail(f"Step 07 {name} publication lost staged-inode identity: {final}")
-
-    def rollback(self) -> bool:
-        success = True
-        for name in self.names:
-            staged, final = self.p[f"tmp_{name}"], self.p[name]
-            try:
-                if not lexists(final):
-                    continue
-                if not self.same(staged, final):
-                    success = False
-                    continue
-                final.unlink()
-            except OSError:
-                success = False
-        return success
-
-    def discard(self, prefix: str) -> None:
-        for name in self.names:
-            try:
-                self.p[f"{prefix}_{name}"].unlink(missing_ok=True)
-            except OSError:
-                pass
-
-    def cleanup(self, failed: bool) -> None:
-        if any(process.poll() is None for process in self.children):
-            print(
-                f"ERROR: Step 07 child remains active; retaining lock and scratch: {self.p['lock']}",
-                file=sys.stderr,
-            )
-            return
-        rollback_failed = bool(
-            failed and self.started and not self.committed and not self.rollback()
-        )
-        if self.scratch and not rollback_failed:
-            self.discard("tmp")
-        if rollback_failed:
-            print(
-                f"ERROR: Step 07 rollback incomplete; retaining lock and staging files: {self.p['lock']}",
-                file=sys.stderr,
-            )
-        elif self.locked:
-            try:
-                self.release()
-            except ProducerError as exc:
-                print(f"ERROR: {exc}", file=sys.stderr)
-
-    def interrupted(self, signum: int, _frame: object) -> None:
-        for number in SIGNALS:
-            signal.signal(number, signal.SIG_IGN)
-        self.signal_children(signum)
-        raise Interrupted(signum)
-
-    @staticmethod
-    def signal(process: subprocess.Popen[bytes], signum: int) -> None:
-        try:
-            os.killpg(process.pid, signum)
-        except OSError:
-            try:
-                process.send_signal(signum)
-            except ProcessLookupError:
-                pass
-
-    def signal_children(self, signum: int) -> None:
-        for process in reversed(self.children):
-            if process.poll() is None:
-                self.signal(process, signum)
-
-    def reap_children(self) -> None:
-        for process in reversed(self.children):
-            try:
-                process.wait(timeout=1)
-            except subprocess.TimeoutExpired:
-                self.signal(process, signal.SIGKILL)
-                process.wait()
-        self.children = []
-
-    def stop_children(self, signum: int) -> None:
-        self.signal_children(signum)
-        self.reap_children()
-
-
-def _require_no_residue(context: Context, *, owned_lock: Path | None = None) -> None:
-    root = context.paths["root"]
-    if not root.is_dir():
-        return
-    prefix = f".{context.arguments.cohort_id}.{context.arguments.partition_id}.step07."
-    match = next(
-        (
-            path
-            for path in root.iterdir()
-            if path.name.startswith(prefix) and path != owned_lock
-        ),
-        None,
-    )
-    if match is not None:
-        fail(f"Step 07 residue requires operator inspection: {match}")
-
-
-def _print_plan(context: Context) -> None:
-    a, p = context.arguments, context.paths
-    validation_report = (
-        p["root"] / f"{a.cohort_id}.{a.partition_id}.step07_validation.tsv"
-    )
-    validate_prefix = ("emrys", "validate")
-    validator_bindings = (
-        ("--cohort-id", a.cohort_id),
-        ("--partition-id", a.partition_id),
-        ("--sample-manifest", a.sample_manifest),
-        ("--partition-manifest", a.partition_manifest),
-        ("--reference-fai", f"{a.reference_fasta}.fai"),
-        ("--fwd-vcf", p["fwd"]),
-        ("--rev-vcf", p["rev"]),
-        ("--receipt", p["receipt"]),
-        ("--output", validation_report),
-    )
-    validator_command = (
-        *validate_prefix,
-        "partitioned-cohort-mpileup",
-        *(str(item) for pair in validator_bindings for item in pair),
-        "--execute",
-    )
-    all_pass_command = (
-        f"{shlex.join(validate_prefix)} all-pass "
-        f"--report {shlex.quote(str(validation_report))} --step-id 07 "
-        f"--scope-id {a.cohort_id}__{a.partition_id}"
-    )
-    print("Step 07 cohort mpileup context:")
-    for label, value in (
-        ("Mode", "execute" if a.execute else "dry-run"),
-        ("Run token", context.token),
-        ("Cohort ID", a.cohort_id),
-        ("Sample manifest", a.sample_manifest),
-        ("Sample manifest SHA-256", context.manifest_hashes[0]),
-        ("Sample count", len(context.sample_ids)),
-        ("Partition manifest", a.partition_manifest),
-        ("Partition manifest SHA-256", context.manifest_hashes[1]),
-        ("Partition ID", a.partition_id),
-        (
-            "Selector declared in manifest",
-            f"{context.selector_type} {context.selector_value}",
-        ),
-        (
-            "Selector resolved for execution",
-            f"{context.selector_type} {context.selector_path or context.selector_value}",
-        ),
-        ("Reference FASTA", a.reference_fasta),
-        ("Reference FAI", f"{a.reference_fasta}.fai"),
-        ("Orientation root", a.orientation_root),
-        ("Output directory", p["root"]),
-        (f"{ORIENTATIONS[0]} VCF", p["fwd"]),
-        (f"{ORIENTATIONS[1]} VCF", p["rev"]),
-        ("Receipt", p["receipt"]),
-        ("bcftools", context.bcftools),
-        ("Maximum depth", a.max_depth),
-        ("Filter expression", a.filter_expression),
-        (
-            "Existing-output policy",
-            "refuse existing outputs",
-        ),
-    ):
-        print(f"  {label}: {value}")
-    print("  Samples:\n    " + "\n    ".join(context.sample_ids))
-    print("  Orientation policy: mechanical FWD_like/REV_like labels only")
-    for index, orientation in enumerate(ORIENTATIONS):
-        first, second = pipeline_commands(context, index)
-        print(
-            f"{orientation} pipeline:\n  {shlex.join(first)}\n  | {shlex.join(second)}"
-        )
-    print(
-        "Planned validation:\n  bcftools view/query on both VCFs; manifest sample order; record counts"
-    )
-    print(
-        "Planned publication:\n"
-        f"  Lock: {p['lock']}\n"
-        f"  Temporary {ORIENTATIONS[0]} VCF: {p['tmp_fwd']}\n"
-        f"  Temporary {ORIENTATIONS[1]} VCF: {p['tmp_rev']}\n"
-        f"  Temporary receipt: {p['tmp_receipt']}\n"
-        "  Publish VCF, VCF, then receipt with rollback protection"
-    )
-    print(f"Post-execution validator command:\n  {shlex.join(validator_command)}")
-    print(f"Semantic all-pass gate:\n  {all_pass_command}")
-
-
 def execute(context: Context) -> tuple[int, int]:
-    p = context.paths
-    p["root"].mkdir(parents=True, exist_ok=True)
-    tx = Publication(context)
-    handlers = {number: signal.getsignal(number) for number in SIGNALS}
-    failed = True
-    try:
-        for number in handlers:
-            signal.signal(number, signal.SIG_IGN)
-        tx.acquire()
-        _require_no_residue(context, owned_lock=p["lock"])
-        tx.scratch = True
-        for number in handlers:
-            signal.signal(number, tx.interrupted)
-        existing = sum(lexists(p[name]) for name in tx.names)
-        if existing not in (0, 3):
-            fail("Existing Step 07 outputs are incomplete; expected all three or none.")
-        if existing:
-            fail("Refusing to replace complete Step 07 outputs.")
-        snapshot = (
-            _snapshot_inputs(context) if context.bound_input_identity is None else ()
-        )
-        _confirm_manifest_hashes(context)
-        sys.stdout.flush()
-        _run_pipeline(context, 0, tx)
-        _run_pipeline(context, 1, tx)
-        _confirm_inputs(context, snapshot)
-        counts = (
-            _validate_vcf(
-                context, tx, f"Published {ORIENTATIONS[0]} temporary", p["tmp_fwd"]
-            ),
-            _validate_vcf(
-                context, tx, f"Published {ORIENTATIONS[1]} temporary", p["tmp_rev"]
-            ),
-        )
-        p["tmp_receipt"].write_bytes(_receipt_bytes(context, counts))
-        _validate_receipt(p["tmp_receipt"])
-        _confirm_inputs(context, snapshot)
-        tx.started = True
-        for name in ("fwd", "rev"):
-            tx.exclusive(name)
-        published = (
-            _validate_vcf(context, tx, f"Published {ORIENTATIONS[0]}", p["fwd"]),
-            _validate_vcf(context, tx, f"Published {ORIENTATIONS[1]}", p["rev"]),
-        )
-        if published != counts:
-            fail("Published Step 07 VCF record count changed during publication.")
-        tx.exclusive("receipt")
-        _validate_receipt(p["receipt"])
-        if any(not tx.same(p[f"tmp_{name}"], p[name]) for name in tx.names):
-            fail("A Step 07 final no longer matches its staging anchor.")
-        for name in tx.names:
-            p[f"tmp_{name}"].unlink()
-        tx.committed = True
-        tx.release()
-        failed = False
-        return counts
-    except Interrupted:
-        tx.reap_children()
-        raise
-    finally:
-        for number, handler in handlers.items():
-            signal.signal(number, handler)
-        tx.cleanup(failed)
-
-
-def run(arguments: argparse.Namespace) -> int:
-    context = build_context(arguments)
-    _print_plan(context)
-    _require_no_residue(context)
-    if not arguments.execute:
-        print("Dry-run complete; no directories or files were created.")
-        return 0
-    counts = execute(context)
-    print("Step 07 execute complete.")
-    for index, (orientation, name) in enumerate(
-        zip(ORIENTATIONS, ("fwd", "rev"), strict=True)
-    ):
-        print(
-            f"Published {orientation} VCF: {context.paths[name]} ({counts[index]} records)"
-        )
-    print(f"Published receipt: {context.paths['receipt']}")
-    return 0
+    _run_pipeline(context, 0)
+    _run_pipeline(context, 1)
+    counts = tuple(
+        _validate_vcf(context, orientation, context.paths[name])
+        for orientation, name in zip(ORIENTATIONS, ("fwd", "rev"), strict=True)
+    )
+    context.paths["receipt"].write_bytes(_receipt_bytes(context, counts))
+    _validate_receipt(context.paths["receipt"])
+    return counts
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     configure_parser(parser)
     try:
-        return run(parser.parse_args(argv))
-    except Interrupted as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 128 + exc.signum
+        execute(build_context(parser.parse_args(argv)))
+        return 0
     except (ProducerError, OSError, UnicodeError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1

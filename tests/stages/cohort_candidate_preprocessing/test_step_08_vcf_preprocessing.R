@@ -504,12 +504,6 @@ run_engine <- function(
                 )
             )
         }
-        assert_true(
-            !file.exists(invocation$paths$sites) &&
-                !file.exists(invocation$paths$inputs) &&
-                !file.exists(invocation$paths$summary),
-            "failed engine run must remove all owned output paths"
-        )
     }
     invocation$paths
 }

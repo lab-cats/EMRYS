@@ -21,14 +21,15 @@ before expensive work and show the supported plan. Prefer `argparse`, `pathlib`,
 and a guarded Python `main`; use strict, portable Bash with quoted values;
 make R inputs independent of the working directory.
 The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries)
-owns grouped confirmation behavior. Direct producers preview by default unless
-their owner contract explicitly permits another behavior.
+owns grouped confirmation behavior. Scientific workers run through the existing
+runner using its explicit working destinations.
 
 ## Validation, publication, and recovery
 
-Each owner defines its input/output checks, publication order, and recovery.
-Similar transaction names do not prove equivalent behavior. Preserve ambiguous
-outputs and evidence; follow the
+Scientific owners define output checks, contents, and provenance. The
+[runner contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution)
+owns common execution, publication, and recovery. Preserve ambiguous outputs
+and evidence; follow the
 [execution decision](../design/decisions/execution-evidence-and-reporting.md)
 and the affected owner contract before changing a transaction.
 

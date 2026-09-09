@@ -912,7 +912,7 @@ def _wait_for_group_absence(
         ops.sleep(ops.poll_interval_seconds)
 
 
-def _quiesce_process_group(
+def quiesce_process_group(
     process_group_id: int,
     process: Any,
     ops: ProcessGroupOps,
@@ -944,11 +944,9 @@ def _quiesce_process_group(
         raise
     except BaseException as exc:
         raise ProcessGroupAmbiguity(
-            "Delegated workflow process-group quiescence proof failed"
+            "Delegated process-group quiescence proof failed"
         ) from exc
-    raise ProcessGroupAmbiguity(
-        "Delegated workflow process group could not be proved quiescent"
-    )
+    raise ProcessGroupAmbiguity("Delegated process group could not be proved quiescent")
 
 
 def _run_process_group(
@@ -994,7 +992,7 @@ def _run_process_group(
                     )
             ops.sleep(ops.poll_interval_seconds)
         quiescence_attempted = True
-        _quiesce_process_group(process_group_id, process, ops)
+        quiesce_process_group(process_group_id, process, ops)
         signals.raise_forwarding_error()
         signals.clear_process_group(process_group_id)
         registered = False
@@ -1002,10 +1000,10 @@ def _run_process_group(
         if quiescence_attempted:
             raise
         try:
-            _quiesce_process_group(process_group_id, process, ops)
+            quiesce_process_group(process_group_id, process, ops)
         except BaseException as cleanup_error:
             raise ProcessGroupAmbiguity(
-                "Delegated workflow process group could not be proved quiescent after an execution-boundary failure"
+                "Delegated process group could not be proved quiescent after an execution-boundary failure"
             ) from cleanup_error
         if registered:
             signals.clear_process_group(process_group_id)

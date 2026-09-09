@@ -48,6 +48,11 @@ The converter writes one BED12 row per valid transcript. It:
 
 ## Current execution surfaces
 
+A Run invokes the converter's private worker entry point with one exact working
+BED12 path. It shares `normalize_gtf` and `render_bed` with the utility below.
+The [runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution)
+owns this task's working space, publication, logs, and recovery.
+
 `emrys convert gtf-to-bed12` is the public conversion route,
 implemented by [`converter.py`](converter.py). It accepts explicit input/output
 and GTF-selection arguments. It renders complete deterministic BED12 bytes in
@@ -60,7 +65,7 @@ same regular-file inode as that anchor. A cleanup failure or foreign replacement
 fails closed with the remaining lock and/or staging residue. An existing
 output, lock, or staging residue blocks the operation and is never overwritten
 automatically. `--run-token` lets an orchestrator supply the safe identifier
-used by the lock and staging paths; without it, the producer generates a
+used by the lock and staging paths; without it, the utility generates a
 private random token. An unhandled interruption can leave both lock and staging
 evidence; a subsequent invocation preserves and reports that ambiguous state.
 

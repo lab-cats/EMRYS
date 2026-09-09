@@ -21,7 +21,7 @@ from emrys.libraries.installed_package_identity import (
 from emrys.libraries.validation import HEADER as VALIDATION_REPORT_HEADER
 
 ANALYSIS_MODULE_ENTRY_POINT_GROUP = "emrys.analysis_modules"
-ANALYSIS_MODULE_INTERFACE_V1 = "emrys.analysis-module.v1"
+ANALYSIS_MODULE_INTERFACE_V2 = "emrys.analysis-module.v2"
 BUILTIN_PAIRED_CMH_MODULE_ID = "emrys.paired-cmh"
 ANALYSIS_ARTIFACT_MEDIA_TYPES = MappingProxyType(
     {
@@ -83,7 +83,7 @@ class TaskInputV1(NamedTuple):
     path: Path
 
 
-class TaskCommandPlanV1(NamedTuple):
+class TaskCommandPlanV2(NamedTuple):
     """Producer, validator, and complete provenance inputs for one task."""
 
     producer_argv: tuple[str, ...]
@@ -91,7 +91,7 @@ class TaskCommandPlanV1(NamedTuple):
     inputs: tuple[TaskInputV1, ...]
 
 
-class TaskPlanningContextV1(NamedTuple):
+class TaskPlanningContextV2(NamedTuple):
     """Closed core projection; modules do not receive workflow layout internals."""
 
     reference_id: str
@@ -105,6 +105,7 @@ class TaskPlanningContextV1(NamedTuple):
     configuration: JsonObject
     inputs: Mapping[str, tuple[Path, ...]]
     outputs: Mapping[str, Path]
+    working_outputs: Mapping[str, Path]
     runtime_paths: Mapping[str, str]
     python_command: Callable[[tuple[str, ...]], tuple[str, ...]]
     r_owner_command: Callable[[tuple[str, ...]], tuple[str, ...]]
@@ -115,7 +116,7 @@ class TaskPlanningContextV1(NamedTuple):
 ConfigNormalizerV1: TypeAlias = Callable[
     [JsonObject, AnalysisInputContextV1], JsonObject
 ]
-TaskPlannerV1: TypeAlias = Callable[[TaskPlanningContextV1], TaskCommandPlanV1]
+TaskPlannerV1: TypeAlias = Callable[[TaskPlanningContextV2], TaskCommandPlanV2]
 
 
 class AnalysisTaskV1(NamedTuple):
@@ -491,7 +492,7 @@ def module_identity_record(module: LoadedAnalysisModuleV1) -> dict[str, object]:
     provider = module.provider
     return {
         "module_id": descriptor.module_id,
-        "interface_version": ANALYSIS_MODULE_INTERFACE_V1,
+        "interface_version": ANALYSIS_MODULE_INTERFACE_V2,
         "module_version": descriptor.module_version,
         "distribution_name": provider.distribution_name,
         "distribution_version": provider.distribution_version,
@@ -544,7 +545,7 @@ __all__ = (
     "ANALYSIS_ARTIFACT_KINDS",
     "ANALYSIS_ARTIFACT_MEDIA_TYPES",
     "ANALYSIS_MODULE_ENTRY_POINT_GROUP",
-    "ANALYSIS_MODULE_INTERFACE_V1",
+    "ANALYSIS_MODULE_INTERFACE_V2",
     "BUILTIN_PAIRED_CMH_MODULE_ID",
     "VALIDATION_REPORT_HEADER",
     "AnalysisArtifactV1",
@@ -556,9 +557,9 @@ __all__ = (
     "AnalysisTaskPlanningError",
     "AnalysisTaskV1",
     "LoadedAnalysisModuleV1",
-    "TaskCommandPlanV1",
+    "TaskCommandPlanV2",
     "TaskInputV1",
-    "TaskPlanningContextV1",
+    "TaskPlanningContextV2",
     "admit_configuration",
     "compose_profile",
     "dependency_records",

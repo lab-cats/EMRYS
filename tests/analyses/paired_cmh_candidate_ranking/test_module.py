@@ -59,7 +59,7 @@ def test_module_rejects_cross_field_scientific_invalidity(
 
 def test_module_task_planner_includes_an_admitted_background(tmp_path: Path) -> None:
     task = analysis_module_v1().tasks[0]
-    context = analyses.TaskPlanningContextV1(
+    context = analyses.TaskPlanningContextV2(
         reference_id="reference",
         cohort_id="cohort",
         analysis_id="analysis",
@@ -84,6 +84,11 @@ def test_module_task_planner_includes_an_admitted_background(tmp_path: Path) -> 
         },
         outputs={
             output.adapter: tmp_path / output.artifact_name for output in task.outputs
+        },
+        working_outputs={
+            output.adapter: tmp_path / "work" / output.artifact_name
+            for output in task.outputs
+            if output.kind != "validation_report"
         },
         runtime_paths={"rscript": "Rscript"},
         python_command=lambda command: command,

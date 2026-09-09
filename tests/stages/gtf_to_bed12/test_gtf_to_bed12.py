@@ -19,15 +19,18 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 def run_converter(
     *args: str,
     cwd: Path = REPO_ROOT,
+    worker: bool = False,
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [
             sys.executable,
             "-I",
             "-m",
-            "emrys",
-            "convert",
-            "gtf-to-bed12",
+            *(
+                ("emrys.stages.gtf_to_bed12.converter",)
+                if worker
+                else ("emrys", "convert", "gtf-to-bed12")
+            ),
             *args,
         ],
         cwd=cwd,
@@ -121,7 +124,10 @@ def test_empty_direct_api_run_token_does_not_fall_back(tmp_path: Path) -> None:
     assert not bed.parent.exists()
 
 
-def test_multi_exon_transcript_conversion_and_exon_sorting(tmp_path: Path) -> None:
+@pytest.mark.parametrize("worker", (False, True))
+def test_multi_exon_transcript_conversion_and_exon_sorting(
+    tmp_path: Path, worker: bool
+) -> None:
     gtf = write_gtf(
         tmp_path / "input.gtf",
         [
@@ -132,18 +138,20 @@ def test_multi_exon_transcript_conversion_and_exon_sorting(tmp_path: Path) -> No
     )
     bed = tmp_path / "out" / "models.bed"
 
+    if worker:
+        bed.parent.mkdir()
     result = run_converter(
         "--gtf",
         str(gtf),
         "--bed",
         str(bed),
-        "--run-token",
-        "explicit-owner-00b",
-        "--execute",
+        *(() if worker else ("--run-token", "explicit-owner-00b", "--execute")),
+        worker=worker,
     )
 
-    assert result.returncode == 0
-    assert "Run token: explicit-owner-00b" in result.stdout
+    assert result.returncode == 0, result.stderr
+    if not worker:
+        assert "Run token: explicit-owner-00b" in result.stdout
     assert read_bed(bed) == [
         "chr1\t100\t250\ttxA|geneA\t0\t+\t100\t250\t0\t2\t50,50,\t0,100,"
     ]

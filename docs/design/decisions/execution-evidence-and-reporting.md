@@ -14,36 +14,17 @@ log nothing. Dry-run and execution use the same admitted values.
 
 ### Publish validated transactions
 
-Multi-file owners use declared destinations, owned locks, staging, stable-input
-rechecks, validation before publication, no-clobber behavior, bounded rollback,
-and a receipt or summary published last. Transaction completion says only that
-the declared transaction was admitted; it does not promote scientific meaning
-or unrelated evidence.
+Scientific producers own computation, output checks and provenance. The existing
+runner owns their execution and publication across reference, sample, cohort,
+and analysis tasks. Requiring the runner removes duplicated standalone lifecycles
+without introducing a manager hierarchy. The
+[scientific-worker contract](../../../src/emrys/orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution)
+owns staging, locks, publication order, rollback, retained evidence, and the
+independent validation gate.
 
-Preserve locks, backups, partials, and recovery markers whenever ownership or
-cleanup cannot be proved. Characterize unsafe states before correcting them.
-An observed defect is neither an approved contract nor evidence that unlike
-transaction implementations should share one abstraction.
-
-#### Standalone scientific output policy
-
-Mpileup, preprocessing, paired CMH, and scientific-context producers refuse
-existing output destinations, both inside a Run and when invoked directly.
-Their accepted `--no-clobber` flag selects no alternative behavior. Use fresh
-destinations for a new standalone result; a changed Run plan requires a new Run.
-Existing Run resume and verified-output reuse keep their separate admission
-rules. Old backup files remain recovery evidence and are never automatically
-adopted or removed by a new invocation.
-
-#### No-clobber rollback
-
-Steps 07–09 follow this rule for every invocation. An output path
-that is already absent needs no cleanup. Remove a present output only if it
-still identifies the same file as this attempt's staging entry, proven by
-matching device and inode. A complete, unambiguous rollback removes owned
-staging and releases the lock so an ordinary rerun can proceed. If an output's
-ownership cannot be proved or removal fails, preserve the lock and remaining
-files for inspection.
+A new Run plan creates a new Run. Existing immutable plans retain their original
+interpretation and require their bound implementation for execution. A completed
+native publication does not imply task completion or promote scientific meaning.
 
 ### Separate placement from authority
 

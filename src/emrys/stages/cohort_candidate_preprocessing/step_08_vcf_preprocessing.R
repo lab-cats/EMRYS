@@ -2,9 +2,8 @@
 
 # Step 08: validate the complete declared Step 07 VCF set, expand alternate
 # alleles, apply the provisional legacy orientation policy, annotate candidates,
-# and write deterministic cohort-level TSVs. Publication and locking belong to
-# src/emrys/stages/cohort_candidate_preprocessing/producer.py; this program writes only its three
-# explicitly supplied output paths.
+# and write deterministic cohort-level TSVs to three explicitly supplied
+# working paths. The Run task runner owns their publication and cleanup.
 
 options(stringsAsFactors = FALSE, scipen = 999, digits = 15)
 
@@ -117,12 +116,6 @@ main <- function() {
             abort("Refusing to overwrite an existing temporary output: ", path)
         }
     }
-    successful <- FALSE
-    on.exit({
-        if (!successful) {
-            unlink(output_paths[file.exists(output_paths)], force = TRUE)
-        }
-    }, add = TRUE)
 
     sample_ids <- read_sample_manifest(sample_manifest)
     partitions <- read_partition_manifest(partition_manifest)
@@ -313,7 +306,6 @@ main <- function() {
     write_tsv(sites, output_paths[[1L]])
     write_tsv(summary, output_paths[[3L]])
     write_tsv(input_receipt, output_paths[[2L]])
-    successful <- TRUE
 
     message(
         "Step 08 preprocessing complete: ", nrow(input_receipt),

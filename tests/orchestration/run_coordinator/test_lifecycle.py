@@ -1169,10 +1169,12 @@ def _materialize_verified(
         )
         artifact_root.mkdir(parents=True, exist_ok=True)
         input_path = artifact_root / "input.txt"
-        output_path = artifact_root / "output.txt"
         report_path = artifact_root / "validation.tsv"
         input_path.write_text(f"input {machine} {scope_id}\n", encoding="utf-8")
-        output_path.write_text(f"output {machine} {scope_id}\n", encoding="utf-8")
+        for output in dispatch["outputs"]:
+            output_path = Path(output["path"])
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(f"output {machine} {scope_id}\n", encoding="utf-8")
         report_path.write_text(
             "step_id\tscope_id\tcheck_id\tstatus\tobserved\texpected\tdetail\n"
             f"{owner['step_id']}\t{scope_id}\tlifecycle_fixture\tpass\tpass\tpass\tfixture\n",
@@ -1256,7 +1258,10 @@ def _materialize_verified(
                 "semantic_all_pass": command,
             },
             "inputs": [_bound("fixture_input", input_path)],
-            "outputs": [_bound("fixture_output", output_path)],
+            "outputs": [
+                _bound(output["role"], Path(output["path"]))
+                for output in dispatch["outputs"]
+            ],
             "native_receipt": None,
             "validation_report": {**report_reference, "all_pass": True},
             "stable_inputs_rechecked": True,

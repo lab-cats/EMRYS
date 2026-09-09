@@ -135,10 +135,10 @@ _STEP09_RESULTS = (
         step09.STEP09_RESULT_HEADER,
         None,
     ),
-    ("cmh_summary", "tsv", step09.STEP09_SUMMARY_HEADER, 1),
     ("mutation_spectrum_tsv", "tsv", step09.STEP09_MUTATION_HEADER, None),
     ("mutation_spectrum_pdf", "pdf", None, None),
     ("depth_delta_pdf", "pdf", None, None),
+    ("cmh_summary", "tsv", step09.STEP09_SUMMARY_HEADER, 1),
 )
 _STEP09_OUTPUTS = tuple(
     _result("09", "editing", name, kind, header, rows)
@@ -180,7 +180,7 @@ _STEP10_ROOT = Path(__file__).with_name("scientific_context_projection")
 _STEP09_R_SCRIPT = Path(__file__).with_name("step_09_cmh_editing_site_calling.R")
 
 
-def _one(context: module_api.TaskPlanningContextV1, adapter: str) -> Path:
+def _one(context: module_api.TaskPlanningContextV2, adapter: str) -> Path:
     paths = context.inputs.get(adapter, ())
     if len(paths) != 1:
         raise module_api.AnalysisTaskPlanningError(
@@ -189,7 +189,7 @@ def _one(context: module_api.TaskPlanningContextV1, adapter: str) -> Path:
     return paths[0]
 
 
-def _step09(context: module_api.TaskPlanningContextV1) -> module_api.TaskCommandPlanV1:
+def _step09(context: module_api.TaskPlanningContextV2) -> module_api.TaskCommandPlanV2:
     sites = _one(context, "step08_sites_v1")
     inputs = _one(context, "step08_inputs_v1")
     summary08 = _one(context, "step08_summary_v1")
@@ -201,7 +201,21 @@ def _step09(context: module_api.TaskPlanningContextV1) -> module_api.TaskCommand
             ("sample-manifest", context.sample_manifest),
             ("partition-manifest", context.partition_manifest),
             ("step08-root", sites.parents[1]),
-            ("output-root", outputs["step09_cmh_all_sites_v1"].parents[1]),
+            ("all-sites-output", context.working_outputs["step09_cmh_all_sites_v1"]),
+            (
+                "significant-sites-output",
+                context.working_outputs["step09_cmh_significant_sites_v1"],
+            ),
+            ("summary-output", context.working_outputs["step09_cmh_summary_v1"]),
+            (
+                "mutation-output",
+                context.working_outputs["step09_mutation_spectrum_tsv_v1"],
+            ),
+            (
+                "mutation-pdf-output",
+                context.working_outputs["step09_mutation_spectrum_pdf_v1"],
+            ),
+            ("depth-pdf-output", context.working_outputs["step09_depth_delta_pdf_v1"]),
         ),
         *command_flags(
             *(
@@ -214,8 +228,6 @@ def _step09(context: module_api.TaskPlanningContextV1) -> module_api.TaskCommand
         context.runtime_paths["rscript"],
         "--r-script",
         str(_STEP09_R_SCRIPT),
-        "--no-clobber",
-        "--execute",
     )
     background = context.configuration["background_condition"]
     if background is not None:
@@ -258,7 +270,7 @@ def _step09(context: module_api.TaskPlanningContextV1) -> module_api.TaskCommand
             ),
         )
     )
-    return module_api.TaskCommandPlanV1(
+    return module_api.TaskCommandPlanV2(
         producer_argv=producer,
         validator_argv=validator,
         inputs=(
@@ -271,7 +283,7 @@ def _step09(context: module_api.TaskPlanningContextV1) -> module_api.TaskCommand
     )
 
 
-def _step10(context: module_api.TaskPlanningContextV1) -> module_api.TaskCommandPlanV1:
+def _step10(context: module_api.TaskPlanningContextV2) -> module_api.TaskCommandPlanV2:
     all_sites = _one(context, "step09_cmh_all_sites_v1")
     significant = _one(context, "step09_cmh_significant_sites_v1")
     summary = _one(context, "step09_cmh_summary_v1")
@@ -286,7 +298,18 @@ def _step10(context: module_api.TaskPlanningContextV1) -> module_api.TaskCommand
             ("step09-summary", summary),
             ("reference-fasta", context.reference_fasta),
             ("reference-fai", fai),
-            ("output-root", outputs["step10_candidate_context_v1"].parents[1]),
+            *(
+                (
+                    name.replace("_", "-") + "-output",
+                    context.working_outputs[f"step10_{name}_v1"],
+                )
+                for name, _header, _rows in _STEP10_RESULTS
+            ),
+            *(
+                (name.replace("_", "-") + "-final", outputs[f"step10_{name}_v1"])
+                for name, _header, _rows in _STEP10_RESULTS
+                if name != "context_receipt"
+            ),
             ("motif-catalog", motif_catalog),
             ("git-commit", context.source_commit),
         ),
@@ -294,8 +317,6 @@ def _step10(context: module_api.TaskPlanningContextV1) -> module_api.TaskCommand
         context.runtime_paths["rscript"],
         "--r-script",
         str(_STEP10_ROOT / "scientific_context_projection.R"),
-        "--no-clobber",
-        "--execute",
     )
     producer = context.r_owner_command(
         (
@@ -313,7 +334,7 @@ def _step10(context: module_api.TaskPlanningContextV1) -> module_api.TaskCommand
             str(outputs["step10_validation_report_v1"]),
         )
     )
-    return module_api.TaskCommandPlanV1(
+    return module_api.TaskCommandPlanV2(
         producer_argv=producer,
         validator_argv=validator,
         inputs=(

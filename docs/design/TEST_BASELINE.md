@@ -95,8 +95,8 @@ coverage alone:
 
 - public help, dry-run, execute, malformed input, overwrite, exit, and
   no-write/no-log refusal behavior;
-- producer-specific locks, staging, validation, publication, rollback,
-  interruption, recovery, and unrelated-file behavior;
+- shared runner locks, staging, publication, rollback, interruption, recovery,
+  and unrelated-file behavior, alongside worker scientific validation;
 - literal validation schemas and ordered check rosters;
 - deterministic schemas, headers, bytes, identities, and statuses;
 - same-size mutations, restored mtimes, symlinks/hardlinks, descriptor/path

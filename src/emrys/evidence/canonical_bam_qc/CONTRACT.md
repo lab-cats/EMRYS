@@ -2,10 +2,9 @@
 
 This directory owns historical Step `02b`; the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
-identity and alias. It is an independently runnable canonical-BAM evidence
+identity and alias. It is a canonical-BAM evidence
 operation, not a peer data-transformation stage. The private validator is
-grouped under `emrys validate`; the producer remains an explicit
-repository-path command.
+grouped under `emrys validate`; the shell producer is an internal Run worker.
 
 ## Responsibility
 
@@ -20,15 +19,13 @@ either `<bam>.bai` or `<bam-with-.bam-removed>.bai`. Historical Step `02` is
 the normal producer, but this operation accepts any explicit BAM satisfying
 the shallow path contract and does not consume a Step `02` validation report.
 
-The index is an admission requirement only: neither current samtools command
-receives it, and the operation does not validate its size, structure, or
-correspondence to the BAM.
+The index is a nonempty-file admission requirement only: neither samtools
+command receives it or checks its structure or correspondence to the BAM.
 
 After a stable canonical pair exists, this operation may run in parallel with
 the Step `02` validator, historical Step `03`, and historical Step `04`.
-No computational stage consumes Step `02b` outputs. A same-sample Step `02`
-replacement or another Step `02b` attempt must not overlap this operation
-because current readers and writers share no lock or immutable snapshot.
+No computational stage consumes Step `02b` outputs. The Run binds the input
+pair for this attempt; it does not make concurrent external mutation safe.
 
 ## Inputs
 
@@ -36,12 +33,12 @@ The producer accepts:
 
 - a nonempty sample identifier used only for output-name construction;
 - one explicit BAM and one discoverable adjacent BAI;
-- one explicit output directory; and
+- one explicit staging output directory; and
 - an available samtools executable.
 
 The producer does not verify that the sample identifier matches BAM read-group
-metadata or bind the evidence to a manifest row. It also does not validate
-sample-identifier path safety.
+metadata or reopen the manifest. It requires a path-safe sample identifier;
+the Run supplies the admitted sample identity.
 
 ## Outputs
 
@@ -61,37 +58,28 @@ PASS: samtools quickcheck completed with no errors.
 ```
 
 A nonempty stream from a zero-exit quickcheck is preserved verbatim. A
-nonzero-exit quickcheck also preserves its diagnostic file, exits with code
-`1`, and does not run flagstat. On quickcheck success, native samtools flagstat
-text is written to the second final path.
+nonzero-exit quickcheck sends its diagnostic text to the retained runner log,
+exits with code `1`, and does not run flagstat. On success, native samtools
+flagstat text is written to the second staging path.
 
 No receipt binds these files to the BAM, BAI, sample identity, samtools
 version, or attempt.
 
-## Orchestration-safe producer boundary
+## Scientific worker
 
-`--no-clobber` is the required local-profile mode. It binds an explicit
-samtools executable, hashes the BAM and admitted BAI, requires both finals to
-be absent, holds a per-sample owned lock, captures both commands into
-run-token temporary paths, requires both files to be nonempty, rechecks the
-inputs, and publishes the pair create-exclusively while retaining staging
-inode anchors through validation. The native pair is not a receipt; the
-workflow verified record binds it to the run, attempt, and observed tool
-version. Execute without this option retains the direct-write contract below.
+[`step_02b_bam_qc.sh`](step_02b_bam_qc.sh) is an internal worker of the
+[Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
-Failure handling is owned by the shared
-[shell publication cleanup](../../libraries/README.md#shell-publication-cleanup),
-including failures before a link helper returns.
+The worker captures quickcheck and flagstat into the runner's staging
+output directory and requires both reports to be nonempty. On quickcheck
+failure it copies the native diagnostic stream to standard error so the
+runner's retained log explains the failure. It does not run flagstat after
+quickcheck fails. The native pair has no receipt; the Run verified task record
+supplies input, tool, attempt, and output identity.
 
-## Current execution surfaces
-
-The [shell producer](step_02b_bam_qc.sh) checks paths and samtools availability.
-Dry-run creates no output directory and invokes no samtools. Execute without
-`--no-clobber` writes streams directly to final paths, silently replacing any
-same-named files and retaining quickcheck failure diagnostics there. This
-historical route has no lock, staging, input recheck, receipt, or output-set
-validation. Failure can leave partial or cross-attempt evidence, especially
-when an older sibling file remains.
+The retired direct-write route could replace one file while leaving an older
+sibling, producing partial or mixed evidence. It is no longer an execution
+option.
 
 ## Validation interface
 
@@ -147,6 +135,6 @@ make it a prerequisite for later computation.
 Repository tests protect this contract under the shared
 [evidence ceiling](../../../../tests/README.md).
 
-The index-admission gap, quickcheck mismatch, and unsafe direct-write route
-remain as described above. Immutable Run task records supply the wider input,
-tool, attempt, and output identity for the no-clobber route.
+The index-correspondence gap and quickcheck mismatch remain as described
+above. Immutable Run task records supply wider input, tool, attempt, and
+output identity.
