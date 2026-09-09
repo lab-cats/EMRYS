@@ -438,16 +438,16 @@ import argparse
 import sys
 from pathlib import Path
 
-from emrys.reporting import report
+from emrys.reporting._run_report.context import prepare_context
 from emrys.reporting._run_report.publication import publish_report
 
-context = report.prepare_report(argparse.Namespace(
+context = prepare_context(argparse.Namespace(
     source_checkout=Path(sys.argv[1]),
     artifact_source_root=Path(sys.argv[2]),
     run_summary=Path(sys.argv[3]),
     output_root=Path(sys.argv[4]),
 ))
-publish_report(context, report.default_publication_ops())
+publish_report(context)
 print(context.output_receipt)
 """
     rendered = run_command(

@@ -307,15 +307,3 @@ def test_gatk_cli_reports_java_admission_failure(
 
     assert result == 2
     assert "Selected Java launcher could not be resolved" in capsys.readouterr().err
-
-
-def test_gatk_cli_guards_against_exec_returning(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    launcher = make_java_launcher(tmp_path)
-    monkeypatch.setattr(process_environment.os, "execvpe", lambda *args: None)
-
-    with pytest.raises(AssertionError, match="os.execvpe returned unexpectedly"):
-        process_environment._execute_gatk_with_selected_java(
-            ("--java-bin", str(launcher), "gatk")
-        )

@@ -232,18 +232,22 @@ public-policy, dependency, evidence-deletion, or cluster authority.
 
 ### Recommended continuation and existing ownership
 
-Reporting ownership and declaration consolidation remain open. The selected
-larger retirement is canonical BAM's replacement mode; the remaining older
-publication modes require their own qualification and policy decisions.
+Reporting ownership and declaration consolidation remain open. Following
+canonical BAM's replacement-mode retirement, the approved larger reporting
+tranche removes its private replacement lifecycle, six callback carriers, and
+the HTML facade. The [reporting lifecycle decision](../design/decisions/execution-evidence-and-reporting.md#reporting-lifecycle-compression)
+records its exact boundary, preserved behavior, retired interfaces, historical
+test context, and evidence limits. The remaining older publication modes
+require their own qualification and policy decisions.
 Small construction cleanups do not establish that the campaign is finished.
 
 | Proposed order | Finite outcome | Existing coverage and next gate |
 |---|---|---|
-| Reporting ownership | Consolidate equivalent declarations while preserving the existing identity rules. | `REPORT-ROSTER-01`; the [fixed-output declaration](../design/decisions/execution-evidence-and-reporting.md#fixed-report-output-consolidation) is the bounded first slice. Broader identity and transaction-layout work remain separate. |
+| Reporting ownership | Complete direct create-only publication across the three existing producers. | `REPORT-ROSTER-01`; the [lifecycle retirement](../design/decisions/execution-evidence-and-reporting.md#reporting-lifecycle-compression) follows the fixed-output declaration, with at least 200 net product lines removed and no new product files. Broader identity and transaction-layout work remain separate. |
 | Ineffective report resource control | Remove active reporting-memory configuration and transport while retaining exact historical policy admission. | `REPORT-ROSTER-01`; select new-input and persisted-policy behavior. |
 | Stage publication | Qualify surviving publication, then retire replacement/direct-write modes one owner at a time. | `OPS-03`; reproduce the handoff finding and approve the public policy. |
 | Processing declarations | Find one caller-complete removal using existing admitted task/output facts, or retain the mechanism with evidence. | `COMPRESS-01` discovery, with reporting adapter work under `REPORT-ROSTER-01`; no general registry is preselected. |
-| Dashboard | Retire the frozen display after preserving agreed scheduler and safe-log capabilities. | `DASHBOARD-RETIRE-01`; supported replacement surface remains undecided. |
+| Dashboard | Keep the frozen display until a replacement dashboard is implemented and validated. | `DASHBOARD-RETIRE-01`; the replacement and later retirement require their own approved scope. |
 | Compatibility | Select exact schema, configuration, or TSV changes whose full migration is worthwhile. | Existing `PROFILE-CONTRACT-01` where applicable; other findings remain unselected. |
 
 This is a recommendation for selecting bounded work, not a dependency graph
@@ -548,12 +552,13 @@ A raw `tail -F` invocation does not provide the dashboard's terminal-control
 sanitization. Retiring the display therefore needs an explicit supported
 home for the capabilities that remain necessary.
 
-**Proposed two-part plan.** First decide and qualify scheduler history and
-safe log access through existing expert surfaces or the smallest justified
-replacement. Then remove the dashboard owner, dedicated tests, Make target,
-public CLI fixture assertions, and stale documentation caller-completely.
-Do not implement a new dashboard as the prerequisite by default. Account
-for any surviving observation code before claiming the retirement's net size.
+**User-required sequence.** First implement and validate a replacement
+dashboard, including the agreed scheduler-history and safe-log capabilities.
+Only then scope removal of the old dashboard owner, dedicated tests, Make
+target, public CLI fixture assertions, and stale documentation caller-completely.
+Expert commands alone do not meet this replacement requirement. Account for
+all replacement code before claiming the retirement's net size. Neither step
+is part of the reporting lifecycle compression tranche.
 
 [`slurm_submission.py`](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
 still generates `emrys-local-pilot` job/stream names. The existing

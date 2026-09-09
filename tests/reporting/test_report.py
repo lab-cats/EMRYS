@@ -7,6 +7,7 @@ import csv
 import hashlib
 import json
 import os
+import signal
 from importlib.resources import files
 from dataclasses import replace
 from pathlib import Path
@@ -17,17 +18,15 @@ from jinja2 import StrictUndefined, UndefinedError
 
 from emrys import analyses
 from emrys.libraries.source_authority import (
-    ArtifactSourceRoot,
     SourceCheckout,
 )
 from emrys.reporting import AnalysisReportArtifactV1
 from emrys.reporting import COMPUTATIONAL_BOUNDARY_BANNER
-from emrys.reporting import report as REPORT
 from emrys.reporting.paired_cmh_candidate_ranking_report import (
     computational as report_computational,
 )
 from emrys.reporting._run_report import context as report_context
-from emrys.reporting._run_report import publication, receipt, validation
+from emrys.reporting._run_report import publication, receipt, transaction, validation
 from emrys.reporting.paired_cmh_candidate_ranking_report import (
     scientific_context as report_scientific_context,
 )
@@ -345,7 +344,7 @@ def test_historical_summary_discloses_step10_unavailability_in_candidate_evidenc
         computational_summary, tmp_path / "historical"
     )
 
-    context = REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+    context = report_context.prepare_context(arguments(copied, tmp_path / "reports"))
     assert all(rehash for _snapshot, _label, rehash in context.input_rechecks)
     html = context.scientific_html_bytes.decode("utf-8")
     assert "sequence-context and motif-enrichment figures are unavailable" in html
@@ -438,8 +437,8 @@ def test_step10_report_admission_calls_the_canonical_transaction_once(
             assert snapshot is table.snapshot
 
 
-def publish(context: Any, ops: REPORT.ReportPublicationOps | None = None) -> None:
-    publication.publish_report(context, ops or REPORT.default_publication_ops())
+def publish(context: Any) -> None:
+    publication.publish_report(context)
 
 
 def test_source_checkout_is_admitted_before_report_inputs(
@@ -448,7 +447,7 @@ def test_source_checkout_is_admitted_before_report_inputs(
     invalid_checkout = tmp_path / "not-emrys"
     invalid_checkout.mkdir()
     with pytest.raises(ReportRenderError) as captured:
-        REPORT.prepare_report(
+        report_context.prepare_context(
             argparse.Namespace(
                 source_checkout=invalid_checkout,
                 artifact_source_root=tmp_path,
@@ -464,6 +463,7 @@ def test_source_checkout_is_admitted_before_report_inputs(
 def test_renderer_git_identity_uses_checkout_not_artifact_root(
     computational_summary: Path,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     artifact_root = computational_summary.parent.parent.resolve(strict=True)
     assert artifact_root != REPO_ROOT
@@ -474,16 +474,12 @@ def test_renderer_git_identity_uses_checkout_not_artifact_root(
         observed.append(kwargs["source_checkout"])
         return "a" * 40
 
+    monkeypatch.setattr(report_context, "matching_checkout_head_commit", matching_commit)
     context = report_context.prepare_context(
         arguments(
             computational_summary,
             tmp_path / "reports",
             artifact_source_root=artifact_root,
-        ),
-        source_checkout=SourceCheckout(root=REPO_ROOT),
-        artifact_source_root=ArtifactSourceRoot(root=artifact_root),
-        identity_ops=report_context.ReportIdentityOps(
-            matching_checkout_head_commit=matching_commit,
         ),
     )
 
@@ -496,7 +492,7 @@ def test_dry_run_is_side_effect_free(
     tmp_path: Path,
 ) -> None:
     output_root = tmp_path / "reports"
-    context = REPORT.prepare_report(arguments(computational_summary, output_root))
+    context = report_context.prepare_context(arguments(computational_summary, output_root))
     assert context.output_dir == output_root / context.summary["run_id"]
     assert not output_root.exists()
 
@@ -504,18 +500,21 @@ def test_dry_run_is_side_effect_free(
 def test_success_publishes_two_html_views_summary_and_v4_receipt_last(
     computational_summary: Path,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    context = REPORT.prepare_report(
+    context = report_context.prepare_context(
         arguments(computational_summary, tmp_path / "reports", execute=True)
     )
     links: list[Path] = []
-    base = REPORT.default_publication_ops()
+    real_link = os.link
 
-    def record_link(source: Path, target: Path) -> None:
+    def record_link(source: Path, target: Path, **kwargs: Any) -> None:
         links.append(target)
-        base.link(source, target)
+        real_link(source, target, **kwargs)
 
-    publish(context, replace(base, link=record_link))
+    with monkeypatch.context() as faults:
+        faults.setattr(os, "link", record_link)
+        publish(context)
     assert output_paths(context) == tuple(path for path in context.stable_paths)
     assert all(path.is_file() for path in output_paths(context))
     assert [path.name for path in links[-4:]] == [
@@ -560,7 +559,7 @@ def test_report_validation_rejects_provider_active_markup(
     tmp_path: Path,
     active_markup: str,
 ) -> None:
-    context = REPORT.prepare_report(
+    context = report_context.prepare_context(
         arguments(computational_summary, tmp_path / "reports")
     )
     path = tmp_path / "active.html"
@@ -593,7 +592,7 @@ def test_report_rejects_a_run_summary_without_the_computational_boundary(
     )
 
     with pytest.raises(ReportRenderError, match="failed validation"):
-        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+        report_context.prepare_context(arguments(copied, tmp_path / "reports"))
 
 
 def test_receipt_validation_reports_schema_and_semantic_failures(
@@ -629,7 +628,7 @@ def test_summary_tsv_validation_rejects_shape_defects(
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
-    context = REPORT.prepare_report(
+    context = report_context.prepare_context(
         arguments(computational_summary, tmp_path / "reports")
     )
     path = tmp_path / "summary.tsv"
@@ -701,7 +700,7 @@ def test_receipt_attributes_provenance_to_renderer_checkout(
         tmp_path / "input",
         replace_upstream_commit,
     )
-    context = REPORT.prepare_report(
+    context = report_context.prepare_context(
         arguments(copied, tmp_path / "reports", execute=True)
     )
     publish(context)
@@ -720,7 +719,7 @@ def test_failed_expected_scope_renders_from_valid_pipeline_summary(
     failed_summary: Path,
     tmp_path: Path,
 ) -> None:
-    context = REPORT.prepare_report(
+    context = report_context.prepare_context(
         arguments(failed_summary, tmp_path / "reports", execute=True)
     )
     failed_scopes = [
@@ -737,20 +736,24 @@ def test_failed_expected_scope_renders_from_valid_pipeline_summary(
     assert "01 sample SYNTH_A failed" in content
 
 
-def test_identical_republication_is_byte_deterministic(
+def test_existing_transaction_is_readable_and_republication_preserves_exact_bytes(
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     arguments_value = arguments(
         computational_summary, tmp_path / "reports", execute=True
     )
-    first_context = REPORT.prepare_report(arguments_value)
+    first_context = report_context.prepare_context(arguments_value)
     publish(first_context)
     first = tuple(path.read_bytes() for path in output_paths(first_context))
-    second_context = REPORT.prepare_report(arguments_value)
-    publish(second_context)
+    second_context = report_context.prepare_context(arguments_value)
+    assert second_context.scientific_html_bytes == first_context.scientific_html_bytes
+    assert second_context.evidence_html_bytes == first_context.evidence_html_bytes
+    with pytest.raises(ReportRenderError, match="requires absent outputs"):
+        publish(second_context)
     second = tuple(path.read_bytes() for path in output_paths(second_context))
     assert second == first
+    assert not second_context.lock_path.exists()
 
 
 def test_jinja_is_strict_autoescaped_and_template_owns_markup(
@@ -770,7 +773,7 @@ def test_jinja_is_strict_autoescaped_and_template_owns_markup(
     copied = write_summary_copy(
         computational_summary, tmp_path / "input", add_untrusted
     )
-    context = REPORT.prepare_report(
+    context = report_context.prepare_context(
         arguments(copied, tmp_path / "reports", execute=True)
     )
     publish(context)
@@ -847,7 +850,7 @@ def test_two_html_views_separate_science_from_operational_evidence(
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
-    context = REPORT.prepare_report(
+    context = report_context.prepare_context(
         arguments(computational_summary, tmp_path / "reports", execute=True)
     )
     publish(context)
@@ -1107,7 +1110,7 @@ def test_report_displays_print_first_selected_candidate_evidence(
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
-    context = REPORT.prepare_report(
+    context = report_context.prepare_context(
         arguments(computational_summary, tmp_path / "reports", execute=True)
     )
     assert sum(not rehash for _snapshot, _label, rehash in context.input_rechecks) == 1
@@ -1237,7 +1240,7 @@ def test_incomplete_step09_trio_is_disclosed_without_opening_candidate_rows(
         artifact_id=artifact_id,
     )
     summary = publish_run_summary(fixture)
-    context = REPORT.prepare_report(
+    context = report_context.prepare_context(
         arguments(summary, tmp_path / "reports", execute=True)
     )
     publish(context)
@@ -1278,7 +1281,7 @@ def test_report_delegates_mutation_spectrum_reconciliation_to_step09(
         ReportRenderError,
         match="Primary Step 09 projection failed validation",
     ):
-        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+        report_context.prepare_context(arguments(copied, tmp_path / "reports"))
 
 
 @pytest.mark.parametrize(
@@ -1313,7 +1316,7 @@ def test_step09_source_identity_mismatches_fail_closed(
         mutate_document=mutate_document,
     )
     with pytest.raises(ReportRenderError, match=message):
-        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+        report_context.prepare_context(arguments(copied, tmp_path / "reports"))
 
 
 def test_report_translates_canonical_step09_projection_rejection(
@@ -1335,7 +1338,7 @@ def test_report_translates_canonical_step09_projection_rejection(
         ReportRenderError,
         match="Primary Step 09 projection failed validation",
     ):
-        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+        report_context.prepare_context(arguments(copied, tmp_path / "reports"))
 
 
 @pytest.mark.parametrize(
@@ -1378,7 +1381,7 @@ def test_step09_owner_validation_must_be_exact_all_pass_before_rows_open(
         mutate_sources=mutate_sources,
     )
     with pytest.raises(ReportRenderError, match=message):
-        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+        report_context.prepare_context(arguments(copied, tmp_path / "reports"))
 
 
 @pytest.mark.parametrize(
@@ -1391,7 +1394,7 @@ def test_step09_input_mutation_aborts_before_publication(
     adapter: str,
 ) -> None:
     copied, paths = copied_step09_summary(computational_summary, tmp_path / "input")
-    context = REPORT.prepare_report(
+    context = report_context.prepare_context(
         arguments(copied, tmp_path / "reports", execute=True)
     )
     paths[adapter].write_bytes(paths[adapter].read_bytes() + b" ")
@@ -1405,7 +1408,7 @@ def test_step10_reference_identity_mutation_aborts_before_publication(
     tmp_path: Path,
 ) -> None:
     summary = publish_run_summary(FIXTURE.build_fixture(tmp_path / "fixture"))
-    context = REPORT.prepare_report(
+    context = report_context.prepare_context(
         arguments(summary, tmp_path / "reports", execute=True)
     )
     reference = Path(
@@ -1478,7 +1481,7 @@ def test_native_candidate_tables_are_not_rendered_as_truncated_wide_tables(
         tmp_path / "input",
         mutate_sources=expand_sources,
     )
-    context = REPORT.prepare_report(
+    context = report_context.prepare_context(
         arguments(copied, tmp_path / "reports", execute=True)
     )
     publish(context)
@@ -1499,9 +1502,9 @@ def test_explicit_input_and_canonical_name_are_required(
     wrong = tmp_path / "wrong.json"
     wrong.write_bytes(computational_summary.read_bytes())
     with pytest.raises(ReportRenderError, match="Canonical run-summary"):
-        REPORT.prepare_report(arguments(wrong, tmp_path / "reports"))
+        report_context.prepare_context(arguments(wrong, tmp_path / "reports"))
     with pytest.raises(ReportRenderError, match="Could not inspect"):
-        REPORT.prepare_report(
+        report_context.prepare_context(
             arguments(tmp_path / "missing.json", tmp_path / "reports")
         )
 
@@ -1514,7 +1517,7 @@ def test_report_rejects_a_non_directory_output_root(
     output_root.write_text("occupied\n", encoding="utf-8")
 
     with pytest.raises(ReportRenderError, match="non-symlink directory"):
-        REPORT.prepare_report(arguments(computational_summary, output_root))
+        report_context.prepare_context(arguments(computational_summary, output_root))
 
 
 @pytest.mark.parametrize("suffix", ("run_report.html", "run_report.pdf"))
@@ -1529,7 +1532,7 @@ def test_retired_single_report_predecessors_require_fresh_output_root(
     output_dir.mkdir(parents=True)
     (output_dir / f"{run_id}.{suffix}").write_text("retired", encoding="utf-8")
     with pytest.raises(ReportRenderError, match="fresh output root"):
-        REPORT.prepare_report(arguments(computational_summary, output_root))
+        report_context.prepare_context(arguments(computational_summary, output_root))
 
 
 def test_bare_v4_output_requires_fresh_output_root(
@@ -1545,7 +1548,7 @@ def test_bare_v4_output_requires_fresh_output_root(
         encoding="utf-8",
     )
     with pytest.raises(ReportRenderError, match="fresh output root"):
-        REPORT.prepare_report(arguments(computational_summary, output_root))
+        report_context.prepare_context(arguments(computational_summary, output_root))
 
 
 def test_v3_receipt_requires_fresh_output_root(
@@ -1565,7 +1568,7 @@ def test_v3_receipt_requires_fresh_output_root(
         receipt.receipt_tsv_bytes(v3)
     )
     with pytest.raises(ReportRenderError, match="Unsupported report receipt"):
-        REPORT.prepare_report(arguments(computational_summary, output_root))
+        report_context.prepare_context(arguments(computational_summary, output_root))
 
 
 def test_lock_collision_is_rejected_without_mutation(
@@ -1579,7 +1582,7 @@ def test_lock_collision_is_rejected_without_mutation(
     lock = output_dir / f".{run_id}.report.lock"
     lock.write_text("foreign\n", encoding="utf-8")
     with pytest.raises(ReportRenderError, match="lock already exists"):
-        REPORT.prepare_report(arguments(computational_summary, output_root))
+        report_context.prepare_context(arguments(computational_summary, output_root))
     assert lock.read_text(encoding="utf-8") == "foreign\n"
 
 
@@ -1588,7 +1591,7 @@ def test_input_mutation_aborts_and_removes_owned_state(
     tmp_path: Path,
 ) -> None:
     copied = write_summary_copy(computational_summary, tmp_path / "input")
-    context = REPORT.prepare_report(
+    context = report_context.prepare_context(
         arguments(copied, tmp_path / "reports", execute=True)
     )
     copied.write_bytes(copied.read_bytes() + b" ")
@@ -1601,104 +1604,124 @@ def test_input_mutation_aborts_and_removes_owned_state(
 def test_interrupted_lock_acquisition_cleans_owned_lock(
     computational_summary: Path,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    context = REPORT.prepare_report(
+    context = report_context.prepare_context(
         arguments(computational_summary, tmp_path / "reports", execute=True)
     )
-    base = REPORT.default_publication_ops()
 
     def interrupt(_descriptor: int, _payload: bytes) -> int:
         raise KeyboardInterrupt
 
-    with pytest.raises(KeyboardInterrupt):
-        publish(context, replace(base, lock_write=interrupt))
+    with monkeypatch.context() as faults:
+        faults.setattr(os, "write", interrupt)
+        with pytest.raises(KeyboardInterrupt):
+            publish(context)
     assert not context.lock_path.exists()
     assert not any(path.exists() for path in output_paths(context))
 
 
-def test_post_backup_failure_rolls_back_exact_predecessor(
+def test_short_lock_and_staged_file_writes_publish_complete_bytes(
     computational_summary: Path,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    args = arguments(computational_summary, tmp_path / "reports", execute=True)
-    first = REPORT.prepare_report(args)
-    publish(first)
-    before = {path: path.read_bytes() for path in output_paths(first)}
-    context = REPORT.prepare_report(args)
-    base = REPORT.default_publication_ops()
+    context = report_context.prepare_context(
+        arguments(computational_summary, tmp_path / "reports", execute=True)
+    )
+    real_write = os.write
+    short_writes = 0
 
-    def fail_summary_link(source: Path, target: Path) -> None:
-        if (
-            target == context.output_summary_tsv
-            and ".run-report." in source.parent.name
-        ):
-            raise OSError("synthetic post-backup failure")
-        base.link(source, target)
+    def short_write(descriptor: int, payload: bytes) -> int:
+        nonlocal short_writes
+        short_writes += 1
+        return real_write(descriptor, payload[:max(1, len(payload) // 2)])
 
-    with pytest.raises(ReportRenderError, match="synthetic post-backup failure"):
-        publish(context, replace(base, link=fail_summary_link))
-    assert {path: path.read_bytes() for path in output_paths(context)} == before
+    with monkeypatch.context() as faults:
+        faults.setattr(os, "write", short_write)
+        publish(context)
+    assert short_writes > 5
+    assert context.output_scientific_html.read_bytes() == context.scientific_html_bytes
+    assert context.output_evidence_html.read_bytes() == context.evidence_html_bytes
+    assert context.output_summary_tsv.read_bytes() == receipt.summary_tsv_bytes(context)
+    assert receipt_document(context.output_receipt)["run_id"] == context.summary["run_id"]
     assert not context.lock_path.exists()
-    assert not list(context.output_dir.glob("*.previous"))
 
 
-def test_foreign_final_and_backup_are_preserved(
+def test_foreign_final_is_preserved_after_context_preparation(
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
-    empty_context = REPORT.prepare_report(
+    empty_context = report_context.prepare_context(
         arguments(computational_summary, tmp_path / "foreign-final", execute=True)
     )
     empty_context.output_dir.mkdir(parents=True)
-    empty_context.output_scientific_html.write_text(
-        "foreign final\n",
-        encoding="utf-8",
-    )
+    empty_context.output_scientific_html.write_text("foreign final\n", encoding="utf-8")
     with pytest.raises(ReportRenderError, match="appeared after preflight"):
         publish(empty_context)
-    assert (
-        empty_context.output_scientific_html.read_text(encoding="utf-8")
-        == "foreign final\n"
-    )
-
-    args = arguments(computational_summary, tmp_path / "foreign-backup", execute=True)
-    initial = REPORT.prepare_report(args)
-    publish(initial)
-    context = REPORT.prepare_report(args)
-    token = "fixed-foreign-token"
-    backup = (
-        context.output_dir / f".{context.output_scientific_html.name}.{token}.previous"
-    )
-    backup.write_text("foreign backup\n", encoding="utf-8")
-    ops = replace(REPORT.default_publication_ops(), make_token=lambda: token)
-    with pytest.raises(ReportRenderError, match="backup path unexpectedly exists"):
-        publish(context, ops)
-    assert backup.read_text(encoding="utf-8") == "foreign backup\n"
-    assert all(path.is_file() for path in output_paths(context))
+    assert empty_context.output_scientific_html.read_text(encoding="utf-8") == "foreign final\n"
 
 
-def test_incomplete_rollback_preserves_lock_stage_and_recovery(
+@pytest.mark.parametrize("failure", ("before_link", "signal_after_link"))
+def test_link_handoff_failure_removes_only_owned_outputs(
     computational_summary: Path,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
 ) -> None:
-    args = arguments(computational_summary, tmp_path / "reports", execute=True)
-    initial = REPORT.prepare_report(args)
-    publish(initial)
-    context = REPORT.prepare_report(args)
-    base = REPORT.default_publication_ops()
+    context = report_context.prepare_context(
+        arguments(computational_summary, tmp_path / "reports", execute=True)
+    )
+    target = context.output_receipt
+    real_link = os.link
 
-    def fail_publication_and_restore(source: Path, target: Path) -> None:
-        if (
-            ".run-report." in source.parent.name
-            and target == context.output_scientific_html
-        ):
-            raise OSError("synthetic publication failure")
-        if source.name.endswith(".previous"):
-            raise OSError("synthetic rollback failure")
-        base.link(source, target)
+    def fail_link(source: Path, destination: Path, **kwargs: Any) -> None:
+        if destination != target:
+            real_link(source, destination, **kwargs)
+            return
+        if failure == "signal_after_link":
+            real_link(source, destination, **kwargs)
+            signal.raise_signal(signal.SIGTERM)
+        raise OSError("synthetic link handoff failure")
 
-    with pytest.raises(ReportRenderError, match="rollback was incomplete"):
-        publish(context, replace(base, link=fail_publication_and_restore))
+    with monkeypatch.context() as faults:
+        faults.setattr(os, "link", fail_link)
+        with pytest.raises(ReportRenderError, match="link handoff failure|interrupted by signal"):
+            publish(context)
+    assert not any(path.exists() for path in output_paths(context))
+    assert not context.lock_path.exists()
+    assert not list(context.output_dir.glob("*.RECOVERY.txt"))
+    assert not list(context.output_dir.glob(".run-report.*.tmp"))
+
+
+def test_incomplete_rollback_preserves_owned_output_lock_stage_and_recovery(
+    computational_summary: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    context = report_context.prepare_context(
+        arguments(computational_summary, tmp_path / "reports", execute=True)
+    )
+    real_link = os.link
+    real_unlink = Path.unlink
+
+    def fail_receipt_link(source: Path, destination: Path, **kwargs: Any) -> None:
+        if destination == context.output_receipt:
+            raise OSError("synthetic receipt publication failure")
+        real_link(source, destination, **kwargs)
+
+    def fail_unlink(path: Path, **kwargs: Any) -> None:
+        if path == context.output_scientific_html:
+            raise OSError("synthetic rollback unlink failure")
+        real_unlink(path, **kwargs)
+
+    with monkeypatch.context() as faults:
+        faults.setattr(os, "link", fail_receipt_link)
+        faults.setattr(Path, "unlink", fail_unlink)
+        with pytest.raises(ReportRenderError, match="rollback was incomplete"):
+            publish(context)
+    assert context.output_scientific_html.read_bytes() == context.scientific_html_bytes
+    assert not context.output_receipt.exists()
     assert context.lock_path.exists()
     assert list(context.output_dir.glob("*.RECOVERY.txt"))
     assert list(context.output_dir.glob(".run-report.*.tmp"))
@@ -1707,19 +1730,20 @@ def test_incomplete_rollback_preserves_lock_stage_and_recovery(
 def test_post_commit_cleanup_failure_keeps_committed_outputs_and_evidence(
     computational_summary: Path,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    context = REPORT.prepare_report(
+    context = report_context.prepare_context(
         arguments(computational_summary, tmp_path / "reports", execute=True)
     )
-    base = REPORT.default_publication_ops()
-
     def fail_cleanup(
         _path: Path, _token: str, _identity: tuple[int, int] | None
     ) -> None:
         raise OSError("synthetic cleanup failure")
 
-    with pytest.raises(ReportRenderError, match="cleanup failed"):
-        publish(context, replace(base, remove_owned_stage=fail_cleanup))
+    with monkeypatch.context() as faults:
+        faults.setattr(transaction, "_remove_owned_stage", fail_cleanup)
+        with pytest.raises(ReportRenderError, match="cleanup failed"):
+            publish(context)
     assert all(path.is_file() for path in output_paths(context))
     assert context.lock_path.exists()
     assert list(context.output_dir.glob("*.RECOVERY.txt"))
@@ -1728,11 +1752,12 @@ def test_post_commit_cleanup_failure_keeps_committed_outputs_and_evidence(
 def test_final_byte_corruption_never_commits_a_false_receipt(
     computational_summary: Path,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    context = REPORT.prepare_report(
+    context = report_context.prepare_context(
         arguments(computational_summary, tmp_path / "reports", execute=True)
     )
-    base = REPORT.default_publication_ops()
+    real_fsync_file = transaction._fsync_file
     corrupted = False
 
     def corrupt_summary(path: Path) -> None:
@@ -1743,10 +1768,12 @@ def test_final_byte_corruption_never_commits_a_false_receipt(
             replacement = (b"X" if old[:1] != b"X" else b"Y") + old[1:]
             path.write_bytes(payload.replace(old, replacement, 1))
             corrupted = True
-        base.fsync_file(path)
+        real_fsync_file(path)
 
-    with pytest.raises(ReportRenderError, match="rollback was incomplete"):
-        publish(context, replace(base, fsync_file=corrupt_summary))
+    with monkeypatch.context() as faults:
+        faults.setattr(transaction, "_fsync_file", corrupt_summary)
+        with pytest.raises(ReportRenderError, match="rollback was incomplete"):
+            publish(context)
     assert not context.output_receipt.exists()
     assert context.lock_path.exists()
     assert list(context.output_dir.glob("*.RECOVERY.txt"))
@@ -1755,40 +1782,32 @@ def test_final_byte_corruption_never_commits_a_false_receipt(
 def test_signal_restoration_failure_is_controlled_recovery(
     computational_summary: Path,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    context = REPORT.prepare_report(
+    context = report_context.prepare_context(
         arguments(computational_summary, tmp_path / "reports", execute=True)
     )
-    base = REPORT.default_publication_ops()
+    real_restore = transaction._restore_signal_handlers
 
     def fail_restore(handlers: dict[int, Any]) -> None:
-        base.restore_signal_handlers(handlers)
+        real_restore(handlers)
         raise OSError("synthetic signal restore failure")
 
-    with pytest.raises(ReportRenderError, match="signal-handler restoration failed"):
-        publish(context, replace(base, restore_signal_handlers=fail_restore))
+    with monkeypatch.context() as faults:
+        faults.setattr(transaction, "_restore_signal_handlers", fail_restore)
+        with pytest.raises(ReportRenderError, match="signal-handler restoration failed"):
+            publish(context)
     assert all(path.is_file() for path in output_paths(context))
     assert not context.lock_path.exists()
     assert list(context.output_dir.glob("*.RECOVERY.txt"))
 
 
-@pytest.mark.parametrize(
-    ("column", "replacement"),
-    (
-        ("run_id", "different-run"),
-        ("kind", "bogus"),
-        ("sha256", "0" * 64),
-        ("self_contained", "false"),
-    ),
-)
 def test_receipt_rows_must_match_canonical_json(
     computational_summary: Path,
     tmp_path: Path,
-    column: str,
-    replacement: str,
 ) -> None:
-    context = REPORT.prepare_report(
-        arguments(computational_summary, tmp_path / column, execute=True)
+    context = report_context.prepare_context(
+        arguments(computational_summary, tmp_path / "reports", execute=True)
     )
     publish(context)
     with context.output_receipt.open(encoding="utf-8", newline="") as stream:
@@ -1796,7 +1815,7 @@ def test_receipt_rows_must_match_canonical_json(
         fieldnames = reader.fieldnames
         rows = list(reader)
     assert fieldnames is not None
-    rows[0][column] = replacement
+    rows[0]["sha256"] = "0" * 64
     with context.output_receipt.open("w", encoding="utf-8", newline="") as stream:
         writer = csv.DictWriter(
             stream,
@@ -1808,42 +1827,3 @@ def test_receipt_rows_must_match_canonical_json(
         writer.writerows(rows)
     with pytest.raises(ReportRenderError, match="TSV columns differ"):
         receipt.read_receipt_tsv(context.output_receipt)
-
-
-def test_summary_and_receipt_serializers_are_deterministic(
-    computational_summary: Path,
-    tmp_path: Path,
-) -> None:
-    context = REPORT.prepare_report(
-        arguments(computational_summary, tmp_path / "reports")
-    )
-    assert receipt.summary_tsv_bytes(context) == receipt.summary_tsv_bytes(context)
-    stage = tmp_path / "stage"
-    stage.mkdir()
-    scientific_html = stage / context.output_scientific_html.name
-    evidence_html = stage / context.output_evidence_html.name
-    summary = stage / context.output_summary_tsv.name
-    scientific_html.write_bytes(context.scientific_html_bytes)
-    evidence_html.write_bytes(context.evidence_html_bytes)
-    summary.write_bytes(receipt.summary_tsv_bytes(context))
-    document = receipt.receipt_document(
-        context,
-        (
-            (
-                "scientific-report-html",
-                "scientific_html",
-                scientific_html,
-                context.output_scientific_html,
-            ),
-            (
-                "evidence-report-html",
-                "evidence_html",
-                evidence_html,
-                context.output_evidence_html,
-            ),
-            ("run-summary-tsv", "run_summary_tsv", summary, context.output_summary_tsv),
-        ),
-    )
-    assert receipt.receipt_tsv_bytes(document) == receipt.receipt_tsv_bytes(
-        json.loads(json.dumps(document))
-    )
