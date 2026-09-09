@@ -6,7 +6,7 @@ owns the goals; this file owns CS scope, status, decisions, and proof. The
 
 ## Working queue
 
-**Current work: CS-18, runner-owned scientific execution across all applicable producers; implemented, awaiting hosted CI.**
+**Current work: [PR #155](https://github.com/lab-cats/EMRYS/pull/155), CS-18 runner-owned scientific execution; implemented, awaiting hosted CI.**
 The user approved moving working paths, locks, process supervision, logging,
 publication, and recovery into the existing runner. Producers retain scientific
 computation, outputs, and provenance; there is no separate manager hierarchy.
@@ -443,7 +443,7 @@ under CS-16 above; this does not complete the larger code campaign.
 
 ### CS-18 Idiomatic scientific-producer implementation
 
-**Implemented; hosted verification pending:** scientific producers own scientific outputs and
+**Implemented in [PR #155](https://github.com/lab-cats/EMRYS/pull/155) at `d33bbe62`; hosted verification pending:** scientific producers own scientific outputs and
 provenance; production execution goes through the existing runner. Consolidate
 working paths, locks, process supervision, logs, publication, and recovery there,
 across every applicable producer, without a manager beside each one. Preserve
