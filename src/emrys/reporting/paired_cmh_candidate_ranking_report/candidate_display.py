@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import csv
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Literal
@@ -11,7 +10,6 @@ from typing import Literal
 from emrys.contracts.scientific_evidence import scientific_context as owner_context
 
 from emrys.reporting import (
-    ReportProviderError as ReportRenderError,
     fail_report_provider as _fail,
     recheck_report_input as _assert_snapshot,
 )
@@ -182,37 +180,6 @@ def _identifiers(value: str) -> tuple[str, ...]:
     return () if value == _NA else tuple(value.split(";"))
 
 
-def _visit_rows(
-    table: ComputationalTable,
-    visitor: Callable[[Mapping[str, str], int], None],
-) -> None:
-    """Stream one admitted TSV under before/after snapshot and roster checks."""
-
-    label = f"candidate-display input {table.artifact_id!r}"
-    _assert_snapshot(table.snapshot, label)
-    observed_count = 0
-    try:
-        with table.path.open(encoding="utf-8", newline="") as stream:
-            reader = csv.DictReader(stream, delimiter="\t", strict=True)
-            if tuple(reader.fieldnames or ()) != table.header:
-                _fail(f"{label} header changed after canonical admission")
-            for row_number, row in enumerate(reader, start=2):
-                if None in row or any(value is None for value in row.values()):
-                    _fail(f"{label} row {row_number} has the wrong field count")
-                observed_count += 1
-                visitor(row, row_number)
-    except ReportRenderError:
-        raise
-    except (OSError, UnicodeError, csv.Error) as exc:
-        _fail(f"Could not read {label}: {exc}")
-    if observed_count != table.row_count:
-        _fail(
-            f"{label} row count changed after canonical admission: observed "
-            f"{observed_count}; expected {table.row_count}"
-        )
-    _assert_snapshot(table.snapshot, label)
-
-
 def _step09_rank_key(row: Mapping[str, str]) -> tuple[Decimal, Decimal, str]:
     fdr = _decimal(
         f"candidate {row['candidate_id']!r} CMH BH FDR",
@@ -234,7 +201,8 @@ def _fallback_rows(
     selected: list[tuple[tuple[Decimal, Decimal, str], dict[str, str]]] = []
     seen: set[str] = set()
 
-    def retain(row: Mapping[str, str], row_number: int) -> None:
+    _assert_snapshot(table.snapshot, f"candidate-display input {table.artifact_id!r}")
+    for row_number, row in enumerate(table.iter_rows(), start=2):
         candidate_id = row["candidate_id"]
         if candidate_id in seen:
             _fail(
@@ -242,11 +210,11 @@ def _fallback_rows(
                 f"{candidate_id!r} at row {row_number}"
             )
         seen.add(candidate_id)
-        selected.append((_step09_rank_key(row), dict(row)))
+        selected.append((_step09_rank_key(row), row))
         selected.sort(key=lambda item: item[0])
         del selected[owner_context.DISPLAY_LIMIT :]
 
-    _visit_rows(table, retain)
+    _assert_snapshot(table.snapshot, f"candidate-display input {table.artifact_id!r}")
     return tuple(row for _key, row in selected), len(seen)
 
 
@@ -256,9 +224,10 @@ def _selected_context_rows(
     selected: dict[str, tuple[int, dict[str, str]]] = {}
     ranks: set[int] = set()
 
-    def retain(row: Mapping[str, str], row_number: int) -> None:
+    _assert_snapshot(table.snapshot, f"candidate-display input {table.artifact_id!r}")
+    for row_number, row in enumerate(table.iter_rows(), start=2):
         if row["display_rank"] == _NA:
-            return
+            continue
         rank = _required_integer(
             f"Step 10 candidate context row {row_number} display_rank",
             row["display_rank"],
@@ -271,9 +240,9 @@ def _selected_context_rows(
         if rank in ranks:
             _fail(f"Step 10 repeats selected display_rank {rank}")
         ranks.add(rank)
-        selected[candidate_id] = (rank, dict(row))
+        selected[candidate_id] = (rank, row)
 
-    _visit_rows(table, retain)
+    _assert_snapshot(table.snapshot, f"candidate-display input {table.artifact_id!r}")
     if ranks != set(range(1, len(ranks) + 1)):
         _fail("Step 10 selected display ranks are not contiguous from one")
     return selected
@@ -286,7 +255,8 @@ def _step09_rows_for_context(
     selected: dict[str, dict[str, str]] = {}
     seen: set[str] = set()
 
-    def retain(row: Mapping[str, str], row_number: int) -> None:
+    _assert_snapshot(table.snapshot, f"candidate-display input {table.artifact_id!r}")
+    for row_number, row in enumerate(table.iter_rows(), start=2):
         candidate_id = row["candidate_id"]
         if candidate_id in seen:
             _fail(
@@ -295,9 +265,9 @@ def _step09_rows_for_context(
             )
         seen.add(candidate_id)
         if candidate_id in selected_context:
-            selected[candidate_id] = dict(row)
+            selected[candidate_id] = row
 
-    _visit_rows(table, retain)
+    _assert_snapshot(table.snapshot, f"candidate-display input {table.artifact_id!r}")
     if set(selected) != set(selected_context):
         missing = sorted(set(selected_context) - set(selected))
         _fail(
@@ -340,10 +310,11 @@ def _selected_hits(
         candidate_id: [] for candidate_id in selected_context
     }
 
-    def retain(row: Mapping[str, str], row_number: int) -> None:
+    _assert_snapshot(table.snapshot, f"candidate-display input {table.artifact_id!r}")
+    for row_number, row in enumerate(table.iter_rows(), start=2):
         candidate_id = row["candidate_id"]
         if candidate_id not in hits:
-            return
+            continue
         context = selected_context[candidate_id][1]
         if (
             row["analysis_id"] != context["analysis_id"]
@@ -383,7 +354,7 @@ def _selected_hits(
             )
         )
 
-    _visit_rows(table, retain)
+    _assert_snapshot(table.snapshot, f"candidate-display input {table.artifact_id!r}")
     return {candidate_id: tuple(values) for candidate_id, values in hits.items()}
 
 

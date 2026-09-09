@@ -53,9 +53,6 @@ def computational_table(
     snapshot = _snapshot_regular(path, "scientific figure fixture")
     return ComputationalTable(
         artifact_id=f"analysis.synthetic.{role}",
-        path=path,
-        sha256=snapshot.sha256,
-        size_bytes=snapshot.size_bytes,
         row_count=len(rows) - 1,
         header=tuple(rows[0]),
         display_rows=(),
@@ -70,12 +67,11 @@ def context_table(path: Path, role: str, *, materialize: bool) -> ComputationalT
     snapshot = _snapshot_regular(path, "scientific-context figure fixture")
     return ComputationalTable(
         artifact_id=f"analysis.synthetic.{role}",
-        path=path,
-        sha256=snapshot.sha256,
-        size_bytes=snapshot.size_bytes,
         row_count=len(rows) - 1,
         header=tuple(rows[0]),
-        display_rows=tuple(tuple(row) for row in rows[1:]) if materialize else (),
+        display_rows=tuple(dict(zip(rows[0], row, strict=True)) for row in rows[1:])
+        if materialize
+        else (),
         snapshot=snapshot,
     )
 
@@ -554,9 +550,6 @@ def test_candidate_grid_is_population_complete_and_size_bounded(
     snapshot = _snapshot_regular(path, "large candidate fixture")
     table = ComputationalTable(
         artifact_id="analysis.synthetic.cmh_all_sites",
-        path=path,
-        sha256=snapshot.sha256,
-        size_bytes=snapshot.size_bytes,
         row_count=row_count,
         header=header,
         display_rows=(),
