@@ -600,7 +600,7 @@ def test_static_graph_rejects_schema_valid_owner_reassignment(tmp_path: Path) ->
     assert "Processing owner tasks do not match the static base graph" in failed.stdout
 
 
-def test_real_cohort_slice_validates_all_scientific_outputs(
+def test_resume_reuses_every_completed_file_with_existing_engine_metadata(
     built: workflow_fixture.WorkflowFixture,
 ) -> None:
     completed = _snakemake(built, "--", "cohort_slice")
@@ -636,11 +636,6 @@ def test_real_cohort_slice_validates_all_scientific_outputs(
     assert not built.report_receipt.exists()
     assert not SCIENTIFIC_BINARIES.intersection(completed.stdout.split())
 
-
-def test_resume_reuses_every_completed_file_with_existing_engine_metadata(
-    built: workflow_fixture.WorkflowFixture,
-) -> None:
-    _snakemake(built, "--", "cohort_slice")
     before = _snapshot_trees(
         built.verified_root,
         built.run_root / "products" / "native",
