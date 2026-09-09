@@ -186,10 +186,10 @@ cohort.{cohort_id}.step08_summary|08|cohort|cohort|step08_summary_v1|products/na
 cohort.{cohort_id}.step08_validation|08|cohort|cohort|step08_validation_report_v1|products/native/qc/validation/08/{cohort_id}.validation.tsv|true
 analysis.{analysis_id}.cmh_all_sites|09|analysis|analysis|step09_cmh_all_sites_v1|results/editing/{analysis_id}/{analysis_id}.cmh_all_sites.tsv|true
 analysis.{analysis_id}.cmh_significant_sites|09|analysis|analysis|step09_cmh_significant_sites_v1|results/editing/{analysis_id}/{analysis_id}.cmh_significant_sites.tsv|true
-analysis.{analysis_id}.cmh_summary|09|analysis|analysis|step09_cmh_summary_v1|results/editing/{analysis_id}/{analysis_id}.cmh_summary.tsv|true
 analysis.{analysis_id}.mutation_spectrum_tsv|09|analysis|analysis|step09_mutation_spectrum_tsv_v1|results/editing/{analysis_id}/{analysis_id}.mutation_spectrum.tsv|true
 analysis.{analysis_id}.mutation_spectrum_pdf|09|analysis|analysis|step09_mutation_spectrum_pdf_v1|results/editing/{analysis_id}/{analysis_id}.mutation_spectrum.pdf|true
 analysis.{analysis_id}.depth_delta_pdf|09|analysis|analysis|step09_depth_delta_pdf_v1|results/editing/{analysis_id}/{analysis_id}.depth_delta.pdf|true
+analysis.{analysis_id}.cmh_summary|09|analysis|analysis|step09_cmh_summary_v1|results/editing/{analysis_id}/{analysis_id}.cmh_summary.tsv|true
 analysis.{analysis_id}.cmh_validation|09|analysis|analysis|step09_validation_report_v1|products/native/qc/validation/09/{analysis_id}.validation.tsv|true
 analysis.{analysis_id}.candidate_context|10|analysis|analysis|step10_candidate_context_v1|results/scientific_context/{analysis_id}/{analysis_id}.candidate_context.tsv|true
 analysis.{analysis_id}.motif_hits|10|analysis|analysis|step10_motif_hits_v1|results/scientific_context/{analysis_id}/{analysis_id}.motif_hits.tsv|true

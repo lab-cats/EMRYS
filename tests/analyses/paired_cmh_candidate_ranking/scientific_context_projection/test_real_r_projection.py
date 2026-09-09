@@ -227,6 +227,7 @@ def _run_projection(
     work_dir = output_root / "work"
     work_dir.mkdir()
     output_arguments = []
+    output_paths = []
     for stem in (
         "candidate-context",
         "motif-hits",
@@ -234,9 +235,16 @@ def _run_projection(
         "motif-statistics",
     ):
         output = output_dir / f"{analysis_id}.{stem.replace('-', '_')}.tsv"
+        output_paths.append(output)
         output_arguments.extend(
-            (f"--{stem}-output", str(output), f"--{stem}-final", str(output))
+            (
+                f"--{stem}-output",
+                str(work_dir / output.name),
+                f"--{stem}-final",
+                str(output),
+            )
         )
+    output_paths.append(output_dir / f"{analysis_id}.context_receipt.tsv")
     subprocess.run(
         [
             str(PRODUCER),
@@ -254,7 +262,7 @@ def _run_projection(
             str(fai),
             *output_arguments,
             "--context-receipt-output",
-            str(output_dir / f"{analysis_id}.context_receipt.tsv"),
+            str(work_dir / output_paths[-1].name),
             "--git-commit",
             subprocess.check_output(
                 ["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True
@@ -272,6 +280,9 @@ def _run_projection(
             "TMPDIR": str(work_dir),
         },
     )
+    for output in output_paths:
+        output.hardlink_to(work_dir / output.name)
+        (work_dir / output.name).unlink()
     return output_dir
 
 
