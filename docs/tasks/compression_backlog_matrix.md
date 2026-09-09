@@ -217,7 +217,7 @@ checks. Record exact product/test/docs/config/tooling/evidence accounting and
 final-commit local/hosted results before marking Done. No retained evidence is
 deleted, no product file is added, and no new manager or registry is introduced.
 
-Local verification covers 210 distinct reporting cases, 42 reporting/coordinator
+Local verification covers 211 distinct reporting cases, 42 reporting/coordinator
 and record-schema cases, 13 independent goldens, 40 source-topology checks, and
 the isolated wheel/install command smoke. The full static gate passes, including
 Ruff, ShellCheck, dead-code checks, documentation, imports, compilation, manifest,
@@ -225,11 +225,16 @@ and sharder checks. The discarded summary publication suite repeats the retained
 combined publisher's protections; scientific projections, historical identity,
 corruption, and golden evidence remain. Hosted CI is still required for closeout.
 
-Implementation is committed at `9e8eafba`, stacked on PR #153 at `cab77a26`.
-Product code is +560/−1310 (net −750), tests/constructors +361/−1241 (−880),
+Implementation is stacked on PR #153 at `cab77a26`.
+Product code is +565/−1310 (net −745), tests/constructors +380/−1245 (−865),
 and developer tooling −12. Two product files retire and none are added.
 The existing reporting-start schema grows four lines; retained evidence and
 dependencies are unchanged. Documentation is accounted separately in the PR.
+Independent review caught an unbound producer-commit field in the artifact
+receipt. Current admission now binds it to the independently observed source
+identity before the summary reuses it. One added mutation case failed before
+the correction; the complete reader suite validates the correction and
+preserved historical identities. No other review issue remained.
 
 ### CS-04 Reporting memory control
 
@@ -443,7 +448,7 @@ final-path provenance, and publication order. This broader migration is not
 implemented by the reporting tranche.
 
 
-**R work implemented in PR #152; publication retirement locally verified.** R annotation
+**R work and replacement retirement passed ordinary CI in PRs #152/153.** R annotation
 and scientific-context table builders now use transcript/population-sized
 frames and base-R operations instead of row counters and repeated metadata.
 This removes 114 product lines across two existing files, with no test changes.

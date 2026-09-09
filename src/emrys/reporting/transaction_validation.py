@@ -928,6 +928,11 @@ def validate_artifact_index_transaction(
         source_root=context.artifact_source_root.root,
     )
 
+    if receipt_row["git_commit"] != context.receipt_row["git_commit"]:
+        raise ReportingTransactionError(
+            "Published artifact receipt differs from current producer identity"
+        )
+
     reconstructed: list[dict[str, Any]] = []
     reconstructed_bytes: list[bytes] = []
     for regenerated, existing in zip(context.records, published_records, strict=True):

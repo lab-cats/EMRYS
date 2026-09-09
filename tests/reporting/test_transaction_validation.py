@@ -1046,16 +1046,31 @@ def test_public_historical_dispatch_rejects_symlinks_before_parsing(
     assert snapshots == [run_summary]
 
 
+@pytest.mark.parametrize("mutation", ("native_source", "producer_commit"))
 def test_artifact_validator_rejects_native_source_mutation(
     complete_reporting: tuple[Any, Path],
+    mutation: str,
 ) -> None:
     built, _report_root = complete_reporting
-    source = built.adapter_fixture.source_for("sample.SYNTH_A.star_log")
-    source.write_text("mutated after reporting\n", encoding="utf-8")
+    if mutation == "native_source":
+        source = built.adapter_fixture.source_for("sample.SYNTH_A.star_log")
+        source.write_text("mutated after reporting\n", encoding="utf-8")
+        diagnostic = "current declared source"
+    else:
+        from emrys.reporting._artifact_index import api as artifact_api
 
+        row = artifact_api.read_exact_tsv(
+            built.artifact_receipt,
+            artifact_api.ARTIFACT_RECEIPT_HEADER,
+            exact_rows=1,
+        )[0]
+        row["git_commit"] = "f" * 40
+        built.artifact_receipt.write_bytes(
+            artifact_api.tsv_bytes(artifact_api.ARTIFACT_RECEIPT_HEADER, [row])
+        )
+        diagnostic = "current producer identity"
     with pytest.raises(
-        transaction_validation.ReportingTransactionError,
-        match="current declared source",
+        transaction_validation.ReportingTransactionError, match=diagnostic
     ):
         transaction_validation.validate_artifact_index_transaction(
             source_checkout=REPO_ROOT,
