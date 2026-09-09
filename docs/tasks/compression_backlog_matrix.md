@@ -11,25 +11,21 @@ remaining scope, dependencies, acceptance, and disposition. The
 outcomes such as `REPORT-ROSTER-01` and `OPS-03`; their linked child cards
 are not duplicate tasks to complete in both places.
 
-The current approval covers this backlog conversion. It does not approve new
-product, public-policy, dependency, protection, or evidence changes. A card's
-next action is concrete work to select and bound; its presence here is not
-implementation authorization. There is no currently approved compression
-implementation tranche. Delivered work is recorded separately below.
+The approved tranche is CS-03, CS-04, CS-06, and CS-07; CS-05 is excluded.
+It preserves existing reporting identity policy, rejects reporting-memory
+settings in new inputs while retaining historical reading and hashes, and
+makes RSeQC refuse existing outputs. Every implemented logical change must
+substantially reduce product code; shared mechanics must replace all equivalent
+production callers. No new evidence deletion or unrelated policy is approved.
 
 ## Working queue
 
-Start with **CS-01**, then **CS-02**: they target the remaining substantial
-processing declarations. Each must end with a complete removal proposal or
-an explicit retain decision, rather than an open-ended survey. **CS-03** is
-the next reporting candidate under the existing source-identity policy.
-**CS-11** is required only if a proposal changes that policy.
-**CS-04** can advance once its public/historical policy decision is approved.
-**CS-06** must characterize the surviving publication path before selecting
-CS-07–09. These are recommendations for the next tranche, not a compulsory
-sequence or permission to combine unrelated owners.
+The current tranche is **CS-04** plus the shared publication change
+**CS-06/07**. **CS-03** closed as Retained after its complete equivalent-caller
+review found no substantial reduction. **CS-01/02** remain the next unselected
+processing-declaration candidates. **CS-05** and **CS-08/09** remain outside this
+approval; the latter still require their own standalone publication decision.
 
-No substantial remaining reduction is yet supported by a complete draft.
 The older size counts below are audit surfaces, not promised deletions.
 CS-12 and CS-13 are opportunistic small work and must not be presented as
 another substantial tranche. Correctness, performance, documentation, and
@@ -57,11 +53,11 @@ they are rough selection aids, not measured benefit or implementation approval.
 |---|---|---|---:|---:|---|---|
 | [CS-01](#cs-01-processing-materialization) | Derive one processing owner's command and dispatch from existing admitted facts. | Needs qualification | 4 | 4 | Trace one complete profile → task → producer path; deliver a net-negative draft or retain rationale. | `COMPRESS-01` |
 | [CS-02](#cs-02-processing-report-adapters) | Remove equivalent processing-adapter declarations from artifact-index reporting. | Needs qualification | 4 | 4 | Identify missing metadata and its existing owner; stop if a parallel registry is needed. | `REPORT-ROSTER-01` |
-| [CS-03](#cs-03-reporting-transaction-layout) | Derive the three reporting transactions' equivalent layout in one existing owner. | Needs qualification | 4 | 3 | Map receipts/paths/order across callers under existing identity rules; CS-11 gates a change to those rules, not an edit to hashed code. | `REPORT-ROSTER-01` |
-| [CS-04](#cs-04-reporting-memory-control) | Remove the ineffective active reporting-memory control and its transport. | Needs decision | 3 | 4 | Select new-input rejection/migration and exact historical-policy reading/resume. | `REPORT-ROSTER-01` |
+| [CS-03](#cs-03-reporting-transaction-layout) | Consolidate only equivalent reporting-layout declarations. | Retained | 4 | 3 | The complete minimal shared-owner sketch is approximately neutral after plumbing; no code change qualified. Reopen only with a concrete larger equivalent duplication. | `REPORT-ROSTER-01` |
+| [CS-04](#cs-04-reporting-memory-control) | Remove the ineffective active reporting-memory control and its transport. | Verification pending | 3 | 4 | Approved: reject new inputs; preserve historical records and hashes. Caller-complete migration and 149 focused checks pass; hosted CI remains required. | `REPORT-ROSTER-01` |
 | [CS-05](#cs-05-validation-check-rosters) | Give one scientific validation roster one neutral authority used by its producer and reporting. | Needs decision | 4 | 4 | Select membership/order, historical records, and external-provider obligations. | `REPORT-ROSTER-01` |
-| [CS-06](#cs-06-publication-handoff) | Characterize the helper-to-caller publication gap in RSeQC, BAM QC, and duplicate marking. | Needs qualification | 4 | 3 | Reproduce through the real helper and each cleanup owner; qualify any necessary correction separately. | `OPS-03` |
-| [CS-07](#cs-07-through-cs-10-standalone-publication) | RSeQC: retire direct-to-final report capture. | Blocked | 2 | 2 | CS-06 plus explicit create-exclusive public-policy and diagnostic decision. | `OPS-03` |
+| [CS-06](#cs-06-publication-handoff) | Characterize the helper-to-caller publication gap in RSeQC, BAM QC, and duplicate marking. | Verification pending | 4 | 3 | Gap reproduced in all three owners; all migrated callers and six corrected probes pass; hosted CI remains required. | `OPS-03` |
+| [CS-07](#cs-07-through-cs-10-standalone-publication) | RSeQC: retire direct-to-final report capture. | Verification pending | 2 | 2 | Approved with CS-06: one create-exclusive path, accepted legacy flag, preserved tool errors and recovery; local checks pass, hosted CI remains required. | `OPS-03` |
 | [CS-08](#cs-07-through-cs-10-standalone-publication) | BAM QC: retire mode-dependent publication for two outputs. | Blocked | 2 | 2 | CS-06 plus the same policy decision, preserving QC-specific capture semantics. | `OPS-03` |
 | [CS-09](#cs-07-through-cs-10-standalone-publication) | Duplicate marking: retire direct destinations and mode branches. | Blocked | 3 | 3 | CS-06 plus the policy decision; preserve three-output recovery and tool identity. | `OPS-03` |
 | [CS-10](#cs-07-through-cs-10-standalone-publication) | Paired CMH: retire six-file predecessor replacement/restoration. | Needs decision | 3 | 4 | Approve standalone publication policy and characterize its own recovery; CS-06 is not evidence for this different owner. | `OPS-03` |
@@ -191,56 +187,44 @@ stopping points. Preserve historical root interpretation. Use
 reporting-boundary tests, transaction-validation tests, and
 [ledger contract tests](../../tests/contracts/orchestration/test_reporting_ledger_contracts.py).
 
-**Economics and gate.** No defensible net estimate is available yet.
-This remains separate from the delivered fixed-output and lifecycle slices.
-Qualify a complete negative draft under the existing identity/resume policy.
-An edit to currently hashed code can change new Run hashes under that policy;
-this alone does not require CS-11. Changing the binding, producer-provenance,
-or historical-resume rules does. Abandon a proposed
-shared representation if equivalent declarations do not retire or it creates
-an inspection/reporting dependency cycle.
+**Retain decision.** Review at `0c909f12` found 11 lines of receipt-root/suffix
+selection in `_inspection_evidence.py`, five receipt-path lines and four
+predecessor-map lines in `transaction_validation.py`. A straightforward shared
+path function costs about 16 lines and replaces approximately 16 net lines
+before imports, public type exports, and caller plumbing: roughly neutral,
+not substantial compression. Moving the roster/type mostly relocates seven
+lines. No implementation or product test was added for this decision.
+
+Producer arguments, standalone paths, residue inventories, root admission,
+historical dispatch, and boundary rechecks serve distinct contracts; they
+cannot be folded into the total as equivalent declarations. Reopen only for
+a concrete larger equivalent duplication. Existing identity rules still allow
+ordinary edits to hashed code; CS-11 is required only for a policy change.
+The broader reporting identity/roster outcome remains open.
 
 ### CS-04 Reporting memory control
 
-**Observed.** `reporting_memory_mb` is admitted, transported, persisted,
-hashed, capped during resource resolution, and overlaid during resume. No
-scheduler or reporting execution consumes it to allocate reporting memory.
-The audit found 35 matching source lines across seven files; that measures
-spread, not the number of removable lines.
+**Implemented; hosted verification pending.** The entire inactive control is
+removed from new CLI/YAML inputs, defaults, the three resource carriers,
+profile selection, resolution, and resume overlays. The existing strict record
+reader validates historical raw hashes, reporting values, numeric/order rules,
+resolution, and caps without rewriting bytes. Legacy effective/source-only
+resume retains its original admission boundary. The now-unused private
+`resume_resource_plan` wrapper and every caller are retired.
 
-The affected vertical includes
-[`resource_policy.py`](../../src/emrys/orchestration/run_coordinator/resource_policy.py),
-[`execution_profile.py`](../../src/emrys/orchestration/run_coordinator/execution_profile.py),
-[`control.py`](../../src/emrys/orchestration/run_coordinator/control.py),
-[`application_model.py`](../../src/emrys/contracts/orchestration/application_model.py),
-the
-[resource schema](../../src/emrys/contracts/schemas/orchestration/v3/resource_config.schema.json),
-the packaged
-[default execution profile](../../src/emrys/orchestration/run_coordinator/resources/default_execution.yaml),
-and the
-[CSU profile](../../configs/execution_profile.csu_viking_ev_pum1.yaml).
-The frozen dashboard's historical display belongs to its own retirement.
+The [Run-coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
+owns the current input and historical behavior. The historical resource schema,
+application-model checks, and frozen dashboard reads remain required; none is
+an active memory allocation control. Existing implementation-identity rules
+still apply, so editing these owners does not promise old Runs can resume
+under a different checkout.
 
-**Proposed outcome.** Remove the active YAML/default field, CLI option,
-override carriers, symbolic/effective fields, resolution checks, and resume
-overlay code together. Preserve genuine computational resource declarations.
-The value's exclusion from computational resource identity does not make
-editing its admission implementation identity-neutral.
-
-**Decisions.** Choose rejection or an explicit migration for new YAML/CLI
-uses, including its diagnostics, the policy representation emitted for new
-records, and exact historical policy reading and resume. Do not silently
-ignore an ineffective user control, rewrite old
-policy bytes, or weaken their original hash checks. A compatibility design
-that costs more than the active removal does not satisfy compression.
-
-**Proof.** Exercise the selected current-configuration and CLI behavior, historical
-symbolic and effective records, unchanged computational policy, resume with
-and without explicit resource overrides, and report regeneration. The
-[resource-policy](../../tests/orchestration/run_coordinator/test_resource_policy.py),
-[execution-profile](../../tests/orchestration/run_coordinator/test_execution_profile.py),
-application-model, materialization, control, and public CLI tests must agree.
-The net reduction remains unqualified until historical behavior is designed.
+The complete change removes 46 Python product lines (45 including its schema
+change), eight configuration lines, and adds 21 test lines. No new product
+file, resource manager, model, or compatibility wrapper is introduced.
+149 focused resource/profile/schema/application-model and materialization
+identity/resume checks pass. Hosted ordinary CI remains required. The
+original audit's 35 matching source lines measured spread, not savings.
 
 ### CS-05 Validation check rosters
 
@@ -269,49 +253,33 @@ helper extraction; size is unknown and any growth requires its own exception.
 
 ### CS-06 Publication handoff
 
-The source review identified a specific gap in the proposed surviving path
-for RSeQC, BAM QC, and duplicate marking. These owners set a per-output
-published flag only after
-[`publish_file_create_exclusive`](../../src/emrys/libraries/file_checks.sh)
-returns. The helper creates the final hard link and then checks that it
-still refers to the staged file.
+**Implemented with CS-07; hosted verification pending.** Baseline local
+production-script probes at `0c909f12` reproduced the gap in RSeQC, BAM QC,
+and duplicate marking. TERM immediately after a real first hard link exited
+143; replacing that final before the helper's inode check exited 1. In both
+cases the final survived while staging and the owned lock disappeared.
 
-The source-derived failure sequence is:
+The [shared shell cleanup owner](../../src/emrys/libraries/README.md#shell-publication-cleanup)
+now owns the full equivalent rollback/staging/lock sequence across all three
+producers. Their six per-output flags are gone; publication is armed before
+linking, and cleanup inspects every staging/final pair. That owner documents
+precise recovery guarantees, retained limitations, and why other transaction
+lifecycles are not equivalent consumers. The lower-level link/ownership helpers
+are unchanged. The separate scientific-context counter gap is retained
+[below](#separate-scientific-context-publication-finding).
 
-1. The helper links staging to the final path.
-2. Before its identity check succeeds, that final is removed or replaced.
-3. The helper exits with failure before the caller sets the published flag.
-4. EXIT cleanup sees that flag as false and skips ownership-aware rollback
-   for this output. If its ordinary cleanup operations succeed, it removes
-   staging and the owned lock without preserving the recovery anchors.
+All six before/after probes pass: provably owned finals roll back, and an
+unresolved missing/replaced output retains its staging anchors and lock.
+One maintained real BAM-QC regression removes the second link before helper
+return; existing ownership, original-exit, failure-cleanup and success tests
+survive. All three producer shell suites and the shared file-check suite pass.
+The CS-06/07 publication change removes 123 net product lines across four
+existing files; its tests add 24 net lines. No additional fault matrix was added.
 
-A replacement created by another process is not deleted in this sequence.
-The predicted defect is loss of staging and lock evidence for unresolved
-publication, not deletion of that replacement.
-
-At the audited revision, the caller handoffs are RSeQC lines 240–243,
-BAM QC lines 245–251, and duplicate marking lines 311–318; the shared helper
-links at line 114 and checks identity at lines 117–120. In a multi-output
-owner, an earlier sibling can already be marked published while the newest
-output is still unaccounted for.
-
-This is a predicted failure from source, not an injected or observed run.
-It is distinct from a failure after the caller's flag is set, where existing
-ownership-aware rollback applies. Handled HUP/INT/TERM signals may encounter
-the same state only if their trap runs in this interval; signal timing needs
-its own controlled characterization. SIGKILL and power loss do not execute
-this EXIT-cleanup sequence. Canonical BAM and paired CMH use different
-transaction state; absence of this particular pattern does not certify
-their entire recovery behavior.
-
-Before treating the no-clobber path as a complete replacement, characterize
-the post-link ownership handoff through the real helper and each affected
-cleanup owner. Prove both that cleanup never removes another process's
-output and that it retains the required ownership/recovery anchors when
-publication cannot be resolved. Select any confirmed defect correction
-separately from the public overwrite-policy decision. Do not weaken the
-helper's identity check or introduce a generic transaction framework merely
-to shorten this repair.
+TERM was exercised locally; this does not prove every HUP/INT timing, Slurm,
+or institutional filesystem case. SIGKILL/power loss do not execute EXIT
+cleanup. Local software probes and hosted CI cannot establish scientific or
+biological validation.
 
 ### CS-07 through CS-10 Standalone publication
 
@@ -321,9 +289,10 @@ Its replacement, backup, and restoration mode is retired. Existing backups and
 ambiguous residue remain operator-owned recovery state; the contract preserves
 the historical restoration defect and the surviving cleanup limitations.
 
-**Proposed policy for the remaining owners, not yet approved.** Retain
-independently useful standalone commands, but make their publication
-create-exclusive: existing outputs are preserved and replacement is refused.
+**Policy scope.** CS-07 RSeQC is approved for create-exclusive standalone
+publication: existing outputs are preserved and replacement is refused.
+The same policy remains a proposal for CS-08–10, not implementation approval.
+All independently useful standalone commands remain.
 Normal Run materialization already selects `--no-clobber` for the shell owners below, and the paired-CMH
 provider selects it for its producer. This does not establish that the
 standalone interfaces are unused or that every surviving failure path is
@@ -349,13 +318,13 @@ four separate versions of the common rollback rule.
 
 | Proposed slice | Audited owner and removable mode | Owner-specific requirements and size |
 |---|---|---|
-| CS-07 RSeQC | [RSeQC producer](../../src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh): always use existing staged report capture, retiring direct-to-final capture and mode-dependent publication. | One tool invocation and one report make this the smallest initial proof boundary. Preserve native report text, orientation evidence, sample-ID admission decisions, and failure diagnostics. Approximate branch opportunity: 10–20 product lines. |
+| CS-07 RSeQC | Implemented: one existing staged publication path for both standalone and Run calls; the legacy flag is accepted without a second mode. | Native report text, input binding, safe sample IDs, exit codes, diagnostics, and recovery follow the [producer contract](../../src/emrys/evidence/rseqc_orientation/CONTRACT.md#producer-publication-boundary). Its owner loses 51 net product lines within the complete CS-06/07 change. |
 | CS-08 BAM QC | [QC producer](../../src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh): retire final-versus-staged capture for its two outputs. | Preserve empty quickcheck success-marker semantics, nonempty success behavior, native flagstat text, and producer/validator interpretation differences. Approximate branch opportunity: 12–22 product lines. |
 | CS-09 Duplicate marking | [Picard producer](../../src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh): retire direct destinations and mode branches for BAM, index, and metrics. | Preserve `REMOVE_DUPLICATES=false`, Java/Picard admission, indexing, three-output validation, input/JAR identities, and partial-publication recovery. Approximate branch opportunity: 15–25 product lines. |
 | CS-10 Paired CMH | [CMH producer](../../src/emrys/analyses/paired_cmh_candidate_ranking/producer.py): retire six-file predecessor backup/replacement and restoration. | Retain R computation, paired strata, statistical/threshold admission, six outputs and headers, summary-last publication, process-group handling, and native/historical readers. Recognize existing `.previous` recovery residue even if new attempts cease creating it. Approximate branch opportunity: 35–60 product lines. |
 
-The remaining rough total is 72–127 product lines before recovery and
-compatibility costs. QC, RSeQC, and duplicate marking primarily shed mode
+The remaining CS-08–10 audit estimate is 62–107 product lines before recovery and
+compatibility costs. QC and duplicate marking primarily shed mode
 conditionals, sentinel digest values, and target aliases; their substantive staging and
 protection code remains. Their main additional value is a consistent safer
 publication policy. Qualify each slice against Rule 5 rather than treating
@@ -554,7 +523,7 @@ full below so an unresolved finding cannot disappear during conversion.
 | Dashboard and old submission names | `DASHBOARD-RETIRE-01`; replacement dashboard first, then caller-complete retirement. Detailed obligations [below](#dashboard-retirement-prerequisites). A frozen renderer's 35–40 repeated lines do not authorize incidental cleanup. |
 | Extension tutorial | Deferred documentation deliverable: one minimal working external computation provider and bespoke reporter, with no generic workflow/report DSL. |
 | Project workspace creation | Existing Project/setup obligation: EMRYS creates owned directories, references scientific inputs in place, and requires explicit biological metadata. Checkout-level `data/raw`/`data/full` auto-discovery remains rejected. |
-| CI control, qualification tests, tooling | `CI-01`, `QUAL-01`, and `DEV-01` own these outcomes. PR #148 implements the approved fixture/tool changes; final hosted verification remains separate. Neither test scheduling nor mechanical formatting is product compression. |
+| CI control, qualification tests, tooling | `CI-01`, `QUAL-01`, and `DEV-01` own these outcomes. PR #148's fixture/tool/version changes passed ordinary hosted CI 34306975901 at `b491aac5`; master integration remains pending. Neither test scheduling nor mechanical formatting is product compression. |
 | Scientific and site evidence | `SCI-AUDIT-01`, `SCI-ORACLE-01`, and `SITE-PARITY-01`; do not substitute compression checks for independent science, rendered user review, or institutional execution. |
 
 ### Historical sizing context
@@ -568,7 +537,7 @@ selection and carry no promise of deletability or performance improvement.
 | Large files | 101 tracked files exceeded 500 lines: 42 product, 52 test, 7 other. Of 37 over 1,000 lines, 15 were hand-maintained product, 17 tests, and 5 generated lock/CI/bootstrap files. Responsibility and duplication, not size alone, determine a slice. |
 | Run coordination | About 20,225 product and 20,824 test lines; task, lifecycle, materialization, dashboard, control, Doctor, onboarding, and reporting boundary each exceeded 1,000 product lines. About 1,086 materializer lines covered task commands/dispatch declarations; its main tests had about 4,959 lines. CS-01 qualifies one complete vertical, not a mechanical split. |
 | Managed dependency lock | `pixi.lock` had about 3,881 lines / 140 KB. Retain it as generated reproducibility input used by Doctor and CI; it is not maintained product bloat. |
-| Persisted filenames and report kinds | `run.json`, `normalized.json`, and `attempt.json` repeat contract vocabulary; three reporting kinds recurred across five owners. CS-03 must retire semantic duplication, not introduce constants merely to replace strings. |
+| Persisted filenames and report kinds | `run.json`, `normalized.json`, and `attempt.json` repeat contract vocabulary; three reporting kinds recurred across five owners. CS-03 retained these declarations after its complete shared-owner sketch failed the reduction gate; string constants alone do not establish semantic compression. |
 | Stage/resource vocabulary | Fourteen historical stage IDs recur across policy, profiles, and the Snakefile; Analysis admission permits Step 09 and optional Step 10, and some historical profiles omit newer IDs. Reopen a semantic-key migration only when module extension needs it; preserve historical reads. `QUAL-04` delivered owner-count derivation and `PROFILE-CONTRACT-01` owns its narrower future transition. |
 
 ### Retained audit counterexamples
@@ -716,6 +685,20 @@ validator, retained profile, and tests. The source review has not established
 that those economics work. Profile, workflow, materialization, and
 orchestration-contract suites are the validation boundary.
 
+### Separate scientific-context publication finding
+
+The CS-06 caller audit also found a helper-return counter gap in
+[`scientific_context_projection.sh`](../../src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh):
+its rollback loop visits only `published_count`, incremented after each link
+helper returns. Unlike the three migrated producers, this owner also controls
+backups, directory syncing, commit state, and a different lock record.
+The new cleanup is not an equivalent replacement for that transaction.
+
+Retain as an unselected owner-specific recovery investigation under `OPS-03`.
+Reproduce its actual native publication path before selecting a correction;
+CS-06's three-owner probes do not establish that result. Do not mark every
+caller of the low-level link helper repaired by this tranche.
+
 ### Dashboard retirement prerequisites
 
 [`dashboard.py`](../../src/emrys/orchestration/run_coordinator/dashboard.py)
@@ -768,7 +751,7 @@ that every surrounding owner has been exhaustively audited.
 
 | Mechanism | Evidence for retaining it or narrowing the proposal |
 |---|---|
-| Resource override intent | `computational_resources_explicit` and `selected_reporting_memory` record authored omission and overlay intent. Effective merged resources cannot reconstruct that distinction. Retire the reporting-specific field only as part of the explicit memory-control decision, not as allegedly derivable state. |
+| Resource override intent | `computational_resources_explicit` still records authored omission; effective merged resources cannot reconstruct it. CS-04 removes `selected_reporting_memory` because its entire active control is retired, not because authored overlay intent was derivable. |
 | Repeated predecessor admission | Resource selection before Slurm submission and later child planning independently admit the predecessor. They cross a time/process boundary; do not cache one result across that boundary merely to delete validation. |
 | Resource normalization | Partial fragments, complete symbolic policies, historical effective records, numeric canonicalization, and allocation resolution carry different semantics. Historical missing thread fields and accepted integral numbers affect exact record identity. |
 | Immutable and mutable projections | A frozen mapping/tuple boundary for providers does not duplicate decoding into a fresh mutable JSON object. Shared canonical record storage is already implemented. |

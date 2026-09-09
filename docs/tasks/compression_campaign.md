@@ -41,9 +41,11 @@ old dashboard stays until its replacement is implemented and validated.
 Correctness fixes, tooling, documentation, and performance proposals have
 named destinations; they do not count as product compression.
 
-The backlog conversion authorizes no new compression implementation. Select
-a bounded card/tranche and approve its concrete owner scope before editing
-product code. Follow the [workflow](../operations/WORKFLOW.md) and permanent
+The current approved tranche comprises CS-03, CS-04, CS-06, and CS-07,
+with CS-05 excluded. CS-03 qualified no substantial change and is Retained;
+CS-04 and the caller-complete CS-06/07 publication change proceed under the
+policies recorded in their backlog cards. Other product work still requires
+its bounded approval. Follow the [workflow](../operations/WORKFLOW.md) and permanent
 [architecture guardrails](../design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails):
 meaningful product reduction, no product-file growth without approval,
 caller-complete retirement, immutable Runs, preserved science/provenance and
