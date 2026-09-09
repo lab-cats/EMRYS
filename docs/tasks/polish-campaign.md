@@ -100,8 +100,8 @@ implemented and validated in the pending PR #140 integration. The user has
 approved ShellCheck, Ruff formatting, and optional fast hooks under `DEV-01`
 (items 16, 18, and 20), public version reporting under `CLI-VERSION-01`
 (item 43), and the bounded Python/R test-runtime work under `CI-01` (item 23).
-Those new slices are in progress, beginning with documentation reconciliation;
-their implementation and acceptance are not yet complete. The artifact-version
+Those slices are implemented; focused local checks pass and final hosted CI
+remains pending. The artifact-version
 correction, other publication-recovery owners, Project preview, type checker,
 and other unselected proposals retain their separate decision boundaries.
 
