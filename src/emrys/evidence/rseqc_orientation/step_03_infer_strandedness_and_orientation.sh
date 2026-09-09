@@ -48,7 +48,7 @@ USAGE
 
 # shellcheck source=../../libraries/argument_parsing.sh
 script_dir="${BASH_SOURCE[0]%/*}"
-if [[ "$script_dir" == "$BASH_SOURCE[0]" ]]; then
+if [[ "$script_dir" == "${BASH_SOURCE[0]}" ]]; then
     script_dir="."
 fi
 source "$script_dir/../../libraries/argument_parsing.sh"
@@ -96,6 +96,7 @@ require_arguments
 
 # Validate all run inputs before printing a successful dry-run. This catches
 # missing Step 02 outputs and missing RSeQC setup without launching compute.
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 [[ -f "$input_bam" ]] || die "BAM does not exist or is not a file: $input_bam"
 
 # samtools commonly writes either sample.bam.bai or sample.bai; accept both so
@@ -108,6 +109,7 @@ else
     die "BAM index does not exist. Expected either: $input_bam.bai or ${input_bam%.bam}.bai"
 fi
 
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 [[ -f "$bed12" ]] || die "BED12 annotation does not exist or is not a file: $bed12"
 requested_infer_experiment_bin="$infer_experiment_bin"
 infer_experiment_bin="$(resolve_executable_value "infer_experiment.py" "$infer_experiment_bin" "infer_experiment.py")"
@@ -115,12 +117,14 @@ input_bam_sha256="not-bound"
 bam_index_sha256="not-bound"
 bed12_sha256="not-bound"
 if [[ "$no_clobber" == true ]]; then
+    # shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
     validate_safe_id "--sample-id" "$sample_id"
     input_bam_sha256="$(sha256_file "$input_bam")"
     bam_index_sha256="$(sha256_file "$bam_index")"
     bed12_sha256="$(sha256_file "$bed12")"
 fi
 
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 output_file="$output_dir/${sample_id}.infer_experiment.txt"
 run_token="${EMRYS_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
 validate_safe_id "Step 03 run token" "$run_token"

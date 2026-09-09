@@ -67,6 +67,31 @@ automatic snapshots remain disabled, and lock changes require review.
 
 ## Development validation
 
+Restore repository development tools with `uv sync --locked`. The existing
+`make -s lint` runs the locked Ruff correctness and formatting checks,
+ShellCheck over every tracked `.sh` file, and Vulture. CI uses the same policy;
+actionlint also applies locked ShellCheck to embedded workflow shell commands.
+The Bash syntax gate remains separate. Shared ShellCheck source resolution is
+configured in [`.shellcheckrc`](../../.shellcheckrc); any rule annotation belongs
+on the affected statement with its specific reason, never a broad warning ban.
+
+Optional staged-file checks use the repository's locked `.venv` tools:
+
+```bash
+.venv/bin/pre-commit install --allow-missing-config
+.venv/bin/pre-commit run
+```
+
+Installation is explicit. Allowing a missing configuration keeps older branches
+and worktrees usable when they do not yet contain this opt-in configuration.
+The local hooks check Ruff correctness/formatting
+under `scripts`, `src/emrys`, and `tests`, and ShellCheck on staged shell files.
+They do not rewrite files, install hook environments, or run scientific tools,
+R checks, or test suites. Use `.venv/bin/ruff format <changed-python-paths>`
+to format deliberately, then stage the result. A missing or stale `.venv`
+requires explicit locked restoration. CI remains the complete validation path;
+staged-file feedback does not replace it.
+
 Use focused tests while changing one owner:
 
 ```bash

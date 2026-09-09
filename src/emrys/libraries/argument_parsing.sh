@@ -43,7 +43,7 @@ require_java() {
     local java_version_output=""
     local java_version_status=0
     if java_version_output="$("$java_bin" -version 2>&1)"; then
-        local java_version_line="$(printf '%s\n' "$java_version_output" | head -n 1)"
+        local java_version_line="${java_version_output%%$'\n'*}"
     else
         java_version_status=$?
         echo "ERROR: Could not determine Java version from: $java_version_output" >&2
@@ -149,6 +149,7 @@ require_arguments() {
 handle_execute_or_help() {
     case "${1:-}" in
         --execute)
+            # shellcheck disable=SC2034 # The sourcing owner consumes this flag.
             execute=true
             ;;
         -h|--help)

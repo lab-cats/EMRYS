@@ -48,7 +48,7 @@ USAGE
 
 # shellcheck source=../../libraries/argument_parsing.sh
 script_dir="${BASH_SOURCE[0]%/*}"
-if [[ "$script_dir" == "$BASH_SOURCE[0]" ]]; then
+if [[ "$script_dir" == "${BASH_SOURCE[0]}" ]]; then
     script_dir="."
 fi
 source "$script_dir/../../libraries/argument_parsing.sh"
@@ -87,11 +87,15 @@ done
 # Validate required arguments and external tool availability before any work starts.
 require_arguments
 
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 [[ -f "$r1_fastq" ]] || die "R1 FASTQ does not exist or is not a file: $r1_fastq"
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 [[ -f "$r2_fastq" ]] || die "R2 FASTQ does not exist or is not a file: $r2_fastq"
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 [[ -d "$star_index" ]] || die "STAR index directory does not exist: $star_index"
 star_bin="$(resolve_executable_value "STAR" "$requested_star_bin" "STAR")"
 
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 validate_positive_integer "--threads" "$threads"
 
 # STAR needs --readFilesCommand only when both FASTQ inputs are gzip-compressed.
@@ -170,6 +174,7 @@ require_star_index_unchanged() {
         die "STAR index membership or bytes changed $boundary."
 }
 
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 validate_safe_id "--sample-id" "$sample_id"
 r1_sha256="$(sha256_file "$r1_fastq")"
 r2_sha256="$(sha256_file "$r2_fastq")"
@@ -177,6 +182,7 @@ star_index_snapshot="$(snapshot_star_index)"
 star_index_member_count="$(printf '%s\n' "$star_index_snapshot" | wc -l | tr -d ' ')"
 run_token="${EMRYS_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
 validate_safe_id "Step 01 run token" "$run_token"
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 final_prefix="$output_dir/${sample_id}."
 staging_dir="$output_dir/.${sample_id}.step01.${run_token}.staging"
 staging_prefix="$staging_dir/${sample_id}."

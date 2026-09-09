@@ -42,7 +42,7 @@ USAGE
 }
 
 script_dir="${BASH_SOURCE[0]%/*}"
-if [[ "$script_dir" == "$BASH_SOURCE[0]" ]]; then
+if [[ "$script_dir" == "${BASH_SOURCE[0]}" ]]; then
     script_dir="."
 fi
 # shellcheck source=../../libraries/argument_parsing.sh
@@ -76,12 +76,17 @@ while [[ $# -gt 0 ]]; do
 done
 
 require_arguments
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 [[ -f "$reference_fasta" && ! -L "$reference_fasta" && -s "$reference_fasta" ]] ||
     die "Reference FASTA must be a nonempty regular file, not a symlink: $reference_fasta"
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 [[ -f "$reference_gtf" && ! -L "$reference_gtf" && -s "$reference_gtf" ]] ||
     die "Reference GTF must be a nonempty regular file, not a symlink: $reference_gtf"
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 validate_positive_integer "--threads" "$threads"
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 validate_nonnegative_integer "--sjdb-overhang" "$sjdb_overhang"
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 validate_positive_integer "--genome-sa-index-nbases" "$genome_sa_index_nbases"
 
 star_value="${star_bin_arg:-${STAR_BIN_OVERRIDE:-}}"
@@ -89,6 +94,7 @@ star_bin="$(resolve_executable_value "STAR" "$star_value" "STAR")"
 reference_fasta_sha256="$(sha256_file "$reference_fasta")"
 reference_gtf_sha256="$(sha256_file "$reference_gtf")"
 
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 index_parent="$(dirname -- "$index_dir")"
 index_base="$(basename -- "$index_dir")"
 run_token="${EMRYS_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"

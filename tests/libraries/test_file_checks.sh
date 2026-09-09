@@ -33,8 +33,10 @@ expect_failure "missing SHA-256 Python binding" sha256_file "$hash_input"
 unset EMRYS_REQUIRE_BOUND_SHA256
 EMRYS_SHA256_PYTHON=python3
 expect_failure "relative SHA-256 Python binding" sha256_file "$hash_input"
-export EMRYS_TEST_REAL_PYTHON="$(command -v python3)"
+EMRYS_TEST_REAL_PYTHON="$(command -v python3)"
+export EMRYS_TEST_REAL_PYTHON
 guarded_python="$test_root/guarded-python"
+# shellcheck disable=SC2016 # The generated launcher expands its own arguments.
 printf '%s\n' \
     '#!/usr/bin/env bash' \
     'set -euo pipefail' \

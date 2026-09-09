@@ -170,6 +170,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 require_arguments
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 [[ -s "$reference_fasta" ]] || die "Reference FASTA does not exist or is empty: $reference_fasta"
 reference_fasta_sha256="$(sha256_file "$reference_fasta")"
 

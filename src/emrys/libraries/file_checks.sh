@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared file-validation helpers for Bash pipeline stages.
 
 is_gzip_path() {

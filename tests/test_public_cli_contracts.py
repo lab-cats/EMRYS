@@ -851,7 +851,7 @@ def test_make_validation_targets_honor_report_python_bin(
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stderr == ""
     lines = result.stdout.splitlines()
-    assert sum("/sentinel/python" in line for line in lines) == 4
+    assert sum("/sentinel/python" in line for line in lines) == 5
     assert not any(".venv/bin/python" in line for line in lines)
 
 
