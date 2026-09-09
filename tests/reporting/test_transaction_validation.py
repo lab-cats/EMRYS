@@ -344,11 +344,22 @@ def test_historical_artifact_validation_uses_recorded_producer_roster(
         built.summary_json_path,
         "run summary",
     )
-    recorded_producer = REPO_ROOT / artifact_records.STEP_PRODUCERS["08"]
-    monkeypatch.setitem(
-        artifact_records.STEP_PRODUCERS,
-        "08",
-        "src/emrys/reporting/transaction_validation.py",
+    tasks = artifact_records.processing_tasks(REPO_ROOT)
+    recorded_producer = REPO_ROOT / next(
+        task["producer_path"] for task in tasks if task["step_id"] == "08"
+    )
+    monkeypatch.setattr(
+        artifact_records,
+        "processing_tasks",
+        lambda _root: tuple(
+            {
+                **task,
+                "producer_path": Path("src/emrys/reporting/transaction_validation.py"),
+            }
+            if task["step_id"] == "08"
+            else task
+            for task in tasks
+        ),
     )
 
     def reject_live_producer_binding(paths: tuple[Path, ...]) -> None:
