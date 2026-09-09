@@ -1,10 +1,7 @@
-# Split-N-cigar stage tests
+# Split-N-cigar tests
 
-This directory protects Step 05 input-sidecar admission, shell staging,
-BAM/BAI publication and rollback, and structural validator behavior. The
-[stage owner](../../../src/emrys/stages/split_n_cigar/README.md) owns commands,
-recovery hazards, and exact evidence limits. Validator tests exercise the
-grouped package route; private `validator.py` is not a direct command.
-
-Fixtures and fake tools do not prove the GATK transform, real GATK, Java or
-samtools behavior, scheduler or cluster execution, or production evidence.
+These cases check Step 05 input sidecars, shell staging, BAM/BAI publication
+and rollback, and structural validation through the grouped command. Private
+`validator.py` is not a direct command. The
+[stage contract](../../../src/emrys/stages/split_n_cigar/CONTRACT.md)
+defines recovery hazards. Fake tools do not establish the GATK transform.

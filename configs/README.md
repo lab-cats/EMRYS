@@ -1,9 +1,8 @@
 # Configuration and input guide
 
-This directory contains examples of scientist-authored inputs and optional
-execution settings. The [quickstart](../quickstart.md) explains how to create
-and run a Project; the [runbook](../docs/operations/RUNBOOK.md) explains the
-commands available after setup.
+This guide defines Project inputs and execution settings. Use the
+[quickstart](../quickstart.md) to create and run a Project, and the
+[runbook](../docs/operations/RUNBOOK.md) for later operations.
 
 ## What belongs here
 
@@ -14,10 +13,8 @@ commands available after setup.
 | `execution_profile*.yaml` | Example local or Slurm execution settings. |
 | Other `.example.*` files | Specialist formats owned by the component that consumes them. |
 
-The scientist-authored `project.yaml` normally lives in the Project root, not
-in this directory. Its parent is the Project root. EMRYS manages that Project's
-`logs/`, `runtime/`, and `runs/` directories; FASTQs, references, and manifests
-stay at their declared locations.
+The parent of `project.yaml` is the Project root. EMRYS manages its `logs/`,
+`runtime/`, and `runs/`; FASTQs, references, and manifests stay where declared.
 
 Paths declared by `project.yaml` and its sample manifest, including FASTQ
 entries, resolve from the Project root. A partition `regions_file` entry resolves
@@ -56,10 +53,9 @@ analyses:
     background_max_fraction: 0.01
 ```
 
-The paths, conditions, and numeric values above are illustrative. Supply the
-reference, STAR index parameters, and Analysis policy selected for your study;
-EMRYS does not infer them from the reads. The `star_index` fields configure
-index construction, not admission of an external prebuilt index.
+Replace the example paths, conditions, reference, STAR parameters, and thresholds
+with your study's choices. EMRYS does not infer them from reads. `star_index`
+configures index construction; it does not admit an external prebuilt index.
 
 Unknown fields, duplicate keys, merge keys, and legacy request-v3 documents
 are rejected by current Project commands. The FASTA parent must permit the
@@ -71,8 +67,7 @@ letter or digit and contain only letters, digits, `.`, `_`, or `-`.
 The built-in Analysis uses paired, two-sided, continuity-corrected
 Cochran-Mantel-Haenszel tests and one global Benjamini-Hochberg correction over
 all successfully tested target candidates. Minimum sample depth is inclusive;
-the subsequent depth, FDR, effect, and background-fraction comparisons below
-are strict.
+the other threshold comparisons are strict.
 
 | Field | Contract |
 | --- | --- |
@@ -89,14 +84,12 @@ are strict.
 | `background_condition` | Optional distinct non-paired condition. It filters calls without changing paired CMH testing or the BH family. |
 | `background_max_fraction` | Every background sample must have usable counts, depth at least `min_sample_dp`, and AF below this value. Missing or insufficient counts fail the background filter. |
 
-These fields define computational ranking policy, not a universal editing
-standard or biological conclusion. A selected subset or changed policy creates
-a distinct immutable Analysis and Run.
+These are computational ranking choices, not biological conclusions. Changing
+the selected samples or policy creates a distinct immutable Analysis and Run.
 
 ### Collaborator Analysis
 
-An installed collaborator module replaces the built-in fields with an exact
-provider ID and provider-owned closed configuration:
+A collaborator Analysis uses an installed provider and its closed configuration:
 
 ```yaml
 analyses:
@@ -108,22 +101,17 @@ analyses:
       fdr: 0.05
 ```
 
-`module` names an installed `emrys.analysis_modules` entry point. EMRYS does
-not infer, install, or substitute providers. The provider owns normalization
-and scientific meaning while inheriting EMRYS's immutable Run, task,
-publication, recovery, logging, and Results contracts. See
-[`src/emrys/analyses/README.md`](../src/emrys/analyses/README.md).
+`module` names an installed `emrys.analysis_modules` entry point; EMRYS never
+infers, installs, or substitutes it. The [provider contract](../src/emrys/analyses/README.md)
+defines scientific ownership and the shared Run, task, and Results guarantees.
 
 ## Sample manifest
 
-`samples.tsv` is literal tab-separated data. Project setup can draft it from
-supplied paths and explicit metadata, but EMRYS never guesses biological
-conditions or replicate relationships from filenames.
+`samples.tsv` is literal tab-separated data. Setup can draft it from supplied
+paths and metadata; filenames never establish conditions or pairing.
 
-This example has the six required columns and two explicit control/treatment
-pairs matching the `EV`/`PUM1` example above. The separators are literal tabs.
-Replace the example paths and metadata with your own; `unknown` is an allowed
-strandedness value, not a measured result.
+This six-column example declares two `EV`/`PUM1` pairs. Replace the paths and
+metadata; `unknown` is an allowed strandedness value, not a measured result.
 
 ```tsv
 sample_id	r1_fastq	r2_fastq	strandedness	condition	replicate
@@ -142,10 +130,9 @@ PUM1_2	/data/PUM1_2_R1.fastq.gz	/data/PUM1_2_R2.fastq.gz	unknown	PUM1	pair2
 | `replicate` | Required pairing-stratum identity: the control and treatment belonging to the same pair share this value. Row order and filenames do not establish pairing. |
 | `notes` | Optional final column, present on every row when used. |
 
-The built-in Analysis requires at least two strata, each containing exactly one
-control and one treatment row. Do not treat technical lanes as biological
-replicates unless that is the declared experimental design. EMRYS binds the
-files but does not prove sample provenance; retain provider checksums.
+The built-in Analysis requires at least two strata, each with one control and
+one treatment. Technical lanes are not biological replicates unless the study
+declares them so. Retain provider checksums: file binding does not prove provenance.
 
 ## Partition manifest
 
@@ -163,30 +150,33 @@ the declared transaction reconciles.
 
 ## Execution profile
 
-Execution configuration is separate from scientific configuration. Omission
-of `--profile` selects `<project-root>/runtime/profiles/default.yaml`.
-`--profile NAME` selects `runtime/profiles/NAME.yaml`; an absolute value selects
-that exact file. There is no site/global registry or search path.
+Execution settings are separate from scientific inputs. The
+[coordinator contract](../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
+owns profile selection, precedence, and historical compatibility.
 
-An `emrys.execution-profile.v1` document may contain:
+An `emrys.execution-profile.v1` document separates resource budgets from
+placement (where to run):
 
-- `resources`: `workflow_cores`, `workflow_memory_mb`, per-stage concurrency,
-  per-step threads, and per-stage memory; and
-- `placement`: direct execution or one outer Slurm allocation, including its
-  account, partition, QoS, CPU, memory, time, exclusivity, node, scratch, and
-  exact module policy.
+| Under `resources` | Meaning |
+|---|---|
+| `workflow_cores` | Total CPU budget for the workflow. |
+| `workflow_memory_mb` | Total memory budget in MiB; `allocation` uses the available allocation. |
+| `stage_concurrency` | Maximum simultaneous tasks for each repeatable stage. |
+| `step_threads` | Threads per task for stages that support threaded tools. |
+| `stage_memory_mb` | Memory budget per stage task in MiB; `workflow` uses the workflow budget. |
 
-Packaged defaults apply first, the selected profile overrides them, and CLI
-resource flags have highest precedence. EMRYS rejects unknown fields,
-interpolation, templates, shell commands, impossible totals, and resources
-larger than the visible allocation. See
-[`execution_profile.example.yaml`](execution_profile.example.yaml) for a Slurm
-shape and the generated default profile for direct placement.
+`placement` chooses direct execution or one Slurm allocation. Its fields cover
+account, partition, `qos` (the site's Quality of Service class), CPUs, memory,
+time, exclusivity, node selection, scratch, and exact module setup. See the
+[stage map](../src/emrys/contracts/STAGE_MAP.md) for numeric stage identities.
+
+Values are literal; unknown fields, interpolation, shell commands, impossible
+totals, and resources larger than the allocation are rejected. The generated
+default uses direct placement; [execution_profile.example.yaml](execution_profile.example.yaml)
+shows Slurm fields. Retired reporting-memory settings are rejected.
 
 ## Specialist examples
 
-The remaining examples show the shape of inputs used for artifact/report
-projection, reference provenance, retention, runtime or storage inspection,
-and retained pairing evidence. An `.example` file is a structural starter, not
-proof from a real Run. Use one only when the component that consumes it asks
-for that format.
+Other examples cover artifact/report inputs, reference provenance, retention,
+runtime/storage inspection, and pairing evidence. Use them only when the named
+component requests that format; example content is not evidence from a real Run.

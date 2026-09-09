@@ -1,75 +1,99 @@
-# Reporting projection owner
+# Reporting
 
-Reporting consumes one successfully completed immutable Run and validated
-artifacts. `emrys run`/`resume` invokes it automatically unless `--no-report`
-is selected; `emrys report [RUN]` independently plans or revalidates a bundle,
-and `--execute` publishes only from empty owned state. Reporting failure never
-changes the successful scientific Attempt or Results.
+Reporting reads a successfully completed immutable Run and validated artifacts.
+`emrys run` and `emrys resume` report automatically unless `--no-report` is set.
+`emrys report [RUN]` plans or revalidates a bundle; `--execute` publishes it only
+from empty owned state. Reporting failure does not change successful scientific
+Attempts or Results. Reports are computational evidence, not scientific
+adjudication or biological validation.
 
-The fixed sequence publishes an artifact index and run summary under
-`products/artifact-summary/RUN_ID`, then a two-HTML report bundle under
-`results/reports/RUN_ID`, ending with `RUN_ID.report_outputs.tsv`.
+The fixed sequence builds an artifact index and run summary under
+`products/artifact-summary/RUN_ID`, then reports under `results/reports/RUN_ID`.
+A selected `emrys.analysis_reporters` provider supplies the scientific view;
+EMRYS supplies the evidence-and-operations view, safe rendering, portable links,
+and publication. Both views use the same validated input bytes. There is no
+generic scientific-report schema or section language.
+
+## Report outputs
+
+The report receipt defines this exact ordered roster. Filenames begin with `RUN_ID.`.
+
+| Output ID | Kind | Filename suffix |
+| --- | --- | --- |
+| `scientific-report-html` | `scientific_html` | `scientific_report.html` |
+| `evidence-report-html` | `evidence_html` | `evidence_report.html` |
+| `run-summary-tsv` | `run_summary_tsv` | `run_summary.tsv` |
+
+`RUN_ID.report_outputs.tsv` is the receipt, outside that roster. Only the first
+two outputs are HTML Results. The frozen `ReportContext.stable_paths` stores
+scientific HTML, evidence HTML, summary TSV, then receipt; receipt output rows
+use its first three `Path` objects.
+
 Flat paired-CMH Runs use run-summary v2/report-receipt v4; explicit modules use
-v3/v5 so computation provider, bespoke scientific reporter, and fixed core
-renderer remain separately attributable. Complete bundles are reused only
-after full semantic revalidation, including supported historical bundles under
-their recorded producer identities. Incomplete or ambiguous generation state
-is preserved and rejected.
+v3/v5, attributing the computation provider, scientific reporter, and core
+renderer separately. Reporter identity never changes Analysis or Run identity.
+Complete bundles are reused only after semantic revalidation, including
+supported historical bundles under their recorded producer identities.
+Reading a historical bundle does not authorize regenerating or replacing it.
 
-Artifact indexing derives a closed expected roster from the admitted Analysis
-module descriptor. It discovers neither providers nor filesystem outputs and
-is not an Artifact Store, service, database, or public registry. A selected
-`emrys.analysis_reporters` provider owns bespoke scientific HTML; EMRYS owns
-the evidence-and-operations view, safe Jinja/CSS rendering, portable links,
-input rechecks, locking, rollback, and receipt-last publication. There is no
-generic scientific report schema or section DSL.
+## Source and artifact roots
 
-Current artifact inspection validates report structure but not every
-producer's exact ordered check roster. The independent roster and adapter
-mutation tests remain required until that defect is resolved.
+Before reading inputs, production callers validate two explicit roots through
+[`libraries/source_authority.py`](../libraries/source_authority.py). The source
+checkout must be a canonical EMRYS Git top level without symlinks and match the
+executing package's bytes. It supplies producer paths, hashes, and Git identity.
+The independent artifact root resolves contract-relative inventory and native
+paths, including historical and post-publication validation. Neither comes from
+the working directory or a run-summary location.
 
-The built-in paired-CMH view presents its tested candidate population, bounded
-selected-candidate records, context/motif projections when admitted, methods,
-and limitations. It does not recompute analysis, reopen references, discover
-motifs, hide required scientific caveats, or infer missing data. The evidence
-view carries provenance, artifacts, QC, tools, issues, and Attempt lineage.
-Both views are projections of the same admitted bytes.
-
-The `_artifact_index`, `_run_summary`, and `_run_report` packages are private
-implementation. Public read-only
-[`transaction_validation.py`](transaction_validation.py) re-admits current and
-historical receipts without treating the current checkout as their producer.
-A rendered report is computational evidence, not scientific adjudication or
-biological validation.
+Both roots remain in prepared contexts through publication and input rechecks;
+publishers neither infer nor re-admit them. Git observations ignore ambient
+`GIT_*` routing but preserve unrelated environment settings. Source authority
+caches neither the Git commit nor producer state; each transaction keeps its
+own established observation points and real input-recheck callbacks.
 
 ## Publication and recovery
 
-Each private publisher creates only absent transaction-owned final paths.
-Publication cannot replace a complete transaction, create predecessor backups,
-or restore a predecessor. The run summary shares the artifact-index directory
-but requires its own outputs to be absent. Preparation and read-only validation
-still admit existing transactions and their recorded history; preparing a new
-projection does not authorize replacing its predecessor.
+Each publisher creates only absent transaction-owned finals. A prepared context
+may validate existing outputs or history; it does not authorize replacing a
+predecessor. Publishers create no predecessor backups and restore none. The run
+summary shares the artifact-index directory but requires its own outputs absent.
 
-Publishers stage bytes, retain file anchors, install final files exclusively,
-and publish the receipt last. Input, source, output, and directory checks remain
-at their publication boundaries. Rollback removes only provably owned outputs;
-unproved ownership preserves remaining state. Failed rollback retains remaining
-locks and staging evidence. Cleanup failure preserves committed outputs and
-remaining recovery state; recovery markers are best effort within a verified
-output directory. Foreign or replaced namespaces are not cleanup targets.
+Publishers stage bytes, retain file anchors, install finals exclusively, and
+write the receipt last. They recheck inputs, source, outputs, and directories
+at the relevant publication boundaries. Rollback removes only outputs with
+proven ownership. Uncertain ownership or failed rollback preserves remaining
+state and locks. Cleanup failure preserves committed outputs and remaining
+recovery state; recovery markers are best effort inside a verified directory.
+Directories or files replaced by another process are not cleanup targets.
 
-Run-level generation refuses existing output state. Existing locks, partials,
-`.previous` files, staging directories, and recovery evidence must be preserved;
-this publication contract provides no repair or evidence-deletion authority.
+Run-level generation refuses any existing output state, including incomplete
+or ambiguous state. Preserve locks, partials, `.previous` files, staging
+directories, and recovery evidence. Reporting provides no repair or evidence-deletion authority.
+
+## Implementation
+
+The private [_artifact_index](_artifact_index/README.md),
+[_run_summary](_run_summary/README.md), and [_run_report](_run_report/README.md)
+packages implement the sequence. Indexing derives expected artifacts from the
+validated Analysis descriptor; it scans neither providers nor filesystem outputs
+and creates no separate artifact registry or store. Its
+[known validation-roster limit](_artifact_index/README.md#validation-report-limit)
+requires independent roster and adapter-mutation tests.
+
+The built-in [paired-CMH reporter](paired_cmh_candidate_ranking_report/README.md)
+presents tested candidates, selected records, admitted context/motifs, methods,
+and limitations. The evidence view presents provenance, artifacts, QC, tools,
+issues, and Attempt history. Scientific-context admission reopens bound reference
+files when required to validate the transaction. View rendering does not reopen
+references, rerun analysis, discover motifs, infer missing data, or hide required
+scientific caveats.
+Public [`transaction_validation.py`](transaction_validation.py) validates current
+and historical receipts without assigning them to the current checkout's producer.
 
 ## Implementation and fault tests
 
-Publication and source-identity observation call their existing owners directly.
-`ArtifactPublicationOps`, `RunSummaryPublicationOps`, `ReportPublicationOps`,
-`ArtifactIdentityOps`, `ReportIdentityOps`, and `ReceiptValidationOps`, including
-the public validators' `receipt_ops` testing parameter, are retired. Fault tests
-use scoped pytest monkeypatches at real filesystem and validation functions,
-targeting the relevant path or receipt while delegating normal operations.
-The artifact context still captures its source observer for later rechecks;
-validated transactions retain their real input-recheck callbacks.
+Publication and source-identity checks call their real owners directly. See
+[reporting tests](../../../tests/reporting/README.md#fault-injection) for injection
+points and retired test-only interfaces. Artifact contexts retain source observers
+for later checks; validated transactions retain real input-recheck callbacks.

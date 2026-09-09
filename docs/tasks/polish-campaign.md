@@ -1,6 +1,6 @@
 # EMRYS polish campaign
 
-This document records repository-polish and professional-tooling findings
+This document records repository maintenance and developer-tool findings
 from the September 7, 2026 audit, their implemented outcomes, and remaining
 proposals. It covers correctness, operator experience,
 architecture reduction, developer feedback, dependency maintenance, and release
@@ -97,7 +97,7 @@ For each selected slice:
 
 The shell syntax correction, selected Ruff correctness rules, shared sharder
 self-tests, and automatic stacked-PR CI in items 15, 17, 21, and 22 are
-implemented and validated in the pending PR #140 integration. The user has
+implemented and validated in PR #140, awaiting integration. The user has
 approved ShellCheck, Ruff formatting, and optional fast hooks under `DEV-01`
 (items 16, 18, and 20), public version reporting under `CLI-VERSION-01`
 (item 43), and the bounded Python/R test-runtime work under `CI-01` (item 23).
@@ -121,23 +121,21 @@ than create parallel initiatives.
 
 ### 1. Preserve ownership during validation-report recovery
 
-**Finding:** [Validation publication](../../src/emrys/libraries/validation/publication.py)
-can unlink another process's late output and release its lock after restoration
-fails. Existing [characterization tests](../../tests/libraries/test_validation_report.py)
-describe these cases.
+**Finding:** The validation library's [known limits](../../src/emrys/libraries/validation/README.md#known-limits)
+describe output-ownership and restoration failures, with links to the existing
+characterization evidence.
 
 **Outcome and acceptance:** Cleanup removes only proven-owned outputs; failed
-restoration preserves the state needed for unambiguous recovery. Exercise late
-foreign publication, replacement, restoration failure, and successful retry
+restoration preserves the state needed for unambiguous recovery. Exercise an output created by another process during publication,
+replacement, restoration failure, and successful retry
 through this publisher. Scope this owner independently of the following three.
 This remains proposed recovery work, separate from the merged `RECOVERY-01`
 change to Steps 07–09 and storage qualification. Product reduction is unproven.
 
 ### 2. Make storage-inventory replacement recoverable
 
-**Finding:** [Storage-inventory publication](../../src/emrys/evidence/storage_inventory/_storage_publication.py)
-moves predecessors before entering its rollback handler and can release the
-lock after incomplete restoration.
+**Finding:** The storage owner's [known inventory-publication limits](../../src/emrys/evidence/storage_inventory/README.md#known-inventory-publication-limits)
+describe backup and restoration failures and their existing evidence.
 
 **Outcome and acceptance:** Preserve a recoverable three-file predecessor or
 complete replacement across failures during backup, publication, restoration,
@@ -149,8 +147,8 @@ test correction in PR #134 also leave this publication defect unresolved.
 
 ### 3. Make reference-provenance replacement recoverable
 
-**Finding:** [Reference reconciliation](../../src/emrys/evidence/reference_provenance/reconciler.py)
-has a similar backup-before-handler structure and incomplete-restoration gap.
+**Finding:** The reference owner's [known publication limits](../../src/emrys/evidence/reference_provenance/README.md#known-publication-limits)
+describe backup and restoration failures and their existing evidence.
 
 **Outcome and acceptance:** Define and test recoverable state at every
 replacement boundary, preserving predecessor bytes and unresolved ownership.
@@ -160,11 +158,9 @@ justify combining this proposed slice with storage publication.
 
 ### 4. Correct runtime-report publication failures
 
-**Finding:** [Runtime inspection](../../src/emrys/evidence/runtime_availability/inspector.py)
-can leak a lock descriptor when writing/syncing the lock fails, release the lock
-after failed restoration, and hide a lock-removal failure. Existing
-[tests](../../tests/evidence/runtime_availability/test_runtime_availability.py)
-characterize these behaviors.
+**Finding:** The runtime owner's [known publication limits](../../src/emrys/evidence/runtime_availability/README.md#known-publication-limits)
+describe descriptor leaks, failed restoration, suppressed lock-removal errors,
+and the existing tests.
 
 **Outcome and acceptance:** Give descriptors explicit lifetime ownership,
 preserve unresolved recovery state, and report relevant finalization failures.
@@ -175,14 +171,12 @@ No compression claim is established for the small descriptor fix.
 
 ### 5. Admit current artifacts through the public validator
 
-**Finding:** The [artifact CLI](../../src/emrys/contracts/artifacts/validator.py)
-uses [unversioned schema selection](../../src/emrys/contracts/artifacts/_artifact_contracts/schema.py),
-whose defaults are summary v2 and receipt v4. Current module reporting produces
-summary v3 and receipt v5. The stack's intake records a prior local reproduction
-of the rejection; the audit independently traced the source selection.
+**Finding:** The artifact owner's [known CLI version limit](../../src/emrys/contracts/artifacts/README.md#known-cli-version-limit)
+records the default/current schema mismatch and prior local reproduction.
+The audit independently traced that source selection.
 
-**Outcome and acceptance:** Public and internal artifact admission use one
-coherent version-selection authority. Current outputs pass, malformed versions
+**Outcome and acceptance:** Public and internal validators must select a document
+version through the same existing code. Current outputs pass, malformed versions
 fail, and explicitly supported historical records retain their intended
 admission and semantic checks. Cover real reporting outputs and deterministic
 diagnostics. This is a separate unselected artifact correction; completed
@@ -326,16 +320,10 @@ quantify any product growth before implementation selection.
 
 ### 13. Retire the ineffective reporting-memory control
 
-**Implemented under [CS-04](compression_backlog_matrix.md#cs-04-reporting-memory-control);
-hosted verification pending.** Report execution never consumed this setting.
-The [Run-coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
-owns its removal from new inputs and the retained historical-reading boundary.
-All active carriers/defaults/overlays and the obsolete resume wrapper retire
-together; no ignored public option or resource manager replaces them.
-
-149 focused checks pass. Existing immutable Run/source identity, raw historical
-records, report regeneration, and transaction behavior remain separate
-obligations; removal is not assumed to be source-identity neutral. The broader
+**Completed:** [CS-04](compression_backlog_matrix.md#cs-04-reporting-memory-control)
+records implementation and verification in PR #150. The inactive setting was
+removed; the [Run-coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
+defines new-input rejection and retained historical reading. The broader
 `REPORT-ROSTER-01` outcome remains open.
 
 ### 14. Retire the frozen dashboard when its existing row is selected
@@ -566,9 +554,8 @@ report exercise calls private publication code and supplies the original
 checkout as `REPO_ROOT`. [Onboarding][release-root]
 derives a checkout-relative root, and
 [source admission][release-source] requires a
-matching Git checkout. This is installed-component evidence, not proof that an
-independently installed wheel supports the whole public Project-to-Results
-journey. No standalone-install failure was reproduced in this audit.
+matching Git checkout. These checks cover installed components. They do not establish that an
+independently installed wheel supports the complete Project-to-Results workflow. No standalone-install failure was reproduced in this audit.
 
 The [wheel installer][release-constraints] also constrains dependencies to
 the versions in `uv.lock`.
@@ -788,8 +775,8 @@ CLI tests exercise their own fixtures. PR #130's command/parser review was
 evidence for that revision, not an ongoing check against later documentation
 or command changes.
 
-**Outcome and acceptance:** Select a finite set of maintained quickstart and
-runbook examples for repeatable parser and safe-fixture checks, using the
+**Outcome and acceptance:** Select specific quickstart and Runbook examples
+for repeatable command-parsing and small-fixture checks, using the
 existing Markdown parser, public CLI, documentation-check owner, and golden
 path where applicable. Verify quoting, continuation, placeholders, command
 forms, and associated example manifests/configuration without maintaining a
@@ -809,9 +796,8 @@ detail, while a completed full Run without reports offers report generation.
 Users who deliberately skip HTML or complete processing for reuse should be
 able to locate their admitted outputs directly.
 
-**Outcome and acceptance:** Project a concise set of scientific output
-locations from existing admitted task/module declarations in normal human
-inspection. Review the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+**Outcome and acceptance:** Show the useful scientific output paths in normal `emrys inspect` output,
+using existing verified task and module declarations. Review the [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 alongside presentation changes. Cover processing-only, reporting-skipped,
 reporting-failed-but-science-complete, blocked, and collaborator-module cases;
 expose only correctly admitted output locations. Preserve distinct scientific
@@ -934,8 +920,8 @@ head, and awaiting that integration into master:
 | Direct create-only reporting publication; six callback carriers and the private facade retired; redundant tests reconciled | [PR #147](https://github.com/lab-cats/EMRYS/pull/147) |
 
 These implementations do not close unrelated recovery defects in items 1–4,
-the Doctor storage-repair issue in item 9, reporting-memory policy in item 13,
-or browser/scientific review. Canonical BAM retains its documented conservative
+the Doctor storage-repair issue in item 9 or browser/scientific review.
+The later PR #150 separately completed item 13. Canonical BAM retains its documented conservative
 cleanup limits and historical recovery record. Reporting retains historical
 readmission and provenance checks; create-only publication is not permission to
 remove existing outputs or recovery evidence.

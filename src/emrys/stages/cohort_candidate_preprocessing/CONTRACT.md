@@ -6,16 +6,10 @@ identity and alias.
 
 ## Responsibility and execution dependencies
 
-Validate the complete declared
-[`generate_partitioned_cohort_mpileup_VCFs`](../partitioned_cohort_mpileup/CONTRACT.md)
-partition-by-orientation VCF set,
-expand alternate alleles, retain supported SNVs, attach per-sample depth and
-allele measurements plus GTF overlaps, apply the fixed provisional legacy
-orientation mapping, and publish one deterministic cohort transaction for
-analysis.
+See the [README](README.md) for purpose, inputs, outputs, and normal use.
 
-Step `08` is a cohort barrier: it requires one upstream receipt and both VCFs for every
-partition in manifest order. It rejects overlaps across declared partitions,
+Step `08` waits for one [Step `07`](../partitioned_cohort_mpileup/CONTRACT.md)
+receipt and both VCFs for every partition in manifest order. It rejects overlaps across declared partitions,
 revalidates Step `07` receipts and VCF structure, and hashes the current
 receipts and VCFs into its own input receipt. The
 [`rank_cohort_candidates_with_paired_CMH`](../../analyses/paired_cmh_candidate_ranking/CONTRACT.md)
@@ -38,9 +32,8 @@ The optional positive `--threads` value defaults to `1` and bounds independent
 partition/orientation VCF workers. On Unix, worker results are returned in the
 declared manifest/orientation order before deterministic aggregation; Windows
 direct execution falls back to one worker. Annotation import/model construction
-and aggregate reconciliation remain single-owner R operations. R also owns
-deterministic candidate construction, aggregation, and TSV serialization. The
-Python producer performs post-serialization admission and publication.
+and aggregate reconciliation remain serial in R. The division between R computation and Python
+publication is specified below.
 
 The fixed `legacy_provisional_v1` compatibility policy maps:
 
@@ -83,44 +76,39 @@ row per partition/orientation, ordered by the partition manifest then
 hashes, annotation path/hash, observed and skipped counts, and policy. The
 one-row summary reconciles aggregate counts and identities.
 
-The private [`producer.py`](producer.py) module
-is side-effect-free in dry-run. Execute mode uses a cohort lock, run-token
-temporary/backup paths, all-three-or-none prior-state enforcement, repeated
-input hash checks, prepublication validation, and rollback. It publishes sites,
-then summary, then the input receipt as the native commit marker, revalidates
-the visible set, verifies hashes and stable inputs, and only then marks the
-attempt committed.
-`--no-clobber` is the orchestration-safe policy: while holding the owner lock,
-it rejects a complete predecessor set without invoking R or changing stable
-outputs. Direct invocations retain complete-set replacement unless the flag is
-supplied.
-First publication in that mode is create-exclusive and retains all three
-staging inode anchors through validation; ambiguous replacement preserves the
-owner lock and residue.
-Rollback follows the shared
+The private [Python producer](producer.py) does not write in dry-run. Execute
+requires all three prior outputs or none, holds a cohort lock, and uses run-token
+temporary/backup paths. It repeatedly checks input hashes and validates staged
+output before publishing sites, summary, then input receipt. It checks the
+visible set, hashes, and inputs again before marking the attempt committed.
+The receipt can therefore be visible before final checks finish; its presence
+alone does not prove that the producer returned success.
+
+With `--no-clobber`, the producer refuses a complete prior set under the lock
+without invoking R or changing outputs. First publication uses exclusive hard
+links and retains all three staging inodes through validation. Ambiguous
+replacement preserves the lock and residue. Rollback follows the shared
 [no-clobber rule](../../../../docs/design/decisions/execution-evidence-and-reporting.md#no-clobber-rollback).
+Direct execute without the flag retains complete-set replacement. Failed
+restoration keeps remaining backups and the cohort lock; no automated recovery
+interface exists.
 
-The receipt is therefore visible briefly before final post-publication checks;
-presence alone is not independent proof that the producer returned success.
-Failed restore moves preserve remaining backups and retain the cohort lock for
-operator recovery. No automated recovery interface exists.
+Computation and publication have separate responsibilities:
 
-[`step_08_vcf_preprocessing.R`](step_08_vcf_preprocessing.R)
-owns semantic parsing, deterministic candidate construction and TSV
-serialization, provisional orientation policy, and annotation. Python owns
-orchestration, locking, staged post-serialization admission, and publication.
-Its post-serialization admission checks exact headers and field/row counts, declared input-receipt
-ordering and identities, basic site fields and candidate uniqueness, and
-policy/count reconciliation. It does not reparse source VCFs or reconstruct
-within-VCF candidate order.
+- [The R program](step_08_vcf_preprocessing.R) owns semantic parsing,
+  deterministic candidate construction, aggregation, TSV serialization,
+  provisional orientation, and annotation.
+- Python owns coordination, locking, publication, and checks of the serialized
+  files: exact headers, field/row counts, receipt ordering/identities, basic site
+  fields, candidate uniqueness, and policy/count reconciliation. It does not
+  reparse VCFs or reconstruct candidate order within a VCF.
 
-The canonical R facade requires its adjacent owner-private input-contract,
-annotation, Step `07` receipt, VCF/count, and candidate-processing modules. It
-resolves every sibling from Rscript's exact `--file=` entry path and sources
-them into the existing program environment. The producer's `--r-script` option and
-`STEP08_R_SCRIPT` environment override replace the whole R program for
-diagnostics; they do not override private modules independently, so a
-replacement owns its complete implementation and dependency behavior.
+The R entrypoint loads its adjacent private input-contract, annotation, Step
+`07` receipt, VCF/count, and candidate-processing modules. It resolves siblings
+from Rscript's exact `--file=` path and sources them into the program environment.
+`--r-script` and `STEP08_R_SCRIPT` replace that whole program for diagnostics,
+not individual private modules. A replacement owns its complete implementation
+and dependencies.
 
 ## Validation interface
 

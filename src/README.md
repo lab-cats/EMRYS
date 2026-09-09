@@ -1,12 +1,9 @@
 # Source tree
 
-This directory contains tracked EMRYS implementation and contract source under
-[`emrys/`](emrys/). It does not contain generated outputs, runtime environments,
-or an installed command layout. Root `pyproject.toml` provides the explicit
-internal distribution and grouped command without turning every owner
-directory into a package or public command automatically.
+[`emrys/`](emrys/README.md) contains the implementation, contracts, and packaged
+resources. Generated outputs and runtime environments do not belong here.
+The root `pyproject.toml` defines the distribution and installed `emrys` command;
+a source directory does not automatically provide a public command.
 
-Use the [`emrys` source index](emrys/) to choose a functional domain. Migrated
-installed commands and remaining repository-path interfaces are documented by
-their domain and owner READMEs; supported cross-cutting commands remain in the
-[`RUNBOOK`](../docs/operations/RUNBOOK.md).
+Use the [package index](emrys/README.md) to find an implementation owner, or the
+[runbook](../docs/operations/RUNBOOK.md) to operate EMRYS.

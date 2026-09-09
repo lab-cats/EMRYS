@@ -1,15 +1,24 @@
 # Reporting tests
 
-This directory protects artifact indexing, run-summary projection, report
-models and exports, Jinja security, publication transactions, and rendered
-HTML behavior. The report tests also pin the shared selected-candidate
-projection, the primary/supporting figure roster, visible figure guidance,
-absence of scientific disclosure controls and wide-table wrappers, the ranked
-selected-candidate card index, and the print stylesheet contract. Shared
-builders and literal inputs are routed through [`fixtures/`](fixtures/README.md).
+These tests check artifact indexing, run summaries, report models and exports,
+Jinja safety, publication, and rendered HTML. They pin candidate selection,
+primary/supporting figures, visible figure guidance, ranked candidate cards,
+and print behavior, including the absence of scientific disclosure controls
+and wide-table wrappers. [Fixtures](fixtures/README.md) supply shared builders
+and literal inputs; the [reporting owner](../../src/emrys/reporting/README.md)
+defines the production contract and recovery rules.
 
-Public interfaces, supported commands, output ownership, and recovery routes
-remain with the [reporting owner](../../src/emrys/reporting/README.md). A passing
-synthetic render or projection reflects only its fixture inputs; it does not
-establish production execution, completed scientific review, validated editing
-sites, or biological readiness.
+## Fault injection
+
+Publication and source-identity tests patch real filesystem or validation
+functions with scoped pytest monkeypatches. Each patch targets the relevant
+path or receipt and delegates other calls. The retired interfaces were
+`ArtifactPublicationOps`, `RunSummaryPublicationOps`, `ReportPublicationOps`,
+`ArtifactIdentityOps`, `ReportIdentityOps`, `ReceiptValidationOps`, and the public
+validators' `receipt_ops` parameter; they are not current test entry points.
+The artifact context still captures its real source observer for later rechecks,
+and validated transactions retain real input-recheck callbacks.
+
+Run-summary preparation tests pass explicit modified values in the frozen
+`RunSummaryBuildDeps`; production uses immutable defaults. Publication failures
+are injected at the real called functions, without test-only production paths.

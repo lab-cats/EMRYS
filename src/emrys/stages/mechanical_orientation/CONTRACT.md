@@ -7,9 +7,7 @@ grouped under `emrys validate`.
 
 ## Responsibility and execution dependencies
 
-Partition one split-N-cigar BAM into the protected legacy `FWD_like` and
-`REV_like` mechanical flag groups, index both BAMs, reconcile counts, and
-publish the five outputs as one rollback-protected set.
+See the [README](README.md) for purpose, inputs, outputs, and normal use.
 
 Step `05` normally supplies the required BAM plus exact `<bam>.bai`. Step `06`
 does not consume Step `03` RSeQC evidence, a manifest, or biological-
@@ -50,24 +48,20 @@ both merged groups must be nonzero; assigned may not exceed input.
 
 ## Orchestration-safe producer boundary
 
-The private producer has one create-absent mode. It refuses any member of an
-existing five-file final set before tool work, hashes and rechecks the input
-BAM/BAI, and retains the per-sample owned lock, temporary-set validation,
-ordered publication, and final-path validation. It never creates predecessor
-backups. Finals are hard-link create-exclusive and staging inode anchors remain
-through complete-set validation. The counts TSV remains native evidence rather
-than a receipt; tool-version and final-set hashes belong in the workflow
-verified record.
+The private producer only creates new output sets. It hashes the input BAM/BAI
+and uses a per-sample owned lock. Before tool work it refuses any existing final
+or stale owned path. It validates both temporary pairs and count arithmetic,
+rechecks inputs, and hard-links finals without replacement, with the counts
+TSV last. Staging inodes remain available to prove ownership through final-set
+validation. No predecessor backups are created.
 
 ## Current execution surfaces
 
-[`producer.py`](producer.py) is invoked only by the fixed workflow task. It
-uses one per-sample owned lock and run-token temporary paths, rejects stale
-owned-path candidates, validates both temporary pairs and arithmetic, publishes
-the counts TSV last, and revalidates final paths. Failure removes only partial
-finals still proven to share their staging inode; ambiguous mutation preserves
-the final, staging anchor, and lock for operator inspection. The counts TSV is
-a final native output, not a cryptographic transaction receipt.
+Only the fixed workflow task invokes [`producer.py`](producer.py). On failure,
+cleanup removes a final only while its staging inode proves ownership. Ambiguous
+mutation preserves the final, staging anchor, and lock for inspection. The
+counts TSV is native evidence, not a receipt; tool versions and final hashes
+belong in the workflow verified record.
 
 ## Validation interface
 

@@ -1,11 +1,7 @@
-# Quality-format libraries
+# Quality-metric parsers
 
-This package contains neutral quality-metric parsers. Its current
-[`picard.py`](picard.py) module parses Picard duplication metrics without owning
-duplicate-marking policy, tool execution, validation rosters, or evidence
-claims.
-
-The Step `04`
-[`mark_BAM_duplicates_with_Picard`](../../stages/duplicate_marking/README.md)
-owner retains those semantics. Direct parser protection is in
-[`test_shared_domain_helpers.py`](../../../../tests/libraries/test_shared_domain_helpers.py).
+[`picard.py`](picard.py) parses Picard duplication metrics. The
+[duplicate-marking owner](../../stages/duplicate_marking/README.md) runs Picard,
+chooses validation checks, and interprets the result. This parser does none of
+those operations; [format tests](../../../../tests/libraries/test_shared_domain_helpers.py)
+check the data it returns.

@@ -1,13 +1,9 @@
 # Test baselines
 
-This directory owns reviewed comparator snapshots used by test policy. The
-current Python coverage snapshot is `python_coverage.json`; its authority and
-update rules are defined by the
-[test baseline](../../docs/design/TEST_BASELINE.md).
+`python_coverage.json` is the reviewed Python coverage comparison snapshot.
+The [test baseline policy](../../docs/design/TEST_BASELINE.md) defines when and
+how it may change. Do not update it to conceal lost protection.
 
-The comparison implementation is
-[`../tools/python_coverage_baseline.py`](../tools/python_coverage_baseline.py),
-with direct protection in
-[`../test_python_coverage_baseline.py`](../test_python_coverage_baseline.py).
-Do not edit or regenerate a baseline to conceal lost protection. A coverage
-snapshot is local test evidence, not runtime, scientific, or biological proof.
+[`python_coverage_baseline.py`](../tools/python_coverage_baseline.py) compares
+results against it; [`test_python_coverage_baseline.py`](../test_python_coverage_baseline.py)
+checks that comparison. This snapshot measures test coverage, not runtime success.

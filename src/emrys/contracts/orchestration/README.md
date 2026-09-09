@@ -1,27 +1,24 @@
 # Orchestration contracts
 
-`emrys.contracts.orchestration` owns the closed schemas, canonical JSON, hashes,
-and cross-record invariants for Project, Analysis, immutable Execution Plan and
-Run, Attempt, task, lock, receipt, and reporting-ledger records. It does not
-load YAML, choose an Analysis or profile, execute work, infer state, publish
-records, or implement a CLI.
+`emrys.contracts.orchestration` defines registered schemas, canonical JSON,
+hashes, and consistency rules for Project, Analysis, immutable Execution Plan
+and Run, Attempt, task, lock, receipt, and reporting records. It validates
+records; it does not load YAML, choose an Analysis/profile, run work, infer
+state, publish records, or provide a CLI.
 
-`emrys.project.v1` is the scientist-authored contract: one Dataset and Reference
-plus named Analyses. An Analysis may use the flat paired-CMH compatibility form
-or an installed module with closed module-owned configuration. The historical
-request-v3 schema remains registered only for exact old-Run admission.
+Scientists author `emrys.project.v1`: one Dataset and Reference, with named
+Analyses. An Analysis uses either the flat paired-CMH compatibility form or an
+installed module's validated configuration. Request-v3 remains only for reading
+exact historical Runs. Planning combines the validated module descriptor with
+the fixed processing profile before freezing Run identity. Steps `00`–`06`
+have a separate compatibility identity so their unchanged artifacts can be
+reused without sharing downstream identity. Execution profiles separate
+Run-bound resources from Attempt-local placement.
 
-The admitted module descriptor is composed onto the fixed processing profile
-before Run identity is frozen. Processing compatibility through Steps `00`–`06`
-is calculated separately so stationary artifacts can be reused without sharing
-downstream identity. The authored execution profile separates Run-bound
-resources from Attempt-local placement.
-
-Attempts bind exact tool/runtime identities, immutable configuration, logs,
-task-start records, task attempts, and verified tasks. Reporting has separate
-start/verified ledgers for artifact index, run summary, and HTML report. Current
-scientific receipts exclude reporting; existing historical records retain their
-registered semantics. The public `attempt-receipt` validator admits both
-historical v1 and current v2 through the same closed registry used by high-level
-record validation. File-backed and installed-package identities are
-rechecked at the execution and reuse boundaries and fail closed on drift.
+Attempts bind exact tools/runtime, immutable configuration, logs, task starts,
+task attempts, and verified tasks. Reporting records its own starts and verified
+results for the artifact index, summary, and HTML. Current scientific receipts
+exclude reporting; historical records retain their registered meaning. The
+public `attempt-receipt` validator accepts historical v1 and current v2 through
+the same registry as higher-level validation. Execution and reuse recheck
+file-backed and installed-package identities and reject drift.

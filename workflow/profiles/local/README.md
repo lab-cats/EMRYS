@@ -1,21 +1,13 @@
-# Local Snakemake execution profile
+# Local Snakemake profile
 
-[`profile.v9+.yaml`](profile.v9+.yaml) supplies conservative engine defaults
-for EMRYS's fixed one-host workflow. It selects Snakemake's local executor,
-uses a deterministic scheduling baseline, disables engine retries, preserves
-incomplete-output evidence, and exposes commands and failed logs.
+[`profile.v9+.yaml`](profile.v9+.yaml) selects the local executor, deterministic
+scheduling defaults, no engine retries, retained incomplete outputs, and visible
+commands and failed logs. The Execution Plan and Attempt supply total cores,
+sample concurrency, and supported task thread counts; those settings do not
+change scientific identity.
 
-The immutable Execution Plan and Attempt-local resolution supply total workflow
-cores, sample concurrency, and thread counts for capable owners. Those resource
-values do not change scientific identity.
-
-“Local” means every Snakemake job runs on the same host or allocation. This is
-not a Slurm executor profile. Scheduled execution enters through EMRYS's
-private whole-Run transport and re-enters this same one-host profile inside the
-allocation; there are no standalone owner-local scheduler entry points.
-
-Materialization selects this exact checkout file and lifecycle passes it to
-Snakemake. Operators should use `emrys run` and `emrys resume`, not invoke the
-profile directly. See the parent [workflow overview](../../README.md), the
-[run-coordinator owner](../../../src/emrys/orchestration/run_coordinator/README.md), and
-the [Runbook](../../../docs/operations/RUNBOOK.md).
+Every job runs on the same host or allocation. Slurm submission enters this
+same profile inside the allocation; there are no standalone stage scheduler
+commands. Materialization binds the exact checkout file and the lifecycle passes
+it to Snakemake. Use `emrys run` or `emrys resume`, as described in the
+[workflow overview](../../README.md) and [runbook](../../../docs/operations/RUNBOOK.md).

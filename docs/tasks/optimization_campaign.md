@@ -7,8 +7,8 @@ Prefer eliminating repeated work and unnecessary allocations over adding
 machinery or changing computational methods.
 
 This document owns the optimization audit and proposed measurement approach.
-The [backlog matrix](backlog_matrix.md) remains the only authority for accepted
-work, status, and acceptance. Candidate numbers below are discussion references,
+The [backlog](backlog_matrix.md) records accepted work, its status, and
+completion criteria; its compression cards are delegated explicitly. Candidate numbers below are discussion references,
 not backlog IDs or an execution sequence. Documenting a candidate does not
 authorize implementation, benchmarking, cluster execution, runtime changes,
 artifact deletion, or adoption of an existing PR. Select each bounded outcome
@@ -161,11 +161,10 @@ approximately `3 * P * B` logical bytes: 75 complete shared-input traversals for
 Cache hits mean this is not a claim of 75 physical disk reads.
 
 First determine whether adjacent pre-entry observations can be consolidated
-without opening their mutation window. Broader reuse across tasks requires an
-equal-or-stronger demonstrated content-stability guarantee or a separately
-approved guarantee change. A cached digest, read-only pathname, or size/mtime
+without opening their mutation window. Reusing one observation across tasks requires proof that it detects
+content changes at least as reliably, or an approved change to that guarantee. A cached digest, read-only pathname, or size/mtime
 comparison does not by itself enforce immutable bytes. Avoid introducing a
-generic cache or Artifact Store to bypass this decision. Preserve input changes
+generic cache or artifact store to bypass this decision. Preserve input changes
 detected before entry and during execution, and measure cold/warm behavior on
 the actual storage class. Existing Step 07 aggregate input-identity reuse does
 not eliminate these wrapper observations.
@@ -267,10 +266,10 @@ repeated package-tree traversal and byte reads. These are source-derived call
 counts, not measured startup time or evidence that the checks are redundant.
 
 Measure task-start latency, Git invocations, and filesystem work on the selected
-local or institutional storage. Map each observation to its exact trust and
-publication boundary before proposing consolidation. The
+local or institutional storage. Identify what can change between each check and the file publication it
+protects before combining checks. The
 [package comparison][source-package-check] also reads both sides when their
-canonical roots are the same; determine whether that case can be simplified
+resolved roots are the same; determine whether that case can be simplified
 without losing a currently detected change. Retire only equivalent work inside
 the existing source-authority owner. Preserve executing-package bytes, exact
 commit binding, changed HEAD/package detection, and task-start publication
@@ -386,7 +385,7 @@ evidence.
 Select one owner outcome at a time. Before implementation, recheck current
 source, competing PRs, callers, consumers, contracts, tests, and duplicated
 mechanics. Replace or retire superseded loops, allocations, scans, and paths
-across the complete touched vertical. Reuse existing owners and mature tools.
+across all affected callers and outputs. Reuse existing owners and mature tools.
 Report product, tests/protections, configuration, documentation, and retained
 evidence changes separately; unrelated deletion does not offset growth.
 

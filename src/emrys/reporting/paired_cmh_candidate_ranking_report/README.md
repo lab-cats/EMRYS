@@ -1,5 +1,7 @@
-# Paired-CMH scientific report provider
+# Paired-CMH scientific report
 
-This package implements the bespoke scientific report for EMRYS's built-in paired-CMH candidate-ranking Analysis. It admits the module's computational and scientific-context Results, selects candidate displays, builds figures, and supplies the scientific view to the fixed core report transaction.
-
-It does not recalculate candidate statistics, define a generic reporting language, publish evidence independently, or establish scientific adjudication or biological validity. The core receipt-last transaction remains in [`_run_report/`](../_run_report/README.md).
+This provider reads validated paired-CMH Results and scientific context, selects
+candidate displays, builds figures, and supplies the scientific view to the
+[core report transaction](../_run_report/README.md). It does not recalculate
+statistics or publish evidence separately. The view describes computational
+candidates; it cannot establish scientific adjudication or biological validity.

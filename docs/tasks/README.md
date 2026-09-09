@@ -1,25 +1,20 @@
 # Task planning
 
-[`backlog_matrix.md`](backlog_matrix.md) owns the repository's accepted
-outcomes, status, Importance, Complexity, and acceptance. The finite
-`COMPRESS-01` campaign delegates its `CS-*` cards to the
-[temporary compression backlog](compression_backlog_matrix.md); that file alone
-owns their detailed scope, status, prerequisites, and proof. Parent outcomes
-remain in the main matrix. Neither file grants implementation, publication,
-cluster, destructive, scientific-review, or evidence-promotion authority.
+Use the [backlog](backlog_matrix.md) for accepted outcomes, priorities, status,
+and completion criteria. Its `COMPRESS-01` entry delegates individual CS cards
+to the [compression backlog](compression_backlog_matrix.md); other parent
+outcomes stay in the main backlog.
 
-Select one accepted row or state one explicitly bounded objective, then follow
-the [`workflow kernel`](../operations/WORKFLOW.md). Remove a finished item only
-after its outcome, evidence at the correct level, and affected contracts and
-documentation agree. Git history retains completed chronology and superseded
-planning. The temporary compression backlog retains live cards and useful audit rationale until its
-[explicit exit and transfer conditions](compression_campaign.md#completion-and-retirement)
-are satisfied; it is not a second copy of the main matrix.
+The [polish campaign](polish-campaign.md) holds audit findings and proposed
+follow-ups. The [optimization campaign](optimization_campaign.md) holds resource
+costs, tradeoffs, and measurement proposals. They support selection without
+creating another task-status list or permission to implement a proposal.
 
-The [polish campaign](polish-campaign.md) collects the September 2026 audit's
-candidate scope, evidence, and proposed acceptance. It is a selection aid;
-accepted work and execution status remain in the backlog matrix.
-
-The [optimization campaign](optimization_campaign.md) records the pipeline
-resource audit, candidate tradeoffs, and proposed measurement approach. It
-supplies evidence for selection; accepted work and status remain in the backlog.
+Select an accepted item or explicitly approved objective and follow the
+[development workflow](../operations/WORKFLOW.md). Before closing work, reconcile
+its result, evidence, contracts, and affected documentation. Keep useful
+constraints with their subject owner; Git keeps superseded planning and progress.
+The temporary compression documents have explicit
+[transfer and retirement conditions](compression_campaign.md#completion-and-retirement).
+Listing work here does not authorize publication, cluster work, destructive
+actions, scientific review, or stronger evidence claims.

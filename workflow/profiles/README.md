@@ -1,19 +1,11 @@
-# Snakemake execution profiles
+# Snakemake engine settings
 
-This directory contains checkout-bound Snakemake engine settings selected by
-EMRYS's lifecycle. These YAML files are execution profiles; they are distinct
-from the JSON workflow-projection contracts under
-[`../contracts/`](../contracts/README.md).
+These YAML files configure the engine, separately from the JSON
+[workflow graphs](../contracts/README.md). The current [local profile](local/README.md)
+runs on one host. It defines neither the scientific graph nor stage commands,
+Run resource identity, Slurm submission, or recovery.
 
-The current [`local/`](local/README.md) family executes the supported graph on
-one host. That host may be a workstation or a single allocated Slurm node.
-
-Execution profiles do not define the scientific graph, public owner commands,
-scientific resource identity, standalone-stage scheduling, Slurm submission,
-or recovery admission. Requests own capacity, functional owners own their work,
-and run-coordinator lifecycle owns invocation and recovery.
-
-Operators select no profile directly: `emrys run` and `emrys resume` bind the
-supported file from the exact source checkout. Adding a family or selectable
-profile is new execution surface and requires explicit approval.
-
+The lifecycle binds the profile from the exact source checkout; operators do
+not select it directly. Adding another selectable profile changes supported
+execution behavior and requires explicit approval. The [workflow overview](../README.md)
+explains how these files enter execution.

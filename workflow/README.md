@@ -1,29 +1,21 @@
-# Workflow projection
+# Workflow scheduling
 
-This directory contains the private Snakemake projection selected by the EMRYS
-Run lifecycle. Snakemake schedules admitted functional owners; it does not own
-their science, infer work from filenames, admit completion, or define public
-configuration.
+[`Snakefile`](Snakefile) schedules the exact graph stored in an immutable Run.
+Planning combines the [common processing graph](contracts/README.md) with one
+validated Analysis module and freezes the result before execution. Snakemake
+runs the named producers; their contracts define scientific behavior and the
+Run coordinator decides whether their results count as complete.
 
-Planning combines the reviewed common-processing base
-[`contracts/local_cmh_v2.json`](contracts/local_cmh_v2.json) with one admitted
-analysis-module descriptor and binds the canonical result into the immutable
-Run. [`Snakefile`](Snakefile) checks and schedules that exact owner/scope graph.
-The base is neither a complete Run profile nor an installed-module registry.
+A full Run executes common Steps `00`–`08`, the module's Step `09`, and optional
+Step `10`. Reporting follows outside Snakemake. `emrys run --through processing`
+stops after evidence-complete Steps `00`–`06`; a new downstream Run may reuse
+those compatible immutable results.
 
-A full Run executes the common graph through Step `08`, the selected module's
-Step `09`, and its optional Step `10`, followed by reporting outside Snakemake.
-`emrys run --through processing` instead closes after evidence-complete Steps
-`00`–`06`; a distinct downstream Run may reuse that compatible immutable
-processing result. Reporting is not a scientific stage.
+The [local engine profile](profiles/local/README.md) runs every job on one host:
+a workstation or a single Slurm allocation. Run planning supplies capacity and
+task resources. Use `emrys run` and `emrys resume`, not bare Snakemake or direct
+profile invocation.
 
-The checked-in [`local engine profile`](profiles/local/profile.v9+.yaml) runs
-all jobs on one host. That host may be a workstation or one Slurm allocation;
-the profile is not a distributed or Slurm executor. Run planning supplies its
-capacity and task resource values.
-
-Operators enter through `emrys run` and `emrys resume`, never bare Snakemake or
-these internal files. Canonical owner identities and edges are defined by
-[`STAGE_MAP.md`](../src/emrys/contracts/STAGE_MAP.md); exact materialization,
-completion, reuse, reporting, recovery, and resume rules belong to the
-[run-coordinator contract](../src/emrys/orchestration/run_coordinator/CONTRACT.md).
+[STAGE_MAP](../src/emrys/contracts/STAGE_MAP.md) defines producer identities and
+artifact dependencies. The [run-coordinator contract](../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+defines materialization, completion, reuse, reporting, and recovery.

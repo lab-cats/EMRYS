@@ -1,12 +1,9 @@
 # Artifact-contract tests
 
-This directory directly protects the curated computational artifact-contract API,
-its shared import identity, the grouped validation route and private
-coordinator, schema registry, semantic validators, inventory compatibility,
-and CLI failure behavior. The detailed contract and supported validation command
-remain with the [artifact-contract owner](../../../src/emrys/contracts/artifacts/README.md).
+These cases check the public API and shared function identities, grouped command,
+private validator, schema registry, record semantics, inventory compatibility,
+and CLI failures. The [artifact owner](../../../src/emrys/contracts/artifacts/README.md)
+defines the supported contract and command.
 
-[`fixtures/`](fixtures/) contains the tracked valid example documents used by
-this suite. Fixture and schema bytes are contract inputs: do not regenerate or
-rewrite them merely to make a failing test pass. These synthetic contracts do
-not establish that a real artifact was produced or biologically validated.
+[Fixtures](fixtures/README.md) are reviewed contract inputs. Do not regenerate
+them or change schema bytes merely to make a failing test pass.

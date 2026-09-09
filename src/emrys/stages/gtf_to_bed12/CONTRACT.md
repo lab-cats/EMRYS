@@ -6,24 +6,18 @@ identity and alias. The grouped routes below are its public Python surfaces.
 
 ## Responsibility
 
-Convert transcript exon models from one GTF annotation into deterministic
-BED12 records suitable for RSeQC strandedness and orientation inference, then
-allow the final BED12 to be checked against its source GTF without modifying
-either input.
+The [README](README.md) explains conversion and use. The converter produces
+BED12; validation compares it with the GTF without modifying either file.
 
 ## Execution dependencies
 
-The hard data prerequisite is one materialized GTF. Reference materialization
-is outside this owner; this stage does not consume the STAR index produced by
-historical Step `00a`.
+The GTF must already exist. This owner neither materializes references nor
+consumes the Step `00a` STAR index.
 
-If the GTF is already materialized, BED12 conversion can run independently of
-STAR-index construction and FASTA-sidecar construction. Its final BED12 must
+With the GTF available, conversion can run independently of STAR-index and
+FASTA-sidecar construction. Its final BED12 must
 exist before historical Step `03` runs RSeQC `infer_experiment.py`. It is not a
 prerequisite for STAR alignment or the canonical-BAM stages.
-
-Historical numeric order records the current workflow narrative. The data
-dependencies above, not the numeric identifier, define required execution.
 
 ## Inputs
 
@@ -51,8 +45,6 @@ The converter writes one BED12 row per valid transcript. It:
 - emits the BED score, thick-region, and RGB fields using the currently
   protected fixed values; and
 - orders records by chromosome, start, end, and name.
-
-Deterministic ordering is owned by the converter.
 
 ## Current execution surfaces
 

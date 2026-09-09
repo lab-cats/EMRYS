@@ -1,9 +1,8 @@
 # EMRYS quickstart: synthetic Project to Results
 
-Start here to run EMRYS for the first time and open its reports. The first
-exercise supplies synthetic reads, a reference, and experimental assignments;
-you do not need to find sequencing data. Afterward, use
-[your own data](#7-create-a-project-for-your-own-data).
+Run a supplied synthetic study, open its reports, then move to
+[your own data](#7-create-a-project-for-your-own-data). The exercise includes
+reads, a reference, and experimental assignments.
 
 A **Project** is a directory containing your input definitions and EMRYS's
 runtime and outputs. An **Analysis** selects the samples and scientific
@@ -24,26 +23,21 @@ laptop is not automatically a terminal on your institution's cluster.
 | Permission and network access for setup | Python and scientific packages must be downloaded during installation/repair. Sites with restricted compute-node networking need an approved setup route; a login-node installation does not establish compute-node readiness. |
 | Two writable locations | Choose an existing directory for the source checkout and a durable parent for Projects outside it. Use real absolute paths without symbolic-link aliases. `pwd -P` prints the physical path of your current directory. |
 
-The small exercise has four libraries, each with 130 read pairs, and a
-100,000-base synthetic reference. It still installs and uses the real tools.
-This is not a memory or runtime estimate for your own reference and reads.
+The exercise uses real tools on four libraries of 130 read pairs and a
+100,000-base reference. Its resource needs do not predict those of your study.
 
-Run one command at a time, in order, and stop at an error.
-Replace text such as `/absolute/path/...` before running a command. Preserve
-quotation marks; a line ending in `\` continues onto the next line. Keep this
-terminal open so that the variables and activated environment remain available.
+Run commands in order and stop at an error. Replace `/absolute/path/...`, keep
+the quotation marks, and keep this terminal open. A final `\` continues a
+command on the next line.
 
 ## 1. Install the locked command
 
-EMRYS uses **uv** for its Python environment and **Pixi** plus **renv** for
-scientific tools and R packages. If your site supplies uv and Pixi, use those
-installations. The bundled runtime requires Pixi `>=0.75.0,<0.76`; the following
-versions match the managed workflow's CI setup.
-
-If user-level installation is permitted and the tools are absent, these
-[official uv](https://docs.astral.sh/uv/getting-started/installation/) and
-[Pixi installer](https://pixi.prefix.dev/latest/installation/#installer-script-options)
-commands install them in your account and can update your shell startup files:
+uv manages Python; Pixi and renv provide scientific tools and R packages.
+Use your site's **uv** and **Pixi** installations if available. EMRYS needs Pixi
+`>=0.75.0,<0.76`. Otherwise, if user-level installation is permitted, use these
+[uv](https://docs.astral.sh/uv/getting-started/installation/) and
+[Pixi](https://pixi.prefix.dev/latest/installation/#installer-script-options)
+installers. They install into your account and may update shell startup files:
 
 ```bash
 curl -LsSf https://astral.sh/uv/0.12.3/install.sh | sh
@@ -53,16 +47,11 @@ uv --version
 pixi --version
 ```
 
-Do not use an incompatible Pixi release or update the dependency locks to make
-installation proceed. Your institution can supply an equivalent approved
-installation instead of running these installers.
-
-Choose the source parent and revision. `EMRYS_REVISION` must be a full commit
-ID or release tag selected by your team; copy a full commit ID from the
-[repository's commit history](https://github.com/lab-cats/EMRYS/commits/master/)
-if evaluating a particular development revision. Selection alone does not
-establish that the revision is scientifically or institutionally qualified.
-The child directory `EMRYS` must not already exist.
+Keep the required tool versions and dependency locks. Choose a revision with
+your team: set `EMRYS_REVISION` to a release tag or full commit ID from the
+[commit history](https://github.com/lab-cats/EMRYS/commits/master/). Selecting a
+revision does not qualify it for your institution or science. The source
+parent must exist; its `EMRYS` child must be absent.
 
 ```bash
 cd /absolute/path/to/source-parent
@@ -78,12 +67,11 @@ emrys --help
 git status --porcelain=v1 --untracked-files=all
 ```
 
-uv can download Python 3.14 if needed; EMRYS requires Python 3.11 or newer.
-Record the full commit ID printed above. Help must work and the final Git
-command must print **nothing**: modified tracked files and nonignored untracked
-files both prevent execution. Preserve unexpected files and resolve their
-ownership; do not delete them just to pass this check. Keep the checkout at
-this commit for the life of the exercise.
+uv can download Python 3.14; EMRYS requires Python 3.11 or newer. Record the
+printed commit ID and keep this checkout at that revision. Help must work,
+and the final Git command must print **nothing**. Both tracked changes and
+nonignored untracked files prevent execution; resolve unexpected files without
+deleting them just to pass the check.
 
 In a later terminal, restore the environment before using EMRYS:
 
@@ -111,18 +99,16 @@ export EMRYS_REFERENCE_FASTA="$EMRYS_PROJECT_ROOT/inputs/reference/reference.fa"
 emrys validate
 ```
 
-Continue after `Project validation: PASS`. The Project includes `project.yaml`,
-sample and partition manifests, synthetic inputs, and a default execution
-profile. You do not need to edit them. If creation is interrupted, preserve
-the partial directory and choose a new absent destination.
+Continue after `Project validation: PASS`. The supplied configuration,
+manifests, inputs, and execution profile need no edits. If creation fails,
+preserve the partial directory and use a new absent destination.
 
 ## 3. Prepare the runtime and storage
 
 **Slurm users:** follow [Slurm setup and submission](docs/operations/RUNBOOK.md#slurm-setup-and-submission)
-now. That procedure obtains site settings, prepares the runtime in an approved
-allocation, qualifies shared storage from compute and head nodes, and submits
-one whole Run. After that job finishes, return to **step 5**. The standalone
-commands below are not a login-node shortcut.
+for site settings, runtime preparation, compute/head-node storage checks, and
+submission. After the job finishes, return to **step 5**. Never run the
+standalone commands below on a login node.
 
 **Standalone compute-host users:** from the Project root, run:
 
@@ -130,12 +116,10 @@ commands below are not a login-node shortcut.
 emrys doctor --repair
 ```
 
-Doctor shows its repair plan and asks for confirmation in a terminal. Review
-the locations, then answer `y` to install the managed runtime and qualify the
-Project and reference-sidecar storage. It may update the active checkout's
-`.venv` and Project-owned runtime state and writes a maintenance log. It does
-not download scientific inputs or repair result artifacts. Wait for completion;
-then check again:
+Review Doctor's locations and answer `y` to install the managed runtime and
+qualify Project and reference-sidecar storage. This can update the checkout's
+`.venv` and Project runtime and writes a maintenance log. It neither downloads
+scientific inputs nor repairs results. When it finishes, check readiness:
 
 ```bash
 emrys doctor
@@ -158,23 +142,20 @@ On the approved standalone compute host, still inside the Project:
 emrys run --log-level verbose
 ```
 
-The synthetic Project has one Analysis, `primary`. EMRYS shows the direct Run
-plan and asks `Execute this plan? [y/N]`. Check the Project, Analysis, and
-resources before answering `y`. An answer other than `y` or `yes`, or an
-interruption before confirmation, starts no work. Reporting follows successful
-computation automatically. Keep the terminal/job alive until the command ends.
+Review the plan for Analysis `primary`, including its Project and resources.
+Answer `y` or `yes` at `Execute this plan? [y/N]` to start; any other answer or
+interruption before confirmation starts no work. Reports follow successful
+computation. Keep the terminal/job alive until the command ends.
 
 For automation, the equivalent explicit command is
 `emrys run --analysis primary --execute`. Use **one** execution form, not both.
 `--no-report` deliberately skips report generation; omit it for this exercise.
 
-Different commands have different confirmation behavior:
-
-| Command without `--execute` | Behavior |
-| --- | --- |
-| `init`, `init synthetic`, `init manifests`, `runtime discover`, `report` | Plans or checks only; no publication. Project initialization may ask for missing input values. |
-| `doctor --repair`, `run`, `resume` | Shows a plan and can execute after terminal confirmation. For a no-write preview, answer `n`; automation needs `--execute`. |
-| `validate`, `doctor`, `inspect` | Read-only checks; no execution confirmation. |
+Initialization and report commands require `--execute` to write files.
+Run, resume, and Doctor repair can also proceed after terminal confirmation;
+answer `n` to preview only. `validate`, `doctor`, and `inspect` are read-only.
+See the [command contract](src/emrys/orchestration/run_coordinator/CONTRACT.md#public-model-and-admission)
+for interactive input and automation rules.
 
 ## 5. Confirm completion and open both reports
 
@@ -193,10 +174,9 @@ Scientific Results: complete
 Reporting: complete
 ```
 
-Inspection also prints **Scientific report** and **Evidence report** with their
-exact HTML paths. Open the Scientific report with your browser's **Open File**
-command; its sibling Evidence report explains the computation and provenance
-evidence. These Run reports are HTML. The files normally live beneath:
+Open the **Scientific report** and **Evidence report** paths printed by
+inspection using your browser's **Open File** command. The first presents
+candidates; the second explains computation and provenance. Their layout is:
 
 ```text
 <PROJECT>/runs/<RUN_ID>/results/reports/<RUN_ID>/
@@ -204,31 +184,25 @@ evidence. These Run reports are HTML. The files normally live beneath:
     <RUN_ID>.evidence_report.html
 ```
 
-Use the printed paths rather than typing these placeholders. On a cluster,
-use your institution's file browser or approved transfer service to download
-the built-in Analysis's complete `results/` directory to your workstation,
-then open the two files beneath its `reports/` directory. Keep the directory
-layout intact so links to the companion report and result tables work. The
-provenance still identifies the original locations. Keep the authoritative
-Project, inputs, runtime, and complete Run on their original storage.
+Use the printed paths. From a cluster, transfer the complete `results/`
+directory with your institution's file browser or approved transfer service.
+Open its `reports/` files locally, keeping the layout intact for report/table
+links. Provenance still names the original locations; retain the Project,
+inputs, runtime, and complete Run on their original storage.
 
-The default fixture expects three Step `09` candidate rows and one significant
-row. These are synthetic regression expectations, not biological truth. Use the
-scientific report and its linked full result tables to examine the candidates;
-`FWD_like` and `REV_like` describe mechanical alignment groups, not biological
-strand. Successful completion shows that these inputs, this source commit,
-runtime, storage, and execution route worked together. It does not establish
-production readiness, institutional-site qualification, scientific review, or
+The synthetic fixture expects three Step `09` candidate rows, one significant.
+These check software behavior, not biological truth. `FWD_like` and `REV_like`
+are mechanical alignment groups, not biological strand. Completion confirms
+this input/source/runtime/storage/route combination; it does not establish
+production readiness, institutional qualification, scientific review, or
 biological validation.
 
 ## 6. If execution or reporting did not complete
 
-Follow **Next supported action:** and the blockers printed by `emrys inspect`:
-
-For Slurm Runs, pass `--profile slurm` (or your selected profile name) to
-`resume`; the generated default still selects direct execution. The standalone
-`report` command has no Slurm submission option: obtain an approved compute
-shell before regenerating reports, as described in the
+Follow **Next supported action:** and the blockers printed by `emrys inspect`.
+For Slurm resume, include `--profile slurm` or your selected profile name; the
+default is direct execution. `report` has no Slurm submission option: use an
+approved compute shell as described in the
 [runbook](docs/operations/RUNBOOK.md#inspect-and-open-reports).
 
 | Inspection result | Next step |
@@ -238,10 +212,9 @@ shell before regenerating reports, as described in the
 | Scientific Results complete; reporting absent/incomplete and unblocked | Run `emrys report` to preview. If accepted, use `emrys report --execute`, then inspect again. |
 | Any state is blocked, or report generation refuses retained partial files | Preserve the Run and follow [troubleshooting](docs/operations/TROUBLESHOOTING.md). Reporting failure is not a reason to rerun completed computation. |
 
-Do not delete or rename a Run, lock, partial output, log, backup, or receipt to
-make a command proceed. With multiple Runs, give `inspect`, `resume`, or
-`report` the exact two-word Run name printed by EMRYS, full ID, or unique ID
-prefix. Interactive selection is available; automation never assumes latest.
+Preserve Runs, locks, partial outputs, logs, backups, and receipts. With
+multiple Runs, select the printed two-word name, full ID, or unique ID prefix.
+Interactive selection is available; automation never assumes latest.
 
 ## 7. Create a Project for your own data
 
@@ -268,20 +241,16 @@ Keep input files at their declared locations for the life of their Runs.
 
 ### Prepare the manifests
 
-The [sample and partition formats](configs/README.md#sample-manifest) define
-literal tab-separated files. You may author those files directly; this also
-supports FASTQ filenames that do not follow the helper's naming convention.
-The repository's `samples.example.tsv` is a generic ingestion fixture, not a
-complete paired-CMH Project manifest.
+Write [tab-separated manifests](configs/README.md#sample-manifest) directly
+for arbitrary FASTQ names, or use the helper below. `samples.example.tsv` is
+a generic ingestion example, not a complete paired-CMH Project manifest.
 
-For the helper route below, assume four libraries named `control_1`,
-`treatment_1`, `control_2`, and `treatment_2`. Each filename must end in
-`_R1.fastq.gz` or `_R2.fastq.gz` (plain FASTQ and `.fq` are also supported).
-Replace paths and assignments with your actual study values. `unknown` is an
-explicit strandedness value, not an instruction to ignore known library design.
-The regions file must already exist; a tab-separated `.bed` uses zero-based,
-half-open intervals, while the supported plain region-table format uses
-one-based, inclusive intervals. See [partition format](configs/README.md#partition-manifest).
+Replace the four example library names, paths, and assignments with your study
+values. The helper expects `_R1.fastq.gz`/`_R2.fastq.gz` suffixes; plain FASTQ and
+`.fq` also work. Use known library strandedness instead of `unknown` when
+available. The regions file must exist: tab-separated BED uses zero-based,
+half-open coordinates; the plain region table uses one-based, inclusive
+coordinates. See [partition format](configs/README.md#partition-manifest).
 
 ```bash
 EMRYS_READS=/absolute/path/to/reads
@@ -312,13 +281,11 @@ cd /absolute/durable/path
 emrys init my-study
 ```
 
-Answer the prompts with the absolute paths to `samples.tsv`, `partitions.tsv`,
-FASTA, and GTF; then the STAR parameters, exact control/treatment labels, target
-change (for example `A>G`), and your study's thresholds. The
-[configuration field guide](configs/README.md#built-in-analysis-fields) explains
-the thresholds. Pressing Enter accepts a displayed suggestion; review it as a
-scientific choice. This first invocation checks the proposed Project and
-writes nothing. Rerun with publication enabled and provide the same answers:
+Supply absolute manifest/FASTA/GTF paths, STAR parameters, exact condition
+labels, target change (such as `A>G`), and study thresholds. Consult the
+[field guide](configs/README.md#built-in-analysis-fields); Enter accepts a
+suggestion that still needs scientific review. This command checks the plan
+without writing. Repeat with the same answers to create it:
 
 ```bash
 emrys init my-study --execute
@@ -342,5 +309,5 @@ with the study design, not the synthetic fixture's expected counts.
 For named Analyses, processing reuse, alternate profiles, and larger synthetic
 exercises, use the [runbook](docs/operations/RUNBOOK.md). The optional
 `production-like-v1` fixture has 100,000 pairs **per library** across four
-libraries; select it with `--dataset-profile production-like-v1` on both
+libraries and a 5-Mb reference; select it with `--dataset-profile production-like-v1` on both
 synthetic initialization commands in a new Project.

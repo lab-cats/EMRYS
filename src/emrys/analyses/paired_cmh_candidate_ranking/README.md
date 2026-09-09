@@ -1,12 +1,26 @@
 # `rank_cohort_candidates_with_paired_CMH` owner
 
-Analysis `09` consumes admitted Step 08 candidates and the sample/partition
-manifests, performs paired CMH testing with global BH correction, and publishes
-the six declared result, summary, and figure artifacts. Private
-[`producer.py`](producer.py) coordinates
-[`step_09_cmh_editing_site_calling.R`](step_09_cmh_editing_site_calling.R);
-validation is `emrys validate paired-cmh-candidate-ranking`.
+Analysis `09` ranks cohort candidates using paired Cochran–Mantel–Haenszel
+(CMH) tests and one global Benjamini–Hochberg correction. It compares explicitly
+paired control/treatment samples under the study's declared thresholds.
+Threshold-passing candidates are not validated editing sites.
 
-[`CONTRACT.md`](CONTRACT.md) owns pairing, method, thresholds, inputs, outputs,
-transaction, validation, and evidence meaning. Ranked or threshold-passing
-candidates are not adjudicated editing sites or biological findings.
+It reads the Step `08` sites table and input receipt, sample/partition
+manifests, and analysis policy. The six outputs include all-sites and
+significant-sites tables, a summary, mutation-spectrum TSV/PDF, and depth/delta
+PDF. External review may use these outputs but is not a pipeline dependency.
+
+Normal execution uses `emrys run` or `resume` as described in the
+[Runbook](../../../../docs/operations/RUNBOOK.md#project-and-run-operations).
+The private [Python producer](producer.py) coordinates
+[`step_09_cmh_editing_site_calling.R`](step_09_cmh_editing_site_calling.R).
+For the independent validator's inputs:
+
+```bash
+emrys validate paired-cmh-candidate-ranking --help
+```
+
+The [contract](CONTRACT.md) owns pairing, numerical methods, thresholds,
+publication, and recovery. The validator reconciles results but does not
+independently recompute CMH statistics; a separate oracle and real-R corpus
+protect that method boundary.

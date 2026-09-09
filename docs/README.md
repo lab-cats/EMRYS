@@ -1,8 +1,7 @@
 # Documentation
 
-Start with the document for your role. Exact functional behavior remains with
-the implementation's adjacent `README.md` and `CONTRACT.md`; this tree should
-route to those owners rather than repeat them.
+Start with your role below. Each component's `README.md` explains its purpose;
+its `CONTRACT.md` defines exact behavior. The guides link to those details.
 
 | Reader | Start | Continue |
 | --- | --- | --- |
@@ -29,8 +28,7 @@ route to those owners rather than repeat them.
 | Current checkout and validation status | Live Git plus checks and retained artifacts bound to the exact commit |
 | Retained historical validation observations | [Dated validation evidence](history/validation-evidence.md), never current authority |
 
-Overview prose yields to versioned schemas, owner contracts, direct tests, and
-live source at the exact commit. Implementation alone does not silently amend
-a declared contract; disagreement is a finding. Historical planning and
-completed gate narratives remain in Git history rather than a second live
-archive. `make -s documentation-check` checks structural documentation rules.
+If a guide disagrees with a schema, contract, test, or the current source,
+report the disagreement; code does not silently change the contract. Git keeps
+old planning and completed progress reports. Run `make -s documentation-check`
+to check document structure and links.

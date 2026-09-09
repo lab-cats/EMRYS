@@ -1,16 +1,11 @@
-# FASTA-sidecar stage tests
+# FASTA-sidecar tests
 
-This directory protects the Step 00c shell producer, controlled two-sidecar
-rollback, create-exclusive late-collision handling, foreign-sidecar
-preservation, failed-rollback residue preservation, and structural
-FAI/dictionary validation. It also covers unsafe run-token rejection,
-older-token staging blockers, and fail-closed staging/lock cleanup faults. The
-[stage owner](../../../src/emrys/stages/fasta_sidecars/README.md)
-owns tool selection, commands, recovery, and exact evidence limits.
+These cases check Step 00c two-file rollback, exclusive publication, preservation
+of sidecars created by another process, and retained files after failed rollback.
+They also cover unsafe run tokens, staging files from older tokens, lock/cleanup
+failures, and structural FAI/dictionary validation.
 
-The shell fixture invokes the repository producer; the Python fixture invokes
-the grouped `python -I -m emrys validate fasta-sidecars` route. Neither test
-creates another public implementation entry point.
-
-Fake-tool and fixture results do not prove real samtools, GATK, Java,
-scheduler, cluster, or production execution.
+Shell cases invoke the repository producer with fake tools; Python cases use
+`python -I -m emrys validate fasta-sidecars`. Neither adds a public command.
+The [stage contract](../../../src/emrys/stages/fasta_sidecars/CONTRACT.md)
+defines tool selection and recovery.

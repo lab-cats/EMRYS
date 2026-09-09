@@ -1,44 +1,30 @@
 # Internal libraries
 
-Libraries contain neutral mechanics proven across named consumers; owner
-arguments, check rosters, transactions, scientific policy, and evidence meaning
-remain local. Approved consumers and dependency direction are fixed in
-[`SOURCE_TOPOLOGY.md`](../contracts/SOURCE_TOPOLOGY.md).
-
-The package includes validation publication, BAM/BED/STAR/orientation parsers,
-evidence and quality parsers, reference-contig admission, source/artifact-root
-authority, controlled child environments and GATK invocation, installed-package
-identity, application logging, and shared R input mechanics. A helper's
-presence does not authorize a new consumer or turn it into a generic utility.
-
-Keep the first use local. Extract a shared seam only after equivalent behavior
-is demonstrated across consumers and protected by its own API and tests.
+Libraries provide shared parsing, validation, filesystem, runtime, and logging
+mechanics. Their callers keep scientific policy, check lists, commands, and
+interpretation of evidence. [SOURCE_TOPOLOGY](../contracts/SOURCE_TOPOLOGY.md)
+defines each library's permitted consumers and import direction; a helper's
+presence does not make it a general utility. New shared code must replace
+proven-equivalent implementations across its callers.
 
 ## Shell publication cleanup
 
-`file_checks.sh::cleanup_no_clobber_outputs` owns the equivalent rollback,
-staging cleanup, and lock release for RSeQC, BAM QC, and duplicate marking.
-Each caller supplies its fixed output labels and staging/final path pairs;
-it arms publication before the first link, then clears that state only after
-all successful-publication anchors are removed. Native execution and output
-validation stay with the producer.
+`file_checks.sh::cleanup_no_clobber_outputs` handles rollback, staging cleanup,
+and lock release for RSeQC, BAM QC, and duplicate marking. Each producer supplies
+fixed labels and staging/final path pairs. It marks publication as started before
+the first link and clears that state only after all successful-publication
+staging anchors are removed. The producer still runs and validates its native tool.
 
-On failed publication, cleanup checks every output pair, including the link
-whose helper did not return successfully. It removes only finals proved to
-share their staging inode. A missing or replaced final retains all staging
-anchors and the owned lock; provably owned sibling finals can still be removed.
-After resolved rollback, staging cleanup attempts every unlink; a failed
-unlink retains the remaining residue and lock, without masking the original
-exit status. Staging-unlink diagnostics share one label/path format.
+After publication fails, cleanup checks every pair, including one whose link
+helper did not return successfully. It removes a final file only when that file
+and its staging anchor share an inode. A missing or replaced final preserves
+all anchors and the owned lock; other finals with proven ownership may still
+be removed. Once rollback succeeds, cleanup attempts every staging unlink.
+An unlink failure retains the remaining files and lock and reports the label
+and path without masking the original exit status.
 
-Earlier per-output flags were set after the link helper returned. Local
-production-script probes showed that TERM after linking, or replacement before
-the helper's inode check, could leave the final while deleting staging and the
-lock. The new cleanup removes those flags across all three applicable owners.
-The real second-link disappearance regression protects the multi-output case;
-other ownership and tool-failure checks remain in the existing suites.
-
-Canonical BAM and split-N-cigar retain distinct scratch/commit cleanup;
-scientific context additionally owns backups, directory syncing, and a
-different lock record. They are not equivalent consumers of this cleanup.
-The lower-level publication and inode-ownership helpers are unchanged.
+Canonical BAM and split-N-cigar have additional scratch/commit cleanup;
+scientific context has backups, directory syncing, and a different lock record.
+They need their own cleanup. The lower-level link and inode helpers are
+unchanged. [Regression evidence](../../../tests/libraries/README.md#shell-publication-regression)
+explains the failure sequence this shared cleanup replaces.

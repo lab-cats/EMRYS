@@ -6,11 +6,9 @@ identity and alias.
 
 ## Responsibility and execution dependencies
 
-Mark PCR/optical duplicates in one canonical BAM without removing reads,
-produce its index and Picard metrics, and permit independent structural
-validation.
+See the [README](README.md) for purpose, inputs, outputs, and normal use.
 
-The hard input is the explicit `<bam>.bai` canonical pair normally produced by
+The input is the explicit `<bam>.bai` canonical pair normally produced by
 Step `02`. Step `04` does not consume Step `02b` or Step `03` evidence and may
 run alongside them once the pair is stable. Step `05` consumes the marked
 BAM/BAI, so successful Step `04` publication is its data prerequisite. Current
@@ -43,9 +41,9 @@ attempt.
 and Picard jar, refuses any existing final, holds a per-sample owned lock,
 directs Picard and samtools to run-token BAM/BAI/metrics paths, validates the
 complete triplet, rechecks the admitted hashes, and publishes only the new set.
-Publication is create-exclusive and keeps staging inode anchors through
-complete-set validation. Java and samtools paths are explicit; observed tool versions and final hashes belong
-in the workflow verified record. Execute without this option retains the
+Publication uses exclusive hard links and keeps the staging inodes through
+complete-set validation. Java and samtools paths are explicit; observed tool
+versions and final hashes belong in the workflow verified record. Execute without this option retains the
 historical direct-final contract below.
 
 Failure handling is owned by the shared

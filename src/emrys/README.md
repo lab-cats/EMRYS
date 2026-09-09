@@ -1,12 +1,11 @@
 # EMRYS source domains
 
-The package separates neutral [`contracts/`](contracts/) and
-[`libraries/`](libraries/) from functional [`stages/`](stages/),
-[`analyses/`](analyses/), [`evidence/`](evidence/),
-[`ingestion/`](ingestion/), [`reporting/`](reporting/), and the
-[`orchestration/`](orchestration/) application owner. Static scheduling assets
-remain at repository-root `workflow/`.
+Shared data rules live in [`contracts/`](contracts/README.md), and shared
+implementation in [`libraries/`](libraries/README.md). Work is divided into
+[`stages/`](stages/README.md), [`analyses/`](analyses/README.md),
+[`evidence/`](evidence/README.md), [`ingestion/`](ingestion/README.md), and
+[`reporting/`](reporting/README.md). [`orchestration/`](orchestration/README.md)
+coordinates the application using scheduling files in the root `workflow/`.
 
-[`SOURCE_TOPOLOGY.md`](contracts/SOURCE_TOPOLOGY.md) is the dependency
-authority. A directory is not automatically a public command or import seam;
-each reviewed owner retains its contract, implementation, and direct tests.
+Each owner's documentation defines its commands and behavior.
+[SOURCE_TOPOLOGY](contracts/SOURCE_TOPOLOGY.md) defines permitted imports.

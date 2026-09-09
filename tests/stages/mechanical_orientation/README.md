@@ -1,11 +1,10 @@
-# Mechanical-orientation partition tests
+# Mechanical-orientation tests
 
-This directory protects Step 06 flag grouping, create-absent five-output
-publication and rollback, count arithmetic, and structural validator behavior. The
-[stage owner](../../../src/emrys/stages/mechanical_orientation/README.md)
-owns commands, recovery, and exact evidence meaning. Validator tests exercise
-the grouped package route; private `validator.py` is not a direct command.
+These cases check Step 06 flag grouping, publication and rollback of five
+outputs to absent paths, count arithmetic, and structural validation through
+the grouped command. Private `validator.py` is not a direct command. The
+[stage contract](../../../src/emrys/stages/mechanical_orientation/CONTRACT.md)
+defines the exact behavior.
 
-Fixture groups remain mechanical `FWD_like` and `REV_like` evidence; they do
-not establish transcript strand, sense/antisense, real samtools, scheduler,
-cluster, or production behavior.
+`FWD_like` and `REV_like` fixture groups describe read flags; they do not
+establish transcript strand or sense/antisense direction.

@@ -1,13 +1,9 @@
 # EMRYS glossary
 
-This is the canonical maintainer-facing reference for abbreviations, formats,
-tools, methods, and project-specific evidence language used across EMRYS. It
-explains what a term means here and links to the owner of detailed behavior; it
-does not replace schemas, procedures, scientific policy, or tool manuals.
-
-The entries are alphabetized case-insensitively. Categories are navigational:
-`format`, `tool`, `method`, `field`, `schema`, `source`, `project contract`,
-`operation`, `scientific term`, and `evidence state`.
+Definitions of recurring EMRYS, genomics, and evidence terms. Each entry links
+to the detailed owner; procedures and exact contracts remain there. Entries are
+alphabetized without regard to case. Categories help distinguish tools, formats,
+methods, scientific terms, and EMRYS-specific concepts.
 
 | Term | Category | EMRYS meaning and canonical detail |
 | --- | --- | --- |
@@ -40,6 +36,7 @@ The entries are alphabetized case-insensitively. Categories are navigational:
 | **DICT** | format | Sequence dictionary sidecar for a reference FASTA, containing ordered contig identity and length metadata used by GATK-era tooling. EMRYS validates agreement with FASTA, FAI, GTF, BED12, and STAR metadata rather than regenerating it during inspection. See the [reference-provenance owner](../../src/emrys/evidence/reference_provenance/README.md). |
 | **DP** | field | **Depth**, the total read count used with alternate depth in EMRYS Step `08`/`09` tables. AF must reconcile with AD/DP where present. See the [Step `09` implementation](../../src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R). |
 | **dry-run / execute** | operation | Dry-run validates and prints the resolved plan without publishing final outputs; execute performs the declared work and publication. Dry-run success is not runtime evidence. See the [no-write and publication boundaries](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#no-write-and-publication-boundaries). |
+| **EMRYS** | project contract | The repository and application name for this evidence-bound RNA-seq candidate workflow. The name expands to **Epic Molecular Read Yield System**. See the [project overview](../../README.md). |
 | **evidence ceiling** | evidence state | The strongest claim supported by a check or artifact. Local fixtures, real-runtime work, scheduler execution, institutional-site evidence, scientific review, and biological interpretation are distinct levels. See the [test evidence boundary](../design/TEST_BASELINE.md#evidence-boundary). |
 | **evidence state** | project contract | A deliberately separated claim about implementation, testing, runtime, cluster execution, or computational completion. Moving one dimension does not promote another or establish an external scientific or biological interpretation. See the [test evidence boundary](../design/TEST_BASELINE.md#evidence-boundary). |
 | **execution profile** | project contract | Optional Project-local or absolute configuration for resources and direct/Slurm placement. It does not contain scientific inputs or runtime acquisition policy. See [Profiles and immutable planning](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning). |
@@ -60,8 +57,7 @@ The entries are alphabetized case-insensitively. Categories are navigational:
 | **NA** | project contract | A literal sentinel used by exact TSV contracts for a field-specific missing, unavailable, or not-applicable value. The owning contract determines which meaning is allowed; `NA` is not interchangeable with zero or an empty field. See the [scientific-evidence contract owners](../../src/emrys/contracts/scientific_evidence/README.md). |
 | **NCBI** | source | **National Center for Biotechnology Information**, the external archive/provider named in EMRYS's deferred public reference and read-acquisition plan. NCBI acquisition is not part of the current implemented workflow. See [`FUT-DATA-02`](../tasks/backlog_matrix.md#platform-operation-and-portability). |
 | **no-clobber** | operation | A publication rule that refuses to overwrite an incompatible existing final artifact or transaction. Compatible, explicitly supported upgrades remain separate contract cases. See [Publish validated transactions](../design/decisions/execution-evidence-and-reporting.md#publish-validated-transactions). |
-| **EMRYS** | project contract | The repository and application name for this evidence-bound RNA-seq candidate workflow. The name expands to **Epic Molecular Read Yield System**. See the [project overview](../../README.md). |
-| **owned lock** | operation | A lock whose creator records and verifies ownership before cleanup. If ownership or rollback cannot be proved, EMRYS preserves the lock and recovery evidence instead of guessing. See [Publish validated transactions](../design/decisions/execution-evidence-and-reporting.md#publish-validated-transactions). |
+| **owned lock** | operation | A lock whose creator records and verifies ownership before cleanup. The producer contract defines when a lock may be released and what evidence must survive incomplete recovery; its filename or PID alone is not cleanup authority. See [Publish validated transactions](../design/decisions/execution-evidence-and-reporting.md#publish-validated-transactions). |
 | **PDF** | format | **Portable Document Format**, retained for declared Step `09` scientific-analysis plots. PDF is not a run-report format, and a valid plot file is not computational or scientific proof by itself. See the [reporting owner](../../src/emrys/reporting/README.md). |
 | **Picard** | tool | A Java-based genomics toolkit used by EMRYS for duplicate marking and metrics. The current policy marks duplicates rather than removing them. See [Mark rather than remove duplicates](../design/decisions/scientific-pipeline.md#mark-rather-than-remove-duplicates). |
 | **processing Run** | project contract | A complete Run ending after evidence-complete per-sample processing through Step `06`; a later compatible Run may reuse its admitted artifacts for downstream analysis. See [Processing reuse and provider boundary](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#processing-reuse-and-provider-boundary). |
@@ -76,7 +72,7 @@ The entries are alphabetized case-insensitively. Categories are navigational:
 | **RG / read group** | field | SAM/BAM header and record metadata that binds alignments to the declared sample, library, and platform identity. EMRYS validates the `@RG` header and per-record `RG` tag; it is unrelated to `FWD_like`/`REV_like` mechanical orientation. See [Make Step `02` the canonical BAM boundary](../design/decisions/scientific-pipeline.md#make-step-02-the-canonical-bam-boundary). |
 | **RNA editing** | scientific term | A post-transcriptional RNA sequence change relative to the encoded reference. EMRYS ranks sequencing-derived candidates; its computational outputs are not by themselves validated editing events. See the [evidence and external-interpretation boundary](../design/decisions/execution-evidence-and-reporting.md#evidence-and-external-interpretation). |
 | **RNA-seq** | scientific term | **RNA sequencing**. EMRYS is a manifest-driven RNA-seq candidate workflow spanning reference preparation, alignment, QC, candidate ranking, and reporting. See the [scientist-facing workflow](../architecture/ARCHITECTURE.md#scientist-facing-workflow). |
-| **rollback** | operation | Restoration of the prior published state after a failed multi-file publication attempt. Incomplete rollback is an unsafe recovery state whose locks and evidence must be preserved. See [Publish validated transactions](../design/decisions/execution-evidence-and-reporting.md#publish-validated-transactions). |
+| **rollback** | operation | Undoing output changes after failed multi-file publication. Each producer defines which owned files can be removed or restored and which locks and evidence must remain when recovery is incomplete. See [Publish validated transactions](../design/decisions/execution-evidence-and-reporting.md#publish-validated-transactions). |
 | **RSeQC** | tool | **RNA-seq Quality Control**, the toolkit used for mechanical library-orientation fractions. Its labels and fractions do not by themselves establish biological sense/antisense. See the [Step `03` owner](../../src/emrys/evidence/rseqc_orientation/README.md). |
 | **Run** | project contract | An immutable, normalized, identity-bound scientific and computational plan. Changing bound content creates another Run; retrying an unchanged plan creates another Attempt. See the [public model and admission contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#public-model-and-admission). |
 | **runtime inventory** | project contract | The single Project-owned admission record for already selected tools and libraries. Users do not weaken or hand-author it to make readiness pass. See [Runtime, storage, and repair](../design/decisions/execution-evidence-and-reporting.md#runtime-storage-and-repair). |
@@ -88,7 +84,7 @@ The entries are alphabetized case-insensitively. Categories are navigational:
 | **Slurm** | tool | The **Slurm Workload Manager**, used by EMRYS's private whole-Run transport to place one grouped Run operation inside one allocation. The retained private batch bootstrap admits the job and delegates to grouped Run control; owner-local scheduler wrappers are not a supported surface. See [Inspecting a Slurm Run](../operations/RUNBOOK.md#inspecting-a-slurm-run). |
 | **SNV** | scientific term | **Single-nucleotide variant**, a record with one reference base and one alternate base. Step `08` counts and excludes unsupported non-SNV alleles rather than silently coercing them. See [Consume only declared Step `07` transactions in Step `08`](../design/decisions/scientific-pipeline.md#consume-only-declared-step-07-transactions-in-step-08). |
 | **SRA** | source | **Sequence Read Archive**, NCBI's sequencing-read archive and a deferred EMRYS read-acquisition source. Any SRA-to-FASTQ materialization belongs to a separate future adapter, not the current pipeline. See [`FUT-DATA-02`](../tasks/backlog_matrix.md#platform-operation-and-portability). |
-| **staging** | operation | Writing a run-token-specific temporary replacement before validation and publication. A staged file is not a final output or completion marker. See [Publish validated transactions](../design/decisions/execution-evidence-and-reporting.md#publish-validated-transactions). |
+| **staging** | operation | Writing run-token-specific temporary output before validation and publication. A staged file is not a final output or completion marker. See [Publish validated transactions](../design/decisions/execution-evidence-and-reporting.md#publish-validated-transactions). |
 | **STAR** | tool | **Spliced Transcripts Alignment to a Reference**, the aligner and genome-index format used in Steps `00a` and `01`. EMRYS validates the declared index and output set separately from tool availability. See the [semantic stage map](../../src/emrys/contracts/STAGE_MAP.md). |
 | **transaction** | project contract | A coupled set of outputs that is validated and published as one recoverable unit, with its receipt or summary last. Individual member presence does not establish transaction completion. See [Publish validated transactions](../design/decisions/execution-evidence-and-reporting.md#publish-validated-transactions). |
 | **TSV** | format | **Tab-separated values**, the preferred explicit table format for manifests, receipts, and deterministic projections. Each consumer owns an exact header and field contract; “TSV” alone does not imply interchangeability. See [Explicit manifests](../design/decisions/repository-and-delivery.md#explicit-manifests). |
@@ -98,19 +94,13 @@ The entries are alphabetized case-insensitively. Categories are navigational:
 
 ## Coverage and update rule
 
-Candidate discovery scans tracked documentation and public interfaces for
-recurring abbreviations and project language. The glossary intentionally
-excludes task IDs, fixture/sample IDs, file-local constants, shell variables,
-generic syntax tokens, and ordinary filenames unless they have a distinct
-maintainer-facing meaning. It also does not copy complete schema enums or
-field rosters; the versioned schemas remain authoritative.
+Add or revise a term when it recurs across owners, appears in a public
+interface, or could be mistaken for a stronger scientific or evidence claim.
+Check its meaning against the linked document, schema, or implementation;
+keep the definition short and alphabetized. Add inbound links where they help
+readers, and run the [documentation gate](../operations/ENGINEERING_CONVENTIONS.md#development-validation).
 
-Add or revise an entry when a term recurs across owners, appears in a public
-interface, or can plausibly be mistaken for a stronger evidence or scientific
-claim. Verify the meaning against the canonical document, schema, or
-implementation; keep the entry concise and alphabetized; add only selective
-inbound links where the term otherwise blocks understanding; and run the
-documentation gate. Put procedures in the runbook, checkout state in live Git,
-validation observations in exact checks and retained artifacts, accepted work
-in the findings matrix, and scientific policy in the decision owner rather
-than duplicating them here.
+Exclude task and sample IDs, file-local constants, shell variables, syntax,
+and filenames without a distinct EMRYS meaning. Leave complete field and enum
+rosters in schemas, procedures in operations guides, current work in its
+backlog, and validation observations with their exact checks or artifacts.

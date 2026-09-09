@@ -1,14 +1,12 @@
-# Run-coordinator orchestration schemas v1
+# Orchestration schemas v1
 
-This directory contains fourteen Draft 2020-12 JSON resources: one shared
-definition resource plus thirteen registered selectors for the active Project,
-successor Analysis/Execution-Plan/Run model, historical normalized execution
-identity, reference and analysis policy, run locks, workflow attempts, the
-historical v1 attempt receipt, task entry/attempt/verified records, and
-reporting entry/verified records.
+These fourteen Draft 2020-12 JSON files include one shared definition resource
+and thirteen registered selectors: Project, Analysis/Execution-Plan/Run,
+historical normalized execution identity, reference and analysis policy, Run
+locks, workflow Attempts, historical Attempt receipt v1, task start/attempt/verified
+records, and reporting start/verified records.
 
-The workflow-profile resource is a v2 sibling, while the combined execution
-profile and privately retained historical request are v3 siblings. The
-canonical registry, JSON bytes, and validation API live in
-[`contracts/orchestration`](../../../orchestration/README.md); this directory
-is packaged schema storage and produces no independent output.
+Workflow profiles live in v2; combined execution profiles and historical requests
+live in v3. The [orchestration contract](../../../orchestration/README.md) owns
+schema selection, canonical JSON, and validation. This directory only stores
+packaged resources.
