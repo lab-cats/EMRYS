@@ -13,8 +13,9 @@ measurement boundaries.
 The user requested this document and its integration with the optimization
 campaign and revised quickstart. Selected implementation is identified below;
 other proposals still require separate selection and authority. The
-[backlog matrix](backlog_matrix.md) remains the only authority
-for accepted work, execution status, scores, and final acceptance. Existing row
+[backlog matrix](backlog_matrix.md) owns accepted outcomes and delegates
+finite CS cards to the [temporary compression backlog](compression_backlog_matrix.md).
+Those are their respective status, score, and acceptance authorities. Existing row
 references below identify coverage, not duplicate tasks. Numbered headings are
 navigation references, not new backlog IDs. Proposed acceptance below becomes
 authoritative only when selected through the existing workflow.
@@ -100,8 +101,9 @@ implemented and validated in the pending PR #140 integration. The user has
 approved ShellCheck, Ruff formatting, and optional fast hooks under `DEV-01`
 (items 16, 18, and 20), public version reporting under `CLI-VERSION-01`
 (item 43), and the bounded Python/R test-runtime work under `CI-01` (item 23).
-Those slices are implemented; focused local checks pass and final hosted CI
-remains pending. The artifact-version
+Those slices passed ordinary hosted CI in [run 34306975901](https://github.com/lab-cats/EMRYS/actions/runs/34306975901)
+at `b491aac5`, including the complete Python suite/coverage, guarded R, and
+managed golden path. PR #148 awaits master integration. The artifact-version
 correction, other publication-recovery owners, Project preview, type checker,
 and other unselected proposals retain their separate decision boundaries.
 
@@ -324,23 +326,17 @@ quantify any product growth before implementation selection.
 
 ### 13. Retire the ineffective reporting-memory control
 
-**Finding:** [Resource policy](../../src/emrys/orchestration/run_coordinator/resource_policy.py)
-parses, resolves, validates, persists, and overlays `reporting_memory_mb`, but
-[report execution](../../src/emrys/orchestration/run_coordinator/reporting_operation.py)
-does not consume it to allocate or limit memory.
+**Implemented under [CS-04](compression_backlog_matrix.md#cs-04-reporting-memory-control);
+hosted verification pending.** Report execution never consumed this setting.
+The [Run-coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
+owns its removal from new inputs and the retained historical-reading boundary.
+All active carriers/defaults/overlays and the obsolete resume wrapper retire
+together; no ignored public option or resource manager replaces them.
 
-**Outcome and acceptance:** Under **`REPORT-ROSTER-01`**, remove the active control
-and redundant defaults, storage, overlays, and validation once accepted
-YAML/CLI inputs and historical admission have an explicit disposition. Preserve
-immutable records, required historical reads, regeneration, and report
-transactions. Demonstrate net reduction across callers, schema/configuration,
-tests, and documentation. Do not add an ignored compatibility option or a new
-resource manager. PR #145 consolidated fixed HTML output declarations and
-PR #147 simplified publication; neither retires this control. The
-[reporting identity decision](../design/decisions/execution-evidence-and-reporting.md)
-preserves current source fingerprints, which include affected owners. Removing
-the control is not assumed to be Run-identity neutral; its input and historical
-policy still needs explicit approval.
+149 focused checks pass. Existing immutable Run/source identity, raw historical
+records, report regeneration, and transaction behavior remain separate
+obligations; removal is not assumed to be source-identity neutral. The broader
+`REPORT-ROSTER-01` outcome remains open.
 
 ### 14. Retire the frozen dashboard when its existing row is selected
 
@@ -371,7 +367,7 @@ and any roster expansion are distinct from this completed correction.
 
 ### 16. Integrate ShellCheck
 
-**Disposition:** Implemented under `DEV-01`; final hosted CI remains pending.
+**Disposition:** Implemented under `DEV-01`; ordinary hosted CI passed at `b491aac5` (run 34306975901); master integration remains pending.
 The existing lint gate checks every tracked `.sh` file with locked ShellCheck,
 and actionlint checks embedded workflow shell with the same version. Shared
 source resolution uses `.shellcheckrc`. Seven array-reference mistakes are
@@ -391,7 +387,7 @@ Formatting is the separate approved item 18, not part of this completed change.
 
 ### 18. Adopt consistent Python formatting
 
-**Disposition:** Implemented under `DEV-01`; final hosted CI remains pending.
+**Disposition:** Implemented under `DEV-01`; ordinary hosted CI passed at `b491aac5` (run 34306975901); master integration remains pending.
 The existing Ruff configuration and locked version own formatting for `scripts`,
 `src/emrys`, and `tests`. `make lint` and the staged-file hook use `ruff format
 --check`. The separate mechanical baseline reformatted 78 files; every changed
@@ -414,7 +410,7 @@ admission and scientific validation; it does not replace them.
 
 ### 20. Add optional fast local hooks
 
-**Disposition:** Implemented under `DEV-01`; final hosted CI remains pending.
+**Disposition:** Implemented under `DEV-01`; ordinary hosted CI passed at `b491aac5` (run 34306975901); master integration remains pending.
 The repository's three pre-commit hooks check staged Python correctness,
 Python formatting, and shell code with the locked `.venv` tools. They perform
 no implicit installation, rewriting, scientific execution, R checks, or test
@@ -449,7 +445,7 @@ Item 33 separately addresses required merge checks.
 
 ### 23. Reduce the measured CI critical path
 
-**Disposition:** Implemented under **`CI-01`**; final hosted CI remains pending. PR #124's duration
+**Disposition:** Implemented under **`CI-01`**; ordinary hosted CI passed at `b491aac5` (run 34306975901); master integration remains pending. PR #124's duration
 estimate refresh is already merged through PR #139; it does not close the
 remaining wall-time outcome. Hosted timing review now separates queue time,
 setup, R restoration, runtime readiness, and test execution rather than treating
@@ -846,8 +842,8 @@ bounded optional presentation change requiring a quantified footprint proposal.
 **Original finding:** The package defined its version, but the public parser
 required a command and exposed no conventional version display.
 
-**Disposition:** Implemented under `CLI-VERSION-01`; final hosted CI remains
-pending. `emrys --version` reports the package version; `-v` adds its loaded
+**Disposition:** Implemented under `CLI-VERSION-01`; ordinary hosted CI passed at
+`b491aac5` (run 34306975901); master integration remains pending. `emrys --version` reports the package version; `-v` adds its loaded
 path and Python version/executable. Focused production-path tests pass,
 including foreign-directory display and preserved ordinary checkout admission.
 The existing parser and package version remain the only owners.

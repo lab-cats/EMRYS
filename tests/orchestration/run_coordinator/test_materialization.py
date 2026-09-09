@@ -77,6 +77,7 @@ from emrys.orchestration.run_coordinator.execution_profile import load_execution
 from emrys.orchestration.run_coordinator.resource_policy import (
     AllocationCapacity,
     ResourceOverrides,
+    admit_resource_policy_record,
     resolve_resource_policy,
 )
 from emrys.orchestration.run_coordinator.run_implementation import (
@@ -1606,16 +1607,17 @@ def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
     scheduled_attempt["workflow_config"].pop("sha256")
     assert direct_attempt == scheduled_attempt
 
-    reporting_policy = replace(
-        resources.policy,
-        reporting_memory_mb=tuple(
-            (kind, 512) for kind, _memory in resources.policy.reporting_memory_mb
-        ),
-    )
-    reporting_changed = resolve_resource_policy(
-        reporting_policy,
-        resources.allocation,
-    )
+    historical = resources.policy_record()
+    for field in ("symbolic", "effective"):
+        historical[field]["reporting_memory_mb"] = {
+            "artifact_index": 512,
+            "run_summary": 512,
+            "html_report": 512,
+        }
+        historical[f"{field}_sha256"] = orchestration_contracts.canonical_sha256(
+            historical[field]
+        )
+    reporting_changed = admit_resource_policy_record(historical)
     assert (
         _run_candidate(readiness, reporting_changed, through=through).run_id
         == direct_run.run_id
@@ -2603,20 +2605,16 @@ def test_successor_resume_snapshots_current_runtime_profile(
     )
 
 
-def test_reporting_profile_inherits_computation_and_cli_reporting_wins(
+def test_placement_profile_inherits_computation_without_reporting_resources(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     first = _plan(tmp_path, workflow_cores=2)
     observed = _failed_run(first)
     _patch_resume_control(monkeypatch, observed, first.readiness, first.resources, [])
-    selected = tmp_path / "reporting.yaml"
+    selected = tmp_path / "direct.yaml"
     selected.write_text(
-        "schema_version: emrys.execution-profile.v1\n"
-        "resources:\n"
-        "  schema_version: emrys.local-pilot-resources.v1\n"
-        "  reporting_memory_mb:\n"
-        "    html_report: 512\n",
+        "schema_version: emrys.execution-profile.v1\nplacement: {kind: direct}\n",
         encoding="utf-8",
     )
     profile = load_execution_profile(config_path=selected)
@@ -2624,16 +2622,12 @@ def test_reporting_profile_inherits_computation_and_cli_reporting_wins(
     second = control._plan_resume(
         first.run_root,
         execution_profile=profile,
-        resource_overrides=ResourceOverrides(
-            reporting_memory_mb=(("html_report", 768),)
-        ),
     )
 
-    expected_reporting = dict(first.resources.reporting_memory_mb)
-    expected_reporting["html_report"] = 768
     assert not profile.computational_resources_explicit
     assert second.resources.declaration == first.resources.declaration
-    assert dict(second.resources.reporting_memory_mb) == expected_reporting
+    assert "reporting_memory_mb" not in second.resources.policy.document()
+    assert "reporting_memory_mb" not in second.resources.effective_document()
     assert second.attempt_record["placement"]["source"]["path"] == str(selected)
 
 
@@ -2693,9 +2687,6 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         declaration=replace(
             resources.declaration,
             workflow_memory_mb="allocation",
-        ),
-        reporting_memory_mb=tuple(
-            (kind, "workflow") for kind, _memory in resources.policy.reporting_memory_mb
         ),
     )
     first_resources = resolve_resource_policy(
@@ -2823,7 +2814,6 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
 
     assert second_outcome.receipt["status"] == "failed"
     assert second.resources.workflow_memory_mb == 16_384
-    assert set(dict(second.resources.reporting_memory_mb).values()) == {16_384}
     first_runtime = next(
         item
         for item in first.attempt_record["required_tools"]

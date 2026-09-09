@@ -37,7 +37,6 @@ _KEYED_RESOURCE_CONTROLS = (
     ("stage_concurrency", REPEATABLE_STAGE_IDS, "STEP=COUNT"),
     ("step_threads", THREAD_CAPABLE_STAGE_IDS, "STEP=THREADS"),
     ("stage_memory_mb", STAGE_IDS, "STEP=MIB"),
-    ("reporting_memory_mb", REPORTING_KINDS, "KIND=MIB"),
 )
 
 
@@ -97,7 +96,6 @@ class ResourceOverrides:
     stage_concurrency: tuple[tuple[str, int], ...] = ()
     step_threads: tuple[tuple[str, int], ...] = ()
     stage_memory_mb: tuple[tuple[str, int], ...] = ()
-    reporting_memory_mb: tuple[tuple[str, int], ...] = ()
 
     def __post_init__(self) -> None:
         for field, allowed, _metavar in _KEYED_RESOURCE_CONTROLS:
@@ -163,10 +161,9 @@ class ComputationalResourceDeclaration:
 
 @dataclass(frozen=True, slots=True)
 class ResourcePolicy:
-    """One admitted symbolic policy plus non-Run reporting and source context."""
+    """One admitted symbolic computational policy plus source context."""
 
     declaration: ComputationalResourceDeclaration
-    reporting_memory_mb: tuple[tuple[str, int | Literal["workflow"]], ...]
     default_sha256: str
     config_path: Path | None
     config_sha256: str | None
@@ -178,7 +175,6 @@ class ResourcePolicy:
         return {
             "schema_version": SCHEMA_VERSION,
             **self.declaration.identity_document(),
-            "reporting_memory_mb": dict(self.reporting_memory_mb),
         }
 
 
@@ -197,7 +193,6 @@ class ResourcePlan:
 
     policy: ResourcePolicy
     resolution: AttemptResourceResolution
-    reporting_memory_mb: tuple[tuple[str, int], ...]
 
     @property
     def declaration(self) -> ComputationalResourceDeclaration:
@@ -242,7 +237,6 @@ class ResourcePlan:
             "stage_concurrency": dict(self.stage_concurrency),
             "step_threads": dict(self.step_threads),
             "stage_memory_mb": dict(self.stage_memory_mb),
-            "reporting_memory_mb": dict(self.reporting_memory_mb),
         }
 
     def policy_record(self) -> dict[str, Any]:
@@ -350,7 +344,8 @@ def admit_resource_policy(
             + "; optional keys: 09, 10"
         )
     stage_memory = _closed_map(value, "stage_memory_mb", STAGE_IDS)
-    reporting_memory = _closed_map(value, "reporting_memory_mb", REPORTING_KINDS)
+    if "reporting_memory_mb" in value:
+        _closed_map(value, "reporting_memory_mb", REPORTING_KINDS)
     try:
         workflow_cores = int(value["workflow_cores"])
         configured_workflow_memory = value["workflow_memory_mb"]
@@ -382,15 +377,6 @@ def admit_resource_policy(
     )
     return ResourcePolicy(
         declaration=declaration,
-        reporting_memory_mb=tuple(
-            (
-                key,
-                "workflow"
-                if reporting_memory[key] == "workflow"
-                else int(reporting_memory[key]),
-            )
-            for key in REPORTING_KINDS
-        ),
         default_sha256=default_sha256,
         config_path=config_path,
         config_sha256=config_sha256,
@@ -425,10 +411,6 @@ def resolve_resource_policy(
         step_id: workflow_memory if value == "workflow" else int(value)
         for step_id, value in declaration.stage_memory_mb
     }
-    resolved_reporting_memory = {
-        kind: workflow_memory if value == "workflow" else int(value)
-        for kind, value in policy.reporting_memory_mb
-    }
     thread_values = dict(declaration.step_threads)
     concurrency_values = dict(declaration.stage_concurrency)
     for step_id in STAGE_IDS:
@@ -445,12 +427,6 @@ def resolve_resource_policy(
                 f"Stage {step_id} concurrency x memory exceeds workflow memory: "
                 f"{concurrency} x {memory} > {workflow_memory} MiB"
             )
-    for kind, memory in resolved_reporting_memory.items():
-        if memory > workflow_memory:
-            raise ResourceConfigError(
-                f"Reporting {kind} memory exceeds workflow memory: "
-                f"{memory} > {workflow_memory} MiB"
-            )
     resolution = AttemptResourceResolution(
         allocation=allocation,
         workflow_memory_mb=workflow_memory,
@@ -459,9 +435,6 @@ def resolve_resource_policy(
     return ResourcePlan(
         policy=policy,
         resolution=resolution,
-        reporting_memory_mb=tuple(
-            (key, resolved_reporting_memory[key]) for key in REPORTING_KINDS
-        ),
     )
 
 
@@ -502,7 +475,6 @@ def _admit_policy_sources(
 def resume_resource_policy(
     predecessor_policy: ResourcePolicy | Mapping[str, Any],
     *,
-    reporting_overlay: tuple[tuple[str, int | Literal["workflow"]], ...] = (),
     overrides: ResourceOverrides = ResourceOverrides(),
 ) -> ResourcePolicy:
     """Re-admit a predecessor policy and explicit overrides without allocation."""
@@ -526,7 +498,6 @@ def resume_resource_policy(
         default_sha256, config_path, config_sha256, prior_labels = (
             _admit_policy_sources(sources, label="Predecessor")
         )
-    document["reporting_memory_mb"].update(dict(reporting_overlay))
     _apply_overrides(document, overrides)
     combined_labels = tuple(dict.fromkeys((*prior_labels, *overrides.labels())))
     return admit_resource_policy(
@@ -535,27 +506,6 @@ def resume_resource_policy(
         config_path=config_path,
         config_sha256=config_sha256,
         override_labels=combined_labels,
-    )
-
-
-def resume_resource_plan(
-    predecessor_policy: ResourcePolicy | Mapping[str, Any],
-    allocation: AllocationCapacity,
-    *,
-    overrides: ResourceOverrides = ResourceOverrides(),
-) -> ResourcePlan:
-    """Compatibility wrapper that re-admits then resolves a predecessor policy."""
-
-    if not isinstance(predecessor_policy, ResourcePolicy) and (
-        "symbolic" in predecessor_policy or "symbolic_sha256" in predecessor_policy
-    ):
-        predecessor_policy = admit_resource_policy_record(
-            predecessor_policy,
-            require_symbolic=True,
-        ).policy
-    return resolve_resource_policy(
-        resume_resource_policy(predecessor_policy, overrides=overrides),
-        allocation,
     )
 
 
@@ -599,29 +549,29 @@ def admit_resource_policy_record(
         slurm_job_id=allocation.get("slurm_job_id"),
     )
 
-    if not successor:
-        return resume_resource_plan(record, capacity)
-
-    symbolic = record.get("symbolic")
     effective = record.get("effective")
+    symbolic = record.get("symbolic") if successor else effective
     sources = record.get("sources")
-    if (
+    if successor and (
         not isinstance(symbolic, dict)
         or not isinstance(effective, dict)
         or not isinstance(sources, dict)
     ):
         raise ResourceConfigError("Persisted resource policy is malformed")
-    if orchestration_contracts.canonical_sha256(symbolic) != record.get(
+    if not successor and not isinstance(effective, dict):
+        raise ResourceConfigError("Predecessor resource policy is malformed")
+    if successor and orchestration_contracts.canonical_sha256(symbolic) != record.get(
         "symbolic_sha256"
     ):
         raise ResourceConfigError("Persisted symbolic resource digest differs")
+    label = "Persisted" if successor else "Predecessor"
     if orchestration_contracts.canonical_sha256(effective) != record.get(
         "effective_sha256"
     ):
-        raise ResourceConfigError("Persisted effective resource digest differs")
+        raise ResourceConfigError(f"{label} effective resource digest differs")
 
     default_sha256, config_path, config_sha256, override_labels = _admit_policy_sources(
-        sources, label="Persisted"
+        sources, label=label
     )
 
     policy = admit_resource_policy(
@@ -632,7 +582,23 @@ def admit_resource_policy_record(
         override_labels=override_labels,
     )
     resolved = resolve_resource_policy(policy, capacity)
-    if resolved.effective_document() != effective:
+    projected = resolved.effective_document()
+    if "reporting_memory_mb" in symbolic:
+        # Validate the retained member without carrying it into a new Attempt.
+        retained = symbolic["reporting_memory_mb"]
+        projected["reporting_memory_mb"] = {
+            kind: resolved.workflow_memory_mb
+            if retained[kind] == "workflow"
+            else int(retained[kind])
+            for kind in REPORTING_KINDS
+        }
+        for kind, memory in projected["reporting_memory_mb"].items():
+            if memory > resolved.workflow_memory_mb:
+                raise ResourceConfigError(
+                    f"Reporting {kind} memory exceeds workflow memory: "
+                    f"{memory} > {resolved.workflow_memory_mb} MiB"
+                )
+    if successor and projected != effective:
         raise ResourceConfigError(
             "Persisted symbolic resource policy does not reproduce its resolution"
         )
@@ -722,6 +688,5 @@ __all__ = (
     "resource_override_argv",
     "resolve_resource_policy",
     "resume_resource_policy",
-    "resume_resource_plan",
     "stage_slot_name",
 )

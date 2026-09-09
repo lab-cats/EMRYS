@@ -291,6 +291,13 @@ def test_selected_profile_must_be_one_stable_real_file(tmp_path: Path) -> None:
             "schema_version: emrys.execution-profile.v1\n"
             "resources:\n"
             "  schema_version: emrys.local-pilot-resources.v1\n"
+            "  reporting_memory_mb: {html_report: 1024}\n",
+            "reporting_memory_mb",
+        ),
+        (
+            "schema_version: emrys.execution-profile.v1\n"
+            "resources:\n"
+            "  schema_version: emrys.local-pilot-resources.v1\n"
             "  workflow_cores: true\n",
             "execution profile",
         ),

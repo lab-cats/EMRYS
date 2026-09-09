@@ -328,6 +328,32 @@ assert_fails "$safe_repeat_output" bash "$SCRIPT" \
     --execute
 assert_contains "$safe_repeat_output" "requires both final outputs to be absent"
 
+# Delete the second real hard link before the publisher returns to its caller.
+# This is the previously unaccounted-for handoff, after one sibling succeeded.
+REAL_LN_BIN="$(command -v ln)"
+export REAL_LN_BIN
+cat >"$fake_bin/ln" <<'EOF_LN'
+#!/usr/bin/env bash
+set -euo pipefail
+"$REAL_LN_BIN" "$@"
+if [[ "${@: -1}" == "${DROP_LINK_TARGET:-}" ]]; then
+    "$REAL_RM_BIN" -f -- "${@: -1}"
+fi
+EOF_LN
+chmod +x "$fake_bin/ln"
+handoff_dir="$tmp_dir/results/handoff"
+assert_fails "$tmp_dir/handoff.out" env \
+    SLURM_JOB_ID=handoff DROP_LINK_TARGET="$handoff_dir/sample_handoff.flagstat.txt" \
+    bash "$SCRIPT" --sample-id sample_handoff --bam "$bam" \
+    --output-dir "$handoff_dir" --samtools-bin "$fake_bin/samtools" \
+    --no-clobber --execute
+assert_contains "$tmp_dir/handoff.out" "create-exclusive publication did not preserve the staged inode"
+[[ ! -e "$handoff_dir/sample_handoff.quickcheck.txt" &&
+   ! -e "$handoff_dir/sample_handoff.flagstat.txt" ]] || fail "handoff failure left a final"
+[[ -s "$handoff_dir/.sample_handoff.step02b.handoff.quickcheck.tmp" &&
+   -s "$handoff_dir/.sample_handoff.step02b.handoff.flagstat.tmp" ]] || fail "handoff failure lost staging anchors"
+assert_file_equals "$handoff_dir/.sample_handoff.step02b.lock/owner" $'run_token=handoff\n'
+
 printf 'Running no-clobber stable-input rejection check...\n'
 mutation_bam="$fixture_dir/mutation.sorted.bam"
 printf 'original bam\n' >"$mutation_bam"

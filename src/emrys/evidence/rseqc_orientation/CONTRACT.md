@@ -37,7 +37,7 @@ prerequisites above define required execution.
 
 The producer accepts:
 
-- a nonempty sample identifier used for output-name construction;
+- a sample identifier matching `[A-Za-z0-9][A-Za-z0-9._-]*`;
 - one explicit BAM;
 - an adjacent index discovered as `<bam>.bai` or
   `<bam-with-.bam-removed>.bai`;
@@ -59,26 +59,26 @@ The producer writes one native report:
 <output-dir>/<sample-id>.infer_experiment.txt
 ```
 
-RSeQC standard output is redirected directly to this final path. The producer
-requires only that the result be nonempty; the separate validator owns the
-three-fraction structural contract.
+RSeQC standard output is captured in staging and published only when nonempty;
+the separate validator owns the three-fraction structural contract.
 
-The historical direct execute route has no lock, staging path, receipt,
-stable-input recheck, or rollback. Re-execution truncates an existing path
-before RSeQC runs, and a tool failure or empty-success result can leave an
-empty or partial final file.
+## Producer publication boundary
 
-## Orchestration-safe producer boundary
+Standalone and Run invocations use the same create-exclusive path: hash the
+BAM, admitted BAI, and BED12; refuse an existing final; hold a per-sample owned
+lock; capture RSeQC stdout in a run-token temporary file; recheck all three
+inputs; and publish with its staging inode retained through validation.
+`--no-clobber` remains accepted for existing callers and does not select a
+second mode. Shared [shell publication cleanup](../../libraries/README.md#shell-publication-cleanup)
+owns failure handling. The resolved executable is printed; its observed
+version and report hash belong in the workflow verified record.
 
-`--no-clobber` is the required local-profile mode. It hashes the BAM, admitted
-BAI, and BED12; refuses an existing final; holds a per-sample owned lock;
-captures RSeQC stdout into a run-token temporary file; requires nonempty
-output; rechecks all three inputs; and publishes create-exclusively while
-retaining a staging inode anchor through validation. Failure removes only a
-still-owned final; ambiguous replacement preserves lock and residue. The
-explicit resolved RSeQC executable path is printed; its observed version and
-the resulting report hash belong in the workflow verified record. Execute
-without this option retains historical direct redirection.
+RSeQC's exit code and standard-error diagnostics propagate. Failed stdout is
+never published and follows the shared cleanup rules.
+The retired direct route truncated existing reports before invoking RSeQC;
+partial child failure could leave partial bytes, and empty success could erase
+a prior report. Those historical defects explain the removed replacement
+behavior; current invocations refuse existing reports before running the tool.
 
 ## Current execution surfaces
 
@@ -90,8 +90,7 @@ is the public producer entrypoint. It:
   file creation;
 - passes the BED12 with `-r` and BAM with `-i` to RSeQC;
 - creates the output directory only in execute mode;
-- without `--no-clobber`, writes RSeQC output directly to the final report
-  path; and
+- publishes native output only to an absent final path; and
 - checks only that the final file is nonempty before previewing it.
 
 The file has a shell shebang but is not executable in the current tree; public
@@ -161,6 +160,6 @@ The producer's historical name claims strandedness inference, while its
 machine-checked output remains only mechanical paired-read orientation. No
 implemented conversion updates the manifest's independently declared
 strandedness. The configurable `0.1` maximum sum tolerance also lacks a
-recorded scientific rationale. The unsafe legacy direct route remains exactly
-as described above; immutable Run task records supply wider input, tool,
-attempt, and output identity for the no-clobber route.
+recorded scientific rationale. Immutable Run task records supply wider input,
+tool, attempt, and output identity; standalone execution alone does not
+establish that wider provenance.
