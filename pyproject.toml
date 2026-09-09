@@ -47,9 +47,11 @@ emrys = "emrys.libraries.source_authority:controlled_console_main"
 dev = [
     "coverage==7.15.2",
     "markdown-it-py==4.2.0",
+    "pre-commit>=4.6.2",
     "pytest",
     "pytest-xdist",
     "ruff",
+    "shellcheck-py>=0.11.0.1",
     "vulture",
 ]
 workflow = [
