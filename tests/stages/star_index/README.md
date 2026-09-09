@@ -1,12 +1,9 @@
-# STAR-index stage tests
+# STAR-index tests
 
-This directory protects the Step 00a direct producer and explicit validator.
-Producer tests cover dry-run,
-arbitrary-CWD execution, declared-member publication, no-clobber behavior,
-controlled rollback, and late-final/foreign-lock preservation.
-The [stage owner](../../../src/emrys/stages/star_index/README.md) owns
-the exact direct command, materialized inputs, recovery boundary, and evidence
-limit. Whole-Run Slurm placement is protected with orchestration, not here.
-
-Mocked producer and fixture validation do not establish real STAR indexing,
-Slurm execution, cluster execution, or production reference readiness.
+These cases check Step 00a dry-run, execution from other working directories,
+publication of the declared index files, existing-output refusal, and rollback.
+Collision tests preserve files created by another process during publication
+and locks owned by another attempt. The
+[stage contract](../../../src/emrys/stages/star_index/CONTRACT.md) defines these
+boundaries. Whole-Run Slurm placement is tested with orchestration; these mocked
+cases do not prove real STAR indexing or reference readiness.

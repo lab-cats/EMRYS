@@ -7,25 +7,19 @@ the producer remains an explicit repository-path command.
 
 ## Responsibility
 
-Construct the FASTA index (`FAI`) and GATK sequence dictionary (`DICT`) for one
-materialized reference FASTA, then allow the FASTA and both sidecars to be
-checked for structural and contig agreement without modifying the reference.
+The [README](README.md) explains sidecar construction and use. The producer
+and validator check the FASTA/FAI/dictionary set without modifying the FASTA.
 
 ## Execution dependencies
 
-The hard data prerequisite is one materialized reference FASTA. Reference
-materialization is outside this owner; this stage does not consume the STAR
-index produced by historical Step `00a`.
+The reference FASTA must already exist. This owner neither materializes it nor
+consumes the Step `00a` STAR index.
 
 Once the FASTA and GTF are materialized, FASTA-sidecar construction can run in
 parallel with historical Step `00b` BED12 conversion. Both sidecars must exist
 and agree with the FASTA before historical Step `05` runs GATK
 `SplitNCigarReads`. They are not prerequisites for BED12 conversion or STAR
 alignment.
-
-STAR-index, BED12, and FASTA-sidecar construction can branch from their shared
-materialized references. Historical numeric order records provenance; data
-dependencies define execution.
 
 ## Inputs
 

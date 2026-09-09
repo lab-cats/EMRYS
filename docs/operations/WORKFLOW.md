@@ -1,12 +1,12 @@
 # Workflow kernel
 
-This is the repository-development workflow. [`AGENTS.md`](../../AGENTS.md)
-supplies safety and authority. A selected findings-matrix item or explicitly
-bounded objective supplies scope and acceptance, never additional authority.
+Follow this process when changing the repository. [`AGENTS.md`](../../AGENTS.md)
+defines safety and approval rules. A selected backlog item or explicit bounded
+objective defines the work and completion criteria; it grants no extra permission.
 
 ## Start
 
-1. Read the current root safety guard.
+1. Read the current root `AGENTS.md`.
 2. Verify the repository root, branch, `HEAD`, changes, upstream relation, and
    relevant competing worktrees from live Git.
 3. Read the selected row in
@@ -31,14 +31,14 @@ evidence ceiling, and stopping condition. Obtain approval before mutation.
 
 ## Design and compression
 
-Before implementation, audit the entire touched vertical for duplicate callers,
+Before implementation, inspect the complete affected path for duplicate callers,
 branches, adapters, validation, compatibility, scripts, configuration, docs,
 tests, and mutable state. Check the existing owner, standard library, mature
 libraries, and package managers before adding bespoke machinery. Apply the
 permanent [architecture guardrails](../design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails).
 
 New public commands/options, schemas, receipts, supported paths, dependencies,
-workflow rules, owners, shared seams, recovery mechanisms, or other maintained
+workflow rules, owners, shared interfaces, recovery mechanisms, or other maintained
 surfaces require explicit approval. An implementation defaults to a meaningful
 net reduction in maintained product code and no product-file growth. Stop for
 approval of a quantified exception; moving logic or deleting unrelated tests,
@@ -50,8 +50,9 @@ documentation, or evidence does not satisfy it.
   and coherent owner boundary.
 - Change implementation, direct protection, exact contract, and affected
   documentation together. One semantic commit is the default.
-- Move ownership caller-completely. A temporary compatibility path needs an
-  owner, parity protection, and retirement condition; it is not completion.
+- Move a responsibility across every affected caller. Temporary compatibility
+  code needs an owner, checks that preserve behavior, and a removal condition;
+  leaving it behind does not complete the migration.
 - Preserve immutable boundary values. Mutable draft, Attempt, lock, log, or
   transaction state remains inside its narrow owner and cannot alter a Run.
 - Replace high-risk protection only with an equal-or-stronger defense at the
@@ -59,7 +60,7 @@ documentation, or evidence does not satisfy it.
   architecture guardrails.
 - Evidence deletion is never implied by implementation approval. It requires an
   exact proposal, explicit approval, and a separate commit.
-- Use focused local checks for feedback. Run one deduplicated applicable gate
+- Use focused local checks for feedback. Run the applicable checks once
   on the final state; long lanes run in CI. Rerun only evidence invalidated by a
   later change.
 - Stop for scope expansion, unresolved semantics, unsafe recovery, missing
@@ -67,9 +68,12 @@ documentation, or evidence does not satisfy it.
 
 ## Documentation and tasks
 
-Update documentation only when its subject changes. Keep purpose and durable
-rationale in role or cross-cutting guides, exact behavior beside the owner, and
-machine-verifiable detail in schemas and tests. Do not preserve routine progress,
+Update documentation when its subject changes or when its wording or location
+needs correction. Keep purpose and lasting reasons in reader guides or design
+decisions, exact behavior beside the implementation, and machine-checked details
+in schemas and tests. Move useful information to that home before removing it
+elsewhere, and verify the transfer. Explain purpose before internal terminology.
+Do not preserve routine progress,
 branch names, repeated totals, superseded planning, or a second status registry.
 
 The findings matrix owns stable outcomes, status, acceptance, scores, and

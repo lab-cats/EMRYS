@@ -9,15 +9,13 @@ explicit repository-path command.
 
 ## Responsibility
 
-Run RSeQC `infer_experiment.py` for one declared BAM and BED12 annotation and
-record the fractions assigned to RSeQC's two paired-read orientation groups or
-left undetermined. The operation produces mechanical read-orientation
-evidence; it does not classify the sample, establish transcript strand or
-biological sense/antisense, or select an approved forward/reverse policy.
+The [README](README.md) explains RSeQC inputs and use. Fractions are mechanical
+read-orientation evidence; they do not classify samples, establish biological
+strand/sense, or select a forward/reverse policy.
 
 ## Execution dependencies
 
-The hard data prerequisites are one BAM with an adjacent index and one BED12
+The required inputs are one BAM with an adjacent index and one BED12
 annotation. Historical Step `02` is the normal BAM/BAI producer, and historical
 Step `00b` is the normal BED12 producer. Neither branch depends on the other;
 this operation becomes ready only when both explicit inputs exist.
@@ -29,9 +27,6 @@ sample manifest's `strandedness` field is an independent declared input; the
 current code does not automatically derive or update it from this report.
 Current readers do not acquire the Step `02` producer lock or pin one input
 snapshot, so same-sample canonical-pair replacement must not overlap them.
-
-Historical numeric order records provenance. The two converging data
-prerequisites above define required execution.
 
 ## Inputs
 
@@ -82,19 +77,12 @@ behavior; current invocations refuse existing reports before running the tool.
 
 ## Current execution surfaces
 
-[`step_03_infer_strandedness_and_orientation.sh`](step_03_infer_strandedness_and_orientation.sh)
-is the public producer entrypoint. It:
-
-- validates explicit input paths and the selected executable;
-- is dry-run by default and keeps dry-run free of output-directory and output-
-  file creation;
-- passes the BED12 with `-r` and BAM with `-i` to RSeQC;
-- creates the output directory only in execute mode;
-- publishes native output only to an absent final path; and
-- checks only that the final file is nonempty before previewing it.
-
-The file has a shell shebang but is not executable in the current tree; public
-tests and orchestration invoke it explicitly through Bash.
+Invoke the [producer](step_03_infer_strandedness_and_orientation.sh) through
+Bash: it has a shebang but is not executable in the tree. Dry-run validates
+paths and the selected executable without creating directories or files.
+Execute passes BED12 as `-r` and BAM as `-i`, creates the output directory, and
+uses the publication boundary above. It checks only final-file nonemptiness
+before displaying a preview; fraction checks belong to the validator.
 
 ## Validation interface
 

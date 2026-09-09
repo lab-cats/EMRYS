@@ -1,4 +1,5 @@
 # GitHub integration
 
-This directory contains repository-hosted automation and policy. Workflow definitions live under [`workflows/`](workflows/); they provide engineering evidence for an exact revision and do not establish institutional-site, production, scientific-review, or biological proof.
-
+Repository automation and policy live here. The [workflows](workflows/)
+run engineering checks against an exact revision. Their results establish
+software behavior, not institutional, production, scientific, or biological proof.

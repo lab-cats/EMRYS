@@ -6,34 +6,35 @@ take priority over speed or convenience.
 
 ## Authority
 
-- Use the [workflow kernel](docs/operations/WORKFLOW.md) to load the smallest
+- Use the [development workflow](docs/operations/WORKFLOW.md) to load the smallest
   sufficient current context and deliver one approved bounded outcome.
-- Use one authoritative mutable worktree and branch. Other worktrees are
-  read-only unless the user explicitly changes the authority boundary.
+- Use one worktree and branch for edits. Other worktrees stay read-only unless
+  the user explicitly authorizes a different editing location.
 - Implement only the approved outcome. Merging, rebasing, force-pushing,
   deleting branches, dependency installation, cluster execution, production
   mutation, destructive cleanup, scientific review, and evidence promotion
   require their own explicit authority.
-- Every architecture audit records concrete compression opportunities across
-  every maintained surface. Follow the permanent
+- Every architecture audit records concrete opportunities to reduce code, tests,
+  scripts, schemas, configuration, documentation, and mutable state. Follow the permanent
   [architecture guardrails](docs/design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails).
   Implementation defaults to a meaningful net reduction in maintained product
   code and no product-file growth; any quantified exception requires explicit
   user approval.
 - Before implementing any slice, search the touched code and adjacent
   production owners for duplicate mechanics and existing abstractions, record
-  concrete consolidation or retirement candidates, and prefer caller-complete
-  reuse or removal over parallel logic.
+  concrete consolidation or retirement candidates, and replace duplicated logic across
+  all affected callers rather than leave parallel implementations.
 - Run quick targeted checks locally and long checks in CI.
 - Before adding owned machinery, evaluate the existing repository authority,
   the standard library, a mature maintained tool/library, and the relevant
-  established package manager. Bespoke code requires a recorded capability
-  gap or a demonstrably smaller total maintained surface.
-- Add a shared policy authority only when at least two production owners make
-  the same decision from equivalent inputs with the same semantics and one
-  bounded migration retires every duplicate caller net-negatively. Re-admission
-  at a distinct trust or mutation boundary is not duplication.
-- Snakemake remains the sole execution backend and Slurm remains transport.
+  established package manager. Custom code needs a documented capability gap or
+  demonstrably less work to maintain overall than the existing alternatives.
+- Share policy code only when at least two production owners make the same
+  decision from equivalent inputs with the same behavior. One bounded migration
+  must replace every duplicate caller and reduce the total implementation.
+  Checks at different trust or
+  mutation boundaries are not duplicates.
+- Snakemake remains the sole execution backend; Slurm places it in an allocation.
   Reconsider that boundary only for a concrete approved extension or a
   demonstrated caller-complete reduction, with parity and no duplicate
   authority. Do not add a distinct Artifact Store without a separately approved
@@ -41,7 +42,7 @@ take priority over speed or convenience.
 - Implement the smallest complete feature. A token deletion beside new parallel
   logic is not meaningful compression: audit duplicate callers, branches,
   adapters, compatibility paths, tests, scripts, configuration, and docs across
-  the touched vertical, and retire every safely superseded surface.
+  the complete affected path, and retire every safely superseded surface.
 - Treat boundary values as immutable by default. A `Run` is an immutable plan:
   changing that plan creates a distinct `Run`, never an in-place mutation. This
   settles no other public noun, nesting, identity, API, backend, persistence,
@@ -90,8 +91,8 @@ steps, gates, artifacts, or completion states.
 Each functional owner keeps its commands, contract, tests, diagnostics, and
 recovery detail beside its implementation. Cross-owner identity and dependency
 direction are organized by the [architecture index](docs/architecture/README.md).
-Live Git owns checkout state; exact checks and retained artifacts bound to a
-commit own validation observations. Accepted work and acceptance live in the
+Use live Git for checkout state, and exact checks and retained artifacts tied
+to a commit for validation results. Accepted work and completion criteria live in the
 [findings matrix](docs/tasks/backlog_matrix.md), cross-cutting commands in the
 [RUNBOOK](docs/operations/RUNBOOK.md), and common recovery in
 [TROUBLESHOOTING](docs/operations/TROUBLESHOOTING.md).

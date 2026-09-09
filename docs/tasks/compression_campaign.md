@@ -16,9 +16,11 @@ The temporary format follows the architecture campaign and backlog at
 
 ## Scope and next tranche
 
-- **Documentation:** give each subject one authoritative explanation. Remove
-  repetition across guides, contracts, and docstrings; explain purpose and
-  unfamiliar terms before details. Keep complete procedures and useful examples.
+- **Documentation:** give each owner a clear responsibility and each subject
+  one authoritative explanation. Move misplaced information to its proper owner
+  and verify the transfer before removing it. Make all documentation readable
+  for its intended audience: explain purpose and unfamiliar terms before
+  details, and keep complete procedures, useful examples, and necessary limits.
 - **Code:** simplify complete responsibilities using the existing owner,
   standard library, and established language patterns. Retire equivalent
   implementations across every applicable caller. A new wrapper or a split

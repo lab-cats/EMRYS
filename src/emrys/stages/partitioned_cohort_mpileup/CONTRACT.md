@@ -7,11 +7,7 @@ grouped under `emrys validate`.
 
 ## Responsibility and execution dependencies
 
-For one declared cohort partition, generate separate `FWD_like` and
-`REV_like` multi-sample VCFs from every sample's Step `06` BAM in canonical
-manifest order, then publish the two VCFs and receipt as one transaction.
-This is pileup generation and filtering, not a `bcftools call` operation or a
-claim that variants or RNA-editing sites have been identified.
+See the [README](README.md) for purpose, inputs, outputs, and normal use.
 
 Step `07` requires the complete BAM/BAI pair for both mechanical orientation
 groups of every declared sample from the final
@@ -66,38 +62,40 @@ record-count checked before the receipt becomes visible. The receipt itself is
 then checked inside the owned rollback boundary; its mere presence is not
 independent proof of a successfully completed immutable computation.
 
-[`producer.py`](producer.py) is side-effect-free in dry-run. Execute mode hashes
-and later rechecks both
-manifests, uses a cohort/partition lock and run-token temporary/backup paths,
-rejects stale owned paths and partial prior sets, validates temporary VCF
-sample order and counts, then replaces all three outputs with the receipt last.
-Final outputs are revalidated before backups are removed.
-`--no-clobber` is the orchestration-safe policy: while holding the owner lock,
-it rejects a complete predecessor set without invoking bcftools or changing
-stable outputs. A direct invocation hashes the exact sample and partition
-manifests, reference FASTA/FAI pair, selected regions file when applicable,
-and both BAM/BAI pairs for every admitted sample before bcftools, then rechecks
-that roster after tool execution and again before publication. An admitted
-run-coordinator task has already hashed the same declared roster twice at producer
-entry. It supplies a process-lifetime aggregate only to this producer, which
-reconstructs the roster without another initial full pass and rehashes the
-complete roster immediately before publication. The task boundary performs
-its unchanged final declared-input recheck after validation. The aggregate is
-not persisted or added to the native receipt. Direct invocations retain
-complete-set replacement and the legacy manifests-only stability boundary
-unless `--no-clobber` is supplied.
-First publication in that mode is create-exclusive; VCF and receipt staging
-inode anchors remain through final validation, and ambiguous replacement
-preserves the owner lock and residue.
-Rollback follows the shared
+[`producer.py`](producer.py) does not write in dry-run. Execute uses a
+cohort/partition lock and run-token temporary/backup paths, rejects stale owned
+paths and incomplete prior sets, and checks temporary VCF sample order and
+counts. It publishes the two VCFs before the receipt and revalidates the final
+set before removing backups.
+
+With `--no-clobber`, the producer holds the lock and refuses any complete prior
+set before invoking bcftools. The first publication uses exclusive hard links
+and retains VCF/receipt staging inodes through final validation. Ambiguous
+replacement preserves the lock and residue. Rollback follows the shared
 [no-clobber rule](../../../../docs/design/decisions/execution-evidence-and-reporting.md#no-clobber-rollback).
 
-Ordinary rollback restores the prior three-file set. If restoration itself
-fails, backup paths and the owned lock are preserved for operator recovery;
-there is no automated recovery interface. The receipt hash-binds the two
-manifests only: BAMs, reference, FAI, regions file, tool identity, depth, and
-filter are not durable receipt provenance. The receipt also does not hash
-either output VCF.
+Input checking differs by route:
+
+- A standalone `--no-clobber` invocation hashes the sample/partition manifests,
+  FASTA/FAI, selected regions file when used, and both BAM/BAI pairs for every
+  sample before bcftools. It rechecks that set after tool execution and before
+  publication.
+- A Run task has already hashed the same declared inputs twice at producer
+  entry. It passes a process-lifetime aggregate only to this producer. The
+  producer reconstructs the roster without another initial full scan, then
+  rehashes every input immediately before publication. The task rechecks its
+  declared inputs again after validation. The aggregate is not persisted or
+  added to the receipt.
+- Direct execution without `--no-clobber` retains complete-set replacement and
+  the legacy stability checks of the two manifests only.
+
+Ordinary replacement rollback restores the prior three-file set. Failed
+restoration preserves backups and the owned lock for operator recovery; there
+is no automated recovery interface.
+
+The receipt hashes only the two manifests. BAMs, reference, FAI, regions file,
+tool identity, depth, filter, and output VCF hashes are not durable receipt
+provenance.
 
 ## Validation interface
 

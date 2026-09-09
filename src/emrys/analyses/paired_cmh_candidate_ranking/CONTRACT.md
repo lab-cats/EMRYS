@@ -7,17 +7,11 @@ stage.
 
 ## Responsibility and execution dependencies
 
-Consume the committed
-[`preprocess_and_annotate_cohort_candidates`](../../stages/cohort_candidate_preprocessing/CONTRACT.md)
-cohort candidates, construct explicit paired
-control/treatment replicate strata, run cohort-wide paired Cochran–Mantel–
-Haenszel analysis for a requested RNA substitution, apply one Benjamini–
-Hochberg correction, classify results under explicit thresholds, and publish
-tables and diagnostic plots. Its outputs are CMH-ranked candidates, not
-validated RNA-editing sites.
+See the [README](README.md) for purpose, inputs, outputs, and normal use.
 
-Step `09` requires that final owner's sites table and input receipt, the sample and
-partition manifests, and explicit analysis policy. It does not consume the
+Step `09` requires the committed [Step `08`](../../stages/cohort_candidate_preprocessing/CONTRACT.md)
+sites table and input receipt, sample/partition manifests, and explicit analysis
+policy. It does not consume the
 Step `08` QC summary or standalone validation report. Artifact indexing and
 reporting consume the validated six-output transaction without changing its
 computational meaning. External review or adjudication may reference these

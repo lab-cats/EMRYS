@@ -1,11 +1,7 @@
-# Canonical-BAM QC evidence tests
+# Canonical-BAM QC tests
 
-This directory protects the Step 02b producer and validator through shell
-cases and Python report checks. The
-[production owner](../../../src/emrys/evidence/canonical_bam_qc/README.md)
-defines supported commands, mixed-attempt hazards, and evidence meaning. The
-Python tests invoke the grouped `python -I -m emrys validate canonical-bam-qc`
-route; `validator.py` is a private implementation module.
-
-Local fixtures and mocked tools do not establish real samtools, scheduler,
-cluster, production, scientific-review, or biological evidence.
+Shell cases check the Step 02b producer; Python cases check its reports through
+`python -I -m emrys validate canonical-bam-qc`. The private `validator.py` is
+not a separate command. The [owner contract](../../../src/emrys/evidence/canonical_bam_qc/CONTRACT.md)
+defines publication behavior and the risk of mixing files from different attempts.
+These fixtures use mocked tools under the [shared evidence limits](../../README.md#evidence-limits).

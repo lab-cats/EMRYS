@@ -1,15 +1,13 @@
-# Scientific-evidence contract owners
+# Scientific-evidence contracts
 
-This neutral package publishes shared table and transaction admission for:
+These shared APIs validate supplied table bytes and agreement between files:
 
 - [`step08.py`](step08.py): candidate-preprocessing inputs and outputs.
-- [`step09.py`](step09.py): paired-CMH result trio, mutation spectrum, and
-  validation primitives.
-- [`scientific_context.py`](scientific_context.py): candidate context, motif,
-  logo, enrichment, and receipt-last transaction records.
+- [`step09.py`](step09.py): the three paired-CMH result tables, mutation spectrum,
+  and related validation helpers.
+- [`scientific_context.py`](scientific_context.py): candidate context, motifs,
+  logos, enrichment, and transactions whose receipt is published last.
 
-These APIs validate supplied bytes and cross-file semantics; they do not run
-scientific algorithms, discover paths, publish artifacts, render figures,
-adjudicate candidates, or replace independent test oracles. Algorithms,
-publication, selection, provenance graphs, and presentation remain with their
-functional owners.
+Their callers still choose paths, run algorithms, publish artifacts, build
+provenance graphs, select candidates, and render figures. Shared validation
+replaces neither those responsibilities nor independent test oracles.

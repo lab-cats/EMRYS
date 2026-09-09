@@ -309,5 +309,5 @@ with the study design, not the synthetic fixture's expected counts.
 For named Analyses, processing reuse, alternate profiles, and larger synthetic
 exercises, use the [runbook](docs/operations/RUNBOOK.md). The optional
 `production-like-v1` fixture has 100,000 pairs **per library** across four
-libraries; select it with `--dataset-profile production-like-v1` on both
+libraries and a 5-Mb reference; select it with `--dataset-profile production-like-v1` on both
 synthetic initialization commands in a new Project.

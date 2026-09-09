@@ -1,81 +1,63 @@
-# Artifact-index internals
+# Artifact-index implementation
 
-This private package implements the artifact-index transaction used by the
-Run-level reporting coordinator and developer fixtures through
-[`context.py`](context.py) and [`publication.py`](publication.py). It has no
-installed public command or operator recovery route. [`api.py`](api.py) is the narrow private import boundary used
-by sibling reporting owners for deliberate artifact parsing, validation,
-serialization, and transaction primitives. It is not a command or public
-application API. Neutral filesystem authorities live directly in
-[`libraries/source_authority.py`](../../libraries/source_authority.py); this
-private package does not forward them.
+This private package builds the artifact index for the Run reporting coordinator
+and developer fixtures through [`context.py`](context.py) and
+[`publication.py`](publication.py). Sibling reporting packages use private
+[`api.py`](api.py) for parsing, validation, serialization, and transaction helpers.
+Neither interface is a public command or operator recovery route. Filesystem
+identity helpers remain in [`source_authority.py`](../../libraries/source_authority.py)
+and are not re-exported here.
 
-The coordinator supplies the source checkout and independent artifact source
-root before `context.py` validates Run inputs and prepares the transaction. Checkout
-admission requires one canonical, nonsymlink EMRYS Git top level and exact
-bytes between the executing package and that checkout. Both admitted values
-remain on `BuildContext` through publication. The artifact root governs
-relative inventory and native-contract
-paths plus historical and post-publication record validation. The
-checkout governs Git `HEAD` resolution and producer existence and hashing. The
-authority caches neither Git commit nor producer state; the later `HEAD` probe
-ignores ambient `GIT_*` routing while preserving unrelated environment state. Those
-observations stay at their established points in context construction,
-preserving their timing, diagnostics, and serialized evidence.
+## Inputs and responsibilities
 
-The modules keep observed responsibilities separate: the curated run-summary
-API, exact contract loading, models, profile-derived adapter registration and
-rosters, text and binary readers, inspection, named native reconciliation,
-record and receipt assembly, context construction, receipt-last publication,
-and published-transaction validation.
-Stage-specific rules remain in their named reconciliation modules; this
-package is not a generic stage framework.
+The coordinator validates explicit source and artifact roots before Run inputs.
+Both stay on `BuildContext` under the common
+[root rules](../README.md#source-and-artifact-roots). Git `HEAD` and producer
+observations remain at their existing points during context construction,
+retaining their timing, diagnostics, and recorded evidence.
 
-The admitted immutable analysis-module descriptor supplies typed artifact
+The immutable Analysis descriptor and composed Run profile supply typed artifact
 declarations. `registry.py`, `records.py`, and context preparation derive the
-expected adapter closure, producer evidence, and paths from the composed Run
-profile. They do not scan installed modules or discover filesystem outputs.
-This dynamic indexing changes how the existing artifact transaction receives
-its closed roster; it adds no Artifact Store, database, service, authored
-manifest, or public mutable registry. Paired-CMH-specific Step `09`/`10`
-reconciliation remains in the built-in adapter path below.
+complete adapter set, producer evidence, and expected paths from them. They do
+not scan installed modules or discover files. There is no separate database,
+service, authored manifest, or public mutable registry.
 
-[`reconcile_step09.py`](reconcile_step09.py) delegates intrinsic admission of
-the exact result trio and mutation-spectrum reconciliation to
-`step09.validate_step09_projection`. Artifact indexing retains
-adapter/inventory selection, native source identity, the referenced Step 08
-path/hash/adapter/sample-order graph, and artifact-state failure propagation;
-it does not replay upstream, paired-sample CMH, global BH, PDF, R-producer, or
-independent-oracle work.
+Modules separate contracts and models, adapters, text/binary readers, inspection,
+native-file reconciliation, record/receipt assembly, context preparation,
+publication, and published-transaction validation. Text readers are
+`_text_common.py` (UTF-8 lines), `_text_tabular.py` (TSV, sample blocks, native
+anchors), and `_text_genomic.py` (VCF, references, BED12, STAR, Picard).
+Stage-specific reconciliation stays with its named module.
 
-[`reconcile_step10.py`](reconcile_step10.py) delegates the complete receipt-
-last scientific-context transaction to
-`scientific_context.validate_scientific_context_transaction`. Artifact
-indexing retains exact adapter/inventory selection and binds the receipt's
-Step `09` trio, FASTA/FAI, and four output paths, hashes, and row counts to the
-declared graph. Reference extraction, motif matching, logo/statistic
-reconciliation, and display selection remain canonical contract or producer
-work rather than a second artifact-index implementation.
+[`reconcile_step09.py`](reconcile_step09.py) uses
+`step09.validate_step09_projection` for the result trio and mutation spectrum.
+Indexing still selects adapters/inventory, verifies native producer identity,
+binds Step 08 paths/hashes/adapters/sample order, and propagates artifact failure.
+It does not repeat upstream computation, paired CMH, global BH, PDF/R production,
+or the independent oracle.
 
-Artifact inspection enforces common validation-report structure, safe unique
-check IDs, step, scope, and status, but does not yet enforce each producer's
-exact ordered check roster. A structurally plausible report with a missing,
-extra, substituted, duplicate, or reordered check can therefore enter the
-artifact graph; retain the independent roster expectations and
-artifact-adapter mutation tests until that separately reviewed defect is
-corrected.
+[`reconcile_step10.py`](reconcile_step10.py) uses
+`scientific_context.validate_scientific_context_transaction` for the complete
+receipt-last transaction. Indexing binds the declared Step 09 trio, FASTA/FAI,
+and four output paths, hashes, and row counts to the artifact graph. Reference
+extraction, motif matching, logo/statistic checks, and display selection remain
+with their contract or producer, without a second implementation here.
 
-Text inspection imports three private owners directly: `_text_common.py` owns
-UTF-8 line admission, `_text_tabular.py` owns TSV, sample-block, and native
-anchor parsing, and `_text_genomic.py` owns VCF, reference, BED12, STAR, and
-Picard inspection. The split adds no adapter kind, registry entry, schema,
-artifact state, or discovery behavior.
+## Validation-report limit
 
-[`publication.py`](publication.py) owns the shared byte-write, durability-sync,
-lock, removal, and signal transaction primitives as well as the artifact-index
-publication order. It follows the shared
-[publication and recovery contract](../README.md#publication-and-recovery).
-One `.artifact-index.<token>.tmp.records` directory holds staged record files,
-the index, and receipt, retaining their file anchors through publication. An
-exclusive `mkdir` reserves the final records directory before files are linked.
-Run-summary publication reaches shared transaction primitives through `api.py`.
+Inspection checks report structure, exact row count, safe unique check IDs,
+step, scope, and status. Missing or extra rows and duplicate IDs fail validation.
+It does not check each producer's exact ordered check list: reordered rows or
+a substituted unique ID can still be marked complete. Existing adapter-mutation
+tests demonstrate that distinction. Keep those tests and independent roster
+expectations until this separately reviewed defect is fixed.
+
+## Publication
+
+[`publication.py`](publication.py) provides byte writes, durability syncing,
+locks, removal, signals, and artifact-index publication order under the common
+[recovery contract](../README.md#publication-and-recovery). One
+`.artifact-index.<token>.tmp.records` directory holds staged records, index,
+and receipt, retaining their file anchors while publishing. Exclusive `mkdir`
+reserves the final records directory before linking files. Run-summary
+publication uses the shared helpers through `api.py`.

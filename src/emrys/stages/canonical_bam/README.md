@@ -1,11 +1,24 @@
 # `construct_canonical_BAM` owner
 
-Stage `02` converts the admitted STAR BAM into the canonical coordinate-sorted
-BAM/BAI pair. [`step_02_sort_index_bam.sh`](step_02_sort_index_bam.sh) is the
-producer; validation is `emrys validate canonical-bam` through private
-[`validator.py`](validator.py).
+Stage `02` prepares a coordinate-sorted, read-group-tagged BAM and adjacent BAI
+from one SAM or BAM. STAR is the usual input source, but STAR-specific names
+and logs are not required. An already canonical alignment can be reused without
+sorting or retagging it.
 
-[`CONTRACT.md`](CONTRACT.md) owns exact inputs, outputs, transaction, recovery,
-validation, and evidence meaning. Normal execution belongs to the immutable
-`emrys run`/`resume` journey. Container and header checks do not prove sample
-identity, alignment correctness, or biological validity.
+Supply a sample ID, alignment, output directory, threads, and samtools.
+The outputs are `<sample>.sorted.bam` and `<sample>.sorted.bam.bai`, used by
+BAM QC, RSeQC orientation evidence, and duplicate marking.
+
+Normal execution uses the [Project Run](../README.md#running-a-stage). For
+standalone help from the checkout root:
+
+```bash
+bash src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh --help
+emrys validate canonical-bam --help
+```
+
+The producer previews by default and refuses existing outputs. The independent
+validator checks containers, sorting, read groups, and alignment tags without
+changing the pair. Read the [contract](CONTRACT.md) before handling residue:
+it preserves important producer/validator differences and the historical
+replacement defect. Neither surface proves sample identity or biological validity.

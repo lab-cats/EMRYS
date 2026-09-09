@@ -1,15 +1,11 @@
 # Artifact schemas v1
 
-This directory contains the shared `common` resource referenced by the active
-artifact schemas. It remains a public byte and reference-resolution contract;
-the active record schemas moved to later major-version directories after the
-scientific-review state was retired.
+`common.schema.json` supplies shared definitions used by active artifact
+schemas. Its bytes and references remain a public contract; record schemas
+moved to later major versions when scientific-review state was retired.
 
-The [`artifact-contract owner`](../../../artifacts/README.md) defines supported
-selectors and validation behavior. Direct schema/fixture protection lives in
-[`test_artifact_schema_contracts.py`](../../../../../../tests/contracts/artifacts/test_artifact_schema_contracts.py),
-with independent selected-path expectations under
-[`independent_contract_goldens/`](../../../../../../tests/contract_integration/independent_contract_goldens/README.md).
-
-Do not regenerate, split, or rebase this schema merely to satisfy tests; any
-accepted change requires explicit version and consumer review.
+The [artifact contract](../../../artifacts/README.md) defines validation.
+[Schema tests](../../../../../../tests/contracts/artifacts/test_artifact_schema_contracts.py)
+and [independent goldens](../../../../../../tests/contract_integration/independent_contract_goldens/README.md)
+check compatibility. The shared [version rules](../../README.md#version-and-identity-rules)
+apply to changes.

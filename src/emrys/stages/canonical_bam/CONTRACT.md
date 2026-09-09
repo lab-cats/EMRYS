@@ -7,19 +7,15 @@ the producer remains an explicit repository-path command.
 
 ## Responsibility
 
-Transform one explicit SAM or BAM alignment into the canonical per-sample,
-coordinate-sorted, read-group-tagged BAM/BAI pair. Validate the staged pair
-before create-exclusive publication and refuse any existing canonical output.
-
-The separate validator observes a declared canonical pair and records its
-container, sort-order, read-group, and alignment-tag contract without changing
-the BAM or BAI.
+The [README](README.md) explains BAM preparation and use. The producer validates
+the staged pair before publication and refuses existing outputs. The separate
+validator reads a declared pair without changing it.
 
 ## Execution dependencies
 
-The hard data prerequisite is one samtools-readable alignment. Historical Step
-`01` is the current default producer, but this stage accepts an explicit SAM or
-BAM and does not consume STAR logs or require a STAR-specific filename.
+The input must be one samtools-readable alignment. Step `01` normally supplies
+it, but any explicit SAM or BAM can be used; STAR logs and filenames are not
+required.
 
 After the canonical pair is published, historical Step `02b` BAM QC, Step `03`
 strandedness/orientation inference, and Step `04` duplicate marking can consume
@@ -27,10 +23,6 @@ it independently. Step `03` also requires the BED12 produced by historical
 Step `00b`. The current Step `04` implementation does not consume Step `02b`
 or Step `03` outputs, so those three direct consumers are data-parallel once
 their own additional prerequisites are satisfied.
-
-Historical numeric order records provenance. The explicit alignment input and
-canonical BAM/BAI handoff, not the numeric identifier, define required
-execution.
 
 ## Inputs
 
@@ -81,8 +73,9 @@ backups. Existing sample-specific `.step02.*` residue, including old
 `.previous.bam` and `.previous.bam.bai` files, requires operator inspection.
 
 The producer publishes with staging inode anchors and proves that both final
-paths still resolve to the already validated staging inodes. When the canonical input itself supplied the staging inode, the
-producer additionally hashes the published BAM after both links exist and
+paths still resolve to the validated staging inodes. When the canonical input
+itself supplies that inode, the producer also hashes the published BAM after
+both links exist and
 requires it to match the admitted input digest. The inode proof plus this
 post-publication content binding carries the staged semantic validation across
 publication without another `quickcheck`, header read, or two whole-BAM count
@@ -91,28 +84,15 @@ checks; it does not make concurrent external mutation safe.
 
 ## Current execution surfaces
 
-[`step_02_sort_index_bam.sh`](step_02_sort_index_bam.sh) is
-the public producer entrypoint. It:
+The [shell producer](step_02_sort_index_bam.sh) skips sorting when the admitted
+header declares `SO:coordinate`; otherwise it sorts with samtools. It reuses
+that input inode only when the single read group and every alignment tag also
+satisfy the canonical contract. Otherwise it replaces all read groups with the
+declared sample group. It indexes and validates the staged pair before the
+publication boundary above.
 
-- is dry-run by default and keeps its own dry-run side-effect-free;
-- inspects input sort order, skips a redundant sort when the admitted header
-  already declares `SO:coordinate`, otherwise sorts with samtools;
-- reuses a coordinate-sorted input inode when its single read group and every
-  record tag already satisfy the canonical contract, otherwise replaces all
-  read groups with one declared sample group;
-- indexes the staged canonical BAM;
-- validates the staged BAM/BAI before touching canonical paths;
-- acquires an owned per-sample lock;
-- requires both canonical output paths to be absent;
-- create-exclusively publishes the pair, proves final/staging inode identity,
-  and rechecks the admitted digest
-  after publication when the input inode was reused, instead of semantically
-  scanning the same bytes a second time; and
-- attempts ownership-aware removal of its published files when publication
-  fails, preserving another process's files and unresolved recovery state.
-
-Temporary files carry the run token and live beside the canonical outputs.
-The per-sample lock records its owning run token.
+Run-token temporary files live beside the outputs, and the per-sample lock
+records the owning token. Failure cleanup follows the rules below.
 
 ## Failure and recovery
 

@@ -7,8 +7,7 @@ the producer remains an explicit repository-path command.
 
 ## Responsibility and execution dependencies
 
-Run GATK `SplitNCigarReads` on one duplicate-marked RNA-seq BAM, validate and
-index the result, and publish a rollback-protected BAM/BAI pair.
+See the [README](README.md) for purpose, inputs, outputs, and normal use.
 
 Two independent branches converge here: Step `04` normally supplies the marked
 `<bam>.bai` pair, while Step `00c` supplies the explicit FASTA, `<fasta>.fai`,

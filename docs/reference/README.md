@@ -1,7 +1,7 @@
 # Reference documentation
 
-This directory contains lookup aids that explain repository terminology without
-becoming a second owner of behavior, policy, or mutable state.
+Use these references to understand EMRYS terminology and the limits of its
+scientific outputs. Detailed behavior remains with each linked owner.
 
 - [`GLOSSARY.md`](GLOSSARY.md) defines recurring EMRYS, genomics, evidence, and
   operational terms and routes each term to its detailed owner.

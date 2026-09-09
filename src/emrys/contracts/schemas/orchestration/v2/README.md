@@ -1,5 +1,9 @@
-# Run-coordinator orchestration schemas v2
+# Orchestration schemas v2
 
-This directory contains the active workflow-profile and Attempt-receipt schemas plus the retired resource-embedded request contract. Current Project Runs compose the workflow profile with one admitted Analysis module; the request schema remains only where exact historical admission requires it.
+These files define the active workflow profile and Attempt receipt, plus the
+retired request that embedded resources. Current Project Runs combine the
+workflow profile with one validated Analysis module; the request remains only
+for reading exact historical records.
 
-Registry selection, canonical JSON, and semantic validation belong to the [orchestration contract owner](../../../orchestration/README.md). These packaged resources are not separate commands or mutable configuration.
+The [orchestration contract](../../../orchestration/README.md) selects schemas,
+defines canonical JSON, and validates record meaning.

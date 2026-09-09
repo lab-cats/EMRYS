@@ -1,8 +1,8 @@
 # Run-coordinator intake contract
 
-This private application owner connects the scientist-facing Project model to
-immutable Run planning, direct or whole-Run Slurm execution, Attempt lifecycle,
-inspection, recovery, Results, and reporting. Scientific algorithms, native
+The Run coordinator turns a scientist's Project into an immutable execution
+plan. It manages direct or whole-Run Slurm execution, Attempts, inspection,
+recovery, Results, and the request to generate reports. Scientific algorithms, native
 artifact publication, validation meaning, report rendering, dependency solving,
 and package installation remain with their owners. The
 [current architecture](../../../../docs/architecture/ARCHITECTURE.md) defines
@@ -13,14 +13,16 @@ log semantics.
 
 ## Public model and admission
 
-The public model is `Project -> named Analysis -> immutable Run -> Results`:
+The public model is `Project -> named Analysis -> immutable Run -> Results`.
+Here, *admission* means validating an input or record and accepting its exact
+identity and content for use:
 
 - The authored `project.yaml` is mutable input. Admission snapshots its exact
   bytes and referenced manifests, normalizes scientific content, and produces
   immutable Project and Analysis revisions.
 - An Analysis names one admitted scientific comparison and module
-  configuration. Its map key is a human selector and Attempt metadata, not
-  content-derived identity.
+  configuration. Its name selects the Analysis and appears in Attempt metadata;
+  the name does not contribute to its content-derived identity.
 - A Run immutably binds one Analysis revision and one Execution Plan. Changing
   scientific intent or planned tasks creates another Run.
 - Each execution or resume creates a new Attempt. It cannot mutate the Run.
@@ -28,8 +30,7 @@ The public model is `Project -> named Analysis -> immutable Run -> Results`:
   Reporting is a downstream transaction, not a scientific stage or completion
   authority.
 
-Ordinary Project-aware commands derive the exact current directory's
-`project.yaml`. Optional `--project` accepts one named Project directory or an
+Ordinary Project-aware commands read `project.yaml` in the current directory. Optional `--project` accepts one named Project directory or an
 exact `project.yaml`; no parent-directory or global lookup occurs. The file's
 parent is the Project root. Active commands reject request-v3; its closed
 schema survives only to read exact historical Runs.
@@ -119,20 +120,20 @@ alternate-workflow escape hatch.
 
 ## Processing reuse and provider boundary
 
-`run --through processing` creates a distinct Run ending at the complete
-predecessor-closed Steps `00`-`06` processing boundary. It owns its Attempts
+`run --through processing` creates a distinct Run containing Steps `00`–`06`
+and all their prerequisites. It owns its Attempts
 and evidence but has no applicable report and cannot later resume into a larger
 plan.
 
 `run --from-processing-run RUN` creates another same-Project Run. The source
-must be a successful processing Run with an admitted receipt, compatible
-Reference and processing semantics, and samples that exactly contain the
-target Analysis rows and content. Reference paths may relocate only when the
+must be a successful processing Run with an admitted receipt and compatible
+Reference and processing rules. Its samples must contain every target Analysis
+row with identical content. Reference paths may relocate only when the
 admitted content remains identical; processing semantics may not change.
 Reused artifacts remain at their source paths and are rebound by exact size,
 hash, and source Run/Attempt identity; they are never copied, adopted, or
-mutated. A proper subset uses one private Attempt-bound sample projection, not
-a second scientist-authored manifest. Drift, missing state, incompatible
+mutated. When the target uses fewer samples, EMRYS creates one private sample projection
+bound to that Attempt; the scientist does not author a second manifest. Drift, missing state, incompatible
 content, or incomplete evidence fails closed. The downstream Run owns Steps
 `07` onward, its Attempts, Results, reports, and log.
 
@@ -145,15 +146,16 @@ scientific authority outside its declared tasks and artifacts.
 
 ## Task and Attempt lifecycle
 
-Initial Run structure and each Attempt directory are create-absent. Lifecycle
-holds the persistent advisory acquisition mutex while it revalidates the
-prepared Attempt, then publishes the evidence-bearing aggregate Run lock before
-Attempt-specific dispatch, config, or record state. A stale waiting contender
-exits before materialization and leaves no new Attempt residue.
+The initial Run tree and each Attempt directory must be absent before creation.
+Lifecycle holds a persistent advisory mutex while it revalidates the prepared
+Attempt. It then publishes the Run lock, including its evidence, before writing
+Attempt-specific dispatches, configuration, or records. A competing process
+whose prepared state became stale while waiting exits before these writes and
+leaves no new Attempt residue.
 
-Each closed dispatch binds the admitted Execution Plan, composed profile,
-owner scope, exact public producer and validator commands, declared inputs and
-outputs, runtime/tool identities, and validation report. Immediately before
+Each task dispatch is a closed record binding the admitted Execution Plan,
+composed profile, owner scope, exact public producer and validator commands,
+declared inputs and outputs, runtime/tool identities, and validation report. Immediately before
 producer entry, the task publishes an immutable start record. Its stdout and
 stderr files are create-exclusive, no-follow, drained through EOF, byte- and
 order-preserving within each stream, synchronized, hash-bound, and revalidated.
@@ -213,11 +215,16 @@ supported historical layout whose current Project, retained request/execution
 and profile, source/runtime/tool identities, and prior evidence re-admit
 exactly; it does not make any other old layout resumable.
 
-Public state has four separate domains: Run integrity is `valid|blocked`;
-Attempt is `not_started|running|succeeded|failed|interrupted|blocked`;
-scientific Results is `incomplete|complete|blocked`; and reporting is
-`not applicable|incomplete|complete|blocked`. Recovery availability is a
-separate fact. A successful processing-only Run has complete Results for its
+Inspection reports four independent states:
+
+| Subject | Possible states |
+| --- | --- |
+| Run integrity | `valid`, `blocked` |
+| Attempt | `not_started`, `running`, `succeeded`, `failed`, `interrupted`, `blocked` |
+| Scientific Results | `incomplete`, `complete`, `blocked` |
+| Reporting | `not applicable`, `incomplete`, `complete`, `blocked` |
+
+Recovery availability is a separate fact. A successful processing-only Run has complete Results for its
 plan and reporting is not applicable.
 
 A successful full Run invokes reporting after scientific Attempt completion

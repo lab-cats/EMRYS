@@ -1,11 +1,8 @@
 # Documentation structure tests
 
-[`test_validate_structure.py`](test_validate_structure.py) protects the
-read-only documentation structure gate in
-[`scripts/documentation/`](../../scripts/documentation/README.md).
-
-The suite seeds success without writes, exact-root and Git-inventory failures,
-canonical-owner and retired-surface failures, semantic-owner adjacency defects,
-missing or buried legacy-source warnings, premature legacy-source deletion,
-and malformed standalone Mermaid sources. It does not validate workflow
-computation, scientific artifacts, documentation prose, or general links.
+[`test_validate_structure.py`](test_validate_structure.py) checks the read-only
+[documentation checker](../../scripts/documentation/README.md) using temporary
+repositories. Cases cover successful checks without writes, invalid roots,
+Git-inventory failures, required documents and headings, stage identities and
+adjacent owners, local links and anchors, and standalone Mermaid syntax.
+These tests check document structure, not prose accuracy or workflow science.

@@ -1,25 +1,21 @@
-# Artifact-contract validator implementation owners
+# Artifact-contract implementation
 
-This private package supports the grouped
-`emrys validate artifact-contracts` route through private
-[`validator.py`](../validator.py) and the curated reporting
-[`api.py`](../api.py). The responsibility modules remain private to the
-artifact-contract owner.
+These private modules support [`validator.py`](../validator.py), the
+`emrys validate artifact-contracts` command, and the reporting [`api.py`](../api.py).
 
-| Module | Owned responsibility |
+| Module | Responsibility |
 | --- | --- |
-| [`definitions.py`](definitions.py) | Schema locations, vocabularies, and the shared validation-error identity. |
-| [`schema.py`](schema.py) | Closed-registry JSON/schema loading, deterministic diagnostics, and hashing. |
-| [`identity.py`](identity.py) | Run-contract hashing, explicit paths, unique identities, and attempt graphs. |
-| [`evidence.py`](evidence.py) | Computational status and evidence-reference semantics. |
-| [`artifact.py`](artifact.py) | Artifact-record semantic validation. |
-| [`report_receipt.py`](report_receipt.py) | Report-receipt semantic validation. |
-| [`inventory.py`](inventory.py) | Explicit inventory admission and record/run-summary reconciliation. |
-| [`run_summary_status.py`](run_summary_status.py) | Run-summary status reduction. |
-| [`run_summary_validation.py`](run_summary_validation.py) | Run-summary semantic validation. |
+| [`definitions.py`](definitions.py) | Schema paths, vocabularies, and the shared error type. |
+| [`schema.py`](schema.py) | Load registered JSON/schemas, hash bytes, and order diagnostics. |
+| [`identity.py`](identity.py) | Hash Run contracts and validate paths, identities, and Attempt graphs. |
+| [`evidence.py`](evidence.py) | Validate computational status and evidence references. |
+| [`artifact.py`](artifact.py) | Validate artifact-record meaning. |
+| [`report_receipt.py`](report_receipt.py) | Validate report-receipt meaning. |
+| [`inventory.py`](inventory.py) | Check declared inventories and their agreement with records/summaries. |
+| [`run_summary_status.py`](run_summary_status.py) | Combine artifact states into summary status. |
+| [`run_summary_validation.py`](run_summary_validation.py) | Validate run-summary meaning. |
 
-The curated API imports exact function objects from these responsibility
-owners and owns the live semantic dispatcher used by the grouped validator.
-The private validator retains argument selection and document orchestration.
-Private modules import the one `ContractValidationError` identity directly
-from `definitions.py`; there is no compatibility re-export layer.
+The API imports the same function objects and dispatches semantic validation;
+the command selects arguments and coordinates documents. Private modules import
+`ContractValidationError` directly from `definitions.py`, without compatibility
+re-exports.

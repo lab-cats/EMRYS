@@ -1,20 +1,11 @@
-# Partitioned cohort-mpileup stage tests
+# Partitioned cohort-mpileup tests
 
-This directory protects Step 07 manifest and selector admission, fake-bcftools
-execution, three-output publication and rollback, and validator reporting. The
-[stage owner](../../../src/emrys/stages/partitioned_cohort_mpileup/README.md)
-owns commands, promotion criteria, recovery, and exact evidence meaning.
+`test_producer.py` checks Step 07 manifests and selectors, streamed bcftools
+pipelines, unchanged inputs, interruption, and three-output publication with
+the receipt written last. It uses fake bcftools. Independent validator tests
+exercise the grouped command; private `validator.py` is not a direct command.
 
-`test_producer.py` protects the private Python producer, including streamed
-bcftools pipelines, stationary-input guards, interruption, and receipt-last
-publication. Validator tests remain independent of that producer.
-
-The retired shell suite's hard-coded primary/pilot configuration-count checks
-were not producer behavior and are not copied. Dataset promotion counts remain
-separate operational criteria rather than implementation-parity tests.
-
-Validator tests exercise the grouped package route; private `validator.py` is
-not a direct command.
-
-Local fake-tool outputs are mechanical mpileup evidence, not validated
-variants, editing sites, real bcftools, scheduler, cluster, or production proof.
+The [stage contract](../../../src/emrys/stages/partitioned_cohort_mpileup/CONTRACT.md)
+owns dataset-promotion criteria. The retired shell suite's fixed primary/pilot
+configuration counts were not producer behavior and are not copied here.
+Fixture VCFs are mechanical mpileup outputs, not validated variants or editing sites.

@@ -1,12 +1,10 @@
 # Current architecture
 
-EMRYS presents a small scientist-facing application over explicit scientific
-owners, immutable execution records, and independently inspectable evidence.
-This document is the conceptual map. Exact scientific identities and edges live
-in [`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md); exact import
-direction lives in
-[`SOURCE_TOPOLOGY.md`](../../src/emrys/contracts/SOURCE_TOPOLOGY.md); owner
-interfaces and failure behavior live beside their implementation.
+This map explains how EMRYS turns a scientific Analysis into an immutable Run
+and inspectable Results. The [stage map](../../src/emrys/contracts/STAGE_MAP.md)
+defines scientific steps and their dependencies; [source topology](../../src/emrys/contracts/SOURCE_TOPOLOGY.md)
+defines permitted imports. Each implementation's contract defines its exact
+interface and failure behavior.
 
 ## Public application model
 
@@ -28,10 +26,10 @@ inventory lives at `runtime/runtime.tsv`. EMRYS generates the lower-level
 records and workflow settings. Scientists do not have to author or transfer
 those implementation details.
 
-The deterministic two-word Run name is the normal selector and presentation.
-The content-derived Run ID remains canonical and appears in advanced views.
+The deterministic two-word Run name is used for ordinary selection and display.
+The content-derived Run ID remains authoritative and appears in advanced views.
 Reporting runs automatically after a successful full scientific Attempt unless
-disabled, and can be regenerated independently. It is not a scientific stage
+disabled, and can be requested independently. It is not a scientific stage
 and changes neither Run nor Attempt identity.
 
 ## Responsibility boundaries
@@ -53,9 +51,8 @@ not peer-private implementation.
 
 ## Scientist-facing workflow
 
-The built-in paired-CMH path groups fourteen semantic owners into nine readable
-phases. Numeric step labels are historical aliases, not the public experience or
-a complete dependency order. The
+The built-in paired-CMH path groups fourteen scientific owners into nine phases.
+Historical step numbers do not express the complete dependency order. The
 [`current_user_pipeline.mmd`](diagrams/current_user_pipeline.mmd) diagram is a
 non-authoritative visual projection.
 
@@ -98,8 +95,9 @@ and resume between completed tasks. Inspection reads those records and the
 owner evidence instead of guessing from timestamps, logs, scheduler state, or
 Snakemake's private files.
 
-After a successful full Attempt, reporting indexes the Analysis outputs and
-publishes the scientific and evidence/operations views together. The scientific
-view explains what was found, the evidence view explains why the output can be
-trusted, and the operations view explains how the Run proceeded. Scientific
-review and biological interpretation remain outside EMRYS.
+After a successful full Attempt, reporting publishes views of the findings,
+their input and validation evidence, and how execution proceeded. This evidence
+does not replace scientific review or biological interpretation. The
+[Run contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+defines exact lifecycle behavior; the [reporting owner](../../src/emrys/reporting/README.md)
+defines report admission and publication.

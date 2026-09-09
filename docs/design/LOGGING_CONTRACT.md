@@ -1,12 +1,11 @@
 # Application logging contract
 
-The neutral
-[application-logging owner](../../src/emrys/libraries/application_logging/README.md)
-provides concise operator output and a protected durable record without
-becoming computation, publication, recovery, or completion authority. The
-current source-import boundary is recorded in
-[`SOURCE_TOPOLOGY.md`](../../src/emrys/contracts/SOURCE_TOPOLOGY.md); accepted
-future changes live only in the [findings matrix](../tasks/backlog_matrix.md).
+Application logging gives operators concise progress messages and a protected
+record to inspect later. Logs do not decide computation, publication, recovery,
+or completion. This document defines shared behavior; the
+[logging library](../../src/emrys/libraries/application_logging/README.md)
+explains its API and [source topology](../../src/emrys/contracts/SOURCE_TOPOLOGY.md)
+defines which owners may import it.
 
 ## Ownership and adoption
 
@@ -41,7 +40,7 @@ open or append to the operation log.
   a Project root, it is `<repository-root>/logs/application`, derived from
   source/package identity rather than caller CWD. An explicit root is
   absolute.
-- A valid dry-run creates no log. Levels change projection only, never probes,
+- A valid dry-run creates no log. Levels change console output only, never probes,
   child flags, computation, artifacts, validation, locking, publication,
   rollback, cleanup, or exits.
 

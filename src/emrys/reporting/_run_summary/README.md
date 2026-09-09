@@ -1,59 +1,41 @@
-# Run-summary implementation owners
+# Run-summary implementation
 
-This private package implements the run-summary transaction used by the
-Run-level reporting coordinator and developer fixtures through
-[`builder.prepare_context`](builder.py) and
-[`publication.py`](publication.py). It has no installed public command or
-operator recovery route; these modules own bounded deterministic context,
-projection, and publication responsibilities beneath the coordinator.
+This private package turns validated artifact records into a deterministic
+computational summary. The Run reporting coordinator and developer fixtures
+call [`builder.prepare_context`](builder.py), then [`publication.py`](publication.py).
+There is no separate public command or operator recovery interface.
 
-| Module | Owned responsibility |
+| Module | Responsibility |
 | --- | --- |
-| [`builder.py`](builder.py) | `prepare_context`: retain admitted source/artifact roots and prepare the context. |
-| [`models.py`](models.py) | Constants, headers, errors, snapshots, paths, and build context. |
-| [`inputs.py`](inputs.py) | Explicit path guards and immutable file snapshots. |
-| [`transaction.py`](transaction.py) | Input transaction loading, history parsing, and stable value utilities. |
-| [`projection.py`](projection.py) | Computational status, summary-row, and QC-row projections. |
-| [`validation.py`](validation.py) | Canonical document, predecessor, and receipt validation. |
-| [`document.py`](document.py) | Canonical deterministic run-summary document assembly. |
-| [`publication.py`](publication.py) | Receipt-last publication, rollback, recovery, and published-output validation. |
+| [`builder.py`](builder.py) | Prepare inputs and retain validated source/artifact roots. |
+| [`models.py`](models.py) | Constants, headers, errors, snapshots, paths, and context values. |
+| [`inputs.py`](inputs.py) | Check explicit paths and snapshot immutable files. |
+| [`transaction.py`](transaction.py) | Read input transactions and history; provide stable value helpers. |
+| [`projection.py`](projection.py) | Derive computational status, summary rows, and QC rows. |
+| [`validation.py`](validation.py) | Validate documents, predecessors, and receipts. |
+| [`document.py`](document.py) | Assemble the canonical run-summary document. |
+| [`publication.py`](publication.py) | Publish receipt last; handle rollback, recovery, and output checks. |
 
-The package is not an additional supported command surface. Context preparation
-and publication recheck share the same validated artifact transaction.
-Document assembly selects the schema from the admitted Analysis form: existing
-flat paired-CMH Runs retain run-summary v2, while explicit modules use
-module-neutral run-summary v3. V3 carries the analysis-policy path, SHA-256,
-and size without paired-CMH candidate terminology; it does not weaken the
-artifact predecessor or transaction checks.
-Artifact-index parsing, validation, serialization, and shared transaction primitives enter through the narrow
-private [`_artifact_index/api.py`](../_artifact_index/api.py) boundary rather
-than artifact-index context preparation. `builder.prepare_context` receives
-the neutral checkout and artifact-root values defined by
-[`libraries/source_authority.py`](../../libraries/source_authority.py).
-Production callers admit both explicit roots before preparation reads inputs.
-Package identity is checked during checkout admission; Git observations ignore
-ambient `GIT_*` routing while preserving unrelated environment state.
+Preparation and publication rechecks use the same validated artifact transaction.
+Parsing, serialization, and shared transaction helpers come through the private
+[`_artifact_index/api.py`](../_artifact_index/api.py), without invoking artifact
+context preparation. Both roots remain on `BuildContext` under the common
+[source/artifact rules](../README.md#source-and-artifact-roots); publication uses
+them for input and output checks without inferring or validating new roots.
 
-Both admitted values remain on `BuildContext`. The artifact root governs
-contract-relative artifact intake and document-semantic and predecessor validation; the
-checkout governs producer Git identity. Publication retains both for input
-rechecks and post-publication validation; it does not re-admit or infer a root.
-Preparation and read-only validation retain predecessor and historical receipt
-admission. Publication follows the shared
-[publication and recovery contract](../README.md#publication-and-recovery).
+Document assembly uses the Analysis form: flat paired-CMH keeps run-summary v2;
+explicit modules use v3, with analysis-policy path, SHA-256, and size rather than
+paired-CMH fields. This changes neither predecessor nor transaction checks.
+Preparation and read-only validation still accept supported history;
+[publication](../README.md#publication-and-recovery) requires absent outputs.
 
-The frozen `RunSummaryBuildDeps` record remains the preparation seam for
-input loading, producer identity, document construction, and the final input
-recheck. Production uses immutable defaults; preparation tests pass explicit
-modified values. Publication fault tests patch the real called functions as
-described in the shared [test boundary](../README.md#implementation-and-fault-tests).
+The frozen `RunSummaryBuildDeps` supplies input loading, producer identity,
+document construction, and the final input recheck. Production uses immutable
+defaults; [tests](../../../../tests/reporting/README.md#fault-injection) provide
+explicit replacements. Public [`transaction_validation`](../transaction_validation.py)
+owns semantic input rechecks for preparation, publication, lifecycle, and inspection;
+the private publisher exposes no second interface.
 
-The public read-only
-[`reporting.transaction_validation`](../transaction_validation.py) owner owns
-the semantic input recheck used by preparation, publication, lifecycle, and
-inspection. The private publication module exposes no parallel recheck facade.
-
-All three private reporting transactions reuse the same artifact contract and error
-identities. The summary consumes validated computational artifact records. It
-does not encode candidate review, adjudication, biological interpretation, an
-approver gate, or a scientific-completion state.
+All three reporting transactions share artifact contracts and error identities.
+The summary records computational state, not candidate review, adjudication,
+biological interpretation, approver gates, or scientific completion.

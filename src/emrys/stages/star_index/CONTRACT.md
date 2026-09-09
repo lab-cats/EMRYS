@@ -7,12 +7,8 @@ surface.
 
 ## Responsibility
 
-Construct a STAR genome index from one reference FASTA and its matching GTF
-annotation, then allow that index to be checked without modifying the native
-reference or STAR outputs.
-
-The producer consumes already materialized references. Reference materialization
-is outside this owner.
+The [README](README.md) explains index construction and use. References must
+already exist; this owner does not materialize or select them.
 
 ## Execution dependencies
 
@@ -21,10 +17,6 @@ stage does not consume BED12, FASTA sidecars, reads, or outputs from another
 computational stage. BED12 and FASTA-sidecar construction may run in parallel
 from the same materialized references. STAR alignment may run after the STAR
 index is complete and receives the index through its explicit input.
-
-STAR-index, BED12, and FASTA-sidecar construction can branch from their shared
-materialized references. Historical numeric order records provenance; data
-dependencies define execution.
 
 ## Inputs
 

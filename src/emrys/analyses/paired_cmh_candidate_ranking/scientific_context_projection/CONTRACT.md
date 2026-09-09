@@ -7,11 +7,7 @@ order does not define the owner.
 
 ## Responsibility and non-goals
 
-The owner consumes the exact Step `09` all-sites, significant-sites, and
-summary tables plus one indexed reference and the repository-tracked PUM motif
-catalog. It publishes candidate sequence context, every exact motif hit,
-position-frequency values, and descriptive/inferential motif statistics for
-deterministic report rendering.
+The [README](README.md) introduces inputs, outputs, and use.
 
 It never opens a BAM/CRAM/VCF, recounts alleles, changes a Step `09` test or
 call, performs de novo motif discovery, chooses a transcript isoform, infers

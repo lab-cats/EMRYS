@@ -6,11 +6,12 @@ owns the goals; this file owns CS scope, status, decisions, and proof. The
 
 ## Working queue
 
-**Current work: CS-16**, the approved documentation tranche. Shorten and clarify
-the complete setup/configuration/runtime/recovery guidance, including its
-operator and developer routes. Update these planning documents with the result
-in the same PR. CS-17 keeps the remaining scientific and owner documentation
-in the queue; completing these operator guides does not close that work.
+**CS-16/17 implemented; final PR verification pending.** The documentation
+tranche in [PR #151](https://github.com/lab-cats/EMRYS/pull/151) reviewed all 169
+tracked Markdown files for clear responsibility and readable language.
+Misplaced instructions, shared rules, and known defects now live with their
+existing owners; source-to-destination review checked the transfers. Frozen
+historical evidence and legal text remain exact source records.
 
 **Larger code work:** CS-01/02 address task and report construction; CS-18
 addresses repeated scientific-producer lifecycles and code comprehension.
@@ -58,9 +59,8 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-13](#cs-13-runtime-profile-construction) | Remove the redundant RuntimeCheck field-copy construction in onboarding. | Opportunistic | 1 | 2 | Use standard dataclass replacement only after field/order/admission comparison; approximately 11–20 lines. | `COMPRESS-01` |
 | [CS-14](#cs-14-paired-cmh-configuration) | Let the existing module normalizer own equivalent newly admitted paired-CMH configuration. | Needs qualification | 2 | 4 | First prove canonical values/errors equivalent; a changed public form or policy needs a separate decision. Retain historical semantics. | `COMPRESS-01` |
 | [CS-15](#cs-15-reporting-tsv-grammar) | Retire both reporting CSV engines through the existing strict TSV owner. | Needs decision | 2 | 3 | Agree accepted grammar and diagnostic precedence; stop if a configurable compatibility adapter is required. | `COMPRESS-01` |
-
-| [CS-16](#cs-16-operator-and-developer-documentation) | Shorter, complete operator/developer guidance in plain language. | Verification pending | 5 | 3 | Guides rewritten and consolidated; local documentation checks pass; PR verification remains. | `COMPRESS-01` |
-| [CS-17](#cs-17-scientific-and-owner-documentation) | Consolidate and explain remaining scientific/owner documentation. | Ready | 5 | 4 | Select one complete subject across guides, contracts, examples, and docstrings. | `COMPRESS-01` |
+| [CS-16](#cs-16-operator-and-developer-documentation) | Complete operator/developer guidance with clear ownership and plain language. | Verification pending | 5 | 3 | Guides consolidated; local checks pass. The expanded PR awaits final hosted verification. | `COMPRESS-01` |
+| [CS-17](#cs-17-scientific-and-owner-documentation) | Consolidate and explain remaining scientific/owner documentation. | Verification pending | 5 | 4 | Full Markdown review and verified transfers complete; local checks pass. Final hosted verification remains. | `COMPRESS-01` |
 | [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | Needs qualification | 4 | 4 | Inspect Step 07/08/09 semantics and overlapping work; propose substantial removal before implementation. | `OPS-03` |
 
 ## Acceptance shared by every card
@@ -317,26 +317,35 @@ contract now separate procedures, fields/examples, and exact selection rules.
 General recovery lives in troubleshooting. Resource groups and QoS are explained;
 managed/institutional/Slurm routes, commands, checkpoints, and examples survive.
 
-The same change restores campaign scope, shortens repeated planning prose, and
-records PR #150's verified outcomes. Documentation structure and its 12 existing
-regression checks pass; original fenced examples and headings are preserved.
-Independent review checked meaning and retained decisions. No product, test,
-configuration, or evidence file changes; no fresh-install or site walkthrough
-was performed. CI on the published documentation remains pending.
+The same change restores campaign scope and records PR #150's verified
+outcomes. Documentation structure and its 12 existing regression checks pass;
+every original fenced example survives, including procedures moved between
+owners. Independent review checked meaning, exceptions, and retained decisions.
+No product, test, configuration, tooling, or retained-evidence files change.
+The initial PR head `308f74d6` passed ordinary CI in
+[run 34312997206](https://github.com/lab-cats/EMRYS/actions/runs/34312997206).
+The expanded final documentation needs its own hosted verification; no
+fresh-install, scientific, or institutional-site walkthrough was performed.
 
 ### CS-17 Scientific and owner documentation
 
-**Ready for bounded selection.** Apply the same compression and language work
-to the remaining architecture/reference guides, Analysis/stage READMEs and
-contracts, and module docstrings. Cover scientific interpretation, extension
-examples, directory/schema orientation, and configuration examples including
-QoS. Explain purpose and inputs before internal names; keep exact cross-language
-contracts beside their owners and numerical meaning with the scientific guide.
+**Implemented with CS-16; final PR verification pending.** All 169 tracked
+Markdown files were reviewed, covering architecture/design/reference,
+Analysis/stage contracts, source/schema guides, tests/fixtures, tooling,
+workflow, and planning. Clear files were retained without cosmetic rewrites;
+frozen evidence, legal text, schema identities, and scientific numerical rules
+remain intact. Module docstrings belong to the idiomatic-code work in CS-18.
 
-Select and complete one whole subject across its documents and callers at a
-time. Preserve useful decisions and examples before retiring duplicate text;
-never strip orientation merely to shorten a file. CS-16 does not close this
-family, and a formatter or isolated rename does not satisfy comprehension.
+Owner READMEs explain purpose, inputs, outputs, and use; contracts keep exact
+behavior and exceptions. Shared reporting-root and output rules moved to the
+[reporting owner](../../src/emrys/reporting/README.md); fixture evidence limits
+to the [test guide](../../tests/README.md#evidence-limits); coverage-update
+commands to [Engineering](../operations/ENGINEERING_CONVENTIONS.md#development-validation).
+Publication and artifact-version defects formerly stranded in planning now
+live beside their implementation, while proposals and acceptance stay here or
+in the polish campaign. Review verified transfers and restored the explicit
+Step 08 serial-processing constraint. Local and hosted evidence is recorded
+under CS-16 above; this does not complete the larger code campaign.
 
 ### CS-18 Idiomatic scientific-producer implementation
 
@@ -489,13 +498,9 @@ consolidation was not selected.
 
 ### Artifact CLI document-version admission
 
-**Characterized defect.** The earlier local production-path reproduction
-established that current module run-summary v3 and report-receipt v5 pass
-their explicit schemas but fail the unversioned artifact CLI. The default
-`schema_errors` call in
-[`schema.py`](../../src/emrys/contracts/artifacts/_artifact_contracts/schema.py)
-does not select the document's version, although `schema_validator`
-already supports the closed versioned schema map.
+**Characterized defect.** The artifact owner's [known CLI version limit](../../src/emrys/contracts/artifacts/README.md#known-cli-version-limit)
+records the current/default schema mismatch, source selection, and prior local
+production-path reproduction. This card owns the proposed correction.
 
 **Proposed correction, not selected.** For an object document, pass its declared version
 through the existing schema selection owner. Reuse the resulting ordered
@@ -688,7 +693,8 @@ The implemented scope includes:
   and documenting surviving recovery limits; and
 - [direct create-only reporting publication](../design/decisions/execution-evidence-and-reporting.md#reporting-lifecycle-compression)
   in PR #147, retiring the three publishers' predecessor lifecycle, six callback
-  carriers, and HTML facade. The logical producer identifier, historical
+  carriers, and HTML facade (386 net product lines removed, as recorded for that slice).
+  The logical producer identifier, historical
   read/preparation paths, source admission, and ownership-proved recovery remain.
   Its subsequent test consolidation retired approved redundant or obsolete
   cases while retaining distinct scientific, historical, and recovery oracles.

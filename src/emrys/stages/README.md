@@ -1,5 +1,9 @@
 # Transformation-stage owners
 
+These stages prepare references and reads for downstream analysis. Each guide
+explains what its stage consumes and produces; its adjacent contract defines
+exact validation, publication, and recovery behavior.
+
 | Step | Owner |
 | --- | --- |
 | `00a` | [`construct_STAR_index`](star_index/README.md) |
@@ -13,8 +17,23 @@
 | `07` | [`generate_partitioned_cohort_mpileup_VCFs`](partitioned_cohort_mpileup/README.md) |
 | `08` | [`preprocess_and_annotate_cohort_candidates`](cohort_candidate_preprocessing/README.md) |
 
-[`STAGE_MAP.md`](../contracts/STAGE_MAP.md) owns semantic identities and edges;
-adjacent `CONTRACT.md` files own exact behavior. Evidence operations `02b` and
-`03` live under [`evidence/`](../evidence/README.md), and downstream analyses
-under [`analyses/`](../analyses/README.md). Slurm placement and whole-Run
-lifecycle belong to the run coordinator rather than owner-local wrappers.
+Step numbers are historical identifiers, not instructions to run every stage
+in numeric order. Explicit inputs determine readiness; for example, STAR index,
+BED12, and FASTA-sidecar construction can branch from the same existing
+references. The [stage map](../contracts/STAGE_MAP.md) owns those identities and
+dependencies. Evidence operations `02b` and `03` live under
+[`evidence/`](../evidence/README.md); downstream methods live under
+[`analyses/`](../analyses/README.md).
+
+## Running a stage
+
+For normal processing, use `emrys run` and the supported `resume` route in the
+[Runbook](../../../docs/operations/RUNBOOK.md#project-and-run-operations).
+The Run coordinator prepares the declared inputs, runtime, and task commands.
+It also owns Slurm submission and recovery; stages do not need separate
+scheduler wrappers.
+
+Standalone shell producers and grouped validators are specialist interfaces.
+Their READMEs show how to inspect arguments, and their contracts distinguish
+preview, execute, existing-output handling, and failed-state recovery. A native
+output or passing structural check does not create an admissible Run.

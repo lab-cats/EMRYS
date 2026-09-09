@@ -9,14 +9,13 @@ repository-path command.
 
 ## Responsibility
 
-Run samtools quickcheck and flagstat against one declared canonical BAM and
-persist their native text evidence for validation, artifact indexing, summary,
-and reporting consumers. The operation does not transform the BAM or gate a
-later computational stage in the current executable graph.
+The [README](README.md) explains the QC operation and use. It records native
+quickcheck/flagstat evidence without transforming the BAM or gating later
+computation.
 
 ## Execution dependencies
 
-The hard data prerequisite is one explicit BAM plus an adjacent index found as
+The required input is one explicit BAM plus an adjacent index found as
 either `<bam>.bai` or `<bam-with-.bam-removed>.bai`. Historical Step `02` is
 the normal producer, but this operation accepts any explicit BAM satisfying
 the shallow path contract and does not consume a Step `02` validation report.
@@ -30,9 +29,6 @@ the Step `02` validator, historical Step `03`, and historical Step `04`.
 No computational stage consumes Step `02b` outputs. A same-sample Step `02`
 replacement or another Step `02b` attempt must not overlap this operation
 because current readers and writers share no lock or immutable snapshot.
-
-Historical numeric order records provenance; the explicit BAM input defines
-execution readiness.
 
 ## Inputs
 
@@ -89,21 +85,13 @@ including failures before a link helper returns.
 
 ## Current execution surfaces
 
-[`step_02b_bam_qc.sh`](step_02b_bam_qc.sh) is the public
-producer entrypoint. It:
-
-- creates no output directory in dry-run mode;
-- validates path presence and samtools availability;
-- is dry-run by default and requires `--execute` to invoke samtools;
-- without `--no-clobber`, writes each command's stream directly to its final
-  output path;
-- silently truncates or replaces an existing same-named file; and
-- preserves quickcheck failure diagnostics as a final-path artifact.
-
-That historical route has no lock, staged pair, stable-input recheck, receipt,
-or output-set validation. A quickcheck or flagstat failure can leave a partial
-or cross-attempt evidence set, especially when an older sibling file already
-exists.
+The [shell producer](step_02b_bam_qc.sh) checks paths and samtools availability.
+Dry-run creates no output directory and invokes no samtools. Execute without
+`--no-clobber` writes streams directly to final paths, silently replacing any
+same-named files and retaining quickcheck failure diagnostics there. This
+historical route has no lock, staging, input recheck, receipt, or output-set
+validation. Failure can leave partial or cross-attempt evidence, especially
+when an older sibling file remains.
 
 ## Validation interface
 
@@ -159,9 +147,6 @@ make it a prerequisite for later computation.
 Repository tests protect this contract under the shared
 [evidence ceiling](../../../../tests/README.md).
 
-The adjacent BAI remains an admission prerequisite although neither command
-uses or validates it. Producer zero-exit quickcheck output is preserved, but
-the validator and artifact adapter accept only the synthetic empty-success
-marker. The unsafe legacy direct route remains exactly as described above;
-immutable Run task records supply wider input, tool, attempt, and output
-identity for the no-clobber route.
+The index-admission gap, quickcheck mismatch, and unsafe direct-write route
+remain as described above. Immutable Run task records supply the wider input,
+tool, attempt, and output identity for the no-clobber route.

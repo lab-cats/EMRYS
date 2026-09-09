@@ -1,16 +1,16 @@
 # EMRYS: Epic Molecular Read Yield System
 
-EMRYS is an evidence-bound RNA-seq workflow for reference preparation,
-paired-read alignment and QC, cohort candidate generation, modular analysis,
-and static reporting. Its public model is:
+EMRYS processes paired-end RNA-seq data from reference preparation and quality
+checks through candidate ranking and HTML reports. It records which inputs,
+software, and checks produced each result. Work is organized as:
 
 ```text
 Project -> named Analysis -> immutable Run -> Results
 ```
 
 A Project references an explicit Dataset and Reference. Each Analysis selects
-its cohort, regions, method, and scientific policy. A Run freezes that admitted
-content and its execution policy; retrying creates an Attempt rather than
+its samples, regions, method, and scientific settings. A Run freezes those
+validated choices and its execution settings; retrying creates an Attempt rather than
 changing the Run. Results and their provenance remain together beneath the Run.
 
 EMRYS is alpha research software, not a clinical or diagnostic system. Its
@@ -29,8 +29,8 @@ Scientific review and interpretation remain outside the pipeline.
 | Analysis | Rank candidates with paired CMH and project sequence/motif context. |
 | Reporting | Index admitted artifacts and publish scientific and evidence/provenance HTML views. |
 
-BAM QC and orientation inspection are required leaves; they do not gate
-downstream scientific computation. Installed collaborator modules may replace
+BAM QC and orientation inspection are required checks, but downstream
+scientific tasks do not depend on their completion. Installed collaborator modules may replace
 the downstream Analysis while retaining EMRYS's Run, validation, recovery,
 logging, Results, and reporting boundaries. See the
 [analysis-module contract](src/emrys/analyses/README.md).
@@ -41,7 +41,7 @@ the [runbook's reuse procedure](docs/operations/RUNBOOK.md#reusable-processing).
 
 ## Supported environment
 
-- Linux/POSIX with Python 3.11 or newer and the admitted scientific runtime.
+- Linux/POSIX with Python 3.11 or newer and a verified scientific runtime.
 - One Snakemake local executor, either directly on one host or inside one Slurm
   allocation on one compute node. EMRYS is not a distributed backend and must
   not run scientific work on a cluster login node.
@@ -50,15 +50,15 @@ the [runbook's reuse procedure](docs/operations/RUNBOOK.md#reusable-processing).
 - Inputs and Projects outside the source checkout. EMRYS owns each Project's
   `runs/`, `logs/`, and `runtime/` directories but leaves source data in place.
 
-`emrys doctor` diagnoses without mutation. Managed dependency repair currently
+`emrys doctor` checks readiness without changing files. Managed dependency repair currently
 supports x86-64 Linux and requires installed `uv` and Pixi. It delegates
 dependency work to `uv`, Pixi, and `renv` within declared EMRYS-owned locations;
-an existing site environment is admitted through runtime discovery. EMRYS does
+runtime discovery checks and records an existing site environment. EMRYS does
 not download scientific inputs, force retries, delete uncertain locks, or
 repair result artifacts.
 
-Readiness is bounded admission evidence, not a storage, performance, scheduler,
-scientific-review, or biological claim. Capacity depends on the reference,
+Passing readiness checks does not establish performance, institutional storage
+or scheduler behavior, scientific review, or biological validity. Capacity depends on the reference,
 reads, and selected regions; plan for the STAR index and multiple BAM
 generations per sample.
 

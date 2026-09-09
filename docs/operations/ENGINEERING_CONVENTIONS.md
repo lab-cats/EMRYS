@@ -88,6 +88,19 @@ work normally needs `git diff --check`, `make -s documentation-check`, and a
 review of the changed-file list. Report exactly which checks ran; a focused
 pass is not evidence that the full gate passed.
 
+Update a coverage baseline only as an explicit, reviewed maintenance change.
+Follow the [coverage policy](../design/TEST_BASELINE.md#python-coverage-policy),
+check the current result, update the snapshot, inspect its diff, and check again:
+
+```bash
+make python-coverage-check
+make python-coverage-baseline-update
+git diff -- tests/baselines/python_coverage.json
+make python-coverage-check
+```
+
+A passing test suite alone does not justify weaker coverage requirements.
+
 ## Slurm and reporting
 
 The [coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md)

@@ -1,34 +1,26 @@
 # R environment metadata
 
-`renv/` contains the guarded, opt-in project-local R environment metadata. It
-is repository dependency lifecycle state, not a workflow stage.
+`renv/` holds the opt-in project R environment metadata: `activate.R`,
+`settings.json`, and the local ignore rules. [`renv.lock`](../renv.lock) is the
+package lock. Activation requires `EMRYS_USE_RENV=1`; restored libraries, caches,
+staging, and sandbox files remain ignored.
 
-Tracked files are `activate.R`, `settings.json`, this README, and the local
-ignore policy; the canonical package lock is [`../renv.lock`](../renv.lock).
-Project activation occurs only when `EMRYS_USE_RENV=1`. Local libraries,
-caches, staging, sandbox, and related restored state remain ignored.
+## Package sources and restoration
 
-## Restoration and cleanup
-
-Restoration is an explicit operator action. Use the
-[dependency-maintenance procedure](../docs/operations/RUNBOOK.md#dependency-maintenance)
-rather than editing the library, activation script, settings, or lockfile to
-silence drift. Do not blanket-clean `renv/library/` or other ignored dependency
-state: it may be required for local validation and can be expensive to restore.
-Local environment checks do not establish cluster or production runtime proof.
-
-The repository policy is fixed: Bioconductor 3.23 packages are resolved through
-`https://bioc-release.r-universe.dev`, CRAN packages through
-`https://cloud.r-project.org`, and every locked Bioconductor package record uses
-canonical `Source: Bioconductor`, `RemoteType: bioconductor`, and
+Bioconductor 3.23 packages resolve through
+`https://bioc-release.r-universe.dev`; CRAN packages use
+`https://cloud.r-project.org`. Locked Bioconductor records use canonical
+`Source: Bioconductor`, `RemoteType: bioconductor`, and
 `Repository: Bioconductor 3.23` metadata.
 
-`make r-restore` and explicit managed `emrys doctor --repair` both use the
-repository's R restoration script; workflow execution never installs packages.
-For operator-owned restoration, point `RENV_PATHS_LIBRARY` at your library root
-and run `make r-restore` with the explicit R 4.6.1 executable. Doctor instead
-selects its Project-owned managed library. After operator-owned restoration,
-pass the exact existing platform library as `RENV_LIBRARY` to `make r-check`.
-The check selects that
-library without running the renv autoloader, changes no dependencies, and fails
-on any lock, version, or library-identity drift.
+`make r-restore` and managed `emrys doctor --repair` use the same restoration
+script; Doctor selects its Project-owned library. Workflow execution never
+installs packages. For an operator-owned library, follow the
+[runbook procedure](../docs/operations/RUNBOOK.md#dependency-maintenance), including
+R 4.6.1, `RENV_PATHS_LIBRARY` for restoration, and the exact platform-specific
+`RENV_LIBRARY` for checking. The check bypasses the renv autoloader, changes no
+dependencies, and rejects lock, version, or library-identity drift.
+
+Do not edit locks or activation settings to hide drift, or blanket-clean ignored
+libraries: local validation may depend on them and restoration can be expensive.
+A local environment check does not qualify a cluster or production runtime.

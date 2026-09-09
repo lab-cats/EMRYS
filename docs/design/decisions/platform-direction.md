@@ -1,8 +1,8 @@
 # Architecture rationale
 
-The scientific core is considerably simpler than the software surrounding it.
-EMRYS therefore compresses its operational surface while preserving scientific
-reviewability, provenance, recovery, and honest evidence claims.
+Operational code should make the scientific workflow easier to run and review.
+Keep that code small and understandable while preserving provenance, recovery,
+and accurate evidence claims.
 
 ## Protect behavior before structural change
 
@@ -207,4 +207,5 @@ latest Run, second Results root, or Run Bundle.
 
 Current package ownership and public routes are summarized in the
 [`architecture index`](../../architecture/README.md). The
-[`findings matrix`](../../tasks/backlog_matrix.md) is the only work backlog.
+[`findings matrix`](../../tasks/backlog_matrix.md) routes accepted work to its
+authoritative backlog.
