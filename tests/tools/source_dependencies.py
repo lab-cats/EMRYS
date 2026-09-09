@@ -90,6 +90,7 @@ COMPOSITION_SEAMS: tuple[tuple[str, str], ...] = (
     ("CLI-SEAM-026", "emrys.stages.split_n_cigar.validator"),
     ("CLI-SEAM-027", "emrys.stages.star_alignment.validator"),
     ("CLI-SEAM-028", "emrys.stages.star_index.validator"),
+    ("CLI-SEAM-029", "emrys"),
 )
 
 # (stable audit ID, exact source path, exact target, violated durable rule).
