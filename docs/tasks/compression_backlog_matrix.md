@@ -6,7 +6,7 @@ owns the goals; this file owns CS scope, status, decisions, and proof. The
 
 ## Working queue
 
-**Current work: CS-03, combined artifact indexing and summary generation.**
+**Current work: [PR #154](https://github.com/lab-cats/EMRYS/pull/154), combined artifact indexing and summary generation (CS-03).**
 The approved tranche retires the second publisher and intermediate disk handoff,
 updates all reporting readers and inspection, and keeps HTML separate. Focused
 checks pass; the card below owns acceptance and pending hosted verification.
@@ -189,7 +189,7 @@ and retained evidence are unchanged.
 
 ### CS-03 Reporting transaction layout
 
-**Verification pending; combined index/summary publication approved 2026-09-09.**
+**Verification pending in [PR #154](https://github.com/lab-cats/EMRYS/pull/154); approved 2026-09-09.**
 The earlier shared-path sketch at `0c909f12` was retained because roughly 16
 helper lines merely replaced 16 caller lines. The new scope changes the
 responsibility itself: one existing index publisher owns the index and summary.
@@ -224,6 +224,12 @@ Ruff, ShellCheck, dead-code checks, documentation, imports, compilation, manifes
 and sharder checks. The discarded summary publication suite repeats the retained
 combined publisher's protections; scientific projections, historical identity,
 corruption, and golden evidence remain. Hosted CI is still required for closeout.
+
+Implementation is committed at `9e8eafba`, stacked on PR #153 at `cab77a26`.
+Product code is +560/−1310 (net −750), tests/constructors +361/−1241 (−880),
+and developer tooling −12. Two product files retire and none are added.
+The existing reporting-start schema grows four lines; retained evidence and
+dependencies are unchanged. Documentation is accounted separately in the PR.
 
 ### CS-04 Reporting memory control
 
