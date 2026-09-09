@@ -6,18 +6,21 @@ owns the goals; this file owns CS scope, status, decisions, and proof. The
 
 ## Working queue
 
-**CS-16/17 implemented; final PR verification pending.** The documentation
-tranche in [PR #151](https://github.com/lab-cats/EMRYS/pull/151) reviewed all 169
-tracked Markdown files for clear responsibility and readable language.
-Misplaced instructions, shared rules, and known defects now live with their
-existing owners; source-to-destination review checked the transfers. Frozen
-historical evidence and legal text remain exact source records.
+**Current work: [PR #152](https://github.com/lab-cats/EMRYS/pull/152).**
+The approved production tranche removes repeated report-table handling (CS-19),
+R table bookkeeping (CS-18), and planning/graph admission (supporting CS-01).
+Each implemented responsibility is net negative; final hosted verification is
+pending. No test cases, product files, schemas, or dependencies were added.
 
-**Larger code work:** CS-01/02 address task and report construction; CS-18
-addresses repeated scientific-producer lifecycles and code comprehension.
-Those cards need complete implementation proposals before code changes.
-CS-05 remains excluded. CS-08–10 and CS-12–15 are supporting opportunities,
-not the next substantial tranche; their unresolved behavior decisions remain.
+The broader shared processing definition in CS-01/02 remains unqualified.
+The publication prototype in CS-18 was rejected after preserving recovery
+left only 44 net lines removed; it is absent from the PR. A larger publication
+retirement needs a separate decision about standalone replacement. CS-05 stays
+excluded, and the dashboard stays until its replacement is validated.
+
+CS-16/17 are Done in PR #151 at `76acb9c5`, with all ordinary checks passing in
+[run 34314490868](https://github.com/lab-cats/EMRYS/actions/runs/34314490868).
+Master integration remains pending.
 
 CS-04/06/07 passed ordinary hosted CI in [PR #150](https://github.com/lab-cats/EMRYS/pull/150)
 at `f3a3966f`: [run 34310143034](https://github.com/lab-cats/EMRYS/actions/runs/34310143034).
@@ -44,7 +47,7 @@ they are rough selection aids, not measured benefit or implementation approval.
 
 | ID | Finite outcome / production owner | Status | Importance | Complexity | Next action / dependency | Parent |
 |---|---|---|---:|---:|---|---|
-| [CS-01](#cs-01-processing-materialization) | Derive one processing owner's command and dispatch from existing admitted facts. | Needs qualification | 4 | 4 | Trace one complete profile → task → producer path; deliver a net-negative draft or retain rationale. | `COMPRESS-01` |
+| [CS-01](#cs-01-processing-materialization) | Derive one processing owner's command and dispatch from existing admitted facts. | Needs qualification | 4 | 4 | PR #152 removes duplicate planning/admission code; a single processing definition across profile, workflow, and reporting remains unqualified. | `COMPRESS-01` |
 | [CS-02](#cs-02-processing-report-adapters) | Remove equivalent processing-adapter declarations from artifact-index reporting. | Needs qualification | 4 | 4 | Identify missing metadata and its existing owner; stop if a parallel registry is needed. | `REPORT-ROSTER-01` |
 | [CS-03](#cs-03-reporting-transaction-layout) | Consolidate only equivalent reporting-layout declarations. | Retained | 4 | 3 | The complete minimal shared-owner sketch is approximately neutral after plumbing; no code change qualified. Reopen only with a concrete larger equivalent duplication. | `REPORT-ROSTER-01` |
 | [CS-04](#cs-04-reporting-memory-control) | Remove the ineffective active reporting-memory control and its transport. | Done | 3 | 4 | PR #150: new inputs rejected, historical records/hashes preserved; focused and ordinary hosted checks passed. | `REPORT-ROSTER-01` |
@@ -59,9 +62,10 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-13](#cs-13-runtime-profile-construction) | Remove the redundant RuntimeCheck field-copy construction in onboarding. | Opportunistic | 1 | 2 | Use standard dataclass replacement only after field/order/admission comparison; approximately 11–20 lines. | `COMPRESS-01` |
 | [CS-14](#cs-14-paired-cmh-configuration) | Let the existing module normalizer own equivalent newly admitted paired-CMH configuration. | Needs qualification | 2 | 4 | First prove canonical values/errors equivalent; a changed public form or policy needs a separate decision. Retain historical semantics. | `COMPRESS-01` |
 | [CS-15](#cs-15-reporting-tsv-grammar) | Retire both reporting CSV engines through the existing strict TSV owner. | Needs decision | 2 | 3 | Agree accepted grammar and diagnostic precedence; stop if a configurable compatibility adapter is required. | `COMPRESS-01` |
-| [CS-16](#cs-16-operator-and-developer-documentation) | Complete operator/developer guidance with clear ownership and plain language. | Verification pending | 5 | 3 | Guides consolidated; local checks pass. The expanded PR awaits final hosted verification. | `COMPRESS-01` |
-| [CS-17](#cs-17-scientific-and-owner-documentation) | Consolidate and explain remaining scientific/owner documentation. | Verification pending | 5 | 4 | Full Markdown review and verified transfers complete; local checks pass. Final hosted verification remains. | `COMPRESS-01` |
-| [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | Needs qualification | 4 | 4 | Inspect Step 07/08/09 semantics and overlapping work; propose substantial removal before implementation. | `OPS-03` |
+| [CS-16](#cs-16-operator-and-developer-documentation) | Complete operator/developer guidance with clear ownership and plain language. | Done | 5 | 3 | PR #151 passed ordinary CI at `76acb9c5`; integration pending. | `COMPRESS-01` |
+| [CS-17](#cs-17-scientific-and-owner-documentation) | Consolidate and explain remaining scientific/owner documentation. | Done | 5 | 4 | All 169 Markdown files reviewed; PR #151 passed ordinary CI at `76acb9c5`. | `COMPRESS-01` |
+| [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | Needs qualification | 4 | 4 | R table builders reduced in PR #152; publication draft rejected. Larger lifecycle removal requires a replacement-policy decision. | `OPS-03` |
+| [CS-19](#cs-19-scientific-report-table-handling) | Use one admitted table representation across scientific report consumers. | Verification pending | 4 | 3 | PR #152: canonical results reused, all streaming/display callers migrated; focused checks pass, hosted verification pending. | `COMPRESS-01` |
 
 ## Acceptance shared by every card
 
@@ -96,6 +100,21 @@ formatting makes the older line references and counts historical. Refresh
 only the selected touched vertical before implementation.
 
 ### CS-01 Processing materialization
+
+**Supporting implementation in PR #152; broader outcome remains open.**
+Planning now constructs its path inventory directly, passes its existing
+validation path to command construction, and shares the existing ordered flag
+serializer with paired-CMH planning. The workflow uses the task owner's dispatch
+parser and resource owner's persisted-policy reader instead of parallel checks.
+This removes 187 product lines, including 86 from the Snakefile, with no test
+changes. Sixteen focused tests passed; temporary differential checks on 17
+existing tests compared 25 complete dispatch/path/directory sets with `76acb9c5`,
+including current and historical plans. Final hosted verification is pending.
+
+This does not consolidate the static processing profile, named workflow rules,
+and reporting adapters into one descriptor. The current analysis interface
+cannot express processing scopes and multi-file artifacts without extension;
+a shared definition still needs qualification against the original scope below.
 
 [`materialization.py`](../../src/emrys/orchestration/run_coordinator/materialization.py)
 constructs commands, inputs, outputs, resources, and dispatches from the
@@ -311,7 +330,7 @@ a configurable compatibility parser or reopen paths to avoid this decision.
 
 ### CS-16 Operator and developer documentation
 
-**Implemented; PR verification pending.** The quickstart, Runbook,
+**Done in PR #151; integration pending.** The quickstart, Runbook,
 troubleshooting, configuration guide, engineering guide, and Run-coordinator
 contract now separate procedures, fields/examples, and exact selection rules.
 General recovery lives in troubleshooting. Resource groups and QoS are explained;
@@ -322,14 +341,13 @@ outcomes. Documentation structure and its 12 existing regression checks pass;
 every original fenced example survives, including procedures moved between
 owners. Independent review checked meaning, exceptions, and retained decisions.
 No product, test, configuration, tooling, or retained-evidence files change.
-The initial PR head `308f74d6` passed ordinary CI in
-[run 34312997206](https://github.com/lab-cats/EMRYS/actions/runs/34312997206).
-The expanded final documentation needs its own hosted verification; no
-fresh-install, scientific, or institutional-site walkthrough was performed.
+The final head `76acb9c5` passed ordinary CI in
+[run 34314490868](https://github.com/lab-cats/EMRYS/actions/runs/34314490868).
+No fresh-install, scientific, or institutional-site walkthrough was performed.
 
 ### CS-17 Scientific and owner documentation
 
-**Implemented with CS-16; final PR verification pending.** All 169 tracked
+**Done with CS-16 in PR #151.** All 169 tracked
 Markdown files were reviewed, covering architecture/design/reference,
 Analysis/stage contracts, source/schema guides, tests/fixtures, tooling,
 workflow, and planning. Clear files were retained without cosmetic rewrites;
@@ -349,26 +367,50 @@ under CS-16 above; this does not complete the larger code campaign.
 
 ### CS-18 Idiomatic scientific-producer implementation
 
-**Needs qualification.** Compare the complete Step 07/08/09 Python producer
-lifecycles: lock and signal handling, child processes, staging, publication,
-rollback, and cleanup. Their roughly 600 lines of publication classes at
-`f3a3966f` are an inspected surface, not promised deletions. Simplify the whole
-responsibility using ordinary language constructs and existing owners; any
-shared mechanism must replace every equivalent production implementation.
+**Partly implemented in PR #152; publication remains open.** R annotation
+and scientific-context table builders now use transcript/population-sized
+frames and base-R operations instead of row counters and repeated metadata.
+This removes 114 product lines across two existing files, with no test changes.
+Scientific calculations, thresholds, UTR precedence, warnings, row/column order,
+empty types, missing values, and independent oracles are preserved.
 
-Preserve Step 07's process pipeline, Step 08's spawning/output-ownership state,
-and Step 09's deferred signals during owner-metadata publication and its
-six-file publication order. Resolve
-supported replacement behavior and overlapping Step 08 optimization before
-changing them. Reuse independent scientific and recovery checks. Existing
-CS-01/02 cover workflow/report construction separately; no product change is
-approved merely by restoring this larger work to the queue.
+Temporary local differential fixtures compared 24 context cases and seven
+annotation-table cases with `76acb9c5`, matching values, types, order, TSV text,
+and warning/error text. Annotation import and GRanges were substituted in that
+temporary harness; this is table-fixture evidence. Two real-R tests skipped
+because local Bioconductor packages are absent. Full R execution remains a
+hosted-CI requirement, not a completed local claim.
 
-Include the scientific-context R table builders in this owner's later
-comprehension work: replace repetitive row counters/list assembly with clear
-base-R operations where empty-table types, ordering, missing values, exact
-outputs, and scientific calculations stay unchanged. Prefer named values to
-opaque positional structures when that simplifies all their consumers.
+The Step 07/08/09 publication prototype removed only 44 net product lines after
+all equivalent callers, including Step 06 file-ownership checks, were migrated.
+It passed 187 existing producer tests but was discarded as insufficiently
+substantial. The earlier 180–300 estimate did not survive implementation.
+All five prototype files are restored; these publishers are unchanged in PR #152.
+
+Remaining apparent repetition includes distinct lock-record formats, completed
+metadata-write state, signal deferral, process handling, output order, release
+failures, and backup-cleanup behavior. Preserve those boundaries. Retiring
+standalone predecessor replacement could remove more state and restoration
+code, but requires an explicit behavior decision. It is not authorized by this
+compression implementation. Existing CS-01/02 cover workflow/report definitions.
+
+### CS-19 Scientific report table handling
+
+**Implemented in PR #152; hosted verification pending.** The existing
+[computational table owner](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/computational.py)
+now holds one snapshot for path/hash/size, immutable named display rows, and the
+streaming reader used by every equivalent candidate/figure consumer. Step 09
+reuses canonical candidate metadata and summary rows instead of reparsing them.
+Canonical scientific validation and all surrounding content rechecks remain.
+Large tables stay streamed; selection limits, ordering, and figure passes survive.
+
+Product −164 lines across six existing modules; test fixtures −12 lines with
+no test cases added or removed; owner documentation +9. All 86 existing focused
+report tests passed on their final applicable state. Temporary instrumentation
+of the real admission path observed one parse each of the Step 09 all-sites,
+significant-sites, and summary files; this is not a wall-time or physical-I/O
+measurement. Independent review found no scientific or recovery regression.
+Malformed tables remain rejected; private parser diagnostic wording can differ.
 
 ## Deferred and routed work
 
