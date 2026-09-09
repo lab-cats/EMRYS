@@ -72,9 +72,13 @@ rationale in role or cross-cutting guides, exact behavior beside the owner, and
 machine-verifiable detail in schemas and tests. Do not preserve routine progress,
 branch names, repeated totals, superseded planning, or a second status registry.
 
-The findings matrix owns stable IDs, status, required outcomes, acceptance,
-scores, and terminal dispositions. When closing or retiring an item, update its
-row and every live reference in the same change. Preserve durable contracts,
+The findings matrix owns stable outcomes, status, acceptance, scores, and
+terminal dispositions. Its `COMPRESS-01` row delegates the finite `CS-*` cards
+to the [temporary compression backlog](../tasks/compression_backlog_matrix.md),
+which alone owns those slices' scope, status, prerequisites, and proof until
+the campaign exits. Do not duplicate card status in the main matrix or campaign
+charter. When closing or retiring an item, update its authoritative row and
+every live reference in the same change. Preserve durable contracts,
 safety rules, defects, decisions, and evidence ceilings before deleting their
 old home; Git retains chronology and deleted wording.
 

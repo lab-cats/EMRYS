@@ -320,9 +320,11 @@ candidate must preserve that outcome rather than redefine its acceptance.
   proposal as a demonstrated optimization or confuse it with the fragment
   prototype in candidate 5.
 - The standalone FASTQ helper's repeated scans are outside the normal DAG.
-  Existing `OPS-03` first decides whether that helper remains useful. Its
-  optimization cannot be counted as pipeline savings unless the measured
-  operator journey actually includes it.
+  `OPS-03` retains that independently useful diagnostic. Its single-pass
+  optimization is deferred until the [byte and diagnostic contract][compression]
+  is preserved; the draft changed zero-byte header handling. Its optimization
+  cannot count as pipeline savings unless the measured operator journey
+  actually includes it.
 - `SETUP-02` owns portable advisory benchmarking; `FUT-INDEX-01` owns explicit
   prebuilt STAR-index admission; `PERF-01` retains the separate cross-node
   experiment. Refer to their current [backlog outcomes](backlog_matrix.md),
@@ -401,7 +403,7 @@ adding a progress ledger or duplicating backlog statuses.
 [reference-observation]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/evidence/reference_provenance/_reference_contigs.py#L20-L48
 [fasta-parser]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/libraries/references/contigs.py#L18-L47
 [reference-rechecks]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/evidence/reference_provenance/reconciler.py#L133-L163
-[compression]: compression_campaign.md#discovery-findings-for-selection
+[compression]: compression_backlog_matrix.md#original-discovery-disposition
 [default-profile]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/resources/default_execution.yaml#L4-L41
 [viking-profile]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/configs/execution_profile.csu_viking_ev_pum1.yaml
 [step04-index]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh#L237-L259
