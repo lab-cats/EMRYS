@@ -575,43 +575,29 @@ scan_exact_motif <- function(sequence, edit_offset, pattern = "TGTA[ACGT]A") {
 }
 
 make_motif_hits <- function(context, motif_id) {
-    rows <- list()
-    output_index <- 1L
-    for (index in seq_len(nrow(context))) {
-        if (context$context_status[[index]] != "available") {
-            next
-        }
+    rows <- lapply(which(context$context_status == "available"), function(index) {
         hits <- scan_exact_motif(
             context$oriented_sequence[[index]],
             context$edit_offset_0based[[index]]
         )
         if (nrow(hits) == 0L) {
-            next
+            return(NULL)
         }
-        rows[[output_index]] <- data.frame(
-            analysis_id = context$analysis_id[[index]],
-            candidate_id = context$candidate_id[[index]],
-            population = context$population[[index]],
-            motif_id = motif_id,
-            matched_sequence = hits$matched_sequence,
-            start_offset = hits$start_offset,
-            end_offset = hits$end_offset,
-            midpoint_offset = hits$midpoint_offset,
-            bin_start = hits$bin_start,
-            bin_end = hits$bin_end,
-            stringsAsFactors = FALSE,
-            check.names = FALSE
+        data.frame(
+            context[rep(index, nrow(hits)),
+                    c("analysis_id", "candidate_id", "population")],
+            motif_id = motif_id, hits,
+            row.names = NULL, stringsAsFactors = FALSE, check.names = FALSE
         )
-        output_index <- output_index + 1L
-    }
-    if (length(rows) == 0L) {
+    })
+    hits <- do.call(rbind, rows)
+    if (is.null(hits)) {
         return(as.data.frame(
             stats::setNames(rep(list(character()), length(MOTIF_HITS_COLUMNS)),
                             MOTIF_HITS_COLUMNS),
             stringsAsFactors = FALSE
         ))
     }
-    hits <- do.call(rbind, rows)
     hits[, MOTIF_HITS_COLUMNS, drop = FALSE]
 }
 
@@ -632,53 +618,40 @@ availability_for <- function(population, candidate_count) {
 }
 
 make_sequence_logo <- function(analysis_id, context) {
-    rows <- vector("list", length(POPULATIONS) *
-        (2L * LOGO_RADIUS + 1L) * 4L)
-    output_index <- 1L
-    for (population in POPULATIONS) {
-        population_rows <- context[context$population == population, , drop = FALSE]
-        available <- population_rows[
-            population_rows$context_status == "available", , drop = FALSE
+    bases <- c("A", "C", "G", "T")
+    rows <- lapply(POPULATIONS, function(population) {
+        available <- context[
+            context$population == population &
+                context$context_status == "available", , drop = FALSE
         ]
-        candidate_count <- nrow(available)
         status <- availability_for(population, nrow(available))
-        for (relative_position in seq.int(-LOGO_RADIUS, LOGO_RADIUS)) {
-            observed <- if (nrow(available) == 0L) character() else vapply(
-                seq_len(nrow(available)), function(index) {
-                    sequence_index <- available$edit_offset_0based[[index]] +
-                        relative_position + 1L
-                    substr(
-                        available$oriented_sequence[[index]], sequence_index,
-                        sequence_index
-                    )
-                }, character(1)
+        positions <- lapply(seq.int(-LOGO_RADIUS, LOGO_RADIUS), function(position) {
+            sequence_indexes <- available$edit_offset_0based + position + 1L
+            observed <- substr(
+                available$oriented_sequence, sequence_indexes, sequence_indexes
             )
-            canonical <- observed[observed %in% c("A", "C", "G", "T")]
-            observed_base_count <- length(canonical)
-            for (base in c("A", "C", "G", "T")) {
-                base_count <- sum(canonical == base)
-                base_fraction <- if (observed_base_count == 0L) {
+            base_counts <- tabulate(match(observed, bases), nbins = length(bases))
+            observed_base_count <- sum(base_counts)
+            data.frame(
+                analysis_id = analysis_id,
+                population = population,
+                availability_status = status,
+                relative_position = position,
+                base = bases,
+                candidate_count = nrow(available),
+                observed_base_count = observed_base_count,
+                base_count = base_counts,
+                base_fraction = if (observed_base_count == 0L) {
                     NA_real_
                 } else {
-                    base_count / observed_base_count
-                }
-                rows[[output_index]] <- data.frame(
-                    analysis_id = analysis_id,
-                    population = population,
-                    availability_status = status,
-                    relative_position = relative_position,
-                    base = base,
-                    candidate_count = candidate_count,
-                    observed_base_count = observed_base_count,
-                    base_count = base_count,
-                    base_fraction = base_fraction,
-                    stringsAsFactors = FALSE,
-                    check.names = FALSE
-                )
-                output_index <- output_index + 1L
-            }
-        }
-    }
+                    base_counts / observed_base_count
+                },
+                stringsAsFactors = FALSE,
+                check.names = FALSE
+            )
+        })
+        do.call(rbind, positions)
+    })
     logo <- do.call(rbind, rows)
     logo[, SEQUENCE_LOGO_COLUMNS, drop = FALSE]
 }
@@ -716,8 +689,6 @@ make_motif_statistics <- function(analysis_id, motif_id, context, hits) {
         context$context_status == "available", , drop = FALSE
     ]
     nearest <- nearest_hits(hits)
-    rows <- list()
-    output_index <- 1L
 
     foreground <- available_context[
         available_context$population == "significant_up", , drop = FALSE
@@ -749,7 +720,7 @@ make_motif_statistics <- function(analysis_id, motif_id, context, hits) {
             nrow(background), background_with_motif
         )
     }
-    rows[[output_index]] <- data.frame(
+    enrichment <- data.frame(
         analysis_id = analysis_id,
         motif_id = motif_id,
         population = "significant_up",
@@ -771,52 +742,47 @@ make_motif_statistics <- function(analysis_id, motif_id, context, hits) {
         stringsAsFactors = FALSE,
         check.names = FALSE
     )
-    output_index <- output_index + 1L
 
     bin_starts <- seq.int(
         -WINDOW_RADIUS, WINDOW_RADIUS - DISTANCE_BIN_WIDTH,
         by = DISTANCE_BIN_WIDTH
     )
-    for (population in POPULATIONS) {
-        eligible_count <- sum(context$population == population)
-        analyzable <- available_context[
-            available_context$population == population, , drop = FALSE
-        ]
+    positions <- lapply(POPULATIONS, function(population) {
+        analyzable_count <- sum(available_context$population == population)
         population_hits <- hits[hits$population == population, , drop = FALSE]
         population_nearest <- nearest[
             nearest$population == population, , drop = FALSE
         ]
-        status <- availability_for(population, nrow(analyzable))
-        for (bin_start in bin_starts) {
-            bin_end <- bin_start + DISTANCE_BIN_WIDTH
-            all_in_bin <- population_hits$bin_start == bin_start
-            nearest_in_bin <- population_nearest$bin_start == bin_start
-            rows[[output_index]] <- data.frame(
-                analysis_id = analysis_id,
-                motif_id = motif_id,
-                population = population,
-                statistic_type = "position_bin",
-                availability_status = status,
-                bin_start = bin_start,
-                bin_end = bin_end,
-                eligible_candidate_count = eligible_count,
-                analyzable_candidate_count = nrow(analyzable),
-                candidate_with_motif_count = sum(nearest_in_bin),
-                hit_count = sum(all_in_bin),
-                background_candidate_count = NA_integer_,
-                background_with_motif_count = NA_integer_,
-                odds_ratio = NA_real_,
-                odds_ratio_ci95_lower = NA_real_,
-                odds_ratio_ci95_upper = NA_real_,
-                fisher_p_value_two_sided = NA_real_,
-                fisher_p_value_bh = NA_real_,
-                stringsAsFactors = FALSE,
-                check.names = FALSE
-            )
-            output_index <- output_index + 1L
-        }
-    }
-    statistics <- do.call(rbind, rows)
+        data.frame(
+            analysis_id = analysis_id,
+            motif_id = motif_id,
+            population = population,
+            statistic_type = "position_bin",
+            availability_status = availability_for(population, analyzable_count),
+            bin_start = bin_starts,
+            bin_end = bin_starts + DISTANCE_BIN_WIDTH,
+            eligible_candidate_count = sum(context$population == population),
+            analyzable_candidate_count = analyzable_count,
+            candidate_with_motif_count = tabulate(
+                match(population_nearest$bin_start, bin_starts),
+                nbins = length(bin_starts)
+            ),
+            hit_count = tabulate(
+                match(population_hits$bin_start, bin_starts),
+                nbins = length(bin_starts)
+            ),
+            background_candidate_count = NA_integer_,
+            background_with_motif_count = NA_integer_,
+            odds_ratio = NA_real_,
+            odds_ratio_ci95_lower = NA_real_,
+            odds_ratio_ci95_upper = NA_real_,
+            fisher_p_value_two_sided = NA_real_,
+            fisher_p_value_bh = NA_real_,
+            stringsAsFactors = FALSE,
+            check.names = FALSE
+        )
+    })
+    statistics <- do.call(rbind, c(list(enrichment), positions))
     statistics[, MOTIF_STATISTICS_COLUMNS, drop = FALSE]
 }
 
