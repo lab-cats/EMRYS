@@ -1,12 +1,12 @@
 # EMRYS temporary compression backlog
 
-Reviewed **2026-09-09** from `abf47b77`. The [campaign](compression_campaign.md)
+Reviewed **2026-09-09** from `a0dc7526`. The [campaign](compression_campaign.md)
 owns the goals; this file owns CS scope, status, decisions, and proof. The
 [main matrix](backlog_matrix.md) owns broader outcomes and campaign completion.
 
 ## Working queue
 
-**Current work: [PR #155](https://github.com/lab-cats/EMRYS/pull/155), CS-18 runner-owned scientific execution; implemented, awaiting hosted CI.**
+**[PR #155](https://github.com/lab-cats/EMRYS/pull/155), CS-18 runner-owned scientific execution, passed ordinary hosted CI at `a0dc7526`; integration is pending.**
 The user approved moving working paths, locks, process supervision, logging,
 publication, and recovery into the existing runner. Producers retain scientific
 computation, outputs, and provenance; there is no separate manager hierarchy.
@@ -78,17 +78,17 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-05](#cs-05-validation-check-rosters) | Give one scientific validation roster one neutral authority used by its producer and reporting. | Needs decision | 4 | 4 | Select membership/order, historical records, and external-provider obligations. | `REPORT-ROSTER-01` |
 | [CS-06](#cs-06-publication-handoff) | Characterize the helper-to-caller publication gap in RSeQC, BAM QC, and duplicate marking. | Done | 4 | 3 | PR #150: three equivalent owners migrated; six corrected probes, shell suites, and ordinary CI passed. | `OPS-03` |
 | [CS-07](#cs-07-through-cs-10-standalone-publication) | RSeQC: retire direct-to-final report capture. | Done | 2 | 2 | PR #150: one publication path; legacy flag, errors, and recovery preserved; ordinary CI passed. | `OPS-03` |
-| [CS-08](#cs-07-through-cs-10-standalone-publication) | BAM QC: retire mode-dependent publication for two outputs. | Verification pending | 2 | 2 | Absorbed into PR #155's approved runner migration; shell checks pass, full CI requires fixture corrections. | `OPS-03` |
-| [CS-09](#cs-07-through-cs-10-standalone-publication) | Duplicate marking: retire direct destinations and mode branches. | Verification pending | 3 | 3 | Absorbed into PR #155's approved runner migration; shell checks pass, full CI requires fixture corrections. | `OPS-03` |
+| [CS-08](#cs-07-through-cs-10-standalone-publication) | BAM QC: retire mode-dependent publication for two outputs. | Done | 2 | 2 | Absorbed into PR #155; focused checks and ordinary hosted CI pass at a0dc7526; integration pending. | `OPS-03` |
+| [CS-09](#cs-07-through-cs-10-standalone-publication) | Duplicate marking: retire direct destinations and mode branches. | Done | 3 | 3 | Absorbed into PR #155; focused checks and ordinary hosted CI pass at a0dc7526; integration pending. | `OPS-03` |
 | [CS-10](#cs-07-through-cs-10-standalone-publication) | Paired CMH: retire six-file predecessor replacement/restoration. | Done | 3 | 4 | Implemented within CS-18: direct calls refuse existing destinations; focused publication checks and ordinary hosted CI pass at cab77a26. | `OPS-03` |
 | [CS-11](#cs-11-reporting-source-identity) | Define a reporting-source boundary that permits reporting-only changes without changing scientific Run identity. | Needs decision | 4 | 4 | Specify new Run binding, producer identity, historical admission, and resume before a structural migration. | `REPORT-ROSTER-01` |
-| [CS-12](#cs-12-canonical-bam-command-printing) | Remove canonical BAM's four print-only command arrays. | Verification pending | 2 | 1 | Retired with standalone preview in PR #155; scientific commands survive, full CI requires fixture corrections. | `COMPRESS-01` |
+| [CS-12](#cs-12-canonical-bam-command-printing) | Remove canonical BAM's four print-only command arrays. | Done | 2 | 1 | Retired with standalone preview in PR #155; ordinary hosted CI passes at a0dc7526; integration pending. | `COMPRESS-01` |
 | [CS-13](#cs-13-runtime-profile-construction) | Remove the redundant RuntimeCheck field-copy construction in onboarding. | Opportunistic | 1 | 2 | Use standard dataclass replacement only after field/order/admission comparison; approximately 11–20 lines. | `COMPRESS-01` |
 | [CS-14](#cs-14-paired-cmh-configuration) | Let the existing module normalizer own equivalent newly admitted paired-CMH configuration. | Needs qualification | 2 | 4 | First prove canonical values/errors equivalent; a changed public form or policy needs a separate decision. Retain historical semantics. | `COMPRESS-01` |
 | [CS-15](#cs-15-reporting-tsv-grammar) | Retire both reporting CSV engines through the existing strict TSV owner. | Needs decision | 2 | 3 | Agree accepted grammar and diagnostic precedence; stop if a configurable compatibility adapter is required. | `COMPRESS-01` |
 | [CS-16](#cs-16-operator-and-developer-documentation) | Complete operator/developer guidance with clear ownership and plain language. | Done | 5 | 3 | PR #151 passed ordinary CI at `76acb9c5`; integration pending. | `COMPRESS-01` |
 | [CS-17](#cs-17-scientific-and-owner-documentation) | Consolidate and explain remaining scientific/owner documentation. | Done | 5 | 4 | All 169 Markdown files reviewed; PR #151 passed ordinary CI at `76acb9c5`. | `COMPRESS-01` |
-| [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | Verification pending | 4 | 4 | All fourteen first-party tasks use runner-owned execution; hosted golden/shell/static checks pass, stale fixture failures corrected for replacement CI. | `OPS-03` |
+| [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | Done | 4 | 4 | All fourteen first-party tasks use runner-owned execution; ordinary hosted CI passes at a0dc7526; integration pending. | `OPS-03` |
 | [CS-19](#cs-19-scientific-report-table-handling) | Use one admitted table representation across scientific report consumers. | Done | 4 | 3 | PR #152 at `72fdf806`: focused checks and all ordinary hosted CI passed; integration pending. | `COMPRESS-01` |
 
 ## Acceptance shared by every card
@@ -306,7 +306,7 @@ workers. The existing runner now owns exclusive publication, logs and recovery;
 the workers retain scientific output checks. The former standalone flags and
 preview modes no longer apply. See the
 [shared execution contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
-CS-08/09 await PR #155's corrected final-state CI.
+CS-08/09 passed PR #155's corrected final-state CI at `a0dc7526`.
 
 | Card / owner | Preserve while retiring overwrite mode | Earlier branch estimate |
 |---|---|---:|
@@ -338,7 +338,7 @@ an inspection/reporting cycle, or grow product code without approval.
 PR #155 retires these four print-only arrays with the approved standalone
 preview interface. Canonical BAM retains its scientific sort/read-group/index
 commands and `validate_bam_pair`; the runner owns execution logs. This work is
-included in CS-18's accounting and awaits its final-state CI.
+included in CS-18's accounting; ordinary hosted CI passed at `a0dc7526`.
 
 ### CS-13 Runtime profile construction
 
@@ -429,11 +429,10 @@ under CS-16 above; this does not complete the larger code campaign.
 
 ### CS-18 Idiomatic scientific-producer implementation
 
-**Implemented in [PR #155](https://github.com/lab-cats/EMRYS/pull/155) at `d33bbe62`; hosted verification pending:** scientific producers own scientific outputs and
-provenance; production execution goes through the existing runner. Consolidate
-working paths, locks, process supervision, logs, publication, and recovery there,
-across every applicable producer, without a manager beside each one. Preserve
-independent validation and its all-checks-pass gate. The implementation covers reusable external reference sidecars, complete STAR
+**Done in [PR #155](https://github.com/lab-cats/EMRYS/pull/155); ordinary hosted CI passed at `a0dc7526`, integration pending.** Scientific producers own scientific outputs and
+provenance; the existing runner owns working paths, locks, process supervision,
+logs, publication and recovery across every applicable producer. Independent
+validation and its all-checks-pass gate remain. The implementation covers reusable external reference sidecars, complete STAR
 indexes, final-path provenance, original native publication order, and historical
 plan reading. New execution uses explicit runner-owned working paths. The
 reporting tranche did not implement this migration.
@@ -470,8 +469,8 @@ Focused evidence covers 156 Python worker/independent-validator/oracle cases,
 24 STAR-worker/public-shell checks, eight native shell suites and the shared
 file-check suite. The coordinator/planner/task/module selection passed 167 cases,
 including failure followed by resume. Its remaining long downstream-reuse case
-was deliberately interrupted locally and is deferred to CI, not counted as a
-pass. After review corrections, 30 affected runner cases and 21 mpileup cases
+was deliberately interrupted locally; it subsequently passed in the complete
+hosted suite. After review corrections, 30 affected runner cases and 21 mpileup cases
 passed. The latter are included in the 156-case worker total. Two GTF utility/worker
 conversion cases and one real Snakemake reference-graph dry run passed. The full
 static gate passes, including 169 Markdown documents and three Mermaid sources.
@@ -488,7 +487,11 @@ used identical working/final paths; two assertions retained the old CMH output
 order and FASTA resolver type. The corrections keep the production checks and
 existing scientific assertions. All eight failed lifecycle cases and 28 profile/
 resolver cases pass locally; static checks pass. Both real-R cases still skip
-locally, so replacement hosted CI is required before closeout.
+locally. [Replacement hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34382174411)
+passed at `a0dc7526`: all four Python shards, coverage policy, guarded R (including
+both real-R projection cases), managed golden path, shell/static/wheel and
+runtime compatibility checks. Nightly Python 3.11 and separately selected
+synthetic profiles were not run; no institutional or scientific validation is claimed.
 
 Independent review checked the complete worker flags, native filenames and order,
 reference reuse, STAR membership, final-path provenance, removed input-hash
@@ -785,8 +788,8 @@ orchestration-contract suites are the validation boundary.
 The CS-06 audit found that scientific-context rollback counted a link only after
 its helper returned, leaving an interruption gap. PR #155 retires that entire
 publisher in favor of runner-owned publication with retained ownership anchors.
-CS-18 owns this correction and its final verification; it is no longer an
-unselected investigation. The original CS-06 probes alone did not prove this owner.
+CS-18 owns this correction, which passed ordinary hosted CI at `a0dc7526`;
+it is no longer an unselected investigation. The original CS-06 probes alone did not prove this owner.
 
 ### Dashboard retirement prerequisites
 
