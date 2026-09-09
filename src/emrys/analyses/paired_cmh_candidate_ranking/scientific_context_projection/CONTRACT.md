@@ -102,6 +102,12 @@ after publication. Publication follows the shared
 Old backup and staging files still block execution for operator inspection.
 Directory fsync also covers rollback of the new outputs.
 
+One interruption limit remains: the shell records each published file only
+after its publication helper returns. An interruption between those actions
+can leave that file outside the cleanup count. Inspect the output directory
+after an interrupted publication; do not infer complete cleanup from lock
+absence. Retiring replacement does not repair this separate handoff gap.
+
 The receipt can become visible before the shell's final post-publication hash
 and input checks. Its presence alone is therefore not proof that the producer
 returned success.

@@ -16,11 +16,14 @@ Both stay on `BuildContext` under the common
 observations remain at their existing points during context construction,
 retaining their timing, diagnostics, and recorded evidence.
 
-The immutable Analysis descriptor and composed Run profile supply typed artifact
-declarations. `registry.py`, `records.py`, and context preparation derive the
-complete adapter set, producer evidence, and expected paths from them. They do
-not scan installed modules or discover files. There is no separate database,
-service, authored manifest, or public mutable registry.
+The canonical processing profile and task definitions supply artifact ownership
+and producer paths through the orchestration contract owner. Reporting adds each
+native reader's file, header, and row-count rules; the selected Analysis descriptor
+supplies its own typed declarations. The historical Run profile still controls
+its artifact locations and transaction roster. Current processing ownership comes
+from the admitted source checkout, so a Run profile cannot authorize an artifact
+under another owner. These inputs drive `registry.py`, `records.py`, and context
+preparation without scanning installed modules or discovering files.
 
 Modules separate contracts and models, adapters, text/binary readers, inspection,
 native-file reconciliation, record/receipt assembly, context preparation,

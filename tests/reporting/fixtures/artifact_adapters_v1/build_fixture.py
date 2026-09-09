@@ -31,7 +31,7 @@ from tests.scientific_context_test_support import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-ADAPTER_REGISTRY = build_adapter_registry(analysis_module_v1())
+ADAPTER_REGISTRY = build_adapter_registry(analysis_module_v1(), source_root=REPO_ROOT)
 INVENTORY_TEMPLATE = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
 INVENTORY_HEADER = (
     "artifact_id",

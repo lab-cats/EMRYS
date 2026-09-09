@@ -6,8 +6,8 @@ owns the goals; this file owns CS scope, status, decisions, and proof. The
 
 ## Working queue
 
-**Current work: shared processing definitions and standalone publication.**
-The approved tranche covers CS-01/02 and CS-18, including CS-10's CMH
+**Current work: [PR #153](https://github.com/lab-cats/EMRYS/pull/153), shared processing definitions and standalone publication.**
+The implemented tranche covers CS-01/02 and CS-18, including CS-10's CMH
 replacement retirement. It uses the existing processing profile as the shared
 source of task, dependency, and artifact facts. New Run admission rejects a
 processing graph that disagrees with the supported graph; existing Run records
@@ -15,7 +15,7 @@ and resume retain their original interpretation and identity checks.
 
 Mpileup, preprocessing, paired CMH, and scientific-context producers now refuse
 existing destinations even without `--no-clobber`. The flag remains accepted.
-Remove replacement/backup creation and restoration while preserving exclusive
+Replacement/backup creation and restoration are removed while preserving exclusive
 publication, input checks, owned-output rollback, and old recovery files. This
 approved policy replaces the rejected behavior-preserving helper prototype.
 CS-05 remains excluded; the dashboard remains until its replacement is validated.
@@ -25,7 +25,8 @@ R-table compression plus supporting planning/admission cleanup. Its first CI
 run passed the R fixtures and managed golden path but failed one assertion
 expecting the old dispatch diagnostic. The invalid log path remained rejected.
 Commit `72fdf806` corrects that assertion; both focused dispatch checks pass.
-[Final-commit CI](https://github.com/lab-cats/EMRYS/actions/runs/34361428680) is running.
+[Final-commit CI](https://github.com/lab-cats/EMRYS/actions/runs/34361428680)
+passed all ordinary checks at `72fdf806`; master integration remains pending.
 
 CS-16/17 are Done in PR #151 at `76acb9c5`, with all ordinary checks passing in
 [run 34314490868](https://github.com/lab-cats/EMRYS/actions/runs/34314490868).
@@ -56,8 +57,8 @@ they are rough selection aids, not measured benefit or implementation approval.
 
 | ID | Finite outcome / production owner | Status | Importance | Complexity | Next action / dependency | Parent |
 |---|---|---|---:|---:|---|---|
-| [CS-01](#cs-01-processing-materialization) | Derive one processing owner's command and dispatch from existing admitted facts. | In progress | 4 | 4 | Approved: use the authored processing profile across planning, named workflow rules, and reporting; preserve existing Run/resume semantics. | `COMPRESS-01` |
-| [CS-02](#cs-02-processing-report-adapters) | Remove equivalent processing-adapter declarations from artifact-index reporting. | In progress | 4 | 4 | Migrate all processing adapters to the shared owner facts; keep reader-specific interpretation in reporting. | `REPORT-ROSTER-01` |
+| [CS-01](#cs-01-processing-materialization) | Derive one processing owner's command and dispatch from existing admitted facts. | Verification pending | 4 | 4 | PR #153: shared profile facts drive planning, named rules, and reporting; focused and differential checks pass, hosted verification pending. | `COMPRESS-01` |
+| [CS-02](#cs-02-processing-report-adapters) | Remove equivalent processing-adapter declarations from artifact-index reporting. | Verification pending | 4 | 4 | PR #153: all 42 processing adapters and 12 producer paths migrated; reader contracts match the base, hosted verification pending. | `REPORT-ROSTER-01` |
 | [CS-03](#cs-03-reporting-transaction-layout) | Consolidate only equivalent reporting-layout declarations. | Retained | 4 | 3 | The complete minimal shared-owner sketch is approximately neutral after plumbing; no code change qualified. Reopen only with a concrete larger equivalent duplication. | `REPORT-ROSTER-01` |
 | [CS-04](#cs-04-reporting-memory-control) | Remove the ineffective active reporting-memory control and its transport. | Done | 3 | 4 | PR #150: new inputs rejected, historical records/hashes preserved; focused and ordinary hosted checks passed. | `REPORT-ROSTER-01` |
 | [CS-05](#cs-05-validation-check-rosters) | Give one scientific validation roster one neutral authority used by its producer and reporting. | Needs decision | 4 | 4 | Select membership/order, historical records, and external-provider obligations. | `REPORT-ROSTER-01` |
@@ -73,8 +74,8 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-15](#cs-15-reporting-tsv-grammar) | Retire both reporting CSV engines through the existing strict TSV owner. | Needs decision | 2 | 3 | Agree accepted grammar and diagnostic precedence; stop if a configurable compatibility adapter is required. | `COMPRESS-01` |
 | [CS-16](#cs-16-operator-and-developer-documentation) | Complete operator/developer guidance with clear ownership and plain language. | Done | 5 | 3 | PR #151 passed ordinary CI at `76acb9c5`; integration pending. | `COMPRESS-01` |
 | [CS-17](#cs-17-scientific-and-owner-documentation) | Consolidate and explain remaining scientific/owner documentation. | Done | 5 | 4 | All 169 Markdown files reviewed; PR #151 passed ordinary CI at `76acb9c5`. | `COMPRESS-01` |
-| [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | In progress | 4 | 4 | Approved four-owner replacement retirement; R table builders are implemented in PR #152. | `OPS-03` |
-| [CS-19](#cs-19-scientific-report-table-handling) | Use one admitted table representation across scientific report consumers. | Verification pending | 4 | 3 | PR #152: canonical results reused, all streaming/display callers migrated; focused checks pass, hosted verification pending. | `COMPRESS-01` |
+| [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | Verification pending | 4 | 4 | PR #153: four-owner replacement retirement passes focused checks; R table builders are implemented in PR #152. | `OPS-03` |
+| [CS-19](#cs-19-scientific-report-table-handling) | Use one admitted table representation across scientific report consumers. | Done | 4 | 3 | PR #152 at `72fdf806`: focused checks and all ordinary hosted CI passed; integration pending. | `COMPRESS-01` |
 
 ## Acceptance shared by every card
 
@@ -110,20 +111,38 @@ only the selected touched vertical before implementation.
 
 ### CS-01 Processing materialization
 
-**Broader consolidation approved and in progress.** The authored processing
-profile will supply the twelve base owners, their dependencies, and artifact
-associations through the existing orchestration contract owner. Planning, named
-workflow rules, and reporting must all use those facts. Keep unique producer
-arguments and scientific readers with their current owners; do not extend the
-public analysis-provider interface or create another catalog.
+**Implemented in PR #153; hosted verification pending.** The authored
+processing profile supplies twelve base owners, dependencies, and artifact
+associations through `contracts/orchestration/artifact_inventory.py`. Shared
+facts use immutable mappings, tuple dependencies, and internal path objects.
+Planning and producer provenance use the same twelve producer locations.
+One ordinary Snakemake rule declaration replaces twelve repeated bodies while
+retaining their public names. Scientific arguments and native readers remain
+with their owners. The public analysis-provider interface is unchanged.
 
-**Preserved:** ordered arguments, resource assignments, public rule names,
-profile schema/bytes, historical Run interpretation, and resume/reuse checks.
-**Defective:** a newly submitted processing graph can disagree with the graph
-actually executed. Reject that disagreement only at new-Run admission; neither
-the common stored-record validator nor resume gains this restriction.
-**Environment-deferred:** hosted end-to-end checks; no cluster or scientific
-validation is implied. No other behavior decision is included.
+The independent fixed owner/scope support check survives: accepting a profile
+as its own proof of supported ownership would remove a useful defense. It is
+an admission check, not a second executable dependency graph. The shared code
+and authored source profile are bound into Processing implementation identity
+because they now determine execution; stored Run records are never rewritten.
+
+**Preserved:** ordered arguments, resources, rule names, profile schema/bytes,
+historical interpretation, and resume/reuse with normal identity checks.
+**Defective and corrected:** newly submitted processing dependencies could
+contradict the graph actually executed. Only new-Run admission now rejects that
+disagreement; stored-record admission and resume retain their previous policy.
+**Environment-deferred:** hosted end-to-end verification; no cluster or
+scientific validation is implied.
+
+Twenty focused planning cases passed with 33 temporary differential comparisons
+of complete dispatch bytes, paths, and directories against `72fdf806`. These
+include historical/current resume, processing reuse with relocated sidecars,
+subset manifests, resources, and guarded R arguments. Seven existing real
+Snakemake cases verify exact DAG counts/edges, named rules, owner-reassignment
+refusal, and historical/current resource records. One new production-path test
+covers both fresh-Run refusal and resume of the same formerly accepted profile;
+the existing identity check also covers the newly executable source dependency.
+The profile JSON itself is byte-identical to the base.
 
 **Earlier supporting implementation in PR #152:**
 Planning now constructs its path inventory directly, passes its existing
@@ -133,22 +152,8 @@ parser and resource owner's persisted-policy reader instead of parallel checks.
 This removes 187 product lines, including 86 from the Snakefile, with no test
 changes. Sixteen focused tests passed; temporary differential checks on 17
 existing tests compared 25 complete dispatch/path/directory sets with `76acb9c5`,
-including current and historical plans. Final hosted verification is pending.
-
-[`materialization.py`](../../src/emrys/orchestration/run_coordinator/materialization.py)
-constructs commands, inputs, outputs, resources, and dispatches from the
-artifact inventory. Audit `_task_commands` and `_dispatches` across all
-processing owners, from profile through task admission to producer. Replace
-repeated construction through an existing source of facts only when the full
-migration deletes the old declarations and makes the flow easier to follow.
-The original 1,960-line file is an inspected surface, not promised savings.
-
-Preserve ordered arguments and planned bytes, graph/scopes, snapshots, output
-roles, predecessor paths, source identity, and resource choices. Module
-readmission, historical execution scopes, positional FASTA-sidecar outputs,
-and reused predecessor scopes have distinct meanings. Keep their checks and
-use existing materialization/workflow/public-path tests. The earlier 18-line
-path handoff and 8–10-line inventory copy do not qualify as this outcome.
+including current and historical plans. All ordinary hosted checks passed at
+`72fdf806` after correcting the obsolete diagnostic assertion.
 
 ### CS-02 Processing report adapters
 
@@ -160,14 +165,18 @@ inspection kinds, accepted filenames, scientific headers, and row limits in
 reporting. Preserve independent rejection of adapters assigned to the wrong
 owner. Module adapters continue to derive from `_add_analysis_adapters`.
 
-Identify that metadata's existing owner across [Analysis declarations](../../src/emrys/analyses/__init__.py),
-artifact inventory, the [authored profile](../../workflow/contracts/local_cmh_v2.json),
-its [schema](../../src/emrys/contracts/schemas/orchestration/v2/profile.schema.json),
-admission, and reporting. Derive equivalent kinds, scopes, paths, and
-completeness while retiring the old declarations across all callers. Preserve
-native readers, historical profiles, module-specific interpretation, and
-independent scientific reconciliation. Stop if a second registry must remain
-or the complete change grows product code. The 175 lines are not a net estimate.
+All 42 processing adapter specifications match every pre-change field in a
+temporary differential comparison. Twenty-four focused reporting tests pass;
+wrong-step and wrong-scope probes still reject reassigned artifacts. Producer
+path/hash expectations remain independent of the shared implementation. The
+three direct registry callers now supply the admitted source checkout, separate
+from the artifact root. Rechecked producer/registry cases pass with internal
+path objects. Native readers, historical filenames, scientific reconciliation,
+and analysis-specific adapter collisions remain protected.
+
+Processing implementation and reporting together remove 193 product lines
+(+233/−426), with no product-file growth. Configuration, schemas, dependencies,
+and retained evidence are unchanged.
 
 ### CS-03 Reporting transaction layout
 
@@ -403,7 +412,7 @@ and warning/error text. Annotation import and GRanges were substituted in that
 temporary harness; this is table-fixture evidence. Two real-R tests skipped
 because local Bioconductor packages are absent. The guarded R and managed
 golden lanes passed in hosted run `34357224032` at `23bcb41e`; the diagnostic-only
-follow-up at `72fdf806` is undergoing final CI. This is hosted software evidence,
+follow-up at `72fdf806` also passed all ordinary CI. This is hosted software evidence,
 not institutional-site operation, scientific review, or biological validation.
 
 The Step 07/08/09 publication prototype removed only 44 net product lines after
@@ -440,9 +449,16 @@ lock acquisition to verify the preserved second refusal boundary. Hosted
 verification is pending; these local fixtures do not establish scientific or
 site validation.
 
+Independent review found no publication regression. Scientific-context retains
+its existing interruption gap between the publication helper returning and the
+shell recording the published-file count; its owner contract now states the
+cleanup limitation. It also retains its existing narrower post-lock temporary-
+file check. These are not repaired or promoted to stronger guarantees by
+replacement retirement; remaining owner maintenance stays under `OPS-03`.
+
 ### CS-19 Scientific report table handling
 
-**Implemented in PR #152; hosted verification pending.** The existing
+**Done in PR #152 at `72fdf806`; all ordinary hosted CI passed.** The existing
 [computational table owner](../../src/emrys/reporting/paired_cmh_candidate_ranking_report/computational.py)
 now holds one snapshot for path/hash/size, immutable named display rows, and the
 streaming reader used by every equivalent candidate/figure consumer. Step 09

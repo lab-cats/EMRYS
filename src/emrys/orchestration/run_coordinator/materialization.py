@@ -363,6 +363,7 @@ def _r_owner_command(
 def _task_commands(
     *,
     step_id: str,
+    producer_path: Path,
     scope_id: str,
     paths: Mapping[str, list[Path]],
     validation: Path,
@@ -423,9 +424,7 @@ def _task_commands(
         index_dir = index_members[0].parent
         producer = (
             bash,
-            str(
-                source_root / "src/emrys/stages/star_index/step_00a_build_star_index.sh"
-            ),
+            str(source_root / producer_path),
             *command_flags(
                 ("reference-fasta", fasta),
                 ("reference-gtf", gtf),
@@ -491,10 +490,7 @@ def _task_commands(
         dictionary = _one(paths, "step00c_reference_dict_v1")
         producer = (
             bash,
-            str(
-                source_root
-                / "src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"
-            ),
+            str(source_root / producer_path),
             *command_flags(
                 ("reference-fasta", fasta),
                 ("samtools-bin", samtools),
@@ -531,7 +527,7 @@ def _task_commands(
             producer = controlled_python_argv(
                 sys.executable,
                 "-m",
-                "emrys.stages.mechanical_orientation.producer",
+                ".".join(producer_path.with_suffix("").parts[1:]),
                 *command_flags(
                     ("sample-id", scope_id),
                     ("input-bam", split_bam),
@@ -565,7 +561,6 @@ def _task_commands(
             log_out = _one(paths, "step01_star_log_v1")
             log_progress = _one(paths, "step01_star_log_progress_v1")
             sj_out = _one(paths, "step01_star_sj_v1")
-            script = "src/emrys/stages/star_alignment/step_01_star_align.sh"
             producer_arguments = (
                 *command_flags(
                     ("r1-fastq", sample["r1_fastq"]["path"]),
@@ -595,7 +590,6 @@ def _task_commands(
         elif step_id == "02":
             bam = _one(paths, "step02_canonical_bam_v1")
             bai = _one(paths, "step02_canonical_bai_v1")
-            script = "src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh"
             producer_arguments = (
                 *command_flags(
                     ("input-alignment", star_bam),
@@ -616,7 +610,6 @@ def _task_commands(
         elif step_id == "02b":
             quickcheck = _one(paths, "step02b_quickcheck_v1")
             flagstat = _one(paths, "step02b_flagstat_v1")
-            script = "src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh"
             producer_arguments = (
                 *command_flags(
                     ("bam", canonical_bam),
@@ -635,7 +628,6 @@ def _task_commands(
         elif step_id == "03":
             infer = _one(paths, "step03_rseqc_infer_v1")
             bed = _one(all_paths["00b", reference_id], "step00b_bed12_v1")
-            script = "src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"
             producer_arguments = (
                 *command_flags(
                     ("input-bam", canonical_bam),
@@ -651,7 +643,6 @@ def _task_commands(
             bam = _one(paths, "step04_markdup_bam_v1")
             bai = _one(paths, "step04_markdup_bai_v1")
             metrics = _one(paths, "step04_markdup_metrics_v1")
-            script = "src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh"
             producer_arguments = (
                 *command_flags(
                     ("input-bam", canonical_bam),
@@ -681,7 +672,6 @@ def _task_commands(
             dictionary = _one(
                 all_paths["00c", reference_id], "step00c_reference_dict_v1"
             )
-            script = "src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
             producer_arguments = (
                 *command_flags(
                     ("input-bam", markdup_bam),
@@ -706,7 +696,7 @@ def _task_commands(
             input_paths = (markdup_bam, markdup_bai, fasta, fai, dictionary)
         producer = (
             bash,
-            str(source_root / script),
+            str(source_root / producer_path),
             "--sample-id",
             scope_id,
             *producer_arguments,
@@ -757,7 +747,7 @@ def _task_commands(
         producer = controlled_python_argv(
             sys.executable,
             "-m",
-            "emrys.stages.partitioned_cohort_mpileup.producer",
+            ".".join(producer_path.with_suffix("").parts[1:]),
             *command_flags(
                 ("cohort-id", cohort_id),
                 ("sample-manifest", sample_manifest),
@@ -839,7 +829,7 @@ def _task_commands(
             controlled_python_argv(
                 sys.executable,
                 "-m",
-                "emrys.stages.cohort_candidate_preprocessing.producer",
+                ".".join(producer_path.with_suffix("").parts[1:]),
                 *arguments,
             ),
         )
@@ -911,6 +901,10 @@ def _dispatches(
     owners = {str(item["machine_key"]): item for item in profile["owner_tasks"]}
     if readiness.source_commit is None:
         raise MaterializationError("Task planning requires an admitted source commit")
+    processing = {
+        task["machine_key"]: task
+        for task in artifact_inventory.processing_tasks(readiness.source_root)
+    }
     module = run.analysis.module.descriptor
     module_tasks = {task.owner_key: task for task in module.tasks}
     scheduled_module_owners = {
@@ -1006,6 +1000,7 @@ def _dispatches(
         if module_task is None:
             producer, validator, input_paths = _task_commands(
                 step_id=step_id,
+                producer_path=processing[task.machine_key]["producer_path"],
                 scope_id=task.scope_id,
                 paths=adapters,
                 validation=validation,

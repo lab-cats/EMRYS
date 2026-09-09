@@ -40,7 +40,7 @@ SNAKEFILE = REPO_ROOT / "workflow" / "Snakefile"
 WORKFLOW_PROFILE = REPO_ROOT / "workflow" / "profiles" / "local" / "profile.v9+.yaml"
 TASK_DOUBLE = Path(__file__).with_name("task_double.py").resolve()
 _MAX_INLINE_PAYLOAD_CHARS = 64 * 1024
-ADAPTER_REGISTRY = build_adapter_registry(analysis_module_v1())
+ADAPTER_REGISTRY = build_adapter_registry(analysis_module_v1(), source_root=REPO_ROOT)
 
 
 def _resource_policy() -> dict[str, Any]:

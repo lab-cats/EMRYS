@@ -20,6 +20,7 @@ from typing import Any, TextIO
 from simple_term_menu import TerminalMenu
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.artifact_inventory import validate_processing_graph
 from emrys.contracts.orchestration.application_model import (
     PROCESSING_STEP_IDS,
     execution_plan_boundary,
@@ -218,6 +219,7 @@ def _plan_run(
             require_reporter=report_enabled and through == "analysis",
         )
         _require_ready(readiness)
+        validate_processing_graph(readiness.analysis.profile, readiness.source_root)
         policy = execution_profile.resource_policy
         processing_source = None
         if processing_source_run_id is not None:

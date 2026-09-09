@@ -279,7 +279,9 @@ def test_fixture_covers_exact_tracked_inventory_and_adapter_registry(
     assert [row["artifact_id"] for row in rows] == [
         row["artifact_id"] for row in FIXTURE.read_inventory_template()
     ]
-    registry = ARTIFACT_REGISTRY.build_adapter_registry(FIXTURE.analysis_module_v1())
+    registry = ARTIFACT_REGISTRY.build_adapter_registry(
+        FIXTURE.analysis_module_v1(), source_root=REPO_ROOT
+    )
     assert {row["adapter"] for row in rows} == set(registry)
     assert len(artifact_fixture.source_paths) == 74
     assert all(path.is_file() for path in artifact_fixture.source_paths.values())
@@ -297,7 +299,6 @@ def test_migrated_implementation_evidence_uses_final_paths_and_current_bytes() -
     )
 
     assert tuple(evidence) == (*EXPECTED_PRODUCER_PATHS, "09", "10")
-    assert ARTIFACT_RECORDS.STEP_PRODUCERS == EXPECTED_PRODUCER_PATHS
     for step_id, expected_path in EXPECTED_PRODUCER_PATHS.items():
         record = evidence[step_id]
         assert record["status"] == "implemented"

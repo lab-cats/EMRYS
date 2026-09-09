@@ -98,7 +98,9 @@ def prepare_context(
         analysis_module = analyses.readmit_analysis_module(analysis_policy)
     except analyses.AnalysisModuleLoadError as exc:
         raise ArtifactIndexError(str(exc)) from exc
-    adapter_registry = build_adapter_registry(analysis_module.descriptor)
+    adapter_registry = build_adapter_registry(
+        analysis_module.descriptor, source_root=source_checkout.root
+    )
     profile = getattr(arguments, "profile", None)
     if profile is None:
         raise ArtifactIndexError(

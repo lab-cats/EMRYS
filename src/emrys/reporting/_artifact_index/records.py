@@ -13,6 +13,7 @@ from jsonschema import Draft202012Validator
 
 from emrys import analyses
 from emrys.contracts.artifacts import api as contracts
+from emrys.contracts.orchestration.artifact_inventory import processing_tasks
 from emrys.libraries.validation.tsv import tsv_bytes as render_tsv_bytes
 
 from .core import canonical_digest, safe_tsv, sha256_bytes
@@ -28,24 +29,6 @@ from .models import (
     ArtifactIndexError,
     Inspection,
 )
-
-STEP_PRODUCERS = {
-    "00a": "src/emrys/stages/star_index/step_00a_build_star_index.sh",
-    "00b": "src/emrys/stages/gtf_to_bed12/converter.py",
-    "00c": "src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
-    "01": "src/emrys/stages/star_alignment/step_01_star_align.sh",
-    "02": "src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh",
-    "02b": "src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
-    "03": (
-        "src/emrys/evidence/rseqc_orientation/"
-        "step_03_infer_strandedness_and_orientation.sh"
-    ),
-    "04": "src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh",
-    "05": "src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
-    "06": "src/emrys/stages/mechanical_orientation/producer.py",
-    "07": "src/emrys/stages/partitioned_cohort_mpileup/producer.py",
-    "08": "src/emrys/stages/cohort_candidate_preprocessing/producer.py",
-}
 
 
 def record_manifest(
@@ -69,7 +52,9 @@ def producer_evidence(
     source_root: Path = contracts.REPO_ROOT,
 ) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
-    for step_id, relative_path in STEP_PRODUCERS.items():
+    for task in processing_tasks(source_root):
+        step_id = str(task["step_id"])
+        relative_path = str(task["producer_path"])
         path = source_root / relative_path
         if not path.is_file():
             raise ArtifactIndexError(
