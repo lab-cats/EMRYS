@@ -70,4 +70,4 @@ The exact public admission, mutation, filesystem, lock, signal, resume,
 historical-compatibility, and evidence contract is in [`CONTRACT.md`](CONTRACT.md).
 Workflow composition is summarized in
 [`workflow/README.md`](../../../../workflow/README.md); configuration and
-resource precedence are in [`configs/README.md`](../../../../configs/README.md).
+resource precedence are in the [profile contract](CONTRACT.md#profiles-and-immutable-planning).

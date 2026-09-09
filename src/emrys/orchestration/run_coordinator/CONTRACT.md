@@ -95,9 +95,10 @@ completion authority.
   `<project-root>/runtime/profiles/NAME.yaml`; and
 - an absolute `--profile PATH` reads that exact file.
 
-There is no site/global registry or profile scan. Resource CLI values have
-highest precedence. Placement is Attempt-local provenance; the admitted
-scientific computation and task roster remain Run authority.
+There is no site/global registry or profile scan. Packaged defaults apply first,
+the selected profile overrides them, and resource CLI values have highest
+precedence. Placement is Attempt-local provenance; the admitted scientific
+computation and task roster remain Run authority.
 
 New profiles reject `resources.reporting_memory_mb`, and the CLI no longer
 accepts `--reporting-memory-mb`. This retired control never constrained report
