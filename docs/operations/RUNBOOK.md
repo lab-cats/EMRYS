@@ -20,6 +20,13 @@ continuing. Names such as
 `NAME`, `RUN`, and `JOB_ID` in command descriptions are values to replace;
 square brackets describe optional arguments and are not typed literally.
 
+`emrys --version` prints the loaded package version from any directory without
+a Project or scientific runtime. Add `-v` before or after `--version` to include
+the loaded package path and Python version and executable. This display writes
+no logs and remains available inside a different checkout so you can identify
+the installation actually in use; ordinary commands still reject a checkout
+that differs from the imported package. Version flags cannot accompany a command.
+
 ## Institution-provided runtime
 
 Use this alternative only when the institution can supply the exact runtime.

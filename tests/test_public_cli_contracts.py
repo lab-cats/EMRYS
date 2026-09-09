@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+import emrys
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_ROOT = REPO_ROOT / "scripts"
 DOCUMENTATION_TOOLS_ROOT = SCRIPTS_ROOT / "documentation"
@@ -583,7 +585,52 @@ def test_checkout_authority_ignores_nonowners_and_rejects_another_owner(
         assert "usage: emrys" in result.stdout
     else:
         assert "not the current checkout" in result.stderr
+        version = run_command(
+            [sys.executable, "-I", "-m", "emrys", "--version", "-v"],
+            cwd=invocation_cwd,
+        )
+        assert version.returncode == 0, version.stderr
+        assert f"Package: {Path(emrys.__file__).resolve().parent}" in version.stdout
+        literal = run_command(
+            [sys.executable, "-I", "-m", "emrys", "inspect", "--", "--version"],
+            cwd=invocation_cwd,
+        )
+        assert literal.returncode == CLI_USAGE_ERROR
+        assert "not the current checkout" in literal.stderr
     assert relative_snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize("arguments", (("--version",), ("--version", "-v"), ("-v", "--version")))
+def test_installed_emrys_version_is_cwd_independent(
+    arguments: tuple[str, ...], tmp_path: Path,
+) -> None:
+    result = run_command(
+        [sys.executable, "-I", "-m", "emrys", *arguments], cwd=tmp_path,
+    )
+    expected = [f"emrys {emrys.__version__}"]
+    if "-v" in arguments:
+        expected += [
+            f"Package: {Path(emrys.__file__).resolve().parent}",
+            f"Python: {sys.version.split()[0]}",
+            f"Executable: {sys.executable}",
+        ]
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == expected
+    assert not result.stderr
+    assert relative_snapshot(tmp_path) == ()
+
+
+@pytest.mark.parametrize("arguments", (("-v",), ("--version", "run"), ("--version", "--unknown")))
+def test_installed_emrys_rejects_invalid_version_arguments(
+    arguments: tuple[str, ...], tmp_path: Path,
+) -> None:
+    result = run_command(
+        [sys.executable, "-I", "-m", "emrys", *arguments], cwd=tmp_path,
+    )
+    assert result.returncode == CLI_USAGE_ERROR
+    assert "emrys: error:" in result.stderr
+    assert not result.stdout
+    assert relative_snapshot(tmp_path) == ()
 
 
 def test_retired_build_group_is_rejected_without_side_effects(

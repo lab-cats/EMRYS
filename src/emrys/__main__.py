@@ -35,6 +35,7 @@ import emrys.stages.partitioned_cohort_mpileup.validator as partitioned_cohort_m
 import emrys.stages.split_n_cigar.validator as split_n_cigar_validation_command
 import emrys.stages.star_alignment.validator as star_alignment_validation_command
 import emrys.stages.star_index.validator as star_index_validation_command
+from emrys import __version__
 from emrys.libraries.source_authority import (
     SourceCheckoutError,
     require_controlled_python_runtime,
@@ -228,10 +229,11 @@ def build_parser() -> argparse.ArgumentParser:
         prog="emrys",
         description="Run an explicitly installed EMRYS command.",
     )
+    parser.add_argument("--version", action="store_true", help="Show the installed EMRYS version.")
+    parser.add_argument("-v", action="store_true", help="Include package and Python details with --version.")
     command_parsers = parser.add_subparsers(
         dest="command",
         metavar="COMMAND",
-        required=True,
     )
     _add_onboarding_commands(command_parsers)
     _add_owned_command(
@@ -312,11 +314,12 @@ def _normalize_public_argv(argv: Sequence[str]) -> tuple[str, ...]:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse and dispatch one supported EMRYS command."""
-    if mismatch := _checkout_mismatch():
+    supplied = sys.argv[1:] if argv is None else argv
+    version_display = "--version" in supplied and set(supplied) <= {"--version", "-v"}
+    if not version_display and (mismatch := _checkout_mismatch()):
         print(f"emrys: error: {mismatch}", file=sys.stderr)
         return 2
     parser = build_parser()
-    supplied = sys.argv[1:] if argv is None else argv
     arguments, unrecognized = parser.parse_known_args(_normalize_public_argv(supplied))
     if unrecognized:
         error_parser = cast(
@@ -324,6 +327,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             getattr(arguments, "_command_parser", parser),
         )
         error_parser.error(f"unrecognized arguments: {' '.join(unrecognized)}")
+    if arguments.version:
+        if arguments.command is not None:
+            parser.error("--version cannot be combined with a command")
+        print(f"emrys {__version__}")
+        if arguments.v:
+            print(f"Package: {Path(__file__).resolve().parent}")
+            print(f"Python: {sys.version.split()[0]}")
+            print(f"Executable: {sys.executable}")
+        return 0
+    if arguments.v:
+        parser.error("-v requires --version")
+    if arguments.command is None:
+        parser.error("the following arguments are required: COMMAND")
     if getattr(arguments, "_requires_controlled_runtime", False) and not _admit_controlled_runtime():
         return 2
     handler = cast(CommandHandler, arguments._command_handler)
