@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from types import MappingProxyType
 
 from emrys.contracts.scientific_evidence import scientific_context as owner_context
 from emrys.libraries import validation as owner_validation
@@ -140,14 +141,14 @@ def _validation_table(
     *,
     analysis_id: str,
 ) -> ComputationalTable:
-    path, snapshot, header, rows, observed_count = _source_table(
+    table = _source_table(
         record,
         display_limit=1,
         expected_header=owner_validation.HEADER,
     )
-    if record.row_count != 1 or observed_count != 1 or len(rows) != 1:
+    if record.row_count != 1 or len(table.display_rows) != 1:
         _fail("Primary Step 10 owner-validation report must contain exactly one row")
-    row = dict(zip(header, rows[0], strict=True))
+    row = table.display_rows[0]
     if row["step_id"] != "10" or row["scope_id"] != analysis_id:
         _fail("Primary Step 10 owner-validation row has the wrong step or scope")
     if row["check_id"] != _VALIDATION_CHECK_ID:
@@ -157,16 +158,7 @@ def _validation_table(
             "Primary Step 10 owner-validation report is not all-pass: "
             f"{_VALIDATION_CHECK_ID}={row['status'] or '<empty>'}"
         )
-    return ComputationalTable(
-        artifact_id=record.artifact_id,
-        path=path,
-        sha256=snapshot.sha256,
-        size_bytes=snapshot.size_bytes,
-        row_count=1,
-        header=header,
-        display_rows=tuple(rows),
-        snapshot=snapshot,
-    )
+    return table
 
 
 def _canonical_table(
@@ -176,35 +168,29 @@ def _canonical_table(
     display_limit: int,
     canonical: owner_context.ContextTable,
 ) -> ComputationalTable:
-    if display_limit:
-        path, snapshot, header, displayed, observed_count = _source_table(
-            record,
-            display_limit=display_limit,
-            expected_header=expected_header,
-        )
-    else:
-        path, snapshot = _admit_source_identity(record)
-        header = expected_header
-        displayed = []
-        observed_count = canonical.row_count
-    if path != canonical.path or snapshot.sha256 != canonical.sha256:
+    snapshot = _admit_source_identity(record)
+    if snapshot.path != canonical.path or snapshot.sha256 != canonical.sha256:
         _fail(
             f"Primary Step 10 artifact {record.artifact_id!r} differs from "
             "the canonical receipt transaction"
         )
-    if observed_count != canonical.row_count or record.row_count != observed_count:
+    if record.row_count != canonical.row_count:
         _fail(
             f"Primary Step 10 artifact {record.artifact_id!r} row count differs "
             "from the canonical receipt transaction"
         )
+    if display_limit:
+        return _source_table(
+            record,
+            display_limit=display_limit,
+            expected_header=expected_header,
+            snapshot=snapshot,
+        )
     return ComputationalTable(
         artifact_id=record.artifact_id,
-        path=path,
-        sha256=snapshot.sha256,
-        size_bytes=snapshot.size_bytes,
-        row_count=observed_count,
-        header=header,
-        display_rows=tuple(displayed),
+        row_count=canonical.row_count,
+        header=expected_header,
+        display_rows=(),
         snapshot=snapshot,
     )
 
@@ -214,23 +200,19 @@ def _receipt_table(
     *,
     transaction: owner_context.ScientificContextTransaction,
 ) -> ComputationalTable:
-    path, snapshot = _admit_source_identity(record)
+    snapshot = _admit_source_identity(record)
     header = tuple(transaction.receipt.header)
-    rows = [tuple(transaction.receipt.rows[0][column] for column in header)]
     if (
-        path != transaction.receipt.path
+        snapshot.path != transaction.receipt.path
         or snapshot.sha256 != transaction.receipt_sha256
         or record.row_count != 1
     ):
         _fail("Primary Step 10 receipt record differs from its canonical transaction")
     return ComputationalTable(
         artifact_id=record.artifact_id,
-        path=path,
-        sha256=snapshot.sha256,
-        size_bytes=snapshot.size_bytes,
         row_count=1,
         header=header,
-        display_rows=tuple(rows),
+        display_rows=tuple(MappingProxyType(row) for row in transaction.receipt.rows),
         snapshot=snapshot,
     )
 
@@ -241,9 +223,9 @@ def _bound_inputs(
 ) -> tuple[FileSnapshot, ...]:
     reusable = (
         {
-            "step09_all_sites": computational_results.all_sites,
-            "step09_significant_sites": computational_results.significant_sites,
-            "step09_summary": computational_results.summary,
+            "step09_all_sites": computational_results.all_sites.snapshot,
+            "step09_significant_sites": computational_results.significant_sites.snapshot,
+            "step09_summary": computational_results.summary.snapshot,
         }
         if computational_results is not None
         else {}
@@ -253,7 +235,7 @@ def _bound_inputs(
         path = Path(receipt_row[f"{role}_path"])
         prior = reusable.get(role)
         snapshot = (
-            prior.snapshot
+            prior
             if prior is not None
             and prior.path == path
             and prior.sha256 == receipt_row[f"{role}_sha256"]
@@ -277,8 +259,8 @@ def _reconcile_step09_inputs(
         ("step09_summary", results.summary),
     ):
         if (
-            Path(receipt_row[f"{role}_path"]) != table.path
-            or receipt_row[f"{role}_sha256"] != table.sha256
+            Path(receipt_row[f"{role}_path"]) != table.snapshot.path
+            or receipt_row[f"{role}_sha256"] != table.snapshot.sha256
         ):
             _fail(
                 f"Step 10 receipt-bound {role} differs from the admitted Step 09 "

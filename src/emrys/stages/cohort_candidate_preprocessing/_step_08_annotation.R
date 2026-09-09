@@ -183,17 +183,7 @@ read_annotation_model <- function(path) {
         relevant_table$transcript_id,
         drop = TRUE
     )
-    transcript_rows <- vector("list", length(transcript_ids))
-    transcript_count <- 0L
-    exon_rows <- list()
-    intron_rows <- list()
-    cds_rows <- list()
-    five_rows <- list()
-    three_rows <- list()
-    exon_count <- intron_count <- cds_count <- five_count <- three_count <- 0L
-
-    for (index in seq_along(transcript_ids)) {
-        transcript_id <- transcript_ids[[index]]
+    transcript_rows <- lapply(transcript_ids, function(transcript_id) {
         tx_exons_raw <- exons[
             exon_rows_by_transcript[[transcript_id]], , drop = FALSE
         ]
@@ -208,7 +198,7 @@ read_annotation_model <- function(path) {
                 "strand, and gene.",
                 call. = FALSE
             )
-            next
+            return(NULL)
         }
         tx_features <- relevant_table[
             feature_rows_by_transcript[[transcript_id]], , drop = FALSE
@@ -222,46 +212,31 @@ read_annotation_model <- function(path) {
                 "annotations.",
                 call. = FALSE
             )
-            next
+            return(NULL)
+        }
+        make_rows <- function(start, end) {
+            data.frame(
+                seqnames = rep(chromosome, length(start)),
+                start = start, end = end,
+                strand = rep(strand, length(start)),
+                gene_id = rep(gene_id, length(start)),
+                transcript_id = rep(transcript_id, length(start)),
+                stringsAsFactors = FALSE
+            )
         }
         merged <- merge_simple_intervals(tx_exons_raw$start, tx_exons_raw$end)
-        tx_exons <- data.frame(
-            seqnames = chromosome,
-            start = merged$start,
-            end = merged$end,
-            strand = strand,
-            gene_id = gene_id,
-            transcript_id = transcript_id,
-            stringsAsFactors = FALSE
+        tx_exons <- make_rows(merged$start, merged$end)
+        rows <- list(
+            transcripts = make_rows(min(merged$start), max(merged$end)),
+            exon = tx_exons,
+            intron = make_rows(
+                utils::head(tx_exons$end, -1L) + 1L,
+                utils::tail(tx_exons$start, -1L) - 1L
+            ),
+            cds = tx_exons[FALSE, , drop = FALSE],
+            five_prime_utr = tx_exons[FALSE, , drop = FALSE],
+            three_prime_utr = tx_exons[FALSE, , drop = FALSE]
         )
-        transcript_count <- transcript_count + 1L
-        transcript_rows[[transcript_count]] <- data.frame(
-            seqnames = chromosome,
-            start = min(merged$start),
-            end = max(merged$end),
-            strand = strand,
-            gene_id = gene_id,
-            transcript_id = transcript_id,
-            stringsAsFactors = FALSE
-        )
-        for (row_index in seq_len(nrow(tx_exons))) {
-            exon_count <- exon_count + 1L
-            exon_rows[[exon_count]] <- tx_exons[row_index, , drop = FALSE]
-        }
-        if (nrow(tx_exons) > 1L) {
-            for (row_index in seq_len(nrow(tx_exons) - 1L)) {
-                intron_count <- intron_count + 1L
-                intron_rows[[intron_count]] <- data.frame(
-                    seqnames = chromosome,
-                    start = tx_exons$end[[row_index]] + 1L,
-                    end = tx_exons$start[[row_index + 1L]] - 1L,
-                    strand = strand,
-                    gene_id = gene_id,
-                    transcript_id = transcript_id,
-                    stringsAsFactors = FALSE
-                )
-            }
-        }
 
         tx_cds_raw <- tx_features[
             tx_features$type_normalized == "cds", , drop = FALSE
@@ -270,19 +245,8 @@ read_annotation_model <- function(path) {
             merged_cds <- merge_simple_intervals(
                 tx_cds_raw$start, tx_cds_raw$end
             )
-            tx_cds <- data.frame(
-                seqnames = chromosome,
-                start = merged_cds$start,
-                end = merged_cds$end,
-                strand = strand,
-                gene_id = gene_id,
-                transcript_id = transcript_id,
-                stringsAsFactors = FALSE
-            )
-            for (row_index in seq_len(nrow(tx_cds))) {
-                cds_count <- cds_count + 1L
-                cds_rows[[cds_count]] <- tx_cds[row_index, , drop = FALSE]
-            }
+            tx_cds <- make_rows(merged_cds$start, merged_cds$end)
+            rows$cds <- tx_cds
             cds_min <- min(tx_cds$start)
             cds_max <- max(tx_cds$end)
 
@@ -299,19 +263,8 @@ read_annotation_model <- function(path) {
             generic_utr <- tx_features[
                 tx_features$type_normalized == "utr", , drop = FALSE
             ]
-            make_explicit <- function(rows) {
-                data.frame(
-                    seqnames = chromosome,
-                    start = rows$start,
-                    end = rows$end,
-                    strand = strand,
-                    gene_id = gene_id,
-                    transcript_id = transcript_id,
-                    stringsAsFactors = FALSE
-                )
-            }
             source <- if (nrow(generic_utr) > 0L) {
-                make_explicit(generic_utr)
+                make_rows(generic_utr$start, generic_utr$end)
             } else {
                 derive_outer_utr_rows(tx_exons, cds_min, cds_max)
             }
@@ -319,66 +272,33 @@ read_annotation_model <- function(path) {
                 source, cds_min, cds_max, strand
             )
             if (nrow(explicit_five) > 0L) {
-                tx_five <- make_explicit(explicit_five)
+                rows$five_prime_utr <- make_rows(
+                    explicit_five$start, explicit_five$end
+                )
             } else {
-                tx_five <- classified$five
+                rows$five_prime_utr <- classified$five
             }
             if (nrow(explicit_three) > 0L) {
-                tx_three <- make_explicit(explicit_three)
+                rows$three_prime_utr <- make_rows(
+                    explicit_three$start, explicit_three$end
+                )
             } else {
-                tx_three <- classified$three
-            }
-            if (nrow(tx_five) > 0L) {
-                for (row_index in seq_len(nrow(tx_five))) {
-                    five_count <- five_count + 1L
-                    five_rows[[five_count]] <- tx_five[
-                        row_index, , drop = FALSE
-                    ]
-                }
-            }
-            if (nrow(tx_three) > 0L) {
-                for (row_index in seq_len(nrow(tx_three))) {
-                    three_count <- three_count + 1L
-                    three_rows[[three_count]] <- tx_three[
-                        row_index, , drop = FALSE
-                    ]
-                }
+                rows$three_prime_utr <- classified$three
             }
         }
-    }
-
-    if (transcript_count == 0L) {
+        rows
+    })
+    transcript_rows <- Filter(Negate(is.null), transcript_rows)
+    if (length(transcript_rows) == 0L) {
         abort(
             "Annotation GTF contains no internally consistent transcripts: ",
             path
         )
     }
-
-    bind_or_empty <- function(rows, count) {
-        if (count == 0L) {
-            return(data.frame(
-                seqnames = character(), start = integer(), end = integer(),
-                strand = character(), gene_id = character(),
-                transcript_id = character(), stringsAsFactors = FALSE
-            ))
-        }
-        do.call(rbind, rows[seq_len(count)])
-    }
-
-    list(
-        transcripts = feature_ranges(do.call(
-            rbind, transcript_rows[seq_len(transcript_count)]
-        )),
-        exon = feature_ranges(bind_or_empty(exon_rows, exon_count)),
-        intron = feature_ranges(bind_or_empty(intron_rows, intron_count)),
-        cds = feature_ranges(bind_or_empty(cds_rows, cds_count)),
-        five_prime_utr = feature_ranges(
-            bind_or_empty(five_rows, five_count)
-        ),
-        three_prime_utr = feature_ranges(
-            bind_or_empty(three_rows, three_count)
-        )
-    )
+    feature_names <- names(transcript_rows[[1L]])
+    stats::setNames(lapply(feature_names, function(feature) {
+        feature_ranges(do.call(rbind, lapply(transcript_rows, `[[`, feature)))
+    }), feature_names)
 }
 
 annotation_flag <- function(query, subject) {

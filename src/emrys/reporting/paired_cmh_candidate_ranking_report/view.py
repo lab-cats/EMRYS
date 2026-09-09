@@ -131,12 +131,6 @@ def _figure_guide_blocks(
     )
 
 
-def _summary_row(results: ComputationalResults) -> dict[str, str]:
-    return dict(
-        zip(results.summary.header, results.summary.display_rows[0], strict=True)
-    )
-
-
 def _scientific_summary_blocks(
     results: ComputationalResults | None,
     unavailable_reason: str | None,
@@ -159,7 +153,7 @@ def _scientific_summary_blocks(
                 )
             ),
         )
-    summary = _summary_row(results)
+    summary = results.summary.display_rows[0]
     blocks: list[dict[str, Any]] = [
         boundary,
         {

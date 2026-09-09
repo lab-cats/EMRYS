@@ -59,6 +59,7 @@ from emrys.libraries.process_environment import (
     R_SELECTOR_PREFIXES,
     R_STARTUP_VARIABLES,
     guarded_r_environment,
+    command_flags,
 )
 
 Operation = Literal["execute", "resume"]
@@ -364,6 +365,7 @@ def _task_commands(
     step_id: str,
     scope_id: str,
     paths: Mapping[str, list[Path]],
+    validation: Path,
     source: Mapping[str, Any],
     analysis_revision: AnalysisRevision | None,
     run_root: Path,
@@ -377,21 +379,11 @@ def _task_commands(
         str(row["partition_id"]): row for row in source["partitions"]["rows"]
     }
     reference = source["reference"]
-    analysis = source["analysis"]
     sample_manifest = Path(str(source["samples"]["manifest"]["path"]))
     partition_manifest = Path(str(source["partitions"]["manifest"]["path"]))
     fasta = Path(str(reference["fasta"]["path"]))
     gtf = Path(str(reference["gtf"]["path"]))
-    reference_id = (
-        analysis_revision.scope_id("reference")
-        if analysis_revision is not None
-        else str(reference["reference_id"])
-    )
-    cohort_id = (
-        analysis_revision.scope_id("cohort")
-        if analysis_revision is not None
-        else str(analysis["cohort_id"])
-    )
+    reference_id, cohort_id, _analysis_id = _scope_ids(source, analysis_revision)
     partition_scopes = {
         partition_id: (
             analysis_revision.scope_id("cohort_partition", partition_id)
@@ -411,19 +403,6 @@ def _task_commands(
     gunzip = _runtime_path(runtime, "gunzip")
     rscript = _runtime_path(runtime, "rscript")
     renv_library = Path(_runtime_path(runtime, "renv_library"))
-    validation = next(
-        (
-            path
-            for adapter, values in paths.items()
-            if adapter.endswith("_validation_report_v1")
-            for path in values
-        ),
-        None,
-    )
-    if validation is None:
-        raise MaterializationError(
-            f"No validation report for Step {step_id}/{scope_id}"
-        )
 
     def declared_threads() -> int:
         if threads is None:
@@ -447,40 +426,38 @@ def _task_commands(
             str(
                 source_root / "src/emrys/stages/star_index/step_00a_build_star_index.sh"
             ),
-            "--reference-fasta",
-            str(fasta),
-            "--reference-gtf",
-            str(gtf),
-            "--index-dir",
-            str(index_dir),
-            "--threads",
-            str(declared_threads()),
-            "--sjdb-overhang",
-            str(reference["star_index"]["sjdb_overhang"]),
-            "--genome-sa-index-nbases",
-            str(reference["star_index"]["genome_sa_index_nbases"]),
-            "--star-bin",
-            star,
+            *command_flags(
+                ("reference-fasta", fasta),
+                ("reference-gtf", gtf),
+                ("index-dir", index_dir),
+                ("threads", declared_threads()),
+                ("sjdb-overhang", reference["star_index"]["sjdb_overhang"]),
+                (
+                    "genome-sa-index-nbases",
+                    reference["star_index"]["genome_sa_index_nbases"],
+                ),
+                ("star-bin", star),
+            ),
             "--execute",
         )
         validator = _validator(
             "star-index",
-            "--scope-id",
-            reference_id,
-            "--index-dir",
-            str(index_dir),
-            "--reference-fasta",
-            str(fasta),
-            "--reference-gtf",
-            str(gtf),
-            "--parameter-path-base",
-            str(run_root),
-            "--expected-sjdb-overhang",
-            str(reference["star_index"]["sjdb_overhang"]),
-            "--expected-genome-sa-index-nbases",
-            str(reference["star_index"]["genome_sa_index_nbases"]),
-            "--output",
-            str(validation),
+            *command_flags(
+                ("scope-id", reference_id),
+                ("index-dir", index_dir),
+                ("reference-fasta", fasta),
+                ("reference-gtf", gtf),
+                ("parameter-path-base", run_root),
+                (
+                    "expected-sjdb-overhang",
+                    reference["star_index"]["sjdb_overhang"],
+                ),
+                (
+                    "expected-genome-sa-index-nbases",
+                    reference["star_index"]["genome_sa_index_nbases"],
+                ),
+                ("output", validation),
+            ),
         )
         return producer, validator, (fasta, gtf)
 
@@ -492,22 +469,20 @@ def _task_commands(
             "emrys",
             "convert",
             "gtf-to-bed12",
-            "--gtf",
-            str(gtf),
-            "--bed",
-            str(bed),
+            *command_flags(
+                ("gtf", gtf),
+                ("bed", bed),
+            ),
             "--execute",
         )
         validator = _validator(
             "bed12",
-            "--scope-id",
-            reference_id,
-            "--bed12",
-            str(bed),
-            "--source-gtf",
-            str(gtf),
-            "--output",
-            str(validation),
+            *command_flags(
+                ("scope-id", reference_id),
+                ("bed12", bed),
+                ("source-gtf", gtf),
+                ("output", validation),
+            ),
         )
         return producer, validator, (gtf,)
 
@@ -520,28 +495,23 @@ def _task_commands(
                 source_root
                 / "src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"
             ),
-            "--reference-fasta",
-            str(fasta),
-            "--samtools-bin",
-            samtools,
-            "--gatk-bin",
-            gatk,
-            "--java-bin",
-            java,
+            *command_flags(
+                ("reference-fasta", fasta),
+                ("samtools-bin", samtools),
+                ("gatk-bin", gatk),
+                ("java-bin", java),
+            ),
             "--execute",
         )
         validator = _validator(
             "fasta-sidecars",
-            "--scope-id",
-            reference_id,
-            "--reference-fasta",
-            str(fasta),
-            "--reference-fai",
-            str(fai),
-            "--reference-dict",
-            str(dictionary),
-            "--output",
-            str(validation),
+            *command_flags(
+                ("scope-id", reference_id),
+                ("reference-fasta", fasta),
+                ("reference-fai", fai),
+                ("reference-dict", dictionary),
+                ("output", validation),
+            ),
         )
         return producer, validator, (fasta,)
 
@@ -562,37 +532,28 @@ def _task_commands(
                 sys.executable,
                 "-m",
                 "emrys.stages.mechanical_orientation.producer",
-                "--sample-id",
-                scope_id,
-                "--input-bam",
-                str(split_bam),
-                "--output-dir",
-                str(fwd.parent),
-                "--qc-dir",
-                str(counts.parent),
-                "--threads",
-                str(declared_threads()),
-                "--samtools-bin",
-                samtools,
+                *command_flags(
+                    ("sample-id", scope_id),
+                    ("input-bam", split_bam),
+                    ("output-dir", fwd.parent),
+                    ("qc-dir", counts.parent),
+                    ("threads", declared_threads()),
+                    ("samtools-bin", samtools),
+                ),
                 "--no-clobber",
                 "--execute",
             )
             validator = _validator(
                 "mechanical-orientation",
-                "--scope-id",
-                scope_id,
-                "--fwd-bam",
-                str(fwd),
-                "--fwd-bai",
-                str(fwd_bai),
-                "--rev-bam",
-                str(rev),
-                "--rev-bai",
-                str(rev_bai),
-                "--counts",
-                str(counts),
-                "--output",
-                str(validation),
+                *command_flags(
+                    ("scope-id", scope_id),
+                    ("fwd-bam", fwd),
+                    ("fwd-bai", fwd_bai),
+                    ("rev-bam", rev),
+                    ("rev-bai", rev_bai),
+                    ("counts", counts),
+                    ("output", validation),
+                ),
             )
             return producer, validator, (split_bam, split_bai)
 
@@ -606,33 +567,25 @@ def _task_commands(
             sj_out = _one(paths, "step01_star_sj_v1")
             script = "src/emrys/stages/star_alignment/step_01_star_align.sh"
             producer_arguments = (
-                "--r1-fastq",
-                str(sample["r1_fastq"]["path"]),
-                "--r2-fastq",
-                str(sample["r2_fastq"]["path"]),
-                "--star-index",
-                str(index_dir),
-                "--output-dir",
-                str(bam.parent),
-                "--threads",
-                str(declared_threads()),
-                "--star-bin",
-                star,
-                "--gunzip-bin",
-                gunzip,
+                *command_flags(
+                    ("r1-fastq", sample["r1_fastq"]["path"]),
+                    ("r2-fastq", sample["r2_fastq"]["path"]),
+                    ("star-index", index_dir),
+                    ("output-dir", bam.parent),
+                    ("threads", declared_threads()),
+                    ("star-bin", star),
+                    ("gunzip-bin", gunzip),
+                ),
             )
             validator_name = "star-alignment"
             validator_arguments = (
-                "--bam",
-                str(bam),
-                "--log-final",
-                str(log_final),
-                "--log-out",
-                str(log_out),
-                "--log-progress",
-                str(log_progress),
-                "--sj-out",
-                str(sj_out),
+                *command_flags(
+                    ("bam", bam),
+                    ("log-final", log_final),
+                    ("log-out", log_out),
+                    ("log-progress", log_progress),
+                    ("sj-out", sj_out),
+                ),
             )
             input_paths = (
                 Path(str(sample["r1_fastq"]["path"])),
@@ -644,23 +597,20 @@ def _task_commands(
             bai = _one(paths, "step02_canonical_bai_v1")
             script = "src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh"
             producer_arguments = (
-                "--input-alignment",
-                str(star_bam),
-                "--output-dir",
-                str(bam.parent),
-                "--threads",
-                str(declared_threads()),
-                "--samtools-bin",
-                samtools,
+                *command_flags(
+                    ("input-alignment", star_bam),
+                    ("output-dir", bam.parent),
+                    ("threads", declared_threads()),
+                    ("samtools-bin", samtools),
+                ),
             )
             validator_name = "canonical-bam"
             validator_arguments = (
-                "--bam",
-                str(bam),
-                "--bai",
-                str(bai),
-                "--samtools-bin",
-                samtools,
+                *command_flags(
+                    ("bam", bam),
+                    ("bai", bai),
+                    ("samtools-bin", samtools),
+                ),
             )
             input_paths = (star_bam,)
         elif step_id == "02b":
@@ -668,19 +618,18 @@ def _task_commands(
             flagstat = _one(paths, "step02b_flagstat_v1")
             script = "src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh"
             producer_arguments = (
-                "--bam",
-                str(canonical_bam),
-                "--output-dir",
-                str(quickcheck.parent),
-                "--samtools-bin",
-                samtools,
+                *command_flags(
+                    ("bam", canonical_bam),
+                    ("output-dir", quickcheck.parent),
+                    ("samtools-bin", samtools),
+                ),
             )
             validator_name = "canonical-bam-qc"
             validator_arguments = (
-                "--quickcheck",
-                str(quickcheck),
-                "--flagstat",
-                str(flagstat),
+                *command_flags(
+                    ("quickcheck", quickcheck),
+                    ("flagstat", flagstat),
+                ),
             )
             input_paths = (canonical_bam, canonical_bai)
         elif step_id == "03":
@@ -688,14 +637,12 @@ def _task_commands(
             bed = _one(all_paths["00b", reference_id], "step00b_bed12_v1")
             script = "src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"
             producer_arguments = (
-                "--input-bam",
-                str(canonical_bam),
-                "--bed12",
-                str(bed),
-                "--output-dir",
-                str(infer.parent),
-                "--infer-experiment-bin",
-                infer_experiment,
+                *command_flags(
+                    ("input-bam", canonical_bam),
+                    ("bed12", bed),
+                    ("output-dir", infer.parent),
+                    ("infer-experiment-bin", infer_experiment),
+                ),
             )
             validator_name = "rseqc-orientation"
             validator_arguments = ("--infer-report", str(infer))
@@ -706,29 +653,23 @@ def _task_commands(
             metrics = _one(paths, "step04_markdup_metrics_v1")
             script = "src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh"
             producer_arguments = (
-                "--input-bam",
-                str(canonical_bam),
-                "--output-dir",
-                str(bam.parent),
-                "--metrics-dir",
-                str(metrics.parent),
-                "--picard-jar",
-                picard_jar,
-                "--java-bin",
-                java,
-                "--samtools-bin",
-                samtools,
+                *command_flags(
+                    ("input-bam", canonical_bam),
+                    ("output-dir", bam.parent),
+                    ("metrics-dir", metrics.parent),
+                    ("picard-jar", picard_jar),
+                    ("java-bin", java),
+                    ("samtools-bin", samtools),
+                ),
             )
             validator_name = "duplicate-marking"
             validator_arguments = (
-                "--bam",
-                str(bam),
-                "--bai",
-                str(bai),
-                "--metrics",
-                str(metrics),
-                "--samtools-bin",
-                samtools,
+                *command_flags(
+                    ("bam", bam),
+                    ("bai", bai),
+                    ("metrics", metrics),
+                    ("samtools-bin", samtools),
+                ),
             )
             input_paths = (canonical_bam, canonical_bai, Path(picard_jar))
         elif step_id == "05":
@@ -742,33 +683,25 @@ def _task_commands(
             )
             script = "src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
             producer_arguments = (
-                "--input-bam",
-                str(markdup_bam),
-                "--reference-fasta",
-                str(fasta),
-                "--output-dir",
-                str(bam.parent),
-                "--gatk-bin",
-                gatk,
-                "--samtools-bin",
-                samtools,
-                "--java-bin",
-                java,
+                *command_flags(
+                    ("input-bam", markdup_bam),
+                    ("reference-fasta", fasta),
+                    ("output-dir", bam.parent),
+                    ("gatk-bin", gatk),
+                    ("samtools-bin", samtools),
+                    ("java-bin", java),
+                ),
             )
             validator_name = "split-n-cigar"
             validator_arguments = (
-                "--bam",
-                str(bam),
-                "--bai",
-                str(bai),
-                "--reference-fasta",
-                str(fasta),
-                "--reference-fai",
-                str(fai),
-                "--reference-dict",
-                str(dictionary),
-                "--samtools-bin",
-                samtools,
+                *command_flags(
+                    ("bam", bam),
+                    ("bai", bai),
+                    ("reference-fasta", fasta),
+                    ("reference-fai", fai),
+                    ("reference-dict", dictionary),
+                    ("samtools-bin", samtools),
+                ),
             )
             input_paths = (markdup_bam, markdup_bai, fasta, fai, dictionary)
         producer = (
@@ -825,47 +758,33 @@ def _task_commands(
             sys.executable,
             "-m",
             "emrys.stages.partitioned_cohort_mpileup.producer",
-            "--cohort-id",
-            cohort_id,
-            "--sample-manifest",
-            str(sample_manifest),
-            "--partition-manifest",
-            str(partition_manifest),
-            "--partition-id",
-            partition_id,
-            "--orientation-root",
-            str(orientation_root),
-            "--reference-fasta",
-            str(fasta),
-            "--output-root",
-            str(mpileup_root),
-            "--bcftools-bin",
-            bcftools,
+            *command_flags(
+                ("cohort-id", cohort_id),
+                ("sample-manifest", sample_manifest),
+                ("partition-manifest", partition_manifest),
+                ("partition-id", partition_id),
+                ("orientation-root", orientation_root),
+                ("reference-fasta", fasta),
+                ("output-root", mpileup_root),
+                ("bcftools-bin", bcftools),
+            ),
             "--no-clobber",
             "--execute",
         )
         validator = _validator(
             "partitioned-cohort-mpileup",
-            "--scope-id",
-            scope_id,
-            "--cohort-id",
-            cohort_id,
-            "--partition-id",
-            partition_id,
-            "--sample-manifest",
-            str(sample_manifest),
-            "--partition-manifest",
-            str(partition_manifest),
-            "--reference-fai",
-            str(fai),
-            "--fwd-vcf",
-            str(fwd),
-            "--rev-vcf",
-            str(rev),
-            "--receipt",
-            str(receipt),
-            "--output",
-            str(validation),
+            *command_flags(
+                ("scope-id", scope_id),
+                ("cohort-id", cohort_id),
+                ("partition-id", partition_id),
+                ("sample-manifest", sample_manifest),
+                ("partition-manifest", partition_manifest),
+                ("reference-fai", fai),
+                ("fwd-vcf", fwd),
+                ("rev-vcf", rev),
+                ("receipt", receipt),
+                ("output", validation),
+            ),
         )
         selector = partition.get("selector_file")
         selector_inputs = () if selector is None else (Path(str(selector["path"])),)
@@ -894,28 +813,21 @@ def _task_commands(
         )
         step07_root = step07_inputs[0].parents[2]
         arguments = (
-            "--cohort-id",
-            cohort_id,
-            "--sample-manifest",
-            str(sample_manifest),
-            "--partition-manifest",
-            str(partition_manifest),
-            "--step07-root",
-            str(step07_root),
-            "--annotation-gtf",
-            str(gtf),
-            "--output-root",
-            str(sites.parents[1]),
-            "--qc-root",
-            str(summary.parent),
-            "--threads",
-            str(declared_threads()),
-            "--rscript-bin",
-            rscript,
-            "--r-script",
-            str(
-                source_root
-                / "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"
+            *command_flags(
+                ("cohort-id", cohort_id),
+                ("sample-manifest", sample_manifest),
+                ("partition-manifest", partition_manifest),
+                ("step07-root", step07_root),
+                ("annotation-gtf", gtf),
+                ("output-root", sites.parents[1]),
+                ("qc-root", summary.parent),
+                ("threads", declared_threads()),
+                ("rscript-bin", rscript),
+                (
+                    "r-script",
+                    source_root
+                    / "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R",
+                ),
             ),
             "--no-clobber",
             "--execute",
@@ -933,22 +845,16 @@ def _task_commands(
         )
         validator = _validator(
             "cohort-candidate-preprocessing",
-            "--cohort-id",
-            cohort_id,
-            "--sample-manifest",
-            str(sample_manifest),
-            "--partition-manifest",
-            str(partition_manifest),
-            "--annotation-gtf",
-            str(gtf),
-            "--sites",
-            str(sites),
-            "--inputs",
-            str(inputs),
-            "--summary",
-            str(summary),
-            "--output",
-            str(validation),
+            *command_flags(
+                ("cohort-id", cohort_id),
+                ("sample-manifest", sample_manifest),
+                ("partition-manifest", partition_manifest),
+                ("annotation-gtf", gtf),
+                ("sites", sites),
+                ("inputs", inputs),
+                ("summary", summary),
+                ("output", validation),
+            ),
         )
         return (
             producer,
@@ -977,7 +883,7 @@ def _dispatches(
     successor = isinstance(run, RunCandidate)
     analysis_revision = run.analysis.revision if successor else None
     profile = run.analysis.profile
-    inventory: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    paths_by_scope: dict[tuple[str, str], dict[str, list[Path]]] = {}
     for row in artifact_inventory.project_rows(
         source,
         profile,
@@ -985,18 +891,11 @@ def _dispatches(
         processing_source_root,
         processing_artifact_paths,
     ):
-        item = dict(row)
+        key = str(row["step_id"]), str(row["scope_id"])
         path = Path(str(row["source_path"]))
-        item["path"] = path if path.is_absolute() else run_root / path
-        inventory.setdefault((str(row["step_id"]), str(row["scope_id"])), []).append(
-            item
+        paths_by_scope.setdefault(key, {}).setdefault(str(row["adapter"]), []).append(
+            path if path.is_absolute() else run_root / path
         )
-    paths_by_scope: dict[tuple[str, str], dict[str, list[Path]]] = {}
-    for key, rows in inventory.items():
-        adapters: dict[str, list[Path]] = {}
-        for row in rows:
-            adapters.setdefault(str(row["adapter"]), []).append(row["path"])
-        paths_by_scope[key] = adapters
     runtime = {item.check.check_id: item for item in readiness.inspection.observations}
     planned: list[PlannedFile] = []
     references: dict[str, dict[str, dict[str, str]]] = {}
@@ -1109,6 +1008,7 @@ def _dispatches(
                 step_id=step_id,
                 scope_id=task.scope_id,
                 paths=adapters,
+                validation=validation,
                 source=source,
                 analysis_revision=analysis_revision,
                 run_root=run_root,

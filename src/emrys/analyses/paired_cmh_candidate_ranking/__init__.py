@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from pathlib import Path
 
 from emrys import analyses as module_api
@@ -12,6 +12,7 @@ from emrys.analyses.paired_cmh_candidate_ranking.scientific_context_projection i
     validator as step10_validator,
 )
 from emrys.contracts.scientific_evidence import scientific_context, step09
+from emrys.libraries.process_environment import command_flags
 
 _STEP09_OWNER = "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1"
 _STEP10_OWNER = "emrys.analysis.project_candidate_scientific_context.v1"
@@ -179,10 +180,6 @@ _STEP10_ROOT = Path(__file__).with_name("scientific_context_projection")
 _STEP09_R_SCRIPT = Path(__file__).with_name("step_09_cmh_editing_site_calling.R")
 
 
-def _flags(values: Iterable[tuple[str, object]]) -> tuple[str, ...]:
-    return tuple(str(item) for name, value in values for item in (f"--{name}", value))
-
-
 def _one(context: module_api.TaskPlanningContextV1, adapter: str) -> Path:
     paths = context.inputs.get(adapter, ())
     if len(paths) != 1:
@@ -198,20 +195,20 @@ def _step09(context: module_api.TaskPlanningContextV1) -> module_api.TaskCommand
     summary08 = _one(context, "step08_summary_v1")
     outputs = context.outputs
     arguments = (
-        *_flags(
-            (
-                ("analysis-id", context.analysis_id),
-                ("cohort-id", context.cohort_id),
-                ("sample-manifest", context.sample_manifest),
-                ("partition-manifest", context.partition_manifest),
-                ("step08-root", sites.parents[1]),
-                ("output-root", outputs["step09_cmh_all_sites_v1"].parents[1]),
-            )
+        *command_flags(
+            ("analysis-id", context.analysis_id),
+            ("cohort-id", context.cohort_id),
+            ("sample-manifest", context.sample_manifest),
+            ("partition-manifest", context.partition_manifest),
+            ("step08-root", sites.parents[1]),
+            ("output-root", outputs["step09_cmh_all_sites_v1"].parents[1]),
         ),
-        *_flags(
-            (name, context.configuration[name.replace("-", "_")])
-            for name in step09_producer.DEFAULTS
-            if name != "background-condition"
+        *command_flags(
+            *(
+                (name, context.configuration[name.replace("-", "_")])
+                for name in step09_producer.DEFAULTS
+                if name != "background-condition"
+            )
         ),
         "--rscript-bin",
         context.runtime_paths["rscript"],
@@ -235,31 +232,29 @@ def _step09(context: module_api.TaskPlanningContextV1) -> module_api.TaskCommand
     validator = context.validator_command(
         (
             "paired-cmh-candidate-ranking",
-            *_flags(
+            *command_flags(
+                ("analysis-id", context.analysis_id),
+                ("cohort-id", context.cohort_id),
+                ("sample-manifest", context.sample_manifest),
+                ("partition-manifest", context.partition_manifest),
+                ("step08-sites", sites),
+                ("step08-inputs", inputs),
+                ("all-sites", outputs["step09_cmh_all_sites_v1"]),
                 (
-                    ("analysis-id", context.analysis_id),
-                    ("cohort-id", context.cohort_id),
-                    ("sample-manifest", context.sample_manifest),
-                    ("partition-manifest", context.partition_manifest),
-                    ("step08-sites", sites),
-                    ("step08-inputs", inputs),
-                    ("all-sites", outputs["step09_cmh_all_sites_v1"]),
-                    (
-                        "significant-sites",
-                        outputs["step09_cmh_significant_sites_v1"],
-                    ),
-                    ("summary", outputs["step09_cmh_summary_v1"]),
-                    (
-                        "mutation-spectrum",
-                        outputs["step09_mutation_spectrum_tsv_v1"],
-                    ),
-                    (
-                        "mutation-spectrum-pdf",
-                        outputs["step09_mutation_spectrum_pdf_v1"],
-                    ),
-                    ("depth-delta-pdf", outputs["step09_depth_delta_pdf_v1"]),
-                    ("output", outputs["step09_validation_report_v1"]),
-                )
+                    "significant-sites",
+                    outputs["step09_cmh_significant_sites_v1"],
+                ),
+                ("summary", outputs["step09_cmh_summary_v1"]),
+                (
+                    "mutation-spectrum",
+                    outputs["step09_mutation_spectrum_tsv_v1"],
+                ),
+                (
+                    "mutation-spectrum-pdf",
+                    outputs["step09_mutation_spectrum_pdf_v1"],
+                ),
+                ("depth-delta-pdf", outputs["step09_depth_delta_pdf_v1"]),
+                ("output", outputs["step09_validation_report_v1"]),
             ),
         )
     )
@@ -284,18 +279,16 @@ def _step10(context: module_api.TaskPlanningContextV1) -> module_api.TaskCommand
     motif_catalog = _STEP10_ROOT / "resources/pum_motifs_v1.tsv"
     outputs = context.outputs
     arguments = (
-        *_flags(
-            (
-                ("analysis-id", context.analysis_id),
-                ("step09-all-sites", all_sites),
-                ("step09-significant-sites", significant),
-                ("step09-summary", summary),
-                ("reference-fasta", context.reference_fasta),
-                ("reference-fai", fai),
-                ("output-root", outputs["step10_candidate_context_v1"].parents[1]),
-                ("motif-catalog", motif_catalog),
-                ("git-commit", context.source_commit),
-            )
+        *command_flags(
+            ("analysis-id", context.analysis_id),
+            ("step09-all-sites", all_sites),
+            ("step09-significant-sites", significant),
+            ("step09-summary", summary),
+            ("reference-fasta", context.reference_fasta),
+            ("reference-fai", fai),
+            ("output-root", outputs["step10_candidate_context_v1"].parents[1]),
+            ("motif-catalog", motif_catalog),
+            ("git-commit", context.source_commit),
         ),
         "--rscript-bin",
         context.runtime_paths["rscript"],

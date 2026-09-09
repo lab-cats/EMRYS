@@ -397,8 +397,8 @@ def test_step10_report_admission_calls_the_canonical_transaction_once(
 
     assert results is not None
     assert unavailable is None
-    assert observed == [results.receipt.path]
-    with results.receipt.path.open(encoding="utf-8", newline="") as stream:
+    assert observed == [results.receipt.snapshot.path]
+    with results.receipt.snapshot.path.open(encoding="utf-8", newline="") as stream:
         receipt_row = next(csv.DictReader(stream, delimiter="\t"))
     expected_roles = (
         "step09_all_sites",
@@ -1187,7 +1187,7 @@ def test_sample_manifest_admission_fails_closed(
         source_root=computational_summary.parent.parent,
     )
     assert results is not None and unavailable is None
-    source = results.sample_manifest.path
+    source = results.sample_manifest.snapshot.path
     with source.open(encoding="utf-8", newline="") as stream:
         reader = csv.DictReader(stream, delimiter="\t")
         header = tuple(reader.fieldnames or ())
@@ -1209,10 +1209,10 @@ def test_sample_manifest_admission_fails_closed(
     digest = hashlib.sha256(manifest.read_bytes()).hexdigest()
     recorded_hash = "0" * 64 if case == "stale_bytes" else digest
     run_contract_hash = "f" * 64 if case == "run_contract" else recorded_hash
-    summary_row = list(results.summary.display_rows[0])
-    summary_row[results.summary.header.index("sample_manifest_path")] = str(manifest)
-    summary_row[results.summary.header.index("sample_manifest_sha256")] = recorded_hash
-    summary_table = replace(results.summary, display_rows=(tuple(summary_row),))
+    summary_row = dict(results.summary.display_rows[0])
+    summary_row["sample_manifest_path"] = str(manifest)
+    summary_row["sample_manifest_sha256"] = recorded_hash
+    summary_table = replace(results.summary, display_rows=(summary_row,))
     summary_document = {
         **document,
         "run_contract": {

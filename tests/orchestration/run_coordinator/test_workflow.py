@@ -905,7 +905,10 @@ def test_foreign_dispatch_binding_and_unknown_scope_fail_closed(
             "predecessor_pending",
             "does not bind the current workflow attempt",
         ),
-        ("foreign_stdout", "does not bind exact stdout_path"),
+        (
+            "foreign_stdout",
+            "stdout_path does not match the exact workflow-attempt task path",
+        ),
     ),
 )
 def test_pending_dispatch_identity_and_task_evidence_paths_fail_closed(

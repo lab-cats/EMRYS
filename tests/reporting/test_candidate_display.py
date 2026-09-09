@@ -54,9 +54,6 @@ def _write_table(
     snapshot = _snapshot_regular(path, f"{role} candidate-display fixture")
     return ComputationalTable(
         artifact_id=f"analysis.synthetic.{role}",
-        path=path,
-        sha256=snapshot.sha256,
-        size_bytes=snapshot.size_bytes,
         row_count=len(rows),
         header=header,
         display_rows=(),
@@ -203,10 +200,6 @@ def _computational_results(
         manifest_path, "candidate-display sample manifest"
     )
     manifest = ComputationalSampleManifest(
-        role="sample_manifest",
-        path=manifest_path,
-        sha256=manifest_snapshot.sha256,
-        size_bytes=manifest_snapshot.size_bytes,
         sample_ids=SAMPLES,
         control_condition="EV",
         treatment_condition="PUM1",
@@ -440,7 +433,9 @@ def test_step10_selected_identity_must_match_step09(tmp_path: Path) -> None:
 def test_candidate_projection_rechecks_admitted_snapshots(tmp_path: Path) -> None:
     present, _no_hit, _boundary = _three_rows()
     computational = _computational_results(tmp_path, [present])
-    with computational.significant_sites.path.open("a", encoding="utf-8") as stream:
+    with computational.significant_sites.snapshot.path.open(
+        "a", encoding="utf-8"
+    ) as stream:
         stream.write("changed\n")
 
     with pytest.raises(ReportRenderError, match="changed during report rendering"):

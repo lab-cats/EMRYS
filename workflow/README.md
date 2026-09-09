@@ -19,3 +19,9 @@ profile invocation.
 [STAGE_MAP](../src/emrys/contracts/STAGE_MAP.md) defines producer identities and
 artifact dependencies. The [run-coordinator contract](../src/emrys/orchestration/run_coordinator/CONTRACT.md)
 defines materialization, completion, reuse, reporting, and recovery.
+
+The graph reads dispatches through `task.load_dispatch` and resource records
+through `resource_policy.admit_resource_policy_record`, the same owners used by
+execution and resume. Workflow-specific checks still bind each dispatch to its
+Run, task scope, and Attempt. The named rules and dependency barriers remain
+unchanged; validating a graph does not replace checks immediately before a task.

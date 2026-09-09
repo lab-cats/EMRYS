@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import csv
 import hashlib
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Iterator, Mapping, Sequence
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
+from types import MappingProxyType
 
 from emrys.contracts.scientific_evidence import step08, step09
 from emrys.libraries import validation as owner_validation
@@ -15,27 +16,44 @@ from emrys.libraries import validation as owner_validation
 from emrys.reporting import (
     AnalysisReportArtifactV1,
     ReportInputSnapshot as FileSnapshot,
-    ReportProviderError as ReportRenderError,
     admit_report_input as _snapshot_regular,
     fail_report_provider as _fail,
     recheck_report_input as _assert_snapshot,
     resolve_report_input as _resolve_contract_file,
 )
 
-COMPUTATIONAL_ALL_SITES_DISPLAY_LIMIT = 0
-COMPUTATIONAL_SIGNIFICANT_DISPLAY_LIMIT = 0
-
 
 @dataclass(frozen=True)
 class ComputationalTable:
     artifact_id: str
-    path: Path
-    sha256: str
-    size_bytes: int
     row_count: int
     header: tuple[str, ...]
-    display_rows: tuple[tuple[str, ...], ...]
+    display_rows: tuple[Mapping[str, str], ...]
     snapshot: FileSnapshot
+
+    def iter_rows(self) -> Iterator[dict[str, str]]:
+        """Stream named rows; callers recheck snapshots around their projection."""
+        label = f"computational result {self.artifact_id!r}"
+        observed_count = 0
+        try:
+            with self.snapshot.path.open(encoding="utf-8", newline="") as stream:
+                reader = csv.reader(stream, delimiter="\t", strict=True)
+                if tuple(next(reader, ())) != self.header:
+                    _fail(f"{label} has the wrong header")
+                for row_number, values in enumerate(reader, start=2):
+                    if not values or all(value == "" for value in values):
+                        _fail(f"{label} row {row_number} is blank")
+                    if len(values) != len(self.header):
+                        _fail(f"{label} row {row_number} has the wrong field count")
+                    observed_count += 1
+                    yield dict(zip(self.header, values, strict=True))
+        except (OSError, UnicodeError, csv.Error) as exc:
+            _fail(f"Could not parse {label}: {exc}")
+        if observed_count != self.row_count:
+            _fail(
+                f"{label} row-count mismatch: observed {observed_count}; "
+                f"expected {self.row_count}"
+            )
 
 
 @dataclass(frozen=True)
@@ -47,10 +65,6 @@ class SamplePair:
 
 @dataclass(frozen=True)
 class ComputationalSampleManifest:
-    role: str
-    path: Path
-    sha256: str
-    size_bytes: int
     sample_ids: tuple[str, ...]
     control_condition: str
     treatment_condition: str
@@ -98,26 +112,10 @@ _VALIDATION_CHECK_IDS = (
     "pdf_structure",
 )
 _ROLE_SPECS = (
-    (
-        "all_sites",
-        "step09_cmh_all_sites_v1",
-        COMPUTATIONAL_ALL_SITES_DISPLAY_LIMIT,
-    ),
-    (
-        "significant_sites",
-        "step09_cmh_significant_sites_v1",
-        COMPUTATIONAL_SIGNIFICANT_DISPLAY_LIMIT,
-    ),
-    (
-        "summary",
-        "step09_cmh_summary_v1",
-        1,
-    ),
-    (
-        "mutation_spectrum",
-        "step09_mutation_spectrum_tsv_v1",
-        len(step09.CANONICAL_MUTATIONS),
-    ),
+    ("all_sites", "step09_cmh_all_sites_v1"),
+    ("significant_sites", "step09_cmh_significant_sites_v1"),
+    ("summary", "step09_cmh_summary_v1"),
+    ("mutation_spectrum", "step09_mutation_spectrum_tsv_v1"),
 )
 
 
@@ -126,7 +124,7 @@ def _select_artifacts(
 ) -> tuple[dict[str, AnalysisReportArtifactV1], str | None]:
     selected = {
         role: artifacts[adapter]
-        for role, adapter, _limit in _ROLE_SPECS
+        for role, adapter in _ROLE_SPECS
         if adapter in artifacts
     }
     if _VALIDATION_ADAPTER in artifacts:
@@ -154,25 +152,22 @@ def _inspect_validation(
     *,
     analysis_id: str,
 ) -> ComputationalTable:
-    path, snapshot, header, rows, observed_row_count = _source_table(
+    table = _source_table(
         record,
         display_limit=len(_VALIDATION_CHECK_IDS),
         expected_header=owner_validation.HEADER,
     )
-    if (
-        record.row_count != len(_VALIDATION_CHECK_IDS)
-        or observed_row_count != len(_VALIDATION_CHECK_IDS)
-        or len(rows) != len(_VALIDATION_CHECK_IDS)
+    if record.row_count != len(_VALIDATION_CHECK_IDS) or len(table.display_rows) != len(
+        _VALIDATION_CHECK_IDS
     ):
         _fail(
             "Primary Step 09 owner-validation report must contain exactly "
             f"{len(_VALIDATION_CHECK_IDS)} check rows"
         )
-    for row_number, (values, expected_check_id) in enumerate(
-        zip(rows, _VALIDATION_CHECK_IDS, strict=True),
+    for row_number, (row, expected_check_id) in enumerate(
+        zip(table.display_rows, _VALIDATION_CHECK_IDS, strict=True),
         start=2,
     ):
-        row = dict(zip(header, values, strict=True))
         if row["step_id"] != "09" or row["scope_id"] != analysis_id:
             _fail(
                 "Primary Step 09 owner-validation report row "
@@ -188,21 +183,12 @@ def _inspect_validation(
                 "Primary Step 09 owner-validation report is not all-pass: "
                 f"{expected_check_id}={row['status'] or '<empty>'}"
             )
-    return ComputationalTable(
-        artifact_id=record.artifact_id,
-        path=path,
-        sha256=snapshot.sha256,
-        size_bytes=snapshot.size_bytes,
-        row_count=len(rows),
-        header=header,
-        display_rows=tuple(rows),
-        snapshot=snapshot,
-    )
+    return table
 
 
 def _admit_source_identity(
     record: AnalysisReportArtifactV1,
-) -> tuple[Path, Any]:
+) -> FileSnapshot:
     if record.media_type != "text/tab-separated-values":
         _fail(f"Computational result {record.artifact_id!r} must be a TSV source")
     path = record.path
@@ -220,105 +206,30 @@ def _admit_source_identity(
             f"Computational result {record.artifact_id!r} size mismatch: "
             f"observed {snapshot.size_bytes}; expected {record.size_bytes}"
         )
-    return path, snapshot
+    return snapshot
 
 
 def _source_table(
     record: AnalysisReportArtifactV1,
     *,
     display_limit: int,
-    expected_header: Sequence[str] | None = None,
-    admitted_source: tuple[Path, Any] | None = None,
-) -> tuple[Path, Any, tuple[str, ...], list[tuple[str, ...]], int]:
-    path, snapshot = admitted_source or _admit_source_identity(record)
-
-    header: tuple[str, ...] | None = None
-    displayed: list[tuple[str, ...]] = []
-    observed_row_count = 0
-    try:
-        with path.open(encoding="utf-8", newline="") as stream:
-            reader = csv.reader(stream, delimiter="\t", strict=True)
-            try:
-                header = tuple(next(reader))
-            except StopIteration:
-                _fail(f"Computational result {record.artifact_id!r} is empty")
-            if not header or any(not column for column in header):
-                _fail(
-                    f"Computational result {record.artifact_id!r} has a blank "
-                    "header column"
-                )
-            if len(header) != len(set(header)):
-                _fail(
-                    f"Computational result {record.artifact_id!r} has duplicate "
-                    "header columns"
-                )
-            if expected_header is not None and header != tuple(expected_header):
-                _fail(
-                    f"Computational result {record.artifact_id!r} has the wrong header"
-                )
-            for row_number, row in enumerate(reader, start=2):
-                if not row or all(value == "" for value in row):
-                    _fail(
-                        f"Computational result {record.artifact_id!r} row "
-                        f"{row_number} is blank"
-                    )
-                if len(row) != len(header):
-                    _fail(
-                        f"Computational result {record.artifact_id!r} row "
-                        f"{row_number} has {len(row)} fields; expected {len(header)}"
-                    )
-                if len(displayed) < display_limit:
-                    displayed.append(tuple(row))
-                observed_row_count += 1
-    except ReportRenderError:
-        raise
-    except (OSError, UnicodeError, csv.Error) as exc:
-        _fail(f"Could not parse computational result {record.artifact_id!r}: {exc}")
-    assert header is not None
-    _assert_snapshot(snapshot, f"computational result {record.artifact_id!r}")
-    return path, snapshot, header, displayed, observed_row_count
-
-
-def _projection_table(
-    record: AnalysisReportArtifactV1,
-    *,
-    display_limit: int,
-    admitted_source: tuple[Path, Any],
-    canonical_path: Path,
-    canonical_header: Sequence[str],
-    canonical_row_count: int,
+    expected_header: Sequence[str],
+    snapshot: FileSnapshot | None = None,
 ) -> ComputationalTable:
-    path, snapshot, header, displayed, observed_row_count = _source_table(
-        record,
-        display_limit=display_limit,
-        expected_header=canonical_header,
-        admitted_source=admitted_source,
-    )
-    if canonical_path != path:
-        _fail(
-            f"Canonical Step 09 projection selected a different source for "
-            f"{record.artifact_id!r}"
-        )
-    if observed_row_count != canonical_row_count:
-        _fail(
-            f"Computational result {record.artifact_id!r} row count differs "
-            "from the canonical Step 09 projection"
-        )
-    if observed_row_count != record.row_count:
-        _fail(
-            f"Computational result {record.artifact_id!r} row-count mismatch: "
-            f"observed {observed_row_count}; expected {record.row_count}"
-        )
-    return ComputationalTable(
+    table = ComputationalTable(
         artifact_id=record.artifact_id,
-        path=path,
-        sha256=snapshot.sha256,
-        size_bytes=snapshot.size_bytes,
-        row_count=observed_row_count,
-        header=header,
-        display_rows=tuple(displayed),
-        snapshot=snapshot,
+        row_count=record.row_count,
+        header=tuple(expected_header),
+        display_rows=(),
+        snapshot=snapshot or _admit_source_identity(record),
     )
+    displayed = tuple(
+        MappingProxyType(row)
+        for index, row in enumerate(table.iter_rows())
+        if index < display_limit
+    )
+    _assert_snapshot(table.snapshot, f"computational result {record.artifact_id!r}")
+    return replace(table, display_rows=displayed)
 
 
 def _admit_sample_manifest(
@@ -328,9 +239,7 @@ def _admit_sample_manifest(
     *,
     source_root: Path,
 ) -> ComputationalSampleManifest:
-    summary_row = dict(
-        zip(summary_table.header, summary_table.display_rows[0], strict=True)
-    )
+    summary_row = summary_table.display_rows[0]
     recorded_hash = summary_row["sample_manifest_sha256"]
     try:
         step08.validate_hash("Step 09 sample manifest SHA-256", recorded_hash)
@@ -386,10 +295,6 @@ def _admit_sample_manifest(
         )
     _assert_snapshot(snapshot, "Step 09 sample manifest")
     return ComputationalSampleManifest(
-        role="sample_manifest",
-        path=path,
-        sha256=snapshot.sha256,
-        size_bytes=snapshot.size_bytes,
         sample_ids=tuple(manifest_sample_ids),
         control_condition=control,
         treatment_condition=treatment,
@@ -433,49 +338,46 @@ def admit_computational_results(
     try:
         all_projection, significant_projection, summary_projection, sample_ids = (
             step09.validate_step09_projection(
-                admitted["all_sites"][0],
-                admitted["significant_sites"][0],
-                admitted["summary"][0],
+                admitted["all_sites"].path,
+                admitted["significant_sites"].path,
+                admitted["summary"].path,
                 analysis_id,
-                mutation_spectrum=admitted["mutation_spectrum"][0],
+                mutation_spectrum=admitted["mutation_spectrum"].path,
             )
         )
     except (step09.ContractError, OSError, UnicodeError, csv.Error) as exc:
         _fail(f"Primary Step 09 projection failed validation: {exc}")
 
-    projections = {
-        "all_sites": (
-            all_projection.path,
-            all_projection.header,
-            all_projection.row_count,
-        ),
-        "significant_sites": (
-            significant_projection.path,
-            significant_projection.header,
-            significant_projection.row_count,
-        ),
-        "summary": (
-            summary_projection.path,
-            summary_projection.header,
-            len(summary_projection.rows),
-        ),
-        "mutation_spectrum": (
-            admitted["mutation_spectrum"][0],
-            step09.STEP09_MUTATION_HEADER,
-            len(step09.CANONICAL_MUTATIONS),
-        ),
-    }
-    tables: dict[str, ComputationalTable] = {}
-    for role, _adapter, display_limit in _ROLE_SPECS:
-        canonical_path, canonical_header, canonical_row_count = projections[role]
-        tables[role] = _projection_table(
-            records[role],
-            display_limit=display_limit,
-            admitted_source=admitted[role],
-            canonical_path=canonical_path,
-            canonical_header=canonical_header,
-            canonical_row_count=canonical_row_count,
+    tables = {}
+    for role, canonical, rows in (
+        ("all_sites", all_projection, ()),
+        ("significant_sites", significant_projection, ()),
+        ("summary", summary_projection, tuple(summary_projection.rows)),
+    ):
+        record = records[role]
+        row_count = len(rows) if role == "summary" else canonical.row_count
+        if canonical.path != admitted[role].path:
+            _fail(
+                f"Canonical Step 09 projection selected a different source for {record.artifact_id!r}"
+            )
+        if row_count != record.row_count:
+            _fail(
+                f"Computational result {record.artifact_id!r} row-count mismatch: "
+                f"observed {row_count}; expected {record.row_count}"
+            )
+        tables[role] = ComputationalTable(
+            artifact_id=record.artifact_id,
+            row_count=row_count,
+            header=tuple(canonical.header),
+            display_rows=tuple(MappingProxyType(row) for row in rows),
+            snapshot=admitted[role],
         )
+    tables["mutation_spectrum"] = _source_table(
+        records["mutation_spectrum"],
+        display_limit=len(step09.CANONICAL_MUTATIONS),
+        expected_header=step09.STEP09_MUTATION_HEADER,
+        snapshot=admitted["mutation_spectrum"],
+    )
     for role, table in tables.items():
         _assert_snapshot(
             table.snapshot,
