@@ -73,7 +73,11 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--bcftools-bin")
     parser.add_argument("--max-depth", default=str(DEFAULT_MAX_DEPTH))
     parser.add_argument("--filter-expression", default=DEFAULT_FILTER)
-    parser.add_argument("--no-clobber", action="store_true")
+    parser.add_argument(
+        "--no-clobber",
+        action="store_true",
+        help="Accepted for existing callers; replacement is always refused.",
+    )
     parser.add_argument("--execute", action="store_true")
 
 
@@ -234,9 +238,6 @@ def _paths(arguments: argparse.Namespace, token: str) -> dict[str, Path]:
         "tmp_fwd": Path(f"{prefix}.{ORIENTATIONS[0]}.tmp.vcf"),
         "tmp_rev": Path(f"{prefix}.{ORIENTATIONS[1]}.tmp.vcf"),
         "tmp_receipt": Path(f"{prefix}.outputs.tmp.tsv"),
-        "backup_fwd": Path(f"{prefix}.previous.{ORIENTATIONS[0]}.vcf"),
-        "backup_rev": Path(f"{prefix}.previous.{ORIENTATIONS[1]}.vcf"),
-        "backup_receipt": Path(f"{prefix}.previous.outputs.tsv"),
         "lock": root / f".{stem}.step07.lock",
     }
 
@@ -311,8 +312,7 @@ def build_context(arguments: argparse.Namespace) -> Context:
             _nonempty(f"{orientation} BAI for {sample_id}", Path(f"{bam}.bai"))
     bound = os.environ.pop(INPUT_IDENTITY_ENV, "") or None
     if bound is not None and (
-        not arguments.no_clobber
-        or os.environ.get("EMRYS_REQUIRE_BOUND_SHA256", "0") != "1"
+        os.environ.get("EMRYS_REQUIRE_BOUND_SHA256", "0") != "1"
         or re.fullmatch(r"[0-9a-f]{64}", bound) is None
     ):
         fail("The internal Step 07 input identity is not admitted.")
@@ -368,19 +368,12 @@ def _confirm_inputs(context: Context, snapshot: tuple[str, ...]) -> None:
         if digest.hexdigest() != context.bound_input_identity:
             fail(
                 "Scientific inputs changed after run-coordinator admission during "
-                "Step 07 --no-clobber execution."
+                "Step 07 execution."
             )
         return
     for item, expected in zip(context.scientific_inputs, snapshot, strict=True):
         if _input_digest(item) != expected:
-            fail(f"{item[0]} changed during Step 07 --no-clobber execution: {item[1]}")
-
-
-def _confirm_stable(context: Context, snapshot: tuple[str, ...]) -> None:
-    if context.arguments.no_clobber:
-        _confirm_inputs(context, snapshot)
-    else:
-        _confirm_manifest_hashes(context)
+            fail(f"{item[0]} changed during Step 07 execution: {item[1]}")
 
 
 def pipeline_commands(
@@ -519,7 +512,7 @@ class Publication:
     def __init__(self, context: Context) -> None:
         self.context, self.p = context, context.paths
         self.locked = self.scratch = self.committed = False
-        self.prior_set: bool | None = None
+        self.started = False
         self.children: list[subprocess.Popen[bytes]] = []
 
     @property
@@ -615,25 +608,14 @@ class Publication:
     def rollback(self) -> bool:
         success = True
         for name in self.names:
-            final = self.p[name]
+            staged, final = self.p[f"tmp_{name}"], self.p[name]
             try:
-                if self.context.arguments.no_clobber:
-                    staged = self.p[f"tmp_{name}"]
-                    if not lexists(final):
-                        continue
-                    if not self.same(staged, final):
-                        success = False
-                        continue
-                    final.unlink()
-                elif self.prior_set:
-                    backup = self.p[f"backup_{name}"]
-                    if lexists(backup):
-                        final.unlink(missing_ok=True)
-                        backup.replace(final)
-                    elif not lexists(final):
-                        success = False
-                else:
-                    final.unlink(missing_ok=True)
+                if not lexists(final):
+                    continue
+                if not self.same(staged, final):
+                    success = False
+                    continue
+                final.unlink()
             except OSError:
                 success = False
         return success
@@ -653,19 +635,13 @@ class Publication:
             )
             return
         rollback_failed = bool(
-            failed
-            and self.prior_set is not None
-            and not self.committed
-            and not self.rollback()
+            failed and self.started and not self.committed and not self.rollback()
         )
-        if self.scratch:
-            if not rollback_failed or not self.context.arguments.no_clobber:
-                self.discard("tmp")
-            if not rollback_failed:
-                self.discard("backup")
+        if self.scratch and not rollback_failed:
+            self.discard("tmp")
         if rollback_failed:
             print(
-                f"ERROR: Step 07 rollback incomplete; retaining lock and backups: {self.p['lock']}",
+                f"ERROR: Step 07 rollback incomplete; retaining lock and staging files: {self.p['lock']}",
                 file=sys.stderr,
             )
         elif self.locked:
@@ -709,13 +685,18 @@ class Publication:
         self.reap_children()
 
 
-def _require_no_residue(context: Context) -> None:
+def _require_no_residue(context: Context, *, owned_lock: Path | None = None) -> None:
     root = context.paths["root"]
     if not root.is_dir():
         return
     prefix = f".{context.arguments.cohort_id}.{context.arguments.partition_id}.step07."
     match = next(
-        (path for path in root.iterdir() if path.name.startswith(prefix)), None
+        (
+            path
+            for path in root.iterdir()
+            if path.name.startswith(prefix) and path != owned_lock
+        ),
+        None,
     )
     if match is not None:
         fail(f"Step 07 residue requires operator inspection: {match}")
@@ -780,7 +761,7 @@ def _print_plan(context: Context) -> None:
         ("Filter expression", a.filter_expression),
         (
             "Existing-output policy",
-            "no-clobber" if a.no_clobber else "replace-complete-set",
+            "refuse existing outputs",
         ),
     ):
         print(f"  {label}: {value}")
@@ -800,9 +781,6 @@ def _print_plan(context: Context) -> None:
         f"  Temporary {ORIENTATIONS[0]} VCF: {p['tmp_fwd']}\n"
         f"  Temporary {ORIENTATIONS[1]} VCF: {p['tmp_rev']}\n"
         f"  Temporary receipt: {p['tmp_receipt']}\n"
-        f"  Backup {ORIENTATIONS[0]} VCF: {p['backup_fwd']}\n"
-        f"  Backup {ORIENTATIONS[1]} VCF: {p['backup_rev']}\n"
-        f"  Backup receipt: {p['backup_receipt']}\n"
         "  Publish VCF, VCF, then receipt with rollback protection"
     )
     print(f"Post-execution validator command:\n  {shlex.join(validator_command)}")
@@ -819,30 +797,23 @@ def execute(context: Context) -> tuple[int, int]:
         for number in handlers:
             signal.signal(number, signal.SIG_IGN)
         tx.acquire()
-        if any(
-            lexists(p[f"{kind}_{name}"])
-            for kind in ("tmp", "backup")
-            for name in tx.names
-        ):
-            fail("Refusing to reuse existing Step 07 scratch or backup residue.")
+        _require_no_residue(context, owned_lock=p["lock"])
         tx.scratch = True
         for number in handlers:
             signal.signal(number, tx.interrupted)
         existing = sum(lexists(p[name]) for name in tx.names)
         if existing not in (0, 3):
             fail("Existing Step 07 outputs are incomplete; expected all three or none.")
-        if existing and context.arguments.no_clobber:
-            fail("Refusing to replace complete Step 07 outputs under --no-clobber.")
+        if existing:
+            fail("Refusing to replace complete Step 07 outputs.")
         snapshot = (
-            _snapshot_inputs(context)
-            if context.arguments.no_clobber and context.bound_input_identity is None
-            else ()
+            _snapshot_inputs(context) if context.bound_input_identity is None else ()
         )
         _confirm_manifest_hashes(context)
         sys.stdout.flush()
         _run_pipeline(context, 0, tx)
         _run_pipeline(context, 1, tx)
-        _confirm_stable(context, snapshot)
+        _confirm_inputs(context, snapshot)
         counts = (
             _validate_vcf(
                 context, tx, f"Published {ORIENTATIONS[0]} temporary", p["tmp_fwd"]
@@ -853,33 +824,23 @@ def execute(context: Context) -> tuple[int, int]:
         )
         p["tmp_receipt"].write_bytes(_receipt_bytes(context, counts))
         _validate_receipt(p["tmp_receipt"])
-        _confirm_stable(context, snapshot)
-        tx.prior_set = existing == 3
-        if tx.prior_set:
-            for name in tx.names:
-                p[name].replace(p[f"backup_{name}"])
+        _confirm_inputs(context, snapshot)
+        tx.started = True
         for name in ("fwd", "rev"):
-            tx.exclusive(name) if context.arguments.no_clobber else p[
-                f"tmp_{name}"
-            ].replace(p[name])
+            tx.exclusive(name)
         published = (
             _validate_vcf(context, tx, f"Published {ORIENTATIONS[0]}", p["fwd"]),
             _validate_vcf(context, tx, f"Published {ORIENTATIONS[1]}", p["rev"]),
         )
         if published != counts:
             fail("Published Step 07 VCF record count changed during publication.")
-        tx.exclusive("receipt") if context.arguments.no_clobber else p[
-            "tmp_receipt"
-        ].replace(p["receipt"])
+        tx.exclusive("receipt")
         _validate_receipt(p["receipt"])
-        if context.arguments.no_clobber:
-            if any(not tx.same(p[f"tmp_{name}"], p[name]) for name in tx.names):
-                fail("A Step 07 final no longer matches its staging anchor.")
-            for name in tx.names:
-                p[f"tmp_{name}"].unlink()
-        tx.committed = True
+        if any(not tx.same(p[f"tmp_{name}"], p[name]) for name in tx.names):
+            fail("A Step 07 final no longer matches its staging anchor.")
         for name in tx.names:
-            p[f"backup_{name}"].unlink(missing_ok=True)
+            p[f"tmp_{name}"].unlink()
+        tx.committed = True
         tx.release()
         failed = False
         return counts
@@ -895,8 +856,7 @@ def execute(context: Context) -> tuple[int, int]:
 def run(arguments: argparse.Namespace) -> int:
     context = build_context(arguments)
     _print_plan(context)
-    if arguments.no_clobber:
-        _require_no_residue(context)
+    _require_no_residue(context)
     if not arguments.execute:
         print("Dry-run complete; no directories or files were created.")
         return 0

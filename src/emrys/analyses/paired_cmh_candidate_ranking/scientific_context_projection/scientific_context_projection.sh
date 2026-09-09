@@ -52,7 +52,6 @@ motif_catalog="$script_dir/resources/pum_motifs_v1.tsv"
 rscript_bin_arg=""
 git_commit_arg=""
 r_script="${SCIENTIFIC_CONTEXT_R_SCRIPT:-$script_dir/scientific_context_projection.R}"
-no_clobber=false
 execute=false
 
 while [[ "$#" -gt 0 ]]; do
@@ -68,7 +67,7 @@ while [[ "$#" -gt 0 ]]; do
         --rscript-bin) require_value "$1" "${2:-}"; rscript_bin_arg="$2"; shift 2 ;;
         --r-script) require_value "$1" "${2:-}"; r_script="$2"; shift 2 ;;
         --git-commit) require_value "$1" "${2:-}"; git_commit_arg="$2"; shift 2 ;;
-        --no-clobber) no_clobber=true; shift ;;
+        --no-clobber) shift ;;
         --execute) execute=true; shift ;;
         -h|--help) usage; exit 0 ;;
         *) die "Unknown argument: $1" ;;
@@ -126,10 +125,6 @@ tmp_logo="$analysis_dir/.$analysis_id.scientific-context.$run_token.logo.tmp.tsv
 tmp_statistics="$analysis_dir/.$analysis_id.scientific-context.$run_token.statistics.tmp.tsv"
 tmp_receipt="$analysis_dir/.$analysis_id.scientific-context.$run_token.receipt.tmp.tsv"
 temps=("$tmp_context" "$tmp_hits" "$tmp_logo" "$tmp_statistics" "$tmp_receipt")
-backups=()
-for final in "${finals[@]}"; do
-    backups+=("$analysis_dir/.$(basename "$final").$run_token.previous")
-done
 lock_path="$analysis_dir/.$analysis_id.scientific-context.lock"
 lock_owner_tmp="$lock_path/.owner.$run_token.tmp"
 
@@ -302,20 +297,17 @@ printf '  Step 09 summary: %s\n' "$step09_summary"
 printf '  Reference FASTA / FAI: %s / %s\n' "$reference_fasta" "$reference_fai"
 printf '  Motif catalog: %s\n' "$motif_catalog"
 printf '  Output directory: %s\n' "$analysis_dir"
-printf '  Existing-output policy: %s\n' \
-    "$([[ "$no_clobber" == true ]] && printf no-clobber || printf replace-complete-set)"
+printf '  Existing-output policy: refuse existing outputs\n'
 printf '  Sequence policy: legacy_rna_change_oriented_genomic_v1 (mechanical; provisional)\n'
 printf 'R command:\n'
 print_command "${r_command[@]}"
 printf 'Publication order (receipt last):\n'
 printf '  %s\n' "${finals[@]}"
 
-if [[ "$no_clobber" == true ]]; then
-    require_no_owner_residue \
-        "Scientific-context projection" "$analysis_dir" \
-        ".${analysis_id}.scientific-context.*" \
-        ".${analysis_id}.*.previous"
-fi
+require_no_owner_residue \
+    "Scientific-context projection" "$analysis_dir" \
+    ".${analysis_id}.scientific-context.*" \
+    ".${analysis_id}.*.previous"
 preflight_final_count=0
 for final in "${finals[@]}"; do
     [[ ! -L "$final" ]] || die "Scientific-context final path is a symlink: $final"
@@ -323,8 +315,8 @@ for final in "${finals[@]}"; do
 done
 [[ "$preflight_final_count" -eq 0 || "$preflight_final_count" -eq 5 ]] ||
     die "Existing scientific-context outputs are incomplete; expected all five or none."
-if [[ "$no_clobber" == true && "$preflight_final_count" -eq 5 ]]; then
-    die "Refusing to replace a complete scientific-context transaction under --no-clobber."
+if [[ "$preflight_final_count" -eq 5 ]]; then
+    die "Refusing to replace a complete scientific-context transaction."
 fi
 if [[ "$execute" != true ]]; then
     printf 'Dry-run only. No R process was invoked and no output path was created.\n'
@@ -344,9 +336,7 @@ lock_owner_written=false
 scratch_owned=false
 publication_started=false
 publication_committed=false
-previous_set=false
 rollback_failed=false
-backed_up_count=0
 published_count=0
 
 release_lock() {
@@ -372,33 +362,15 @@ cleanup() {
     local index
     trap - EXIT HUP INT TERM
     if [[ "$publication_started" == true && "$publication_committed" != true ]]; then
-        if [[ "$no_clobber" == true ]]; then
-            for ((index = 0; index < published_count; index++)); do
-                remove_owned_published_file \
-                    "Scientific-context output" "${temps[$index]}" "${finals[$index]}" ||
-                    rollback_failed=true
-            done
-        else
-            for index in "${!finals[@]}"; do
-                if [[ "$previous_set" == true && "$index" -lt "$backed_up_count" ]]; then
-                    if ! rm -f "${finals[$index]}"; then
-                        rollback_failed=true
-                    elif ! mv "${backups[$index]}" "${finals[$index]}"; then
-                        rollback_failed=true
-                    fi
-                elif [[ "$previous_set" != true && "$index" -lt "$published_count" ]]; then
-                    rm -f "${finals[$index]}" || rollback_failed=true
-                fi
-            done
-        fi
+        for ((index = 0; index < published_count; index++)); do
+            remove_owned_published_file \
+                "Scientific-context output" "${temps[$index]}" "${finals[$index]}" ||
+                rollback_failed=true
+        done
         fsync_directory "$analysis_dir" || rollback_failed=true
     fi
-    if [[ "$scratch_owned" == true &&
-          ( "$rollback_failed" != true || "$no_clobber" != true ) ]]; then
+    if [[ "$scratch_owned" == true && "$rollback_failed" != true ]]; then
         for path in "${temps[@]}"; do rm -f "$path" || true; done
-    fi
-    if [[ "$publication_committed" == true ]]; then
-        for path in "${backups[@]}"; do rm -f "$path" || true; done
     fi
     if [[ "$rollback_failed" == true ]]; then
         [[ "$status" -ne 0 ]] || status=1
@@ -423,8 +395,11 @@ printf 'run_token\t%s\npid\t%s\n' "$run_token" "$$" > "$lock_owner_tmp" ||
 mv "$lock_owner_tmp" "$lock_path/owner" ||
     die "Could not publish scientific-context lock metadata."
 lock_owner_written=true
+require_no_owner_residue \
+    "Scientific-context projection" "$analysis_dir" \
+    ".${analysis_id}.*.previous"
 
-for path in "${temps[@]}" "${backups[@]}"; do
+for path in "${temps[@]}"; do
     [[ ! -e "$path" && ! -L "$path" ]] ||
         die "Refusing to reuse scientific-context scratch path: $path"
 done
@@ -436,10 +411,9 @@ for final in "${finals[@]}"; do
 done
 [[ "$final_count" -eq 0 || "$final_count" -eq 5 ]] ||
     die "Existing scientific-context outputs are incomplete; expected all five or none."
-if [[ "$final_count" -eq 5 && "$no_clobber" == true ]]; then
-    die "Refusing to replace a complete scientific-context transaction under --no-clobber."
+if [[ "$final_count" -eq 5 ]]; then
+    die "Refusing to replace a complete scientific-context transaction."
 fi
-[[ "$final_count" -eq 5 ]] && previous_set=true
 
 "${r_command[@]}" || die "Scientific-context R projection failed."
 confirm_inputs_unchanged
@@ -451,29 +425,14 @@ tmp_hashes=()
 for temp in "${temps[@]}"; do tmp_hashes+=("$(sha256_file "$temp")"); done
 
 publication_started=true
-if [[ "$previous_set" == true ]]; then
-    for index in "${!finals[@]}"; do
-        mv "${finals[$index]}" "${backups[$index]}"
-        backed_up_count=$((backed_up_count + 1))
-    done
-fi
-if [[ "$no_clobber" == true ]]; then
-    for index in 0 1 2 3; do
-        publish_file_create_exclusive \
-            "Scientific-context payload" "${temps[$index]}" "${finals[$index]}"
-        published_count=$((published_count + 1))
-    done
+for index in 0 1 2 3; do
     publish_file_create_exclusive \
-        "Scientific-context receipt" "$tmp_receipt" "$final_receipt"
+        "Scientific-context payload" "${temps[$index]}" "${finals[$index]}"
     published_count=$((published_count + 1))
-else
-    for index in 0 1 2 3; do
-        mv "${temps[$index]}" "${finals[$index]}"
-        published_count=$((published_count + 1))
-    done
-    mv "$tmp_receipt" "$final_receipt"
-    published_count=$((published_count + 1))
-fi
+done
+publish_file_create_exclusive \
+    "Scientific-context receipt" "$tmp_receipt" "$final_receipt"
+published_count=$((published_count + 1))
 fsync_directory "$analysis_dir" ||
     die "Could not make receipt-last scientific-context publication durable."
 
@@ -484,15 +443,12 @@ for index in "${!finals[@]}"; do
     [[ "$(sha256_file "${finals[$index]}")" == "${tmp_hashes[$index]}" ]] ||
         die "Published scientific-context output changed: ${finals[$index]}"
 done
-if [[ "$no_clobber" == true ]]; then
-    for index in "${!finals[@]}"; do
-        require_owned_published_file \
-            "Scientific-context output" "${temps[$index]}" "${finals[$index]}"
-    done
-    for temp in "${temps[@]}"; do rm -f -- "$temp"; done
-fi
+for index in "${!finals[@]}"; do
+    require_owned_published_file \
+        "Scientific-context output" "${temps[$index]}" "${finals[$index]}"
+done
+for temp in "${temps[@]}"; do rm -f -- "$temp"; done
 publication_committed=true
-for backup in "${backups[@]}"; do rm -f "$backup"; done
 release_lock
 
 printf 'Scientific-context execute complete. Published receipt-last transaction:\n'

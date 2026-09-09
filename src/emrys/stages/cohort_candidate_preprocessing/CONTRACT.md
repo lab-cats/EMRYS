@@ -77,21 +77,17 @@ hashes, annotation path/hash, observed and skipped counts, and policy. The
 one-row summary reconciles aggregate counts and identities.
 
 The private [Python producer](producer.py) does not write in dry-run. Execute
-requires all three prior outputs or none, holds a cohort lock, and uses run-token
-temporary/backup paths. It repeatedly checks input hashes and validates staged
-output before publishing sites, summary, then input receipt. It checks the
-visible set, hashes, and inputs again before marking the attempt committed.
-The receipt can therefore be visible before final checks finish; its presence
-alone does not prove that the producer returned success.
+holds a cohort lock and uses run-token staging paths. It repeatedly checks
+input hashes and validates staged output before publishing sites, summary,
+then input receipt. It checks the visible set, hashes, and inputs again before
+marking the attempt committed. The receipt can therefore be visible before
+final checks finish; its presence alone does not prove that the producer
+returned success.
 
-With `--no-clobber`, the producer refuses a complete prior set under the lock
-without invoking R or changing outputs. First publication uses exclusive hard
-links and retains all three staging inodes through validation. Ambiguous
-replacement preserves the lock and residue. Rollback follows the shared
-[no-clobber rule](../../../../docs/design/decisions/execution-evidence-and-reporting.md#no-clobber-rollback).
-Direct execute without the flag retains complete-set replacement. Failed
-restoration keeps remaining backups and the cohort lock; no automated recovery
-interface exists.
+Publication follows the shared
+[create-only policy](../../../../docs/design/decisions/execution-evidence-and-reporting.md#standalone-scientific-output-policy).
+Old backup and staging files in the cohort output or QC directory still block
+execution for operator inspection.
 
 Computation and publication have separate responsibilities:
 

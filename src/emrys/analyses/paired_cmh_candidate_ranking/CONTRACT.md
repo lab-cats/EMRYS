@@ -75,20 +75,12 @@ diagnostics. Header-only candidate tables are valid when all counts reconcile.
 
 Private [`producer.py`](producer.py) is side-effect-free in dry-run. Execute
 mode hashes and repeatedly rechecks
-manifests plus both Step `08` inputs, uses an analysis-owned lock and run-token
-scratch/backups, requires all six previous outputs or none, validates all
-temporaries, publishes the summary last as native commit marker, then
-revalidates contents and hashes. If rollback cannot restore a predecessor, it
-retains the owned lock and recovery evidence for operator intervention.
-`--no-clobber` is the orchestration-safe policy: while holding the owner lock,
-it rejects a complete predecessor set without invoking R or changing stable
-outputs. Direct invocations retain complete-set replacement unless the flag is
-supplied.
-First publication in that mode is create-exclusive and retains all six staging
-inode anchors through validation; ambiguous replacement preserves the owner
-lock and residue.
-Rollback follows the shared
-[no-clobber rule](../../../../docs/design/decisions/execution-evidence-and-reporting.md#no-clobber-rollback).
+manifests plus both Step `08` inputs, uses an analysis-owned lock and
+run-token staging, validates all temporary outputs, publishes the summary last
+as the native commit marker, then revalidates contents and hashes. It follows
+the shared
+[create-only publication policy](../../../../docs/design/decisions/execution-evidence-and-reporting.md#standalone-scientific-output-policy).
+Old backup and staging files still block execution for operator inspection.
 
 The summary becomes visible before final post-publication checks and does not
 hash its five sibling outputs, so presence alone is not independent proof that
@@ -138,11 +130,9 @@ Repository tests protect this contract under the shared
 [evidence ceiling](../../../../tests/README.md), including an independent
 Python oracle and guarded real-R corpus.
 
-Three retained boundaries remain. Producer-recorded relative paths are later
+Two retained boundaries remain. Producer-recorded relative paths are later
 interpreted from the consumer's working directory. The analysis requires the
 shared sample manifest's FASTQ and strandedness columns although this method
-does not use them. Finally, the legacy replacement path admits a predecessor
-by six-file presence rather than semantic validity; the orchestration-safe
-no-clobber path does not replace it. The summary's narrower native provenance
+does not use them. The summary's narrower native provenance
 is supplemented by immutable Run task records rather than a second owner-local
 receipt.

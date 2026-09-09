@@ -1,22 +1,31 @@
 # EMRYS temporary compression backlog
 
-Reviewed **2026-09-09** at `f3a3966f`. The [campaign](compression_campaign.md)
+Reviewed **2026-09-09** from `72fdf806`. The [campaign](compression_campaign.md)
 owns the goals; this file owns CS scope, status, decisions, and proof. The
 [main matrix](backlog_matrix.md) owns broader outcomes and campaign completion.
 
 ## Working queue
 
-**Current work: [PR #152](https://github.com/lab-cats/EMRYS/pull/152).**
-The approved production tranche removes repeated report-table handling (CS-19),
-R table bookkeeping (CS-18), and planning/graph admission (supporting CS-01).
-Each implemented responsibility is net negative; final hosted verification is
-pending. No test cases, product files, schemas, or dependencies were added.
+**Current work: shared processing definitions and standalone publication.**
+The approved tranche covers CS-01/02 and CS-18, including CS-10's CMH
+replacement retirement. It uses the existing processing profile as the shared
+source of task, dependency, and artifact facts. New Run admission rejects a
+processing graph that disagrees with the supported graph; existing Run records
+and resume retain their original interpretation and identity checks.
 
-The broader shared processing definition in CS-01/02 remains unqualified.
-The publication prototype in CS-18 was rejected after preserving recovery
-left only 44 net lines removed; it is absent from the PR. A larger publication
-retirement needs a separate decision about standalone replacement. CS-05 stays
-excluded, and the dashboard stays until its replacement is validated.
+Mpileup, preprocessing, paired CMH, and scientific-context producers now refuse
+existing destinations even without `--no-clobber`. The flag remains accepted.
+Remove replacement/backup creation and restoration while preserving exclusive
+publication, input checks, owned-output rollback, and old recovery files. This
+approved policy replaces the rejected behavior-preserving helper prototype.
+CS-05 remains excluded; the dashboard remains until its replacement is validated.
+
+[PR #152](https://github.com/lab-cats/EMRYS/pull/152) delivered report-table and
+R-table compression plus supporting planning/admission cleanup. Its first CI
+run passed the R fixtures and managed golden path but failed one assertion
+expecting the old dispatch diagnostic. The invalid log path remained rejected.
+Commit `72fdf806` corrects that assertion; both focused dispatch checks pass.
+[Final-commit CI](https://github.com/lab-cats/EMRYS/actions/runs/34361428680) is running.
 
 CS-16/17 are Done in PR #151 at `76acb9c5`, with all ordinary checks passing in
 [run 34314490868](https://github.com/lab-cats/EMRYS/actions/runs/34314490868).
@@ -47,8 +56,8 @@ they are rough selection aids, not measured benefit or implementation approval.
 
 | ID | Finite outcome / production owner | Status | Importance | Complexity | Next action / dependency | Parent |
 |---|---|---|---:|---:|---|---|
-| [CS-01](#cs-01-processing-materialization) | Derive one processing owner's command and dispatch from existing admitted facts. | Needs qualification | 4 | 4 | PR #152 removes duplicate planning/admission code; a single processing definition across profile, workflow, and reporting remains unqualified. | `COMPRESS-01` |
-| [CS-02](#cs-02-processing-report-adapters) | Remove equivalent processing-adapter declarations from artifact-index reporting. | Needs qualification | 4 | 4 | Identify missing metadata and its existing owner; stop if a parallel registry is needed. | `REPORT-ROSTER-01` |
+| [CS-01](#cs-01-processing-materialization) | Derive one processing owner's command and dispatch from existing admitted facts. | In progress | 4 | 4 | Approved: use the authored processing profile across planning, named workflow rules, and reporting; preserve existing Run/resume semantics. | `COMPRESS-01` |
+| [CS-02](#cs-02-processing-report-adapters) | Remove equivalent processing-adapter declarations from artifact-index reporting. | In progress | 4 | 4 | Migrate all processing adapters to the shared owner facts; keep reader-specific interpretation in reporting. | `REPORT-ROSTER-01` |
 | [CS-03](#cs-03-reporting-transaction-layout) | Consolidate only equivalent reporting-layout declarations. | Retained | 4 | 3 | The complete minimal shared-owner sketch is approximately neutral after plumbing; no code change qualified. Reopen only with a concrete larger equivalent duplication. | `REPORT-ROSTER-01` |
 | [CS-04](#cs-04-reporting-memory-control) | Remove the ineffective active reporting-memory control and its transport. | Done | 3 | 4 | PR #150: new inputs rejected, historical records/hashes preserved; focused and ordinary hosted checks passed. | `REPORT-ROSTER-01` |
 | [CS-05](#cs-05-validation-check-rosters) | Give one scientific validation roster one neutral authority used by its producer and reporting. | Needs decision | 4 | 4 | Select membership/order, historical records, and external-provider obligations. | `REPORT-ROSTER-01` |
@@ -56,7 +65,7 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-07](#cs-07-through-cs-10-standalone-publication) | RSeQC: retire direct-to-final report capture. | Done | 2 | 2 | PR #150: one publication path; legacy flag, errors, and recovery preserved; ordinary CI passed. | `OPS-03` |
 | [CS-08](#cs-07-through-cs-10-standalone-publication) | BAM QC: retire mode-dependent publication for two outputs. | Needs decision | 2 | 2 | Supporting cleanup only: approve standalone output/diagnostic policy; CS-06 is complete. | `OPS-03` |
 | [CS-09](#cs-07-through-cs-10-standalone-publication) | Duplicate marking: retire direct destinations and mode branches. | Needs decision | 3 | 3 | Supporting cleanup only: approve standalone output policy; preserve three-output recovery and tool identity. | `OPS-03` |
-| [CS-10](#cs-07-through-cs-10-standalone-publication) | Paired CMH: retire six-file predecessor replacement/restoration. | Needs decision | 3 | 4 | Approve standalone publication policy and characterize its own recovery; CS-06 is not evidence for this different owner. | `OPS-03` |
+| [CS-10](#cs-07-through-cs-10-standalone-publication) | Paired CMH: retire six-file predecessor replacement/restoration. | Verification pending | 3 | 4 | Implemented within CS-18: direct calls refuse existing destinations; focused publication checks pass, hosted verification pending. | `OPS-03` |
 | [CS-11](#cs-11-reporting-source-identity) | Define a reporting-source boundary that permits reporting-only changes without changing scientific Run identity. | Needs decision | 4 | 4 | Specify new Run binding, producer identity, historical admission, and resume before a structural migration. | `REPORT-ROSTER-01` |
 | [CS-12](#cs-12-canonical-bam-command-printing) | Remove canonical BAM's four print-only command arrays. | Opportunistic | 2 | 1 | Compare exact rendered command bytes and execution calls; approximately 30 lines before final recount. | `COMPRESS-01` |
 | [CS-13](#cs-13-runtime-profile-construction) | Remove the redundant RuntimeCheck field-copy construction in onboarding. | Opportunistic | 1 | 2 | Use standard dataclass replacement only after field/order/admission comparison; approximately 11–20 lines. | `COMPRESS-01` |
@@ -64,7 +73,7 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-15](#cs-15-reporting-tsv-grammar) | Retire both reporting CSV engines through the existing strict TSV owner. | Needs decision | 2 | 3 | Agree accepted grammar and diagnostic precedence; stop if a configurable compatibility adapter is required. | `COMPRESS-01` |
 | [CS-16](#cs-16-operator-and-developer-documentation) | Complete operator/developer guidance with clear ownership and plain language. | Done | 5 | 3 | PR #151 passed ordinary CI at `76acb9c5`; integration pending. | `COMPRESS-01` |
 | [CS-17](#cs-17-scientific-and-owner-documentation) | Consolidate and explain remaining scientific/owner documentation. | Done | 5 | 4 | All 169 Markdown files reviewed; PR #151 passed ordinary CI at `76acb9c5`. | `COMPRESS-01` |
-| [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | Needs qualification | 4 | 4 | R table builders reduced in PR #152; publication draft rejected. Larger lifecycle removal requires a replacement-policy decision. | `OPS-03` |
+| [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | In progress | 4 | 4 | Approved four-owner replacement retirement; R table builders are implemented in PR #152. | `OPS-03` |
 | [CS-19](#cs-19-scientific-report-table-handling) | Use one admitted table representation across scientific report consumers. | Verification pending | 4 | 3 | PR #152: canonical results reused, all streaming/display callers migrated; focused checks pass, hosted verification pending. | `COMPRESS-01` |
 
 ## Acceptance shared by every card
@@ -101,7 +110,22 @@ only the selected touched vertical before implementation.
 
 ### CS-01 Processing materialization
 
-**Supporting implementation in PR #152; broader outcome remains open.**
+**Broader consolidation approved and in progress.** The authored processing
+profile will supply the twelve base owners, their dependencies, and artifact
+associations through the existing orchestration contract owner. Planning, named
+workflow rules, and reporting must all use those facts. Keep unique producer
+arguments and scientific readers with their current owners; do not extend the
+public analysis-provider interface or create another catalog.
+
+**Preserved:** ordered arguments, resource assignments, public rule names,
+profile schema/bytes, historical Run interpretation, and resume/reuse checks.
+**Defective:** a newly submitted processing graph can disagree with the graph
+actually executed. Reject that disagreement only at new-Run admission; neither
+the common stored-record validator nor resume gains this restriction.
+**Environment-deferred:** hosted end-to-end checks; no cluster or scientific
+validation is implied. No other behavior decision is included.
+
+**Earlier supporting implementation in PR #152:**
 Planning now constructs its path inventory directly, passes its existing
 validation path to command construction, and shares the existing ordered flag
 serializer with paired-CMH planning. The workflow uses the task owner's dispatch
@@ -110,11 +134,6 @@ This removes 187 product lines, including 86 from the Snakefile, with no test
 changes. Sixteen focused tests passed; temporary differential checks on 17
 existing tests compared 25 complete dispatch/path/directory sets with `76acb9c5`,
 including current and historical plans. Final hosted verification is pending.
-
-This does not consolidate the static processing profile, named workflow rules,
-and reporting adapters into one descriptor. The current analysis interface
-cannot express processing scopes and multi-file artifacts without extension;
-a shared definition still needs qualification against the original scope below.
 
 [`materialization.py`](../../src/emrys/orchestration/run_coordinator/materialization.py)
 constructs commands, inputs, outputs, resources, and dispatches from the
@@ -134,9 +153,12 @@ path handoff and 8–10-line inventory copy do not qualify as this outcome.
 ### CS-02 Processing report adapters
 
 [`build_adapter_registry`](../../src/emrys/reporting/_artifact_index/registry.py)
-contains about 175 audited lines of processing declarations and assembly.
-Module adapters already derive from `_add_analysis_adapters`; processing
-profiles lack some necessary reporting metadata.
+has 42 distinct processing adapters over 57 artifact templates. Several STAR
+files share one adapter, as do the two Step 07 VCFs. The approved migration
+derives step/scope associations from the canonical processing profile and keeps
+inspection kinds, accepted filenames, scientific headers, and row limits in
+reporting. Preserve independent rejection of adapters assigned to the wrong
+owner. Module adapters continue to derive from `_add_analysis_adapters`.
 
 Identify that metadata's existing owner across [Analysis declarations](../../src/emrys/analyses/__init__.py),
 artifact inventory, the [authored profile](../../workflow/contracts/local_cmh_v2.json),
@@ -230,10 +252,11 @@ accepted. Its owner lost 51 product lines within CS-06/07. Canonical BAM's
 [earlier retirement](../../src/emrys/stages/canonical_bam/CONTRACT.md#producer-publication-boundary)
 also retains historical defects, recovery residue, and current limits.
 
-**CS-08–10 are supporting opportunities, not primary tranches.** Normal Run
-planning already chooses `--no-clobber`; standalone overwrite behavior remains
-supported. Its retirement needs approval covering the legacy flag, newly
-unconditional safe-ID/hash checks, and failed-tool captures/diagnostics.
+**CS-10 is approved within the CS-18 tranche. CS-08/09 remain undecided.**
+Normal Run planning already chooses `--no-clobber`. Retiring standalone
+overwrite in BAM QC and duplicate marking still needs approval covering the
+legacy flag, newly unconditional safe-ID/hash checks, and failed-tool captures
+and diagnostics.
 For example, direct QC quickcheck failure retains and names its capture;
 staging cleanup may remove it. A changed route must give useful, truthful
 diagnostics. These commands remain independently useful.
@@ -367,7 +390,7 @@ under CS-16 above; this does not complete the larger code campaign.
 
 ### CS-18 Idiomatic scientific-producer implementation
 
-**Partly implemented in PR #152; publication remains open.** R annotation
+**R work implemented in PR #152; publication retirement locally verified.** R annotation
 and scientific-context table builders now use transcript/population-sized
 frames and base-R operations instead of row counters and repeated metadata.
 This removes 114 product lines across two existing files, with no test changes.
@@ -378,8 +401,10 @@ Temporary local differential fixtures compared 24 context cases and seven
 annotation-table cases with `76acb9c5`, matching values, types, order, TSV text,
 and warning/error text. Annotation import and GRanges were substituted in that
 temporary harness; this is table-fixture evidence. Two real-R tests skipped
-because local Bioconductor packages are absent. Full R execution remains a
-hosted-CI requirement, not a completed local claim.
+because local Bioconductor packages are absent. The guarded R and managed
+golden lanes passed in hosted run `34357224032` at `23bcb41e`; the diagnostic-only
+follow-up at `72fdf806` is undergoing final CI. This is hosted software evidence,
+not institutional-site operation, scientific review, or biological validation.
 
 The Step 07/08/09 publication prototype removed only 44 net product lines after
 all equivalent callers, including Step 06 file-ownership checks, were migrated.
@@ -387,12 +412,33 @@ It passed 187 existing producer tests but was discarded as insufficiently
 substantial. The earlier 180–300 estimate did not survive implementation.
 All five prototype files are restored; these publishers are unchanged in PR #152.
 
-Remaining apparent repetition includes distinct lock-record formats, completed
-metadata-write state, signal deferral, process handling, output order, release
-failures, and backup-cleanup behavior. Preserve those boundaries. Retiring
-standalone predecessor replacement could remove more state and restoration
-code, but requires an explicit behavior decision. It is not authorized by this
-compression implementation. Existing CS-01/02 cover workflow/report definitions.
+**Approved replacement:** make create-exclusive publication the only policy in
+Step 07, Step 08, Step 09, and scientific-context projection. Their Run callers
+already request it. A direct call with existing destinations now stops before
+scientific computation; use fresh destinations for a new result. Keep accepting
+`--no-clobber`, apply Step 07's full input-stability checks to every invocation,
+and retain old backup/residue recognition without creating new backups.
+
+Remove predecessor state, backup-path inventories, replacement branches, and
+restoration/backup-cleanup code. Preserve distinct lock formats, metadata-write
+state, signals and child handling, scientific validation, publication order,
+fsync barriers, and owned-output rollback. No shared lifecycle framework is
+needed. First-publication, interruption, collision, residue, and independent
+scientific tests survive; tests solely for replacement can retire with that
+approved behavior. Retained evidence is unchanged.
+
+The four-owner implementation removes 163 product lines (+142/−305), 233 test
+lines (+63/−296), and 27 owner-documentation lines (+33/−60). Shared policy and
+backlog documentation are counted separately. No product file, configuration,
+dependency, or retained evidence changes. The 135 remaining Python producer
+cases and scientific-context shell transaction suite pass. Nine obsolete test
+functions were removed; adapting the former two-case replacement failure check
+to first publication leaves 11 fewer Python cases overall. Existing collision,
+interruption, ambiguous rollback, hash-corruption, publication-order, and fsync
+checks survive. An existing Step 08 residue case now injects an old backup during
+lock acquisition to verify the preserved second refusal boundary. Hosted
+verification is pending; these local fixtures do not establish scientific or
+site validation.
 
 ### CS-19 Scientific report table handling
 

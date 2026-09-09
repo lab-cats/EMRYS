@@ -25,9 +25,19 @@ cleanup cannot be proved. Characterize unsafe states before correcting them.
 An observed defect is neither an approved contract nor evidence that unlike
 transaction implementations should share one abstraction.
 
+#### Standalone scientific output policy
+
+Mpileup, preprocessing, paired CMH, and scientific-context producers refuse
+existing output destinations, both inside a Run and when invoked directly.
+Their accepted `--no-clobber` flag selects no alternative behavior. Use fresh
+destinations for a new standalone result; a changed Run plan requires a new Run.
+Existing Run resume and verified-output reuse keep their separate admission
+rules. Old backup files remain recovery evidence and are never automatically
+adopted or removed by a new invocation.
+
 #### No-clobber rollback
 
-Steps 07–09 follow this rule when `--no-clobber` is selected. An output path
+Steps 07–09 follow this rule for every invocation. An output path
 that is already absent needs no cleanup. Remove a present output only if it
 still identifies the same file as this attempt's staging entry, proven by
 matching device and inode. A complete, unambiguous rollback removes owned

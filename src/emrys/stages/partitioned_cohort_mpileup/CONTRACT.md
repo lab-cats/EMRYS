@@ -63,22 +63,17 @@ then checked inside the owned rollback boundary; its mere presence is not
 independent proof of a successfully completed immutable computation.
 
 [`producer.py`](producer.py) does not write in dry-run. Execute uses a
-cohort/partition lock and run-token temporary/backup paths, rejects stale owned
-paths and incomplete prior sets, and checks temporary VCF sample order and
-counts. It publishes the two VCFs before the receipt and revalidates the final
-set before removing backups.
-
-With `--no-clobber`, the producer holds the lock and refuses any complete prior
-set before invoking bcftools. The first publication uses exclusive hard links
-and retains VCF/receipt staging inodes through final validation. Ambiguous
-replacement preserves the lock and residue. Rollback follows the shared
-[no-clobber rule](../../../../docs/design/decisions/execution-evidence-and-reporting.md#no-clobber-rollback).
+cohort/partition lock and run-token staging paths. It checks temporary VCF
+sample order and counts, publishes both VCFs before the receipt, and validates
+the visible set before removing the staging files. It follows the shared
+[create-only publication policy](../../../../docs/design/decisions/execution-evidence-and-reporting.md#standalone-scientific-output-policy).
+Old backup and staging files still block execution for operator inspection.
 
 Input checking differs by route:
 
-- A standalone `--no-clobber` invocation hashes the sample/partition manifests,
-  FASTA/FAI, selected regions file when used, and both BAM/BAI pairs for every
-  sample before bcftools. It rechecks that set after tool execution and before
+- A standalone invocation hashes the sample/partition manifests, FASTA/FAI,
+  selected regions file when used, and both BAM/BAI pairs for every sample
+  before bcftools. It rechecks that set after tool execution and before
   publication.
 - A Run task has already hashed the same declared inputs twice at producer
   entry. It passes a process-lifetime aggregate only to this producer. The
@@ -86,12 +81,6 @@ Input checking differs by route:
   rehashes every input immediately before publication. The task rechecks its
   declared inputs again after validation. The aggregate is not persisted or
   added to the receipt.
-- Direct execution without `--no-clobber` retains complete-set replacement and
-  the legacy stability checks of the two manifests only.
-
-Ordinary replacement rollback restores the prior three-file set. Failed
-restoration preserves backups and the owned lock for operator recovery; there
-is no automated recovery interface.
 
 The receipt hashes only the two manifests. BAMs, reference, FAI, regions file,
 tool identity, depth, filter, and output VCF hashes are not durable receipt
