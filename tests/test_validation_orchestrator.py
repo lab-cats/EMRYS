@@ -150,6 +150,7 @@ def test_shell_syntax_gates_parse_each_script_without_execution(
             str(REPO_ROOT / "scripts" / "make_quality.mk"),
             target,
             "REPORT_PYTHON_BIN=true",
+            "SHELLCHECK_BIN=true",
             "SHELL_SYNTAX_PATHS=" + " ".join(str(script) for script in scripts),
         ],
         cwd=REPO_ROOT,
@@ -171,10 +172,12 @@ def test_shell_syntax_gates_parse_each_script_without_execution(
 def test_static_preflight_runs_sharder_self_tests_once_and_propagates_failure(
     tmp_path: Path,
     self_test_status: int,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls = tmp_path / "sharder-calls"
     python_bin = tmp_path / "selected-python"
-    # Isolate unrelated Python checks; the Make recipe and lane runner stay real.
+    # Isolate unrelated lint checks; the Make recipe and lane runner stay real.
+    monkeypatch.setenv("SHELLCHECK_BIN", "true")
     python_bin.write_text(
         f"#!{sys.executable}\n"
         "import sys\n"
