@@ -32,6 +32,7 @@ BACKEND_OPERATION_FLAGS = {
 
 _SCIENTIFIC_ROOTS = (
     ".Rprofile",
+    "src/emrys/contracts/orchestration/artifact_inventory.py",
     "src/emrys/evidence/canonical_bam_qc",
     "src/emrys/evidence/rseqc_orientation",
     "src/emrys/ingestion",
@@ -53,6 +54,7 @@ _SCIENTIFIC_ROOTS = (
     "renv.lock",
 )
 _PROCESSING_ROOTS = (
+    "src/emrys/contracts/orchestration/artifact_inventory.py",
     "src/emrys/evidence/canonical_bam_qc",
     "src/emrys/evidence/rseqc_orientation",
     "src/emrys/libraries/alignments",
@@ -81,6 +83,7 @@ _PROCESSING_ROOTS = (
     "src/emrys/stages/split_n_cigar",
     "src/emrys/stages/star_alignment",
     "src/emrys/stages/star_index",
+    "workflow/contracts/local_cmh_v2.json",
 )
 _ADMISSION_ROOTS = (
     "src/emrys/analyses/__init__.py",

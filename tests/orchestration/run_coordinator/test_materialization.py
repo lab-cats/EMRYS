@@ -1830,13 +1830,18 @@ def test_implementation_identity_closes_direct_scientific_dependencies(
         "src/emrys/libraries/gatk_invocation.sh",
         "src/emrys/libraries/input_contract.R",
         "src/emrys/libraries/signal_traps.sh",
+        "src/emrys/contracts/orchestration/artifact_inventory.py",
+        "workflow/contracts/local_cmh_v2.json",
     )
+    processing_baseline = processing_implementation_identity(checkout)
 
     for relative in dependencies:
         path = checkout / relative
         original = path.read_bytes()
-        path.write_bytes(original + b"\n# identity sensitivity\n")
+        path.write_bytes(original + b"\n")
         assert implementation_identity(checkout) != baseline, relative
+        if relative.endswith(("artifact_inventory.py", "local_cmh_v2.json")):
+            assert processing_implementation_identity(checkout) != processing_baseline
         path.write_bytes(original)
 
     assert implementation_identity(checkout) == baseline
@@ -1883,13 +1888,14 @@ def test_processing_compatibility_binds_only_processing_semantics(
     for relative in (
         "src/emrys/orchestration/run_coordinator/materialization.py",
         "workflow/Snakefile",
+        "workflow/contracts/local_cmh_v2.json",
     ):
         path = checkout / relative
         original = path.read_bytes()
-        path.write_bytes(original + b"\n# processing dispatch change\n")
-        assert compatibility(_run_candidate(readiness, resources)) != (
-            baseline_compatibility
-        )
+        path.write_bytes(original + b"\n")
+        changed = _run_candidate(readiness, resources)
+        assert changed.analysis.profile == baseline.analysis.profile
+        assert compatibility(changed) != baseline_compatibility
         path.write_bytes(original)
 
     downstream_tool = build_run_candidate(
@@ -2459,6 +2465,45 @@ def _patch_resume_control(
         "observe_allocation",
         lambda: resources.allocation,
     )
+
+
+def test_new_run_rejects_processing_edge_drift_but_existing_run_resumes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    readiness, resources, request, workspace = _readiness(tmp_path)
+    profile = readiness.analysis.profile
+    profile["direct_edges"].pop(0)
+    orchestration_contracts.validate_record("profile", profile)
+    readiness = replace(
+        readiness,
+        analysis=replace(
+            readiness.analysis,
+            _profile_bytes=orchestration_contracts.canonical_json_bytes(profile),
+        ),
+    )
+    monkeypatch.setattr(
+        control.doctor, "diagnose_project", lambda *_args, **_kwargs: readiness
+    )
+    with pytest.raises(control.ControlError, match="Processing dependencies"):
+        control._plan_run(request, execution_profile=load_execution_profile())
+    assert not (workspace / "runs").exists()
+
+    # This older accepted profile remains an immutable resumable Run.
+    first = build_attempt_plan(
+        _run_candidate(readiness, resources),
+        readiness,
+        workspace,
+        resources=resources,
+        operation="execute",
+    )
+    observed = _failed_run(first)
+    _patch_resume_control(monkeypatch, observed, readiness, resources, [])
+    second = control._plan_resume(
+        first.run_root, execution_profile=load_execution_profile()
+    )
+    assert second.run.run_id == first.run.run_id
+    assert second.run.analysis.profile == profile
 
 
 def test_legacy_resume_reuses_predecessor_retained_runtime_profile(

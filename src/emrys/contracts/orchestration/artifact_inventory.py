@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 from emrys.contracts.artifacts import api as artifact_contracts
@@ -12,6 +13,77 @@ from emrys.contracts.orchestration.application_model import (
     PROCESSING_STEP_IDS,
     AnalysisRevision,
 )
+
+
+_PROCESSING_PRODUCERS = {
+    "00a": Path("src/emrys/stages/star_index/step_00a_build_star_index.sh"),
+    "00b": Path("src/emrys/stages/gtf_to_bed12/converter.py"),
+    "00c": Path("src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"),
+    "01": Path("src/emrys/stages/star_alignment/step_01_star_align.sh"),
+    "02": Path("src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh"),
+    "02b": Path("src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh"),
+    "03": Path(
+        "src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"
+    ),
+    "04": Path("src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh"),
+    "05": Path("src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"),
+    "06": Path("src/emrys/stages/mechanical_orientation/producer.py"),
+    "07": Path("src/emrys/stages/partitioned_cohort_mpileup/producer.py"),
+    "08": Path("src/emrys/stages/cohort_candidate_preprocessing/producer.py"),
+}
+
+
+def _processing_profile(source_root: Path) -> Mapping[str, Any]:
+    return orchestration_contracts.load_record(
+        source_root / "workflow/contracts/local_cmh_v2.json", "profile"
+    )
+
+
+def processing_tasks(source_root: Path) -> tuple[Mapping[str, Any], ...]:
+    """Read fixed processing tasks from the admitted implementation checkout."""
+    profile = _processing_profile(source_root)
+    return tuple(
+        MappingProxyType(
+            {
+                **task,
+                "producer_path": _PROCESSING_PRODUCERS[task["step_id"]],
+                "predecessors": tuple(
+                    edge["producer"]
+                    for edge in profile["direct_edges"]
+                    if edge["consumer"] == task["machine_key"]
+                ),
+            }
+        )
+        for task in profile["owner_tasks"]
+    )
+
+
+def processing_artifact_templates(source_root: Path) -> tuple[Mapping[str, Any], ...]:
+    """Read base artifact ownership independently of a supplied Run profile."""
+    return tuple(
+        MappingProxyType(template)
+        for template in _processing_profile(source_root)["artifact_templates"]
+    )
+
+
+def validate_processing_graph(profile: Mapping[str, Any], source_root: Path) -> None:
+    """New Runs must describe the processing dependencies the backend executes."""
+    tasks = processing_tasks(source_root)
+    owners = {task["machine_key"] for task in tasks}
+    expected = {
+        (producer, task["machine_key"])
+        for task in tasks
+        for producer in task["predecessors"]
+    }
+    observed = {
+        (edge["producer"], edge["consumer"])
+        for edge in profile["direct_edges"]
+        if edge["consumer"] in owners
+    }
+    if observed != expected:
+        raise orchestration_contracts.ContractValidationError(
+            "Processing dependencies do not match the supported processing graph"
+        )
 
 
 def report_output_root(run_root: Path, profile: Mapping[str, Any]) -> Path:

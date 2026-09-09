@@ -529,7 +529,7 @@ def test_selected_r_program_is_not_a_transaction_input(
     assert not {"r_script_path", "r_script_sha256"} & set(header)
 
 
-def test_no_clobber_and_incomplete_sets_are_preserved_without_r(
+def test_existing_sets_are_preserved_without_r(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fixture = _fixture(tmp_path)
@@ -540,8 +540,9 @@ def test_no_clobber_and_incomplete_sets_are_preserved_without_r(
         producer.subprocess, "Popen", lambda *_a, **_k: pytest.fail("R invoked")
     )
 
-    assert _execute(fixture, "--no-clobber") == 1
-    assert {path: path.read_bytes() for path in _finals(fixture)} == before
+    for flag in ((), ("--no-clobber",)):
+        assert _execute(fixture, *flag) == 1
+        assert {path: path.read_bytes() for path in _finals(fixture)} == before
     fixture.paths["summary"].unlink()
     remaining = {path: path.read_bytes() for path in _finals(fixture) if path.exists()}
     assert _execute(fixture) == 1
@@ -565,10 +566,11 @@ def test_foreign_lock_and_no_clobber_residue_are_preserved(
     owner.unlink()
     lock.rmdir()
     residue = (
-        fixture.paths["analysis"] / ".analysis_primary.step09.abandoned.all.tmp.tsv"
+        fixture.paths["analysis"]
+        / ".analysis_primary.step09_all_sites.tsv.abandoned.previous"
     )
     residue.write_text("operator evidence\n")
-    assert producer.main([*fixture.arguments, "--no-clobber"]) == 1
+    assert producer.main(fixture.arguments) == 1
     assert residue.read_text() == "operator evidence\n"
     assert not lock.exists()
 
@@ -592,64 +594,21 @@ def test_term_reaches_process_group_and_cleans_owned_state(
     assert not _residue(fixture)
 
 
-def test_signal_after_summary_publication_restores_predecessor(
+def test_final_validation_failure_removes_owned_outputs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fixture = _fixture(tmp_path)
     _inject_process(monkeypatch, fixture)
-    assert _execute(fixture) == 0
-    before = {path: path.read_bytes() for path in _finals(fixture)}
-    original_replace = Path.replace
-    interrupted = False
+    original_validate = producer.validate_outputs
 
-    def interrupt_after_summary(source: Path, destination: Path) -> Path:
-        nonlocal interrupted
-        result = original_replace(source, destination)
-        if not interrupted and Path(destination) == fixture.paths["summary"]:
-            interrupted = True
-            os.kill(os.getpid(), signal.SIGTERM)
-        return result
+    def fail_final(context: producer.Context, prefix: str = "") -> None:
+        original_validate(context, prefix)
+        if not prefix:
+            raise producer.ProducerError("injected final validation failure")
 
-    monkeypatch.setattr(Path, "replace", interrupt_after_summary)
-    assert _execute(fixture) == 143
-    assert {path: path.read_bytes() for path in _finals(fixture)} == before
-    assert not _residue(fixture)
-
-
-@pytest.mark.parametrize("failure", ("publication", "final-validation"))
-def test_failure_after_backup_restores_complete_predecessor(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    failure: str,
-) -> None:
-    fixture = _fixture(tmp_path)
-    _inject_process(monkeypatch, fixture)
-    assert _execute(fixture) == 0
-    before = {path: path.read_bytes() for path in _finals(fixture)}
-    if failure == "publication":
-        original_replace = Path.replace
-
-        def fail_summary(source: Path, destination: Path) -> Path:
-            if Path(destination) == fixture.paths["summary"] and ".tmp." in source.name:
-                raise OSError("injected publication failure")
-            return original_replace(source, destination)
-
-        monkeypatch.setattr(Path, "replace", fail_summary)
-    else:
-        original_validate = producer.validate_outputs
-        calls = 0
-
-        def fail_final(context: producer.Context, prefix: str = "") -> None:
-            nonlocal calls
-            calls += 1
-            original_validate(context, prefix)
-            if calls == 2:
-                raise producer.ProducerError("injected final validation failure")
-
-        monkeypatch.setattr(producer, "validate_outputs", fail_final)
-
+    monkeypatch.setattr(producer, "validate_outputs", fail_final)
     assert _execute(fixture) == 1
-    assert {path: path.read_bytes() for path in _finals(fixture)} == before
+    assert not any(path.exists() for path in _finals(fixture))
     assert not _residue(fixture)
 
 
@@ -749,93 +708,21 @@ def test_no_clobber_ambiguous_rollback_preserves_state_and_refuses_rerun(
     assert all(path.read_bytes() == data for path, data in preserved.items())
 
 
-def test_first_publication_failure_removes_partial_set(
+def test_valid_looking_output_corruption_fails_hash_and_removes_owned_outputs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fixture = _fixture(tmp_path)
     _inject_process(monkeypatch, fixture)
-    original_replace = Path.replace
+    original_link = os.link
 
-    def fail_second_final(source: Path, destination: Path) -> Path:
-        if Path(destination) == fixture.paths["significant"] and ".tmp." in source.name:
-            raise OSError("injected first-publication failure")
-        return original_replace(source, destination)
-
-    monkeypatch.setattr(Path, "replace", fail_second_final)
-    assert _execute(fixture) == 1
-    assert not any(path.exists() for path in _finals(fixture))
-    assert not _residue(fixture)
-
-
-def test_valid_looking_output_corruption_fails_hash_and_restores_predecessor(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    fixture = _fixture(tmp_path)
-    _inject_process(monkeypatch, fixture)
-    assert _execute(fixture) == 0
-    before = {path: path.read_bytes() for path in _finals(fixture)}
-    original_replace = Path.replace
-
-    def corrupt_pdf(source: Path, destination: Path) -> Path:
-        result = original_replace(source, destination)
-        if (
-            Path(destination) == fixture.paths["mutation_pdf"]
-            and ".tmp." in source.name
-        ):
+    def corrupt_pdf(source: Path, destination: Path) -> None:
+        original_link(source, destination)
+        if Path(destination) == fixture.paths["mutation_pdf"]:
             Path(destination).write_bytes(
                 Path(destination).read_bytes() + b"% valid-looking padding\n"
             )
-        return result
 
-    monkeypatch.setattr(Path, "replace", corrupt_pdf)
+    monkeypatch.setattr(os, "link", corrupt_pdf)
     assert _execute(fixture) == 1
-    assert {path: path.read_bytes() for path in _finals(fixture)} == before
+    assert not any(path.exists() for path in _finals(fixture))
     assert not _residue(fixture)
-
-
-def test_failed_restore_retains_lock_and_backup_for_recovery(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    fixture = _fixture(tmp_path)
-    _inject_process(monkeypatch, fixture)
-    assert _execute(fixture) == 0
-    original_replace = Path.replace
-
-    def fail_publication_and_restore(source: Path, destination: Path) -> Path:
-        if Path(destination) == fixture.paths["summary"] or (
-            ".previous" in source.name and Path(destination) == fixture.paths["all"]
-        ):
-            raise OSError("injected unrecoverable move")
-        return original_replace(source, destination)
-
-    monkeypatch.setattr(Path, "replace", fail_publication_and_restore)
-    assert _execute(fixture) == 1
-    assert fixture.paths["lock"].joinpath("owner").is_file()
-    assert not fixture.paths["all"].exists()
-    backups = list(fixture.paths["analysis"].glob("*.previous"))
-    assert backups
-    assert not any(".tmp." in path.name for path in fixture.paths["analysis"].iterdir())
-
-
-def test_committed_backup_cleanup_failure_retains_lock_and_reports_failure(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    fixture = _fixture(tmp_path)
-    monkeypatch.setenv("EMRYS_RUN_TOKEN", "owner09")
-    _inject_process(monkeypatch, fixture)
-    assert _execute(fixture) == 0
-    backup = fixture.paths["analysis"] / (
-        f".{fixture.paths['all'].name}.owner09.previous"
-    )
-    original_unlink = Path.unlink
-
-    def fail_backup_cleanup(path: Path, *args: Any, **kwargs: Any) -> None:
-        if Path(path) == backup:
-            raise OSError("injected backup cleanup failure")
-        original_unlink(path, *args, **kwargs)
-
-    monkeypatch.setattr(Path, "unlink", fail_backup_cleanup)
-
-    assert _execute(fixture) == 1
-    assert backup.is_file()
-    assert fixture.paths["lock"].joinpath("owner").is_file()

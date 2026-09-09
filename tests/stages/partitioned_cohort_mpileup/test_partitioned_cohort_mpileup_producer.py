@@ -330,9 +330,6 @@ def test_dry_run_is_no_write_and_prints_the_exact_plan(
         Path(f"{prefix}.FWD_like.tmp.vcf"),
         Path(f"{prefix}.REV_like.tmp.vcf"),
         Path(f"{prefix}.outputs.tmp.tsv"),
-        Path(f"{prefix}.previous.FWD_like.vcf"),
-        Path(f"{prefix}.previous.REV_like.vcf"),
-        Path(f"{prefix}.previous.outputs.tsv"),
     ):
         assert str(path) in output
     assert "no directories or files were created" in output
@@ -571,7 +568,7 @@ def test_bound_identity_includes_relative_selector_and_is_scrubbed(
 
 
 @pytest.mark.parametrize("bound", (False, True))
-def test_no_clobber_rejects_direct_and_bound_input_mutation(
+def test_rejects_direct_and_bound_input_mutation(
     step07: Fixture,
     monkeypatch: pytest.MonkeyPatch,
     bound: bool,
@@ -582,7 +579,7 @@ def test_no_clobber_rejects_direct_and_bound_input_mutation(
         monkeypatch.setenv(producer.INPUT_IDENTITY_ENV, _identity(step07.roster()))
     monkeypatch.setenv("FAKE_MUTATE_PATH", str(bam))
 
-    assert producer.main([*step07.arguments, "--no-clobber", "--execute"]) == 1
+    assert producer.main([*step07.arguments, "--execute"]) == 1
 
     _assert_clean(step07)
     assert "controlled mutation" in bam.read_text()
@@ -603,19 +600,7 @@ def test_manifest_mutation_is_always_rejected(
     assert "controlled mutation" in manifest.read_text()
 
 
-def test_replace_mode_retains_the_manifest_only_stability_boundary(
-    step07: Fixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    bam = step07.roster()[4]
-    monkeypatch.setenv("FAKE_MUTATE_PATH", str(bam))
-
-    assert producer.main([*step07.arguments, "--execute"]) == 0
-
-    assert all(path.is_file() for path in step07.finals)
-    assert "controlled mutation" in bam.read_text()
-
-
-def test_complete_no_clobber_set_is_unchanged_without_tool_reentry(
+def test_complete_set_is_unchanged_without_tool_reentry(
     step07: Fixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     assert producer.main([*step07.arguments, "--execute"]) == 0
@@ -623,10 +608,10 @@ def test_complete_no_clobber_set_is_unchanged_without_tool_reentry(
     step07.log.unlink()
     monkeypatch.setenv("FAKE_FAIL_STAGE", "mpileup_FWD_like")
 
-    assert producer.main([*step07.arguments, "--no-clobber", "--execute"]) == 1
-
-    assert tuple(path.read_bytes() for path in step07.finals) == before
-    assert not step07.log.exists()
+    for flag in ([], ["--no-clobber"]):
+        assert producer.main([*step07.arguments, *flag, "--execute"]) == 1
+        assert tuple(path.read_bytes() for path in step07.finals) == before
+        assert not step07.log.exists()
 
 
 def test_foreign_lock_residue_and_incomplete_set_are_preserved(
@@ -643,9 +628,11 @@ def test_foreign_lock_residue_and_incomplete_set_are_preserved(
     owner.unlink()
     lock.rmdir()
 
-    residue = step07.output_dir / ".cohort_A.part_A.step07.abandoned.tmp.vcf"
+    residue = (
+        step07.output_dir / ".cohort_A.part_A.step07.abandoned.previous.FWD_like.vcf"
+    )
     residue.write_text("operator evidence\n")
-    assert producer.main([*step07.arguments, "--no-clobber"]) == 1
+    assert producer.main(step07.arguments) == 1
     assert residue.read_text() == "operator evidence\n"
     residue.unlink()
 
@@ -747,87 +734,13 @@ def test_no_clobber_ambiguous_rollback_preserves_state_and_refuses_rerun(
     assert all(path.read_bytes() == data for path, data in preserved.items())
 
 
-@pytest.mark.parametrize("failed_restore", (False, True))
-def test_publication_failure_restores_or_retains_recovery_state(
-    step07: Fixture,
-    monkeypatch: pytest.MonkeyPatch,
-    failed_restore: bool,
-) -> None:
-    assert producer.main([*step07.arguments, "--execute"]) == 0
-    previous = (b"previous fwd\n", b"previous rev\n", b"previous receipt\n")
-    for path, content in zip(step07.finals, previous, strict=True):
-        path.write_bytes(content)
-    original_replace = Path.replace
-
-    def injected_replace(source: Path, destination: Path) -> Path:
-        if source.name.endswith("outputs.tmp.tsv"):
-            raise OSError("injected receipt publication failure")
-        if failed_restore and source.name.endswith("previous.FWD_like.vcf"):
-            raise OSError("injected FWD restore failure")
-        return original_replace(source, destination)
-
-    monkeypatch.setattr(Path, "replace", injected_replace)
-
-    assert producer.main([*step07.arguments, "--execute"]) == 1
-
-    lock = step07.output_dir / ".cohort_A.part_A.step07.lock"
-    if failed_restore:
-        token = str(os.getpid())
-        backup = step07.output_dir / (
-            f".cohort_A.part_A.step07.{token}.previous.FWD_like.vcf"
-        )
-        assert not step07.finals[0].exists()
-        assert backup.read_bytes() == previous[0]
-        assert (lock / "owner").is_file()
-        assert step07.finals[1].read_bytes() == previous[1]
-        assert step07.finals[2].read_bytes() == previous[2]
-    else:
-        assert tuple(path.read_bytes() for path in step07.finals) == previous
-        assert not lock.exists()
-        assert not list(step07.output_dir.glob(".cohort_A.part_A.step07.*"))
-
-
-def test_postpublication_validation_failure_restores_previous_set(
+def test_postpublication_validation_failure_removes_owned_outputs(
     step07: Fixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    assert producer.main([*step07.arguments, "--execute"]) == 0
-    previous = (b"previous fwd\n", b"previous rev\n", b"previous receipt\n")
-    for path, content in zip(step07.finals, previous, strict=True):
-        path.write_bytes(content)
     monkeypatch.setenv("FAKE_FAIL_FINAL_VIEW", "1")
 
     assert producer.main([*step07.arguments, "--execute"]) == 1
-    assert tuple(path.read_bytes() for path in step07.finals) == previous
-    assert not list(step07.output_dir.glob(".cohort_A.part_A.step07.*"))
-
-
-def test_interruption_during_publication_restores_the_previous_set(
-    step07: Fixture,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    assert producer.main([*step07.arguments, "--execute"]) == 0
-    previous = (b"previous fwd\n", b"previous rev\n", b"previous receipt\n")
-    for path, content in zip(step07.finals, previous, strict=True):
-        path.write_bytes(content)
-    original_replace = Path.replace
-    interrupted = False
-
-    def interrupt_after_first_final(source: Path, destination: Path) -> Path:
-        nonlocal interrupted
-        result = original_replace(source, destination)
-        if not interrupted and source.name.endswith("FWD_like.tmp.vcf"):
-            interrupted = True
-            handler = signal.getsignal(signal.SIGTERM)
-            assert callable(handler)
-            handler(signal.SIGTERM, None)
-        return result
-
-    monkeypatch.setattr(Path, "replace", interrupt_after_first_final)
-
-    assert producer.main([*step07.arguments, "--execute"]) == 143
-
-    assert tuple(path.read_bytes() for path in step07.finals) == previous
-    assert not list(step07.output_dir.glob(".cohort_A.part_A.step07.*"))
+    _assert_clean(step07)
 
 
 def test_same_scope_lock_and_term_stop_both_pipeline_children(

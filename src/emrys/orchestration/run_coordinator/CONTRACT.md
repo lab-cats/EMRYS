@@ -118,6 +118,12 @@ dispatch per task and invokes the sole source-bound Snakemake backend. The
 public surface exposes no raw engine force, unlock, cleanup, retry, plugin, or
 alternate-workflow escape hatch.
 
+Before creating a new Run, planning rejects processing dependencies that
+disagree with the graph in the admitted implementation checkout. Existing Runs
+keep their retained profiles and previous resume rules, including normal source
+identity checks. The shared source profile now defines executable processing
+tasks, so changing its bytes invalidates reuse of earlier Processing results.
+
 ## Processing reuse and provider boundary
 
 `run --through processing` creates a distinct Run containing Steps `00`–`06`

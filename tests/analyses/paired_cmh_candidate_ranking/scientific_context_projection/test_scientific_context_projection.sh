@@ -112,7 +112,6 @@ base_command=(
     --reference-fai "$tmp/inputs/reference.fa.fai"
     --output-root "$tmp/output"
     --rscript-bin "$fake_r"
-    --no-clobber
 )
 
 export FAKE_R_MARKER="$tmp/r-invoked"
@@ -122,7 +121,7 @@ export FAKE_R_ARGS="$tmp/r-args"
 [[ ! -e "$tmp/output" ]] || fail "dry-run created output root"
 grep -q 'Dry-run only' "$tmp/dry-run.out" || fail "dry-run outcome was not printed"
 
-"${base_command[@]}" --execute >"$tmp/execute.out"
+"${base_command[@]}" --no-clobber --execute >"$tmp/execute.out"
 output_dir="$tmp/output/analysis"
 for suffix in \
     candidate_context.tsv motif_hits.tsv sequence_logo.tsv \
@@ -134,9 +133,16 @@ grep -qx -- '--candidate-context-final' "$FAKE_R_ARGS" ||
     fail "producer did not pass stable receipt-bound paths"
 assert_no_owner_residue "$output_dir"
 before="$(find "$output_dir" -maxdepth 1 -type f -print0 | sort -z | xargs -0 shasum -a 256)"
-expect_fail 'under --no-clobber' "${base_command[@]}" --execute
+rm -f "$FAKE_R_MARKER"
+expect_fail 'Refusing to replace' "${base_command[@]}" --execute
+expect_fail 'Refusing to replace' "${base_command[@]}" --no-clobber --execute
+[[ ! -e "$FAKE_R_MARKER" ]] || fail "occupied output directory invoked R"
 after="$(find "$output_dir" -maxdepth 1 -type f -print0 | sort -z | xargs -0 shasum -a 256)"
-[[ "$before" == "$after" ]] || fail "no-clobber changed a complete predecessor"
+[[ "$before" == "$after" ]] || fail "rerun changed existing outputs"
+old_backup="$output_dir/.analysis.candidate_context.tsv.abandoned.previous"
+printf 'operator evidence\n' >"$old_backup"
+expect_fail 'residue' "${base_command[@]}"
+[[ "$(<"$old_backup")" == 'operator evidence' ]] || fail "old backup was changed"
 
 mkdir -p "$tmp/incomplete/analysis"
 printf 'partial\n' >"$tmp/incomplete/analysis/analysis.candidate_context.tsv"

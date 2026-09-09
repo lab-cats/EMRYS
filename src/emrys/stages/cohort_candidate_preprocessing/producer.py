@@ -78,7 +78,11 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
             str(Path(__file__).with_name("step_08_vcf_preprocessing.R")),
         ),
     )
-    parser.add_argument("--no-clobber", action="store_true")
+    parser.add_argument(
+        "--no-clobber",
+        action="store_true",
+        help="Accepted for existing callers; replacement is always refused.",
+    )
     parser.add_argument("--execute", action="store_true")
 
 
@@ -243,9 +247,6 @@ def paths(arguments: argparse.Namespace, token: str) -> dict[str, Path]:
         "tmp_sites": cohort_dir / f".{stem}.step08.{token}.sites.tmp.tsv",
         "tmp_summary": qc / f".{stem}.step08.{token}.summary.tmp.tsv",
         "tmp_inputs": cohort_dir / f".{stem}.step08.{token}.inputs.tmp.tsv",
-        "backup_sites": cohort_dir / f".{stem}.step08.{token}.previous.sites.tsv",
-        "backup_summary": qc / f".{stem}.step08.{token}.previous.summary.tsv",
-        "backup_inputs": cohort_dir / f".{stem}.step08.{token}.previous.inputs.tsv",
         "lock": cohort_dir / f".{stem}.step08.lock",
     }
 
@@ -430,7 +431,7 @@ def print_plan(context: Context, command: Sequence[str]) -> None:
         ("QC summary", p["summary"]),
         (
             "Existing-output policy",
-            "no-clobber" if a.no_clobber else "replace-complete-set",
+            "refuse existing outputs",
         ),
     ):
         print(f"  {label}: {value}")
@@ -461,7 +462,7 @@ def print_plan(context: Context, command: Sequence[str]) -> None:
         f"  Temporary input receipt: {p['tmp_inputs']}\n  Temporary summary: {p['tmp_summary']}"
     )
     print("  Publish sites, then summary, then the input receipt last as commit marker")
-    print("  Restore a previous complete set on failure after backup begins")
+    print("  Remove only owned new outputs on failure; preserve ambiguous residue")
     validation = Path(a.qc_root) / f"{a.cohort_id}.step08_validation.tsv"
     prefix = ["emrys", "validate"]
     validator = [
@@ -507,7 +508,7 @@ class Publication:
     def __init__(self, context: Context) -> None:
         self.context, self.p = context, context.paths
         self.locked = self.owner_written = self.scratch = False
-        self.previous = self.started = self.committed = False
+        self.started = self.committed = False
         self.child: subprocess.Popen[bytes] | None = None
         self.spawning = False
         self.pending_signal: int | None = None
@@ -592,40 +593,20 @@ class Publication:
             fail(f"Step 08 {name} publication lost staged-inode identity: {final}")
 
     def rollback(self) -> bool:
-        if self.context.arguments.no_clobber:
-            results = []
-            for name in self.names:
-                staged, final = self.p[f"tmp_{name}"], self.p[name]
-                if not lexists(final):
-                    continue
-                if not self.same(staged, final):
+        results = []
+        for name in self.names:
+            staged, final = self.p[f"tmp_{name}"], self.p[name]
+            if not lexists(final):
+                continue
+            if not self.same(staged, final):
+                results.append(False)
+            else:
+                try:
+                    final.unlink()
+                    results.append(not lexists(final))
+                except OSError:
                     results.append(False)
-                else:
-                    try:
-                        final.unlink()
-                        results.append(not lexists(final))
-                    except OSError:
-                        results.append(False)
-            return all(results)
-        if self.previous:
-            success = True
-            for name in self.names:
-                backup, final = self.p[f"backup_{name}"], self.p[name]
-                if lexists(backup):
-                    try:
-                        final.unlink(missing_ok=True)
-                        backup.replace(final)
-                    except OSError:
-                        success = False
-                elif not lexists(final):
-                    success = False
-            return success
-        try:
-            for name in self.names:
-                self.p[name].unlink(missing_ok=True)
-            return True
-        except OSError:
-            return False
+        return all(results)
 
     def cleanup(self, failed: bool) -> None:
         if self.child is not None and self.child.poll() is None:
@@ -637,25 +618,15 @@ class Publication:
         rollback_failed = (
             failed and self.started and not self.committed and not self.rollback()
         )
-        if self.scratch and (
-            not rollback_failed or not self.context.arguments.no_clobber
-        ):
+        if self.scratch and not rollback_failed:
             for name in self.names:
                 try:
                     self.p[f"tmp_{name}"].unlink(missing_ok=True)
                 except OSError:
                     pass
-            if not rollback_failed and (
-                not failed or not self.started or not self.previous or self.committed
-            ):
-                for name in self.names:
-                    try:
-                        self.p[f"backup_{name}"].unlink(missing_ok=True)
-                    except OSError:
-                        pass
         if rollback_failed:
             print(
-                f"ERROR: Step 08 rollback incomplete; retaining lock and backups: {self.p['lock']}",
+                f"ERROR: Step 08 rollback incomplete; retaining lock and staging files: {self.p['lock']}",
                 file=sys.stderr,
             )
         elif self.locked:
@@ -690,7 +661,7 @@ class Publication:
         raise Interrupted(signum)
 
 
-def require_no_residue(context: Context) -> None:
+def require_no_residue(context: Context, *, owned_lock: Path | None = None) -> None:
     pattern = f".{context.arguments.cohort_id}.step08.*"
     for directory in (context.paths["sites"].parent, Path(context.arguments.qc_root)):
         if directory.is_dir():
@@ -698,7 +669,7 @@ def require_no_residue(context: Context) -> None:
                 (
                     path
                     for path in directory.iterdir()
-                    if fnmatch.fnmatchcase(path.name, pattern)
+                    if fnmatch.fnmatchcase(path.name, pattern) and path != owned_lock
                 ),
                 None,
             )
@@ -720,20 +691,15 @@ def execute(context: Context, command: Sequence[str]) -> None:
         for number in handlers:
             signal.signal(number, signal.SIG_IGN)
         tx.acquire()
-        if any(
-            lexists(p[f"{kind}_{name}"])
-            for kind in ("tmp", "backup")
-            for name in tx.names
-        ):
-            fail("Refusing to reuse existing Step 08 scratch or backup residue.")
+        require_no_residue(context, owned_lock=p["lock"])
         tx.scratch = True
         for number in handlers:
             signal.signal(number, tx.interrupted)
         existing = sum(lexists(p[name]) for name in tx.names)
         if existing not in (0, 3):
             fail("Existing Step 08 outputs are incomplete; expected all three or none.")
-        if existing and context.arguments.no_clobber:
-            fail("Refusing to replace complete Step 08 outputs under --no-clobber.")
+        if existing:
+            fail("Refusing to replace complete Step 08 outputs.")
         confirm_inputs(context)
         sys.stdout.flush()
         tx.spawning = True
@@ -753,25 +719,17 @@ def execute(context: Context, command: Sequence[str]) -> None:
             fail("Step 08 R VCF preprocessing failed.")
         validate_outputs(context, "tmp_")
         staged_hashes = tuple(digest(p[f"tmp_{name}"]) for name in tx.names)
-        tx.previous, tx.started = existing == 3, True
-        if tx.previous:
-            for name in tx.names:
-                p[name].replace(p[f"backup_{name}"])
+        tx.started = True
         for name in tx.names:
-            tx.exclusive(name) if context.arguments.no_clobber else p[
-                f"tmp_{name}"
-            ].replace(p[name])
+            tx.exclusive(name)
         validate_outputs(context)
         if tuple(digest(p[name]) for name in tx.names) != staged_hashes:
             fail("Published Step 08 outputs changed during publication.")
-        if context.arguments.no_clobber:
-            if any(not tx.same(p[f"tmp_{name}"], p[name]) for name in tx.names):
-                fail("A Step 08 final no longer matches its staging anchor.")
-            for name in tx.names:
-                p[f"tmp_{name}"].unlink()
-        tx.committed = True
+        if any(not tx.same(p[f"tmp_{name}"], p[name]) for name in tx.names):
+            fail("A Step 08 final no longer matches its staging anchor.")
         for name in tx.names:
-            p[f"backup_{name}"].unlink(missing_ok=True)
+            p[f"tmp_{name}"].unlink()
+        tx.committed = True
         tx.release()
         failed = False
     finally:
@@ -784,8 +742,7 @@ def run(arguments: argparse.Namespace) -> int:
     context = build_context(arguments)
     command = r_command(context)
     print_plan(context, command)
-    if arguments.no_clobber:
-        require_no_residue(context)
+    require_no_residue(context)
     if not arguments.execute:
         print(
             "Dry-run complete; no directories or files were created and R was not invoked."

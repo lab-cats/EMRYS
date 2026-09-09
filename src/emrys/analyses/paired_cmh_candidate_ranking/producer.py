@@ -86,7 +86,11 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
             str(Path(__file__).with_name("step_09_cmh_editing_site_calling.R")),
         ),
     )
-    parser.add_argument("--no-clobber", action="store_true")
+    parser.add_argument(
+        "--no-clobber",
+        action="store_true",
+        help="Accepted for existing callers; replacement is always refused.",
+    )
     parser.add_argument("--execute", action="store_true")
 
 
@@ -156,7 +160,6 @@ def _paths(a: argparse.Namespace, token: str) -> dict[str, Path]:
         result[f"tmp_{name}"] = (
             root / f".{a.analysis_id}.step09.{token}.{temporary_suffix}"
         )
-        result[f"backup_{name}"] = root / f".{final.name}.{token}.previous"
     result["lock_owner_tmp"] = result["lock"] / f".owner.{token}.tmp"
     return result
 
@@ -304,9 +307,7 @@ def print_plan(context: Context, command: Sequence[str]) -> None:
         f"  Step 08 sites: {p['step08_sites']}\n  Step 08 inputs: {p['step08_inputs']}\n  Output directory: {p['root']}"
     )
     print(f"  Background condition: {a.background_condition or 'disabled'}")
-    print(
-        f"  Existing-output policy: {'no-clobber' if a.no_clobber else 'replace-complete-set'}"
-    )
+    print("  Existing-output policy: refuse existing outputs")
     print(
         "  Orientation policy: legacy_provisional_v1 (provisional; not biologically validated)"
     )
@@ -387,7 +388,7 @@ class Publication:
     def __init__(self, context: Context) -> None:
         self.context, self.p = context, context.paths
         self.locked = self.scratch = False
-        self.previous = self.started = self.committed = False
+        self.started = self.committed = False
         self.child: subprocess.Popen[bytes] | None = None
         self.pending = 0
 
@@ -492,33 +493,16 @@ class Publication:
     def rollback(self) -> bool:
         success = True
         for name in self.names:
-            staged, final, backup = (
-                self.p[f"tmp_{name}"],
-                self.p[name],
-                self.p[f"backup_{name}"],
-            )
+            staged, final = self.p[f"tmp_{name}"], self.p[name]
             try:
-                if self.context.arguments.no_clobber:
-                    if not lexists(final):
-                        continue
-                    if not self.same(staged, final):
-                        success = False
-                    else:
-                        final.unlink()
-                        success &= not lexists(final)
-                elif self.previous and lexists(backup):
-                    final.unlink(missing_ok=True)
-                    backup.replace(final)
-                elif self.previous:
-                    success &= lexists(final)
+                if not lexists(final):
+                    continue
+                if not self.same(staged, final):
+                    success = False
                 else:
-                    final.unlink(missing_ok=True)
+                    final.unlink()
+                    success &= not lexists(final)
             except OSError:
-                if self.previous and lexists(backup):
-                    print(
-                        f"ERROR: Could not restore Step 09 backup during rollback: {backup}",
-                        file=sys.stderr,
-                    )
                 success = False
         return success
 
@@ -539,19 +523,8 @@ class Publication:
         rollback_failed = (
             failed and self.started and not self.committed and not self.rollback()
         )
-        if self.scratch and (
-            not rollback_failed or not self.context.arguments.no_clobber
-        ):
+        if self.scratch and not rollback_failed:
             self.discard("tmp")
-        if self.scratch and self.committed:
-            self.discard("backup")
-            if any(lexists(self.p[f"backup_{name}"]) for name in self.names):
-                print(
-                    "ERROR: Step 09 committed backup cleanup was incomplete; "
-                    f"retaining the owned lock for operator recovery: {self.p['lock']}",
-                    file=sys.stderr,
-                )
-                return
         if rollback_failed:
             print(
                 f"ERROR: Step 09 rollback was incomplete; retaining the owned lock for operator recovery: {self.p['lock']}",
@@ -598,10 +571,17 @@ class Publication:
         raise Interrupted(signum)
 
 
-def require_no_residue(context: Context) -> None:
+def require_no_residue(context: Context, *, owned_lock: Path | None = None) -> None:
     root = context.paths["root"]
     if root.is_dir():
-        match = next(root.glob(f".{context.arguments.analysis_id}.*"), None)
+        match = next(
+            (
+                path
+                for path in root.glob(f".{context.arguments.analysis_id}.*")
+                if path != owned_lock
+            ),
+            None,
+        )
         if match is not None:
             fail(f"Step 09 residue requires operator inspection: {match}")
 
@@ -621,23 +601,17 @@ def execute(context: Context, command: Sequence[str]) -> None:
         for number in handlers:
             signal.signal(number, tx.interrupted)
         tx.honor()
-        if any(
-            lexists(p[f"{kind}_{name}"])
-            for kind in ("tmp", "backup")
-            for name in tx.names
-        ):
-            fail("Refusing to reuse an existing Step 09 scratch path.")
+        require_no_residue(context, owned_lock=p["lock"])
         tx.scratch = True
         existing = sum(lexists(p[name]) for name in tx.names)
         if existing not in (0, 6):
             fail(
                 f"Existing Step 09 outputs are incomplete; expected all six or none for analysis: {context.arguments.analysis_id}"
             )
-        if existing and context.arguments.no_clobber:
+        if existing:
             fail(
-                f"Refusing to replace an existing complete Step 09 output set under --no-clobber for analysis: {context.arguments.analysis_id}"
+                f"Refusing to replace an existing complete Step 09 output set for analysis: {context.arguments.analysis_id}"
             )
-        tx.previous = existing == 6
         confirm_inputs(context)
         sys.stdout.flush()
         for number in handlers:
@@ -656,26 +630,17 @@ def execute(context: Context, command: Sequence[str]) -> None:
         validate_outputs(context, "tmp_")
         staged = tuple(digest(p[f"tmp_{name}"]) for name in tx.names)
         tx.started = True
-        if tx.previous:
-            for name in tx.names:
-                p[name].replace(p[f"backup_{name}"])
         for name in tx.names:
-            tx.exclusive(name) if context.arguments.no_clobber else p[
-                f"tmp_{name}"
-            ].replace(p[name])
+            tx.exclusive(name)
         validate_outputs(context)
         if tuple(digest(p[name]) for name in tx.names) != staged:
             fail("Published Step 09 output changed during publication.")
-        if context.arguments.no_clobber:
-            if any(not tx.same(p[f"tmp_{name}"], p[name]) for name in tx.names):
-                fail("Step 09 output final no longer matches its owned staging anchor.")
-            tx.discard("tmp")
-            if any(lexists(p[f"tmp_{name}"]) for name in tx.names):
-                fail("Step 09 could not remove an owned publication anchor.")
+        if any(not tx.same(p[f"tmp_{name}"], p[name]) for name in tx.names):
+            fail("Step 09 output final no longer matches its owned staging anchor.")
+        tx.discard("tmp")
+        if any(lexists(p[f"tmp_{name}"]) for name in tx.names):
+            fail("Step 09 could not remove an owned publication anchor.")
         tx.committed = True
-        tx.discard("backup")
-        if any(lexists(p[f"backup_{name}"]) for name in tx.names):
-            fail("Step 09 could not remove a committed backup; preserving lock.")
         tx.release()
         failed = False
     finally:
@@ -692,8 +657,7 @@ def run(arguments: argparse.Namespace) -> int:
     context = build_context(arguments)
     command = r_command(context)
     print_plan(context, command)
-    if arguments.no_clobber:
-        require_no_residue(context)
+    require_no_residue(context)
     if not arguments.execute:
         print("Dry-run only. No R process was invoked and no output path was created.")
         return 0

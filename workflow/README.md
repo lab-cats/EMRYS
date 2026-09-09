@@ -1,8 +1,10 @@
 # Workflow scheduling
 
-[`Snakefile`](Snakefile) schedules the exact graph stored in an immutable Run.
-Planning combines the [common processing graph](contracts/README.md) with one
-validated Analysis module and freezes the result before execution. Snakemake
+[`Snakefile`](Snakefile) schedules the [common processing graph](contracts/README.md)
+from the admitted implementation checkout and the selected Analysis module.
+New Run planning rejects processing dependencies that differ from that graph,
+then freezes the combined plan. Existing Runs retain their profile bytes and
+resume with the same fixed processing dependencies as before. Snakemake
 runs the named producers; their contracts define scientific behavior and the
 Run coordinator decides whether their results count as complete.
 

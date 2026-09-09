@@ -9,6 +9,7 @@ from pathlib import Path
 
 import emrys
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.artifact_inventory import processing_tasks
 from emrys.contracts.orchestration.application_model import (
     functional_specification_from_profile,
     processing_stopping_owner_keys,
@@ -215,6 +216,8 @@ else:
     COHORT_ID = ANALYSIS_REVISION.scope_id("cohort")
     ANALYSIS_ID = ANALYSIS_REVISION.scope_id("analysis")
 
+# Independent support fence: even a schema-valid profile cannot reassign the
+# backend's fixed producer names or scopes. This is not derived from that profile.
 BASE_RULE_PROJECTION = dict(
     row.split()
     for row in """construct_STAR_index emrys.stage.construct_STAR_index.v1|reference|reference
@@ -500,184 +503,31 @@ rule cohort_slice:
     default_target: True
 
 
-rule construct_STAR_index:
-    output:
-        _produced_verified(_owner("construct_STAR_index"), REFERENCE_ID)
-    params:
-        task_argv=_task_argv(_owner("construct_STAR_index"), REFERENCE_ID)
-    threads:
-        STEP_THREADS["00a"]
-    resources:
-        mem_mb=STAGE_MEMORY_MB["00a"]
-    shell:
-        TASK_SHELL
+# The profile in the admitted checkout defines processing; retained Run profiles
+# continue to supply only analysis-tail edges, including on historical resumes.
+for processing_task in processing_tasks(SOURCE_CHECKOUT):
+    machine_key = str(processing_task["machine_key"])
+    step_id = str(processing_task["step_id"])
+    scope_type = str(processing_task["scope_type"])
+    wildcard = {"sample": "sample_id", "cohort_partition": "partition_scope"}.get(scope_type)
+    scope = "{" + wildcard + "}" if wildcard else SCOPES_BY_TYPE[scope_type][0]
+    predecessors = []
+    for producer in processing_task["predecessors"]:
+        producer_scope = str(OWNER_TASKS_BY_KEY[producer]["scope_type"])
+        producer_scopes = (scope,) if producer_scope == scope_type else SCOPES_BY_TYPE[producer_scope]
+        predecessors.extend(_verified(producer, value) for value in producer_scopes)
+    stage_resources = {"mem_mb": STAGE_MEMORY_MB[step_id]}
+    if wildcard:
+        stage_resources[f"stage_{step_id}_slots"] = 1
 
-
-rule convert_GTF_to_BED12:
-    output:
-        _produced_verified(_owner("convert_GTF_to_BED12"), REFERENCE_ID)
-    params:
-        task_argv=_task_argv(_owner("convert_GTF_to_BED12"), REFERENCE_ID)
-    resources:
-        mem_mb=STAGE_MEMORY_MB["00b"]
-    shell:
-        TASK_SHELL
-
-
-rule construct_FASTA_sidecars:
-    output:
-        _produced_verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
-    params:
-        task_argv=_task_argv(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
-    resources:
-        mem_mb=STAGE_MEMORY_MB["00c"]
-    shell:
-        TASK_SHELL
-
-
-rule align_RNA_reads_with_STAR:
-    input:
-        star_index=_verified(_owner("construct_STAR_index"), REFERENCE_ID)
-    output:
-        _produced_verified(_owner("align_RNA_reads_with_STAR"), "{sample_id}")
-    params:
-        task_argv=_task_argv(_owner("align_RNA_reads_with_STAR"), wildcard="sample_id")
-    threads:
-        STEP_THREADS["01"]
-    resources:
-        mem_mb=STAGE_MEMORY_MB["01"],
-        stage_01_slots=1
-    shell:
-        TASK_SHELL
-
-
-rule construct_canonical_BAM:
-    input:
-        star_bam=_verified(_owner("align_RNA_reads_with_STAR"), "{sample_id}")
-    output:
-        _produced_verified(_owner("construct_canonical_BAM"), "{sample_id}")
-    params:
-        task_argv=_task_argv(_owner("construct_canonical_BAM"), wildcard="sample_id")
-    threads:
-        STEP_THREADS["02"]
-    resources:
-        mem_mb=STAGE_MEMORY_MB["02"],
-        stage_02_slots=1
-    shell:
-        TASK_SHELL
-
-
-rule collect_canonical_BAM_QC_evidence:
-    input:
-        canonical_bam=_verified(_owner("construct_canonical_BAM"), "{sample_id}")
-    output:
-        _produced_verified(_owner("collect_canonical_BAM_QC_evidence"), "{sample_id}")
-    params:
-        task_argv=_task_argv(_owner("collect_canonical_BAM_QC_evidence"), wildcard="sample_id")
-    resources:
-        mem_mb=STAGE_MEMORY_MB["02b"],
-        stage_02b_slots=1
-    shell:
-        TASK_SHELL
-
-
-rule collect_RSeQC_paired_orientation_evidence:
-    input:
-        canonical_bam=_verified(_owner("construct_canonical_BAM"), "{sample_id}"),
-        bed12=_verified(_owner("convert_GTF_to_BED12"), REFERENCE_ID)
-    output:
-        _produced_verified(_owner("collect_RSeQC_paired_orientation_evidence"), "{sample_id}")
-    params:
-        task_argv=_task_argv(_owner("collect_RSeQC_paired_orientation_evidence"), wildcard="sample_id")
-    resources:
-        mem_mb=STAGE_MEMORY_MB["03"],
-        stage_03_slots=1
-    shell:
-        TASK_SHELL
-
-
-rule mark_BAM_duplicates_with_Picard:
-    input:
-        canonical_bam=_verified(_owner("construct_canonical_BAM"), "{sample_id}")
-    output:
-        _produced_verified(_owner("mark_BAM_duplicates_with_Picard"), "{sample_id}")
-    params:
-        task_argv=_task_argv(_owner("mark_BAM_duplicates_with_Picard"), wildcard="sample_id")
-    resources:
-        mem_mb=STAGE_MEMORY_MB["04"],
-        stage_04_slots=1
-    shell:
-        TASK_SHELL
-
-
-rule split_N_cigar_reads_with_GATK:
-    input:
-        marked_bam=_verified(_owner("mark_BAM_duplicates_with_Picard"), "{sample_id}"),
-        reference_sidecars=_verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
-    output:
-        _produced_verified(_owner("split_N_cigar_reads_with_GATK"), "{sample_id}")
-    params:
-        task_argv=_task_argv(_owner("split_N_cigar_reads_with_GATK"), wildcard="sample_id")
-    resources:
-        mem_mb=STAGE_MEMORY_MB["05"],
-        stage_05_slots=1
-    shell:
-        TASK_SHELL
-
-
-rule partition_BAM_by_mechanical_read_orientation:
-    input:
-        split_bam=_verified(_owner("split_N_cigar_reads_with_GATK"), "{sample_id}")
-    output:
-        _produced_verified(_owner("partition_BAM_by_mechanical_read_orientation"), "{sample_id}")
-    params:
-        task_argv=_task_argv(_owner("partition_BAM_by_mechanical_read_orientation"), wildcard="sample_id")
-    threads:
-        STEP_THREADS["06"]
-    resources:
-        mem_mb=STAGE_MEMORY_MB["06"],
-        stage_06_slots=1
-    shell:
-        TASK_SHELL
-
-
-rule generate_partitioned_cohort_mpileup_VCFs:
-    input:
-        partitioned_bams=expand(
-            _verified(_owner("partition_BAM_by_mechanical_read_orientation"), "{sample_id}"),
-            sample_id=SAMPLE_IDS,
-        ),
-        reference_sidecars=_verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
-    output:
-        _produced_verified(_owner("generate_partitioned_cohort_mpileup_VCFs"), "{partition_scope}")
-    params:
-        task_argv=_task_argv(
-            _owner("generate_partitioned_cohort_mpileup_VCFs"),
-            wildcard="partition_scope",
-        )
-    resources:
-        mem_mb=STAGE_MEMORY_MB["07"],
-        stage_07_slots=1
-    shell:
-        TASK_SHELL
-
-
-rule preprocess_and_annotate_cohort_candidates:
-    input:
-        partition_vcfs=expand(
-            _verified(_owner("generate_partitioned_cohort_mpileup_VCFs"), "{partition_scope}"),
-            partition_scope=PARTITION_SCOPES,
-        )
-    output:
-        _produced_verified(_owner("preprocess_and_annotate_cohort_candidates"), COHORT_ID)
-    params:
-        task_argv=_task_argv(_owner("preprocess_and_annotate_cohort_candidates"), COHORT_ID)
-    threads:
-        STEP_THREADS["08"]
-    resources:
-        mem_mb=STAGE_MEMORY_MB["08"]
-    shell:
-        TASK_SHELL
+    rule:
+        name: processing_task["rule_name"]
+        input: predecessors
+        output: _produced_verified(machine_key, scope)
+        params: task_argv=_task_argv(machine_key, scope, wildcard=wildcard)
+        threads: STEP_THREADS.get(step_id, 1)
+        resources: **stage_resources
+        shell: TASK_SHELL
 
 
 rule analysis_owner:

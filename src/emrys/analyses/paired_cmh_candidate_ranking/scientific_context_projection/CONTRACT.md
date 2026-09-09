@@ -95,14 +95,18 @@ staging files, publishes all payloads and then the receipt last, and fsyncs the
 analysis directory before treating the transaction as committed.
 
 Dry-run creates no output path and invokes no R process. Execute mode acquires
-an analysis-owned lock, refuses incomplete prior stable sets, uses run-token
-staging and backups, checks inputs at the two post-baseline boundaries,
-validates receipt/payload hashes before and after publication, and durably
-rolls back or restores a failed replacement. Under
-`--no-clobber`, a complete predecessor is rejected and first publication is
-create-exclusive with retained staging inode anchors through final checks.
-Ambiguous or incomplete rollback retains the lock and residue for operator
-recovery.
+an analysis-owned lock, uses run-token staging, checks inputs at the two
+post-baseline boundaries, and validates receipt/payload hashes before and
+after publication. Publication follows the shared
+[create-only policy](../../../../../docs/design/decisions/execution-evidence-and-reporting.md#standalone-scientific-output-policy).
+Old backup and staging files still block execution for operator inspection.
+Directory fsync also covers rollback of the new outputs.
+
+One interruption limit remains: the shell records each published file only
+after its publication helper returns. An interruption between those actions
+can leave that file outside the cleanup count. Inspect the output directory
+after an interrupted publication; do not infer complete cleanup from lock
+absence. Retiring replacement does not repair this separate handoff gap.
 
 The receipt can become visible before the shell's final post-publication hash
 and input checks. Its presence alone is therefore not proof that the producer

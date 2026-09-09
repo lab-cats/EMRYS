@@ -301,7 +301,7 @@ def test_execute_and_no_clobber_preserve_receipt_last_transaction(
     assert not list(paths["qc"].glob(".*.step08.*"))
 
 
-def test_complete_no_clobber_set_is_unchanged_without_r(
+def test_complete_set_is_unchanged_without_r(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     arguments, paths = _fixture(tmp_path)
@@ -311,8 +311,9 @@ def test_complete_no_clobber_set_is_unchanged_without_r(
     monkeypatch.setattr(
         producer.subprocess, "Popen", lambda *_a, **_k: pytest.fail("R invoked")
     )
-    assert producer.main([*arguments, "--no-clobber", "--execute"]) == 1
-    assert [path.read_bytes() for path in _finals(paths)] == before
+    for flag in ([], ["--no-clobber"]):
+        assert producer.main([*arguments, *flag, "--execute"]) == 1
+        assert [path.read_bytes() for path in _finals(paths)] == before
 
 
 @pytest.mark.parametrize("index", range(3))
@@ -411,26 +412,6 @@ def test_no_clobber_ambiguous_rollback_preserves_state_and_refuses_rerun(
     assert all(path.read_bytes() == data for path, data in preserved.items())
 
 
-def test_publication_failure_restores_complete_predecessor(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    arguments, paths = _fixture(tmp_path)
-    _inject_process(monkeypatch)
-    assert producer.main([*arguments, "--execute"]) == 0
-    before = [path.read_bytes() for path in _finals(paths)]
-    original_replace = Path.replace
-
-    def fail_summary(source: Path, destination: Path) -> Path:
-        if source.name.endswith("summary.tmp.tsv"):
-            raise OSError("injected publication failure")
-        return original_replace(source, destination)
-
-    monkeypatch.setattr(Path, "replace", fail_summary)
-    assert producer.main([*arguments, "--execute"]) == 1
-    assert [path.read_bytes() for path in _finals(paths)] == before
-    assert not list(paths["output"].rglob(".*.step08.*"))
-
-
 def test_input_mutation_during_r_refuses_publication(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -445,13 +426,11 @@ def test_input_mutation_during_r_refuses_publication(
     assert not list(paths["output"].rglob(".*.step08.*"))
 
 
-def test_postpublication_validation_failure_restores_predecessor(
+def test_postpublication_validation_failure_removes_owned_outputs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     arguments, paths = _fixture(tmp_path)
     _inject_process(monkeypatch)
-    assert producer.main([*arguments, "--execute"]) == 0
-    before = [path.read_bytes() for path in _finals(paths)]
     original_validate = producer.validate_outputs
 
     def fail_final(context: producer.Context, prefix: str = "") -> None:
@@ -461,32 +440,9 @@ def test_postpublication_validation_failure_restores_predecessor(
 
     monkeypatch.setattr(producer, "validate_outputs", fail_final)
     assert producer.main([*arguments, "--execute"]) == 1
-    assert [path.read_bytes() for path in _finals(paths)] == before
+    assert not any(path.exists() for path in _finals(paths))
     assert not list(paths["output"].rglob(".*.step08.*"))
-
-
-def test_failed_restore_retains_lock_and_backup_for_recovery(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    arguments, paths = _fixture(tmp_path)
-    _inject_process(monkeypatch)
-    assert producer.main([*arguments, "--execute"]) == 0
-    original_replace = Path.replace
-
-    def fail_publication_and_restore(source: Path, destination: Path) -> Path:
-        if source.name.endswith("summary.tmp.tsv") or (
-            source.name.endswith("previous.sites.tsv")
-            and destination.name.endswith("step08_sites.tsv")
-        ):
-            raise OSError("injected unrecoverable move")
-        return original_replace(source, destination)
-
-    monkeypatch.setattr(Path, "replace", fail_publication_and_restore)
-    assert producer.main([*arguments, "--execute"]) == 1
-    token = str(os.getpid())
-    cohort = paths["output"] / "cohort"
-    assert (cohort / ".cohort.step08.lock/owner").is_file()
-    assert (cohort / f".cohort.step08.{token}.previous.sites.tsv").is_file()
+    assert not list(paths["qc"].glob(".*.step08.*"))
 
 
 def test_ambiguous_lock_and_incomplete_set_are_preserved(
@@ -538,19 +494,24 @@ def test_term_during_child_spawn_is_deferred_and_forwarded(
     assert not list(paths["output"].rglob(".*.step08.*"))
 
 
-def test_no_clobber_residue_fails_in_dry_run_without_mutation(
+def test_old_backup_after_lock_acquisition_is_preserved(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     arguments, paths = _fixture(tmp_path)
-    cohort = paths["output"] / "cohort"
-    cohort.mkdir(parents=True)
-    residue = cohort / ".cohort.step08.abandoned.sites.tmp.tsv"
-    residue.write_text("operator evidence\n")
+    residue = paths["qc"] / ".cohort.step08.abandoned.previous.summary.tsv"
+    original_acquire = producer.Publication.acquire
+
+    def acquire(tx: producer.Publication) -> None:
+        original_acquire(tx)
+        residue.write_text("operator evidence\n")
+
+    monkeypatch.setattr(producer.Publication, "acquire", acquire)
     monkeypatch.setattr(
         producer.subprocess, "Popen", lambda *_a, **_k: pytest.fail("R invoked")
     )
-    assert producer.main([*arguments, "--no-clobber"]) == 1
+    assert producer.main([*arguments, "--execute"]) == 1
     assert residue.read_text() == "operator evidence\n"
+    assert not (paths["output"] / "cohort/.cohort.step08.lock").exists()
 
 
 def test_step07_receipt_rejects_blank_physical_row(
