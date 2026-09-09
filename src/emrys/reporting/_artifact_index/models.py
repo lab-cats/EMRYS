@@ -16,6 +16,7 @@ from emrys.libraries.validation.report import HEADER as VALIDATION_REPORT_HEADER
 
 if TYPE_CHECKING:
     from emrys.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
+    from emrys.reporting._run_summary.models import OutputPaths
 
 PRODUCER = "build_artifact_index"
 PRODUCER_VERSION = "2.0.0"
@@ -161,9 +162,12 @@ class BuildContext:
     run_contract: dict[str, Any]
     run_contract_file_sha256: str
     analysis_policy_path: Path | None
-    analysis_policy_sha256: str | None
+    analysis_policy_binding: dict[str, Any] | None
+    recheck_analysis_policy: Callable[[], None] | None
     inventory_path: Path
     inventory_sha256: str
+    inventory_size_bytes: int
+    recheck_contract_inputs: Callable[[], None]
     inventory_rows: list[dict[str, str]]
     output_dir: Path
     records_dir: Path
@@ -182,3 +186,17 @@ class BuildContext:
     attempt_history: list[str]
     previous_receipt: dict[str, str] | None
     source_identity_observer: Callable[..., str | None]
+
+
+@dataclass(frozen=True)
+class EvidenceContext:
+    """One prepared index and its summary projections for exclusive publication."""
+
+    index: BuildContext
+    summary_paths: OutputPaths
+    summary_document: dict[str, Any]
+    summary_json_bytes: bytes
+    summary_tsv_bytes: bytes
+    qc_summary_bytes: bytes
+    summary_receipt_row: dict[str, Any]
+    summary_receipt_bytes: bytes

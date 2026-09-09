@@ -88,21 +88,13 @@ def _arguments(identity: Any, kind: str) -> argparse.Namespace:
     )
     inventory = root / str(identity.config["artifact_inventory_path"]["path"])
     values = {
-        "artifact_index": {
+        "run_summary": {
             "run_id": run_id,
             "run_contract": run_contract,
             "analysis_policy": analysis_policy,
             "profile": identity.profile,
             "inventory": inventory,
             "output_root": artifact_root,
-        },
-        "run_summary": {
-            "run_id": run_id,
-            "artifact_receipt": artifact_run_root / f"{run_id}.artifact_receipt.tsv",
-            "analysis_policy": analysis_policy,
-            "output_root": artifact_root,
-            "expected_run_contract_path": run_contract,
-            "expected_inventory_path": inventory,
         },
         "html_report": {
             "run_summary": artifact_run_root / f"{run_id}.run_summary.json",
@@ -132,17 +124,9 @@ def _prepare_transaction(kind: str, arguments: argparse.Namespace) -> Any:
     artifact_source_root = admit_artifact_source_root(
         root=arguments.artifact_source_root,
     )
-    if kind == "artifact_index":
-        from emrys.reporting._artifact_index.context import prepare_context  # noqa: PLC0415
+    from emrys.reporting._artifact_index.context import prepare_evidence_context  # noqa: PLC0415
 
-        return prepare_context(
-            arguments,
-            source_checkout=source_checkout,
-            artifact_source_root=artifact_source_root,
-        )
-    from emrys.reporting._run_summary.builder import prepare_context  # noqa: PLC0415
-
-    return prepare_context(
+    return prepare_evidence_context(
         arguments,
         source_checkout=source_checkout,
         artifact_source_root=artifact_source_root,
@@ -150,18 +134,11 @@ def _prepare_transaction(kind: str, arguments: argparse.Namespace) -> Any:
 
 
 def _publish_prepared(kind: str, context: Any) -> Path:
-    if kind == "artifact_index":
+    if kind == "run_summary":
         from emrys.reporting._artifact_index.publication import publish_context  # noqa: PLC0415
 
         publish_context(context)
-        return context.receipt_path
-    if kind == "run_summary":
-        from emrys.reporting._run_summary.publication import (  # noqa: PLC0415
-            publish_context,
-        )
-
-        publish_context(context)
-        return context.paths.receipt
+        return context.summary_paths.receipt
     from emrys.reporting._run_report.publication import publish_report  # noqa: PLC0415
 
     publish_report(context)
@@ -274,7 +251,7 @@ def _require_prepared_processing_source(
 
 
 def _recheck_processing_source(state: inspection.RunInspection) -> None:
-    """Re-admit one source immediately before artifact-index verification."""
+    """Re-admit one source immediately before combined evidence verification."""
 
     if state.processing_source is None:
         return
@@ -286,11 +263,11 @@ def _recheck_processing_source(state: inspection.RunInspection) -> None:
         )
     except (OSError, inspection.InspectionError) as exc:
         raise ReportingOperationError(
-            f"Processing source changed during artifact-index publication: {exc}"
+            f"Processing source changed during combined evidence publication: {exc}"
         ) from exc
     if confirmed is None:
         raise ReportingOperationError(
-            "Processing source changed during artifact-index publication"
+            "Processing source changed during combined evidence publication"
         )
 
 
@@ -325,11 +302,11 @@ def run_reporting(
         if not execute:
             try:
                 context = _prepare_transaction(
-                    "artifact_index", _arguments(identity, "artifact_index")
+                    "run_summary", _arguments(identity, "run_summary")
                 )
-                _require_prepared_processing_source(state, context)
+                _require_prepared_processing_source(state, context.index)
             except _PRODUCER_ERRORS as exc:
-                raise _producer_error("artifact_index", "dry-run failed", exc) from exc
+                raise _producer_error("run_summary", "dry-run failed", exc) from exc
             return ReportingOperationOutcome(
                 status="planned",
                 verified_report_locations=(),
@@ -355,8 +332,8 @@ def run_reporting(
         for kind in reporting_boundary.REPORTING_KINDS:
             try:
                 context = _prepare_transaction(kind, _arguments(identity, kind))
-                if kind == "artifact_index":
-                    _require_prepared_processing_source(state, context)
+                if kind == "run_summary":
+                    _require_prepared_processing_source(state, context.index)
             except _PRODUCER_ERRORS as exc:
                 raise _producer_error(
                     kind, "preflight failed before ledger entry", exc
@@ -387,7 +364,7 @@ def run_reporting(
                 ops=publish_ops,
                 before_publication=(
                     (lambda: _recheck_processing_source(state))
-                    if kind == "artifact_index" and state.processing_source is not None
+                    if kind == "run_summary" and state.processing_source is not None
                     else None
                 ),
             )

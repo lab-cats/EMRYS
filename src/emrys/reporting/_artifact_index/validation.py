@@ -57,7 +57,7 @@ def validate_published_transaction(
     require_current_source_locations: bool,
     source_root: Path = contracts.REPO_ROOT,
     admitted_bytes: Mapping[Path, bytes] | None = None,
-) -> None:
+) -> tuple[dict[str, str], tuple[dict[str, Any], ...]]:
     def bound_bytes(path: Path) -> bytes:
         if admitted_bytes is None:
             try:
@@ -212,6 +212,7 @@ def validate_published_transaction(
 
     validator = contracts.schema_validator("artifact-record")
     validated_index_rows: list[dict[str, str]] = []
+    records: list[dict[str, Any]] = []
     for index_row, inventory_row in zip(index_rows, inventory_rows, strict=True):
         expected_path = records_dir / f"{inventory_row['artifact_id']}.json"
         if index_row["record_path"] != str(expected_path):
@@ -253,6 +254,7 @@ def validate_published_transaction(
                 f"{inventory_row['artifact_id']}"
             )
         validated_index_rows.append(expected_index_row)
+        records.append(record)
     if receipt["record_set_sha256"] != canonical_digest(
         record_manifest(validated_index_rows)
     ):
@@ -292,6 +294,8 @@ def validate_published_transaction(
             raise ArtifactIndexError(
                 f"Published receipt rollup is invalid: {field_name}"
             )
+
+    return receipt, tuple(records)
 
 
 def validate_existing_transaction(

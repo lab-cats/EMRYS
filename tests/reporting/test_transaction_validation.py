@@ -24,8 +24,6 @@ from emrys.reporting._artifact_index import context as artifact_context
 from emrys.reporting._run_report import context as report_context_owner
 from emrys.reporting._run_report import publication as report_publication
 from emrys.reporting._run_report import receipt
-from emrys.reporting._run_summary import builder as summary_builder
-from emrys.reporting._run_summary import publication as summary_publication
 from tests.contracts.orchestration.test_application_model_contracts import (
     successor_run_fixture,
 )
@@ -68,40 +66,27 @@ def fault_before_validation(
         assert reached, f"Target receipt did not reach final validation: {receipt_path}"
 
 
-def _publish_summary(built: Any) -> None:
-    fixture.publish_run_summary(built)
-
-
 def _publish_report(arguments: argparse.Namespace) -> None:
     context = report_context_owner.prepare_context(arguments)
     report_publication.publish_report(context)
 
 
-def _publish_summary_with_commit(built: Any, commit: str) -> None:
-    previous, _epoch = fixture.fixed_epoch()
-    try:
-        context = summary_builder.prepare_context(
-            argparse.Namespace(
-                run_id=built.run_id,
-                artifact_receipt=built.artifact_receipt,
-                output_root=built.output_root,
-                execute=True,
-            ),
-            source_checkout=SourceCheckout(root=REPO_ROOT),
-            artifact_source_root=ArtifactSourceRoot(root=built.root),
-            deps=summary_builder.RunSummaryBuildDeps(
-                matching_checkout_head_commit=lambda **_kwargs: commit,
-            ),
-        )
-        summary_publication.publish_context(context)
-    finally:
-        fixture.restore_epoch(previous)
+def _record_historical_summary_commit(built: Any, commit: str) -> None:
+    """Give temporary historical summary evidence its independently recorded commit."""
+
+    document = orchestration_contracts.load_json_object(built.summary_json_path)
+    document["provenance"]["git_commit"] = commit
+    payload = fixture.ARTIFACT_CORE.canonical_json_bytes(document)
+    built.summary_json_path.write_bytes(payload)
+    rows = fixture.read_tsv(built.summary_receipt_path)
+    rows[0]["git_commit"] = commit
+    rows[0]["run_summary_json_sha256"] = hashlib.sha256(payload).hexdigest()
+    fixture.write_tsv(built.summary_receipt_path, tuple(rows[0]), rows)
 
 
 @pytest.fixture
 def complete_reporting(tmp_path: Path) -> tuple[Any, Path]:
     built = fixture.build_fixture(tmp_path / "run")
-    _publish_summary(built)
     report_root = built.root / "reports"
     arguments = argparse.Namespace(
         source_checkout=REPO_ROOT,
@@ -193,7 +178,6 @@ def test_summary_revalidates_relative_artifacts_from_admitted_root(
         relocated.output_root,
         relocated,
     )
-    _publish_summary(built)
 
     validated = transaction_validation.validate_run_summary_transaction(
         source_checkout=REPO_ROOT,
@@ -252,7 +236,7 @@ def test_explicit_module_publishes_and_readmits_v3_v5_reporting(
         orchestration_contracts.canonical_json_bytes(run_contract)
     )
     profile = adapter_fixture.analysis_profile_v1()
-    artifact = artifact_context.prepare_context(
+    artifact = artifact_context.prepare_evidence_context(
         argparse.Namespace(
             run_id=adapter.run_id,
             run_contract=adapter.run_contract,
@@ -273,17 +257,6 @@ def test_explicit_module_publishes_and_readmits_v3_v5_reporting(
         adapter.output_root,
         adapter,
     )
-    summary = summary_builder.prepare_context(
-        argparse.Namespace(
-            run_id=built.run_id,
-            artifact_receipt=built.artifact_receipt,
-            analysis_policy=policy_path,
-            output_root=built.output_root,
-        ),
-        source_checkout=SourceCheckout(root=REPO_ROOT),
-        artifact_source_root=ArtifactSourceRoot(root=root),
-    )
-    summary_publication.publish_context(summary)
     summary_document = orchestration_contracts.load_json_object(built.summary_json_path)
     assert summary_document["schema_version"] == "3.0.0"
     assert summary_document["analysis_policy"] == {
@@ -447,11 +420,11 @@ def test_historical_artifact_validation_binds_one_record_generation(
     admitted = record_path.read_bytes()
     validate = artifact_validation.validate_published_transaction
 
-    def swap_live_record(**kwargs: Any) -> None:
+    def swap_live_record(**kwargs: Any) -> Any:
         assert kwargs["admitted_bytes"][record_path] == admitted
         record_path.write_bytes(b"{}\n")
         try:
-            validate(**kwargs)
+            return validate(**kwargs)
         finally:
             record_path.write_bytes(admitted)
 
@@ -586,7 +559,7 @@ def test_historical_report_admission_uses_each_recorded_producer_identity(
     summary_commit = "b" * 40
     report_commit = "c" * 40
     assert summary_commit != workflow_fixture.source_checkout_commit()
-    _publish_summary_with_commit(built, summary_commit)
+    _record_historical_summary_commit(built, summary_commit)
     report_root = built.root / "reports"
     arguments = argparse.Namespace(
         source_checkout=REPO_ROOT,
@@ -1073,16 +1046,31 @@ def test_public_historical_dispatch_rejects_symlinks_before_parsing(
     assert snapshots == [run_summary]
 
 
+@pytest.mark.parametrize("mutation", ("native_source", "producer_commit"))
 def test_artifact_validator_rejects_native_source_mutation(
     complete_reporting: tuple[Any, Path],
+    mutation: str,
 ) -> None:
     built, _report_root = complete_reporting
-    source = built.adapter_fixture.source_for("sample.SYNTH_A.star_log")
-    source.write_text("mutated after reporting\n", encoding="utf-8")
+    if mutation == "native_source":
+        source = built.adapter_fixture.source_for("sample.SYNTH_A.star_log")
+        source.write_text("mutated after reporting\n", encoding="utf-8")
+        diagnostic = "current declared source"
+    else:
+        from emrys.reporting._artifact_index import api as artifact_api
 
+        row = artifact_api.read_exact_tsv(
+            built.artifact_receipt,
+            artifact_api.ARTIFACT_RECEIPT_HEADER,
+            exact_rows=1,
+        )[0]
+        row["git_commit"] = "f" * 40
+        built.artifact_receipt.write_bytes(
+            artifact_api.tsv_bytes(artifact_api.ARTIFACT_RECEIPT_HEADER, [row])
+        )
+        diagnostic = "current producer identity"
     with pytest.raises(
-        transaction_validation.ReportingTransactionError,
-        match="current declared source",
+        transaction_validation.ReportingTransactionError, match=diagnostic
     ):
         transaction_validation.validate_artifact_index_transaction(
             source_checkout=REPO_ROOT,

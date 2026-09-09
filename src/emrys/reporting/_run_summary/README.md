@@ -1,41 +1,29 @@
 # Run-summary implementation
 
-This private package turns validated artifact records into a deterministic
-computational summary. The Run reporting coordinator and developer fixtures
-call [`builder.prepare_context`](builder.py), then [`publication.py`](publication.py).
-There is no separate public command or operator recovery interface.
+This private package derives deterministic Run summaries from admitted artifact
+records. The [artifact-index owner](../_artifact_index/README.md) prepares and
+publishes the index and summary together. Summary generation has no separate
+publisher, lock, command, or recovery interface.
 
 | Module | Responsibility |
 | --- | --- |
-| [`builder.py`](builder.py) | Prepare inputs and retain validated source/artifact roots. |
-| [`models.py`](models.py) | Constants, headers, errors, snapshots, paths, and context values. |
-| [`inputs.py`](inputs.py) | Check explicit paths and snapshot immutable files. |
-| [`transaction.py`](transaction.py) | Read input transactions and history; provide stable value helpers. |
+| [`document.py`](document.py) | Admit the Analysis policy and assemble canonical JSON and TSV projections from the same artifact records. |
 | [`projection.py`](projection.py) | Derive computational status, summary rows, and QC rows. |
-| [`validation.py`](validation.py) | Validate documents, predecessors, and receipts. |
-| [`document.py`](document.py) | Assemble the canonical run-summary document. |
-| [`publication.py`](publication.py) | Publish receipt last; handle rollback, recovery, and output checks. |
+| [`validation.py`](validation.py) | Validate existing summaries and receipts; assemble the new receipt. |
+| [`models.py`](models.py) | Constants, headers, errors, and output paths. |
+| [`inputs.py`](inputs.py) | Admit existing summary files. |
+| [`transaction.py`](transaction.py) | Stable value and historical-attempt helpers. |
 
-Preparation and publication rechecks use the same validated artifact transaction.
-Parsing, serialization, and shared transaction helpers come through the private
-[`_artifact_index/api.py`](../_artifact_index/api.py), without invoking artifact
-context preparation. Both roots remain on `BuildContext` under the common
-[source/artifact rules](../README.md#source-and-artifact-roots); publication uses
-them for input and output checks without inferring or validating new roots.
+Flat paired-CMH summaries retain v2; explicit modules retain v3 and their
+Analysis-policy path, hash, and size. Artifact and summary files keep their
+formats. The summary receipt is published last and completes the combined
+operation; the artifact receipt remains bound provenance data.
 
-Document assembly uses the Analysis form: flat paired-CMH keeps run-summary v2;
-explicit modules use v3, with analysis-policy path, SHA-256, and size rather than
-paired-CMH fields. This changes neither predecessor nor transaction checks.
-Preparation and read-only validation still accept supported history;
-[publication](../README.md#publication-and-recovery) requires absent outputs.
+[`transaction_validation.py`](../transaction_validation.py) reads current and
+historical summaries without preparing a new publication. It reuses admitted
+artifact records, reconstructs the expected projections, and checks their
+bytes, source identities, receipts, and bound inputs. Historical reads retain
+recorded producer identities and never authorize replacement or regeneration.
 
-The frozen `RunSummaryBuildDeps` supplies input loading, producer identity,
-document construction, and the final input recheck. Production uses immutable
-defaults; [tests](../../../../tests/reporting/README.md#fault-injection) provide
-explicit replacements. Public [`transaction_validation`](../transaction_validation.py)
-owns semantic input rechecks for preparation, publication, lifecycle, and inspection;
-the private publisher exposes no second interface.
-
-All three reporting transactions share artifact contracts and error identities.
-The summary records computational state, not candidate review, adjudication,
-biological interpretation, approver gates, or scientific completion.
+The summary records computational state. Candidate review, adjudication,
+biological interpretation, and scientific completion remain external processes.

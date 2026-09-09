@@ -67,28 +67,6 @@ def _validate_document(
         _fail(f"Run summary failed semantic validation: {exc}")
 
 
-def _load_existing_summary_receipt(
-    paths: OutputPaths,
-) -> tuple[dict[str, str] | None, str | None]:
-    states = tuple(path.exists() or path.is_symlink() for path in paths.ordered_outputs)
-    if any(states) and not all(states):
-        _fail(
-            "Existing run-summary output set is partial; preserve it for "
-            f"recovery: {paths.output_dir}"
-        )
-    if not any(states):
-        return None, None
-    for path in paths.ordered_outputs:
-        if path.is_symlink() or not path.is_file():
-            _fail(f"Existing run-summary output is unsafe: {path}")
-    receipt = adapter.read_exact_tsv(
-        paths.receipt,
-        RUN_SUMMARY_RECEIPT_HEADER,
-        exact_rows=1,
-    )[0]
-    return receipt, contracts.sha256_file(paths.receipt)
-
-
 def _validate_existing_summary(
     *,
     paths: OutputPaths,

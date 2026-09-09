@@ -24,6 +24,7 @@ from emrys.contracts.orchestration.application_model import (
     validate_successor_run,
 )
 from emrys.libraries.process_environment import process_is_alive
+from emrys.orchestration.run_coordinator.reporting_boundary import REPORTING_KINDS
 from emrys.orchestration.run_coordinator._inspection_admission import (
     ExpectedTask,
     InspectionError,
@@ -473,8 +474,7 @@ def inspect_run(
             latest_receipt=latest_receipt,
             tasks=tasks,
             reporting_completion_records={
-                kind: {"start": None, "verified": None}
-                for kind in ("artifact_index", "run_summary", "html_report")
+                kind: {"start": None, "verified": None} for kind in REPORTING_KINDS
             },
             integrity_blockers=tuple(dict.fromkeys(integrity_blockers)),
             results_blockers=tuple(dict.fromkeys(results_blockers)),

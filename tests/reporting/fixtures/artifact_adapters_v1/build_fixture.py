@@ -112,6 +112,18 @@ class FixturePaths:
         return self.output_dir / f"{self.run_id}.artifact_receipt.tsv"
 
     @property
+    def summary_paths(self) -> tuple[Path, ...]:
+        return tuple(
+            self.output_dir / f"{self.run_id}.{suffix}"
+            for suffix in (
+                "run_summary.json",
+                "run_summary.tsv",
+                "qc_summary.tsv",
+                "run_summary_receipt.tsv",
+            )
+        )
+
+    @property
     def lock_path(self) -> Path:
         return self.output_dir / f".{self.run_id}.artifact-index.lock"
 

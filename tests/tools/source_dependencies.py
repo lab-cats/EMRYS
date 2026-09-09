@@ -205,18 +205,6 @@ TRANSITIONS: tuple[tuple[str, str, str, str], ...] = (
         RULE_PRIVATE_OWNER,
     ),
     (
-        "SRC-TRANS-019",
-        "src/emrys/orchestration/run_coordinator/reporting_operation.py",
-        "emrys.reporting._run_summary.builder",
-        RULE_PRIVATE_OWNER,
-    ),
-    (
-        "SRC-TRANS-020",
-        "src/emrys/orchestration/run_coordinator/reporting_operation.py",
-        "emrys.reporting._run_summary.publication",
-        RULE_PRIVATE_OWNER,
-    ),
-    (
         "SRC-TRANS-021",
         "src/emrys/orchestration/run_coordinator/reporting_operation.py",
         "emrys.reporting._run_summary.models",

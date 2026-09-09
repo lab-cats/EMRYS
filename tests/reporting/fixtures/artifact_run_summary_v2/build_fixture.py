@@ -19,8 +19,6 @@ from emrys.reporting._artifact_index import context as ARTIFACT_CONTEXT
 from emrys.reporting._artifact_index import core as ARTIFACT_CORE
 from emrys.reporting._artifact_index import models as ARTIFACT_MODELS
 from emrys.reporting._artifact_index import publication as ARTIFACT_PUBLICATION
-from emrys.reporting._run_summary import builder as RUN_SUMMARY_BUILDER
-from emrys.reporting._run_summary import publication as RUN_SUMMARY_PUBLICATION
 from emrys.reporting._run_report import context as REPORT_CONTEXT
 from emrys.reporting._run_report import publication as REPORT_PUBLICATION
 from tests.reporting.fixtures.artifact_adapters_v1 import (
@@ -33,7 +31,7 @@ FIXED_EPOCH = "1700000000"
 
 @dataclass(frozen=True)
 class RunSummaryFixture:
-    """Paths for one committed artifact transaction and its summary outputs."""
+    """Paths for one committed artifact and summary transaction."""
 
     root: Path
     run_id: str
@@ -63,16 +61,11 @@ class RunSummaryFixture:
 
     @property
     def lock_path(self) -> Path:
-        return self.output_dir / f".{self.run_id}.run-summary.lock"
+        return self.adapter_fixture.lock_path
 
     @property
     def summary_paths(self) -> tuple[Path, ...]:
-        return (
-            self.summary_json_path,
-            self.summary_tsv_path,
-            self.qc_summary_path,
-            self.summary_receipt_path,
-        )
+        return self.adapter_fixture.summary_paths
 
 
 def fixed_epoch() -> tuple[str | None, str]:
@@ -88,7 +81,7 @@ def restore_epoch(previous: str | None) -> None:
         os.environ["SOURCE_DATE_EPOCH"] = previous
 
 
-def publish_adapter_fixture(fixture: Any) -> None:
+def prepare_adapter_fixture(fixture: Any) -> Any:
     previous, _ = fixed_epoch()
     try:
         with patch.object(
@@ -98,7 +91,7 @@ def publish_adapter_fixture(fixture: Any) -> None:
                 source_root=REPO_ROOT, sanitize_git_routing=True
             ),
         ):
-            context = ARTIFACT_CONTEXT.prepare_context(
+            context = ARTIFACT_CONTEXT.prepare_evidence_context(
                 argparse.Namespace(
                     run_id=fixture.run_id,
                     run_contract=fixture.run_contract,
@@ -110,9 +103,15 @@ def publish_adapter_fixture(fixture: Any) -> None:
                 source_checkout=SourceCheckout(root=REPO_ROOT),
                 artifact_source_root=ArtifactSourceRoot(root=fixture.root),
             )
-        ARTIFACT_PUBLICATION.publish_context(context)
+        return context
     finally:
         restore_epoch(previous)
+
+
+def publish_adapter_fixture(fixture: Any) -> None:
+    """Publish records, index, and summary through the combined production owner."""
+
+    ARTIFACT_PUBLICATION.publish_context(prepare_adapter_fixture(fixture))
 
 
 def _fixture_from_adapter(adapter_fixture: Any) -> RunSummaryFixture:
@@ -131,7 +130,7 @@ def build_fixture(
     *,
     run_id: str = "synthetic_run",
 ) -> RunSummaryFixture:
-    """Build the default 68-record computational artifact transaction."""
+    """Build the default 74-record computational evidence transaction."""
 
     root = root.resolve()
     return _fixture_from_adapter(
@@ -183,26 +182,6 @@ def build_missing_fixture(
     )
     adapter_fixture.source_for(artifact_id).unlink()
     return _fixture_from_adapter(adapter_fixture)
-
-
-def publish_run_summary(fixture: RunSummaryFixture) -> Path:
-    """Publish the fixture's private run-summary owner transaction."""
-
-    previous, _ = fixed_epoch()
-    try:
-        context = RUN_SUMMARY_BUILDER.prepare_context(
-            argparse.Namespace(
-                run_id=fixture.run_id,
-                artifact_receipt=fixture.artifact_receipt,
-                output_root=fixture.output_root,
-            ),
-            source_checkout=SourceCheckout(root=REPO_ROOT),
-            artifact_source_root=ArtifactSourceRoot(root=fixture.root),
-        )
-        RUN_SUMMARY_PUBLICATION.publish_context(context)
-        return context.paths.receipt
-    finally:
-        restore_epoch(previous)
 
 
 def publish_report(
@@ -272,7 +251,6 @@ def main() -> int:
     parser.add_argument("--report-output-root", type=Path)
     arguments = parser.parse_args()
     fixture = build_fixture(arguments.root, run_id=arguments.run_id)
-    publish_run_summary(fixture)
     print(f"Artifact receipt: {fixture.artifact_receipt}")
     print(f"Run summary: {fixture.summary_json_path}")
     if arguments.report_output_root is not None:

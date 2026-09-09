@@ -240,6 +240,12 @@ regeneration cannot invalidate science and creates neither a Run nor an
 Attempt. Result locations are shown only from a fully revalidated report
 receipt; incomplete, failed, blocked, or dry-run state prints none.
 
+New reporting writes v2 start records for a combined index/summary operation
+and then HTML. The summary receipt completes the first operation. Inspection
+reads historical v1 index, summary, and HTML starts under their original
+three-step rules; missing stages or mixed versions block admission. This
+reporting-record version does not change immutable Run or profile formats.
+
 ## Run-root contract
 
 The Run root is one durable, content-bound execution history. Preserve it as a
@@ -260,11 +266,11 @@ EMRYS Run.
 | `products/native/` | Nonfinal native artifacts and QC/validation evidence needed for resume or downstream work. |
 | `products/artifact-summary/<run-id>/records/` | Canonical record for every declared artifact, including unavailable or incomplete state. |
 | `products/artifact-summary/<run-id>/<run-id>.artifacts.tsv` | Deterministic artifact index. |
-| `products/artifact-summary/<run-id>/<run-id>.artifact_receipt.tsv` | Artifact-index receipt published last. |
+| `products/artifact-summary/<run-id>/<run-id>.artifact_receipt.tsv` | Artifact provenance bound by the combined summary receipt. |
 | `products/artifact-summary/<run-id>/<run-id>.run_summary.json` | Canonical machine-readable Run summary. |
 | `products/artifact-summary/<run-id>/<run-id>.run_summary.tsv` | Tabular Run-status summary. |
 | `products/artifact-summary/<run-id>/<run-id>.qc_summary.tsv` | Consolidated QC projection. |
-| `products/artifact-summary/<run-id>/<run-id>.run_summary_receipt.tsv` | Run-summary receipt published last. |
+| `products/artifact-summary/<run-id>/<run-id>.run_summary_receipt.tsv` | Terminal receipt for the combined index and summary, published last. |
 | Beside the declared FASTA | Step `00c` `.fai` and `.dict`, the only owner outputs outside the Run root. |
 
 Locks, released-lock evidence, partials, backups, streams, and failed Attempts

@@ -80,7 +80,10 @@ def _inspect_reporting_ledger_with_locations(
 
     from emrys.orchestration.run_coordinator import reporting_boundary  # noqa: PLC0415
 
-    kinds = reporting_boundary.REPORTING_KINDS
+    try:
+        kinds = reporting_boundary.reporting_kinds(root)
+    except reporting_boundary.ReportingBoundaryError as exc:
+        return {}, [str(exc)], (), {}
     state_root = root / "state" / "reporting"
     result = {kind: {"start": None, "verified": None} for kind in kinds}
     origins: dict[str, str | None] = dict.fromkeys(kinds)
@@ -134,7 +137,10 @@ def _inspect_reporting_ledger_with_locations(
                 verified_prefix_origin = None
             if verified_exists:
                 blockers.append(f"{kind} verified reporting exists without a start")
-            if semantic_path.exists() or semantic_path.is_symlink():
+            receipts = (semantic_path,)
+            if kind == "run_summary" and "artifact_index" not in kinds:
+                receipts += (semantic_path.with_name(f"{run_id}.artifact_receipt.tsv"),)
+            if any(path.exists() or path.is_symlink() for path in receipts):
                 blockers.append(
                     f"{kind} semantic receipt exists without a start ledger"
                 )
