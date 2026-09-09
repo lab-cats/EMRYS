@@ -232,9 +232,10 @@ def test_different_vcf_file_fails_physical_identity(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     rows = report_rows(evidence.output)
-    assert next(
-        row["status"] for row in rows if row["check_id"] == "vcf_record_counts"
-    ) == "fail"
+    assert (
+        next(row["status"] for row in rows if row["check_id"] == "vcf_record_counts")
+        == "fail"
+    )
 
 
 def test_arbitrary_cwd_dry_run_execute_and_repeat_are_byte_identical(

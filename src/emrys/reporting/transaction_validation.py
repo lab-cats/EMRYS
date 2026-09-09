@@ -447,9 +447,7 @@ def _recheck_bound_roster(
         if before.path not in expandable
         else (before.path, before.device, before.inode, before.mode)
         == (after.path, after.device, after.inode, after.mode)
-        for before, after in zip(
-            roster.directories, observed.directories, strict=True
-        )
+        for before, after in zip(roster.directories, observed.directories, strict=True)
     )
     if not files_match or not directories_match:
         raise ReportingTransactionError(

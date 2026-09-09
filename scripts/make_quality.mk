@@ -1,5 +1,5 @@
 PYTHON_COVERAGE_VERSION := 7.15.2
-SHELLCHECK_BIN ?= shellcheck
+SHELLCHECK_BIN ?= $$(dirname -- "$(REPORT_PYTHON_BIN)")/shellcheck
 SHFMT_BIN ?= shfmt
 RUFF_BIN ?= ruff
 VULTURE_BIN ?= vulture
@@ -199,6 +199,8 @@ smoke:
 
 lint:
 	"$(REPORT_PYTHON_BIN)" -m "$(RUFF_BIN)" check --no-cache $(PYTHON_LINT_PATHS)
+	"$(REPORT_PYTHON_BIN)" -m "$(RUFF_BIN)" format --check --no-cache $(PYTHON_LINT_PATHS)
+	bash -o pipefail -c 'git ls-files -z -- "*.sh" | xargs -0 "$$1"' -- "$(SHELLCHECK_BIN)"
 	"$(REPORT_PYTHON_BIN)" -m "$(VULTURE_BIN)" \
 		--min-confidence $(VULTURE_MIN_CONFIDENCE) \
 		$(DEAD_CODE_PATHS)

@@ -47,7 +47,7 @@ USAGE
 
 # shellcheck source=../../libraries/argument_parsing.sh
 script_dir="${BASH_SOURCE[0]%/*}"
-if [[ "$script_dir" == "$BASH_SOURCE[0]" ]]; then
+if [[ "$script_dir" == "${BASH_SOURCE[0]}" ]]; then
     script_dir="."
 fi
 source "$script_dir/../../libraries/argument_parsing.sh"
@@ -85,9 +85,12 @@ require_arguments
 
 # Step 02 writes the canonical index as sample.sorted.bam.bai. Keep Step 04
 # strict here so a missing upstream index is caught before Picard starts.
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 input_bai="$input_bam.bai"
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 output_bam="$output_dir/${sample_id}.markdup.bam"
 output_bai="$output_bam.bai"
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 metrics_file="$metrics_dir/${sample_id}.markdup.metrics.txt"
 
 # Picard can spill temporary files during MarkDuplicates. Use the caller's
@@ -97,6 +100,7 @@ tmp_dir="${TMPDIR:-/tmp}"
 
 [[ -f "$input_bam" ]] || die "Input BAM does not exist or is not a file: $input_bam"
 [[ -f "$input_bai" ]] || die "Input BAM index does not exist or is not a file: $input_bai"
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 [[ -f "$picard_jar" ]] || die "Picard jar does not exist or is not a file: $picard_jar"
 [[ -r "$picard_jar" ]] || die "Picard jar is not readable: $picard_jar"
 java_bin="$(resolve_executable_value "Java" "$requested_java_bin" "java")"

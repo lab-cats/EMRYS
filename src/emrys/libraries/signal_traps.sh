@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared signal trap helpers for Bash stages and analyses.
 
 arm_signal_traps() {
@@ -8,6 +9,7 @@ arm_signal_traps() {
 
 acquire_lock() {
     local step_id=$1
+    # shellcheck disable=SC2154 # The stage caller supplies this lock identity.
     local owner="run_token=$run_token"
 
     if [[ -z "$step_id" ]]; then
@@ -16,7 +18,9 @@ acquire_lock() {
 
     # mkdir is atomic for the lock directory; never break another invocation's
     # lock by modifying and/or removing it.
+    # shellcheck disable=SC2154 # The stage caller supplies this lock identity.
     if mkdir "$lock_path" 2>/dev/null; then
+        # shellcheck disable=SC2154 # The stage caller supplies this lock identity.
         printf '%s\n' "$owner" > "$lock_owner_file"
         lock_acquired=true
         return

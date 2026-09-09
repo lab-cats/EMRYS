@@ -55,9 +55,7 @@ _CONFIG_SCHEMA: dict[str, object] = {
         "common_or_threshold": _number(exclusiveMinimum=1),
         "absolute_difference_threshold": _number(minimum=0, maximum=1),
         "background_condition": {"oneOf": [_SAFE_ID, {"type": "null"}]},
-        "background_max_fraction": _number(
-            exclusiveMinimum=0, exclusiveMaximum=1
-        ),
+        "background_max_fraction": _number(exclusiveMinimum=0, exclusiveMaximum=1),
     },
 }
 
@@ -270,9 +268,7 @@ def _step09(context: module_api.TaskPlanningContextV1) -> module_api.TaskCommand
         validator_argv=validator,
         inputs=(
             module_api.TaskInputV1("sample_manifest", context.sample_manifest),
-            module_api.TaskInputV1(
-                "partition_manifest", context.partition_manifest
-            ),
+            module_api.TaskInputV1("partition_manifest", context.partition_manifest),
             module_api.TaskInputV1("step08_sites_v1", sites),
             module_api.TaskInputV1("step08_inputs_v1", inputs),
             module_api.TaskInputV1("step08_summary_v1", summary08),
@@ -329,9 +325,7 @@ def _step10(context: module_api.TaskPlanningContextV1) -> module_api.TaskCommand
         validator_argv=validator,
         inputs=(
             module_api.TaskInputV1("step09_cmh_all_sites_v1", all_sites),
-            module_api.TaskInputV1(
-                "step09_cmh_significant_sites_v1", significant
-            ),
+            module_api.TaskInputV1("step09_cmh_significant_sites_v1", significant),
             module_api.TaskInputV1("step09_cmh_summary_v1", summary),
             module_api.TaskInputV1("reference_fasta", context.reference_fasta),
             module_api.TaskInputV1("step00c_reference_fai_v1", fai),

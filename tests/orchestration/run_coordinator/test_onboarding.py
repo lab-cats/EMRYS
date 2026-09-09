@@ -63,7 +63,9 @@ def _executable(path: Path, content: str = "#!/bin/sh\nexit 0\n") -> Path:
 
 
 def _fastqs(root: Path, *sample_ids: str) -> list[Path]:
-    paths = [root / f"{sample}_R{mate}.fastq.gz" for sample in sample_ids for mate in (1, 2)]
+    paths = [
+        root / f"{sample}_R{mate}.fastq.gz" for sample in sample_ids for mate in (1, 2)
+    ]
     for path in paths:
         path.write_bytes(b"not inspected by structural drafting\n")
     return paths
@@ -128,8 +130,7 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     directories = {path.name for path in output.iterdir() if path.is_dir()}
     assert directories == {"logs", "runs", "runtime"}
     assert all(
-        stat.S_IMODE((output / name).stat().st_mode) == 0o700
-        for name in directories
+        stat.S_IMODE((output / name).stat().st_mode) == 0o700 for name in directories
     )
     definition = yaml.safe_load((output / "project.yaml").read_text(encoding="utf-8"))
     assert definition["schema_version"] == "emrys.project.v1"
@@ -217,11 +218,25 @@ def test_manifest_init_is_deterministic_validated_and_dry_run_first(
     regions.write_text("chr1\t0\t1\n", encoding="utf-8")
     output = tmp_path / "drafts"
     arguments = [
-        "init", "manifests", "--output-dir", str(output), "--fastq",
+        "init",
+        "manifests",
+        "--output-dir",
+        str(output),
+        "--fastq",
         *(str(path) for path in reversed(fastqs)),
-        "--sample", "sample_b", "treated", "pair_2", "reverse",
-        "--sample", "sample_a", "control", "pair_1", "forward",
-        "--regions-file", "targets", str(regions),
+        "--sample",
+        "sample_b",
+        "treated",
+        "pair_2",
+        "reverse",
+        "--sample",
+        "sample_a",
+        "control",
+        "pair_1",
+        "forward",
+        "--regions-file",
+        "targets",
+        str(regions),
     ]
 
     assert cli.main(arguments) == 0
@@ -237,11 +252,26 @@ def test_manifest_init_is_deterministic_validated_and_dry_run_first(
     assert [row["partition_id"] for row in partitions.rows] == ["targets"]
 
     sample_only = tmp_path / "sample-only"
-    assert cli.main([
-        "init", "manifests", "--output-dir", str(sample_only), "--fastq",
-        str(fastqs[0]), str(fastqs[1]),
-        "--sample", "sample_b", "treated", "pair_2", "reverse", "--execute",
-    ]) == 0
+    assert (
+        cli.main(
+            [
+                "init",
+                "manifests",
+                "--output-dir",
+                str(sample_only),
+                "--fastq",
+                str(fastqs[0]),
+                str(fastqs[1]),
+                "--sample",
+                "sample_b",
+                "treated",
+                "pair_2",
+                "reverse",
+                "--execute",
+            ]
+        )
+        == 0
+    )
     assert set(_tree_bytes(sample_only)) == {"samples.tsv"}
 
 
@@ -252,10 +282,20 @@ def test_manifest_init_lists_missing_biology_and_writes_nothing(
     fastqs = _fastqs(tmp_path, "sample_b", "sample_a")
     output = tmp_path / "drafts"
 
-    assert cli.main([
-        "init", "manifests", "--output-dir", str(output), "--fastq",
-        *(str(path) for path in fastqs), "--execute",
-    ]) == 2
+    assert (
+        cli.main(
+            [
+                "init",
+                "manifests",
+                "--output-dir",
+                str(output),
+                "--fastq",
+                *(str(path) for path in fastqs),
+                "--execute",
+            ]
+        )
+        == 2
+    )
     assert not output.exists()
     error = capsys.readouterr().err
     assert "--sample sample_a CONDITION REPLICATE STRANDEDNESS" in error
@@ -268,10 +308,22 @@ def test_manifest_init_rejects_unpaired_fastq_without_writing(
 ) -> None:
     r1 = _fastqs(tmp_path, "sample_a")[0]
     output = tmp_path / "drafts"
-    result = cli.main([
-        "init", "manifests", "--output-dir", str(output), "--fastq", str(r1),
-        "--sample", "sample_a", "control", "pair_1", "unknown", "--execute",
-    ])
+    result = cli.main(
+        [
+            "init",
+            "manifests",
+            "--output-dir",
+            str(output),
+            "--fastq",
+            str(r1),
+            "--sample",
+            "sample_a",
+            "control",
+            "pair_1",
+            "unknown",
+            "--execute",
+        ]
+    )
 
     assert result == 2
     assert not output.exists()
@@ -293,11 +345,25 @@ def test_manifest_init_rejects_paths_the_project_cannot_consume(
     fastqs = _fastqs(unsafe_directory, "sample_a")
     output = tmp_path / "drafts"
 
-    assert cli.main([
-        "init", "manifests", "--output-dir", str(output), "--fastq",
-        *(str(path) for path in fastqs),
-        "--sample", "sample_a", "control", "pair_1", "forward", "--execute",
-    ]) == 2
+    assert (
+        cli.main(
+            [
+                "init",
+                "manifests",
+                "--output-dir",
+                str(output),
+                "--fastq",
+                *(str(path) for path in fastqs),
+                "--sample",
+                "sample_a",
+                "control",
+                "pair_1",
+                "forward",
+                "--execute",
+            ]
+        )
+        == 2
+    )
     assert not output.exists()
     assert message in capsys.readouterr().err
 
@@ -309,12 +375,25 @@ def test_manifest_init_rejects_a_condition_that_requires_tsv_quoting(
     fastqs = _fastqs(tmp_path, "sample_a")
     output = tmp_path / "drafts"
 
-    assert cli.main([
-        "init", "manifests", "--output-dir", str(output), "--fastq",
-        *(str(path) for path in fastqs),
-        "--sample", "sample_a", "bad\tcondition", "pair_1", "forward",
-        "--execute",
-    ]) == 2
+    assert (
+        cli.main(
+            [
+                "init",
+                "manifests",
+                "--output-dir",
+                str(output),
+                "--fastq",
+                *(str(path) for path in fastqs),
+                "--sample",
+                "sample_a",
+                "bad\tcondition",
+                "pair_1",
+                "forward",
+                "--execute",
+            ]
+        )
+        == 2
+    )
     assert not output.exists()
     assert "condition must match" in capsys.readouterr().err
 
@@ -328,12 +407,25 @@ def test_manifest_init_pairs_by_the_admitted_file_not_a_symlink_alias(
     aliases[1].symlink_to(canonical[0])
     output = tmp_path / "drafts"
 
-    assert cli.main([
-        "init", "manifests", "--output-dir", str(output), "--fastq",
-        *(str(path) for path in aliases),
-        "--sample", "actual", "control", "pair_1", "forward",
-        "--execute",
-    ]) == 0
+    assert (
+        cli.main(
+            [
+                "init",
+                "manifests",
+                "--output-dir",
+                str(output),
+                "--fastq",
+                *(str(path) for path in aliases),
+                "--sample",
+                "actual",
+                "control",
+                "pair_1",
+                "forward",
+                "--execute",
+            ]
+        )
+        == 0
+    )
     rows = step08.validate_sample_manifest(output / "samples.tsv")[0].rows
     assert rows[0]["r1_fastq"] == str(canonical[0])
     assert rows[0]["r2_fastq"] == str(canonical[1])
@@ -349,10 +441,26 @@ def test_manifest_init_rejects_hard_linked_fastq_reuse(
     r2.hardlink_to(r1)
     output = tmp_path / "drafts"
 
-    assert cli.main([
-        "init", "manifests", "--output-dir", str(output), "--fastq", str(r1), str(r2),
-        "--sample", "sample_a", "control", "pair_1", "forward", "--execute",
-    ]) == 2
+    assert (
+        cli.main(
+            [
+                "init",
+                "manifests",
+                "--output-dir",
+                str(output),
+                "--fastq",
+                str(r1),
+                str(r2),
+                "--sample",
+                "sample_a",
+                "control",
+                "pair_1",
+                "forward",
+                "--execute",
+            ]
+        )
+        == 2
+    )
     assert not output.exists()
     assert "one FASTQ file is reused" in capsys.readouterr().err
 
@@ -471,9 +579,7 @@ def test_synthetic_fixture_is_deterministic_complete_and_normalizable(
 
     assert _tree_bytes(first) == _tree_bytes(second)
     assert {
-        path.relative_to(first).as_posix()
-        for path in first.rglob("*")
-        if path.is_dir()
+        path.relative_to(first).as_posix() for path in first.rglob("*") if path.is_dir()
     } >= {"logs", "runs", "runtime"}
     assert all(
         stat.S_IMODE((first / name).stat().st_mode) == 0o700
@@ -486,13 +592,16 @@ def test_synthetic_fixture_is_deterministic_complete_and_normalizable(
     control = source["analysis"]["policy"]["control_condition"]
     assert validation.sample_count == 4
     assert analysis.name == "primary"
-    assert len(
-        {
-            row["replicate"]
-            for row in source["samples"]["rows"]
-            if row["condition"] == control
-        }
-    ) == 2
+    assert (
+        len(
+            {
+                row["replicate"]
+                for row in source["samples"]["rows"]
+                if row["condition"] == control
+            }
+        )
+        == 2
+    )
     assert len(source["partitions"]["rows"]) == 1
     assert validation.fasta_contigs == (("chrSynthetic", 100_000),)
     assert validation.transcript_count == 2
@@ -955,9 +1064,9 @@ def test_project_validation_checks_regions_file_against_fasta(tmp_path: Path) ->
         encoding="utf-8",
     )
     result = onboarding.validate_project(output / "project.yaml")
-    assert len(
-        result.project.select_analysis().workflow_inputs["partitions"]["rows"]
-    ) == 1
+    assert (
+        len(result.project.select_analysis().workflow_inputs["partitions"]["rows"]) == 1
+    )
 
     regions.write_text("chrAbsent\t1\t2\n", encoding="utf-8")
     with pytest.raises(onboarding.OnboardingError, match="absent from FASTA"):
@@ -981,9 +1090,9 @@ def test_project_validation_streams_gzip_regions_file(tmp_path: Path) -> None:
 
     result = onboarding.validate_project(output / "project.yaml")
 
-    assert len(
-        result.project.select_analysis().workflow_inputs["partitions"]["rows"]
-    ) == 1
+    assert (
+        len(result.project.select_analysis().workflow_inputs["partitions"]["rows"]) == 1
+    )
 
 
 def test_project_validation_rejects_truncated_gzip_regions_file(
@@ -1086,9 +1195,9 @@ def test_runtime_discovery_builds_project_owned_fixed_policy_without_writing(
     assert by_id["star"]["target"] == str((tool_dir / "STAR").resolve())
     assert by_id["picard_jar"]["target"] == environment["EMRYS_PICARD_JAR"]
     assert by_id["renv_library"]["target"] == environment["EMRYS_RENV_LIBRARY"]
-    assert json.loads(by_id["picard"]["probe_args"])[1] == environment[
-        "EMRYS_PICARD_JAR"
-    ]
+    assert (
+        json.loads(by_id["picard"]["probe_args"])[1] == environment["EMRYS_PICARD_JAR"]
+    )
     assert json.loads(by_id["r_variant_annotation"]["probe_args"]) == [
         environment["EMRYS_RSCRIPT"]
     ]

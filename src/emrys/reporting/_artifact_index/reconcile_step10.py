@@ -10,9 +10,7 @@ from .models import ArtifactIndexError, Inspection
 from .reconcile_native import NativeSourceIndex, require_referenced_source
 
 
-def _member_by_adapter(
-    members: Sequence[Inspection], adapter: str
-) -> Inspection:
+def _member_by_adapter(members: Sequence[Inspection], adapter: str) -> Inspection:
     matches = [member for member in members if member.row["adapter"] == adapter]
     if len(matches) != 1:
         raise ArtifactIndexError(

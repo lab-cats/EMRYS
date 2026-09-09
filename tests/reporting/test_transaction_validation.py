@@ -241,10 +241,12 @@ def test_explicit_module_publishes_and_readmits_v3_v5_reporting(
     policy_sha256 = hashlib.sha256(policy_bytes).hexdigest()
     run_contract = adapter_fixture.build_run_contract()
     run_contract["primary_analysis_policy_sha256"] = policy_sha256
-    run_contract["run_contract_sha256"] = (
-        adapter_fixture.canonical_run_contract_sha256(
-            {key: value for key, value in run_contract.items() if key != "run_contract_sha256"}
-        )
+    run_contract["run_contract_sha256"] = adapter_fixture.canonical_run_contract_sha256(
+        {
+            key: value
+            for key, value in run_contract.items()
+            if key != "run_contract_sha256"
+        }
     )
     adapter.run_contract.write_bytes(
         orchestration_contracts.canonical_json_bytes(run_contract)
@@ -282,9 +284,7 @@ def test_explicit_module_publishes_and_readmits_v3_v5_reporting(
         artifact_source_root=ArtifactSourceRoot(root=root),
     )
     summary_publication.publish_context(summary)
-    summary_document = orchestration_contracts.load_json_object(
-        built.summary_json_path
-    )
+    summary_document = orchestration_contracts.load_json_object(built.summary_json_path)
     assert summary_document["schema_version"] == "3.0.0"
     assert summary_document["analysis_policy"] == {
         "path": str(policy_path),
@@ -308,14 +308,17 @@ def test_explicit_module_publishes_and_readmits_v3_v5_reporting(
     document = report_receipt.read_receipt_tsv(report_context.output_receipt)
     assert document["schema_version"] == "5.0.0"
     assert document["scientific_renderer"]["module_id"] == "emrys.paired-cmh"
-    assert document["scientific_renderer"]["content_sha256"] == (
-        report_context.scientific_renderer["content_sha256"]
+    assert (
+        document["scientific_renderer"]["content_sha256"]
+        == (report_context.scientific_renderer["content_sha256"])
     )
-    assert document["scientific_renderer"]["core_support"]["content_sha256"] == (
-        report_context.render_metadata["renderer_package_sha256"]
+    assert (
+        document["scientific_renderer"]["core_support"]["content_sha256"]
+        == (report_context.render_metadata["renderer_package_sha256"])
     )
-    assert document["evidence_renderer"]["content_sha256"] == (
-        report_context.render_metadata["renderer_package_sha256"]
+    assert (
+        document["evidence_renderer"]["content_sha256"]
+        == (report_context.render_metadata["renderer_package_sha256"])
     )
     assert len(document["outputs"]) == 3
     validated = transaction_validation.validate_report_transaction(
@@ -376,7 +379,9 @@ def test_historical_artifact_validation_uses_recorded_producer_roster(
                 output_root=built.adapter_fixture.output_root,
             )
         )
-    with fault_before_validation(built.summary_receipt_path, reject_live_producer_binding):
+    with fault_before_validation(
+        built.summary_receipt_path, reject_live_producer_binding
+    ):
         historical_summary = transaction_validation.validate_run_summary_transaction(
             source_checkout=REPO_ROOT,
             artifact_source_root=built.root,
@@ -622,9 +627,12 @@ def test_historical_report_admission_rechecks_transitive_native_inputs(
         assert native_source in paths
         native_source.write_text("mutated during historical read\n", encoding="utf-8")
 
-    with fault_before_validation(receipt_path, mutate_native), pytest.raises(
-        transaction_validation.ReportingTransactionError,
-        match="roster changed during semantic validation",
+    with (
+        fault_before_validation(receipt_path, mutate_native),
+        pytest.raises(
+            transaction_validation.ReportingTransactionError,
+            match="roster changed during semantic validation",
+        ),
     ):
         transaction_validation._validate_historical_report_transaction(
             source_checkout=REPO_ROOT,
@@ -1113,9 +1121,12 @@ def test_receipt_identity_replacement_during_validation_fails_closed(
         replacement.write_bytes(path.read_bytes())
         replacement.replace(path)
 
-    with fault_before_validation(built.artifact_receipt, replace_receipt), pytest.raises(
-        transaction_validation.ReportingTransactionError,
-        match="changed during semantic validation",
+    with (
+        fault_before_validation(built.artifact_receipt, replace_receipt),
+        pytest.raises(
+            transaction_validation.ReportingTransactionError,
+            match="changed during semantic validation",
+        ),
     ):
         transaction_validation.validate_artifact_index_transaction(
             source_checkout=REPO_ROOT,
@@ -1174,7 +1185,11 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
 
     report_receipt = report_root / built.run_id / f"{built.run_id}.report_outputs.tsv"
     cases = (
-        (validate_artifact, built.artifact_receipt, built.adapter_fixture.artifacts_path),
+        (
+            validate_artifact,
+            built.artifact_receipt,
+            built.adapter_fixture.artifacts_path,
+        ),
         (validate_artifact, built.artifact_receipt, native_source),
         (validate_summary, built.summary_receipt_path, built.summary_tsv_path),
         (validate_summary, built.summary_receipt_path, native_source),
@@ -1191,9 +1206,12 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
             assert selected in paths
             selected.write_bytes(original + b"mutation-fault\n")
 
-        with fault_before_validation(receipt_path, mutate), pytest.raises(
-            transaction_validation.ReportingTransactionError,
-            match="roster changed during semantic validation",
+        with (
+            fault_before_validation(receipt_path, mutate),
+            pytest.raises(
+                transaction_validation.ReportingTransactionError,
+                match="roster changed during semantic validation",
+            ),
         ):
             validator()
         target.write_bytes(original)
@@ -1216,9 +1234,12 @@ def test_artifact_validator_rejects_roster_membership_fault(
         assert built.adapter_fixture.artifacts_path in paths
         unexpected.write_text("{}\n", encoding="utf-8")
 
-    with fault_before_validation(built.artifact_receipt, add_record), pytest.raises(
-        transaction_validation.ReportingTransactionError,
-        match="roster changed during semantic validation",
+    with (
+        fault_before_validation(built.artifact_receipt, add_record),
+        pytest.raises(
+            transaction_validation.ReportingTransactionError,
+            match="roster changed during semantic validation",
+        ),
     ):
         transaction_validation.validate_artifact_index_transaction(
             source_checkout=REPO_ROOT,
@@ -1267,9 +1288,12 @@ def test_artifact_validator_binds_nested_missing_source_to_existing_ancestor(
         assert missing in paths
         missing_parent.mkdir()
 
-    with fault_before_validation(adapter.receipt_path, create_intermediate_parent), pytest.raises(
-        transaction_validation.ReportingTransactionError,
-        match="roster changed during semantic validation",
+    with (
+        fault_before_validation(adapter.receipt_path, create_intermediate_parent),
+        pytest.raises(
+            transaction_validation.ReportingTransactionError,
+            match="roster changed during semantic validation",
+        ),
     ):
         transaction_validation.validate_artifact_index_transaction(
             source_checkout=REPO_ROOT,
@@ -1354,9 +1378,12 @@ def test_each_validator_rejects_control_residue_injected_before_return(
             else:
                 target.write_text("fault residue\n", encoding="utf-8")
 
-        with fault_before_validation(receipt_path, inject_residue), pytest.raises(
-            transaction_validation.ReportingTransactionError,
-            match="owner control residue",
+        with (
+            fault_before_validation(receipt_path, inject_residue),
+            pytest.raises(
+                transaction_validation.ReportingTransactionError,
+                match="owner control residue",
+            ),
         ):
             validator()
         if is_directory:

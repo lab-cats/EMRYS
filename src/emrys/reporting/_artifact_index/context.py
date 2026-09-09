@@ -87,8 +87,9 @@ def prepare_context(
         if analysis_policy_path is None
         else contracts.sha256_file(analysis_policy_path)
     )
-    if analysis_policy_sha256 is not None and analysis_policy_sha256 != (
-        run_contract["primary_analysis_policy_sha256"]
+    if (
+        analysis_policy_sha256 is not None
+        and analysis_policy_sha256 != (run_contract["primary_analysis_policy_sha256"])
     ):
         raise ArtifactIndexError(
             "Analysis policy does not match the reporting run contract"

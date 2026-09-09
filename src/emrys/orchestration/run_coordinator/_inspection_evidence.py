@@ -128,7 +128,9 @@ def _inspect_reporting_ledger_with_locations(
         verified_exists = verified_path.exists() or verified_path.is_symlink()
         if not start_exists:
             if verified_prefix_origin not in {None, allow_incomplete_origin}:
-                blockers.append(f"{kind} reporting is absent after a verified transaction prefix")
+                blockers.append(
+                    f"{kind} reporting is absent after a verified transaction prefix"
+                )
                 verified_prefix_origin = None
             if verified_exists:
                 blockers.append(f"{kind} verified reporting exists without a start")

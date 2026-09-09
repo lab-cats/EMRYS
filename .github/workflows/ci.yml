@@ -117,6 +117,22 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up primary Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
+
+      - name: Set up locked uv version
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Restore locked development tools
+        shell: bash
+        run: uv sync --locked --only-group dev --no-install-project --python python
+
       - name: Install checksum-verified actionlint
         shell: bash
         run: |
@@ -136,7 +152,7 @@ jobs:
         shell: bash
         run: >-
           "${RUNNER_TEMP}/actionlint"
-          -shellcheck=
+          -shellcheck="${GITHUB_WORKSPACE}/.venv/bin/shellcheck"
           -pyflakes=
           -color
 
@@ -853,9 +869,11 @@ jobs:
               "${GITHUB_EVENT_NAME}" "${GITHUB_SHA}" \
               > "${evidence_root}/100000/selection.tsv"
           fi
-          printf 'E2E_EVIDENCE_ROOT=%s\n' "${evidence_root}" >> "${GITHUB_ENV}"
-          printf 'RENV_PATHS_CACHE=%s/emrys-renv/cache\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
-          printf 'RENV_PATHS_LIBRARY=%s/emrys-renv/library\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
+          {
+            printf 'E2E_EVIDENCE_ROOT=%s\n' "${evidence_root}"
+            printf 'RENV_PATHS_CACHE=%s/emrys-renv/cache\n' "${RUNNER_TEMP}"
+            printf 'RENV_PATHS_LIBRARY=%s/emrys-renv/library\n' "${RUNNER_TEMP}"
+          } >> "${GITHUB_ENV}"
 
       - name: Check out the triggering commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -1092,6 +1110,7 @@ jobs:
           scontrol show nodes -o > "${E2E_EVIDENCE_ROOT}/slurm/final-nodes.txt" 2>&1
           systemctl --no-pager --full status munge slurmctld slurmd \
             > "${E2E_EVIDENCE_ROOT}/slurm/final-systemd-status.txt" 2>&1
+          # shellcheck disable=SC2024 # Privileged read; the runner owns the destination.
           sudo journalctl --no-pager -u munge -u slurmctld -u slurmd \
             > "${E2E_EVIDENCE_ROOT}/slurm/final-journal.txt" 2>&1
           exit 0

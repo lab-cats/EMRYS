@@ -74,7 +74,9 @@ def test_explicit_module_normalizes_once_without_provider_facts_in_identity(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     project_path = fixture.build(tmp_path / "project-root")
-    flat_revision = admit_project(project_path, fixture.profile()).select_analysis().revision
+    flat_revision = (
+        admit_project(project_path, fixture.profile()).select_analysis().revision
+    )
     (project_path.parent / "target.bed").write_text(
         "chrSynthetic\t0\t10\n", encoding="utf-8"
     )
@@ -125,9 +127,13 @@ def test_explicit_module_normalizes_once_without_provider_facts_in_identity(
             ),
         )
 
-    monkeypatch.setattr(normalization, "load_analysis_module", lambda _name: loaded("A"))
+    monkeypatch.setattr(
+        normalization, "load_analysis_module", lambda _name: loaded("A")
+    )
     first = admit_project(project_path, fixture.profile()).select_analysis()
-    monkeypatch.setattr(normalization, "load_analysis_module", lambda _name: loaded("B"))
+    monkeypatch.setattr(
+        normalization, "load_analysis_module", lambda _name: loaded("B")
+    )
     second = admit_project(project_path, fixture.profile()).select_analysis()
 
     assert calls == 2
@@ -136,9 +142,10 @@ def test_explicit_module_normalizes_once_without_provider_facts_in_identity(
     assert flat_revision.record["schema_version"] == "emrys.analysis-revision.v1"
     assert first.revision.record["schema_version"] == "emrys.analysis-revision.v2"
     assert first.revision == second.revision
-    assert first.workflow_inputs["analysis"]["policy"] != second.workflow_inputs[
-        "analysis"
-    ]["policy"]
+    assert (
+        first.workflow_inputs["analysis"]["policy"]
+        != second.workflow_inputs["analysis"]["policy"]
+    )
     policy = first.workflow_inputs["analysis"]["policy"]
     assert policy["implementation_sha256"] == "0" * 64
     monkeypatch.setattr(
@@ -171,9 +178,11 @@ def test_explicit_module_normalizes_once_without_provider_facts_in_identity(
 def test_named_analysis_selection_is_closed_and_content_bound(tmp_path: Path) -> None:
     project_path = fixture.build(tmp_path / "project-root")
     definition = project_path.read_text(encoding="utf-8")
-    second = definition.split("analyses:\n", 1)[1].replace(
-        "  primary:\n", "  sensitivity:\n", 1
-    ).replace("    min_sample_dp: 1\n", "    min_sample_dp: 2\n", 1)
+    second = (
+        definition.split("analyses:\n", 1)[1]
+        .replace("  primary:\n", "  sensitivity:\n", 1)
+        .replace("    min_sample_dp: 1\n", "    min_sample_dp: 2\n", 1)
+    )
     project_path.write_text(definition + second, encoding="utf-8")
 
     project = admit_project(project_path, fixture.profile())
@@ -220,9 +229,12 @@ def test_named_analysis_sample_selection_is_explicit_and_order_neutral(
     explicit_all = project.select_analysis("explicit-all")
 
     assert project.dataset_sample_count == 6
-    assert [
-        row["sample_id"] for row in subset.workflow_inputs["samples"]["rows"]
-    ] == ["EV_2", "PUM1_2", "EV_3", "PUM1_3"]
+    assert [row["sample_id"] for row in subset.workflow_inputs["samples"]["rows"]] == [
+        "EV_2",
+        "PUM1_2",
+        "EV_3",
+        "PUM1_3",
+    ]
     assert [
         row["sample_id"] for row in subset.revision.record["identity"]["samples"]
     ] == ["EV_2", "EV_3", "PUM1_2", "PUM1_3"]
@@ -301,9 +313,11 @@ def test_regions_file_resolves_from_nested_partition_manifest(
         encoding="utf-8",
     )
 
-    row = admit_project(request, fixture.profile()).select_analysis().workflow_inputs[
-        "partitions"
-    ]["rows"][0]
+    row = (
+        admit_project(request, fixture.profile())
+        .select_analysis()
+        .workflow_inputs["partitions"]["rows"][0]
+    )
 
     assert row["selector_value"] == str(selector)
     assert row["selector_file"] == {

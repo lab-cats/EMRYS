@@ -23,10 +23,7 @@ def publish_exclusive(
     try:
         parent_fd = os.open(
             path.parent,
-            os.O_RDONLY
-            | os.O_DIRECTORY
-            | os.O_NOFOLLOW
-            | getattr(os, "O_CLOEXEC", 0),
+            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
         )
         parent_state = os.fstat(parent_fd)
         with os.fdopen(

@@ -243,12 +243,17 @@ def test_loaded_observations_preserve_exact_ordered_tsv_bytes(tmp_path: Path) ->
         checks,
         "local",
         command_runner=lambda _argv, _stdin, _environment, _timeout: (
-            0, next(outputs), 0.0, False
+            0,
+            next(outputs),
+            0.0,
+            False,
         ),
     )
     assert all(type(check) is RuntimeCheck for check in checks)
     assert all(type(item) is RuntimeObservation for item in observations)
-    assert all(item.check is check for item, check in zip(observations, checks, strict=True))
+    assert all(
+        item.check is check for item, check in zip(observations, checks, strict=True)
+    )
     assert all(item.resolved_path is None for item in observations)
     digest = hashlib.sha256(data).hexdigest()
     expected = (
@@ -324,9 +329,7 @@ def test_python_hash_probe_uses_the_controlled_python_prefix() -> None:
         expected="sha256",
         description="controlled Python hashlib",
     )
-    calls: list[
-        tuple[list[str], bytes | None, dict[str, str] | None, int]
-    ] = []
+    calls: list[tuple[list[str], bytes | None, dict[str, str] | None, int]] = []
 
     def capture(
         argv: list[str],
@@ -885,9 +888,7 @@ def test_guarded_r_namespace_probe_binds_startup_and_selected_library(
         expected=r"^1[.]2[.]3$",
         description="guarded namespace",
     )
-    calls: list[
-        tuple[list[str], bytes | None, dict[str, str] | None, int]
-    ] = []
+    calls: list[tuple[list[str], bytes | None, dict[str, str] | None, int]] = []
     environment = {
         "EMRYS_LOCAL_PILOT_R": "1",
         "EMRYS_RENV_LIBRARY": str(library),

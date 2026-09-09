@@ -85,11 +85,15 @@ def project_run_roots(project_root: Path) -> tuple[Path, ...]:
     if not runs_root.exists() and not runs_root.is_symlink():
         return ()
     if runs_root.is_symlink() or not runs_root.is_dir():
-        raise InspectionError(f"Project runs path must be a real directory: {runs_root}")
+        raise InspectionError(
+            f"Project runs path must be a real directory: {runs_root}"
+        )
     try:
         entries = tuple(runs_root.iterdir())
     except OSError as exc:
-        raise InspectionError(f"Could not list Project Runs: {runs_root}: {exc}") from exc
+        raise InspectionError(
+            f"Could not list Project Runs: {runs_root}: {exc}"
+        ) from exc
     return tuple(
         entry
         for entry in sorted(entries, key=lambda item: item.name)
@@ -619,9 +623,7 @@ def validate_processing_source(
         raise InspectionError(
             "Processing source and target reference identities differ"
         )
-    source_samples = {
-        str(row["sample_id"]): row for row in source_analysis["samples"]
-    }
+    source_samples = {str(row["sample_id"]): row for row in source_analysis["samples"]}
     if any(
         source_samples.get(str(row["sample_id"])) != row
         for row in target_identity["samples"]
@@ -637,9 +639,7 @@ def validate_processing_source(
             "Target Execution Plan binds a different processing source"
         )
     source_compatibility = source_plan.get("processing_compatibility_sha256")
-    target_compatibility = target_plan_identity.get(
-        "processing_compatibility_sha256"
-    )
+    target_compatibility = target_plan_identity.get("processing_compatibility_sha256")
     if source_compatibility is not None and target_compatibility is not None:
         if source_compatibility != target_compatibility:
             raise InspectionError(
@@ -655,12 +655,8 @@ def validate_processing_source(
         "processing_source",
         "processing_compatibility_sha256",
     }
-    if {
-        key: value for key, value in source_plan.items() if key not in ignored
-    } != {
-        key: value
-        for key, value in target_plan_identity.items()
-        if key not in ignored
+    if {key: value for key, value in source_plan.items() if key not in ignored} != {
+        key: value for key, value in target_plan_identity.items() if key not in ignored
     }:
         raise InspectionError("Processing source and target execution semantics differ")
 

@@ -151,9 +151,7 @@ def _readiness(
         else build(workspace, replicate_count=replicate_count)
     )
     if regions_file:
-        (workspace / "target.bed").write_text(
-            "chrSynthetic\t0\t12\n", encoding="utf-8"
-        )
+        (workspace / "target.bed").write_text("chrSynthetic\t0\t12\n", encoding="utf-8")
         (workspace / "partitions.tsv").write_text(
             "partition_id\tselector_type\tselector_value\n"
             "p1\tregions_file\ttarget.bed\n",
@@ -407,8 +405,7 @@ def _patch_run_control(
         assert kwargs == {
             "storage_requirement": "direct",
             "analysis_name": None,
-            "require_reporter": getattr(arguments, "through", "analysis")
-            == "analysis"
+            "require_reporter": getattr(arguments, "through", "analysis") == "analysis"
             and not getattr(arguments, "no_report", False),
         }
         return readiness
@@ -1368,8 +1365,7 @@ def test_downstream_plan_preserves_admitted_sidecars_for_relocated_reference(
     old_paths = {
         snapshot["path"]
         for snapshot in snapshots
-        if snapshot["role"]
-        in {"step00c_reference_fai_v1", "step00c_reference_dict_v1"}
+        if snapshot["role"] in {"step00c_reference_fai_v1", "step00c_reference_dict_v1"}
     }
     dispatch_inputs = {
         item["path"]: item
@@ -1781,7 +1777,9 @@ def test_run_identity_excludes_attempt_reporting_and_cli_adapter_code(
     )
     assert _run_candidate(readiness, resources).run_id == baseline.run_id
 
-    materializer = checkout / "src/emrys/orchestration/run_coordinator/materialization.py"
+    materializer = (
+        checkout / "src/emrys/orchestration/run_coordinator/materialization.py"
+    )
     materializer.write_bytes(materializer.read_bytes() + b"\n# dispatch change\n")
     assert _run_candidate(readiness, resources).run_id != baseline.run_id
 
@@ -1854,7 +1852,9 @@ def test_processing_compatibility_binds_only_processing_semantics(
     baseline = _run_candidate(readiness, resources)
 
     def compatibility(run) -> str:
-        return str(run.execution_plan.record["identity"]["processing_compatibility_sha256"])
+        return str(
+            run.execution_plan.record["identity"]["processing_compatibility_sha256"]
+        )
 
     def with_tool(name: str, digest: str):
         return replace(
@@ -1919,7 +1919,10 @@ def test_processing_compatibility_binds_only_processing_semantics(
             "src/emrys/orchestration/run_coordinator/materialization.py",
             "implementation content",
         ),
-        ("src/emrys/orchestration/run_coordinator/all_pass.py", "implementation content"),
+        (
+            "src/emrys/orchestration/run_coordinator/all_pass.py",
+            "implementation content",
+        ),
         (
             "src/emrys/contracts/orchestration/artifact_inventory.py",
             "implementation content",
@@ -2315,7 +2318,9 @@ def test_post_binding_interruption_completes_the_exact_pristine_run(
     replanned = control._plan_run(
         plan.run.analysis.source_path,
         execution_profile=load_execution_profile(
-            config_path=(plan.run.analysis.source_path.parent / "runtime/profiles/default.yaml"),
+            config_path=(
+                plan.run.analysis.source_path.parent / "runtime/profiles/default.yaml"
+            ),
         ),
     )
     assert (
@@ -2436,8 +2441,7 @@ def _patch_resume_control(
             ),
             "allow_legacy": legacy,
             "require_reporter": observed.authority is None
-            or execution_plan_boundary(observed.authority.execution_plan)
-            == "analysis",
+            or execution_plan_boundary(observed.authority.execution_plan) == "analysis",
         }
         selected.append(runtime_profile)
         return readiness
@@ -3801,7 +3805,9 @@ def test_private_slurm_delegate_rejects_profile_drift_before_readiness(
     scheduler = control.slurm_submission
     admitted = load_execution_profile(config_path=Path(arguments.profile))
     selected_profile = Path(arguments.profile)
-    selected_profile.write_bytes(selected_profile.read_bytes() + b"# equivalent rewrite\n")
+    selected_profile.write_bytes(
+        selected_profile.read_bytes() + b"# equivalent rewrite\n"
+    )
     monkeypatch.setenv(scheduler.DELEGATE_MARKER_ENV, scheduler.DELEGATE_MARKER)
     monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, admitted.binding_sha256)
     monkeypatch.setenv(scheduler.SUBMIT_UID_ENV, str(os.getuid()))
@@ -4769,9 +4775,7 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     header, *rows = samples_path.read_text(encoding="utf-8").splitlines()
     samples_path.write_text(
         f"{header}\tnotes\n"
-        + "".join(
-            f"{row}\tidentity-neutral resume edit\n" for row in reversed(rows)
-        ),
+        + "".join(f"{row}\tidentity-neutral resume edit\n" for row in reversed(rows)),
         encoding="utf-8",
     )
     resumed_project = admit_project(
@@ -4815,9 +4819,7 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         target_root.glob("contract/workflow-inputs/*/samples.tsv")
     )
     assert len(selected_manifests) == 2
-    assert {path.read_bytes() for path in selected_manifests} == {
-        predecessor_manifest
-    }
+    assert {path.read_bytes() for path in selected_manifests} == {predecessor_manifest}
     assert all(
         step08.validate_sample_manifest(path)[1] == selected_ids
         for path in selected_manifests

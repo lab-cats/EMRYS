@@ -107,7 +107,9 @@ require_arguments
 
 # Step 04 publishes indexes as <bam>.bai, and Step 00c owns the reference
 # sidecars. Keep Step 05 strict so missing upstream work is caught before GATK.
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 input_bai="$input_bam.bai"
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 reference_fai="$reference_fasta.fai"
 reference_dir="$(dirname "$reference_fasta")"
 reference_base="$(basename "$reference_fasta")"
@@ -129,6 +131,7 @@ validate_safe_id "Step 05 run token" "$run_token"
 
 # Final output names are stable downstream interfaces. Temp and backup names
 # include the run token so reruns and concurrent dry-run planning do not collide.
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 output_bam="$output_dir/${sample_id}.split_ncigar.bam"
 output_bai="$output_bam.bai"
 lock_path="$output_dir/.step_05_split_n_cigar_reads.lock"

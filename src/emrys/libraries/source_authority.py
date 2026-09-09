@@ -28,9 +28,7 @@ CONTROLLED_PYTHON_OPTIONS = (
     "-I",
 )
 _PAIRED_CMH_RESOURCES = Path("analyses/paired_cmh_candidate_ranking")
-_SCIENTIFIC_CONTEXT_RESOURCES = (
-    _PAIRED_CMH_RESOURCES / "scientific_context_projection"
-)
+_SCIENTIFIC_CONTEXT_RESOURCES = _PAIRED_CMH_RESOURCES / "scientific_context_projection"
 _RESOURCE_PATTERNS = (
     (Path("contracts"), "schemas/artifacts/v*/*.json"),
     (Path("contracts"), "schemas/orchestration/v*/*.json"),

@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+import emrys
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_ROOT = REPO_ROOT / "scripts"
 DOCUMENTATION_TOOLS_ROOT = SCRIPTS_ROOT / "documentation"
@@ -583,7 +585,60 @@ def test_checkout_authority_ignores_nonowners_and_rejects_another_owner(
         assert "usage: emrys" in result.stdout
     else:
         assert "not the current checkout" in result.stderr
+        version = run_command(
+            [sys.executable, "-I", "-m", "emrys", "--version", "-v"],
+            cwd=invocation_cwd,
+        )
+        assert version.returncode == 0, version.stderr
+        assert f"Package: {Path(emrys.__file__).resolve().parent}" in version.stdout
+        literal = run_command(
+            [sys.executable, "-I", "-m", "emrys", "inspect", "--", "--version"],
+            cwd=invocation_cwd,
+        )
+        assert literal.returncode == CLI_USAGE_ERROR
+        assert "not the current checkout" in literal.stderr
     assert relative_snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize(
+    "arguments", (("--version",), ("--version", "-v"), ("-v", "--version"))
+)
+def test_installed_emrys_version_is_cwd_independent(
+    arguments: tuple[str, ...],
+    tmp_path: Path,
+) -> None:
+    result = run_command(
+        [sys.executable, "-I", "-m", "emrys", *arguments],
+        cwd=tmp_path,
+    )
+    expected = [f"emrys {emrys.__version__}"]
+    if "-v" in arguments:
+        expected += [
+            f"Package: {Path(emrys.__file__).resolve().parent}",
+            f"Python: {sys.version.split()[0]}",
+            f"Executable: {sys.executable}",
+        ]
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == expected
+    assert not result.stderr
+    assert relative_snapshot(tmp_path) == ()
+
+
+@pytest.mark.parametrize(
+    "arguments", (("-v",), ("--version", "run"), ("--version", "--unknown"))
+)
+def test_installed_emrys_rejects_invalid_version_arguments(
+    arguments: tuple[str, ...],
+    tmp_path: Path,
+) -> None:
+    result = run_command(
+        [sys.executable, "-I", "-m", "emrys", *arguments],
+        cwd=tmp_path,
+    )
+    assert result.returncode == CLI_USAGE_ERROR
+    assert "emrys: error:" in result.stderr
+    assert not result.stdout
+    assert relative_snapshot(tmp_path) == ()
 
 
 def test_retired_build_group_is_rejected_without_side_effects(
@@ -777,6 +832,13 @@ def test_make_targets_have_side_effect_free_command_expansion(
 def test_make_validation_targets_honor_report_python_bin(
     tmp_path: Path,
 ) -> None:
+    tools = tmp_path / "sentinel tools" / "bin"
+    tools.mkdir(parents=True)
+    for name in ("python", "shellcheck"):
+        executable = tools / name
+        executable.write_text('#!/bin/sh\nprintf "%s\\n" "$0"\n', encoding="utf-8")
+        executable.chmod(0o755)
+    python = tools / "python"
     result = run_command(
         [
             "make",
@@ -784,7 +846,7 @@ def test_make_validation_targets_honor_report_python_bin(
             "--no-print-directory",
             "-C",
             str(REPO_ROOT),
-            "REPORT_PYTHON_BIN=/sentinel/python",
+            f"REPORT_PYTHON_BIN={python}",
             "test",
             "validate",
             "lint",
@@ -796,8 +858,18 @@ def test_make_validation_targets_honor_report_python_bin(
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stderr == ""
     lines = result.stdout.splitlines()
-    assert sum("/sentinel/python" in line for line in lines) == 4
+    assert sum(str(python) in line for line in lines) == 6
+    assert f'-- "$(dirname -- "{python}")/shellcheck"' in result.stdout
     assert not any(".venv/bin/python" in line for line in lines)
+
+    executed = run_command(
+        ["make", "-s", "-C", str(REPO_ROOT), f"REPORT_PYTHON_BIN={python}", "lint"],
+        cwd=tmp_path,
+        env=canonical_make_environment(),
+    )
+    assert executed.returncode == 0, executed.stdout + executed.stderr
+    assert str(python) in executed.stdout.splitlines()
+    assert str(tools / "shellcheck") in executed.stdout.splitlines()
 
 
 def test_make_expansion_oracle_rejects_recipe_mutation(

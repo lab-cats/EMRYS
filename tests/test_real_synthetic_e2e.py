@@ -47,7 +47,9 @@ def _plan(workspace: Path) -> str:
     )
 
 
-def test_cli_defaults_to_a_no_write_plan(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_cli_defaults_to_a_no_write_plan(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     arguments = driver.build_parser().parse_args(_argv(tmp_path))
     assert arguments.execute is False
     assert arguments.slurm_cpus == 4
@@ -111,8 +113,7 @@ def test_step09_oracle_rejects_unknown_significant_status(tmp_path: Path) -> Non
         encoding="utf-8",
     )
     significant.write_text(
-        "candidate_id\tcall_status\n"
-        "candidate-a\tsignificant_sideways\n",
+        "candidate_id\tcall_status\ncandidate-a\tsignificant_sideways\n",
         encoding="utf-8",
     )
 
@@ -170,7 +171,9 @@ def test_launcher_adapters_and_default_resource_projection(tmp_path: Path) -> No
     assert observed.stdout == str(missing_profile)
     assert not marker.exists()
 
-    from emrys.orchestration.run_coordinator.execution_profile import load_execution_profile
+    from emrys.orchestration.run_coordinator.execution_profile import (
+        load_execution_profile,
+    )
 
     project = tmp_path / "project.yaml"
     project.write_text("fixture\n", encoding="utf-8")
@@ -194,9 +197,10 @@ def test_launcher_adapters_and_default_resource_projection(tmp_path: Path) -> No
     }
     profile = tmp_path / "slurm.json"
     profile.write_bytes(rendered)
-    assert load_execution_profile(
-        config_path=profile
-    ).resource_policy.document() == load_execution_profile().resource_policy.document()
+    assert (
+        load_execution_profile(config_path=profile).resource_policy.document()
+        == load_execution_profile().resource_policy.document()
+    )
 
 
 def test_runtime_environment_seals_science_adapters_and_managed_utilities(
@@ -230,11 +234,8 @@ def test_runtime_environment_seals_science_adapters_and_managed_utilities(
 
     assert environment["PATH"] == str(adapters)
     assert {
-        name: (adapters / name).readlink()
-        for name in driver.DISCOVERY_UTILITIES
-    } == {
-        name: native_bin / name for name in driver.DISCOVERY_UTILITIES
-    }
+        name: (adapters / name).readlink() for name in driver.DISCOVERY_UTILITIES
+    } == {name: native_bin / name for name in driver.DISCOVERY_UTILITIES}
     assert all((adapters / name).is_file() for name in adapted)
 
 
@@ -252,7 +253,9 @@ def test_run_submission_and_wait_failure_cancel_once(
     )
     calls: list[tuple[str, ...]] = []
 
-    def scheduler(argv: tuple[str, ...], _cwd: Path) -> subprocess.CompletedProcess[str]:
+    def scheduler(
+        argv: tuple[str, ...], _cwd: Path
+    ) -> subprocess.CompletedProcess[str]:
         calls.append(argv)
         if argv[0] == "scancel":
             return subprocess.CompletedProcess(argv, 0, "", "")
@@ -315,7 +318,10 @@ def test_completed_results_use_inspection_reports_and_direct_step09_oracle(
     significant = (
         run_root / f"results/editing/{analysis}/{analysis}.cmh_significant_sites.tsv"
     )
-    _table(all_sites, (("a", "not_significant"), ("b", "significant_up"), ("c", "not_significant")))
+    _table(
+        all_sites,
+        (("a", "not_significant"), ("b", "significant_up"), ("c", "not_significant")),
+    )
     _table(significant, (("b", "significant_up"),))
     scientific, evidence = run_root / "scientific.html", run_root / "evidence.html"
     scientific.write_text("science\n")

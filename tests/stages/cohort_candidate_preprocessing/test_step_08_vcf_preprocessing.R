@@ -919,15 +919,42 @@ expected_negative_errors <- list(
     malformed_dp_count = "FORMAT/DP must contain",
     malformed_info_count = "INFO/AD must contain"
 )
-for (mode in negative_modes) {
-    case <- build_case(file.path(test_root, paste0("negative-", mode)), mode)
-    run_engine(
-        engine,
-        case,
-        file.path(test_root, paste0("negative-output-", mode)),
-        expect_success = FALSE,
-        expected_error = expected_negative_errors[[mode]]
-    )
+negative_results <- parallel::mclapply(
+    negative_modes,
+    function(mode) {
+        tryCatch(
+            {
+                case <- build_case(
+                    file.path(test_root, paste0("negative-", mode)), mode
+                )
+                run_engine(
+                    engine,
+                    case,
+                    file.path(test_root, paste0("negative-output-", mode)),
+                    expect_success = FALSE,
+                    expected_error = expected_negative_errors[[mode]]
+                )
+                TRUE
+            },
+            error = function(error) conditionMessage(error)
+        )
+    },
+    mc.cores = if (.Platform$OS.type == "windows") 1L else 2L,
+    mc.preschedule = FALSE,
+    mc.set.seed = FALSE
+)
+for (index in seq_along(negative_modes)) {
+    if (index > length(negative_results) ||
+        !identical(negative_results[[index]], TRUE)) {
+        abort_test(
+            "Negative Step 08 fixture failed: ", negative_modes[[index]],
+            "\n", if (index > length(negative_results)) {
+                "No worker result."
+            } else {
+                paste(negative_results[[index]], collapse = "\n")
+            }
+        )
+    }
 }
 
 vcf_mutation_case <- build_case(file.path(test_root, "negative-vcf-mutation"))

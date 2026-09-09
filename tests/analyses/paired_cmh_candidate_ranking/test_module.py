@@ -170,9 +170,7 @@ def test_module_dependencies_are_canonical_and_readmitted(
     reserved = replace(
         descriptor,
         dependencies=(
-            analyses.AnalysisDependencyV1(
-                "runtime_profile", "file", str(file)
-            ),
+            analyses.AnalysisDependencyV1("runtime_profile", "file", str(file)),
         ),
     )
     with pytest.raises(analyses.AnalysisModuleLoadError, match="reserved"):
@@ -195,5 +193,8 @@ def test_module_validation_report_must_stay_outside_results() -> None:
 
     with pytest.raises(analyses.AnalysisModuleLoadError, match="Invalid.*task"):
         analyses._validate_descriptor(
-            replace(descriptor, tasks=(task._replace(outputs=outputs), *descriptor.tasks[1:]))
+            replace(
+                descriptor,
+                tasks=(task._replace(outputs=outputs), *descriptor.tasks[1:]),
+            )
         )

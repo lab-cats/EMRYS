@@ -39,7 +39,9 @@ def _recheck_inputs(context: ReportContext) -> None:
 
 def _assert_outputs_absent(context: ReportContext) -> None:
     if context.previous_snapshots:
-        _fail("Report publication requires absent outputs; existing transactions are read-only")
+        _fail(
+            "Report publication requires absent outputs; existing transactions are read-only"
+        )
     for path in context.stable_paths:
         if os.path.lexists(path):
             _fail(f"Report output appeared after preflight: {path}")
@@ -104,7 +106,9 @@ def publish_report(context: ReportContext) -> None:
         _recheck_inputs(context)
 
         staged_scientific_html = stage / context.output_scientific_html.name
-        transaction._write_owned_file(staged_scientific_html, context.scientific_html_bytes)
+        transaction._write_owned_file(
+            staged_scientific_html, context.scientific_html_bytes
+        )
         _assert_expected_bytes(
             staged_scientific_html,
             context.scientific_html_bytes,
@@ -165,9 +169,7 @@ def publish_report(context: ReportContext) -> None:
             assert_directory()
             os.link(staged, final, follow_symlinks=False)
             assert_directory()
-            _capture_moved_snapshot(
-                final, staged_snapshot, f"published {kind}"
-            )
+            _capture_moved_snapshot(final, staged_snapshot, f"published {kind}")
             transaction._fsync_file(final)
             transaction._fsync_directory(context.output_dir)
 
@@ -217,7 +219,9 @@ def publish_report(context: ReportContext) -> None:
                         _capture_moved_snapshot(
                             anchor.path, anchor, f"publication anchor for {final.name}"
                         )
-                        _capture_moved_snapshot(final, anchor, f"owned published {final.name}")
+                        _capture_moved_snapshot(
+                            final, anchor, f"owned published {final.name}"
+                        )
                         assert_directory()
                         final.unlink()
                 except BaseException as rollback_exc:

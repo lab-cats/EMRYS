@@ -50,7 +50,9 @@ def test_project_profile_selection_is_default_named_or_absolute(tmp_path: Path) 
     absolute = tmp_path / "external.yaml"
     assert execution_profile.project_execution_profile_path(project, None) == default
     assert execution_profile.project_execution_profile_path(project, "viking") == named
-    assert execution_profile.project_execution_profile_path(project, absolute) == absolute
+    assert (
+        execution_profile.project_execution_profile_path(project, absolute) == absolute
+    )
     for invalid in ("nested/viking", "viking.yaml"):
         with pytest.raises(ExecutionProfileError, match="safe Project profile"):
             execution_profile.project_execution_profile_path(project, invalid)

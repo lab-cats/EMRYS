@@ -278,8 +278,7 @@ def _scope_ids(
 ) -> tuple[str, str, str]:
     if analysis is not None:
         return tuple(
-            analysis.scope_id(scope)
-            for scope in ("reference", "cohort", "analysis")
+            analysis.scope_id(scope) for scope in ("reference", "cohort", "analysis")
         )
     return (
         str(source["reference"]["reference_id"]),
@@ -687,9 +686,7 @@ def _task_commands(
         elif step_id == "03":
             infer = _one(paths, "step03_rseqc_infer_v1")
             bed = _one(all_paths["00b", reference_id], "step00b_bed12_v1")
-            script = (
-                "src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"
-            )
+            script = "src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"
             producer_arguments = (
                 "--input-bam",
                 str(canonical_bam),
@@ -991,16 +988,16 @@ def _dispatches(
         item = dict(row)
         path = Path(str(row["source_path"]))
         item["path"] = path if path.is_absolute() else run_root / path
-        inventory.setdefault((str(row["step_id"]), str(row["scope_id"])), []).append(item)
+        inventory.setdefault((str(row["step_id"]), str(row["scope_id"])), []).append(
+            item
+        )
     paths_by_scope: dict[tuple[str, str], dict[str, list[Path]]] = {}
     for key, rows in inventory.items():
         adapters: dict[str, list[Path]] = {}
         for row in rows:
             adapters.setdefault(str(row["adapter"]), []).append(row["path"])
         paths_by_scope[key] = adapters
-    runtime = {
-        item.check.check_id: item for item in readiness.inspection.observations
-    }
+    runtime = {item.check.check_id: item for item in readiness.inspection.observations}
     planned: list[PlannedFile] = []
     references: dict[str, dict[str, dict[str, str]]] = {}
     directories: set[Path] = set()
@@ -1151,9 +1148,7 @@ def _dispatches(
                         declared_inputs[adapter] = tuple(
                             path
                             for scope in predecessor_scopes
-                            for path in paths_by_scope[
-                                predecessor_step, scope
-                            ][adapter]
+                            for path in paths_by_scope[predecessor_step, scope][adapter]
                         )
                     except KeyError as exc:
                         raise MaterializationError(
@@ -1173,9 +1168,7 @@ def _dispatches(
                 cohort_id=cohort_id,
                 analysis_id=analysis_id,
                 sample_manifest=Path(str(source["samples"]["manifest"]["path"])),
-                partition_manifest=Path(
-                    str(source["partitions"]["manifest"]["path"])
-                ),
+                partition_manifest=Path(str(source["partitions"]["manifest"]["path"])),
                 reference_fasta=Path(str(source["reference"]["fasta"]["path"])),
                 reference_gtf=Path(str(source["reference"]["gtf"]["path"])),
                 source_commit=str(readiness.source_commit),
@@ -1235,7 +1228,9 @@ def _dispatches(
                     )
                     for dependency in sorted(
                         module.dependencies,
-                        key=lambda item: item if isinstance(item, str) else item.dependency_id,
+                        key=lambda item: (
+                            item if isinstance(item, str) else item.dependency_id
+                        ),
                     )
                     if isinstance(dependency, analysis_modules.AnalysisDependencyV1)
                     and dependency.kind in {"executable", "file"}
@@ -1277,7 +1272,8 @@ def _dispatches(
         if step_id == "00b":
             producer = (*producer, "--run-token", owner_run_token)
         producer = (
-            _runtime_path(runtime, "bash"), "-c",
+            _runtime_path(runtime, "bash"),
+            "-c",
             'export EMRYS_RUN_TOKEN="$1" EMRYS_SHA256_PYTHON="$2" '
             'EMRYS_REQUIRE_BOUND_SHA256=1; shift 2; exec "$@"',
             "emrys-owner",
@@ -1339,8 +1335,7 @@ def _dispatches(
             "validator_argv": list(validator),
             "inputs": input_declarations,
             "outputs": [
-                {"role": role, "path": str(path)}
-                for role, path in planned_outputs
+                {"role": role, "path": str(path)} for role, path in planned_outputs
             ],
             "validation_report_path": str(validation),
             "native_receipt_path": None,
@@ -1461,11 +1456,7 @@ def build_attempt_plan(
         and execution_plan_boundary(run.execution_plan) == "analysis"
     ):
         selected_sample_path = (
-            run_root
-            / "contract"
-            / "workflow-inputs"
-            / attempt_id
-            / "samples.tsv"
+            run_root / "contract" / "workflow-inputs" / attempt_id / "samples.tsv"
         )
         source = {
             **source,

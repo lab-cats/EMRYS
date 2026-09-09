@@ -268,9 +268,7 @@ class AnalysisRevision(_CanonicalRecord):
         elif scope_type == "analysis":
             content = {"analysis_revision_sha256": self.identity_sha256}
         elif scope_type == "cohort_partition":
-            partitions = {
-                row["partition_id"]: row for row in identity["partitions"]
-            }
+            partitions = {row["partition_id"]: row for row in identity["partitions"]}
             if structural_id not in partitions:
                 raise ContractValidationError("Unknown structural partition_id")
             content = {
@@ -317,7 +315,9 @@ class LegacyExecution:
 
     @property
     def record(self) -> dict[str, Any]:
-        return load_json_object_bytes(self.source_bytes, LEGACY_EXECUTION_SCHEMA_VERSION)
+        return load_json_object_bytes(
+            self.source_bytes, LEGACY_EXECUTION_SCHEMA_VERSION
+        )
 
 
 ApplicationRecord: TypeAlias = AnalysisRevision | ExecutionPlan | RunBinding
@@ -785,9 +785,7 @@ def build_execution_plan(
             "processing source",
         )
     if processing_compatibility_sha256 is not None:
-        identity["processing_compatibility_sha256"] = (
-            processing_compatibility_sha256
-        )
+        identity["processing_compatibility_sha256"] = processing_compatibility_sha256
     digest = canonical_sha256(identity)
     return ExecutionPlan.from_record(
         {
@@ -819,15 +817,19 @@ def processing_stopping_owner_keys(functional: Mapping[str, Any]) -> tuple[str, 
     """Return the fixed evidence-complete processing owner roster."""
 
     required = set(map(str, functional["required_owner_keys"]))
-    return tuple(sorted(
-        str(owner["machine_key"])
-        for owner in functional["owner_tasks"]
-        if str(owner["step_id"]) in PROCESSING_STEP_IDS
-        and str(owner["machine_key"]) in required
-    ))
+    return tuple(
+        sorted(
+            str(owner["machine_key"])
+            for owner in functional["owner_tasks"]
+            if str(owner["step_id"]) in PROCESSING_STEP_IDS
+            and str(owner["machine_key"]) in required
+        )
+    )
 
 
-def execution_plan_boundary(plan: ExecutionPlan) -> Literal["analysis", "processing", "partial"]:
+def execution_plan_boundary(
+    plan: ExecutionPlan,
+) -> Literal["analysis", "processing", "partial"]:
     """Classify the immutable scientific stopping roster."""
 
     identity = plan.record["identity"]
@@ -835,7 +837,11 @@ def execution_plan_boundary(plan: ExecutionPlan) -> Literal["analysis", "process
     functional = identity["functional_specification"]
     if selected == tuple(functional["required_owner_keys"]):
         return "analysis"
-    return "processing" if selected == processing_stopping_owner_keys(functional) else "partial"
+    return (
+        "processing"
+        if selected == processing_stopping_owner_keys(functional)
+        else "partial"
+    )
 
 
 def execution_owner_keys(plan: ExecutionPlan) -> tuple[str, ...]:
@@ -844,7 +850,9 @@ def execution_owner_keys(plan: ExecutionPlan) -> tuple[str, ...]:
     identity = plan.record["identity"]
     selected = set(identity["scientific_stopping_owner_keys"])
     if "processing_source" in identity:
-        selected -= set(processing_stopping_owner_keys(identity["functional_specification"]))
+        selected -= set(
+            processing_stopping_owner_keys(identity["functional_specification"])
+        )
     return tuple(sorted(selected))
 
 
@@ -993,9 +1001,7 @@ def _validate_resource_resolution(
             "Workflow resource source cli_overrides must be a string list"
         )
     allocation_cores = _positive_integer(allocation["cores"], "Allocation cores")
-    allocation_memory = _positive_integer(
-        allocation["memory_mb"], "Allocation memory"
-    )
+    allocation_memory = _positive_integer(allocation["memory_mb"], "Allocation memory")
     if not isinstance(allocation["source"], str) or not allocation["source"]:
         raise ContractValidationError("Allocation source must be nonempty")
     slurm_job_id = allocation.get("slurm_job_id")
@@ -1115,16 +1121,20 @@ def validate_successor_run(
                 "Attempt tool content differs from the Execution Plan"
             )
         backend = plan_identity["backend"]
-        if attempt["executor"] != backend["backend"] or backend["engine"] != "snakemake":
+        if (
+            attempt["executor"] != backend["backend"]
+            or backend["engine"] != "snakemake"
+        ):
             raise ContractValidationError(
                 "Attempt executor differs from the Execution Plan backend"
             )
 
     if resource_policy is not None:
         _validate_resource_resolution(plan, resource_policy)
-        if attempt is not None and attempt["cores"] != resource_policy["effective"][
-            "workflow_cores"
-        ]:
+        if (
+            attempt is not None
+            and attempt["cores"] != resource_policy["effective"]["workflow_cores"]
+        ):
             raise ContractValidationError(
                 "Attempt cores differ from the resolved workflow resource policy"
             )
@@ -1173,7 +1183,9 @@ def _validate_analysis_semantics(record: Mapping[str, Any]) -> None:
     }:
         raise ContractValidationError("Analysis background condition must differ")
     if policy["rna_ref"] == policy["rna_alt"]:
-        raise ContractValidationError("Analysis reference and alternate bases must differ")
+        raise ContractValidationError(
+            "Analysis reference and alternate bases must differ"
+        )
     conditions = {row["condition"] for row in samples}
     required_conditions = {
         policy["control_condition"],
@@ -1210,7 +1222,9 @@ def _validate_graph(edges: list[Mapping[str, Any]], owners: set[str]) -> None:
     for edge in edges:
         pair = str(edge["producer"]), str(edge["consumer"])
         if not set(pair) <= owners:
-            raise ContractValidationError("Execution Plan edge references unknown owner")
+            raise ContractValidationError(
+                "Execution Plan edge references unknown owner"
+            )
         if pair in pairs:
             raise ContractValidationError("Execution Plan repeats a direct owner edge")
         pairs.add(pair)
@@ -1235,9 +1249,7 @@ def _validate_graph(edges: list[Mapping[str, Any]], owners: set[str]) -> None:
 
 def _validate_plan_semantics(record: Mapping[str, Any]) -> None:
     identity = record["identity"]
-    if canonical_sha256(identity) != record["execution_plan_id"].removeprefix(
-        "plan-"
-    ):
+    if canonical_sha256(identity) != record["execution_plan_id"].removeprefix("plan-"):
         raise ContractValidationError("Execution Plan ID does not match identity")
     functional = identity["functional_specification"]
     owners_list = functional["owner_tasks"]

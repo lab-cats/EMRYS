@@ -37,9 +37,7 @@ def with_owner_doubles(plan: AttemptPlan) -> AttemptPlan:
             selected.data,
             selected.path,
         )
-        rows_by_id = {
-            str(row["sample_id"]): row for row in source["samples"]["rows"]
-        }
+        rows_by_id = {str(row["sample_id"]): row for row in source["samples"]["rows"]}
         source["samples"] = {
             **source["samples"],
             "rows": [rows_by_id[str(row["sample_id"])] for row in selected_rows],

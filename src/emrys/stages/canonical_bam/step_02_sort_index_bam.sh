@@ -41,7 +41,7 @@ USAGE
 
 # shellcheck source=../../libraries/argument_parsing.sh
 script_dir="${BASH_SOURCE[0]%/*}"
-if [[ "$script_dir" == "$BASH_SOURCE[0]" ]]; then
+if [[ "$script_dir" == "${BASH_SOURCE[0]}" ]]; then
     script_dir="."
 fi
 source "$script_dir/../../libraries/argument_parsing.sh"
@@ -75,11 +75,14 @@ done
 
 require_arguments
 
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 [[ -f "$input_alignment" ]] || die "Input alignment does not exist or is not a file: $input_alignment"
 
 samtools_bin="$(resolve_executable_value "samtools" "$requested_samtools_bin" "samtools")"
 
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 validate_positive_integer "--threads" "$threads"
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 validate_safe_id "--sample-id" "$sample_id"
 input_alignment_sha256="$(sha256_file "$input_alignment")"
 
@@ -87,6 +90,7 @@ run_token="${EMRYS_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
 validate_safe_id "Step 02 run token" "$run_token"
 
 # Canonical output names are stable by design; downstream steps depend on them.
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 output_bam="$output_dir/${sample_id}.sorted.bam"
 output_bai="$output_bam.bai"
 

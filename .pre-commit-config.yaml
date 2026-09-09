@@ -1,0 +1,21 @@
+default_stages: [pre-commit]
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: Ruff correctness
+        entry: .venv/bin/ruff check --no-cache
+        language: system
+        types_or: [python, pyi]
+        files: ^(scripts|src/emrys|tests)/
+      - id: ruff-format
+        name: Ruff formatting
+        entry: .venv/bin/ruff format --check --no-cache
+        language: system
+        types_or: [python, pyi]
+        files: ^(scripts|src/emrys|tests)/
+      - id: shellcheck
+        name: ShellCheck
+        entry: .venv/bin/shellcheck
+        language: system
+        files: \.sh$

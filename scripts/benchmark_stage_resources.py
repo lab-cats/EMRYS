@@ -104,9 +104,7 @@ def _artifact_paths(value: Any, label: str) -> tuple[str, ...]:
         not isinstance(value, list)
         or not value
         or any(
-            not isinstance(path, str)
-            or not path
-            or "{trial_dir}" not in path
+            not isinstance(path, str) or not path or "{trial_dir}" not in path
             for path in value
         )
         or len(value) != len(set(value))
@@ -121,7 +119,9 @@ def _load_manifest(path: Path) -> tuple[BenchmarkCase, ...]:
     try:
         document = yaml.safe_load(path.read_bytes())
     except (OSError, yaml.YAMLError) as exc:
-        raise BenchmarkError(f"Could not load benchmark manifest {path}: {exc}") from exc
+        raise BenchmarkError(
+            f"Could not load benchmark manifest {path}: {exc}"
+        ) from exc
     if not isinstance(document, Mapping) or set(document) != {
         "schema_version",
         "cases",
@@ -161,14 +161,21 @@ def _load_manifest(path: Path) -> tuple[BenchmarkCase, ...]:
         if (
             not isinstance(values, list)
             or not values
-            or any(isinstance(value, bool) or not isinstance(value, int) or value < 1 for value in values)
+            or any(
+                isinstance(value, bool) or not isinstance(value, int) or value < 1
+                for value in values
+            )
             or len(values) != len(set(values))
         ):
             raise BenchmarkError(
                 f"cases[{index}].values must be distinct positive integers"
             )
         repetitions = raw["repetitions"]
-        if isinstance(repetitions, bool) or not isinstance(repetitions, int) or repetitions < 1:
+        if (
+            isinstance(repetitions, bool)
+            or not isinstance(repetitions, int)
+            or repetitions < 1
+        ):
             raise BenchmarkError(
                 f"cases[{index}].repetitions must be a positive integer"
             )
@@ -270,9 +277,7 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _record_artifacts(
-    templates: Sequence[str], *, value: int, trial: Path
-) -> str:
+def _record_artifacts(templates: Sequence[str], *, value: int, trial: Path) -> str:
     if not templates:
         return ""
     trial_root = trial.resolve(strict=True)
@@ -336,12 +341,8 @@ def _write_summary(results: Sequence[dict[str, Any]], path: Path) -> None:
                 for row in rows
                 if row["producer_max_rss_kib"] != ""
             ]
-            input_blocks = [
-                int(row["producer_input_blocks"]) for row in rows
-            ]
-            output_blocks = [
-                int(row["producer_output_blocks"]) for row in rows
-            ]
+            input_blocks = [int(row["producer_input_blocks"]) for row in rows]
+            output_blocks = [int(row["producer_output_blocks"]) for row in rows]
             recommended_values = [
                 candidate
                 for (candidate_case, candidate), median in medians.items()
@@ -357,12 +358,8 @@ def _write_summary(results: Sequence[dict[str, Any]], path: Path) -> None:
                     "median_max_rss_kib": (
                         f"{statistics.median(rss_values):.0f}" if rss_values else ""
                     ),
-                    "median_input_blocks": (
-                        f"{statistics.median(input_blocks):.0f}"
-                    ),
-                    "median_output_blocks": (
-                        f"{statistics.median(output_blocks):.0f}"
-                    ),
+                    "median_input_blocks": (f"{statistics.median(input_blocks):.0f}"),
+                    "median_output_blocks": (f"{statistics.median(output_blocks):.0f}"),
                     "recommended": (
                         "yes" if value == min(recommended_values) else "no"
                     ),
@@ -375,16 +372,35 @@ def run(manifest: Path, output: Path, *, execute: bool) -> int:
     if output.exists() or output.is_symlink():
         raise BenchmarkError(f"Output directory must be absent: {output}")
     if not output.parent.is_dir() or output.parent.is_symlink():
-        raise BenchmarkError(f"Output parent must be an existing real directory: {output.parent}")
+        raise BenchmarkError(
+            f"Output parent must be an existing real directory: {output.parent}"
+        )
     for case in cases:
         for value in case.values:
             for repetition in range(1, case.repetitions + 1):
-                trial = output / "trials" / case.name / str(value) / f"rep-{repetition:02d}"
+                trial = (
+                    output / "trials" / case.name / str(value) / f"rep-{repetition:02d}"
+                )
                 print(f"CASE {case.name} value={value} repetition={repetition}")
                 if case.setup_argv is not None:
-                    print("  setup: " + shlex.join(_expand(case.setup_argv, value=value, trial_dir=trial)))
-                print("  producer: " + shlex.join(_expand(case.producer_argv, value=value, trial_dir=trial)))
-                print("  validator: " + shlex.join(_expand(case.validator_argv, value=value, trial_dir=trial)))
+                    print(
+                        "  setup: "
+                        + shlex.join(
+                            _expand(case.setup_argv, value=value, trial_dir=trial)
+                        )
+                    )
+                print(
+                    "  producer: "
+                    + shlex.join(
+                        _expand(case.producer_argv, value=value, trial_dir=trial)
+                    )
+                )
+                print(
+                    "  validator: "
+                    + shlex.join(
+                        _expand(case.validator_argv, value=value, trial_dir=trial)
+                    )
+                )
     if not execute:
         print("Dry-run complete; no benchmark state was written.")
         return 0
@@ -400,7 +416,13 @@ def run(manifest: Path, output: Path, *, execute: bool) -> int:
         for case in cases:
             for value in case.values:
                 for repetition in range(1, case.repetitions + 1):
-                    trial = output / "trials" / case.name / str(value) / f"rep-{repetition:02d}"
+                    trial = (
+                        output
+                        / "trials"
+                        / case.name
+                        / str(value)
+                        / f"rep-{repetition:02d}"
+                    )
                     trial.mkdir(mode=0o700, parents=True)
                     setup_code = 0
                     if case.setup_argv is not None:

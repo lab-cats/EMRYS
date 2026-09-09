@@ -112,9 +112,7 @@ def load_schema_registry() -> tuple[dict[str, dict[str, Any]], Registry]:
     return schemas, registry
 
 
-def schema_validator(
-    name: str, version: str | None = None
-) -> Draft202012Validator:
+def schema_validator(name: str, version: str | None = None) -> Draft202012Validator:
     """Build the closed validator for one active or explicitly versioned schema."""
 
     schemas, registry = load_schema_registry()

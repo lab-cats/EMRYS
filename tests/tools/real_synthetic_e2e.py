@@ -186,7 +186,9 @@ def _real(
     try:
         selected = Path(os.path.abspath(path)).resolve(strict=True)
     except OSError as exc:
-        raise DriverError("preflight", f"{label} is unavailable: {path}: {exc}") from exc
+        raise DriverError(
+            "preflight", f"{label} is unavailable: {path}: {exc}"
+        ) from exc
     if directory != selected.is_dir() or (not directory and not selected.is_file()):
         kind = "directory" if directory else "file"
         raise DriverError("preflight", f"{label} must be one real {kind}: {selected}")
@@ -206,7 +208,11 @@ def _workflow_python(repo: Path) -> Path:
     """Keep the lexical virtualenv launcher so Python selects that environment."""
 
     selected = Path(os.path.abspath(repo / ".venv/bin/python"))
-    if not selected.exists() or not selected.is_file() or not os.access(selected, os.X_OK):
+    if (
+        not selected.exists()
+        or not selected.is_file()
+        or not os.access(selected, os.X_OK)
+    ):
         raise DriverError("preflight", f"workflow Python is unavailable: {selected}")
     return selected
 
@@ -215,7 +221,9 @@ def require_operator_root(operator_root: Path, repo_root: Path) -> Paths:
     root = _real(operator_root, "operator root", directory=True)
     repo = _real(repo_root, "repository root", directory=True)
     if root == repo or root.is_relative_to(repo):
-        raise DriverError("preflight", "operator root must be outside the source checkout")
+        raise DriverError(
+            "preflight", "operator root must be outside the source checkout"
+        )
     if any(root.iterdir()):
         raise DriverError(
             "preflight",
@@ -244,7 +252,9 @@ def resolve_runtime(prefix: Path, rscript: Path, renv: Path) -> Runtime:
     root = _real(prefix, "runtime prefix", directory=True)
     jars = tuple(root.glob("share/picard-slim-3.1.1-*/picard.jar"))
     if len(jars) != 1:
-        raise DriverError("preflight", "runtime prefix must contain one Picard 3.1.1 jar")
+        raise DriverError(
+            "preflight", "runtime prefix must contain one Picard 3.1.1 jar"
+        )
 
     def tool(relative: str, label: str) -> Path:
         return _real(root / relative, label, executable=True)
@@ -284,9 +294,9 @@ def rseqc_adapter_bytes(python: Path, delegate: Path) -> bytes:
     return (
         "#!/bin/sh\nset -eu\n"
         'if [ "$#" -eq 1 ] && [ "$1" = "--version" ]; then exec '
-        f"{shlex.quote(py)} -I -B -c \"from importlib.metadata import version; "
+        f'{shlex.quote(py)} -I -B -c "from importlib.metadata import version; '
         "print('infer_experiment.py ' + version('RSeQC'))\"; fi\n"
-        f"exec {shlex.quote(py)} -I -B {shlex.quote(target)} \"$@\"\n"
+        f'exec {shlex.quote(py)} -I -B {shlex.quote(target)} "$@"\n'
     ).encode()
 
 
@@ -302,7 +312,7 @@ def gatk_adapter_bytes(python: Path, delegate: Path, java: Path) -> bytes:
         "JDK_JAVA_OPTIONS _JAVA_OPTIONS\n"
         f"export JAVA_HOME={shlex.quote(str(java_home))} "
         f"PATH={shlex.quote(sealed_path)}\n"
-        f"exec {shlex.quote(py)} -I -B {shlex.quote(target)} \"$@\"\n"
+        f'exec {shlex.quote(py)} -I -B {shlex.quote(target)} "$@"\n'
     ).encode()
 
 
@@ -349,7 +359,9 @@ def _write(path: Path, data: bytes, *, mode: int = 0o600) -> None:
 
 def _artifact(path: Path) -> dict[str, Any]:
     if path.is_symlink() or not path.is_file():
-        raise DriverError("assert-results", f"required result is not a real file: {path}")
+        raise DriverError(
+            "assert-results", f"required result is not a real file: {path}"
+        )
     data = path.read_bytes()
     return {
         "path": str(path),
@@ -389,7 +401,9 @@ def parse_launcher(value: str) -> tuple[str, ...]:
         or not parsed
         or any(not isinstance(item, str) or not item for item in parsed)
     ):
-        raise DriverError("preflight", "storage launcher must be a nonempty string array")
+        raise DriverError(
+            "preflight", "storage launcher must be a nonempty string array"
+        )
     return (
         str(_real(Path(parsed[0]), "storage launcher", executable=True)),
         *parsed[1:],
@@ -552,9 +566,7 @@ def _stream(path: Path) -> str:
 
 
 def _scheduler(argv: tuple[str, ...], cwd: Path) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        argv, cwd=cwd, text=True, capture_output=True, check=False
-    )
+    return subprocess.run(argv, cwd=cwd, text=True, capture_output=True, check=False)
 
 
 def cancel_job(
@@ -571,16 +583,16 @@ def cancel_job(
         raise DriverError("cancel-slurm", f"scancel failed: {result.stderr.strip()}")
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
-        observed = _scheduler(
-            (str(scontrol), "show", "job", "-o", job_id), cwd
-        )
+        observed = _scheduler((str(scontrol), "show", "job", "-o", job_id), cwd)
         if observed.returncode:
             return "NO_LONGER_OBSERVABLE"
         state, _ = parse_scontrol(observed.stdout)
         if state in TERMINAL_STATES:
             return state
         time.sleep(min(poll_seconds, 1.0))
-    raise DriverError("cancel-slurm", f"job {job_id} did not become terminal after TERM")
+    raise DriverError(
+        "cancel-slurm", f"job {job_id} did not become terminal after TERM"
+    )
 
 
 def wait_for_job(
@@ -598,11 +610,11 @@ def wait_for_job(
         while True:
             if time.monotonic() >= deadline:
                 raise DriverError("wait-slurm", "job timed out")
-            result = _scheduler(
-                (str(scontrol), "show", "job", "-o", job.job_id), cwd
-            )
+            result = _scheduler((str(scontrol), "show", "job", "-o", job.job_id), cwd)
             if result.returncode:
-                raise DriverError("wait-slurm", f"scontrol failed: {result.stderr.strip()}")
+                raise DriverError(
+                    "wait-slurm", f"scontrol failed: {result.stderr.strip()}"
+                )
             state, exit_code = parse_scontrol(result.stdout)
             if state in TERMINAL_STATES:
                 break
@@ -657,7 +669,9 @@ def validate_step09_oracle(
 
     all_rows, significant = table(all_sites), table(significant_sites)
     expected = fixture.get("expected_terminal_computational_result", {})
-    candidate = expected.get("significant_candidate_id") if isinstance(expected, dict) else None
+    candidate = (
+        expected.get("significant_candidate_id") if isinstance(expected, dict) else None
+    )
     all_ids = [row["candidate_id"] for row in all_rows]
     if (
         expected.get("all_sites_rows") != 3
@@ -667,8 +681,7 @@ def validate_step09_oracle(
         or len(set(all_ids)) != 3
         or significant[0]["candidate_id"] != candidate
         or candidate not in all_ids
-        or significant[0]["call_status"]
-        not in {"significant_up", "significant_down"}
+        or significant[0]["call_status"] not in {"significant_up", "significant_down"}
     ):
         raise DriverError("assert-results", "independent Step09 3/1 oracle differs")
     return {
@@ -690,16 +703,12 @@ def assert_completed_run(
 
     observed = inspection.inspect_run(run_root) if observed is None else observed
     if (
-        (
-            observed.integrity,
-            observed.attempt_outcome,
-            observed.results_status,
-            observed.reporting_status,
-            observed.recovery_available,
-        )
-        != ("valid", "succeeded", "complete", "complete", False)
-        or observed.blockers
-    ):
+        observed.integrity,
+        observed.attempt_outcome,
+        observed.results_status,
+        observed.reporting_status,
+        observed.recovery_available,
+    ) != ("valid", "succeeded", "complete", "complete", False) or observed.blockers:
         raise DriverError("assert-results", "Run inspection is not complete")
     reports = dict(observed.verified_report_locations)
     if set(reports) != {"scientific-report-html", "evidence-report-html"}:
@@ -814,7 +823,9 @@ def _assert_no_task_entry(
     receipt: dict[str, Any],
 ) -> None:
     if {item["state"] for item in task_roster} != {"pending"}:
-        raise DriverError("assert-parity", "Controlled pre-entry failure entered a task")
+        raise DriverError(
+            "assert-parity", "Controlled pre-entry failure entered a task"
+        )
     if any(receipt.get(field) for field in TASK_ENTRY_EVIDENCE_FIELDS):
         raise DriverError(
             "assert-parity",
@@ -832,7 +843,9 @@ def _resource_snapshot(
 
     reference = attempt.get("workflow_config")
     if not isinstance(reference, dict):
-        raise DriverError("assert-parity", "Attempt workflow-config reference is absent")
+        raise DriverError(
+            "assert-parity", "Attempt workflow-config reference is absent"
+        )
     path = run_root / str(reference.get("path", ""))
     artifact = _artifact(path)
     if artifact["sha256"] != reference.get("sha256"):
@@ -874,7 +887,9 @@ def _application_log_snapshot(
     entrypoint = "emrys-resume" if resumed else "emrys-run"
     scope_id = run_id if resumed else "pending"
     required_events = (
-        FAILURE_APPLICATION_EVENTS if expected_status == "failed" else APPLICATION_EVENTS
+        FAILURE_APPLICATION_EVENTS
+        if expected_status == "failed"
+        else APPLICATION_EVENTS
     )
     logs = tuple(sorted((workspace / "logs/application").rglob("*.jsonl")))
     matches: list[tuple[Path, list[dict[str, Any]]]] = []
@@ -910,10 +925,13 @@ def _application_log_snapshot(
         "entrypoint": entrypoint,
         "mode": operation,
     }
-    if any(
-        any(record.get(name) != value for name, value in expected_metadata.items())
-        for record in records
-    ) or len({record.get("execution_attempt_id") for record in records}) != 1:
+    if (
+        any(
+            any(record.get(name) != value for name, value in expected_metadata.items())
+            for record in records
+        )
+        or len({record.get("execution_attempt_id") for record in records}) != 1
+    ):
         raise DriverError("assert-parity", "Application log scope is inconsistent")
     events = [str(record.get("event")) for record in records]
     cursor = -1
@@ -932,7 +950,9 @@ def _application_log_snapshot(
     opened = records[events.index("attempt_opened")]
     opening_fields = opened.get("fields")
     if not isinstance(opening_fields, dict):
-        raise DriverError("assert-parity", "Application-log opening fields are malformed")
+        raise DriverError(
+            "assert-parity", "Application-log opening fields are malformed"
+        )
     observed_job = opening_fields.get("slurm_job_id")
     if observed_job != scheduler_job_id:
         raise DriverError("assert-parity", "Application-log scheduler identity differs")
@@ -1005,7 +1025,9 @@ def _attempt_snapshot(
         raise DriverError("assert-parity", "Attempt placement provenance differs")
     resources = _resource_snapshot(run_root, attempt)
     if resources["allocation"]["slurm_job_id"] != scheduler_job_id:
-        raise DriverError("assert-parity", "Resource allocation scheduler identity differs")
+        raise DriverError(
+            "assert-parity", "Resource allocation scheduler identity differs"
+        )
     attempt_id = str(attempt["workflow_attempt_id"])
     return {
         "id": attempt_id,
@@ -1041,16 +1063,12 @@ def _admitted_failure(run_root: Path, *, job: Job | None) -> dict[str, Any]:
 
     observed = inspection.inspect_run(run_root)
     if (
-        (
-            observed.integrity,
-            observed.attempt_outcome,
-            observed.results_status,
-            observed.reporting_status,
-            observed.recovery_available,
-        )
-        != ("valid", "failed", "incomplete", "incomplete", True)
-        or observed.blockers
-    ):
+        observed.integrity,
+        observed.attempt_outcome,
+        observed.results_status,
+        observed.reporting_status,
+        observed.recovery_available,
+    ) != ("valid", "failed", "incomplete", "incomplete", True) or observed.blockers:
         raise DriverError("assert-parity", "Controlled failure is not safely resumable")
     authority = observed.authority
     attempt = observed.latest_attempt
@@ -1120,7 +1138,9 @@ def _admitted_completion(
         records["start"] is None or records["verified"] is None
         for records in observed.reporting_completion_records.values()
     ):
-        raise DriverError("assert-parity", "Completed reporting transaction roster differs")
+        raise DriverError(
+            "assert-parity", "Completed reporting transaction roster differs"
+        )
     latest_job = jobs[-1] if jobs else None
     attempt_snapshot = _attempt_snapshot(
         run_root,
@@ -1132,8 +1152,13 @@ def _admitted_completion(
         expected_exit_code=0,
         operation="resume" if failure is not None else "execute",
     )
-    if len(tuple((run_root.parent.parent / "logs/application").rglob("*.jsonl"))) != expected_count:
-        raise DriverError("assert-parity", "Application-log count differs from operations")
+    if (
+        len(tuple((run_root.parent.parent / "logs/application").rglob("*.jsonl")))
+        != expected_count
+    ):
+        raise DriverError(
+            "assert-parity", "Application-log count differs from operations"
+        )
     _assert_scheduler_streams(run_root.parent.parent, jobs)
     authority_summary = _authority_snapshot(authority)
     if failure is not None:
@@ -1145,7 +1170,9 @@ def _admitted_completion(
             or attempts[1]["operation"] != "resume"
             or attempts[1]["supersedes_workflow_attempt_id"] != failed_id
         ):
-            raise DriverError("assert-parity", "Resume changed predecessor evidence or Run authority")
+            raise DriverError(
+                "assert-parity", "Resume changed predecessor evidence or Run authority"
+            )
     return {
         **completion,
         "authority": authority_summary,
@@ -1160,9 +1187,13 @@ def _assert_direct_slurm_parity(
     scheduled: dict[str, Any],
 ) -> dict[str, Any]:
     if direct["authority"] != scheduled["authority"]:
-        raise DriverError("assert-parity", "Immutable Run authority differs by placement")
+        raise DriverError(
+            "assert-parity", "Immutable Run authority differs by placement"
+        )
     if direct["attempt"]["id"] == scheduled["attempt"]["id"]:
-        raise DriverError("assert-parity", "Direct and Slurm Attempts share an identity")
+        raise DriverError(
+            "assert-parity", "Direct and Slurm Attempts share an identity"
+        )
     direct_failure = direct.get("failure")
     scheduled_failure = scheduled.get("failure")
     if (direct_failure is None) != (scheduled_failure is None):
@@ -1174,12 +1205,16 @@ def _assert_direct_slurm_parity(
             direct_failure["attempt"]["common_fields"]
             != scheduled_failure["attempt"]["common_fields"]
         ):
-            raise DriverError("assert-parity", "Failed Attempt authority differs by placement")
+            raise DriverError(
+                "assert-parity", "Failed Attempt authority differs by placement"
+            )
     for key in ("common_fields", "task_roster"):
         if direct["attempt"][key] != scheduled["attempt"][key]:
             raise DriverError("assert-parity", f"Attempt {key} differs by placement")
     if direct["scientific_results"] != scheduled["scientific_results"]:
-        raise DriverError("assert-parity", "Terminal scientific Results differ by placement")
+        raise DriverError(
+            "assert-parity", "Terminal scientific Results differ by placement"
+        )
     direct_resources = direct["attempt"]["resources"]
     scheduled_resources = scheduled["attempt"]["resources"]
     if direct_resources["symbolic"] != scheduled_resources["symbolic"]:
@@ -1226,7 +1261,9 @@ def run_driver(
     if os.environ.get("SLURM_JOB_ID", "").strip():
         raise DriverError("preflight", "driver must start outside Slurm")
     python = _workflow_python(repo)
-    runtime = resolve_runtime(arguments.runtime_prefix, arguments.rscript, arguments.renv_library)
+    runtime = resolve_runtime(
+        arguments.runtime_prefix, arguments.rscript, arguments.renv_library
+    )
     launcher = parse_launcher(arguments.storage_compute_launcher_json)
     scontrol = _command(arguments.scontrol, "scontrol")
     scancel = _command(arguments.scancel, "scancel")
@@ -1365,8 +1402,7 @@ def run_driver(
             no_write=True,
         )
         if planned.stdout or any(
-            any((paths.direct_workspace / name).iterdir())
-            for name in ("runs", "logs")
+            any((paths.direct_workspace / name).iterdir()) for name in ("runs", "logs")
         ):
             raise DriverError("run-plan", "direct dry-run wrote state")
     scheduled = _emrys(
@@ -1385,8 +1421,7 @@ def run_driver(
         or "Dry-run complete; no scheduler or workspace state was written."
         not in scheduler_plan.stderr
         or any(
-            any((paths.slurm_workspace / name).iterdir())
-            for name in ("runs", "logs")
+            any((paths.slurm_workspace / name).iterdir()) for name in ("runs", "logs")
         )
     ):
         raise DriverError("slurm-plan", "scheduler dry-run wrote or submitted")
@@ -1446,9 +1481,7 @@ def run_driver(
     if direct_run_root is not None and direct_run_root.name != slurm_run_root.name:
         raise DriverError("plan-parity", "Direct and Slurm selected different Runs")
 
-    failures: dict[str, dict[str, Any] | None] = {
-        label: None for label in workspaces
-    }
+    failures: dict[str, dict[str, Any] | None] = {label: None for label in workspaces}
     slurm_jobs = (initial_job,)
     if recovery_journey:
         if direct_run_root is None:
@@ -1542,7 +1575,9 @@ def run_driver(
         or fixture.get("read_pairs_per_library") != int(profile)
         for fixture in fixture_values
     ):
-        raise DriverError("assert-results", "synthetic fixture identity or scale differs")
+        raise DriverError(
+            "assert-results", "synthetic fixture identity or scale differs"
+        )
     direct_completion = (
         _admitted_completion(
             direct_run_root,
@@ -1627,9 +1662,7 @@ def run_driver(
             if parity_journey
             else "real-tool disposable single-node Slurm production-like exercise "
         )
-        + (
-            "only; no production, scientific-review, or biological claim"
-        ),
+        + ("only; no production, scientific-review, or biological claim"),
         "biological_interpretation_claimed": False,
     }
 

@@ -84,9 +84,7 @@ def _arguments(identity: Any, kind: str) -> argparse.Namespace:
     run_contract = root / str(identity.config["reporting_run_contract_path"]["path"])
     policy_reference = identity.config.get("primary_analysis_policy_path")
     analysis_policy = (
-        None
-        if policy_reference is None
-        else root / str(policy_reference["path"])
+        None if policy_reference is None else root / str(policy_reference["path"])
     )
     inventory = root / str(identity.config["artifact_inventory_path"]["path"])
     values = {
@@ -216,7 +214,9 @@ def _require_prepared_processing_source(
     expected: dict[Path, tuple[int | None, str]] = {}
     for task in source.state.tasks:
         if task.record is None:
-            raise ReportingOperationError("Processing source task evidence is incomplete")
+            raise ReportingOperationError(
+                "Processing source task evidence is incomplete"
+            )
         references = [*task.record["inputs"], *task.record["outputs"]]
         references.append(task.record["validation_report"])
         if task.record["native_receipt"] is not None:
@@ -232,7 +232,9 @@ def _require_prepared_processing_source(
                 )
             expected[path] = binding
     external = tuple(
-        binding for path, binding in expected.items() if not path.is_relative_to(source.root)
+        binding
+        for path, binding in expected.items()
+        if not path.is_relative_to(source.root)
     )
 
     def matches(
@@ -251,7 +253,9 @@ def _require_prepared_processing_source(
             continue
         path = Path(item.resolved_path)
         snapshot = item.snapshot
-        binding = (snapshot.size_bytes, snapshot.sha256) if snapshot is not None else None
+        binding = (
+            (snapshot.size_bytes, snapshot.sha256) if snapshot is not None else None
+        )
         required = expected.get(path)
         if (
             snapshot is None
@@ -362,7 +366,10 @@ def run_reporting(
                 **identity_paths,
                 ops=publish_ops,
             )
-            if kind == reporting_boundary.REPORTING_KINDS[0] and observe_generation_start:
+            if (
+                kind == reporting_boundary.REPORTING_KINDS[0]
+                and observe_generation_start
+            ):
                 try:
                     observe_generation_start()
                 except Exception:

@@ -109,13 +109,17 @@ def _absolute(value: str | Path) -> Path:
 def project_definition_path(selection: str | Path | None = None) -> Path:
     """Resolve the exact current, named-directory, or explicit Project definition."""
 
-    candidate = Path(os.path.abspath("project.yaml" if selection is None else selection))
+    candidate = Path(
+        os.path.abspath("project.yaml" if selection is None else selection)
+    )
     if candidate.is_dir() or (not candidate.exists() and candidate.suffix != ".yaml"):
         candidate /= "project.yaml"
     try:
         resolved = candidate.resolve(strict=True)
     except OSError as exc:
-        raise OnboardingError(f"Project definition is unavailable: {candidate}") from exc
+        raise OnboardingError(
+            f"Project definition is unavailable: {candidate}"
+        ) from exc
     if resolved != candidate or not candidate.is_file():
         raise OnboardingError(f"Project definition is unavailable: {candidate}")
     return candidate
@@ -328,9 +332,15 @@ background_max_fraction""".split()
 _PROJECT_TYPES = {
     field: converter
     for fields, converter in (
-        ("sample_manifest partition_manifest reference_fasta reference_gtf".split(), Path),
+        (
+            "sample_manifest partition_manifest reference_fasta reference_gtf".split(),
+            Path,
+        ),
         ("sjdb_overhang genome_sa_index_nbases min_sample_dp".split(), int),
-        ("mean_dp_threshold fdr_threshold common_or_threshold absolute_difference_threshold background_max_fraction".split(), float),
+        (
+            "mean_dp_threshold fdr_threshold common_or_threshold absolute_difference_threshold background_max_fraction".split(),
+            float,
+        ),
     )
     for field in fields
 }
@@ -404,7 +414,9 @@ def _collect_project_answers(arguments: argparse.Namespace) -> dict[str, object]
             print(f"{label}{suffix}: ", end="", file=sys.stderr, flush=True)
             raw = sys.stdin.readline()
             if raw == "":
-                raise OnboardingError(f"Project setup ended before {label} was supplied")
+                raise OnboardingError(
+                    f"Project setup ended before {label} was supplied"
+                )
             raw = raw.strip() or ("" if suggestion is None else str(suggestion))
             if not raw:
                 raise OnboardingError(f"{label} is required")
@@ -420,7 +432,9 @@ def _project_yaml(answers: Mapping[str, object]) -> bytes:
     target = str(answers["target_change"]).upper()
     match = re.fullmatch(r"([ACGT])>([ACGT])", target)
     if match is None or match[1] == match[2]:
-        raise OnboardingError("target RNA change must name two different bases, like A>G")
+        raise OnboardingError(
+            "target RNA change must name two different bases, like A>G"
+        )
     analysis = {
         "partitions": str(answers["partition_manifest"]),
         **{
@@ -572,8 +586,7 @@ def _draft_manifest_members(
     unexpected = sorted(assignments.keys() - admitted.keys())
     if unexpected:
         raise OnboardingError(
-            "--sample assignments have no supplied FASTQ pair: "
-            + ", ".join(unexpected)
+            "--sample assignments have no supplied FASTQ pair: " + ", ".join(unexpected)
         )
     missing = sorted(admitted.keys() - assignments.keys())
     if missing:
@@ -621,11 +634,18 @@ def _draft_manifest_members(
 
 def configure_manifest_init_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
-        "--output-dir", required=True, type=Path, help="Absolute absent draft directory."
+        "--output-dir",
+        required=True,
+        type=Path,
+        help="Absolute absent draft directory.",
     )
     parser.add_argument(
-        "--fastq", required=True, action="extend", nargs="+", type=Path,
-        help="Existing FASTQs using the closed <sample>_R1/_R2 naming convention."
+        "--fastq",
+        required=True,
+        action="extend",
+        nargs="+",
+        type=Path,
+        help="Existing FASTQs using the closed <sample>_R1/_R2 naming convention.",
     )
     parser.add_argument(
         "--sample",
@@ -1219,7 +1239,9 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
     """Discover, probe, and optionally admit the active Project runtime."""
 
     try:
-        inspection = discover_runtime_profile(project=project_definition_path(arguments.project))
+        inspection = discover_runtime_profile(
+            project=project_definition_path(arguments.project)
+        )
         _print_runtime_inventory(inspection)
         print(f"Inventory: {inspection.profile_path}")
         if not inspection.required_ready:

@@ -441,11 +441,7 @@ def _admit_project_data(
             partition_cache[authored_partition] = partitions
         try:
             module = load_analysis_module(
-                str(
-                    analysis_definition.get(
-                        "module", BUILTIN_PAIRED_CMH_MODULE_ID
-                    )
-                )
+                str(analysis_definition.get("module", BUILTIN_PAIRED_CMH_MODULE_ID))
             )
             admitted_profile = compose_profile(profile_record, module.descriptor)
         except AnalysisModuleLoadError as exc:
@@ -506,15 +502,12 @@ def _admit_project_data(
                 "schema_version": "emrys.analysis-policy.v1",
                 **scientific_policy,
             }
-        profile_bytes = orchestration_contracts.canonical_json_bytes(
-            admitted_profile
-        )
+        profile_bytes = orchestration_contracts.canonical_json_bytes(admitted_profile)
         profile_identity = {
-            key: admitted_profile[key]
-            for key in ("profile_id", "profile_version")
+            key: admitted_profile[key] for key in ("profile_id", "profile_version")
         }
-        profile_identity["profile_sha256"] = (
-            orchestration_contracts.canonical_sha256(admitted_profile)
+        profile_identity["profile_sha256"] = orchestration_contracts.canonical_sha256(
+            admitted_profile
         )
         revision = analysis_revision_from_execution_fields(
             {

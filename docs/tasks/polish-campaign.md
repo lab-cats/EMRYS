@@ -1,8 +1,8 @@
 # EMRYS polish campaign
 
-This document collects the repository-polish and professional-tooling candidates
-from the September 7, 2026 audit. Its purpose is to make the proposed work
-concrete enough to select and scope. It covers correctness, operator experience,
+This document records repository-polish and professional-tooling findings
+from the September 7, 2026 audit, their implemented outcomes, and remaining
+proposals. It covers correctness, operator experience,
 architecture reduction, developer feedback, dependency maintenance, and release
 presentation.
 
@@ -11,8 +11,8 @@ and operator-command wall time, disk usage, I/O, and memory with its own
 measurement boundaries.
 
 The user requested this document and its integration with the optimization
-campaign and revised quickstart. Follow-on product and tooling implementation
-still requires separate selection and authority. The
+campaign and revised quickstart. Selected implementation is identified below;
+other proposals still require separate selection and authority. The
 [backlog matrix](backlog_matrix.md) remains the only authority
 for accepted work, execution status, scores, and final acceptance. Existing row
 references below identify coverage, not duplicate tasks. Numbered headings are
@@ -52,7 +52,21 @@ checking open work through PR #137. It refined items 12, 29, and 30 and added
 items 40–44. These findings also come from source/documentation review, without
 new product tests, input-reuse reproductions, installations, or upgrade trials.
 
-References to local source below identify the inspected owner at that revision.
+The September 8 reconciliation uses `2fb8f5ef`, whose tree is identical to
+the tested `8034c211` state. [PR #139](https://github.com/lab-cats/EMRYS/pull/139)
+merged the earlier compression and documentation stack into master at
+`446802c0`, including this campaign from PR #131. The subsequent changes from
+PRs #141–147 are integrated into [PR #140](https://github.com/lab-cats/EMRYS/pull/140).
+Its exact `2fb8f5ef` head passed [full ordinary CI](https://github.com/lab-cats/EMRYS/actions/runs/34301289787);
+master integration remains blocked and pending at this reconciliation. Original
+PRs closed through either integration are not unimplemented proposals. The
+[overlap reconciliation](#existing-capabilities-and-overlapping-work) identifies
+what each integration contains. This documentation pass ran no product tests
+or new performance measurements; ordinary CI does not establish long-lane,
+institutional, production, scientific-review, or biological acceptance.
+
+Pinned source references below retain the original audit evidence; relative
+links point to the current owner.
 Before selecting a candidate, reconcile its current source, backlog coverage,
 and overlapping PRs. The [compression intake](compression_campaign.md) contains
 related observations; preserve its useful decisions without copying its entire
@@ -80,11 +94,16 @@ For each selected slice:
   final state. Keep fixture, hosted, Slurm, institutional, scientific-review,
   and biological claims distinct.
 
-Suggested early selections are the shell syntax correction, artifact-version
-admission, one publication-recovery owner, and the Project preview. For added
-tooling, start with ShellCheck, one type checker, and stronger Ruff integration;
-add local hooks after their participating checks have clear owners. These are
-selection recommendations, not a required dependency graph.
+The shell syntax correction, selected Ruff correctness rules, shared sharder
+self-tests, and automatic stacked-PR CI in items 15, 17, 21, and 22 are
+implemented and validated in the pending PR #140 integration. The user has
+approved ShellCheck, Ruff formatting, and optional fast hooks under `DEV-01`
+(items 16, 18, and 20), public version reporting under `CLI-VERSION-01`
+(item 43), and the bounded Python/R test-runtime work under `CI-01` (item 23).
+Those slices are implemented; focused local checks pass and final hosted CI
+remains pending. The artifact-version
+correction, other publication-recovery owners, Project preview, type checker,
+and other unselected proposals retain their separate decision boundaries.
 
 The second pass prioritizes the installed-package journey and runtime identity
 audits, followed by rendered report review. The merge-rule gap is concrete;
@@ -123,6 +142,8 @@ complete replacement across failures during backup, publication, restoration,
 and cleanup. Review the [existing tests](../../tests/evidence/storage_inventory/test_storage_inventory.py)
 and contract together. Storage inventory and storage qualification are distinct
 transactions; PR #115 does not close this proposed owner-specific correction.
+The merged measurement-row consolidation in PR #128 and its filesystem-call
+test correction in PR #134 also leave this publication defect unresolved.
 
 ### 3. Make reference-provenance replacement recoverable
 
@@ -147,8 +168,8 @@ characterize these behaviors.
 preserve unresolved recovery state, and report relevant finalization failures.
 Select descriptor acquisition and publication recovery as separate bounded
 slices if necessary; preserve intentional error precedence. Runtime-model
-consolidation in PR #116 does not repair these cases. No compression claim is
-established for the small descriptor fix.
+consolidation in PR #116, merged through PR #139, does not repair these cases.
+No compression claim is established for the small descriptor fix.
 
 ### 5. Admit current artifacts through the public validator
 
@@ -162,9 +183,11 @@ of the rejection; the audit independently traced the source selection.
 coherent version-selection authority. Current outputs pass, malformed versions
 fail, and explicitly supported historical records retain their intended
 admission and semantic checks. Cover real reporting outputs and deterministic
-diagnostics. This is a separate unselected artifact correction; `CONTRACT-API-01`
-and PR #117 address orchestration Attempt receipts. Quantify any net reduction
-before describing this correctness fix as compression.
+diagnostics. This is a separate unselected artifact correction; completed
+`CONTRACT-API-01` and PR #117 address orchestration Attempt receipts. The later
+reporting changes in PRs #145 and #147 do not change this public validator's
+version dispatch. Quantify any net reduction before describing this correctness
+fix as compression.
 
 ### 6. Make timestamp admission deterministic
 
@@ -219,7 +242,8 @@ that this cannot satisfy the Slurm qualification requirement; this audit did
 not reproduce a site failure.
 The runbook now documents the supported route: retain a direct default during
 initial preparation, perform compute/finalize storage qualification, and select
-the separate Slurm profile. Doctor's repair-plan implementation is unchanged.
+the separate Slurm profile. PR #136 consolidated readiness-result construction;
+it did not change the storage repair plan or resolve this finding.
 
 **Outcome and acceptance:** Reassess the remaining command-level problem against
 that documented route and verify it through the existing plan and admission
@@ -311,8 +335,12 @@ YAML/CLI inputs and historical admission have an explicit disposition. Preserve
 immutable records, required historical reads, regeneration, and report
 transactions. Demonstrate net reduction across callers, schema/configuration,
 tests, and documentation. Do not add an ignored compatibility option or a new
-resource manager. Do not claim generic reporting-only identity coupling as a
-verified defect: reporting declarations already have a separate owner.
+resource manager. PR #145 consolidated fixed HTML output declarations and
+PR #147 simplified publication; neither retires this control. The
+[reporting identity decision](../design/decisions/execution-evidence-and-reporting.md)
+preserves current source fingerprints, which include affected owners. Removing
+the control is not assumed to be Run-identity neutral; its input and historical
+policy still needs explicit approval.
 
 ### 14. Retire the frozen dashboard when its existing row is selected
 
@@ -320,52 +348,57 @@ verified defect: reporting declarations already have a separate owner.
 describes the dashboard as a stale, unsupported preview frozen under
 **`DASHBOARD-RETIRE-01`**.
 
-**Outcome and acceptance:** Perform the row's complete caller/evidence audit,
-then retire product code, parsers, dedicated tests, targets, and stale guidance
-together. Preserve Project-local inspection, required scheduler accounting and
-sanitized streams, and exact historical reads. The candidate offers potential
-substantial reduction; deletability was not established by this audit. Its
-deferred status and evidence-deletion authority remain with the existing row.
+**Disposition and acceptance:** The user requires a usable replacement before
+retirement. Keep the dashboard and its protections until that prerequisite is
+implemented and accepted; retirement is excluded from the current tranche.
+The eventual caller-complete change must preserve Project-local inspection,
+required scheduler accounting, sanitized streams, and exact historical reads,
+or obtain an explicit narrower capability decision. Product code, parsers,
+dedicated tests, targets, and stale guidance retire together only under that
+approved scope. The existing row retains the decision and evidence-deletion
+boundaries; potential size reduction does not override the replacement condition.
 
 ## Development and CI tooling
 
 ### 15. Check every script in the Bash syntax gate
 
-**Disposition:** The approved correction makes [Make's shared syntax gate](../../scripts/make_quality.mk)
-parse each declared script separately and stop on failure. Both `smoke` and
+**Disposition:** Implemented and validated in [PR #141](https://github.com/lab-cats/EMRYS/pull/141),
+included in PR #140 pending master integration. [Make's shared syntax gate](../../scripts/make_quality.mk)
+parses each declared script separately and stops on failure. Both `smoke` and
 `validation-static` use that gate; a malformed second or third script is a
 regression case. The thirteen-path roster is preserved. ShellCheck, formatting,
-and any roster expansion remain separate selections.
+and any roster expansion are distinct from this completed correction.
 
 ### 16. Integrate ShellCheck
 
-**Finding:** ShellCheck has an unused Make variable and source annotations, but
-no active invocation; actionlint disables its shell integration.
-
-**Outcome and acceptance:** Run [ShellCheck](https://github.com/koalaman/shellcheck)
-on retained shell owners and applicable embedded CI scripts, using existing
-source annotations and reviewed rules. Actionable findings fail the established
-gate. Reconcile programs scheduled for retirement under `OPS-03`; retain Bash
-syntax checks. Add a maintained tool integration, not another shell framework.
+**Disposition:** Implemented under `DEV-01`; final hosted CI remains pending.
+The existing lint gate checks every tracked `.sh` file with locked ShellCheck,
+and actionlint checks embedded workflow shell with the same version. Shared
+source resolution uses `.shellcheckrc`. Seven array-reference mistakes are
+corrected; annotations explain specific dynamic inputs and intentional shell
+semantics instead of disabling a rule repository-wide. Local ShellCheck,
+actionlint, and shell-owner contracts pass. Bash syntax checks remain active.
 
 ### 17. Broaden Ruff correctness checks
 
-**Disposition:** The approved [Ruff configuration](../../pyproject.toml) selects
+**Disposition:** Implemented and validated in [PR #142](https://github.com/lab-cats/EMRYS/pull/142),
+included in PR #140 pending master integration. The [Ruff configuration](../../pyproject.toml) selects
 `E9`, `F63`, `F7`, and `F82` through the existing lint command. This subset passes
 unchanged product source using the locked Ruff version. Broader lint groups
 still need owner-specific review: unused-import diagnostics include live
 re-exports, and some suggested fixes change exception or iteration semantics.
-Formatting remains a separate selection.
+Formatting is the separate approved item 18, not part of this completed change.
 
 ### 18. Adopt consistent Python formatting
 
-**Finding:** Ruff is installed, but no formatter check is integrated.
-
-**Outcome and acceptance:** Use [Ruff's formatter](https://docs.astral.sh/ruff/formatter/)
-with one configuration and a reproducible `--check` command. Define the
-maintained scope and exclude generated/vendored material deliberately. Keep
-one-time formatting churn separate from semantic changes and review its full
-size before selection. No additional Python formatter is needed.
+**Disposition:** Implemented under `DEV-01`; final hosted CI remains pending.
+The existing Ruff configuration and locked version own formatting for `scripts`,
+`src/emrys`, and `tests`. `make lint` and the staged-file hook use `ruff format
+--check`. The separate mechanical baseline reformatted 78 files; every changed
+file retained identical parsed Python code. Its 2,101 additional physical lines
+are formatting expansion, reported separately from functional changes and never
+counted as compression. The formatter check passes across all 292 tracked Python files; explicit
+Python-only inclusion keeps its scope aligned with the staged-file hook.
 
 ### 19. Adopt one Python type checker
 
@@ -381,17 +414,20 @@ admission and scientific validation; it does not replace them.
 
 ### 20. Add optional fast local hooks
 
-**Finding:** No repository-managed pre-commit configuration exists.
-
-**Outcome and acceptance:** Explicitly installed [pre-commit](https://pre-commit.com/)
-hooks run agreed quick checks on changed files using the same tools and policy
-as CI. Include relevant lint/format and basic whitespace/conflict checks once
-their owners are established. Ordinary commits do not run long suites, install
-scientific dependencies, or acquire a second validation inventory.
+**Disposition:** Implemented under `DEV-01`; final hosted CI remains pending.
+The repository's three pre-commit hooks check staged Python correctness,
+Python formatting, and shell code with the locked `.venv` tools. They perform
+no implicit installation, rewriting, scientific execution, R checks, or test
+suites. Explicit installation and use live in the
+[engineering conventions](../operations/ENGINEERING_CONVENTIONS.md#development-validation).
+Local hook checks pass, including rejection of an invalid staged shell file
+while ignoring an unrelated untracked invalid Python file. CI remains the
+complete validation path.
 
 ### 21. Share local and CI validation inventory
 
-**Disposition:** The approved correction moves the CI-only self-test invocation
+**Disposition:** Implemented and validated in [PR #143](https://github.com/lab-cats/EMRYS/pull/143),
+included in PR #140 pending master integration. The correction moves the CI-only self-test invocation
 into [shared static preflight](../design/TEST_BASELINE.md#validation-lanes), so
 local `all-checks` and CI run it once through the same Make target. The
 [sharder](../../tests/tools/python_test_shards.py) still excludes its own tests
@@ -401,24 +437,40 @@ Make/CI wiring are protected without adding a test registry or validation lane.
 
 ### 22. Run ordinary CI automatically on supported stacked PRs
 
-**Disposition:** The approved `CI-01` correction removes the `master`-only PR
+**Disposition:** Implemented and validated in PR #140, pending master integration.
+The `CI-01` correction removes the `master`-only PR
 base filter. The [validation policy](../design/TEST_BASELINE.md#validation-lanes)
 now covers all PR bases while retaining master-only push runs and the existing
-merge-group, scheduled, and manual behavior. Acceptance requires an actual
-stacked PR to start ordinary hosted CI automatically; configuration checks
-alone do not prove dispatch. Item 33 separately addresses required merge checks.
+merge-group, scheduled, and manual behavior. Actual stacked pull-request events
+started ordinary hosted CI, and the final integrated head passed the full
+ordinary run linked above. This closes the automatic-dispatch implementation
+outcome, not the remaining `CI-01` performance work or the master merge gate.
+Item 33 separately addresses required merge checks.
 
 ### 23. Reduce the measured CI critical path
 
-**Finding:** Coverage coordination repeats environment setup, full collection,
-and separately justified subprocess checks. Source identifies cost centers,
-not their actual share of elapsed time or permission to remove them.
+**Disposition:** Implemented under **`CI-01`**; final hosted CI remains pending. PR #124's duration
+estimate refresh is already merged through PR #139; it does not close the
+remaining wall-time outcome. Hosted timing review now separates queue time,
+setup, R restoration, runtime readiness, and test execution rather than treating
+all elapsed time as test cost.
 
-**Outcome and acceptance:** Continue existing **`CI-01`** after reconciling PR
-#124's duration estimates. Measure one final-state path, remove a demonstrated
-avoidable cost through its existing owner, and show lower elapsed time with
-the same complete/disjoint test selection, coverage, receipts, subprocess
-evidence, and failure behavior. Set a duration target only from measurements.
+The test change combines output and resume assertions around one initial
+35-task Python workflow execution and removes a duplicate R package-probe
+wrapper. Statement comparison confirms that only the duplicate execution was
+removed from the Python test bodies. All sixteen existing R negative
+cases and their guards remain; at most two run concurrently. This changes test
+scheduling and repeated setup, not scientific computation, the negative-case
+roster, or production runtime admission. Independent assertions, private mutable
+fixture state, failure propagation, and diagnostic attribution must survive.
+
+**Outcome and acceptance:** Remove the demonstrated repeated execution and
+validate the final state through existing local checks and hosted CI, preserving
+complete/disjoint test selection, coverage, receipts, subprocess evidence, and
+failure behavior. This tranche does not require another benchmark campaign. Cache changes, removal of
+readiness observations, and production R-probe concurrency are not implied by
+this approved test slice. Report any observed CI timing without claiming that
+removed test work equals the same reduction in total CI elapsed time.
 
 ### 24. Configure one dependency-update bot
 
@@ -791,21 +843,25 @@ bounded optional presentation change requiring a quantified footprint proposal.
 
 ### 43. Report the installed package version through the public CLI
 
-**Finding:** The package [defines its version][package-version], but the
-[public parser][public-command-parser] requires a command and provides no
-conventional `emrys --version` option. No version invocation was attempted
-during this audit.
+**Original finding:** The package defined its version, but the public parser
+required a command and exposed no conventional version display.
+
+**Disposition:** Implemented under `CLI-VERSION-01`; final hosted CI remains
+pending. `emrys --version` reports the package version; `-v` adds its loaded
+path and Python version/executable. Focused production-path tests pass,
+including foreign-directory display and preserved ordinary checkout admission.
+The existing parser and package version remain the only owners.
 
 **Outcome and acceptance:** The installed command reports its actual package
 version from an arbitrary directory without requiring a Project, probing
 scientific tools, or writing state. If source identity is included, reuse
 existing source authority, distinguish known from unavailable information, and
 never infer the installed package's commit from an unrelated current directory.
-Audit the checkout-mismatch guard that currently runs before argument parsing;
-decide the informational option's behavior explicitly without silently bypassing
-that boundary. Preserve existing command dispatch. A version response does not
+The implemented display is allowed from another checkout so it can identify
+the installation in use; ordinary commands and positional `--version` text
+still undergo the existing checkout check. Existing command dispatch remains. A version response does not
 prove runtime readiness, cleanliness, or reproducibility. This small public-CLI
-proposal supports item 30 and needs its own quantified product-footprint decision.
+slice supports item 30; it does not close the broader release outcome.
 
 ### 44. Provide a concise contributor and problem-reporting route
 
@@ -845,9 +901,10 @@ a CodeQL run. A configured requirement is not proof of every current execution;
 absence of a checked-in CodeQL workflow does not make CodeQL missing. The audit
 does not justify another generic scanner stack or validation framework.
 
-The following work was already in open PRs when the document was prepared.
-Recheck these PRs and their exact changes before implementation; this table is
-an overlap reference, not a completion ledger.
+The following changes are implemented and merged into master through PR #139.
+Their original PR links identify the source slices, not remaining work. This
+reconciliation prevents reselection of completed implementation; the backlog
+still owns any broader acceptance or unresolved follow-up.
 
 | Work already covered | Reference |
 | --- | --- |
@@ -861,9 +918,38 @@ an overlap reference, not a completion ledger.
 | Long-test duration estimates | [PR #124](https://github.com/lab-cats/EMRYS/pull/124) |
 | Continuing stacked work while CI runs | [PR #125](https://github.com/lab-cats/EMRYS/pull/125) |
 | Unused reporting-table presentation metadata | [PR #126](https://github.com/lab-cats/EMRYS/pull/126) |
+| Storage measurement-row assembly and portable filesystem-call test observation | [PR #128](https://github.com/lab-cats/EMRYS/pull/128), [PR #134](https://github.com/lab-cats/EMRYS/pull/134) |
 | Unconsumed summary context, predecessor validation, and scientific input snapshots | [PR #129](https://github.com/lab-cats/EMRYS/pull/129), [PR #132](https://github.com/lab-cats/EMRYS/pull/132), [PR #133](https://github.com/lab-cats/EMRYS/pull/133) |
+| Polish, optimization, quickstart, and continued-compression findings | [PR #131](https://github.com/lab-cats/EMRYS/pull/131), [PR #138](https://github.com/lab-cats/EMRYS/pull/138); original documentation inputs are linked in Evidence and selection |
 | Single construction of the Doctor readiness result | [PR #136](https://github.com/lab-cats/EMRYS/pull/136) |
-| Step 05 BAM I/O and Step 08 VCF performance | [PR #44](https://github.com/lab-cats/EMRYS/pull/44), [PR #45](https://github.com/lab-cats/EMRYS/pull/45) |
+| Direct accumulation of admitted GTF exon rows | [PR #137](https://github.com/lab-cats/EMRYS/pull/137) |
+
+The following changes are also implemented, included in the validated PR #140
+head, and awaiting that integration into master:
+
+| Work already covered | Reference |
+| --- | --- |
+| Automatic ordinary CI on stacked PRs | [PR #140](https://github.com/lab-cats/EMRYS/pull/140), item 22 |
+| Per-script Bash syntax checking | [PR #141](https://github.com/lab-cats/EMRYS/pull/141), item 15 |
+| Selected Ruff correctness rules | [PR #142](https://github.com/lab-cats/EMRYS/pull/142), item 17 |
+| Shared local/CI sharder self-tests | [PR #143](https://github.com/lab-cats/EMRYS/pull/143), item 21 |
+| Preserved source-identity policy and one shared declaration of fixed HTML outputs | [PR #144](https://github.com/lab-cats/EMRYS/pull/144), [PR #145](https://github.com/lab-cats/EMRYS/pull/145) |
+| Canonical BAM create-exclusive publication, with legacy replacement retired | [PR #146](https://github.com/lab-cats/EMRYS/pull/146) |
+| Direct create-only reporting publication; six callback carriers and the private facade retired; redundant tests reconciled | [PR #147](https://github.com/lab-cats/EMRYS/pull/147) |
+
+These implementations do not close unrelated recovery defects in items 1–4,
+the Doctor storage-repair issue in item 9, reporting-memory policy in item 13,
+or browser/scientific review. Canonical BAM retains its documented conservative
+cleanup limits and historical recovery record. Reporting retains historical
+readmission and provenance checks; create-only publication is not permission to
+remove existing outputs or recovery evidence.
+
+The Step 05 BAM I/O and Step 08 VCF experiments in
+[PR #44](https://github.com/lab-cats/EMRYS/pull/44) and
+[PR #45](https://github.com/lab-cats/EMRYS/pull/45) were outside both integrations.
+Their performance evidence and disposition belong to the optimization work;
+neither an old open-PR label nor an unmerged experiment establishes current
+adoption or permission to repeat the work.
 
 ## Campaign disposition
 

@@ -37,7 +37,7 @@ USAGE
 
 # shellcheck source=../../libraries/argument_parsing.sh
 script_dir="${BASH_SOURCE[0]%/*}"
-if [[ "$script_dir" == "$BASH_SOURCE[0]" ]]; then
+if [[ "$script_dir" == "${BASH_SOURCE[0]}" ]]; then
     script_dir="."
 fi
 source "$script_dir/../../libraries/argument_parsing.sh"
@@ -69,6 +69,7 @@ done
 
 require_arguments
 
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 [[ -f "$bam" ]] || die "BAM does not exist or is not a file: $bam"
 
 if [[ -f "$bam.bai" ]]; then
@@ -83,11 +84,13 @@ samtools_bin="$(resolve_executable_value "samtools" "$requested_samtools_bin" "s
 bam_sha256="not-bound"
 bam_index_sha256="not-bound"
 if [[ "$no_clobber" == true ]]; then
+    # shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
     validate_safe_id "--sample-id" "$sample_id"
     bam_sha256="$(sha256_file "$bam")"
     bam_index_sha256="$(sha256_file "$bam_index")"
 fi
 
+# shellcheck disable=SC2154 # declare_required_arguments initializes the declared owner inputs.
 QUICKCHECK_OUT="$output_dir/${sample_id}.quickcheck.txt"
 FLAGSTAT_OUT="$output_dir/${sample_id}.flagstat.txt"
 run_token="${EMRYS_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"

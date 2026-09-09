@@ -53,7 +53,9 @@ SCHEMA_PATHS["resource-config"] = (
 SCHEMA_PATHS["execution-profile"] = (
     SCHEMA_ROOT.parent / "v3" / "execution_profile.schema.json"
 )
-SCHEMA_PATHS["attempt-receipt-v2"] = SCHEMA_ROOT.parent / "v2" / "attempt_receipt.schema.json"
+SCHEMA_PATHS["attempt-receipt-v2"] = (
+    SCHEMA_ROOT.parent / "v2" / "attempt_receipt.schema.json"
+)
 SCHEMA_IDS = {
     name: f"urn:emrys:schema:orchestration:{name}:v1" for name in SCHEMA_PATHS
 }

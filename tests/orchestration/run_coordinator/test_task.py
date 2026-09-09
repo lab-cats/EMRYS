@@ -184,9 +184,7 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
     config_bytes = config_path.read_bytes()
     storage_receipt = tmp_path / "storage.qualified.json"
     storage_receipt.write_bytes(b"bounded task-fixture storage qualification\n")
-    normalizer, required_tools = workflow_fixture._attempt_runtime_identities(
-        tmp_path
-    )
+    normalizer, required_tools = workflow_fixture._attempt_runtime_identities(tmp_path)
     attempt = {
         "schema_version": "emrys.workflow-attempt.v1",
         "run_id": execution["run_id"],
@@ -1193,7 +1191,13 @@ def test_internal_module_cli_is_isolated_and_not_a_public_lifecycle_command(
     tmp_path: Path,
 ) -> None:
     help_result = subprocess.run(
-        [sys.executable, "-I", "-m", "emrys.orchestration.run_coordinator.task", "--help"],
+        [
+            sys.executable,
+            "-I",
+            "-m",
+            "emrys.orchestration.run_coordinator.task",
+            "--help",
+        ],
         check=False,
         capture_output=True,
         text=True,

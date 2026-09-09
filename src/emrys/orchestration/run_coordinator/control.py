@@ -83,9 +83,7 @@ from emrys.orchestration.run_coordinator import slurm_submission
 
 RUN_DESCRIPTION = "Plan an immutable Run; confirm or use --execute. Installs nothing."
 RESUME_DESCRIPTION = "Plan a safe resume, then confirm or use --execute for automation."
-INSPECT_DESCRIPTION = (
-    "Derive one Run state from immutable EMRYS records without reading or repairing Snakemake metadata."
-)
+INSPECT_DESCRIPTION = "Derive one Run state from immutable EMRYS records without reading or repairing Snakemake metadata."
 REPORT_DESCRIPTION = (
     "Plan, generate, or reuse the fixed reports for one completed immutable Run. "
     "Dry-run is the default and reporting never creates a scientific Attempt."
@@ -167,7 +165,9 @@ def _select_project_run(
     try:
         selected = TerminalMenu(choices, title="Select a Run:").show()
     except (EOFError, KeyboardInterrupt) as exc:
-        raise _RunSelectionCancelled("Run selection canceled; nothing was changed.") from exc
+        raise _RunSelectionCancelled(
+            "Run selection canceled; nothing was changed."
+        ) from exc
     if selected is None:
         raise _RunSelectionCancelled("Run selection canceled; nothing was changed.")
     return run_roots[selected]
@@ -176,7 +176,9 @@ def _select_project_run(
 def _resolve_run_argument(
     arguments: argparse.Namespace,
 ) -> tuple[Path, Path]:
-    project_path = onboarding.project_definition_path(getattr(arguments, "project", None))
+    project_path = onboarding.project_definition_path(
+        getattr(arguments, "project", None)
+    )
     run_root = _select_project_run(
         project_path,
         getattr(arguments, "run", None),
@@ -320,9 +322,7 @@ def _resume_predecessor_policy(
     if not isinstance(prior, dict):
         raise ControlError("Prior workflow config has no resource policy")
     try:
-        has_symbolic_policy = (
-            "symbolic" in prior or "symbolic_sha256" in prior
-        )
+        has_symbolic_policy = "symbolic" in prior or "symbolic_sha256" in prior
         predecessor: ResourcePolicy | Mapping[str, Any] = (
             admit_resource_policy_record(prior, require_symbolic=True).policy
             if observed.authority is not None or has_symbolic_policy
@@ -366,7 +366,9 @@ def _retained_dispatches(
                 expected_sha256=str(reference["sha256"]),
             )
         except task_boundary.TaskBoundaryError as exc:
-            raise ControlError(f"Reusable dispatch is unavailable: {path}: {exc}") from exc
+            raise ControlError(
+                f"Reusable dispatch is unavailable: {path}: {exc}"
+            ) from exc
         retained[(inspected.expected.machine_key, inspected.expected.scope_id)] = dict(
             reference
         )
@@ -385,12 +387,16 @@ def _retained_dispatches(
         )
         projected = declaration is not None
         if selected_projection is not None and projected != selected_projection:
-            raise ControlError("Reusable Step 07 dispatches disagree on sample projection")
+            raise ControlError(
+                "Reusable Step 07 dispatches disagree on sample projection"
+            )
         selected_projection = projected
         if not projected:
             continue
         if declaration.expected_binding is None:
-            raise ControlError("Reusable Step 07 sample projection is not content-bound")
+            raise ControlError(
+                "Reusable Step 07 sample projection is not content-bound"
+            )
         try:
             data = read_bytes(manifest_path, "reusable Step 07 sample projection")
         except ValidationError as exc:
@@ -399,9 +405,13 @@ def _retained_dispatches(
             ) from exc
         binding = (len(data), hashlib.sha256(data).hexdigest())
         if binding != declaration.expected_binding:
-            raise ControlError("Reusable Step 07 sample projection differs from its binding")
+            raise ControlError(
+                "Reusable Step 07 sample projection differs from its binding"
+            )
         if selected_manifest is not None and data != selected_manifest:
-            raise ControlError("Reusable Step 07 dispatches disagree on sample projection")
+            raise ControlError(
+                "Reusable Step 07 dispatches disagree on sample projection"
+            )
         selected_manifest = data
     return retained, selected_manifest
 
@@ -411,9 +421,15 @@ def _retained_runtime_profile_path(
 ) -> Path:
     """Re-admit the predecessor's one exact retained runtime profile binding."""
 
-    retained = tuple(identity for identity in predecessor["required_tools"] if identity["name"] == "runtime_profile")
+    retained = tuple(
+        identity
+        for identity in predecessor["required_tools"]
+        if identity["name"] == "runtime_profile"
+    )
     if len(retained) != 1:
-        raise ControlError("Predecessor attempt does not bind one retained runtime profile")
+        raise ControlError(
+            "Predecessor attempt does not bind one retained runtime profile"
+        )
     identity = retained[0]
     path = Path(str(identity["path"]))
     resolved = Path(str(identity["resolved_path"]))
@@ -421,7 +437,9 @@ def _retained_runtime_profile_path(
         data = read_bytes(path, "retained runtime profile")
         observed = path.resolve(strict=True)
     except (OSError, ValidationError) as exc:
-        raise ControlError(f"Retained runtime profile is unavailable: {path}: {exc}") from exc
+        raise ControlError(
+            f"Retained runtime profile is unavailable: {path}: {exc}"
+        ) from exc
     digest = hashlib.sha256(data).hexdigest()
     if (
         not path.is_absolute()
@@ -470,7 +488,9 @@ def _predecessor_source_schema(
         ValidationError,
         orchestration_contracts.ContractValidationError,
     ) as exc:
-        raise ControlError(f"Could not admit predecessor Project snapshot: {exc}") from exc
+        raise ControlError(
+            f"Could not admit predecessor Project snapshot: {exc}"
+        ) from exc
     if schema not in ("emrys.project.v1", "emrys.request.v3"):
         raise ControlError(f"Unsupported predecessor Project schema: {schema!r}")
     return schema
@@ -492,7 +512,9 @@ def _plan_resume(
     legacy_source = predecessor_schema == "emrys.request.v3"
     project_path = Path(str(previous["authored_paths"]["request"]))
     workspace = Path(str(previous["workspace"]))
-    retained_runtime_profile = _retained_runtime_profile_path(previous) if observed.authority is None else None
+    retained_runtime_profile = (
+        _retained_runtime_profile_path(previous) if observed.authority is None else None
+    )
     runtime_profile = _resume_runtime_profile_path(
         project_path,
         previous,
@@ -514,9 +536,7 @@ def _plan_resume(
             require_reporter=report_enabled
             and (
                 observed.authority is None
-                or execution_plan_boundary(
-                    observed.authority.execution_plan
-                )
+                or execution_plan_boundary(observed.authority.execution_plan)
                 == "analysis"
             ),
         )
@@ -557,7 +577,10 @@ def _plan_resume(
                     None if processing_source is None else processing_source.binding
                 ),
             )
-            if candidate.run_binding.canonical_bytes != observed.authority.run_binding.canonical_bytes:
+            if (
+                candidate.run_binding.canonical_bytes
+                != observed.authority.run_binding.canonical_bytes
+            ):
                 raise ControlError("Current inputs resolve to a different Run")
             run = candidate
         else:
@@ -607,7 +630,10 @@ def _verified_report_location_lines(
     labels = ("Scientific report", "Evidence report")
     return (
         "Results:",
-        *(f"  {label}: {path}" for label, (_, path) in zip(labels, locations, strict=True)),
+        *(
+            f"  {label}: {path}"
+            for label, (_, path) in zip(labels, locations, strict=True)
+        ),
     )
 
 
@@ -645,11 +671,16 @@ def _next_supported_action(observed: inspection.RunInspection) -> str:
         return "Wait for the active Attempt to finish, then inspect the Run again."
     if observed.recovery_available:
         return "Use emrys resume for this Run; review and confirm the plan."
-    if observed.latest_receipt is not None and observed.latest_receipt.get("status") != "succeeded":
+    if (
+        observed.latest_receipt is not None
+        and observed.latest_receipt.get("status") != "succeeded"
+    ):
         return "Preserve this Run; review the latest Attempt receipt. Do not generate reports."
     if observed.results_status == "complete":
         if observed.reporting_status == "not applicable":
-            return "Inspect this Run's verified scientific artifacts with --detail debug."
+            return (
+                "Inspect this Run's verified scientific artifacts with --detail debug."
+            )
         if observed.reporting_status == "complete":
             return "Review the verified Results and report paths."
         return f"Generate reports with {_run_followup('report', observed.run_root, observed.run_id, '--execute')}."
@@ -676,10 +707,15 @@ def _resolve_execution_profile(
     if delegated:
         if any(value is None for value in values.values()):
             raise ControlError("Private Slurm delegate context is incomplete")
-        if values[slurm_submission.DELEGATE_MARKER_ENV] != slurm_submission.DELEGATE_MARKER:
+        if (
+            values[slurm_submission.DELEGATE_MARKER_ENV]
+            != slurm_submission.DELEGATE_MARKER
+        ):
             raise ControlError("Private Slurm delegate marker is invalid")
         if values[slurm_submission.SUBMIT_UID_ENV] != str(os.getuid()):
-            raise ControlError("Private Slurm delegate UID differs from the current process")
+            raise ControlError(
+                "Private Slurm delegate UID differs from the current process"
+            )
     expected_sha256 = values[slurm_submission.PROFILE_SHA256_ENV] if delegated else None
     profile = load_execution_profile(
         config_path=project_execution_profile_path(
@@ -744,7 +780,9 @@ def _resolve_controls(arguments: argparse.Namespace, workspace: Path) -> LogCont
 def _admit_workspace_location(workspace: Path) -> None:
     source_root = _absolute(Path(__file__).resolve().parents[4])
     try:
-        blockers, remediations = doctor.workspace_location_blockers(_absolute(workspace), source_root)
+        blockers, remediations = doctor.workspace_location_blockers(
+            _absolute(workspace), source_root
+        )
     except doctor.DoctorInputError as exc:
         raise ControlError(str(exc)) from exc
     if blockers:
@@ -812,7 +850,9 @@ def _prepare_scheduler_log_dir(workspace: Path) -> Path:
     root = _absolute(workspace)
     log_dir = root / "logs"
     if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
-        raise ControlError("Scheduler log directory creation requires symbolic-link protection")
+        raise ControlError(
+            "Scheduler log directory creation requires symbolic-link protection"
+        )
     flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
     flags |= os.O_DIRECTORY
     descriptor: int | None = None
@@ -827,7 +867,9 @@ def _prepare_scheduler_log_dir(workspace: Path) -> Path:
             os.close(descriptor)
             descriptor = child
     except OSError as exc:
-        raise ControlError(f"Could not securely create scheduler log directory: {log_dir}") from exc
+        raise ControlError(
+            f"Could not securely create scheduler log directory: {log_dir}"
+        ) from exc
     finally:
         if descriptor is not None:
             os.close(descriptor)
@@ -854,7 +896,10 @@ def _owned_failure_paths(
         owned["lock"] = lock_path
     recovery_paths = (
         *((released_lock_path,) if released_lock_path is not None else ()),
-        plan.run_root / "attempts" / plan.workflow_attempt_id / "released-run-lock.json",
+        plan.run_root
+        / "attempts"
+        / plan.workflow_attempt_id
+        / "released-run-lock.json",
         plan.run_root / "locks" / f"released-{plan.workflow_attempt_id}-run-lock.json",
     )
     for path in recovery_paths:
@@ -967,7 +1012,9 @@ def _execute_plan(
                 scope=f"run:{scope_id}",
                 execution_attempt_id=execution_attempt_id,
                 log_path=None,
-                next_action=("Correct the application-log path or permissions, then retry."),
+                next_action=(
+                    "Correct the application-log path or permissions, then retry."
+                ),
             ),
             end="",
             file=sys.stderr,
@@ -1027,7 +1074,11 @@ def _execute_plan(
     try:
         plan = plan_source() if callable(plan_source) else plan_source
     except KeyboardInterrupt:
-        log_best_effort(lambda: attempt.interrupt_best_effort(message="Analysis preflight interrupted."))
+        log_best_effort(
+            lambda: attempt.interrupt_best_effort(
+                message="Analysis preflight interrupted."
+            )
+        )
         print_failure(
             phase="preflight",
             status="interrupted",
@@ -1068,10 +1119,16 @@ def _execute_plan(
     def observe_application_event(event_name: str) -> None:
         nonlocal receipt_ready
         if event_name == "analysis_started":
-            log_best_effort(lambda: logger.info("Running analysis.", extra=event("analysis_started")))
+            log_best_effort(
+                lambda: logger.info(
+                    "Running analysis.", extra=event("analysis_started")
+                )
+            )
         elif event_name == "publication_ready":
             receipt_ready = log_best_effort(
-                lambda: attempt.publication_ready(message="Analysis finished; finalizing evidence.")
+                lambda: attempt.publication_ready(
+                    message="Analysis finished; finalizing evidence."
+                )
             )
 
     try:
@@ -1085,7 +1142,9 @@ def _execute_plan(
             plan.lifecycle_request,
             lambda: publish_attempt(plan, ops=ops),
             ops=ops,
-            initial_runtime_inspection=plan.readiness.inspection if build_at_execution else None,
+            initial_runtime_inspection=plan.readiness.inspection
+            if build_at_execution
+            else None,
         )
     except (
         MaterializationError,
@@ -1093,7 +1152,11 @@ def _execute_plan(
         OSError,
     ) as exc:
         if receipt_ready:
-            log_best_effort(lambda: attempt.receipt_failed(message="Attempt receipt publication failed."))
+            log_best_effort(
+                lambda: attempt.receipt_failed(
+                    message="Attempt receipt publication failed."
+                )
+            )
             log_best_effort(
                 lambda: attempt.terminal(
                     event_name="execution_incomplete",
@@ -1101,7 +1164,11 @@ def _execute_plan(
                 )
             )
         else:
-            log_best_effort(lambda: attempt.fail(phase="execute", message="Analysis execution failed."))
+            log_best_effort(
+                lambda: attempt.fail(
+                    phase="execute", message="Analysis execution failed."
+                )
+            )
         print(f"emrys: error: {exc}", file=sys.stderr)
         print_failure(
             phase="execute",
@@ -1162,7 +1229,9 @@ def _execute_plan(
             print("Reporting: not applicable (partial scientific Run)", file=sys.stderr)
             return 0
         if not report_enabled:
-            observe_reporting("reporting_skipped", "Reporting was disabled for this execution.")
+            observe_reporting(
+                "reporting_skipped", "Reporting was disabled for this execution."
+            )
             close_log_best_effort()
             print("Reporting: skipped (--no-report)", file=sys.stderr)
             return 0
@@ -1196,7 +1265,9 @@ def _execute_plan(
             {"reporting_status": field(reported.status)},
         )
         close_log_best_effort()
-        result_lines = _verified_report_location_lines(reported.verified_report_locations)
+        result_lines = _verified_report_location_lines(
+            reported.verified_report_locations
+        )
         for line in result_lines:
             print(line, file=sys.stderr)
         return 0
@@ -1222,7 +1293,9 @@ def _reporting_applicable(plan: AttemptPlan) -> bool:
     )
 
 
-def _print_plan(plan: AttemptPlan, *, level: LogLevel, report_enabled: bool = True) -> None:
+def _print_plan(
+    plan: AttemptPlan, *, level: LogLevel, report_enabled: bool = True
+) -> None:
     new_dispatches = plan.new_dispatch_files
     reused = plan.dispatch_count - len(new_dispatches)
     resources = plan.resources
@@ -1292,7 +1365,9 @@ def _print_plan(plan: AttemptPlan, *, level: LogLevel, report_enabled: bool = Tr
             file=sys.stderr,
         )
         for item in new_dispatches:
-            record = orchestration_contracts.load_json_object_bytes(item.data, item.path)
+            record = orchestration_contracts.load_json_object_bytes(
+                item.data, item.path
+            )
             print(
                 f"TASK {record['machine_key']}/{record['scope']['scope_id']} producer: "
                 + shlex.join(record["producer_argv"]),
@@ -1366,8 +1441,12 @@ def _add_execution_arguments(parser: argparse.ArgumentParser) -> None:
     )
     add_resource_override_arguments(parser)
     add_log_arguments(parser)
-    parser.add_argument("--no-report", action="store_true", help="Skip reporting after Results.")
-    parser.add_argument("--execute", action="store_true", help="Execute noninteractively.")
+    parser.add_argument(
+        "--no-report", action="store_true", help="Skip reporting after Results."
+    )
+    parser.add_argument(
+        "--execute", action="store_true", help="Execute noninteractively."
+    )
 
 
 def _add_run_selector(parser: argparse.ArgumentParser) -> None:
@@ -1443,7 +1522,9 @@ def _milestone_progress(
     known_steps = {step for _label, steps in _MILESTONE_STEPS for step in steps}
     unknown = sorted({task.expected.step_id for task in tasks} - known_steps)
     if unknown:
-        raise ControlError("Inspected task Steps have no public milestone: " + ", ".join(unknown))
+        raise ControlError(
+            "Inspected task Steps have no public milestone: " + ", ".join(unknown)
+        )
     result = []
     for label, steps in _MILESTONE_STEPS:
         members = tuple(task for task in tasks if task.expected.step_id in steps)
@@ -1473,11 +1554,15 @@ def _attempt_elapsed_line(
         return "Attempt elapsed: unavailable — no Attempt"
     label = "Current" if observed.attempt_outcome == "running" else "Latest"
     try:
-        started = datetime.fromisoformat(str(attempt["created_at"]).replace("Z", "+00:00"))
+        started = datetime.fromisoformat(
+            str(attempt["created_at"]).replace("Z", "+00:00")
+        )
         if observed.attempt_outcome == "running":
             finished = datetime.now(UTC)
         elif observed.latest_receipt is not None:
-            finished = datetime.fromisoformat(str(observed.latest_receipt["finished_at"]).replace("Z", "+00:00"))
+            finished = datetime.fromisoformat(
+                str(observed.latest_receipt["finished_at"]).replace("Z", "+00:00")
+            )
         else:
             return f"{label} Attempt elapsed: unavailable — no terminal receipt"
         if finished < started:
@@ -1699,7 +1784,9 @@ def inspect_from_args(
             ),
         )
         elapsed = _attempt_elapsed_line(observed)
-        result_lines = _verified_report_location_lines(observed.verified_report_locations)
+        result_lines = _verified_report_location_lines(
+            observed.verified_report_locations
+        )
     except (
         OSError,
         inspection.InspectionError,
@@ -1712,7 +1799,9 @@ def inspect_from_args(
     print(f"Attempt outcome: {observed.attempt_outcome}")
     print(elapsed)
     if observed.processing_source_run_id is not None:
-        source_state = "admitted" if observed.processing_source is not None else "blocked"
+        source_state = (
+            "admitted" if observed.processing_source is not None else "blocked"
+        )
         print(
             "Processing source: "
             f"{inspection.human_run_name(observed.processing_source_run_id)} "
@@ -1743,8 +1832,12 @@ def inspect_from_args(
         print(f"Attempt ID: {attempt_id}")
         if latest is not None:
             placement = latest.get("placement")
-            placement_kind = "legacy/unrecorded" if placement is None else placement["kind"]
-            scheduler_job_id = "none" if placement is None else placement["scheduler_job_id"] or "none"
+            placement_kind = (
+                "legacy/unrecorded" if placement is None else placement["kind"]
+            )
+            scheduler_job_id = (
+                "none" if placement is None else placement["scheduler_job_id"] or "none"
+            )
             _print_safe(
                 f"Execution: {latest['executor']}/{latest['execution_mode']} "
                 f"placement={placement_kind} scheduler_job_id={scheduler_job_id}"
@@ -1763,7 +1856,9 @@ def inspect_from_args(
     if detail == "debug":
         authority = observed.authority
         if authority is None:
-            _print_safe(f"Historical authority record: {observed.run_root / 'contract/normalized.json'}")
+            _print_safe(
+                f"Historical authority record: {observed.run_root / 'contract/normalized.json'}"
+            )
         else:
             print("Run authority records:")
             for label, name, record in (
@@ -1785,7 +1880,9 @@ def inspect_from_args(
         if latest is not None:
             attempt_id = str(latest["workflow_attempt_id"])
             attempt_root = observed.run_root / "attempts" / attempt_id
-            receipt_path = "none" if receipt is None else attempt_root / "attempt-receipt.json"
+            receipt_path = (
+                "none" if receipt is None else attempt_root / "attempt-receipt.json"
+            )
             _print_safe(f"Attempt receipt: {receipt_path}")
             _print_safe(f"Engine command: {shlex.join(latest['snakemake_argv'])}")
             if receipt is not None:
@@ -1800,7 +1897,9 @@ def inspect_from_args(
             identity = f"{task.expected.machine_key}/{task.expected.scope_id}"
             task_detail = f"  TASK {identity}: {task.state}"
             if task.record_reference is not None:
-                task_detail += f"; verified={observed.run_root / task.record_reference['path']}"
+                task_detail += (
+                    f"; verified={observed.run_root / task.record_reference['path']}"
+                )
             if task.record is not None:
                 attempt_reference = task.record["task_attempt_record"]
                 attempt_path = observed.run_root / attempt_reference["path"]

@@ -116,6 +116,7 @@ The source-dependency gate rejects additions and stale entries.
 | `CLI-SEAM-026` | `emrys.stages.split_n_cigar.validator` | Owner validation command |
 | `CLI-SEAM-027` | `emrys.stages.star_alignment.validator` | Owner validation command |
 | `CLI-SEAM-028` | `emrys.stages.star_index.validator` | Owner validation command |
+| `CLI-SEAM-029` | `emrys` | Package-owned `__version__` for the informational version display |
 
 ### Analysis-module capability seam
 

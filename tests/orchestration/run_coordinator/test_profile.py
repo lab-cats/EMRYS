@@ -287,12 +287,8 @@ def test_profile_is_schema_valid_and_exactly_matches_stage_map(
     expected_keys = {key for key, *_rest in expected_tasks}
     assert observed_tasks == list(expected_tasks)
     assert [
-        (key, slug, alias)
-        for key, slug, alias in identities
-        if key in expected_keys
-    ] == [
-        (key, rule, step) for key, rule, step, _, _ in expected_tasks
-    ]
+        (key, slug, alias) for key, slug, alias in identities if key in expected_keys
+    ] == [(key, rule, step) for key, rule, step, _, _ in expected_tasks]
     assert processing_profile["semantic_owner_keys"] == [
         key for key, _, _ in identities if key in expected_keys
     ]

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Neutral executable-value resolution shared by named Bash consumers.
 
 resolve_overridable_executable() {

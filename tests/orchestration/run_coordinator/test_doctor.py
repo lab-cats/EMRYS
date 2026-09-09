@@ -248,9 +248,7 @@ def test_selected_package_tree_dependency_is_composed_and_content_bound(
             analyses.AnalysisDependencyV1(
                 "collaborator_r", "r_namespace", "Collaborator", ".*"
             ),
-            analyses.AnalysisDependencyV1(
-                "collaborator_file", "file", str(resource)
-            ),
+            analyses.AnalysisDependencyV1("collaborator_file", "file", str(resource)),
             analyses.AnalysisDependencyV1(
                 "collaborator_assets",
                 "package_tree",
@@ -260,14 +258,12 @@ def test_selected_package_tree_dependency_is_composed_and_content_bound(
         ),
     )
     rscript = tmp_path / "Rscript"
-    additions, package_tree_ids, explicit_file_ids = (
-        doctor._module_dependency_checks(
-            descriptor,
-            (
-                _check("python", "tool_version", sys.executable).check,
-                _check("rscript", "tool_version", str(rscript)).check,
-            ),
-        )
+    additions, package_tree_ids, explicit_file_ids = doctor._module_dependency_checks(
+        descriptor,
+        (
+            _check("python", "tool_version", sys.executable).check,
+            _check("rscript", "tool_version", str(rscript)).check,
+        ),
     )
     by_name = {check.check_id: check for check in additions}
     inspection = _inspection(
@@ -375,6 +371,7 @@ def test_runtime_package_binding_rechecks_a_symlink_after_hashing(
                 ),
             )
         )
+
 
 def test_runtime_contract_refuses_a_truncated_fixed_roster(tmp_path: Path) -> None:
     source = tmp_path / "source"
@@ -556,14 +553,20 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
             target=(
                 sys.executable
                 if check.check_id in {"python", "snakemake", "sha256_python"}
-                else str(source) if check.check_id == "renv_project" else check.target
+                else str(source)
+                if check.check_id == "renv_project"
+                else check.target
             ),
         )
         for check in policy
     )
     profile.write_bytes(doctor.runtime_profile_bytes(checks))
     observations = (
-        replace(_check("bash", "tool_version", "/bin/bash"), status="fail", observed="unavailable"),
+        replace(
+            _check("bash", "tool_version", "/bin/bash"),
+            status="fail",
+            observed="unavailable",
+        ),
         _check("python", "tool_version", sys.executable),
         _check("renv_library", "path_visibility", str(tmp_path / "library")),
     )
@@ -576,15 +579,22 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
         "and re-admit the selected site environment without editing runtime.tsv."
     )
     monkeypatch.setattr(
-        doctor, "workspace_location_blockers",
-        lambda *_args: (["workspace diagnosis"], [runtime_remediation, runtime_remediation]),
+        doctor,
+        "workspace_location_blockers",
+        lambda *_args: (
+            ["workspace diagnosis"],
+            [runtime_remediation, runtime_remediation],
+        ),
     )
     if not storage_ready:
+
         def unavailable_storage(*_args: object) -> None:
             raise doctor.storage_qualification.StorageQualificationError("unavailable")
 
         monkeypatch.setattr(
-            doctor.storage_qualification, "admit_direct_requirement", unavailable_storage
+            doctor.storage_qualification,
+            "admit_direct_requirement",
+            unavailable_storage,
         )
 
     def unavailable_execution(**_kwargs: object) -> None:
@@ -596,23 +606,40 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
     result = doctor.diagnose_project(project.source_path, require_reporter=False)
 
     assert result.inspection is inspection
-    assert (result.ready, result.storage_ready, result.runtime_ready, result.execution_ready) == (
-        False, storage_ready, False, False,
+    assert (
+        result.ready,
+        result.storage_ready,
+        result.runtime_ready,
+        result.execution_ready,
+    ) == (
+        False,
+        storage_ready,
+        False,
+        False,
     )
     assert result.blockers == (
         "workspace diagnosis",
-        *(("single-host storage is not qualified: unavailable",) if not storage_ready else ()),
+        *(
+            ("single-host storage is not qualified: unavailable",)
+            if not storage_ready
+            else ()
+        ),
         "bash: fail (unavailable)",
         "default execution profile is not admitted: unavailable",
     )
     assert result.remediations == (
         runtime_remediation,
-        *(("Run `emrys doctor --repair` in the intended direct execution context.",) if not storage_ready else ()),
+        *(
+            ("Run `emrys doctor --repair` in the intended direct execution context.",)
+            if not storage_ready
+            else ()
+        ),
         "Restore a valid Project-owned runtime/profiles/default.yaml; "
         "Doctor preserves operator execution policy.",
     )
     assert tuple(binding.check_id for binding in result.bindings) == (
-        "python", *(("storage_qualification",) if storage_ready else ()),
+        "python",
+        *(("storage_qualification",) if storage_ready else ()),
     )
     assert result.bindings[0].path == Path(sys.executable)
     if storage_ready:
@@ -742,12 +769,8 @@ def test_managed_repair_accepts_missing_library_and_binds_base_profile(
     tool.write_bytes(b"tool\n")
     python_check = _check("python", "tool_version", sys.executable)
     missing_library = project.source_path.parent / "runtime/managed/renv/library"
-    renv_check = _check(
-        "renv_library", "path_visibility", str(missing_library)
-    )
-    dependency_check = _check(
-        "collaborator_tool", "tool_version", str(tool)
-    )
+    renv_check = _check("renv_library", "path_visibility", str(missing_library))
+    dependency_check = _check("collaborator_tool", "tool_version", str(tool))
     result = _result(
         project,
         ready=False,

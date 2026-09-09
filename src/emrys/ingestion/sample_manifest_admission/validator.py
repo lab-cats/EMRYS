@@ -87,10 +87,14 @@ def validate_manifest(
             errors.append(f"Duplicate column name(s): {', '.join(duplicate_columns)}")
         if "" in fieldnames:
             errors.append("Header contains an empty column name")
-        missing_columns = [column for column in REQUIRED_COLUMNS if column not in fieldnames]
+        missing_columns = [
+            column for column in REQUIRED_COLUMNS if column not in fieldnames
+        ]
         if missing_columns:
             errors.append(f"Missing required column(s): {', '.join(missing_columns)}")
-        unexpected_columns = sorted(column for column in fieldnames if column not in ALLOWED_COLUMNS)
+        unexpected_columns = sorted(
+            column for column in fieldnames if column not in ALLOWED_COLUMNS
+        )
         if unexpected_columns:
             errors.append(f"Unexpected column(s): {', '.join(unexpected_columns)}")
         if errors:
@@ -98,13 +102,17 @@ def validate_manifest(
         for row_number, row in enumerate(reader, start=2):
             raw_extra_values = row.get(None)
             if isinstance(raw_extra_values, list):
-                extra_values = [value.strip() for value in raw_extra_values if value.strip()]
+                extra_values = [
+                    value.strip() for value in raw_extra_values if value.strip()
+                ]
                 message = f"Row {row_number}: too many tab-separated fields"
                 if extra_values:
                     message = f"{message}: {', '.join(extra_values)}"
                 errors.append(message)
             values = {
-                column: value.strip() if isinstance(value := row.get(column), str) else ""
+                column: value.strip()
+                if isinstance(value := row.get(column), str)
+                else ""
                 for column in ALLOWED_COLUMNS
             }
             if not any(values.values()):
@@ -124,9 +132,12 @@ def validate_manifest(
                 fastq_path = values[column]
                 if not fastq_path:
                     errors.append(f"Row {row_number}: {column} must be non-empty")
-                elif check_files and not (
-                    resolved_path := resolve_from_base(base_dir, fastq_path)
-                ).exists():
+                elif (
+                    check_files
+                    and not (
+                        resolved_path := resolve_from_base(base_dir, fastq_path)
+                    ).exists()
+                ):
                     errors.append(
                         f"Row {row_number}: {column} file does not exist: {resolved_path}"
                     )
@@ -145,7 +156,9 @@ def validate_manifest(
         errors.append("Manifest must contain at least one sample row")
     if errors:
         raise ValidationError(format_errors(errors))
-    return ManifestSummary(sample_count, frozenset(conditions), frozenset(strandedness_values))
+    return ManifestSummary(
+        sample_count, frozenset(conditions), frozenset(strandedness_values)
+    )
 
 
 def format_errors(errors: list[str]) -> str:

@@ -360,9 +360,11 @@ def _provenance(
             ("Jinja2", metadata["jinja_version"]),
             ("Template SHA-256", metadata["template_sha256"]),
             ("CSS SHA-256", metadata["css_sha256"]),
-            *((
-                ("Analysis policy SHA-256", policy["sha256"]),
-            ) if isinstance(policy, Mapping) else ()),
+            *(
+                (("Analysis policy SHA-256", policy["sha256"]),)
+                if isinstance(policy, Mapping)
+                else ()
+            ),
             *renderer_details,
         ),
     )

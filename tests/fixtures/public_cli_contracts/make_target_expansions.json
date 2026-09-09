@@ -17,6 +17,8 @@
   ],
   "lint": [
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/emrys tests",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" format --check --no-cache scripts src/emrys tests",
+    "bash -o pipefail -c 'git ls-files -z -- \"*.sh\" | xargs -0 \"$1\"' -- \"$(dirname -- \"<REPO_ROOT>/.venv/bin/python\")/shellcheck\"",
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"vulture\" \\",
     "\t\t--min-confidence 95 \\",
     "\t\tscripts src/emrys"
@@ -345,6 +347,8 @@
   ],
   "validation-static": [
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/emrys tests",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" format --check --no-cache scripts src/emrys tests",
+    "bash -o pipefail -c 'git ls-files -z -- \"*.sh\" | xargs -0 \"$1\"' -- \"$(dirname -- \"<REPO_ROOT>/.venv/bin/python\")/shellcheck\"",
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"vulture\" \\",
     "\t\t--min-confidence 95 \\",
     "\t\tscripts src/emrys",

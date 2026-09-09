@@ -37,7 +37,9 @@ def measure(root: Root) -> tuple[object, ...]:
             directory_count = 1
             symlink_count = 0
             try:
-                for current, directories, files in os.walk(root.path, followlinks=False):
+                for current, directories, files in os.walk(
+                    root.path, followlinks=False
+                ):
                     kept_directories = []
                     for name in directories:
                         candidate = Path(current) / name

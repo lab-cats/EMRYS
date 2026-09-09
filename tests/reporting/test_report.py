@@ -474,7 +474,9 @@ def test_renderer_git_identity_uses_checkout_not_artifact_root(
         observed.append(kwargs["source_checkout"])
         return "a" * 40
 
-    monkeypatch.setattr(report_context, "matching_checkout_head_commit", matching_commit)
+    monkeypatch.setattr(
+        report_context, "matching_checkout_head_commit", matching_commit
+    )
     context = report_context.prepare_context(
         arguments(
             computational_summary,
@@ -492,7 +494,9 @@ def test_dry_run_is_side_effect_free(
     tmp_path: Path,
 ) -> None:
     output_root = tmp_path / "reports"
-    context = report_context.prepare_context(arguments(computational_summary, output_root))
+    context = report_context.prepare_context(
+        arguments(computational_summary, output_root)
+    )
     assert context.output_dir == output_root / context.summary["run_id"]
     assert not output_root.exists()
 
@@ -1122,7 +1126,9 @@ def test_report_displays_print_first_selected_candidate_evidence(
         )
     )
     assert [
-        snapshot.path for snapshot, _label, rehash in context.input_rechecks if not rehash
+        snapshot.path
+        for snapshot, _label, rehash in context.input_rechecks
+        if not rehash
     ] == [reference_fasta]
     publish(context)
     content = context.output_scientific_html.read_text(encoding="utf-8")
@@ -1635,7 +1641,7 @@ def test_short_lock_and_staged_file_writes_publish_complete_bytes(
     def short_write(descriptor: int, payload: bytes) -> int:
         nonlocal short_writes
         short_writes += 1
-        return real_write(descriptor, payload[:max(1, len(payload) // 2)])
+        return real_write(descriptor, payload[: max(1, len(payload) // 2)])
 
     with monkeypatch.context() as faults:
         faults.setattr(os, "write", short_write)
@@ -1644,7 +1650,9 @@ def test_short_lock_and_staged_file_writes_publish_complete_bytes(
     assert context.output_scientific_html.read_bytes() == context.scientific_html_bytes
     assert context.output_evidence_html.read_bytes() == context.evidence_html_bytes
     assert context.output_summary_tsv.read_bytes() == receipt.summary_tsv_bytes(context)
-    assert receipt_document(context.output_receipt)["run_id"] == context.summary["run_id"]
+    assert (
+        receipt_document(context.output_receipt)["run_id"] == context.summary["run_id"]
+    )
     assert not context.lock_path.exists()
 
 
@@ -1659,7 +1667,10 @@ def test_foreign_final_is_preserved_after_context_preparation(
     empty_context.output_scientific_html.write_text("foreign final\n", encoding="utf-8")
     with pytest.raises(ReportRenderError, match="appeared after preflight"):
         publish(empty_context)
-    assert empty_context.output_scientific_html.read_text(encoding="utf-8") == "foreign final\n"
+    assert (
+        empty_context.output_scientific_html.read_text(encoding="utf-8")
+        == "foreign final\n"
+    )
 
 
 @pytest.mark.parametrize("failure", ("before_link", "signal_after_link"))
@@ -1686,7 +1697,9 @@ def test_link_handoff_failure_removes_only_owned_outputs(
 
     with monkeypatch.context() as faults:
         faults.setattr(os, "link", fail_link)
-        with pytest.raises(ReportRenderError, match="link handoff failure|interrupted by signal"):
+        with pytest.raises(
+            ReportRenderError, match="link handoff failure|interrupted by signal"
+        ):
             publish(context)
     assert not any(path.exists() for path in output_paths(context))
     assert not context.lock_path.exists()
@@ -1735,6 +1748,7 @@ def test_post_commit_cleanup_failure_keeps_committed_outputs_and_evidence(
     context = report_context.prepare_context(
         arguments(computational_summary, tmp_path / "reports", execute=True)
     )
+
     def fail_cleanup(
         _path: Path, _token: str, _identity: tuple[int, int] | None
     ) -> None:
@@ -1795,7 +1809,9 @@ def test_signal_restoration_failure_is_controlled_recovery(
 
     with monkeypatch.context() as faults:
         faults.setattr(transaction, "_restore_signal_handlers", fail_restore)
-        with pytest.raises(ReportRenderError, match="signal-handler restoration failed"):
+        with pytest.raises(
+            ReportRenderError, match="signal-handler restoration failed"
+        ):
             publish(context)
     assert all(path.is_file() for path in output_paths(context))
     assert not context.lock_path.exists()
