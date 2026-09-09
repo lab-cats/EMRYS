@@ -123,9 +123,9 @@ def _producer_error(kind: str, phase: str, error: Exception) -> ReportingOperati
 
 def _prepare_transaction(kind: str, arguments: argparse.Namespace) -> Any:
     if kind == "html_report":
-        from emrys.reporting import report  # noqa: PLC0415
+        from emrys.reporting._run_report.context import prepare_context  # noqa: PLC0415
 
-        return report.prepare_report(arguments)
+        return prepare_context(arguments)
 
     source_checkout = admit_source_checkout(
         root=arguments.source_checkout,
@@ -164,10 +164,9 @@ def _publish_prepared(kind: str, context: Any) -> Path:
 
         publish_context(context)
         return context.paths.receipt
-    from emrys.reporting import report  # noqa: PLC0415
     from emrys.reporting._run_report.publication import publish_report  # noqa: PLC0415
 
-    publish_report(context, report.default_publication_ops())
+    publish_report(context)
     return context.output_receipt
 
 

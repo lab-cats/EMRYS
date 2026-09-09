@@ -76,8 +76,9 @@ side effects.
 ## Validation lanes
 
 `make all-checks` is the assembled local gate. It checks the selected locked
-environment without repairing it, runs static preflight first, then the
-independent Python coverage, installed-wheel, shell-owner, and guarded-real-R
+environment without repairing it, runs shared static preflight including the
+test sharder's self-tests first, then the independent Python coverage,
+installed-wheel, shell-owner, and guarded-real-R
 lanes. CI may run the same inventory in verified shards and supplies selected
 long real-synthetic lanes.
 

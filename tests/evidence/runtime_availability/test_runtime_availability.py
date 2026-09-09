@@ -163,6 +163,10 @@ def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path: Path) -> None:
     )
     assert first.returncode == 0, first.stderr
     report = output.read_bytes()
+    rows = read_rows(output)
+    assert len(rows) == 1
+    assert rows[0]["status"] == "pass"
+    assert rows[0]["profile_sha256"] == hashlib.sha256(profile.read_bytes()).hexdigest()
     repeated = subprocess.run(
         [*command, "--execute"],
         cwd=invocation,
@@ -187,27 +191,6 @@ def test_tracked_example_profile_is_valid_and_locally_honest() -> None:
     assert statuses["rscript_version"] == "blocked"
     assert statuses["variant_annotation"] == "blocked"
     assert statuses["results_visibility"] == "blocked"
-
-
-def test_execute_publishes_deterministic_result_and_replaces_valid_prior(
-    tmp_path: Path,
-) -> None:
-    profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
-    output = tmp_path / "preflight.tsv"
-    first = run_cli(profile, output, "--execute")
-    assert first.returncode == 0, first.stderr
-    original = output.read_bytes()
-    rows = read_rows(output)
-    assert len(rows) == 1
-    assert rows[0]["status"] == "pass"
-    assert rows[0]["profile_sha256"] == hashlib.sha256(profile.read_bytes()).hexdigest()
-
-    second = run_cli(profile, output, "--execute")
-    assert second.returncode == 0, second.stderr
-    assert output.read_bytes() == original
-    assert not list(tmp_path.glob(".*.lock"))
-    assert not list(tmp_path.glob(".*.tmp"))
-    assert not list(tmp_path.glob(".*.previous"))
 
 
 def test_context_mismatch_is_blocked_or_not_checked(tmp_path: Path) -> None:

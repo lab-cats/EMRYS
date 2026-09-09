@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SCRIPT="$REPO_ROOT/src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh"
 unset EMRYS_RUN_TOKEN
-export EMRYS_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
+export EMRYS_SHA256_PYTHON="${EMRYS_SHA256_PYTHON:-$REPO_ROOT/.venv/bin/python}"
 real_sha256_python="$EMRYS_SHA256_PYTHON"
 
 # Keep assertions small and shell-native so failures print the local fixture state.
@@ -80,7 +80,6 @@ fake_bin="$tmp_dir/bin"
 mkdir -p "$fake_bin"
 
 samtools_log="$tmp_dir/samtools_invocations.log"
-mv_log="$tmp_dir/mv_invocations.log"
 
 # Fake samtools stores just enough header/count metadata in text files for the
 # Step 02 wrapper to exercise command construction, validation, and rollback.
@@ -244,32 +243,53 @@ esac
 EOF_SAMTOOLS
 chmod +x "$fake_bin/samtools"
 
-cat >"$fake_bin/mv" <<EOF_MV
+# Faults surround real filesystem operations; the producer's publication and
+# ownership helpers remain unchanged.
+cat >"$fake_bin/ln" <<'EOF_LN'
 #!/usr/bin/env bash
 set -euo pipefail
 
-printf 'mv invoked\\n' >> "$mv_log"
-printf '%s\\n' "\$@" >> "$mv_log"
-
-src="\${1:-}"
-dest="\${2:-}"
-
-if [[ -n "\${FAKE_MV_ALWAYS_FAIL_SOURCE:-}" && "\$src" == "\$FAKE_MV_ALWAYS_FAIL_SOURCE" ]]; then
-    printf 'fake mv forced persistent failure for source: %s\n' "\$src" >&2
-    exit 66
-fi
-
-fail_marker="${tmp_dir}/fake_mv_failed.\${FAKE_MV_FAIL_DEST_MATCH:-none}"
-# Forced mv failures are one-shot so rollback moves can still restore files.
-if [[ -n "\${FAKE_MV_FAIL_DEST_MATCH:-}" && "\$dest" == *"\$FAKE_MV_FAIL_DEST_MATCH"* && ! -e "\$fail_marker" ]]; then
-    printf 'failed\\n' > "\$fail_marker"
-    printf 'fake mv forced failure for destination: %s\\n' "\$dest" >&2
+final_path="${!#}"
+if [[ "$final_path" == "${FAKE_LN_FAULT_PATH:-}" &&
+      "${FAKE_LN_FAULT:-}" == fail ]]; then
+    printf 'fake ln forced failure: %s\n' "$final_path" >&2
     exit 65
 fi
+/bin/ln "$@"
+if [[ "$final_path" == "${FAKE_LN_FAULT_PATH:-}" ]]; then
+    case "${FAKE_LN_FAULT:-}" in
+        missing) /bin/rm -f -- "$final_path" ;;
+        foreign)
+            printf 'foreign final\n' >"$final_path.foreign"
+            /bin/mv "$final_path.foreign" "$final_path"
+            ;;
+        same_bytes)
+            /bin/cp "$final_path" "$final_path.foreign"
+            /bin/mv "$final_path.foreign" "$final_path"
+            ;;
+        *) exit 64 ;;
+    esac
+    printf 'fake ln changed final ownership: %s\n' "$final_path" >&2
+fi
+EOF_LN
+chmod +x "$fake_bin/ln"
 
-/bin/mv "\$@"
-EOF_MV
-chmod +x "$fake_bin/mv"
+cat >"$fake_bin/rm" <<'EOF_RM'
+#!/usr/bin/env bash
+set -euo pipefail
+
+for argument in "$@"; do
+    if [[ "$argument" == "${FAKE_RM_FAIL_PATH:-}" ]]; then
+        if [[ -n "${FAKE_RM_REMOVE_FIRST_PATH:-}" ]]; then
+            /bin/rm -f -- "$FAKE_RM_REMOVE_FIRST_PATH"
+        fi
+        printf 'fake rm forced failure: %s\n' "$argument" >&2
+        exit 67
+    fi
+done
+exec /bin/rm "$@"
+EOF_RM
+chmod +x "$fake_bin/rm"
 
 cat >"$fake_bin/sha256-python" <<'EOF_SHA256_PYTHON'
 #!/usr/bin/env bash
@@ -365,6 +385,15 @@ assert_fails "$threads_output" bash "$SCRIPT" \
     --output-dir "$tmp_dir/results/bad_threads" \
     --threads 0
 assert_contains "$threads_output" "--threads must be a positive integer"
+
+printf 'Running default sample path-safety admission check...\n'
+unsafe_output="$tmp_dir/unsafe_sample.out"
+unsafe_output_dir="$tmp_dir/results/unsafe_sample"
+assert_fails "$unsafe_output" bash "$SCRIPT" \
+    --sample-id '../unsafe_sample' --input-alignment "$input_sam" \
+    --output-dir "$unsafe_output_dir" --threads 1
+assert_contains "$unsafe_output" "--sample-id must match"
+assert_not_exists "$unsafe_output_dir"
 
 printf 'Running dry-run no-output check...\n'
 dry_output="$tmp_dir/dry.out"
@@ -525,16 +554,6 @@ assert_contains "$samtools_log" \
     "$safe_output_dir/.sample_safe.step02.safe001.rg.tmp.bam"
 assert_not_contains "$samtools_log" "$safe_output_dir/sample_safe.sorted.bam"
 assert_not_exists "$safe_output_dir/.sample_safe.step02.lock"
-safe_repeat_output="$tmp_dir/safe_repeat.out"
-assert_fails "$safe_repeat_output" env FAKE_SAMPLE_ID=sample_safe SLURM_JOB_ID=safe002 bash "$SCRIPT" \
-    --sample-id sample_safe \
-    --input-alignment "$safe_input" \
-    --output-dir "$safe_output_dir" \
-    --threads 2 \
-    --no-clobber \
-    --execute
-assert_contains "$safe_repeat_output" "--no-clobber requires both canonical outputs to be absent"
-assert_file_equals "$safe_output_dir/sample_safe.sorted.bam.bai" "fake bam index"
 
 mutation_input="$tmp_dir/fixtures/mutation_input.sam"
 printf '@HD\tVN:1.6\tSO:unsorted\n' >"$mutation_input"
@@ -545,12 +564,168 @@ assert_fails "$mutation_output" env FAKE_MUTATE_INPUT=1 FAKE_SAMPLE_ID=sample_mu
     --input-alignment "$mutation_input" \
     --output-dir "$mutation_output_dir" \
     --threads 2 \
-    --no-clobber \
     --execute
 assert_contains "$mutation_output" "Input alignment changed during Step 02"
 assert_not_exists "$mutation_output_dir/sample_mutation.sorted.bam"
 assert_not_exists "$mutation_output_dir/sample_mutation.sorted.bam.bai"
 assert_not_exists "$mutation_output_dir/.sample_mutation.step02.lock"
+
+printf 'Running no-clobber publication handoff failure checks...\n'
+for failed_output in bam bai; do
+    for link_fault in fail missing foreign same_bytes; do
+        fault_sample="sample_${failed_output}_${link_fault}"
+        fault_dir="$tmp_dir/results/$fault_sample"
+        fault_output="$tmp_dir/$fault_sample.out"
+        fault_bam="$fault_dir/$fault_sample.sorted.bam"
+        fault_bai="$fault_bam.bai"
+        fault_staged_bam="$fault_dir/.$fault_sample.step02.handoff001.rg.tmp.bam"
+        fault_staged_bai="$fault_staged_bam.bai"
+        fault_final="$fault_bam"
+        fault_staged="$fault_staged_bam"
+        if [[ "$failed_output" == bai ]]; then
+            fault_final="$fault_bai"
+            fault_staged="$fault_staged_bai"
+        fi
+        assert_fails "$fault_output" env \
+            FAKE_LN_FAULT_PATH="$fault_final" FAKE_LN_FAULT="$link_fault" \
+            FAKE_SAMPLE_ID="$fault_sample" SLURM_JOB_ID=handoff001 bash "$SCRIPT" \
+            --sample-id "$fault_sample" --input-alignment "$safe_input" \
+            --output-dir "$fault_dir" --threads 2 --execute
+        if [[ "$link_fault" == fail ]]; then
+            assert_contains "$fault_output" "fake ln forced failure: $fault_final"
+            assert_contains "$fault_output" "final path appeared during publication"
+        else
+            assert_contains "$fault_output" "fake ln changed final ownership: $fault_final"
+            assert_contains "$fault_output" "create-exclusive publication did not preserve the staged inode"
+        fi
+        assert_contains "$fault_output" "Step 02 no-clobber rollback was incomplete"
+        assert_contains "$fault_staged_bam" "@RG"
+        assert_file_equals "$fault_staged_bai" "fake bam index"
+        assert_file_equals "$fault_dir/.$fault_sample.step02.lock/owner" "run_token=handoff001"
+        case "$link_fault" in
+            fail|missing) assert_not_exists "$fault_final" ;;
+            foreign) assert_file_equals "$fault_final" "foreign final" ;;
+            same_bytes)
+                cmp "$fault_final" "$fault_staged" || fail "foreign bytes changed"
+                [[ ! "$fault_final" -ef "$fault_staged" ]] || fail "foreign inode was not replaced"
+                ;;
+        esac
+        # A failed first link never publishes BAI; a failed second link rolls
+        # back the provably owned BAM. Both staging anchors remain for recovery.
+        if [[ "$failed_output" == bam ]]; then
+            assert_not_exists "$fault_bai"
+        else
+            assert_not_exists "$fault_bam"
+        fi
+    done
+done
+
+printf 'Running dangling final symlink refusal checks...\n'
+for dangling_output in bam bai; do
+    dangling_sample="sample_dangling_$dangling_output"
+    dangling_dir="$tmp_dir/results/$dangling_sample"
+    mkdir -p "$dangling_dir"
+    dangling_bam="$dangling_dir/$dangling_sample.sorted.bam"
+    dangling_bai="$dangling_bam.bai"
+    dangling_final="$dangling_bam"
+    dangling_other="$dangling_bai"
+    if [[ "$dangling_output" == bai ]]; then
+        dangling_final="$dangling_bai"
+        dangling_other="$dangling_bam"
+    fi
+    dangling_target="$dangling_dir/missing-target"
+    ln -s "$dangling_target" "$dangling_final"
+    dangling_log="$tmp_dir/$dangling_sample.out"
+    assert_fails "$dangling_log" env FAKE_SAMPLE_ID="$dangling_sample" \
+        SLURM_JOB_ID=dangling001 bash "$SCRIPT" \
+        --sample-id "$dangling_sample" --input-alignment "$safe_input" \
+        --output-dir "$dangling_dir" --threads 2 --execute
+    assert_contains "$dangling_log" "final path already exists; refusing to replace: $dangling_final"
+    assert_contains "$dangling_log" "Step 02 no-clobber rollback was incomplete"
+    [[ -L "$dangling_final" && "$(readlink "$dangling_final")" == "$dangling_target" ]] ||
+        fail "publication changed a dangling final symlink"
+    assert_not_exists "$dangling_target"
+    assert_not_exists "$dangling_other"
+    assert_contains "$dangling_dir/.$dangling_sample.step02.dangling001.rg.tmp.bam" "@RG"
+    assert_file_equals "$dangling_dir/.$dangling_sample.step02.dangling001.rg.tmp.bam.bai" "fake bam index"
+    assert_file_equals "$dangling_dir/.$dangling_sample.step02.lock/owner" "run_token=dangling001"
+done
+
+printf 'Running no-clobber anchor cleanup failure characterization...\n'
+for anchor_fault in retained partial; do
+    anchor_sample="sample_anchor_$anchor_fault"
+    anchor_dir="$tmp_dir/results/$anchor_sample"
+    anchor_output="$tmp_dir/$anchor_sample.out"
+    anchor_bam="$anchor_dir/$anchor_sample.sorted.bam"
+    anchor_bai="$anchor_bam.bai"
+    anchor_staged_bam="$anchor_dir/.$anchor_sample.step02.anchor001.rg.tmp.bam"
+    anchor_staged_bai="$anchor_staged_bam.bai"
+    removed_anchor=""
+    if [[ "$anchor_fault" == partial ]]; then
+        removed_anchor="$anchor_staged_bam"
+    fi
+    assert_fails "$anchor_output" env \
+        FAKE_RM_FAIL_PATH="$anchor_staged_bai" \
+        FAKE_RM_REMOVE_FIRST_PATH="$removed_anchor" \
+        FAKE_SAMPLE_ID="$anchor_sample" SLURM_JOB_ID=anchor001 bash "$SCRIPT" \
+        --sample-id "$anchor_sample" --input-alignment "$safe_input" \
+        --output-dir "$anchor_dir" --threads 2 --execute
+    assert_contains "$anchor_output" "fake rm forced failure: $anchor_staged_bai"
+    assert_file_equals "$anchor_staged_bai" "fake bam index"
+    assert_not_exists "$anchor_bai"
+    if [[ "$anchor_fault" == partial ]]; then
+        assert_not_exists "$anchor_staged_bam"
+        assert_contains "$anchor_bam" "@RG"
+        assert_contains "$anchor_output" "Step 02 no-clobber rollback was incomplete"
+        assert_file_equals "$anchor_dir/.$anchor_sample.step02.lock/owner" "run_token=anchor001"
+    else
+        # Characterized gap: rollback removes both owned finals, but persistent
+        # scratch cleanup failure does not prevent release of the owned lock.
+        assert_not_exists "$anchor_bam"
+        assert_contains "$anchor_staged_bam" "@RG"
+        assert_not_exists "$anchor_dir/.$anchor_sample.step02.lock"
+        assert_not_contains "$anchor_output" "Step 02 no-clobber rollback was incomplete"
+    fi
+    assert_fails "$anchor_output.retry" env FAKE_SAMPLE_ID="$anchor_sample" \
+        SLURM_JOB_ID=anchor002 bash "$SCRIPT" \
+        --sample-id "$anchor_sample" --input-alignment "$safe_input" \
+        --output-dir "$anchor_dir" --threads 2 --execute
+    assert_contains "$anchor_output.retry" "residue requires operator inspection"
+    assert_file_equals "$anchor_staged_bai" "fake bam index"
+done
+
+printf 'Running no-clobber persistent lock cleanup failure check...\n'
+lock_cleanup_dir="$tmp_dir/results/lock_cleanup"
+lock_cleanup_owner="$lock_cleanup_dir/.sample_lock_cleanup.step02.lock/owner"
+lock_cleanup_output="$tmp_dir/lock_cleanup.out"
+assert_fails "$lock_cleanup_output" env FAKE_RM_FAIL_PATH="$lock_cleanup_owner" \
+    FAKE_SAMPLE_ID=sample_lock_cleanup SLURM_JOB_ID=lock-cleanup001 bash "$SCRIPT" \
+    --sample-id sample_lock_cleanup --input-alignment "$safe_input" \
+    --output-dir "$lock_cleanup_dir" --threads 2 --execute
+assert_contains "$lock_cleanup_output" "Could not remove owned lock metadata"
+assert_not_contains "$lock_cleanup_output" "Rolling back Step 02 canonical outputs"
+assert_file_equals "$lock_cleanup_owner" "run_token=lock-cleanup001"
+assert_contains "$lock_cleanup_dir/sample_lock_cleanup.sorted.bam" "@RG"
+assert_file_equals "$lock_cleanup_dir/sample_lock_cleanup.sorted.bam.bai" "fake bam index"
+assert_not_exists "$lock_cleanup_dir/.sample_lock_cleanup.step02.lock-cleanup001.rg.tmp.bam"
+assert_not_exists "$lock_cleanup_dir/.sample_lock_cleanup.step02.lock-cleanup001.rg.tmp.bam.bai"
+
+printf 'Running old predecessor backup residue refusal checks...\n'
+for old_suffix in previous.bam previous.bam.bai; do
+    old_dir="$tmp_dir/results/old_$old_suffix"
+    mkdir -p "$old_dir"
+    old_path="$old_dir/.sample_old.step02.older-token.$old_suffix"
+    printf 'retained predecessor\n' >"$old_path"
+    old_output="$tmp_dir/old_$old_suffix.out"
+    assert_fails "$old_output" env FAKE_SAMPLE_ID=sample_old SLURM_JOB_ID=old001 bash "$SCRIPT" \
+        --sample-id sample_old --input-alignment "$safe_input" \
+        --output-dir "$old_dir" --threads 2 --execute
+    assert_contains "$old_output" "residue requires operator inspection"
+    assert_file_equals "$old_path" "retained predecessor"
+    assert_not_exists "$old_dir/.sample_old.step02.lock"
+    assert_not_exists "$old_dir/sample_old.sorted.bam"
+    assert_not_exists "$old_dir/sample_old.sorted.bam.bai"
+done
 
 printf 'Running existing lock failure check...\n'
 lock_output_dir="$tmp_dir/results/locked"
@@ -566,8 +741,8 @@ assert_fails "$lock_output" env FAKE_SAMPLE_ID=sample_locked SLURM_JOB_ID=lock00
     --output-dir "$lock_output_dir" \
     --threads 1 \
     --execute
-assert_contains "$lock_output" "Step 02 lock already exists"
-assert_contains "$lock_output" "run_token=other-job"
+assert_contains "$lock_output" "residue requires operator inspection"
+assert_file_equals "$lock_output_dir/.sample_locked.step02.lock/owner" "run_token=other-job"
 assert_file_equals "$lock_output_dir/sample_locked.sorted.bam" "old bam"
 assert_file_equals "$lock_output_dir/sample_locked.sorted.bam.bai" "old bai"
 [[ -d "$lock_output_dir/.sample_locked.step02.lock" ]] || fail "foreign lock should remain"
@@ -626,123 +801,40 @@ assert_fails "$sort_output" env FAKE_SAMPLE_ID=sample_sort FAKE_SORT_MODE=unknow
     --execute
 assert_contains "$sort_output" "header is not coordinate sorted"
 
-printf 'Running inconsistent canonical pair failure check...\n'
-inconsistent_output_dir="$tmp_dir/results/inconsistent"
-mkdir -p "$inconsistent_output_dir"
-printf 'old bam\n' >"$inconsistent_output_dir/sample_inconsistent.sorted.bam"
-inconsistent_output="$tmp_dir/inconsistent.out"
-assert_fails "$inconsistent_output" env FAKE_SAMPLE_ID=sample_inconsistent SLURM_JOB_ID=incon001 bash "$SCRIPT" \
-    --sample-id sample_inconsistent \
-    --input-alignment "$input_sam" \
-    --output-dir "$inconsistent_output_dir" \
-    --threads 1 \
-    --execute
-assert_contains "$inconsistent_output" "Canonical outputs are inconsistent"
-assert_file_equals "$inconsistent_output_dir/sample_inconsistent.sorted.bam" "old bam"
-assert_not_exists "$inconsistent_output_dir/sample_inconsistent.sorted.bam.bai"
-assert_not_exists "$inconsistent_output_dir/.sample_inconsistent.step02.lock"
-assert_no_step02_scratch "$inconsistent_output_dir"
-
-printf 'Running backup failure rollback check...\n'
-backup_output_dir="$tmp_dir/results/backup_failure"
-mkdir -p "$backup_output_dir"
-printf 'previous bam\n' >"$backup_output_dir/sample_backup.sorted.bam"
-printf 'previous bai\n' >"$backup_output_dir/sample_backup.sorted.bam.bai"
-backup_output="$tmp_dir/backup_failure.out"
-# Fail while moving the old BAI to backup; the old BAM must be restored.
-assert_fails "$backup_output" env FAKE_SAMPLE_ID=sample_backup FAKE_MV_FAIL_DEST_MATCH=".sample_backup.step02.backup001.previous.bam.bai" SLURM_JOB_ID=backup001 bash "$SCRIPT" \
-    --sample-id sample_backup \
-    --input-alignment "$input_sam" \
-    --output-dir "$backup_output_dir" \
-    --threads 1 \
-    --execute
-assert_contains "$backup_output" "fake mv forced failure"
-assert_file_equals "$backup_output_dir/sample_backup.sorted.bam" "previous bam"
-assert_file_equals "$backup_output_dir/sample_backup.sorted.bam.bai" "previous bai"
-assert_not_exists "$backup_output_dir/.sample_backup.step02.lock"
-assert_no_step02_scratch "$backup_output_dir"
-
-printf 'Running publish failure rollback check with previous pair...\n'
-publish_output_dir="$tmp_dir/results/publish_failure"
-mkdir -p "$publish_output_dir"
-printf 'previous bam\n' >"$publish_output_dir/sample_publish.sorted.bam"
-printf 'previous bai\n' >"$publish_output_dir/sample_publish.sorted.bam.bai"
-publish_output="$tmp_dir/publish_failure.out"
-# Fail after the new BAM is published but before the new BAI is published.
-assert_fails "$publish_output" env FAKE_SAMPLE_ID=sample_publish FAKE_MV_FAIL_DEST_MATCH="sample_publish.sorted.bam.bai" SLURM_JOB_ID=pub001 bash "$SCRIPT" \
-    --sample-id sample_publish \
-    --input-alignment "$input_sam" \
-    --output-dir "$publish_output_dir" \
-    --threads 1 \
-    --execute
-assert_contains "$publish_output" "Rolling back Step 02 canonical outputs"
-assert_file_equals "$publish_output_dir/sample_publish.sorted.bam" "previous bam"
-assert_file_equals "$publish_output_dir/sample_publish.sorted.bam.bai" "previous bai"
-assert_not_exists "$publish_output_dir/.sample_publish.step02.lock"
-assert_no_step02_scratch "$publish_output_dir"
-
-printf 'Running failure-inside-rollback characterization check...\n'
-restore_failure_output_dir="$tmp_dir/results/restore_failure"
-mkdir -p "$restore_failure_output_dir"
-printf 'previous bam\n' >"$restore_failure_output_dir/sample_restore.sorted.bam"
-printf 'previous bai\n' >"$restore_failure_output_dir/sample_restore.sorted.bam.bai"
-restore_failure_output="$tmp_dir/restore_failure.out"
-restore_failure_backup_bam="$restore_failure_output_dir/.sample_restore.step02.restore001.previous.bam"
-# Fail final BAI publication, then fail only restoration of the prior BAM.
-assert_fails "$restore_failure_output" env \
-    FAKE_SAMPLE_ID=sample_restore \
-    FAKE_MV_FAIL_DEST_MATCH="sample_restore.sorted.bam.bai" \
-    FAKE_MV_ALWAYS_FAIL_SOURCE="$restore_failure_backup_bam" \
-    SLURM_JOB_ID=restore001 \
-    bash "$SCRIPT" \
-    --sample-id sample_restore \
-    --input-alignment "$input_sam" \
-    --output-dir "$restore_failure_output_dir" \
-    --threads 1 \
-    --execute
-assert_contains "$restore_failure_output" "fake mv forced failure for destination"
-assert_contains "$restore_failure_output" "Rolling back Step 02 canonical outputs"
-assert_contains "$restore_failure_output" "fake mv forced persistent failure for source"
-assert_not_exists "$restore_failure_output_dir/sample_restore.sorted.bam"
-assert_file_equals "$restore_failure_output_dir/sample_restore.sorted.bam.bai" "previous bai"
-assert_not_exists "$restore_failure_backup_bam"
-assert_not_exists "$restore_failure_backup_bam.bai"
-assert_not_exists "$restore_failure_output_dir/.sample_restore.step02.lock"
-assert_no_step02_scratch "$restore_failure_output_dir"
-
-printf 'Running publish failure rollback check with no previous pair...\n'
-no_previous_output_dir="$tmp_dir/results/no_previous_publish_failure"
-no_previous_output="$tmp_dir/no_previous_publish_failure.out"
-# With no previous pair, rollback should leave no canonical outputs at all.
-assert_fails "$no_previous_output" env FAKE_SAMPLE_ID=sample_new FAKE_MV_FAIL_DEST_MATCH="sample_new.sorted.bam.bai" SLURM_JOB_ID=new001 bash "$SCRIPT" \
-    --sample-id sample_new \
-    --input-alignment "$input_sam" \
-    --output-dir "$no_previous_output_dir" \
-    --threads 1 \
-    --execute
-assert_contains "$no_previous_output" "Rolling back Step 02 canonical outputs"
-assert_not_exists "$no_previous_output_dir/sample_new.sorted.bam"
-assert_not_exists "$no_previous_output_dir/sample_new.sorted.bam.bai"
-assert_not_exists "$no_previous_output_dir/.sample_new.step02.lock"
-assert_no_step02_scratch "$no_previous_output_dir"
-
-printf 'Running final validation rollback check...\n'
-final_output_dir="$tmp_dir/results/final_validation_failure"
-mkdir -p "$final_output_dir"
-printf 'previous bam\n' >"$final_output_dir/sample_final.sorted.bam"
-printf 'previous bai\n' >"$final_output_dir/sample_final.sorted.bam.bai"
-final_output="$tmp_dir/final_validation_failure.out"
-# Final validation failure happens after both publish moves, so backup restore is required.
-assert_fails "$final_output" env FAKE_SAMPLE_ID=sample_final FAKE_QUICKCHECK_FAIL_MATCH="sample_final.sorted.bam" SLURM_JOB_ID=final001 bash "$SCRIPT" \
-    --sample-id sample_final \
-    --input-alignment "$input_sam" \
-    --output-dir "$final_output_dir" \
-    --threads 1 \
-    --execute
-assert_contains "$final_output" "Rolling back Step 02 canonical outputs"
-assert_file_equals "$final_output_dir/sample_final.sorted.bam" "previous bam"
-assert_file_equals "$final_output_dir/sample_final.sorted.bam.bai" "previous bai"
-assert_not_exists "$final_output_dir/.sample_final.step02.lock"
-assert_no_step02_scratch "$final_output_dir"
+printf 'Running default refusal of existing complete and partial outputs...\n'
+# The retired replacement/restore-loss sequence is retained in CONTRACT.md;
+# current calls must preserve predecessors before invoking scientific tools.
+for prior_state in pair bam bai; do
+    prior_sample="sample_prior_$prior_state"
+    prior_dir="$tmp_dir/results/$prior_sample"
+    mkdir -p "$prior_dir"
+    prior_bam="$prior_dir/$prior_sample.sorted.bam"
+    prior_bai="$prior_bam.bai"
+    if [[ "$prior_state" != bai ]]; then
+        printf 'previous bam\n' >"$prior_bam"
+    fi
+    if [[ "$prior_state" != bam ]]; then
+        printf 'previous bai\n' >"$prior_bai"
+    fi
+    prior_output="$tmp_dir/$prior_sample.out"
+    tool_lines_before="$(wc -l <"$samtools_log")"
+    assert_fails "$prior_output" env FAKE_SAMPLE_ID="$prior_sample" SLURM_JOB_ID=prior001 bash "$SCRIPT" \
+        --sample-id "$prior_sample" --input-alignment "$input_sam" \
+        --output-dir "$prior_dir" --threads 1 --execute
+    assert_contains "$prior_output" "requires both canonical outputs to be absent"
+    [[ "$(wc -l <"$samtools_log")" == "$tool_lines_before" ]] ||
+        fail "existing output refusal invoked samtools"
+    if [[ "$prior_state" != bai ]]; then
+        assert_file_equals "$prior_bam" "previous bam"
+    else
+        assert_not_exists "$prior_bam"
+    fi
+    if [[ "$prior_state" != bam ]]; then
+        assert_file_equals "$prior_bai" "previous bai"
+    else
+        assert_not_exists "$prior_bai"
+    fi
+    assert_no_step02_scratch "$prior_dir"
+done
 
 printf 'All step_02 canonical BAM hardening smoke tests passed.\n'

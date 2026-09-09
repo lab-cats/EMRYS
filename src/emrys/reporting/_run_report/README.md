@@ -1,7 +1,8 @@
 # Run-report core owners
 
 This private package implements the fixed HTML-report transaction used by the
-Run-level reporting coordinator through [`report.py`](../report.py). It has no
+Run-level reporting coordinator through [`context.prepare_context`](context.py)
+and [`publication.publish_report`](publication.py). It has no
 installed public command, generic report DSL, or operator recovery route.
 
 | Module | Core responsibility |
@@ -12,7 +13,7 @@ installed public command, generic report DSL, or operator recovery route.
 | [`view.py`](view.py) | Fixed evidence-and-operations projection and composition with the provider-owned scientific view. |
 | [`validation.py`](validation.py) | Autoescaped strict Jinja environment plus CSS, security, semantic HTML, and accessibility validation. |
 | [`receipt.py`](receipt.py) | Deterministic summary TSV and v4/v5 report-receipt projection/validation. |
-| [`publication.py`](publication.py) | One receipt-last two-HTML transaction using immutable injected fault operations. |
+| [`publication.py`](publication.py) | One receipt-last two-HTML transaction. |
 | [`transaction.py`](transaction.py) | Lock, snapshot, durability, staging, rollback, and recovery primitives. |
 
 The selected `emrys.analysis_reporters` provider owns bespoke scientific HTML
@@ -31,16 +32,16 @@ Analysis or Run identity. Existing flat paired-CMH Runs retain run-summary v2
 and report-receipt v4; explicit modules use run-summary v3 and report-receipt
 v5.
 
-The Run-level coordinator supplies the admitted absolute source checkout,
-independent artifact source root, completed Run, and selected provider before
-inputs are read. The artifact root governs contract-relative paths; admitted
-checkout/provider identities govern implementation evidence. Neither root is
-inferred from the working directory or run-summary location.
+`context.prepare_context` admits the coordinator's explicit source checkout and
+independent artifact source root before reading report inputs. This retains the
+former `report.py` admission order and error identities. The logical producer
+identifier remains `emrys.reporting.report`. The artifact root governs
+contract-relative paths; admitted checkout/provider identities govern
+implementation evidence. Neither root is inferred from the working directory
+or run-summary location.
 
-The transaction retains input rechecks, lock ownership, predecessor identity,
-backup/rollback, recovery markers, foreign-state preservation, staged
-validation, receipt-last publication, and characterized interruption behavior.
-Complete state is revalidated and reused; generation requires empty owned
-state; ambiguous state is preserved and fails closed. Rendering does not rerun
-analysis, discover native outputs, change scientific evidence, or establish
-scientific review or biological validity.
+Publication follows the shared
+[publication and recovery contract](../README.md#publication-and-recovery).
+Context preparation retains existing-output admission for current and historical
+readers. Rendering does not rerun analysis, discover native outputs, change
+scientific evidence, or establish scientific review or biological validity.

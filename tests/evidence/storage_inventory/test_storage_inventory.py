@@ -98,15 +98,6 @@ def synthetic_mount_identity(path: Path) -> dict[str, str]:
     }
 
 
-def test_dry_run_is_side_effect_free(tmp_path: Path) -> None:
-    roots, policy, _ = contracts(tmp_path)
-    output = tmp_path / "missing"
-    result = run_cli(roots, policy, output)
-    assert result.returncode == 0
-    assert "no storage is altered" in result.stdout
-    assert not output.exists()
-
-
 def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path: Path) -> None:
     roots, policy, storage = contracts(tmp_path)
     output = tmp_path / "out"
@@ -131,6 +122,7 @@ def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path: Path) -> None:
     )
     assert dry_run.returncode == 0, dry_run.stderr
     assert "Dry-run complete" in dry_run.stdout
+    assert "no storage is altered" in dry_run.stdout
     assert not output.exists()
 
     output.mkdir()
@@ -143,6 +135,11 @@ def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path: Path) -> None:
     )
     assert first.returncode == 0, first.stderr
     first_inventory = read_rows(output / "storage_inventory.tsv")[0]
+    assert first_inventory["tree_bytes"] == "4"
+    assert first_inventory["file_count"] == "1"
+    assert first_inventory["symlink_count"] == "1"
+    summary = read_rows(output / "storage_retention_summary.tsv")[0]
+    assert summary["overall_status"] == "pass"
     first_policy = (output / "retention_policy.tsv").read_bytes()
     first_summary = (output / "storage_retention_summary.tsv").read_bytes()
 
@@ -181,26 +178,6 @@ def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path: Path) -> None:
         "storage_inventory.tsv",
         "storage_retention_summary.tsv",
     ]
-
-
-def test_execute_measures_without_following_symlinks(tmp_path: Path) -> None:
-    roots, policy, storage = contracts(tmp_path)
-    output = tmp_path / "out"
-    output.mkdir()
-    result = run_cli(roots, policy, output, "--execute")
-    assert result.returncode == 0, result.stderr
-    inventory = read_rows(output / "storage_inventory.tsv")[0]
-    summary = read_rows(output / "storage_retention_summary.tsv")[0]
-    assert inventory["tree_bytes"] == "4"
-    assert inventory["file_count"] == "1"
-    assert inventory["symlink_count"] == "1"
-    assert summary["overall_status"] == "pass"
-    assert (storage / "file").read_bytes() == b"1234"
-    first_policy = (output / "retention_policy.tsv").read_bytes()
-    first_summary = (output / "storage_retention_summary.tsv").read_bytes()
-    assert run_cli(roots, policy, output, "--execute").returncode == 0
-    assert first_policy == (output / "retention_policy.tsv").read_bytes()
-    assert first_summary == (output / "storage_retention_summary.tsv").read_bytes()
 
 
 @pytest.mark.parametrize(

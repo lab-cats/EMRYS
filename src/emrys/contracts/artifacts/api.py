@@ -23,6 +23,7 @@ from ._artifact_contracts.inventory import (
     validate_inventory,
 )
 from ._artifact_contracts.report_receipt import (
+    REPORT_OUTPUTS,
     validate_report_receipt_semantics,
 )
 from ._artifact_contracts.run_summary_status import (
@@ -51,6 +52,7 @@ from ._artifact_contracts.schema import (
 __all__ = (
     "INVENTORY_HEADER",
     "REPO_ROOT",
+    "REPORT_OUTPUTS",
     "RUN_CONTRACT_COMPONENT_FIELDS",
     "RUN_SUMMARY_STATUS_FIELDS",
     "SAFE_ID_RE",

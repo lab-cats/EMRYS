@@ -391,15 +391,13 @@ scientific dependencies, or acquire a second validation inventory.
 
 ### 21. Share local and CI validation inventory
 
-**Finding:** The [sharder](../../tests/tools/python_test_shards.py) excludes its
-self-tests from ordinary collection. CI invokes them separately, while local
-`all-checks` does not restore that suite.
-
-**Outcome and acceptance:** Move the CI-only invocation into the existing shared
-validation owner and remove the duplicate declaration. Both assembled gates run
-the sharder self-tests exactly once, and their failure blocks both routes.
-Review other explicit exclusions for lost coverage. This is a proposed
-tooling-only correction adjacent to `CI-01`, not a new test registry.
+**Disposition:** The approved correction moves the CI-only self-test invocation
+into [shared static preflight](../design/TEST_BASELINE.md#validation-lanes), so
+local `all-checks` and CI run it once through the same Make target. The
+[sharder](../../tests/tools/python_test_shards.py) still excludes its own tests
+to prevent recursive collection; the other exclusion, package distribution,
+remains covered by the installed-wheel lane. Failure propagation and exact
+Make/CI wiring are protected without adding a test registry or validation lane.
 
 ### 22. Run ordinary CI automatically on supported stacked PRs
 

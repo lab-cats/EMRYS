@@ -112,6 +112,22 @@ def test_ordinary_jobs_keep_automatic_runs_and_support_manual_selection() -> Non
         assert f"inputs.{input_name}" in condition
 
 
+def test_static_job_uses_the_shared_gate_without_repeating_sharder_self_tests() -> None:
+    step = _named_step(
+        _workflow_jobs()["static-wheel"],
+        "Run static, lint, documentation, and wheel checks",
+    )
+    assert step["shell"] == "bash"
+    assert step["run"].splitlines() == [
+        "set -euo pipefail",
+        "make -s validation-static",
+        "make -s validation-wheel-smoke",
+    ]
+    assert "tests/test_python_test_shards.py" not in WORKFLOW_PATH.read_text(
+        encoding="utf-8"
+    )
+
+
 def test_long_runs_have_unique_non_cancelling_concurrency() -> None:
     concurrency = _workflow_document()["concurrency"]
     group = _expression(concurrency["group"])
