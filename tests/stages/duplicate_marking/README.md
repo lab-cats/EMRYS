@@ -1,6 +1,9 @@
 # Picard duplicate-marking tests
 
-These cases check Step 04 shell behavior, outputs left by different attempts,
-and BAM, BAI, and metrics validation. The
-[stage contract](../../../src/emrys/stages/duplicate_marking/CONTRACT.md)
-defines publication and recovery hazards. The suite uses fixtures and fake tools.
+Native Picard arguments, complete BAM/BAI/metrics output, failed quickcheck, empty metrics, and grouped validation are covered. Fixtures do not establish duplicate-marking accuracy.
+
+Shell cases invoke the internal worker with runner-style scratch and staging.
+The [common runner suite](../../orchestration/run_coordinator/test_task.py) owns
+publication, input stability, interruption, and recovery checks. Python
+validator cases retain the public grouped command. The
+[shared evidence limits](../../README.md#evidence-limits) apply.

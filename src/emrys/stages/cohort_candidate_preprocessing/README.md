@@ -6,7 +6,7 @@ attaches sample depth/allele measurements and GTF overlaps, and applies the
 explicitly provisional legacy orientation mapping.
 
 Inputs include paired sample and partition manifests, all upstream receipts
-and VCFs, annotation GTF, output/QC locations, and the selected R program/runtime.
+and VCFs, annotation GTF, runner-supplied output paths, and the selected R runtime.
 Outputs are the sites table, input receipt, and QC summary. Step `09` consumes
 the sites and receipt; these are candidate inputs, not biological findings.
 
@@ -18,6 +18,6 @@ The private [Python producer](producer.py) invokes
 emrys validate cohort-candidate-preprocessing --help
 ```
 
-Read the [contract](CONTRACT.md) for scientific policy, worker ordering,
-validation limits, and recovery. The Python validator checks the published
+Read the [contract](CONTRACT.md) for scientific policy, worker ordering, and
+validation limits. The [runner contract](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution) owns execution and recovery. The Python validator checks the published
 tables; it does not repeat the R candidate construction or annotation.

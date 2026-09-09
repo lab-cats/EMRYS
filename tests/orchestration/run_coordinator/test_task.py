@@ -24,7 +24,7 @@ from emrys.libraries.source_authority import (
     SourceCheckoutAttestation,
     controlled_python_argv,
 )
-from emrys.orchestration.run_coordinator import task
+from emrys.orchestration.run_coordinator import lifecycle, task
 
 from tests.orchestration.run_coordinator import fixture
 from tests.orchestration.run_coordinator.fixtures import workflow as workflow_fixture
@@ -152,7 +152,14 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
         "outputs": [
             {"role": "aligned_bam", "path": str(first_output)},
             {"role": "aligned_bai", "path": str(second_output)},
+            {"role": "native_receipt", "path": str(receipt)},
         ],
+        "publication": {
+            "locks": [str(first_output.parent / ".owner.lock")],
+            "forbidden_paths": [str(first_output.parent / ".owner.*")],
+            "output_directory": None,
+            "input_directories": [],
+        },
         "validation_report_path": str(report),
         "native_receipt_path": str(receipt),
         "task_start_path": str(task_start),
@@ -161,6 +168,15 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
         "stdout_path": str(task_root / "stdout.log"),
         "stderr_path": str(task_root / "stderr.log"),
     }
+    for output in dispatch["outputs"]:
+        final = Path(output["path"])
+        final.parent.mkdir(parents=True, exist_ok=True)
+        working = final.parent / ".emrys-owner-run-ev-1.work" / final.name
+        output["working_path"] = str(working)
+        dispatch["producer_argv"] = [
+            argument.replace(str(final), str(working))
+            for argument in dispatch["producer_argv"]
+        ]
     config_path = contract / "workflow-configs" / f"{WORKFLOW_ATTEMPT_ID}.json"
     config = {
         "dispatch_paths": {
@@ -373,13 +389,45 @@ def test_default_command_runner_drains_inherited_streams_through_eof(
     assert stderr == b""
 
 
+def test_failed_command_quiesces_descendants_before_draining_inherited_streams(
+    tmp_path: Path,
+) -> None:
+    script = """
+import os, signal, sys, time
+reader, writer = os.pipe()
+if os.fork() == 0:
+    os.close(reader)
+    def terminate(*_args):
+        os.write(1, b"descendant stopped\\n")
+        sys.exit(0)
+    signal.signal(signal.SIGTERM, terminate)
+    os.write(writer, b"ready")
+    os.close(writer)
+    time.sleep(2)
+    os.write(1, b"descendant completed without cancellation\\n")
+    sys.exit(0)
+os.close(writer)
+os.read(reader, 5)
+os.close(reader)
+sys.exit(23)
+"""
+    result, stdout, stderr = _run_default_command(
+        (sys.executable, "-c", script), tmp_path, {}
+    )
+
+    assert result.exit_code == 23
+    assert stdout == b"descendant stopped\n"
+    assert stderr == b""
+
+
 @pytest.mark.parametrize("fault", ["selector-construction", "second-registration"])
 def test_default_command_runner_cleans_up_child_when_selector_setup_fails(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     fault: str,
 ) -> None:
-    process = Mock(stdout=Mock(), stderr=Mock())
+    process = Mock(pid=12345, stdout=Mock(), stderr=Mock())
+    quiesce = Mock()
     selector = Mock()
     selector.register.side_effect = [
         None,
@@ -392,12 +440,14 @@ def test_default_command_runner_cleans_up_child_when_selector_setup_fails(
         return selector
 
     monkeypatch.setattr(task.subprocess, "Popen", lambda *_args, **_kwargs: process)
+    monkeypatch.setattr(lifecycle, "quiesce_process_group", quiesce)
     monkeypatch.setattr(task.selectors, "DefaultSelector", selector_factory)
     with pytest.raises(RuntimeError, match="injected selector"):
         _run_default_command(("fixture-tool",), tmp_path, {})
 
-    process.kill.assert_called_once_with()
-    process.wait.assert_called_once_with()
+    quiesce.assert_called_once_with(
+        process.pid, process, lifecycle.DEFAULT_PROCESS_GROUP_OPS
+    )
     process.stdout.close.assert_called_once_with()
     process.stderr.close.assert_called_once_with()
     if fault == "second-registration":
@@ -521,10 +571,19 @@ def _step00c_with_existing_sidecars(
     record = orchestration_contracts.load_json_object(dispatch_path)
     outputs = tuple(Path(item["path"]) for item in record["outputs"])
     assert len(outputs) == 2
-    producer, _stdout, stderr = _run_default_command(
-        tuple(record["producer_argv"]), built.run_root, {}
-    )
-    assert producer.exit_code == 0, stderr.decode(errors="replace")
+    publication = task._NativePublication(_load_dispatch(dispatch_path))
+    work = publication.prepare(reused=False)
+    try:
+        producer, _stdout, stderr = _run_default_command(
+            tuple(record["producer_argv"]),
+            built.run_root,
+            {"EMRYS_TASK_WORK_DIR": str(work), "TMPDIR": str(work)},
+        )
+        assert producer.exit_code == 0, stderr.decode(errors="replace")
+        publication.publish()
+        publication.committed = True
+    finally:
+        publication.close()
     return built, dispatch_path, record, (outputs[0], outputs[1])
 
 
@@ -750,7 +809,7 @@ def test_zero_exit_validator_fail_row_blocks_verified_publication(
     )
 
 
-def test_producer_failure_preserves_partial_output_and_attempt_evidence(
+def test_producer_failure_removes_working_output_and_preserves_attempt_evidence(
     tmp_path: Path,
 ) -> None:
     built = _task_fixture(tmp_path)
@@ -764,13 +823,212 @@ def test_producer_failure_preserves_partial_output_and_attempt_evidence(
     assert attempt["producer"]["exit_code"] == 23
     assert attempt["validator"] is None
     assert attempt["semantic_all_pass"] is None
-    assert Path(built.dispatch["outputs"][0]["path"]).is_file()
+    assert not Path(built.dispatch["outputs"][0]["path"]).exists()
+    assert not Path(built.dispatch["outputs"][0]["working_path"]).parent.exists()
     assert not Path(built.dispatch["outputs"][1]["path"]).exists()
     assert not Path(built.dispatch["verified_task_path"]).exists()
     assert (
         b"producer failed after aligned_bam"
         in Path(built.dispatch["stderr_path"]).read_bytes()
     )
+
+
+@pytest.mark.parametrize(
+    "fault", ("after_link", "foreign_final", "owner_loss", "residue", "input_drift")
+)
+def test_native_publication_preserves_unowned_state_and_rolls_back_owned_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str
+) -> None:
+    built = _task_fixture(tmp_path)
+    first, second = (Path(item["path"]) for item in built.dispatch["outputs"][:2])
+    working = Path(built.dispatch["outputs"][0]["working_path"]).parent
+    lock = Path(built.dispatch["publication"]["locks"][0])
+    original_link = task.os.link
+    defaults = _fixed_ops()
+
+    def link(source: Any, destination: Any, **kwargs: Any) -> None:
+        if Path(destination) == first:
+            original_link(source, destination, **kwargs)
+            if fault == "after_link":
+                raise OSError("interrupted after the native link succeeded")
+            if fault == "input_drift":
+                built.mutable_input.write_bytes(b"input changed during publication\n")
+        elif Path(destination) == second and fault == "foreign_final":
+            second.write_bytes(b"foreign final\n")
+            original_link(source, destination, **kwargs)
+        else:
+            original_link(source, destination, **kwargs)
+
+    def command(*arguments: Any) -> task.CommandResult:
+        result = defaults.run_command(*arguments)
+        if fault == "owner_loss":
+            (lock / "owner").write_bytes(b"foreign owner\n")
+        return result
+
+    if fault == "residue":
+        (first.parent / ".owner.recovery").write_bytes(b"retained recovery\n")
+    monkeypatch.setattr(task.os, "link", link)
+    with pytest.raises(task.TaskBoundaryError):
+        _execute_dispatch(
+            built.dispatch_path, ops=replace(defaults, run_command=command)
+        )
+    assert not first.exists()
+    assert not Path(built.dispatch["verified_task_path"]).exists()
+    if fault == "input_drift":
+        assert all(
+            not Path(item["path"]).exists() for item in built.dispatch["outputs"]
+        )
+        assert not Path(built.dispatch["validation_report_path"]).exists()
+    if fault == "foreign_final":
+        assert second.read_bytes() == b"foreign final\n"
+    if fault in {"foreign_final", "owner_loss"}:
+        assert working.is_dir() and lock.is_dir()
+    else:
+        assert not working.exists() and not lock.exists()
+
+
+@pytest.mark.parametrize(
+    "mutation", ("none", "replace_input", "add_input", "empty_input")
+)
+def test_star_publication_and_input_directory_roster_are_content_bound(
+    tmp_path: Path, mutation: str
+) -> None:
+    built = _task_fixture(tmp_path)
+    inputs = built.run_root / "inputs" / "index"
+    inputs.mkdir()
+    member = inputs / "Genome"
+    member.write_bytes(b"reference genome\n")
+    final_directory = built.run_root / "results" / "index"
+    working = final_directory.parent / ".index.owner.work"
+    built.dispatch["native_receipt_path"] = None
+    built.dispatch["outputs"] = [
+        {
+            "role": "genome",
+            "path": str(final_directory / "Genome"),
+            "working_path": str(working / "Genome"),
+        }
+    ]
+    built.dispatch["publication"]["input_directories"] = [str(inputs)]
+    built.dispatch["publication"]["output_directory"] = str(final_directory)
+    built.dispatch["producer_argv"] = list(
+        controlled_python_argv(
+            sys.executable,
+            str(TEST_DOUBLE),
+            "producer",
+            "--output",
+            f"genome={working / 'Genome'}",
+            "--output",
+            f"star_log={working / 'Log.out'}",
+        )
+    )
+    _rewrite_dispatch(built)
+    defaults = _fixed_ops()
+
+    def command(*arguments: Any) -> task.CommandResult:
+        result = defaults.run_command(*arguments)
+        if mutation == "replace_input":
+            replacement = inputs / "replacement"
+            replacement.write_bytes(member.read_bytes())
+            replacement.replace(member)
+        elif mutation == "add_input":
+            (inputs / "new-member").write_bytes(b"changed roster\n")
+        elif mutation == "empty_input":
+            member.write_bytes(b"")
+        elif arguments[0] == tuple(built.dispatch["producer_argv"]):
+            (working / "Log.progress.out").touch()
+        return result
+
+    if mutation != "none":
+        with pytest.raises(task.TaskBoundaryError, match="input directory"):
+            _execute_dispatch(
+                built.dispatch_path, ops=replace(defaults, run_command=command)
+            )
+        assert not final_directory.exists()
+        return
+    outcome = _execute_dispatch(
+        built.dispatch_path, ops=replace(defaults, run_command=command)
+    )
+    assert {path.name for path in final_directory.iterdir()} == {
+        "Genome",
+        "Log.out",
+        "Log.progress.out",
+    }
+    verified = _record(outcome.verified_task_path)
+    assert {Path(item["path"]).name for item in verified["outputs"]} == {
+        "Genome",
+        "Log.out",
+        "Log.progress.out",
+    }
+    assert any(item["path"] == str(member) for item in verified["inputs"])
+    assert not working.exists()
+    assert _validate_verified(built)["all_pass"] is True
+
+
+def test_catchable_task_termination_kills_worker_group_and_preserves_attempt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    built = _task_fixture(tmp_path)
+    built.dispatch["producer_argv"] = list(
+        controlled_python_argv(
+            sys.executable,
+            "-c",
+            "import os,signal,subprocess,sys,time; subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)']); os.kill(os.getppid(),signal.SIGTERM); time.sleep(60)",
+        )
+    )
+    _rewrite_dispatch(built)
+    original = task.os.killpg
+    killed: list[int] = []
+
+    def kill_group(identifier: int, signum: int) -> None:
+        killed.append(identifier)
+        original(identifier, signum)
+
+    monkeypatch.setattr(task.os, "killpg", kill_group)
+    with pytest.raises(task.TaskBoundaryError, match="interrupted by signal"):
+        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+    assert killed and all(identifier != os.getpgrp() for identifier in killed)
+    assert _record(built.dispatch["task_attempt_path"])["status"] == "failed"
+    assert not Path(built.dispatch["outputs"][0]["working_path"]).parent.exists()
+
+
+def test_historical_dispatch_remains_readable_but_cannot_start_new_worker(
+    tmp_path: Path,
+) -> None:
+    built = _task_fixture(tmp_path)
+    built.dispatch["schema_version"] = "emrys.local-task-dispatch.v1"
+    built.dispatch.pop("publication")
+    built.dispatch["native_receipt_path"] = None
+    for output in built.dispatch["outputs"]:
+        output.pop("working_path")
+    _rewrite_dispatch(built)
+    admitted = task.load_dispatch(
+        built.dispatch_path, expected_sha256=_dispatch_sha256(built.dispatch_path)
+    )
+    assert admitted.publication is None
+    with pytest.raises(
+        task.TaskBoundaryError, match="Historical task dispatch is read-only"
+    ):
+        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+    assert not Path(built.dispatch["task_start_path"]).exists()
+
+
+def test_uncertain_worker_group_preserves_workspace_and_owner_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    built = _task_fixture(tmp_path)
+
+    def uncertain(*_arguments: Any) -> None:
+        raise lifecycle.ProcessGroupAmbiguity("Could not prove worker group absent")
+
+    monkeypatch.setattr(lifecycle, "quiesce_process_group", uncertain)
+    with pytest.raises(
+        task.TaskBoundaryError, match="Could not prove worker group absent"
+    ):
+        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+    assert Path(built.dispatch["outputs"][0]["working_path"]).is_file()
+    assert Path(built.dispatch["publication"]["locks"][0]).is_dir()
+    assert not Path(built.dispatch["outputs"][0]["path"]).exists()
+    assert not Path(built.dispatch["verified_task_path"]).exists()
 
 
 def test_unexpected_interruption_preserves_and_closes_partial_task_logs(
@@ -851,7 +1109,8 @@ def test_input_mutation_blocks_verified_publication(tmp_path: Path) -> None:
 
     attempt = _record(built.dispatch["task_attempt_path"])
     assert attempt["stable_inputs_rechecked"] is False
-    assert attempt["semantic_all_pass"]["exit_code"] == 0
+    assert attempt["validator"] is None
+    assert attempt["semantic_all_pass"] is None
     assert not Path(built.dispatch["verified_task_path"]).exists()
 
 
@@ -1585,6 +1844,7 @@ def test_symlinked_output_and_contract_ancestors_fail_closed(tmp_path: Path) -> 
     outside = tmp_path / "outside"
     outside.mkdir()
     results = built.run_root / "results"
+    shutil.rmtree(results)
     results.symlink_to(outside, target_is_directory=True)
     with pytest.raises(task.TaskBoundaryError, match="symlink ancestor"):
         _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
@@ -1615,10 +1875,6 @@ def test_step00c_symlinked_stationary_reference_blocks_before_producer(
 
     fai = Path(f"{fasta}.fai")
     sequence_dict = fasta.with_name(f"{fasta.stem}.dict")
-    record["outputs"] = [
-        {"role": "reference_fai", "path": str(fai)},
-        {"role": "reference_dict", "path": str(sequence_dict)},
-    ]
     record["producer_argv"] = ["producer-must-not-run"]
     dispatch_path.write_bytes(orchestration_contracts.canonical_json_bytes(record))
 
@@ -1756,7 +2012,8 @@ def test_complete_step00c_sidecar_pair_is_reused_and_content_bound(
         ops=replace(defaults, run_command=command),
     )
 
-    assert calls == [producer_argv, tuple(record["validator_argv"])]
+    assert calls == [tuple(record["validator_argv"])]
+    assert b"producer command skipped" in Path(record["stdout_path"]).read_bytes()
     verified = _record(outcome.verified_task_path)
     assert verified["outputs"] == [
         {
@@ -1810,38 +2067,6 @@ def test_partial_step00c_sidecar_pair_blocks_before_producer(tmp_path: Path) -> 
     attempt = _record(record["task_attempt_path"])
     assert attempt["task_start_record"] is None
     assert attempt["producer"] is None
-
-
-def test_reused_step00c_sidecar_replacement_during_producer_fails_closed(
-    tmp_path: Path,
-) -> None:
-    built, dispatch_path, record, outputs = _step00c_with_existing_sidecars(
-        tmp_path / "workflow-fixture"
-    )
-    producer_argv = tuple(record["producer_argv"])
-    original = outputs[0].read_bytes()
-    defaults = _fixed_ops()
-
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        _environment: Mapping[str, str],
-        _stdout_descriptor: int,
-        _stderr_descriptor: int,
-    ) -> task.CommandResult:
-        if argv == producer_argv:
-            replacement = outputs[0].with_name(f".{outputs[0].name}.replacement")
-            replacement.write_bytes(original)
-            replacement.replace(outputs[0])
-            return task.CommandResult(argv, 0)
-        raise AssertionError("validator must not run after sidecar replacement")
-
-    with pytest.raises(task.TaskBoundaryError, match="during producer execution"):
-        _execute_dispatch(
-            dispatch_path,
-            ops=replace(defaults, run_command=command),
-        )
-    assert not Path(record["verified_task_path"]).exists()
 
 
 def test_reused_step00c_sidecar_mutation_during_validation_fails_closed(

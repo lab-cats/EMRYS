@@ -1,7 +1,9 @@
 # Split-N-cigar tests
 
-These cases check Step 05 input sidecars, shell staging, BAM/BAI publication
-and rollback, and structural validation through the grouped command. Private
-`validator.py` is not a direct command. The
-[stage contract](../../../src/emrys/stages/split_n_cigar/CONTRACT.md)
-defines recovery hazards. Fake tools do not establish the GATK transform.
+Native GATK/samtools arguments, selected Java, coordinate order, index nonemptiness, and grouped validation are covered. Fake tools do not establish the GATK transformation.
+
+Shell cases invoke the internal worker with runner-style scratch and staging.
+The [common runner suite](../../orchestration/run_coordinator/test_task.py) owns
+publication, input stability, interruption, and recovery checks. Python
+validator cases retain the public grouped command. The
+[shared evidence limits](../../README.md#evidence-limits) apply.

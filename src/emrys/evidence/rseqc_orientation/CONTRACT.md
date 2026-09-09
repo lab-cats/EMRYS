@@ -25,8 +25,8 @@ with historical Step `02b` and Step `04`. No current computational stage reads
 the native RSeQC report or Step `03` validation report. In particular, the
 sample manifest's `strandedness` field is an independent declared input; the
 current code does not automatically derive or update it from this report.
-Current readers do not acquire the Step `02` producer lock or pin one input
-snapshot, so same-sample canonical-pair replacement must not overlap them.
+The Run binds input snapshots for each task. This does not make concurrent
+external mutation safe.
 
 ## Inputs
 
@@ -37,7 +37,7 @@ The producer accepts:
 - an adjacent index discovered as `<bam>.bai` or
   `<bam-with-.bam-removed>.bai`;
 - one explicit BED12 annotation;
-- one explicit output directory; and
+- one explicit staging output directory; and
 - an executable `infer_experiment.py`, supplied as a path or command name.
 
 The current operation validates path presence and tool executability but does not
@@ -57,32 +57,19 @@ The producer writes one native report:
 RSeQC standard output is captured in staging and published only when nonempty;
 the separate validator owns the three-fraction structural contract.
 
-## Producer publication boundary
+## Scientific worker
 
-Standalone and Run invocations use the same create-exclusive path: hash the
-BAM, admitted BAI, and BED12; refuse an existing final; hold a per-sample owned
-lock; capture RSeQC stdout in a run-token temporary file; recheck all three
-inputs; and publish with its staging inode retained through validation.
-`--no-clobber` remains accepted for existing callers and does not select a
-second mode. Shared [shell publication cleanup](../../libraries/README.md#shell-publication-cleanup)
-owns failure handling. The resolved executable is printed; its observed
-version and report hash belong in the workflow verified record.
+[`step_03_infer_strandedness_and_orientation.sh`](step_03_infer_strandedness_and_orientation.sh) is an internal worker of the
+[Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
-RSeQC's exit code and standard-error diagnostics propagate. Failed stdout is
-never published and follows the shared cleanup rules.
+The worker passes BED12 as `-r` and BAM as `-i`, captures RSeQC standard
+output in the staging directory, and requires a nonempty report. RSeQC's exit
+status and standard-error diagnostics propagate. The separate validator owns
+the three-fraction interpretation.
+
 The retired direct route truncated existing reports before invoking RSeQC;
 partial child failure could leave partial bytes, and empty success could erase
-a prior report. Those historical defects explain the removed replacement
-behavior; current invocations refuse existing reports before running the tool.
-
-## Current execution surfaces
-
-Invoke the [producer](step_03_infer_strandedness_and_orientation.sh) through
-Bash: it has a shebang but is not executable in the tree. Dry-run validates
-paths and the selected executable without creating directories or files.
-Execute passes BED12 as `-r` and BAM as `-i`, creates the output directory, and
-uses the publication boundary above. It checks only final-file nonemptiness
-before displaying a preview; fraction checks belong to the validator.
+a prior report. The runner now owns the common publication boundary.
 
 ## Validation interface
 
@@ -149,5 +136,4 @@ machine-checked output remains only mechanical paired-read orientation. No
 implemented conversion updates the manifest's independently declared
 strandedness. The configurable `0.1` maximum sum tolerance also lacks a
 recorded scientific rationale. Immutable Run task records supply wider input,
-tool, attempt, and output identity; standalone execution alone does not
-establish that wider provenance.
+tool, attempt, and output identity.

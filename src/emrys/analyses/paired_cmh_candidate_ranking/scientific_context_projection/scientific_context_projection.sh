@@ -1,11 +1,41 @@
 #!/usr/bin/env bash
-# Build one receipt-last scientific-context projection from admitted Step 09
-# records and an exact indexed reference. Dry-run is the default.
+# shellcheck disable=SC2154
+# Internal scientific worker; the Run task runner owns publication and recovery.
 set -euo pipefail
+# Required argument variables are initialized by declare_required_arguments.
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd "$script_dir/../../../../.." && pwd)"
+usage() {
+    cat <<'USAGE'
+Project sequence context and motif evidence for paired-CMH candidates.
 
+Usage: src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh \
+  --analysis-id ANALYSIS_ID \
+  --step09-all-sites STEP09_ALL_SITES \
+  --step09-significant-sites STEP09_SIGNIFICANT_SITES \
+  --step09-summary STEP09_SUMMARY \
+  --reference-fasta REFERENCE_FASTA \
+  --reference-fai REFERENCE_FAI \
+  --candidate-context-output CANDIDATE_CONTEXT_OUTPUT \
+  --motif-hits-output MOTIF_HITS_OUTPUT \
+  --sequence-logo-output SEQUENCE_LOGO_OUTPUT \
+  --motif-statistics-output MOTIF_STATISTICS_OUTPUT \
+  --context-receipt-output CONTEXT_RECEIPT_OUTPUT \
+  --candidate-context-final CANDIDATE_CONTEXT_FINAL \
+  --motif-hits-final MOTIF_HITS_FINAL \
+  --sequence-logo-final SEQUENCE_LOGO_FINAL \
+  --motif-statistics-final MOTIF_STATISTICS_FINAL \
+  --git-commit GIT_COMMIT \
+  [--motif-catalog MOTIF_CATALOG] \
+  [--rscript-bin RSCRIPT_BIN] \
+  [--r-script R_SCRIPT]
+
+Internal worker: requires an existing EMRYS_TASK_WORK_DIR supplied by the runner.
+Output destinations are staging paths supplied by the runner.
+  -h, --help  Show this help message and exit.
+USAGE
+}
+
+script_dir="$(dirname -- "${BASH_SOURCE[0]}")"
 # shellcheck source=../../../libraries/argument_parsing.sh
 source "$script_dir/../../../libraries/argument_parsing.sh"
 # shellcheck source=../../../libraries/executable_resolution.sh
@@ -13,184 +43,38 @@ source "$script_dir/../../../libraries/executable_resolution.sh"
 # shellcheck source=../../../libraries/file_checks.sh
 source "$script_dir/../../../libraries/file_checks.sh"
 
-usage() {
-    cat <<'USAGE'
-Usage:
-  src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh \
-    --analysis-id ANALYSIS_ID \
-    --step09-all-sites STEP09_ALL_SITES \
-    --step09-significant-sites STEP09_SIGNIFICANT_SITES \
-    --step09-summary STEP09_SUMMARY \
-    --reference-fasta REFERENCE_FASTA \
-    --reference-fai REFERENCE_FAI \
-    --output-root OUTPUT_ROOT \
-    [--motif-catalog MOTIF_CATALOG] \
-    [--rscript-bin RSCRIPT_BIN] \
-    [--r-script R_SCRIPT] \
-    [--git-commit COMMIT] \
-    [--no-clobber] \
-    [--execute]
-
-Project Step 09 calls into continuous genomic sequence context, exact known
-PUM-motif hits, logo frequencies, and motif statistics. The owner does not
-read BAMs, rerun Step 09 significance, discover motifs, or render figures.
-
-Dry-run validates and hashes every declared input, then prints the exact R and
-publication plan without creating output paths. Execute mode publishes four
-payload TSVs and the context receipt last as one rollback-protected set.
-USAGE
-}
-
-analysis_id=""
-step09_all_sites=""
-step09_significant_sites=""
-step09_summary=""
-reference_fasta=""
-reference_fai=""
-output_root=""
+declare_required_arguments analysis_id step09_all_sites step09_significant_sites step09_summary reference_fasta reference_fai candidate_context_output motif_hits_output sequence_logo_output motif_statistics_output context_receipt_output candidate_context_final motif_hits_final sequence_logo_final motif_statistics_final git_commit
 motif_catalog="$script_dir/resources/pum_motifs_v1.tsv"
-rscript_bin_arg=""
-git_commit_arg=""
-r_script="${SCIENTIFIC_CONTEXT_R_SCRIPT:-$script_dir/scientific_context_projection.R}"
-execute=false
+rscript_bin=""
+r_script="$script_dir/scientific_context_projection.R"
 
-while [[ "$#" -gt 0 ]]; do
+while [[ $# -gt 0 ]]; do
     case "$1" in
-        --analysis-id) require_value "$1" "${2:-}"; analysis_id="$2"; shift 2 ;;
-        --step09-all-sites) require_value "$1" "${2:-}"; step09_all_sites="$2"; shift 2 ;;
-        --step09-significant-sites) require_value "$1" "${2:-}"; step09_significant_sites="$2"; shift 2 ;;
-        --step09-summary) require_value "$1" "${2:-}"; step09_summary="$2"; shift 2 ;;
-        --reference-fasta) require_value "$1" "${2:-}"; reference_fasta="$2"; shift 2 ;;
-        --reference-fai) require_value "$1" "${2:-}"; reference_fai="$2"; shift 2 ;;
-        --output-root) require_value "$1" "${2:-}"; output_root="$2"; shift 2 ;;
-        --motif-catalog) require_value "$1" "${2:-}"; motif_catalog="$2"; shift 2 ;;
-        --rscript-bin) require_value "$1" "${2:-}"; rscript_bin_arg="$2"; shift 2 ;;
-        --r-script) require_value "$1" "${2:-}"; r_script="$2"; shift 2 ;;
-        --git-commit) require_value "$1" "${2:-}"; git_commit_arg="$2"; shift 2 ;;
-        --no-clobber) shift ;;
-        --execute) execute=true; shift ;;
+        --analysis-id) assign_option_value "$1" "${2:-}" analysis_id; shift 2 ;;
+        --step09-all-sites) assign_option_value "$1" "${2:-}" step09_all_sites; shift 2 ;;
+        --step09-significant-sites) assign_option_value "$1" "${2:-}" step09_significant_sites; shift 2 ;;
+        --step09-summary) assign_option_value "$1" "${2:-}" step09_summary; shift 2 ;;
+        --reference-fasta) assign_option_value "$1" "${2:-}" reference_fasta; shift 2 ;;
+        --reference-fai) assign_option_value "$1" "${2:-}" reference_fai; shift 2 ;;
+        --candidate-context-output) assign_option_value "$1" "${2:-}" candidate_context_output; shift 2 ;;
+        --motif-hits-output) assign_option_value "$1" "${2:-}" motif_hits_output; shift 2 ;;
+        --sequence-logo-output) assign_option_value "$1" "${2:-}" sequence_logo_output; shift 2 ;;
+        --motif-statistics-output) assign_option_value "$1" "${2:-}" motif_statistics_output; shift 2 ;;
+        --context-receipt-output) assign_option_value "$1" "${2:-}" context_receipt_output; shift 2 ;;
+        --candidate-context-final) assign_option_value "$1" "${2:-}" candidate_context_final; shift 2 ;;
+        --motif-hits-final) assign_option_value "$1" "${2:-}" motif_hits_final; shift 2 ;;
+        --sequence-logo-final) assign_option_value "$1" "${2:-}" sequence_logo_final; shift 2 ;;
+        --motif-statistics-final) assign_option_value "$1" "${2:-}" motif_statistics_final; shift 2 ;;
+        --git-commit) assign_option_value "$1" "${2:-}" git_commit; shift 2 ;;
+        --motif-catalog) assign_option_value "$1" "${2:-}" motif_catalog; shift 2 ;;
+        --rscript-bin) assign_option_value "$1" "${2:-}" rscript_bin; shift 2 ;;
+        --r-script) assign_option_value "$1" "${2:-}" r_script; shift 2 ;;
         -h|--help) usage; exit 0 ;;
         *) die "Unknown argument: $1" ;;
     esac
 done
-
-for required in \
-    analysis_id step09_all_sites step09_significant_sites step09_summary \
-    reference_fasta reference_fai output_root
-do
-    [[ -n "${!required}" ]] || die "Missing required argument: --${required//_/-}"
-done
-validate_safe_id "analysis_id" "$analysis_id"
-validate_nonempty_file "Step 09 all-sites" "$step09_all_sites"
-validate_nonempty_file "Step 09 significant-sites" "$step09_significant_sites"
-validate_nonempty_file "Step 09 summary" "$step09_summary"
-validate_nonempty_file "Reference FASTA" "$reference_fasta"
-validate_nonempty_file "Reference FAI" "$reference_fai"
-validate_nonempty_file "PUM motif catalog" "$motif_catalog"
-validate_nonempty_file "Scientific-context R program" "$r_script"
-
-rscript_value="${rscript_bin_arg:-${RSCRIPT_BIN_OVERRIDE:-Rscript}}"
-rscript_bin="$(resolve_executable_value "Rscript" "$rscript_value" "Rscript")"
-git_commit="$git_commit_arg"
-if [[ -z "$git_commit" ]]; then
-    git_commit="$(git -C "$repo_root" rev-parse --verify 'HEAD^{commit}')" ||
-        die "Could not resolve the submitted repository commit."
-fi
-[[ "$git_commit" =~ ^[0-9a-f]{40}([0-9a-f]{24})?$ ]] ||
-    die "Repository HEAD is not a full 40- or 64-character commit: $git_commit"
-
-step09_all_sites_sha256="$(sha256_file "$step09_all_sites")"
-step09_significant_sites_sha256="$(sha256_file "$step09_significant_sites")"
-step09_summary_sha256="$(sha256_file "$step09_summary")"
-reference_fasta_sha256="$(sha256_file "$reference_fasta")"
-reference_fai_sha256="$(sha256_file "$reference_fai")"
-motif_catalog_sha256="$(sha256_file "$motif_catalog")"
-
-analysis_dir="$output_root/$analysis_id"
-final_context="$analysis_dir/$analysis_id.candidate_context.tsv"
-final_hits="$analysis_dir/$analysis_id.motif_hits.tsv"
-final_logo="$analysis_dir/$analysis_id.sequence_logo.tsv"
-final_statistics="$analysis_dir/$analysis_id.motif_statistics.tsv"
-final_receipt="$analysis_dir/$analysis_id.context_receipt.tsv"
-finals=(
-    "$final_context" "$final_hits" "$final_logo" "$final_statistics"
-    "$final_receipt"
-)
-
-run_token="${EMRYS_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
-validate_safe_id "run token" "$run_token"
-tmp_context="$analysis_dir/.$analysis_id.scientific-context.$run_token.candidate.tmp.tsv"
-tmp_hits="$analysis_dir/.$analysis_id.scientific-context.$run_token.hits.tmp.tsv"
-tmp_logo="$analysis_dir/.$analysis_id.scientific-context.$run_token.logo.tmp.tsv"
-tmp_statistics="$analysis_dir/.$analysis_id.scientific-context.$run_token.statistics.tmp.tsv"
-tmp_receipt="$analysis_dir/.$analysis_id.scientific-context.$run_token.receipt.tmp.tsv"
-temps=("$tmp_context" "$tmp_hits" "$tmp_logo" "$tmp_statistics" "$tmp_receipt")
-lock_path="$analysis_dir/.$analysis_id.scientific-context.lock"
-lock_owner_tmp="$lock_path/.owner.$run_token.tmp"
-
-confirm_inputs_unchanged() {
-    [[ "$(sha256_file "$step09_all_sites")" == "$step09_all_sites_sha256" ]] ||
-        die "Step 09 all-sites changed during scientific-context projection: $step09_all_sites"
-    [[ "$(sha256_file "$step09_significant_sites")" == "$step09_significant_sites_sha256" ]] ||
-        die "Step 09 significant-sites changed during scientific-context projection: $step09_significant_sites"
-    [[ "$(sha256_file "$step09_summary")" == "$step09_summary_sha256" ]] ||
-        die "Step 09 summary changed during scientific-context projection: $step09_summary"
-    [[ "$(sha256_file "$reference_fasta")" == "$reference_fasta_sha256" ]] ||
-        die "Reference FASTA changed during scientific-context projection: $reference_fasta"
-    [[ "$(sha256_file "$reference_fai")" == "$reference_fai_sha256" ]] ||
-        die "Reference FAI changed during scientific-context projection: $reference_fai"
-    [[ "$(sha256_file "$motif_catalog")" == "$motif_catalog_sha256" ]] ||
-        die "PUM motif catalog changed during scientific-context projection: $motif_catalog"
-}
-
-fsync_regular_files() {
-    "$durability_python" -X pycache_prefix=/dev/null -I -c '
-import os
-import stat
-import sys
-
-flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
-for path in sys.argv[1:]:
-    descriptor = os.open(path, flags)
-    try:
-        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
-            raise OSError(f"not a regular file: {path}")
-        os.fsync(descriptor)
-    finally:
-        os.close(descriptor)
-' "$@" || {
-        printf 'ERROR: Could not fsync scientific-context staging files.\n' >&2
-        return 1
-    }
-}
-
-fsync_directory() {
-    local directory="$1"
-    "$durability_python" -X pycache_prefix=/dev/null -I -c '
-import os
-import stat
-import sys
-
-path = sys.argv[1]
-flags = (
-    os.O_RDONLY
-    | getattr(os, "O_CLOEXEC", 0)
-    | getattr(os, "O_DIRECTORY", 0)
-    | getattr(os, "O_NOFOLLOW", 0)
-)
-descriptor = os.open(path, flags)
-try:
-    if not stat.S_ISDIR(os.fstat(descriptor).st_mode):
-        raise OSError(f"not a directory: {path}")
-    os.fsync(descriptor)
-finally:
-    os.close(descriptor)
-' "$directory" || {
-        printf 'ERROR: Could not fsync scientific-context directory: %s\n' \
-            "$directory" >&2
-        return 1
-    }
-}
+require_arguments
+require_task_work_dir
 
 row_count() {
     awk 'END { print (NR > 0 ? NR - 1 : -1) }' "$1"
@@ -257,6 +141,23 @@ validate_receipt_payloads() {
     ' "$receipt_path" || die "Scientific-context receipt does not bind its four payloads."
 }
 
+validate_safe_id "--analysis-id" "$analysis_id"
+[[ "$git_commit" =~ ^([0-9a-f]{40}|[0-9a-f]{64})$ ]] || die "--git-commit must be a full lowercase Git object ID."
+rscript_bin="$(resolve_executable_value "Rscript" "$rscript_bin" "Rscript")"
+validate_nonempty_file "R projection script" "$r_script"
+validate_nonempty_file "step09 all sites" "$step09_all_sites"
+step09_all_sites_sha256="$(sha256_file "$step09_all_sites")"
+validate_nonempty_file "step09 significant sites" "$step09_significant_sites"
+step09_significant_sites_sha256="$(sha256_file "$step09_significant_sites")"
+validate_nonempty_file "step09 summary" "$step09_summary"
+step09_summary_sha256="$(sha256_file "$step09_summary")"
+validate_nonempty_file "reference fasta" "$reference_fasta"
+reference_fasta_sha256="$(sha256_file "$reference_fasta")"
+validate_nonempty_file "reference fai" "$reference_fai"
+reference_fai_sha256="$(sha256_file "$reference_fai")"
+validate_nonempty_file "motif catalog" "$motif_catalog"
+motif_catalog_sha256="$(sha256_file "$motif_catalog")"
+
 r_command=("$rscript_bin")
 if [[ "${EMRYS_LOCAL_PILOT_R:-0}" == 1 ]]; then
     r_command+=(--no-environ --no-site-file --no-restore --no-save)
@@ -276,180 +177,19 @@ r_command+=(
     --reference-fai-sha256 "$reference_fai_sha256"
     --motif-catalog "$motif_catalog"
     --motif-catalog-sha256 "$motif_catalog_sha256"
-    --candidate-context-output "$tmp_context"
-    --motif-hits-output "$tmp_hits"
-    --sequence-logo-output "$tmp_logo"
-    --motif-statistics-output "$tmp_statistics"
-    --context-receipt-output "$tmp_receipt"
-    --candidate-context-final "$final_context"
-    --motif-hits-final "$final_hits"
-    --sequence-logo-final "$final_logo"
-    --motif-statistics-final "$final_statistics"
+    --candidate-context-output "$candidate_context_output"
+    --motif-hits-output "$motif_hits_output"
+    --sequence-logo-output "$sequence_logo_output"
+    --motif-statistics-output "$motif_statistics_output"
+    --context-receipt-output "$context_receipt_output"
+    --candidate-context-final "$candidate_context_final"
+    --motif-hits-final "$motif_hits_final"
+    --sequence-logo-final "$sequence_logo_final"
+    --motif-statistics-final "$motif_statistics_final"
     --git-commit "$git_commit"
 )
 
-printf 'Scientific-context projection:\n'
-printf '  Mode: %s\n' "$([[ "$execute" == true ]] && printf execute || printf dry-run)"
-printf '  Analysis ID: %s\n' "$analysis_id"
-printf '  Step 09 all-sites: %s\n' "$step09_all_sites"
-printf '  Step 09 significant-sites: %s\n' "$step09_significant_sites"
-printf '  Step 09 summary: %s\n' "$step09_summary"
-printf '  Reference FASTA / FAI: %s / %s\n' "$reference_fasta" "$reference_fai"
-printf '  Motif catalog: %s\n' "$motif_catalog"
-printf '  Output directory: %s\n' "$analysis_dir"
-printf '  Existing-output policy: refuse existing outputs\n'
-printf '  Sequence policy: legacy_rna_change_oriented_genomic_v1 (mechanical; provisional)\n'
-printf 'R command:\n'
 print_command "${r_command[@]}"
-printf 'Publication order (receipt last):\n'
-printf '  %s\n' "${finals[@]}"
-
-require_no_owner_residue \
-    "Scientific-context projection" "$analysis_dir" \
-    ".${analysis_id}.scientific-context.*" \
-    ".${analysis_id}.*.previous"
-preflight_final_count=0
-for final in "${finals[@]}"; do
-    [[ ! -L "$final" ]] || die "Scientific-context final path is a symlink: $final"
-    [[ -e "$final" ]] && preflight_final_count=$((preflight_final_count + 1))
-done
-[[ "$preflight_final_count" -eq 0 || "$preflight_final_count" -eq 5 ]] ||
-    die "Existing scientific-context outputs are incomplete; expected all five or none."
-if [[ "$preflight_final_count" -eq 5 ]]; then
-    die "Refusing to replace a complete scientific-context transaction."
-fi
-if [[ "$execute" != true ]]; then
-    printf 'Dry-run only. No R process was invoked and no output path was created.\n'
-    exit 0
-fi
-
-durability_python="${EMRYS_SHA256_PYTHON:-}"
-if [[ -z "$durability_python" ]]; then
-    durability_python="$(command -v python3 2>/dev/null || true)"
-fi
-[[ -n "$durability_python" && "$durability_python" == /* &&
-   -x "$durability_python" ]] ||
-    die "Scientific-context durability requires an absolute executable Python launcher."
-
-lock_owned=false
-lock_owner_written=false
-scratch_owned=false
-publication_started=false
-publication_committed=false
-rollback_failed=false
-published_count=0
-
-release_lock() {
-    [[ "$lock_owned" == true ]] || return 0
-    if [[ "$lock_owner_written" != true || ! -f "$lock_path/owner" ]] ||
-       ! grep -Fqx $'run_token\t'"$run_token" "$lock_path/owner"; then
-        printf 'ERROR: Cannot prove scientific-context lock ownership: %s\n' "$lock_path" >&2
-        return 1
-    fi
-    local unexpected
-    unexpected="$(find "$lock_path" -mindepth 1 -maxdepth 1 ! -path "$lock_path/owner" -print -quit)" || return 1
-    [[ -z "$unexpected" ]] || {
-        printf 'ERROR: Scientific-context lock contains unexpected residue: %s\n' "$unexpected" >&2
-        return 1
-    }
-    rm -f "$lock_path/owner" || return 1
-    rmdir "$lock_path" || return 1
-    lock_owned=false
-}
-
-cleanup() {
-    local status=$?
-    local index
-    trap - EXIT HUP INT TERM
-    if [[ "$publication_started" == true && "$publication_committed" != true ]]; then
-        for ((index = 0; index < published_count; index++)); do
-            remove_owned_published_file \
-                "Scientific-context output" "${temps[$index]}" "${finals[$index]}" ||
-                rollback_failed=true
-        done
-        fsync_directory "$analysis_dir" || rollback_failed=true
-    fi
-    if [[ "$scratch_owned" == true && "$rollback_failed" != true ]]; then
-        for path in "${temps[@]}"; do rm -f "$path" || true; done
-    fi
-    if [[ "$rollback_failed" == true ]]; then
-        [[ "$status" -ne 0 ]] || status=1
-        printf 'ERROR: Scientific-context rollback was incomplete; preserving lock and residue: %s\n' "$lock_path" >&2
-    elif [[ "$lock_owned" == true ]]; then
-        release_lock || status=1
-    fi
-    exit "$status"
-}
-
-trap cleanup EXIT
-trap 'exit 129' HUP
-trap 'exit 130' INT
-trap 'exit 143' TERM
-mkdir -p "$analysis_dir"
-if ! mkdir "$lock_path" 2>/dev/null; then
-    die "Scientific-context lock already exists: $lock_path"
-fi
-lock_owned=true
-printf 'run_token\t%s\npid\t%s\n' "$run_token" "$$" > "$lock_owner_tmp" ||
-    die "Could not write scientific-context lock metadata."
-mv "$lock_owner_tmp" "$lock_path/owner" ||
-    die "Could not publish scientific-context lock metadata."
-lock_owner_written=true
-require_no_owner_residue \
-    "Scientific-context projection" "$analysis_dir" \
-    ".${analysis_id}.*.previous"
-
-for path in "${temps[@]}"; do
-    [[ ! -e "$path" && ! -L "$path" ]] ||
-        die "Refusing to reuse scientific-context scratch path: $path"
-done
-scratch_owned=true
-final_count=0
-for final in "${finals[@]}"; do
-    [[ ! -L "$final" ]] || die "Scientific-context final path is a symlink: $final"
-    [[ -e "$final" ]] && final_count=$((final_count + 1))
-done
-[[ "$final_count" -eq 0 || "$final_count" -eq 5 ]] ||
-    die "Existing scientific-context outputs are incomplete; expected all five or none."
-if [[ "$final_count" -eq 5 ]]; then
-    die "Refusing to replace a complete scientific-context transaction."
-fi
-
-"${r_command[@]}" || die "Scientific-context R projection failed."
-confirm_inputs_unchanged
-validate_receipt_payloads \
-    "$tmp_context" "$tmp_hits" "$tmp_logo" "$tmp_statistics" "$tmp_receipt"
-fsync_regular_files "${temps[@]}" ||
-    die "Could not make scientific-context staging files durable."
-tmp_hashes=()
-for temp in "${temps[@]}"; do tmp_hashes+=("$(sha256_file "$temp")"); done
-
-publication_started=true
-for index in 0 1 2 3; do
-    publish_file_create_exclusive \
-        "Scientific-context payload" "${temps[$index]}" "${finals[$index]}"
-    published_count=$((published_count + 1))
-done
-publish_file_create_exclusive \
-    "Scientific-context receipt" "$tmp_receipt" "$final_receipt"
-published_count=$((published_count + 1))
-fsync_directory "$analysis_dir" ||
-    die "Could not make receipt-last scientific-context publication durable."
-
-validate_receipt_payloads \
-    "$final_context" "$final_hits" "$final_logo" "$final_statistics" "$final_receipt"
-confirm_inputs_unchanged
-for index in "${!finals[@]}"; do
-    [[ "$(sha256_file "${finals[$index]}")" == "${tmp_hashes[$index]}" ]] ||
-        die "Published scientific-context output changed: ${finals[$index]}"
-done
-for index in "${!finals[@]}"; do
-    require_owned_published_file \
-        "Scientific-context output" "${temps[$index]}" "${finals[$index]}"
-done
-for temp in "${temps[@]}"; do rm -f -- "$temp"; done
-publication_committed=true
-release_lock
-
-printf 'Scientific-context execute complete. Published receipt-last transaction:\n'
-printf '  %s\n' "${finals[@]}"
+"${r_command[@]}"
+validate_receipt_payloads "$candidate_context_output" "$motif_hits_output" \
+    "$sequence_logo_output" "$motif_statistics_output" "$context_receipt_output"

@@ -8,15 +8,15 @@ It needs the marked BAM and exact adjacent BAI, an existing FASTA/FAI/dictionary
 set, GATK, samtools, Java 17+, and project-storage temporary space. It does not
 create or repair missing reference sidecars.
 
-Normal execution uses the [Project Run](../README.md#running-a-stage). For
-standalone help from the checkout root:
+Execution uses the [Project Run](../README.md#running-a-stage). The shell
+script is an internal worker; its help describes the runner interface. The
+validator remains directly available:
 
 ```bash
 bash src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh --help
 emrys validate split-n-cigar --help
 ```
 
-The Run uses `--no-clobber`. Standalone execute without it retains replacement
-behavior with a known restoration defect; read the [contract](CONTRACT.md)
-before using that route or handling residue. Structural validation does not
+The [contract](CONTRACT.md) retains the historical restoration defect and
+current native checks. Structural validation does not
 prove the GATK transformation, sample identity, or biological validity.

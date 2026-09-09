@@ -2,17 +2,12 @@
 
 from __future__ import annotations
 
-import argparse
 import gzip
-import hashlib
 import os
 import shlex
-import signal
-import subprocess
-import sys
-import time
 from dataclasses import dataclass
 from pathlib import Path
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -27,8 +22,6 @@ set -euo pipefail
 command_name="${1:-}"
 shift || true
 
-[[ -z "${EMRYS_STEP07_INPUT_IDENTITY_SHA256:-}" ]] || exit 48
-
 if [[ -n "${FAKE_BCFTOOLS_LOG:-}" ]]; then
     rendered="$command_name"
     for argument in "$@"; do
@@ -37,14 +30,6 @@ if [[ -n "${FAKE_BCFTOOLS_LOG:-}" ]]; then
     done
     printf '%s\n' "$rendered" >>"$FAKE_BCFTOOLS_LOG"
 fi
-
-terminated() {
-    if [[ -n "${FAKE_TERM_LOG:-}" ]]; then
-        printf '%s\n' "$command_name" >>"$FAKE_TERM_LOG"
-    fi
-    exit 143
-}
-trap terminated TERM
 
 case "$command_name" in
     mpileup)
@@ -57,16 +42,6 @@ case "$command_name" in
         done
         if [[ "${FAKE_FAIL_STAGE:-}" == "mpileup_${orientation}" ]]; then
             exit 41
-        fi
-        if [[ -n "${FAKE_MUTATE_PATH:-}" &&
-              "${FAKE_MUTATE_ORIENTATION:-FWD_like}" == "$orientation" ]]; then
-            printf '# controlled mutation\n' >>"$FAKE_MUTATE_PATH"
-        fi
-        if [[ -n "${FAKE_BARRIER_READY:-}" && "$orientation" == FWD_like ]]; then
-            printf 'ready\n' >"$FAKE_BARRIER_READY"
-            while [[ ! -e "${FAKE_BARRIER_RELEASE:-}" ]]; do
-                sleep 0.02
-            done
         fi
         printf 'ORIENTATION=%s\n' "$orientation"
         ;;
@@ -81,9 +56,6 @@ case "$command_name" in
             fi
         done
         [[ -n "$output" ]] || exit 42
-        if [[ -n "${FAKE_FILTER_READY:-}" ]]; then
-            printf 'ready\n' >"$FAKE_FILTER_READY"
-        fi
         stream="$(cat)"
         orientation="${stream#ORIENTATION=}"
         orientation="${orientation%%$'\n'*}"
@@ -110,10 +82,6 @@ case "$command_name" in
         mode="${1:-}"
         path="${2:-}"
         [[ -s "$path" ]] || exit 44
-        if [[ "${FAKE_FAIL_FINAL_VIEW:-0}" == 1 && "$mode" == -h &&
-              "$path" != *.tmp.vcf ]]; then
-            exit 49
-        fi
         if [[ "$mode" == -h && -n "${FAKE_OBSERVE_FWD:-}" &&
               "$path" == "$FAKE_OBSERVE_FWD" ]]; then
             [[ -s "${FAKE_OBSERVE_REV:?}" ]]
@@ -155,12 +123,19 @@ class Fixture:
         return self.output_root / "cohort_A/part_A"
 
     @property
-    def finals(self) -> tuple[Path, Path, Path]:
+    def outputs(self) -> tuple[Path, Path, Path]:
         stem = self.output_dir / "cohort_A.part_A"
         return (
             Path(f"{stem}.FWD_like.mpileup.vcf"),
             Path(f"{stem}.REV_like.mpileup.vcf"),
             Path(f"{stem}.step07_outputs.tsv"),
+        )
+
+    @property
+    def canonical_vcfs(self) -> tuple[Path, Path]:
+        return tuple(
+            self.output_root.parent / "published" / path.name
+            for path in self.outputs[:2]
         )
 
     def roster(self, selector: Path | None = None) -> tuple[Path, ...]:
@@ -207,26 +182,18 @@ def step07(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
     bcftools.chmod(0o755)
     monkeypatch.setenv("FAKE_BCFTOOLS_LOG", str(log))
     for name in (
-        producer.INPUT_IDENTITY_ENV,
-        "EMRYS_REQUIRE_BOUND_SHA256",
-        "EMRYS_RUN_TOKEN",
-        "SLURM_JOB_ID",
-        "FAKE_BARRIER_READY",
-        "FAKE_BARRIER_RELEASE",
         "FAKE_FAIL_STAGE",
-        "FAKE_FAIL_FINAL_VIEW",
-        "FAKE_FILTER_READY",
         "FAKE_HEADER_ONLY",
-        "FAKE_MUTATE_PATH",
-        "FAKE_MUTATE_ORIENTATION",
         "FAKE_OBSERVATION",
         "FAKE_OBSERVE_FWD",
         "FAKE_OBSERVE_REV",
         "FAKE_OBSERVE_RECEIPT",
         "FAKE_SAMPLES",
-        "FAKE_TERM_LOG",
     ):
         monkeypatch.delenv(name, raising=False)
+    destination = output_root / "cohort_A/part_A"
+    destination.mkdir(parents=True)
+    stem = "cohort_A.part_A"
     arguments = (
         "--cohort-id",
         "cohort_A",
@@ -240,8 +207,16 @@ def step07(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
         str(orientation_root),
         "--reference-fasta",
         str(reference),
-        "--output-root",
-        str(output_root),
+        "--fwd-vcf-output",
+        str(destination / f"{stem}.FWD_like.mpileup.vcf"),
+        "--rev-vcf-output",
+        str(destination / f"{stem}.REV_like.mpileup.vcf"),
+        "--receipt-output",
+        str(destination / f"{stem}.step07_outputs.tsv"),
+        "--fwd-vcf-final",
+        str(tmp_path / "published" / f"{stem}.FWD_like.mpileup.vcf"),
+        "--rev-vcf-final",
+        str(tmp_path / "published" / f"{stem}.REV_like.mpileup.vcf"),
         "--bcftools-bin",
         str(bcftools),
     )
@@ -261,112 +236,17 @@ def _calls(path: Path) -> list[list[str]]:
     return [shlex.split(line) for line in path.read_text().splitlines()]
 
 
-def _identity(paths: tuple[Path, ...]) -> str:
-    digest = hashlib.sha256(b"emrys.step07-input-identity.v1\0")
-    for path in paths:
-        digest.update(os.fsencode(f"{path}\0{sha256_file(path)}\0"))
-    return digest.hexdigest()
-
-
-def _assert_clean(fixture: Fixture) -> None:
-    assert not any(path.exists() for path in fixture.finals)
-    if fixture.output_dir.is_dir():
-        assert not list(fixture.output_dir.glob(".cohort_A.part_A.step07.*"))
-
-
-def test_dry_run_is_no_write_and_prints_the_exact_plan(
-    step07: Fixture,
-    capsys: pytest.CaptureFixture[str],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("EMRYS_RUN_TOKEN", "dryrun001")
-    assert producer.main(step07.arguments) == 0
-
-    output = capsys.readouterr().out
-    assert "Mode: dry-run" in output
-    assert "Maximum depth: 10000000" in output
-    assert producer.DEFAULT_FILTER in output
-    assert producer.ANNOTATIONS in output
-    assert output.count("bcftools mpileup") == 2
-    assert " -r chr1 " in output
-    fwd, rev, receipt = step07.finals
-    report = step07.output_dir / "cohort_A.part_A.step07_validation.tsv"
-    validate_prefix = ("emrys", "validate")
-    validator_bindings = (
-        ("--cohort-id", "cohort_A"),
-        ("--partition-id", "part_A"),
-        ("--sample-manifest", step07.sample_manifest),
-        ("--partition-manifest", step07.partition_manifest),
-        ("--reference-fai", Path(f"{step07.reference}.fai")),
-        ("--fwd-vcf", fwd),
-        ("--rev-vcf", rev),
-        ("--receipt", receipt),
-        ("--output", report),
-    )
-    validator = shlex.join(
-        (
-            *validate_prefix,
-            "partitioned-cohort-mpileup",
-            *(str(item) for pair in validator_bindings for item in pair),
-            "--execute",
-        )
-    )
-    all_pass = shlex.join(
-        (
-            *validate_prefix,
-            "all-pass",
-            "--report",
-            str(report),
-            "--step-id",
-            "07",
-            "--scope-id",
-            "cohort_A__part_A",
-        )
-    )
-    assert f"Post-execution validator command:\n  {validator}" in output
-    assert f"Semantic all-pass gate:\n  {all_pass}" in output
-    prefix = step07.output_dir / ".cohort_A.part_A.step07.dryrun001"
-    for path in (
-        Path(f"{prefix}.FWD_like.tmp.vcf"),
-        Path(f"{prefix}.REV_like.tmp.vcf"),
-        Path(f"{prefix}.outputs.tmp.tsv"),
-    ):
-        assert str(path) in output
-    assert "no directories or files were created" in output
-    assert not step07.output_root.exists()
-    assert not step07.log.exists()
-
-
-@pytest.mark.parametrize("file_selector", (False, True))
-def test_scientific_input_roster_is_exact(step07: Fixture, file_selector: bool) -> None:
-    selector = None
-    if file_selector:
-        selector = step07.partition_manifest.parent / "target.bed"
-        selector.write_text("chr1\t0\t100\n")
-        step07.partition_manifest.write_text(
-            "partition_id\tselector_type\tselector_value\n"
-            "part_A\tregions_file\ttarget.bed\n"
-        )
-    parser = argparse.ArgumentParser()
-    producer.configure_parser(parser)
-    context = producer.build_context(parser.parse_args(step07.arguments))
-
-    assert tuple(path for _label, path in context.scientific_inputs) == step07.roster(
-        selector
-    )
-
-
-def test_streaming_execution_preserves_argv_receipt_and_receipt_last(
+def test_worker_preserves_pipeline_arguments_and_final_path_receipt(
     step07: Fixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    fwd, rev, receipt = step07.finals
+    fwd, rev, receipt = step07.outputs
     observation = step07.output_root.parent / "publication-observation"
     monkeypatch.setenv("FAKE_OBSERVE_FWD", str(fwd))
     monkeypatch.setenv("FAKE_OBSERVE_REV", str(rev))
     monkeypatch.setenv("FAKE_OBSERVE_RECEIPT", str(receipt))
     monkeypatch.setenv("FAKE_OBSERVATION", str(observation))
 
-    assert producer.main([*step07.arguments, "--no-clobber", "--execute"]) == 0
+    assert producer.main(step07.arguments) == 0
 
     calls = _calls(step07.log)
     pileups = [call for call in calls if call[0] == "mpileup"]
@@ -400,12 +280,13 @@ def test_streaming_execution_preserves_argv_receipt_and_receipt_last(
         ]
         assert filters[index][-1] == "-"
     assert observation.read_text() == "fwd-rev-validated-before-receipt\n"
-    assert all(path.is_file() for path in step07.finals)
+    assert all(path.is_file() for path in step07.outputs)
     lines = receipt.read_text().splitlines()
     assert tuple(lines[0].split("\t")) == mpileup.RECEIPT_HEADER
     rows = [line.split("\t") for line in lines[1:]]
     assert [row[4] for row in rows] == list(ORIENTATIONS)
-    assert [row[5] for row in rows] == [str(fwd), str(rev)]
+    assert [row[5] for row in rows] == [str(path) for path in step07.canonical_vcfs]
+    assert not any(path.exists() for path in step07.canonical_vcfs)
     assert {row[6] for row in rows} == {sha256_file(step07.sample_manifest)}
     assert {row[7] for row in rows} == {sha256_file(step07.partition_manifest)}
     assert [row[8:] for row in rows] == [["2", "1"], ["2", "1"]]
@@ -421,20 +302,46 @@ def test_streaming_execution_preserves_argv_receipt_and_receipt_last(
         "filter_REV_like",
     ),
 )
-def test_any_pipeline_process_failure_cleans_only_owned_state(
+def test_either_pipeline_process_failure_rejects_scientific_completion(
     step07: Fixture,
     monkeypatch: pytest.MonkeyPatch,
     failure: str,
 ) -> None:
-    step07.output_dir.mkdir(parents=True)
     unrelated = step07.output_dir / "unrelated.txt"
     unrelated.write_text("preserve\n")
     monkeypatch.setenv("FAKE_FAIL_STAGE", failure)
 
-    assert producer.main([*step07.arguments, "--execute"]) == 1
+    assert producer.main(step07.arguments) == 1
 
-    _assert_clean(step07)
+    assert not step07.outputs[2].exists()
     assert unrelated.read_text() == "preserve\n"
+
+
+@pytest.mark.parametrize("failure", ("spawn", "exit"))
+def test_filter_failure_returns_to_runner_without_waiting_for_upstream(
+    step07: Fixture, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    source = MagicMock()
+    source.__enter__.return_value = source
+    source.wait.side_effect = AssertionError("worker waited for failed pipeline")
+    source.__exit__.side_effect = lambda *_arguments: source.wait()
+    consumer = MagicMock()
+    consumer.wait.return_value = 1
+    monkeypatch.setattr(
+        producer.subprocess,
+        "Popen",
+        Mock(
+            side_effect=[
+                source,
+                OSError("filter spawn failed") if failure == "spawn" else consumer,
+            ]
+        ),
+    )
+
+    assert producer.main(step07.arguments) == 1
+    source.stdout.close.assert_called_once()
+    source.wait.assert_not_called()
+    assert not step07.outputs[2].exists()
 
 
 def test_header_only_and_gzip_regions_file_are_valid(
@@ -450,13 +357,13 @@ def test_header_only_and_gzip_regions_file_are_valid(
     )
     monkeypatch.setenv("FAKE_HEADER_ONLY", "1")
 
-    assert producer.main([*step07.arguments, "--execute"]) == 0
+    assert producer.main(step07.arguments) == 0
 
     pileups = [call for call in _calls(step07.log) if call[0] == "mpileup"]
     assert all(
         call[call.index("-R") + 1] == str(selector.resolve()) for call in pileups
     )
-    rows = [line.split("\t") for line in step07.finals[2].read_text().splitlines()[1:]]
+    rows = [line.split("\t") for line in step07.outputs[2].read_text().splitlines()[1:]]
     assert {row[3] for row in rows} == {"selectors/target.bed.gz"}
     assert {row[9] for row in rows} == {"0"}
 
@@ -511,7 +418,7 @@ def test_rejects_invalid_reference_partition_or_selector_state(
         )
 
     assert producer.main(step07.arguments) == 1
-    assert not step07.output_root.exists()
+    assert not any(path.exists() for path in step07.outputs)
     assert not step07.log.exists()
 
 
@@ -520,7 +427,7 @@ def test_rejects_missing_bam_or_index(step07: Fixture, index: int) -> None:
     step07.roster()[index].unlink()
 
     assert producer.main(step07.arguments) == 1
-    assert not step07.output_root.exists()
+    assert not any(path.exists() for path in step07.outputs)
     assert not step07.log.exists()
 
 
@@ -532,7 +439,7 @@ def test_rejects_unusable_explicit_tool(step07: Fixture, state: str) -> None:
         step07.bcftools.chmod(0o644)
 
     assert producer.main(step07.arguments) == 1
-    assert not step07.output_root.exists()
+    assert not any(path.exists() for path in step07.outputs)
 
 
 @pytest.mark.parametrize("source", ("environment", "path"))
@@ -546,271 +453,16 @@ def test_tool_fallback_precedence(
         bcftools = step07.bcftools.with_name("bcftools")
         step07.bcftools.rename(bcftools)
         monkeypatch.delenv("BCFTOOLS_BIN_OVERRIDE", raising=False)
-        monkeypatch.setenv("PATH", str(bcftools.parent))
+        monkeypatch.setenv("PATH", f"{bcftools.parent}:{os.defpath}")
 
     assert producer.main(arguments) == 0
 
 
-def test_bound_identity_includes_relative_selector_and_is_scrubbed(
-    step07: Fixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    selector = step07.partition_manifest.parent / "target.bed"
-    selector.write_text("chr1\t0\t100\n")
-    step07.partition_manifest.write_text(
-        "partition_id\tselector_type\tselector_value\n"
-        "part_A\tregions_file\ttarget.bed\n"
-    )
-    monkeypatch.setenv("EMRYS_REQUIRE_BOUND_SHA256", "1")
-    monkeypatch.setenv(producer.INPUT_IDENTITY_ENV, _identity(step07.roster(selector)))
-
-    assert producer.main([*step07.arguments, "--no-clobber", "--execute"]) == 0
-    assert producer.INPUT_IDENTITY_ENV not in os.environ
-
-
-@pytest.mark.parametrize("bound", (False, True))
-def test_rejects_direct_and_bound_input_mutation(
-    step07: Fixture,
-    monkeypatch: pytest.MonkeyPatch,
-    bound: bool,
-) -> None:
-    bam = step07.roster()[4]
-    if bound:
-        monkeypatch.setenv("EMRYS_REQUIRE_BOUND_SHA256", "1")
-        monkeypatch.setenv(producer.INPUT_IDENTITY_ENV, _identity(step07.roster()))
-    monkeypatch.setenv("FAKE_MUTATE_PATH", str(bam))
-
-    assert producer.main([*step07.arguments, "--execute"]) == 1
-
-    _assert_clean(step07)
-    assert "controlled mutation" in bam.read_text()
-
-
-@pytest.mark.parametrize("manifest_name", ("sample_manifest", "partition_manifest"))
-def test_manifest_mutation_is_always_rejected(
-    step07: Fixture,
-    monkeypatch: pytest.MonkeyPatch,
-    manifest_name: str,
-) -> None:
-    manifest = getattr(step07, manifest_name)
-    monkeypatch.setenv("FAKE_MUTATE_PATH", str(manifest))
-
-    assert producer.main([*step07.arguments, "--execute"]) == 1
-
-    _assert_clean(step07)
-    assert "controlled mutation" in manifest.read_text()
-
-
-def test_complete_set_is_unchanged_without_tool_reentry(
-    step07: Fixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    assert producer.main([*step07.arguments, "--execute"]) == 0
-    before = tuple(path.read_bytes() for path in step07.finals)
-    step07.log.unlink()
-    monkeypatch.setenv("FAKE_FAIL_STAGE", "mpileup_FWD_like")
-
-    for flag in ([], ["--no-clobber"]):
-        assert producer.main([*step07.arguments, *flag, "--execute"]) == 1
-        assert tuple(path.read_bytes() for path in step07.finals) == before
-        assert not step07.log.exists()
-
-
-def test_foreign_lock_residue_and_incomplete_set_are_preserved(
-    step07: Fixture,
-) -> None:
-    step07.output_dir.mkdir(parents=True)
-    lock = step07.output_dir / ".cohort_A.part_A.step07.lock"
-    lock.mkdir()
-    owner = lock / "owner"
-    owner.write_text("run_token\tforeign\npid\t99\n")
-    assert producer.main([*step07.arguments, "--execute"]) == 1
-    assert owner.read_text().startswith("run_token\tforeign")
-    assert not step07.log.exists()
-    owner.unlink()
-    lock.rmdir()
-
-    residue = (
-        step07.output_dir / ".cohort_A.part_A.step07.abandoned.previous.FWD_like.vcf"
-    )
-    residue.write_text("operator evidence\n")
-    assert producer.main(step07.arguments) == 1
-    assert residue.read_text() == "operator evidence\n"
-    residue.unlink()
-
-    step07.finals[0].write_text("partial predecessor\n")
-    assert producer.main([*step07.arguments, "--execute"]) == 1
-    assert step07.finals[0].read_text() == "partial predecessor\n"
-    assert not step07.log.exists()
-
-
-@pytest.mark.parametrize("index", range(3))
-@pytest.mark.parametrize("boundary", ("before", "after", "term-before", "term-after"))
-def test_no_clobber_link_failure_allows_clean_rerun(
-    step07: Fixture, monkeypatch: pytest.MonkeyPatch, index: int, boundary: str
-) -> None:
-    finals = step07.finals
-    roots = (step07.output_dir,)
-    arguments = [*step07.arguments, "--no-clobber", "--execute"]
-    original_link = os.link
-
-    def interrupt_link(source: Path, destination: Path) -> None:
-        if Path(destination) != finals[index]:
-            original_link(source, destination)
-            return
-        if boundary.endswith("after"):
-            original_link(source, destination)
-        if boundary.startswith("term"):
-            os.kill(os.getpid(), signal.SIGTERM)
-        raise OSError("injected link-boundary failure")
-
-    with monkeypatch.context() as injected:
-        injected.setattr(producer.os, "link", interrupt_link)
-        assert producer.main(arguments) == (143 if boundary.startswith("term") else 1)
-    assert not any(os.path.lexists(path) for path in finals)
-    assert not any(list(root.rglob(".*")) for root in roots)
-    assert producer.main(arguments) == 0
-    assert all(path.is_file() for path in finals)
-    assert not any(list(root.rglob(".*")) for root in roots)
-
-
-@pytest.mark.parametrize(
-    "fault", ("foreign-file", "foreign-symlink", "missing-anchor", "unlink")
-)
-def test_no_clobber_ambiguous_rollback_preserves_state_and_refuses_rerun(
-    step07: Fixture, monkeypatch: pytest.MonkeyPatch, fault: str
-) -> None:
-    finals = step07.finals
-    roots = (step07.output_dir,)
-    arguments = [*step07.arguments, "--no-clobber", "--execute"]
-    original_link, original_unlink = os.link, Path.unlink
-    anchors: dict[Path, Path] = {}
-    preserved: dict[Path, bytes] = {}
-    expected_final: list[bytes] = []
-    foreign = roots[0].parent / "foreign-target"
-
-    def interrupt_second_link(source: Path, destination: Path) -> None:
-        anchors[Path(destination)] = Path(source)
-        if Path(destination) != finals[1]:
-            original_link(source, destination)
-            return
-        if fault.startswith("foreign"):
-            foreign.write_bytes(b"foreign output\n")
-            original_unlink(finals[0])
-            if fault == "foreign-symlink":
-                finals[0].symlink_to(foreign)
-            else:
-                finals[0].write_bytes(foreign.read_bytes())
-        elif fault == "missing-anchor":
-            original_unlink(anchors[finals[0]])
-        expected_final.append(finals[0].read_bytes())
-        preserved.update(
-            (path, path.read_bytes())
-            for root in roots
-            for path in root.rglob(".*")
-            if path.is_file()
-        )
-        raise OSError("injected second-link failure")
-
-    def refuse_owned_unlink(path: Path, *, missing_ok: bool = False) -> None:
-        if fault == "unlink" and path == finals[0]:
-            raise OSError("injected owned-final unlink failure")
-        original_unlink(path, missing_ok=missing_ok)
-
-    with monkeypatch.context() as injected:
-        injected.setattr(producer.os, "link", interrupt_second_link)
-        injected.setattr(Path, "unlink", refuse_owned_unlink)
-        assert producer.main(arguments) == 1
-    assert finals[0].is_symlink() == (fault == "foreign-symlink")
-    assert finals[0].read_bytes() == expected_final[0]
-    if fault == "foreign-symlink":
-        assert finals[0].readlink() == foreign
-    assert not any(os.path.lexists(path) for path in finals[1:])
-    assert preserved and all(
-        path.read_bytes() == data for path, data in preserved.items()
-    )
-    owner = (step07.output_dir / ".cohort_A.part_A.step07.lock") / "owner"
-    owner_bytes, final_bytes = owner.read_bytes(), finals[0].read_bytes()
-    assert producer.main(arguments) == 1
-    assert owner.read_bytes() == owner_bytes and finals[0].read_bytes() == final_bytes
-    assert all(path.read_bytes() == data for path, data in preserved.items())
-
-
-def test_postpublication_validation_failure_removes_owned_outputs(
-    step07: Fixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setenv("FAKE_FAIL_FINAL_VIEW", "1")
-
-    assert producer.main([*step07.arguments, "--execute"]) == 1
-    _assert_clean(step07)
-
-
-def test_same_scope_lock_and_term_stop_both_pipeline_children(
-    step07: Fixture, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    ready = step07.output_root.parent / "pipeline.ready"
-    filter_ready = step07.output_root.parent / "filter.ready"
-    release = step07.output_root.parent / "pipeline.release"
-    term_log = step07.output_root.parent / "terminated.log"
-    environment = dict(os.environ)
-    environment.update(
-        {
-            "FAKE_BARRIER_READY": str(ready),
-            "FAKE_BARRIER_RELEASE": str(release),
-            "FAKE_FILTER_READY": str(filter_ready),
-            "FAKE_TERM_LOG": str(term_log),
-            "FAKE_BCFTOOLS_LOG": str(step07.log),
-        }
-    )
-    command = [
-        sys.executable,
-        "-X",
-        "pycache_prefix=/dev/null",
-        "-I",
-        "-m",
-        "emrys.stages.partitioned_cohort_mpileup.producer",
-        *step07.arguments,
-        "--execute",
-    ]
-    running = subprocess.Popen(
-        command,
-        cwd=Path(__file__).resolve().parents[3],
-        env=environment,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    try:
-        deadline = time.monotonic() + 5
-        while (
-            not (ready.exists() and filter_ready.exists())
-            and running.poll() is None
-            and time.monotonic() < deadline
-        ):
-            time.sleep(0.02)
-        assert ready.exists() and filter_ready.exists(), running.communicate(timeout=1)
-        owner = step07.output_dir / ".cohort_A.part_A.step07.lock/owner"
-        before = owner.read_bytes()
-
-        assert producer.main([*step07.arguments, "--execute"]) == 1
-        assert owner.read_bytes() == before
-
-        running.send_signal(signal.SIGTERM)
-        stdout, stderr = running.communicate(timeout=5)
-        assert running.returncode == 143, stdout + stderr
-    finally:
-        if running.poll() is None:
-            release.touch()
-            running.kill()
-            running.wait()
-
-    assert set(term_log.read_text().splitlines()) == {"mpileup", "filter"}
-    _assert_clean(step07)
-
-
-def test_vcf_sample_order_mismatch_never_publishes(
+def test_vcf_sample_order_mismatch_prevents_receipt(
     step07: Fixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("FAKE_SAMPLES", "sample_B,sample_A")
 
-    assert producer.main([*step07.arguments, "--execute"]) == 1
+    assert producer.main(step07.arguments) == 1
 
-    _assert_clean(step07)
+    assert not step07.outputs[2].exists()

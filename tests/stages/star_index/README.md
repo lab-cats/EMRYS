@@ -1,9 +1,9 @@
 # STAR-index tests
 
-These cases check Step 00a dry-run, execution from other working directories,
-publication of the declared index files, existing-output refusal, and rollback.
-Collision tests preserve files created by another process during publication
-and locks owned by another attempt. The
-[stage contract](../../../src/emrys/stages/star_index/CONTRACT.md) defines these
-boundaries. Whole-Run Slurm placement is tested with orchestration; these mocked
-cases do not prove real STAR indexing or reference readiness.
+Native STAR arguments, complete staged index membership, incomplete native output, and grouped validation are covered. Mocked tools do not prove real STAR indexing or reference readiness.
+
+Shell cases invoke the internal worker with runner-style scratch and staging.
+The [common runner suite](../../orchestration/run_coordinator/test_task.py) owns
+publication, input stability, interruption, and recovery checks. Python
+validator cases retain the public grouped command. The
+[shared evidence limits](../../README.md#evidence-limits) apply.

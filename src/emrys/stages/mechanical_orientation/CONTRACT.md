@@ -31,7 +31,7 @@ transcript strand, library strandedness, sense, or antisense. Unassigned reads
 are allowed; exhaustive partitioning is not claimed.
 
 Inputs are sample ID, nonempty split BAM and exact adjacent BAI, output/QC
-directories, positive threads, an admitted owner token, and the absolute
+directories supplied by the runner, positive threads, and the absolute
 samtools path selected by the Run runtime. Outputs are:
 
 ```text
@@ -46,22 +46,15 @@ The exact one-row TSV records input, four flag-group, two merged-group,
 assigned, and unassigned counts plus a six-decimal assigned fraction. Input and
 both merged groups must be nonzero; assigned may not exceed input.
 
-## Orchestration-safe producer boundary
+## Scientific worker
 
-The private producer only creates new output sets. It hashes the input BAM/BAI
-and uses a per-sample owned lock. Before tool work it refuses any existing final
-or stale owned path. It validates both temporary pairs and count arithmetic,
-rechecks inputs, and hard-links finals without replacement, with the counts
-TSV last. Staging inodes remain available to prove ownership through final-set
-validation. No predecessor backups are created.
-
-## Current execution surfaces
-
-Only the fixed workflow task invokes [`producer.py`](producer.py). On failure,
-cleanup removes a final only while its staging inode proves ownership. Ambiguous
-mutation preserves the final, staging anchor, and lock for inspection. The
-counts TSV is native evidence, not a receipt; tool versions and final hashes
-belong in the workflow verified record.
+Only the fixed workflow task invokes [`producer.py`](producer.py). It writes
+four flag-selected intermediate BAMs in the runner's working directory, merges
+and indexes the two orientation groups, and checks count arithmetic and both
+BAM/BAI pairs before returning. It uses only the supplied output paths.
+Execution, publication, and recovery belong to the [runner contract](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
+The counts TSV is native evidence, not a receipt; tool versions and final
+hashes belong in the workflow verified record.
 
 ## Validation interface
 

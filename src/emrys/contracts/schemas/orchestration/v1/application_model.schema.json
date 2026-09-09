@@ -132,7 +132,7 @@
       "required": ["module_id", "interface_version", "module_version", "configuration"],
       "properties": {
         "module_id": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
-        "interface_version": { "const": "emrys.analysis-module.v1" },
+        "interface_version": { "enum": ["emrys.analysis-module.v1", "emrys.analysis-module.v2"] },
         "module_version": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
         "configuration": { "type": "object" }
       }

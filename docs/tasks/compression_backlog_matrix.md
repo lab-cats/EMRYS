@@ -1,15 +1,19 @@
 # EMRYS temporary compression backlog
 
-Reviewed **2026-09-09** from `cab77a26`. The [campaign](compression_campaign.md)
+Reviewed **2026-09-09** from `88522d0a`. The [campaign](compression_campaign.md)
 owns the goals; this file owns CS scope, status, decisions, and proof. The
 [main matrix](backlog_matrix.md) owns broader outcomes and campaign completion.
 
 ## Working queue
 
-**Current work: [PR #154](https://github.com/lab-cats/EMRYS/pull/154), combined artifact indexing and summary generation (CS-03).**
-The approved tranche retires the second publisher and intermediate disk handoff,
-updates all reporting readers and inspection, and keeps HTML separate. Focused
-checks pass; the card below owns acceptance and pending hosted verification.
+**Current work: CS-18, runner-owned scientific execution across all applicable producers; implemented, awaiting hosted CI.**
+The user approved moving working paths, locks, process supervision, logging,
+publication, and recovery into the existing runner. Producers retain scientific
+computation, outputs, and provenance; there is no separate manager hierarchy.
+
+[PR #154](https://github.com/lab-cats/EMRYS/pull/154) combines artifact indexing and
+summary generation (CS-03). Focused checks and [ordinary hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34372748153)
+pass at `88522d0a`; integration remains pending.
 
 [PR #153](https://github.com/lab-cats/EMRYS/pull/153) delivers shared processing definitions and standalone publication.
 The implemented tranche covers CS-01/02 and CS-18, including CS-10's CMH
@@ -68,7 +72,7 @@ they are rough selection aids, not measured benefit or implementation approval.
 |---|---|---|---:|---:|---|---|
 | [CS-01](#cs-01-processing-materialization) | Derive one processing owner's command and dispatch from existing admitted facts. | Done | 4 | 4 | PR #153: shared profile facts drive planning, named rules, and reporting; focused/differential checks and ordinary hosted CI pass at cab77a26. | `COMPRESS-01` |
 | [CS-02](#cs-02-processing-report-adapters) | Remove equivalent processing-adapter declarations from artifact-index reporting. | Done | 4 | 4 | PR #153: all 42 processing adapters and 12 producer paths migrated; reader parity and ordinary hosted CI pass at cab77a26. | `REPORT-ROSTER-01` |
-| [CS-03](#cs-03-reporting-transaction-layout) | Publish artifact indexing and summary generation as one operation. | Verification pending | 4 | 4 | Implemented across generation, readers, and inspection; focused/static checks pass, hosted CI pending. HTML stays separate. | `REPORT-ROSTER-01` |
+| [CS-03](#cs-03-reporting-transaction-layout) | Publish artifact indexing and summary generation as one operation. | Done | 4 | 4 | PR #154 implemented generation, readers, and inspection; focused/static and ordinary hosted CI pass at 88522d0a. HTML stays separate; integration is pending. | `REPORT-ROSTER-01` |
 | [CS-04](#cs-04-reporting-memory-control) | Remove the ineffective active reporting-memory control and its transport. | Done | 3 | 4 | PR #150: new inputs rejected, historical records/hashes preserved; focused and ordinary hosted checks passed. | `REPORT-ROSTER-01` |
 | [CS-05](#cs-05-validation-check-rosters) | Give one scientific validation roster one neutral authority used by its producer and reporting. | Needs decision | 4 | 4 | Select membership/order, historical records, and external-provider obligations. | `REPORT-ROSTER-01` |
 | [CS-06](#cs-06-publication-handoff) | Characterize the helper-to-caller publication gap in RSeQC, BAM QC, and duplicate marking. | Done | 4 | 3 | PR #150: three equivalent owners migrated; six corrected probes, shell suites, and ordinary CI passed. | `OPS-03` |
@@ -83,7 +87,7 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-15](#cs-15-reporting-tsv-grammar) | Retire both reporting CSV engines through the existing strict TSV owner. | Needs decision | 2 | 3 | Agree accepted grammar and diagnostic precedence; stop if a configurable compatibility adapter is required. | `COMPRESS-01` |
 | [CS-16](#cs-16-operator-and-developer-documentation) | Complete operator/developer guidance with clear ownership and plain language. | Done | 5 | 3 | PR #151 passed ordinary CI at `76acb9c5`; integration pending. | `COMPRESS-01` |
 | [CS-17](#cs-17-scientific-and-owner-documentation) | Consolidate and explain remaining scientific/owner documentation. | Done | 5 | 4 | All 169 Markdown files reviewed; PR #151 passed ordinary CI at `76acb9c5`. | `COMPRESS-01` |
-| [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | Needs qualification | 4 | 4 | PRs #152/153 passed ordinary CI. Next: bound the accepted producer-to-runner migration across every applicable owner. | `OPS-03` |
+| [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | Verification pending | 4 | 4 | All fourteen first-party tasks use runner-owned execution; focused/static checks pass, hosted CI pending. Prior PRs #152/153 passed ordinary CI. | `OPS-03` |
 | [CS-19](#cs-19-scientific-report-table-handling) | Use one admitted table representation across scientific report consumers. | Done | 4 | 3 | PR #152 at `72fdf806`: focused checks and all ordinary hosted CI passed; integration pending. | `COMPRESS-01` |
 
 ## Acceptance shared by every card
@@ -189,7 +193,7 @@ and retained evidence are unchanged.
 
 ### CS-03 Reporting transaction layout
 
-**Verification pending in [PR #154](https://github.com/lab-cats/EMRYS/pull/154); approved 2026-09-09.**
+**Done in [PR #154](https://github.com/lab-cats/EMRYS/pull/154); ordinary hosted CI passes at `88522d0a`, integration pending.**
 The earlier shared-path sketch at `0c909f12` was retained because roughly 16
 helper lines merely replaced 16 caller lines. The new scope changes the
 responsibility itself: one existing index publisher owns the index and summary.
@@ -223,7 +227,8 @@ the isolated wheel/install command smoke. The full static gate passes, including
 Ruff, ShellCheck, dead-code checks, documentation, imports, compilation, manifest,
 and sharder checks. The discarded summary publication suite repeats the retained
 combined publisher's protections; scientific projections, historical identity,
-corruption, and golden evidence remain. Hosted CI is still required for closeout.
+corruption, and golden evidence remain. [Ordinary hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34372748153)
+passes at `88522d0a`; this does not establish institutional-site or scientific validation.
 
 Implementation is stacked on PR #153 at `cab77a26`.
 Product code is +565/−1310 (net −745), tests/constructors +380/−1245 (−865),
@@ -277,7 +282,7 @@ sent TERM just after a real first link (exit 143), or replaced that final
 before the helper's inode check (exit 1). In RSeQC, BAM QC, and duplicate
 marking, the final survived while its staging anchors and lock disappeared.
 
-[Shared shell cleanup](../../src/emrys/libraries/README.md#shell-publication-cleanup)
+[Shared shell cleanup](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution)
 replaces the six per-output flags across all three equivalent owners. Each
 caller arms publication before linking; cleanup examines every output pair.
 The shared owner documents surviving guarantees and distinct transactions;
@@ -294,10 +299,10 @@ SIGKILL and power loss cannot run EXIT cleanup.
 
 ### CS-07 through CS-10 Standalone publication
 
-CS-07 is complete: [RSeQC](../../src/emrys/evidence/rseqc_orientation/CONTRACT.md#producer-publication-boundary)
+CS-07 is complete: [RSeQC](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution)
 now always refuses an existing output; its legacy `--no-clobber` flag remains
 accepted. Its owner lost 51 product lines within CS-06/07. Canonical BAM's
-[earlier retirement](../../src/emrys/stages/canonical_bam/CONTRACT.md#producer-publication-boundary)
+[earlier retirement](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution)
 also retains historical defects, recovery residue, and current limits.
 
 **CS-10 is approved within the CS-18 tranche. CS-08/09 remain undecided.**
@@ -438,14 +443,68 @@ under CS-16 above; this does not complete the larger code campaign.
 
 ### CS-18 Idiomatic scientific-producer implementation
 
-**Accepted follow-up direction:** scientific producers own scientific outputs and
+**Implemented; hosted verification pending:** scientific producers own scientific outputs and
 provenance; production execution goes through the existing runner. Consolidate
 working paths, locks, process supervision, logs, publication, and recovery there,
 across every applicable producer, without a manager beside each one. Preserve
-independent validation and its all-checks-pass gate. A bounded implementation
-plan must account for reusable external reference sidecars, multi-file indexes,
-final-path provenance, and publication order. This broader migration is not
-implemented by the reporting tranche.
+independent validation and its all-checks-pass gate. The implementation covers reusable external reference sidecars, complete STAR
+indexes, final-path provenance, original native publication order, and historical
+plan reading. New execution uses explicit runner-owned working paths. The
+reporting tranche did not implement this migration.
+
+
+The audited vertical includes nine shell workers (STAR index/alignment,
+FAI/dictionary, canonical BAM, BAM QC, RSeQC, duplicate marking, split-N-cigar,
+and scientific context), four Python workers (orientation, mpileup,
+preprocessing, paired CMH), the GTF Run task, their R computation, command
+materialization, module planning, process supervision, scientific validators,
+source identity, tests, helper scripts, and documentation.
+
+| Behavior | Classification and disposition |
+|---|---|
+| Algorithms, scientific flags/thresholds, formats, output checks and provenance | Preserved with the scientific owners. |
+| Standalone operational lifecycle for scientific stage scripts | Replaced by the approved runner-required execution interface. Independent validation commands and the separately useful GTF conversion utility remain. |
+| Native publication before independent validation | Preserved. Later validator failure retains committed outputs and failed evidence. |
+| Workspaces, locks, input stability, process supervision, streams, exclusive publication and recovery | Consolidated in the existing runner; no per-producer manager. |
+| FAI/dictionary reuse, all STAR members, final-path receipts and terminal native publication order | Preserved explicitly in new dispatches. |
+| Historical dispatches and provider metadata | Readable under their original schemas. New worker execution and module planning use v2; old argv is not rewritten. |
+| Institutional-site/Slurm operation, scientific review and biological validation | Environment-deferred; local and hosted software checks cannot establish these claims. |
+
+Shared task tests replace repeated producer lifecycle fault matrices. Scientific
+worker tests, independent validators, native-data checks, and numerical/golden
+oracles remain with their owners. Retained evidence is unchanged.
+
+Against `88522d0a`, product changes are +1359/−4916 (**−3557**), with one
+obsolete product file retired and none added. Tests are +943/−6292 (**−5349**).
+The two existing schemas change by +2/−2; no dependency, tooling or retained
+evidence changes. Documentation has separate accounting in the PR; its reduction
+does not offset product growth.
+
+Focused evidence covers 156 Python worker/independent-validator/oracle cases,
+24 STAR-worker/public-shell checks, eight native shell suites and the shared
+file-check suite. The coordinator/planner/task/module selection passed 167 cases,
+including failure followed by resume. Its remaining long downstream-reuse case
+was deliberately interrupted locally and is deferred to CI, not counted as a
+pass. After review corrections, 30 affected runner cases and 21 mpileup cases
+passed. The latter are included in the 156-case worker total. Two GTF utility/worker
+conversion cases and one real Snakemake reference-graph dry run passed. The full
+static gate passes, including 169 Markdown documents and three Mermaid sources.
+The isolated offline wheel/install and public-command smoke also passes.
+Two real-R projection cases skip locally because the required environment is
+unavailable; changed R files parse. Ordinary hosted CI still owns the full Run,
+managed-R and golden checks.
+
+Independent review checked the complete worker flags, native filenames and order,
+reference reuse, STAR membership, final-path provenance, removed input-hash
+callers and scientific checks. It caught and corrected delayed mpileup failure
+propagation, retained descendant streams after a failed worker, and input
+rechecks that needed to occur before native commit. No manager hierarchy or
+historical execution adapter was added.
+
+#### Earlier completed work
+
+The following records describe PRs #152/153 at their own revisions. The current
+runner migration replaces their standalone execution interfaces.
 
 
 **R work and replacement retirement passed ordinary CI in PRs #152/153.** R annotation
@@ -841,7 +900,7 @@ The implemented scope includes:
   correctness checks, and shared local/CI sharder self-tests;
 - [fixed report-output declarations](../design/decisions/execution-evidence-and-reporting.md#fixed-report-output-consolidation)
   in PR #145, preserving the existing identity and historical-resume rules;
-- [canonical BAM create-exclusive publication](../../src/emrys/stages/canonical_bam/CONTRACT.md#producer-publication-boundary)
+- [canonical BAM create-exclusive publication](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution)
   in PR #146, retiring replacement while preserving historical defect evidence
   and documenting surviving recovery limits; and
 - [direct create-only reporting publication](../design/decisions/execution-evidence-and-reporting.md#reporting-lifecycle-compression)

@@ -222,6 +222,21 @@ def _run_projection(
     environment: Mapping[str, str],
 ) -> Path:
     analysis_id, all_sites, significant, summary, reference, fai = inputs
+    output_dir = output_root / analysis_id
+    output_dir.mkdir(parents=True)
+    work_dir = output_root / "work"
+    work_dir.mkdir()
+    output_arguments = []
+    for stem in (
+        "candidate-context",
+        "motif-hits",
+        "sequence-logo",
+        "motif-statistics",
+    ):
+        output = output_dir / f"{analysis_id}.{stem.replace('-', '_')}.tsv"
+        output_arguments.extend(
+            (f"--{stem}-output", str(output), f"--{stem}-final", str(output))
+        )
     subprocess.run(
         [
             str(PRODUCER),
@@ -237,20 +252,27 @@ def _run_projection(
             str(reference),
             "--reference-fai",
             str(fai),
-            "--output-root",
-            str(output_root),
+            *output_arguments,
+            "--context-receipt-output",
+            str(output_dir / f"{analysis_id}.context_receipt.tsv"),
+            "--git-commit",
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True
+            ).strip(),
             "--rscript-bin",
             rscript,
-            "--no-clobber",
-            "--execute",
         ],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
         check=True,
-        env=dict(environment),
+        env={
+            **environment,
+            "EMRYS_TASK_WORK_DIR": str(work_dir),
+            "TMPDIR": str(work_dir),
+        },
     )
-    return output_root / analysis_id
+    return output_dir
 
 
 def test_real_r_projection_is_canonically_admitted_and_deterministic(

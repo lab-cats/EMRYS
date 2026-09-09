@@ -12,15 +12,16 @@ PDF. External review may use these outputs but is not a pipeline dependency.
 
 Normal execution uses `emrys run` or `resume` as described in the
 [Runbook](../../../../docs/operations/RUNBOOK.md#project-and-run-operations).
-The private [Python producer](producer.py) coordinates
-[`step_09_cmh_editing_site_calling.R`](step_09_cmh_editing_site_calling.R).
+The private [Python producer](producer.py) invokes
+[`step_09_cmh_editing_site_calling.R`](step_09_cmh_editing_site_calling.R)
+with runner-supplied working paths and checks its scientific outputs.
 For the independent validator's inputs:
 
 ```bash
 emrys validate paired-cmh-candidate-ranking --help
 ```
 
-The [contract](CONTRACT.md) owns pairing, numerical methods, thresholds,
-publication, and recovery. The validator reconciles results but does not
+The [contract](CONTRACT.md) owns pairing, numerical methods, and thresholds.
+The [runner contract](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution) owns execution and recovery. The validator reconciles results but does not
 independently recompute CMH statistics; a separate oracle and real-R corpus
 protect that method boundary.

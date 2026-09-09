@@ -1,113 +1,23 @@
 #!/usr/bin/env bash
+# Native scientific behavior only; task-runner tests own publication and recovery.
 set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-SCRIPT="$REPO_ROOT/src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh"
-unset EMRYS_RUN_TOKEN
-export EMRYS_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
-
-fail() {
-    printf 'FAIL: %s\n' "$*" >&2
-    exit 1
-}
-
-assert_contains() {
-    local file="$1"
-    local expected="$2"
-
-    if ! grep -Fq -- "$expected" "$file"; then
-        printf 'Expected to find: %s\n' "$expected" >&2
-        printf 'Actual output:\n' >&2
-        cat "$file" >&2
-        fail "missing expected output"
-    fi
-}
-
-assert_not_contains() {
-    local file="$1"
-    local unexpected="$2"
-
-    if grep -Fq -- "$unexpected" "$file"; then
-        printf 'Did not expect to find: %s\n' "$unexpected" >&2
-        printf 'Actual output:\n' >&2
-        cat "$file" >&2
-        fail "unexpected output present"
-    fi
-}
-
-assert_fails() {
-    local output_file="$1"
-    shift
-
-    if "$@" >"$output_file" 2>&1; then
-        cat "$output_file" >&2
-        fail "command unexpectedly succeeded: $*"
-    fi
-}
-
-assert_file_equals() {
-    local file="$1"
-    local expected="$2"
-    local expected_file="$tmp_dir/expected-file.txt"
-
-    printf '%s' "$expected" >"$expected_file"
-    if ! cmp -s "$expected_file" "$file"; then
-        printf 'Expected exact content:\n' >&2
-        cat "$expected_file" >&2
-        printf 'Actual exact content:\n' >&2
-        cat "$file" >&2
-        fail "unexpected file content: $file"
-    fi
-}
-
-assert_only_entries() {
-    local directory="$1"
-    shift
-    local path
-    local expected
-    local matched
-    local actual_count=0
-
-    while IFS= read -r path; do
-        actual_count=$((actual_count + 1))
-        matched=false
-        for expected in "$@"; do
-            if [[ "${path##*/}" == "$expected" ]]; then
-                matched=true
-                break
-            fi
-        done
-        [[ "$matched" == true ]] || fail "unexpected entry in $directory: $path"
-    done < <(find "$directory" -mindepth 1 -maxdepth 1 -print)
-
-    [[ "$actual_count" -eq "$#" ]] ||
-        fail "expected $# entries in $directory; found $actual_count"
-}
-
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+SCRIPT="$repo_root/src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
-
 fake_bin="$tmp_dir/bin"
-mkdir -p "$fake_bin"
-real_rm_bin="$(command -v rm)"
-
-cat >"$fake_bin/rm" <<'EOF_RM'
-#!/usr/bin/env bash
-set -euo pipefail
-
-for argument in "$@"; do
-    if [[ -n "${FAIL_RM_TARGET:-}" && "$argument" == "$FAIL_RM_TARGET" ]]; then
-        printf 'controlled cleanup removal failure: %s\n' "$argument" >&2
-        exit 79
-    fi
-done
-exec "$REAL_RM_BIN" "$@"
-EOF_RM
-chmod +x "$fake_bin/rm"
-export REAL_RM_BIN="$real_rm_bin"
-
-samtools_log="$tmp_dir/samtools_invocations.log"
+mkdir -p "$fake_bin" "$tmp_dir/inputs" "$tmp_dir/staged" "$tmp_dir/work"
+export EMRYS_SHA256_PYTHON="$repo_root/.venv/bin/python"
+export EMRYS_TASK_WORK_DIR="$tmp_dir/work" TMPDIR="$tmp_dir/work"
+export PATH="$fake_bin:$PATH"
+fail() { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
+assert_contains() { grep -Fq -- "$2" "$1" || fail "missing $2 in $1: $(cat "$1")"; }
+assert_fails() {
+    local pattern="$1"; shift
+    if "$@" >"$tmp_dir/failure.out" 2>&1; then fail "unexpected success: $*"; fi
+    assert_contains "$tmp_dir/failure.out" "$pattern"
+}
+samtools_log="$tmp_dir/samtools.log"
 cat >"$fake_bin/samtools" <<EOF_SAMTOOLS
 #!/usr/bin/env bash
 set -euo pipefail
@@ -140,9 +50,6 @@ case "\$subcommand" in
         esac
         ;;
     flagstat)
-        if [[ -n "\${FAKE_MUTATE_INPUT:-}" ]]; then
-            printf 'mutated bam during flagstat\n' >"\$1"
-        fi
         mode="\${FAKE_FLAGSTAT_MODE:-success}"
         case "\$mode" in
             success)
@@ -168,318 +75,17 @@ esac
 EOF_SAMTOOLS
 chmod +x "$fake_bin/samtools"
 
-export PATH="$fake_bin:$PATH"
-unset FAKE_QUICKCHECK_MODE FAKE_FLAGSTAT_MODE
-
-fixture_dir="$tmp_dir/fixtures"
-mkdir -p "$fixture_dir"
-
-bam="$fixture_dir/sample.sorted.bam"
-bam_dot_bai="$bam.bai"
-bam_stem_bai="${bam%.bam}.bai"
-missing_bam="$fixture_dir/missing.sorted.bam"
-
-printf 'placeholder bam\n' >"$bam"
-
-printf 'Running syntax check...\n'
-bash -n "$SCRIPT"
-
-printf 'Running help check...\n'
-help_output="$tmp_dir/help.out"
-bash "$SCRIPT" --help >"$help_output"
-assert_contains "$help_output" "Usage:"
-assert_contains "$help_output" "--sample-id"
-assert_contains "$help_output" "--bam"
-assert_contains "$help_output" "--output-dir"
-assert_contains "$help_output" "--execute"
-
-printf 'Running missing argument failure check...\n'
-missing_arg_output="$tmp_dir/missing_arg.out"
-assert_fails "$missing_arg_output" bash "$SCRIPT" \
-    --sample-id sample_missing \
-    --bam "$bam"
-assert_contains "$missing_arg_output" "Missing required argument: --output-dir"
-
-printf 'Running missing BAM failure check...\n'
-missing_bam_output="$tmp_dir/missing_bam.out"
-assert_fails "$missing_bam_output" bash "$SCRIPT" \
-    --sample-id sample_missing_bam \
-    --bam "$missing_bam" \
-    --output-dir "$tmp_dir/results/missing_bam"
-assert_contains "$missing_bam_output" "BAM does not exist"
-
-printf 'Running missing BAM index failure check...\n'
-missing_index_output="$tmp_dir/missing_index.out"
-assert_fails "$missing_index_output" bash "$SCRIPT" \
-    --sample-id sample_missing_index \
-    --bam "$bam" \
-    --output-dir "$tmp_dir/results/missing_index"
-assert_contains "$missing_index_output" "BAM index does not exist"
-
-printf 'Running dry-run check with BAM.bai index...\n'
-printf 'placeholder index\n' >"$bam_dot_bai"
-dry_output="$tmp_dir/dry.out"
-dry_output_dir="$tmp_dir/results/dry"
-EMRYS_RUN_TOKEN=explicit-owner-02b SLURM_JOB_ID=scheduler-02b bash "$SCRIPT" \
-    --sample-id sample_dry \
-    --bam "$bam" \
-    --output-dir "$dry_output_dir" \
-    >"$dry_output"
-
-[[ ! -e "$dry_output_dir" ]] || fail "dry-run created output directory"
-[[ ! -e "$samtools_log" ]] || fail "dry-run invoked samtools"
-assert_contains "$dry_output" "Mode: dry-run"
-assert_contains "$dry_output" "Run token: explicit-owner-02b"
-assert_contains "$dry_output" ".sample_dry.step02b.explicit-owner-02b.quickcheck.tmp"
-assert_contains "$dry_output" "BAM index found: $bam_dot_bai"
-assert_contains "$dry_output" "Quickcheck output: $dry_output_dir/sample_dry.quickcheck.txt"
-assert_contains "$dry_output" "Flagstat output: $dry_output_dir/sample_dry.flagstat.txt"
-assert_contains "$dry_output" "quickcheck"
-assert_contains "$dry_output" "-v"
-assert_contains "$dry_output" "$bam"
-assert_contains "$dry_output" "flagstat"
-assert_contains "$dry_output" "Dry-run only"
-
-printf 'Running dry-run check with stem .bai index...\n'
-rm "$bam_dot_bai"
-printf 'placeholder stem index\n' >"$bam_stem_bai"
-stem_index_output="$tmp_dir/stem_index.out"
-bash "$SCRIPT" \
-    --sample-id sample_stem_index \
-    --bam "$bam" \
-    --output-dir "$tmp_dir/results/stem_index" \
-    >"$stem_index_output"
-assert_contains "$stem_index_output" "BAM index found: $bam_stem_bai"
-
-printf 'Running PATH-only missing samtools failure check...\n'
-empty_bin="$tmp_dir/empty-bin"
-mkdir -p "$empty_bin"
-missing_samtools_output="$tmp_dir/missing_samtools.out"
-missing_samtools_output_dir="$tmp_dir/results/missing_samtools"
-assert_fails "$missing_samtools_output" /usr/bin/env PATH="$empty_bin" /bin/bash "$SCRIPT" \
-    --sample-id sample_missing_samtools \
-    --bam "$bam" \
-    --output-dir "$missing_samtools_output_dir"
-assert_contains "$missing_samtools_output" "samtools executable was not found on PATH"
-[[ ! -e "$missing_samtools_output_dir" ]] ||
-    fail "missing-samtools failure created the output directory"
-
-printf 'Running execute check with empty quickcheck success...\n'
-execute_output="$tmp_dir/execute.out"
-execute_output_dir="$tmp_dir/results/execute"
-bash "$SCRIPT" \
-    --sample-id sample_execute \
-    --bam "$bam" \
-    --output-dir "$execute_output_dir" \
-    --execute \
-    >"$execute_output"
-
-quickcheck_out="$execute_output_dir/sample_execute.quickcheck.txt"
-flagstat_out="$execute_output_dir/sample_execute.flagstat.txt"
-[[ -f "$quickcheck_out" ]] || fail "execute did not create quickcheck output"
-[[ -f "$flagstat_out" ]] || fail "execute did not create flagstat output"
-assert_contains "$quickcheck_out" "PASS: samtools quickcheck completed with no errors."
-assert_contains "$flagstat_out" "10 + 0 in total"
-assert_contains "$flagstat_out" "8 + 0 mapped"
-assert_contains "$samtools_log" "quickcheck"
-assert_contains "$samtools_log" "-v"
-assert_contains "$samtools_log" "$bam"
-assert_contains "$samtools_log" "flagstat"
-assert_contains "$execute_output" "samtools flagstat output:"
-assert_contains "$execute_output" "10 + 0 in total"
-
-printf 'Running orchestration-safe no-clobber transaction check...\n'
-residue_output_dir="$tmp_dir/results/residue"
-mkdir -p "$residue_output_dir"
-residue_path="$residue_output_dir/.sample_residue.step02b.older-token.quickcheck.tmp"
-printf 'preserve residue\n' >"$residue_path"
-residue_output="$tmp_dir/residue.out"
-assert_fails "$residue_output" env SLURM_JOB_ID=newer-token bash "$SCRIPT" \
-    --sample-id sample_residue \
-    --bam "$bam" \
-    --output-dir "$residue_output_dir" \
-    --samtools-bin "$fake_bin/samtools" \
-    --no-clobber \
-    --execute
-assert_contains "$residue_output" "residue requires operator inspection"
-assert_file_equals "$residue_path" $'preserve residue\n'
-[[ ! -e "$residue_output_dir/.sample_residue.step02b.lock" ]] || fail "residue refusal created a lock"
-safe_output="$tmp_dir/safe.out"
-safe_output_dir="$tmp_dir/results/safe"
-bash "$SCRIPT" \
-    --sample-id sample_safe \
-    --bam "$bam" \
-    --output-dir "$safe_output_dir" \
-    --samtools-bin "$fake_bin/samtools" \
-    --no-clobber \
-    --execute >"$safe_output"
-assert_file_equals "$safe_output_dir/sample_safe.quickcheck.txt" \
-    $'PASS: samtools quickcheck completed with no errors.\n'
-assert_contains "$safe_output_dir/sample_safe.flagstat.txt" "10 + 0 in total"
-assert_contains "$safe_output" "No-clobber transaction: true"
-[[ ! -e "$safe_output_dir/.sample_safe.step02b.lock" ]] || fail "successful no-clobber run left lock"
-safe_repeat_output="$tmp_dir/safe_repeat.out"
-assert_fails "$safe_repeat_output" bash "$SCRIPT" \
-    --sample-id sample_safe \
-    --bam "$bam" \
-    --output-dir "$safe_output_dir" \
-    --samtools-bin "$fake_bin/samtools" \
-    --no-clobber \
-    --execute
-assert_contains "$safe_repeat_output" "requires both final outputs to be absent"
-
-# Delete the second real hard link before the publisher returns to its caller.
-# This is the previously unaccounted-for handoff, after one sibling succeeded.
-REAL_LN_BIN="$(command -v ln)"
-export REAL_LN_BIN
-cat >"$fake_bin/ln" <<'EOF_LN'
-#!/usr/bin/env bash
-set -euo pipefail
-"$REAL_LN_BIN" "$@"
-if [[ "${@: -1}" == "${DROP_LINK_TARGET:-}" ]]; then
-    "$REAL_RM_BIN" -f -- "${@: -1}"
-fi
-EOF_LN
-chmod +x "$fake_bin/ln"
-handoff_dir="$tmp_dir/results/handoff"
-assert_fails "$tmp_dir/handoff.out" env \
-    SLURM_JOB_ID=handoff DROP_LINK_TARGET="$handoff_dir/sample_handoff.flagstat.txt" \
-    bash "$SCRIPT" --sample-id sample_handoff --bam "$bam" \
-    --output-dir "$handoff_dir" --samtools-bin "$fake_bin/samtools" \
-    --no-clobber --execute
-assert_contains "$tmp_dir/handoff.out" "create-exclusive publication did not preserve the staged inode"
-[[ ! -e "$handoff_dir/sample_handoff.quickcheck.txt" &&
-   ! -e "$handoff_dir/sample_handoff.flagstat.txt" ]] || fail "handoff failure left a final"
-[[ -s "$handoff_dir/.sample_handoff.step02b.handoff.quickcheck.tmp" &&
-   -s "$handoff_dir/.sample_handoff.step02b.handoff.flagstat.tmp" ]] || fail "handoff failure lost staging anchors"
-assert_file_equals "$handoff_dir/.sample_handoff.step02b.lock/owner" $'run_token=handoff\n'
-
-printf 'Running no-clobber stable-input rejection check...\n'
-mutation_bam="$fixture_dir/mutation.sorted.bam"
-printf 'original bam\n' >"$mutation_bam"
-printf 'original bai\n' >"$mutation_bam.bai"
-mutation_output="$tmp_dir/mutation.out"
-mutation_output_dir="$tmp_dir/results/mutation"
-assert_fails "$mutation_output" env FAKE_MUTATE_INPUT=1 bash "$SCRIPT" \
-    --sample-id sample_mutation \
-    --bam "$mutation_bam" \
-    --output-dir "$mutation_output_dir" \
-    --samtools-bin "$fake_bin/samtools" \
-    --no-clobber \
-    --execute
-assert_contains "$mutation_output" "BAM changed during Step 02b"
-[[ ! -e "$mutation_output_dir/sample_mutation.quickcheck.txt" ]] || fail "input mutation published quickcheck"
-[[ ! -e "$mutation_output_dir/sample_mutation.flagstat.txt" ]] || fail "input mutation published flagstat"
-[[ ! -e "$mutation_output_dir/.sample_mutation.step02b.lock" ]] || fail "input mutation left lock"
-
-printf 'Running no-clobber cleanup-failure preservation check...\n'
-cleanup_sample="sample_cleanup_failure"
-cleanup_token="cleanup-failure"
-cleanup_output="$tmp_dir/cleanup_failure.out"
-cleanup_output_dir="$tmp_dir/results/cleanup_failure"
-cleanup_tmp_quickcheck="$cleanup_output_dir/.${cleanup_sample}.step02b.${cleanup_token}.quickcheck.tmp"
-cleanup_lock="$cleanup_output_dir/.${cleanup_sample}.step02b.lock"
-set +e
-FAKE_FLAGSTAT_MODE=partial_fail \
-FAIL_RM_TARGET="$cleanup_tmp_quickcheck" \
-SLURM_JOB_ID="$cleanup_token" \
-bash "$SCRIPT" \
-    --sample-id "$cleanup_sample" \
-    --bam "$bam" \
-    --output-dir "$cleanup_output_dir" \
-    --samtools-bin "$fake_bin/samtools" \
-    --no-clobber \
-    --execute >"$cleanup_output" 2>&1
-cleanup_status=$?
-set -e
-[[ "$cleanup_status" -eq 43 ]] || fail "cleanup-failure run did not preserve flagstat exit 43"
-[[ -e "$cleanup_tmp_quickcheck" ]] || fail "cleanup failure did not preserve Step 02b staging residue"
-[[ -d "$cleanup_lock" ]] || fail "cleanup failure did not retain Step 02b owner lock"
-assert_contains "$cleanup_lock/owner" "run_token=$cleanup_token"
-assert_contains "$cleanup_output" "controlled cleanup removal failure"
-assert_contains "$cleanup_output" "Step 02b no-clobber cleanup was incomplete"
-
-printf 'Running execute check with non-empty quickcheck success...\n'
-nonempty_output="$tmp_dir/nonempty.out"
-nonempty_output_dir="$tmp_dir/results/nonempty"
-FAKE_QUICKCHECK_MODE=output_success bash "$SCRIPT" \
-    --sample-id sample_nonempty \
-    --bam "$bam" \
-    --output-dir "$nonempty_output_dir" \
-    --execute \
-    >"$nonempty_output"
-
-nonempty_quickcheck_out="$nonempty_output_dir/sample_nonempty.quickcheck.txt"
-assert_contains "$nonempty_quickcheck_out" "quickcheck success output"
-assert_not_contains "$nonempty_quickcheck_out" "PASS: samtools quickcheck completed with no errors."
-
-printf 'Running predecessor-bearing quickcheck failure preservation check...\n'
-failure_stdout="$tmp_dir/failure.stdout"
-failure_stderr="$tmp_dir/failure.stderr"
-failure_output_dir="$tmp_dir/results/failure"
-mkdir -p "$failure_output_dir"
-failure_quickcheck_out="$failure_output_dir/sample_failure.quickcheck.txt"
-failure_flagstat_out="$failure_output_dir/sample_failure.flagstat.txt"
-failure_unrelated="$failure_output_dir/unrelated.txt"
-printf 'prior quickcheck\n' >"$failure_quickcheck_out"
-printf 'prior flagstat\n' >"$failure_flagstat_out"
-printf 'unrelated predecessor\n' >"$failure_unrelated"
-
-set +e
-FAKE_QUICKCHECK_MODE=fail bash "$SCRIPT" \
-    --sample-id sample_failure \
-    --bam "$bam" \
-    --output-dir "$failure_output_dir" \
-    --execute \
-    >"$failure_stdout" 2>"$failure_stderr"
-failure_status=$?
-set -e
-
-[[ "$failure_status" -eq 1 ]] ||
-    fail "quickcheck child exit 42 did not become producer exit 1: $failure_status"
-[[ -f "$failure_quickcheck_out" ]] || fail "quickcheck failure did not preserve quickcheck output"
-assert_file_equals "$failure_quickcheck_out" $'quickcheck failure output\n'
-assert_file_equals "$failure_flagstat_out" $'prior flagstat\n'
-assert_file_equals "$failure_unrelated" $'unrelated predecessor\n'
-assert_contains "$failure_stderr" "samtools quickcheck failed"
-assert_not_contains "$failure_stderr" "quickcheck failure output"
-assert_only_entries "$failure_output_dir" \
-    "sample_failure.quickcheck.txt" \
-    "sample_failure.flagstat.txt" \
-    "unrelated.txt"
-
-printf 'Running predecessor-bearing flagstat failure preservation check...\n'
-flag_failure_stdout="$tmp_dir/flag_failure.stdout"
-flag_failure_stderr="$tmp_dir/flag_failure.stderr"
-flag_failure_output_dir="$tmp_dir/results/flag_failure"
-mkdir -p "$flag_failure_output_dir"
-flag_failure_quickcheck_out="$flag_failure_output_dir/sample_flag_failure.quickcheck.txt"
-flag_failure_flagstat_out="$flag_failure_output_dir/sample_flag_failure.flagstat.txt"
-flag_failure_unrelated="$flag_failure_output_dir/unrelated.txt"
-printf 'prior quickcheck\n' >"$flag_failure_quickcheck_out"
-printf 'prior flagstat\n' >"$flag_failure_flagstat_out"
-printf 'unrelated predecessor\n' >"$flag_failure_unrelated"
-
-set +e
-FAKE_FLAGSTAT_MODE=partial_fail bash "$SCRIPT" \
-    --sample-id sample_flag_failure \
-    --bam "$bam" \
-    --output-dir "$flag_failure_output_dir" \
-    --execute \
-    >"$flag_failure_stdout" 2>"$flag_failure_stderr"
-flag_failure_status=$?
-set -e
-
-[[ "$flag_failure_status" -eq 43 ]] ||
-    fail "flagstat child exit 43 was not propagated: $flag_failure_status"
-assert_file_equals "$flag_failure_quickcheck_out" \
-    $'PASS: samtools quickcheck completed with no errors.\n'
-assert_file_equals "$flag_failure_flagstat_out" $'partial flagstat output\n'
-assert_file_equals "$flag_failure_unrelated" $'unrelated predecessor\n'
-assert_file_equals "$flag_failure_stderr" $'flagstat failure diagnostic\n'
-assert_only_entries "$flag_failure_output_dir" \
-    "sample_flag_failure.quickcheck.txt" \
-    "sample_flag_failure.flagstat.txt" \
-    "unrelated.txt"
-
-printf 'All step_02b BAM QC smoke tests passed.\n'
+bam="$tmp_dir/inputs/sample.bam"
+printf 'BAM\n' >"$bam"
+printf 'BAI\n' >"${bam%.bam}.bai"
+command=(bash "$SCRIPT" --sample-id sample --bam "$bam" --output-dir "$tmp_dir/staged" --samtools-bin "$fake_bin/samtools")
+"${command[@]}"
+assert_contains "$tmp_dir/staged/sample.quickcheck.txt" 'PASS: samtools quickcheck completed with no errors.'
+assert_contains "$tmp_dir/staged/sample.flagstat.txt" '8 + 0 mapped'
+FAKE_QUICKCHECK_MODE=output_success "${command[@]}"
+assert_contains "$tmp_dir/staged/sample.quickcheck.txt" 'quickcheck success output'
+assert_fails 'samtools quickcheck failed' env FAKE_QUICKCHECK_MODE=fail "${command[@]}"
+assert_contains "$tmp_dir/staged/sample.quickcheck.txt" 'quickcheck failure output'
+assert_fails 'flagstat failure diagnostic' env FAKE_FLAGSTAT_MODE=partial_fail "${command[@]}"
+assert_fails 'requires EMRYS_TASK_WORK_DIR' env -u EMRYS_TASK_WORK_DIR "${command[@]}"
+printf 'Native worker checks passed.\n'

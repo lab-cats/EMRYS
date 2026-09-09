@@ -20,7 +20,7 @@ summary.
 
 Inputs are a safe cohort ID, an ordered paired local-CMH sample manifest,
 complete nonoverlapping partition manifest, Step `07` root, nonempty
-annotation GTF, output and QC roots, and explicit Rscript/R-program resolution.
+annotation GTF, runner-supplied output paths, and explicit Rscript/R-program resolution.
 The sample header is exactly `sample_id, r1_fastq, r2_fastq, strandedness,
 condition, replicate`, with optional `notes` last. Required values are
 nonempty, sample and replicate IDs are safe, strandedness uses the closed
@@ -32,8 +32,8 @@ The optional positive `--threads` value defaults to `1` and bounds independent
 partition/orientation VCF workers. On Unix, worker results are returned in the
 declared manifest/orientation order before deterministic aggregation; Windows
 direct execution falls back to one worker. Annotation import/model construction
-and aggregate reconciliation remain serial in R. The division between R computation and Python
-publication is specified below.
+and aggregate reconciliation remain serial in R. The division between R
+computation and Python output checks is specified below.
 
 The fixed `legacy_provisional_v1` compatibility policy maps:
 
@@ -76,28 +76,21 @@ row per partition/orientation, ordered by the partition manifest then
 hashes, annotation path/hash, observed and skipped counts, and policy. The
 one-row summary reconciles aggregate counts and identities.
 
-The private [Python producer](producer.py) does not write in dry-run. Execute
-holds a cohort lock and uses run-token staging paths. It repeatedly checks
-input hashes and validates staged output before publishing sites, summary,
-then input receipt. It checks the visible set, hashes, and inputs again before
-marking the attempt committed. The receipt can therefore be visible before
-final checks finish; its presence alone does not prove that the producer
-returned success.
+The private [Python producer](producer.py) invokes R with the runner's three
+staged output paths and checks the serialized results. The runner publishes
+sites, summary, then input receipt; the independent validator checks the
+published set. Receipt presence alone does not prove a verified task.
+Execution, input stability, publication, and recovery belong to the [runner contract](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
-Publication follows the shared
-[create-only policy](../../../../docs/design/decisions/execution-evidence-and-reporting.md#standalone-scientific-output-policy).
-Old backup and staging files in the cohort output or QC directory still block
-execution for operator inspection.
-
-Computation and publication have separate responsibilities:
+The scientific responsibilities are:
 
 - [The R program](step_08_vcf_preprocessing.R) owns semantic parsing,
   deterministic candidate construction, aggregation, TSV serialization,
   provisional orientation, and annotation.
-- Python owns coordination, locking, publication, and checks of the serialized
-  files: exact headers, field/row counts, receipt ordering/identities, basic site
-  fields, candidate uniqueness, and policy/count reconciliation. It does not
-  reparse VCFs or reconstruct candidate order within a VCF.
+- Python checks exact headers, field/row counts, receipt ordering and
+  identities, basic site fields, candidate uniqueness, and policy/count
+  reconciliation. It does not reparse VCFs or reconstruct candidate order
+  within a VCF.
 
 The R entrypoint loads its adjacent private input-contract, annotation, Step
 `07` receipt, VCF/count, and candidate-processing modules. It resolves siblings

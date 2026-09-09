@@ -64,15 +64,13 @@ FDR ascending, absolute treatment-control AF difference descending, then
 candidate ID. This is a bounded presentation roster, not a new scientific
 rank or modification of Step `09`.
 
-## Inputs and five-output transaction
+## Inputs and scientific outputs
 
 Inputs are a safe analysis ID; nonempty Step `09` all/significant/summary TSVs;
 nonempty FASTA and exact FAI; the exact one-row owner motif catalog; output
-root; explicit Rscript/R-program resolution; and the repository commit. The
-shell hashes all six scientific inputs before R, passes those bound digests to
-the receipt producer, and rechecks them after R and after publication.
-Execute mode uses the bound `EMRYS_SHA256_PYTHON` launcher, or an absolute
-`python3` resolved from `PATH`, for owner-local fsync barriers.
+destinations; explicit Rscript/R-program resolution; and the repository commit.
+The shell hashes all six scientific inputs before R and passes those digests
+to the receipt producer. The runner owns stable-input rechecks.
 
 Stable outputs under `<output-root>/<analysis-id>/` are:
 
@@ -89,28 +87,25 @@ The four payload headers and canonical receipt header are owned by
 absolute canonical input/output paths, lowercase hashes, data-row counts,
 the transaction and receipt schema versions, every fixed policy,
 R/Biostrings/Rsamtools versions, producer, commit, and complete state. The R
-producer serializes and hashes all four
-payloads before serializing the receipt. The shell fsyncs all five closed
-staging files, publishes all payloads and then the receipt last, and fsyncs the
-analysis directory before treating the transaction as committed.
+producer serializes and hashes all four payloads before serializing the
+receipt. The shell independently reconciles its four hashes and row counts
+against the staged payloads before returning.
 
-Dry-run creates no output path and invokes no R process. Execute mode acquires
-an analysis-owned lock, uses run-token staging, checks inputs at the two
-post-baseline boundaries, and validates receipt/payload hashes before and
-after publication. Publication follows the shared
-[create-only policy](../../../../../docs/design/decisions/execution-evidence-and-reporting.md#standalone-scientific-output-policy).
-Old backup and staging files still block execution for operator inspection.
-Directory fsync also covers rollback of the new outputs.
+## Scientific worker
 
-One interruption limit remains: the shell records each published file only
-after its publication helper returns. An interruption between those actions
-can leave that file outside the cleanup count. Inspect the output directory
-after an interrupted publication; do not infer complete cleanup from lock
-absence. Retiring replacement does not repair this separate handoff gap.
+The [shell worker](scientific_context_projection.sh) is internal to the
+[Run task runner](../../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
+It receives five explicit `--*-output` staging paths and four `--*-final`
+payload identities for the native receipt. The R scientific computation is
+unchanged. The runner publishes the four payloads before the native receipt;
+its verified task record establishes successful independent validation.
 
-The receipt can become visible before the shell's final post-publication hash
-and input checks. Its presence alone is therefore not proof that the producer
-returned success.
+The retired shell writer had an interruption gap between linking a final and
+recording it for cleanup. That could leave a final without its staging anchor
+or lock; the old implementation is retained at
+[revision 88522d0a](https://github.com/lab-cats/EMRYS/tree/88522d0a/src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection).
+Old backup or staging residue still requires inspection. A native receipt
+alone does not establish successful Run validation.
 
 ## Validation and evidence boundary
 

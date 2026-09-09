@@ -31,15 +31,15 @@ The producer accepts:
 - a nonempty sample identifier used in output-name construction;
 - one read-1 and one read-2 FASTQ or FASTQ.GZ file path;
 - one STAR genome-index directory;
-- one explicit output directory;
+- one explicit staging output directory;
 - a positive thread count; and
 - an available STAR executable, plus an explicitly selectable `gunzip`
   executable when both FASTQ paths end in `.gz`.
 
-The current producer checks path types, matching compression suffixes,
-sample-identifier path safety, FASTQ byte stability, and a deterministic
-snapshot of every top-level STAR-index member. It does not validate FASTQ
-content or biological pairing.
+The worker checks matching compression suffixes and sample-identifier path
+safety. The runner binds FASTQ byte stability and a deterministic snapshot of
+every top-level STAR-index member. Neither check proves FASTQ content or
+biological pairing.
 
 ## Outputs
 
@@ -62,38 +62,17 @@ BAM/BAI pair without rewriting the BAM when a same-filesystem hard link is
 available. Its generic-input fallback still sorts and/or retags noncanonical
 alignments.
 
-## Orchestration-safe producer boundary
+## Scientific worker
 
-Every invocation refuses replacement; `--no-clobber` is accepted but does not
-select a different mode. Dry-run shows the plan without writing. Execute holds
-a per-sample owned lock, requires all five final paths to be absent, and runs
-STAR in a run-token staging directory. Every declared output must be nonempty.
+[`step_01_star_align.sh`](step_01_star_align.sh) is an internal worker of the
+[Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
-The producer checks FASTQ hashes before publication. It also checks every
-top-level STAR-index entry: each must be a readable, nonempty regular file.
-Symlinks, directories, special files, and tab/newline-containing names are
-rejected. A bytewise-name-ordered basename/SHA-256 snapshot must have identical
-membership and bytes immediately before STAR and again after STAR.
-
-Publication hard-links each staged file to its absent final path, retaining
-the staged inode to prove ownership. All finals must still match their anchors
-before success removes staging and then the lock. Failure before publication
-removes only owned staging. During publication, rollback removes a final only
-while it remains the same regular-file inode as its anchor. A late or replaced
-foreign final is preserved with the lock and staging for recovery; existing or
-foreign state is never adopted or deleted.
-
-`--star-bin` selects the STAR executable. For two `.gz` mates, `--gunzip-bin`
-selects the decompressor passed to `--readFilesCommand`; omission uses `gunzip`
-on `PATH`. Plain mates do not resolve or validate a decompressor. Observed tool
-versions and output hashes belong in the workflow verified record.
-
-## Current execution surfaces
-
-The [shell producer](step_01_star_align.sh) validates arguments and executable
-availability before the transaction above. For two `.gz` mates, it passes the
-selected decompressor to STAR as `--readFilesCommand ... -c`. Dry-run neither
-invokes STAR nor creates an output directory.
+The worker receives one staging output directory and explicit STAR inputs.
+It requests `BAM SortedByCoordinate` and the canonical sample read group, then
+requires all five declared outputs to be nonempty. For two `.gz` mates it
+passes the selected `--gunzip-bin` as `--readFilesCommand ... -c`; plain mates
+do not resolve a decompressor. The runner binds FASTQ bytes and the complete
+top-level STAR-index membership and contents throughout execution.
 
 ## Validation interface
 

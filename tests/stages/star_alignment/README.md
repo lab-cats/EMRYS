@@ -1,7 +1,9 @@
 # STAR-alignment tests
 
-These cases check Step 01 arguments, dry-run, failures, direct-output behavior,
-and structural validation reports. The
-[stage contract](../../../src/emrys/stages/star_alignment/CONTRACT.md)
-defines the partial-output hazards. Mocked STAR results do not establish
-alignment correctness or real STAR execution.
+Native STAR arguments, both compression modes, child failure, output presence, and grouped structural validation are covered. Mocked STAR results do not establish alignment correctness.
+
+Shell cases invoke the internal worker with runner-style scratch and staging.
+The [common runner suite](../../orchestration/run_coordinator/test_task.py) owns
+publication, input stability, interruption, and recovery checks. Python
+validator cases retain the public grouped command. The
+[shared evidence limits](../../README.md#evidence-limits) apply.

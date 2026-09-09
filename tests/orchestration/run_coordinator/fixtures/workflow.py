@@ -913,12 +913,26 @@ def _write_dispatch(
         path.parent,
         task_start.parent,
         verified.parent,
+        validation_report.parent,
+        *(
+            resolved(row).parent.parent if step_id == "00a" else resolved(row).parent
+            for row in native_rows
+        ),
     }:
         parent.mkdir(parents=True, exist_ok=True)
+    working_paths = {
+        resolved(row): (
+            resolved(row).parent.parent / f".star-test-owner-{index:03d}.work"
+            if step_id == "00a"
+            else resolved(row).parent / f".test-owner-{index:03d}.work"
+        )
+        / resolved(row).name
+        for row in native_rows
+    }
     payload_record = {
         "producer": [
             {
-                "path": str(resolved(row)),
+                "path": str(working_paths[resolved(row)]),
                 "data_base64": base64.b64encode(payloads[row["source_path"]]).decode(),
             }
             for row in native_rows
@@ -962,7 +976,7 @@ def _write_dispatch(
             }
         )
     record = {
-        "schema_version": "emrys.local-task-dispatch.v1",
+        "schema_version": "emrys.local-task-dispatch.v2",
         "run_root": str(run_root),
         "execution_path": str(execution_path),
         "profile_path": str(run_root / "contract" / "profile.json"),
@@ -978,9 +992,21 @@ def _write_dispatch(
         "validator_argv": validator,
         "inputs": input_declarations,
         "outputs": [
-            {"role": f"artifact_{row_index:03d}", "path": str(resolved(row))}
+            {
+                "role": f"artifact_{row_index:03d}",
+                "path": str(resolved(row)),
+                "working_path": str(working_paths[resolved(row)]),
+            }
             for row_index, row in enumerate(native_rows, start=1)
         ],
+        "publication": {
+            "locks": [],
+            "forbidden_paths": [],
+            "input_directories": [],
+            "output_directory": str(resolved(native_rows[0]).parent)
+            if step_id == "00a"
+            else None,
+        },
         "validation_report_path": str(validation_report),
         "native_receipt_path": None,
         "task_start_path": str(task_start),

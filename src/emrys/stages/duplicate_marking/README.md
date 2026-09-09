@@ -7,15 +7,14 @@ The marked pair feeds [SplitNCigarReads](../split_n_cigar/README.md).
 Supply the BAM and exact adjacent `<bam>.bai`, sample ID, output/metrics
 locations, Picard jar, Java, samtools, and writable temporary space.
 
-Normal execution uses the [Project Run](../README.md#running-a-stage). For
-standalone help from the checkout root:
+Execution uses the [Project Run](../README.md#running-a-stage). The shell
+script is an internal worker; its help describes the runner interface. The
+validator remains directly available:
 
 ```bash
 bash src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh --help
 emrys validate duplicate-marking --help
 ```
 
-The Run uses `--no-clobber` to protect existing outputs. Standalone execute
-without it retains a direct-write route that can leave partial results; review
-the [contract](CONTRACT.md) before using it or handling failed output. Validation
+The [contract](CONTRACT.md) describes native checks and retained limits. Validation
 checks structure and metrics, not duplicate-marking accuracy or biological validity.

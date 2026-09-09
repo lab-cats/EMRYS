@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2154
 # Shared argument parsing helpers for Bash stage owners.
 
 : "${DIE_PREFIX:=ERROR}"
@@ -160,4 +161,10 @@ handle_execute_or_help() {
             die "Unknown argument: ${1:-}. Run with --help for usage."
             ;;
     esac
+}
+
+# Workers receive scratch and staging ownership from the task runner.
+require_task_work_dir() {
+    [[ -n "${EMRYS_TASK_WORK_DIR:-}" && -d "$EMRYS_TASK_WORK_DIR" ]] ||
+        die "This internal worker requires EMRYS_TASK_WORK_DIR from the Run task runner."
 }

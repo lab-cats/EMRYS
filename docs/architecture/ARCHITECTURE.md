@@ -37,8 +37,8 @@ and changes neither Run nor Attempt identity.
 | Responsibility | Current owner | Boundary |
 |---|---|---|
 | Interaction | Installed `emrys` CLI | Composes supported capabilities; contains no scientific semantics. |
-| Project and Run coordination | `src/emrys/orchestration/run_coordinator/` | Admits Project intent, binds immutable Runs, selects placement, materializes Attempts, derives status, and invokes reporting. It does not own science or report rendering. |
-| Scientific transformations and analyses | `src/emrys/stages/`, `src/emrys/analyses/` | Own algorithms, declared inputs/outputs, native validation, publication, and recovery behavior. |
+| Project and Run coordination | `src/emrys/orchestration/run_coordinator/` | Admits Project intent, binds immutable Runs, selects placement, materializes Attempts, derives status, owns scientific-worker execution/publication/recovery, and invokes reporting. It does not own science or report rendering. |
+| Scientific transformations and analyses | `src/emrys/stages/`, `src/emrys/analyses/` | Own algorithms, declared inputs/outputs, native scientific checks, and provenance. |
 | Operational evidence | `src/emrys/evidence/` | Observes runtime, reference, storage, QC, and orientation facts without promoting their meaning. |
 | Results and reporting | `src/emrys/reporting/` plus selected reporter | Indexes admitted artifacts, builds the canonical summary, and publishes one bespoke scientific view plus the fixed evidence/operations view. It never reruns science. |
 | Neutral records and primitives | `src/emrys/contracts/`, `src/emrys/libraries/` | Provide versioned schemas, identity facts, validation, and narrowly proven shared mechanics. |

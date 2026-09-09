@@ -1,14 +1,11 @@
-"""Coordinate Step 08 R preprocessing and its three-file transaction."""
+"""Compute cohort candidate tables and scientific receipts in runner-owned paths."""
 
 from __future__ import annotations
 
 import argparse
-import fnmatch
 import os
 import re
-import shlex
 import shutil
-import signal
 import subprocess
 import sys
 from collections.abc import Sequence
@@ -29,12 +26,6 @@ class ProducerError(RuntimeError):
     """Step 08 admission, execution, or publication failed."""
 
 
-class Interrupted(ProducerError):
-    def __init__(self, signum: int) -> None:
-        super().__init__(f"Step 08 interrupted by signal {signum}.")
-        self.signum = signum
-
-
 @dataclass(frozen=True)
 class Step07Input:
     partition: dict[str, str]
@@ -52,7 +43,6 @@ class Context:
     partitions: tuple[dict[str, str], ...]
     hashes: tuple[str, str, str]
     step07: tuple[Step07Input, ...]
-    token: str
     threads: int
     rscript: str
     paths: dict[str, Path]
@@ -65,8 +55,6 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
         "partition-manifest",
         "step07-root",
         "annotation-gtf",
-        "output-root",
-        "qc-root",
     ):
         parser.add_argument(f"--{name}", required=True)
     parser.add_argument("--threads", default="1")
@@ -78,20 +66,12 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
             str(Path(__file__).with_name("step_08_vcf_preprocessing.R")),
         ),
     )
-    parser.add_argument(
-        "--no-clobber",
-        action="store_true",
-        help="Accepted for existing callers; replacement is always refused.",
-    )
-    parser.add_argument("--execute", action="store_true")
+    for name in ("sites-output", "inputs-output", "summary-output"):
+        parser.add_argument(f"--{name}", required=True, type=Path)
 
 
 def fail(message: str) -> None:
     raise ProducerError(message)
-
-
-def lexists(path: Path) -> bool:
-    return os.path.lexists(path)
 
 
 def digest(path: Path) -> str:
@@ -224,43 +204,20 @@ def admit_step07(
         )
         inspect_vcf(f"Step 07 {orientation}", Path(vcf), samples, declared)
         counts.append(declared)
-    after = (digest(Path(receipt)), *(digest(Path(path)) for path in vcfs))
-    if before != after:
-        fail(f"Step 07 partition inputs changed during preflight: {partition_id}")
     return Step07Input(
         dict(partition),
         receipt,
-        after[0],
+        before[0],
         (vcfs[0], vcfs[1]),
-        (after[1], after[2]),
+        (before[1], before[2]),
         (counts[0], counts[1]),
     )
 
 
-def paths(arguments: argparse.Namespace, token: str) -> dict[str, Path]:
-    cohort_dir = Path(arguments.output_root) / arguments.cohort_id
-    stem, qc = arguments.cohort_id, Path(arguments.qc_root)
-    return {
-        "sites": cohort_dir / f"{stem}.step08_sites.tsv",
-        "summary": qc / f"{stem}.step08_summary.tsv",
-        "inputs": cohort_dir / f"{stem}.step08_inputs.tsv",
-        "tmp_sites": cohort_dir / f".{stem}.step08.{token}.sites.tmp.tsv",
-        "tmp_summary": qc / f".{stem}.step08.{token}.summary.tmp.tsv",
-        "tmp_inputs": cohort_dir / f".{stem}.step08.{token}.inputs.tmp.tsv",
-        "lock": cohort_dir / f".{stem}.step08.lock",
-    }
-
-
 def build_context(arguments: argparse.Namespace) -> Context:
     threads = integer("--threads", arguments.threads, positive=True)
-    token = (
-        os.environ.get("EMRYS_RUN_TOKEN")
-        or os.environ.get("SLURM_JOB_ID")
-        or str(os.getpid())
-    )
     try:
         step08.validate_safe_id("--cohort-id", arguments.cohort_id)
-        step08.validate_safe_id("run token", token)
         _, samples, _ = step08.validate_sample_manifest(Path(arguments.sample_manifest))
         partition_table = step08.validate_partition_manifest(
             Path(arguments.partition_manifest)
@@ -287,48 +244,28 @@ def build_context(arguments: argparse.Namespace) -> Context:
         tuple(map(dict, partition_table.rows)),
         (hashes[0], hashes[1], hashes[2]),
         step07,
-        token,
         threads,
         executable(arguments.rscript_bin),
-        paths(arguments, token),
+        {
+            "sites": arguments.sites_output,
+            "summary": arguments.summary_output,
+            "inputs": arguments.inputs_output,
+        },
     )
-    confirm_inputs(context)
     return context
 
 
-def confirm_inputs(context: Context) -> None:
-    arguments = context.arguments
-    fixed = zip(
-        (
-            arguments.sample_manifest,
-            arguments.partition_manifest,
-            arguments.annotation_gtf,
-        ),
-        context.hashes,
-        strict=True,
-    )
-    if any(digest(Path(path)) != expected for path, expected in fixed):
-        fail("A manifest or annotation input changed during Step 08.")
-    for item in context.step07:
-        if digest(Path(item.receipt)) != item.receipt_hash or any(
-            digest(Path(path)) != expected
-            for path, expected in zip(item.vcfs, item.vcf_hashes, strict=True)
-        ):
-            fail("A Step 07 receipt or VCF changed during Step 08.")
-
-
-def validate_outputs(context: Context, prefix: str = "") -> None:
-    confirm_inputs(context)
-    path = lambda name: context.paths[f"{prefix}{name}"]  # noqa: E731
+def validate_outputs(context: Context) -> None:
+    paths = context.paths
     try:
         inputs = step08.validate_step08_inputs(
-            path("inputs"), context.samples, context.partitions, *context.hashes[:2]
+            paths["inputs"], context.samples, context.partitions, *context.hashes[:2]
         )
         sites = step08.validate_step08_sites(
-            path("sites"), context.samples, context.partitions, inputs.rows
+            paths["sites"], context.samples, context.partitions, inputs.rows
         )
         summary = step08.validate_step08_summary(
-            path("summary"),
+            paths["summary"],
             context.samples,
             context.partitions,
             inputs.rows,
@@ -368,7 +305,6 @@ def validate_outputs(context: Context, prefix: str = "") -> None:
         POLICY,
     ):
         fail("Step 08 summary contains invalid admitted provenance.")
-    confirm_inputs(context)
 
 
 def r_command(context: Context) -> list[str]:
@@ -397,373 +333,27 @@ def r_command(context: Context) -> list[str]:
         "--threads",
         str(context.threads),
         "--sites-output",
-        str(p["tmp_sites"]),
+        str(p["sites"]),
         "--inputs-output",
-        str(p["tmp_inputs"]),
+        str(p["inputs"]),
         "--summary-output",
-        str(p["tmp_summary"]),
+        str(p["summary"]),
     ]
     return command
 
 
-def print_plan(context: Context, command: Sequence[str]) -> None:
-    a, p = context.arguments, context.paths
-    print("Step 08 VCF preprocessing context:")
-    for label, value in (
-        ("Mode", "execute" if a.execute else "dry-run"),
-        ("Run token", context.token),
-        ("Cohort ID", a.cohort_id),
-        ("Sample manifest", a.sample_manifest),
-        ("Sample manifest SHA-256", context.hashes[0]),
-        ("Sample count", len(context.samples)),
-        ("Partition manifest", a.partition_manifest),
-        ("Partition manifest SHA-256", context.hashes[1]),
-        ("Partition count", len(context.partitions)),
-        ("Expected Step 07 VCF count", len(context.partitions) * 2),
-        ("Step 07 root", a.step07_root),
-        ("Annotation GTF", a.annotation_gtf),
-        ("Annotation GTF SHA-256", context.hashes[2]),
-        ("Threads", context.threads),
-        ("Rscript", context.rscript),
-        ("R script", a.r_script),
-        ("Sites table", p["sites"]),
-        ("Input receipt", p["inputs"]),
-        ("QC summary", p["summary"]),
-        (
-            "Existing-output policy",
-            "refuse existing outputs",
-        ),
-    ):
-        print(f"  {label}: {value}")
-    print("  Samples:\n    " + "\n    ".join(context.samples))
-    print(
-        "  Orientation policy: legacy_provisional_v1 (provisional; not biologically validated)"
-    )
-    print("Declared Step 07 input set:")
-    for item in context.step07:
-        row = item.partition
-        print(
-            f"  Partition {row['partition_id']} ({row['selector_type']} {row['selector_value']}):"
-        )
-        print(
-            f"    Receipt: {item.receipt}\n    FWD_like VCF: {item.vcfs[0]}\n    REV_like VCF: {item.vcfs[1]}"
-        )
-    print(f"R command:\n  {shlex.join(command)}")
-    print(
-        "Planned validation:\n  Recheck sample-manifest, partition-manifest, and annotation-GTF hashes"
-    )
-    print("  Require exact sites, inputs, and summary TSV headers")
-    print(f"  Require exactly {len(context.partitions) * 2} Step 08 input-receipt rows")
-    print("  Accept a header-only sites table when counts reconcile")
-    print(
-        f"Planned publication:\n  Lock: {p['lock']}\n  Temporary sites table: {p['tmp_sites']}"
-    )
-    print(
-        f"  Temporary input receipt: {p['tmp_inputs']}\n  Temporary summary: {p['tmp_summary']}"
-    )
-    print("  Publish sites, then summary, then the input receipt last as commit marker")
-    print("  Remove only owned new outputs on failure; preserve ambiguous residue")
-    validation = Path(a.qc_root) / f"{a.cohort_id}.step08_validation.tsv"
-    prefix = ["emrys", "validate"]
-    validator = [
-        *prefix,
-        "cohort-candidate-preprocessing",
-        "--cohort-id",
-        a.cohort_id,
-        "--sample-manifest",
-        a.sample_manifest,
-        "--partition-manifest",
-        a.partition_manifest,
-        "--annotation-gtf",
-        a.annotation_gtf,
-        "--sites",
-        str(p["sites"]),
-        "--inputs",
-        str(p["inputs"]),
-        "--summary",
-        str(p["summary"]),
-        "--output",
-        str(validation),
-        "--execute",
-    ]
-    gate = [
-        *prefix,
-        "all-pass",
-        "--report",
-        str(validation),
-        "--step-id",
-        "08",
-        "--scope-id",
-        a.cohort_id,
-    ]
-    print(f"Post-execution validator command:\n  {shlex.join(validator)}")
-    print(f"Semantic all-pass gate:\n  {shlex.join(gate)}")
-
-
-class Publication:
-    """Owner-local Step 08 publication state; not a shared operation model."""
-
-    names = ("sites", "summary", "inputs")
-
-    def __init__(self, context: Context) -> None:
-        self.context, self.p = context, context.paths
-        self.locked = self.owner_written = self.scratch = False
-        self.started = self.committed = False
-        self.child: subprocess.Popen[bytes] | None = None
-        self.spawning = False
-        self.pending_signal: int | None = None
-
-    @property
-    def owner(self) -> Path:
-        return self.p["lock"] / "owner"
-
-    def acquire(self) -> None:
-        try:
-            self.p["lock"].mkdir()
-        except FileExistsError as exc:
-            raise ProducerError(
-                f"Step 08 lock already exists: {self.p['lock']}"
-            ) from exc
-        self.locked = True
-        self.owner.write_text(f"run_token\t{self.context.token}\npid\t{os.getpid()}\n")
-        self.owner_written = True
-
-    def release(self) -> None:
-        if not self.locked:
-            return
-        try:
-            owned = (
-                f"run_token\t{self.context.token}"
-                in self.owner.read_text().splitlines()
-            )
-            unexpected = [
-                path for path in self.p["lock"].iterdir() if path != self.owner
-            ]
-        except OSError as exc:
-            raise ProducerError(
-                f"Cannot prove Step 08 lock ownership: {self.p['lock']}"
-            ) from exc
-        if not self.owner_written or not owned or unexpected:
-            fail(f"Step 08 lock ownership changed; preserving lock: {self.p['lock']}")
-        self.owner.unlink()
-        try:
-            self.p["lock"].rmdir()
-        except OSError as exc:
-            try:
-                with self.owner.open("x") as stream:
-                    stream.write(
-                        f"run_token\t{self.context.token}\npid\t{os.getpid()}\n"
-                    )
-            except OSError:
-                pass
-            raise ProducerError(
-                f"Could not remove Step 08 lock: {self.p['lock']}"
-            ) from exc
-        self.locked = False
-
-    @staticmethod
-    def same(left: Path, right: Path) -> bool:
-        try:
-            return (
-                left.is_file()
-                and right.is_file()
-                and not left.is_symlink()
-                and not right.is_symlink()
-                and left.samefile(right)
-            )
-        except OSError:
-            return False
-
-    def exclusive(self, name: str) -> None:
-        staged, final = self.p[f"tmp_{name}"], self.p[name]
-        if (
-            not staged.is_file()
-            or staged.is_symlink()
-            or staged.stat().st_size == 0
-            or lexists(final)
-        ):
-            fail(f"Step 08 {name} cannot be published create-exclusively: {final}")
-        try:
-            os.link(staged, final)
-        except OSError as exc:
-            raise ProducerError(
-                f"Step 08 {name} final appeared during publication: {final}"
-            ) from exc
-        if not self.same(staged, final):
-            fail(f"Step 08 {name} publication lost staged-inode identity: {final}")
-
-    def rollback(self) -> bool:
-        results = []
-        for name in self.names:
-            staged, final = self.p[f"tmp_{name}"], self.p[name]
-            if not lexists(final):
-                continue
-            if not self.same(staged, final):
-                results.append(False)
-            else:
-                try:
-                    final.unlink()
-                    results.append(not lexists(final))
-                except OSError:
-                    results.append(False)
-        return all(results)
-
-    def cleanup(self, failed: bool) -> None:
-        if self.child is not None and self.child.poll() is None:
-            print(
-                f"ERROR: Step 08 child remains active; retaining lock and scratch: {self.p['lock']}",
-                file=sys.stderr,
-            )
-            return
-        rollback_failed = (
-            failed and self.started and not self.committed and not self.rollback()
-        )
-        if self.scratch and not rollback_failed:
-            for name in self.names:
-                try:
-                    self.p[f"tmp_{name}"].unlink(missing_ok=True)
-                except OSError:
-                    pass
-        if rollback_failed:
-            print(
-                f"ERROR: Step 08 rollback incomplete; retaining lock and staging files: {self.p['lock']}",
-                file=sys.stderr,
-            )
-        elif self.locked:
-            if not self.owner_written:
-                try:
-                    self.owner.unlink(missing_ok=True)
-                    self.p["lock"].rmdir()
-                    self.locked = False
-                except OSError:
-                    pass
-            else:
-                try:
-                    self.release()
-                except ProducerError as exc:
-                    print(f"ERROR: {exc}", file=sys.stderr)
-
-    def interrupted(self, signum: int, _frame: object) -> None:
-        if self.spawning:
-            if self.pending_signal is None:
-                self.pending_signal = signum
-            return
-        for number in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
-            signal.signal(number, signal.SIG_IGN)
-        child = self.child
-        if child is not None and child.poll() is None:
-            try:
-                child.send_signal(signum)
-            except ProcessLookupError:
-                pass
-            child.wait()
-            self.child = None
-        raise Interrupted(signum)
-
-
-def require_no_residue(context: Context, *, owned_lock: Path | None = None) -> None:
-    pattern = f".{context.arguments.cohort_id}.step08.*"
-    for directory in (context.paths["sites"].parent, Path(context.arguments.qc_root)):
-        if directory.is_dir():
-            match = next(
-                (
-                    path
-                    for path in directory.iterdir()
-                    if fnmatch.fnmatchcase(path.name, pattern) and path != owned_lock
-                ),
-                None,
-            )
-            if match is not None:
-                fail(f"Step 08 residue requires operator inspection: {match}")
-
-
-def execute(context: Context, command: Sequence[str]) -> None:
-    p = context.paths
-    p["sites"].parent.mkdir(parents=True, exist_ok=True)
-    p["summary"].parent.mkdir(parents=True, exist_ok=True)
-    tx = Publication(context)
-    handlers = {
-        number: signal.getsignal(number)
-        for number in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
-    }
-    failed = True
-    try:
-        for number in handlers:
-            signal.signal(number, signal.SIG_IGN)
-        tx.acquire()
-        require_no_residue(context, owned_lock=p["lock"])
-        tx.scratch = True
-        for number in handlers:
-            signal.signal(number, tx.interrupted)
-        existing = sum(lexists(p[name]) for name in tx.names)
-        if existing not in (0, 3):
-            fail("Existing Step 08 outputs are incomplete; expected all three or none.")
-        if existing:
-            fail("Refusing to replace complete Step 08 outputs.")
-        confirm_inputs(context)
-        sys.stdout.flush()
-        tx.spawning = True
-        try:
-            tx.child = subprocess.Popen(command)
-        except OSError:
-            tx.spawning = False
-            if tx.pending_signal is not None:
-                tx.interrupted(tx.pending_signal, None)
-            raise
-        tx.spawning = False
-        if tx.pending_signal is not None:
-            tx.interrupted(tx.pending_signal, None)
-        status = tx.child.wait()
-        tx.child = None
-        if status:
-            fail("Step 08 R VCF preprocessing failed.")
-        validate_outputs(context, "tmp_")
-        staged_hashes = tuple(digest(p[f"tmp_{name}"]) for name in tx.names)
-        tx.started = True
-        for name in tx.names:
-            tx.exclusive(name)
-        validate_outputs(context)
-        if tuple(digest(p[name]) for name in tx.names) != staged_hashes:
-            fail("Published Step 08 outputs changed during publication.")
-        if any(not tx.same(p[f"tmp_{name}"], p[name]) for name in tx.names):
-            fail("A Step 08 final no longer matches its staging anchor.")
-        for name in tx.names:
-            p[f"tmp_{name}"].unlink()
-        tx.committed = True
-        tx.release()
-        failed = False
-    finally:
-        for number, handler in handlers.items():
-            signal.signal(number, handler)
-        tx.cleanup(failed)
-
-
-def run(arguments: argparse.Namespace) -> int:
-    context = build_context(arguments)
-    command = r_command(context)
-    print_plan(context, command)
-    require_no_residue(context)
-    if not arguments.execute:
-        print(
-            "Dry-run complete; no directories or files were created and R was not invoked."
-        )
-        return 0
-    execute(context, command)
-    print("Step 08 execute complete.")
-    print(f"Published sites table: {context.paths['sites']}")
-    print(f"Published input receipt: {context.paths['inputs']}")
-    print(f"Published QC summary: {context.paths['summary']}")
-    return 0
+def execute(context: Context) -> None:
+    if subprocess.run(r_command(context)).returncode:
+        fail("Step 08 R VCF preprocessing failed.")
+    validate_outputs(context)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     configure_parser(parser)
     try:
-        return run(parser.parse_args(argv))
-    except Interrupted as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 128 + exc.signum
+        execute(build_context(parser.parse_args(argv)))
+        return 0
     except (ProducerError, OSError, report.ValidationError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1

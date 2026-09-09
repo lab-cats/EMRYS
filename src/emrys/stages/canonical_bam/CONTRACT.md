@@ -3,12 +3,12 @@
 This directory owns historical Step `02`; the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
 identity and alias. The private validator is grouped under `emrys validate`;
-the producer remains an explicit repository-path command.
+the shell producer is an internal Run worker.
 
 ## Responsibility
 
-The [README](README.md) explains BAM preparation and use. The producer validates
-the staged pair before publication and refuses existing outputs. The separate
+The [README](README.md) explains BAM preparation and use. The worker validates
+the staged pair before the runner publishes it. The separate
 validator reads a declared pair without changing it.
 
 ## Execution dependencies
@@ -31,15 +31,12 @@ The producer accepts:
 - a sample identifier matching `[A-Za-z0-9][A-Za-z0-9._-]*`, used for output
   names and read-group fields;
 - one explicit input SAM or BAM file;
-- one explicit output directory;
+- one explicit staging output directory;
 - a positive thread count; and
 - an available samtools executable.
 
-The producer checks that the input path is a file but relies on samtools to
-establish its content contract. Sample-identifier validation, input hashing,
-and refusal of owner residue apply to every invocation, including dry-run.
-Dry-run reads the input to calculate SHA-256 but does not check whether final
-outputs are absent, run samtools, or create output directories, files, or locks.
+The worker requires a nonempty alignment and a safe sample identifier;
+samtools establishes the alignment content contract.
 
 ## Outputs
 
@@ -59,53 +56,24 @@ BAI must be nonempty.
 The two files are published create-exclusively, but no receipt or summary
 marks transaction completion. They are not an atomic two-file filesystem write.
 
-## Producer publication boundary
+## Scientific worker
 
-Standalone and orchestrated invocations use the same create-exclusive path.
-The `--no-clobber` spelling remains accepted, and Run materialization continues
-to supply it; omitting it does not permit replacement. During execute, the
-producer refuses either existing final before tool work and immediately before
-publication. A dangling final symlink reaches the shared publisher's later
-refusal before linking. The producer pins the explicit samtools path, hashes
-and rechecks the input alignment, and uses the per-sample lock and staged pair
-validation. It never creates, consumes, restores, or deletes predecessor
-backups. Existing sample-specific `.step02.*` residue, including old
-`.previous.bam` and `.previous.bam.bai` files, requires operator inspection.
+[`step_02_sort_index_bam.sh`](step_02_sort_index_bam.sh) is an internal worker of the
+[Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
-The producer publishes with staging inode anchors and proves that both final
-paths still resolve to the validated staging inodes. When the canonical input
-itself supplies that inode, the producer also hashes the published BAM after
-both links exist and
-requires it to match the admitted input digest. The inode proof plus this
-post-publication content binding carries the staged semantic validation across
-publication without another `quickcheck`, header read, or two whole-BAM count
-scans at the final pathname. This preserves the existing staged scientific
-checks; it does not make concurrent external mutation safe.
+The worker skips sorting when the input header declares `SO:coordinate`;
+otherwise it sorts with samtools in runner scratch. It reuses the input inode
+only when the single read group and every alignment tag already satisfy the
+canonical contract and a hard link is available. Otherwise it replaces all
+read groups with the declared sample group. It indexes and validates the
+staged BAM/BAI pair. The runner preserves that checked byte identity through
+publication, including the source binding when a canonical input is reused.
 
-## Current execution surfaces
+### Historical producer cleanup limits
 
-The [shell producer](step_02_sort_index_bam.sh) skips sorting when the admitted
-header declares `SO:coordinate`; otherwise it sorts with samtools. It reuses
-that input inode only when the single read group and every alignment tag also
-satisfy the canonical contract. Otherwise it replaces all read groups with the
-declared sample group. It indexes and validates the staged pair before the
-publication boundary above.
+At [revision 88522d0a](https://github.com/lab-cats/EMRYS/tree/88522d0a/tests/stages/canonical_bam),
+producer-local fault tests characterized these additional cleanup limits:
 
-Run-token temporary files live beside the outputs, and the per-sample lock
-records the owning token. Failure cleanup follows the rules below.
-
-## Failure and recovery
-
-Before publication begins, ordinary tool or staged-validation failure removes
-owned scratch and the owned lock when cleanup succeeds. Once publication
-begins, rollback removes a final only while its staging anchor proves ownership.
-An output that disappears or is replaced by another process prevents complete
-rollback: other provably owned outputs may be removed, while remaining anchors
-and the owned lock are retained. A failed second link therefore can leave both anchors and a lock even
-after rollback removes the first final. Preserved residue blocks retry.
-
-Fault tests also characterize these cleanup limits; none is repaired by retiring
-replacement mode:
 
 - If removing both publication anchors persistently fails before either is
   removed, rollback removes both owned finals. EXIT cleanup fails to remove the
@@ -185,9 +153,9 @@ Step `04` and Step `05` share the latter rather than importing this stage.
 - Historical Step `04` consumes the exact `<bam>.bai` pair for duplicate
   marking.
 - Read-only validation and the three direct consumer branches do not acquire
-  the producer lock or pin one immutable input snapshot. They still require a
-  stable pair; refusing producer replacement does not protect them against
-  external mutation.
+  a shared producer lock. Run tasks bind their own input snapshots;
+  stand-alone validation still requires stable inputs. External mutation is
+  not made safe by refusing producer replacement.
 - The artifact inventory registers the canonical pair and validation report
   through `step02_canonical_bam_v1`, `step02_canonical_bai_v1`, and
   `step02_validation_report_v1`.
