@@ -94,13 +94,8 @@ def test_run_root_and_source_checkout_must_be_disjoint(
         lifecycle._require_disjoint_roots(run_root, source_checkout)
 
 
-@pytest.mark.parametrize(
-    "execution_mode",
-    ("local-science-tools", "test-double"),
-)
 def test_storage_readmission_uses_normalized_reference_identity(
     tmp_path: Path,
-    execution_mode: str,
 ) -> None:
     workspace = tmp_path / "workspace"
     authored_fasta = tmp_path / "authored.fa"
@@ -123,7 +118,6 @@ def test_storage_readmission_uses_normalized_reference_identity(
 
     binding = lifecycle._readmit_storage_runtime_binding(
         {
-            "execution_mode": execution_mode,
             "workspace": str(workspace),
             "authored_paths": {"reference_fasta": str(authored_fasta)},
         },

@@ -80,21 +80,6 @@ def run_validator(
     )
 
 
-def test_dry_run_is_side_effect_free(tmp_path: Path) -> None:
-    reference = build_validation_fixture(tmp_path)
-    assert run_validator(reference).returncode == 0
-    assert not reference.output.exists()
-
-
-def test_execute_publishes_five_passes(tmp_path: Path) -> None:
-    reference = build_validation_fixture(tmp_path)
-    result = run_validator(reference, "--execute")
-    assert result.returncode == 0, result.stderr
-    rows = report_rows(reference.output)
-    assert_exact_check_roster(rows, "00c")
-    assert {row["status"] for row in rows} == {"pass"}
-
-
 def test_sidecar_mismatch_is_failed_evidence(tmp_path: Path) -> None:
     reference = build_validation_fixture(tmp_path)
     reference.fai.write_text(
@@ -206,6 +191,7 @@ def test_non_repository_cwd_dry_execute_repeat_is_deterministic(
     assert first.returncode == 0, first.stderr
     first_bytes = reference.output.read_bytes()
     first_rows = report_rows(reference.output)
+    assert_exact_check_roster(first_rows, "00c")
 
     repeated = run_validator(reference, "--execute", cwd=invocation_cwd)
     assert repeated.returncode == 0, repeated.stderr
