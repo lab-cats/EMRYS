@@ -1,8 +1,9 @@
 # Artifact-index implementation
 
-This private package builds the artifact index for the Run reporting coordinator
-and developer fixtures through [`context.py`](context.py) and
-[`publication.py`](publication.py). Sibling reporting packages use private
+This private package prepares and publishes the artifact index and Run summary
+as one operation for the Run reporting coordinator and developer fixtures.
+[`context.py`](context.py) inspects native artifacts and derives both outputs;
+[`publication.py`](publication.py) owns their combined publication. Sibling reporting packages use private
 [`api.py`](api.py) for parsing, validation, serialization, and transaction helpers.
 Neither interface is a public command or operator recovery route. Filesystem
 identity helpers remain in [`source_authority.py`](../../libraries/source_authority.py)
@@ -61,6 +62,10 @@ expectations until this separately reviewed defect is fixed.
 locks, removal, signals, and artifact-index publication order under the common
 [recovery contract](../README.md#publication-and-recovery). One
 `.artifact-index.<token>.tmp.records` directory holds staged records, index,
-and receipt, retaining their file anchors while publishing. Exclusive `mkdir`
-reserves the final records directory before linking files. Run-summary
-publication uses the shared helpers through `api.py`.
+artifact provenance receipt, and summary files, retaining their file anchors
+while publishing. Exclusive `mkdir` reserves the final records directory before
+linking files. The summary receipt is installed last and completes the combined
+operation. Input and source rechecks cover the whole operation; rollback handles
+its complete output set. Old index and summary recovery state still blocks
+publication. The native inspection context also supports current-source
+validation without preparing another summary.

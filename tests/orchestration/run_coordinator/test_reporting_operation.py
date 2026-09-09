@@ -37,7 +37,7 @@ def _state(
         reporting_completion_records=records
         or {
             kind: {"start": None, "verified": None}
-            for kind in ("artifact_index", "run_summary", "html_report")
+            for kind in ("run_summary", "html_report")
         },
         verified_report_locations=(),
         processing_source=None,
@@ -226,7 +226,7 @@ def test_dry_run_validates_first_producer_without_publishing(
 
     def prepare(kind: str, _arguments: Any) -> object:
         observed.append(kind)
-        return object()
+        return SimpleNamespace(index=object())
 
     monkeypatch.setattr(reporting_operation, "_prepare_transaction", prepare)
     monkeypatch.setattr(
@@ -239,7 +239,7 @@ def test_dry_run_validates_first_producer_without_publishing(
 
     assert outcome.status == "planned"
     assert outcome.verified_report_locations == ()
-    assert observed == ["artifact_index"]
+    assert observed == ["run_summary"]
     assert capsys.readouterr() == ("", "")
 
 
@@ -257,7 +257,7 @@ def test_processing_source_mismatch_fails_before_reporting_start(
     monkeypatch.setattr(
         reporting_operation,
         "_prepare_transaction",
-        lambda *_args: context,
+        lambda *_args: SimpleNamespace(index=context),
     )
     monkeypatch.setattr(
         reporting_operation.reporting_boundary,
@@ -318,7 +318,7 @@ def test_execute_requires_fresh_final_admission_after_fixed_transactions(
     def prepare(kind: str, _arguments: Any) -> object:
         preparations[kind] = preparations.get(kind, 0) + 1
         observed.append(f"prepare:{kind}:{preparations[kind]}")
-        return context if kind == "artifact_index" else object()
+        return SimpleNamespace(index=context) if kind == "run_summary" else object()
 
     def publish(kind: str, _context: object) -> Path:
         observed.append(f"publish:{kind}")
@@ -336,7 +336,7 @@ def test_execute_requires_fresh_final_admission_after_fixed_transactions(
         return locations if kind == "html_report" else ()
 
     def admit_source(*_args: Any) -> SimpleNamespace:
-        observed.append("recheck:artifact_index")
+        observed.append("recheck:run_summary")
         return source
 
     monkeypatch.setattr(reporting_operation, "_prepare_transaction", prepare)
@@ -362,14 +362,10 @@ def test_execute_requires_fresh_final_admission_after_fixed_transactions(
             reporting_operation.run_reporting(root, execute=True)
 
     assert observed == [
-        "prepare:artifact_index:1",
-        "start:artifact_index",
-        "publish:artifact_index",
-        "recheck:artifact_index",
-        "verified:artifact_index",
         "prepare:run_summary:1",
         "start:run_summary",
         "publish:run_summary",
+        "recheck:run_summary",
         "verified:run_summary",
         "prepare:html_report:1",
         "start:html_report",
@@ -403,7 +399,7 @@ def test_generation_observer_runs_only_after_first_published_start(
     def prepare(kind: str, _arguments: Any) -> object:
         preparations[kind] = preparations.get(kind, 0) + 1
         observed.append(f"prepare:{kind}:{preparations[kind]}")
-        return object()
+        return SimpleNamespace(index=object())
 
     def publish(kind: str, _context: object) -> Path:
         observed.append(f"publish:{kind}")
@@ -430,8 +426,8 @@ def test_generation_observer_runs_only_after_first_published_start(
 
     assert outcome.status == "generated"
     assert observed.count("observed") == 1
-    assert observed.index("start:artifact_index") < observed.index("observed")
-    assert observed.index("observed") < observed.index("publish:artifact_index")
+    assert observed.index("start:run_summary") < observed.index("observed")
+    assert observed.index("observed") < observed.index("publish:run_summary")
 
 
 @pytest.mark.parametrize(
@@ -474,7 +470,7 @@ def test_generation_rejects_blocked_scientific_state_before_publication(
         (
             "emrys.attempt-receipt.v2",
             {
-                "artifact_index": {"start": {"path": "start"}, "verified": None},
+                "run_summary": {"start": {"path": "start"}, "verified": None},
                 "run_summary": {"start": None, "verified": None},
                 "html_report": {"start": None, "verified": None},
             },
@@ -659,12 +655,12 @@ def test_real_artifact_publisher_failure_stops_reporting_after_start(
 
     with pytest.raises(
         reporting_operation.ReportingOperationError,
-        match="artifact_index producer failed after ledger entry: injected staged",
+        match="run_summary producer failed after ledger entry: injected staged",
     ):
         reporting_operation.run_reporting(root, execute=True)
 
     assert failed
-    assert events == ["start:artifact_index"]
+    assert events == ["start:run_summary"]
     output = root / "products" / "artifact-summary" / root.name
     assert output.is_dir()
     assert list(output.iterdir()) == []

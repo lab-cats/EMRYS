@@ -158,7 +158,7 @@ def run_builder(
     os.environ["SOURCE_DATE_EPOCH"] = FIXED_EPOCH
     try:
         try:
-            context = ARTIFACT_CONTEXT.prepare_context(
+            context = ARTIFACT_CONTEXT.prepare_evidence_context(
                 prepared_arguments,
                 source_checkout=SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT),
                 artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(
@@ -209,7 +209,7 @@ def record_for(fixture: Any, artifact_id: str) -> dict[str, Any]:
 
 
 def context_for(fixture: Any) -> Any:
-    return ARTIFACT_CONTEXT.prepare_context(
+    return ARTIFACT_CONTEXT.prepare_evidence_context(
         argparse.Namespace(
             run_id=fixture.run_id,
             run_contract=fixture.run_contract,
@@ -224,7 +224,7 @@ def context_for(fixture: Any) -> Any:
 
 
 def owned_snapshot(fixture: Any) -> dict[str, bytes]:
-    paths = [fixture.artifacts_path, fixture.receipt_path]
+    paths = [fixture.artifacts_path, fixture.receipt_path, *fixture.summary_paths]
     if fixture.records_dir.is_dir():
         paths.extend(sorted(fixture.records_dir.iterdir()))
     return {
@@ -238,6 +238,7 @@ def assert_no_owned_outputs(fixture: Any) -> None:
     assert not fixture.records_dir.exists()
     assert not fixture.artifacts_path.exists()
     assert not fixture.receipt_path.exists()
+    assert not any(path.exists() or path.is_symlink() for path in fixture.summary_paths)
     assert not fixture.lock_path.exists()
     if fixture.output_dir.exists():
         assert not any(
@@ -462,7 +463,7 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
         "matching_clean_checkout_head_commit",
         matching_clean_checkout_head_commit,
     )
-    context = ARTIFACT_CONTEXT.prepare_context(
+    context = ARTIFACT_CONTEXT.prepare_evidence_context(
         argparse.Namespace(
             run_id=artifact_fixture.run_id,
             run_contract=artifact_fixture.run_contract,
@@ -475,8 +476,8 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
         artifact_source_root=artifact_source_root,
     )
 
-    assert context.source_checkout == source_checkout
-    assert context.artifact_source_root == artifact_source_root
+    assert context.index.source_checkout == source_checkout
+    assert context.index.artifact_source_root == artifact_source_root
     assert root_calls["git"] == 1
     assert root_calls["producers"] == 1
     assert root_calls["native_references"] > 0
@@ -494,7 +495,7 @@ def test_prepare_context_rejects_unattributable_dirty_checkout(
         ARTIFACT_MODELS.ArtifactIndexError,
         match="requires a stable clean source checkout",
     ):
-        ARTIFACT_CONTEXT.prepare_context(
+        ARTIFACT_CONTEXT.prepare_evidence_context(
             argparse.Namespace(
                 run_id=artifact_fixture.run_id,
                 run_contract=artifact_fixture.run_contract,
@@ -532,7 +533,7 @@ def test_publication_rechecks_source_identity_before_terminal_receipt(
         )
 
     assert calls == 2
-    assert not context.receipt_path.exists()
+    assert not context.index.receipt_path.exists()
 
 
 def test_dry_run_validates_all_sources_without_writing(
@@ -542,7 +543,7 @@ def test_dry_run_validates_all_sources_without_writing(
 
     assert result.returncode == 0, result.stderr
     assert result.context is not None
-    assert len(result.context.records) == 74
+    assert len(result.context.index.records) == 74
     assert not artifact_fixture.output_root.exists()
 
 
@@ -556,18 +557,29 @@ def test_live_artifact_index_header_owner_controls_serialized_bytes(
 
     context = context_for(artifact_fixture)
 
-    assert context.index_bytes.splitlines()[0] == "\t".join(mutated).encode()
-    assert context.index_bytes != ARTIFACT_RECORDS.tsv_bytes(
-        original, context.index_rows
+    assert context.index.index_bytes.splitlines()[0] == "\t".join(mutated).encode()
+    assert context.index.index_bytes != ARTIFACT_RECORDS.tsv_bytes(
+        original, context.index.index_rows
     )
 
 
 def test_execute_publishes_inventory_ordered_schema_valid_transaction(
     artifact_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    published: list[Path] = []
+    real_link = os.link
+
+    def record_publication(source: Any, destination: Any, **kwargs: Any) -> None:
+        real_link(source, destination, **kwargs)
+        published.append(Path(destination))
+
+    monkeypatch.setattr(os, "link", record_publication)
     result = run_builder(artifact_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
+    assert published[-4:] == list(artifact_fixture.summary_paths)
+    assert all(path.is_file() for path in artifact_fixture.summary_paths)
     index_rows = read_tsv(artifact_fixture.artifacts_path)
     receipt_rows = read_tsv(artifact_fixture.receipt_path)
     assert len(index_rows) == 74
@@ -621,8 +633,10 @@ def test_repreparation_is_deterministic_and_preserves_existing_transaction(
     assert second.returncode == 0, second.stderr
     prepared = second.context
     assert prepared is not None
-    assert prepared.index_bytes == artifact_fixture.artifacts_path.read_bytes()
-    for record, payload in zip(prepared.records, prepared.record_bytes, strict=True):
+    assert prepared.index.index_bytes == artifact_fixture.artifacts_path.read_bytes()
+    for record, payload in zip(
+        prepared.index.records, prepared.index.record_bytes, strict=True
+    ):
         assert (
             payload
             == (
@@ -630,14 +644,14 @@ def test_repreparation_is_deterministic_and_preserves_existing_transaction(
             ).read_bytes()
         )
     old = read_tsv(artifact_fixture.receipt_path)[0]
-    assert prepared.previous_receipt == old
+    assert prepared.index.previous_receipt == old
     assert (
-        prepared.receipt_row["supersedes_adapter_attempt_id"]
+        prepared.index.receipt_row["supersedes_adapter_attempt_id"]
         == old["adapter_attempt_id"]
     )
-    assert prepared.receipt_row["adapter_attempt_history"].split(",") == [
+    assert prepared.index.receipt_row["adapter_attempt_history"].split(",") == [
         old["adapter_attempt_id"],
-        prepared.attempt_id,
+        prepared.index.attempt_id,
     ]
     assert owned_snapshot(artifact_fixture) == before
     assert not artifact_fixture.lock_path.exists()
@@ -847,10 +861,8 @@ def test_undeclared_source_and_unrelated_run_outputs_are_ignored_and_preserved(
         encoding="utf-8",
     )
     artifact_fixture.output_dir.mkdir(parents=True)
-    unrelated = (
-        artifact_fixture.output_dir / f"{artifact_fixture.run_id}.run_summary.json"
-    )
-    unrelated_payload = b'{"owned_by":"future-run-summary"}\n'
+    unrelated = artifact_fixture.output_dir / "unrelated.run_summary.json"
+    unrelated_payload = b'{"unrelated":true}\n'
     unrelated.write_bytes(unrelated_payload)
 
     first = run_builder(artifact_fixture, execute=True)
@@ -870,6 +882,7 @@ def test_undeclared_source_and_unrelated_run_outputs_are_ignored_and_preserved(
 
 def test_foreign_lock_and_partial_prior_transaction_are_preserved(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     locked = FIXTURE.build_fixture(tmp_path / "locked")
     locked.output_dir.mkdir(parents=True)
@@ -899,8 +912,26 @@ def test_foreign_lock_and_partial_prior_transaction_are_preserved(
     assert not partial.receipt_path.exists()
     assert not partial.lock_path.exists()
 
+    legacy = FIXTURE.build_fixture(tmp_path / "legacy-summary")
+    context = context_for(legacy)
+    legacy_lock = legacy.output_dir / f".{legacy.run_id}.run-summary.lock"
+    acquire = ARTIFACT_PUBLICATION.acquire_lock
 
-def test_first_publication_link_failure_rolls_back_owned_outputs(
+    def add_legacy_lock(*args: Any, **kwargs: Any) -> Any:
+        ownership = acquire(*args, **kwargs)
+        legacy_lock.write_bytes(b"foreign summary recovery lock\n")
+        return ownership
+
+    monkeypatch.setattr(ARTIFACT_PUBLICATION, "acquire_lock", add_legacy_lock)
+    with pytest.raises(
+        ARTIFACT_MODELS.ArtifactIndexError, match="owner control residue"
+    ):
+        ARTIFACT_PUBLICATION.publish_context(context)
+    assert legacy_lock.read_bytes() == b"foreign summary recovery lock\n"
+    assert_no_owned_outputs(legacy)
+
+
+def test_terminal_receipt_link_failure_rolls_back_combined_outputs(
     artifact_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -908,15 +939,15 @@ def test_first_publication_link_failure_rolls_back_owned_outputs(
     context = context_for(artifact_fixture)
     real_link = os.link
 
-    def fail_index_publication(source: Any, destination: Any, **kwargs: Any) -> None:
-        if Path(destination) == context.artifacts_path:
-            raise OSError("injected index publication failure")
+    def fail_receipt_publication(source: Any, destination: Any, **kwargs: Any) -> None:
+        if Path(destination) == context.summary_paths.receipt:
+            raise OSError("injected summary receipt publication failure")
         real_link(source, destination, **kwargs)
 
-    monkeypatch.setattr(os, "link", fail_index_publication)
+    monkeypatch.setattr(os, "link", fail_receipt_publication)
     with pytest.raises(
         ARTIFACT_MODELS.ArtifactIndexError,
-        match="injected index publication failure",
+        match="injected summary receipt publication failure",
     ):
         ARTIFACT_PUBLICATION.publish_context(
             context,
@@ -938,6 +969,7 @@ def test_existing_transaction_refusal_preserves_every_byte_and_inode(
         artifact_fixture.records_dir,
         artifact_fixture.artifacts_path,
         artifact_fixture.receipt_path,
+        *artifact_fixture.summary_paths,
         *artifact_fixture.records_dir.iterdir(),
     ]
     identities = {path: (path.stat().st_dev, path.stat().st_ino) for path in paths}
@@ -996,7 +1028,7 @@ def test_recheck_inputs_uses_live_context_stat_owner(
         ARTIFACT_MODELS.ArtifactIndexError,
         match="injected live stat-source failure",
     ):
-        ARTIFACT_CONTEXT.recheck_inputs(context)
+        ARTIFACT_CONTEXT.recheck_inputs(context.index)
 
     assert reached_target
 
@@ -1076,7 +1108,7 @@ def test_semantically_identical_moved_run_contract_can_be_readmitted(
     )
 
     assert second.returncode == 0, second.stderr
-    receipt = second.context.receipt_row
+    receipt = second.context.index.receipt_row
     assert receipt["run_contract_path"] == str(moved_contract)
     assert receipt["run_contract_file_sha256"] == sha256_file(moved_contract)
     assert (
@@ -1364,7 +1396,7 @@ def test_post_publication_source_mutation_rolls_back(
 
     def mutate_after_validation(**kwargs: Any) -> None:
         nonlocal mutated
-        assert kwargs["source_root"] == context.artifact_source_root.root
+        assert kwargs["source_root"] == context.index.artifact_source_root.root
         real_validate(**kwargs)
         if kwargs["require_current_source_locations"] and not mutated:
             source.write_text("mutated after publication\n", encoding="utf-8")
@@ -1402,7 +1434,7 @@ def test_post_commit_stage_cleanup_failure_preserves_new_transaction(
         ARTIFACT_PUBLICATION.publish_context(context)
     assert (
         read_tsv(artifact_fixture.receipt_path)[0]["adapter_attempt_id"]
-        == context.attempt_id
+        == context.index.attempt_id
     )
     assert_published_records_are_valid(artifact_fixture)
     assert artifact_fixture.lock_path.is_file()
@@ -1463,7 +1495,7 @@ def test_star_final_log_preserves_infinite_mapping_speed_as_string(
     context = context_for(artifact_fixture)
     record = next(
         record
-        for record in context.records
+        for record in context.index.records
         if record["artifact_id"] == "sample.SYNTH_A.star_log_final"
     )
     metrics = {metric["metric_id"]: metric for metric in record["metrics"]}
@@ -1488,7 +1520,7 @@ def test_star_final_log_rejects_unapproved_nonfinite_metrics(
     context = context_for(artifact_fixture)
     record = next(
         record
-        for record in context.records
+        for record in context.index.records
         if record["artifact_id"] == "sample.SYNTH_A.star_log_final"
     )
     assert record["completion_status"] == "failed"
@@ -1541,10 +1573,12 @@ def test_incomplete_first_publication_rollback_retains_lock_and_anchors(
 ) -> None:
     context = context_for(artifact_fixture)
     real_link, real_unlink = os.link, Path.unlink
-    record = context.records_dir / f"{context.records[0]['artifact_id']}.json"
+    record = (
+        context.index.records_dir / f"{context.index.records[0]['artifact_id']}.json"
+    )
 
     def fail_index(source: Any, destination: Any, **kwargs: Any) -> None:
-        if Path(destination) == context.artifacts_path:
+        if Path(destination) == context.index.artifacts_path:
             raise OSError("injected index publication failure")
         real_link(source, destination, **kwargs)
 
@@ -1560,7 +1594,7 @@ def test_incomplete_first_publication_rollback_retains_lock_and_anchors(
     ):
         ARTIFACT_PUBLICATION.publish_context(context)
     assert record.is_file()
-    assert not context.receipt_path.exists()
+    assert not context.index.receipt_path.exists()
     assert artifact_fixture.lock_path.is_file()
     assert any(
         path.name.endswith(".RECOVERY.txt")
@@ -1581,7 +1615,7 @@ def test_failed_published_validation_removes_receipt_before_owned_data(
     real_unlink = Path.unlink
 
     def fail_validation(**kwargs: Any) -> None:
-        assert kwargs["source_root"] == context.artifact_source_root.root
+        assert kwargs["source_root"] == context.index.artifact_source_root.root
         assert kwargs["require_current_source_locations"] is True
         raise ARTIFACT_MODELS.ArtifactIndexError(
             "injected transaction validation failure"
@@ -1599,7 +1633,7 @@ def test_failed_published_validation_removes_receipt_before_owned_data(
         ARTIFACT_MODELS.ArtifactIndexError, match="transaction validation failure"
     ):
         ARTIFACT_PUBLICATION.publish_context(context)
-    assert removed[0] == context.receipt_path
+    assert removed[0] == context.summary_paths.receipt
     assert_no_owned_outputs(artifact_fixture)
 
 
@@ -1718,14 +1752,12 @@ def test_contract_and_inventory_mutation_after_context_is_rejected(
     )
     path.write_bytes(path.read_bytes() + b"\n")
 
-    expected = (
-        "Run-contract file changed"
-        if input_name == "run_contract"
-        else "Inventory changed"
-    )
-    with pytest.raises(ARTIFACT_MODELS.ArtifactIndexError, match=expected):
+    with pytest.raises(
+        ARTIFACT_MODELS.ArtifactIndexError,
+        match="Run contract or inventory changed after admission",
+    ):
         if replacement:
-            ARTIFACT_CONTEXT.recheck_inputs(context)
+            ARTIFACT_CONTEXT.recheck_inputs(context.index)
         else:
             ARTIFACT_PUBLICATION.publish_context(context)
 
@@ -1764,7 +1796,7 @@ def test_inventory_revision_prepares_lineage_without_changing_existing_outputs(
     second = run_builder(artifact_fixture)
 
     assert second.returncode == 0, second.stderr
-    second_receipt = second.context.receipt_row
+    second_receipt = second.context.index.receipt_row
     assert second_receipt["run_id"] == first_receipt["run_id"]
     assert (
         second_receipt["run_contract_sha256"] == (first_receipt["run_contract_sha256"])
@@ -1774,7 +1806,7 @@ def test_inventory_revision_prepares_lineage_without_changing_existing_outputs(
         second_receipt["supersedes_adapter_attempt_id"]
         == (first_receipt["adapter_attempt_id"])
     )
-    assert [row["artifact_id"] for row in second.context.index_rows] == [
+    assert [row["artifact_id"] for row in second.context.index.index_rows] == [
         row["artifact_id"] for row in revised
     ]
 
@@ -1988,21 +2020,22 @@ def test_first_publication_rollback_fsync_failure_retains_recovery_lock(
     default_ops = ARTIFACT_PUBLICATION
     real_validate = default_ops.validate_published_transaction
     real_fsync_directory = default_ops.fsync_directory
-    output_sync_count = 0
+    validation_failed = rollback_sync_failed = False
 
     def fail_post_publication_validation(**kwargs: Any) -> None:
+        nonlocal validation_failed
         if kwargs["require_current_source_locations"]:
+            validation_failed = True
             raise ARTIFACT_MODELS.ArtifactIndexError(
                 "injected post-publication validation failure"
             )
         real_validate(**kwargs)
 
     def fail_rollback_sync(path: Path) -> None:
-        nonlocal output_sync_count
-        if path == context.output_dir:
-            output_sync_count += 1
-            if output_sync_count == 2:
-                raise OSError("injected rollback directory fsync failure")
+        nonlocal rollback_sync_failed
+        if path == context.index.output_dir and validation_failed:
+            rollback_sync_failed = True
+            raise OSError("injected rollback directory fsync failure")
         real_fsync_directory(path)
 
     monkeypatch.setattr(
@@ -2019,7 +2052,7 @@ def test_first_publication_rollback_fsync_failure_retains_recovery_lock(
             context,
         )
 
-    assert output_sync_count == 2
+    assert rollback_sync_failed
     assert artifact_fixture.lock_path.is_file()
     assert any(
         path.name.endswith(".RECOVERY.txt")
@@ -2055,7 +2088,9 @@ def test_concurrent_file_is_preserved_when_exclusive_link_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     context = context_for(artifact_fixture)
-    selected = context.records_dir / f"{context.records[0]['artifact_id']}.json"
+    selected = (
+        context.index.records_dir / f"{context.index.records[0]['artifact_id']}.json"
+    )
     real_link = os.link
     foreign_identity = None
 
@@ -2073,12 +2108,14 @@ def test_concurrent_file_is_preserved_when_exclusive_link_fails(
         ARTIFACT_PUBLICATION.publish_context(context)
     assert selected.read_bytes() == b"concurrent output; preserve\n"
     assert selected.stat().st_ino == foreign_identity
-    assert context.lock_path.is_file()
+    assert context.index.lock_path.is_file()
     assert any(
-        path.name.endswith(".RECOVERY.txt") for path in context.output_dir.iterdir()
+        path.name.endswith(".RECOVERY.txt")
+        for path in context.index.output_dir.iterdir()
     )
     assert any(
-        path.name.endswith(".tmp.records") for path in context.output_dir.iterdir()
+        path.name.endswith(".tmp.records")
+        for path in context.index.output_dir.iterdir()
     )
 
 
@@ -2092,7 +2129,7 @@ def test_concurrent_empty_records_directory_is_never_replaced(
 
     def create_concurrent_directory(path: Path, *args: Any, **kwargs: Any) -> None:
         nonlocal foreign_identity
-        if path == context.records_dir:
+        if path == context.index.records_dir:
             real_mkdir(path, *args, **kwargs)
             foreign_identity = path.stat().st_ino
         real_mkdir(path, *args, **kwargs)
@@ -2102,11 +2139,11 @@ def test_concurrent_empty_records_directory_is_never_replaced(
         ARTIFACT_MODELS.ArtifactIndexError, match="rollback was incomplete"
     ):
         ARTIFACT_PUBLICATION.publish_context(context)
-    assert context.records_dir.stat().st_ino == foreign_identity
-    assert list(context.records_dir.iterdir()) == []
-    assert not context.artifacts_path.exists()
-    assert not context.receipt_path.exists()
-    assert context.lock_path.is_file()
+    assert context.index.records_dir.stat().st_ino == foreign_identity
+    assert list(context.index.records_dir.iterdir()) == []
+    assert not context.index.artifacts_path.exists()
+    assert not context.index.receipt_path.exists()
+    assert context.index.lock_path.is_file()
 
 
 def test_directory_replacement_preserves_foreign_namespace_and_owned_evidence(
@@ -2114,14 +2151,14 @@ def test_directory_replacement_preserves_foreign_namespace_and_owned_evidence(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     context = context_for(artifact_fixture)
-    displaced = context.output_dir.with_name("displaced-artifact-output")
+    displaced = context.index.output_dir.with_name("displaced-artifact-output")
     real_link = os.link
 
     def replace_directory(source: Any, destination: Any, **kwargs: Any) -> None:
-        if Path(destination) == context.artifacts_path:
-            context.output_dir.rename(displaced)
-            context.output_dir.mkdir()
-            (context.output_dir / "keep").write_bytes(b"foreign directory\n")
+        if Path(destination) == context.index.artifacts_path:
+            context.index.output_dir.rename(displaced)
+            context.index.output_dir.mkdir()
+            (context.index.output_dir / "keep").write_bytes(b"foreign directory\n")
             raise OSError("injected directory replacement")
         real_link(source, destination, **kwargs)
 
@@ -2130,9 +2167,9 @@ def test_directory_replacement_preserves_foreign_namespace_and_owned_evidence(
         ARTIFACT_MODELS.ArtifactIndexError, match="rollback was incomplete"
     ):
         ARTIFACT_PUBLICATION.publish_context(context)
-    assert [path.name for path in context.output_dir.iterdir()] == ["keep"]
-    assert (context.output_dir / "keep").read_bytes() == b"foreign directory\n"
-    assert (displaced / context.lock_path.name).is_file()
+    assert [path.name for path in context.index.output_dir.iterdir()] == ["keep"]
+    assert (context.index.output_dir / "keep").read_bytes() == b"foreign directory\n"
+    assert (displaced / context.index.lock_path.name).is_file()
     assert any(path.name.endswith(".tmp.records") for path in displaced.iterdir())
 
 
@@ -2148,7 +2185,7 @@ def test_signal_immediately_after_artifact_link_rolls_back_owned_outputs(
 
     def signal_after_link(source: Any, destination: Any, **kwargs: Any) -> None:
         real_link(source, destination, **kwargs)
-        if Path(destination) == context.artifacts_path:
+        if Path(destination) == context.index.artifacts_path:
             os.kill(os.getpid(), signal.SIGTERM)
 
     monkeypatch.setattr(os, "link", signal_after_link)
@@ -2162,7 +2199,7 @@ def test_same_byte_foreign_replacement_cannot_commit(
     artifact_fixture: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     context = context_for(artifact_fixture)
-    selected = context.receipt_path
+    selected = context.index.receipt_path
     real_link = os.link
     foreign_identity = None
     expected = b""
@@ -2183,10 +2220,12 @@ def test_same_byte_foreign_replacement_cannot_commit(
         ARTIFACT_PUBLICATION.publish_context(context)
     assert selected.read_bytes() == expected
     assert selected.stat().st_ino == foreign_identity
-    assert context.lock_path.is_file()
+    assert context.index.lock_path.is_file()
     assert any(
-        path.name.endswith(".tmp.records") for path in context.output_dir.iterdir()
+        path.name.endswith(".tmp.records")
+        for path in context.index.output_dir.iterdir()
     )
     assert any(
-        path.name.endswith(".RECOVERY.txt") for path in context.output_dir.iterdir()
+        path.name.endswith(".RECOVERY.txt")
+        for path in context.index.output_dir.iterdir()
     )

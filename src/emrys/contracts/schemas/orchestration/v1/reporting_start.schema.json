@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:emrys:schema:orchestration:reporting-start:v1",
-  "title": "EMRYS reporting producer start marker v1",
+  "title": "EMRYS reporting producer start marker v1 and v2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,9 +16,13 @@
     "run_lock",
     "created_at"
   ],
+  "allOf": [{
+    "if": {"properties": {"schema_version": {"const": "emrys.reporting-start.v2"}}},
+    "then": {"properties": {"kind": {"enum": ["run_summary", "html_report"]}}}
+  }],
   "properties": {
     "schema_version": {
-      "const": "emrys.reporting-start.v1"
+      "enum": ["emrys.reporting-start.v1", "emrys.reporting-start.v2"]
     },
     "run_id": {
       "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/run_id"

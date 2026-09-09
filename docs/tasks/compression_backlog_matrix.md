@@ -1,12 +1,17 @@
 # EMRYS temporary compression backlog
 
-Reviewed **2026-09-09** from `72fdf806`. The [campaign](compression_campaign.md)
+Reviewed **2026-09-09** from `cab77a26`. The [campaign](compression_campaign.md)
 owns the goals; this file owns CS scope, status, decisions, and proof. The
 [main matrix](backlog_matrix.md) owns broader outcomes and campaign completion.
 
 ## Working queue
 
-**Current work: [PR #153](https://github.com/lab-cats/EMRYS/pull/153), shared processing definitions and standalone publication.**
+**Current work: CS-03, combined artifact indexing and summary generation.**
+The approved tranche retires the second publisher and intermediate disk handoff,
+updates all reporting readers and inspection, and keeps HTML separate. Focused
+checks pass; the card below owns acceptance and pending hosted verification.
+
+[PR #153](https://github.com/lab-cats/EMRYS/pull/153) delivers shared processing definitions and standalone publication.
 The implemented tranche covers CS-01/02 and CS-18, including CS-10's CMH
 replacement retirement. It uses the existing processing profile as the shared
 source of task, dependency, and artifact facts. New Run admission rejects a
@@ -19,6 +24,10 @@ Replacement/backup creation and restoration are removed while preserving exclusi
 publication, input checks, owned-output rollback, and old recovery files. This
 approved policy replaces the rejected behavior-preserving helper prototype.
 CS-05 remains excluded; the dashboard remains until its replacement is validated.
+PR #153's first final-state CI exposed one historical-reader test still patching
+the retired producer registry. `cab77a26` migrates that test to the shared owner;
+its focused check and [replacement hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34370002882)
+pass. CS-01/02/10 are Done; the larger runner migration remains under CS-18.
 
 [PR #152](https://github.com/lab-cats/EMRYS/pull/152) delivered report-table and
 R-table compression plus supporting planning/admission cleanup. Its first CI
@@ -34,7 +43,7 @@ Master integration remains pending.
 
 CS-04/06/07 passed ordinary hosted CI in [PR #150](https://github.com/lab-cats/EMRYS/pull/150)
 at `f3a3966f`: [run 34310143034](https://github.com/lab-cats/EMRYS/actions/runs/34310143034).
-CS-03 is Retained. PR #150 awaits integration; hosted software checks do not
+CS-03 is reopened below under the newly approved ownership change. PR #150 awaits integration; hosted software checks do not
 establish institutional operation, scientific review, or biological validity.
 
 ### Status and scoring
@@ -57,16 +66,16 @@ they are rough selection aids, not measured benefit or implementation approval.
 
 | ID | Finite outcome / production owner | Status | Importance | Complexity | Next action / dependency | Parent |
 |---|---|---|---:|---:|---|---|
-| [CS-01](#cs-01-processing-materialization) | Derive one processing owner's command and dispatch from existing admitted facts. | Verification pending | 4 | 4 | PR #153: shared profile facts drive planning, named rules, and reporting; focused and differential checks pass, hosted verification pending. | `COMPRESS-01` |
-| [CS-02](#cs-02-processing-report-adapters) | Remove equivalent processing-adapter declarations from artifact-index reporting. | Verification pending | 4 | 4 | PR #153: all 42 processing adapters and 12 producer paths migrated; reader contracts match the base, hosted verification pending. | `REPORT-ROSTER-01` |
-| [CS-03](#cs-03-reporting-transaction-layout) | Consolidate only equivalent reporting-layout declarations. | Retained | 4 | 3 | The complete minimal shared-owner sketch is approximately neutral after plumbing; no code change qualified. Reopen only with a concrete larger equivalent duplication. | `REPORT-ROSTER-01` |
+| [CS-01](#cs-01-processing-materialization) | Derive one processing owner's command and dispatch from existing admitted facts. | Done | 4 | 4 | PR #153: shared profile facts drive planning, named rules, and reporting; focused/differential checks and ordinary hosted CI pass at cab77a26. | `COMPRESS-01` |
+| [CS-02](#cs-02-processing-report-adapters) | Remove equivalent processing-adapter declarations from artifact-index reporting. | Done | 4 | 4 | PR #153: all 42 processing adapters and 12 producer paths migrated; reader parity and ordinary hosted CI pass at cab77a26. | `REPORT-ROSTER-01` |
+| [CS-03](#cs-03-reporting-transaction-layout) | Publish artifact indexing and summary generation as one operation. | Verification pending | 4 | 4 | Implemented across generation, readers, and inspection; focused/static checks pass, hosted CI pending. HTML stays separate. | `REPORT-ROSTER-01` |
 | [CS-04](#cs-04-reporting-memory-control) | Remove the ineffective active reporting-memory control and its transport. | Done | 3 | 4 | PR #150: new inputs rejected, historical records/hashes preserved; focused and ordinary hosted checks passed. | `REPORT-ROSTER-01` |
 | [CS-05](#cs-05-validation-check-rosters) | Give one scientific validation roster one neutral authority used by its producer and reporting. | Needs decision | 4 | 4 | Select membership/order, historical records, and external-provider obligations. | `REPORT-ROSTER-01` |
 | [CS-06](#cs-06-publication-handoff) | Characterize the helper-to-caller publication gap in RSeQC, BAM QC, and duplicate marking. | Done | 4 | 3 | PR #150: three equivalent owners migrated; six corrected probes, shell suites, and ordinary CI passed. | `OPS-03` |
 | [CS-07](#cs-07-through-cs-10-standalone-publication) | RSeQC: retire direct-to-final report capture. | Done | 2 | 2 | PR #150: one publication path; legacy flag, errors, and recovery preserved; ordinary CI passed. | `OPS-03` |
 | [CS-08](#cs-07-through-cs-10-standalone-publication) | BAM QC: retire mode-dependent publication for two outputs. | Needs decision | 2 | 2 | Supporting cleanup only: approve standalone output/diagnostic policy; CS-06 is complete. | `OPS-03` |
 | [CS-09](#cs-07-through-cs-10-standalone-publication) | Duplicate marking: retire direct destinations and mode branches. | Needs decision | 3 | 3 | Supporting cleanup only: approve standalone output policy; preserve three-output recovery and tool identity. | `OPS-03` |
-| [CS-10](#cs-07-through-cs-10-standalone-publication) | Paired CMH: retire six-file predecessor replacement/restoration. | Verification pending | 3 | 4 | Implemented within CS-18: direct calls refuse existing destinations; focused publication checks pass, hosted verification pending. | `OPS-03` |
+| [CS-10](#cs-07-through-cs-10-standalone-publication) | Paired CMH: retire six-file predecessor replacement/restoration. | Done | 3 | 4 | Implemented within CS-18: direct calls refuse existing destinations; focused publication checks and ordinary hosted CI pass at cab77a26. | `OPS-03` |
 | [CS-11](#cs-11-reporting-source-identity) | Define a reporting-source boundary that permits reporting-only changes without changing scientific Run identity. | Needs decision | 4 | 4 | Specify new Run binding, producer identity, historical admission, and resume before a structural migration. | `REPORT-ROSTER-01` |
 | [CS-12](#cs-12-canonical-bam-command-printing) | Remove canonical BAM's four print-only command arrays. | Opportunistic | 2 | 1 | Compare exact rendered command bytes and execution calls; approximately 30 lines before final recount. | `COMPRESS-01` |
 | [CS-13](#cs-13-runtime-profile-construction) | Remove the redundant RuntimeCheck field-copy construction in onboarding. | Opportunistic | 1 | 2 | Use standard dataclass replacement only after field/order/admission comparison; approximately 11–20 lines. | `COMPRESS-01` |
@@ -74,7 +83,7 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-15](#cs-15-reporting-tsv-grammar) | Retire both reporting CSV engines through the existing strict TSV owner. | Needs decision | 2 | 3 | Agree accepted grammar and diagnostic precedence; stop if a configurable compatibility adapter is required. | `COMPRESS-01` |
 | [CS-16](#cs-16-operator-and-developer-documentation) | Complete operator/developer guidance with clear ownership and plain language. | Done | 5 | 3 | PR #151 passed ordinary CI at `76acb9c5`; integration pending. | `COMPRESS-01` |
 | [CS-17](#cs-17-scientific-and-owner-documentation) | Consolidate and explain remaining scientific/owner documentation. | Done | 5 | 4 | All 169 Markdown files reviewed; PR #151 passed ordinary CI at `76acb9c5`. | `COMPRESS-01` |
-| [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | Verification pending | 4 | 4 | PR #153: four-owner replacement retirement passes focused checks; R table builders are implemented in PR #152. | `OPS-03` |
+| [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | Needs qualification | 4 | 4 | PRs #152/153 passed ordinary CI. Next: bound the accepted producer-to-runner migration across every applicable owner. | `OPS-03` |
 | [CS-19](#cs-19-scientific-report-table-handling) | Use one admitted table representation across scientific report consumers. | Done | 4 | 3 | PR #152 at `72fdf806`: focused checks and all ordinary hosted CI passed; integration pending. | `COMPRESS-01` |
 
 ## Acceptance shared by every card
@@ -111,7 +120,7 @@ only the selected touched vertical before implementation.
 
 ### CS-01 Processing materialization
 
-**Implemented in PR #153; hosted verification pending.** The authored
+**Done in PR #153 at `cab77a26`; all ordinary hosted checks pass.** The authored
 processing profile supplies twelve base owners, dependencies, and artifact
 associations through `contracts/orchestration/artifact_inventory.py`. Shared
 facts use immutable mappings, tuple dependencies, and internal path objects.
@@ -131,8 +140,8 @@ historical interpretation, and resume/reuse with normal identity checks.
 **Defective and corrected:** newly submitted processing dependencies could
 contradict the graph actually executed. Only new-Run admission now rejects that
 disagreement; stored-record admission and resume retain their previous policy.
-**Environment-deferred:** hosted end-to-end verification; no cluster or
-scientific validation is implied.
+**Environment-deferred:** institutional-site and cluster operation, scientific
+review, and biological validation. Ordinary hosted software checks passed.
 
 Twenty focused planning cases passed with 33 temporary differential comparisons
 of complete dispatch bytes, paths, and directories against `72fdf806`. These
@@ -180,22 +189,41 @@ and retained evidence are unchanged.
 
 ### CS-03 Reporting transaction layout
 
-**Retained at `0c909f12`.** Receipt paths recur in reporting operation/boundary,
-transaction validation, and inspection. The producer loop is already shared;
-`artifact_inventory.py` owns historical/current root interpretation.
+**Verification pending; combined index/summary publication approved 2026-09-09.**
+The earlier shared-path sketch at `0c909f12` was retained because roughly 16
+helper lines merely replaced 16 caller lines. The new scope changes the
+responsibility itself: one existing index publisher owns the index and summary.
 
-The review found 11 receipt-root/suffix lines in `_inspection_evidence.py`,
-five receipt-path lines and four predecessor-map lines in
-`transaction_validation.py`. A shared path function costs about 16 lines and
-replaces approximately 16 before imports/type exports; moving the roster/type
-relocates seven more. No substantial reduction or new test qualified.
+The combined operation derives summary JSON/TSVs directly from admitted artifact
+records, stages the complete output set, and installs the summary receipt last.
+The artifact receipt remains provenance data. The separate summary publisher,
+builder, input-transaction loader, and duplicate context/snapshot plumbing retire.
+Current and historical readers reuse admitted records and pure projections;
+no historical summary writer remains. HTML retains its separate publication.
 
-Producer arguments, standalone paths, residue inventories, root admission,
-historical dispatch, and source rechecks have different contracts. Reopen only
-for a larger equivalent duplication, preserving artifact-index → run-summary →
-HTML order, predecessor selection, prepared bytes, regeneration, and failure
-stopping points. Ordinary edits to hashed code remain allowed; only a change
-to source-identity policy needs CS-11. The broader reporting outcome stays open.
+Behavior classification: scientific meaning, formats, provenance, input/source
+identity, exclusive publication, owned rollback, and historical reading are
+preserved. Separate current index/summary completion is replaced by the approved
+combined operation. Reporting-start v2 identifies the new two-stage sequence;
+v1 retains three-stage admission, including rejection of missing historical
+stages. Mixed versions and incomplete/ambiguous state remain blocked. Slurm,
+institutional-site, scientific-review, and biological evidence are deferred.
+
+Acceptance requires one current publisher for this complete output set, no
+summary-generation disk reload of freshly prepared records, and no reader call
+to a summary publication builder. Retarget existing real publication, corruption,
+source-mutation, and historical-reader tests; retain independent scientific
+checks. Record exact product/test/docs/config/tooling/evidence accounting and
+final-commit local/hosted results before marking Done. No retained evidence is
+deleted, no product file is added, and no new manager or registry is introduced.
+
+Local verification covers 210 distinct reporting cases, 42 reporting/coordinator
+and record-schema cases, 13 independent goldens, 40 source-topology checks, and
+the isolated wheel/install command smoke. The full static gate passes, including
+Ruff, ShellCheck, dead-code checks, documentation, imports, compilation, manifest,
+and sharder checks. The discarded summary publication suite repeats the retained
+combined publisher's protections; scientific projections, historical identity,
+corruption, and golden evidence remain. Hosted CI is still required for closeout.
 
 ### CS-04 Reporting memory control
 
@@ -399,6 +427,16 @@ under CS-16 above; this does not complete the larger code campaign.
 
 ### CS-18 Idiomatic scientific-producer implementation
 
+**Accepted follow-up direction:** scientific producers own scientific outputs and
+provenance; production execution goes through the existing runner. Consolidate
+working paths, locks, process supervision, logs, publication, and recovery there,
+across every applicable producer, without a manager beside each one. Preserve
+independent validation and its all-checks-pass gate. A bounded implementation
+plan must account for reusable external reference sidecars, multi-file indexes,
+final-path provenance, and publication order. This broader migration is not
+implemented by the reporting tranche.
+
+
 **R work implemented in PR #152; publication retirement locally verified.** R annotation
 and scientific-context table builders now use transcript/population-sized
 frames and base-R operations instead of row counters and repeated metadata.
@@ -445,9 +483,9 @@ functions were removed; adapting the former two-case replacement failure check
 to first publication leaves 11 fewer Python cases overall. Existing collision,
 interruption, ambiguous rollback, hash-corruption, publication-order, and fsync
 checks survive. An existing Step 08 residue case now injects an old backup during
-lock acquisition to verify the preserved second refusal boundary. Hosted
-verification is pending; these local fixtures do not establish scientific or
-site validation.
+lock acquisition to verify the preserved second refusal boundary. Ordinary
+hosted verification passed at `cab77a26`; these checks do not establish
+scientific or site validation.
 
 Independent review found no publication regression. Scientific-context retains
 its existing interruption gap between the publication helper returning and the
@@ -532,7 +570,7 @@ selection and carry no promise of deletability or performance improvement.
 | Large files | 101 tracked files exceeded 500 lines: 42 product, 52 test, 7 other. Of 37 over 1,000 lines, 15 were hand-maintained product, 17 tests, and 5 generated lock/CI/bootstrap files. Responsibility and duplication, not size alone, determine a slice. |
 | Run coordination | About 20,225 product and 20,824 test lines; task, lifecycle, materialization, dashboard, control, Doctor, onboarding, and reporting boundary each exceeded 1,000 product lines. About 1,086 materializer lines covered task commands/dispatch declarations; its main tests had about 4,959 lines. CS-01 qualifies one complete vertical, not a mechanical split. |
 | Managed dependency lock | `pixi.lock` had about 3,881 lines / 140 KB. Retain it as generated reproducibility input used by Doctor and CI; it is not maintained product bloat. |
-| Persisted filenames and report kinds | `run.json`, `normalized.json`, and `attempt.json` repeat contract vocabulary; three reporting kinds recurred across five owners. CS-03 retained these declarations after its complete shared-owner sketch failed the reduction gate; string constants alone do not establish semantic compression. |
+| Persisted filenames and report kinds | `run.json`, `normalized.json`, and `attempt.json` repeat contract vocabulary; three reporting kinds recurred across five owners. The original shared-path sketch failed its reduction gate; CS-03 now combines the underlying operation. String constants alone do not establish semantic compression. |
 | Stage/resource vocabulary | Fourteen historical stage IDs recur across policy, profiles, and the Snakefile; Analysis admission permits Step 09 and optional Step 10, and some historical profiles omit newer IDs. Reopen a semantic-key migration only when module extension needs it; preserve historical reads. `QUAL-04` delivered owner-count derivation and `PROFILE-CONTRACT-01` owns its narrower future transition. |
 
 ### Retained audit counterexamples

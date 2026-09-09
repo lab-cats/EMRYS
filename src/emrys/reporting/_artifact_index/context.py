@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any
 
 from emrys import analyses
 from emrys.contracts.artifacts import api as contracts
-from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.libraries.source_authority import matching_clean_checkout_head_commit
 
 from .core import (
@@ -29,6 +28,7 @@ from .models import (
     ARTIFACT_RECEIPT_HEADER,
     ArtifactIndexError,
     BuildContext,
+    EvidenceContext,
 )
 from .reconciliation import (
     reconcile_native_transactions,
@@ -65,35 +65,34 @@ def prepare_context(
     run_contract_path = arguments.run_contract.expanduser().resolve()
     inventory_path = arguments.inventory.expanduser().resolve()
     output_root = arguments.output_root.expanduser().resolve()
-    run_contract, run_contract_file_sha256 = load_run_contract(run_contract_path)
-    authored_policy_path = getattr(arguments, "analysis_policy", None)
-    analysis_policy_path = (
-        None
-        if authored_policy_path is None
-        else authored_policy_path.expanduser().resolve()
+    from emrys.reporting.transaction_validation import (
+        ReportingTransactionError,
+        _snapshot_receipt,
     )
-    analysis_policy = (
-        {"schema_version": "emrys.analysis-policy.v1"}
-        if analysis_policy_path is None
-        else contracts.load_json_object(analysis_policy_path, "analysis policy")
-    )
-    if analysis_policy_path is not None:
-        try:
-            orchestration_contracts.validate_record("policy", analysis_policy)
-        except orchestration_contracts.ContractValidationError as exc:
-            raise ArtifactIndexError(str(exc)) from exc
-    analysis_policy_sha256 = (
-        None
-        if analysis_policy_path is None
-        else contracts.sha256_file(analysis_policy_path)
-    )
-    if (
-        analysis_policy_sha256 is not None
-        and analysis_policy_sha256 != (run_contract["primary_analysis_policy_sha256"])
-    ):
-        raise ArtifactIndexError(
-            "Analysis policy does not match the reporting run contract"
+
+    try:
+        contract_inputs = tuple(
+            _snapshot_receipt(path) for path in (run_contract_path, inventory_path)
         )
+    except ReportingTransactionError as exc:
+        raise ArtifactIndexError(str(exc)) from exc
+
+    def recheck_contract_inputs() -> None:
+        try:
+            if any(_snapshot_receipt(item.path) != item for item in contract_inputs):
+                raise ArtifactIndexError(
+                    "Run contract or inventory changed after admission"
+                )
+        except ReportingTransactionError as exc:
+            raise ArtifactIndexError(str(exc)) from exc
+
+    run_contract, run_contract_file_sha256 = load_run_contract(run_contract_path)
+    from emrys.reporting._run_summary.document import admit_analysis_policy
+
+    analysis_policy_path = getattr(arguments, "analysis_policy", None)
+    analysis_policy, analysis_policy_binding, recheck_analysis_policy = (
+        admit_analysis_policy(analysis_policy_path, run_contract)
+    )
     try:
         analysis_module = analyses.readmit_analysis_module(analysis_policy)
     except analyses.AnalysisModuleLoadError as exc:
@@ -125,7 +124,8 @@ def prepare_context(
         scope_rosters=scope_rosters,
         source_path_templates=source_path_templates,
     )
-    inventory_sha256 = contracts.sha256_file(inventory_path)
+    inventory_sha256 = contract_inputs[1].sha256
+    recheck_contract_inputs()
     output_dir = output_root / arguments.run_id
     records_dir = output_dir / "records"
     artifacts_path = output_dir / f"{arguments.run_id}.artifacts.tsv"
@@ -139,13 +139,13 @@ def prepare_context(
         raise ArtifactIndexError(
             f"Artifact-index output is locked; inspect owner metadata: {lock_path}"
         )
-    contract_inputs = [
+    contract_input_paths = [
         ("run contract", run_contract_path),
         ("inventory", inventory_path),
     ]
     if analysis_policy_path is not None:
-        contract_inputs.append(("analysis policy", analysis_policy_path))
-    for label, path in contract_inputs:
+        contract_input_paths.append(("analysis policy", analysis_policy_path))
+    for label, path in contract_input_paths:
         if path == output_dir or output_dir in path.parents:
             raise ArtifactIndexError(
                 f"The {label} must not live inside its generated run directory"
@@ -262,9 +262,12 @@ def prepare_context(
         run_contract=run_contract,
         run_contract_file_sha256=run_contract_file_sha256,
         analysis_policy_path=analysis_policy_path,
-        analysis_policy_sha256=analysis_policy_sha256,
+        analysis_policy_binding=analysis_policy_binding,
+        recheck_analysis_policy=recheck_analysis_policy,
         inventory_path=inventory_path,
         inventory_sha256=inventory_sha256,
+        inventory_size_bytes=contract_inputs[1].size_bytes,
+        recheck_contract_inputs=recheck_contract_inputs,
         inventory_rows=inventory_rows,
         output_dir=output_dir,
         records_dir=records_dir,
@@ -288,6 +291,91 @@ def prepare_context(
     return context
 
 
+def prepare_evidence_context(
+    arguments: argparse.Namespace,
+    *,
+    source_checkout: SourceCheckout,
+    artifact_source_root: ArtifactSourceRoot,
+) -> EvidenceContext:
+    """Prepare summary views directly from the admitted index records."""
+
+    from emrys.reporting._run_summary.document import build_summary
+    from emrys.reporting._run_summary.models import (
+        OutputPaths,
+        RUN_SUMMARY_RECEIPT_HEADER,
+    )
+    from emrys.reporting._run_summary.transaction import _new_attempt_id
+    from emrys.reporting._run_summary.validation import _build_receipt_row
+
+    context = prepare_context(
+        arguments,
+        source_checkout=source_checkout,
+        artifact_source_root=artifact_source_root,
+    )
+    paths = OutputPaths(
+        output_dir=context.output_dir,
+        summary_json=context.output_dir / f"{context.run_id}.run_summary.json",
+        summary_tsv=context.output_dir / f"{context.run_id}.run_summary.tsv",
+        qc_summary=context.output_dir / f"{context.run_id}.qc_summary.tsv",
+        receipt=context.output_dir / f"{context.run_id}.run_summary_receipt.tsv",
+    )
+    document, summary_json, summary_tsv, qc_summary = build_summary(
+        source_root=artifact_source_root.root,
+        run_id=context.run_id,
+        run_contract=context.run_contract,
+        inventory_path=context.inventory_path,
+        inventory_sha256=context.inventory_sha256,
+        inventory_size_bytes=context.inventory_size_bytes,
+        inventory_rows=context.inventory_rows,
+        artifact_receipt_path=context.receipt_path,
+        artifact_receipt_sha256=sha256_bytes(context.receipt_bytes),
+        artifact_receipt_size_bytes=len(context.receipt_bytes),
+        artifact_receipt=context.receipt_row,
+        artifacts=context.records,
+        generated_at=context.receipt_row["finished_at"],
+        git_commit=context.receipt_row["git_commit"],
+        analysis_policy_binding=context.analysis_policy_binding,
+    )
+    timestamp = utc_now()
+    receipt_row = _build_receipt_row(
+        run_id=context.run_id,
+        run_contract=context.run_contract,
+        artifact_receipt_path=context.receipt_path,
+        artifact_receipt_sha256=sha256_bytes(context.receipt_bytes),
+        artifact_receipt=context.receipt_row,
+        inventory_path=context.inventory_path,
+        inventory_sha256=context.inventory_sha256,
+        inventory_row_count=len(context.inventory_rows),
+        artifacts_path=context.artifacts_path,
+        artifacts_sha256=sha256_bytes(context.index_bytes),
+        summary_json_path=paths.summary_json,
+        summary_json_bytes=summary_json,
+        summary_tsv_path=paths.summary_tsv,
+        summary_tsv_bytes=summary_tsv,
+        summary_tsv_row_count=len(context.records),
+        qc_summary_path=paths.qc_summary,
+        qc_summary_bytes=qc_summary,
+        qc_summary_row_count=sum(len(record["metrics"]) for record in context.records),
+        document=document,
+        attempt_id=_new_attempt_id(timestamp),
+        previous_attempt_id=None,
+        previous_attempt_history=[],
+        git_commit=context.receipt_row["git_commit"],
+        started_at=timestamp,
+        finished_at=timestamp,
+    )
+    return EvidenceContext(
+        index=context,
+        summary_paths=paths,
+        summary_document=document,
+        summary_json_bytes=summary_json,
+        summary_tsv_bytes=summary_tsv,
+        qc_summary_bytes=qc_summary,
+        summary_receipt_row=receipt_row,
+        summary_receipt_bytes=tsv_bytes(RUN_SUMMARY_RECEIPT_HEADER, [receipt_row]),
+    )
+
+
 def validate_context_in_memory(context: BuildContext) -> None:
     if [row["artifact_id"] for row in context.index_rows] != [
         row["artifact_id"] for row in context.inventory_rows
@@ -308,18 +396,9 @@ def validate_context_in_memory(context: BuildContext) -> None:
 
 
 def recheck_inputs(context: BuildContext) -> None:
-    if contracts.sha256_file(context.run_contract_path) != (
-        context.run_contract_file_sha256
-    ):
-        raise ArtifactIndexError("Run-contract file changed after initial validation")
-    if (
-        context.analysis_policy_path is not None
-        and contracts.sha256_file(context.analysis_policy_path)
-        != context.analysis_policy_sha256
-    ):
-        raise ArtifactIndexError("Analysis policy changed after initial validation")
-    if contracts.sha256_file(context.inventory_path) != context.inventory_sha256:
-        raise ArtifactIndexError("Inventory changed after initial validation")
+    context.recheck_contract_inputs()
+    if context.recheck_analysis_policy is not None:
+        context.recheck_analysis_policy()
     for inspection in context.inspections:
         observed = stat_source(
             inspection.resolved_path,

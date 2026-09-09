@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from emrys.contracts.artifacts import api as contracts
-from emrys.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
-from emrys.reporting._artifact_index.api import RUN_CONTRACT_FIELDS
-from emrys.reporting._files import FileSnapshot
+from emrys.reporting._artifact_index.models import RUN_CONTRACT_FIELDS
 
 PRODUCER = "build_run_summary"
 PRODUCER_VERSION = "2.0.0"
@@ -112,13 +109,10 @@ class RunSummaryError(RuntimeError):
 @dataclass(frozen=True)
 class OutputPaths:
     output_dir: Path
-    output_dir_device: int
-    output_dir_inode: int
     summary_json: Path
     summary_tsv: Path
     qc_summary: Path
     receipt: Path
-    lock: Path
 
     @property
     def ordered_outputs(self) -> tuple[Path, ...]:
@@ -128,35 +122,3 @@ class OutputPaths:
             self.qc_summary,
             self.receipt,
         )
-
-
-@dataclass
-class BuildContext:
-    run_id: str
-    run_contract_path: Path
-    run_contract: dict[str, Any]
-    inventory_path: Path
-    inventory_rows: list[dict[str, str]]
-    records_dir: Path
-    analysis_policy_path: Path | None
-    input_snapshots: tuple[FileSnapshot, ...]
-    artifacts: list[dict[str, Any]]
-    document: dict[str, Any]
-    summary_json_bytes: bytes
-    summary_tsv_bytes: bytes
-    qc_summary_bytes: bytes
-    paths: OutputPaths
-    previous_receipt: dict[str, str] | None
-    previous_receipt_sha256: str | None
-    receipt_row: dict[str, Any]
-    receipt_bytes: bytes
-    source_checkout: SourceCheckout = field(
-        kw_only=True,
-        compare=False,
-        repr=False,
-    )
-    artifact_source_root: ArtifactSourceRoot = field(
-        kw_only=True,
-        compare=False,
-        repr=False,
-    )

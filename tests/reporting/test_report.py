@@ -52,25 +52,18 @@ from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FI
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-def publish_run_summary(fixture: Any) -> Path:
-    FIXTURE.publish_run_summary(fixture)
-    return fixture.summary_json_path
-
-
 @pytest.fixture(scope="module")
 def computational_summary(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    return publish_run_summary(
-        FIXTURE.build_fixture(tmp_path_factory.mktemp("report-v4") / "fixture")
-    )
+    return FIXTURE.build_fixture(
+        tmp_path_factory.mktemp("report-v4") / "fixture"
+    ).summary_json_path
 
 
 @pytest.fixture(scope="module")
 def failed_summary(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    return publish_run_summary(
-        FIXTURE.build_failed_fixture(
-            tmp_path_factory.mktemp("report-v4-failed") / "fixture"
-        )
-    )
+    return FIXTURE.build_failed_fixture(
+        tmp_path_factory.mktemp("report-v4-failed") / "fixture"
+    ).summary_json_path
 
 
 def arguments(
@@ -1245,7 +1238,7 @@ def test_incomplete_step09_trio_is_disclosed_without_opening_candidate_rows(
         tmp_path / "fixture",
         artifact_id=artifact_id,
     )
-    summary = publish_run_summary(fixture)
+    summary = fixture.summary_json_path
     context = report_context.prepare_context(
         arguments(summary, tmp_path / "reports", execute=True)
     )
@@ -1413,7 +1406,7 @@ def test_step09_input_mutation_aborts_before_publication(
 def test_step10_reference_identity_mutation_aborts_before_publication(
     tmp_path: Path,
 ) -> None:
-    summary = publish_run_summary(FIXTURE.build_fixture(tmp_path / "fixture"))
+    summary = FIXTURE.build_fixture(tmp_path / "fixture").summary_json_path
     context = report_context.prepare_context(
         arguments(summary, tmp_path / "reports", execute=True)
     )

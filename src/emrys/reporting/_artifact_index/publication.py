@@ -1,4 +1,4 @@
-"""Receipt-last publication workflow for the artifact-index builder."""
+"""Receipt-last publication for the combined artifact and summary evidence."""
 
 from __future__ import annotations
 
@@ -9,14 +9,15 @@ import stat
 import sys
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from emrys.reporting._signals import install as _install_signal_handlers
 from emrys.reporting._signals import restore as restore_signal_handlers
 
 from .context import recheck_inputs, recheck_source_identity
-from .models import ArtifactIndexError, BuildContext, LockOwnership
+from .models import ArtifactIndexError, BuildContext, EvidenceContext, LockOwnership
 from .validation import validate_published_transaction
+from .core import safe_tsv
 
 
 def write_bytes_exclusive(path: Path, payload: bytes) -> None:
@@ -188,9 +189,16 @@ def _admit_output_directory(context: BuildContext) -> None:
             os.close(descriptor)
 
 
-def publish_context(context: BuildContext) -> None:
-    """Publish a new index without replacing any existing transaction output."""
+def publish_context(evidence: EvidenceContext) -> None:
+    """Publish index and summary together, with the summary receipt last."""
 
+    from emrys.reporting._run_summary.validation import _validate_existing_summary
+    from emrys.reporting.transaction_validation import (
+        ReportingTransactionError,
+        _reject_reporting_control_residue,
+    )
+
+    context = evidence.index
     _admit_output_directory(context)
     directory = context.output_dir.stat()
     directory_identity = (directory.st_dev, directory.st_ino)
@@ -212,7 +220,31 @@ def publish_context(context: BuildContext) -> None:
             ):
                 raise ArtifactIndexError("Artifact records directory changed identity")
 
-    finals = (context.records_dir, context.artifacts_path, context.receipt_path)
+    projected = (
+        (context.artifacts_path, context.index_bytes),
+        (context.receipt_path, context.receipt_bytes),
+        (evidence.summary_paths.summary_json, evidence.summary_json_bytes),
+        (evidence.summary_paths.summary_tsv, evidence.summary_tsv_bytes),
+        (evidence.summary_paths.qc_summary, evidence.qc_summary_bytes),
+        (evidence.summary_paths.receipt, evidence.summary_receipt_bytes),
+    )
+    finals = (context.records_dir, *(path for path, _payload in projected))
+
+    def reject_residue(kind: Literal["artifact_index", "run_summary"]) -> None:
+        try:
+            _reject_reporting_control_residue(
+                kind=kind,
+                output_dir=context.output_dir,
+                run_id=context.run_id,
+                output_names=(
+                    path.name for path in evidence.summary_paths.ordered_outputs
+                ),
+            )
+        except ReportingTransactionError as exc:
+            raise ArtifactIndexError(str(exc)) from exc
+
+    reject_residue("artifact_index")
+    reject_residue("run_summary")
     for path in finals:
         if os.path.lexists(path):
             raise ArtifactIndexError(
@@ -220,8 +252,6 @@ def publish_context(context: BuildContext) -> None:
             )
     run_token = f"{os.getpid()}-{uuid.uuid4().hex}"
     temp_records = context.output_dir / f".artifact-index.{run_token}.tmp.records"
-    temp_index = temp_records / context.artifacts_path.name
-    temp_receipt = temp_records / context.receipt_path.name
     recovery_path = context.output_dir / f".artifact-index.{run_token}.RECOVERY.txt"
     scratch = (temp_records,)
     for path in (*scratch, recovery_path):
@@ -249,6 +279,7 @@ def publish_context(context: BuildContext) -> None:
     committed = rollback_failed = False
     try:
         assert_directory()
+        reject_residue("run_summary")
         for path in finals:
             if os.path.lexists(path):
                 raise ArtifactIndexError(
@@ -261,8 +292,8 @@ def publish_context(context: BuildContext) -> None:
             write_bytes_exclusive(
                 temp_records / f"{record['artifact_id']}.json", payload
             )
-        write_bytes_exclusive(temp_index, context.index_bytes)
-        write_bytes_exclusive(temp_receipt, context.receipt_bytes)
+        for path, payload in projected:
+            write_bytes_exclusive(temp_records / path.name, payload)
         fsync_directory(temp_records)
         recheck_inputs(context)
         recheck_source_identity(context)
@@ -280,13 +311,14 @@ def publish_context(context: BuildContext) -> None:
                 )
                 for record in context.records
             ),
-            (temp_index, context.artifacts_path),
-            (temp_receipt, context.receipt_path),
+            *((temp_records / path.name, path) for path, _payload in projected),
         )
         for staged, final in outputs:
             assert_directory()
-            if final == context.receipt_path:
+            if final == evidence.summary_paths.receipt:
                 fsync_directory(context.records_dir)
+                fsync_directory(context.output_dir)
+                recheck_inputs(context)
                 recheck_source_identity(context)
             # Keep the staged inode as proof even if a signal arrives after the
             # link succeeds but before control returns to this publisher.
@@ -311,6 +343,21 @@ def publish_context(context: BuildContext) -> None:
             artifacts_path=context.artifacts_path,
             receipt_path=context.receipt_path,
             require_current_source_locations=True,
+            source_root=context.artifact_source_root.root,
+        )
+        for path, expected in projected:
+            if path.read_bytes() != expected:
+                raise ArtifactIndexError(
+                    f"Published evidence differs from prepared bytes: {path}"
+                )
+        _validate_existing_summary(
+            paths=evidence.summary_paths,
+            receipt={
+                key: safe_tsv(value)
+                for key, value in evidence.summary_receipt_row.items()
+            },
+            expected_run_id=context.run_id,
+            expected_run_contract=context.run_contract,
             source_root=context.artifact_source_root.root,
         )
         recheck_inputs(context)

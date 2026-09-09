@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,8 @@ from emrys.reporting._run_summary.models import (
     PRODUCER,
     PRODUCER_VERSION,
     RUN_SUMMARY_SCHEMA_VERSION,
+    RUN_SUMMARY_HEADER,
+    QC_SUMMARY_HEADER,
 )
 from emrys.reporting._run_summary.projection import (
     _build_attempts,
@@ -21,12 +24,18 @@ from emrys.reporting._run_summary.projection import (
     _build_rollup,
     _build_tools,
     _issue_for_duplicate_metrics,
+    _build_summary_rows,
+    _build_qc_rows,
 )
 from emrys.reporting._run_summary.transaction import _path_hash, _stable_unique
+from emrys.reporting._run_summary.validation import _validate_document
+from emrys.reporting._artifact_index.core import canonical_json_bytes
+from emrys.reporting._artifact_index.records import tsv_bytes
 
 
-def _build_document(
+def build_summary(
     *,
+    source_root: Path,
     run_id: str,
     run_contract: dict[str, Any],
     inventory_path: Path,
@@ -41,7 +50,7 @@ def _build_document(
     generated_at: str,
     git_commit: str,
     analysis_policy_binding: dict[str, Any] | None = None,
-) -> tuple[dict[str, Any], dict[str, int]]:
+) -> tuple[dict[str, Any], bytes, bytes, bytes]:
     expected_scopes, artifact_scope_order = _build_expected_scopes(artifacts)
     attempts, superseded_attempt_ids = _build_attempts(artifacts)
     qc_metrics, duplicate_metric_ids = _build_qc_metrics(artifacts)
@@ -127,4 +136,71 @@ def _build_document(
     else:
         document["candidate_terminology"] = "CMH-ranked candidates"
         document["interpretation_boundary"] = INTERPRETATION_BOUNDARY
-    return document, artifact_scope_order
+    _validate_document(
+        document, inventory_rows, inventory_path, source_root=source_root
+    )
+    return (
+        document,
+        canonical_json_bytes(document),
+        tsv_bytes(
+            RUN_SUMMARY_HEADER, _build_summary_rows(document, artifact_scope_order)
+        ),
+        tsv_bytes(QC_SUMMARY_HEADER, _build_qc_rows(document)),
+    )
+
+
+def admit_analysis_policy(
+    path: Path | None,
+    run_contract: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any] | None, Callable[[], None] | None]:
+    """Bind policy meaning and file identity for preparation or historical reads."""
+
+    from emrys.contracts.artifacts import api as contracts
+    from emrys.contracts.orchestration import api as orchestration_contracts
+    from emrys.reporting.transaction_validation import (
+        _snapshot_receipt,
+        ReportingTransactionError,
+    )
+    from .models import RunSummaryError
+
+    if path is None:
+        return {"schema_version": "emrys.analysis-policy.v1"}, None, None
+    contracts.validate_resolved_path(str(path), "Analysis policy")
+    try:
+        snapshot = _snapshot_receipt(path)
+    except ReportingTransactionError as exc:
+        raise RunSummaryError(str(exc)) from exc
+    policy = contracts.load_json_object_bytes(snapshot.payload, "Analysis policy")
+    try:
+        orchestration_contracts.validate_record("policy", policy)
+    except orchestration_contracts.ContractValidationError as exc:
+        raise RunSummaryError(f"Analysis policy is invalid: {exc}") from exc
+    expected = run_contract["primary_analysis_policy_sha256"]
+    if (
+        snapshot.sha256 != expected
+        or orchestration_contracts.canonical_sha256(policy) != expected
+    ):
+        raise RunSummaryError(
+            "Analysis policy does not match the immutable run contract"
+        )
+    if policy["analysis_id"] != run_contract["primary_analysis_id"]:
+        raise RunSummaryError("Analysis policy identifies another primary analysis")
+    binding = (
+        {
+            "path": str(path),
+            "sha256": snapshot.sha256,
+            "size_bytes": snapshot.size_bytes,
+        }
+        if policy["schema_version"] == "emrys.analysis-module-policy.v1"
+        else None
+    )
+
+    def recheck() -> None:
+        try:
+            observed = _snapshot_receipt(path)
+        except ReportingTransactionError as exc:
+            raise RunSummaryError(str(exc)) from exc
+        if observed != snapshot:
+            raise RunSummaryError(f"Analysis policy changed after admission: {path}")
+
+    return policy, binding, recheck

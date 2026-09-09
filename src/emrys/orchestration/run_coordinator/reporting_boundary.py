@@ -41,10 +41,10 @@ from emrys.orchestration.run_coordinator._inspection_admission import (
 )
 
 ReportingKind = Literal["artifact_index", "run_summary", "html_report"]
-REPORTING_KINDS: tuple[ReportingKind, ...] = (
+REPORTING_KINDS: tuple[ReportingKind, ...] = ("run_summary", "html_report")
+_HISTORICAL_REPORTING_KINDS: tuple[ReportingKind, ...] = (
     "artifact_index",
-    "run_summary",
-    "html_report",
+    *REPORTING_KINDS,
 )
 
 
@@ -159,6 +159,11 @@ def _validate_semantic_receipt(
 ) -> SemanticTransaction:
     from emrys.reporting.transaction_validation import validate_receipt  # noqa: PLC0415
 
+    start, _ = _admit_record(
+        run_root / "state" / "reporting" / kind / "start.json",
+        run_root,
+        "reporting-start",
+    )
     return validate_receipt(
         kind,
         receipt_path,
@@ -173,6 +178,7 @@ def _validate_semantic_receipt(
             == run_root / "products" / "report"
         ),
         validated_predecessor=validated_predecessor,
+        combined=start["schema_version"] == "emrys.reporting-start.v2",
     )
 
 
@@ -212,9 +218,32 @@ DEFAULT_REPORTING_BOUNDARY_OPS = ReportingBoundaryOps(
 
 
 def _kind(value: str) -> ReportingKind:
-    if value not in REPORTING_KINDS:
+    if value not in _HISTORICAL_REPORTING_KINDS:
         raise ReportingBoundaryError(f"Unknown reporting kind: {value}")
     return cast("ReportingKind", value)
+
+
+def reporting_kinds(run_root: Path) -> tuple[ReportingKind, ...]:
+    """Select the exact protocol from admitted starts, never from missing stages."""
+    versions = set()
+    for kind in _HISTORICAL_REPORTING_KINDS:
+        path = run_root / "state" / "reporting" / kind / "start.json"
+        if path.exists() or path.is_symlink():
+            record, _ = _admit_record(path, run_root, "reporting-start")
+            if record["kind"] != kind:
+                raise ReportingBoundaryError(
+                    "Reporting start kind differs from its path"
+                )
+            versions.add(record["schema_version"])
+    if len(versions) > 1:
+        raise ReportingBoundaryError(
+            "Reporting ledger mixes incompatible start versions"
+        )
+    return (
+        REPORTING_KINDS
+        if versions == {"emrys.reporting-start.v2"}
+        else _HISTORICAL_REPORTING_KINDS
+    )
 
 
 def _canonical_root(path: Path) -> Path:
@@ -669,6 +698,10 @@ def publish_start(
     """Publish the immutable marker immediately before one reporting producer."""
 
     admitted_kind = _kind(kind)
+    if admitted_kind not in REPORTING_KINDS:
+        raise ReportingBoundaryError(
+            "Artifact indexing is part of combined run-summary publication"
+        )
     identity = _admit_identity(
         run_root=run_root,
         execution_path=execution_path,
@@ -679,6 +712,12 @@ def publish_start(
         attest_source=ops.attest_source_checkout,
     )
     paths = ledger_paths(identity.root, admitted_kind)
+    for existing_kind in reporting_kinds(identity.root):
+        existing = ledger_paths(identity.root, existing_kind).start
+        if existing.exists() or existing.is_symlink():
+            record, _ = _admit_record(existing, identity.root, "reporting-start")
+            if record["schema_version"] != "emrys.reporting-start.v2":
+                raise ReportingBoundaryError("Cannot extend historical reporting state")
     _ensure_ledger_root(paths, identity.root, ops)
     if paths.start.exists() or paths.start.is_symlink():
         raise ReportingBoundaryError(
@@ -691,7 +730,7 @@ def publish_start(
     created_at = _timestamp(ops.now())
     _require_start_not_before_attempt(created_at, identity)
     record = {
-        "schema_version": "emrys.reporting-start.v1",
+        "schema_version": "emrys.reporting-start.v2",
         **_identity_record(identity, admitted_kind),
         "workflow_attempt": identity.attempt_reference,
         "workflow_config": identity.config_reference,
@@ -752,6 +791,10 @@ def publish_verified(
     """Semantically validate a completed transaction and publish proof last."""
 
     admitted_kind = _kind(kind)
+    if admitted_kind not in REPORTING_KINDS:
+        raise ReportingBoundaryError(
+            "Artifact indexing is part of combined run-summary publication"
+        )
     identity = _admit_identity(
         run_root=run_root,
         execution_path=execution_path,
@@ -768,6 +811,8 @@ def publish_verified(
             f"Reporting completion already exists: {paths.verified}"
         )
     start, start_reference = _expected_start(identity, admitted_kind)
+    if start["schema_version"] != "emrys.reporting-start.v2":
+        raise ReportingBoundaryError("Cannot complete historical reporting state")
     try:
         semantic = ops.validate_semantic_receipt(
             admitted_kind,
@@ -854,6 +899,7 @@ def _identity_from_origin(
     profile: Mapping[str, Any],
 ) -> tuple[_AdmittedIdentity, dict[str, Any], dict[str, str]]:
     root = _canonical_root(run_root)
+    reporting_kinds(root)
     paths = ledger_paths(root, kind)
     _admit_ledger_root(paths)
     start, start_data = _admit_record(paths.start, root, "reporting-start")
@@ -1015,6 +1061,7 @@ __all__ = (
     "SemanticTransaction",
     "SemanticValidator",
     "ledger_paths",
+    "reporting_kinds",
     "publish_start",
     "publish_verified",
     "validate_read_semantic_receipt",

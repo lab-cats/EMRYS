@@ -325,7 +325,6 @@ def installed_probe(environment_python: Path, cwd: Path) -> dict[str, object]:
 
 def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -> None:
     fixture = FIXTURE.build_fixture(tmp_path / "report-fixture")
-    FIXTURE.publish_run_summary(fixture)
     artifact_source_root = fixture.root
     summary = json.loads(fixture.summary_json_path.read_text(encoding="utf-8"))
     summary["provenance"]["git_commit"] = "upstream-summary-commit"

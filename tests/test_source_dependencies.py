@@ -234,18 +234,6 @@ def test_forbidden_dependency_projection(
             TOOL.RULE_PRIVATE_OWNER,
         ),
         (
-            "SRC-TRANS-019",
-            "src/emrys/orchestration/run_coordinator/reporting_operation.py",
-            "emrys.reporting._run_summary.builder",
-            TOOL.RULE_PRIVATE_OWNER,
-        ),
-        (
-            "SRC-TRANS-020",
-            "src/emrys/orchestration/run_coordinator/reporting_operation.py",
-            "emrys.reporting._run_summary.publication",
-            TOOL.RULE_PRIVATE_OWNER,
-        ),
-        (
             "SRC-TRANS-021",
             "src/emrys/orchestration/run_coordinator/reporting_operation.py",
             "emrys.reporting._run_summary.models",
@@ -491,7 +479,7 @@ def test_executable_rosters_match_documented_topology() -> None:
             target == "emrys.reporting" or target.startswith("emrys.reporting.")
             for _transition_id, _source, target, _rule_id in TOOL.TRANSITIONS
         )
-        == 12
+        == 10
     )
     topology = SOURCE_TOPOLOGY.read_text(encoding="utf-8")
     seam_rows = re.findall(

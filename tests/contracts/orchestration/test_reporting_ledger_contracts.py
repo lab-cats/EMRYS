@@ -61,6 +61,15 @@ def test_reporting_ledger_schemas_are_registered_and_closed() -> None:
         ):
             orchestration_contracts.validate_record(name, mutated)
 
+    start = _records()["reporting-start"]
+    start["schema_version"] = "emrys.reporting-start.v2"
+    for kind in ("run_summary", "html_report"):
+        start["kind"] = kind
+        orchestration_contracts.validate_record("reporting-start", start)
+    start["kind"] = "artifact_index"
+    with pytest.raises(orchestration_contracts.ContractValidationError):
+        orchestration_contracts.validate_record("reporting-start", start)
+
 
 @pytest.mark.parametrize("name", ("reporting-start", "verified-reporting"))
 def test_reporting_ledger_kind_is_closed(name: str) -> None:

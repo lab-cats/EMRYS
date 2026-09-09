@@ -19,6 +19,8 @@ validators' `receipt_ops` parameter; they are not current test entry points.
 The artifact context still captures its real source observer for later rechecks,
 and validated transactions retain real input-recheck callbacks.
 
-Run-summary preparation tests pass explicit modified values in the frozen
-`RunSummaryBuildDeps`; production uses immutable defaults. Publication failures
-are injected at the real called functions, without test-only production paths.
+Combined publication tests cover the index and summary output set, including
+terminal-receipt failure and owned rollback. Summary tests retain independent
+schema, deterministic projection, QC, provenance, and historical-read checks.
+Faults target the actual publisher and read validator, without test-only
+production behavior or a second suite for the retired summary publisher.

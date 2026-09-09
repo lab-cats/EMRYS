@@ -238,8 +238,7 @@ identity across revisions. Test policy and evidence levels remain in the
 
 Private reporting publishers create absent outputs because that is the behavior
 selected by public Run reporting. A complete bundle is revalidated and reused;
-a prepared predecessor cannot authorize overwriting its files. Historical
-preparation and reads remain supported. The
+a prepared predecessor cannot authorize overwriting its files. Historical reads remain supported. The
 [publication contract](../../../src/emrys/reporting/README.md#publication-and-recovery)
 owns current ordering, file ownership, cleanup, and recovery behavior.
 
@@ -256,8 +255,9 @@ source admission belongs to HTML context preparation. The receipt's logical
 producer identifier remains `emrys.reporting.report`. Fault tests patch real
 operations rather than requiring a parallel production callback API. The
 captured artifact source observer and transaction recheck callbacks remain
-because later publication and reuse genuinely depend on them; the separate
-`RunSummaryBuildDeps` preparation record was outside that retirement.
+because later publication and reuse depend on them. The later combined
+index/summary operation also retires `RunSummaryBuildDeps` and the separate
+summary builder and publisher; readers use admitted records and pure projections.
 
 The surviving publication path records ownership before linking, verifies
 successful links, and stops path-based cleanup when the output directory is
@@ -266,8 +266,11 @@ source attribution, input rechecks, independent goldens, scientific oracles,
 and retained evidence remain protected. Local filesystem and signal tests do
 not establish Slurm, institutional-site, production, or biological behavior.
 
-Independent reporting producers, transaction layout, and validation-roster
-policy require their own scope. Reporting-memory policy belongs to the
+Indexing and summary generation now share one publication owner, completion
+marker, and recovery scope. The artifact receipt retains provenance within that
+combined output. Versioned start records distinguish this two-step reporting
+sequence from historical three-step records before any outputs are committed.
+HTML publication and validation-roster policy retain their separate scope. Reporting-memory policy belongs to the
 [Run contract](../../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning).
 Dashboard replacement and retirement remain separate decisions.
 

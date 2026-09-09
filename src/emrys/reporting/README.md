@@ -7,8 +7,10 @@ from empty owned state. Reporting failure does not change successful scientific
 Attempts or Results. Reports are computational evidence, not scientific
 adjudication or biological validation.
 
-The fixed sequence builds an artifact index and run summary under
-`products/artifact-summary/RUN_ID`, then reports under `results/reports/RUN_ID`.
+One operation builds the artifact index and Run summary under
+`products/artifact-summary/RUN_ID`; a second builds HTML reports under
+`results/reports/RUN_ID`. The first operation inspects artifacts once and derives
+the summary from those admitted records, without a persisted intermediate handoff.
 A selected `emrys.analysis_reporters` provider supplies the scientific view;
 EMRYS supplies the evidence-and-operations view, safe rendering, portable links,
 and publication. Both views use the same validated input bytes. There is no
@@ -56,8 +58,9 @@ own established observation points and real input-recheck callbacks.
 
 Each publisher creates only absent transaction-owned finals. A prepared context
 may validate existing outputs or history; it does not authorize replacing a
-predecessor. Publishers create no predecessor backups and restore none. The run
-summary shares the artifact-index directory but requires its own outputs absent.
+predecessor. Publishers create no predecessor backups and restore none. Index and summary
+share one lock, staging operation, and rollback scope. Their summary receipt is
+the sole terminal marker; the artifact receipt remains bound provenance data.
 
 Publishers stage bytes, retain file anchors, install finals exclusively, and
 write the receipt last. They recheck inputs, source, outputs, and directories
@@ -90,6 +93,10 @@ references, rerun analysis, discover motifs, infer missing data, or hide require
 scientific caveats.
 Public [`transaction_validation.py`](transaction_validation.py) validates current
 and historical receipts without assigning them to the current checkout's producer.
+Summary reads reuse admitted artifact records and pure projections, without a
+publication builder. New reporting-start v2 records identify the combined-summary
+and HTML sequence; historical v1 starts retain their three-step interpretation.
+Missing historical stages and mixed versions remain invalid.
 
 ## Implementation and fault tests
 
