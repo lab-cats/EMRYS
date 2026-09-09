@@ -397,7 +397,8 @@ The existing Ruff configuration and locked version own formatting for `scripts`,
 --check`. The separate mechanical baseline reformatted 78 files; every changed
 file retained identical parsed Python code. Its 2,101 additional physical lines
 are formatting expansion, reported separately from functional changes and never
-counted as compression. The formatter check passes across 418 Python files.
+counted as compression. The formatter check passes across all 292 tracked Python files; explicit
+Python-only inclusion keeps its scope aligned with the staged-file hook.
 
 ### 19. Adopt one Python type checker
 
