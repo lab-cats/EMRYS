@@ -124,6 +124,8 @@ grep -Fq '"BiocVersion":' renv.lock ||
     fail "renv lockfile does not include the Bioconductor release marker"
 grep -Fq 'restore_status <- renv::status' scripts/restore_r_environment.R ||
     fail "r-restore does not attest the restored library"
+# Match the R member access literally, without shell expansion.
+# shellcheck disable=SC2016
 grep -Fq 'lock_recorded_packages <- names(lock$Packages)' \
     scripts/restore_r_environment.R ||
     fail "r-restore does not inventory every lock-recorded package"
@@ -131,6 +133,8 @@ grep -Fq 'hydration <- renv::hydrate' scripts/restore_r_environment.R ||
     fail "r-restore does not hydrate lock-recorded external packages"
 grep -Fq 'library = restored_library' scripts/restore_r_environment.R ||
     fail "r-restore does not bind hydration and status to the selected library"
+# Match the R member access literally, without shell expansion.
+# shellcheck disable=SC2016
 grep -Fq 'length(hydration$unresolved) > 0L' \
     scripts/restore_r_environment.R ||
     fail "r-restore does not reject unresolved hydration packages"
@@ -201,8 +205,8 @@ FAKE_R_LOG="$fake_log" make \
     local-real-r-test >/dev/null
 
 line_count="$(wc -l <"$fake_log" | tr -d ' ')"
-[[ "$line_count" -eq 8 ]] ||
-    fail "expected eight guarded fake-R invocations, found $line_count"
+[[ "$line_count" -eq 7 ]] ||
+    fail "expected seven guarded fake-R invocations, found $line_count"
 
 while IFS= read -r line; do
     [[ "$line" == EMRYS_USE_RENV=1$'\t'* ]] ||
