@@ -106,7 +106,7 @@ def test_forbidden_dependency_projection(
         ("SRC-TRANS-019", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.builder", TOOL.RULE_PRIVATE_OWNER),
         ("SRC-TRANS-020", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.publication", TOOL.RULE_PRIVATE_OWNER),
         ("SRC-TRANS-021", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.models", TOOL.RULE_PRIVATE_OWNER),
-        ("SRC-TRANS-022", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting.report", TOOL.RULE_ORCHESTRATION_BOUNDARY),
+        ("SRC-TRANS-022", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_report.context", TOOL.RULE_PRIVATE_OWNER),
         ("SRC-TRANS-023", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_report.publication", TOOL.RULE_PRIVATE_OWNER),
         ("SRC-TRANS-024", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_report.models", TOOL.RULE_PRIVATE_OWNER),
     ),

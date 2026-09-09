@@ -177,7 +177,7 @@ report-test:
 		tests/reporting/test_transaction_validation.py
 
 define STATIC_SHELL_CHECKS
-bash -n $(SHELL_SYNTAX_PATHS)
+for script in $(SHELL_SYNTAX_PATHS); do bash -n "$$script" || exit $$?; done
 endef
 
 validation-static: lint documentation-check
@@ -188,6 +188,7 @@ validation-static: lint documentation-check
 		"$(REPORT_PYTHON_BIN)" -m compileall -q scripts src/emrys tests
 	"$(REPORT_PYTHON_BIN)" -I -m emrys validate manifest \
 		--manifest configs/samples.example.tsv
+	"$(REPORT_PYTHON_BIN)" -m pytest -q tests/test_python_test_shards.py
 
 validate:
 	"$(REPORT_PYTHON_BIN)" -I -m emrys validate manifest \
