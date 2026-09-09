@@ -159,3 +159,50 @@ require_owned_published_file() {
         return 1
     fi
 }
+
+# These simple shell producers share rollback, staging cleanup, and lock release.
+# Each caller supplies fixed (label, staging path, final path) triples and owns
+# publication_started, lock_acquired, and the lock identity used by signal_traps.
+cleanup_no_clobber_outputs() {
+    local status="$1" step_id="$2"
+    shift 2
+    local -a outputs=("$@")
+    local index staged_path rollback_failed=false
+
+    set +e
+    # shellcheck disable=SC2154 # Stage caller owns publication progress.
+    if [[ "$status" -ne 0 && "$publication_started" == true ]]; then
+        for ((index = 0; index < ${#outputs[@]}; index += 3)); do
+            remove_owned_published_file \
+                "${outputs[index]}" "${outputs[index+1]}" "${outputs[index+2]}" ||
+                rollback_failed=true
+        done
+    fi
+    if [[ "$rollback_failed" != true ]]; then
+        for ((index = 0; index < ${#outputs[@]}; index += 3)); do
+            staged_path="${outputs[index+1]}"
+            if [[ -e "$staged_path" || -L "$staged_path" ]]; then
+                if ! rm -f -- "$staged_path" ||
+                   [[ -e "$staged_path" || -L "$staged_path" ]]; then
+                    printf 'ERROR: Could not remove %s staging output: %s\n' \
+                        "${outputs[index]}" "$staged_path" >&2
+                    rollback_failed=true
+                fi
+            fi
+        done
+    fi
+    # shellcheck disable=SC2154 # Stage caller and signal_traps own lock state.
+    if [[ "$rollback_failed" != true && "$lock_acquired" == true ]]; then
+        remove_owned_lock
+        # shellcheck disable=SC2154 # Stage caller supplies the lock path.
+        if [[ -e "$lock_path" || -L "$lock_path" ]]; then
+            printf 'ERROR: Could not remove the owned %s lock during cleanup: %s\n' \
+                "$step_id" "$lock_path" >&2
+            rollback_failed=true
+        fi
+    fi
+    if [[ "$rollback_failed" == true ]]; then
+        printf 'ERROR: %s no-clobber cleanup was incomplete; retaining the owned lock and recovery residue: %s\n' \
+            "$step_id" "$lock_path" >&2
+    fi
+}

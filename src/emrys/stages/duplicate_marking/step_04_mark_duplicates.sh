@@ -124,9 +124,6 @@ lock_path="$output_dir/.${sample_id}.step04.lock"
 lock_owner_file="$lock_path/owner"
 lock_acquired=false
 publication_started=false
-bam_published=false
-bai_published=false
-metrics_published=false
 
 require_absent_outputs() {
     [[ ! -e "$output_bam" && ! -e "$output_bai" && ! -e "$metrics_file" ]] ||
@@ -134,71 +131,10 @@ require_absent_outputs() {
 }
 
 cleanup_no_clobber() {
-    local status="$1"
-    local rollback_failed=false
-
-    set +e
-    if [[ "$status" -ne 0 && "$publication_started" == true ]]; then
-        if [[ "$bam_published" == true ]]; then
-            if ! remove_owned_published_file \
-                "Step 04 BAM" "$tmp_bam" "$output_bam"; then
-                rollback_failed=true
-            fi
-        fi
-        if [[ "$bai_published" == true ]]; then
-            if ! remove_owned_published_file \
-                "Step 04 BAI" "$tmp_bai" "$output_bai"; then
-                rollback_failed=true
-            fi
-        fi
-        if [[ "$metrics_published" == true ]]; then
-            if ! remove_owned_published_file \
-                "Step 04 metrics" "$tmp_metrics" "$metrics_file"; then
-                rollback_failed=true
-            fi
-        fi
-    fi
-
-    if [[ "$rollback_failed" != true ]]; then
-        if [[ -e "$tmp_bam" || -L "$tmp_bam" ]]; then
-            if ! rm -f -- "$tmp_bam" ||
-               [[ -e "$tmp_bam" || -L "$tmp_bam" ]]; then
-                printf 'ERROR: Could not remove Step 04 staged BAM during cleanup: %s\n' \
-                    "$tmp_bam" >&2
-                rollback_failed=true
-            fi
-        fi
-        if [[ -e "$tmp_bai" || -L "$tmp_bai" ]]; then
-            if ! rm -f -- "$tmp_bai" ||
-               [[ -e "$tmp_bai" || -L "$tmp_bai" ]]; then
-                printf 'ERROR: Could not remove Step 04 staged BAI during cleanup: %s\n' \
-                    "$tmp_bai" >&2
-                rollback_failed=true
-            fi
-        fi
-        if [[ -e "$tmp_metrics" || -L "$tmp_metrics" ]]; then
-            if ! rm -f -- "$tmp_metrics" ||
-               [[ -e "$tmp_metrics" || -L "$tmp_metrics" ]]; then
-                printf 'ERROR: Could not remove Step 04 staged metrics during cleanup: %s\n' \
-                    "$tmp_metrics" >&2
-                rollback_failed=true
-            fi
-        fi
-    fi
-
-    if [[ "$rollback_failed" != true && "$lock_acquired" == true ]]; then
-        remove_owned_lock
-        if [[ -e "$lock_path" || -L "$lock_path" ]]; then
-            printf 'ERROR: Could not remove the owned Step 04 lock during cleanup: %s\n' \
-                "$lock_path" >&2
-            rollback_failed=true
-        fi
-    fi
-
-    if [[ "$rollback_failed" == true ]]; then
-        printf 'ERROR: Step 04 no-clobber cleanup was incomplete; retaining the owned lock and recovery residue: %s\n' \
-            "$lock_path" >&2
-    fi
+    cleanup_no_clobber_outputs "$1" "Step 04" \
+        "Step 04 BAM" "$tmp_bam" "$output_bam" \
+        "Step 04 BAI" "$tmp_bai" "$output_bai" \
+        "Step 04 metrics" "$tmp_metrics" "$metrics_file"
 }
 
 [[ -d "$tmp_dir" ]] || die2 "TMP_DIR does not exist or is not a directory: $tmp_dir"
@@ -314,12 +250,9 @@ if [[ "$no_clobber" == true ]]; then
     require_absent_outputs
     publication_started=true
     publish_file_create_exclusive "Step 04 BAM" "$tmp_bam" "$output_bam"
-    bam_published=true
     publish_file_create_exclusive "Step 04 BAI" "$tmp_bai" "$output_bai"
-    bai_published=true
     publish_file_create_exclusive \
         "Step 04 metrics" "$tmp_metrics" "$metrics_file"
-    metrics_published=true
     require_owned_published_file "Step 04 BAM" "$tmp_bam" "$output_bam"
     require_owned_published_file "Step 04 BAI" "$tmp_bai" "$output_bai"
     require_owned_published_file \

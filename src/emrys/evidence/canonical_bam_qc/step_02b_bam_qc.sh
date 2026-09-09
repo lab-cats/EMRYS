@@ -101,8 +101,6 @@ tmp_quickcheck="$output_dir/.${sample_id}.step02b.${run_token}.quickcheck.tmp"
 tmp_flagstat="$output_dir/.${sample_id}.step02b.${run_token}.flagstat.tmp"
 lock_acquired=false
 publication_started=false
-quickcheck_published=false
-flagstat_published=false
 
 require_absent_outputs() {
     [[ ! -e "$QUICKCHECK_OUT" && ! -e "$FLAGSTAT_OUT" ]] ||
@@ -110,57 +108,9 @@ require_absent_outputs() {
 }
 
 cleanup_no_clobber() {
-    local status="$1"
-    local rollback_failed=false
-
-    set +e
-    if [[ "$status" -ne 0 && "$publication_started" == true ]]; then
-        if [[ "$quickcheck_published" == true ]]; then
-            if ! remove_owned_published_file \
-                "Step 02b quickcheck" "$tmp_quickcheck" "$QUICKCHECK_OUT"; then
-                rollback_failed=true
-            fi
-        fi
-        if [[ "$flagstat_published" == true ]]; then
-            if ! remove_owned_published_file \
-                "Step 02b flagstat" "$tmp_flagstat" "$FLAGSTAT_OUT"; then
-                rollback_failed=true
-            fi
-        fi
-    fi
-
-    if [[ "$rollback_failed" != true ]]; then
-        if [[ -e "$tmp_quickcheck" || -L "$tmp_quickcheck" ]]; then
-            if ! rm -f -- "$tmp_quickcheck" ||
-               [[ -e "$tmp_quickcheck" || -L "$tmp_quickcheck" ]]; then
-                printf 'ERROR: Could not remove Step 02b quickcheck staging output: %s\n' \
-                    "$tmp_quickcheck" >&2
-                rollback_failed=true
-            fi
-        fi
-        if [[ -e "$tmp_flagstat" || -L "$tmp_flagstat" ]]; then
-            if ! rm -f -- "$tmp_flagstat" ||
-               [[ -e "$tmp_flagstat" || -L "$tmp_flagstat" ]]; then
-                printf 'ERROR: Could not remove Step 02b flagstat staging output: %s\n' \
-                    "$tmp_flagstat" >&2
-                rollback_failed=true
-            fi
-        fi
-    fi
-
-    if [[ "$rollback_failed" != true && "$lock_acquired" == true ]]; then
-        remove_owned_lock
-        if [[ -e "$lock_path" || -L "$lock_path" ]]; then
-            printf 'ERROR: Could not remove the owned Step 02b lock during cleanup: %s\n' \
-                "$lock_path" >&2
-            rollback_failed=true
-        fi
-    fi
-
-    if [[ "$rollback_failed" == true ]]; then
-        printf 'ERROR: Step 02b no-clobber cleanup was incomplete; retaining the owned lock and recovery residue: %s\n' \
-            "$lock_path" >&2
-    fi
+    cleanup_no_clobber_outputs "$1" "Step 02b" \
+        "Step 02b quickcheck" "$tmp_quickcheck" "$QUICKCHECK_OUT" \
+        "Step 02b flagstat" "$tmp_flagstat" "$FLAGSTAT_OUT"
 }
 
 mode="dry-run"
@@ -248,10 +198,8 @@ if [[ "$no_clobber" == true ]]; then
     publication_started=true
     publish_file_create_exclusive \
         "Step 02b quickcheck" "$tmp_quickcheck" "$QUICKCHECK_OUT"
-    quickcheck_published=true
     publish_file_create_exclusive \
         "Step 02b flagstat" "$tmp_flagstat" "$FLAGSTAT_OUT"
-    flagstat_published=true
     require_owned_published_file \
         "Step 02b quickcheck" "$tmp_quickcheck" "$QUICKCHECK_OUT"
     require_owned_published_file \

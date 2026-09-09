@@ -79,10 +79,13 @@ samtools executable, hashes the BAM and admitted BAI, requires both finals to
 be absent, holds a per-sample owned lock, captures both commands into
 run-token temporary paths, requires both files to be nonempty, rechecks the
 inputs, and publishes the pair create-exclusively while retaining staging
-inode anchors through validation. Failure removes only still-owned finals;
-ambiguous replacement preserves the lock and residue. The native pair is not a receipt; the
+inode anchors through validation. The native pair is not a receipt; the
 workflow verified record binds it to the run, attempt, and observed tool
 version. Execute without this option retains the direct-write contract below.
+
+Failure handling is owned by the shared
+[shell publication cleanup](../../libraries/README.md#shell-publication-cleanup),
+including failures before a link helper returns.
 
 ## Current execution surfaces
 

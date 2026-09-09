@@ -44,11 +44,13 @@ and Picard jar, refuses any existing final, holds a per-sample owned lock,
 directs Picard and samtools to run-token BAM/BAI/metrics paths, validates the
 complete triplet, rechecks the admitted hashes, and publishes only the new set.
 Publication is create-exclusive and keeps staging inode anchors through
-complete-set validation. Failure removes only still-owned new finals;
-ambiguous replacement preserves lock and residue. Java
-and samtools paths are explicit; observed tool versions and final hashes belong
+complete-set validation. Java and samtools paths are explicit; observed tool versions and final hashes belong
 in the workflow verified record. Execute without this option retains the
 historical direct-final contract below.
+
+Failure handling is owned by the shared
+[shell publication cleanup](../../libraries/README.md#shell-publication-cleanup),
+including failures before a link helper returns.
 
 ## Current execution surfaces
 

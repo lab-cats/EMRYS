@@ -468,14 +468,13 @@ assert_file_equals "$malformed_output_file" \
     $'This is PairEnd Data\nnonempty malformed orientation evidence\n'
 assert_file_equals "$malformed_stderr" ''
 
-printf 'Running predecessor-bearing partial child failure check...\n'
+printf 'Running partial child failure cleanup and diagnostic check...\n'
 partial_stdout="$tmp_dir/partial.stdout"
 partial_stderr="$tmp_dir/partial.stderr"
 partial_output_dir="$tmp_dir/results/partial"
 mkdir -p "$partial_output_dir"
 partial_output_file="$partial_output_dir/sample_partial.infer_experiment.txt"
 partial_unrelated="$partial_output_dir/unrelated.txt"
-printf 'prior complete orientation report\n' >"$partial_output_file"
 printf 'unrelated predecessor\n' >"$partial_unrelated"
 
 set +e
@@ -492,14 +491,12 @@ set -e
 
 [[ "$partial_status" -eq 42 ]] ||
     fail "partial child exit 42 was not propagated: $partial_status"
-assert_file_equals "$partial_output_file" $'partial RSeQC child bytes\n'
+assert_not_exists "$partial_output_file"
 assert_file_equals "$partial_stderr" $'partial RSeQC failure diagnostic\n'
 assert_file_equals "$partial_unrelated" $'unrelated predecessor\n'
-assert_only_entries "$partial_output_dir" \
-    "sample_partial.infer_experiment.txt" \
-    "unrelated.txt"
+assert_only_entries "$partial_output_dir" "unrelated.txt"
 
-printf 'Running predecessor-bearing empty-success truncation check...\n'
+printf 'Running default existing-output refusal check...\n'
 truncated_stdout="$tmp_dir/truncated.stdout"
 truncated_stderr="$tmp_dir/truncated.stderr"
 truncated_output_dir="$tmp_dir/results/truncated"
@@ -508,6 +505,7 @@ truncated_output_file="$truncated_output_dir/sample_truncated.infer_experiment.t
 truncated_unrelated="$truncated_output_dir/unrelated.txt"
 printf 'prior complete orientation report\n' >"$truncated_output_file"
 printf 'unrelated predecessor\n' >"$truncated_unrelated"
+cp "$infer_log" "$tmp_dir/before-refusal.log"
 
 set +e
 FAKE_INFER_MODE=empty_success bash "$SCRIPT" \
@@ -522,11 +520,11 @@ truncated_status=$?
 set -e
 
 [[ "$truncated_status" -eq 1 ]] ||
-    fail "empty child success did not become producer exit 1: $truncated_status"
-[[ -f "$truncated_output_file" ]] || fail "empty child success removed the final path"
-[[ ! -s "$truncated_output_file" ]] || fail "empty child success did not truncate predecessor"
+    fail "existing output was not refused: $truncated_status"
+assert_file_equals "$truncated_output_file" $'prior complete orientation report\n'
+cmp -s "$infer_log" "$tmp_dir/before-refusal.log" || fail "refusal still invoked RSeQC"
 assert_file_equals "$truncated_stderr" \
-    "ERROR: infer_experiment.py output is missing or empty: $truncated_output_file"$'\n'
+    "ERROR: Step 03 --no-clobber output already exists: $truncated_output_file"$'\n'
 assert_file_equals "$truncated_unrelated" $'unrelated predecessor\n'
 assert_only_entries "$truncated_output_dir" \
     "sample_truncated.infer_experiment.txt" \
