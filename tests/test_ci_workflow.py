@@ -57,6 +57,13 @@ def _expression(value: object) -> str:
     return " ".join(str(value).split())
 
 
+def test_automatic_ci_accepts_every_pr_base_but_only_master_pushes() -> None:
+    triggers = _workflow_triggers()
+    assert triggers["pull_request"] is None
+    assert triggers["push"] == {"branches": ["master"]}
+    assert "merge_group" in triggers
+
+
 def test_manual_lane_triggers_are_closed_and_independently_selectable() -> None:
     triggers = _workflow_triggers()
     assert triggers["schedule"] == [
@@ -103,6 +110,22 @@ def test_ordinary_jobs_keep_automatic_runs_and_support_manual_selection() -> Non
         assert "github.event_name != 'workflow_dispatch'" in condition
         assert "github.event_name != 'schedule'" in condition
         assert f"inputs.{input_name}" in condition
+
+
+def test_static_job_uses_the_shared_gate_without_repeating_sharder_self_tests() -> None:
+    step = _named_step(
+        _workflow_jobs()["static-wheel"],
+        "Run static, lint, documentation, and wheel checks",
+    )
+    assert step["shell"] == "bash"
+    assert step["run"].splitlines() == [
+        "set -euo pipefail",
+        "make -s validation-static",
+        "make -s validation-wheel-smoke",
+    ]
+    assert "tests/test_python_test_shards.py" not in WORKFLOW_PATH.read_text(
+        encoding="utf-8"
+    )
 
 
 def test_long_runs_have_unique_non_cancelling_concurrency() -> None:

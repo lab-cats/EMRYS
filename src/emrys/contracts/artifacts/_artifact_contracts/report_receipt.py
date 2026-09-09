@@ -9,6 +9,13 @@ from .definitions import ContractValidationError
 from .identity import require_unique_key, validate_document_paths
 
 
+REPORT_OUTPUTS: tuple[tuple[str, str, str], ...] = (
+    ("scientific-report-html", "scientific_html", "scientific_report.html"),
+    ("evidence-report-html", "evidence_html", "evidence_report.html"),
+    ("run-summary-tsv", "run_summary_tsv", "run_summary.tsv"),
+)
+
+
 def validate_report_receipt_semantics(document: dict[str, Any]) -> None:
     validate_document_paths(document)
     if document["schema_version"] == "5.0.0":
@@ -43,21 +50,10 @@ def validate_report_receipt_semantics(document: dict[str, Any]) -> None:
     if len(output_paths) != len(outputs):
         raise ContractValidationError("report outputs contain duplicate paths")
     run_id = document["run_id"]
-    expected_output_ids = (
-        "scientific-report-html",
-        "evidence-report-html",
-        "run-summary-tsv",
-    )
+    expected_output_ids = tuple(output_id for output_id, _, _ in REPORT_OUTPUTS)
     expected_outputs = {
-        "scientific-report-html": (
-            "scientific_html",
-            f"{run_id}.scientific_report.html",
-        ),
-        "evidence-report-html": (
-            "evidence_html",
-            f"{run_id}.evidence_report.html",
-        ),
-        "run-summary-tsv": ("run_summary_tsv", f"{run_id}.run_summary.tsv"),
+        output_id: (kind, f"{run_id}.{suffix}")
+        for output_id, kind, suffix in REPORT_OUTPUTS
     }
     if {output["output_id"] for output in outputs} != set(expected_output_ids):
         raise ContractValidationError(

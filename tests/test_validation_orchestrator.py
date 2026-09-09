@@ -115,6 +115,7 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
         REPO_ROOT / "tests" / "tools" / "python_test_shards.py"
     ).read_text(encoding="utf-8")
     assert '"tests/test_package_distribution.py"' in shard_tool
+    assert '"tests/test_python_test_shards.py"' in shard_tool
     assert "--dist=worksteal" in shard_tool
     assert "shell-test: validation-shell-contracts" in quality_makefile
     assert "validation-static: lint documentation-check" in quality_makefile
@@ -124,6 +125,93 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     assert '"$(VULTURE_BIN)"' in quality_makefile
     assert "--exit-zero" not in quality_makefile
     assert "skipping dead-code scan" not in quality_makefile
+
+
+@pytest.mark.parametrize("target", ["smoke", "validation-static"])
+@pytest.mark.parametrize("invalid_index", [None, 1, 2])
+def test_shell_syntax_gates_parse_each_script_without_execution(
+    tmp_path: Path,
+    target: str,
+    invalid_index: int | None,
+) -> None:
+    scripts = [tmp_path / f"script-{index}.sh" for index in range(3)]
+    for index, script in enumerate(scripts):
+        script.write_text(
+            '#!/bin/bash\n: > "${0}.executed"\nexit 97\n'
+            + ("if true; then\n" if index == invalid_index else ""),
+            encoding="utf-8",
+        )
+
+    result = subprocess.run(
+        [
+            "make",
+            "-s",
+            "-f",
+            str(REPO_ROOT / "scripts" / "make_quality.mk"),
+            target,
+            "REPORT_PYTHON_BIN=true",
+            "SHELL_SYNTAX_PATHS=" + " ".join(str(script) for script in scripts),
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    if invalid_index is None:
+        assert result.returncode == 0, result.stdout + result.stderr
+    else:
+        assert result.returncode != 0, result.stdout + result.stderr
+        assert str(scripts[invalid_index]) in result.stderr
+        assert "syntax error" in result.stderr
+    assert not list(tmp_path.glob("*.executed"))
+
+
+@pytest.mark.parametrize("self_test_status", [0, 7])
+def test_static_preflight_runs_sharder_self_tests_once_and_propagates_failure(
+    tmp_path: Path,
+    self_test_status: int,
+) -> None:
+    calls = tmp_path / "sharder-calls"
+    python_bin = tmp_path / "selected-python"
+    # Isolate unrelated Python checks; the Make recipe and lane runner stay real.
+    python_bin.write_text(
+        f"#!{sys.executable}\n"
+        "import sys\n"
+        "from pathlib import Path\n"
+        "if sys.argv[1:] == ['-m', 'pytest', '-q', 'tests/test_python_test_shards.py']:\n"
+        f"    with Path({str(calls)!r}).open('a') as stream:\n"
+        "        stream.write('sharder self-tests\\n')\n"
+        "    print('controlled sharder self-test result')\n"
+        f"    sys.exit({self_test_status})\n"
+        "sys.exit(0)\n",
+        encoding="utf-8",
+    )
+    python_bin.chmod(0o755)
+    outcome = TOOL.run_lanes(
+        [TOOL.build_preflight(REPO_ROOT, python_bin)],
+        REPO_ROOT,
+        tmp_path,
+        1,
+        False,
+    )
+
+    try:
+        assert calls.read_text(encoding="utf-8") == "sharder self-tests\n"
+        assert len(outcome.results) == 1
+        assert outcome.results[0].name == "static-preflight"
+        if self_test_status == 0:
+            assert outcome.status == 0
+            assert outcome.results[0].retained_log is None
+        else:
+            assert outcome.status != 0
+            retained = outcome.results[0].retained_log
+            assert retained is not None
+            assert "controlled sharder self-test result" in Path(retained).read_text(
+                encoding="utf-8"
+            )
+    finally:
+        remove_retained_logs(outcome)
 
 
 def test_selected_environment_lock_check_is_read_only_and_explicit() -> None:
