@@ -82,9 +82,7 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
         "shellcheck-py>=0.11.0.1",
         "vulture",
     }
-    assert configuration["dependency-groups"]["workflow"] == [
-        "snakemake==9.25.1"
-    ]
+    assert configuration["dependency-groups"]["workflow"] == ["snakemake==9.25.1"]
     assert configuration["tool"]["uv"]["default-groups"] == ["dev", "workflow"]
     assert configuration["build-system"]["requires"] == ["setuptools==83.0.0"]
     assert not (REPO_ROOT / "requirements.txt").exists()
@@ -113,9 +111,9 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     assert "tests/tools/run_validation.py" in quality_makefile
     assert "tests/tools/source_dependencies.py" in quality_makefile
     assert "PYTHON_COVERAGE_WORKERS" in root_makefile
-    shard_tool = (
-        REPO_ROOT / "tests" / "tools" / "python_test_shards.py"
-    ).read_text(encoding="utf-8")
+    shard_tool = (REPO_ROOT / "tests" / "tools" / "python_test_shards.py").read_text(
+        encoding="utf-8"
+    )
     assert '"tests/test_package_distribution.py"' in shard_tool
     assert '"tests/test_python_test_shards.py"' in shard_tool
     assert "--dist=worksteal" in shard_tool
@@ -336,7 +334,11 @@ def test_verbose_failure_streams_and_retains_log(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     outcome = TOOL.run_lanes(
-        [python_lane("verbose-failure", "print('durable diagnostic'); raise SystemExit(7)")],
+        [
+            python_lane(
+                "verbose-failure", "print('durable diagnostic'); raise SystemExit(7)"
+            )
+        ],
         REPO_ROOT,
         tmp_path,
         1,

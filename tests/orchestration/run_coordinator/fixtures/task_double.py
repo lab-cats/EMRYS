@@ -94,9 +94,9 @@ def _publish_payload(arguments: argparse.Namespace) -> int:
     record = json.loads(
         zlib.decompress(base64.b64decode(arguments.payload_base64, validate=True))
     )
-    entries = record["producer"] if arguments.mode == "producer" else [
-        record["validation"]
-    ]
+    entries = (
+        record["producer"] if arguments.mode == "producer" else [record["validation"]]
+    )
     for entry in entries:
         _publish(Path(entry["path"]), base64.b64decode(entry["data_base64"]))
     return 0

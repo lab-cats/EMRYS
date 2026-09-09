@@ -20,103 +20,183 @@ import textwrap
 
 
 STAGES = [
-    ("00a", "STAR index", 1, "construct_STAR_index",
-     "Builds STAR's reusable genome index from the admitted FASTA and GTF. "
-     "STAR converts the reference sequence, contig layout, and annotated splice "
-     "junctions into the search structures required for alignment. Completing "
-     "this once lets every sample use the same content-bound reference model.",
-     "1 process x 2 STAR threads; sample concurrency does not apply."),
-    ("00b", "GTF to BED12", 1, "convert_GTF_to_BED12",
-     "Converts the GTF transcript annotation into a BED12 gene model. The BED12 "
-     "representation preserves exon blocks in a form that RSeQC can compare "
-     "against aligned reads. That comparison is later used to verify the "
-     "library-orientation evidence for each sample.",
-     "1 owner process."),
-    ("00c", "FASTA sidecars", 1, "construct_FASTA_sidecars",
-     "Creates or verifies the FASTA index and sequence-dictionary sidecars beside "
-     "the reference. These files provide random-access coordinates plus a stable "
-     "contig identity and order for Samtools, GATK, and the R analysis layer. The "
-     "step prevents downstream tools from silently interpreting the same FASTA differently.",
-     "1 owner process."),
-    ("01", "STAR alignment", 6, "align_RNA_reads_with_STAR",
-     "Maps each paired FASTQ library to the admitted reference with STAR. STAR "
-     "uses the shared index and splice-junction model to place RNA-derived reads "
-     "across exons and introns. Each sample runs independently here so the six "
-     "libraries can advance concurrently while preserving separate evidence.",
-     "Up to 6 sample processes x 2 STAR threads (12 nominal threads)."),
-    ("02", "Canonical BAM", 6, "construct_canonical_BAM",
-     "Normalizes each STAR alignment into EMRYS's indexed canonical BAM. This "
-     "establishes the stable per-sample alignment representation consumed by QC, "
-     "orientation analysis, duplicate marking, and variant preparation. Downstream "
-     "owners therefore bind to one validated BAM rather than tool-specific intermediates.",
-     "Up to 6 sample processes x 2 configured threads."),
-    ("02b", "BAM QC", 6, "collect_canonical_BAM_QC_evidence",
-     "Checks each canonical BAM and records its per-sample QC evidence. The owner "
-     "confirms that the alignment artifact satisfies the workflow's structural and "
-     "content expectations before more expensive processing begins. Its evidence "
-     "makes a passing BAM an explicit prerequisite rather than an assumed input.",
-     "Up to 6 sample processes."),
-    ("03", "RSeQC orientation", 6, "collect_RSeQC_paired_orientation_evidence",
-     "Uses RSeQC to compare each paired-read alignment with the BED12 transcript "
-     "model and infer library orientation. EMRYS records the observed orientation "
-     "as evidence for the declared strandedness. That evidence determines how the "
-     "workflow interprets directional reads in the later orientation split.",
-     "Up to 6 sample processes."),
-    ("04", "Picard duplicates", 6, "mark_BAM_duplicates_with_Picard",
-     "Runs Picard MarkDuplicates on each canonical BAM and records duplicate metrics. "
-     "Duplicate observations remain represented but are explicitly flagged, which "
-     "prevents amplification artifacts from masquerading as independent support. "
-     "The resulting indexed BAM becomes the input to RNA-aware GATK preparation.",
-     "Up to 6 sample processes; each runs one Java/Picard process."),
-    ("05", "GATK SplitNCigarReads", 6, "split_N_cigar_reads_with_GATK",
-     "Runs GATK SplitNCigarReads on each duplicate-marked RNA alignment. The tool "
-     "splits reads at intronic N-cigar junctions and normalizes the alignments into "
-     "the representation expected by downstream variant processing. This bridges "
-     "splice-aware RNA alignment with position-based cohort pileup analysis.",
-     "Up to 6 GATK processes; JVM/native threads may exceed the nominal 12."),
-    ("06", "Orientation BAM split", 6, "partition_BAM_by_mechanical_read_orientation",
-     "Separates each prepared BAM into forward-like and reverse-like mechanical "
-     "orientation artifacts. Keeping these observations distinct preserves the "
-     "directional structure needed to evaluate strand-associated signal and artifacts. "
-     "Both indexed outputs must finish before that sample is ready for cohort analysis.",
-     "Up to 6 sample processes x 2 configured threads."),
-    ("07", "Partitioned mpileup", 25, "generate_partitioned_cohort_mpileup_VCFs",
-     "Generates cohort mpileup VCF evidence across the 25 declared genomic partitions. "
-     "Each partition evaluates the aligned observations from all admitted samples "
-     "while retaining the workflow's orientation structure. Partitioning bounds the "
-     "working set and produces validated pieces for one cohort-level candidate set.",
-     "Partition owners share the 12-core workflow envelope."),
-    ("08", "Candidate preprocessing", 1, "preprocess_and_annotate_cohort_candidates",
-     "Combines the validated partition outputs into one cohort candidate collection. "
-     "It normalizes and annotates the raw site evidence, applies the declared analysis "
-     "policy, and prepares stable rows for statistical testing. This is the main "
-     "cohort-scale reduction between pileup generation and paired inference.",
-     "1 cohort process using 2 configured threads where supported."),
-    ("09", "Paired CMH ranking", 1, "rank_cohort_candidates_with_paired_CMH",
-     "Tests cohort candidates with the paired Cochran-Mantel-Haenszel analysis across "
-     "the declared replicate strata. It compares treatment with control while "
-     "preserving pairing, adjusts the resulting evidence for multiple testing, and "
-     "ranks candidates under the request's scientific thresholds. The ranked cohort "
-     "evidence becomes the input to scientific-context projection and reporting.",
-     "1 R analysis process."),
-    ("10", "Scientific context", 1, "project_candidate_scientific_context",
-     "Projects statistically selected candidates back into reference-sequence and "
-     "transcript-annotation context. The analysis adds the surrounding features "
-     "needed to interpret where each signal occurs and selects the display-ranked "
-     "subset used by the scientific report. It does not turn computational evidence into biological proof.",
-     "1 R analysis process."),
-    ("REPORT", "Automatic reports", 3, "build_artifact_index",
-     "Builds the artifact index, canonical run summary, and final HTML report as "
-     "three dependent reporting transactions. These products bind the verified "
-     "owner outputs into an inspectable execution record. Reporting summarizes the "
-     "run without replacing its underlying task evidence or validation receipts.",
-     "3 dependent reporting transactions, normally sequential."),
-    ("FINAL", "Aggregate target", 1, "local_pipeline_slice",
-     "Closes the aggregate workflow target after every scientific owner and reporting "
-     "transaction succeeds. It performs no new scientific computation; its purpose "
-     "is to prove that the requested pipeline slice reached its complete dependency "
-     "state. Final EMRYS inspection remains the completion authority after Slurm exits.",
-     "No additional scientific computation."),
+    (
+        "00a",
+        "STAR index",
+        1,
+        "construct_STAR_index",
+        "Builds STAR's reusable genome index from the admitted FASTA and GTF. "
+        "STAR converts the reference sequence, contig layout, and annotated splice "
+        "junctions into the search structures required for alignment. Completing "
+        "this once lets every sample use the same content-bound reference model.",
+        "1 process x 2 STAR threads; sample concurrency does not apply.",
+    ),
+    (
+        "00b",
+        "GTF to BED12",
+        1,
+        "convert_GTF_to_BED12",
+        "Converts the GTF transcript annotation into a BED12 gene model. The BED12 "
+        "representation preserves exon blocks in a form that RSeQC can compare "
+        "against aligned reads. That comparison is later used to verify the "
+        "library-orientation evidence for each sample.",
+        "1 owner process.",
+    ),
+    (
+        "00c",
+        "FASTA sidecars",
+        1,
+        "construct_FASTA_sidecars",
+        "Creates or verifies the FASTA index and sequence-dictionary sidecars beside "
+        "the reference. These files provide random-access coordinates plus a stable "
+        "contig identity and order for Samtools, GATK, and the R analysis layer. The "
+        "step prevents downstream tools from silently interpreting the same FASTA differently.",
+        "1 owner process.",
+    ),
+    (
+        "01",
+        "STAR alignment",
+        6,
+        "align_RNA_reads_with_STAR",
+        "Maps each paired FASTQ library to the admitted reference with STAR. STAR "
+        "uses the shared index and splice-junction model to place RNA-derived reads "
+        "across exons and introns. Each sample runs independently here so the six "
+        "libraries can advance concurrently while preserving separate evidence.",
+        "Up to 6 sample processes x 2 STAR threads (12 nominal threads).",
+    ),
+    (
+        "02",
+        "Canonical BAM",
+        6,
+        "construct_canonical_BAM",
+        "Normalizes each STAR alignment into EMRYS's indexed canonical BAM. This "
+        "establishes the stable per-sample alignment representation consumed by QC, "
+        "orientation analysis, duplicate marking, and variant preparation. Downstream "
+        "owners therefore bind to one validated BAM rather than tool-specific intermediates.",
+        "Up to 6 sample processes x 2 configured threads.",
+    ),
+    (
+        "02b",
+        "BAM QC",
+        6,
+        "collect_canonical_BAM_QC_evidence",
+        "Checks each canonical BAM and records its per-sample QC evidence. The owner "
+        "confirms that the alignment artifact satisfies the workflow's structural and "
+        "content expectations before more expensive processing begins. Its evidence "
+        "makes a passing BAM an explicit prerequisite rather than an assumed input.",
+        "Up to 6 sample processes.",
+    ),
+    (
+        "03",
+        "RSeQC orientation",
+        6,
+        "collect_RSeQC_paired_orientation_evidence",
+        "Uses RSeQC to compare each paired-read alignment with the BED12 transcript "
+        "model and infer library orientation. EMRYS records the observed orientation "
+        "as evidence for the declared strandedness. That evidence determines how the "
+        "workflow interprets directional reads in the later orientation split.",
+        "Up to 6 sample processes.",
+    ),
+    (
+        "04",
+        "Picard duplicates",
+        6,
+        "mark_BAM_duplicates_with_Picard",
+        "Runs Picard MarkDuplicates on each canonical BAM and records duplicate metrics. "
+        "Duplicate observations remain represented but are explicitly flagged, which "
+        "prevents amplification artifacts from masquerading as independent support. "
+        "The resulting indexed BAM becomes the input to RNA-aware GATK preparation.",
+        "Up to 6 sample processes; each runs one Java/Picard process.",
+    ),
+    (
+        "05",
+        "GATK SplitNCigarReads",
+        6,
+        "split_N_cigar_reads_with_GATK",
+        "Runs GATK SplitNCigarReads on each duplicate-marked RNA alignment. The tool "
+        "splits reads at intronic N-cigar junctions and normalizes the alignments into "
+        "the representation expected by downstream variant processing. This bridges "
+        "splice-aware RNA alignment with position-based cohort pileup analysis.",
+        "Up to 6 GATK processes; JVM/native threads may exceed the nominal 12.",
+    ),
+    (
+        "06",
+        "Orientation BAM split",
+        6,
+        "partition_BAM_by_mechanical_read_orientation",
+        "Separates each prepared BAM into forward-like and reverse-like mechanical "
+        "orientation artifacts. Keeping these observations distinct preserves the "
+        "directional structure needed to evaluate strand-associated signal and artifacts. "
+        "Both indexed outputs must finish before that sample is ready for cohort analysis.",
+        "Up to 6 sample processes x 2 configured threads.",
+    ),
+    (
+        "07",
+        "Partitioned mpileup",
+        25,
+        "generate_partitioned_cohort_mpileup_VCFs",
+        "Generates cohort mpileup VCF evidence across the 25 declared genomic partitions. "
+        "Each partition evaluates the aligned observations from all admitted samples "
+        "while retaining the workflow's orientation structure. Partitioning bounds the "
+        "working set and produces validated pieces for one cohort-level candidate set.",
+        "Partition owners share the 12-core workflow envelope.",
+    ),
+    (
+        "08",
+        "Candidate preprocessing",
+        1,
+        "preprocess_and_annotate_cohort_candidates",
+        "Combines the validated partition outputs into one cohort candidate collection. "
+        "It normalizes and annotates the raw site evidence, applies the declared analysis "
+        "policy, and prepares stable rows for statistical testing. This is the main "
+        "cohort-scale reduction between pileup generation and paired inference.",
+        "1 cohort process using 2 configured threads where supported.",
+    ),
+    (
+        "09",
+        "Paired CMH ranking",
+        1,
+        "rank_cohort_candidates_with_paired_CMH",
+        "Tests cohort candidates with the paired Cochran-Mantel-Haenszel analysis across "
+        "the declared replicate strata. It compares treatment with control while "
+        "preserving pairing, adjusts the resulting evidence for multiple testing, and "
+        "ranks candidates under the request's scientific thresholds. The ranked cohort "
+        "evidence becomes the input to scientific-context projection and reporting.",
+        "1 R analysis process.",
+    ),
+    (
+        "10",
+        "Scientific context",
+        1,
+        "project_candidate_scientific_context",
+        "Projects statistically selected candidates back into reference-sequence and "
+        "transcript-annotation context. The analysis adds the surrounding features "
+        "needed to interpret where each signal occurs and selects the display-ranked "
+        "subset used by the scientific report. It does not turn computational evidence into biological proof.",
+        "1 R analysis process.",
+    ),
+    (
+        "REPORT",
+        "Automatic reports",
+        3,
+        "build_artifact_index",
+        "Builds the artifact index, canonical run summary, and final HTML report as "
+        "three dependent reporting transactions. These products bind the verified "
+        "owner outputs into an inspectable execution record. Reporting summarizes the "
+        "run without replacing its underlying task evidence or validation receipts.",
+        "3 dependent reporting transactions, normally sequential.",
+    ),
+    (
+        "FINAL",
+        "Aggregate target",
+        1,
+        "local_pipeline_slice",
+        "Closes the aggregate workflow target after every scientific owner and reporting "
+        "transaction succeeds. It performs no new scientific computation; its purpose "
+        "is to prove that the requested pipeline slice reached its complete dependency "
+        "state. Final EMRYS inspection remains the completion authority after Slurm exits.",
+        "No additional scientific computation.",
+    ),
 ]
 
 RULE_TO_STAGE = {row[3]: row[0] for row in STAGES}
@@ -125,12 +205,30 @@ STAGE_BY_KEY = {row[0]: row for row in STAGES}
 SAMPLE_STAGE_KEYS = ("01", "02", "02b", "03", "04", "05", "06")
 SAMPLE_STAGES = set(SAMPLE_STAGE_KEYS)
 TERMINAL_STATES = {
-    "COMPLETED", "FAILED", "CANCELLED", "TIMEOUT", "OUT_OF_MEMORY",
-    "NODE_FAIL", "PREEMPTED", "BOOT_FAIL", "DEADLINE", "REVOKED",
+    "COMPLETED",
+    "FAILED",
+    "CANCELLED",
+    "TIMEOUT",
+    "OUT_OF_MEMORY",
+    "NODE_FAIL",
+    "PREEMPTED",
+    "BOOT_FAIL",
+    "DEADLINE",
+    "REVOKED",
 }
 MONTHS = {
-    "Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6,
-    "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12,
+    "Jan": 1,
+    "Feb": 2,
+    "Mar": 3,
+    "Apr": 4,
+    "May": 5,
+    "Jun": 6,
+    "Jul": 7,
+    "Aug": 8,
+    "Sep": 9,
+    "Oct": 10,
+    "Nov": 11,
+    "Dec": 12,
 }
 TIMESTAMP_RE = re.compile(
     r"^\[[A-Z][a-z]{2} ([A-Z][a-z]{2})\s+(\d+) "
@@ -170,7 +268,16 @@ class StreamCache:
         if remote_size <= self.offset:
             return True
         chunk = command_bytes(
-            ["timeout", "-k", "2s", "10s", "tail", "-c", "+%d" % (self.offset + 1), self.path],
+            [
+                "timeout",
+                "-k",
+                "2s",
+                "10s",
+                "tail",
+                "-c",
+                "+%d" % (self.offset + 1),
+                self.path,
+            ],
             timeout=13,
         )
         if chunk is None:
@@ -186,8 +293,11 @@ class StreamCache:
 def command_bytes(argv, timeout=10):
     try:
         completed = subprocess.run(
-            argv, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-            timeout=timeout, check=False,
+            argv,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=timeout,
+            check=False,
         )
     except (OSError, subprocess.TimeoutExpired):
         return None
@@ -248,10 +358,17 @@ def slurm_accounting_metadata(job_id):
     may reject ``StdOut``/``StdErr`` fields, so make one bounded basic-field
     fallback query for identity/state proof.  Neither query searches storage.
     """
-    rich_output = command_text([
-        "sacct", "-X", "-n", "-P", "-j", str(job_id),
-        "--format=JobIDRaw,JobName,State,User,UID,StdOut,StdErr",
-    ])
+    rich_output = command_text(
+        [
+            "sacct",
+            "-X",
+            "-n",
+            "-P",
+            "-j",
+            str(job_id),
+            "--format=JobIDRaw,JobName,State,User,UID,StdOut,StdErr",
+        ]
+    )
 
     def exact_records(output, include_streams):
         records = []
@@ -273,26 +390,34 @@ def slurm_accounting_metadata(job_id):
                 "UID": fields[4].strip(),
             }
             if include_streams:
-                record.update({
-                    "StdOut": fields[5].strip(),
-                    "StdErr": fields[6].strip(),
-                })
+                record.update(
+                    {
+                        "StdOut": fields[5].strip(),
+                        "StdErr": fields[6].strip(),
+                    }
+                )
             records.append(record)
         return records
 
     rich_records = exact_records(rich_output, include_streams=True)
     if len(rich_records) > 1:
         raise DiscoveryError(
-            "Slurm accounting did not return one exact root record for job %s"
-            % job_id
+            "Slurm accounting did not return one exact root record for job %s" % job_id
         )
     if rich_records:
         return rich_records[0]
 
-    basic_output = command_text([
-        "sacct", "-X", "-n", "-P", "-j", str(job_id),
-        "--format=JobIDRaw,JobName,State,User,UID",
-    ])
+    basic_output = command_text(
+        [
+            "sacct",
+            "-X",
+            "-n",
+            "-P",
+            "-j",
+            str(job_id),
+            "--format=JobIDRaw,JobName,State,User,UID",
+        ]
+    )
     if not basic_output:
         raise DiscoveryError(
             "Slurm accounting metadata is unavailable for job %s" % job_id
@@ -300,8 +425,7 @@ def slurm_accounting_metadata(job_id):
     records = exact_records(basic_output, include_streams=False)
     if len(records) != 1:
         raise DiscoveryError(
-            "Slurm accounting did not return one exact root record for job %s"
-            % job_id
+            "Slurm accounting did not return one exact root record for job %s" % job_id
         )
     return records[0]
 
@@ -337,8 +461,7 @@ def validate_accounting_identity(job_id, metadata):
     state_value = normalized_job_state(metadata.get("JobState"))
     if state_value not in TERMINAL_STATES:
         raise DiscoveryError(
-            "job %s is not terminal; live selection requires scontrol metadata"
-            % job_id
+            "job %s is not terminal; live selection requires scontrol metadata" % job_id
         )
 
 
@@ -376,10 +499,9 @@ def accounting_stream_selection(metadata, log_dir=None):
         if not os.path.isabs(log_dir):
             raise DiscoveryError("LOG_DIR must be an absolute path")
         requested = os.path.abspath(log_dir)
-        if (
-            requested != os.path.dirname(os.path.abspath(out_path))
-            or requested != os.path.dirname(os.path.abspath(err_path))
-        ):
+        if requested != os.path.dirname(
+            os.path.abspath(out_path)
+        ) or requested != os.path.dirname(os.path.abspath(err_path)):
             raise DiscoveryError(
                 "LOG_DIR disagrees with scheduler-declared stdout/stderr"
             )
@@ -396,9 +518,13 @@ def validate_log_selection(job_id, out_path, err_path, allow_missing=False):
     out_path = os.path.abspath(out_path)
     err_path = os.path.abspath(err_path)
     if os.path.basename(out_path) != expected_out:
-        raise DiscoveryError("stdout does not match the EMRYS wrapper contract: %s" % out_path)
+        raise DiscoveryError(
+            "stdout does not match the EMRYS wrapper contract: %s" % out_path
+        )
     if os.path.basename(err_path) != expected_err:
-        raise DiscoveryError("stderr does not match the EMRYS wrapper contract: %s" % err_path)
+        raise DiscoveryError(
+            "stderr does not match the EMRYS wrapper contract: %s" % err_path
+        )
     log_dir = os.path.dirname(out_path)
     if log_dir != os.path.dirname(err_path):
         raise DiscoveryError("stdout and stderr do not share one log directory")
@@ -409,7 +535,9 @@ def validate_log_selection(job_id, out_path, err_path, allow_missing=False):
     if stat.S_ISLNK(directory.st_mode) or not stat.S_ISDIR(directory.st_mode):
         raise DiscoveryError("log directory must be a real directory: %s" % log_dir)
     if directory.st_uid != os.getuid():
-        raise DiscoveryError("log directory is not owned by the current UID: %s" % log_dir)
+        raise DiscoveryError(
+            "log directory is not owned by the current UID: %s" % log_dir
+        )
     if os.path.realpath(log_dir) != log_dir:
         raise DiscoveryError("log directory contains a symlinked path: %s" % log_dir)
     for path in (out_path, err_path):
@@ -424,19 +552,30 @@ def validate_log_selection(job_id, out_path, err_path, allow_missing=False):
         if stat.S_ISLNK(entry.st_mode) or not stat.S_ISREG(entry.st_mode):
             raise DiscoveryError("scheduler log must be a real regular file: %s" % path)
         if entry.st_uid != os.getuid() or not os.access(path, os.R_OK):
-            raise DiscoveryError("scheduler log is not owned/readable by the current UID: %s" % path)
+            raise DiscoveryError(
+                "scheduler log is not owned/readable by the current UID: %s" % path
+            )
     return {
-        "job_id": int(job_id), "log_dir": log_dir,
-        "out": out_path, "err": err_path,
+        "job_id": int(job_id),
+        "log_dir": log_dir,
+        "out": out_path,
+        "err": err_path,
     }
 
 
 def scheduler_candidates():
     """Return bounded live and recent candidates with available path metadata."""
     user = slurm_user()
-    live = command_text([
-        "squeue", "-h", "-u", user, "-o", "%i|%T",
-    ])
+    live = command_text(
+        [
+            "squeue",
+            "-h",
+            "-u",
+            user,
+            "-o",
+            "%i|%T",
+        ]
+    )
     live_ids = []
     for line in live.splitlines():
         job_id = line.split("|", 1)[0].strip()
@@ -444,18 +583,36 @@ def scheduler_candidates():
             live_ids.append(int(job_id))
 
     since = (dt.date.today() - dt.timedelta(days=DISCOVERY_DAYS)).isoformat()
-    recent = command_text([
-        "sacct", "-X", "-n", "-P", "-u", user, "-S", since,
-        "--format=JobIDRaw,JobName,State,User,UID,StdOut,StdErr",
-    ])
+    recent = command_text(
+        [
+            "sacct",
+            "-X",
+            "-n",
+            "-P",
+            "-u",
+            user,
+            "-S",
+            since,
+            "--format=JobIDRaw,JobName,State,User,UID,StdOut,StdErr",
+        ]
+    )
     rich_accounting = bool(recent)
     if not recent:
         # Older site accounting may not expose stream fields. Preserve the
         # prior bounded ID discovery, but require scontrol to prove its paths.
-        recent = command_text([
-            "sacct", "-X", "-n", "-P", "-u", user, "-S", since,
-            "--format=JobIDRaw,State",
-        ])
+        recent = command_text(
+            [
+                "sacct",
+                "-X",
+                "-n",
+                "-P",
+                "-u",
+                user,
+                "-S",
+                since,
+                "--format=JobIDRaw,State",
+            ]
+        )
     recent_by_id = {}
     for line in recent.splitlines():
         fields = line.split("|")
@@ -465,14 +622,16 @@ def scheduler_candidates():
         numeric_id = int(job_id)
         record = {"JobId": job_id}
         if rich_accounting and len(fields) >= 7:
-            record.update({
-                "JobName": fields[1].strip(),
-                "JobState": fields[2].strip(),
-                "User": fields[3].strip(),
-                "UID": fields[4].strip(),
-                "StdOut": fields[5].strip(),
-                "StdErr": fields[6].strip(),
-            })
+            record.update(
+                {
+                    "JobName": fields[1].strip(),
+                    "JobState": fields[2].strip(),
+                    "User": fields[3].strip(),
+                    "UID": fields[4].strip(),
+                    "StdOut": fields[5].strip(),
+                    "StdErr": fields[6].strip(),
+                }
+            )
         if numeric_id in recent_by_id:
             # Multiple root records for one ID are ambiguous across accounting
             # sources, even if their rendered fields happen to match.
@@ -495,8 +654,9 @@ def scheduler_candidate_ids():
     return [candidate["job_id"] for candidate in scheduler_candidates()]
 
 
-def scheduler_selection(job_id, log_dir=None, allow_accounting_fallback=False,
-                        accounting_metadata=None):
+def scheduler_selection(
+    job_id, log_dir=None, allow_accounting_fallback=False, accounting_metadata=None
+):
     if log_dir and not os.path.isabs(log_dir):
         raise DiscoveryError("LOG_DIR must be an absolute path")
     metadata = slurm_job_metadata(job_id)
@@ -544,7 +704,10 @@ def scheduler_selection(job_id, log_dir=None, allow_accounting_fallback=False,
                     "LOG_DIR disagrees with scheduler-declared stdout/stderr"
                 )
         return validate_log_selection(
-            job_id, scheduler_out, scheduler_err, allow_missing=allow_missing,
+            job_id,
+            scheduler_out,
+            scheduler_err,
+            allow_missing=allow_missing,
         )
     if not log_dir:
         raise DiscoveryError(
@@ -558,8 +721,9 @@ def scheduler_selection(job_id, log_dir=None, allow_accounting_fallback=False,
     )
 
 
-def resolve_selection(job_id=None, log_dir=None, out_path=None, err_path=None,
-                      offline=False):
+def resolve_selection(
+    job_id=None, log_dir=None, out_path=None, err_path=None, offline=False
+):
     """Resolve one dashboard target without scanning shared storage."""
     if job_id is not None and not JOB_ID_RE.fullmatch(str(job_id)):
         raise DiscoveryError("JOB_ID must be a positive root allocation ID")
@@ -575,7 +739,8 @@ def resolve_selection(job_id=None, log_dir=None, out_path=None, err_path=None,
         raise DiscoveryError("--offline requires explicit --out and --err")
     if job_id is not None:
         return scheduler_selection(
-            int(job_id), log_dir,
+            int(job_id),
+            log_dir,
             allow_accounting_fallback=True,
         )
     if log_dir:
@@ -643,7 +808,8 @@ def parse_identity(stdout_text):
         "Stage concurrency:": ("stage_concurrency", "step"),
         "Stage memory per job:": ("stage_memory_mb", "step_memory"),
         "Reporting memory per transaction:": (
-            "reporting_memory_mb", "reporting_memory"
+            "reporting_memory_mb",
+            "reporting_memory",
         ),
     }
     parsed_sections = {name: {} for name, _ in section_headers.values()}
@@ -663,13 +829,9 @@ def parse_identity(stdout_text):
         if section_kind == "step":
             match = re.fullmatch(r"Step\s+([0-9]+[a-z]?):\s*(\d+)", stripped)
         elif section_kind == "step_memory":
-            match = re.fullmatch(
-                r"Step\s+([0-9]+[a-z]?):\s*(\d+)\s+MiB", stripped
-            )
+            match = re.fullmatch(r"Step\s+([0-9]+[a-z]?):\s*(\d+)\s+MiB", stripped)
         else:
-            match = re.fullmatch(
-                r"([a-z][a-z0-9_]*):\s*(\d+)\s+MiB", stripped
-            )
+            match = re.fullmatch(r"([a-z][a-z0-9_]*):\s*(\d+)\s+MiB", stripped)
         if match:
             parsed_sections[section_name][match.group(1)] = int(match.group(2))
     fields.update(parsed_sections)
@@ -715,21 +877,19 @@ def stage_resource_text(stage, identity, fallback):
 
     def with_memory(value):
         if stage_memory is not None:
-            return "%s. Per-job memory: %s MiB." % (
-                value.rstrip("."), stage_memory
-            )
+            return "%s. Per-job memory: %s MiB." % (value.rstrip("."), stage_memory)
         return value
 
     if stage == "00a" and stage_threads:
         return with_memory(
-            "1 process x %s; sample concurrency does not apply." % counted(
-                stage_threads, "STAR thread"
-            )
+            "1 process x %s; sample concurrency does not apply."
+            % counted(stage_threads, "STAR thread")
         )
     if stage == "01" and concurrency and stage_threads:
         nominal = int(concurrency) * int(stage_threads)
         return with_memory(
-            "Up to %s x %s (%s)." % (
+            "Up to %s x %s (%s)."
+            % (
                 counted(concurrency, "sample process", "sample processes"),
                 counted(stage_threads, "STAR thread"),
                 counted(nominal, "nominal thread"),
@@ -737,7 +897,8 @@ def stage_resource_text(stage, identity, fallback):
         )
     if stage in {"02", "06"} and concurrency and stage_threads:
         return with_memory(
-            "Up to %s x %s." % (
+            "Up to %s x %s."
+            % (
                 counted(concurrency, "sample process", "sample processes"),
                 counted(stage_threads, "configured thread"),
             )
@@ -758,9 +919,7 @@ def stage_resource_text(stage, identity, fallback):
             ),
         }[stage]
         return with_memory(
-            "Up to %s%s." % (
-                counted(concurrency, process, processes), detail
-            )
+            "Up to %s%s." % (counted(concurrency, process, processes), detail)
         )
     if stage == "07" and concurrency:
         value = "Up to %s" % counted(
@@ -771,9 +930,8 @@ def stage_resource_text(stage, identity, fallback):
         return with_memory(value + ".")
     if stage == "08" and stage_threads:
         return with_memory(
-            "1 cohort process using %s where supported." % counted(
-                stage_threads, "configured thread"
-            )
+            "1 cohort process using %s where supported."
+            % counted(stage_threads, "configured thread")
         )
     if stage in {"00b", "00c", "09", "10"} and stage_memory is not None:
         return with_memory(fallback)
@@ -785,8 +943,21 @@ def stage_resource_text(stage, identity, fallback):
             )
             return "Three dependent reporting transactions: %s." % rendered
     if stage in {
-        "00a", "00b", "00c", "01", "02", "02b", "03", "04", "05",
-        "06", "07", "08", "09", "10", "REPORT",
+        "00a",
+        "00b",
+        "00c",
+        "01",
+        "02",
+        "02b",
+        "03",
+        "04",
+        "05",
+        "06",
+        "07",
+        "08",
+        "09",
+        "10",
+        "REPORT",
     }:
         return "Resource plan not yet reported by the EMRYS control stream."
     return fallback
@@ -827,7 +998,9 @@ def parse_workflow(stderr_text):
             job_id = job_match.group(1)
             key = RULE_TO_STAGE.get(current_rule, "?")
             active[job_id] = {
-                "rule": current_rule, "stage": key, "wildcards": "",
+                "rule": current_rule,
+                "stage": key,
+                "wildcards": "",
                 "started": log_epoch,
             }
             if key != "?" and log_epoch is not None:
@@ -843,7 +1016,9 @@ def parse_workflow(stderr_text):
             sample = extract_wildcard(wildcards, "sample_id")
             if sample and sample not in samples:
                 samples[sample] = {
-                    "last_stage": None, "last_finished": None, "history": {},
+                    "last_stage": None,
+                    "last_finished": None,
+                    "history": {},
                 }
                 sample_order.append(sample)
             current_job = None
@@ -868,7 +1043,8 @@ def parse_workflow(stderr_text):
                 if sample:
                     if sample not in samples:
                         samples[sample] = {
-                            "last_stage": None, "last_finished": None,
+                            "last_stage": None,
+                            "last_finished": None,
                             "history": {},
                         }
                         sample_order.append(sample)
@@ -876,7 +1052,8 @@ def parse_workflow(stderr_text):
                     samples[sample]["last_finished"] = log_epoch
                     if info.get("started") is not None and log_epoch is not None:
                         samples[sample]["history"][key] = max(
-                            0, log_epoch - info["started"])
+                            0, log_epoch - info["started"]
+                        )
             continue
 
         progress_match = re.match(r"^\s*(\d+) of (\d+) steps \(\d+%\) done", line)
@@ -894,59 +1071,96 @@ def parse_workflow(stderr_text):
         sample = extract_wildcard(info.get("wildcards", ""), "sample_id")
         if sample and sample not in samples:
             samples[sample] = {
-                "last_stage": None, "last_finished": None, "history": {},
+                "last_stage": None,
+                "last_finished": None,
+                "history": {},
             }
             sample_order.append(sample)
 
     return {
-        "done": done, "started": started, "finished": finished,
-        "active": active, "recent": recent[-8:], "samples": samples,
+        "done": done,
+        "started": started,
+        "finished": finished,
+        "active": active,
+        "recent": recent[-8:],
+        "samples": samples,
         "completion_times": completion_times,
-        "sample_order": sample_order, "progress_done": progress_done,
-        "progress_total": progress_total, "last_completion": last_completion,
+        "sample_order": sample_order,
+        "progress_done": progress_done,
+        "progress_total": progress_total,
+        "last_completion": last_completion,
         "warning": warning,
     }
 
 
 def query_slurm(job_id):
-    row = command_text([
-        "squeue", "-h", "-j", str(job_id), "-o", "%T|%M|%L|%C|%P|%N|%R"
-    ])
+    row = command_text(
+        ["squeue", "-h", "-j", str(job_id), "-o", "%T|%M|%L|%C|%P|%N|%R"]
+    )
     result = {"terminal": False, "state": "UNKNOWN"}
     if row:
         parts = row.split("|", 6)
         if len(parts) == 7:
             state, elapsed, left, cpus, partition, node, reason = parts
-            result.update({
-                "state": state, "elapsed": elapsed, "left": left, "cpus": cpus,
-                "partition": partition, "node": node, "reason": reason,
-            })
-        usage = command_text([
-            "sstat", "-n", "-P", "-j", "%s.batch" % job_id,
-            "--format=JobID,AveCPU,MaxRSS,MaxDiskRead,MaxDiskWrite",
-        ])
+            result.update(
+                {
+                    "state": state,
+                    "elapsed": elapsed,
+                    "left": left,
+                    "cpus": cpus,
+                    "partition": partition,
+                    "node": node,
+                    "reason": reason,
+                }
+            )
+        usage = command_text(
+            [
+                "sstat",
+                "-n",
+                "-P",
+                "-j",
+                "%s.batch" % job_id,
+                "--format=JobID,AveCPU,MaxRSS,MaxDiskRead,MaxDiskWrite",
+            ]
+        )
         if usage:
             fields = usage.splitlines()[0].split("|")
             if len(fields) >= 5:
-                result.update({
-                    "ave_cpu": fields[1], "max_rss": fields[2],
-                    "disk_read": fields[3], "disk_write": fields[4],
-                })
+                result.update(
+                    {
+                        "ave_cpu": fields[1],
+                        "max_rss": fields[2],
+                        "disk_read": fields[3],
+                        "disk_write": fields[4],
+                    }
+                )
         return result
 
-    accounting = command_text([
-        "sacct", "-X", "-n", "-P", "-j", str(job_id),
-        "--format=State,ExitCode,Elapsed,AllocCPUS,NodeList",
-    ])
+    accounting = command_text(
+        [
+            "sacct",
+            "-X",
+            "-n",
+            "-P",
+            "-j",
+            str(job_id),
+            "--format=State,ExitCode,Elapsed,AllocCPUS,NodeList",
+        ]
+    )
     if accounting:
         fields = accounting.splitlines()[0].split("|")
         if len(fields) >= 5:
             state = fields[0].split()[0].rstrip("+")
-            result.update({
-                "state": state, "exit_code": fields[1], "elapsed": fields[2],
-                "cpus": fields[3], "node": fields[4],
-                "terminal": state in TERMINAL_STATES,
-            })
+            result.update(
+                {
+                    "state": state,
+                    "exit_code": fields[1],
+                    "elapsed": fields[2],
+                    "cpus": fields[3],
+                    "node": fields[4],
+                    "terminal": state in TERMINAL_STATES,
+                }
+            )
     return result
 
 
@@ -992,9 +1206,7 @@ def active_sample_info(model, sample):
             active_items.append((job_id, info))
     if not active_items:
         return None, None
-    return sorted(
-        active_items, key=lambda item: item[1].get("started") or 0
-    )[-1]
+    return sorted(active_items, key=lambda item: item[1].get("started") or 0)[-1]
 
 
 def latest_sample_state(model, sample, now):
@@ -1044,7 +1256,11 @@ def peer_runtime_comparison(model, sample, now):
     else:
         label, style = "CHECK PROGRESS", "yellow"
     return "%s (%.1fx median %s; n=%d)" % (
-        label, ratio, duration(median), len(peers)), style
+        label,
+        ratio,
+        duration(median),
+        len(peers),
+    ), style
 
 
 def replicate_groups(model):
@@ -1070,16 +1286,32 @@ def completion_velocity(model, now):
 
 def init_colors():
     if os.environ.get("NO_COLOR"):
-        return {name: 0 for name in (
-            "normal", "title", "green", "green_bold", "cyan",
-            "cyan_bold", "yellow", "yellow_bold", "red", "dim",
-            "border", "panel_title", "label", "value",
-        )}
+        return {
+            name: 0
+            for name in (
+                "normal",
+                "title",
+                "green",
+                "green_bold",
+                "cyan",
+                "cyan_bold",
+                "yellow",
+                "yellow_bold",
+                "red",
+                "dim",
+                "border",
+                "panel_title",
+                "label",
+                "value",
+            )
+        }
     curses.start_color()
     curses.use_default_colors()
     pairs = {
-        "green": curses.COLOR_GREEN, "cyan": curses.COLOR_CYAN,
-        "yellow": curses.COLOR_YELLOW, "red": curses.COLOR_RED,
+        "green": curses.COLOR_GREEN,
+        "cyan": curses.COLOR_CYAN,
+        "yellow": curses.COLOR_YELLOW,
+        "red": curses.COLOR_RED,
         "magenta": curses.COLOR_MAGENTA,
     }
     attrs = {"normal": 0, "dim": curses.A_DIM}
@@ -1115,8 +1347,8 @@ def safe_add(screen, y, x, text, attr=0, limit=None):
 
 
 def draw_box(
-        screen, y, x, height, width, title, lines, attrs,
-        scroll=0, scrollable=False):
+    screen, y, x, height, width, title, lines, attrs, scroll=0, scrollable=False
+):
     max_y, max_x = screen.getmaxyx()
     height = min(height, max_y - y)
     width = min(width, max_x - x)
@@ -1129,8 +1361,12 @@ def draw_box(
         safe_add(screen, row, x, "|", border)
         safe_add(screen, row, x + width - 1, "|", border)
     safe_add(
-        screen, y, x + 2, " %s " % title,
-        attrs["panel_title"], width - 4,
+        screen,
+        y,
+        x + 2,
+        " %s " % title,
+        attrs["panel_title"],
+        width - 4,
     )
     content_height = height - 2
     overflow = len(lines) > content_height
@@ -1138,7 +1374,7 @@ def draw_box(
     visible_height = max(1, visible_height)
     max_scroll = max(0, len(lines) - visible_height)
     start = min(max(0, scroll), max_scroll) if scrollable else 0
-    visible_lines = lines[start:start + visible_height]
+    visible_lines = lines[start : start + visible_height]
     for offset, item in enumerate(visible_lines):
         if isinstance(item, list):
             used = 0
@@ -1154,8 +1390,12 @@ def draw_box(
                 if remaining <= 0:
                     break
                 safe_add(
-                    screen, y + 1 + offset, x + 2 + used,
-                    text, attr, remaining,
+                    screen,
+                    y + 1 + offset,
+                    x + 2 + used,
+                    text,
+                    attr,
+                    remaining,
                 )
                 used += min(len(text), remaining)
         elif isinstance(item, tuple):
@@ -1168,16 +1408,23 @@ def draw_box(
     if overflow:
         if scrollable:
             end = min(len(lines), start + visible_height)
-            arrows = ("^" if start else "-") + "/" + (
-                "v" if end < len(lines) else "-")
+            arrows = ("^" if start else "-") + "/" + ("v" if end < len(lines) else "-")
             message = "[%s Up/Down] Current Work lines %d-%d of %d" % (
-                arrows, start + 1, end, len(lines))
+                arrows,
+                start + 1,
+                end,
+                len(lines),
+            )
         else:
             hidden = len(lines) - visible_height
             message = "... %d more lines; resize or use the other view" % hidden
         safe_add(
-            screen, y + height - 2, x + 2, message,
-            attrs["yellow"], width - 4,
+            screen,
+            y + height - 2,
+            x + 2,
+            message,
+            attrs["yellow"],
+            width - 4,
         )
     return max_scroll
 
@@ -1202,34 +1449,67 @@ def wrapped_field(label, value, width, value_style="normal", indent=""):
     available = max(12, width - len(prefix))
     chunks = textwrap.wrap(str(value), available) or [""]
     lines = [[(prefix, "label"), (chunks[0], value_style)]]
-    lines.extend([
-        [(" " * len(prefix), "normal"), (chunk, value_style)]
-        for chunk in chunks[1:]
-    ])
+    lines.extend(
+        [[(" " * len(prefix), "normal"), (chunk, value_style)] for chunk in chunks[1:]]
+    )
     return lines
 
 
 def job_lines(slurm, identity, width, attrs):
     state = slurm.get("state", "UNKNOWN")
-    state_style = "yellow_bold" if state == "RUNNING" else "green_bold" if state == "COMPLETED" else "yellow"
+    state_style = (
+        "yellow_bold"
+        if state == "RUNNING"
+        else "green_bold"
+        if state == "COMPLETED"
+        else "yellow"
+    )
     if state in TERMINAL_STATES - {"COMPLETED"}:
         state_style = "red"
     lines = [
         [
-            ("State: ", "label"), (state, state_style),
-            (" | elapsed: ", "label"), (slurm.get("elapsed", "-"), "value"),
-            (" | Slurm time left: ", "label"), (slurm.get("left", "-"), "value"),
+            ("State: ", "label"),
+            (state, state_style),
+            (" | elapsed: ", "label"),
+            (slurm.get("elapsed", "-"), "value"),
+            (" | Slurm time left: ", "label"),
+            (slurm.get("left", "-"), "value"),
         ],
-        field_line("Allocation", "%s CPUs | partition %s | node %s" % (
-            slurm.get("cpus", "-"), slurm.get("partition", "-"),
-            slurm.get("node", "-")), "value"),
-        field_line("Usage", "peak RSS %s | I/O %s read / %s written | average task CPU time %s" % (
-            human_size(slurm.get("max_rss")), human_size(slurm.get("disk_read")),
-            human_size(slurm.get("disk_write")), slurm.get("ave_cpu", "-")), "value"),
-        field_line("Run", identity.get("run_id", "waiting for control stream"), "value"),
-        field_line("Source / attempt", "%s | %s" % (
-            identity.get("source_commit", "-"), identity.get("attempt", "-")), "value"),
-        field_line("Run root", identity.get("run_root", identity.get("workspace", "-")), "value"),
+        field_line(
+            "Allocation",
+            "%s CPUs | partition %s | node %s"
+            % (
+                slurm.get("cpus", "-"),
+                slurm.get("partition", "-"),
+                slurm.get("node", "-"),
+            ),
+            "value",
+        ),
+        field_line(
+            "Usage",
+            "peak RSS %s | I/O %s read / %s written | average task CPU time %s"
+            % (
+                human_size(slurm.get("max_rss")),
+                human_size(slurm.get("disk_read")),
+                human_size(slurm.get("disk_write")),
+                slurm.get("ave_cpu", "-"),
+            ),
+            "value",
+        ),
+        field_line(
+            "Run", identity.get("run_id", "waiting for control stream"), "value"
+        ),
+        field_line(
+            "Source / attempt",
+            "%s | %s"
+            % (identity.get("source_commit", "-"), identity.get("attempt", "-")),
+            "value",
+        ),
+        field_line(
+            "Run root",
+            identity.get("run_root", identity.get("workspace", "-")),
+            "value",
+        ),
     ]
     return lines
 
@@ -1249,7 +1529,11 @@ def progress_line(model, width):
     filled = int((complete / total) * bar_width + 0.5) if total else 0
     bar = "[" + "#" * filled + "-" * (bar_width - filled) + "]"
     return "%s %d/%d Snakemake jobs | %d jobs remaining" % (
-        bar, complete, total, remaining)
+        bar,
+        complete,
+        total,
+        remaining,
+    )
 
 
 def pipeline_lines(model, now, width, include_summary=True):
@@ -1277,8 +1561,13 @@ def pipeline_lines(model, now, width, include_summary=True):
         else:
             stop = model["finished"].get(key) if done >= expected else now
             elapsed = duration((stop or now) - start)
-        lines.append(("%-7s %-27s %2d/%-4d  %-12s %s" % (
-            key, title, done, expected, elapsed, state), style))
+        lines.append(
+            (
+                "%-7s %-27s %2d/%-4d  %-12s %s"
+                % (key, title, done, expected, elapsed, state),
+                style,
+            )
+        )
     return lines
 
 
@@ -1303,7 +1592,9 @@ def current_lines(model, identity, now, width, include_active=True):
         grouped.setdefault(info["stage"], []).append(info)
     lines = []
     if not grouped:
-        return ["No scientific owner is visible: preflight, dependency transition, or finalization."]
+        return [
+            "No scientific owner is visible: preflight, dependency transition, or finalization."
+        ]
     for key in [row[0] for row in STAGES]:
         infos = grouped.get(key)
         if not infos:
@@ -1315,24 +1606,41 @@ def current_lines(model, identity, now, width, include_active=True):
         started = model["started"].get(key)
         lines.append(("Step %s - %s" % (key, title), "yellow_bold"))
         lines.extend(wrapped_field("Work", purpose, width - 4, indent="  "))
-        lines.append(field_line(
-            "Progress", "%d/%d complete | %d running | %d waiting" % (
-                done, expected, len(infos), waiting),
-            "value", indent="  ",
-        ))
-        lines.append(field_line(
-            "Time in stage", duration(now - started) if started else "-",
-            "value", indent="  ",
-        ))
-        lines.extend(wrapped_field(
-            "Resources", stage_resource_text(key, identity, resources),
-            width - 4, indent="  ",
-        ))
+        lines.append(
+            field_line(
+                "Progress",
+                "%d/%d complete | %d running | %d waiting"
+                % (done, expected, len(infos), waiting),
+                "value",
+                indent="  ",
+            )
+        )
+        lines.append(
+            field_line(
+                "Time in stage",
+                duration(now - started) if started else "-",
+                "value",
+                indent="  ",
+            )
+        )
+        lines.extend(
+            wrapped_field(
+                "Resources",
+                stage_resource_text(key, identity, resources),
+                width - 4,
+                indent="  ",
+            )
+        )
         units = [info.get("wildcards", "") for info in infos if info.get("wildcards")]
         if include_active and units:
-            lines.extend(wrapped_field(
-                "Active", ", ".join(units), width - 4, indent="  ",
-            ))
+            lines.extend(
+                wrapped_field(
+                    "Active",
+                    ", ".join(units),
+                    width - 4,
+                    indent="  ",
+                )
+            )
         lines.append("")
     if lines and lines[-1] == "":
         lines.pop()
@@ -1345,35 +1653,66 @@ def sample_lines(model, now, width):
     status_width = 10
     elapsed_width = 9
     job_width = 7
-    fixed = (
-        sample_width + pipeline_width + status_width + elapsed_width +
-        job_width + 6
-    )
+    fixed = sample_width + pipeline_width + status_width + elapsed_width + job_width + 6
     stage_width = max(18, width - fixed)
     row_format = "%%-%ds %%-%ds %%-%ds %%-%ds %%%ds %%-%ds" % (
-        sample_width, pipeline_width, stage_width, status_width,
-        elapsed_width, job_width,
+        sample_width,
+        pipeline_width,
+        stage_width,
+        status_width,
+        elapsed_width,
+        job_width,
     )
-    lines = [row_format % (
-        "SAMPLE", "PIPELINE", "CURRENT STAGE", "STATUS", "ELAPSED", "JOB",
-    )]
+    lines = [
+        row_format
+        % (
+            "SAMPLE",
+            "PIPELINE",
+            "CURRENT STAGE",
+            "STATUS",
+            "ELAPSED",
+            "JOB",
+        )
+    ]
     for sample in sorted(model["sample_order"], key=sample_sort_key):
         key, status, elapsed = latest_sample_state(model, sample, now)
-        style = "yellow_bold" if status == "RUNNING" else "green" if status == "READY FOR COHORT" else "yellow" if status == "WAITING" else "dim"
+        style = (
+            "yellow_bold"
+            if status == "RUNNING"
+            else "green"
+            if status == "READY FOR COHORT"
+            else "yellow"
+            if status == "WAITING"
+            else "dim"
+        )
         title = STAGE_BY_KEY.get(key, (None, "", None))[1]
         sample_state = model["samples"].get(sample, {})
         history = sample_state.get("history", {})
         complete = sum(1 for stage in SAMPLE_STAGE_KEYS if stage in history)
         active_job, _ = active_sample_info(model, sample)
         markers = "".join(
-            "x" if stage in history else ">" if stage == key and status == "RUNNING" else "."
+            "x"
+            if stage in history
+            else ">"
+            if stage == key and status == "RUNNING"
+            else "."
             for stage in SAMPLE_STAGE_KEYS
         )
         pipeline = "[%s] %d/7" % (markers, complete)
-        lines.append((row_format % (
-            sample, pipeline, "%s %s" % (key, title), status,
-            elapsed, active_job or "-",
-        ), style))
+        lines.append(
+            (
+                row_format
+                % (
+                    sample,
+                    pipeline,
+                    "%s %s" % (key, title),
+                    status,
+                    elapsed,
+                    active_job or "-",
+                ),
+                style,
+            )
+        )
         last = sample_state.get("last_stage")
         if last:
             last_duration = duration(history.get(last))
@@ -1382,10 +1721,13 @@ def sample_lines(model, now, width):
             last_text = "  Last: none"
         if status == "RUNNING":
             peer_text, peer_style = peer_runtime_comparison(model, sample, now)
-            lines.append([
-                (last_text, "dim"), (" | Peer: ", "dim"),
-                (peer_text, peer_style),
-            ])
+            lines.append(
+                [
+                    (last_text, "dim"),
+                    (" | Peer: ", "dim"),
+                    (peer_text, peer_style),
+                ]
+            )
         else:
             lines.append((last_text, "dim"))
 
@@ -1401,12 +1743,18 @@ def sample_lines(model, now, width):
                 "06" in model["samples"].get(sample, {}).get("history", {})
                 for sample in samples
             )
-            label, style = ("READY", "green_bold") if ready else ("PROCESSING", "yellow_bold")
-            lines.append([
-                ("replicate_%s: %s | " % (
-                    replicate, " | ".join(members)), "normal"),
-                (label, style),
-            ])
+            label, style = (
+                ("READY", "green_bold") if ready else ("PROCESSING", "yellow_bold")
+            )
+            lines.append(
+                [
+                    (
+                        "replicate_%s: %s | " % (replicate, " | ".join(members)),
+                        "normal",
+                    ),
+                    (label, style),
+                ]
+            )
     if len(lines) == 1:
         lines.append("Waiting for sample jobs to appear in the scheduler log.")
     return lines
@@ -1428,13 +1776,12 @@ def sample_lane_window(model, width):
         )
 
     earliest_uncleared = next(
-        (index for index, key in enumerate(keys)
-         if not cleared_for_every_sample(key)),
+        (index for index, key in enumerate(keys) if not cleared_for_every_sample(key)),
         len(keys),
     )
     start = max(0, earliest_uncleared - 1)
     start = min(start, max(0, len(keys) - capacity))
-    return keys[start:start + capacity], keys[:start]
+    return keys[start : start + capacity], keys[:start]
 
 
 def sample_lane_lines(model, now, width):
@@ -1445,10 +1792,12 @@ def sample_lane_lines(model, now, width):
         "Legend: [x] complete  [>] running  [.] pending",
     ]
     if hidden:
-        lines.append((
-            "Earlier stages cleared by every sample: %s" % ", ".join(hidden),
-            "dim",
-        ))
+        lines.append(
+            (
+                "Earlier stages cleared by every sample: %s" % ", ".join(hidden),
+                "dim",
+            )
+        )
     lines.extend(["", "%-22s %s" % ("SAMPLE", lane_header)])
     for sample in sorted(model["sample_order"], key=sample_sort_key):
         active_key, status, _ = latest_sample_state(model, sample, now)
@@ -1463,9 +1812,13 @@ def sample_lane_lines(model, now, width):
                 marker, marker_style = ".", "dim"
             opening = "%s[" % key
             closing = "]" + " " * (cell_width - len(opening) - 2)
-            segments.extend([
-                (opening, "normal"), (marker, marker_style), (closing, "normal"),
-            ])
+            segments.extend(
+                [
+                    (opening, "normal"),
+                    (marker, marker_style),
+                    (closing, "normal"),
+                ]
+            )
             if index < len(keys) - 1:
                 segments.append((" ", "normal"))
         lines.append(segments)
@@ -1474,20 +1827,23 @@ def sample_lane_lines(model, now, width):
 
     if model["sample_order"]:
         ready = sum(
-            1 for sample in model["sample_order"]
+            1
+            for sample in model["sample_order"]
             if "06" in model["samples"].get(sample, {}).get("history", {})
         )
         total = len(model["sample_order"])
         readiness_style = "green_bold" if ready == total else "yellow_bold"
-        lines.extend([
-            "",
-            ("COHORT HANDOFF", "panel_title"),
+        lines.extend(
             [
-                ("Samples through Step 06: ", "label"),
-                ("%d/%d" % (ready, total), readiness_style),
-                (" - aggregate analysis unlocks when all are ready", "dim"),
-            ],
-        ])
+                "",
+                ("COHORT HANDOFF", "panel_title"),
+                [
+                    ("Samples through Step 06: ", "label"),
+                    ("%d/%d" % (ready, total), readiness_style),
+                    (" - aggregate analysis unlocks when all are ready", "dim"),
+                ],
+            ]
+        )
         aggregate_keys = ("07", "08", "09", "10", "REPORT")
         active_counts = {}
         for info in model["active"].values():
@@ -1503,9 +1859,13 @@ def sample_lane_lines(model, now, width):
             else:
                 marker, style = ".", "dim"
             label = "RPT" if key == "REPORT" else key
-            aggregate_segments.extend([
-                (label + "[", "normal"), (marker, style), ("]", "normal"),
-            ])
+            aggregate_segments.extend(
+                [
+                    (label + "[", "normal"),
+                    (marker, style),
+                    ("]", "normal"),
+                ]
+            )
             if index < len(aggregate_keys) - 1:
                 aggregate_segments.append(("  ", "normal"))
         lines.append(aggregate_segments)
@@ -1515,30 +1875,48 @@ def sample_lane_lines(model, now, width):
 def compact_activity_lines(model, now, width):
     lines = []
     if model["last_completion"]:
-        lines.extend(wrapped_field(
-            "Latest owner completion",
-            "%s ago" % duration(now - model["last_completion"]), width, "value",
-        ))
+        lines.extend(
+            wrapped_field(
+                "Latest owner completion",
+                "%s ago" % duration(now - model["last_completion"]),
+                width,
+                "value",
+            )
+        )
     else:
         lines.append("No owner completion has appeared yet.")
     recent_15, recent_60 = completion_velocity(model, now)
-    lines.extend(wrapped_field(
-        "Owner completions (rolling)",
-        "%d in the last 15m | %d in the last 60m" % (recent_15, recent_60),
-        width, "value",
-    ))
-    lines.extend((line, "dim") for line in wrapped(
-        "Counts completed Snakemake owner jobs; this is throughput, not an ETA.",
-        width,
-    ))
+    lines.extend(
+        wrapped_field(
+            "Owner completions (rolling)",
+            "%d in the last 15m | %d in the last 60m" % (recent_15, recent_60),
+            width,
+            "value",
+        )
+    )
+    lines.extend(
+        (line, "dim")
+        for line in wrapped(
+            "Counts completed Snakemake owner jobs; this is throughput, not an ETA.",
+            width,
+        )
+    )
     for job_id, key, rule, _ in model["recent"][-3:]:
-        lines.extend((line, "green") for line in wrapped(
-            "DONE job %s | Step %s | %s" % (job_id, key, rule), width,
-        ))
+        lines.extend(
+            (line, "green")
+            for line in wrapped(
+                "DONE job %s | Step %s | %s" % (job_id, key, rule),
+                width,
+            )
+        )
     if model["warning"]:
-        lines.extend((line, "red") for line in wrapped(
-            "Latest error-like line: %s" % model["warning"], width,
-        ))
+        lines.extend(
+            (line, "red")
+            for line in wrapped(
+                "Latest error-like line: %s" % model["warning"],
+                width,
+            )
+        )
     return lines
 
 
@@ -1552,22 +1930,40 @@ def short_identity(value, length=16):
 
 def overview_lines(slurm, identity, model, width):
     state = slurm.get("state", "UNKNOWN")
-    state_style = "yellow_bold" if state == "RUNNING" else "green_bold" if state == "COMPLETED" else "yellow"
+    state_style = (
+        "yellow_bold"
+        if state == "RUNNING"
+        else "green_bold"
+        if state == "COMPLETED"
+        else "yellow"
+    )
     if state in TERMINAL_STATES - {"COMPLETED"}:
         state_style = "red"
     phase_number, phase_title = workflow_phase(model)
     return [
         [
-            ("State: ", "label"), (state, state_style),
-            (" | elapsed: ", "label"), (slurm.get("elapsed", "-"), "value"),
-            (" | Slurm time left: ", "label"), (slurm.get("left", "-"), "value"),
+            ("State: ", "label"),
+            (state, state_style),
+            (" | elapsed: ", "label"),
+            (slurm.get("elapsed", "-"), "value"),
+            (" | Slurm time left: ", "label"),
+            (slurm.get("left", "-"), "value"),
         ],
         (progress_line(model, width), "cyan"),
-        field_line("Workflow phase", "%d/4 - %s" % (
-            phase_number, phase_title), "value"),
-        field_line("Allocation", "%s CPUs | %s | %s | peak RSS %s" % (
-            slurm.get("cpus", "-"), slurm.get("partition", "-"),
-            slurm.get("node", "-"), human_size(slurm.get("max_rss"))), "value"),
+        field_line(
+            "Workflow phase", "%d/4 - %s" % (phase_number, phase_title), "value"
+        ),
+        field_line(
+            "Allocation",
+            "%s CPUs | %s | %s | peak RSS %s"
+            % (
+                slurm.get("cpus", "-"),
+                slurm.get("partition", "-"),
+                slurm.get("node", "-"),
+                human_size(slurm.get("max_rss")),
+            ),
+            "value",
+        ),
     ]
 
 
@@ -1580,27 +1976,43 @@ def workflow_frontier_lines(model, now, width):
             active_counts[key] = active_counts.get(key, 0) + 1
     ordered_active = [row[0] for row in STAGES if row[0] in active_counts]
     lines = [("WORKFLOW FRONTIER", "panel_title")]
-    lines.extend((line, "dim") for line in wrapped(
-        "Frontier = earliest active dependency edge. Later work may run, but the "
-        "workflow cannot fully advance until this edge clears.",
-        width,
-    ))
-    if not ordered_active:
-        lines.extend(wrapped(
-            "No scientific owner visible: preflight or dependency transition.",
+    lines.extend(
+        (line, "dim")
+        for line in wrapped(
+            "Frontier = earliest active dependency edge. Later work may run, but the "
+            "workflow cannot fully advance until this edge clears.",
             width,
-        ))
+        )
+    )
+    if not ordered_active:
+        lines.extend(
+            wrapped(
+                "No scientific owner visible: preflight or dependency transition.",
+                width,
+            )
+        )
         return lines
 
-    lines.extend(wrapped_field("Active owners", " | ".join(
-        "Step %s x%d" % (key, active_counts[key]) for key in ordered_active
-    ), width, "value"))
+    lines.extend(
+        wrapped_field(
+            "Active owners",
+            " | ".join(
+                "Step %s x%d" % (key, active_counts[key]) for key in ordered_active
+            ),
+            width,
+            "value",
+        )
+    )
     frontier = ordered_active[0]
     frontier_title = STAGE_BY_KEY[frontier][1]
-    lines.extend(wrapped_field(
-        "Dependency edge", "Step %s - %s (earliest active stage)" % (
-            frontier, frontier_title), width, "yellow_bold",
-    ))
+    lines.extend(
+        wrapped_field(
+            "Dependency edge",
+            "Step %s - %s (earliest active stage)" % (frontier, frontier_title),
+            width,
+            "yellow_bold",
+        )
+    )
 
     if frontier in SAMPLE_STAGES:
         durations = [
@@ -1609,39 +2021,62 @@ def workflow_frontier_lines(model, now, width):
             if state.get("history", {}).get(frontier) is not None
         ]
         if len(durations) >= 2:
-            lines.extend(wrapped_field(
-                "Completed-peer baseline", "median %s across %d samples" % (
-                    duration(statistics.median(durations)), len(durations)),
-                width, "value",
-            ))
+            lines.extend(
+                wrapped_field(
+                    "Completed-peer baseline",
+                    "median %s across %d samples"
+                    % (duration(statistics.median(durations)), len(durations)),
+                    width,
+                    "value",
+                )
+            )
         ready = sum(
-            1 for state in model["samples"].values()
-            if "06" in state.get("history", {})
+            1 for state in model["samples"].values() if "06" in state.get("history", {})
         )
         total = len(model["sample_order"]) or 6
-        lines.extend(wrapped_field(
-            "Cohort readiness", "%d/%d samples completed Step 06" % (
-                ready, total), width, "value",
-        ))
-        lines.extend(wrapped_field(
-            "Next unlock", "Step 07 begins after every sample clears Step 06.",
-            width, "value",
-        ))
+        lines.extend(
+            wrapped_field(
+                "Cohort readiness",
+                "%d/%d samples completed Step 06" % (ready, total),
+                width,
+                "value",
+            )
+        )
+        lines.extend(
+            wrapped_field(
+                "Next unlock",
+                "Step 07 begins after every sample clears Step 06.",
+                width,
+                "value",
+            )
+        )
     elif phase_number == 1:
-        lines.extend(wrapped_field(
-            "Next unlock", "Sample processing begins after reference preparation.",
-            width, "value",
-        ))
+        lines.extend(
+            wrapped_field(
+                "Next unlock",
+                "Sample processing begins after reference preparation.",
+                width,
+                "value",
+            )
+        )
     elif phase_number == 3:
-        lines.extend(wrapped_field(
-            "Next unlock", "Reporting begins after Step 10 completes.",
-            width, "value",
-        ))
+        lines.extend(
+            wrapped_field(
+                "Next unlock",
+                "Reporting begins after Step 10 completes.",
+                width,
+                "value",
+            )
+        )
     else:
-        lines.extend(wrapped_field(
-            "Next unlock", "Final aggregate target and completion evidence.",
-            width, "value",
-        ))
+        lines.extend(
+            wrapped_field(
+                "Next unlock",
+                "Final aggregate target and completion evidence.",
+                width,
+                "value",
+            )
+        )
     return lines
 
 
@@ -1650,17 +2085,36 @@ def provenance_activity_lines(slurm, identity, model, now, width):
         title, lines = activity_lines(model, slurm, identity, now)
         return title, lines
     lines = []
-    lines.extend(wrapped_field("Run", identity.get(
-        "run_id", "waiting for control stream"), width, "value"))
-    lines.extend(wrapped_field("Commit / runtime", "%s | %s" % (
-            short_identity(identity.get("source_commit"), 10),
-            short_identity(identity.get("runtime_hash"), 10)), width, "value"))
-    lines.extend(wrapped_field("Attempt", short_identity(
-        identity.get("attempt"), 34), width, "value"))
-    lines.extend(wrapped_field(
-        "Configuration", configuration_text(identity),
-        width, "value",
-    ))
+    lines.extend(
+        wrapped_field(
+            "Run", identity.get("run_id", "waiting for control stream"), width, "value"
+        )
+    )
+    lines.extend(
+        wrapped_field(
+            "Commit / runtime",
+            "%s | %s"
+            % (
+                short_identity(identity.get("source_commit"), 10),
+                short_identity(identity.get("runtime_hash"), 10),
+            ),
+            width,
+            "value",
+        )
+    )
+    lines.extend(
+        wrapped_field(
+            "Attempt", short_identity(identity.get("attempt"), 34), width, "value"
+        )
+    )
+    lines.extend(
+        wrapped_field(
+            "Configuration",
+            configuration_text(identity),
+            width,
+            "value",
+        )
+    )
     lines.append("")
     lines.extend(workflow_frontier_lines(model, now, width))
     lines.append("")
@@ -1672,12 +2126,16 @@ def activity_lines(model, slurm, identity, now):
     terminal = slurm.get("terminal", False)
     if terminal:
         lines = [
-            ("Slurm: %s | exit %s | elapsed %s" % (
-                slurm.get("state", "-"), slurm.get("exit_code", "-"),
-                slurm.get("elapsed", "-")),
-             "green" if slurm.get("state") == "COMPLETED" else "red"),
-            "Attempt receipt: %s"
-            % identity.get("attempt_status", "not reported"),
+            (
+                "Slurm: %s | exit %s | elapsed %s"
+                % (
+                    slurm.get("state", "-"),
+                    slurm.get("exit_code", "-"),
+                    slurm.get("elapsed", "-"),
+                ),
+                "green" if slurm.get("state") == "COMPLETED" else "red",
+            ),
+            "Attempt receipt: %s" % identity.get("attempt_status", "not reported"),
             "Snakemake: %d/%d jobs complete" % progress_values(model)[:2],
             "Run root: %s" % identity.get("run_root", "-"),
         ]
@@ -1689,19 +2147,26 @@ def activity_lines(model, slurm, identity, now):
 
     lines = []
     if model["last_completion"]:
-        lines.append(field_line(
-            "Latest owner completion",
-            "%s ago" % duration(now - model["last_completion"]), "value",
-        ))
+        lines.append(
+            field_line(
+                "Latest owner completion",
+                "%s ago" % duration(now - model["last_completion"]),
+                "value",
+            )
+        )
     else:
         lines.append("No owner completion has appeared yet.")
     recent_15, recent_60 = completion_velocity(model, now)
-    lines.append(field_line(
-        "Owner completions (rolling)",
-        "%d in the last 15m | %d in the last 60m" % (recent_15, recent_60),
-        "value",
-    ))
-    lines.append(("Rolling throughput count of finished owner jobs; not an ETA.", "dim"))
+    lines.append(
+        field_line(
+            "Owner completions (rolling)",
+            "%d in the last 15m | %d in the last 60m" % (recent_15, recent_60),
+            "value",
+        )
+    )
+    lines.append(
+        ("Rolling throughput count of finished owner jobs; not an ETA.", "dim")
+    )
     lines.append("")
     lines.append("RECENT COMPLETIONS")
     for job_id, key, rule, _ in model["recent"][-6:]:
@@ -1715,20 +2180,33 @@ def activity_lines(model, slurm, identity, now):
 
 def render_header(screen, job_id, view, attrs):
     safe_add(screen, 0, 1, "EMRYS LIVE DASHBOARD v4.9", attrs["title"])
-    safe_add(screen, 0, 27, "| %s | job %s | %s" % (
-        view.upper(), job_id,
-        time.strftime("%a %b %d %I:%M:%S %p %Z %Y")), attrs["normal"])
+    safe_add(
+        screen,
+        0,
+        27,
+        "| %s | job %s | %s"
+        % (view.upper(), job_id, time.strftime("%a %b %d %I:%M:%S %p %Z %Y")),
+        attrs["normal"],
+    )
 
 
-def render_overview(screen, job_id, slurm, identity, model,
-                    refresh_seconds, last_sync, work_scroll):
+def render_overview(
+    screen, job_id, slurm, identity, model, refresh_seconds, last_sync, work_scroll
+):
     screen.erase()
     height, width = screen.getmaxyx()
     attrs = render.attrs
     now = time.time()
     if height < 20 or width < 72:
         safe_add(screen, 0, 0, "EMRYS LIVE DASHBOARD v4.9", attrs["title"])
-        safe_add(screen, 2, 0, "Terminal is too small (%dx%d). Resize to at least 72x20." % (width, height), attrs["yellow"])
+        safe_add(
+            screen,
+            2,
+            0,
+            "Terminal is too small (%dx%d). Resize to at least 72x20."
+            % (width, height),
+            attrs["yellow"],
+        )
         screen.refresh()
         return
 
@@ -1736,8 +2214,16 @@ def render_overview(screen, job_id, slurm, identity, model,
 
     top_y = 1
     top_h = 6
-    draw_box(screen, top_y, 1, top_h, width - 2, "RUN OVERVIEW",
-             overview_lines(slurm, identity, model, width - 6), attrs)
+    draw_box(
+        screen,
+        top_y,
+        1,
+        top_h,
+        width - 2,
+        "RUN OVERVIEW",
+        overview_lines(slurm, identity, model, width - 6),
+        attrs,
+    )
 
     main_y = top_y + top_h
     footer_y = height - 1
@@ -1751,52 +2237,131 @@ def render_overview(screen, job_id, slurm, identity, model,
         upper_h = min(upper_h, main_h - 8)
         lower_h = main_h - upper_h
 
-        draw_box(screen, main_y, 1, upper_h, left_w, "PIPELINE",
-                 pipeline_lines(model, now, left_w - 4, include_summary=False), attrs)
-        draw_box(screen, main_y, right_x, upper_h, right_w, "CURRENT WORK",
-                 current_lines(
-                     model, identity, now, right_w - 4, include_active=False,
-                 ), attrs, scroll=work_scroll, scrollable=True)
-        draw_box(screen, main_y + upper_h, 1, lower_h, left_w, "SAMPLE LANES",
-                 sample_lane_lines(model, now, left_w - 4), attrs)
+        draw_box(
+            screen,
+            main_y,
+            1,
+            upper_h,
+            left_w,
+            "PIPELINE",
+            pipeline_lines(model, now, left_w - 4, include_summary=False),
+            attrs,
+        )
+        draw_box(
+            screen,
+            main_y,
+            right_x,
+            upper_h,
+            right_w,
+            "CURRENT WORK",
+            current_lines(
+                model,
+                identity,
+                now,
+                right_w - 4,
+                include_active=False,
+            ),
+            attrs,
+            scroll=work_scroll,
+            scrollable=True,
+        )
+        draw_box(
+            screen,
+            main_y + upper_h,
+            1,
+            lower_h,
+            left_w,
+            "SAMPLE LANES",
+            sample_lane_lines(model, now, left_w - 4),
+            attrs,
+        )
         activity_title, activity = provenance_activity_lines(
-            slurm, identity, model, now, right_w - 4)
-        draw_box(screen, main_y + upper_h, right_x, lower_h, right_w,
-                 activity_title, activity, attrs)
+            slurm, identity, model, now, right_w - 4
+        )
+        draw_box(
+            screen,
+            main_y + upper_h,
+            right_x,
+            lower_h,
+            right_w,
+            activity_title,
+            activity,
+            attrs,
+        )
     else:
         pipeline_h = min(19, max(10, main_h // 2))
-        draw_box(screen, main_y, 1, pipeline_h, width - 2, "PIPELINE",
-                 pipeline_lines(model, now, width - 6, include_summary=False), attrs)
+        draw_box(
+            screen,
+            main_y,
+            1,
+            pipeline_h,
+            width - 2,
+            "PIPELINE",
+            pipeline_lines(model, now, width - 6, include_summary=False),
+            attrs,
+        )
         remaining_h = main_h - pipeline_h
-        draw_box(screen, main_y + pipeline_h, 1, remaining_h, width - 2, "CURRENT WORK",
-                 current_lines(
-                     model, identity, now, width - 6, include_active=False,
-                 ), attrs, scroll=work_scroll, scrollable=True)
+        draw_box(
+            screen,
+            main_y + pipeline_h,
+            1,
+            remaining_h,
+            width - 2,
+            "CURRENT WORK",
+            current_lines(
+                model,
+                identity,
+                now,
+                width - 6,
+                include_active=False,
+            ),
+            attrs,
+            scroll=work_scroll,
+            scrollable=True,
+        )
 
     age = max(0, int(time.monotonic() - last_sync))
-    footer = "[Up/Down/PgUp/PgDn] scroll work  [Tab] switch  [r] refresh  [q] quit | NFS-light %ss (%ss ago)" % (
-        refresh_seconds, age)
+    footer = (
+        "[Up/Down/PgUp/PgDn] scroll work  [Tab] switch  [r] refresh  [q] quit | NFS-light %ss (%ss ago)"
+        % (refresh_seconds, age)
+    )
     safe_add(screen, footer_y, 1, footer, attrs["dim"], width - 2)
     screen.refresh()
 
 
-def render_details(screen, job_id, slurm, identity, model,
-                   refresh_seconds, last_sync, work_scroll):
+def render_details(
+    screen, job_id, slurm, identity, model, refresh_seconds, last_sync, work_scroll
+):
     screen.erase()
     height, width = screen.getmaxyx()
     attrs = render.attrs
     now = time.time()
     if height < 20 or width < 72:
         safe_add(screen, 0, 0, "EMRYS LIVE DASHBOARD v4.9", attrs["title"])
-        safe_add(screen, 2, 0, "Terminal is too small (%dx%d). Resize to at least 72x20." % (width, height), attrs["yellow"])
+        safe_add(
+            screen,
+            2,
+            0,
+            "Terminal is too small (%dx%d). Resize to at least 72x20."
+            % (width, height),
+            attrs["yellow"],
+        )
         screen.refresh()
         return
 
     render_header(screen, job_id, "details", attrs)
     top_y = 1
     top_h = min(8, max(6, height // 6))
-    draw_box(screen, top_y, 1, top_h, width - 2, "JOB, RESOURCES & RUN IDENTITY",
-             job_lines(slurm, identity, width - 6, attrs), attrs)
+    draw_box(
+        screen,
+        top_y,
+        1,
+        top_h,
+        width - 2,
+        "JOB, RESOURCES & RUN IDENTITY",
+        job_lines(slurm, identity, width - 6, attrs),
+        attrs,
+    )
 
     main_y = top_y + top_h
     footer_y = height - 1
@@ -1810,53 +2375,131 @@ def render_details(screen, job_id, slurm, identity, model,
         pipeline_h = max(22, int(main_h * 0.62))
         pipeline_h = min(pipeline_h, main_h - 5)
         activity_h = main_h - pipeline_h
-        draw_box(screen, main_y, 1, pipeline_h, left_w, "PIPELINE",
-                 pipeline_lines(model, now, left_w - 4), attrs)
+        draw_box(
+            screen,
+            main_y,
+            1,
+            pipeline_h,
+            left_w,
+            "PIPELINE",
+            pipeline_lines(model, now, left_w - 4),
+            attrs,
+        )
         activity_title, activity = activity_lines(model, slurm, identity, now)
-        draw_box(screen, main_y + pipeline_h, 1, activity_h, left_w, activity_title,
-                 activity, attrs)
+        draw_box(
+            screen,
+            main_y + pipeline_h,
+            1,
+            activity_h,
+            left_w,
+            activity_title,
+            activity,
+            attrs,
+        )
 
         current_h = max(12, int(main_h * 0.50))
         current_h = min(current_h, main_h - 8)
         sample_h = main_h - current_h
-        draw_box(screen, main_y, right_x, current_h, right_w, "CURRENT WORK DETAILS",
-                 current_lines(model, identity, now, right_w - 4), attrs,
-                 scroll=work_scroll, scrollable=True)
-        draw_box(screen, main_y + current_h, right_x, sample_h, right_w, "SAMPLE DETAILS",
-                 sample_lines(model, now, right_w - 4), attrs)
+        draw_box(
+            screen,
+            main_y,
+            right_x,
+            current_h,
+            right_w,
+            "CURRENT WORK DETAILS",
+            current_lines(model, identity, now, right_w - 4),
+            attrs,
+            scroll=work_scroll,
+            scrollable=True,
+        )
+        draw_box(
+            screen,
+            main_y + current_h,
+            right_x,
+            sample_h,
+            right_w,
+            "SAMPLE DETAILS",
+            sample_lines(model, now, right_w - 4),
+            attrs,
+        )
     else:
         pipeline_h = min(22, max(10, main_h // 2))
-        draw_box(screen, main_y, 1, pipeline_h, width - 2, "PIPELINE",
-                 pipeline_lines(model, now, width - 6), attrs)
+        draw_box(
+            screen,
+            main_y,
+            1,
+            pipeline_h,
+            width - 2,
+            "PIPELINE",
+            pipeline_lines(model, now, width - 6),
+            attrs,
+        )
         remaining_h = main_h - pipeline_h
-        draw_box(screen, main_y + pipeline_h, 1, remaining_h, width - 2,
-                 "CURRENT WORK DETAILS", current_lines(model, identity, now, width - 6), attrs,
-                 scroll=work_scroll, scrollable=True)
+        draw_box(
+            screen,
+            main_y + pipeline_h,
+            1,
+            remaining_h,
+            width - 2,
+            "CURRENT WORK DETAILS",
+            current_lines(model, identity, now, width - 6),
+            attrs,
+            scroll=work_scroll,
+            scrollable=True,
+        )
 
     age = max(0, int(time.monotonic() - last_sync))
-    footer = "[Up/Down/PgUp/PgDn] scroll work  [Tab] switch  [r] refresh  [q] quit | NFS-light %ss (%ss ago)" % (
-        refresh_seconds, age)
+    footer = (
+        "[Up/Down/PgUp/PgDn] scroll work  [Tab] switch  [r] refresh  [q] quit | NFS-light %ss (%ss ago)"
+        % (refresh_seconds, age)
+    )
     safe_add(screen, footer_y, 1, footer, attrs["dim"], width - 2)
     screen.refresh()
 
 
 def render(
-        screen, job_id, slurm, identity, model, refresh_seconds, last_sync,
-        view, work_scroll):
+    screen,
+    job_id,
+    slurm,
+    identity,
+    model,
+    refresh_seconds,
+    last_sync,
+    view,
+    work_scroll,
+):
     if view == "details":
-        render_details(screen, job_id, slurm, identity, model,
-                       refresh_seconds, last_sync, work_scroll)
+        render_details(
+            screen,
+            job_id,
+            slurm,
+            identity,
+            model,
+            refresh_seconds,
+            last_sync,
+            work_scroll,
+        )
     else:
-        render_overview(screen, job_id, slurm, identity, model,
-                        refresh_seconds, last_sync, work_scroll)
+        render_overview(
+            screen,
+            job_id,
+            slurm,
+            identity,
+            model,
+            refresh_seconds,
+            last_sync,
+            work_scroll,
+        )
 
 
 def snapshot(job_id, slurm, identity, model):
     now = time.time()
     complete, total, remaining = progress_values(model)
     print("EMRYS LIVE DASHBOARD v4.9 snapshot | job %s" % job_id)
-    print("State: %s | %s/%s Snakemake jobs | %s remaining" % (
-        slurm.get("state", "UNKNOWN"), complete, total, remaining))
+    print(
+        "State: %s | %s/%s Snakemake jobs | %s remaining"
+        % (slurm.get("state", "UNKNOWN"), complete, total, remaining)
+    )
     print("Run: %s" % identity.get("run_id", "-"))
     print("Configuration: %s" % configuration_text(identity))
     for line in pipeline_lines(model, now, 80):
@@ -1891,11 +2534,13 @@ def dashboard(screen, args):
             err_cache.sync()
             identity = parse_identity(out_cache.text())
             model = parse_workflow(err_cache.text())
-            new_signature = tuple(sorted(
-                (job_id, info.get("stage"), info.get("wildcards"))
-                for job_id, info in model["active"].items()
-                if info.get("stage") != "FINAL"
-            ))
+            new_signature = tuple(
+                sorted(
+                    (job_id, info.get("stage"), info.get("wildcards"))
+                    for job_id, info in model["active"].items()
+                    if info.get("stage") != "FINAL"
+                )
+            )
             if new_signature != active_signature:
                 work_scroll = 0
                 active_signature = new_signature
@@ -1903,8 +2548,17 @@ def dashboard(screen, args):
                 slurm = query_slurm(args.job_id)
             last_sync = now
             force = False
-        render(screen, args.job_id, slurm, identity, model,
-               args.refresh, last_sync, view, work_scroll)
+        render(
+            screen,
+            args.job_id,
+            slurm,
+            identity,
+            model,
+            args.refresh,
+            last_sync,
+            view,
+            work_scroll,
+        )
         key = screen.getch()
         if key in (ord("q"), ord("Q")):
             return
@@ -1934,14 +2588,17 @@ def dashboard(screen, args):
 
 
 def parse_args(argv):
-    parser = argparse.ArgumentParser(description="Responsive EMRYS/Slurm live dashboard")
+    parser = argparse.ArgumentParser(
+        description="Responsive EMRYS/Slurm live dashboard"
+    )
     parser.add_argument("job_id", nargs="?", type=int)
     parser.add_argument("log_dir", nargs="?")
     parser.add_argument("--refresh", type=int, default=30)
     parser.add_argument("--out")
     parser.add_argument("--err")
     parser.add_argument(
-        "--offline", action="store_true",
+        "--offline",
+        action="store_true",
         help="use explicit --out/--err fixtures without scheduler metadata",
     )
     parser.add_argument("--snapshot", action="store_true")
@@ -1954,7 +2611,11 @@ def parse_args(argv):
     selected_log_dir = args.log_dir if args.log_dir is not None else env_log_dir or None
     try:
         selection = resolve_selection(
-            selected_job, selected_log_dir, args.out, args.err, args.offline,
+            selected_job,
+            selected_log_dir,
+            args.out,
+            args.err,
+            args.offline,
         )
     except DiscoveryError as exc:
         parser.error(str(exc))
@@ -1970,9 +2631,14 @@ def main(argv=None):
     if args.snapshot:
         out_cache = StreamCache(args.out)
         err_cache = StreamCache(args.err)
-        out_cache.sync(); err_cache.sync()
-        snapshot(args.job_id, query_slurm(args.job_id),
-                 parse_identity(out_cache.text()), parse_workflow(err_cache.text()))
+        out_cache.sync()
+        err_cache.sync()
+        snapshot(
+            args.job_id,
+            query_slurm(args.job_id),
+            parse_identity(out_cache.text()),
+            parse_workflow(err_cache.text()),
+        )
         return 0
     try:
         curses.wrapper(dashboard, args)

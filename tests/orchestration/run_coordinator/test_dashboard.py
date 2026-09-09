@@ -467,8 +467,7 @@ def test_explicit_completed_job_uses_exact_accounting_streams_without_log_dir(
         calls.append(argv)
         assert argv[0] == "sacct"
         return (
-            f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}|"
-            f"{stdout}|{stderr}"
+            f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}|{stdout}|{stderr}"
         )
 
     monkeypatch.setattr(dashboard, "command_text", fake_command)
@@ -501,8 +500,7 @@ def test_explicit_log_dir_must_agree_with_exact_accounting_streams(
         del argv, timeout
         calls += 1
         return (
-            f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}|"
-            f"{stdout}|{stderr}"
+            f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}|{stdout}|{stderr}"
         )
 
     monkeypatch.setattr(dashboard, "command_text", fake_command)

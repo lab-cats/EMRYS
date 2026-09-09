@@ -36,7 +36,9 @@ def write_repository(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(source, encoding="utf-8")
     if ignored:
-        (repository / ".gitignore").write_text("\n".join(ignored) + "\n", encoding="utf-8")
+        (repository / ".gitignore").write_text(
+            "\n".join(ignored) + "\n", encoding="utf-8"
+        )
     return repository
 
 
@@ -56,20 +58,118 @@ def inspect(
 @pytest.mark.parametrize(
     ("source_path", "source", "target_path", "rule_id", "target", "line"),
     (
-        ("src/emrys/contracts/schema.py", "from emrys.libraries import helper\n", "src/emrys/libraries/helper.py", TOOL.RULE_CONTRACT_NEUTRAL, "emrys.libraries.helper", 1),
-        ("src/emrys/libraries/helper.py", "from emrys.stages.alpha import worker\n", "src/emrys/stages/alpha/worker.py", TOOL.RULE_LIBRARY_NEUTRAL, "emrys.stages.alpha.worker", 1),
-        ("src/emrys/stages/alpha/worker.py", "from emrys.stages.beta import worker\n", "src/emrys/stages/beta/worker.py", TOOL.RULE_FUNCTIONAL_OWNER, "emrys.stages.beta.worker", 1),
-        ("src/emrys/stages/alpha/worker.py", "from emrys.orchestration import control\n", "src/emrys/orchestration/control.py", TOOL.RULE_FUNCTIONAL_OWNER, "emrys.orchestration.control", 1),
-        ("src/emrys/ingestion/admit.py", "from emrys.evidence.runtime import inspector\n", "src/emrys/evidence/runtime/inspector.py", TOOL.RULE_INGESTION_BOUNDARY, "emrys.evidence.runtime.inspector", 1),
-        ("src/emrys/reporting/view.py", "from emrys.analyses.ranking import result\n", "src/emrys/analyses/ranking/result.py", TOOL.RULE_REPORTING_DOWNSTREAM, "emrys.analyses.ranking.result", 1),
-        ("src/emrys/orchestration/control.py", "from emrys.stages.alpha import worker\n", "src/emrys/stages/alpha/worker.py", TOOL.RULE_ORCHESTRATION_BOUNDARY, "emrys.stages.alpha.worker", 1),
-        ("src/emrys/orchestration/control.py", "from emrys.reporting import report\n", "src/emrys/reporting/report.py", TOOL.RULE_ORCHESTRATION_BOUNDARY, "emrys.reporting.report", 1),
-        ("src/emrys/libraries/helper.py", "import emrys.__main__\n", "src/emrys/__main__.py", TOOL.RULE_ORCHESTRATION_BOUNDARY, "emrys.__main__", 1),
-        ("src/emrys/__main__.py", "from emrys.reporting import _private\n", "src/emrys/reporting/_private.py", TOOL.RULE_PRIVATE_OWNER, "emrys.reporting._private", 1),
-        ("src/emrys/libraries/alpha/client.py", "from emrys.libraries.beta import _private\n", "src/emrys/libraries/beta/_private.py", TOOL.RULE_PRIVATE_OWNER, "emrys.libraries.beta._private", 1),
-        ("src/emrys/__init__.py", "from emrys.reporting import view\n", "src/emrys/reporting/view.py", TOOL.RULE_SOURCE_CLASSIFICATION, "emrys.reporting.view", 1),
-        ("src/emrys/stages/alpha/worker.py", "from ..beta import worker\n", "src/emrys/stages/beta/worker.py", TOOL.RULE_FUNCTIONAL_OWNER, "emrys.stages.beta.worker", 1),
-        ("src/emrys/new_domain/quiet.py", "VALUE = 1\n", None, TOOL.RULE_SOURCE_CLASSIFICATION, "emrys.new_domain.quiet", 0),
+        (
+            "src/emrys/contracts/schema.py",
+            "from emrys.libraries import helper\n",
+            "src/emrys/libraries/helper.py",
+            TOOL.RULE_CONTRACT_NEUTRAL,
+            "emrys.libraries.helper",
+            1,
+        ),
+        (
+            "src/emrys/libraries/helper.py",
+            "from emrys.stages.alpha import worker\n",
+            "src/emrys/stages/alpha/worker.py",
+            TOOL.RULE_LIBRARY_NEUTRAL,
+            "emrys.stages.alpha.worker",
+            1,
+        ),
+        (
+            "src/emrys/stages/alpha/worker.py",
+            "from emrys.stages.beta import worker\n",
+            "src/emrys/stages/beta/worker.py",
+            TOOL.RULE_FUNCTIONAL_OWNER,
+            "emrys.stages.beta.worker",
+            1,
+        ),
+        (
+            "src/emrys/stages/alpha/worker.py",
+            "from emrys.orchestration import control\n",
+            "src/emrys/orchestration/control.py",
+            TOOL.RULE_FUNCTIONAL_OWNER,
+            "emrys.orchestration.control",
+            1,
+        ),
+        (
+            "src/emrys/ingestion/admit.py",
+            "from emrys.evidence.runtime import inspector\n",
+            "src/emrys/evidence/runtime/inspector.py",
+            TOOL.RULE_INGESTION_BOUNDARY,
+            "emrys.evidence.runtime.inspector",
+            1,
+        ),
+        (
+            "src/emrys/reporting/view.py",
+            "from emrys.analyses.ranking import result\n",
+            "src/emrys/analyses/ranking/result.py",
+            TOOL.RULE_REPORTING_DOWNSTREAM,
+            "emrys.analyses.ranking.result",
+            1,
+        ),
+        (
+            "src/emrys/orchestration/control.py",
+            "from emrys.stages.alpha import worker\n",
+            "src/emrys/stages/alpha/worker.py",
+            TOOL.RULE_ORCHESTRATION_BOUNDARY,
+            "emrys.stages.alpha.worker",
+            1,
+        ),
+        (
+            "src/emrys/orchestration/control.py",
+            "from emrys.reporting import report\n",
+            "src/emrys/reporting/report.py",
+            TOOL.RULE_ORCHESTRATION_BOUNDARY,
+            "emrys.reporting.report",
+            1,
+        ),
+        (
+            "src/emrys/libraries/helper.py",
+            "import emrys.__main__\n",
+            "src/emrys/__main__.py",
+            TOOL.RULE_ORCHESTRATION_BOUNDARY,
+            "emrys.__main__",
+            1,
+        ),
+        (
+            "src/emrys/__main__.py",
+            "from emrys.reporting import _private\n",
+            "src/emrys/reporting/_private.py",
+            TOOL.RULE_PRIVATE_OWNER,
+            "emrys.reporting._private",
+            1,
+        ),
+        (
+            "src/emrys/libraries/alpha/client.py",
+            "from emrys.libraries.beta import _private\n",
+            "src/emrys/libraries/beta/_private.py",
+            TOOL.RULE_PRIVATE_OWNER,
+            "emrys.libraries.beta._private",
+            1,
+        ),
+        (
+            "src/emrys/__init__.py",
+            "from emrys.reporting import view\n",
+            "src/emrys/reporting/view.py",
+            TOOL.RULE_SOURCE_CLASSIFICATION,
+            "emrys.reporting.view",
+            1,
+        ),
+        (
+            "src/emrys/stages/alpha/worker.py",
+            "from ..beta import worker\n",
+            "src/emrys/stages/beta/worker.py",
+            TOOL.RULE_FUNCTIONAL_OWNER,
+            "emrys.stages.beta.worker",
+            1,
+        ),
+        (
+            "src/emrys/new_domain/quiet.py",
+            "VALUE = 1\n",
+            None,
+            TOOL.RULE_SOURCE_CLASSIFICATION,
+            "emrys.new_domain.quiet",
+            0,
+        ),
     ),
 )
 def test_forbidden_dependency_projection(
@@ -97,18 +197,78 @@ def test_forbidden_dependency_projection(
 @pytest.mark.parametrize(
     ("transition_id", "source_path", "target", "rule_id"),
     (
-        ("SRC-TRANS-013", "src/emrys/orchestration/run_coordinator/doctor.py", "emrys.reporting", TOOL.RULE_ORCHESTRATION_BOUNDARY),
-        ("SRC-TRANS-014", "src/emrys/orchestration/run_coordinator/lifecycle.py", "emrys.reporting.transaction_validation", TOOL.RULE_ORCHESTRATION_BOUNDARY),
-        ("SRC-TRANS-015", "src/emrys/orchestration/run_coordinator/reporting_boundary.py", "emrys.reporting.transaction_validation", TOOL.RULE_ORCHESTRATION_BOUNDARY),
-        ("SRC-TRANS-016", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._artifact_index.context", TOOL.RULE_PRIVATE_OWNER),
-        ("SRC-TRANS-017", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._artifact_index.publication", TOOL.RULE_PRIVATE_OWNER),
-        ("SRC-TRANS-018", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._artifact_index.models", TOOL.RULE_PRIVATE_OWNER),
-        ("SRC-TRANS-019", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.builder", TOOL.RULE_PRIVATE_OWNER),
-        ("SRC-TRANS-020", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.publication", TOOL.RULE_PRIVATE_OWNER),
-        ("SRC-TRANS-021", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.models", TOOL.RULE_PRIVATE_OWNER),
-        ("SRC-TRANS-022", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_report.context", TOOL.RULE_PRIVATE_OWNER),
-        ("SRC-TRANS-023", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_report.publication", TOOL.RULE_PRIVATE_OWNER),
-        ("SRC-TRANS-024", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_report.models", TOOL.RULE_PRIVATE_OWNER),
+        (
+            "SRC-TRANS-013",
+            "src/emrys/orchestration/run_coordinator/doctor.py",
+            "emrys.reporting",
+            TOOL.RULE_ORCHESTRATION_BOUNDARY,
+        ),
+        (
+            "SRC-TRANS-014",
+            "src/emrys/orchestration/run_coordinator/lifecycle.py",
+            "emrys.reporting.transaction_validation",
+            TOOL.RULE_ORCHESTRATION_BOUNDARY,
+        ),
+        (
+            "SRC-TRANS-015",
+            "src/emrys/orchestration/run_coordinator/reporting_boundary.py",
+            "emrys.reporting.transaction_validation",
+            TOOL.RULE_ORCHESTRATION_BOUNDARY,
+        ),
+        (
+            "SRC-TRANS-016",
+            "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+            "emrys.reporting._artifact_index.context",
+            TOOL.RULE_PRIVATE_OWNER,
+        ),
+        (
+            "SRC-TRANS-017",
+            "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+            "emrys.reporting._artifact_index.publication",
+            TOOL.RULE_PRIVATE_OWNER,
+        ),
+        (
+            "SRC-TRANS-018",
+            "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+            "emrys.reporting._artifact_index.models",
+            TOOL.RULE_PRIVATE_OWNER,
+        ),
+        (
+            "SRC-TRANS-019",
+            "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+            "emrys.reporting._run_summary.builder",
+            TOOL.RULE_PRIVATE_OWNER,
+        ),
+        (
+            "SRC-TRANS-020",
+            "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+            "emrys.reporting._run_summary.publication",
+            TOOL.RULE_PRIVATE_OWNER,
+        ),
+        (
+            "SRC-TRANS-021",
+            "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+            "emrys.reporting._run_summary.models",
+            TOOL.RULE_PRIVATE_OWNER,
+        ),
+        (
+            "SRC-TRANS-022",
+            "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+            "emrys.reporting._run_report.context",
+            TOOL.RULE_PRIVATE_OWNER,
+        ),
+        (
+            "SRC-TRANS-023",
+            "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+            "emrys.reporting._run_report.publication",
+            TOOL.RULE_PRIVATE_OWNER,
+        ),
+        (
+            "SRC-TRANS-024",
+            "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+            "emrys.reporting._run_report.models",
+            TOOL.RULE_PRIVATE_OWNER,
+        ),
     ),
 )
 def test_reporting_exceptions_are_exact_and_stale_failing(
@@ -137,7 +297,11 @@ def test_reporting_exceptions_are_exact_and_stale_failing(
     assert inspect(repository, transitions=transitions) == ()
     unpermitted = inspect(repository)
     assert len(unpermitted) == 1
-    assert (unpermitted[0].source_path, unpermitted[0].line, unpermitted[0].rule_id) == (
+    assert (
+        unpermitted[0].source_path,
+        unpermitted[0].line,
+        unpermitted[0].rule_id,
+    ) == (
         source_path,
         1,
         rule_id,
@@ -249,7 +413,14 @@ def test_composition_roster_is_exact_and_stale_failing(tmp_path: Path) -> None:
 
 def test_transition_roster_is_exact_private_and_stale_failing(tmp_path: Path) -> None:
     source_path = "src/emrys/orchestration/control.py"
-    transition = (("TEST-TRANS", source_path, "emrys.stages.alpha.admitted", TOOL.RULE_ORCHESTRATION_BOUNDARY),)
+    transition = (
+        (
+            "TEST-TRANS",
+            source_path,
+            "emrys.stages.alpha.admitted",
+            TOOL.RULE_ORCHESTRATION_BOUNDARY,
+        ),
+    )
     repository = write_repository(
         tmp_path,
         {
@@ -263,7 +434,14 @@ def test_transition_roster_is_exact_private_and_stale_failing(tmp_path: Path) ->
     assert "emrys.stages.alpha.neighbor" in problems[0].detail
 
     private_path = "src/emrys/__main__.py"
-    private_transition = (("TEST-PRIVATE", private_path, "emrys.reporting._private.builder", TOOL.RULE_PRIVATE_OWNER),)
+    private_transition = (
+        (
+            "TEST-PRIVATE",
+            private_path,
+            "emrys.reporting._private.builder",
+            TOOL.RULE_PRIVATE_OWNER,
+        ),
+    )
     private = write_repository(
         tmp_path,
         {
@@ -308,10 +486,13 @@ def test_neutral_library_cycle_scope(tmp_path: Path, cross_owner: bool) -> None:
 
 
 def test_executable_rosters_match_documented_topology() -> None:
-    assert sum(
-        target == "emrys.reporting" or target.startswith("emrys.reporting.")
-        for _transition_id, _source, target, _rule_id in TOOL.TRANSITIONS
-    ) == 12
+    assert (
+        sum(
+            target == "emrys.reporting" or target.startswith("emrys.reporting.")
+            for _transition_id, _source, target, _rule_id in TOOL.TRANSITIONS
+        )
+        == 12
+    )
     topology = SOURCE_TOPOLOGY.read_text(encoding="utf-8")
     seam_rows = re.findall(
         r"^\| `(CLI-SEAM-\d{3})` \| `([^`]+)` \|",
@@ -325,11 +506,21 @@ def test_executable_rosters_match_documented_topology() -> None:
         cells = [cell.strip() for cell in line.split("|")[1:-1]]
         edge = re.fullmatch(r"`([^`]+)` → `([^`]+)`", cells[1])
         assert edge is not None
-        transition_rows.append((cells[0].strip("`"), edge.group(1), edge.group(2), cells[3]))
+        transition_rows.append(
+            (cells[0].strip("`"), edge.group(1), edge.group(2), cells[3])
+        )
 
-    assert len(seam_rows) == len({row[0] for row in seam_rows}) == len(TOOL.COMPOSITION_SEAMS)
+    assert (
+        len(seam_rows)
+        == len({row[0] for row in seam_rows})
+        == len(TOOL.COMPOSITION_SEAMS)
+    )
     assert dict(seam_rows) == dict(TOOL.COMPOSITION_SEAMS)
-    assert len(transition_rows) == len({row[0] for row in transition_rows}) == len(TOOL.TRANSITIONS)
+    assert (
+        len(transition_rows)
+        == len({row[0] for row in transition_rows})
+        == len(TOOL.TRANSITIONS)
+    )
     documented = {row[0]: row[1:] for row in transition_rows}
     assert set(documented) == {row[0] for row in TOOL.TRANSITIONS}
     for transition_id, source, target, _rule_id in TOOL.TRANSITIONS:
@@ -367,11 +558,17 @@ def test_repository_admission_and_inventory(tmp_path: Path) -> None:
         inspect(symlinked)
 
 
-def test_current_repository_and_cli_are_read_only(capsys: pytest.CaptureFixture[str]) -> None:
+def test_current_repository_and_cli_are_read_only(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     def snapshot() -> tuple[tuple[str, int, int], ...]:
         return tuple(
             sorted(
-                (path.relative_to(REPO_ROOT).as_posix(), path.stat().st_size, path.stat().st_mtime_ns)
+                (
+                    path.relative_to(REPO_ROOT).as_posix(),
+                    path.stat().st_size,
+                    path.stat().st_mtime_ns,
+                )
                 for path in (REPO_ROOT / "src/emrys").rglob("*.py")
             )
         )

@@ -52,7 +52,10 @@ _VALIDATION_OWNERS = (
     ("bed12", bed12_validation_command),
     ("canonical-bam", canonical_bam_validation_command),
     ("canonical-bam-qc", canonical_bam_qc_validation_command),
-    ("cohort-candidate-preprocessing", cohort_candidate_preprocessing_validation_command),
+    (
+        "cohort-candidate-preprocessing",
+        cohort_candidate_preprocessing_validation_command,
+    ),
     ("duplicate-marking", duplicate_marking_validation_command),
     ("fasta-sidecars", fasta_sidecars_validation_command),
     ("mechanical-orientation", mechanical_orientation_validation_command),
@@ -120,17 +123,22 @@ def _add_owned_command(
         description=description,
         **parser_options,
     )
-    configure = getattr(
-        owner,
-        f"configure_{configure_action or action}_parser",
-        None,
-    ) or owner.configure_parser
+    configure = (
+        getattr(
+            owner,
+            f"configure_{configure_action or action}_parser",
+            None,
+        )
+        or owner.configure_parser
+    )
     configure(command_parser)
     defaults: dict[str, object] = {
         "_command_handler": getattr(owner, f"{action}_from_args")
     }
     if controlled:
-        defaults.update(_command_parser=command_parser, _requires_controlled_runtime=True)
+        defaults.update(
+            _command_parser=command_parser, _requires_controlled_runtime=True
+        )
     command_parser.set_defaults(**defaults)
 
 
@@ -204,13 +212,18 @@ def _add_onboarding_commands(command_parsers: Any) -> None:
         "runtime",
         "Discover and admit the active Project runtime.",
         "runtime_operation",
-        ((
-            "discover", run_coordinator_onboarding_command, "discover_runtime",
-            "Inspect the active environment and admit one Project runtime.",
-            "Discover one unambiguous fixed-workflow runtime, run its readiness "
-            "probes, and optionally publish the Project-owned inventory. Discovery "
-            "is read-only unless --execute is supplied.", "runtime_discovery",
-        ),),
+        (
+            (
+                "discover",
+                run_coordinator_onboarding_command,
+                "discover_runtime",
+                "Inspect the active environment and admit one Project runtime.",
+                "Discover one unambiguous fixed-workflow runtime, run its readiness "
+                "probes, and optionally publish the Project-owned inventory. Discovery "
+                "is read-only unless --execute is supplied.",
+                "runtime_discovery",
+            ),
+        ),
     )
 
 
@@ -229,8 +242,14 @@ def build_parser() -> argparse.ArgumentParser:
         prog="emrys",
         description="Run an explicitly installed EMRYS command.",
     )
-    parser.add_argument("--version", action="store_true", help="Show the installed EMRYS version.")
-    parser.add_argument("-v", action="store_true", help="Include package and Python details with --version.")
+    parser.add_argument(
+        "--version", action="store_true", help="Show the installed EMRYS version."
+    )
+    parser.add_argument(
+        "-v",
+        action="store_true",
+        help="Include package and Python details with --version.",
+    )
     command_parsers = parser.add_subparsers(
         dest="command",
         metavar="COMMAND",
@@ -244,10 +263,30 @@ def build_parser() -> argparse.ArgumentParser:
         "Diagnose Project readiness and explicitly repair managed runtime state.",
     )
     for command in (
-        ("run", run_coordinator_control_command, "run", "Plan or execute one selected Project Analysis."),
-        ("resume", run_coordinator_control_command, "resume", "Plan or resume one failed or interrupted Run."),
-        ("report", run_coordinator_control_command, "report", "Plan, generate, or reuse reports for one completed Run."),
-        ("inspect", run_coordinator_control_command, "inspect", "Inspect one Project-local Run without mutation."),
+        (
+            "run",
+            run_coordinator_control_command,
+            "run",
+            "Plan or execute one selected Project Analysis.",
+        ),
+        (
+            "resume",
+            run_coordinator_control_command,
+            "resume",
+            "Plan or resume one failed or interrupted Run.",
+        ),
+        (
+            "report",
+            run_coordinator_control_command,
+            "report",
+            "Plan, generate, or reuse reports for one completed Run.",
+        ),
+        (
+            "inspect",
+            run_coordinator_control_command,
+            "inspect",
+            "Inspect one Project-local Run without mutation.",
+        ),
     ):
         _add_owned_command(command_parsers, *command, controlled=True)
     _add_group(
@@ -255,12 +294,14 @@ def build_parser() -> argparse.ArgumentParser:
         "reconcile",
         "Reconcile explicitly declared EMRYS evidence.",
         "reconciliation",
-        ((
-            "reference-provenance",
-            reference_provenance_reconciliation_command,
-            "reconcile",
-            "Reconcile one explicitly declared reference bundle without repair.",
-        ),),
+        (
+            (
+                "reference-provenance",
+                reference_provenance_reconciliation_command,
+                "reconcile",
+                "Reconcile one explicitly declared reference bundle without repair.",
+            ),
+        ),
     )
     _add_group(
         command_parsers,
@@ -268,9 +309,24 @@ def build_parser() -> argparse.ArgumentParser:
         "Inspect explicitly declared technical EMRYS evidence.",
         "debug_subject",
         (
-            ("runtime-availability", runtime_availability_inspection_command, "inspect", "Inspect declared runtime availability without installation or repair."),
-            ("storage-inventory", storage_inventory_inspection_command, "inspect", "Inspect declared storage and retention-policy state without mutation."),
-            ("storage-qualification", storage_qualification_inspection_command, "qualify", "Qualify workflow storage across compute and head nodes."),
+            (
+                "runtime-availability",
+                runtime_availability_inspection_command,
+                "inspect",
+                "Inspect declared runtime availability without installation or repair.",
+            ),
+            (
+                "storage-inventory",
+                storage_inventory_inspection_command,
+                "inspect",
+                "Inspect declared storage and retention-policy state without mutation.",
+            ),
+            (
+                "storage-qualification",
+                storage_qualification_inspection_command,
+                "qualify",
+                "Qualify workflow storage across compute and head nodes.",
+            ),
         ),
     )
     _add_group(
@@ -278,7 +334,14 @@ def build_parser() -> argparse.ArgumentParser:
         "convert",
         "Convert an explicitly selected EMRYS input.",
         "conversion",
-        (("gtf-to-bed12", gtf_to_bed12_command, "convert", "Convert GTF transcript models to BED12."),),
+        (
+            (
+                "gtf-to-bed12",
+                gtf_to_bed12_command,
+                "convert",
+                "Convert GTF transcript models to BED12.",
+            ),
+        ),
     )
 
     validate_parser = command_parsers.add_parser(
@@ -340,7 +403,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("-v requires --version")
     if arguments.command is None:
         parser.error("the following arguments are required: COMMAND")
-    if getattr(arguments, "_requires_controlled_runtime", False) and not _admit_controlled_runtime():
+    if (
+        getattr(arguments, "_requires_controlled_runtime", False)
+        and not _admit_controlled_runtime()
+    ):
         return 2
     handler = cast(CommandHandler, arguments._command_handler)
     return handler(arguments)

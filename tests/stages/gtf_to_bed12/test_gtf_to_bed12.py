@@ -203,7 +203,9 @@ def test_normalization_preserves_admission_accumulation_and_warning_order(
         tmp_path / "accumulation.gtf",
         [
             gtf_row("chr1", (1, 5), "+", 'transcript_id "keep";'),
-            gtf_row("chr1", ("bad", 8), "+", 'gene_id "ignored"; transcript_id "keep";'),
+            gtf_row(
+                "chr1", ("bad", 8), "+", 'gene_id "ignored"; transcript_id "keep";'
+            ),
             gtf_row("chr1", (11, 15), "+", 'gene_id "geneA"; transcript_id "keep";'),
             gtf_row("chr1", (21, 25), "+", 'gene_id "geneB"; transcript_id "keep";'),
             gtf_row("chr1", (31, 35), "+", 'gene_id "geneC"; transcript_id "keep";'),

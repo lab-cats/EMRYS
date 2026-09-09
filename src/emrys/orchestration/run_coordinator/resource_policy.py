@@ -49,7 +49,9 @@ def is_canonical_slurm_job_id(value: object) -> bool:
     """Return whether a value is one canonical positive Slurm job ID."""
 
     return (
-        isinstance(value, str) and value.isascii() and value.isdecimal()
+        isinstance(value, str)
+        and value.isascii()
+        and value.isdecimal()
         and not value.startswith("0")
     )
 
@@ -104,8 +106,7 @@ class ResourceOverrides:
             duplicates = sorted({key for key in keys if keys.count(key) > 1})
             if duplicates:
                 raise ResourceConfigError(
-                    f"Duplicate command-line {field} override: "
-                    + ", ".join(duplicates)
+                    f"Duplicate command-line {field} override: " + ", ".join(duplicates)
                 )
             unknown = sorted(set(keys).difference(allowed))
             if unknown:
@@ -159,14 +160,13 @@ class ComputationalResourceDeclaration:
             "stage_memory_mb": dict(self.stage_memory_mb),
         }
 
+
 @dataclass(frozen=True, slots=True)
 class ResourcePolicy:
     """One admitted symbolic policy plus non-Run reporting and source context."""
 
     declaration: ComputationalResourceDeclaration
-    reporting_memory_mb: tuple[
-        tuple[str, int | Literal["workflow"]], ...
-    ]
+    reporting_memory_mb: tuple[tuple[str, int | Literal["workflow"]], ...]
     default_sha256: str
     config_path: Path | None
     config_sha256: str | None
@@ -333,9 +333,7 @@ def admit_resource_policy(
         orchestration_contracts.validate_record("resource-config", value)
     except orchestration_contracts.ContractValidationError as exc:
         raise ResourceConfigError(str(exc)) from exc
-    stage_concurrency = _closed_map(
-        value, "stage_concurrency", REPEATABLE_STAGE_IDS
-    )
+    stage_concurrency = _closed_map(value, "stage_concurrency", REPEATABLE_STAGE_IDS)
     step_threads = value.get("step_threads")
     observed_thread_steps = (
         set(step_threads) if isinstance(step_threads, dict) else set()
@@ -352,9 +350,7 @@ def admit_resource_policy(
             + "; optional keys: 09, 10"
         )
     stage_memory = _closed_map(value, "stage_memory_mb", STAGE_IDS)
-    reporting_memory = _closed_map(
-        value, "reporting_memory_mb", REPORTING_KINDS
-    )
+    reporting_memory = _closed_map(value, "reporting_memory_mb", REPORTING_KINDS)
     try:
         workflow_cores = int(value["workflow_cores"])
         configured_workflow_memory = value["workflow_memory_mb"]
@@ -624,8 +620,8 @@ def admit_resource_policy_record(
     ):
         raise ResourceConfigError("Persisted effective resource digest differs")
 
-    default_sha256, config_path, config_sha256, override_labels = (
-        _admit_policy_sources(sources, label="Persisted")
+    default_sha256, config_path, config_sha256, override_labels = _admit_policy_sources(
+        sources, label="Persisted"
     )
 
     policy = admit_resource_policy(

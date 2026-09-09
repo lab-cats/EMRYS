@@ -262,8 +262,7 @@ def _accumulate_exon(
         if transcript.gene_id is None:
             transcript.gene_id = gene_id
         elif (
-            transcript.gene_id != gene_id
-            and transcript_id not in warned_gene_conflicts
+            transcript.gene_id != gene_id and transcript_id not in warned_gene_conflicts
         ):
             _report_warning(
                 on_warning,
@@ -373,7 +372,9 @@ def require_publishable_output(bed_path: Path) -> None:
     """Reject outputs or owner residue that make a new publish ambiguous."""
     lock_path, _ = _publication_paths(bed_path, "unused")
     if bed_path.exists() or bed_path.is_symlink():
-        raise FileExistsError(f"BED12 output already exists; refusing to replace: {bed_path}")
+        raise FileExistsError(
+            f"BED12 output already exists; refusing to replace: {bed_path}"
+        )
     if lock_path.exists() or lock_path.is_symlink():
         raise FileExistsError(f"Step 00b publication lock already exists: {lock_path}")
     residue = _residue_paths(bed_path)

@@ -278,16 +278,36 @@ def test_storage_measurement_preserves_complete_rows_and_io_order(
         if outcome == "available"
         else ["NA", "NA", "NA", "NA", "NA", "NA", "NA"]
     )
-    assert list(csv.reader(generated["inventory"].decode().splitlines(), delimiter="\t")) == [
+    assert list(
+        csv.reader(generated["inventory"].decode().splitlines(), delimiter="\t")
+    ) == [
         [
-            "storage_id", "declared_path", "resolved_path", "required", "purpose",
-            "status", "tree_bytes", "file_count", "directory_count", "symlink_count",
-            "filesystem_total_bytes", "filesystem_free_bytes",
-            "filesystem_available_bytes", "quota_bytes_expected", "detail",
+            "storage_id",
+            "declared_path",
+            "resolved_path",
+            "required",
+            "purpose",
+            "status",
+            "tree_bytes",
+            "file_count",
+            "directory_count",
+            "symlink_count",
+            "filesystem_total_bytes",
+            "filesystem_free_bytes",
+            "filesystem_available_bytes",
+            "quota_bytes_expected",
+            "detail",
         ],
         [
-            "project", declared, str(storage), required, "durable", status,
-            *metrics, "1000", detail,
+            "project",
+            declared,
+            str(storage),
+            required,
+            "durable",
+            status,
+            *metrics,
+            "1000",
+            detail,
         ],
     ]
     expected_calls = [("lstat", storage)]
@@ -671,10 +691,13 @@ def test_direct_qualification_supersedes_invalid_evidence_without_deleting_it(
     replacement = qualification.execute_direct_qualification(plan)
 
     assert replacement.receipt_path == plan.receipt_path
-    assert qualification.admit_direct_qualification(
-        workspace,
-        reference_fasta,
-    ) == replacement
+    assert (
+        qualification.admit_direct_qualification(
+            workspace,
+            reference_fasta,
+        )
+        == replacement
+    )
     assert original.receipt_path.read_bytes() == preserved
 
 
@@ -857,19 +880,44 @@ def qualification_attempt(
     if request.param == "direct":
         plan = _direct_qualification_plan(tmp_path, monkeypatch)
         execute = partial(qualification.execute_direct_qualification, plan)
-        admit = partial(qualification.admit_direct_qualification, plan.workspace, plan.reference_fasta)
-        final, staged, probes, compute = plan.receipt_path, plan.staged_path, plan.probe_paths, None
+        admit = partial(
+            qualification.admit_direct_qualification,
+            plan.workspace,
+            plan.reference_fasta,
+        )
+        final, staged, probes, compute = (
+            plan.receipt_path,
+            plan.staged_path,
+            plan.probe_paths,
+            None,
+        )
     else:
-        _arguments, workspace, reference, compute, final = _compute_qualification(tmp_path, monkeypatch)
-        staged = qualification._evidence_paths(qualification._storage_roots(workspace, reference))[-1]
-        probes = tuple(Path(row["probe_directory"]) for row in json.loads(compute.read_bytes())["roots"])
+        _arguments, workspace, reference, compute, final = _compute_qualification(
+            tmp_path, monkeypatch
+        )
+        staged = qualification._evidence_paths(
+            qualification._storage_roots(workspace, reference)
+        )[-1]
+        probes = tuple(
+            Path(row["probe_directory"])
+            for row in json.loads(compute.read_bytes())["roots"]
+        )
         execute = partial(qualification._run_finalize, workspace, reference)
         admit = partial(qualification.admit_final_qualification, workspace, reference)
     monkeypatch.delenv("SLURM_JOB_ID", raising=False)
-    return argparse.Namespace(execute=execute, admit=admit, final=final, staged=staged, probes=probes, compute=compute)
+    return argparse.Namespace(
+        execute=execute,
+        admit=admit,
+        final=final,
+        staged=staged,
+        probes=probes,
+        compute=compute,
+    )
 
 
-@pytest.mark.parametrize("fault", ("link", "foreign-final", "first-fsync", "stage-unlink", "second-fsync"))
+@pytest.mark.parametrize(
+    "fault", ("link", "foreign-final", "first-fsync", "stage-unlink", "second-fsync")
+)
 def test_qualification_publication_failure_preserves_evidence(
     qualification_attempt: argparse.Namespace,
     monkeypatch: pytest.MonkeyPatch,
@@ -924,17 +972,27 @@ def test_qualification_publication_failure_preserves_evidence(
             assert attempt.final.samefile(attempt.staged)
     rows = json.loads((attempt.compute or receipt).read_bytes())["roots"]
     for probe, row in zip(attempt.probes, rows, strict=True):
-        assert {path.name for path in probe.iterdir()} == {"flock.lock", "fsync-source.bin", "hardlink.bin", "visible.bin"}
+        assert {path.name for path in probe.iterdir()} == {
+            "flock.lock",
+            "fsync-source.bin",
+            "hardlink.bin",
+            "visible.bin",
+        }
         source = probe / "fsync-source.bin"
         assert source.samefile(probe / "hardlink.bin")
         assert hashlib.sha256(source.read_bytes()).hexdigest() == row["source_sha256"]
-        assert hashlib.sha256((probe / "visible.bin").read_bytes()).hexdigest() == row["visible_sha256"]
+        assert (
+            hashlib.sha256((probe / "visible.bin").read_bytes()).hexdigest()
+            == row["visible_sha256"]
+        )
     if fault == "second-fsync":
         assert attempt.admit().receipt_path == attempt.final
     else:
         with pytest.raises(qualification.StorageQualificationError, match="Incomplete"):
             attempt.admit()
-    with pytest.raises(qualification.StorageQualificationError, match="already exists|Incomplete"):
+    with pytest.raises(
+        qualification.StorageQualificationError, match="already exists|Incomplete"
+    ):
         attempt.execute()
     assert receipt.read_bytes() == receipt_bytes
     if attempt.compute is not None:
@@ -958,7 +1016,10 @@ def test_qualification_cleanup_failure_preserves_receipt(
         receipt_bytes = attempt.final.read_bytes()
         assert not attempt.staged.exists()
         assert attempt.admit().receipt_path == attempt.final
-        if (fault, probe) in (("first-probe", attempt.probes[0]), ("second-probe", attempt.probes[1])):
+        if (fault, probe) in (
+            ("first-probe", attempt.probes[0]),
+            ("second-probe", attempt.probes[1]),
+        ):
             raise OSError("injected probe cleanup failure")
         real_cleanup(probe)
 

@@ -506,7 +506,11 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
 def test_registry_is_closed_and_every_schema_is_draft_2020_12() -> None:
     schemas, _ = orchestration.load_schema_registry()
 
-    assert tuple(schemas) == ("common", *orchestration.SCHEMA_NAMES, "attempt-receipt-v2")
+    assert tuple(schemas) == (
+        "common",
+        *orchestration.SCHEMA_NAMES,
+        "attempt-receipt-v2",
+    )
     assert set(schemas) == set(orchestration.SCHEMA_IDS)
     for name, schema in schemas.items():
         assert schema["$id"] == orchestration.SCHEMA_IDS[name]
@@ -537,7 +541,9 @@ def test_versioned_schema_registration_is_exact(
     directory: str,
     identifier_version: str,
 ) -> None:
-    assert orchestration.SCHEMA_PATHS[name].name == f"{name.replace('-', '_')}.schema.json"
+    assert (
+        orchestration.SCHEMA_PATHS[name].name == f"{name.replace('-', '_')}.schema.json"
+    )
     assert orchestration.SCHEMA_PATHS[name].parent.name == directory
     assert orchestration.SCHEMA_IDS[name] == (
         f"urn:emrys:schema:orchestration:{name}:{identifier_version}"
@@ -989,12 +995,23 @@ def test_attempt_receipt_v2_closes_science_without_reporting_fields() -> None:
     (
         ("status", "unknown", "$.status: 'unknown' is not one of"),
         ("finished_at", 0, "$.finished_at: 0 is not of type 'string'"),
-        ("attempt_record", {"path": "attempt.json", "sha256": "bad"}, "$.attempt_record.sha256:"),
-        ("schema_version", "emrys.attempt-receipt.v99", "$.schema_version: 'emrys.attempt-receipt.v1' was expected"),
+        (
+            "attempt_record",
+            {"path": "attempt.json", "sha256": "bad"},
+            "$.attempt_record.sha256:",
+        ),
+        (
+            "schema_version",
+            "emrys.attempt-receipt.v99",
+            "$.schema_version: 'emrys.attempt-receipt.v1' was expected",
+        ),
     ),
 )
 def test_attempt_receipt_public_validator_preserves_field_diagnostics(
-    version: str, field: str, value: Any, diagnostic: str,
+    version: str,
+    field: str,
+    value: Any,
+    diagnostic: str,
 ) -> None:
     receipt = lifecycle_records()["attempt-receipt"]
     receipt["schema_version"] = f"emrys.attempt-receipt.{version}"
@@ -1006,7 +1023,10 @@ def test_attempt_receipt_public_validator_preserves_field_diagnostics(
     receipt[field] = value
 
     assert not validator.is_valid(receipt)
-    assert any(error.startswith(diagnostic) for error in orchestration.schema_errors("attempt-receipt", receipt))
+    assert any(
+        error.startswith(diagnostic)
+        for error in orchestration.schema_errors("attempt-receipt", receipt)
+    )
     with pytest.raises(orchestration.ContractValidationError):
         orchestration.validate_record("attempt-receipt", receipt)
 

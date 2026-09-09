@@ -81,8 +81,7 @@ def _rscript(environment: Mapping[str, str]) -> str:
             )
             pytest.fail(
                 "guarded real-R package probe failed with exit "
-                f"{package_check.returncode}"
-                + (f": {detail}" if detail else "")
+                f"{package_check.returncode}" + (f": {detail}" if detail else "")
             )
         pytest.skip(
             "real scientific-context test requires the locked Bioconductor packages"

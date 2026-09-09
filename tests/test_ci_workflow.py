@@ -270,7 +270,9 @@ def test_managed_runtime_lock_has_one_linux_floor_and_exact_science_versions() -
             ],
         }
     ]
-    native = [item["conda"] for item in lock["environments"]["native"]["packages"]["p1"]]
+    native = [
+        item["conda"] for item in lock["environments"]["native"]["packages"]["p1"]
+    ]
     for fragment in (
         "/star-2.7.11b-",
         "/samtools-1.19.2-",
@@ -330,8 +332,12 @@ def test_managed_runtime_userspace_matrix_proves_the_same_lock() -> None:
     assert "${RUNNER_TEMP}" in paths["run"]
     trust = _named_step(job, "Install the distro TLS trust bundle")
     assert "dnf --assumeyes install ca-certificates" in trust["run"]
-    assert "apt-get install --yes --no-install-recommends ca-certificates" in trust["run"]
-    setup = _named_step(job, "Install both managed environments from the unchanged lock")
+    assert (
+        "apt-get install --yes --no-install-recommends ca-certificates" in trust["run"]
+    )
+    setup = _named_step(
+        job, "Install both managed environments from the unchanged lock"
+    )
     assert setup["uses"] == (
         "prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e"
     )
@@ -341,7 +347,10 @@ def test_managed_runtime_userspace_matrix_proves_the_same_lock() -> None:
     assert "src/emrys/resources/runtime/pixi.lock" in verify["run"]
     assert 'test -e "${r_prefix}/lib/libxml2.so"' in verify["run"]
     assert '"${r_prefix}/bin/pkg-config" --exists libxml-2.0' in verify["run"]
-    assert 'PATH="${native_prefix}/bin" "${native_prefix}/bin/STAR" --version' in verify["run"]
+    assert (
+        'PATH="${native_prefix}/bin" "${native_prefix}/bin/STAR" --version'
+        in verify["run"]
+    )
     assert 'PATH="${native_prefix}/bin" "${r_prefix}/bin/Rscript"' in verify["run"]
     assert 'pixi list --locked --manifest-path "${PIXI_MANIFEST}"' in verify["run"]
 
@@ -357,7 +366,9 @@ def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
     assert setup["with"]["run-install"] is False
     assert setup["with"]["cache"] is False
 
-    prepare = _named_step(job, "Prepare a clean clone, environment, and synthetic Project")
+    prepare = _named_step(
+        job, "Prepare a clean clone, environment, and synthetic Project"
+    )
     cache = _named_step(job, "Cache managed golden-path R packages")
     journey = _named_step(job, "Repair and exercise the supported managed golden path")
     step_names = [step.get("name") for step in job["steps"]]
@@ -367,9 +378,7 @@ def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
     assert prepare["run"].index('cd "${clean_clone}"') < prepare["run"].index(
         '"${emrys[@]}" init synthetic'
     )
-    assert cache["uses"] == (
-        "actions/cache@caa296126883cff596d87d8935842f9db880ef25"
-    )
+    assert cache["uses"] == ("actions/cache@caa296126883cff596d87d8935842f9db880ef25")
     assert cache["with"]["path"] == (
         "${{ runner.temp }}/emrys-managed-golden/project/runtime/managed/renv/cache"
     )

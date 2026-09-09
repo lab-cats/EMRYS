@@ -600,12 +600,16 @@ def test_checkout_authority_ignores_nonowners_and_rejects_another_owner(
     assert relative_snapshot(tmp_path) == before
 
 
-@pytest.mark.parametrize("arguments", (("--version",), ("--version", "-v"), ("-v", "--version")))
+@pytest.mark.parametrize(
+    "arguments", (("--version",), ("--version", "-v"), ("-v", "--version"))
+)
 def test_installed_emrys_version_is_cwd_independent(
-    arguments: tuple[str, ...], tmp_path: Path,
+    arguments: tuple[str, ...],
+    tmp_path: Path,
 ) -> None:
     result = run_command(
-        [sys.executable, "-I", "-m", "emrys", *arguments], cwd=tmp_path,
+        [sys.executable, "-I", "-m", "emrys", *arguments],
+        cwd=tmp_path,
     )
     expected = [f"emrys {emrys.__version__}"]
     if "-v" in arguments:
@@ -620,12 +624,16 @@ def test_installed_emrys_version_is_cwd_independent(
     assert relative_snapshot(tmp_path) == ()
 
 
-@pytest.mark.parametrize("arguments", (("-v",), ("--version", "run"), ("--version", "--unknown")))
+@pytest.mark.parametrize(
+    "arguments", (("-v",), ("--version", "run"), ("--version", "--unknown"))
+)
 def test_installed_emrys_rejects_invalid_version_arguments(
-    arguments: tuple[str, ...], tmp_path: Path,
+    arguments: tuple[str, ...],
+    tmp_path: Path,
 ) -> None:
     result = run_command(
-        [sys.executable, "-I", "-m", "emrys", *arguments], cwd=tmp_path,
+        [sys.executable, "-I", "-m", "emrys", *arguments],
+        cwd=tmp_path,
     )
     assert result.returncode == CLI_USAGE_ERROR
     assert "emrys: error:" in result.stderr

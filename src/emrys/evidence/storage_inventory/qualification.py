@@ -111,7 +111,11 @@ def _canonical_directory(path: Path, label: str) -> Path:
         resolved = path.resolve(strict=True)
     except OSError as exc:
         fail(f"Could not inspect {label} {path}: {exc}")
-    if stat.S_ISLNK(state.st_mode) or not stat.S_ISDIR(state.st_mode) or resolved != path:
+    if (
+        stat.S_ISLNK(state.st_mode)
+        or not stat.S_ISDIR(state.st_mode)
+        or resolved != path
+    ):
         fail(f"{label} must be a canonical real directory: {path}")
     if not os.access(path, os.R_OK | os.W_OK | os.X_OK):
         fail(f"{label} must be readable, writable, and searchable: {path}")
@@ -128,7 +132,11 @@ def _reference_sidecar_parent(reference_fasta: Path) -> Path:
         resolved_fasta = reference_fasta.resolve(strict=True)
     except OSError as exc:
         fail(f"Could not inspect reference FASTA {reference_fasta}: {exc}")
-    if stat.S_ISLNK(fasta_state.st_mode) or not stat.S_ISREG(fasta_state.st_mode) or resolved_fasta != reference_fasta:
+    if (
+        stat.S_ISLNK(fasta_state.st_mode)
+        or not stat.S_ISREG(fasta_state.st_mode)
+        or resolved_fasta != reference_fasta
+    ):
         fail(f"Reference FASTA must be a canonical regular file: {reference_fasta}")
     return _canonical_directory(
         reference_fasta.parent,
@@ -156,7 +164,9 @@ def _storage_roots(workspace: Path, reference_fasta: Path) -> tuple[Path, Path]:
         ):
             fail(f"Workspace must be absent or a canonical real directory: {workspace}")
         if workspace_state.st_dev != workspace_parent.stat().st_dev:
-            fail("Existing workspace is a different filesystem from its qualified parent")
+            fail(
+                "Existing workspace is a different filesystem from its qualified parent"
+            )
     sidecar_parent = _reference_sidecar_parent(reference_fasta)
     return workspace_parent, sidecar_parent
 
@@ -184,7 +194,8 @@ def _direct_layout(
         f".{qualification_id}.direct-qualified{generation_suffix}.tmp"
     )
     probes = tuple(
-        root / f".emrys-storage-probe-{qualification_id[:16]}-{role}" for role, root in zip(ROLES, roots, strict=True)
+        root / f".emrys-storage-probe-{qualification_id[:16]}-{role}"
+        for role, root in zip(ROLES, roots, strict=True)
     )
     return DirectQualificationPlan(
         workspace=workspace_root,
@@ -248,11 +259,7 @@ def plan_direct_qualification(
                 "Direct qualification evidence already exists; preserve and inspect it: "
                 f"{latest.receipt_path}"
             )
-    occupied = tuple(
-        path
-        for path in plan.probe_paths
-        if os.path.lexists(path)
-    )
+    occupied = tuple(path for path in plan.probe_paths if os.path.lexists(path))
     if occupied:
         fail(
             "Direct qualification evidence already exists; preserve and inspect it: "
@@ -298,7 +305,9 @@ def _publish_staged_receipt(staged: Path, receipt: Path, label: str) -> None:
     try:
         os.link(staged, receipt, follow_symlinks=False)
     except OSError as exc:
-        fail(f"Could not publish {label} qualification receipt without replacement: {exc}")
+        fail(
+            f"Could not publish {label} qualification receipt without replacement: {exc}"
+        )
     _fsync_directory(receipt.parent)
     staged.unlink()
     _fsync_directory(receipt.parent)
@@ -312,7 +321,10 @@ def _read_regular(path: Path, label: str, *, nonempty: bool = True) -> bytes:
 
 
 def _json_bytes(value: dict[str, Any]) -> bytes:
-    return (json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n").encode()
+    return (
+        json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+        + "\n"
+    ).encode()
 
 
 def _json_object(data: bytes, label: str) -> dict[str, Any]:
@@ -338,7 +350,12 @@ def _validate_receipt_header(
 
 
 def _unescape_mount(value: str) -> str:
-    return value.replace("\\040", " ").replace("\\011", "\t").replace("\\012", "\n").replace("\\134", "\\")
+    return (
+        value.replace("\\040", " ")
+        .replace("\\011", "\t")
+        .replace("\\012", "\n")
+        .replace("\\134", "\\")
+    )
 
 
 def _mount_identity(path: Path) -> dict[str, str]:
@@ -388,7 +405,10 @@ def _root_snapshot(path: Path) -> dict[str, Any]:
 def _stable_snapshot(expected: dict[str, Any], observed: dict[str, Any]) -> bool:
     # Linux st_dev is recorded for diagnostics and same-node hard-link checks,
     # but a shared mount may receive a different device number on another node.
-    return all(expected.get(field) == observed.get(field) for field in _CROSS_NODE_STABLE_ROOT_FIELDS)
+    return all(
+        expected.get(field) == observed.get(field)
+        for field in _CROSS_NODE_STABLE_ROOT_FIELDS
+    )
 
 
 def _probe_root(
@@ -433,14 +453,19 @@ def _probe_root(
             env={},
         )
         if child.returncode != 0:
-            fail(f"Advisory flock contention failed for {role}: child exit {child.returncode}: {child.stderr.strip()}")
+            fail(
+                f"Advisory flock contention failed for {role}: child exit {child.returncode}: {child.stderr.strip()}"
+            )
     publish_exclusive(staged, visible_bytes, StorageQualificationError)
     try:
         os.replace(staged, visible)
     except OSError as exc:
         fail(f"Atomic rename failed for {role}: {exc}")
     _fsync_directory(probe)
-    if staged.exists() or _read_regular(visible, f"{role} visible probe") != visible_bytes:
+    if (
+        staged.exists()
+        or _read_regular(visible, f"{role} visible probe") != visible_bytes
+    ):
         fail(f"Atomic rename visibility failed for {role}")
     return {
         "role": role,
@@ -499,8 +524,13 @@ def _run_compute(workspace: Path, reference_fasta: Path) -> Path:
     _ensure_evidence_root(evidence_root)
     for path in (compute, final, staged):
         if os.path.lexists(path):
-            fail(f"Qualification evidence already exists; preserve and inspect it: {path}")
-    rows = [_probe_root(role, root, qualification_id) for role, root in zip(ROLES, roots, strict=True)]
+            fail(
+                f"Qualification evidence already exists; preserve and inspect it: {path}"
+            )
+    rows = [
+        _probe_root(role, root, qualification_id)
+        for role, root in zip(ROLES, roots, strict=True)
+    ]
     receipt = {
         "schema": SCHEMA,
         "status": "compute_passed",
@@ -588,9 +618,15 @@ def _run_finalize(workspace: Path, reference_fasta: Path) -> Path:
     compute_value = _json_object(compute_bytes, "Compute qualification receipt")
     _validate_compute(compute_value, qualification_id, roots)
     observed_compute = compute_value["compute"]
-    if observed_compute["uid"] != os.geteuid() or observed_compute["gid"] != os.getegid():
+    if (
+        observed_compute["uid"] != os.geteuid()
+        or observed_compute["gid"] != os.getegid()
+    ):
         fail("Head and compute numeric UID/GID identities differ")
-    probes = [_validate_retained_probe(row, root) for row, root in zip(compute_value["roots"], roots, strict=True)]
+    probes = [
+        _validate_retained_probe(row, root)
+        for row, root in zip(compute_value["roots"], roots, strict=True)
+    ]
     final_value = {
         "schema": SCHEMA,
         "status": "qualified",
@@ -605,7 +641,10 @@ def _run_finalize(workspace: Path, reference_fasta: Path) -> Path:
             "host": socket.gethostname(),
             "uid": os.geteuid(),
         },
-        "roots": [{"role": role, "root": _root_snapshot(root)} for role, root in zip(ROLES, roots, strict=True)],
+        "roots": [
+            {"role": role, "root": _root_snapshot(root)}
+            for role, root in zip(ROLES, roots, strict=True)
+        ],
         "checks": list(CHECKS),
     }
     publish_exclusive(staged, _json_bytes(final_value), StorageQualificationError)
@@ -621,7 +660,10 @@ def execute_direct_qualification(plan: DirectQualificationPlan) -> QualifiedStor
     if plan_direct_qualification(plan.workspace, plan.reference_fasta) != plan:
         fail("Direct qualification plan changed before execution")
     _ensure_evidence_root(plan.evidence_root)
-    rows = [_probe_root(role, root, plan.qualification_id) for role, root in zip(ROLES, plan.roots, strict=True)]
+    rows = [
+        _probe_root(role, root, plan.qualification_id)
+        for role, root in zip(ROLES, plan.roots, strict=True)
+    ]
     receipt = {
         "schema": DIRECT_SCHEMA,
         "status": "qualified",
@@ -674,7 +716,9 @@ def _admit_direct_plan(plan: DirectQualificationPlan) -> QualifiedStorage:
         "Direct storage qualification evidence directory",
     )
     if os.path.lexists(plan.staged_path):
-        fail(f"Incomplete direct qualification publication is present: {plan.staged_path}")
+        fail(
+            f"Incomplete direct qualification publication is present: {plan.staged_path}"
+        )
     receipt_bytes = _read_regular(
         plan.receipt_path,
         "Direct storage qualification receipt",
@@ -707,7 +751,10 @@ def _admit_direct_plan(plan: DirectQualificationPlan) -> QualifiedStorage:
             or row.get("role") != role
             or not isinstance(recorded, dict)
             or set(recorded) != _ROOT_SNAPSHOT_FIELDS
-            or not all(recorded.get(field) == observed.get(field) for field in _DIRECT_STABLE_ROOT_FIELDS)
+            or not all(
+                recorded.get(field) == observed.get(field)
+                for field in _DIRECT_STABLE_ROOT_FIELDS
+            )
             or any(
                 not isinstance(row.get(field), str) or len(row[field]) != 64
                 for field in ("source_sha256", "visible_sha256")
@@ -769,7 +816,11 @@ def admit_final_qualification(
         fail("Final qualification does not bind the retained compute receipt")
     for context in ("compute", "head"):
         identity = value.get(context)
-        if not isinstance(identity, dict) or identity.get("uid") != os.geteuid() or identity.get("gid") != os.getegid():
+        if (
+            not isinstance(identity, dict)
+            or identity.get("uid") != os.geteuid()
+            or identity.get("gid") != os.getegid()
+        ):
             fail("Current numeric UID/GID differs from qualified head/compute identity")
     rows = value["roots"]
     if not isinstance(rows, list) or len(rows) != len(ROLES):
@@ -800,7 +851,9 @@ def qualify_from_args(arguments: argparse.Namespace) -> int:
     """Plan or execute one two-phase storage qualification."""
     try:
         roots = _storage_roots(arguments.workspace, arguments.reference_fasta)
-        qualification_id, evidence_root, compute, final, _staged = _evidence_paths(roots)
+        qualification_id, evidence_root, compute, final, _staged = _evidence_paths(
+            roots
+        )
         print(f"Qualification ID: {qualification_id}")
         print(f"Workflow workspace parent: {roots[0]}")
         print(f"Step 00c sidecar parent: {roots[1]}")

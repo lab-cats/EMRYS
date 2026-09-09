@@ -117,8 +117,7 @@ def collect_nodeids(
     if result.returncode != 0:
         detail = (result.stderr or result.stdout).strip()
         raise ShardError(
-            "behavioral test collection failed"
-            + (f"\n{detail}" if detail else "")
+            "behavioral test collection failed" + (f"\n{detail}" if detail else "")
         )
     nodeids = tuple(line for line in result.stdout.splitlines() if "::" in line)
     if not nodeids:

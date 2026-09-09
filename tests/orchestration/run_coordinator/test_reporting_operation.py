@@ -621,9 +621,9 @@ def test_real_artifact_publisher_failure_stops_reporting_after_start(
     identity.config["reporting_run_contract_path"]["path"] = (
         built.run_contract.relative_to(root).as_posix()
     )
-    identity.config["artifact_inventory_path"]["path"] = (
-        built.inventory.relative_to(root).as_posix()
-    )
+    identity.config["artifact_inventory_path"]["path"] = built.inventory.relative_to(
+        root
+    ).as_posix()
     _install_admission(monkeypatch, state, identity)
     monkeypatch.setattr(
         context,

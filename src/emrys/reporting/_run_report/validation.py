@@ -27,6 +27,7 @@ from .models import (
     ReportRenderError,
 )
 
+
 def build_environment() -> Environment:
     """Return the closed deterministic environment used by installed reports."""
 

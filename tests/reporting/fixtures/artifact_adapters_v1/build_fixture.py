@@ -71,15 +71,13 @@ def analysis_profile_v1() -> dict[str, object]:
     descriptor = analysis_module_v1()
     profile = analyses.compose_profile(base, descriptor)
     for template in profile["artifact_templates"]:
-        template["source_path_template"] = (
-            "source/" + template["source_path_template"]
-        )
+        template["source_path_template"] = "source/" + template["source_path_template"]
         if template["adapter"].endswith("_validation_report_v1") and template[
             "step_id"
         ] in {"09", "10"}:
-            template["source_path_template"] = template[
-                "source_path_template"
-            ].replace("products/native/qc", "results/qc")
+            template["source_path_template"] = template["source_path_template"].replace(
+                "products/native/qc", "results/qc"
+            )
     orchestration_contracts.validate_record("profile", profile)
     return profile
 

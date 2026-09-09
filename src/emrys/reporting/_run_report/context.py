@@ -113,14 +113,11 @@ def _admit_analysis_policy(
     modular = policy["schema_version"] == "emrys.analysis-module-policy.v1"
     if version == RUN_SUMMARY_SCHEMA_VERSION:
         binding = summary["analysis_policy"]
-        if (
-            not modular
-            or binding != {
-                "path": str(snapshot.path),
-                "sha256": snapshot.sha256,
-                "size_bytes": snapshot.size_bytes,
-            }
-        ):
+        if not modular or binding != {
+            "path": str(snapshot.path),
+            "sha256": snapshot.sha256,
+            "size_bytes": snapshot.size_bytes,
+        }:
             _fail("Modular run summary does not bind its exact analysis policy")
     elif modular:
         _fail("Run-summary v2 requires the built-in paired-CMH analysis policy")
@@ -134,7 +131,13 @@ def _inspect_command(source_root: Path, output_root: Path) -> str:
     }:
         return "emrys inspect <RUN>"
     return shlex.join(
-        ("emrys", "inspect", source_root.name, "--project", str(source_root.parent.parent / "project.yaml"))
+        (
+            "emrys",
+            "inspect",
+            source_root.name,
+            "--project",
+            str(source_root.parent.parent / "project.yaml"),
+        )
     )
 
 
@@ -513,12 +516,10 @@ def prepare_context(arguments: argparse.Namespace) -> ReportContext:
                 "figure_renderer_version": renderer_details[
                     "Figure renderer"
                 ].removeprefix("Matplotlib "),
-                "logo_renderer_version": renderer_details[
-                    "Logo renderer"
-                ].removeprefix("Logomaker "),
-                "figure_policy_version": renderer_details[
-                    "Figure policy version"
-                ],
+                "logo_renderer_version": renderer_details["Logo renderer"].removeprefix(
+                    "Logomaker "
+                ),
+                "figure_policy_version": renderer_details["Figure policy version"],
             }
         )
     evidence_html_bytes = render_html(

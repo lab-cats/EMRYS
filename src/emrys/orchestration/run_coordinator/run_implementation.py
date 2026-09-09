@@ -269,8 +269,7 @@ def execution_module_id(
         for owner in functional["owner_tasks"]
     }
     if not any(
-        steps.get(owner_key) in {"09", "10"}
-        for owner_key in execution_owner_keys(plan)
+        steps.get(owner_key) in {"09", "10"} for owner_key in execution_owner_keys(plan)
     ):
         return None
     module = analysis.record["identity"].get("analysis_module")

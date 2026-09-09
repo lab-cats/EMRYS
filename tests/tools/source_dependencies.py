@@ -95,30 +95,150 @@ COMPOSITION_SEAMS: tuple[tuple[str, str], ...] = (
 # (stable audit ID, exact source path, exact target, violated durable rule).
 # Durable boundary justifications remain authoritative in SOURCE_TOPOLOGY.md.
 TRANSITIONS: tuple[tuple[str, str, str, str], ...] = (
-    ("SRC-TRANS-001", "src/emrys/contracts/artifacts/_artifact_contracts/schema.py", "emrys.libraries.validation", RULE_CONTRACT_NEUTRAL),
-    ("SRC-TRANS-002", "src/emrys/contracts/orchestration/api.py", "emrys.libraries.source_authority", RULE_CONTRACT_NEUTRAL),
-    ("SRC-TRANS-003", "src/emrys/contracts/scientific_evidence/step08.py", "emrys.libraries.validation", RULE_CONTRACT_NEUTRAL),
-    ("SRC-TRANS-004", "src/emrys/contracts/scientific_evidence/step08.py", "emrys.libraries.validation.tsv", RULE_CONTRACT_NEUTRAL),
-    ("SRC-TRANS-005", "src/emrys/contracts/scientific_evidence/step08.py", "emrys.libraries.alignments.orientation", RULE_CONTRACT_NEUTRAL),
-    ("SRC-TRANS-006", "src/emrys/contracts/scientific_evidence/step09.py", "emrys.libraries.alignments.orientation", RULE_CONTRACT_NEUTRAL),
-    ("SRC-TRANS-007", "src/emrys/orchestration/run_coordinator/doctor.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-008", "src/emrys/orchestration/run_coordinator/doctor.py", "emrys.evidence.storage_inventory.qualification", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-009", "src/emrys/orchestration/run_coordinator/lifecycle.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-010", "src/emrys/orchestration/run_coordinator/lifecycle.py", "emrys.evidence.storage_inventory.qualification", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-011", "src/emrys/orchestration/run_coordinator/onboarding.py", "emrys.stages.gtf_to_bed12.converter", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-012", "src/emrys/orchestration/run_coordinator/onboarding.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-013", "src/emrys/orchestration/run_coordinator/doctor.py", "emrys.reporting", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-014", "src/emrys/orchestration/run_coordinator/lifecycle.py", "emrys.reporting.transaction_validation", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-015", "src/emrys/orchestration/run_coordinator/reporting_boundary.py", "emrys.reporting.transaction_validation", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-016", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._artifact_index.context", RULE_PRIVATE_OWNER),
-    ("SRC-TRANS-017", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._artifact_index.publication", RULE_PRIVATE_OWNER),
-    ("SRC-TRANS-018", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._artifact_index.models", RULE_PRIVATE_OWNER),
-    ("SRC-TRANS-019", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.builder", RULE_PRIVATE_OWNER),
-    ("SRC-TRANS-020", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.publication", RULE_PRIVATE_OWNER),
-    ("SRC-TRANS-021", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_summary.models", RULE_PRIVATE_OWNER),
-    ("SRC-TRANS-022", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_report.context", RULE_PRIVATE_OWNER),
-    ("SRC-TRANS-023", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_report.publication", RULE_PRIVATE_OWNER),
-    ("SRC-TRANS-024", "src/emrys/orchestration/run_coordinator/reporting_operation.py", "emrys.reporting._run_report.models", RULE_PRIVATE_OWNER),
+    (
+        "SRC-TRANS-001",
+        "src/emrys/contracts/artifacts/_artifact_contracts/schema.py",
+        "emrys.libraries.validation",
+        RULE_CONTRACT_NEUTRAL,
+    ),
+    (
+        "SRC-TRANS-002",
+        "src/emrys/contracts/orchestration/api.py",
+        "emrys.libraries.source_authority",
+        RULE_CONTRACT_NEUTRAL,
+    ),
+    (
+        "SRC-TRANS-003",
+        "src/emrys/contracts/scientific_evidence/step08.py",
+        "emrys.libraries.validation",
+        RULE_CONTRACT_NEUTRAL,
+    ),
+    (
+        "SRC-TRANS-004",
+        "src/emrys/contracts/scientific_evidence/step08.py",
+        "emrys.libraries.validation.tsv",
+        RULE_CONTRACT_NEUTRAL,
+    ),
+    (
+        "SRC-TRANS-005",
+        "src/emrys/contracts/scientific_evidence/step08.py",
+        "emrys.libraries.alignments.orientation",
+        RULE_CONTRACT_NEUTRAL,
+    ),
+    (
+        "SRC-TRANS-006",
+        "src/emrys/contracts/scientific_evidence/step09.py",
+        "emrys.libraries.alignments.orientation",
+        RULE_CONTRACT_NEUTRAL,
+    ),
+    (
+        "SRC-TRANS-007",
+        "src/emrys/orchestration/run_coordinator/doctor.py",
+        "emrys.evidence.runtime_availability.inspector",
+        RULE_ORCHESTRATION_BOUNDARY,
+    ),
+    (
+        "SRC-TRANS-008",
+        "src/emrys/orchestration/run_coordinator/doctor.py",
+        "emrys.evidence.storage_inventory.qualification",
+        RULE_ORCHESTRATION_BOUNDARY,
+    ),
+    (
+        "SRC-TRANS-009",
+        "src/emrys/orchestration/run_coordinator/lifecycle.py",
+        "emrys.evidence.runtime_availability.inspector",
+        RULE_ORCHESTRATION_BOUNDARY,
+    ),
+    (
+        "SRC-TRANS-010",
+        "src/emrys/orchestration/run_coordinator/lifecycle.py",
+        "emrys.evidence.storage_inventory.qualification",
+        RULE_ORCHESTRATION_BOUNDARY,
+    ),
+    (
+        "SRC-TRANS-011",
+        "src/emrys/orchestration/run_coordinator/onboarding.py",
+        "emrys.stages.gtf_to_bed12.converter",
+        RULE_ORCHESTRATION_BOUNDARY,
+    ),
+    (
+        "SRC-TRANS-012",
+        "src/emrys/orchestration/run_coordinator/onboarding.py",
+        "emrys.evidence.runtime_availability.inspector",
+        RULE_ORCHESTRATION_BOUNDARY,
+    ),
+    (
+        "SRC-TRANS-013",
+        "src/emrys/orchestration/run_coordinator/doctor.py",
+        "emrys.reporting",
+        RULE_ORCHESTRATION_BOUNDARY,
+    ),
+    (
+        "SRC-TRANS-014",
+        "src/emrys/orchestration/run_coordinator/lifecycle.py",
+        "emrys.reporting.transaction_validation",
+        RULE_ORCHESTRATION_BOUNDARY,
+    ),
+    (
+        "SRC-TRANS-015",
+        "src/emrys/orchestration/run_coordinator/reporting_boundary.py",
+        "emrys.reporting.transaction_validation",
+        RULE_ORCHESTRATION_BOUNDARY,
+    ),
+    (
+        "SRC-TRANS-016",
+        "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+        "emrys.reporting._artifact_index.context",
+        RULE_PRIVATE_OWNER,
+    ),
+    (
+        "SRC-TRANS-017",
+        "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+        "emrys.reporting._artifact_index.publication",
+        RULE_PRIVATE_OWNER,
+    ),
+    (
+        "SRC-TRANS-018",
+        "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+        "emrys.reporting._artifact_index.models",
+        RULE_PRIVATE_OWNER,
+    ),
+    (
+        "SRC-TRANS-019",
+        "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+        "emrys.reporting._run_summary.builder",
+        RULE_PRIVATE_OWNER,
+    ),
+    (
+        "SRC-TRANS-020",
+        "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+        "emrys.reporting._run_summary.publication",
+        RULE_PRIVATE_OWNER,
+    ),
+    (
+        "SRC-TRANS-021",
+        "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+        "emrys.reporting._run_summary.models",
+        RULE_PRIVATE_OWNER,
+    ),
+    (
+        "SRC-TRANS-022",
+        "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+        "emrys.reporting._run_report.context",
+        RULE_PRIVATE_OWNER,
+    ),
+    (
+        "SRC-TRANS-023",
+        "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+        "emrys.reporting._run_report.publication",
+        RULE_PRIVATE_OWNER,
+    ),
+    (
+        "SRC-TRANS-024",
+        "src/emrys/orchestration/run_coordinator/reporting_operation.py",
+        "emrys.reporting._run_report.models",
+        RULE_PRIVATE_OWNER,
+    ),
 )
 
 
@@ -126,7 +246,9 @@ def repository_root(value: Path) -> Path:
     try:
         root = value.resolve(strict=True)
     except OSError as exc:
-        raise DependencyError(f"repository path is unavailable: {value}: {exc}") from exc
+        raise DependencyError(
+            f"repository path is unavailable: {value}: {exc}"
+        ) from exc
     result = subprocess.run(
         ["git", "-C", str(root), "rev-parse", "--show-toplevel"],
         text=True,
@@ -144,8 +266,15 @@ def repository_root(value: Path) -> Path:
 def python_sources(root: Path) -> tuple[Path, ...]:
     result = subprocess.run(
         [
-            "git", "-C", str(root), "ls-files", "--cached", "--others",
-            "--exclude-standard", "--", "src/emrys",
+            "git",
+            "-C",
+            str(root),
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "--",
+            "src/emrys",
         ],
         text=True,
         capture_output=True,
@@ -184,7 +313,9 @@ def static_targets(
     if isinstance(node, ast.Import):
         return tuple(alias.name for alias in node.names)
     if node.level:
-        package = source_module if source_is_package else source_module.rpartition(".")[0]
+        package = (
+            source_module if source_is_package else source_module.rpartition(".")[0]
+        )
         parts = package.split(".") if package else []
         parents = node.level - 1
         if parents > len(parts):
@@ -216,7 +347,10 @@ def dynamic_bindings(tree: ast.AST) -> tuple[dict[str, str], dict[str, str]]:
                     modules["importlib"] = "importlib"
                 elif alias.name == "builtins":
                     modules[alias.asname or "builtins"] = "builtins"
-        elif isinstance(node, ast.ImportFrom) and node.module in {"importlib", "builtins"}:
+        elif isinstance(node, ast.ImportFrom) and node.module in {
+            "importlib",
+            "builtins",
+        }:
             expected = "import_module" if node.module == "importlib" else "__import__"
             kind = "importlib" if node.module == "importlib" else "builtin"
             functions.update(
@@ -237,8 +371,14 @@ def dynamic_target(
         isinstance(node.func, ast.Attribute)
         and isinstance(node.func.value, ast.Name)
         and (
-            (node.func.attr == "import_module" and modules.get(node.func.value.id) == "importlib")
-            or (node.func.attr == "__import__" and modules.get(node.func.value.id) == "builtins")
+            (
+                node.func.attr == "import_module"
+                and modules.get(node.func.value.id) == "importlib"
+            )
+            or (
+                node.func.attr == "__import__"
+                and modules.get(node.func.value.id) == "builtins"
+            )
         )
     ):
         kind = "importlib" if node.func.attr == "import_module" else "builtin"
@@ -282,7 +422,9 @@ def collect_edges(root: Path, paths: Sequence[Path]) -> tuple[ImportEdge, ...]:
         modules, functions = dynamic_bindings(tree)
         for node in ast.walk(tree):
             if isinstance(node, (ast.Import, ast.ImportFrom)):
-                targets = static_targets(node, source_module, source_is_package, known_modules)
+                targets = static_targets(
+                    node, source_module, source_is_package, known_modules
+                )
             elif isinstance(node, ast.Call):
                 target = dynamic_target(node, modules, functions)
                 targets = (target,) if target else ()
@@ -325,9 +467,15 @@ def forbidden_rule(
     if target_kind == "unclassified":
         return RULE_SOURCE_CLASSIFICATION, "target belongs to an unclassified domain"
     if source_kind == "root" and target_kind != "root":
-        return RULE_SOURCE_CLASSIFICATION, "package metadata cannot compose implementation"
+        return (
+            RULE_SOURCE_CLASSIFICATION,
+            "package metadata cannot compose implementation",
+        )
     if target_kind == "composition" and source_kind != "composition":
-        return RULE_ORCHESTRATION_BOUNDARY, "lower code cannot import the composition root"
+        return (
+            RULE_ORCHESTRATION_BOUNDARY,
+            "lower code cannot import the composition root",
+        )
     private = any(
         part.startswith("_") and not part.startswith("__")
         for part in edge.target_module.split(".")[2:]
@@ -340,13 +488,24 @@ def forbidden_rule(
         return None
     if source_kind == "contracts" and target_kind not in {"contracts", "root"}:
         return RULE_CONTRACT_NEUTRAL, "contracts cannot import implementation"
-    if source_kind == "libraries" and target_kind not in {"contracts", "libraries", "root"}:
+    if source_kind == "libraries" and target_kind not in {
+        "contracts",
+        "libraries",
+        "root",
+    }:
         return RULE_LIBRARY_NEUTRAL, "neutral libraries cannot import product owners"
-    if source_kind == "functional" and (
-        (target_kind == "functional" and source_owner != target_owner)
-        or target_kind in {"ingestion", "orchestration", "reporting", "composition"}
-    ) and not declared_analysis_module_seam:
-        return RULE_FUNCTIONAL_OWNER, "functional owners cannot import peer/product owners"
+    if (
+        source_kind == "functional"
+        and (
+            (target_kind == "functional" and source_owner != target_owner)
+            or target_kind in {"ingestion", "orchestration", "reporting", "composition"}
+        )
+        and not declared_analysis_module_seam
+    ):
+        return (
+            RULE_FUNCTIONAL_OWNER,
+            "functional owners cannot import peer/product owners",
+        )
     blocked = {
         "ingestion": {"functional", "orchestration", "reporting", "composition"},
         "reporting": {"functional", "ingestion", "orchestration", "composition"},
@@ -354,11 +513,22 @@ def forbidden_rule(
     if target_kind in blocked.get(source_kind, set()):
         if declared_analysis_module_seam:
             return None
-        rule = RULE_INGESTION_BOUNDARY if source_kind == "ingestion" else RULE_REPORTING_DOWNSTREAM
+        rule = (
+            RULE_INGESTION_BOUNDARY
+            if source_kind == "ingestion"
+            else RULE_REPORTING_DOWNSTREAM
+        )
         return rule, f"{source_kind} dependency direction is reversed"
-    if source_kind == "orchestration" and target_kind in {"functional", "ingestion", "reporting"}:
+    if source_kind == "orchestration" and target_kind in {
+        "functional",
+        "ingestion",
+        "reporting",
+    }:
         if not declared_analysis_module_seam:
-            return RULE_ORCHESTRATION_BOUNDARY, "target is not a declared public capability"
+            return (
+                RULE_ORCHESTRATION_BOUNDARY,
+                "target is not a declared public capability",
+            )
     return None
 
 
@@ -370,7 +540,11 @@ def indexed_rosters(
     transition_ids: set[str] = set()
     for transition_id, source, target, rule_id in transitions:
         key = (source, target)
-        if transition_id in transition_ids or key in transition_index or rule_id not in KNOWN_RULE_IDS:
+        if (
+            transition_id in transition_ids
+            or key in transition_index
+            or rule_id not in KNOWN_RULE_IDS
+        ):
             raise DependencyError(f"invalid transition roster entry: {transition_id}")
         transition_ids.add(transition_id)
         transition_index[key] = (transition_id, rule_id)
@@ -399,7 +573,9 @@ def library_cycle(edges: Iterable[ImportEdge]) -> Problem | None:
         ).prepare()
     except CycleError as exc:
         cycle = tuple(reversed(exc.args[1]))
-        edge = next(locations[pair] for pair in zip(cycle, cycle[1:]) if pair in locations)
+        edge = next(
+            locations[pair] for pair in zip(cycle, cycle[1:]) if pair in locations
+        )
         return Problem(
             edge.source_path,
             edge.line,
@@ -428,7 +604,9 @@ def inspect_repository(
         if owner(module)[0] == "unclassified":
             problems.append(
                 Problem(
-                    path.relative_to(root).as_posix(), 0, RULE_SOURCE_CLASSIFICATION,
+                    path.relative_to(root).as_posix(),
+                    0,
+                    RULE_SOURCE_CLASSIFICATION,
                     f"source belongs to an unclassified domain: {module}",
                 )
             )
@@ -439,13 +617,19 @@ def inspect_repository(
             observed_seams.add(edge.target_module)
         violation = forbidden_rule(edge, composition_targets)
         transition = transition_index.get((edge.source_path, edge.target_module))
-        if transition is not None and violation is not None and transition[1] == violation[0]:
+        if (
+            transition is not None
+            and violation is not None
+            and transition[1] == violation[0]
+        ):
             observed_transitions.add((edge.source_path, edge.target_module))
         elif violation is not None:
             rule_id, detail = violation
             problems.append(
                 Problem(
-                    edge.source_path, edge.line, rule_id,
+                    edge.source_path,
+                    edge.line,
+                    rule_id,
                     f"{detail}: {edge.source_module} -> {edge.target_module}",
                 )
             )
@@ -454,7 +638,9 @@ def inspect_repository(
         if key not in observed_transitions:
             problems.append(
                 Problem(
-                    key[0], 0, rule_id,
+                    key[0],
+                    0,
+                    rule_id,
                     f"stale transition {transition_id} to {key[1]}; remove or reconcile it in SOURCE_TOPOLOGY.md",
                 )
             )
@@ -462,7 +648,9 @@ def inspect_repository(
         if target not in observed_seams:
             problems.append(
                 Problem(
-                    "src/emrys/__main__.py", 0, RULE_ORCHESTRATION_BOUNDARY,
+                    "src/emrys/__main__.py",
+                    0,
+                    RULE_ORCHESTRATION_BOUNDARY,
                     f"stale current composition seam {seam_id} to {target}",
                 )
             )

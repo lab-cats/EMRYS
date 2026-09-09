@@ -228,9 +228,7 @@ def compose_profile(
     composed: dict[str, object] = {
         key: base[key] for key in ("schema_version", "profile_id", "profile_version")
     }
-    composed.update(
-        {key: [*base[key], *values] for key, values in fragment.items()}
-    )
+    composed.update({key: [*base[key], *values] for key, values in fragment.items()})
     try:
         orchestration_contracts.validate_record("profile", composed)
     except orchestration_contracts.ContractValidationError as exc:

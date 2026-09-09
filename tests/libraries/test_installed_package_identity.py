@@ -92,7 +92,9 @@ def test_python_package_identity_binds_sourceless_bytecode(tmp_path: Path) -> No
 def test_provider_admission_rejects_missing_selection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(package_identity.importlib.metadata, "entry_points", lambda **_: ())
+    monkeypatch.setattr(
+        package_identity.importlib.metadata, "entry_points", lambda **_: ()
+    )
 
     with pytest.raises(InstalledPackageIdentityError, match="not installed"):
         admit_installed_provider("emrys.analysis_modules", "missing", label="Module")
@@ -179,9 +181,7 @@ def test_collaborator_provider_identity_includes_distribution_siblings(
     shared = plugin.parent / "shared.py"
     shared.write_text('VALUE = "old"\n', encoding="utf-8")
     (plugin / "__init__.py").write_text(
-        "from vendor.shared import VALUE\n\n"
-        "def provider():\n"
-        "    return VALUE\n",
+        "from vendor.shared import VALUE\n\ndef provider():\n    return VALUE\n",
         encoding="utf-8",
     )
     distribution = SimpleNamespace(
@@ -204,9 +204,7 @@ def test_collaborator_provider_identity_includes_distribution_siblings(
         name="collaborator-provider",
         value="vendor.plugin:provider",
         dist=distribution,
-        load=lambda: package_identity.importlib.import_module(
-            "vendor.plugin"
-        ).provider,
+        load=lambda: package_identity.importlib.import_module("vendor.plugin").provider,
     )
     monkeypatch.syspath_prepend(str(tmp_path))
     monkeypatch.setattr(
@@ -237,7 +235,9 @@ def test_provider_rejects_a_callable_outside_its_admitted_tree(tmp_path: Path) -
         lambda: None, "fixture:provider", "fixture", "1", identity
     )
 
-    with pytest.raises(InstalledPackageIdentityError, match="outside its admitted package"):
+    with pytest.raises(
+        InstalledPackageIdentityError, match="outside its admitted package"
+    ):
         provider.require_callables(label="Module")
 
 
