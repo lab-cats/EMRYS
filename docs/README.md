@@ -25,7 +25,7 @@ route to those owners rather than repeat them.
 | Run and recovery procedures | [Runbook](operations/RUNBOOK.md) and [troubleshooting](operations/TROUBLESHOOTING.md) |
 | EMRYS-specific terminology | [Glossary](reference/GLOSSARY.md) |
 | Test and evidence vocabulary | [Test baseline](design/TEST_BASELINE.md) |
-| Accepted work and completion criteria | [Findings matrix](tasks/backlog_matrix.md) |
+| Accepted work and completion criteria | [Findings matrix](tasks/backlog_matrix.md), delegating finite `CS-*` slices to the [temporary compression backlog](tasks/compression_backlog_matrix.md) |
 | Current checkout and validation status | Live Git plus checks and retained artifacts bound to the exact commit |
 | Retained historical validation observations | [Dated validation evidence](history/validation-evidence.md), never current authority |
 

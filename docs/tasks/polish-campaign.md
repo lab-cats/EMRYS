@@ -68,7 +68,7 @@ institutional, production, scientific-review, or biological acceptance.
 Pinned source references below retain the original audit evidence; relative
 links point to the current owner.
 Before selecting a candidate, reconcile its current source, backlog coverage,
-and overlapping PRs. The [compression intake](compression_campaign.md) contains
+and overlapping PRs. The [temporary compression backlog](compression_backlog_matrix.md) contains
 related observations; preserve its useful decisions without copying its entire
 history or reviving discarded task IDs.
 
@@ -692,7 +692,7 @@ requires that equality, and the
 [Doctor test][snakemake-test] asserts
 equal Python and Snakemake file hashes. This establishes the representation,
 not that a package change escapes every other defense. The existing
-[compression intake](compression_campaign.md#discovery-findings-for-selection)
+[compression discovery disposition](compression_backlog_matrix.md#original-discovery-disposition)
 already records this as undecided discovery 9 under `COMPRESS-01`; it is
 separate from the R closure in item 34.
 
