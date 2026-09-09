@@ -5,10 +5,9 @@ from __future__ import annotations
 import contextlib
 import os
 import shutil
+import stat
 import sys
 import uuid
-from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -17,11 +16,7 @@ from emrys.reporting._signals import restore as restore_signal_handlers
 
 from .context import recheck_inputs, recheck_source_identity
 from .models import ArtifactIndexError, BuildContext, LockOwnership
-from .records import load_existing_receipt, validate_existing_identity
-from .validation import (
-    validate_existing_transaction,
-    validate_published_transaction,
-)
+from .validation import validate_published_transaction
 
 
 def write_bytes_exclusive(path: Path, payload: bytes) -> None:
@@ -144,28 +139,6 @@ def install_publication_signal_handlers() -> dict[int, Any]:
     return _install_signal_handlers(ArtifactIndexError, "Artifact-index", "publication")
 
 
-@dataclass(frozen=True)
-class ArtifactPublicationOps:
-    """Explicit fault seams for one artifact-index publication."""
-
-    replace: Callable[..., Any] = os.replace
-    write_bytes_exclusive: Callable[..., Any] = write_bytes_exclusive
-    fsync_directory: Callable[..., Any] = fsync_directory
-    acquire_lock: Callable[..., Any] = acquire_lock
-    release_owned_lock: Callable[..., Any] = release_owned_lock
-    remove_owned: Callable[..., Any] = remove_owned
-    install_signal_handlers: Callable[..., Any] = install_publication_signal_handlers
-    restore_signal_handlers: Callable[..., Any] = restore_signal_handlers
-    load_existing_receipt: Callable[..., Any] = load_existing_receipt
-    validate_existing_identity: Callable[..., Any] = validate_existing_identity
-    recheck_inputs: Callable[..., Any] = recheck_inputs
-    recheck_source_identity: Callable[..., Any] = recheck_source_identity
-    validate_published_transaction: Callable[..., Any] = validate_published_transaction
-
-
-DEFAULT_ARTIFACT_PUBLICATION_OPS = ArtifactPublicationOps()
-
-
 def _admit_output_directory(context: BuildContext) -> None:
     """Create and re-admit output ancestry beneath the artifact source root."""
 
@@ -215,133 +188,118 @@ def _admit_output_directory(context: BuildContext) -> None:
             os.close(descriptor)
 
 
-def publish_context(
-    context: BuildContext,
-    *,
-    ops: ArtifactPublicationOps = DEFAULT_ARTIFACT_PUBLICATION_OPS,
-) -> None:
-    """Publish with explicit immutable fault operations."""
+def publish_context(context: BuildContext) -> None:
+    """Publish a new index without replacing any existing transaction output."""
 
     _admit_output_directory(context)
+    directory = context.output_dir.stat()
+    directory_identity = (directory.st_dev, directory.st_ino)
+    records_identity: tuple[int, int] | None = None
+
+    def assert_directory() -> None:
+        current = context.output_dir.lstat()
+        if (
+            not stat.S_ISDIR(current.st_mode)
+            or (current.st_dev, current.st_ino) != directory_identity
+            or context.output_dir.resolve(strict=True) != context.output_dir
+        ):
+            raise ArtifactIndexError("Artifact-index output directory changed identity")
+        if records_identity is not None:
+            current = context.records_dir.lstat()
+            if (
+                not stat.S_ISDIR(current.st_mode)
+                or (current.st_dev, current.st_ino) != records_identity
+            ):
+                raise ArtifactIndexError("Artifact records directory changed identity")
+
+    finals = (context.records_dir, context.artifacts_path, context.receipt_path)
+    for path in finals:
+        if os.path.lexists(path):
+            raise ArtifactIndexError(
+                f"Artifact-index output already exists; refusing: {path}"
+            )
     run_token = f"{os.getpid()}-{uuid.uuid4().hex}"
     temp_records = context.output_dir / f".artifact-index.{run_token}.tmp.records"
-    temp_index = context.output_dir / f".artifact-index.{run_token}.tmp.tsv"
-    temp_receipt = context.output_dir / f".artifact-receipt.{run_token}.tmp.tsv"
-    backup_records = (
-        context.output_dir / f".artifact-index.{run_token}.previous.records"
-    )
-    backup_index = context.output_dir / f".artifact-index.{run_token}.previous.tsv"
-    backup_receipt = context.output_dir / f".artifact-receipt.{run_token}.previous.tsv"
+    temp_index = temp_records / context.artifacts_path.name
+    temp_receipt = temp_records / context.receipt_path.name
     recovery_path = context.output_dir / f".artifact-index.{run_token}.RECOVERY.txt"
-    owned_scratch = (
-        temp_records,
-        temp_index,
-        temp_receipt,
-        backup_records,
-        backup_index,
-        backup_receipt,
-        recovery_path,
-    )
-    for path in owned_scratch:
-        if path.exists() or path.is_symlink():
+    scratch = (temp_records,)
+    for path in (*scratch, recovery_path):
+        if os.path.lexists(path):
             raise ArtifactIndexError(
                 f"Run-token scratch path already exists; refusing: {path}"
             )
-    lock_ownership = ops.acquire_lock(
-        context.lock_path,
-        context.run_id,
-        run_token,
-    )
+    ownership = acquire_lock(context.lock_path, context.run_id, run_token)
     try:
-        previous_signal_handlers = ops.install_signal_handlers()
+        previous_signal_handlers = install_publication_signal_handlers()
     except BaseException as exc:
         try:
-            ops.release_owned_lock(context.lock_path, lock_ownership)
+            release_owned_lock(context.lock_path, ownership)
         except ArtifactIndexError as cleanup_exc:
             raise ArtifactIndexError(
                 "Could not install publication signal handlers and could "
                 f"not release the owned lock: {exc}; {cleanup_exc}"
             ) from exc
-        if isinstance(exc, ArtifactIndexError):
-            raise
         raise ArtifactIndexError(
             f"Could not install publication signal handlers: {exc}"
         ) from exc
-    had_previous = False
-    backed_up_records = False
-    backed_up_index = False
-    backed_up_receipt = False
-    published_records = False
-    published_index = False
-    published_receipt = False
-    publication_committed = False
-    rollback_failed = False
+
+    attempted: dict[Path, tuple[Path, os.stat_result]] = {}
+    scratch_identity: dict[Path, tuple[int, int]] = {}
+    committed = rollback_failed = False
     try:
-        existing = ops.load_existing_receipt(
-            context.receipt_path,
-            context.artifacts_path,
-            context.records_dir,
-        )
-        had_previous = existing is not None
-        locked_previous_attempt_id, locked_attempt_history = (
-            ops.validate_existing_identity(
-                existing,
-                context.run_contract,
-            )
-        )
-        if (
-            existing != context.previous_receipt
-            or locked_previous_attempt_id != context.previous_attempt_id
-            or locked_attempt_history != context.attempt_history
-        ):
-            raise ArtifactIndexError(
-                "Artifact-index predecessor changed after initial inspection; "
-                "retry from a fresh dry-run/context"
-            )
-        if existing is not None:
-            validate_existing_transaction(
-                existing=existing,
-                run_id=context.run_id,
-                run_contract=context.run_contract,
-                records_dir=context.records_dir,
-                artifacts_path=context.artifacts_path,
-                receipt_path=context.receipt_path,
-                source_root=context.artifact_source_root.root,
-                validator=ops.validate_published_transaction,
-            )
-
+        assert_directory()
+        for path in finals:
+            if os.path.lexists(path):
+                raise ArtifactIndexError(
+                    f"Artifact-index output appeared after preflight: {path}"
+                )
         temp_records.mkdir()
+        current = temp_records.lstat()
+        scratch_identity[temp_records] = (current.st_dev, current.st_ino)
         for record, payload in zip(context.records, context.record_bytes, strict=True):
-            ops.write_bytes_exclusive(
-                temp_records / f"{record['artifact_id']}.json",
-                payload,
+            write_bytes_exclusive(
+                temp_records / f"{record['artifact_id']}.json", payload
             )
-        ops.fsync_directory(temp_records)
-        ops.write_bytes_exclusive(temp_index, context.index_bytes)
-        # Receipt is intentionally staged last.
-        ops.write_bytes_exclusive(temp_receipt, context.receipt_bytes)
-        ops.recheck_inputs(context)
-        ops.recheck_source_identity(context)
-
-        if had_previous:
-            ops.replace(context.receipt_path, backup_receipt)
-            backed_up_receipt = True
-            ops.replace(context.artifacts_path, backup_index)
-            backed_up_index = True
-            ops.replace(context.records_dir, backup_records)
-            backed_up_records = True
-        ops.replace(temp_records, context.records_dir)
-        published_records = True
-        ops.replace(temp_index, context.artifacts_path)
-        published_index = True
-        # Provenance is an execution claim: re-attest immediately before the
-        # receipt makes the new transaction terminal and reusable.
-        ops.recheck_source_identity(context)
-        ops.replace(temp_receipt, context.receipt_path)
-        published_receipt = True
-        ops.fsync_directory(context.output_dir)
-
-        ops.validate_published_transaction(
+        write_bytes_exclusive(temp_index, context.index_bytes)
+        write_bytes_exclusive(temp_receipt, context.receipt_bytes)
+        fsync_directory(temp_records)
+        recheck_inputs(context)
+        recheck_source_identity(context)
+        assert_directory()
+        # mkdir reserves the records directory exclusively; rename could replace
+        # an empty directory created by another process after admission.
+        context.records_dir.mkdir()
+        current = context.records_dir.lstat()
+        records_identity = (current.st_dev, current.st_ino)
+        outputs = (
+            *(
+                (
+                    temp_records / f"{record['artifact_id']}.json",
+                    context.records_dir / f"{record['artifact_id']}.json",
+                )
+                for record in context.records
+            ),
+            (temp_index, context.artifacts_path),
+            (temp_receipt, context.receipt_path),
+        )
+        for staged, final in outputs:
+            assert_directory()
+            if final == context.receipt_path:
+                fsync_directory(context.records_dir)
+                recheck_source_identity(context)
+            # Keep the staged inode as proof even if a signal arrives after the
+            # link succeeds but before control returns to this publisher.
+            attempted[final] = (staged, staged.lstat())
+            os.link(staged, final, follow_symlinks=False)
+            expected, current = attempted[final][1], final.lstat()
+            if (current.st_dev, current.st_ino) != (expected.st_dev, expected.st_ino):
+                raise ArtifactIndexError(
+                    "Artifact output identity changed during publication"
+                )
+            assert_directory()
+        fsync_directory(context.output_dir)
+        validate_published_transaction(
             run_id=context.run_id,
             run_contract=context.run_contract,
             run_contract_path=context.run_contract_path,
@@ -355,110 +313,63 @@ def publish_context(
             require_current_source_locations=True,
             source_root=context.artifact_source_root.root,
         )
-        ops.recheck_inputs(context)
-        ops.recheck_source_identity(context)
-        publication_committed = True
-    except Exception as exc:
+        recheck_inputs(context)
+        recheck_source_identity(context)
+        assert_directory()
+        committed = True
+    except BaseException as exc:
         rollback_errors: list[str] = []
-
-        def attempt_rollback(label: str, operation: Any) -> None:
-            try:
-                operation()
-            except Exception as rollback_exc:  # pragma: no cover - fault injection
-                rollback_errors.append(f"{label}: {rollback_exc}")
-
-        if published_receipt:
-            attempt_rollback(
-                "remove new receipt",
-                lambda: ops.remove_owned(context.receipt_path),
-            )
-        if published_index:
-            attempt_rollback(
-                "remove new artifact index",
-                lambda: ops.remove_owned(context.artifacts_path),
-            )
-        if published_records:
-            attempt_rollback(
-                "remove new records directory",
-                lambda: ops.remove_owned(context.records_dir),
-            )
-        if had_previous:
-            if backed_up_records:
-                attempt_rollback(
-                    "restore prior records directory",
-                    lambda: ops.replace(backup_records, context.records_dir),
-                )
-            if backed_up_index:
-                attempt_rollback(
-                    "restore prior artifact index",
-                    lambda: ops.replace(backup_index, context.artifacts_path),
-                )
-            if backed_up_receipt and not rollback_errors:
-                # Restore the old receipt last.
-                attempt_rollback(
-                    "restore prior receipt",
-                    lambda: ops.replace(backup_receipt, context.receipt_path),
-                )
-            if not rollback_errors:
-                validation_error_count = len(rollback_errors)
-                attempt_rollback(
-                    "validate restored prior transaction",
-                    lambda: validate_existing_transaction(
-                        existing=ops.load_existing_receipt(
-                            context.receipt_path,
-                            context.artifacts_path,
-                            context.records_dir,
+        try:
+            assert_directory()
+            for final, (staged, expected) in reversed(tuple(attempted.items())):
+                if not os.path.lexists(final):
+                    continue
+                try:
+                    current, anchor = final.lstat(), staged.lstat()
+                    identity = (
+                        expected.st_dev,
+                        expected.st_ino,
+                        expected.st_size,
+                        expected.st_mtime_ns,
+                    )
+                    if any(
+                        not stat.S_ISREG(item.st_mode)
+                        or (item.st_dev, item.st_ino, item.st_size, item.st_mtime_ns)
+                        != identity
+                        for item in (current, anchor)
+                    ):
+                        raise ArtifactIndexError(
+                            f"Published output ownership changed; preserve: {final}"
                         )
-                        or {},
-                        run_id=context.run_id,
-                        run_contract=context.run_contract,
-                        records_dir=context.records_dir,
-                        artifacts_path=context.artifacts_path,
-                        receipt_path=context.receipt_path,
-                        source_root=context.artifact_source_root.root,
-                        validator=ops.validate_published_transaction,
-                    ),
+                    assert_directory()
+                    final.unlink()
+                    assert_directory()
+                except (OSError, ArtifactIndexError) as cleanup_exc:
+                    rollback_errors.append(str(cleanup_exc))
+            if records_identity is not None:
+                assert_directory()
+                context.records_dir.rmdir()
+                records_identity = None
+                assert_directory()
+            remaining = [str(path) for path in finals if os.path.lexists(path)]
+            if remaining:
+                rollback_errors.append(
+                    f"Outputs remain after rollback: {', '.join(remaining)}"
                 )
-                if len(rollback_errors) > validation_error_count and (
-                    context.receipt_path.exists() or context.receipt_path.is_symlink()
-                ):
-                    # A receipt is a complete-transaction marker. Quarantine
-                    # it again if the restored records/index do not validate.
-                    attempt_rollback(
-                        "quarantine invalid restored receipt",
-                        lambda: ops.replace(
-                            context.receipt_path,
-                            backup_receipt,
-                        ),
-                    )
             if not rollback_errors:
-                attempt_rollback(
-                    "durability-sync restored transaction",
-                    lambda: ops.fsync_directory(context.output_dir),
-                )
-        else:
-            for label, path in (
-                ("new receipt", context.receipt_path),
-                ("new artifact index", context.artifacts_path),
-                ("new records directory", context.records_dir),
-            ):
-                if path.exists() or path.is_symlink():
-                    rollback_errors.append(
-                        f"{label} remains after first-publication rollback: {path}"
-                    )
-            if not rollback_errors:
-                attempt_rollback(
-                    "durability-sync first-publication rollback",
-                    lambda: ops.fsync_directory(context.output_dir),
-                )
+                fsync_directory(context.output_dir)
+        except (OSError, ArtifactIndexError) as cleanup_exc:
+            rollback_errors.append(str(cleanup_exc))
         if rollback_errors:
             rollback_failed = True
-            with contextlib.suppress(OSError):
-                recovery_path.write_text(
-                    "Artifact-index rollback was incomplete.\n"
-                    f"Original error: {exc}\n"
-                    f"Rollback errors: {'; '.join(rollback_errors)}\n",
-                    encoding="utf-8",
+            with contextlib.suppress(OSError, ArtifactIndexError):
+                assert_directory()
+                write_bytes_exclusive(
+                    recovery_path,
+                    (
+                        f"Artifact-index rollback was incomplete.\nOriginal error: {exc}\n"
+                        f"Rollback errors: {'; '.join(rollback_errors)}\n"
+                    ).encode("utf-8"),
                 )
             raise ArtifactIndexError(
                 f"{exc}\nArtifact-index rollback was incomplete; preserve "
@@ -468,42 +379,45 @@ def publish_context(
     finally:
         cleanup_errors: list[str] = []
         if not rollback_failed:
-            cleanup_paths = [temp_records, temp_index, temp_receipt]
-            if publication_committed:
-                cleanup_paths.extend([backup_records, backup_index, backup_receipt])
-            for path in cleanup_paths:
-                try:
-                    ops.remove_owned(path)
-                except OSError as cleanup_exc:
-                    cleanup_errors.append(f"{path}: {cleanup_exc}")
-            if not cleanup_errors:
-                try:
-                    ops.release_owned_lock(context.lock_path, lock_ownership)
-                except ArtifactIndexError as cleanup_exc:
-                    cleanup_errors.append(str(cleanup_exc))
-        active_error = sys.exc_info()[1]
+            try:
+                assert_directory()
+                for path in scratch:
+                    if os.path.lexists(path):
+                        current = path.lstat()
+                        expected = scratch_identity.get(path)
+                        if (
+                            expected is None
+                            or (current.st_dev, current.st_ino) != expected
+                        ):
+                            raise ArtifactIndexError(
+                                f"Scratch ownership is unproved; preserve: {path}"
+                            )
+                        remove_owned(path)
+                assert_directory()
+                release_owned_lock(context.lock_path, ownership)
+            except (OSError, ArtifactIndexError) as cleanup_exc:
+                cleanup_errors.append(str(cleanup_exc))
+        active = sys.exc_info()[1]
         try:
-            ops.restore_signal_handlers(previous_signal_handlers)
+            restore_signal_handlers(previous_signal_handlers)
         except (OSError, ValueError) as signal_exc:
             cleanup_errors.append(
                 f"could not restore publication signal handlers: {signal_exc}"
             )
         if cleanup_errors:
-            cleanup_state = (
-                "publication is complete"
-                if publication_committed
-                else "rollback completed"
-            )
-            with contextlib.suppress(OSError):
-                recovery_path.write_text(
-                    f"Artifact-index {cleanup_state} but owned cleanup was "
-                    "incomplete.\n"
-                    f"Cleanup errors: {'; '.join(cleanup_errors)}\n",
-                    encoding="utf-8",
+            state = "publication is complete" if committed else "rollback completed"
+            with contextlib.suppress(OSError, ArtifactIndexError):
+                assert_directory()
+                write_bytes_exclusive(
+                    recovery_path,
+                    (
+                        f"Artifact-index {state} but owned cleanup was incomplete.\n"
+                        f"Cleanup errors: {'; '.join(cleanup_errors)}\n"
+                    ).encode("utf-8"),
                 )
-            prefix = f"{active_error}\n" if active_error is not None else ""
+            prefix = f"{active}\n" if active is not None else ""
             raise ArtifactIndexError(
                 prefix + "Artifact-index cleanup failed; preserve the lock and "
                 f"recovery paths under {context.output_dir}: "
                 + "; ".join(cleanup_errors)
-            ) from active_error
+            ) from active

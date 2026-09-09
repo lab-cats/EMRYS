@@ -11,6 +11,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 from emrys.contracts.artifacts import api as ARTIFACT_CONTRACTS
 from emrys.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
@@ -20,7 +21,7 @@ from emrys.reporting._artifact_index import models as ARTIFACT_MODELS
 from emrys.reporting._artifact_index import publication as ARTIFACT_PUBLICATION
 from emrys.reporting._run_summary import builder as RUN_SUMMARY_BUILDER
 from emrys.reporting._run_summary import publication as RUN_SUMMARY_PUBLICATION
-from emrys.reporting import report as REPORT
+from emrys.reporting._run_report import context as REPORT_CONTEXT
 from emrys.reporting._run_report import publication as REPORT_PUBLICATION
 from tests.reporting.fixtures.artifact_adapters_v1 import (
     build_fixture as ADAPTER_FIXTURE,
@@ -90,26 +91,25 @@ def restore_epoch(previous: str | None) -> None:
 def publish_adapter_fixture(fixture: Any) -> None:
     previous, _ = fixed_epoch()
     try:
-        context = ARTIFACT_CONTEXT.prepare_context(
-            argparse.Namespace(
-                run_id=fixture.run_id,
-                run_contract=fixture.run_contract,
-                inventory=fixture.inventory,
-                output_root=fixture.output_root,
-                profile=ADAPTER_FIXTURE.analysis_profile_v1(),
-                execute=True,
+        with patch.object(
+            ARTIFACT_CONTEXT,
+            "matching_clean_checkout_head_commit",
+            lambda **_kwargs: ARTIFACT_CORE.get_git_commit(
+                source_root=REPO_ROOT, sanitize_git_routing=True
             ),
-            source_checkout=SourceCheckout(root=REPO_ROOT),
-            artifact_source_root=ArtifactSourceRoot(root=fixture.root),
-            identity_ops=ARTIFACT_CONTEXT.ArtifactIdentityOps(
-                matching_clean_checkout_head_commit=(
-                    lambda **_kwargs: ARTIFACT_CORE.get_git_commit(
-                        source_root=REPO_ROOT,
-                        sanitize_git_routing=True,
-                    )
-                )
-            ),
-        )
+        ):
+            context = ARTIFACT_CONTEXT.prepare_context(
+                argparse.Namespace(
+                    run_id=fixture.run_id,
+                    run_contract=fixture.run_contract,
+                    inventory=fixture.inventory,
+                    output_root=fixture.output_root,
+                    profile=ADAPTER_FIXTURE.analysis_profile_v1(),
+                    execute=True,
+                ),
+                source_checkout=SourceCheckout(root=REPO_ROOT),
+                artifact_source_root=ArtifactSourceRoot(root=fixture.root),
+            )
         ARTIFACT_PUBLICATION.publish_context(context)
     finally:
         restore_epoch(previous)
@@ -215,7 +215,7 @@ def publish_report(
 
     previous, _ = fixed_epoch()
     try:
-        context = REPORT.prepare_report(
+        context = REPORT_CONTEXT.prepare_context(
             argparse.Namespace(
                 source_checkout=REPO_ROOT,
                 artifact_source_root=fixture.root,
@@ -226,7 +226,6 @@ def publish_report(
         if execute:
             REPORT_PUBLICATION.publish_report(
                 context,
-                REPORT.default_publication_ops(),
             )
         return context.output_receipt
     finally:

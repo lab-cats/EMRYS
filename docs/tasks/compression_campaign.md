@@ -232,44 +232,44 @@ public-policy, dependency, evidence-deletion, or cluster authority.
 
 ### Recommended continuation and existing ownership
 
-The strongest next primary objective is completing reporting ownership and
-declaration consolidation. The next larger retirement family is the older
-stage-publication modes. Small construction cleanups remain bounded options;
-they do not establish that the larger campaign is finished.
+Reporting ownership and declaration consolidation remain open. Following
+canonical BAM's replacement-mode retirement, the approved larger reporting
+tranche removes its private replacement lifecycle, six callback carriers, and
+the HTML facade. The [reporting lifecycle decision](../design/decisions/execution-evidence-and-reporting.md#reporting-lifecycle-compression)
+records its exact boundary, preserved behavior, retired interfaces, historical
+test context, and evidence limits. The remaining older publication modes
+require their own qualification and policy decisions.
+Small construction cleanups do not establish that the campaign is finished.
 
 | Proposed order | Finite outcome | Existing coverage and next gate |
 |---|---|---|
-| Reporting ownership | Decide the fixed-output consolidation policy, then consolidate its equivalent declarations. | `REPORT-ROSTER-01`; the [decision proposal](../design/decisions/execution-evidence-and-reporting.md#proposed-fixed-report-output-consolidation) is ready for review. Broader identity and transaction-layout work remain separate. |
+| Reporting ownership | Complete direct create-only publication across the three existing producers. | `REPORT-ROSTER-01`; the [lifecycle retirement](../design/decisions/execution-evidence-and-reporting.md#reporting-lifecycle-compression) follows the fixed-output declaration, with at least 200 net product lines removed and no new product files. Broader identity and transaction-layout work remain separate. |
 | Ineffective report resource control | Remove active reporting-memory configuration and transport while retaining exact historical policy admission. | `REPORT-ROSTER-01`; select new-input and persisted-policy behavior. |
 | Stage publication | Qualify surviving publication, then retire replacement/direct-write modes one owner at a time. | `OPS-03`; reproduce the handoff finding and approve the public policy. |
 | Processing declarations | Find one caller-complete removal using existing admitted task/output facts, or retain the mechanism with evidence. | `COMPRESS-01` discovery, with reporting adapter work under `REPORT-ROSTER-01`; no general registry is preselected. |
-| Dashboard | Retire the frozen display after preserving agreed scheduler and safe-log capabilities. | `DASHBOARD-RETIRE-01`; supported replacement surface remains undecided. |
+| Dashboard | Keep the frozen display until a replacement dashboard is implemented and validated. | `DASHBOARD-RETIRE-01`; the replacement and later retirement require their own approved scope. |
 | Compatibility | Select exact schema, configuration, or TSV changes whose full migration is worthwhile. | Existing `PROFILE-CONTRACT-01` where applicable; other findings remain unselected. |
 
 This is a recommendation for selecting bounded work, not a dependency graph
 or a second status table. The [backlog](backlog_matrix.md) retains sole
 authority for accepted outcomes, status, scores, and acceptance.
 
-### Reporting source-identity prerequisite
+### Reporting source-identity boundary
 
-The approved first decision package now lives in the
-[fixed report-output proposal](../design/decisions/execution-evidence-and-reporting.md#proposed-fixed-report-output-consolidation).
-It contains the exact ownership map, current/historical read and resume rules,
-report-source restrictions, alternatives, and surviving defenses. The proposed
-bounded choice preserves current Run identity and reporting-producer rules for
-the output consolidation; it does not close the broader identity goal or
-approve a different reporting producer. That specific policy still requires
-approval before product changes.
+The [fixed report-output decision](../design/decisions/execution-evidence-and-reporting.md#fixed-report-output-consolidation)
+owns the identity map, current/historical read and resume rules, report-source
+restrictions, alternatives, and surviving defenses. The approved consolidation
+preserves those rules; it does not close the broader identity goal or approve
+a different reporting producer. Changing those policies remains a separate
+decision.
 
 ### One fixed HTML output declaration
 
-The same [decision proposal](../design/decisions/execution-evidence-and-reporting.md#complete-consolidation-after-the-recommended-policy-is-approved)
-owns the complete receipt-contract/API/caller edit set, three-output versus
-two-HTML distinction, historical version pairs, independent tests, and stopping
-conditions. The original 25–50-line estimate is refined to approximately
-30–35 net product lines using the existing frozen context's path order; this
-is an unexecuted source sketch, not a deletion commitment. No new product file,
-wrapper, catalog, schema, or identity-translation mechanism is selected.
+The [declaration owner and consumers](../design/decisions/execution-evidence-and-reporting.md#declaration-owner-and-consumers)
+use one immutable output tuple and the existing frozen context's path objects.
+That decision owns the three-output versus two-HTML distinction, historical
+version pairs, independent tests, and stopping conditions. The bounded change
+adds no product file, wrapper, catalog, schema, or identity-translation mechanism.
 
 ### One three-transaction reporting layout
 
@@ -424,10 +424,16 @@ owners into one slice.
 
 ### Older publication modes
 
-**Proposed public policy, not yet approved.** Retain independently useful
-standalone commands, but make their publication create-exclusive: existing
-outputs are preserved and replacement is refused. Normal Run materialization
-already selects `--no-clobber` for the shell owners below, and the paired-CMH
+Canonical BAM uses one create-exclusive publication path under its approved
+[owner contract](../../src/emrys/stages/canonical_bam/CONTRACT.md#producer-publication-boundary).
+Its replacement, backup, and restoration mode is retired. Existing backups and
+ambiguous residue remain operator-owned recovery state; the contract preserves
+the historical restoration defect and the surviving cleanup limitations.
+
+**Proposed policy for the remaining owners, not yet approved.** Retain
+independently useful standalone commands, but make their publication
+create-exclusive: existing outputs are preserved and replacement is refused.
+Normal Run materialization already selects `--no-clobber` for the shell owners below, and the paired-CMH
 provider selects it for its producer. This does not establish that the
 standalone interfaces are unused or that every surviving failure path is
 already sufficient.
@@ -455,13 +461,11 @@ five separate versions of the common rollback rule.
 | RSeQC first | [RSeQC producer](../../src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh): always use existing staged report capture, retiring direct-to-final capture and mode-dependent publication. | One tool invocation and one report make this the smallest initial proof boundary. Preserve native report text, orientation evidence, sample-ID admission decisions, and failure diagnostics. Approximate branch opportunity: 10–20 product lines. |
 | BAM QC second | [QC producer](../../src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh): retire final-versus-staged capture for its two outputs. | Preserve empty quickcheck success-marker semantics, nonempty success behavior, native flagstat text, and producer/validator interpretation differences. Approximate branch opportunity: 12–22 product lines. |
 | Duplicate marking | [Picard producer](../../src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh): retire direct destinations and mode branches for BAM, index, and metrics. | Preserve `REMOVE_DUPLICATES=false`, Java/Picard admission, indexing, three-output validation, input/JAR identities, and partial-publication recovery. Approximate branch opportunity: 15–25 product lines. |
-| Canonical BAM | [Canonicalization producer](../../src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh): retire predecessor backup creation, replacement, restoration, and backup cleanup. | Retain sort bypass, canonical-input reuse, exact read-group/record checks, indexing, input hashes, staged-file identity, and final checks. Approximate replacement opportunity: 60–90 product lines, excluding the separate print-array proposal. |
 | Paired CMH | [CMH producer](../../src/emrys/analyses/paired_cmh_candidate_ranking/producer.py): retire six-file predecessor backup/replacement and restoration. | Retain R computation, paired strata, statistical/threshold admission, six outputs and headers, summary-last publication, process-group handling, and native/historical readers. Recognize existing `.previous` recovery residue even if new attempts cease creating it. Approximate branch opportunity: 35–60 product lines. |
 
-The revised rough total is 132–217 product lines before recovery and
-compatibility costs. A closer branch review narrowed the earlier 205–345
-estimate: QC, RSeQC, and duplicate marking primarily shed mode conditionals,
-sentinel digest values, and target aliases; their substantive staging and
+The remaining rough total is 72–127 product lines before recovery and
+compatibility costs. QC, RSeQC, and duplicate marking primarily shed mode
+conditionals, sentinel digest values, and target aliases; their substantive staging and
 protection code remains. Their main additional value is a consistent safer
 publication policy. Qualify each slice against Rule 5 rather than treating
 that policy value as an automatic compression exception.
@@ -548,12 +552,13 @@ A raw `tail -F` invocation does not provide the dashboard's terminal-control
 sanitization. Retiring the display therefore needs an explicit supported
 home for the capabilities that remain necessary.
 
-**Proposed two-part plan.** First decide and qualify scheduler history and
-safe log access through existing expert surfaces or the smallest justified
-replacement. Then remove the dashboard owner, dedicated tests, Make target,
-public CLI fixture assertions, and stale documentation caller-completely.
-Do not implement a new dashboard as the prerequisite by default. Account
-for any surviving observation code before claiming the retirement's net size.
+**User-required sequence.** First implement and validate a replacement
+dashboard, including the agreed scheduler-history and safe-log capabilities.
+Only then scope removal of the old dashboard owner, dedicated tests, Make
+target, public CLI fixture assertions, and stale documentation caller-completely.
+Expert commands alone do not meet this replacement requirement. Account for
+all replacement code before claiming the retirement's net size. Neither step
+is part of the reporting lifecycle compression tranche.
 
 [`slurm_submission.py`](../../src/emrys/orchestration/run_coordinator/slurm_submission.py)
 still generates `emrys-local-pilot` job/stream names. The existing
@@ -816,9 +821,9 @@ checks and make bounded fixes. Acceptance remains pending until the final
 required evidence passes; rerun only evidence invalidated by later changes.
 Do not pause useful work solely to wait for hosted CI.
 
-The immediate deliverable is review of the completed
-[fixed-output policy proposal](../design/decisions/execution-evidence-and-reporting.md#proposed-fixed-report-output-consolidation),
-then a caller-complete consolidation after the specific policy is approved.
+The first implementation stops with the caller-complete
+[fixed-output consolidation](../design/decisions/execution-evidence-and-reporting.md#fixed-report-output-consolidation)
+and its required checks.
 Reporting-memory policy and publication qualification remain separately
 selected work; neither is absorbed into that first output slice.
 

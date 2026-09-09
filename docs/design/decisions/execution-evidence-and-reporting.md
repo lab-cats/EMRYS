@@ -103,29 +103,23 @@ availability are disclosed. Native scientific PDFs remain analysis artifacts,
 not alternate report formats. Published validation rows preserve their exact
 meaning and cannot promote runtime, site, scientific, or biological claims.
 
-### Proposed fixed report-output consolidation
+### Fixed report-output consolidation
 
-**Decision pending.** The approved `REPORT-ROSTER-01` tranche begins with this
-policy proposal; approval to prepare it does not approve changing Run identity,
-historical resume, or report-producer provenance. This review is pinned to
-`d122b33ae214e849c1d2a6fe452f03900d53d69e`. It is source and test inspection,
-not a new compatibility execution, Slurm run, or scientific validation.
-
-**Recommendation:** consolidate the fixed report outputs while retaining the
-current implementation identity and resume rules. Accept explicitly that an
-edit to their contract owner changes the implementation identity calculated
-for new Runs and can prevent resuming an existing Run with that newer code.
+The bounded `REPORT-ROSTER-01` consolidation retains the existing implementation
+identity, historical resume, and report-producer provenance rules. Retaining
+those rules is within the approved consolidation; changing them requires a
+separate decision. An edit to the report-contract owner changes the
+implementation identity calculated for new Runs and can prevent resuming an
+existing Run with that newer code.
 An existing Run remains immutable; a retained matching checkout and environment
-must satisfy its original admission rules. This proposal does not guarantee
+must satisfy its original admission rules. This does not guarantee
 that every old Run is resumable or that current software can regenerate its
 reports. The broader goal of report-only changes preserving scientific Run
 identity remains open in the existing backlog row.
 
-This is a change in sequencing from the intake's proposed identity-first
-implementation. A compatibility/provenance redesign would cross additional
-immutable-record and producer-admission boundaries. It has no qualified
-net-negative draft and is not justified as incidental work for an
-estimated 30–35-line consolidation.
+A compatibility/provenance redesign crosses additional immutable-record and
+producer-admission boundaries. It remains separate from output-declaration
+consolidation and has no qualified net-negative draft.
 
 #### What the present identity actually protects
 
@@ -168,7 +162,7 @@ is not automatically reusable from any newer checkout.
 #### The alternative requires a separate compatibility decision
 
 If report-contract edits must preserve Run identity across software revisions,
-select that as a distinct outcome before this consolidation. Its minimum design
+select that as a distinct outcome. Its minimum design
 must specify all of the following together:
 
 - The exact excluded responsibility: initially the report-receipt leaf, not
@@ -197,12 +191,12 @@ size exception is selected here. Do not add an old-hash translation table,
 AST/function-body hashing, generic registry, or automatic record rewrite to
 make this small consolidation appear complete.
 
-#### Complete consolidation after the recommended policy is approved
+#### Declaration owner and consumers
 
-Use one immutable ordered tuple in the existing receipt-contract owner,
-exported through the curated artifact API. Each row carries the output ID,
-kind, and filename suffix. All fixed outputs keep the Run ID as their basename
-prefix:
+The existing receipt-contract owner declares the immutable ordered
+`REPORT_OUTPUTS` tuple, exported through the curated artifact API. Each row
+carries the output ID, kind, and filename suffix. All fixed outputs keep the
+Run ID as their basename prefix:
 
 | Order | Output ID | Kind | Suffix |
 |---|---|---|---|
@@ -216,34 +210,24 @@ Results. No new carrier class, product file, output factory, or report catalog
 is needed. This is an internal declaration; it creates no public CLI option
 or schema generation.
 
-| Production edit | Duplicate to retire | Approximate net lines | Semantics that stay local |
-|---|---|---|---|
-| Receipt contract and curated API | Local expected-ID and kind/basename declarations become the single exported tuple. | −4 in the contract; +2 in the API | Validation order and exact error messages, including duplicate IDs/kinds/paths and renderer/summary relationships. |
-| [`_run_report/context.py`](../../../src/emrys/reporting/_run_report/context.py) | Repeated three output basenames and ordered path assembly. | −2 | Explicit named context path fields, receipt/lock/retired paths, admission and snapshots. |
-| [`_run_report/publication.py`](../../../src/emrys/reporting/_run_report/publication.py) | Repeated ID/kind assembly paired with staged and final paths. | −11 | Distinct HTML/TSV preparation and validation, owned state, input rechecks, and receipt-last publication. |
-| [`transaction_validation.py`](../../../src/emrys/reporting/transaction_validation.py) | Current receipt reconstruction, historical canonical output paths, and two-HTML location IDs. | About −20 | Historical/current producer rules, exact diagnostics, root interpretation, schema-version pairing, and output rechecks. |
-| [`reporting_boundary.py`](../../../src/emrys/orchestration/run_coordinator/reporting_boundary.py) | The expected two-HTML result-location IDs. | +3 to +5 | Re-admission of absolute path objects and ledger/publication authority. |
+| Consumer | Declaration use | Semantics that stay local |
+|---|---|---|
+| Receipt contract and curated API | Expected IDs, order, kinds, and basenames. | Validation order and exact error messages, including duplicate IDs/kinds/paths and renderer/summary relationships. |
+| [`_run_report/context.py`](../../../src/emrys/reporting/_run_report/context.py) | Three output paths and ordered path assembly. | Explicit named context path fields, receipt/lock/retired paths, admission and snapshots. |
+| [`_run_report/publication.py`](../../../src/emrys/reporting/_run_report/publication.py) | ID/kind assembly paired with staged and final paths. | Distinct HTML/TSV preparation and validation, owned state, input rechecks, and receipt-last publication. |
+| [`transaction_validation.py`](../../../src/emrys/reporting/transaction_validation.py) | Current receipt reconstruction, historical canonical output paths, and two-HTML location IDs. | Historical/current producer rules, exact diagnostics, root interpretation, schema-version pairing, and output rechecks. |
+| [`reporting_boundary.py`](../../../src/emrys/orchestration/run_coordinator/reporting_boundary.py) | Expected two-HTML result-location IDs. | Re-admission of absolute path objects and ledger/publication authority. |
 
-The draft must retire the equivalent production declarations together.
 `ReportContext` is frozen and `prepare_context` is its only repository
 constructor. Its existing `stable_paths` tuple is scientific HTML, evidence
 HTML, summary TSV, then receipt; the report tests independently compare that
-order with the named path fields. Reuse its first three path objects when
-assembling output rows instead of copying a parallel path tuple. Fixed context
-attributes do not justify reflective `getattr` machinery or a parallel path
-mapping. Preserve supported run-summary v2/report-receipt v4 and v3/v5
-pairs, and existing refusal of unsupported historical versions. Schema literals
-and independent test expectations remain protections, not duplicate production
-logic to delete or derive from the new tuple.
-
-The earlier 25–50 net product-line estimate narrows to approximately 30–35
-using the existing path-order invariant. This is still a source sketch, not an
-implemented or validated patch; a conservative named-path-only construction
-would save closer to 20 lines. The complete draft must count the declaration,
-imports, export, and all caller changes. A draft that only moves literals or
-grows forwarding code must be rejected. Product,
-tests, documentation, configuration, tooling, and retained evidence are
-accounted separately; no new product files or evidence deletion are proposed.
+order with the named path fields. Consumers reuse its first three path objects
+when assembling output rows. Supported run-summary v2/report-receipt v4 and
+v3/v5 pairs, and refusal of unsupported historical versions, remain unchanged.
+The retired single-HTML paths, upstream artifact-summary TSV, media-type rules,
+and template navigation have distinct responsibilities and retain their owners.
+Schema literals and independent test expectations remain protections; they are
+not derived from the production tuple.
 
 #### Acceptance and stopping point
 
@@ -251,8 +235,7 @@ accounted separately; no new product files or evidence deletion are proposed.
   [`test_materialization.py`](../../../tests/orchestration/run_coordinator/test_materialization.py)
   and observed-digest rejection in the application-model contract tests, along
   with runtime-identity checks. The selected policy must not gain a test that
-  simply declares the report-contract
-  source irrelevant to identity.
+  simply declares the report-contract source irrelevant to identity.
 - Compare current and historical receipts, exact output order/kinds/basenames,
   materialized paths, both displayed HTML locations, and malformed-input
   diagnostics using literal expectations independent of the production tuple
@@ -270,14 +253,52 @@ accounted separately; no new product files or evidence deletion are proposed.
   freeze or falsify provenance to claim cross-revision byte equality.
 - Run focused owner checks locally and applicable long checks in hosted CI.
   Direct execution, Slurm planning, hosted Slurm, institutional-site execution,
-  and scientific validation remain separate claims. A source-only proposal
-  establishes none of those execution results.
+  and scientific validation remain separate claims.
 
-Gate 1 ends with this reviewable policy choice. After policy approval, the
-implementation ends with one caller-complete fixed-output consolidation and
+The implementation ends with one caller-complete fixed-output consolidation and
 its required checks. Transaction-layout consolidation, reporting-memory
 removal, check-ID corrections, and independent-producer reporting remain
 outside this slice. `REPORT-ROSTER-01` stays open for its remaining outcomes.
+
+### Reporting lifecycle compression
+
+The three private publishers now implement only the create-only behavior
+already selected by the Run coordinator. A complete bundle is revalidated and
+reused through the public reporting operation; a prepared predecessor cannot
+be republished over its existing files. The shared
+[publication contract](../../../src/emrys/reporting/README.md#publication-and-recovery)
+owns ordering, ownership, cleanup, and recovery rules for all three producers.
+
+This bounded retirement was approved against
+`0ece377ca2b285d6ec2a46f7d2441c78f16409e1`, the head of
+[PR #146](https://github.com/lab-cats/EMRYS/pull/146). Its acceptance requires
+at least 200 net product lines removed and no product-file growth; tests,
+documentation, tooling, configuration, and retained evidence are accounted
+separately in the implementation PR. It completes one reporting lifecycle
+change under `REPORT-ROSTER-01`, not the broader campaign.
+
+| Behavior | Classification and decision |
+|---|---|
+| Public `run`, `resume`, and `report` operations | Preserved: reporting follows successful computation, empty owned state can be published, complete state is revalidated, and ambiguous state remains preserved and refused. |
+| Scientific content and identities | Preserved: immutable Run plans, schemas, output order, historical preparation and reads, attempt lineage, source/package attribution, independent goldens, and input rechecks. Actual source commits and package hashes still change with their implementation; they are not falsified for byte equality. |
+| Private replacement lifecycle | Intentionally retired: existing-output overwrite, predecessor backup/restoration, and repeat private publication. Preparing or validating a historical transaction remains supported. Existing recovery residue remains protected; this change authorizes no evidence deletion. |
+| Callback carriers and facade | Intentionally retired: the three publication operation records, two identity operation records, `ReceiptValidationOps` and its callback arguments, and the `report.py` facade. Source admission moves into the existing HTML context owner. The logical receipt producer string `emrys.reporting.report` remains unchanged. |
+| Interrupted or concurrent publication | Corrected within the surviving create-only path: file ownership is recorded before exclusive linking, successful links are checked against that identity, and directory replacement prevents subsequent path-based cleanup. Fault tests exercise actual filesystem and signal boundaries. |
+| Broader reporting policy | Undecided and outside this change: reporting-memory inputs, independent reporting producers, transaction-layout declarations, and validation-check roster policy. The dashboard remains until a replacement dashboard is implemented and validated. |
+| Environment and scientific evidence | Deferred: local fault fixtures do not establish Slurm or institutional filesystem behavior, production use, scientific review, or biological validity. Hosted and installed-wheel checks retain separate evidence labels. |
+
+Repository callers move directly to existing preparation, publication, and
+read-only validation owners. Tests use pytest or standard-library patching of
+those actual boundaries; production carries no replacement fault-hook API.
+The captured artifact source observer and validated transaction recheck closure
+remain because they carry real preparation and reuse semantics. The separate
+`RunSummaryBuildDeps` preparation record is outside this six-carrier retirement.
+
+Replacement-specific tests are adapted to existing-output refusal and
+first-publication failure/recovery behavior. Their historical characterization
+remains in the pinned predecessor commit above. Current receipt/schema
+admission, predecessor lineage, independent scientific oracles, and retained
+fixture and recovery evidence are not retired with that private writer mode.
 
 ## Console, logs, and status
 
@@ -296,4 +317,5 @@ Status is derived from immutable Run, Attempt, task, reporting, receipt, and
 lock records. No mutable status cache competes with them. Elapsed time belongs
 to one current or latest Attempt; resumes are not silently summed and no ETA is
 invented. The stale dashboard is not a status or Results authority and remains
-frozen under `DASHBOARD-RETIRE-01` pending separately approved retirement.
+frozen under `DASHBOARD-RETIRE-01` until a replacement dashboard is implemented
+and validated; retirement then requires its own approved scope.
