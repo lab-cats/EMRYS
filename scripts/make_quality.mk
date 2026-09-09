@@ -1,5 +1,5 @@
 PYTHON_COVERAGE_VERSION := 7.15.2
-SHELLCHECK_BIN ?= $(dir $(REPORT_PYTHON_BIN))shellcheck
+SHELLCHECK_BIN ?= $$(dirname -- "$(REPORT_PYTHON_BIN)")/shellcheck
 SHFMT_BIN ?= shfmt
 RUFF_BIN ?= ruff
 VULTURE_BIN ?= vulture

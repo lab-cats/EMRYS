@@ -832,6 +832,13 @@ def test_make_targets_have_side_effect_free_command_expansion(
 def test_make_validation_targets_honor_report_python_bin(
     tmp_path: Path,
 ) -> None:
+    tools = tmp_path / "sentinel tools" / "bin"
+    tools.mkdir(parents=True)
+    for name in ("python", "shellcheck"):
+        executable = tools / name
+        executable.write_text('#!/bin/sh\nprintf "%s\\n" "$0"\n', encoding="utf-8")
+        executable.chmod(0o755)
+    python = tools / "python"
     result = run_command(
         [
             "make",
@@ -839,7 +846,7 @@ def test_make_validation_targets_honor_report_python_bin(
             "--no-print-directory",
             "-C",
             str(REPO_ROOT),
-            "REPORT_PYTHON_BIN=/sentinel/python",
+            f"REPORT_PYTHON_BIN={python}",
             "test",
             "validate",
             "lint",
@@ -851,8 +858,18 @@ def test_make_validation_targets_honor_report_python_bin(
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stderr == ""
     lines = result.stdout.splitlines()
-    assert sum("/sentinel/python" in line for line in lines) == 5
+    assert sum(str(python) in line for line in lines) == 6
+    assert f'-- "$(dirname -- "{python}")/shellcheck"' in result.stdout
     assert not any(".venv/bin/python" in line for line in lines)
+
+    executed = run_command(
+        ["make", "-s", "-C", str(REPO_ROOT), f"REPORT_PYTHON_BIN={python}", "lint"],
+        cwd=tmp_path,
+        env=canonical_make_environment(),
+    )
+    assert executed.returncode == 0, executed.stdout + executed.stderr
+    assert str(python) in executed.stdout.splitlines()
+    assert str(tools / "shellcheck") in executed.stdout.splitlines()
 
 
 def test_make_expansion_oracle_rejects_recipe_mutation(
