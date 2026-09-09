@@ -1,69 +1,50 @@
 # Compression campaign
 
-Started: **2026-09-02**. Converted to a working temporary backlog on
-**2026-09-09**.
-
-The campaign removes redundant maintained product code through complete
-owner-level changes. The earlier compression slices are delivered; the
-campaign remains open because substantial remaining candidates still need
-qualification and several public or historical behaviors need decisions.
+Started **2026-09-02**. This campaign makes EMRYS smaller and easier to
+understand: less duplicated code, fewer competing explanations, and ordinary
+language and programming patterns that a new contributor can follow.
+Documentation reduction and readability are primary outcomes. Formatting
+alone does not make complicated code idiomatic.
 
 ## Working authority
 
-The [temporary compression backlog](compression_backlog_matrix.md) owns the
-finite `CS-*` cards, their status, priority/complexity, dependencies, acceptance,
-and supporting audit detail. It replaces the former unstructured compression
-intake. The main matrix's [`COMPRESS-01`](backlog_matrix.md#repository-maintenance)
-row owns campaign status and exit; broader outcomes such as `REPORT-ROSTER-01`
-and `OPS-03` remain there and link to their campaign slices. Do not copy CS
-status into a second registry.
-
-The format follows the historical architecture campaign and architecture
-backlog at `b9cf4767e6ebdf686070410f06b9cc9298582979`, immediately before
-`fe9f99a5` retired them: finite cards, separate importance/complexity, explicit
-routing, retained decisions, and an evidenced exit. The old architecture matrix
-was a provisional ranking. This campaign instead delegates scoped card status
-to its temporary backlog so it can be used to execute and close work.
+The [temporary backlog](compression_backlog_matrix.md) owns the CS cards,
+their scope, status, decisions, and evidence. The main matrix's
+[`COMPRESS-01`](backlog_matrix.md#repository-maintenance) owns campaign completion.
+The temporary format follows the architecture campaign and backlog at
+`b9cf4767e6ebdf686070410f06b9cc9298582979`, before their retirement in `fe9f99a5`.
 
 ## Scope and next tranche
 
-The [working queue](compression_backlog_matrix.md#working-queue) starts with
-processing materialization and report-adapter declarations, then reporting
-layout under the existing source-identity policy. A change to that policy
-requires its separate decision; merely editing hashed code does not. These have the strongest
-remaining substantial owner-level targets, but no complete draft yet proves
-their net saving. Small command-printing and constructor edits cannot stand
-in for a substantial tranche.
+- **Documentation:** give each subject one authoritative explanation. Remove
+  repetition across guides, contracts, and docstrings; explain purpose and
+  unfamiliar terms before details. Keep complete procedures and useful examples.
+- **Code:** simplify complete responsibilities using the existing owner,
+  standard library, and established language patterns. Retire equivalent
+  implementations across every applicable caller. A new wrapper or a split
+  into more files is not an outcome by itself.
+- **Tests and supporting files:** remove redundancy with the implementation
+  it protects, while retaining independent scientific checks and recovery proof.
 
-Reporting-memory retirement, check rosters, public publication policy,
-configuration forms, and TSV grammar retain explicit decision gates. The
-old dashboard stays until its replacement is implemented and validated.
-Correctness fixes, tooling, documentation, and performance proposals have
-named destinations; they do not count as product compression.
+The [working queue](compression_backlog_matrix.md#working-queue) records the
+approved documentation work and larger code targets. Small cleanups accompany
+relevant work; they do not lead another substantial tranche. The dashboard
+stays until its replacement is implemented and validated.
 
-The current approved tranche comprises CS-03, CS-04, CS-06, and CS-07,
-with CS-05 excluded. CS-03 qualified no substantial change and is Retained;
-CS-04 and the caller-complete CS-06/07 publication change proceed under the
-policies recorded in their backlog cards. Other product work still requires
-its bounded approval. Follow the [workflow](../operations/WORKFLOW.md) and permanent
-[architecture guardrails](../design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails):
-meaningful product reduction, no product-file growth without approval,
-caller-complete retirement, immutable Runs, preserved science/provenance and
-recovery, separate footprint accounting, and proportionate real-path checks.
-Evidence deletion always needs its exact separate proposal and commit.
+Follow the [workflow](../operations/WORKFLOW.md) and
+[architecture guardrails](../design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails).
+Report product, test, documentation, configuration, tooling, and evidence
+changes separately. Documentation-only work must reduce and improve the
+documentation; it cannot offset product growth. Preserve scientific meaning,
+immutable Runs, public behavior, historical readers, and recovery guarantees.
+Changing those guarantees or deleting retained evidence needs its own approval.
 
 ## Completion and retirement
 
-1. Every CS card has an evidenced Done, Retained, Rejected, or Transferred
-   disposition; approved implementations pass their required final checks.
-2. Every original discovery and broader finding has a named destination or
-   an explicit reason and reopening trigger. No example's completion closes
-   an entire family, and no candidate is silently discarded.
-3. The main matrix receives remaining accepted work; owner contracts and
-   durable decision/role guides receive useful behavior, rationale,
-   counterexamples, and evidence limits. Verify those transfers.
-4. Update the campaign umbrella and all live links together after the user
-   accepts the final dispositions; explicitly scope retirement of both
-   temporary documents. Git retains chronology, not a new live archive.
-
-This documentation conversion does not complete the compression campaign.
+Each card needs a verified result or a reasoned retain/reject/transfer decision.
+One repaired example does not close a whole family. Preserve useful decisions,
+counterexamples, and evidence limits in the existing subject owner, and place
+unfinished accepted work in the main matrix before retiring either temporary
+document. Verify those transfers and live links, then obtain the user's final
+disposition. The campaign remains open until both code and documentation
+obligations are accounted for.

@@ -326,8 +326,8 @@ quantify any product growth before implementation selection.
 
 ### 13. Retire the ineffective reporting-memory control
 
-**Implemented under [CS-04](compression_backlog_matrix.md#cs-04-reporting-memory-control);
-hosted verification pending.** Report execution never consumed this setting.
+**Completed under [CS-04](compression_backlog_matrix.md#cs-04-reporting-memory-control);
+ordinary CI passed in PR #150 at `f3a3966f`, awaiting integration.** Report execution never consumed this setting.
 The [Run-coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
 owns its removal from new inputs and the retained historical-reading boundary.
 All active carriers/defaults/overlays and the obsolete resume wrapper retire

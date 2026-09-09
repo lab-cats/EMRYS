@@ -1,35 +1,27 @@
 # EMRYS temporary compression backlog
 
-Reconciled: **2026-09-09**, against maintenance revision
-`e6493bfb2e401d25e6652bdc06efde184a15947a` and its PR #140 base.
-
-This is the working backlog for the finite `COMPRESS-01` campaign.
-The [campaign](compression_campaign.md) owns its objective, boundaries, and
-retirement conditions. This file alone owns the `CS-*` cards: their status,
-remaining scope, dependencies, acceptance, and disposition. The
-[main matrix](backlog_matrix.md) owns the campaign umbrella and broader
-outcomes such as `REPORT-ROSTER-01` and `OPS-03`; their linked child cards
-are not duplicate tasks to complete in both places.
-
-The approved tranche is CS-03, CS-04, CS-06, and CS-07; CS-05 is excluded.
-It preserves existing reporting identity policy, rejects reporting-memory
-settings in new inputs while retaining historical reading and hashes, and
-makes RSeQC refuse existing outputs. Every implemented logical change must
-substantially reduce product code; shared mechanics must replace all equivalent
-production callers. No new evidence deletion or unrelated policy is approved.
+Reviewed **2026-09-09** at `f3a3966f`. The [campaign](compression_campaign.md)
+owns the goals; this file owns CS scope, status, decisions, and proof. The
+[main matrix](backlog_matrix.md) owns broader outcomes and campaign completion.
 
 ## Working queue
 
-The current tranche is **CS-04** plus the shared publication change
-**CS-06/07**. **CS-03** closed as Retained after its complete equivalent-caller
-review found no substantial reduction. **CS-01/02** remain the next unselected
-processing-declaration candidates. **CS-05** and **CS-08/09** remain outside this
-approval; the latter still require their own standalone publication decision.
+**Current work: CS-16**, the approved documentation tranche. Shorten and clarify
+the complete setup/configuration/runtime/recovery guidance, including its
+operator and developer routes. Update these planning documents with the result
+in the same PR. CS-17 keeps the remaining scientific and owner documentation
+in the queue; completing these operator guides does not close that work.
 
-The older size counts below are audit surfaces, not promised deletions.
-CS-12 and CS-13 are opportunistic small work and must not be presented as
-another substantial tranche. Correctness, performance, documentation, and
-replacement work routed below are not counted as product compression.
+**Larger code work:** CS-01/02 address task and report construction; CS-18
+addresses repeated scientific-producer lifecycles and code comprehension.
+Those cards need complete implementation proposals before code changes.
+CS-05 remains excluded. CS-08–10 and CS-12–15 are supporting opportunities,
+not the next substantial tranche; their unresolved behavior decisions remain.
+
+CS-04/06/07 passed ordinary hosted CI in [PR #150](https://github.com/lab-cats/EMRYS/pull/150)
+at `f3a3966f`: [run 34310143034](https://github.com/lab-cats/EMRYS/actions/runs/34310143034).
+CS-03 is Retained. PR #150 awaits integration; hosted software checks do not
+establish institutional operation, scientific review, or biological validity.
 
 ### Status and scoring
 
@@ -54,12 +46,12 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-01](#cs-01-processing-materialization) | Derive one processing owner's command and dispatch from existing admitted facts. | Needs qualification | 4 | 4 | Trace one complete profile → task → producer path; deliver a net-negative draft or retain rationale. | `COMPRESS-01` |
 | [CS-02](#cs-02-processing-report-adapters) | Remove equivalent processing-adapter declarations from artifact-index reporting. | Needs qualification | 4 | 4 | Identify missing metadata and its existing owner; stop if a parallel registry is needed. | `REPORT-ROSTER-01` |
 | [CS-03](#cs-03-reporting-transaction-layout) | Consolidate only equivalent reporting-layout declarations. | Retained | 4 | 3 | The complete minimal shared-owner sketch is approximately neutral after plumbing; no code change qualified. Reopen only with a concrete larger equivalent duplication. | `REPORT-ROSTER-01` |
-| [CS-04](#cs-04-reporting-memory-control) | Remove the ineffective active reporting-memory control and its transport. | Verification pending | 3 | 4 | Approved: reject new inputs; preserve historical records and hashes. Caller-complete migration and 149 focused checks pass; hosted CI remains required. | `REPORT-ROSTER-01` |
+| [CS-04](#cs-04-reporting-memory-control) | Remove the ineffective active reporting-memory control and its transport. | Done | 3 | 4 | PR #150: new inputs rejected, historical records/hashes preserved; focused and ordinary hosted checks passed. | `REPORT-ROSTER-01` |
 | [CS-05](#cs-05-validation-check-rosters) | Give one scientific validation roster one neutral authority used by its producer and reporting. | Needs decision | 4 | 4 | Select membership/order, historical records, and external-provider obligations. | `REPORT-ROSTER-01` |
-| [CS-06](#cs-06-publication-handoff) | Characterize the helper-to-caller publication gap in RSeQC, BAM QC, and duplicate marking. | Verification pending | 4 | 3 | Gap reproduced in all three owners; all migrated callers and six corrected probes pass; hosted CI remains required. | `OPS-03` |
-| [CS-07](#cs-07-through-cs-10-standalone-publication) | RSeQC: retire direct-to-final report capture. | Verification pending | 2 | 2 | Approved with CS-06: one create-exclusive path, accepted legacy flag, preserved tool errors and recovery; local checks pass, hosted CI remains required. | `OPS-03` |
-| [CS-08](#cs-07-through-cs-10-standalone-publication) | BAM QC: retire mode-dependent publication for two outputs. | Blocked | 2 | 2 | CS-06 plus the same policy decision, preserving QC-specific capture semantics. | `OPS-03` |
-| [CS-09](#cs-07-through-cs-10-standalone-publication) | Duplicate marking: retire direct destinations and mode branches. | Blocked | 3 | 3 | CS-06 plus the policy decision; preserve three-output recovery and tool identity. | `OPS-03` |
+| [CS-06](#cs-06-publication-handoff) | Characterize the helper-to-caller publication gap in RSeQC, BAM QC, and duplicate marking. | Done | 4 | 3 | PR #150: three equivalent owners migrated; six corrected probes, shell suites, and ordinary CI passed. | `OPS-03` |
+| [CS-07](#cs-07-through-cs-10-standalone-publication) | RSeQC: retire direct-to-final report capture. | Done | 2 | 2 | PR #150: one publication path; legacy flag, errors, and recovery preserved; ordinary CI passed. | `OPS-03` |
+| [CS-08](#cs-07-through-cs-10-standalone-publication) | BAM QC: retire mode-dependent publication for two outputs. | Needs decision | 2 | 2 | Supporting cleanup only: approve standalone output/diagnostic policy; CS-06 is complete. | `OPS-03` |
+| [CS-09](#cs-07-through-cs-10-standalone-publication) | Duplicate marking: retire direct destinations and mode branches. | Needs decision | 3 | 3 | Supporting cleanup only: approve standalone output policy; preserve three-output recovery and tool identity. | `OPS-03` |
 | [CS-10](#cs-07-through-cs-10-standalone-publication) | Paired CMH: retire six-file predecessor replacement/restoration. | Needs decision | 3 | 4 | Approve standalone publication policy and characterize its own recovery; CS-06 is not evidence for this different owner. | `OPS-03` |
 | [CS-11](#cs-11-reporting-source-identity) | Define a reporting-source boundary that permits reporting-only changes without changing scientific Run identity. | Needs decision | 4 | 4 | Specify new Run binding, producer identity, historical admission, and resume before a structural migration. | `REPORT-ROSTER-01` |
 | [CS-12](#cs-12-canonical-bam-command-printing) | Remove canonical BAM's four print-only command arrays. | Opportunistic | 2 | 1 | Compare exact rendered command bytes and execution calls; approximately 30 lines before final recount. | `COMPRESS-01` |
@@ -67,31 +59,29 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-14](#cs-14-paired-cmh-configuration) | Let the existing module normalizer own equivalent newly admitted paired-CMH configuration. | Needs qualification | 2 | 4 | First prove canonical values/errors equivalent; a changed public form or policy needs a separate decision. Retain historical semantics. | `COMPRESS-01` |
 | [CS-15](#cs-15-reporting-tsv-grammar) | Retire both reporting CSV engines through the existing strict TSV owner. | Needs decision | 2 | 3 | Agree accepted grammar and diagnostic precedence; stop if a configurable compatibility adapter is required. | `COMPRESS-01` |
 
+| [CS-16](#cs-16-operator-and-developer-documentation) | Shorter, complete operator/developer guidance in plain language. | Verification pending | 5 | 3 | Guides rewritten and consolidated; local documentation checks pass; PR verification remains. | `COMPRESS-01` |
+| [CS-17](#cs-17-scientific-and-owner-documentation) | Consolidate and explain remaining scientific/owner documentation. | Ready | 5 | 4 | Select one complete subject across guides, contracts, examples, and docstrings. | `COMPRESS-01` |
+| [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | Needs qualification | 4 | 4 | Inspect Step 07/08/09 semantics and overlapping work; propose substantial removal before implementation. | `OPS-03` |
+
 ## Acceptance shared by every card
 
-Before changing structure, classify affected behavior as preserved, defective,
-undecided, or environment-deferred. Audit the complete owner and its callers,
-contracts, tests, scripts, configuration, compatibility, and mutable state.
-A qualification ends with the proposed deletion, surviving owner, caller list,
-resolved decisions, separate product/test/docs/config/tooling/evidence footprint,
-and proportionate local/hosted proof, or a documented reason to retain it.
+Use the [workflow](../operations/WORKFLOW.md) and [campaign rules](compression_campaign.md#scope-and-next-tranche).
+Before editing, inspect the complete responsibility and its callers, classify
+behavior as preserved, defective, undecided, or environment-deferred, and
+identify what will disappear and where its useful meaning survives.
 
-Implementation must deliver that one observable outcome, retire its old path
-caller-completely, meaningfully reduce maintained product code, and add no
-product file unless a quantified exception is explicitly approved. Do not
-pad the slice or its tests to manufacture scale. Preserve scientific meaning,
-immutable Runs, provenance, supported historical reads, and recovery evidence.
-High-risk protection changes need explicit approval and equal-or-stronger
-surviving defenses; retained evidence deletion needs its exact separate approval
-and commit. The [delivery workflow](../operations/WORKFLOW.md#deliver) owns
-these rules and the single common rollback requirement.
+A code change must substantially reduce maintained product code, add no
+product file without approval, and migrate every equivalent caller. Prefer
+clear language constructs and existing libraries over bespoke machinery.
+Documentation must become shorter and easier for its intended reader to use,
+with one explanation per subject and complete actions, examples, and recovery
+instructions. Preserve cross-language contracts and scientific meaning.
 
-Use focused real-path checks locally and applicable long checks in hosted CI.
-Publish an approved slice and start CI, then continue independent authorized
-work; review outstanding checks after that work and cut bounded fixes.
-Verification remains pending until required checks pass on the final state.
-Local fixtures, hosted CI, Slurm, institutional operation, scientific review,
-and biological validation remain distinct claims.
+Report product, tests, documentation, configuration, tooling, and evidence
+separately. Keep independent checks and evidence; neither may be deleted to
+improve a product-size result. Use focused local checks, start CI on the PR,
+continue authorized independent work, then fix failures. Close only against
+verified final evidence or a documented retain/reject/transfer decision.
 
 ## Card details
 
@@ -107,377 +97,269 @@ only the selected touched vertical before implementation.
 
 ### CS-01 Processing materialization
 
-**Materialization finding.**
 [`materialization.py`](../../src/emrys/orchestration/run_coordinator/materialization.py)
-had 1,960 lines at the original audited revision; `_task_commands` and `_dispatches`
-are the relevant construction owners. Artifact rows are resolved into paths,
-grouped by owner and scope, and projected into commands, inputs, outputs,
-resource declarations, and dispatches. These transformations are candidates
-for a focused producer-to-consumer audit, not proof of redundant logic.
+constructs commands, inputs, outputs, resources, and dispatches from the
+artifact inventory. Audit `_task_commands` and `_dispatches` across all
+processing owners, from profile through task admission to producer. Replace
+repeated construction through an existing source of facts only when the full
+migration deletes the old declarations and makes the flow easier to follow.
+The original 1,960-line file is an inspected surface, not promised savings.
 
-Audit one processing owner through profile, artifact inventory, resource
-resolution, materialization, task admission, and its native producer. The
-deliverable is either one complete deletion proposal or a retain decision
-with its semantic reason. Compare exact ordered arguments, planned-file
-bytes, graph/scopes, input snapshots, output roles, retained predecessor
-paths, source identity, and resource choices. Use existing materialization,
-workflow, task, and public-path tests. No new step registry or shell-to-Python
-conversion is selected.
-
-**Important retained distinctions.** Module descriptors are re-admitted at
-execution planning; this is not necessarily duplicate construction.
-Current AnalysisRevision scopes and historical execution scopes differ.
-Processing-source snapshots must match the immutable Run binding.
-Positional FASTA-sidecar outputs and reused predecessor scopes have distinct
-roles. The previously noted roughly 18-line validation-path handoff and
-8–10-line inventory-copy opportunities do not justify bundling unrelated
-owners into one slice.
+Preserve ordered arguments and planned bytes, graph/scopes, snapshots, output
+roles, predecessor paths, source identity, and resource choices. Module
+readmission, historical execution scopes, positional FASTA-sidecar outputs,
+and reused predecessor scopes have distinct meanings. Keep their checks and
+use existing materialization/workflow/public-path tests. The earlier 18-line
+path handoff and 8–10-line inventory copy do not qualify as this outcome.
 
 ### CS-02 Processing report adapters
 
-**Reporting adapter finding.**
-[`_artifact_index/registry.py`](../../src/emrys/reporting/_artifact_index/registry.py)
-has a roughly 175-line `build_adapter_registry`, including processing
-declarations, local assembly, and the existing module-adapter call.
-The `_add_analysis_adapters` path already
-derives module adapters. Current processing profile templates lack some
-adapter semantics, so their existing facts are not a complete replacement.
+[`build_adapter_registry`](../../src/emrys/reporting/_artifact_index/registry.py)
+contains about 175 audited lines of processing declarations and assembly.
+Module adapters already derive from `_add_analysis_adapters`; processing
+profiles lack some necessary reporting metadata.
 
-An implementation proposal must identify the rightful existing home for
-output metadata across
-[`analyses/__init__.py`](../../src/emrys/analyses/__init__.py),
-artifact inventory, the
-[authored profile](../../workflow/contracts/local_cmh_v2.json), its
-[closed schema](../../src/emrys/contracts/schemas/orchestration/v2/profile.schema.json),
-profile admission, and reporting. Derive kinds, scope,
-paths, and completeness only where semantics are equivalent. Retain native
-format readers, independent scientific reconciliation, historical profiles,
-and bespoke module output interpretation. The 175-line block is a target
-surface, not promised savings. Stop if a new table must coexist indefinitely
-with the old one or the migration grows maintained product code.
-
-
+Identify that metadata's existing owner across [Analysis declarations](../../src/emrys/analyses/__init__.py),
+artifact inventory, the [authored profile](../../workflow/contracts/local_cmh_v2.json),
+its [schema](../../src/emrys/contracts/schemas/orchestration/v2/profile.schema.json),
+admission, and reporting. Derive equivalent kinds, scopes, paths, and
+completeness while retiring the old declarations across all callers. Preserve
+native readers, historical profiles, module-specific interpretation, and
+independent scientific reconciliation. Stop if a second registry must remain
+or the complete change grows product code. The 175 lines are not a net estimate.
 
 ### CS-03 Reporting transaction layout
 
-**Observed owners.** Transaction kinds, predecessor order, receipt locations,
-and shared paths recur in
-[`reporting_operation.py`](../../src/emrys/orchestration/run_coordinator/reporting_operation.py),
-`reporting_boundary.py`, `transaction_validation.py`, and inspection.
-The inspection consumers include
-[`inspection.py`](../../src/emrys/orchestration/run_coordinator/inspection.py)
-and
-[`_inspection_evidence.py`](../../src/emrys/orchestration/run_coordinator/_inspection_evidence.py).
-The ordered producer execution loop is already consolidated; do not count
-that completed work again. The historical/current report-root distinction
-already has an owner in
-[`artifact_inventory.py`](../../src/emrys/contracts/orchestration/artifact_inventory.py).
+**Retained at `0c909f12`.** Receipt paths recur in reporting operation/boundary,
+transaction validation, and inspection. The producer loop is already shared;
+`artifact_inventory.py` owns historical/current root interpretation.
 
-**Proposed outcome.** Derive the fixed artifact-index → run-summary → HTML
-layout from one existing contract owner and remove the equivalent local
-declarations. Keep producer-specific preparation with its production owner.
-This does not select a new transaction kind, extension protocol, generic
-pipeline description, or parallel reporting registry.
-
-**Preserved behavior and proof.** Compare prepared arguments and bytes,
-receipt/input/output paths, ledger order and timing, predecessor selection,
-processing-source rechecks, independent regeneration, and exact failure
-stopping points. Preserve historical root interpretation. Use
-[reporting-operation tests](../../tests/orchestration/run_coordinator/test_reporting_operation.py),
-reporting-boundary tests, transaction-validation tests, and
-[ledger contract tests](../../tests/contracts/orchestration/test_reporting_ledger_contracts.py).
-
-**Retain decision.** Review at `0c909f12` found 11 lines of receipt-root/suffix
-selection in `_inspection_evidence.py`, five receipt-path lines and four
-predecessor-map lines in `transaction_validation.py`. A straightforward shared
-path function costs about 16 lines and replaces approximately 16 net lines
-before imports, public type exports, and caller plumbing: roughly neutral,
-not substantial compression. Moving the roster/type mostly relocates seven
-lines. No implementation or product test was added for this decision.
+The review found 11 receipt-root/suffix lines in `_inspection_evidence.py`,
+five receipt-path lines and four predecessor-map lines in
+`transaction_validation.py`. A shared path function costs about 16 lines and
+replaces approximately 16 before imports/type exports; moving the roster/type
+relocates seven more. No substantial reduction or new test qualified.
 
 Producer arguments, standalone paths, residue inventories, root admission,
-historical dispatch, and boundary rechecks serve distinct contracts; they
-cannot be folded into the total as equivalent declarations. Reopen only for
-a concrete larger equivalent duplication. Existing identity rules still allow
-ordinary edits to hashed code; CS-11 is required only for a policy change.
-The broader reporting identity/roster outcome remains open.
+historical dispatch, and source rechecks have different contracts. Reopen only
+for a larger equivalent duplication, preserving artifact-index → run-summary →
+HTML order, predecessor selection, prepared bytes, regeneration, and failure
+stopping points. Ordinary edits to hashed code remain allowed; only a change
+to source-identity policy needs CS-11. The broader reporting outcome stays open.
 
 ### CS-04 Reporting memory control
 
-**Implemented; hosted verification pending.** The entire inactive control is
-removed from new CLI/YAML inputs, defaults, the three resource carriers,
-profile selection, resolution, and resume overlays. The existing strict record
-reader validates historical raw hashes, reporting values, numeric/order rules,
-resolution, and caps without rewriting bytes. Legacy effective/source-only
-resume retains its original admission boundary. The now-unused private
-`resume_resource_plan` wrapper and every caller are retired.
+**Done in PR #150; CI linked above.** Removed new CLI/YAML inputs, defaults,
+resource carriers, profile selection, resolution, resume overlays, and every
+caller of the obsolete private `resume_resource_plan` wrapper.
 
 The [Run-coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
-owns the current input and historical behavior. The historical resource schema,
-application-model checks, and frozen dashboard reads remain required; none is
-an active memory allocation control. Existing implementation-identity rules
-still apply, so editing these owners does not promise old Runs can resume
-under a different checkout.
+owns retained historical reading: strict admission checks original hashes,
+values, numeric/order rules, resolution, and caps without rewriting records;
+legacy effective/source-only resume keeps its existing boundary. Historical
+schemas, application-model checks, dashboard reads, and implementation identity
+remain. An edited checkout is not automatically compatible with an old Run.
 
-The complete change removes 46 Python product lines (45 including its schema
-change), eight configuration lines, and adds 21 test lines. No new product
-file, resource manager, model, or compatibility wrapper is introduced.
-149 focused resource/profile/schema/application-model and materialization
-identity/resume checks pass. Hosted ordinary CI remains required. The
-original audit's 35 matching source lines measured spread, not savings.
+Product −46 Python lines, −45 including schema; configuration −8; tests +21.
+No product file or replacement abstraction was added. The 149 focused
+resource/profile/schema/model/materialization/resume checks passed before CI.
+The original 35 matching lines measured spread, not potential savings.
 
 ### CS-05 Validation check rosters
 
-**Observed.**
-[`_artifact_index/inspection.py`](../../src/emrys/reporting/_artifact_index/inspection.py)
-checks row shape, safe and unique check IDs, statuses, and count.
-[Artifact-adapter tests](../../tests/reporting/test_artifact_adapters.py)
-characterize different or reordered unique IDs still being considered
-complete. Count and uniqueness do not establish the intended check roster.
-The public `AnalysisArtifactV1` declaration has headers/counts but no
-declared check-ID roster. Some scientific validators require membership;
-reporting may also depend on order.
+[`Artifact-index inspection`](../../src/emrys/reporting/_artifact_index/inspection.py)
+checks safe/unique IDs, statuses, shape, and count, but different or reordered
+IDs can still pass completeness; [adapter tests](../../tests/reporting/test_artifact_adapters.py)
+record this. `AnalysisArtifactV1` has headers/counts but no declared check roster.
 
-**Proposed outcome.** Start with one owner whose neutral scientific contract
-can own the agreed roster. Migrate that validator, artifact declaration,
-and report admission together, removing repeated declarations and superseded
-checks. Keep independent expected-result tests.
-
-**Decisions and proof.** Approve ordered versus unordered completeness,
-historical treatment, and external-provider obligations. Characterize
-missing, extra, wrong, reordered, and duplicate IDs independently of status
-and count. Preserve valid output bytes and allowed pass/fail evidence.
-Do not import a private validator into reporting or silently tighten every
-generic artifact. This is a correctness/interface proposal, not a preserving
-helper extraction; size is unknown and any growth requires its own exception.
+**Decision required; excluded from the approved work.** Select membership/order,
+historical treatment, and external-provider obligations. Then give one
+scientific contract the agreed roster and migrate its validator, artifact
+declaration, and reporting together. Preserve valid bytes, pass/fail evidence,
+and independent expectations. Check missing/extra/wrong/reordered/duplicate
+IDs separately from status/count. Do not import private validator code into
+reporting or silently tighten generic artifacts. This changes correctness and
+interfaces; any product growth needs its own approval.
 
 ### CS-06 Publication handoff
 
-**Implemented with CS-07; hosted verification pending.** Baseline local
-production-script probes at `0c909f12` reproduced the gap in RSeQC, BAM QC,
-and duplicate marking. TERM immediately after a real first hard link exited
-143; replacing that final before the helper's inode check exited 1. In both
-cases the final survived while staging and the owned lock disappeared.
+**Done with CS-07 in PR #150; CI linked above.** At `0c909f12`, local probes
+sent TERM just after a real first link (exit 143), or replaced that final
+before the helper's inode check (exit 1). In RSeQC, BAM QC, and duplicate
+marking, the final survived while its staging anchors and lock disappeared.
 
-The [shared shell cleanup owner](../../src/emrys/libraries/README.md#shell-publication-cleanup)
-now owns the full equivalent rollback/staging/lock sequence across all three
-producers. Their six per-output flags are gone; publication is armed before
-linking, and cleanup inspects every staging/final pair. That owner documents
-precise recovery guarantees, retained limitations, and why other transaction
-lifecycles are not equivalent consumers. The lower-level link/ownership helpers
-are unchanged. The separate scientific-context counter gap is retained
-[below](#separate-scientific-context-publication-finding).
+[Shared shell cleanup](../../src/emrys/libraries/README.md#shell-publication-cleanup)
+replaces the six per-output flags across all three equivalent owners. Each
+caller arms publication before linking; cleanup examines every output pair.
+The shared owner documents surviving guarantees and distinct transactions;
+the lower-level helpers remain unchanged. Scientific context has a separate
+[unresolved finding](#separate-scientific-context-publication-finding).
 
-All six before/after probes pass: provably owned finals roll back, and an
-unresolved missing/replaced output retains its staging anchors and lock.
-One maintained real BAM-QC regression removes the second link before helper
-return; existing ownership, original-exit, failure-cleanup and success tests
-survive. All three producer shell suites and the shared file-check suite pass.
-The CS-06/07 publication change removes 123 net product lines across four
-existing files; its tests add 24 net lines. No additional fault matrix was added.
-
-TERM was exercised locally; this does not prove every HUP/INT timing, Slurm,
-or institutional filesystem case. SIGKILL/power loss do not execute EXIT
-cleanup. Local software probes and hosted CI cannot establish scientific or
-biological validation.
+All six final probes and four shell suites passed: owned finals roll back;
+uncertain missing/replaced outputs retain anchors and lock. One maintained
+BAM-QC regression removes the second link before helper return. Existing
+ownership, original-exit, cleanup-failure, and success tests survive.
+CS-06/07 together remove 123 product lines and add 24 test lines.
+TERM probes do not cover every HUP/INT timing or institutional filesystem;
+SIGKILL and power loss cannot run EXIT cleanup.
 
 ### CS-07 through CS-10 Standalone publication
 
-Canonical BAM uses one create-exclusive publication path under its approved
-[owner contract](../../src/emrys/stages/canonical_bam/CONTRACT.md#producer-publication-boundary).
-Its replacement, backup, and restoration mode is retired. Existing backups and
-ambiguous residue remain operator-owned recovery state; the contract preserves
-the historical restoration defect and the surviving cleanup limitations.
+CS-07 is complete: [RSeQC](../../src/emrys/evidence/rseqc_orientation/CONTRACT.md#producer-publication-boundary)
+now always refuses an existing output; its legacy `--no-clobber` flag remains
+accepted. Its owner lost 51 product lines within CS-06/07. Canonical BAM's
+[earlier retirement](../../src/emrys/stages/canonical_bam/CONTRACT.md#producer-publication-boundary)
+also retains historical defects, recovery residue, and current limits.
 
-**Policy scope.** CS-07 RSeQC is approved for create-exclusive standalone
-publication: existing outputs are preserved and replacement is refused.
-The same policy remains a proposal for CS-08–10, not implementation approval.
-All independently useful standalone commands remain.
-Normal Run materialization already selects `--no-clobber` for the shell owners below, and the paired-CMH
-provider selects it for its producer. This does not establish that the
-standalone interfaces are unused or that every surviving failure path is
-already sufficient.
+**CS-08–10 are supporting opportunities, not primary tranches.** Normal Run
+planning already chooses `--no-clobber`; standalone overwrite behavior remains
+supported. Its retirement needs approval covering the legacy flag, newly
+unconditional safe-ID/hash checks, and failed-tool captures/diagnostics.
+For example, direct QC quickcheck failure retains and names its capture;
+staging cleanup may remove it. A changed route must give useful, truthful
+diagnostics. These commands remain independently useful.
 
-The policy decision must also cover the continued acceptance of the
-`--no-clobber` spelling, newly unconditional safe-ID and input-hash
-admission, and where failed tool captures and diagnostics survive. These
-are public behavior, not incidental cleanup. For example, QC's direct
-quickcheck failure retains its capture and prints its location, while
-staged cleanup can remove that capture. A universal staged path must
-preserve an approved useful diagnostic outcome and truthful messages.
+| Card / owner | Preserve while retiring overwrite mode | Earlier branch estimate |
+|---|---|---:|
+| CS-08 [BAM QC](../../src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh) | Two outputs; empty quickcheck success markers, nonempty success behavior, native flagstat text, and producer/validator interpretation differences. | 12–22 lines |
+| CS-09 [Duplicate marking](../../src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh) | BAM/index/metrics; `REMOVE_DUPLICATES=false`, Java/Picard admission, indexing, input/JAR identity, validation and partial-publication recovery. | 15–25 lines |
+| CS-10 [Paired CMH](../../src/emrys/analyses/paired_cmh_candidate_ranking/producer.py) | R computation, paired strata, statistical/threshold admission, six outputs/headers, summary-last publication, process groups, native/historical readers, and existing `.previous` residue. | 35–60 lines |
 
-The common preservation and evidence rules live in the
-[workflow](../operations/WORKFLOW.md#deliver) and
-[architecture guardrails](../design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails).
-Across these proposed retirements, preserve scientific computation, native
-artifacts, provenance, original inputs, historical readers, and recovery
-evidence. Validate present outputs, partial publication, input changes,
-replacement by another process, tool failure, cleanup failure, and retained
-ambiguous state. Owner-specific requirements follow; they do not create
-four separate versions of the common rollback rule.
-
-| Proposed slice | Audited owner and removable mode | Owner-specific requirements and size |
-|---|---|---|
-| CS-07 RSeQC | Implemented: one existing staged publication path for both standalone and Run calls; the legacy flag is accepted without a second mode. | Native report text, input binding, safe sample IDs, exit codes, diagnostics, and recovery follow the [producer contract](../../src/emrys/evidence/rseqc_orientation/CONTRACT.md#producer-publication-boundary). Its owner loses 51 net product lines within the complete CS-06/07 change. |
-| CS-08 BAM QC | [QC producer](../../src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh): retire final-versus-staged capture for its two outputs. | Preserve empty quickcheck success-marker semantics, nonempty success behavior, native flagstat text, and producer/validator interpretation differences. Approximate branch opportunity: 12–22 product lines. |
-| CS-09 Duplicate marking | [Picard producer](../../src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh): retire direct destinations and mode branches for BAM, index, and metrics. | Preserve `REMOVE_DUPLICATES=false`, Java/Picard admission, indexing, three-output validation, input/JAR identities, and partial-publication recovery. Approximate branch opportunity: 15–25 product lines. |
-| CS-10 Paired CMH | [CMH producer](../../src/emrys/analyses/paired_cmh_candidate_ranking/producer.py): retire six-file predecessor backup/replacement and restoration. | Retain R computation, paired strata, statistical/threshold admission, six outputs and headers, summary-last publication, process-group handling, and native/historical readers. Recognize existing `.previous` recovery residue even if new attempts cease creating it. Approximate branch opportunity: 35–60 product lines. |
-
-The remaining CS-08–10 audit estimate is 62–107 product lines before recovery and
-compatibility costs. QC and duplicate marking primarily shed mode
-conditionals, sentinel digest values, and target aliases; their substantive staging and
-protection code remains. Their main additional value is a consistent safer
-publication policy. Qualify each slice against Rule 5 rather than treating
-that policy value as an automatic compression exception.
-
-Recount each actual draft; this range is neither a net commitment nor a
-reason to delete tests. Existing owner suites are the
-[RSeQC shell tests](../../tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh),
-[QC shell tests](../../tests/evidence/canonical_bam_qc/test_step_02b_bam_qc.sh),
-[duplicate-marking shell tests](../../tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh),
-[canonical BAM shell tests](../../tests/stages/canonical_bam/test_step_02_sort_index_bam.sh),
-and
-[CMH producer tests](../../tests/analyses/paired_cmh_candidate_ranking/test_paired_cmh_producer.py).
-Their corresponding native-output validators and independent scientific
-oracles survive. Retiring tests for deliberately retired behavior requires
-preserving useful decisions and failure evidence first; retained evidence
-deletion still needs its separate exact proposal and commit.
-
-Step 05 remains part of the broader `OPS-03` family but is excluded from
-this proposed tranche pending reconciliation with its separate I/O work.
-Step 08 optimization is likewise not absorbed.
+The combined 62–107-line estimate precedes compatibility/recovery costs; much
+staging code remains necessary. Reuse existing owner suites and independent
+scientific oracles. Cover existing outputs, partial publication, changed inputs,
+foreign replacements, tool/cleanup failures, and ambiguous residue without a
+new redundant matrix. Preserve useful failure records before retiring obsolete
+behavior tests; evidence deletion still needs separate approval. Step 05 and
+Step 08 optimization remain outside this work pending their own reconciliation.
 
 ### CS-11 Reporting source identity
 
-The [fixed report-output decision](../design/decisions/execution-evidence-and-reporting.md#fixed-report-output-consolidation)
-owns the identity map, current/historical read and resume rules, report-source
-restrictions, alternatives, and surviving defenses. The approved consolidation
-preserves those rules; it does not close the broader identity goal or approve
-a different reporting producer. Changing those policies remains a separate
-decision.
+The [report-output decision](../design/decisions/execution-evidence-and-reporting.md#fixed-report-output-consolidation)
+owns the current source binding and historical read/resume rules. This card
+requires a decision separating scientific identity from reporting implementation.
 
-**Required outcome and decision.** Map which current reporting adapters,
-materializers, contract declarations, and producers affect the Run-bound source
-closure. Define which must remain scientific identity and where report-only
-implementation belongs. Select the new producer identity and exact historical
-read/resume behavior; do not rewrite an existing Run or add an identity
-translation layer merely to bypass its binding. The existing decision above
-is the preserving baseline, not evidence that the broader goal is done.
-
-**Acceptance.** A concrete boundary and caller-complete migration proposal
-must show that a report-only change permits scientifically compatible resume
-and independent regeneration while changed science is still refused. Preserve
-historical output/receipt interpretation, source rechecks, and extension
-ownership. Stop if the proposed boundary introduces an inspection/reporting
-cycle, weakens binding, or grows product code without an approved exception.
-
+Map the affected adapters, materializers, contracts, and producers. Specify
+new Run binding, producer identity, and exact historical admission before
+migration. A report-only edit should allow compatible scientific resume and
+independent regeneration; changed science must still be refused. Preserve
+source rechecks, historical outputs/receipts, and extension ownership. Never
+rewrite an existing Run, bypass its binding with a translation layer, create
+an inspection/reporting cycle, or grow product code without approval.
 
 ### CS-12 Canonical BAM command printing
 
- Four arrays in the canonical BAM producer
-are used only to print quickcheck, header, record-count, and sample-tag-count
-commands. The audited 30-line declaration block remains after replacement retirement;
-its sole reads remain four `print_command` calls. Replace those calls with the same
-directly quoted arguments and retire the declarations. Keep executable sort,
-read-group, index, and input-header command arrays.
+Four arrays in the canonical BAM producer only print quickcheck, header,
+record-count, and sample-tag-count commands. Replace their four `print_command`
+calls with the same quoted arguments; retain executable sort/read-group/index/
+input-header arrays and `validate_bam_pair`. The estimated 30-line removal is
+separate from the delivered replacement retirement and is opportunistic only.
 
-The proposal removes 30 product lines in one existing file and leaves real
-validation with `validate_bam_pair`. These commands are printed in both
-dry-run and execute modes. Before acceptance, compare complete rendered
-command bytes with fixed tokens and quoted paths, preserving
-`printf '%q '` escaping, trailing spaces, headings, and order; verify
-execute-mode invocation logs are unchanged. Run the owner shell and
-executable-resolution checks through the selected production path.
-This estimate is independent of canonical BAM replacement retirement.
+Compare full dry-run/execute display bytes, including fixed tokens, quoted
+paths, `%q` escaping, trailing spaces, headings, and order. Execution invocation
+logs must remain unchanged. Use the owner shell and executable-resolution checks.
 
 ### CS-13 Runtime profile construction
 
- The onboarding helper
-`_runtime_profile_bytes` has one caller, `discover_runtime_profile`.
-It rebuilds each frozen eight-field `RuntimeCheck`, copying six fields
-unchanged. Standard-library `dataclasses.replace` can retain those fields
-while replacing `target` and `probe_args`; no new carrier is needed.
-That constructor-only change is approximately 11 net physical lines and
-does not by itself establish a substantial slice.
+Onboarding's `_runtime_profile_bytes` has one caller, `discover_runtime_profile`.
+It copies six of eight frozen `RuntimeCheck` fields. `dataclasses.replace` could
+change only `target` and `probe_args`, saving about 11 lines. An unexecuted
+sketch also merged tool aliases and removed a private bytes/library-path handoff
+for about 20 net lines. Neither is a substantial standalone tranche.
 
-An earlier in-memory construction sketch estimated about 20 net product
-lines by also expanding the existing selected-tool mapping with derived
-aliases and retiring the private bytes/library-path handoff within the same
-owner. That combined estimate is provisional, not an executed or validated
-patch. Preserve Project/runtime-directory admission, Python default
-resolution, policy load, PATH tools, Rscript, Picard, renv, and Python
-admission order; preserve policy-row order, authored Python spelling,
-Picard/R namespace arguments, and the unknown-check diagnostic.
-
-Validate the static selected-tool/derived-alias noncollision assumption
-before changing dispatch, then compare every generated check field and
-ordered row. Preserve environment construction before probing.
-Use onboarding discovery, Doctor, and runtime-identity tests. Retain the
-helper if removing it harms clarity or the complete draft lacks meaningful
-reduction. Neither candidate authorizes installation or weakening a
-checkout-origin check to make local testing convenient.
+Before adoption, prove selected-tool/derived-alias noncollision. Compare all
+fields and ordered rows, retaining Project/runtime-directory admission, Python
+default/spelling, policy load, PATH tools, Rscript, Picard, renv, Python checks,
+namespace arguments, and unknown-check diagnostics. Construct the environment
+before probing. Use onboarding, Doctor, and runtime-identity tests; retain the
+helper if clarity or meaningful reduction suffers. No installation or weakened
+checkout admission is authorized.
 
 ### CS-14 Paired-CMH configuration
 
-**Observed.** Current Project v1 accepts both flat paired-CMH fields and an
-explicit module form.
-[`onboarding.py`](../../src/emrys/orchestration/run_coordinator/onboarding.py)
-still writes the flat form. In
-[`normalization.py`](../../src/emrys/orchestration/run_coordinator/normalization.py),
-the flat branch translates target/background values separately from the
-existing module's `_normalize_config` in
-[`paired_cmh_candidate_ranking/__init__.py`](../../src/emrys/analyses/paired_cmh_candidate_ranking/__init__.py).
-The forms differ in policy envelope and provider binding; one is not merely
-a different spelling of identical persisted intent.
+Project v1 accepts flat paired-CMH fields and a module form; onboarding still
+writes flat fields. Its [normalizer](../../src/emrys/orchestration/run_coordinator/normalization.py)
+repeats target/background transformation from the [module normalizer](../../src/emrys/analyses/paired_cmh_candidate_ranking/__init__.py).
+Policy envelopes and provider binding differ. The 17-line transformation is
+only a small opportunity unless equivalent validation can also retire.
 
-**Conditional outcome.** Have the existing module normalizer own newly
-admitted scientific configuration, retiring the duplicated flat transformation
-only when equivalent canonical values and errors are demonstrated or their
-correction is approved. Changing onboarding's emitted form is a separate
-public/provenance decision. No new normalization abstraction is proposed.
-
-**Preserve and prove.** Retain historical request-v3/execution-v1 reading,
-the module readmission flat fallback, and exact flat policy semantics until
-every consumer is accounted for. Compare canonical numeric types/defaults,
-target aliases, absent versus null background, condition and pair errors,
-error order, provider binding, and exact historical Run bytes. Use
-normalization, onboarding, module, profile, and materialization tests.
-
-The gross duplicated flat transformation is about 17 lines. Net saving is
-unproven and likely small unless equivalent semantic validation can also
-retire. Defer if preservation requires a new adapter or parallel pathway.
-Do not describe active flat configuration or all request-v3 support as obsolete.
+Use the existing module normalizer only after proving equal canonical values,
+defaults, errors/order, target aliases, absent/null backgrounds, conditions,
+pairs, and provider binding, or approving their changed behavior. Preserve
+request-v3/execution-v1 reads, module readmission's flat fallback, and exact
+historical bytes. Changing onboarding's emitted form requires its own decision.
+Reuse normalization/onboarding/module/profile/materialization tests; retain the
+current forms if compatibility would need a new adapter or parallel path.
 
 ### CS-15 Reporting TSV grammar
 
-**Observed.** The CSV engines in
-[`_run_summary/inputs.py`](../../src/emrys/reporting/_run_summary/inputs.py)
-and
-[`_artifact_index/records.py`](../../src/emrys/reporting/_artifact_index/records.py)
-occupy about 49 lines combined. Summary parsing uses strict quoting; index
-parsing uses lax quoting. Both use `DictReader`, skip blank records, and
-can retain ragged row shapes. They can reject headers before lexing the
-remaining body.
+[Run summary](../../src/emrys/reporting/_run_summary/inputs.py) uses strict CSV
+quoting; [artifact index](../../src/emrys/reporting/_artifact_index/records.py)
+uses lax quoting. Both use `DictReader`, skip blank records, retain ragged row
+shapes, and can reject headers before lexing the remaining body. Their combined
+49-line parsing surface is not an estimate of net savings.
 
-The existing
-[`parse_strict_tsv_bytes`](../../src/emrys/libraries/validation/tsv.py)
-rejects blank/ragged rows and empty/duplicate headers, and defers shape/header
-errors until lexical scanning finishes. A later quote error can therefore
-take precedence. It is not a preserving drop-in replacement.
+The [shared strict TSV parser](../../src/emrys/libraries/validation/tsv.py)
+rejects blank/ragged rows and empty/duplicate headers, and lexes before reporting
+shape/header errors. Reuse needs a decision on quote/tab/newline grammar, CRLF,
+UTF-8, header rules, and diagnostic precedence, including bad headers followed
+by bad quoting. Then parse already captured bytes through that owner, retaining
+domain checks, hashes, rechecks, and diagnostics. Verify complete transactions,
+historical valid TSVs, and raw-byte provenance. Exclude sample manifests,
+storage roots/policy, and all-pass reading: their semantics differ. Do not add
+a configurable compatibility parser or reopen paths to avoid this decision.
 
-**Conditional outcome.** After an explicit input-compatibility decision,
-parse already captured report bytes through that existing owner and retire
-both local CSV engines. Keep domain row-count checks, hashes, snapshots,
-rechecks, and diagnostics in their owners. Do not reopen a pathname or create
-a configurable parser adapter to emulate every previous behavior.
+### CS-16 Operator and developer documentation
 
-**Decision and proof.** Specify malformed quotes, quoted tabs/newlines, blank
-and ragged rows, duplicate/empty/wrong headers, CRLF, invalid UTF-8, and
-header-plus-later-lexical-error precedence. Test complete artifact-index and
-run-summary transactions, including historical valid TSVs and raw-byte
-provenance. The 49-line surface is not a net estimate because domain checks
-and error translation remain. Exclude sample manifests, storage roots/policy,
-and the all-pass reader: their accepted forms and status semantics differ.
+**Implemented; PR verification pending.** The quickstart, Runbook,
+troubleshooting, configuration guide, engineering guide, and Run-coordinator
+contract now separate procedures, fields/examples, and exact selection rules.
+General recovery lives in troubleshooting. Resource groups and QoS are explained;
+managed/institutional/Slurm routes, commands, checkpoints, and examples survive.
+
+The same change restores campaign scope, shortens repeated planning prose, and
+records PR #150's verified outcomes. Documentation structure and its 12 existing
+regression checks pass; original fenced examples and headings are preserved.
+Independent review checked meaning and retained decisions. No product, test,
+configuration, or evidence file changes; no fresh-install or site walkthrough
+was performed. CI on the published documentation remains pending.
+
+### CS-17 Scientific and owner documentation
+
+**Ready for bounded selection.** Apply the same compression and language work
+to the remaining architecture/reference guides, Analysis/stage READMEs and
+contracts, and module docstrings. Cover scientific interpretation, extension
+examples, directory/schema orientation, and configuration examples including
+QoS. Explain purpose and inputs before internal names; keep exact cross-language
+contracts beside their owners and numerical meaning with the scientific guide.
+
+Select and complete one whole subject across its documents and callers at a
+time. Preserve useful decisions and examples before retiring duplicate text;
+never strip orientation merely to shorten a file. CS-16 does not close this
+family, and a formatter or isolated rename does not satisfy comprehension.
+
+### CS-18 Idiomatic scientific-producer implementation
+
+**Needs qualification.** Compare the complete Step 07/08/09 Python producer
+lifecycles: lock and signal handling, child processes, staging, publication,
+rollback, and cleanup. Their roughly 600 lines of publication classes at
+`f3a3966f` are an inspected surface, not promised deletions. Simplify the whole
+responsibility using ordinary language constructs and existing owners; any
+shared mechanism must replace every equivalent production implementation.
+
+Preserve Step 07's process pipeline, Step 08's spawning/output-ownership state,
+and Step 09's deferred signals during owner-metadata publication and its
+six-file publication order. Resolve
+supported replacement behavior and overlapping Step 08 optimization before
+changing them. Reuse independent scientific and recovery checks. Existing
+CS-01/02 cover workflow/report construction separately; no product change is
+approved merely by restoring this larger work to the queue.
+
+Include the scientific-context R table builders in this owner's later
+comprehension work: replace repetitive row counters/list assembly with clear
+base-R operations where empty-table types, ordering, missing values, exact
+outputs, and scientific calculations stay unchanged. Prefer named values to
+opaque positional structures when that simplifies all their consumers.
 
 ## Deferred and routed work
 
@@ -513,9 +395,9 @@ full below so an unresolved finding cannot disappear during conversion.
 
 | Family retained from the review | Disposition / finite reopening trigger |
 |---|---|
-| Reader-oriented wording; examples; unclear QoS and resource groups | Deferred to a bounded reader review of one role's complete path. Explain standard `qos` rather than migrating its spelling. Existing quickstart expansion does not prove a novice/site walkthrough. |
-| Documentation ownership; contracts/READMEs/docstrings; weak directory/schema orientation | Deferred to one subject's complete authority reconciliation. Examples include setup procedure in configs, validation status in Architecture, developer CI in Runbook, scientific interpretation in Troubleshooting, and mixed purpose/exact behavior in owner contracts. Preserve useful meaning before moving or deleting its former home. |
-| Code comprehension and module concentration | CS-01/02 are the selected planning focus. Other names, positional tuples, opaque mappings, module openings, and fragmentation require a bounded owner rationale before edits; file length is not a defect. The Step 09 threshold tuple and application/artifact-inventory docstrings remain examples. |
+| Reader-oriented wording, examples, QoS/resources | CS-16/17 explicitly own the complete reader paths. Explain standard `qos`; do not rename the field. Document review is not a novice/site walkthrough. |
+| Documentation ownership and orientation | CS-16/17 reconcile each subject across guides, contracts, READMEs, and docstrings, retaining useful meaning before retiring duplication. |
+| Code comprehension and module concentration | CS-01/02/18 cover complete task/report construction and scientific-producer lifecycles. Improve names, fixed-position values, opaque mappings, and purpose explanations during those migrations; example repairs do not close the family. |
 | Repeated protection; branch surface; excessive tests | Review with each selected owner. Delete impossible or redundant branches/cases only after checking producers and surviving independent protection. Low control-plane/runtime branch coverage is not an instruction to add tests. |
 | Schema generations/layout | Deferred until one exact contract family's current/historical reader inventory supports a negative migration; do not bulk-retire v3 or rename directories for appearance. Audit-time 27 schemas / 5,353 lines span unrelated families and shared references. |
 | Scripts, inline/generated programs, R bootstrap wrappers, numeric stage names | `OPS-03` owns substantive retain/migrate/retire decisions. Rename surviving programs during real migration; do not add a common bootstrap merely to inline small, semantically different wrappers. Reconcile the site-specific Step 05 script and PR #44/#45 before new work. |
@@ -746,21 +628,23 @@ separately authorized site qualification.
 
 ### Retained mechanisms and rejected shortcuts
 
-The following distinctions limit the current proposals; they do not claim
-that every surrounding owner has been exhaustively audited.
+The [counterexamples above](#retained-audit-counterexamples) retain the resource,
+immutable/mutable projection, TSV, small-helper, and bootstrap findings.
+Additional limits remain:
 
-| Mechanism | Evidence for retaining it or narrowing the proposal |
-|---|---|
-| Resource override intent | `computational_resources_explicit` still records authored omission; effective merged resources cannot reconstruct it. CS-04 removes `selected_reporting_memory` because its entire active control is retired, not because authored overlay intent was derivable. |
-| Repeated predecessor admission | Resource selection before Slurm submission and later child planning independently admit the predecessor. They cross a time/process boundary; do not cache one result across that boundary merely to delete validation. |
-| Resource normalization | Partial fragments, complete symbolic policies, historical effective records, numeric canonicalization, and allocation resolution carry different semantics. Historical missing thread fields and accepted integral numbers affect exact record identity. |
-| Immutable and mutable projections | A frozen mapping/tuple boundary for providers does not duplicate decoding into a fresh mutable JSON object. Shared canonical record storage is already implemented. |
-| Input stability checks | Four-field metadata snapshots and descriptor-bound mode/change-time checks make different guarantees. Metadata is not proof of unchanged content; any consolidation needs an explicit threat-model decision. |
-| Schema generations | Physical directories contain different contract families and cross-directory references. Current summary v3, frozen receipt v3, current resource/execution-profile v1 IDs, and historical request v3 cannot share one version-retirement decision. |
-| Publication mechanisms | Validation reports, inventory replacement, reference provenance, runtime inspection, and stage outputs have different ownership/recovery contracts. Similar backup/lock spelling does not justify one shared transaction implementation. |
-| Runtime and source identity | R dependency closure and Snakemake package-content binding remain separate assurance questions. A smaller file roster is not evidence of equally strong identity. |
-| Small independent fragments | The fixed limitation-ID allocator, tiny unused helpers, small row-copy handoffs, and R wrappers did not qualify a substantial standalone change in the reviewed scopes. This is a value judgment per candidate, not an arbitrary repository-wide line-count threshold. |
-| Scientific oracles and generated locks | Independent numerical expectations and reproducibility locks have different maintenance and evidence roles from duplicated production logic. Their removal cannot manufacture a product-code reduction. |
+- `computational_resources_explicit` preserves authored omission; merged values
+  cannot reconstruct it. CS-04 retired the entire reporting-memory control.
+- Parent Slurm resource selection and child planning read the predecessor at
+  different times/processes; one cached result cannot replace both checks.
+- Four-field snapshots omit descriptor-bound mode/change time; metadata is not
+  proof of unchanged bytes. Any consolidation needs a stability decision.
+- Schema directories contain unrelated families and shared references: current
+  summary v3, frozen receipt v3, resource/profile v1, and historical request v3
+  cannot be retired together based on their suffix.
+- Validation reports, inventory, references, runtime, and stage publication
+  have distinct recovery contracts. Similar names do not justify sharing.
+- R dependency closure and Snakemake content identity remain separate questions.
+  Independent numerical oracles and generated locks are retained obligations.
 
 ## Delivered scope and integration evidence
 
@@ -853,17 +737,8 @@ review finds a broader live pattern:
 
 ## Closeout record required before retirement
 
-A card closes with its accepted result and exact evidence, or its explicit
-retain/reject/transfer reason. Update the parent matrix row only when that
-broader outcome actually changes. Do not leave an implemented card described
-as discovery, and do not mark a broader family complete because one example
-was removed. A PR's closure without individual merge is not proof its work
-was abandoned; use the integration ancestry above.
-
-Before retiring these temporary documents, reconcile every CS card and routed
-finding, move unresolved accepted work into the main matrix, and transfer
-useful constraints, counterexamples, recovery defects, and evidence ceilings
-to the named durable owner. Verify every link and transfer, record the final
-user disposition, and explicitly scope retirement. No unselected candidate
-must be implemented merely to close the campaign; no unresolved concern can
-be dropped merely because its easiest simplification was rejected.
+Follow the [campaign retirement procedure](compression_campaign.md#completion-and-retirement).
+Record each card's result and exact evidence; update broader rows only when
+those outcomes change. An original PR closed through an integration is not
+abandoned work. A repaired example or rejected shortcut does not close its
+family, and no unfinished concern disappears without a recorded disposition.
