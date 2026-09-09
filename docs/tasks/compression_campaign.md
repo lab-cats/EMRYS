@@ -863,9 +863,9 @@ tooling approval does not authorize a general tooling campaign.
 The current approved maintenance scope is documentation reconciliation,
 removal of the duplicate 35-task Python fixture setup, bounded two-child
 execution of Step 08's independent negative R fixtures, ShellCheck integration,
-Ruff formatting, developer hooks, and `emrys --version [-v]`. At this
-documentation boundary those implementations and their final checks are
-pending. Keep distinct guarded and managed runtime coverage, real per-case R
+Ruff formatting, developer hooks, and `emrys --version [-v]`. These changes are now implemented. Focused local checks pass; final hosted
+CI remains pending. The formatting baseline is a separate mechanical commit
+whose 78 changed Python files retain identical parsed code. Keep distinct guarded and managed runtime coverage, real per-case R
 process isolation, every scientific case and oracle, and explicit parallel-child
 failure propagation. CI scheduling
 and tooling changes must show their own footprint and evidence; they are not

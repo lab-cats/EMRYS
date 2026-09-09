@@ -371,17 +371,13 @@ and any roster expansion are distinct from this completed correction.
 
 ### 16. Integrate ShellCheck
 
-**Finding:** ShellCheck has an unused Make variable and source annotations, but
-no active invocation; actionlint disables its shell integration.
-
-**Disposition:** Selected and in progress under `DEV-01` in the
-[backlog matrix](backlog_matrix.md); implementation and acceptance remain pending.
-
-**Outcome and acceptance:** Run [ShellCheck](https://github.com/koalaman/shellcheck)
-on retained shell owners and applicable embedded CI scripts, using existing
-source annotations and reviewed rules. Actionable findings fail the established
-gate. Reconcile programs scheduled for retirement under `OPS-03`; retain Bash
-syntax checks. Add a maintained tool integration, not another shell framework.
+**Disposition:** Implemented under `DEV-01`; final hosted CI remains pending.
+The existing lint gate checks every tracked `.sh` file with locked ShellCheck,
+and actionlint checks embedded workflow shell with the same version. Shared
+source resolution uses `.shellcheckrc`. Seven array-reference mistakes are
+corrected; annotations explain specific dynamic inputs and intentional shell
+semantics instead of disabling a rule repository-wide. Local ShellCheck,
+actionlint, and shell-owner contracts pass. Bash syntax checks remain active.
 
 ### 17. Broaden Ruff correctness checks
 
@@ -395,16 +391,13 @@ Formatting is the separate approved item 18, not part of this completed change.
 
 ### 18. Adopt consistent Python formatting
 
-**Finding:** Ruff is installed, but no formatter check is integrated.
-
-**Disposition:** Selected and in progress under `DEV-01` in the
-[backlog matrix](backlog_matrix.md); the formatter adoption has not yet landed.
-
-**Outcome and acceptance:** Use [Ruff's formatter](https://docs.astral.sh/ruff/formatter/)
-with one configuration and a reproducible `--check` command. Define the
-maintained scope and exclude generated/vendored material deliberately. Keep
-one-time formatting churn separate from semantic changes and review its full
-size before publication. No additional Python formatter is needed.
+**Disposition:** Implemented under `DEV-01`; final hosted CI remains pending.
+The existing Ruff configuration and locked version own formatting for `scripts`,
+`src/emrys`, and `tests`. `make lint` and the staged-file hook use `ruff format
+--check`. The separate mechanical baseline reformatted 78 files; every changed
+file retained identical parsed Python code. Its 2,101 additional physical lines
+are formatting expansion, reported separately from functional changes and never
+counted as compression. The formatter check passes across 418 Python files.
 
 ### 19. Adopt one Python type checker
 
@@ -420,17 +413,15 @@ admission and scientific validation; it does not replace them.
 
 ### 20. Add optional fast local hooks
 
-**Finding:** No repository-managed pre-commit configuration exists.
-
-**Disposition:** Selected and in progress under `DEV-01` in the
-[backlog matrix](backlog_matrix.md). Installation remains explicit; documenting
-the selected hooks does not mean they are installed or already validated.
-
-**Outcome and acceptance:** Explicitly installed [pre-commit](https://pre-commit.com/)
-hooks run agreed quick checks on changed files using the same tools and policy
-as CI. Include relevant lint/format and basic whitespace/conflict checks once
-their owners are established. Ordinary commits do not run long suites, install
-scientific dependencies, or acquire a second validation inventory.
+**Disposition:** Implemented under `DEV-01`; final hosted CI remains pending.
+The repository's three pre-commit hooks check staged Python correctness,
+Python formatting, and shell code with the locked `.venv` tools. They perform
+no implicit installation, rewriting, scientific execution, R checks, or test
+suites. Explicit installation and use live in the
+[engineering conventions](../operations/ENGINEERING_CONVENTIONS.md#development-validation).
+Local hook checks pass, including rejection of an invalid staged shell file
+while ignoring an unrelated untracked invalid Python file. CI remains the
+complete validation path.
 
 ### 21. Share local and CI validation inventory
 
@@ -457,14 +448,16 @@ Item 33 separately addresses required merge checks.
 
 ### 23. Reduce the measured CI critical path
 
-**Disposition:** Selected and in progress under **`CI-01`**. PR #124's duration
+**Disposition:** Implemented under **`CI-01`**; final hosted CI remains pending. PR #124's duration
 estimate refresh is already merged through PR #139; it does not close the
 remaining wall-time outcome. Hosted timing review now separates queue time,
 setup, R restoration, runtime readiness, and test execution rather than treating
 all elapsed time as test cost.
 
-The approved test work shares equivalent expensive Python fixture setup and
-removes a duplicate R package-probe wrapper. All sixteen existing R negative
+The test change combines output and resume assertions around one initial
+35-task Python workflow execution and removes a duplicate R package-probe
+wrapper. Statement comparison confirms that only the duplicate execution was
+removed from the Python test bodies. All sixteen existing R negative
 cases and their guards remain; at most two run concurrently. This changes test
 scheduling and repeated setup, not scientific computation, the negative-case
 roster, or production runtime admission. Independent assertions, private mutable
@@ -849,23 +842,23 @@ bounded optional presentation change requiring a quantified footprint proposal.
 
 ### 43. Report the installed package version through the public CLI
 
-**Finding:** The package [defines its version][package-version], but the
-[public parser][public-command-parser] requires a command and provides no
-conventional `emrys --version` option. No version invocation was attempted
-during this audit.
+**Original finding:** The package defined its version, but the public parser
+required a command and exposed no conventional version display.
 
-**Disposition:** Selected and in progress under `CLI-VERSION-01` in the
-[backlog matrix](backlog_matrix.md), including its bounded product-footprint
-exception. The public option is not implemented or validated yet.
+**Disposition:** Implemented under `CLI-VERSION-01`; final hosted CI remains
+pending. `emrys --version` reports the package version; `-v` adds its loaded
+path and Python version/executable. Focused production-path tests pass,
+including foreign-directory display and preserved ordinary checkout admission.
+The existing parser and package version remain the only owners.
 
 **Outcome and acceptance:** The installed command reports its actual package
 version from an arbitrary directory without requiring a Project, probing
 scientific tools, or writing state. If source identity is included, reuse
 existing source authority, distinguish known from unavailable information, and
 never infer the installed package's commit from an unrelated current directory.
-Audit the checkout-mismatch guard that currently runs before argument parsing;
-decide the informational option's behavior explicitly without silently bypassing
-that boundary. Preserve existing command dispatch. A version response does not
+The implemented display is allowed from another checkout so it can identify
+the installation in use; ordinary commands and positional `--version` text
+still undergo the existing checkout check. Existing command dispatch remains. A version response does not
 prove runtime readiness, cleanliness, or reproducibility. This small public-CLI
 slice supports item 30; it does not close the broader release outcome.
 
