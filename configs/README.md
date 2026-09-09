@@ -171,7 +171,7 @@ that exact file. There is no site/global registry or search path.
 An `emrys.execution-profile.v1` document may contain:
 
 - `resources`: `workflow_cores`, `workflow_memory_mb`, per-stage concurrency,
-  per-step threads, per-stage memory, and reporting memory; and
+  per-step threads, and per-stage memory; and
 - `placement`: direct execution or one outer Slurm allocation, including its
   account, partition, QoS, CPU, memory, time, exclusivity, node, scratch, and
   exact module policy.

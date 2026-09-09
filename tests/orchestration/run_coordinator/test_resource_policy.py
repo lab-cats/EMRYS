@@ -9,6 +9,7 @@ from typing import Any
 
 import pytest
 
+from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.orchestration.run_coordinator.resource_policy import (
     REPORTING_KINDS,
     REPEATABLE_STAGE_IDS,
@@ -23,7 +24,6 @@ from emrys.orchestration.run_coordinator.resource_policy import (
     resolve_resource_policy,
     resource_override_argv,
     resume_resource_policy,
-    resume_resource_plan,
 )
 
 DEFAULT_SHA256 = "d" * 64
@@ -45,7 +45,6 @@ def _document() -> dict[str, Any]:
             "10": 1,
         },
         "stage_memory_mb": {step_id: "workflow" for step_id in STAGE_IDS},
-        "reporting_memory_mb": {kind: "workflow" for kind in REPORTING_KINDS},
     }
 
 
@@ -106,7 +105,7 @@ def test_symbolic_declaration_is_allocation_independent_and_persistable() -> Non
         "10": 1,
     }
     assert set(dict(first.stage_memory_mb).values()) == {16_384}
-    assert set(dict(second.reporting_memory_mb).values()) == {32_768}
+    assert "reporting_memory_mb" not in first.effective_document()
     assert dict(first.scheduler_limits()) == {
         "mem_mb": 16_384,
         **{f"stage_{step_id}_slots": 1 for step_id in REPEATABLE_STAGE_IDS},
@@ -117,15 +116,14 @@ def test_symbolic_declaration_is_allocation_independent_and_persistable() -> Non
     admitted = admit_resource_policy_record(record, require_symbolic=True)
     assert admitted.policy == first.policy
     assert admitted.effective_document() == first.effective_document()
-    reallocated = resume_resource_plan(record, _allocation(memory_mb=32_768))
+    reallocated = resolve_resource_policy(
+        admitted.policy, _allocation(memory_mb=32_768)
+    )
     assert reallocated.workflow_memory_mb == 32_768
 
 
-def test_reporting_is_not_run_bound_and_resume_applies_explicit_overrides() -> None:
+def test_resume_applies_explicit_overrides() -> None:
     baseline = _policy(override_labels=("stage_concurrency.01",))
-    changed_document = _document()
-    changed_document["reporting_memory_mb"]["html_report"] = 1024
-    reporting_changed = _policy(changed_document)
     resumed = resume_resource_policy(
         baseline,
         overrides=ResourceOverrides(
@@ -134,9 +132,6 @@ def test_reporting_is_not_run_bound_and_resume_applies_explicit_overrides() -> N
         ),
     )
 
-    assert reporting_changed.declaration == baseline.declaration
-    reporting_plan = resolve_resource_policy(reporting_changed, _allocation())
-    assert dict(reporting_plan.reporting_memory_mb)["html_report"] == 1024
     assert resumed.declaration.workflow_cores == 5
     assert dict(resumed.declaration.step_threads)["01"] == 2
     assert resumed.override_labels == (
@@ -169,14 +164,34 @@ def test_current_and_historical_persisted_policy_resume() -> None:
         is None
     )
 
+    for field, memory in (("symbolic", "workflow"), ("effective", 16_384)):
+        record[field]["reporting_memory_mb"] = {
+            kind: memory for kind in REPORTING_KINDS
+        }
+        record[f"{field}_sha256"] = orchestration_contracts.canonical_sha256(
+            record[field]
+        )
+    retained_bytes = orchestration_contracts.canonical_json_bytes(record)
+    admitted = admit_resource_policy_record(record, require_symbolic=True)
+    assert admitted.declaration == current.declaration
+    assert admitted.policy.document() == current.policy.document()
+    assert orchestration_contracts.canonical_json_bytes(record) == retained_bytes
+
     historical = {
         key: value
         for key, value in record.items()
         if key not in {"symbolic", "symbolic_sha256"}
     }
-    resumed = resume_resource_plan(historical, _allocation(memory_mb=32_768))
+    resumed = resolve_resource_policy(
+        resume_resource_policy(historical), _allocation(memory_mb=32_768)
+    )
     assert resumed.effective_document() == current.effective_document()
     assert resumed.allocation.memory_mb == 32_768
+    legacy_input = {
+        key: value for key, value in historical.items() if key != "allocation"
+    }
+    assert resume_resource_policy(legacy_input) == resumed.policy
+    assert admit_resource_policy_record(historical).policy == resumed.policy
     with pytest.raises(ResourceConfigError, match="Persisted resource policy keys"):
         admit_resource_policy_record(historical, require_symbolic=True)
 
@@ -187,7 +202,24 @@ def test_current_and_historical_persisted_policy_resume() -> None:
     effective_tamper = copy.deepcopy(historical)
     effective_tamper["effective_sha256"] = "0" * 64
     with pytest.raises(ResourceConfigError, match="effective resource digest differs"):
-        resume_resource_plan(effective_tamper, _allocation())
+        resume_resource_policy(effective_tamper)
+
+    for memory, message in (
+        (1024, "does not reproduce its resolution"),
+        (32_769.0, "Reporting html_report memory exceeds workflow memory: 32769 >"),
+    ):
+        changed = copy.deepcopy(record)
+        if memory > 16_384:
+            changed["symbolic"]["reporting_memory_mb"]["html_report"] = memory
+            changed["symbolic_sha256"] = orchestration_contracts.canonical_sha256(
+                changed["symbolic"]
+            )
+        changed["effective"]["reporting_memory_mb"]["html_report"] = memory
+        changed["effective_sha256"] = orchestration_contracts.canonical_sha256(
+            changed["effective"]
+        )
+        with pytest.raises(ResourceConfigError, match=message):
+            admit_resource_policy_record(changed, require_symbolic=True)
     with pytest.raises(ResourceConfigError, match="Slurm job ID"):
         _allocation(slurm_job_id="0")
 
@@ -238,11 +270,6 @@ def test_historical_thread_roster_defaults_analysis_steps_to_one() -> None:
                 stage_memory_mb=(("01", 3072),),
             ),
             "concurrency x memory exceeds workflow memory",
-        ),
-        (
-            _allocation(memory_mb=4096),
-            ResourceOverrides(reporting_memory_mb=(("html_report", 4097),)),
-            "Reporting html_report memory exceeds workflow memory",
         ),
     ),
 )
@@ -303,7 +330,6 @@ def test_resource_override_arguments_round_trip_exact_delegate_argv() -> None:
         stage_concurrency=(("01", 4), ("02", 2)),
         step_threads=(("01", 2),),
         stage_memory_mb=(("01", 3000),),
-        reporting_memory_mb=(("html_report", 1000),),
     )
     argv = resource_override_argv(expected)
 
@@ -320,8 +346,6 @@ def test_resource_override_arguments_round_trip_exact_delegate_argv() -> None:
         "01=2",
         "--stage-memory-mb",
         "01=3000",
-        "--reporting-memory-mb",
-        "html_report=1000",
     )
     parser = argparse.ArgumentParser()
     add_resource_override_arguments(parser)
@@ -329,3 +353,5 @@ def test_resource_override_arguments_round_trip_exact_delegate_argv() -> None:
     assert resource_override_argv(ResourceOverrides()) == ()
     with pytest.raises(SystemExit):
         parser.parse_args(["--workflow-cores", "0"])
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--reporting-memory-mb", "html_report=1000"])

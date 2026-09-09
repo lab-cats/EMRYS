@@ -114,9 +114,11 @@ def resource_config() -> dict[str, Any]:
 
 
 def execution_profile() -> dict[str, Any]:
+    resources = resource_config()
+    resources.pop("reporting_memory_mb")
     return {
         "schema_version": "emrys.execution-profile.v1",
-        "resources": resource_config(),
+        "resources": resources,
         "placement": {"kind": "direct"},
     }
 

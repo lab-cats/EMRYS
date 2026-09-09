@@ -99,6 +99,16 @@ There is no site/global registry or profile scan. Resource CLI values have
 highest precedence. Placement is Attempt-local provenance; the admitted
 scientific computation and task roster remain Run authority.
 
+New profiles reject `resources.reporting_memory_mb`, and the CLI no longer
+accepts `--reporting-memory-mb`. This retired control never constrained report
+execution. Remove it from a selected profile before a new Run or Attempt.
+Historical workflow records retain their exact bytes and digests. Strict
+persisted-record admission still checks their reporting-memory roster, values,
+resolution, and limits.
+Resume carries only the computational policy into a new Attempt and does not
+rewrite the immutable Run or its predecessor records. Normal implementation
+identity checks still apply when selecting a different checkout.
+
 Planning composes the fixed common processing profile with the selected
 analysis provider's admitted task tail, declared inputs/outputs, validation
 reports, resources, and reporting projection. It materializes one immutable

@@ -314,7 +314,6 @@ def _resume_predecessor_policy(
     observed: inspection.RunInspection,
     predecessor_config: Mapping[str, Any],
     overrides: ResourceOverrides,
-    reporting_overlay=(),
 ) -> ResourcePolicy:
     """Re-admit the predecessor policy without observing an allocation."""
 
@@ -328,9 +327,7 @@ def _resume_predecessor_policy(
             if observed.authority is not None or has_symbolic_policy
             else prior
         )
-        return resume_resource_policy(
-            predecessor, reporting_overlay=reporting_overlay, overrides=overrides
-        )
+        return resume_resource_policy(predecessor, overrides=overrides)
     except ResourceConfigError as exc:
         raise ControlError(str(exc)) from exc
 
@@ -558,7 +555,6 @@ def _plan_resume(
                 observed,
                 predecessor_config,
                 resource_overrides,
-                execution_profile.selected_reporting_memory,
             )
             execution_profile = replace(
                 execution_profile,
@@ -741,7 +737,6 @@ def _resolve_execution_profile(
                 observed,
                 predecessor_config,
                 overrides,
-                profile.selected_reporting_memory,
             ),
         )
     if (

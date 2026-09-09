@@ -209,10 +209,6 @@ def build(root: Path, *, replicate_count: int = 2) -> Path:
         '    "08": 1024\n'
         '    "09": 1024\n'
         '    "10": 1024\n'
-        "  reporting_memory_mb:\n"
-        "    artifact_index: 1024\n"
-        "    run_summary: 1024\n"
-        "    html_report: 1024\n"
         "placement:\n"
         "  kind: direct\n",
         encoding="utf-8",

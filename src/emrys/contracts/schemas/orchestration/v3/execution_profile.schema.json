@@ -129,7 +129,8 @@
   "properties": {
     "schema_version": {"const": "emrys.execution-profile.v1"},
     "resources": {
-      "$ref": "urn:emrys:schema:orchestration:resource-config:v1"
+      "$ref": "urn:emrys:schema:orchestration:resource-config:v1",
+      "not": {"required": ["reporting_memory_mb"]}
     },
     "placement": {
       "$ref": "#/$defs/placement"
