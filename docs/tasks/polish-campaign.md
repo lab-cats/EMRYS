@@ -104,7 +104,7 @@ approved ShellCheck, Ruff formatting, and optional fast hooks under `DEV-01`
 Those slices passed ordinary hosted CI in [run 34306975901](https://github.com/lab-cats/EMRYS/actions/runs/34306975901)
 at `b491aac5`, including the complete Python suite/coverage, guarded R, and
 managed golden path. PR #148 awaits master integration. Compression CS-20/22
-implements the artifact-version correction; hosted verification is pending.
+completed the artifact-version correction with passing hosted CI at `f8fd5346`.
 Other publication-recovery owners, Project preview, type checker, and unselected
 proposals retain their separate decision boundaries.
 
@@ -172,12 +172,12 @@ No compression claim is established for the small descriptor fix.
 
 ### 5. Admit current artifacts through the public validator
 
-**Implemented by compression CS-20/22; verification pending.** The
+**Done through compression CS-20/22 in PR #156; integration pending.** The
 [artifact validator](../../src/emrys/contracts/artifacts/README.md) and reporting
 share one current schema registry, removing the former current/default mismatch.
 Current artifact entries, manifest 4, and receipt 5 pass the public validation
 path; unsupported versions and malformed content reject. Focused schema/CLI
-checks pass; the compression backlog owns final hosted evidence and closeout.
+checks and ordinary hosted CI pass at `f8fd5346`; the compression backlog owns the evidence.
 
 ### 6. Make timestamp admission deterministic
 

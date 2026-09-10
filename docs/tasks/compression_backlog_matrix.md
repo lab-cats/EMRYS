@@ -6,9 +6,10 @@ owns the goals; this file owns CS scope, status, decisions, and proof. The
 
 ## Working queue
 
-**[PR #156](https://github.com/lab-cats/EMRYS/pull/156): CS-20–22, verification pending.** Consolidate reporting
-into one manifest, store task completion once, and retire historical-version
-readers. The [version policy](../design/decisions/platform-direction.md#version-support)
+**[PR #156](https://github.com/lab-cats/EMRYS/pull/156): CS-20–22 done; integration pending.** Reporting uses
+one manifest, task completion is stored once, and historical-version readers
+are retired. Ordinary [hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34434390174)
+passes at `f8fd5346`. The [version policy](../design/decisions/platform-direction.md#version-support)
 replaces earlier compatibility requirements in these cards. Preserve scientific
 data, provenance, current Run recovery, and retained evidence; dashboard work
 and scientific-validation roster changes remain excluded.
@@ -88,24 +89,24 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-02](#cs-02-processing-report-adapters) | Remove equivalent processing-adapter declarations from artifact-index reporting. | Done | 4 | 4 | PR #153: all 42 processing adapters and 12 producer paths migrated; reader parity and ordinary hosted CI pass at cab77a26. | `REPORT-ROSTER-01` |
 | [CS-03](#cs-03-reporting-transaction-layout) | Publish artifact indexing and summary generation as one operation. | Done | 4 | 4 | PR #154 implemented generation, readers, and inspection; focused/static and ordinary hosted CI pass at 88522d0a. HTML stays separate; integration is pending. | `REPORT-ROSTER-01` |
 | [CS-04](#cs-04-reporting-memory-control) | Remove the ineffective active reporting-memory control and its transport. | Done | 3 | 4 | PR #150: new inputs rejected, historical records/hashes preserved; focused and ordinary hosted checks passed. | `REPORT-ROSTER-01` |
-| [CS-05](#cs-05-validation-check-rosters) | Give one scientific validation roster one neutral authority used by its producer and reporting. | Needs decision | 4 | 4 | Select membership/order, historical records, and external-provider obligations. | `REPORT-ROSTER-01` |
+| [CS-05](#cs-05-validation-check-rosters) | Give one scientific validation roster one neutral authority used by its producer and reporting. | Needs decision | 4 | 4 | Select membership/order, current record bindings, and external-provider obligations. | `REPORT-ROSTER-01` |
 | [CS-06](#cs-06-publication-handoff) | Characterize the helper-to-caller publication gap in RSeQC, BAM QC, and duplicate marking. | Done | 4 | 3 | PR #150: three equivalent owners migrated; six corrected probes, shell suites, and ordinary CI passed. | `OPS-03` |
 | [CS-07](#cs-07-through-cs-10-standalone-publication) | RSeQC: retire direct-to-final report capture. | Done | 2 | 2 | PR #150: one publication path; legacy flag, errors, and recovery preserved; ordinary CI passed. | `OPS-03` |
 | [CS-08](#cs-07-through-cs-10-standalone-publication) | BAM QC: retire mode-dependent publication for two outputs. | Done | 2 | 2 | Absorbed into PR #155; focused checks and ordinary hosted CI pass at a0dc7526; integration pending. | `OPS-03` |
 | [CS-09](#cs-07-through-cs-10-standalone-publication) | Duplicate marking: retire direct destinations and mode branches. | Done | 3 | 3 | Absorbed into PR #155; focused checks and ordinary hosted CI pass at a0dc7526; integration pending. | `OPS-03` |
 | [CS-10](#cs-07-through-cs-10-standalone-publication) | Paired CMH: retire six-file predecessor replacement/restoration. | Done | 3 | 4 | Implemented within CS-18: direct calls refuse existing destinations; focused publication checks and ordinary hosted CI pass at cab77a26. | `OPS-03` |
-| [CS-11](#cs-11-reporting-source-identity) | Define a reporting-source boundary that permits reporting-only changes without changing scientific Run identity. | Needs decision | 4 | 4 | Specify new Run binding, producer identity, historical admission, and resume before a structural migration. | `REPORT-ROSTER-01` |
+| [CS-11](#cs-11-reporting-source-identity) | Define a reporting-source boundary that permits reporting-only changes without changing scientific Run identity. | Needs decision | 4 | 4 | Specify new Run binding, producer identity, current Run admission, and resume before a structural migration. | `REPORT-ROSTER-01` |
 | [CS-12](#cs-12-canonical-bam-command-printing) | Remove canonical BAM's four print-only command arrays. | Done | 2 | 1 | Retired with standalone preview in PR #155; ordinary hosted CI passes at a0dc7526; integration pending. | `COMPRESS-01` |
 | [CS-13](#cs-13-runtime-profile-construction) | Remove the redundant RuntimeCheck field-copy construction in onboarding. | Opportunistic | 1 | 2 | Use standard dataclass replacement only after field/order/admission comparison; approximately 11–20 lines. | `COMPRESS-01` |
-| [CS-14](#cs-14-paired-cmh-configuration) | Let the existing module normalizer own equivalent newly admitted paired-CMH configuration. | Verification pending | 2 | 4 | CS-22 uses one module normalizer for both current Project forms; focused checks pass; hosted CI pending. | `COMPRESS-01` |
-| [CS-15](#cs-15-reporting-tsv-grammar) | Retire both reporting CSV engines through the existing strict TSV owner. | Verification pending | 2 | 3 | CS-20 retires the duplicate persisted TSV readers with their formats; native TSV grammar is unchanged; hosted CI pending. | `COMPRESS-01` |
+| [CS-14](#cs-14-paired-cmh-configuration) | Let the existing module normalizer own equivalent newly admitted paired-CMH configuration. | Done | 2 | 4 | CS-22 uses one module normalizer for both current Project forms; ordinary CI passes at `f8fd5346`; integration pending. | `COMPRESS-01` |
+| [CS-15](#cs-15-reporting-tsv-grammar) | Retire both reporting CSV engines through the existing strict TSV owner. | Done | 2 | 3 | CS-20 retires the duplicate persisted TSV readers with their formats; native TSV grammar is unchanged; ordinary CI passes at `f8fd5346`. | `COMPRESS-01` |
 | [CS-16](#cs-16-operator-and-developer-documentation) | Complete operator/developer guidance with clear ownership and plain language. | Done | 5 | 3 | PR #151 passed ordinary CI at `76acb9c5`; integration pending. | `COMPRESS-01` |
 | [CS-17](#cs-17-scientific-and-owner-documentation) | Consolidate and explain remaining scientific/owner documentation. | Done | 5 | 4 | All 169 Markdown files reviewed; PR #151 passed ordinary CI at `76acb9c5`. | `COMPRESS-01` |
 | [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | Done | 4 | 4 | All fourteen first-party tasks use runner-owned execution; ordinary hosted CI passes at a0dc7526; integration pending. | `OPS-03` |
 | [CS-19](#cs-19-scientific-report-table-handling) | Use one admitted table representation across scientific report consumers. | Done | 4 | 3 | PR #152 at `72fdf806`: focused checks and all ordinary hosted CI passed; integration pending. | `COMPRESS-01` |
-| [CS-20](#cs-20-through-cs-22-current-result-contracts) | Persist one reporting result manifest, with shared identity/provenance once. | Verification pending | 5 | 4 | Retire per-artifact files and duplicate receipts; preserve both HTML reports and useful TSVs. | `REPORT-ROSTER-01` |
-| [CS-21](#cs-20-through-cs-22-current-result-contracts) | Store terminal task completion details once. | Verification pending | 4 | 4 | Verified marker references the terminal attempt; current admission and recovery follow that reference. | `COMPRESS-01` |
-| [CS-22](#cs-20-through-cs-22-current-result-contracts) | Accept only current persisted contracts. | Verification pending | 5 | 4 | Remove old Run/request, policy, resource, dispatch, Attempt, and reporting readers across callers. | `COMPRESS-01` |
+| [CS-20](#cs-20-through-cs-22-current-result-contracts) | Persist one reporting result manifest, with shared identity/provenance once. | Done | 5 | 4 | Retire per-artifact files and duplicate receipts; preserve both HTML reports and useful TSVs. | `REPORT-ROSTER-01` |
+| [CS-21](#cs-20-through-cs-22-current-result-contracts) | Store terminal task completion details once. | Done | 4 | 4 | Verified marker references the terminal attempt; current admission and recovery follow that reference. | `COMPRESS-01` |
+| [CS-22](#cs-20-through-cs-22-current-result-contracts) | Accept only current persisted contracts. | Done | 5 | 4 | Remove old Run/request, policy, resource, dispatch, Attempt, and reporting readers across callers. | `COMPRESS-01` |
 
 ## Acceptance shared by every card
 
@@ -374,7 +375,7 @@ checkout admission is authorized.
 
 ### CS-14 Paired-CMH configuration
 
-**Implemented with CS-22; verification pending.** Current Project v1 retains
+**Done with CS-22 in PR #156.** Current Project v1 retains
 both flat and explicit module syntax. Both now use the existing module
 normalizer, then persist the same module policy and Analysis revision v2.
 This removes the duplicate target/background transformation and old policy
@@ -383,7 +384,7 @@ checks pass; historical format support retires under the approved version policy
 
 ### CS-15 Reporting TSV grammar
 
-**Absorbed into CS-20; verification pending.** The manifest replaces the
+**Done with CS-20 in PR #156.** The manifest replaces the
 persisted artifact-index and summary-receipt inputs, so their two CSV readers
 retire with those formats. No configurable parser or change to native scientific
 TSV grammar is needed. The summary and QC TSVs remain deterministic projections.
@@ -598,7 +599,7 @@ full below so an unresolved finding cannot disappear during conversion.
 | 5: input snapshots | Needs an explicit stability guarantee before consolidation: four-field metadata omits mode/change time retained by descriptor-bound reads. An existing test changes bytes while preserving size/mtime. Metadata does not establish content identity. Retain both mechanisms pending a bounded caller/threat-model decision. |
 | 6: Doctor storage repair | Routed to [polish item 9](polish-campaign.md#9-make-doctors-proposed-storage-repair-match-placement): a direct repair is proposed for unready Slurm qualification. Validate the local plan separately from site execution. |
 | 7: empty FASTA header | Deferred correctness correction retained here: [the contig parser](../../src/emrys/libraries/references/contigs.py) indexes an empty token list and raises `IndexError`. Reopen as a bounded normal-input-error correction with all callers and the existing contig test; no substantial compression is established. |
-| 8: artifact CLI document version | Implemented with CS-20/22; final hosted verification is pending [below](#artifact-cli-document-version-admission). This also addresses [polish item 5](polish-campaign.md#5-admit-current-artifacts-through-the-public-validator) and is unrelated to the delivered package `--version` option. |
+| 8: artifact CLI document version | Done with CS-20/22; hosted evidence is recorded [below](#artifact-cli-document-version-admission). This also addresses [polish item 5](polish-campaign.md#5-admit-current-artifacts-through-the-public-validator) and is unrelated to the delivered package `--version` option. |
 | 9: Snakemake package identity | [Polish item 35](polish-campaign.md#35-settle-the-installed-snakemake-content-guarantee) owns the undecided package-content guarantee. Current binding identifies the Python executable; package-change reproduction and the full identity audit remain absent. R dependency closure is a separate `RUNTIME-CLOSURE-01` outcome. |
 | 10: runtime private/public models | Delivered in PR #139: one immutable check/observation model and internal path objects; do not reselect it. |
 | 11: whole reference reads | Routed to [optimization](optimization_campaign.md): streaming hashes/FASTA parsing may reduce memory. Preserve second observations, decoding/newline/error order. No measured speed or peak-memory claim. |
@@ -697,7 +698,7 @@ consolidation was not selected.
 
 ### Artifact CLI document-version admission
 
-**Implemented with CS-20/22; verification pending.** The public validator and
+**Done with CS-20/22 in PR #156.** The public validator and
 reporting now share one current schema registry. Current artifact entries,
 manifest 4, and report receipt 5 pass; unsupported versions reject. The former
 current/default mismatch no longer requires a separate version-dispatch patch.
@@ -918,7 +919,7 @@ family, and no unfinished concern disappears without a recorded disposition.
 
 ### CS-20 through CS-22 Current result contracts
 
-**Approved as one implementation tranche; verification pending.** Existing
+**Done in PR #156; integration pending.** Existing
 reporting, task, and Run-admission owners absorb the changes; no manager,
 compatibility adapter, or new product file is needed.
 
@@ -955,11 +956,11 @@ source dependencies, and all 13 independent contract goldens pass. The scientifi
 HTML golden is byte-identical; the evidence HTML diff changes manifest/version
 and policy/Run-contract references only. Independent review found and corrected
 non-directory reporting-state handling; a focused probe confirms a reporting
-blocker rather than an uncaught filesystem exception. Hosted CI at `468dd25f`
-passed the managed golden path, guarded R, shell, workflow lint, and managed
-runtime checks. Its wheel and resume failures exposed stale fixtures, now
-corrected: installed-wheel records bind that wheel before publication, and
-workflow fixtures use the current terminal-record contract. Local installed-wheel
-smoke, terminal receipt validation, and foreign-marker refusal pass. The installed
-wheel probe reused existing dependencies; canonical dependency isolation and the
-complete Python suite/coverage remain pending in replacement hosted CI.
+blocker rather than an uncaught filesystem exception. Ordinary
+[hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34434390174) passes at
+`f8fd5346`: complete Python 3.14 suite and coverage policy, Python 3.11 smoke,
+installed-wheel isolation, managed golden path, guarded R, shell, static,
+documentation, workflow lint, and managed-runtime checks. Current resume and
+foreign-record refusal cases pass with the migrated fixtures. The subsequent
+closeout changes documentation only and passes documentation/whitespace checks;
+it does not invalidate the implementation evidence above.
