@@ -441,17 +441,24 @@ def _patch_lifecycle_execution(
     monkeypatch.setattr(control.lifecycle, "run_materialized_attempt", run)
 
 
-def _dispatch_records(plan) -> list[dict[str, object]]:
-    return [json.loads(item.data) for item in plan.new_dispatch_files]
+def _task_records(plan) -> list[dict[str, object]]:
+    return [
+        {
+            **record,
+            "machine_key": owner,
+            "scope": {"scope_type": record["scope_type"], "scope_id": scope},
+        }
+        for owner, scopes in plan.attempt_record["tasks"].items()
+        for scope, record in scopes.items()
+        if "workflow_attempt_record" not in record
+    ]
 
 
-def _workflow_config(plan) -> dict[str, object]:
-    return json.loads(
-        next(item.data for item in plan.attempt_files if item.path == plan.config_path)
-    )
+def _workflow(plan) -> dict[str, object]:
+    return plan.attempt_record["workflow"]
 
 
-def test_dispatches_bind_every_admitted_project_input(
+def test_task_definitions_bind_every_admitted_project_input(
     tmp_path: Path,
 ) -> None:
     plan = _plan(tmp_path, regions_file=True)
@@ -471,7 +478,7 @@ def test_dispatches_bind_every_admitted_project_input(
     expected = {Path(str(item["path"])): item for item in expected_snapshots}
     declarations = [
         item
-        for dispatch in _dispatch_records(plan)
+        for dispatch in _task_records(plan)
         for item in dispatch["inputs"]
         if Path(str(item["path"])) in expected
     ]
@@ -506,53 +513,19 @@ def test_owner_doubles_preserve_immutable_run_toolchain(tmp_path: Path) -> None:
 
     doubled = with_owner_doubles(plan)
 
-    assert (
-        replace(
-            doubled,
-            attempt_record_bytes=plan.attempt_record_bytes,
-            attempt_files=plan.attempt_files,
-            new_dispatch_files=plan.new_dispatch_files,
-        )
-        == plan
-    )
+    assert replace(doubled, attempt_record_bytes=plan.attempt_record_bytes) == plan
     attempt = doubled.attempt_record
-    assert attempt["execution_mode"] == "local-science-tools"
     original_attempt = plan.attempt_record
-    assert doubled.config_path == plan.config_path
-    attempt["workflow_config"] = original_attempt["workflow_config"]
+    for owner, scopes in attempt["tasks"].items():
+        for scope, replacement in scopes.items():
+            original = original_attempt["tasks"][owner][scope]
+            replacement["producer_argv"] = original["producer_argv"]
+            replacement["validator_argv"] = original["validator_argv"]
     assert attempt == original_attempt
-
-    original_files = {item.path: item.data for item in plan.attempt_files}
-    doubled_files = {item.path: item.data for item in doubled.attempt_files}
-    dispatch_paths = {item.path for item in plan.new_dispatch_files}
-    assert doubled_files.keys() == original_files.keys()
-    assert {item.path for item in doubled.new_dispatch_files} == dispatch_paths
-    for path in dispatch_paths:
-        original = json.loads(original_files[path])
-        replacement = json.loads(doubled_files[path])
-        replacement["producer_argv"] = original["producer_argv"]
-        replacement["validator_argv"] = original["validator_argv"]
-        assert replacement == original
-
-    original_config = json.loads(original_files[plan.config_path])
-    doubled_config = json.loads(doubled_files[plan.config_path])
-    for machine_key, scopes in doubled_config["dispatch_paths"].items():
-        for scope_id, doubled_reference in scopes.items():
-            original_reference = original_config["dispatch_paths"][machine_key][
-                scope_id
-            ]
-            assert doubled_reference["path"] == original_reference["path"]
-            doubled_reference["sha256"] = original_reference["sha256"]
-    assert doubled_config == original_config
-    assert all(
-        doubled_files[path] == data
-        for path, data in original_files.items()
-        if path not in dispatch_paths and path != plan.config_path
-    )
 
     assert all(
         "--payload-base64" in record[field]
-        for record in _dispatch_records(doubled)
+        for record in _task_records(doubled)
         for field in ("producer_argv", "validator_argv")
     )
 
@@ -563,7 +536,7 @@ def test_owner_doubles_use_successor_scopes_inside_reporting_payloads(
     plan = _plan(tmp_path)
     doubled = with_owner_doubles(plan)
     payloads: dict[Path, bytes] = {}
-    for record in _dispatch_records(doubled):
+    for record in _task_records(doubled):
         argv = record["producer_argv"]
         encoded = argv[argv.index("--payload-base64") + 1]
         manifest = json.loads(zlib.decompress(base64.b64decode(encoded, validate=True)))
@@ -605,12 +578,15 @@ def test_plan_is_no_write_and_projects_exact_worker_roster(
         plan.attempt_record["executor"]
         == plan.run.execution_plan.record["identity"]["backend"]["backend"]
     )
-    assert plan.dispatch_count == 35
-    records = _dispatch_records(plan)
+    assert plan.task_count == 35
+    records = _task_records(plan)
     assert len(records) == 35
     assert len({record["machine_key"] for record in records}) == 14
-    assert all(
-        record["schema_version"] == "emrys.local-task-dispatch.v2" for record in records
+    assert plan.attempt_record["schema_version"] == "emrys.workflow-attempt.v2"
+    assert plan.attempt_path not in {item.path for item in plan.attempt_files}
+    assert not any(
+        "dispatch" in item.path.parts or "workflow-configs" in item.path.parts
+        for item in plan.attempt_files
     )
     for record in records:
         assert "--execute" not in record["producer_argv"]
@@ -1017,7 +993,7 @@ def test_distinct_installed_module_materializes_one_typed_task(
     assert not (workspace / "runs").exists()
     (dispatch,) = (
         record
-        for record in _dispatch_records(plan)
+        for record in _task_records(plan)
         if record["machine_key"] == "collaborator.analysis.echo.v1"
     )
     assert {item["role"] for item in dispatch["inputs"]} == {"cohort_summary"}
@@ -1041,7 +1017,7 @@ def test_processing_plan_is_a_distinct_closed_31_task_run(tmp_path: Path) -> Non
         str(item["machine_key"]): str(item["step_id"])
         for item in readiness.analysis.profile["owner_tasks"]
     }
-    records = _dispatch_records(plan)
+    records = _task_records(plan)
 
     assert processing.run_id != full.run_id
     assert (
@@ -1053,7 +1029,7 @@ def test_processing_plan_is_a_distinct_closed_31_task_run(tmp_path: Path) -> Non
     ] == list(
         materialization.processing_stopping_owner_keys(readiness.analysis.profile)
     )
-    assert plan.dispatch_count == len(records) == 31
+    assert plan.task_count == len(records) == 31
     assert {owners[str(record["machine_key"])] for record in records} == set(
         PROCESSING_STEP_IDS
     )
@@ -1102,7 +1078,7 @@ def test_subset_plan_materializes_one_bound_analysis_sample_manifest(
         str(item["machine_key"]): str(item["step_id"])
         for item in readiness.analysis.profile["owner_tasks"]
     }
-    records = _dispatch_records(plan)
+    records = _task_records(plan)
     downstream = [
         record
         for record in records
@@ -1390,16 +1366,13 @@ def test_downstream_plan_preserves_admitted_sidecars_for_relocated_reference(
         for snapshot in snapshots
         if snapshot["role"] in {"step00c_reference_fai_v1", "step00c_reference_dict_v1"}
     }
-    dispatch_inputs = {
+    task_inputs = {
         item["path"]: item
-        for planned in plan.attempt_files
-        if "dispatch" in planned.path.parts
-        for item in orchestration_contracts.load_json_object_bytes(
-            planned.data, "test dispatch"
-        )["inputs"]
+        for record in _task_records(plan)
+        for item in record["inputs"]
     }
     old_fai = next(path for path in old_paths if path.endswith(".fai"))
-    assert dispatch_inputs[old_fai]["sha256"] == "a" * 64
+    assert task_inputs[old_fai]["sha256"] == "a" * 64
     inventory = next(
         planned.data
         for planned in plan.attempt_files
@@ -1497,7 +1470,7 @@ def test_attempt_plan_preserves_reporting_materialization(tmp_path: Path) -> Non
     planned_files = {
         item.path: item.data for item in (*plan.fixed_files, *plan.attempt_files)
     }
-    config = _workflow_config(plan)
+    config = _workflow(plan)
 
     for name in reporting.projection_references:
         reference = config[f"{name}_path"]
@@ -1587,18 +1560,10 @@ def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
 
     assert direct_plan.fixed_files == scheduled_plan.fixed_files
     assert direct_plan.directories == scheduled_plan.directories
-    assert tuple(
-        item
-        for item in direct_plan.attempt_files
-        if item.path != direct_plan.config_path
-    ) == tuple(
-        item
-        for item in scheduled_plan.attempt_files
-        if item.path != scheduled_plan.config_path
-    )
+    assert direct_plan.attempt_files == scheduled_plan.attempt_files
 
-    direct_config = _workflow_config(direct_plan)
-    scheduled_config = _workflow_config(scheduled_plan)
+    direct_config = _workflow(direct_plan)
+    scheduled_config = _workflow(scheduled_plan)
     direct_allocation = direct_config["resource_policy"].pop("allocation")
     scheduled_allocation = scheduled_config["resource_policy"].pop("allocation")
     assert direct_config == scheduled_config
@@ -1617,12 +1582,9 @@ def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
 
     direct_attempt = direct_plan.attempt_record
     scheduled_attempt = scheduled_plan.attempt_record
-    assert (
-        direct_attempt["workflow_config"]["sha256"]
-        != scheduled_attempt["workflow_config"]["sha256"]
-    )
-    direct_attempt["workflow_config"].pop("sha256")
-    scheduled_attempt["workflow_config"].pop("sha256")
+    assert direct_plan.attempt_record_bytes != scheduled_plan.attempt_record_bytes
+    direct_attempt["workflow"]["resource_policy"].pop("allocation")
+    scheduled_attempt["workflow"]["resource_policy"].pop("allocation")
     assert direct_attempt == scheduled_attempt
 
     computational_change = replace(resources.declaration, workflow_cores=2)
@@ -1971,7 +1933,7 @@ def test_lifecycle_refuses_run_bound_implementation_drift_before_attempt(
 def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> None:
     allocation = {"00a": 1, "01": 2, "02": 3, "06": 4, "08": 2}
     plan = _plan(tmp_path, workflow_cores=4, step_threads=allocation)
-    records = _dispatch_records(plan)
+    records = _task_records(plan)
     threaded_owners = {
         "emrys.stage.construct_STAR_index.v1",
         "emrys.stage.align_RNA_reads_with_STAR.v1",
@@ -2005,7 +1967,7 @@ def test_plan_records_stage_specific_concurrency(tmp_path: Path) -> None:
         step_threads={"00a": 4, "01": 2, "02": 2, "06": 2, "08": 4},
     )
     argv = plan.attempt_record["snakemake_argv"]
-    config = _workflow_config(plan)
+    config = _workflow(plan)
 
     assert plan.resources.workflow_cores == 4
     assert dict(plan.resources.stage_concurrency)["01"] == 2
@@ -2090,7 +2052,7 @@ def test_every_projected_owner_command_is_accepted_by_public_help(
     plan = _plan(tmp_path)
     commands = {
         tuple(command)
-        for record in _dispatch_records(plan)
+        for record in _task_records(plan)
         for command in (record["producer_argv"], record["validator_argv"])
     }
 
@@ -2366,7 +2328,9 @@ def test_locked_publication_terminalizes_failure_and_refuses_repeat(
     assert outcome.receipt["snakemake_exit_code"] == 9
     assert outcome.released_lock_path.is_file()
     assert not (plan.run_root / "locks/run.lock").exists()
-    assert len(list((plan.run_root / "contract/dispatch").rglob("*.json"))) == 35
+    assert len(_task_records(plan)) == 35
+    assert not (plan.run_root / "contract/dispatch").exists()
+    assert not (plan.run_root / "contract/workflow-configs").exists()
     with pytest.raises(MaterializationError, match="inspect or resume"):
         admit_run(plan, ops=ops)
 
@@ -2741,7 +2705,7 @@ def test_attempt_publication_leaves_star_index_directory_for_owner(
     plan = _plan(tmp_path)
     step00a = next(
         record
-        for record in _dispatch_records(plan)
+        for record in _task_records(plan)
         if record["machine_key"] == "emrys.stage.construct_STAR_index.v1"
     )
     outputs = tuple(Path(item["path"]) for item in step00a["outputs"])
@@ -2789,14 +2753,14 @@ def test_lock_precedes_attempt_publication_failure_and_retains_evidence(
     plan = _plan(tmp_path)
     base = lifecycle.default_lifecycle_ops()
 
-    def fail_on_config(path: Path, data: bytes) -> None:
-        if path == plan.config_path:
-            raise OSError("injected config publication failure")
+    def fail_on_profile(path: Path, data: bytes) -> None:
+        if path == plan.attempt_files[-1].path:
+            raise OSError("injected runtime profile publication failure")
         base.publish_bytes(path, data)
 
     ops = replace(
         base,
-        publish_bytes=fail_on_config,
+        publish_bytes=fail_on_profile,
         admit_storage_context=lambda _attempt, _execution: None,
         admit_runtime_context=lambda _attempt, _request, _storage, _inspection: None,
     )
@@ -2814,7 +2778,7 @@ def test_lock_precedes_attempt_publication_failure_and_retains_evidence(
         plan.run_root / "locks" / f"released-{plan.workflow_attempt_id}-run-lock.json"
     ).is_file()
     assert not (plan.run_root / "attempts" / plan.workflow_attempt_id).exists()
-    assert list((plan.run_root / "contract/dispatch").rglob("*.json"))
+    assert (plan.run_root / "contract/profile.json").is_file()
     assert inspection.inspect_run(plan.run_root).integrity == "blocked"
 
 
@@ -2861,7 +2825,7 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
             resources=resources,
             operation="resume",
             supersedes_workflow_attempt_id=initial.workflow_attempt_id,
-            retained_dispatches={},
+            retained_tasks={},
         )
 
     winner = resume_plan()
@@ -4691,8 +4655,12 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     orientation_root = source_root / "products" / "native" / "orientation"
     consumed_orientation_samples = {
         Path(str(item["path"])).relative_to(orientation_root).parts[0]
-        for dispatch_path in target_root.glob("contract/dispatch/*/*/*.json")
-        for item in orchestration_contracts.load_json_object(dispatch_path)["inputs"]
+        for manifest_path in target_root.glob("attempts/*/attempt.json")
+        for scopes in orchestration_contracts.load_json_object(manifest_path)[
+            "tasks"
+        ].values()
+        for record in scopes.values()
+        for item in record.get("inputs", ())
         if Path(str(item["path"])).is_relative_to(orientation_root)
     }
     assert consumed_orientation_samples == set(selected_ids)
@@ -4708,8 +4676,12 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     assert any(
         item.get("size_bytes") == source_snapshots[item["path"]]["size_bytes"]
         and item.get("sha256") == source_snapshots[item["path"]]["sha256"]
-        for dispatch_path in target_root.glob("contract/dispatch/*/*/*.json")
-        for item in orchestration_contracts.load_json_object(dispatch_path)["inputs"]
+        for manifest_path in target_root.glob("attempts/*/attempt.json")
+        for scopes in orchestration_contracts.load_json_object(manifest_path)[
+            "tasks"
+        ].values()
+        for record in scopes.values()
+        for item in record.get("inputs", ())
         if item["path"] in source_snapshots
     )
 
@@ -4745,10 +4717,12 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         )
         consumed = {
             Path(str(item["path"]))
-            for dispatch_path in drift_root.glob("contract/dispatch/*/*/*.json")
-            for item in orchestration_contracts.load_json_object(dispatch_path)[
-                "inputs"
-            ]
+            for manifest_path in drift_root.glob("attempts/*/attempt.json")
+            for scopes in orchestration_contracts.load_json_object(manifest_path)[
+                "tasks"
+            ].values()
+            for record in scopes.values()
+            for item in record.get("inputs", ())
         }
         path = next(
             candidate

@@ -106,24 +106,20 @@ computation and task roster remain Run authority.
 New profiles reject `resources.reporting_memory_mb`, and the CLI no longer
 accepts `--reporting-memory-mb`. This retired control never constrained report
 execution. Remove it from a selected profile before a new Run or Attempt.
-Historical workflow records retain their exact bytes and digests. Strict
-persisted-record admission still checks their reporting-memory roster, values,
-resolution, and limits.
 Resume carries only the computational policy into a new Attempt and does not
 rewrite the immutable Run or its predecessor records. Normal implementation
-identity checks still apply when selecting a different checkout.
+installed-package identity checks still apply.
 
 Planning composes the fixed common processing profile with the selected
 analysis provider's admitted task tail, declared inputs/outputs, validation
-reports, resources, and reporting projection. It materializes one immutable
-dispatch per task and invokes the sole source-bound Snakemake backend. The
+reports, resources, and reporting projection. One immutable Attempt manifest
+records the complete task plan and invokes the installed Snakemake backend. The
 public surface exposes no raw engine force, unlock, cleanup, retry, plugin, or
 alternate-workflow escape hatch.
 
 Before creating a new Run, planning rejects processing dependencies that
-disagree with the graph in the admitted implementation checkout. Existing Runs
-keep their retained profiles and previous resume rules, including normal source
-identity checks. The shared source profile now defines executable processing
+disagree with the graph in the admitted installed package. Existing Runs
+keep their retained profiles and require the same admitted implementation for resume. The shared source profile now defines executable processing
 tasks, so changing its bytes invalidates reuse of earlier Processing results.
 
 ## Processing reuse and provider boundary
@@ -157,14 +153,25 @@ scientific authority outside its declared tasks and artifacts.
 The initial Run tree and each Attempt directory must be absent before creation.
 Lifecycle holds a persistent advisory mutex while it revalidates the prepared
 Attempt. It then publishes the Run lock, including its evidence, before writing
-Attempt-specific dispatches, configuration, or records. A competing process
+Attempt-specific inputs or records. A competing process
 whose prepared state became stale while waiting exits before these writes and
 leaves no new Attempt residue.
 
-Each task dispatch is a closed record binding the admitted Execution Plan,
-composed profile, owner scope, exact worker and public validator commands,
-declared inputs and outputs, runtime/tool identities, and validation report. Immediately before
-producer entry, the task publishes an immutable start record. Its stdout and
+`attempts/<workflow-attempt-id>/attempt.json` is the sole immutable execution
+manifest (`emrys.workflow-attempt.v2`). It contains shared runtime and workflow
+settings once, plus task definitions keyed by owner and scope. Each definition
+binds exact worker and validator commands, inputs, outputs, publication controls,
+and its validation report. Fixed internal paths are derived from the Run,
+Attempt, owner, and scope. Separate workflow-config and task-dispatch files are
+not produced.
+
+On resume, a verified task refers directly to its original Attempt manifest and
+selects the original owner and scope. References cannot form chains, and reused
+definitions cannot execute as new work. A changed plan requires a new Run;
+resume creates a new Attempt without changing any predecessor.
+
+Immediately before producer entry, the task publishes an immutable start record
+binding its original manifest's path and exact hash. Its stdout and
 stderr files are create-exclusive, no-follow, drained through EOF, byte- and
 order-preserving within each stream, synchronized, hash-bound, and revalidated.
 No ordering between streams is claimed.
@@ -187,7 +194,7 @@ Run are the exact Step `00c` FAI/dictionary pair beside their canonical FASTA;
 partial or changed pairs fail before owner entry.
 
 The Attempt binds canonical Project, Execution Plan, composed-profile,
-workflow-config, backend, installed package, runtime, tools, and storage evidence.
+backend, installed package, runtime, tools, and storage evidence.
 Source/runtime/tool identity is checked before mutation and after delegated
 execution. Direct placement requires an admitted same-host storage receipt;
 Slurm requires the stronger two-phase head/compute-node receipt. Neither
@@ -218,13 +225,13 @@ manager per producer. The independently useful `emrys convert gtf-to-bed12`
 utility keeps its public conversion interface; the Run uses its normalization
 code through a private worker entry point.
 
-New task dispatches use v2 and bind working paths, final paths, publication order,
+Task definitions bind working paths, final paths, publication order,
 locks, old recovery locations, and any complete directory input. Working files
 sit beside their final destination's parent, so publication can link large files
 without a second copy. The runner creates these directories, captures streams,
 and stops and reaps the worker's process group before attempting cleanup.
-Historical v1 dispatches remain readable; executing them requires the software
-bound by their original immutable plan. Current code never rewrites their argv.
+Only the current manifest and task-start formats are accepted. Existing files
+are never migrated or rewritten; older Runs require their original software.
 
 Before publication, the runner rechecks admitted inputs and the producer's
 checked working files. It also rechecks inputs after linking, before native
@@ -294,8 +301,8 @@ EMRYS Run.
 
 | Location | Durable contents |
 | --- | --- |
-| `contract/` | Immutable Analysis, Execution Plan, Run, profile, runtime, reporting projection, workflow configs, and task dispatches. |
-| `attempts/<workflow-attempt-id>/` | Attempt record, task attempts and streams, and receipt published last. |
+| `contract/` | Immutable Analysis, Execution Plan, Run, profile, runtime, and reporting inputs. |
+| `attempts/<workflow-attempt-id>/` | One immutable Attempt manifest, task results and streams, and receipt published last. |
 | `state/task-starts/` | Immutable producer-entry records. |
 | `state/verified/` | Path/hash references to successful terminal task attempts. |
 | `state/reporting/` | Start and verified records for reporting transactions. |

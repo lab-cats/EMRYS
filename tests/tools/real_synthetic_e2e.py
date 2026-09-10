@@ -834,27 +834,14 @@ def _assert_no_task_entry(
 
 
 def _resource_snapshot(
-    run_root: Path,
     attempt: dict[str, Any],
 ) -> dict[str, Any]:
     from emrys.orchestration.run_coordinator.resource_policy import (
         admit_resource_policy_record,
     )
 
-    reference = attempt.get("workflow_config")
-    if not isinstance(reference, dict):
-        raise DriverError(
-            "assert-parity", "Attempt workflow-config reference is absent"
-        )
-    path = run_root / str(reference.get("path", ""))
-    artifact = _artifact(path)
-    if artifact["sha256"] != reference.get("sha256"):
-        raise DriverError("assert-parity", "Attempt workflow-config digest differs")
     try:
-        document = json.loads(path.read_bytes())
-        plan = admit_resource_policy_record(
-            document["resource_policy"],
-        )
+        plan = admit_resource_policy_record(attempt["workflow"]["resource_policy"])
     except (KeyError, TypeError, ValueError) as exc:
         raise DriverError(
             "assert-parity",
@@ -1022,7 +1009,7 @@ def _attempt_snapshot(
         or placement["request"].get("kind") != expected_kind
     ):
         raise DriverError("assert-parity", "Attempt placement provenance differs")
-    resources = _resource_snapshot(run_root, attempt)
+    resources = _resource_snapshot(attempt)
     if resources["allocation"]["slurm_job_id"] != scheduler_job_id:
         raise DriverError(
             "assert-parity", "Resource allocation scheduler identity differs"

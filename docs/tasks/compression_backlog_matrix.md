@@ -1,10 +1,15 @@
 # EMRYS temporary compression backlog
 
-Reviewed **2026-09-10** from `de804299`. The [campaign](compression_campaign.md)
+Reviewed **2026-09-10** from `c751bb5f`. The [campaign](compression_campaign.md)
 owns the goals; this file owns CS scope, status, decisions, and proof. The
 [main matrix](backlog_matrix.md) owns broader outcomes and campaign completion.
 
 ## Working queue
+
+**CS-28: one immutable Attempt manifest is implemented; hosted verification is pending.**
+The manifest replaces separate workflow configuration and task dispatch files.
+[The card](#cs-28-one-immutable-attempt-manifest) records the caller migration,
+recovery guarantees, measured serialization tradeoff, and outstanding checks.
 
 **CS-27: storage-inventory reporting retirement is implemented; verification is pending.**
 The user decided EMRYS should not own storage planning or retention-policy
@@ -124,6 +129,7 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-25](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Share equivalent reporting file and lock operations. | Done | 3 | 3 | Keep each stage's transaction order, rechecks, and owned rollback. | `COMPRESS-01` |
 | [CS-26](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Execute the installed package with its own workflow and R assets. | Done | 5 | 4 | Replace runtime Git reconciliation with exact package bytes and build provenance. | `COMPRESS-01` |
 | [CS-27](#cs-27-retire-storage-inventory-reporting) | Retire optional storage planning and retention-policy reporting. | Verification pending | 3 | 2 | Remove the entire optional command; preserve required filesystem qualification and retained evidence. | `COMPRESS-01` |
+| [CS-28](#cs-28-one-immutable-attempt-manifest) | Persist one immutable Attempt manifest for workflow settings and task plans. | Verification pending | 4 | 4 | Retire configuration/dispatch files across execution, resume, inspection, reporting, and fixtures; preserve original task provenance. | `COMPRESS-01` |
 
 ## Acceptance shared by every card
 
@@ -1108,3 +1114,68 @@ by 1; no retained evidence changes. Documentation grows by 10 lines to record
 retirement and preserve qualification guidance. Product size is 58,809 lines,
 10,414 below the 69,223-line campaign baseline (15.0%); another 3,431 lines are
 needed for the 20% target.
+
+### CS-28 One immutable Attempt manifest
+
+Approved after CS-27 against `c751bb5f`. The existing runner owns one canonical
+`attempt.json` containing shared workflow settings and task definitions keyed
+by owner and scope. Snakemake receives that manifest directly. Workers select
+one definition and derive fixed internal paths; no separate workflow-config or
+task-dispatch JSON is published. The [runner contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#task-and-attempt-lifecycle)
+is the durable home for the format and lifecycle rules.
+
+The migration covers materialization, lifecycle, task execution, Snakemake,
+resume, inspection, reporting, schema registration, shared fixtures, and the
+real synthetic E2E driver's resource inspection. Task starts and reporting
+starts bind the manifest once. Existing current-only version policy applies:
+Attempt, task-start, and reporting-start use v2; older records are not migrated.
+
+- **Preserved:** scientific commands and outputs, validation meaning, exact
+  file and installed-package identities, publication order, locks, owned
+  rollback, process supervision, logs, receipts, and Run immutability.
+- **Preserved on resume:** verified tasks refer directly to the original
+  Attempt and owner/scope. A reference cannot point through another reference.
+  Pending tasks must belong to the new Attempt. Step 07 retains the original
+  selected-sample input and its exact content binding.
+- **Retired:** repeated planning files, path/hash reference maps, conversions,
+  and fixed-path fields. Obsolete path-mutation tests retire when those paths
+  can no longer be supplied; meaningful publication and failure tests migrate.
+- **Environment-deferred:** fresh-install hosted integration, institutional
+  filesystem execution, scientific review, and biological validation.
+
+The workflow reads each original manifest once. A worker decodes its selected
+manifest once and retains exact-byte rechecks at the existing boundaries.
+Inspection independently reloads evidence; it is not a shared mutable cache.
+
+A local synthetic probe on macOS/Python 3.13.15 compared the split layout with
+one manifest, using the same representative task definitions. These counts
+exclude unchanged Run, request, and reporting-input files. Times are medians
+of three cache-warm reads, SHA-256 checks, strict JSON decodes, and canonical
+byte checks; the split probe reconstructs those operations rather than running
+the complete old worker.
+
+| Tasks | Planning files, before → after | Persisted payload bytes, before → after | One selection, before → after | Process peak RSS, before → after |
+|---:|---:|---:|---:|---:|
+| 35 | 37 → 1 | 130,307 → 59,001 | 0.135 → 0.318 ms | 35.09 → 35.08 MiB |
+| 350 | 352 → 1 | 1,276,176 → 567,342 | 0.446 → 2.990 ms | 35.41 → 37.92 MiB |
+| 3,500 | 3,502 → 1 | 12,782,080 → 5,672,793 | 3.044 → 28.241 ms | 39.95 → 76.36 MiB |
+
+This reduces persisted planning surface but increases per-task read/decode cost
+as the task roster grows. At 3,500 tasks the logical payload read for one
+selection grows from 465,600 to 5,672,793 bytes. Physical I/O, allocated disk
+blocks, isolated process startup, scientific-stage wall time, and cluster
+behavior were not measured. No overall performance improvement is claimed.
+
+Local validation passes: 56 orchestration/reporting schema cases, existing
+command-runner and resource-policy checks, Ruff lint/format, source dependency
+rules, and documentation structure. Integration fixtures stop before exercising
+this change because the local installation lacks `emrys-build.json`; no
+installation or admission bypass has been performed. Hosted CI remains required.
+
+Initial accounting against `c751bb5f`: product +400/-806 = **406 fewer lines**,
+no product-file growth; tests +670/-961 = 291 fewer; schemas +95/-31 = 64 more;
+tooling +2/-15 = 13 fewer; retained evidence unchanged. Documentation records
+the changed contract and these findings separately. The stack contains 58,403
+maintained product lines, 10,820 below the 69,223 baseline (15.6%); 3,025 more
+product lines are needed for the 20% goal. Final validation and any CI fixes
+must be recorded before this card is marked Done.

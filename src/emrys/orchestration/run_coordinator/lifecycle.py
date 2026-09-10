@@ -441,7 +441,6 @@ class LifecycleRequest:
     run_root: Path
     execution_path: Path
     profile_path: Path
-    workflow_config_path: Path
     snakefile: Path
     python_executable: Path
     workflow_profile: Path
@@ -616,19 +615,19 @@ def build_snakemake_argv(
     return tuple(argv)
 
 
-def _resource_plan_from_workflow_config(
-    config_document: Mapping[str, Any],
+def _resource_plan_from_workflow(
+    workflow: Mapping[str, Any],
 ) -> ResourcePlan:
-    policy = config_document.get("resource_policy")
+    policy = workflow.get("resource_policy")
     if not isinstance(policy, dict):
-        raise LifecycleError("Workflow config resource policy is malformed")
+        raise LifecycleError("Workflow Attempt resource policy is malformed")
     try:
         return admit_resource_policy_record(
             policy,
         )
     except ResourceConfigError as exc:
         raise LifecycleError(
-            f"Workflow config resource policy is invalid: {exc}"
+            f"Workflow Attempt resource policy is invalid: {exc}"
         ) from exc
 
 
@@ -1419,7 +1418,6 @@ def _admit_request(
     inspection.SuccessorRunAuthority,
     dict[str, Any],
     tuple[str, ...],
-    dict[str, str],
     bytes,
 ]:
     root = _canonical_root(request.run_root)
@@ -1427,11 +1425,9 @@ def _admit_request(
     _within(request.profile_path, root, "profile snapshot")
     execution_path = _canonical_file(request.execution_path, "execution contract")
     profile_path = _canonical_file(request.profile_path, "profile snapshot")
-    config_path = _canonical_file(request.workflow_config_path, "workflow config")
     request_source_path = _canonical_file(
         request.request_source_path, "authored source"
     )
-    _within(config_path, root, "workflow config")
     snakefile = _canonical_file(request.snakefile, "Snakefile")
     workflow_profile = _canonical_file(request.workflow_profile, "workflow profile")
     python_executable = request.python_executable
@@ -1445,33 +1441,19 @@ def _admit_request(
     expected_execution_path = root / "contract" / "run.json"
     if execution_path != expected_execution_path:
         raise LifecycleError("Lifecycle execution path differs from Run authority")
-    config_data = _read_stable(config_path, root, "workflow config")
     request_source_data = _read_external_stable(request_source_path, "authored source")
-    try:
-        config_document = orchestration_contracts.load_json_object_bytes(
-            config_data, f"workflow config {config_path}"
-        )
-    except orchestration_contracts.ContractValidationError as exc:
-        raise LifecycleError(f"Could not admit immutable run contracts: {exc}") from exc
-    canonical_config = orchestration_contracts.canonical_json_bytes(config_document)
-    if config_data != canonical_config:
-        raise LifecycleError("Workflow config must use canonical JSON bytes")
-    config_reference = {
-        "path": config_path.relative_to(root).as_posix(),
-        "sha256": hashlib.sha256(config_data).hexdigest(),
-    }
-    resources = _resource_plan_from_workflow_config(
-        config_document,
-    )
+    resources = _resource_plan_from_workflow(attempt["workflow"])
+    identifier = str(attempt["workflow_attempt_id"])
+    attempt_path = root / "attempts" / identifier / "attempt.json"
     if resources.workflow_cores != attempt["cores"]:
         raise LifecycleError(
-            "Workflow config resource cores differ from the attempt record"
+            "Workflow Attempt resource cores differ from the attempt record"
         )
     argv = build_snakemake_argv(
         python_executable=python_executable,
         snakefile=snakefile,
         workflow_profile=request.workflow_profile,
-        configfile=config_path,
+        configfile=attempt_path,
         run_root=root,
         target=request.target,
         operation=request.operation,
@@ -1489,23 +1471,6 @@ def _admit_request(
         raise LifecycleError("Lifecycle requires the reviewed local workflow profile")
     if request.target != BACKEND_TARGET:
         raise LifecycleError("Lifecycle requires the Run-bound backend target")
-    expected_config_relative = (
-        Path("contract") / "workflow-configs" / f"{identifier}.json"
-    ).as_posix()
-    if config_reference["path"] != expected_config_relative:
-        raise LifecycleError(
-            "Workflow config must use its attempt-specific immutable path"
-        )
-    config_identity = {
-        "run_root": str(root),
-        "execution_path": str(execution_path),
-        "profile_path": str(profile_path),
-        "workflow_attempt_id": identifier,
-        "python_executable": str(python_executable),
-    }
-    for field, value in config_identity.items():
-        if config_document.get(field) != value:
-            raise LifecycleError(f"Workflow config does not bind {field}")
     expected_executor = str(
         successor.execution_plan.record["identity"]["backend"]["backend"]
     )
@@ -1516,7 +1481,6 @@ def _admit_request(
         "operation": request.operation,
         "executor": expected_executor,
         "snakemake_argv": list(argv),
-        "workflow_config": config_reference,
         "host": ops.host_name(),
         "process_id": ops.process_id(),
     }
@@ -1547,7 +1511,7 @@ def _admit_request(
             run=successor.run_binding,
             profile=profile,
             attempt=attempt,
-            resource_policy=config_document["resource_policy"],
+            resource_policy=attempt["workflow"]["resource_policy"],
             observed_implementation_content_sha256=implementation_identity(
                 source_root,
                 execution_module_id(
@@ -1567,15 +1531,8 @@ def _admit_request(
         raise LifecycleError(
             f"Successor Attempt differs from immutable Run: {exc}"
         ) from exc
-    workspace = Path(str(attempt["workspace"]))
-    if not workspace.is_absolute():
-        raise LifecycleError("Workflow attempt workspace must be absolute")
-    try:
-        root.relative_to(workspace)
-    except ValueError as exc:
-        raise LifecycleError(
-            "Workflow attempt workspace does not contain run_root"
-        ) from exc
+    if root != Path(attempt["workspace"]) / "runs" / attempt["run_id"]:
+        raise LifecycleError("Workflow Attempt does not bind its canonical Run root")
     return (
         root,
         profile,
@@ -1583,7 +1540,6 @@ def _admit_request(
         successor,
         attempt,
         argv,
-        config_reference,
         request_source_data,
     )
 
@@ -1791,7 +1747,6 @@ def _run_attempt_locked(
         authority,
         attempt,
         argv,
-        config_reference,
         request_source_data,
     ) = _admit_request(
         request,
@@ -1829,11 +1784,6 @@ def _run_attempt_locked(
         _observe_phase(active_ops, "after_run_lock")
         _refuse_pre_attempt_signal(signals, "after run-lock publication")
         _under_lock_attempt_preflight(request, root, attempt, active_ops)
-        if (
-            _reference(request.workflow_config_path, root, "workflow config")
-            != config_reference
-        ):
-            raise LifecycleError("Workflow config changed before attempt publication")
         pre_spawn_bindings = (
             (
                 request.execution_path,
@@ -1969,14 +1919,6 @@ def _run_attempt_locked(
             runtime_blockers.append(
                 f"Runtime identity changed during workflow execution: {exc}"
             )
-        try:
-            config_after = _reference(
-                request.workflow_config_path, root, "workflow config"
-            )
-            if config_after != config_reference:
-                raise LifecycleError("Workflow config changed during execution")
-        except Exception as exc:
-            runtime_blockers.append(str(exc))
         for binding_path, label, expected_sha256 in (
             (
                 request.execution_path,

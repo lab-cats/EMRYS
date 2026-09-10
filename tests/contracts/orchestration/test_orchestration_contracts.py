@@ -237,7 +237,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
     scope = {"scope_type": "sample", "scope_id": "EV-1"}
     command = {"argv": ["emrys-owner", "--execute"], "exit_code": 0}
     workflow_attempt = {
-        "schema_version": "emrys.workflow-attempt.v1",
+        "schema_version": "emrys.workflow-attempt.v2",
         "run_id": run_id,
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
@@ -285,7 +285,14 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
             "--",
             "cohort_slice",
         ],
-        "workflow_config": record_reference("contract/workflow-config.json"),
+        "workflow": {
+            "reference_contract_path": record_reference("contract/reference.json"),
+            "primary_analysis_policy_path": record_reference("contract/policy.json"),
+            "reporting_run_contract_path": record_reference("contract/reporting.json"),
+            "artifact_inventory_path": record_reference("contract/inventory.tsv"),
+            "resource_policy": {},
+        },
+        "tasks": {},
         "host": "localhost",
         "process_id": 42,
         "owner_token": "owner-token-1",
@@ -311,7 +318,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         "state/task-starts/star_alignment/EV-1.json"
     )
     task_start = {
-        "schema_version": "emrys.task-start.v1",
+        "schema_version": "emrys.task-start.v2",
         "run_id": run_id,
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
@@ -323,12 +330,8 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         "workflow_attempt_record": record_reference(
             f"attempts/{WORKFLOW_ATTEMPT_ID}/attempt.json"
         ),
-        "workflow_config": record_reference("contract/workflow-config.json"),
         "run_lock": record_reference(
             f"attempts/{WORKFLOW_ATTEMPT_ID}/released-run-lock.json"
-        ),
-        "task_dispatch_record": record_reference(
-            f"contract/dispatch/{WORKFLOW_ATTEMPT_ID}/star_alignment/EV-1.json"
         ),
         "created_at": "2026-08-12T12:01:30Z",
     }

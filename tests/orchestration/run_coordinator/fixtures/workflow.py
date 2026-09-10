@@ -150,11 +150,10 @@ class WorkflowFixture:
 
     root: Path
     run_root: Path
-    config_path: Path
     execution: dict[str, Any]
     profile: dict[str, Any]
-    dispatch_paths: dict[str, dict[str, str]]
     workflow_attempt_path: Path
+    attempt_record_bytes: bytes
 
     @property
     def verified_root(self) -> Path:
@@ -832,11 +831,9 @@ def _task_attempt_id(index: int) -> str:
     return f"task-20260812T120100Z-{suffix}"
 
 
-def _write_dispatch(
+def _task_definition(
     *,
-    path: Path,
     run_root: Path,
-    execution_path: Path,
     task: dict[str, Any],
     scope_id: str,
     index: int,
@@ -844,7 +841,6 @@ def _write_dispatch(
     execution: dict[str, Any],
     inventory_rows: tuple[dict[str, str], ...],
     payloads: dict[str, bytes],
-    workflow_attempt_id: str,
 ) -> dict[str, Any]:
     machine_key = str(task["machine_key"])
     step_id = str(task["step_id"])
@@ -871,16 +867,9 @@ def _write_dispatch(
         if row is not validation_row and row["adapter"] != "step00c_reference_fasta_v1"
     )
     validation_report = resolved(validation_row)
-    attempt_root = (
-        run_root / "attempts" / workflow_attempt_id / "tasks" / machine_key / scope_id
-    )
-    task_attempt = attempt_root / "task-attempt.json"
     task_start = run_root / "state" / "task-starts" / machine_key / f"{scope_id}.json"
     verified = run_root / "state" / "verified" / machine_key / f"{scope_id}.json"
-    stdout = attempt_root / "stdout.log"
-    stderr = attempt_root / "stderr.log"
     for parent in {
-        path.parent,
         task_start.parent,
         verified.parent,
         validation_report.parent,
@@ -945,19 +934,10 @@ def _write_dispatch(
                 "path": str(execution["reference"]["fasta"]["path"]),
             }
         ]
-    record = {
-        "schema_version": "emrys.local-task-dispatch.v2",
-        "run_root": str(run_root),
-        "execution_path": str(execution_path),
-        "profile_path": str(run_root / "contract" / "profile.json"),
-        "workflow_attempt_id": workflow_attempt_id,
+    return {
         "task_attempt_id": _task_attempt_id(index),
         "owner_run_token": f"test-owner-{index:03d}",
-        "machine_key": machine_key,
-        "scope": {
-            "scope_type": str(task["scope_type"]),
-            "scope_id": scope_id,
-        },
+        "scope_type": str(task["scope_type"]),
         "producer_argv": producer,
         "validator_argv": validator,
         "inputs": input_declarations,
@@ -979,14 +959,7 @@ def _write_dispatch(
         },
         "validation_report_path": str(validation_report),
         "native_receipt_path": None,
-        "task_start_path": str(task_start),
-        "task_attempt_path": str(task_attempt),
-        "verified_task_path": str(verified),
-        "stdout_path": str(stdout),
-        "stderr_path": str(stderr),
     }
-    path.write_bytes(orchestration_contracts.canonical_json_bytes(record))
-    return record
 
 
 def build(
@@ -995,7 +968,7 @@ def build(
     materialize_attempt: bool = True,
     profile_override: dict[str, Any] | None = None,
 ) -> WorkflowFixture:
-    """Build an immutable normalized contract plus pre-materialized dispatches."""
+    """Build an immutable Run and Attempt with scientific task definitions."""
 
     root.mkdir(parents=True, exist_ok=True)
     root = root.resolve(strict=True)
@@ -1022,7 +995,7 @@ def build(
     execution = {**run.analysis.workflow_inputs, "run_id": run.run_id}
     execution_bytes = run.run_binding.canonical_bytes
     profile = run.analysis.profile
-    run_root = root / run.run_id
+    run_root = root / "runs" / run.run_id
     execution_path = publish_run(run, run_root)
     contract_root = run_root / "contract"
     profile_snapshot = contract_root / "profile.json"
@@ -1058,7 +1031,7 @@ def build(
     storage_receipt = root / "storage.qualified.json"
     storage_receipt.write_bytes(b"bounded no-science storage qualification\n")
     attempt = {
-        "schema_version": "emrys.workflow-attempt.v1",
+        "schema_version": "emrys.workflow-attempt.v2",
         "run_id": execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(execution_bytes).hexdigest(),
         "profile_sha256": hashlib.sha256(profile_snapshot.read_bytes()).hexdigest(),
@@ -1093,28 +1066,14 @@ def build(
         "cores": 1,
         "required_tools": required_tools,
     }
-    dispatch_paths: dict[str, dict[str, str]] = {}
-    dispatch_references: dict[str, dict[str, dict[str, str]]] = {}
+    tasks: dict[str, dict[str, Any]] = {}
     owners = {str(task["machine_key"]): task for task in profile["owner_tasks"]}
-    index = 0
-    for expected in inspection.expected_tasks(
-        inspection.admit_successor_run(run_root), profile
+    for index, expected in enumerate(
+        inspection.expected_tasks(inspection.admit_successor_run(run_root), profile), 1
     ):
-        machine_key = expected.machine_key
-        scope_id = expected.scope_id
-        index += 1
-        dispatch_path = (
-            run_root
-            / "contract"
-            / "dispatch"
-            / workflow_attempt_id
-            / machine_key
-            / f"{scope_id}.json"
-        )
-        _write_dispatch(
-            path=dispatch_path,
+        machine_key, scope_id = expected.machine_key, expected.scope_id
+        tasks.setdefault(machine_key, {})[scope_id] = _task_definition(
             run_root=run_root,
-            execution_path=execution_path,
             task=owners[machine_key],
             scope_id=scope_id,
             index=index,
@@ -1122,35 +1081,15 @@ def build(
             execution=execution,
             inventory_rows=inventory_rows,
             payloads=payloads,
-            workflow_attempt_id=workflow_attempt_id,
         )
-        dispatch_paths.setdefault(machine_key, {})[scope_id] = str(dispatch_path)
-        dispatch_references.setdefault(machine_key, {})[scope_id] = {
-            "path": str(dispatch_path),
-            "sha256": hashlib.sha256(dispatch_path.read_bytes()).hexdigest(),
-        }
-
-    config = {
-        "run_root": str(run_root),
-        "python_executable": sys.executable,
-        "execution_path": str(execution_path),
-        "profile_path": str(profile_snapshot),
-        "workflow_attempt_id": workflow_attempt_id,
-        "package_root": str(PACKAGE_ROOT),
-        **reporting_config,
-        "resource_policy": _resource_policy(),
-        "dispatch_paths": dispatch_references,
-    }
-    config_path = contract_root / "workflow-configs" / f"{workflow_attempt_id}.json"
-    config_path.parent.mkdir(parents=True)
-    config_bytes = orchestration_contracts.canonical_json_bytes(config)
-    config_path.write_bytes(config_bytes)
+    attempt["workflow"] = {**reporting_config, "resource_policy": _resource_policy()}
+    attempt["tasks"] = tasks
     attempt["snakemake_argv"] = list(
         build_snakemake_argv(
             python_executable=Path(sys.executable),
             snakefile=SNAKEFILE,
             workflow_profile=WORKFLOW_PROFILE,
-            configfile=config_path,
+            configfile=workflow_attempt_path,
             run_root=run_root,
             target="cohort_slice",
             operation="execute",
@@ -1158,10 +1097,6 @@ def build(
             resource_limits=_resource_limits(),
         )
     )
-    attempt["workflow_config"] = {
-        "path": config_path.relative_to(run_root).as_posix(),
-        "sha256": hashlib.sha256(config_bytes).hexdigest(),
-    }
     orchestration_contracts.validate_record("workflow-attempt", attempt)
     if materialize_attempt:
         workflow_attempt_path.parent.mkdir(parents=True)
@@ -1172,11 +1107,10 @@ def build(
     return WorkflowFixture(
         root=root,
         run_root=run_root,
-        config_path=config_path,
         execution=execution,
         profile=profile,
-        dispatch_paths=dispatch_paths,
         workflow_attempt_path=workflow_attempt_path,
+        attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
     )
 
 
@@ -1184,9 +1118,9 @@ def refresh_attempt(
     built: WorkflowFixture,
     *,
     sequence: int,
-    rematerialize_dispatches: bool = False,
+    rematerialize_tasks: bool = False,
 ) -> WorkflowFixture:
-    """Materialize a new resume attempt and dispatch params for reuse tests."""
+    """Materialize a new resume Attempt, retaining original verified task origins."""
 
     if sequence < 1 or sequence > 9:
         raise ValueError("Fixture resume sequence must be between 1 and 9")
@@ -1215,83 +1149,41 @@ def refresh_attempt(
     }
     attempt_path = built.run_root / "attempts" / attempt_id / "attempt.json"
 
-    refreshed: dict[str, dict[str, str]] = {}
-    refreshed_references: dict[str, dict[str, dict[str, str]]] = {}
+    tasks: dict[str, dict[str, Any]] = {}
+    original_reference = {
+        "path": built.workflow_attempt_path.relative_to(built.run_root).as_posix(),
+        "sha256": hashlib.sha256(built.workflow_attempt_path.read_bytes()).hexdigest(),
+    }
     index = 0
-    for machine_key, by_scope in built.dispatch_paths.items():
-        refreshed_scopes: dict[str, str] = {}
-        refreshed_scope_references: dict[str, dict[str, str]] = {}
-        for scope_id, raw_path in by_scope.items():
+    for machine_key, by_scope in previous_attempt["tasks"].items():
+        tasks[machine_key] = {}
+        for scope_id, definition in by_scope.items():
             index += 1
             verified = built.verified_root / machine_key / f"{scope_id}.json"
-            if (
-                verified.exists() or verified.is_symlink()
-            ) and not rematerialize_dispatches:
-                refreshed_scopes[scope_id] = raw_path
-                refreshed_scope_references[scope_id] = {
-                    "path": raw_path,
-                    "sha256": hashlib.sha256(Path(raw_path).read_bytes()).hexdigest(),
-                }
+            reference = definition.get("workflow_attempt_record", original_reference)
+            if (verified.exists() or verified.is_symlink()) and not rematerialize_tasks:
+                tasks[machine_key][scope_id] = {"workflow_attempt_record": reference}
                 continue
-            dispatch = orchestration_contracts.load_json_object(Path(raw_path))
-            task_id = (
-                f"task-{timestamp}-"
+            if "workflow_attempt_record" in definition:
+                source = orchestration_contracts.load_record(
+                    built.run_root / reference["path"], "workflow-attempt"
+                )
+                definition = source["tasks"][machine_key][scope_id]
+            tasks[machine_key][scope_id] = {
+                **definition,
+                "task_attempt_id": f"task-{timestamp}-"
                 + hashlib.sha256(
                     f"resume-{sequence}-{machine_key}-{scope_id}".encode()
-                ).hexdigest()[:32]
-            )
-            task_root = (
-                built.run_root
-                / "attempts"
-                / attempt_id
-                / "tasks"
-                / machine_key
-                / scope_id
-            )
-            new_dispatch = (
-                built.run_root
-                / "contract"
-                / "dispatch"
-                / attempt_id
-                / machine_key
-                / f"{scope_id}.json"
-            )
-            new_dispatch.parent.mkdir(parents=True, exist_ok=True)
-            dispatch.update(
-                {
-                    "workflow_attempt_id": attempt_id,
-                    "task_attempt_id": task_id,
-                    "owner_run_token": f"resume-{sequence}-{index:03d}",
-                    "task_attempt_path": str(task_root / "task-attempt.json"),
-                    "stdout_path": str(task_root / "stdout.log"),
-                    "stderr_path": str(task_root / "stderr.log"),
-                }
-            )
-            new_dispatch.write_bytes(
-                orchestration_contracts.canonical_json_bytes(dispatch)
-            )
-            refreshed_scopes[scope_id] = str(new_dispatch)
-            refreshed_scope_references[scope_id] = {
-                "path": str(new_dispatch),
-                "sha256": hashlib.sha256(new_dispatch.read_bytes()).hexdigest(),
+                ).hexdigest()[:32],
+                "owner_run_token": f"resume-{sequence}-{index:03d}",
             }
-        refreshed[machine_key] = refreshed_scopes
-        refreshed_references[machine_key] = refreshed_scope_references
-
-    config = json.loads(built.config_path.read_text(encoding="utf-8"))
-    config["workflow_attempt_id"] = attempt_id
-    config["dispatch_paths"] = refreshed_references
-    config_bytes = orchestration_contracts.canonical_json_bytes(config)
-    config_path = (
-        built.run_root / "contract" / "workflow-configs" / f"{attempt_id}.json"
-    )
-    config_path.write_bytes(config_bytes)
+    attempt["tasks"] = tasks
     attempt["snakemake_argv"] = list(
         build_snakemake_argv(
             python_executable=Path(sys.executable),
             snakefile=SNAKEFILE,
             workflow_profile=WORKFLOW_PROFILE,
-            configfile=config_path,
+            configfile=attempt_path,
             run_root=built.run_root,
             target="cohort_slice",
             operation="resume",
@@ -1299,19 +1191,14 @@ def refresh_attempt(
             resource_limits=_resource_limits(),
         )
     )
-    attempt["workflow_config"] = {
-        "path": config_path.relative_to(built.run_root).as_posix(),
-        "sha256": hashlib.sha256(config_bytes).hexdigest(),
-    }
     orchestration_contracts.validate_record("workflow-attempt", attempt)
     attempt_path.parent.mkdir(parents=True)
     Path(attempt["request"]["path"]).write_bytes(request_bytes)
     attempt_path.write_bytes(orchestration_contracts.canonical_json_bytes(attempt))
     refreshed_fixture = replace(
         built,
-        config_path=config_path,
-        dispatch_paths=refreshed,
         workflow_attempt_path=attempt_path,
+        attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
     )
     materialize_active_run_lock(refreshed_fixture)
     return refreshed_fixture

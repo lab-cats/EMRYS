@@ -62,6 +62,9 @@ SCHEMA_IDS.update(
         "execution-profile": "urn:emrys:schema:orchestration:execution-profile:v1",
         "profile": "urn:emrys:schema:orchestration:profile:v2",
         "attempt-receipt": "urn:emrys:schema:orchestration:attempt-receipt:v2",
+        "workflow-attempt": "urn:emrys:schema:orchestration:workflow-attempt:v2",
+        "task-start": "urn:emrys:schema:orchestration:task-start:v2",
+        "reporting-start": "urn:emrys:schema:orchestration:reporting-start:v2",
         "task-attempt": "urn:emrys:schema:orchestration:task-attempt:v2",
         "verified-task": "urn:emrys:schema:orchestration:verified-task:v2",
     }

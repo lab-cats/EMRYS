@@ -121,7 +121,10 @@ def inspect_attempt_chain(
             blockers.append(str(exc))
             continue
         identifier = str(record["workflow_attempt_id"])
-        if attempt_path.parent.name != identifier:
+        if (
+            attempt_path.parent.name != identifier
+            or root != Path(record["workspace"]) / "runs" / record["run_id"]
+        ):
             blockers.append(
                 f"Workflow attempt directory does not match record identity: {attempt_path}"
             )
@@ -230,93 +233,47 @@ def inspect_attempt_chain(
                 blockers.append(
                     f"Workflow attempt request snapshot no longer matches: {identifier}"
                 )
-        config_reference = attempt["workflow_config"]
-        raw_config_path = config_reference["path"]
-        expected_config_path = (
-            Path("contract") / "workflow-configs" / f"{identifier}.json"
-        ).as_posix()
-        if raw_config_path != expected_config_path:
-            blockers.append(
-                f"Workflow attempt config path is not attempt-specific: {identifier}"
-            )
-        config_path = root / raw_config_path
-        try:
-            config_data = _read_bytes(config_path, root, "workflow config")
-            observed_config = _reference_for_bytes(config_path, root, config_data)
-            config_document = orchestration_contracts.load_json_object_bytes(
-                config_data, f"workflow config {config_path}"
-            )
-            if config_data != orchestration_contracts.canonical_json_bytes(
-                config_document
-            ):
-                raise InspectionError(
-                    f"Workflow config is not canonical JSON: {config_path}"
+        if profile is not None:
+            try:
+                validate_successor_run(
+                    analysis=authority.analysis_revision,
+                    plan=authority.execution_plan,
+                    run=authority.run_binding,
+                    profile=profile,
+                    attempt=attempt,
+                    resource_policy=attempt["workflow"]["resource_policy"],
                 )
-            expected_config_identity = {
-                "run_root": str(root),
-                "execution_path": str(root / "contract" / "run.json"),
-                "profile_path": str(root / "contract" / "profile.json"),
-                "workflow_attempt_id": identifier,
-                "python_executable": str(attempt["normalizer"]["path"]),
-            }
-            for field, value in expected_config_identity.items():
-                if config_document.get(field) != value:
-                    raise InspectionError(
-                        f"Workflow config does not bind {field}: {config_path}"
-                    )
-        except (
-            InspectionError,
-            orchestration_contracts.ContractValidationError,
-        ) as exc:
-            blockers.append(str(exc))
-        else:
-            if observed_config != config_reference:
+            except (
+                KeyError,
+                orchestration_contracts.ContractValidationError,
+            ) as exc:
                 blockers.append(
-                    f"Workflow attempt config binding no longer matches: {identifier}"
+                    f"Workflow Attempt differs from immutable Run: {identifier}: {exc}"
                 )
-            if profile is not None:
-                try:
-                    validate_successor_run(
-                        analysis=authority.analysis_revision,
-                        plan=authority.execution_plan,
-                        run=authority.run_binding,
-                        profile=profile,
-                        attempt=attempt,
-                        resource_policy=config_document["resource_policy"],
-                    )
-                except (
-                    KeyError,
-                    orchestration_contracts.ContractValidationError,
-                ) as exc:
-                    blockers.append(
-                        "Workflow Attempt differs from immutable Run: "
-                        f"{identifier}: {exc}"
-                    )
         receipt = receipts.get(identifier)
-        if receipt is None:
-            continue
-        try:
-            created_at = datetime.fromisoformat(
-                str(attempt["created_at"]).replace("Z", "+00:00")
-            )
-            finished_at = datetime.fromisoformat(
-                str(receipt["finished_at"]).replace("Z", "+00:00")
-            )
-        except ValueError:
-            blockers.append(
-                f"Workflow attempt has invalid terminal timestamps: {identifier}"
-            )
-        else:
-            if finished_at < created_at:
-                blockers.append(
-                    f"Workflow attempt receipt predates its attempt: {identifier}"
+        if receipt is not None:
+            try:
+                created_at = datetime.fromisoformat(
+                    str(attempt["created_at"]).replace("Z", "+00:00")
                 )
+                finished_at = datetime.fromisoformat(
+                    str(receipt["finished_at"]).replace("Z", "+00:00")
+                )
+            except ValueError:
+                blockers.append(
+                    f"Workflow attempt has invalid terminal timestamps: {identifier}"
+                )
+            else:
+                if finished_at < created_at:
+                    blockers.append(
+                        f"Workflow attempt receipt predates its attempt: {identifier}"
+                    )
+            try:
+                admit_attempt_run_lock(root, attempt, require_active=False)
+            except InspectionError as exc:
+                blockers.append(str(exc))
         attempt_path = root / "attempts" / identifier / "attempt.json"
         expected_reference = attempt_references[identifier]
-        try:
-            admit_attempt_run_lock(root, attempt, require_active=False)
-        except InspectionError as exc:
-            blockers.append(str(exc))
         try:
             attempt_reference_after = _record_reference(
                 attempt_path, root, "workflow-attempt"

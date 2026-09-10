@@ -25,7 +25,7 @@ from emrys.libraries.source_authority import (
     admit_installed_package,
     controlled_python_argv,
 )
-from emrys.orchestration.run_coordinator import lifecycle, task
+from emrys.orchestration.run_coordinator import lifecycle, reporting_boundary, task
 
 from tests.orchestration.run_coordinator import fixture
 from tests.orchestration.run_coordinator.fixtures import workflow as workflow_fixture
@@ -41,9 +41,10 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 @dataclass(frozen=True, slots=True)
 class TaskFixture:
     run_root: Path
-    dispatch_path: Path
-    dispatch: dict[str, Any]
+    manifest_path: Path
+    definition: dict[str, Any]
     mutable_input: Path
+    plan: task.TaskPlan
 
 
 def _publish_json(path: Path, value: Any) -> None:
@@ -93,17 +94,25 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
     execution = candidate.run_binding.record
     execution_bytes = candidate.run_binding.canonical_bytes
     profile = candidate.analysis.profile
-    run_root = tmp_path / candidate.run_id
-    execution_path = fixture.publish_run(candidate, run_root)
+    run_root = tmp_path / "runs" / candidate.run_id
+    fixture.publish_run(candidate, run_root)
     contract = run_root / "contract"
     profile_path = contract / "profile.json"
+
+    files, reporting_config, _ = reporting_boundary._attempt_reporting_materialization(
+        {**candidate.analysis.workflow_inputs, "run_id": candidate.run_id},
+        profile,
+        run_root,
+        analysis=candidate.analysis.revision,
+        attempt_id=WORKFLOW_ATTEMPT_ID,
+    )
+    for path, data in files:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
 
     mutable_input = run_root / "inputs" / "owner-input.txt"
     mutable_input.parent.mkdir()
     mutable_input.write_bytes(b"stable owner input\n")
-    task_root = (
-        run_root / "attempts" / WORKFLOW_ATTEMPT_ID / "tasks" / machine_key / scope_id
-    )
     verified_path = run_root / "state" / "verified" / machine_key / f"{scope_id}.json"
     (run_root / "attempts" / WORKFLOW_ATTEMPT_ID).mkdir(parents=True)
     task_start = run_root / "state" / "task-starts" / machine_key / f"{scope_id}.json"
@@ -142,27 +151,10 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
     )
     if prepublication:
         validator.extend(["--input", str(first_output)])
-    dispatch_path = (
-        run_root
-        / "contract"
-        / "dispatch"
-        / WORKFLOW_ATTEMPT_ID
-        / machine_key
-        / f"{scope_id}.json"
-    )
-    dispatch = {
-        "schema_version": task.DISPATCH_SCHEMA_VERSION,
-        "run_root": str(run_root),
-        "execution_path": str(execution_path),
-        "profile_path": str(profile_path),
-        "workflow_attempt_id": WORKFLOW_ATTEMPT_ID,
+    definition = {
         "task_attempt_id": TASK_ATTEMPT_ID,
         "owner_run_token": "owner-run-ev-1",
-        "machine_key": machine_key,
-        "scope": {
-            "scope_type": "cohort" if prepublication else "sample",
-            "scope_id": scope_id,
-        },
+        "scope_type": "cohort" if prepublication else "sample",
         "producer_argv": producer,
         "validator_argv": validator,
         "inputs": [{"role": "owner_input", "path": str(mutable_input)}],
@@ -179,44 +171,22 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
         },
         "validation_report_path": str(report),
         "native_receipt_path": str(receipt),
-        "task_start_path": str(task_start),
-        "task_attempt_path": str(task_root / "task-attempt.json"),
-        "verified_task_path": str(verified_path),
-        "stdout_path": str(task_root / "stdout.log"),
-        "stderr_path": str(task_root / "stderr.log"),
     }
-    for output in dispatch["outputs"]:
+    for output in definition["outputs"]:
         final = Path(output["path"])
         final.parent.mkdir(parents=True, exist_ok=True)
         working = final.parent / ".emrys-owner-run-ev-1.work" / final.name
         output["working_path"] = str(working)
-        dispatch["producer_argv"] = [
+        definition["producer_argv"] = [
             argument.replace(str(final), str(working))
-            for argument in dispatch["producer_argv"]
+            for argument in definition["producer_argv"]
         ]
-    config_path = contract / "workflow-configs" / f"{WORKFLOW_ATTEMPT_ID}.json"
-    config = {
-        "dispatch_paths": {
-            machine_key: {
-                scope_id: {
-                    "path": str(dispatch_path),
-                    "sha256": hashlib.sha256(
-                        orchestration_contracts.canonical_json_bytes(dispatch)
-                    ).hexdigest(),
-                }
-            }
-        },
-        "package_root": str(PACKAGE_ROOT),
-    }
-    _publish_json(dispatch_path, dispatch)
-    _publish_json(config_path, config)
     attempt_path = run_root / "attempts" / WORKFLOW_ATTEMPT_ID / "attempt.json"
     request_snapshot = attempt_path.parent / "request.yaml"
     request_bytes = b"task-fixture: true\n"
     request_snapshot.write_bytes(request_bytes)
-    config_bytes = config_path.read_bytes()
     attempt = {
-        "schema_version": "emrys.workflow-attempt.v1",
+        "schema_version": "emrys.workflow-attempt.v2",
         "run_id": execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(execution_bytes).hexdigest(),
         "profile_sha256": hashlib.sha256(profile_path.read_bytes()).hexdigest(),
@@ -253,10 +223,11 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
                 "cohort_slice",
             )
         ),
-        "workflow_config": {
-            "path": config_path.relative_to(run_root).as_posix(),
-            "sha256": hashlib.sha256(config_bytes).hexdigest(),
+        "workflow": {
+            **reporting_config,
+            "resource_policy": workflow_fixture._resource_policy(),
         },
+        "tasks": {machine_key: {scope_id: definition}},
         "host": "task-fixture",
         "process_id": 1,
         "owner_token": "task-fixture-owner",
@@ -266,7 +237,13 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
     orchestration_contracts.validate_record("workflow-attempt", attempt)
     _publish_json(attempt_path, attempt)
     _materialize_active_lock(run_root, attempt_path)
-    return TaskFixture(run_root, dispatch_path, dispatch, mutable_input)
+    plan = task.load_task(
+        attempt_path,
+        expected_sha256=_manifest_sha256(attempt_path),
+        machine_key=machine_key,
+        scope_id=scope_id,
+    )
+    return TaskFixture(run_root, attempt_path, definition, mutable_input, plan)
 
 
 def _fixed_ops() -> task.TaskOps:
@@ -459,36 +436,37 @@ def test_default_command_runner_cleans_up_child_when_selector_setup_fails(
         selector.close.assert_not_called()
 
 
-def _rewrite_dispatch(built: TaskFixture) -> None:
-    built.dispatch_path.write_bytes(
-        orchestration_contracts.canonical_json_bytes(built.dispatch)
+def _rewrite_task(built: TaskFixture) -> None:
+    attempt = orchestration_contracts.load_json_object(built.manifest_path)
+    attempt["tasks"][built.plan.machine_key][built.plan.scope["scope_id"]] = (
+        built.definition
     )
-    attempt_path = built.run_root / "attempts" / WORKFLOW_ATTEMPT_ID / "attempt.json"
-    attempt = orchestration_contracts.load_json_object(attempt_path)
-    config_path = built.run_root / attempt["workflow_config"]["path"]
-    config = orchestration_contracts.load_json_object(config_path)
-    config["dispatch_paths"][built.dispatch_path.parent.name][built.dispatch_path.stem][
-        "sha256"
-    ] = _dispatch_sha256(built.dispatch_path)
-    config_path.write_bytes(orchestration_contracts.canonical_json_bytes(config))
-    attempt["workflow_config"]["sha256"] = _dispatch_sha256(config_path)
-    attempt_path.write_bytes(orchestration_contracts.canonical_json_bytes(attempt))
+    _publish_json(built.manifest_path, attempt)
 
 
-def _dispatch_sha256(path: Path) -> str:
+def _manifest_sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _execute_dispatch(path: Path, *, ops: task.TaskOps) -> task.TaskOutcome:
-    return task.execute_dispatch(
-        path,
-        expected_sha256=_dispatch_sha256(path),
+def _execute_task(plan: task.TaskPlan, *, ops: task.TaskOps) -> task.TaskOutcome:
+    return task.execute_task(
+        plan.path,
+        expected_sha256=_manifest_sha256(plan.path),
+        machine_key=plan.machine_key,
+        scope_id=plan.scope["scope_id"],
         ops=ops,
     )
 
 
-def _load_dispatch(path: Path) -> task.TaskDispatch:
-    return task.load_dispatch(path, expected_sha256=_dispatch_sha256(path))
+def _load_task(
+    path: Path, *, machine_key: str = MACHINE_KEY, scope_id: str = SCOPE_ID
+) -> task.TaskPlan:
+    return task.load_task(
+        path,
+        expected_sha256=_manifest_sha256(path),
+        machine_key=machine_key,
+        scope_id=scope_id,
+    )
 
 
 def _record(path: str | Path) -> dict[str, Any]:
@@ -501,22 +479,20 @@ def _validate_verified(
 ) -> dict[str, Any]:
     arguments = {
         "run_root": built.run_root,
-        "execution": _record(built.dispatch["execution_path"]),
-        "profile": _record(built.dispatch["profile_path"]),
-        "machine_key": built.dispatch["machine_key"],
-        "scope": built.dispatch["scope"],
+        "execution": _record(built.plan.execution_path),
+        "profile": _record(built.plan.profile_path),
+        "machine_key": built.plan.machine_key,
+        "scope": built.plan.scope,
         **overrides,
     }
-    return task.validate_verified_task(
-        Path(built.dispatch["verified_task_path"]), **arguments
-    )
+    return task.validate_verified_task(Path(built.plan.verified_task_path), **arguments)
 
 
 def _step00c_with_existing_sidecars(
     tmp_path: Path,
 ) -> tuple[
     workflow_fixture.WorkflowFixture,
-    Path,
+    task.TaskPlan,
     dict[str, Any],
     tuple[Path, Path],
 ]:
@@ -524,11 +500,14 @@ def _step00c_with_existing_sidecars(
     workflow_fixture.materialize_active_run_lock(built)
     machine_key = "emrys.stage.construct_FASTA_sidecars.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
-    dispatch_path = Path(built.dispatch_paths[machine_key][scope_id])
-    record = orchestration_contracts.load_json_object(dispatch_path)
+    manifest = orchestration_contracts.load_json_object(built.workflow_attempt_path)
+    record = manifest["tasks"][machine_key][scope_id]
+    plan = _load_task(
+        built.workflow_attempt_path, machine_key=machine_key, scope_id=scope_id
+    )
     outputs = tuple(Path(item["path"]) for item in record["outputs"])
     assert len(outputs) == 2
-    publication = task._NativePublication(_load_dispatch(dispatch_path))
+    publication = task._NativePublication(plan)
     work = publication.prepare(reused=False)
     try:
         producer, _stdout, stderr = _run_default_command(
@@ -541,19 +520,19 @@ def _step00c_with_existing_sidecars(
         publication.committed = True
     finally:
         publication.close()
-    return built, dispatch_path, record, (outputs[0], outputs[1])
+    return built, plan, record, (outputs[0], outputs[1])
 
 
 def test_success_publishes_schema_valid_content_bound_records(tmp_path: Path) -> None:
     built = _task_fixture(tmp_path)
-    task_scope = Path(built.dispatch["task_attempt_path"]).parent
+    task_scope = Path(built.plan.task_attempt_path).parent
     assert not task_scope.exists()
 
-    outcome = _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+    outcome = _execute_task(built.plan, ops=_fixed_ops())
 
     attempt = _record(outcome.task_attempt_path)
     verified = _record(outcome.verified_task_path)
-    start = _record(built.dispatch["task_start_path"])
+    start = _record(built.plan.task_start_path)
     orchestration_contracts.validate_record("task-start", start)
     orchestration_contracts.validate_record("task-attempt", attempt)
     orchestration_contracts.validate_record("verified-task", verified)
@@ -571,10 +550,10 @@ def test_success_publishes_schema_valid_content_bound_records(tmp_path: Path) ->
     verified = _validate_verified(built)
     assert verified == attempt
     assert attempt["task_start_record"]["path"] == (
-        Path(built.dispatch["task_start_path"]).relative_to(built.run_root).as_posix()
+        Path(built.plan.task_start_path).relative_to(built.run_root).as_posix()
     )
-    assert start["task_dispatch_record"]["sha256"] == _dispatch_sha256(
-        built.dispatch_path
+    assert start["workflow_attempt_record"]["sha256"] == _manifest_sha256(
+        built.manifest_path
     )
     lock_path = built.run_root / "locks" / "run.lock"
     assert start["run_lock"] == {
@@ -584,7 +563,7 @@ def test_success_publishes_schema_valid_content_bound_records(tmp_path: Path) ->
     assert verified["status"] == "succeeded"
     assert verified["stable_inputs_rechecked"] is True
     assert [item["role"] for item in verified["inputs"]] == [
-        "task_dispatch",
+        "workflow_attempt",
         "execution_contract",
         "workflow_profile",
         "owner_input",
@@ -593,7 +572,7 @@ def test_success_publishes_schema_valid_content_bound_records(tmp_path: Path) ->
         content = Path(bound["path"]).read_bytes()
         assert bound["size_bytes"] == len(content)
         assert bound["sha256"] == hashlib.sha256(content).hexdigest()
-    report = Path(built.dispatch["validation_report_path"])
+    report = Path(built.definition["validation_report_path"])
     assert (
         verified["validation_report"]["sha256"]
         == hashlib.sha256(report.read_bytes()).hexdigest()
@@ -601,27 +580,19 @@ def test_success_publishes_schema_valid_content_bound_records(tmp_path: Path) ->
     assert verified["native_receipt"] is not None
     assert (
         b"producer stdout complete\nvalidator stdout complete\n"
-        in Path(built.dispatch["stdout_path"]).read_bytes()
+        in Path(built.plan.stdout_path).read_bytes()
     )
     assert (
         b"producer stderr complete\nvalidator stderr complete\n"
-        in Path(built.dispatch["stderr_path"]).read_bytes()
+        in Path(built.plan.stderr_path).read_bytes()
     )
     assert attempt["stdout_log"] == {
-        "path": Path(built.dispatch["stdout_path"])
-        .relative_to(built.run_root)
-        .as_posix(),
-        "sha256": hashlib.sha256(
-            Path(built.dispatch["stdout_path"]).read_bytes()
-        ).hexdigest(),
+        "path": Path(built.plan.stdout_path).relative_to(built.run_root).as_posix(),
+        "sha256": hashlib.sha256(Path(built.plan.stdout_path).read_bytes()).hexdigest(),
     }
     assert attempt["stderr_log"] == {
-        "path": Path(built.dispatch["stderr_path"])
-        .relative_to(built.run_root)
-        .as_posix(),
-        "sha256": hashlib.sha256(
-            Path(built.dispatch["stderr_path"]).read_bytes()
-        ).hexdigest(),
+        "path": Path(built.plan.stderr_path).relative_to(built.run_root).as_posix(),
+        "sha256": hashlib.sha256(Path(built.plan.stderr_path).read_bytes()).hexdigest(),
     }
 
 
@@ -672,8 +643,8 @@ def test_stream_capture_preserves_exact_opaque_bytes_and_per_stream_order(
         os.write(stderr_descriptor, b"\x81semantic:after\n")
         return result
 
-    _execute_dispatch(
-        built.dispatch_path,
+    _execute_task(
+        built.plan,
         ops=replace(
             defaults,
             run_command=command,
@@ -681,7 +652,7 @@ def test_stream_capture_preserves_exact_opaque_bytes_and_per_stream_order(
         ),
     )
 
-    report_path = Path(built.dispatch["validation_report_path"])
+    report_path = Path(built.definition["validation_report_path"])
     report_sha256 = hashlib.sha256(report_path.read_bytes()).hexdigest()
     expected_stdout = b"".join(
         (
@@ -712,22 +683,22 @@ def test_stream_capture_preserves_exact_opaque_bytes_and_per_stream_order(
             b"\x81semantic:after\n",
         )
     )
-    assert Path(built.dispatch["stdout_path"]).read_bytes() == expected_stdout
-    assert Path(built.dispatch["stderr_path"]).read_bytes() == expected_stderr
+    assert Path(built.plan.stdout_path).read_bytes() == expected_stdout
+    assert Path(built.plan.stderr_path).read_bytes() == expected_stderr
 
 
 def test_records_exact_public_commands_and_exit_codes(tmp_path: Path) -> None:
     built = _task_fixture(tmp_path)
 
-    _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+    _execute_task(built.plan, ops=_fixed_ops())
 
     verified = _validate_verified(built)
     assert verified["producer"] == {
-        "argv": built.dispatch["producer_argv"],
+        "argv": built.definition["producer_argv"],
         "exit_code": 0,
     }
     assert verified["validator"] == {
-        "argv": built.dispatch["validator_argv"],
+        "argv": built.definition["validator_argv"],
         "exit_code": 0,
     }
     semantic = verified["semantic_all_pass"]
@@ -740,7 +711,7 @@ def test_records_exact_public_commands_and_exit_codes(tmp_path: Path) -> None:
             "validate",
             "all-pass",
             "--report",
-            built.dispatch["validation_report_path"],
+            built.definition["validation_report_path"],
             "--step-id",
             "01",
             "--scope-id",
@@ -753,22 +724,22 @@ def test_zero_exit_validator_fail_row_blocks_verified_publication(
     tmp_path: Path,
 ) -> None:
     built = _task_fixture(tmp_path)
-    built.dispatch["validator_argv"].extend(["--status", "fail"])
-    _rewrite_dispatch(built)
+    built.definition["validator_argv"].extend(["--status", "fail"])
+    _rewrite_task(built)
 
     with pytest.raises(task.TaskBoundaryError, match="Semantic all-pass"):
-        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+        _execute_task(built.plan, ops=_fixed_ops())
 
-    attempt = _record(built.dispatch["task_attempt_path"])
+    attempt = _record(built.plan.task_attempt_path)
     assert attempt["status"] == "failed"
     assert attempt["task_start_record"] is not None
-    assert Path(built.dispatch["task_start_path"]).is_file()
+    assert Path(built.plan.task_start_path).is_file()
     assert attempt["validator"]["exit_code"] == 0
     assert attempt["semantic_all_pass"]["exit_code"] == 1
     assert attempt["validation_report"] is not None
-    assert not Path(built.dispatch["verified_task_path"]).exists()
+    assert not Path(built.plan.verified_task_path).exists()
     assert (
-        Path(built.dispatch["validation_report_path"])
+        Path(built.definition["validation_report_path"])
         .read_text()
         .splitlines()[1]
         .split("\t")[3]
@@ -780,23 +751,23 @@ def test_producer_failure_removes_working_output_and_preserves_attempt_evidence(
     tmp_path: Path,
 ) -> None:
     built = _task_fixture(tmp_path)
-    built.dispatch["producer_argv"].extend(["--fail-after", "1"])
-    _rewrite_dispatch(built)
+    built.definition["producer_argv"].extend(["--fail-after", "1"])
+    _rewrite_task(built)
 
     with pytest.raises(task.TaskBoundaryError, match="Producer command exited"):
-        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+        _execute_task(built.plan, ops=_fixed_ops())
 
-    attempt = _record(built.dispatch["task_attempt_path"])
+    attempt = _record(built.plan.task_attempt_path)
     assert attempt["producer"]["exit_code"] == 23
     assert attempt["validator"] is None
     assert attempt["semantic_all_pass"] is None
-    assert not Path(built.dispatch["outputs"][0]["path"]).exists()
-    assert not Path(built.dispatch["outputs"][0]["working_path"]).parent.exists()
-    assert not Path(built.dispatch["outputs"][1]["path"]).exists()
-    assert not Path(built.dispatch["verified_task_path"]).exists()
+    assert not Path(built.definition["outputs"][0]["path"]).exists()
+    assert not Path(built.definition["outputs"][0]["working_path"]).parent.exists()
+    assert not Path(built.definition["outputs"][1]["path"]).exists()
+    assert not Path(built.plan.verified_task_path).exists()
     assert (
         b"producer failed after aligned_bam"
-        in Path(built.dispatch["stderr_path"]).read_bytes()
+        in Path(built.plan.stderr_path).read_bytes()
     )
 
 
@@ -807,9 +778,9 @@ def test_native_publication_preserves_unowned_state_and_rolls_back_owned_files(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str
 ) -> None:
     built = _task_fixture(tmp_path)
-    first, second = (Path(item["path"]) for item in built.dispatch["outputs"][:2])
-    working = Path(built.dispatch["outputs"][0]["working_path"]).parent
-    lock = Path(built.dispatch["publication"]["locks"][0])
+    first, second = (Path(item["path"]) for item in built.definition["outputs"][:2])
+    working = Path(built.definition["outputs"][0]["working_path"]).parent
+    lock = Path(built.definition["publication"]["locks"][0])
     original_link = task.os.link
     defaults = _fixed_ops()
 
@@ -836,16 +807,14 @@ def test_native_publication_preserves_unowned_state_and_rolls_back_owned_files(
         (first.parent / ".owner.recovery").write_bytes(b"retained recovery\n")
     monkeypatch.setattr(task.os, "link", link)
     with pytest.raises(task.TaskBoundaryError):
-        _execute_dispatch(
-            built.dispatch_path, ops=replace(defaults, run_command=command)
-        )
+        _execute_task(built.plan, ops=replace(defaults, run_command=command))
     assert not first.exists()
-    assert not Path(built.dispatch["verified_task_path"]).exists()
+    assert not Path(built.plan.verified_task_path).exists()
     if fault == "input_drift":
         assert all(
-            not Path(item["path"]).exists() for item in built.dispatch["outputs"]
+            not Path(item["path"]).exists() for item in built.definition["outputs"]
         )
-        assert not Path(built.dispatch["validation_report_path"]).exists()
+        assert not Path(built.definition["validation_report_path"]).exists()
     if fault == "foreign_final":
         assert second.read_bytes() == b"foreign final\n"
     if fault in {"foreign_final", "owner_loss"}:
@@ -867,17 +836,17 @@ def test_star_publication_and_input_directory_roster_are_content_bound(
     member.write_bytes(b"reference genome\n")
     final_directory = built.run_root / "results" / "index"
     working = final_directory.parent / ".index.owner.work"
-    built.dispatch["native_receipt_path"] = None
-    built.dispatch["outputs"] = [
+    built.definition["native_receipt_path"] = None
+    built.definition["outputs"] = [
         {
             "role": "genome",
             "path": str(final_directory / "Genome"),
             "working_path": str(working / "Genome"),
         }
     ]
-    built.dispatch["publication"]["input_directories"] = [str(inputs)]
-    built.dispatch["publication"]["output_directory"] = str(final_directory)
-    built.dispatch["producer_argv"] = list(
+    built.definition["publication"]["input_directories"] = [str(inputs)]
+    built.definition["publication"]["output_directory"] = str(final_directory)
+    built.definition["producer_argv"] = list(
         controlled_python_argv(
             sys.executable,
             str(TEST_DOUBLE),
@@ -888,7 +857,7 @@ def test_star_publication_and_input_directory_roster_are_content_bound(
             f"star_log={working / 'Log.out'}",
         )
     )
-    _rewrite_dispatch(built)
+    _rewrite_task(built)
     defaults = _fixed_ops()
 
     def command(*arguments: Any) -> task.CommandResult:
@@ -901,20 +870,16 @@ def test_star_publication_and_input_directory_roster_are_content_bound(
             (inputs / "new-member").write_bytes(b"changed roster\n")
         elif mutation == "empty_input":
             member.write_bytes(b"")
-        elif arguments[0] == tuple(built.dispatch["producer_argv"]):
+        elif arguments[0] == tuple(built.definition["producer_argv"]):
             (working / "Log.progress.out").touch()
         return result
 
     if mutation != "none":
         with pytest.raises(task.TaskBoundaryError, match="input directory"):
-            _execute_dispatch(
-                built.dispatch_path, ops=replace(defaults, run_command=command)
-            )
+            _execute_task(built.plan, ops=replace(defaults, run_command=command))
         assert not final_directory.exists()
         return
-    outcome = _execute_dispatch(
-        built.dispatch_path, ops=replace(defaults, run_command=command)
-    )
+    outcome = _execute_task(built.plan, ops=replace(defaults, run_command=command))
     assert {path.name for path in final_directory.iterdir()} == {
         "Genome",
         "Log.out",
@@ -935,14 +900,14 @@ def test_catchable_task_termination_kills_worker_group_and_preserves_attempt(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     built = _task_fixture(tmp_path)
-    built.dispatch["producer_argv"] = list(
+    built.definition["producer_argv"] = list(
         controlled_python_argv(
             sys.executable,
             "-c",
             "import os,signal,subprocess,sys,time; subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)']); os.kill(os.getppid(),signal.SIGTERM); time.sleep(60)",
         )
     )
-    _rewrite_dispatch(built)
+    _rewrite_task(built)
     original = task.os.killpg
     killed: list[int] = []
 
@@ -952,25 +917,22 @@ def test_catchable_task_termination_kills_worker_group_and_preserves_attempt(
 
     monkeypatch.setattr(task.os, "killpg", kill_group)
     with pytest.raises(task.TaskBoundaryError, match="interrupted by signal"):
-        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+        _execute_task(built.plan, ops=_fixed_ops())
     assert killed and all(identifier != os.getpgrp() for identifier in killed)
-    assert _record(built.dispatch["task_attempt_path"])["status"] == "failed"
-    assert not Path(built.dispatch["outputs"][0]["working_path"]).parent.exists()
+    assert _record(built.plan.task_attempt_path)["status"] == "failed"
+    assert not Path(built.definition["outputs"][0]["working_path"]).parent.exists()
 
 
-def test_historical_dispatch_is_rejected_before_task_mutation(
+def test_historical_attempt_is_rejected_before_task_mutation(
     tmp_path: Path,
 ) -> None:
     built = _task_fixture(tmp_path)
-    built.dispatch["schema_version"] = "emrys.local-task-dispatch.v1"
-    built.dispatch.pop("publication")
-    built.dispatch["native_receipt_path"] = None
-    for output in built.dispatch["outputs"]:
-        output.pop("working_path")
-    _rewrite_dispatch(built)
-    with pytest.raises(task.TaskBoundaryError, match="schema_version must be"):
-        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
-    assert not Path(built.dispatch["task_start_path"]).exists()
+    attempt = _record(built.manifest_path)
+    attempt["schema_version"] = "emrys.workflow-attempt.v1"
+    _publish_json(built.manifest_path, attempt)
+    with pytest.raises(task.TaskBoundaryError, match="schema_version"):
+        _execute_task(built.plan, ops=_fixed_ops())
+    assert not Path(built.plan.task_start_path).exists()
 
 
 def test_uncertain_worker_group_preserves_workspace_and_owner_lock(
@@ -985,11 +947,11 @@ def test_uncertain_worker_group_preserves_workspace_and_owner_lock(
     with pytest.raises(
         task.TaskBoundaryError, match="Could not prove worker group absent"
     ):
-        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
-    assert Path(built.dispatch["outputs"][0]["working_path"]).is_file()
-    assert Path(built.dispatch["publication"]["locks"][0]).is_dir()
-    assert not Path(built.dispatch["outputs"][0]["path"]).exists()
-    assert not Path(built.dispatch["verified_task_path"]).exists()
+        _execute_task(built.plan, ops=_fixed_ops())
+    assert Path(built.definition["outputs"][0]["working_path"]).is_file()
+    assert Path(built.definition["publication"]["locks"][0]).is_dir()
+    assert not Path(built.definition["outputs"][0]["path"]).exists()
+    assert not Path(built.plan.verified_task_path).exists()
 
 
 def test_unexpected_interruption_preserves_and_closes_partial_task_logs(
@@ -1013,20 +975,16 @@ def test_unexpected_interruption_preserves_and_closes_partial_task_logs(
         raise KeyboardInterrupt
 
     with pytest.raises(KeyboardInterrupt):
-        _execute_dispatch(
-            built.dispatch_path,
+        _execute_task(
+            built.plan,
             ops=replace(defaults, run_command=interrupt),
         )
 
-    assert Path(built.dispatch["task_start_path"]).is_file()
-    assert Path(built.dispatch["stdout_path"]).read_bytes() == (
-        b"partial stdout\x00\xff\n"
-    )
-    assert Path(built.dispatch["stderr_path"]).read_bytes() == (
-        b"partial stderr\xfe\x00\n"
-    )
-    assert not Path(built.dispatch["task_attempt_path"]).exists()
-    assert not Path(built.dispatch["verified_task_path"]).exists()
+    assert Path(built.plan.task_start_path).is_file()
+    assert Path(built.plan.stdout_path).read_bytes() == (b"partial stdout\x00\xff\n")
+    assert Path(built.plan.stderr_path).read_bytes() == (b"partial stderr\xfe\x00\n")
+    assert not Path(built.plan.task_attempt_path).exists()
+    assert not Path(built.plan.verified_task_path).exists()
     for descriptor in observed_descriptors:
         with pytest.raises(OSError, match="Bad file descriptor"):
             os.fstat(descriptor)
@@ -1039,40 +997,42 @@ def test_preexisting_native_or_validation_residue_fails_closed(
 ) -> None:
     built = _task_fixture(tmp_path)
     paths = {
-        "output": Path(built.dispatch["outputs"][0]["path"]),
-        "report": Path(built.dispatch["validation_report_path"]),
-        "receipt": Path(built.dispatch["native_receipt_path"]),
+        "output": Path(built.definition["outputs"][0]["path"]),
+        "report": Path(built.definition["validation_report_path"]),
+        "receipt": Path(built.definition["native_receipt_path"]),
     }
     foreign = paths[destination]
     foreign.parent.mkdir(parents=True, exist_ok=True)
     foreign.write_bytes(b"foreign predecessor\n")
 
     with pytest.raises(task.TaskBoundaryError, match="pre-existing"):
-        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+        _execute_task(built.plan, ops=_fixed_ops())
 
     assert foreign.read_bytes() == b"foreign predecessor\n"
-    attempt = _record(built.dispatch["task_attempt_path"])
+    attempt = _record(built.plan.task_attempt_path)
     assert attempt["status"] == "failed"
     assert attempt["task_start_record"] is None
-    assert not Path(built.dispatch["task_start_path"]).exists()
-    assert Path(built.dispatch["task_attempt_path"]).parent.is_dir()
+    assert not Path(built.plan.task_start_path).exists()
+    assert Path(built.plan.task_attempt_path).parent.is_dir()
     assert attempt["producer"] is None
-    assert not Path(built.dispatch["verified_task_path"]).exists()
+    assert not Path(built.plan.verified_task_path).exists()
 
 
 def test_input_mutation_blocks_verified_publication(tmp_path: Path) -> None:
     built = _task_fixture(tmp_path)
-    built.dispatch["producer_argv"].extend(["--mutate-input", str(built.mutable_input)])
-    _rewrite_dispatch(built)
+    built.definition["producer_argv"].extend(
+        ["--mutate-input", str(built.mutable_input)]
+    )
+    _rewrite_task(built)
 
     with pytest.raises(task.TaskBoundaryError, match="stable task input changed"):
-        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+        _execute_task(built.plan, ops=_fixed_ops())
 
-    attempt = _record(built.dispatch["task_attempt_path"])
+    attempt = _record(built.plan.task_attempt_path)
     assert attempt["stable_inputs_rechecked"] is False
     assert attempt["validator"] is None
     assert attempt["semantic_all_pass"] is None
-    assert not Path(built.dispatch["verified_task_path"]).exists()
+    assert not Path(built.plan.verified_task_path).exists()
 
 
 def test_processing_source_input_must_match_its_admitted_snapshot(
@@ -1080,27 +1040,27 @@ def test_processing_source_input_must_match_its_admitted_snapshot(
 ) -> None:
     built = _task_fixture(tmp_path)
     original = built.mutable_input.read_bytes()
-    built.dispatch["inputs"][0].update(
+    built.definition["inputs"][0].update(
         {
             "size_bytes": len(original),
             "sha256": hashlib.sha256(original).hexdigest(),
         }
     )
     built.mutable_input.write_bytes(b"changed after source admission\n")
-    _rewrite_dispatch(built)
+    _rewrite_task(built)
 
     with pytest.raises(
         task.TaskBoundaryError,
         match="differs from its immutable binding",
     ):
-        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+        _execute_task(built.plan, ops=_fixed_ops())
 
-    attempt = _record(built.dispatch["task_attempt_path"])
+    attempt = _record(built.plan.task_attempt_path)
     assert attempt["status"] == "failed"
     assert attempt["producer"] is None
     assert attempt["task_start_record"] is None
-    assert not Path(built.dispatch["task_start_path"]).exists()
-    assert not Path(built.dispatch["verified_task_path"]).exists()
+    assert not Path(built.plan.task_start_path).exists()
+    assert not Path(built.plan.verified_task_path).exists()
 
 
 @pytest.mark.parametrize(
@@ -1125,59 +1085,49 @@ def test_processing_source_binding_is_closed_and_input_only(
 ) -> None:
     built = _task_fixture(tmp_path)
     original = built.mutable_input.read_bytes()
-    declaration = built.dispatch[collection][0]
+    declaration = built.definition[collection][0]
     declaration.update(
         {"size_bytes": len(original), "sha256": hashlib.sha256(original).hexdigest()}
     )
     declaration[field] = value
-    _rewrite_dispatch(built)
+    _rewrite_task(built)
 
     with pytest.raises(task.TaskBoundaryError, match=message):
-        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
-    assert not Path(built.dispatch["task_attempt_path"]).exists()
-    assert not Path(built.dispatch["task_start_path"]).exists()
+        _execute_task(built.plan, ops=_fixed_ops())
+    assert not Path(built.plan.task_attempt_path).exists()
+    assert not Path(built.plan.task_start_path).exists()
 
 
 def test_successful_dispatch_rerun_refuses_immutable_predecessor(
     tmp_path: Path,
 ) -> None:
     built = _task_fixture(tmp_path)
-    _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
-    verified = Path(built.dispatch["verified_task_path"])
+    _execute_task(built.plan, ops=_fixed_ops())
+    verified = Path(built.plan.verified_task_path)
     predecessor = verified.read_bytes()
 
     with pytest.raises(task.TaskBoundaryError, match="task-start record"):
-        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+        _execute_task(built.plan, ops=_fixed_ops())
 
     assert verified.read_bytes() == predecessor
 
 
 def test_dispatch_is_closed_and_binds_exact_owner_scope(tmp_path: Path) -> None:
     built = _task_fixture(tmp_path)
-    built.dispatch["unexpected"] = True
-    _rewrite_dispatch(built)
-    with pytest.raises(task.TaskBoundaryError, match="unknown unexpected"):
-        _load_dispatch(built.dispatch_path)
+    built.definition["unexpected"] = True
+    _rewrite_task(built)
+    with pytest.raises(
+        task.TaskBoundaryError, match="unexpected|Additional properties"
+    ):
+        _load_task(built.manifest_path)
 
     built = _task_fixture(tmp_path / "second")
-    built.dispatch["scope"]["scope_id"] = "not_selected"
-    built.dispatch["task_start_path"] = str(
-        built.run_root / "state" / "task-starts" / MACHINE_KEY / "not_selected.json"
-    )
-    changed_task_root = (
-        built.run_root
-        / "attempts"
-        / WORKFLOW_ATTEMPT_ID
-        / "tasks"
-        / MACHINE_KEY
-        / "not_selected"
-    )
-    built.dispatch["task_attempt_path"] = str(changed_task_root / "task-attempt.json")
-    built.dispatch["stdout_path"] = str(changed_task_root / "stdout.log")
-    built.dispatch["stderr_path"] = str(changed_task_root / "stderr.log")
-    _rewrite_dispatch(built)
+    attempt = _record(built.manifest_path)
+    attempt["tasks"][MACHINE_KEY] = {"not_selected": built.definition}
+    _publish_json(built.manifest_path, attempt)
+    plan = _load_task(built.manifest_path, scope_id="not_selected")
     with pytest.raises(task.TaskBoundaryError, match="not selected"):
-        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+        _execute_task(plan, ops=_fixed_ops())
 
 
 def test_dispatch_hash_is_bound_before_parsing_or_producer_execution(
@@ -1186,21 +1136,25 @@ def test_dispatch_hash_is_bound_before_parsing_or_producer_execution(
     built = _task_fixture(tmp_path / "hash-mismatch")
     wrong = "0" * 64
     with pytest.raises(task.TaskBoundaryError, match="SHA-256 differs"):
-        task.execute_dispatch(
-            built.dispatch_path,
+        task.execute_task(
+            built.manifest_path,
             expected_sha256=wrong,
+            machine_key=MACHINE_KEY,
+            scope_id=SCOPE_ID,
             ops=_fixed_ops(),
         )
-    assert not Path(built.dispatch["task_attempt_path"]).exists()
+    assert not Path(built.plan.task_attempt_path).exists()
 
     changed = _task_fixture(tmp_path / "changed-after-load")
-    expected = _dispatch_sha256(changed.dispatch_path)
-    admitted = task.load_dispatch(
-        changed.dispatch_path,
+    expected = _manifest_sha256(changed.manifest_path)
+    admitted = task.load_task(
+        changed.manifest_path,
         expected_sha256=expected,
+        machine_key=MACHINE_KEY,
+        scope_id=SCOPE_ID,
     )
-    changed.dispatch["producer_argv"].append("--foreign-change")
-    _rewrite_dispatch(changed)
+    changed.definition["producer_argv"].append("--foreign-change")
+    _rewrite_task(changed)
     calls: list[tuple[str, ...]] = []
 
     def command(
@@ -1220,7 +1174,7 @@ def test_dispatch_hash_is_bound_before_parsing_or_producer_execution(
         publish_bytes=defaults.publish_bytes,
         now=lambda: datetime(2026, 8, 12, 12, 2, tzinfo=UTC),
     )
-    with pytest.raises(task.TaskBoundaryError, match="exact task dispatch"):
+    with pytest.raises(task.TaskBoundaryError, match="Workflow attempt changed"):
         task.run_task(admitted, backend=admitted.backend, ops=ops)
     assert calls == []
 
@@ -1246,7 +1200,7 @@ def test_task_start_publication_failure_after_link_never_enters_producer(
     def publish(path: Path, data: bytes) -> None:
         nonlocal injected
         defaults.publish_bytes(path, data)
-        if path == Path(built.dispatch["task_start_path"]) and not injected:
+        if path == Path(built.plan.task_start_path) and not injected:
             injected = True
             raise task.TaskBoundaryError("injected after task-start link")
 
@@ -1257,16 +1211,16 @@ def test_task_start_publication_failure_after_link_never_enters_producer(
         publish_bytes=publish,
     )
     with pytest.raises(task.TaskBoundaryError, match="injected after task-start"):
-        _execute_dispatch(built.dispatch_path, ops=ops)
+        _execute_task(built.plan, ops=ops)
 
     assert calls == []
-    start_path = Path(built.dispatch["task_start_path"])
+    start_path = Path(built.plan.task_start_path)
     assert start_path.is_file()
     orchestration_contracts.validate_record(
         "task-start", orchestration_contracts.load_json_object(start_path)
     )
     attempt = orchestration_contracts.load_record(
-        built.dispatch["task_attempt_path"], "task-attempt"
+        built.plan.task_attempt_path, "task-attempt"
     )
     assert attempt["task_start_record"] is None
     assert attempt["producer"] is None
@@ -1282,8 +1236,8 @@ def test_task_streams_are_fsynced_and_closed_before_attempt_publication(
     original_fsync = task.os.fsync
     original_close = task.os.close
     log_paths = {
-        "stdout": Path(built.dispatch["stdout_path"]),
-        "stderr": Path(built.dispatch["stderr_path"]),
+        "stdout": Path(built.plan.stdout_path),
+        "stderr": Path(built.plan.stderr_path),
     }
 
     def descriptor_log_label(descriptor: int) -> str | None:
@@ -1313,14 +1267,14 @@ def test_task_streams_are_fsynced_and_closed_before_attempt_publication(
         original_close(descriptor)
 
     def publish(path: Path, data: bytes) -> None:
-        if path == Path(built.dispatch["task_attempt_path"]):
+        if path == Path(built.plan.task_attempt_path):
             events.append("publish-attempt")
         defaults.publish_bytes(path, data)
 
     monkeypatch.setattr(task.os, "fsync", tracked_fsync)
     monkeypatch.setattr(task.os, "close", tracked_close)
-    _execute_dispatch(
-        built.dispatch_path,
+    _execute_task(
+        built.plan,
         ops=replace(defaults, publish_bytes=publish),
     )
 
@@ -1356,7 +1310,7 @@ def test_same_byte_log_replacement_while_descriptor_open_is_not_admitted(
             stderr_descriptor,
         )
         descriptor = stdout_descriptor if label == "stdout" else stderr_descriptor
-        target = Path(built.dispatch[field])
+        target = Path(getattr(built.plan, field))
         original_state = os.fstat(descriptor)
         replacement_bytes = target.read_bytes()
         replacement = target.with_name(f".{target.name}.foreign-replacement")
@@ -1372,14 +1326,14 @@ def test_same_byte_log_replacement_while_descriptor_open_is_not_admitted(
         task.TaskBoundaryError,
         match=rf"task {label} log path no longer matches its synchronized descriptor",
     ):
-        _execute_dispatch(
-            built.dispatch_path,
+        _execute_task(
+            built.plan,
             ops=replace(defaults, run_semantic_all_pass=semantic),
         )
 
-    assert Path(built.dispatch[field]).read_bytes() == replacement_bytes
-    assert not Path(built.dispatch["task_attempt_path"]).exists()
-    assert not Path(built.dispatch["verified_task_path"]).exists()
+    assert Path(getattr(built.plan, field)).read_bytes() == replacement_bytes
+    assert not Path(built.plan.task_attempt_path).exists()
+    assert not Path(built.plan.verified_task_path).exists()
 
 
 @pytest.mark.parametrize(
@@ -1400,25 +1354,25 @@ def test_evidence_change_during_terminal_publication_blocks_verified_marker(
     built = _task_fixture(tmp_path)
     defaults = _fixed_ops()
     target = Path(
-        built.dispatch[field][0]["path"]
+        built.definition[field][0]["path"]
         if field == "outputs"
-        else built.dispatch[field]
+        else getattr(built.plan, field)
     )
 
     def publish(path: Path, data: bytes) -> None:
         defaults.publish_bytes(path, data)
-        if path == Path(built.dispatch["task_attempt_path"]):
+        if path == Path(built.plan.task_attempt_path):
             with target.open("ab") as stream:
                 stream.write(b"foreign evidence bytes\n")
 
     with pytest.raises(task.TaskBoundaryError, match=message):
-        _execute_dispatch(
-            built.dispatch_path,
+        _execute_task(
+            built.plan,
             ops=replace(defaults, publish_bytes=publish),
         )
 
-    assert Path(built.dispatch["task_attempt_path"]).is_file()
-    assert not Path(built.dispatch["verified_task_path"]).exists()
+    assert Path(built.plan.task_attempt_path).is_file()
+    assert not Path(built.plan.verified_task_path).exists()
 
 
 def test_internal_module_cli_is_isolated_and_not_a_public_lifecycle_command(
@@ -1437,8 +1391,8 @@ def test_internal_module_cli_is_isolated_and_not_a_public_lifecycle_command(
         text=True,
     )
     assert help_result.returncode == 0
-    assert "--dispatch" in help_result.stdout
-    assert "--dispatch-sha256" in help_result.stdout
+    assert "--attempt" in help_result.stdout
+    assert "--attempt-sha256" in help_result.stdout
     assert "not a public" in help_result.stdout
     assert "run/resume/inspect" in help_result.stdout
 
@@ -1450,17 +1404,21 @@ def test_internal_module_cli_is_isolated_and_not_a_public_lifecycle_command(
                 "-m",
                 "emrys.orchestration.run_coordinator.task",
             ),
-            "--dispatch",
-            str(built.dispatch_path),
-            "--dispatch-sha256",
-            _dispatch_sha256(built.dispatch_path),
+            "--attempt",
+            str(built.manifest_path),
+            "--attempt-sha256",
+            _manifest_sha256(built.manifest_path),
+            "--owner",
+            built.plan.machine_key,
+            "--scope",
+            built.plan.scope["scope_id"],
         ],
         check=False,
         capture_output=True,
         text=True,
     )
     assert result.returncode == 0, result.stderr
-    assert Path(built.dispatch["verified_task_path"]).is_file()
+    assert Path(built.plan.verified_task_path).is_file()
 
 
 def test_existing_verified_or_partial_task_state_is_never_replaced(
@@ -1468,11 +1426,11 @@ def test_existing_verified_or_partial_task_state_is_never_replaced(
 ) -> None:
     built = _task_fixture(tmp_path)
     for field in ("verified_task_path", "stdout_path"):
-        destination = Path(built.dispatch[field])
+        destination = Path(getattr(built.plan, field))
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(b"foreign state\n")
         with pytest.raises(task.TaskBoundaryError, match="Refusing pre-existing"):
-            _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+            _execute_task(built.plan, ops=_fixed_ops())
         assert destination.read_bytes() == b"foreign state\n"
         destination.unlink()
 
@@ -1499,12 +1457,12 @@ def test_task_log_symlink_injected_at_stream_open_is_never_followed(
 
     def publish(path: Path, data: bytes) -> None:
         defaults.publish_bytes(path, data)
-        if path == Path(built.dispatch["task_start_path"]):
-            Path(built.dispatch["stdout_path"]).symlink_to(outside)
+        if path == Path(built.plan.task_start_path):
+            Path(built.plan.stdout_path).symlink_to(outside)
 
     with pytest.raises(task.TaskBoundaryError, match="canonical|replace existing"):
-        _execute_dispatch(
-            built.dispatch_path,
+        _execute_task(
+            built.plan,
             ops=replace(
                 defaults,
                 run_command=command,
@@ -1514,29 +1472,29 @@ def test_task_log_symlink_injected_at_stream_open_is_never_followed(
         )
 
     assert calls == []
-    stdout_path = Path(built.dispatch["stdout_path"])
+    stdout_path = Path(built.plan.stdout_path)
     assert stdout_path.is_symlink()
     assert outside.read_bytes() == b"foreign bytes\n"
-    assert not Path(built.dispatch["stderr_path"]).exists()
-    assert not Path(built.dispatch["task_attempt_path"]).exists()
-    assert not Path(built.dispatch["verified_task_path"]).exists()
+    assert not Path(built.plan.stderr_path).exists()
+    assert not Path(built.plan.task_attempt_path).exists()
+    assert not Path(built.plan.verified_task_path).exists()
 
 
 def test_dispatch_and_output_paths_may_not_alias(tmp_path: Path) -> None:
     built = _task_fixture(tmp_path)
-    built.dispatch["outputs"][0]["path"] = str(built.dispatch_path)
-    _rewrite_dispatch(built)
+    built.definition["outputs"][0]["path"] = str(built.manifest_path)
+    _rewrite_task(built)
     with pytest.raises(task.TaskBoundaryError, match="aliases an input"):
-        _load_dispatch(built.dispatch_path)
+        _load_task(built.manifest_path)
 
 
 def test_read_only_verified_admission_rechecks_every_content_binding(
     tmp_path: Path,
 ) -> None:
     built = _task_fixture(tmp_path)
-    _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
-    execution = _record(built.dispatch["execution_path"])
-    profile = _record(built.dispatch["profile_path"])
+    _execute_task(built.plan, ops=_fixed_ops())
+    execution = _record(built.plan.execution_path)
+    profile = _record(built.plan.profile_path)
 
     admitted = _validate_verified(
         built,
@@ -1545,7 +1503,7 @@ def test_read_only_verified_admission_rechecks_every_content_binding(
     )
     assert admitted["status"] == "succeeded"
 
-    output = Path(built.dispatch["outputs"][0]["path"])
+    output = Path(built.definition["outputs"][0]["path"])
     output.write_bytes(b"changed after verification\n")
     with pytest.raises(task.TaskBoundaryError, match="content binding"):
         _validate_verified(
@@ -1562,8 +1520,8 @@ def test_task_log_hashing_uses_shared_streaming_hasher_without_full_log_reads(
     built = _task_fixture(tmp_path)
     defaults = _fixed_ops()
     log_paths = {
-        Path(built.dispatch["stdout_path"]),
-        Path(built.dispatch["stderr_path"]),
+        Path(built.plan.stdout_path),
+        Path(built.plan.stderr_path),
     }
     hashed_paths: list[Path] = []
     original_hash = task.sha256_with_identity
@@ -1606,14 +1564,14 @@ def test_task_log_hashing_uses_shared_streaming_hasher_without_full_log_reads(
 
     monkeypatch.setattr(task, "sha256_with_identity", tracked_hash)
     monkeypatch.setattr(task, "_read_bound_file", reject_full_log_read)
-    _execute_dispatch(
-        built.dispatch_path,
+    _execute_task(
+        built.plan,
         ops=replace(defaults, run_command=command),
     )
     _validate_verified(built)
 
     assert set(hashed_paths) == log_paths
-    with Path(built.dispatch["stdout_path"]).open("ab") as stream:
+    with Path(built.plan.stdout_path).open("ab") as stream:
         stream.write(b"mutation")
     with pytest.raises(task.TaskBoundaryError, match="SHA-256 no longer matches"):
         _validate_verified(built)
@@ -1623,10 +1581,10 @@ def test_read_only_task_start_admission_rechecks_every_origin(
     tmp_path: Path,
 ) -> None:
     built = _task_fixture(tmp_path)
-    _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
-    execution = _record(built.dispatch["execution_path"])
-    profile = _record(built.dispatch["profile_path"])
-    start_path = Path(built.dispatch["task_start_path"])
+    _execute_task(built.plan, ops=_fixed_ops())
+    execution = _record(built.plan.execution_path)
+    profile = _record(built.plan.profile_path)
+    start_path = Path(built.plan.task_start_path)
 
     admitted = task.validate_task_start(
         start_path,
@@ -1634,13 +1592,13 @@ def test_read_only_task_start_admission_rechecks_every_origin(
         execution=execution,
         profile=profile,
         machine_key=MACHINE_KEY,
-        scope=built.dispatch["scope"],
+        scope=built.plan.scope,
     )
-    assert admitted["task_dispatch_record"]["sha256"] == _dispatch_sha256(
-        built.dispatch_path
+    assert admitted["workflow_attempt_record"]["sha256"] == _manifest_sha256(
+        built.manifest_path
     )
 
-    with built.dispatch_path.open("ab") as stream:
+    with built.manifest_path.open("ab") as stream:
         stream.write(b"changed after task entry\n")
     with pytest.raises(task.TaskBoundaryError, match="SHA-256"):
         task.validate_task_start(
@@ -1649,7 +1607,7 @@ def test_read_only_task_start_admission_rechecks_every_origin(
             execution=execution,
             profile=profile,
             machine_key=MACHINE_KEY,
-            scope=built.dispatch["scope"],
+            scope=built.plan.scope,
         )
 
 
@@ -1661,9 +1619,9 @@ def test_terminal_workflow_attempt_cannot_start_a_task(tmp_path: Path) -> None:
     terminal.write_bytes(b"terminal-origin\n")
 
     with pytest.raises(task.TaskBoundaryError, match="terminal workflow attempt"):
-        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+        _execute_task(built.plan, ops=_fixed_ops())
 
-    assert not Path(built.dispatch["task_start_path"]).exists()
+    assert not Path(built.plan.task_start_path).exists()
 
 
 def test_foreign_lock_namespace_blocks_task_entry(tmp_path: Path) -> None:
@@ -1673,9 +1631,9 @@ def test_foreign_lock_namespace_blocks_task_entry(tmp_path: Path) -> None:
     with pytest.raises(
         task.TaskBoundaryError, match="Unexpected retained aggregate lock state"
     ):
-        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+        _execute_task(built.plan, ops=_fixed_ops())
 
-    assert not Path(built.dispatch["task_start_path"]).exists()
+    assert not Path(built.plan.task_start_path).exists()
 
 
 def test_changed_installed_package_blocks_before_task_start(tmp_path: Path) -> None:
@@ -1691,10 +1649,10 @@ def test_changed_installed_package_blocks_before_task_start(tmp_path: Path) -> N
     defaults = _fixed_ops()
     ops = replace(defaults, admit_installed_package=reject_transient_head)
     with pytest.raises(task.TaskBoundaryError, match="Could not admit task child"):
-        _execute_dispatch(built.dispatch_path, ops=ops)
+        _execute_task(built.plan, ops=ops)
 
     assert calls == ["attest"]
-    assert not Path(built.dispatch["task_start_path"]).exists()
+    assert not Path(built.plan.task_start_path).exists()
 
 
 def test_task_child_rechecks_source_identity_at_irreversible_entry(
@@ -1714,10 +1672,10 @@ def test_task_child_rechecks_source_identity_at_irreversible_entry(
     defaults = _fixed_ops()
     ops = replace(defaults, admit_installed_package=transient_move)
     with pytest.raises(task.TaskBoundaryError, match="changed package identity"):
-        _execute_dispatch(built.dispatch_path, ops=ops)
+        _execute_task(built.plan, ops=ops)
 
     assert calls == 2
-    assert not Path(built.dispatch["task_start_path"]).exists()
+    assert not Path(built.plan.task_start_path).exists()
 
 
 @pytest.mark.parametrize(
@@ -1735,8 +1693,8 @@ def test_read_only_verified_admission_rejects_mutated_references(
     field: str,
 ) -> None:
     built = _task_fixture(tmp_path)
-    _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
-    referenced = Path(built.dispatch[field])
+    _execute_task(built.plan, ops=_fixed_ops())
+    referenced = Path(getattr(built.plan, field))
     with referenced.open("ab") as stream:
         stream.write(b"mutated-after-publication\n")
 
@@ -1748,7 +1706,7 @@ def test_read_only_verified_admission_rejects_wrong_identity_and_scope(
     tmp_path: Path,
 ) -> None:
     built = _task_fixture(tmp_path)
-    _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+    _execute_task(built.plan, ops=_fixed_ops())
     with pytest.raises(task.TaskBoundaryError, match="scope"):
         _validate_verified(
             built,
@@ -1774,14 +1732,14 @@ def test_semantic_gate_cannot_change_the_report_it_approves(tmp_path: Path) -> N
             stdout_descriptor,
             stderr_descriptor,
         )
-        with Path(built.dispatch["validation_report_path"]).open("ab") as stream:
+        with Path(built.definition["validation_report_path"]).open("ab") as stream:
             stream.write(b"post-gate mutation\n")
         return result
 
     ops = replace(defaults, run_semantic_all_pass=semantic)
     with pytest.raises(task.TaskBoundaryError, match="report changed"):
-        _execute_dispatch(built.dispatch_path, ops=ops)
-    assert not Path(built.dispatch["verified_task_path"]).exists()
+        _execute_task(built.plan, ops=ops)
+    assert not Path(built.plan.verified_task_path).exists()
 
 
 def test_validator_cannot_change_a_producer_output(tmp_path: Path) -> None:
@@ -1803,14 +1761,14 @@ def test_validator_cannot_change_a_producer_output(tmp_path: Path) -> None:
             stderr_descriptor,
         )
         if "validator" in argv:
-            with Path(built.dispatch["outputs"][0]["path"]).open("ab") as stream:
+            with Path(built.definition["outputs"][0]["path"]).open("ab") as stream:
                 stream.write(b"validator mutation\n")
         return result
 
     ops = replace(defaults, run_command=command)
     with pytest.raises(task.TaskBoundaryError, match="producer output changed"):
-        _execute_dispatch(built.dispatch_path, ops=ops)
-    assert not Path(built.dispatch["verified_task_path"]).exists()
+        _execute_task(built.plan, ops=ops)
+    assert not Path(built.plan.verified_task_path).exists()
 
 
 def test_symlinked_output_and_contract_ancestors_fail_closed(tmp_path: Path) -> None:
@@ -1821,7 +1779,7 @@ def test_symlinked_output_and_contract_ancestors_fail_closed(tmp_path: Path) -> 
     shutil.rmtree(results)
     results.symlink_to(outside, target_is_directory=True)
     with pytest.raises(task.TaskBoundaryError, match="symlink ancestor"):
-        _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+        _execute_task(built.plan, ops=_fixed_ops())
 
     built = _task_fixture(tmp_path / "contract-case")
     contract = built.run_root / "contract"
@@ -1829,7 +1787,7 @@ def test_symlinked_output_and_contract_ancestors_fail_closed(tmp_path: Path) -> 
     contract.rename(moved)
     contract.symlink_to(moved, target_is_directory=True)
     with pytest.raises(task.TaskBoundaryError, match="canonical|symlink ancestor"):
-        _load_dispatch(built.dispatch_path)
+        _load_task(built.manifest_path)
 
 
 def test_step00c_symlinked_stationary_reference_blocks_before_producer(
@@ -1839,8 +1797,11 @@ def test_step00c_symlinked_stationary_reference_blocks_before_producer(
     workflow_fixture.materialize_active_run_lock(built)
     machine_key = "emrys.stage.construct_FASTA_sidecars.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
-    dispatch_path = Path(built.dispatch_paths[machine_key][scope_id])
-    record = orchestration_contracts.load_json_object(dispatch_path)
+    manifest = orchestration_contracts.load_json_object(built.workflow_attempt_path)
+    record = manifest["tasks"][machine_key][scope_id]
+    plan = _load_task(
+        built.workflow_attempt_path, machine_key=machine_key, scope_id=scope_id
+    )
     fasta = Path(str(built.execution["reference"]["fasta"]["path"]))
     original_parent = fasta.parent
     real_parent = original_parent.with_name("reference-real")
@@ -1850,7 +1811,7 @@ def test_step00c_symlinked_stationary_reference_blocks_before_producer(
     fai = Path(f"{fasta}.fai")
     sequence_dict = fasta.with_name(f"{fasta.stem}.dict")
     record["producer_argv"] = ["producer-must-not-run"]
-    dispatch_path.write_bytes(orchestration_contracts.canonical_json_bytes(record))
+    _publish_json(built.workflow_attempt_path, manifest)
 
     calls: list[tuple[str, ...]] = []
 
@@ -1873,7 +1834,7 @@ def test_step00c_symlinked_stationary_reference_blocks_before_producer(
     with pytest.raises(
         task.TaskBoundaryError, match="stationary FASTA must be canonical"
     ):
-        _execute_dispatch(dispatch_path, ops=ops)
+        _execute_task(plan, ops=ops)
 
     assert calls == []
     assert not fai.exists()
@@ -1887,8 +1848,11 @@ def test_step00c_parent_permission_drift_blocks_before_task_start(
     workflow_fixture.materialize_active_run_lock(built)
     machine_key = "emrys.stage.construct_FASTA_sidecars.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
-    dispatch_path = Path(built.dispatch_paths[machine_key][scope_id])
-    record = orchestration_contracts.load_json_object(dispatch_path)
+    manifest = orchestration_contracts.load_json_object(built.workflow_attempt_path)
+    record = manifest["tasks"][machine_key][scope_id]
+    plan = _load_task(
+        built.workflow_attempt_path, machine_key=machine_key, scope_id=scope_id
+    )
     parent = Path(str(built.execution["reference"]["fasta"]["path"])).parent
     calls: list[tuple[str, ...]] = []
 
@@ -1914,8 +1878,8 @@ def test_step00c_parent_permission_drift_blocks_before_task_start(
         return parent_checks == 1
 
     with pytest.raises(task.TaskBoundaryError, match="not readable, writable"):
-        _execute_dispatch(
-            dispatch_path,
+        _execute_task(
+            plan,
             ops=replace(
                 defaults,
                 run_command=command,
@@ -1926,8 +1890,8 @@ def test_step00c_parent_permission_drift_blocks_before_task_start(
 
     assert parent_checks == 2
     assert calls == []
-    assert not Path(record["task_start_path"]).exists()
-    attempt_path = Path(record["task_attempt_path"])
+    assert not Path(plan.task_start_path).exists()
+    attempt_path = Path(plan.task_attempt_path)
     attempt = orchestration_contracts.load_record(attempt_path, "task-attempt")
     assert attempt["status"] == "failed"
     assert attempt["task_start_record"] is None
@@ -1936,7 +1900,7 @@ def test_step00c_parent_permission_drift_blocks_before_task_start(
         ("stdout_log", "stdout_path"),
         ("stderr_log", "stderr_path"),
     ):
-        log_path = Path(record[path_field])
+        log_path = Path(getattr(plan, path_field))
         assert attempt[field] == {
             "path": log_path.relative_to(built.run_root).as_posix(),
             "sha256": hashlib.sha256(log_path.read_bytes()).hexdigest(),
@@ -1951,7 +1915,7 @@ def test_step00c_parent_permission_drift_blocks_before_task_start(
 def test_complete_step00c_sidecar_pair_is_reused_and_content_bound(
     tmp_path: Path,
 ) -> None:
-    built, dispatch_path, record, outputs = _step00c_with_existing_sidecars(
+    built, plan, record, outputs = _step00c_with_existing_sidecars(
         tmp_path / "workflow-fixture"
     )
     before = {
@@ -1981,13 +1945,13 @@ def test_complete_step00c_sidecar_pair_is_reused_and_content_bound(
             stderr_descriptor,
         )
 
-    outcome = _execute_dispatch(
-        dispatch_path,
+    outcome = _execute_task(
+        plan,
         ops=replace(defaults, run_command=command),
     )
 
     assert calls == [tuple(record["validator_argv"])]
-    assert b"producer command skipped" in Path(record["stdout_path"]).read_bytes()
+    assert b"producer command skipped" in Path(plan.stdout_path).read_bytes()
     verified = _record(outcome.task_attempt_path)
     assert verified["outputs"] == [
         {
@@ -2005,7 +1969,7 @@ def test_complete_step00c_sidecar_pair_is_reused_and_content_bound(
 
 
 def test_partial_step00c_sidecar_pair_blocks_before_producer(tmp_path: Path) -> None:
-    built, dispatch_path, record, outputs = _step00c_with_existing_sidecars(
+    built, plan, record, outputs = _step00c_with_existing_sidecars(
         tmp_path / "workflow-fixture"
     )
     outputs[1].unlink()
@@ -2030,15 +1994,15 @@ def test_partial_step00c_sidecar_pair_blocks_before_producer(tmp_path: Path) -> 
         )
 
     with pytest.raises(task.TaskBoundaryError, match="partial pre-existing Step 00c"):
-        _execute_dispatch(
-            dispatch_path,
+        _execute_task(
+            plan,
             ops=replace(defaults, run_command=command),
         )
 
     assert calls == []
     assert outputs[0].read_bytes() == survivor
     assert not outputs[1].exists()
-    attempt = _record(record["task_attempt_path"])
+    attempt = _record(plan.task_attempt_path)
     assert attempt["task_start_record"] is None
     assert attempt["producer"] is None
 
@@ -2046,7 +2010,7 @@ def test_partial_step00c_sidecar_pair_blocks_before_producer(tmp_path: Path) -> 
 def test_reused_step00c_sidecar_mutation_during_validation_fails_closed(
     tmp_path: Path,
 ) -> None:
-    built, dispatch_path, record, outputs = _step00c_with_existing_sidecars(
+    built, plan, record, outputs = _step00c_with_existing_sidecars(
         tmp_path / "workflow-fixture"
     )
     producer_argv = tuple(record["producer_argv"])
@@ -2073,17 +2037,17 @@ def test_reused_step00c_sidecar_mutation_during_validation_fails_closed(
         return result
 
     with pytest.raises(task.TaskBoundaryError, match="during validation"):
-        _execute_dispatch(
-            dispatch_path,
+        _execute_task(
+            plan,
             ops=replace(defaults, run_command=command),
         )
-    assert not Path(record["verified_task_path"]).exists()
+    assert not Path(plan.verified_task_path).exists()
 
 
 def test_reused_step00c_sidecar_rechecked_before_verified_publication(
     tmp_path: Path,
 ) -> None:
-    built, dispatch_path, record, outputs = _step00c_with_existing_sidecars(
+    built, plan, record, outputs = _step00c_with_existing_sidecars(
         tmp_path / "workflow-fixture"
     )
     producer_argv = tuple(record["producer_argv"])
@@ -2109,22 +2073,22 @@ def test_reused_step00c_sidecar_rechecked_before_verified_publication(
 
     def publish(path: Path, data: bytes) -> None:
         defaults.publish_bytes(path, data)
-        if path == Path(record["task_attempt_path"]):
+        if path == Path(plan.task_attempt_path):
             replacement = outputs[0].with_name(f".{outputs[0].name}.late-replacement")
             replacement.write_bytes(original)
             replacement.replace(outputs[0])
 
     with pytest.raises(task.TaskBoundaryError, match="before verified publication"):
-        _execute_dispatch(
-            dispatch_path,
+        _execute_task(
+            plan,
             ops=replace(
                 defaults,
                 run_command=command,
                 publish_bytes=publish,
             ),
         )
-    assert _record(record["task_attempt_path"])["status"] == "succeeded"
-    assert not Path(record["verified_task_path"]).exists()
+    assert _record(plan.task_attempt_path)["status"] == "succeeded"
+    assert not Path(plan.verified_task_path).exists()
 
 
 @pytest.mark.parametrize("outcome", ("pass", "fail", "changed-output"))
@@ -2133,11 +2097,11 @@ def test_scientific_validation_precedes_native_publication(
 ) -> None:
     built = _task_fixture(tmp_path, prepublication=True)
     if outcome == "fail":
-        built.dispatch["validator_argv"].extend(["--status", "fail"])
-        _rewrite_dispatch(built)
+        built.definition["validator_argv"].extend(["--status", "fail"])
+        _rewrite_task(built)
     defaults = _fixed_ops()
-    finals = [Path(item["path"]) for item in built.dispatch["outputs"]]
-    working = Path(built.dispatch["outputs"][0]["working_path"])
+    finals = [Path(item["path"]) for item in built.definition["outputs"]]
+    working = Path(built.definition["outputs"][0]["working_path"])
 
     def command(argv, *arguments):
         if "validator" in argv:
@@ -2151,13 +2115,13 @@ def test_scientific_validation_precedes_native_publication(
 
     ops = replace(defaults, run_command=command)
     if outcome == "pass":
-        _execute_dispatch(built.dispatch_path, ops=ops)
+        _execute_task(built.plan, ops=ops)
         verified = _validate_verified(built)
         assert str(working) in verified["validator"]["argv"]
         assert all(path.is_file() for path in finals)
     else:
         with pytest.raises(task.TaskBoundaryError):
-            _execute_dispatch(built.dispatch_path, ops=ops)
+            _execute_task(built.plan, ops=ops)
         assert not any(path.exists() for path in finals)
-        assert not Path(built.dispatch["verified_task_path"]).exists()
-        assert Path(built.dispatch["validation_report_path"]).is_file()
+        assert not Path(built.plan.verified_task_path).exists()
+        assert Path(built.definition["validation_report_path"]).is_file()

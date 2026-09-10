@@ -21,10 +21,6 @@ def _state(
 ) -> SimpleNamespace:
     attempt = {
         "workflow_attempt_id": "workflow-20260812T120000Z-" + "a" * 32,
-        "workflow_config": {
-            "path": "contract/workflow-configs/attempt.json",
-            "sha256": "a" * 64,
-        },
     }
     return SimpleNamespace(
         run_root=root,
@@ -58,15 +54,15 @@ def _identity(root: Path, state: SimpleNamespace) -> SimpleNamespace:
         attempt={
             **state.latest_attempt,
             "installed_package": admit_installed_package().record,
-        },
-        config={
-            "reporting_run_contract_path": {
-                "path": f"contract/reporting-inputs/{identifier}/run.json",
-                "sha256": "c" * 64,
-            },
-            "artifact_inventory_path": {
-                "path": f"contract/reporting-inputs/{identifier}/inventory.tsv",
-                "sha256": "d" * 64,
+            "workflow": {
+                "reporting_run_contract_path": {
+                    "path": f"contract/reporting-inputs/{identifier}/run.json",
+                    "sha256": "c" * 64,
+                },
+                "artifact_inventory_path": {
+                    "path": f"contract/reporting-inputs/{identifier}/inventory.tsv",
+                    "sha256": "d" * 64,
+                },
             },
         },
     )
@@ -585,13 +581,13 @@ def test_real_artifact_publisher_failure_stops_reporting_after_start(
     state = _state(root)
     identity = _identity(root, state)
     identity.profile = build_fixture.analysis_profile_v1()
-    identity.config["reporting_run_contract_path"]["path"] = (
+    identity.attempt["workflow"]["reporting_run_contract_path"]["path"] = (
         built.run_contract.relative_to(root).as_posix()
     )
-    identity.config["artifact_inventory_path"]["path"] = built.inventory.relative_to(
-        root
-    ).as_posix()
-    identity.config["primary_analysis_policy_path"] = {
+    identity.attempt["workflow"]["artifact_inventory_path"]["path"] = (
+        built.inventory.relative_to(root).as_posix()
+    )
+    identity.attempt["workflow"]["primary_analysis_policy_path"] = {
         "path": built.analysis_policy.relative_to(root).as_posix()
     }
     _install_admission(monkeypatch, state, identity)

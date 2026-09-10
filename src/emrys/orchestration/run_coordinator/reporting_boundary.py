@@ -132,11 +132,9 @@ class _AdmittedIdentity:
     execution: dict[str, Any]
     profile: dict[str, Any]
     attempt: dict[str, Any]
-    config: dict[str, Any]
     execution_sha256: str
     profile_sha256: str
     attempt_reference: dict[str, str]
-    config_reference: dict[str, str]
     run_lock_reference: dict[str, str]
 
 
@@ -277,21 +275,6 @@ _admit_execution = partial(
 )
 
 
-def _load_canonical_object(
-    path: Path,
-    root: Path,
-    label: str,
-) -> tuple[dict[str, Any], bytes]:
-    data = _read_bound(path, root, label)
-    try:
-        record = orchestration_contracts.load_json_object_bytes(data, f"{label} {path}")
-    except orchestration_contracts.ContractValidationError as exc:
-        raise ReportingBoundaryError(f"Invalid {label} at {path}: {exc}") from exc
-    if data != orchestration_contracts.canonical_json_bytes(record):
-        raise ReportingBoundaryError(f"{label} must use canonical JSON bytes: {path}")
-    return record, data
-
-
 def _reference(path: Path, root: Path, data: bytes | None = None) -> dict[str, str]:
     admitted = _read_bound(path, root, "record reference") if data is None else data
     return {
@@ -310,12 +293,10 @@ def _admit_reporting_projection(
     *,
     root: Path,
     config: Mapping[str, Any],
+    attempt_id: str,
 ) -> None:
     for name, relative in CONTRACT_PATHS.items():
-        expected_relative = _reporting_relative(
-            relative,
-            config["workflow_attempt_id"],
-        )
+        expected_relative = _reporting_relative(relative, attempt_id)
         reference = config.get(f"{name}_path")
         if (
             not isinstance(reference, Mapping)
@@ -323,7 +304,7 @@ def _admit_reporting_projection(
             or not all(isinstance(value, str) for value in reference.values())
         ):
             raise ReportingBoundaryError(
-                f"Workflow config does not bind exact reporting projection {name}"
+                f"Workflow Attempt does not bind exact reporting projection {name}"
             )
         assert isinstance(reference, Mapping)
         if reference["path"] != expected_relative:
@@ -334,7 +315,7 @@ def _admit_reporting_projection(
         data = _read_bound(path, root, f"reporting projection {name}")
         if hashlib.sha256(data).hexdigest() != reference["sha256"]:
             raise ReportingBoundaryError(
-                f"Reporting projection {name} bytes differ from workflow config identity"
+                f"Reporting projection {name} bytes differ from workflow Attempt identity"
             )
         if path.suffix == ".json":
             try:
@@ -490,7 +471,6 @@ def _admit_identity(
     execution_path: Path,
     profile_path: Path,
     workflow_attempt_path: Path,
-    workflow_config_path: Path,
     require_publishable_attempt: bool,
     attest_source: Callable[..., Any] = admit_installed_package,
 ) -> _AdmittedIdentity:
@@ -520,21 +500,6 @@ def _admit_identity(
         raise ReportingBoundaryError(
             "Workflow attempt does not use its fixed immutable path"
         )
-    expected_config = root / str(attempt["workflow_config"]["path"])
-    if workflow_config_path != expected_config:
-        raise ReportingBoundaryError(
-            "Workflow config path differs from the attempt-bound reference"
-        )
-    config, config_data = _load_canonical_object(
-        workflow_config_path,
-        root,
-        "workflow config",
-    )
-    config_reference = _reference(workflow_config_path, root, config_data)
-    if config_reference != attempt["workflow_config"]:
-        raise ReportingBoundaryError(
-            "Workflow config bytes differ from the attempt-bound reference"
-        )
     execution_sha256 = hashlib.sha256(execution_data).hexdigest()
     profile_sha256 = hashlib.sha256(profile_data).hexdigest()
     expected_identity = {
@@ -547,21 +512,8 @@ def _admit_identity(
             raise ReportingBoundaryError(
                 f"Workflow attempt does not bind reporting {field}"
             )
-    config_identity = {
-        "run_root": str(root),
-        "execution_path": str(execution_path),
-        "profile_path": str(profile_path),
-        "workflow_attempt_id": identifier,
-    }
-    for field, expected in config_identity.items():
-        if config.get(field) != expected:
-            raise ReportingBoundaryError(f"Workflow config does not bind {field}")
     installed_package = attempt["installed_package"]
     package_root = Path(str(installed_package["path"]))
-    if config.get("package_root") != str(package_root):
-        raise ReportingBoundaryError(
-            "Workflow config does not bind the attempt package root"
-        )
     if require_publishable_attempt:
         try:
             observed = attest_source(root=package_root)
@@ -573,7 +525,9 @@ def _admit_identity(
             raise ReportingBoundaryError(
                 f"Could not admit reporting package: {exc}"
             ) from exc
-    _admit_reporting_projection(root=root, config=config)
+    _admit_reporting_projection(
+        root=root, config=attempt["workflow"], attempt_id=identifier
+    )
     run_lock_reference = _run_lock_reference(
         root,
         attempt,
@@ -598,11 +552,9 @@ def _admit_identity(
         execution=execution,
         profile=profile,
         attempt=attempt,
-        config=config,
         execution_sha256=execution_sha256,
         profile_sha256=profile_sha256,
         attempt_reference=_reference(workflow_attempt_path, root, attempt_data),
-        config_reference=config_reference,
         run_lock_reference=run_lock_reference,
     )
 
@@ -647,7 +599,6 @@ def publish_start(
     execution_path: Path,
     profile_path: Path,
     workflow_attempt_path: Path,
-    workflow_config_path: Path,
     ops: ReportingBoundaryOps = DEFAULT_REPORTING_BOUNDARY_OPS,
 ) -> None:
     """Publish the immutable marker immediately before one reporting producer."""
@@ -658,7 +609,6 @@ def publish_start(
         execution_path=execution_path,
         profile_path=profile_path,
         workflow_attempt_path=workflow_attempt_path,
-        workflow_config_path=workflow_config_path,
         require_publishable_attempt=True,
         attest_source=ops.admit_installed_package,
     )
@@ -684,7 +634,6 @@ def publish_start(
         "schema_version": "emrys.reporting-start.v2",
         **_identity_record(identity, admitted_kind),
         "workflow_attempt": identity.attempt_reference,
-        "workflow_config": identity.config_reference,
         "run_lock": identity.run_lock_reference,
         "created_at": created_at,
     }
@@ -694,7 +643,6 @@ def publish_start(
         execution_path=execution_path,
         profile_path=profile_path,
         workflow_attempt_path=workflow_attempt_path,
-        workflow_config_path=workflow_config_path,
         require_publishable_attempt=True,
         attest_source=ops.admit_installed_package,
     )
@@ -715,7 +663,6 @@ def _expected_start(
     expected = {
         **_identity_record(identity, kind),
         "workflow_attempt": identity.attempt_reference,
-        "workflow_config": identity.config_reference,
         "run_lock": identity.run_lock_reference,
     }
     for field, value in expected.items():
@@ -735,7 +682,6 @@ def publish_verified(
     execution_path: Path,
     profile_path: Path,
     workflow_attempt_path: Path,
-    workflow_config_path: Path,
     ops: ReportingBoundaryOps = DEFAULT_REPORTING_BOUNDARY_OPS,
     before_publication: Callable[[], None] | None = None,
 ) -> tuple[tuple[str, Path], ...]:
@@ -747,7 +693,6 @@ def publish_verified(
         execution_path=execution_path,
         profile_path=profile_path,
         workflow_attempt_path=workflow_attempt_path,
-        workflow_config_path=workflow_config_path,
         require_publishable_attempt=True,
         attest_source=ops.admit_installed_package,
     )
@@ -768,7 +713,7 @@ def publish_verified(
             identity.execution,
             identity.profile,
             identity.attempt,
-            identity.config,
+            identity.attempt["workflow"],
         )
     except Exception as exc:
         raise ReportingBoundaryError(
@@ -792,7 +737,6 @@ def publish_verified(
         execution_path=execution_path,
         profile_path=profile_path,
         workflow_attempt_path=workflow_attempt_path,
-        workflow_config_path=workflow_config_path,
         require_publishable_attempt=True,
         attest_source=ops.admit_installed_package,
     )
@@ -852,14 +796,11 @@ def _identity_from_origin(
     start, start_data = _admit_record(paths.start, root, "reporting-start")
     origin = str(start["origin_workflow_attempt_id"])
     attempt_path = root / "attempts" / origin / "attempt.json"
-    attempt, _attempt_data = _admit_record(attempt_path, root, "workflow-attempt")
-    config_path = root / str(attempt["workflow_config"]["path"])
     identity = _admit_identity(
         run_root=root,
         execution_path=root / "contract" / "run.json",
         profile_path=root / "contract" / "profile.json",
         workflow_attempt_path=attempt_path,
-        workflow_config_path=config_path,
         require_publishable_attempt=False,
     )
     if identity.execution != dict(execution) or identity.profile != dict(profile):
@@ -943,7 +884,7 @@ def validate_verified(
             identity.execution,
             identity.profile,
             identity.attempt,
-            identity.config,
+            identity.attempt["workflow"],
         )
     except Exception as exc:
         raise ReportingBoundaryError(

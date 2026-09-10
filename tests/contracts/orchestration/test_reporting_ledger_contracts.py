@@ -30,7 +30,6 @@ def _records() -> dict[str, dict[str, Any]]:
         "schema_version": "emrys.reporting-start.v2",
         **identity,
         "workflow_attempt": _reference(f"attempts/{ATTEMPT_ID}/attempt.json"),
-        "workflow_config": _reference("contract/workflow-config.json"),
         "run_lock": _reference(f"attempts/{ATTEMPT_ID}/released-run-lock.json"),
         "created_at": "2026-08-12T12:00:00Z",
     }

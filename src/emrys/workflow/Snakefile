@@ -20,7 +20,7 @@ from emrys.libraries.source_authority import (
 )
 from emrys.orchestration.run_coordinator.task import (
     TaskBoundaryError,
-    load_dispatch,
+    task_from_attempt,
     validate_verified_task,
 )
 from emrys.orchestration.run_coordinator.resource_policy import (
@@ -42,61 +42,24 @@ except InstalledPackageError as exc:
 
 
 WORKFLOW_ROOT = Path(workflow.basedir).resolve()
-CONFIG_KEYS = {
-    "run_root",
-    "python_executable",
-    "execution_path",
-    "profile_path",
-    "workflow_attempt_id",
-    "package_root",
-    "reference_contract_path",
-    "primary_analysis_policy_path",
-    "reporting_run_contract_path",
-    "artifact_inventory_path",
-    "resource_policy",
-    "dispatch_paths",
-}
-if set(config) != CONFIG_KEYS:
-    raise WorkflowError(
-        "Workflow config keys must be exactly " + ", ".join(sorted(CONFIG_KEYS))
-    )
-
-
-def _absolute_config_path(key):
-    value = config.get(key)
-    if not isinstance(value, str) or not value:
-        raise WorkflowError(f"Workflow config {key!r} must be a nonempty string")
-    path = Path(value)
-    if not path.is_absolute():
-        raise WorkflowError(f"Workflow config {key!r} must be absolute: {value}")
-    return path
-
-
-RUN_ROOT = _absolute_config_path("run_root")
-CONFIGURED_PYTHON = _absolute_config_path("python_executable")
-EXECUTION_PATH = _absolute_config_path("execution_path")
-PROFILE_SNAPSHOT_PATH = _absolute_config_path("profile_path")
-PACKAGE_ROOT = _absolute_config_path("package_root")
-RESOURCE_POLICY = config.get("resource_policy")
-if not isinstance(RESOURCE_POLICY, dict):
-    raise WorkflowError("Workflow config resource_policy is malformed")
+WORKFLOW_ATTEMPT = dict(config)
+orchestration_contracts.validate_record("workflow-attempt", WORKFLOW_ATTEMPT)
+RUN_ROOT = Path(WORKFLOW_ATTEMPT["workspace"]) / "runs" / WORKFLOW_ATTEMPT["run_id"]
+CONFIGURED_PYTHON = Path(WORKFLOW_ATTEMPT["normalizer"]["path"])
+EXECUTION_PATH = RUN_ROOT / "contract" / "run.json"
+PROFILE_SNAPSHOT_PATH = RUN_ROOT / "contract" / "profile.json"
+PACKAGE_ROOT = Path(WORKFLOW_ATTEMPT["installed_package"]["path"])
 try:
-    RESOURCES = admit_resource_policy_record(RESOURCE_POLICY)
+    RESOURCES = admit_resource_policy_record(WORKFLOW_ATTEMPT["workflow"]["resource_policy"])
 except ResourceConfigError as exc:
-    raise WorkflowError(f"Workflow config resource policy is invalid: {exc}") from exc
+    raise WorkflowError(f"Attempt resource policy is invalid: {exc}") from exc
 WORKFLOW_CORES = RESOURCES.workflow_cores
 WORKFLOW_MEMORY_MB = RESOURCES.workflow_memory_mb
 STEP_THREADS = dict(RESOURCES.step_threads)
 STAGE_CONCURRENCY = dict(RESOURCES.stage_concurrency)
 STAGE_MEMORY_MB = dict(RESOURCES.stage_memory_mb)
-WORKFLOW_ATTEMPT_ID = config.get("workflow_attempt_id")
-if not isinstance(WORKFLOW_ATTEMPT_ID, str) or re.fullmatch(
-    r"workflow-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{32}", WORKFLOW_ATTEMPT_ID
-) is None:
-    raise WorkflowError("workflow_attempt_id is not one valid immutable attempt ID")
-WORKFLOW_ATTEMPT_PATH = (
-    RUN_ROOT / "attempts" / WORKFLOW_ATTEMPT_ID / "attempt.json"
-)
+WORKFLOW_ATTEMPT_ID = WORKFLOW_ATTEMPT["workflow_attempt_id"]
+WORKFLOW_ATTEMPT_PATH = RUN_ROOT / "attempts" / WORKFLOW_ATTEMPT_ID / "attempt.json"
 PROFILE = orchestration_contracts.load_json_object(PROFILE_SNAPSHOT_PATH)
 orchestration_contracts.validate_record("profile", PROFILE)
 if PROFILE_SNAPSHOT_PATH.read_bytes() != orchestration_contracts.canonical_json_bytes(
@@ -108,11 +71,6 @@ if not PACKAGE_ROOT.is_dir() or PACKAGE_ROOT.is_symlink():
 EXECUTION, _EXECUTION_DATA, SUCCESSOR_AUTHORITY = admit_execution_path(
     EXECUTION_PATH, RUN_ROOT, PROFILE
 )
-EXPECTED_EXECUTION_PATH = RUN_ROOT / "contract" / (
-    "run.json" if SUCCESSOR_AUTHORITY is not None else "normalized.json"
-)
-if EXECUTION_PATH != EXPECTED_EXECUTION_PATH:
-    raise WorkflowError("execution_path does not match the admitted Run format")
 
 
 def _require_run_file(path, label):
@@ -128,20 +86,10 @@ _require_run_file(EXECUTION_PATH, "execution_path")
 _require_run_file(PROFILE_SNAPSHOT_PATH, "profile_path")
 _require_run_file(WORKFLOW_ATTEMPT_PATH, "workflow_attempt_path")
 
-WORKFLOW_ATTEMPT = orchestration_contracts.load_json_object(WORKFLOW_ATTEMPT_PATH)
-orchestration_contracts.validate_record("workflow-attempt", WORKFLOW_ATTEMPT)
-if WORKFLOW_ATTEMPT["workflow_attempt_id"] != WORKFLOW_ATTEMPT_ID:
-    raise WorkflowError("workflow attempt record does not match workflow_attempt_id")
-WORKFLOW_CONFIG_PATH = RUN_ROOT / WORKFLOW_ATTEMPT["workflow_config"]["path"]
-_require_run_file(WORKFLOW_CONFIG_PATH, "workflow config snapshot")
-WORKFLOW_CONFIG_BYTES = WORKFLOW_CONFIG_PATH.read_bytes()
-if WORKFLOW_CONFIG_BYTES != orchestration_contracts.canonical_json_bytes(dict(config)):
-    raise WorkflowError("Workflow config snapshot must use exact canonical JSON bytes")
-if WORKFLOW_ATTEMPT["workflow_config"] != {
-    "path": WORKFLOW_CONFIG_PATH.relative_to(RUN_ROOT).as_posix(),
-    "sha256": hashlib.sha256(WORKFLOW_CONFIG_BYTES).hexdigest(),
-}:
-    raise WorkflowError("workflow attempt does not bind exact workflow config bytes")
+WORKFLOW_ATTEMPT_BYTES = WORKFLOW_ATTEMPT_PATH.read_bytes()
+if WORKFLOW_ATTEMPT_BYTES != orchestration_contracts.canonical_json_bytes(WORKFLOW_ATTEMPT):
+    raise WorkflowError("Attempt manifest must use exact canonical JSON bytes")
+WORKFLOW_ATTEMPT_SHA256 = hashlib.sha256(WORKFLOW_ATTEMPT_BYTES).hexdigest()
 EXECUTION_SHA256 = hashlib.sha256(
     orchestration_contracts.canonical_json_bytes(EXECUTION)
 ).hexdigest()
@@ -155,10 +103,8 @@ for attempt_field, expected_value in (
 ):
     if WORKFLOW_ATTEMPT[attempt_field] != expected_value:
         raise WorkflowError(
-            f"workflow_attempt_path does not bind normalized {attempt_field}"
+            f"workflow_attempt_path does not bind Run {attempt_field}"
         )
-if Path(WORKFLOW_ATTEMPT["installed_package"]["path"]) != PACKAGE_ROOT:
-    raise WorkflowError("workflow attempt does not bind configured package_root")
 try:
     if admit_installed_package(root=PACKAGE_ROOT).record != WORKFLOW_ATTEMPT["installed_package"]:
         raise InstalledPackageError("Installed package differs from workflow attempt")
@@ -169,8 +115,6 @@ if Path(sys.executable) != CONFIGURED_PYTHON:
     raise WorkflowError("Snakemake child Python differs from configured executable")
 if not CONFIGURED_PYTHON.is_file():
     raise WorkflowError("python_executable must resolve to a regular file")
-if Path(WORKFLOW_ATTEMPT["normalizer"]["path"]) != CONFIGURED_PYTHON:
-    raise WorkflowError("workflow attempt normalizer does not bind python_executable")
 REQUIRED_TOOLS = {
     tool["name"]: Path(tool["path"]) for tool in WORKFLOW_ATTEMPT["required_tools"]
 }
@@ -180,37 +124,26 @@ if (
 ):
     raise WorkflowError("workflow attempt required tools do not bind python_executable")
 
-EXPECTED_TASKS = expected_tasks(SUCCESSOR_AUTHORITY or EXECUTION, PROFILE)
+EXPECTED_TASKS = expected_tasks(SUCCESSOR_AUTHORITY, PROFILE)
 PROCESSING_SOURCE_ROOT = None
 PROCESSING_OWNER_KEYS = set()
-if SUCCESSOR_AUTHORITY is not None:
-    plan_identity = SUCCESSOR_AUTHORITY.execution_plan.record["identity"]
-    processing_source = plan_identity.get("processing_source")
-    if processing_source is not None:
-        PROCESSING_SOURCE_ROOT = RUN_ROOT.parent / processing_source["source_run_id"]
-        PROCESSING_OWNER_KEYS = set(
-            processing_stopping_owner_keys(plan_identity["functional_specification"])
-        )
-
-if SUCCESSOR_AUTHORITY is None:
-    REFERENCE_ID = str(EXECUTION["reference"]["reference_id"])
-    SAMPLE_IDS = tuple(str(row["sample_id"]) for row in EXECUTION["samples"]["rows"])
-    COHORT_ID = str(EXECUTION["analysis"]["cohort_id"])
-    PARTITION_SCOPES = tuple(
-        f"{COHORT_ID}__{row['partition_id']}" for row in EXECUTION["partitions"]["rows"]
+plan_identity = SUCCESSOR_AUTHORITY.execution_plan.record["identity"]
+processing_source = plan_identity.get("processing_source")
+if processing_source is not None:
+    PROCESSING_SOURCE_ROOT = RUN_ROOT.parent / processing_source["source_run_id"]
+    PROCESSING_OWNER_KEYS = set(
+        processing_stopping_owner_keys(plan_identity["functional_specification"])
     )
-    ANALYSIS_ID = str(EXECUTION["analysis"]["primary_analysis_id"])
-else:
-    ANALYSIS_REVISION = SUCCESSOR_AUTHORITY.analysis_revision
-    ANALYSIS_IDENTITY = ANALYSIS_REVISION.record["identity"]
-    REFERENCE_ID = ANALYSIS_REVISION.scope_id("reference")
-    SAMPLE_IDS = tuple(str(row["sample_id"]) for row in ANALYSIS_IDENTITY["samples"])
-    PARTITION_SCOPES = tuple(
-        ANALYSIS_REVISION.scope_id("cohort_partition", str(row["partition_id"]))
-        for row in ANALYSIS_IDENTITY["partitions"]
-    )
-    COHORT_ID = ANALYSIS_REVISION.scope_id("cohort")
-    ANALYSIS_ID = ANALYSIS_REVISION.scope_id("analysis")
+ANALYSIS_REVISION = SUCCESSOR_AUTHORITY.analysis_revision
+ANALYSIS_IDENTITY = ANALYSIS_REVISION.record["identity"]
+REFERENCE_ID = ANALYSIS_REVISION.scope_id("reference")
+SAMPLE_IDS = tuple(str(row["sample_id"]) for row in ANALYSIS_IDENTITY["samples"])
+PARTITION_SCOPES = tuple(
+    ANALYSIS_REVISION.scope_id("cohort_partition", str(row["partition_id"]))
+    for row in ANALYSIS_IDENTITY["partitions"]
+)
+COHORT_ID = ANALYSIS_REVISION.scope_id("cohort")
+ANALYSIS_ID = ANALYSIS_REVISION.scope_id("analysis")
 
 # Independent support fence: even a schema-valid profile cannot reassign the
 # backend's fixed producer names or scopes. This is not derived from that profile.
@@ -261,23 +194,12 @@ SCOPES_BY_TYPE = {
     "cohort": (COHORT_ID,),
     "analysis": (ANALYSIS_ID,),
 }
-DISPATCH_PATHS = config.get("dispatch_paths")
-if not isinstance(DISPATCH_PATHS, dict):
-    raise WorkflowError("Workflow config 'dispatch_paths' must be an object")
-
-
-if set(DISPATCH_PATHS) != set(EXPECTED_SCOPES_BY_OWNER):
-    raise WorkflowError(
-        "Workflow dispatch_paths owner keys do not exactly match the current plan"
-    )
+TASK_ENTRIES = WORKFLOW_ATTEMPT["tasks"]
+if set(TASK_ENTRIES) != set(EXPECTED_SCOPES_BY_OWNER):
+    raise WorkflowError("Attempt task owners do not exactly match the current plan")
 for machine_key, expected_scopes in EXPECTED_SCOPES_BY_OWNER.items():
-    by_scope = DISPATCH_PATHS[machine_key]
-    if not isinstance(by_scope, dict) or set(by_scope) != expected_scopes:
-        raise WorkflowError(
-            f"Dispatch scopes do not exactly match the current plan for {machine_key}"
-        )
-
-_DISPATCH_CACHE = {}
+    if set(TASK_ENTRIES[machine_key]) != expected_scopes:
+        raise WorkflowError(f"Attempt task scopes do not match the current plan for {machine_key}")
 
 
 def _verified(machine_key, scope_id):
@@ -295,63 +217,61 @@ def _produced_verified(machine_key, scope_id):
     )
 
 
-def _dispatch_reference(machine_key, scope_id):
-    cache_key = (machine_key, scope_id)
-    if cache_key in _DISPATCH_CACHE:
-        return _DISPATCH_CACHE[cache_key]
-    by_scope = DISPATCH_PATHS.get(machine_key)
-    if not isinstance(by_scope, dict):
-        raise WorkflowError(f"Missing dispatch map for owner {machine_key}")
-    reference = by_scope.get(scope_id)
-    if not isinstance(reference, dict) or set(reference) != {"path", "sha256"}:
-        raise WorkflowError(
-            f"Dispatch reference must contain only path and sha256 for "
-            f"{machine_key}/{scope_id}"
-        )
-    value = reference["path"]
-    digest = reference["sha256"]
-    if not isinstance(value, str) or not value:
-        raise WorkflowError(f"Missing dispatch path for {machine_key}/{scope_id}")
-    if not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
-        raise WorkflowError(f"Invalid dispatch SHA-256 for {machine_key}/{scope_id}")
-    path = Path(value)
-    if not path.is_absolute():
-        raise WorkflowError(f"Dispatch path must be absolute: {value}")
-    _require_run_file(path, "dispatch record")
+# Each original manifest is admitted once here, even when it supplies many tasks.
+ORIGIN_ATTEMPTS = {
+    (str(WORKFLOW_ATTEMPT_PATH), WORKFLOW_ATTEMPT_SHA256): WORKFLOW_ATTEMPT
+}
+for by_scope in TASK_ENTRIES.values():
+    for entry in by_scope.values():
+        if "workflow_attempt_record" not in entry:
+            continue
+        reference = entry["workflow_attempt_record"]
+        path = RUN_ROOT / reference["path"]
+        key = str(path), reference["sha256"]
+        if key in ORIGIN_ATTEMPTS:
+            continue
+        _require_run_file(path, "original Attempt manifest")
+        data = path.read_bytes()
+        original = orchestration_contracts.load_json_object_bytes(data, path)
+        orchestration_contracts.validate_record("workflow-attempt", original)
+        if hashlib.sha256(data).hexdigest() != key[1] or orchestration_contracts.canonical_json_bytes(original) != data:
+            raise WorkflowError("Original Attempt manifest bytes differ from their reference")
+        ORIGIN_ATTEMPTS[key] = original
+
+
+def _planned_task(machine_key, scope_id):
+    entry = TASK_ENTRIES[machine_key][scope_id]
+    reference = entry.get("workflow_attempt_record")
+    path, digest = (
+        (WORKFLOW_ATTEMPT_PATH, WORKFLOW_ATTEMPT_SHA256)
+        if reference is None
+        else (RUN_ROOT / reference["path"], reference["sha256"])
+    )
     try:
-        dispatch = load_dispatch(path, expected_sha256=digest)
+        plan = task_from_attempt(
+            path, ORIGIN_ATTEMPTS[str(path), digest], expected_sha256=digest,
+            machine_key=machine_key, scope_id=scope_id,
+        )
     except TaskBoundaryError as exc:
-        if str(exc) == "Task dispatch SHA-256 differs from workflow plan":
-            raise WorkflowError(
-                f"Dispatch bytes do not match configured SHA-256 for {machine_key}/{scope_id}"
-            ) from exc
-        if str(exc).startswith("run_root "):
-            raise WorkflowError(
-                f"Dispatch {path} does not bind expected run_root for {machine_key}/{scope_id}"
-            ) from exc
-        raise WorkflowError(f"Invalid dispatch record {path}: {exc}") from exc
+        raise WorkflowError(f"Invalid task plan for {machine_key}/{scope_id}: {exc}") from exc
     expected = {
         "run_root": RUN_ROOT,
         "execution_path": EXECUTION_PATH,
         "profile_path": PROFILE_SNAPSHOT_PATH,
-        "machine_key": machine_key,
-        "scope": {
-            "scope_type": str(OWNER_TASKS_BY_KEY[machine_key]["scope_type"]),
-            "scope_id": scope_id,
-        },
+        "scope": {"scope_type": str(OWNER_TASKS_BY_KEY[machine_key]["scope_type"]), "scope_id": scope_id},
         "verified_task_path": Path(_verified(machine_key, scope_id)),
     }
     for key, expected_value in expected.items():
-        if getattr(dispatch, key) != expected_value:
-            raise WorkflowError(
-                f"Dispatch {path} does not bind expected {key} for {machine_key}/{scope_id}"
-            )
-    dispatch_attempt_id = dispatch.workflow_attempt_id
-    if re.fullmatch(r"workflow-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{32}", dispatch_attempt_id) is None:
-        raise WorkflowError(f"Dispatch {path} has an invalid workflow_attempt_id")
-    result = (str(path), digest, dispatch_attempt_id)
-    _DISPATCH_CACHE[cache_key] = result
-    return result
+        if getattr(plan, key) != expected_value:
+            raise WorkflowError(f"Task plan for {machine_key}/{scope_id} does not bind expected {key}")
+    return plan
+
+
+TASK_PLANS = {
+    (machine_key, scope_id): _planned_task(machine_key, scope_id)
+    for machine_key, by_scope in TASK_ENTRIES.items()
+    for scope_id in by_scope
+}
 
 
 TASK_ARGV_PREFIX = (
@@ -371,10 +291,12 @@ def _task_argv(machine_key, scope_id=None, *, wildcard=None):
             machine_key(wildcards) if callable(machine_key) else machine_key
         )
         admitted_scope = getattr(wildcards, wildcard) if wildcard else scope_id
-        dispatch, digest, _attempt_id = _dispatch_reference(
-            admitted_machine_key, admitted_scope
+        plan = TASK_PLANS[admitted_machine_key, admitted_scope]
+        return (
+            *TASK_ARGV_PREFIX, "--attempt", str(plan.path),
+            "--attempt-sha256", plan.manifest_sha256,
+            "--owner", admitted_machine_key, "--scope", admitted_scope,
         )
-        return (*TASK_ARGV_PREFIX, "--dispatch", dispatch, "--dispatch-sha256", digest)
 
     return resolve
 
@@ -414,20 +336,20 @@ def _admit_reusable_markers():
                     machine_key=machine_key,
                     scope=item.scope,
                 )
-                expected_dispatch = _dispatch_reference(machine_key, scope_id)
-                bound_dispatches = [
+                expected_plan = TASK_PLANS[machine_key, scope_id]
+                bound_manifests = [
                     value
                     for value in record["inputs"]
-                    if value["role"] == "task_dispatch"
+                    if value["role"] == "workflow_attempt"
                 ]
-                if len(bound_dispatches) != 1 or bound_dispatches[0] != {
-                    "role": "task_dispatch",
-                    "path": expected_dispatch[0],
-                    "size_bytes": Path(expected_dispatch[0]).stat().st_size,
-                    "sha256": expected_dispatch[1],
+                if len(bound_manifests) != 1 or bound_manifests[0] != {
+                    "role": "workflow_attempt",
+                    "path": str(expected_plan.path),
+                    "size_bytes": Path(str(expected_plan.path)).stat().st_size,
+                    "sha256": expected_plan.manifest_sha256,
                 }:
                     raise TaskBoundaryError(
-                        "Verified task dispatch does not match current workflow config"
+                        "Verified task origin does not match the Attempt manifest"
                     )
             except (
                 OSError,
@@ -437,9 +359,9 @@ def _admit_reusable_markers():
                 raise WorkflowError(
                     f"Could not admit reusable verified task {path}: {exc}"
                 ) from exc
-        elif _dispatch_reference(machine_key, scope_id)[2] != WORKFLOW_ATTEMPT_ID:
+        elif TASK_PLANS[machine_key, scope_id].workflow_attempt_id != WORKFLOW_ATTEMPT_ID:
             raise WorkflowError(
-                f"Pending dispatch for {machine_key}/{scope_id} does not bind "
+                f"Pending task for {machine_key}/{scope_id} does not bind "
                 "the current workflow attempt"
             )
 
