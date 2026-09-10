@@ -6,7 +6,7 @@ owns the goals; this file owns CS scope, status, decisions, and proof. The
 
 ## Working queue
 
-**[PR #157](https://github.com/lab-cats/EMRYS/pull/157): CS-23–26 are implemented; hosted validation is pending.**
+**[PR #157](https://github.com/lab-cats/EMRYS/pull/157): CS-23–26 are complete; implementation CI passed.**
 The approved outcome removes Python-to-R launch handoffs, report presentation
 copies, duplicate reporting publication mechanics, and runtime Git-checkout
 reconciliation. Scientific data and interpretation, both reports, exact code
@@ -114,10 +114,10 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-20](#cs-20-through-cs-22-current-result-contracts) | Persist one reporting result manifest, with shared identity/provenance once. | Done | 5 | 4 | Retire per-artifact files and duplicate receipts; preserve both HTML reports and useful TSVs. | `REPORT-ROSTER-01` |
 | [CS-21](#cs-20-through-cs-22-current-result-contracts) | Store terminal task completion details once. | Done | 4 | 4 | Verified marker references the terminal attempt; current admission and recovery follow that reference. | `COMPRESS-01` |
 | [CS-22](#cs-20-through-cs-22-current-result-contracts) | Accept only current persisted contracts. | Done | 5 | 4 | Remove old Run/request, policy, resource, dispatch, Attempt, and reporting readers across callers. | `COMPRESS-01` |
-| [CS-23](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Execute R workers directly and use native genomic intervals. | In progress | 4 | 4 | Preserve independent scientific validation before publication. | `COMPRESS-01` |
-| [CS-24](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Render both reports directly through existing Jinja templates. | In progress | 4 | 4 | Retire intermediate presentation dictionaries across both callers. | `COMPRESS-01` |
-| [CS-25](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Share equivalent reporting file and lock operations. | In progress | 3 | 3 | Keep each stage's transaction order, rechecks, and owned rollback. | `COMPRESS-01` |
-| [CS-26](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Execute the installed package with its own workflow and R assets. | In progress | 5 | 4 | Replace runtime Git reconciliation with exact package bytes and build provenance. | `COMPRESS-01` |
+| [CS-23](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Execute R workers directly and use native genomic intervals. | Done | 4 | 4 | Preserve independent scientific validation before publication. | `COMPRESS-01` |
+| [CS-24](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Render both reports directly through existing Jinja templates. | Done | 4 | 4 | Retire intermediate presentation dictionaries across both callers. | `COMPRESS-01` |
+| [CS-25](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Share equivalent reporting file and lock operations. | Done | 3 | 3 | Keep each stage's transaction order, rechecks, and owned rollback. | `COMPRESS-01` |
+| [CS-26](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Execute the installed package with its own workflow and R assets. | Done | 5 | 4 | Replace runtime Git reconciliation with exact package bytes and build provenance. | `COMPRESS-01` |
 
 ## Acceptance shared by every card
 
@@ -1026,7 +1026,7 @@ and ordinary hosted CI on the final commit. Start CI when the PR is published,
 continue remaining work, then inspect and fix failures. Record final size and
 validation results here before marking the cards Done.
 
-Implemented comparison against `be06f608` before hosted validation:
+Final comparison against `be06f608`:
 
 | Maintained category | Added | Removed | Net |
 |---|---:|---:|---:|
@@ -1034,9 +1034,10 @@ Implemented comparison against `be06f608` before hosted validation:
 | Tests and fixtures | 713 | 2,293 | −1,580 |
 | Configuration and schemas | 113 | 52 | +61 |
 | Tooling | 61 | 5 | +56 |
+| Documentation | 288 | 143 | +145 |
+| Retained evidence | 0 | 0 | 0 |
 
-Documentation is separately net positive because the tranche records its changed
-contracts and current status. Retained evidence is unchanged. Four product files
+Documentation records the changed contracts and closeout. Four product files
 are retired. Moved workflow/R assets keep their original accounting categories;
 relocation contributes no deletion savings. On that same maintained-code scope,
 product size is 59,324 lines: 9,899 below the campaign baseline (14.3%), with
@@ -1049,20 +1050,18 @@ builds preserve metadata; wheel inspection confirms required assets. A guarded
 R startup fixture verifies external bootstrap state and unchanged package bytes;
 it does not execute Bioconductor restoration or scientific annotation.
 
-Local package-dependent integration checks remain incomplete: the existing
-editable installation lacks the newly added build metadata, and automatic
-approval review rejected refreshing that environment without separate operator
-approval. Hosted checks use freshly installed packages.
+All required [hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34490118042)
+passed at `c01d8882`: four Python shards (2,082 passed, 3 skipped),
+36 isolated subprocess checks, unchanged coverage thresholds, installed-wheel
+validation, Python 3.11 smoke, shell owners, real Step08/09 R semantic fixtures,
+managed native runtimes on Ubuntu/Rocky/Debian, and the complete managed
+scientific/reporting path. Coverage was 89.08% lines and 79.09% branches.
+Only the Snakemake DSL is excluded from Python reporting; Python source scope
+and independent workflow checks remain unchanged.
 
-At `06356f37`, the [hosted run](https://github.com/lab-cats/EMRYS/actions/runs/34487838290)
-passed all four Python shards, installed-wheel validation, Python 3.11 smoke,
-shell owners, real Step08/09 R semantic fixtures, managed native runtime checks
-on Ubuntu/Rocky/Debian, and the complete managed scientific/reporting path.
-Coverage reporting alone failed because it tried to parse the relocated
-Snakemake DSL as Python. The corrected configuration omits that exact DSL file
-from Python reporting; Python source scope, thresholds, and independent workflow
-checks remain unchanged. One existing negative admission test now also covers
-invalid lock metadata and metadata replacement during hashing. Final hosted
-coverage validation remains required;
-the cards stay In progress. No institutional execution, scientific review,
-or biological validation is claimed.
+The final documentation-only closeout changes this backlog. Documentation and
+whitespace checks validate that change; it does not invalidate the implementation
+evidence above. Local package-dependent checks were not used for acceptance:
+automatic approval review blocked a local reinstall pending separate installation
+authority, and the hosted checks exercised freshly installed packages instead.
+No institutional execution, scientific review, or biological validation is claimed.
