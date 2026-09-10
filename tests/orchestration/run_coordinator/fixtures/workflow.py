@@ -15,6 +15,8 @@ import tempfile
 import zlib
 from dataclasses import dataclass, replace
 from pathlib import Path
+
+from emrys.libraries.source_authority import PACKAGE_ROOT, admit_installed_package
 from typing import Any
 
 from emrys.contracts.orchestration import api as orchestration_contracts
@@ -35,12 +37,14 @@ from tests.orchestration.run_coordinator.fixture import build_run, publish_run
 from tests.scientific_context_test_support import build_transaction
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-PROFILE_PATH = REPO_ROOT / "workflow" / "contracts" / "local_cmh_v2.json"
-SNAKEFILE = REPO_ROOT / "workflow" / "Snakefile"
-WORKFLOW_PROFILE = REPO_ROOT / "workflow" / "profiles" / "local" / "profile.v9+.yaml"
+PROFILE_PATH = PACKAGE_ROOT / "workflow" / "contracts" / "local_cmh_v2.json"
+SNAKEFILE = PACKAGE_ROOT / "workflow" / "Snakefile"
+WORKFLOW_PROFILE = PACKAGE_ROOT / "workflow" / "profiles" / "local" / "profile.v9+.yaml"
 TASK_DOUBLE = Path(__file__).with_name("task_double.py").resolve()
 _MAX_INLINE_PAYLOAD_CHARS = 64 * 1024
-ADAPTER_REGISTRY = build_adapter_registry(analysis_module_v1(), source_root=REPO_ROOT)
+ADAPTER_REGISTRY = build_adapter_registry(
+    analysis_module_v1(), source_root=PACKAGE_ROOT
+)
 
 
 def _resource_policy() -> dict[str, Any]:
@@ -97,18 +101,6 @@ def _resource_limits() -> tuple[tuple[str, int], ...]:
             for step_id in ("01", "02", "02b", "03", "04", "05", "06", "07")
         ),
     )
-
-
-def source_checkout_commit() -> str:
-    """Return the live checkout commit used by source-attested child fixtures."""
-
-    return subprocess.run(
-        ["git", "rev-parse", "--verify", "HEAD"],
-        cwd=REPO_ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
 
 
 def _inline_payload_argument(data: bytes) -> str:
@@ -789,7 +781,7 @@ def artifact_payloads(
             reference_fasta=Path(str(execution["reference"]["fasta"]["path"])),
             reference_fai=temporary_fai,
             motif_catalog=motif_catalog,
-            git_commit=source_checkout_commit(),
+            git_commit=admit_installed_package().git_commit or "unavailable",
         )
         step10_outputs = {
             "step10_candidate_context_v1": context_fixture.candidate_context,
@@ -1062,7 +1054,7 @@ def build(
     request_path = request_path.resolve(strict=True)
     request_bytes = request_path.read_bytes()
     attempt_request_path = workflow_attempt_path.parent / "request.yaml"
-    git_commit = source_checkout_commit()
+    git_commit = admit_installed_package().git_commit or "unavailable"
     storage_receipt = root / "storage.qualified.json"
     storage_receipt.write_bytes(b"bounded no-science storage qualification\n")
     attempt = {
@@ -1091,11 +1083,7 @@ def build(
         "normalizer": normalizer,
         "workspace": str(root.resolve(strict=True)),
         "scratch": None,
-        "source_checkout": {
-            "path": str(REPO_ROOT.resolve(strict=True)),
-            "commit": git_commit,
-            "clean": True,
-        },
+        "installed_package": admit_installed_package().record,
         "executor": "local",
         "execution_mode": "local-science-tools",
         "snakemake_argv": [],
@@ -1148,7 +1136,7 @@ def build(
         "execution_path": str(execution_path),
         "profile_path": str(profile_snapshot),
         "workflow_attempt_id": workflow_attempt_id,
-        "source_checkout": str(REPO_ROOT.resolve(strict=True)),
+        "package_root": str(PACKAGE_ROOT),
         **reporting_config,
         "resource_policy": _resource_policy(),
         "dispatch_paths": dispatch_references,

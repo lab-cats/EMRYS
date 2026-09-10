@@ -18,15 +18,18 @@ from jinja2 import StrictUndefined, UndefinedError
 
 from emrys import analyses
 from emrys.libraries.source_authority import (
-    SourceCheckout,
+    PACKAGE_ROOT,
+    InstalledPackage,
+    admit_installed_package,
 )
 from emrys.reporting import AnalysisReportArtifactV1
 from emrys.reporting import COMPUTATIONAL_BOUNDARY_BANNER
+from emrys.reporting import _files, _signals
 from emrys.reporting.paired_cmh_candidate_ranking_report import (
     computational as report_computational,
 )
 from emrys.reporting._run_report import context as report_context
-from emrys.reporting._run_report import publication, receipt, transaction, validation
+from emrys.reporting._run_report import publication, receipt, validation
 from emrys.reporting.paired_cmh_candidate_ranking_report import (
     scientific_context as report_scientific_context,
 )
@@ -74,7 +77,7 @@ def arguments(
     artifact_source_root: Path | None = None,
 ) -> argparse.Namespace:
     return argparse.Namespace(
-        source_checkout=REPO_ROOT,
+        package_root=PACKAGE_ROOT,
         artifact_source_root=(
             summary.parent.parent
             if artifact_source_root is None
@@ -440,7 +443,7 @@ def publish(context: Any) -> None:
     publication.publish_report(context)
 
 
-def test_source_checkout_is_admitted_before_report_inputs(
+def test_installed_package_is_admitted_before_report_inputs(
     tmp_path: Path,
 ) -> None:
     invalid_checkout = tmp_path / "not-emrys"
@@ -448,34 +451,35 @@ def test_source_checkout_is_admitted_before_report_inputs(
     with pytest.raises(ReportRenderError) as captured:
         report_context.prepare_context(
             argparse.Namespace(
-                source_checkout=invalid_checkout,
+                package_root=invalid_checkout,
                 artifact_source_root=tmp_path,
                 run_summary=tmp_path / "missing.json",
                 output_root=tmp_path / "reports",
                 execute=False,
             )
         )
-    assert "Source checkout project metadata is unavailable" in str(captured.value)
+    assert "Requested package root differs from the executing package" in str(
+        captured.value
+    )
     assert "missing.json" not in str(captured.value)
 
 
-def test_renderer_git_identity_uses_checkout_not_artifact_root(
+def test_renderer_identity_uses_installed_package_not_artifact_root(
     computational_summary: Path,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     artifact_root = computational_summary.parent.parent.resolve(strict=True)
     assert artifact_root != REPO_ROOT
-    observed: list[SourceCheckout] = []
+    observed: list[InstalledPackage] = []
+    installed = admit_installed_package()
 
-    def matching_commit(**kwargs: Any) -> str:
-        assert kwargs["source_checkout"] == SourceCheckout(root=REPO_ROOT)
-        observed.append(kwargs["source_checkout"])
-        return "a" * 40
+    def observe_package(**kwargs: Any) -> InstalledPackage:
+        assert kwargs["root"] == PACKAGE_ROOT
+        observed.append(installed)
+        return installed
 
-    monkeypatch.setattr(
-        report_context, "matching_checkout_head_commit", matching_commit
-    )
+    monkeypatch.setattr(report_context, "admit_installed_package", observe_package)
     context = report_context.prepare_context(
         arguments(
             computational_summary,
@@ -484,8 +488,9 @@ def test_renderer_git_identity_uses_checkout_not_artifact_root(
         ),
     )
 
-    assert context.producer_git_commit == "a" * 40
-    assert observed == [SourceCheckout(root=REPO_ROOT)]
+    assert context.producer_git_commit == (installed.git_commit or "unavailable")
+    assert observed == [installed, installed]
+    assert context.installed_package.record == installed.record
 
 
 def test_dry_run_is_side_effect_free(
@@ -713,6 +718,7 @@ def test_receipt_attributes_provenance_to_renderer_checkout(
         "producer": "emrys.reporting.report",
         "producer_version": PRODUCER_VERSION,
         "git_commit": context.producer_git_commit,
+        "installed_package": context.installed_package.record,
         "created_at": context.summary["generated_at"],
     }
 
@@ -784,7 +790,9 @@ def test_jinja_is_strict_autoescaped_and_template_owns_markup(
     assert environment.undefined is StrictUndefined
     assert environment.autoescape("run_report.html.j2") is True
     with pytest.raises(UndefinedError):
-        environment.get_template("run_report.html.j2").render(view={}, css="")
+        environment.get_template("run_report.html.j2").render(
+            summary={}, css="", report_view="evidence"
+        )
     assert "&lt;script src=&#34;https://evil.invalid/x.js&#34;&gt;" in content
     assert "<script" not in content.lower()
     assert 'src="https://evil.invalid' not in content
@@ -799,7 +807,7 @@ def test_template_rejects_additional_or_untrusted_safe_boundaries() -> None:
     )
     validation.validate_template_source(source)
     with pytest.raises(ReportRenderError, match="may use \\|safe exactly once"):
-        validation.validate_template_source(source + "\n{{ view.run_id|safe }}\n")
+        validation.validate_template_source(source + "\n{{ summary.run_id|safe }}\n")
     with pytest.raises(ReportRenderError, match="may use \\|safe exactly once"):
         validation.validate_template_source(
             source.replace("{{ css | safe }}", "{{ view | safe }}")
@@ -1570,23 +1578,31 @@ def test_input_mutation_aborts_and_removes_owned_state(
     assert not context.lock_path.exists()
 
 
-def test_interrupted_lock_acquisition_cleans_owned_lock(
+@pytest.mark.parametrize("replaced", (False, True))
+def test_interrupted_lock_acquisition_cleans_only_owned_lock(
     computational_summary: Path,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    replaced: bool,
 ) -> None:
     context = report_context.prepare_context(
         arguments(computational_summary, tmp_path / "reports", execute=True)
     )
 
     def interrupt(_descriptor: int, _payload: bytes) -> int:
+        if replaced:
+            context.lock_path.unlink()
+            context.lock_path.write_bytes(b"foreign lock\n")
         raise KeyboardInterrupt
 
     with monkeypatch.context() as faults:
         faults.setattr(os, "write", interrupt)
-        with pytest.raises(KeyboardInterrupt):
+        with pytest.raises(ReportRenderError if replaced else KeyboardInterrupt):
             publish(context)
-    assert not context.lock_path.exists()
+    if replaced:
+        assert context.lock_path.read_bytes() == b"foreign lock\n"
+    else:
+        assert not context.lock_path.exists()
     assert not any(path.exists() for path in output_paths(context))
 
 
@@ -1713,12 +1729,15 @@ def test_post_commit_cleanup_failure_keeps_committed_outputs_and_evidence(
     )
 
     def fail_cleanup(
-        _path: Path, _token: str, _identity: tuple[int, int] | None
+        _path: Path,
+        _token: str,
+        _identity: tuple[int, int] | None,
+        _error: type[Exception],
     ) -> None:
         raise OSError("synthetic cleanup failure")
 
     with monkeypatch.context() as faults:
-        faults.setattr(transaction, "_remove_owned_stage", fail_cleanup)
+        faults.setattr(_files, "remove_owned_stage", fail_cleanup)
         with pytest.raises(ReportRenderError, match="cleanup failed"):
             publish(context)
     assert all(path.is_file() for path in output_paths(context))
@@ -1734,7 +1753,7 @@ def test_final_byte_corruption_never_commits_a_false_receipt(
     context = report_context.prepare_context(
         arguments(computational_summary, tmp_path / "reports", execute=True)
     )
-    real_fsync_file = transaction._fsync_file
+    real_fsync_file = _files.fsync_path
     corrupted = False
 
     def corrupt_summary(path: Path) -> None:
@@ -1748,7 +1767,7 @@ def test_final_byte_corruption_never_commits_a_false_receipt(
         real_fsync_file(path)
 
     with monkeypatch.context() as faults:
-        faults.setattr(transaction, "_fsync_file", corrupt_summary)
+        faults.setattr(_files, "fsync_path", corrupt_summary)
         with pytest.raises(ReportRenderError, match="rollback was incomplete"):
             publish(context)
     assert not context.output_receipt.exists()
@@ -1764,14 +1783,14 @@ def test_signal_restoration_failure_is_controlled_recovery(
     context = report_context.prepare_context(
         arguments(computational_summary, tmp_path / "reports", execute=True)
     )
-    real_restore = transaction._restore_signal_handlers
+    real_restore = _signals.restore
 
     def fail_restore(handlers: dict[int, Any]) -> None:
         real_restore(handlers)
         raise OSError("synthetic signal restore failure")
 
     with monkeypatch.context() as faults:
-        faults.setattr(transaction, "_restore_signal_handlers", fail_restore)
+        faults.setattr(_signals, "restore", fail_restore)
         with pytest.raises(
             ReportRenderError, match="signal-handler restoration failed"
         ):

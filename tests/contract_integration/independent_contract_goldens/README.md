@@ -15,3 +15,13 @@ artifact-receipt link with the Run-contract file, and adds the current Analysis
 policy path/hash. Existing scientific values, status, limitations, and artifact
 rows are unchanged. Header/schema oracles now describe the current manifest and
 report receipt; literal TSV serialization checks remain independent.
+
+The direct-template migration compared both complete and unavailable scientific
+and evidence views against the previous renderer. HTML elements, attributes,
+visible text, and embedded figure bytes matched; only insignificant whitespace
+changed. The reviewed HTML digests reflect that formatting change. Scientific,
+schema, header, and receipt-serialization oracles are otherwise unchanged.
+
+The installed-runtime migration adds fixed synthetic package identities to the
+current manifest and report-receipt schema fixtures. The existing minimal receipt
+serialization oracle does not validate provenance and remains unchanged.

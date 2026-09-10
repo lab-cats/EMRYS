@@ -165,6 +165,7 @@ def receipt_document(
             "producer": PRODUCER,
             "producer_version": PRODUCER_VERSION,
             "git_commit": context.producer_git_commit,
+            "installed_package": context.installed_package.record,
             "created_at": summary["generated_at"],
         },
     }

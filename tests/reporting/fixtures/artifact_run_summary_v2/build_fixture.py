@@ -11,10 +11,13 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from unittest.mock import patch
 
 from emrys.contracts.artifacts import api as ARTIFACT_CONTRACTS
-from emrys.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
+from emrys.libraries.source_authority import (
+    ArtifactSourceRoot,
+    PACKAGE_ROOT,
+    admit_installed_package,
+)
 from emrys.reporting._artifact_index import context as ARTIFACT_CONTEXT
 from emrys.reporting._artifact_index import core as ARTIFACT_CORE
 from emrys.reporting._artifact_index import models as ARTIFACT_MODELS
@@ -79,27 +82,19 @@ def restore_epoch(previous: str | None) -> None:
 def prepare_adapter_fixture(fixture: Any) -> Any:
     previous, _ = fixed_epoch()
     try:
-        with patch.object(
-            ARTIFACT_CONTEXT,
-            "matching_clean_checkout_head_commit",
-            lambda **_kwargs: ARTIFACT_CORE.get_git_commit(
-                source_root=REPO_ROOT, sanitize_git_routing=True
+        return ARTIFACT_CONTEXT.prepare_evidence_context(
+            argparse.Namespace(
+                run_id=fixture.run_id,
+                run_contract=fixture.run_contract,
+                inventory=fixture.inventory,
+                analysis_policy=fixture.analysis_policy,
+                output_root=fixture.output_root,
+                profile=ADAPTER_FIXTURE.analysis_profile_v1(),
+                execute=True,
             ),
-        ):
-            context = ARTIFACT_CONTEXT.prepare_evidence_context(
-                argparse.Namespace(
-                    run_id=fixture.run_id,
-                    run_contract=fixture.run_contract,
-                    inventory=fixture.inventory,
-                    analysis_policy=fixture.analysis_policy,
-                    output_root=fixture.output_root,
-                    profile=ADAPTER_FIXTURE.analysis_profile_v1(),
-                    execute=True,
-                ),
-                source_checkout=SourceCheckout(root=REPO_ROOT),
-                artifact_source_root=ArtifactSourceRoot(root=fixture.root),
-            )
-        return context
+            installed_package=admit_installed_package(),
+            artifact_source_root=ArtifactSourceRoot(root=fixture.root),
+        )
     finally:
         restore_epoch(previous)
 
@@ -191,7 +186,7 @@ def publish_report(
     try:
         context = REPORT_CONTEXT.prepare_context(
             argparse.Namespace(
-                source_checkout=REPO_ROOT,
+                package_root=PACKAGE_ROOT,
                 artifact_source_root=fixture.root,
                 run_summary=fixture.summary_json_path,
                 analysis_policy=fixture.adapter_fixture.analysis_policy,

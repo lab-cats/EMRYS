@@ -20,6 +20,7 @@ from emrys.contracts.scientific_evidence import step08
 from emrys.evidence.runtime_availability.inspector import RuntimeInspection
 from emrys.libraries.validation.tsv import tsv_bytes
 from emrys.libraries import exclusive_publication
+from emrys.libraries.source_authority import PACKAGE_ROOT
 from emrys.orchestration.run_coordinator import (
     control,
     doctor,
@@ -27,8 +28,6 @@ from emrys.orchestration.run_coordinator import (
     synthetic_fixture,
 )
 from tests.orchestration.run_coordinator.fixture import build
-
-REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _namespace(
@@ -655,7 +654,7 @@ def test_project_validation_reports_dataset_size_before_analysis_subset(
         encoding="utf-8",
     )
 
-    result = onboarding.validate_project(project_path, root=REPO_ROOT)
+    result = onboarding.validate_project(project_path, root=PACKAGE_ROOT)
 
     assert result.sample_count == 6
     selected_rows = result.project.select_analysis().workflow_inputs["samples"]["rows"]
@@ -1178,7 +1177,7 @@ def test_runtime_discovery_builds_project_owned_fixed_policy_without_writing(
     inspection = onboarding.discover_runtime_profile(
         project=project,
         environment=environment,
-        root=REPO_ROOT,
+        root=PACKAGE_ROOT,
         python_executable=Path(sys.executable),
     )
     rows = list(
@@ -1195,6 +1194,7 @@ def test_runtime_discovery_builds_project_owned_fixed_policy_without_writing(
     assert by_id["star"]["target"] == str((tool_dir / "STAR").resolve())
     assert by_id["picard_jar"]["target"] == environment["EMRYS_PICARD_JAR"]
     assert by_id["renv_library"]["target"] == environment["EMRYS_RENV_LIBRARY"]
+    assert by_id["renv_project"]["target"] == str(PACKAGE_ROOT)
     assert (
         json.loads(by_id["picard"]["probe_args"])[1] == environment["EMRYS_PICARD_JAR"]
     )
@@ -1228,7 +1228,7 @@ def test_runtime_discovery_does_not_require_writable_project_state(
     onboarding.discover_runtime_profile(
         project=project,
         environment=environment,
-        root=REPO_ROOT,
+        root=PACKAGE_ROOT,
     )
 
     assert runtime_admissions == [False]
@@ -1245,7 +1245,7 @@ def test_runtime_discovery_rejects_missing_and_ambiguous_tools(
         onboarding.discover_runtime_profile(
             project=project,
             environment=environment,
-            root=REPO_ROOT,
+            root=PACKAGE_ROOT,
         )
 
     _executable(first_dir / "STAR")
@@ -1261,7 +1261,7 @@ def test_runtime_discovery_rejects_missing_and_ambiguous_tools(
         onboarding.discover_runtime_profile(
             project=project,
             environment=environment,
-            root=REPO_ROOT,
+            root=PACKAGE_ROOT,
         )
 
 
@@ -1280,7 +1280,7 @@ def test_runtime_discovery_cli_is_dry_run_then_create_absent(
     inspection = onboarding.discover_runtime_profile(
         project=project,
         environment=environment,
-        root=REPO_ROOT,
+        root=PACKAGE_ROOT,
     )
     monkeypatch.setattr(
         onboarding,
@@ -1315,7 +1315,7 @@ def test_runtime_publication_rejects_a_swapped_project_parent(
     inspection = onboarding.discover_runtime_profile(
         project=project,
         environment=environment,
-        root=REPO_ROOT,
+        root=PACKAGE_ROOT,
     )
     runtime = project.parent / "runtime"
     displaced = project.parent / "runtime-displaced"

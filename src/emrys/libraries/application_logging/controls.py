@@ -10,8 +10,6 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Literal
 
-from emrys.libraries.source_authority import SourceCheckout
-
 EMRYS_LOG_LEVEL = "EMRYS_LOG_LEVEL"
 EMRYS_LOG_ROOT = "EMRYS_LOG_ROOT"
 ControlSource = Literal["command_line", "environment", "default"]
@@ -86,28 +84,19 @@ def add_log_arguments(parser: argparse.ArgumentParser) -> None:
 
 def resolve_log_controls(
     *,
-    source_checkout: SourceCheckout,
     cli_level: str | None = None,
     cli_root: str | Path | None = None,
     environment: Mapping[str, str] | None = None,
-    default_root: Path | None = None,
+    default_root: Path,
 ) -> LogControls:
-    """Resolve command line, environment, then repository-derived defaults."""
+    """Resolve command line, environment, then the operation-owned default."""
 
-    if not isinstance(source_checkout, SourceCheckout):
-        raise LogControlError("logging defaults require an admitted SourceCheckout")
-    checkout_root = _absolute_path(source_checkout.root)
     environ = dict(os.environ if environment is None else environment)
     level_value, level_source = _select(
         cli_level, environ.get(EMRYS_LOG_LEVEL), LogLevel.NORMAL.value
     )
-    fallback_root = (
-        checkout_root / "logs" / "application"
-        if default_root is None
-        else _absolute_path(default_root)
-    )
     root_value, root_source = _select(
-        cli_root, environ.get(EMRYS_LOG_ROOT), fallback_root
+        cli_root, environ.get(EMRYS_LOG_ROOT), _absolute_path(default_root)
     )
     try:
         level = LogLevel(_nonempty(level_value))

@@ -1,7 +1,7 @@
 # Workflow scheduling
 
 [`Snakefile`](Snakefile) schedules the [common processing graph](contracts/README.md)
-from the admitted implementation checkout and the selected Analysis module.
+from the admitted installed package and the selected Analysis module.
 New Run planning rejects processing dependencies that differ from that graph,
 then freezes the combined plan. Existing Runs retain their profile bytes and
 resume with the same fixed processing dependencies as before. Snakemake
@@ -18,8 +18,8 @@ a workstation or a single Slurm allocation. Run planning supplies capacity and
 task resources. Use `emrys run` and `emrys resume`, not bare Snakemake or direct
 profile invocation.
 
-[STAGE_MAP](../src/emrys/contracts/STAGE_MAP.md) defines producer identities and
-artifact dependencies. The [run-coordinator contract](../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+[STAGE_MAP](../contracts/STAGE_MAP.md) defines producer identities and
+artifact dependencies. The [run-coordinator contract](../orchestration/run_coordinator/CONTRACT.md)
 defines materialization, completion, reuse, reporting, and recovery.
 
 The graph reads dispatches through `task.load_dispatch` and resource records

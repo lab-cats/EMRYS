@@ -117,8 +117,9 @@ emrys doctor --repair
 ```
 
 Review Doctor's locations and answer `y` to install the managed runtime and
-qualify Project and reference-sidecar storage. This can update the checkout's
-`.venv` and Project runtime and writes a maintenance log. It neither downloads
+qualify Project and reference-sidecar storage. This updates Project-owned native
+and R runtime state and writes a maintenance log. Python dependencies remain
+the operator's package-manager responsibility. It neither downloads
 scientific inputs nor repairs results. When it finishes, check readiness:
 
 ```bash

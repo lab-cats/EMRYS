@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from importlib.resources import files
 from pathlib import Path
-from typing import Any, NamedTuple, NoReturn, TypeAlias
+from typing import NamedTuple, NoReturn, TypeAlias
 
 from emrys.libraries.installed_package_identity import (
     InstalledPackageIdentityError,
@@ -118,11 +118,3 @@ def reporting_resource_path(resource: str) -> Path:
     """Return one installed core reporting resource for report-time support."""
 
     return Path(str(files("emrys.reporting").joinpath(resource)))
-
-
-def render_report_view(view: Mapping[str, Any], css: str) -> bytes:
-    """Render one provider-owned view through the installed core template."""
-
-    from emrys.reporting._run_report.validation import render_html
-
-    return render_html(view, css)

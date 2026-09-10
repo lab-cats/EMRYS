@@ -20,7 +20,7 @@ summary.
 
 Inputs are a safe cohort ID, an ordered paired local-CMH sample manifest,
 complete nonoverlapping partition manifest, Step `07` root, nonempty
-annotation GTF, runner-supplied output paths, and explicit Rscript/R-program resolution.
+annotation GTF, and runner-supplied output paths and R runtime.
 The sample header is exactly `sample_id, r1_fastq, r2_fastq, strandedness,
 condition, replicate`, with optional `notes` last. Required values are
 nonempty, sample and replicate IDs are safe, strandedness uses the closed
@@ -34,6 +34,13 @@ declared manifest/orientation order before deterministic aggregation; Windows
 direct execution falls back to one worker. Annotation import/model construction
 and aggregate reconciliation remain serial in R. The division between R
 computation and Python output checks is specified below.
+
+Annotation ranges stay in `GRanges`. Existing `IRanges` reduction merges
+adjacent/overlapping exon and CDS intervals; bounded gaps identify introns,
+and exonic ranges outside the CDS span supply fallback UTRs. Explicit five-
+and three-prime UTR annotations each take precedence over generic or derived
+ranges. Transcript ordering, chromosome/strand/gene consistency checks, and
+strand-dependent UTR assignment remain unchanged.
 
 The fixed `legacy_provisional_v1` compatibility policy maps:
 
@@ -76,10 +83,9 @@ row per partition/orientation, ordered by the partition manifest then
 hashes, annotation path/hash, observed and skipped counts, and policy. The
 one-row summary reconciles aggregate counts and identities.
 
-The private [Python producer](producer.py) invokes R with the runner's three
-staged output paths and checks the serialized results. The runner publishes
-sites, summary, then input receipt; the independent validator checks the
-published set. Receipt presence alone does not prove a verified task.
+The runner invokes R directly with three staged output paths, runs the Python
+validator against those files, and requires every check to pass before publishing
+sites, summary, then input receipt. The bytes validated must survive publication. Receipt presence alone does not prove a verified task.
 Execution, input stability, publication, and recovery belong to the [runner contract](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
 The scientific responsibilities are:
@@ -95,9 +101,6 @@ The scientific responsibilities are:
 The R entrypoint loads its adjacent private input-contract, annotation, Step
 `07` receipt, VCF/count, and candidate-processing modules. It resolves siblings
 from Rscript's exact `--file=` path and sources them into the program environment.
-`--r-script` and `STEP08_R_SCRIPT` replace that whole program for diagnostics,
-not individual private modules. A replacement owns its complete implementation
-and dependencies.
 
 ## Validation interface
 
@@ -142,10 +145,9 @@ Repository tests protect this contract under the shared
 candidate order and bytes across worker counts; Python fault fixtures prove
 structural admission, not independent candidate-order reconstruction.
 
-Two implementation defects remain: receipt/candidate reconciliation is still
-duplicated across Python, R, Step `09`, and artifact adapters; and the producer
-preserves annotation path spelling while the validator compares a resolved
-absolute path, so equivalent paths can fail identity evidence. The validator
-also trusts the Step `07` identities bound by the Step `08` transaction rather
-than reopening those upstream files. The orientation mapping remains the
-explicitly provisional policy defined above.
+When the runner supplies `--step07-root`, the validator also reopens the exact
+upstream receipt/VCF set and reconciles paths, hashes, counts, selectors, and
+manifest identities. Standalone inspection without that option checks the
+Step `08` transaction's carried evidence. The R program carries the supplied
+annotation path; the validator requires its resolved absolute spelling, which
+the runner supplies. Different spellings can still fail standalone inspection.

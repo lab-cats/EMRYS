@@ -14,9 +14,9 @@ from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.application_model import PROCESSING_STEP_IDS
 from emrys.libraries.source_authority import (
     ArtifactSourceRootError,
-    SourceCheckoutError,
+    InstalledPackageError,
     admit_artifact_source_root,
-    admit_source_checkout,
+    admit_installed_package,
 )
 from emrys.orchestration.run_coordinator import inspection, reporting_boundary
 from emrys.reporting._artifact_index.models import ArtifactIndexError
@@ -28,7 +28,7 @@ _PRODUCER_ERRORS = (
     RunSummaryError,
     ReportRenderError,
     ArtifactSourceRootError,
-    SourceCheckoutError,
+    InstalledPackageError,
     ContractValidationError,
     OSError,
     ValueError,
@@ -79,8 +79,8 @@ def _arguments(identity: Any, kind: str) -> argparse.Namespace:
     run_id = str(identity.execution["run_id"])
     artifact_root = root / "products" / "artifact-summary"
     artifact_run_root = artifact_root / run_id
-    source_checkout = Path(str(identity.attempt["source_checkout"]["path"]))
-    authority = {"source_checkout": source_checkout, "artifact_source_root": root}
+    package_root = Path(str(identity.attempt["installed_package"]["path"]))
+    authority = {"package_root": package_root, "artifact_source_root": root}
     run_contract = root / str(identity.config["reporting_run_contract_path"]["path"])
     policy_reference = identity.config.get("primary_analysis_policy_path")
     analysis_policy = (
@@ -117,10 +117,7 @@ def _prepare_transaction(kind: str, arguments: argparse.Namespace) -> Any:
 
         return prepare_context(arguments)
 
-    source_checkout = admit_source_checkout(
-        root=arguments.source_checkout,
-        package_root=Path(__file__).resolve().parents[2],
-    )
+    installed_package = admit_installed_package(root=arguments.package_root)
     artifact_source_root = admit_artifact_source_root(
         root=arguments.artifact_source_root,
     )
@@ -128,7 +125,7 @@ def _prepare_transaction(kind: str, arguments: argparse.Namespace) -> Any:
 
     return prepare_evidence_context(
         arguments,
-        source_checkout=source_checkout,
+        installed_package=installed_package,
         artifact_source_root=artifact_source_root,
     )
 

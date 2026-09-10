@@ -264,10 +264,14 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         },
         "workspace": "/workspace",
         "scratch": None,
-        "source_checkout": {
-            "path": "/checkout",
-            "commit": "a" * 40,
-            "clean": True,
+        "installed_package": {
+            "path": "/installed/emrys",
+            "distribution": "emrys-rna-workflow",
+            "version": "0.1.0.dev0",
+            "content_sha256": ZERO_HASH,
+            "git_commit": "a" * 40,
+            "git_dirty": False,
+            "python_lock_sha256": ZERO_HASH,
         },
         "executor": "local",
         "execution_mode": "test-double",
@@ -888,12 +892,10 @@ def test_attempt_receipt_public_validator_rejects_missing_version_and_nonobjects
     assert orchestration.schema_errors("attempt-receipt", record)
 
 
-def test_workflow_attempt_requires_clean_checkout_and_named_tools() -> None:
+def test_workflow_attempt_requires_package_identity_and_named_tools() -> None:
     attempt = lifecycle_records()["workflow-attempt"]
-    attempt["source_checkout"]["clean"] = False
-    with pytest.raises(
-        orchestration.ContractValidationError, match="True was expected"
-    ):
+    attempt["installed_package"]["content_sha256"] = "not-a-sha256"
+    with pytest.raises(orchestration.ContractValidationError, match="does not match"):
         orchestration.validate_record("workflow-attempt", attempt)
 
     attempt = lifecycle_records()["workflow-attempt"]

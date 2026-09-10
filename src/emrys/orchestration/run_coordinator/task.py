@@ -30,8 +30,8 @@ from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.libraries.exclusive_publication import publish_exclusive
 from emrys.libraries.process_environment import sanitized_subprocess_environment
 from emrys.libraries.source_authority import (
-    SourceCheckoutError,
-    attest_source_checkout as _attest_source_checkout,
+    InstalledPackageError,
+    admit_installed_package as _admit_installed_package,
     controlled_python_argv,
     is_controlled_python_argv,
     require_controlled_python_runtime,
@@ -180,7 +180,7 @@ CommandRunner = Callable[
 ]
 BytesPublisher = Callable[[Path, bytes], None]
 Clock = Callable[[], datetime]
-SourceCheckoutAttester = Callable[..., Any]
+PackageObserver = Callable[..., Any]
 PathAccess = Callable[[Path, int], bool]
 
 
@@ -192,7 +192,7 @@ class TaskOps:
     run_semantic_all_pass: CommandRunner
     publish_bytes: BytesPublisher
     now: Clock
-    attest_source_checkout: SourceCheckoutAttester = _attest_source_checkout
+    admit_installed_package: PackageObserver = _admit_installed_package
     path_access: PathAccess = os.access
 
 
@@ -971,7 +971,7 @@ def default_task_ops() -> TaskOps:
         run_semantic_all_pass=_default_run_command,
         publish_bytes=_publish_bytes,
         now=lambda: datetime.now(UTC),
-        attest_source_checkout=_attest_source_checkout,
+        admit_installed_package=_admit_installed_package,
     )
 
 
@@ -1353,7 +1353,10 @@ class _NativePublication:
         self.staging[scratch] = self.identity(scratch)
         return scratch
 
-    def publish(self) -> tuple[FileDeclaration, ...]:
+    def publish(
+        self,
+        prepared: tuple[tuple[FileDeclaration, _BoundFileSnapshot], ...] | None = None,
+    ) -> tuple[FileDeclaration, ...]:
         self.recheck_directories()
         outputs = self.dispatch.outputs
         if self.plan.output_directory is not None:
@@ -1375,10 +1378,20 @@ class _NativePublication:
             )
             directory.mkdir(mode=0o700)
             self.output_directory_identity = self.identity(directory)
-        prepared = tuple(
-            (output, _bound_snapshot(FileDeclaration(output.role, output.working_path)))
-            for output in outputs
-        )
+        if prepared is None:
+            prepared = tuple(
+                (
+                    output,
+                    _bound_snapshot(FileDeclaration(output.role, output.working_path)),
+                )
+                for output in outputs
+            )
+        elif any(
+            _bound_snapshot(FileDeclaration(output.role, output.working_path))
+            != snapshot
+            for output, snapshot in prepared
+        ):
+            raise TaskBoundaryError("A staged output changed before native publication")
         for output, _snapshot_value in prepared:
             descriptor = os.open(output.working_path, os.O_RDONLY | os.O_NOFOLLOW)
             try:
@@ -1504,6 +1517,25 @@ def _admit_identity(
     )
 
 
+_PREPUBLICATION_VALIDATION_OWNERS = frozenset(
+    {
+        "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
+        "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+    }
+)
+
+
+def _validator_argv(dispatch: TaskDispatch) -> tuple[str, ...]:
+    if dispatch.machine_key not in _PREPUBLICATION_VALIDATION_OWNERS:
+        return dispatch.backend.validator_argv
+    working_paths = {
+        str(output.path): str(output.working_path) for output in dispatch.outputs
+    }
+    return tuple(
+        working_paths.get(token, token) for token in dispatch.backend.validator_argv
+    )
+
+
 def _semantic_argv(dispatch: TaskDispatch, step_id: str) -> tuple[str, ...]:
     return controlled_python_argv(
         sys.executable,
@@ -1567,7 +1599,7 @@ def _admit_start_origins(
     execution_sha256: str,
     profile_sha256: str,
     require_active_attempt: bool,
-    attest_source: SourceCheckoutAttester = _attest_source_checkout,
+    observe_package: PackageObserver = _admit_installed_package,
 ) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
     """Admit the immutable workflow attempt and its bound dispatch plan."""
 
@@ -1604,22 +1636,21 @@ def _admit_start_origins(
         "sha256": dispatch.dispatch_sha256,
     }:
         raise TaskBoundaryError("Workflow config does not bind the exact task dispatch")
-    source_checkout = attempt["source_checkout"]
-    source_root = Path(str(source_checkout["path"]))
-    if config.get("source_checkout") != str(source_root):
+    declared_package = attempt["installed_package"]
+    source_root = Path(str(declared_package["path"]))
+    if config.get("package_root") != str(source_root):
         raise TaskBoundaryError(
-            "Workflow config does not bind the attempt source checkout"
+            "Workflow config does not bind the attempt installed package"
         )
     if require_active_attempt:
         try:
-            attest_source(
-                root=source_root,
-                package_root=Path(__file__).resolve().parents[2],
-                expected_commit=str(source_checkout["commit"]),
-            )
-        except SourceCheckoutError as exc:
+            if observe_package(root=source_root).record != declared_package:
+                raise InstalledPackageError(
+                    "Installed package differs from workflow attempt"
+                )
+        except InstalledPackageError as exc:
             raise TaskBoundaryError(
-                f"Could not attest task child source checkout: {exc}"
+                f"Could not admit task child installed package: {exc}"
             ) from exc
     config_after = _record_reference(config_path, dispatch.run_root)
     if config_after != attempt["workflow_config"]:
@@ -1649,7 +1680,7 @@ def _build_task_start(
     execution_sha256: str,
     profile_sha256: str,
     created_at: str,
-    attest_source: SourceCheckoutAttester,
+    observe_package: PackageObserver,
 ) -> tuple[dict[str, Any], bytes]:
     attempt_reference, config_reference, run_lock_reference = _admit_start_origins(
         dispatch,
@@ -1657,7 +1688,7 @@ def _build_task_start(
         execution_sha256=execution_sha256,
         profile_sha256=profile_sha256,
         require_active_attempt=True,
-        attest_source=attest_source,
+        observe_package=observe_package,
     )
     record = {
         "schema_version": "emrys.task-start.v1",
@@ -2009,7 +2040,7 @@ def validate_verified_task(
         raise TaskBoundaryError("Task dispatch binds a different verified path")
     for name, argv in (
         ("producer", dispatch.backend.producer_argv),
-        ("validator", dispatch.backend.validator_argv),
+        ("validator", _validator_argv(dispatch)),
         ("semantic_all_pass", _semantic_argv(dispatch, str(owner["step_id"]))),
     ):
         if record[name] != CommandResult(argv, 0).record:
@@ -2147,7 +2178,9 @@ def run_task(
     stable_inputs_rechecked = False
     initial_inputs: tuple[dict[str, Any], ...] = ()
     outputs: tuple[dict[str, Any], ...] = ()
+    producer_outputs = outputs
     native_receipt: dict[str, str] | None = None
+    producer_native_receipt = native_receipt
     task_start_reference: dict[str, str] | None = None
     task_scope_materialized = False
     reused_outputs: dict[FileDeclaration, _BoundFileSnapshot] = {}
@@ -2202,7 +2235,7 @@ def run_task(
             execution_sha256=execution_sha256,
             profile_sha256=profile_sha256,
             require_active_attempt=True,
-            attest_source=ops.attest_source_checkout,
+            observe_package=ops.admit_installed_package,
         )
         _materialize_task_scope(dispatch)
         task_scope_materialized = True
@@ -2267,7 +2300,7 @@ def run_task(
             execution_sha256=execution_sha256,
             profile_sha256=profile_sha256,
             created_at=_utc_timestamp(ops.now()),
-            attest_source=ops.attest_source_checkout,
+            observe_package=ops.admit_installed_package,
         )
         _attempt_ref, _config_ref, lock_reference_at_entry = _admit_start_origins(
             dispatch,
@@ -2275,7 +2308,7 @@ def run_task(
             execution_sha256=execution_sha256,
             profile_sha256=profile_sha256,
             require_active_attempt=True,
-            attest_source=ops.attest_source_checkout,
+            observe_package=ops.admit_installed_package,
         )
         if lock_reference_at_entry != _task_start["run_lock"]:
             raise TaskBoundaryError("Workflow run lock changed before producer entry")
@@ -2297,7 +2330,7 @@ def run_task(
                 execution_sha256=execution_sha256,
                 profile_sha256=profile_sha256,
                 require_active_attempt=True,
-                attest_source=ops.attest_source_checkout,
+                observe_package=ops.admit_installed_package,
             )
         )
         if lock_reference_before_producer != _task_start["run_lock"]:
@@ -2355,30 +2388,51 @@ def run_task(
                 execution_sha256=execution_sha256,
                 profile_sha256=profile_sha256,
                 require_active_attempt=True,
-                attest_source=ops.attest_source_checkout,
+                observe_package=ops.admit_installed_package,
             )
             if current_lock != _task_start["run_lock"]:
                 raise TaskBoundaryError(
                     "Workflow run lock changed during native publication"
                 )
 
-        recheck_native_authority()
-        if not reused_outputs:
-            output_declarations = native_publication.publish()
-            recheck_native_authority()
-        native_publication.committed = True
-        native_publication.close()
-        native_publication = None
-        outputs = producer_outputs = tuple(
-            _snapshot(output) for output in output_declarations
+        validator_argv = _validator_argv(dispatch)
+        validate_before_publication = (
+            dispatch.machine_key in _PREPUBLICATION_VALIDATION_OWNERS
         )
-        native_receipt = producer_native_receipt = (
-            None
-            if dispatch.native_receipt_path is None
-            else _record_reference(dispatch.native_receipt_path, dispatch.run_root)
+        prepared_outputs = (
+            tuple(
+                (
+                    output,
+                    _bound_snapshot(FileDeclaration(output.role, output.working_path)),
+                )
+                for output in dispatch.outputs
+            )
+            if validate_before_publication
+            else None
         )
 
-        validator = ops.run_command(backend.validator_argv, *command_arguments)
+        def publish_native_outputs() -> None:
+            nonlocal native_publication, output_declarations, outputs, producer_outputs
+            nonlocal native_receipt, producer_native_receipt
+            recheck_native_authority()
+            if not reused_outputs:
+                output_declarations = native_publication.publish(prepared_outputs)
+                recheck_native_authority()
+            native_publication.committed = True
+            native_publication.close()
+            native_publication = None
+            outputs = producer_outputs = tuple(
+                _snapshot(output) for output in output_declarations
+            )
+            native_receipt = producer_native_receipt = (
+                None
+                if dispatch.native_receipt_path is None
+                else _record_reference(dispatch.native_receipt_path, dispatch.run_root)
+            )
+
+        if not validate_before_publication:
+            publish_native_outputs()
+        validator = ops.run_command(validator_argv, *command_arguments)
         if validator.exit_code != 0:
             raise TaskBoundaryError(
                 f"Validator command exited with status {validator.exit_code}"
@@ -2394,6 +2448,8 @@ def run_task(
             raise TaskBoundaryError(
                 f"Semantic all-pass command exited with status {semantic.exit_code}"
             )
+        if validate_before_publication:
+            publish_native_outputs()
         _recheck_reused_outputs(
             reused_outputs,
             phase="during validation or semantic gating",
@@ -2572,7 +2628,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     except (
         OSError,
-        SourceCheckoutError,
+        InstalledPackageError,
         orchestration_contracts.ContractValidationError,
         TaskBoundaryError,
     ) as exc:

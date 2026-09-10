@@ -269,6 +269,7 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
     assert config.getboolean("run", "relative_files")
     assert config.get("run", "source").split() == ["scripts", "src/emrys"]
     assert config.get("run", "patch").split() == ["subprocess"]
+    assert config.get("report", "omit").split() == ["src/emrys/workflow/Snakefile"]
 
     makefile = (REPO_ROOT / "scripts" / "make_quality.mk").read_text(encoding="utf-8")
     assert "python-coverage-measure:" in makefile

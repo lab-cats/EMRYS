@@ -12,9 +12,10 @@ PDF. External review may use these outputs but is not a pipeline dependency.
 
 Normal execution uses `emrys run` or `resume` as described in the
 [Runbook](../../../../docs/operations/RUNBOOK.md#project-and-run-operations).
-The private [Python producer](producer.py) invokes
+The runner invokes
 [`step_09_cmh_editing_site_calling.R`](step_09_cmh_editing_site_calling.R)
-with runner-supplied working paths and checks its scientific outputs.
+directly with working paths, then requires the existing validator and semantic
+all-pass gate to accept its scientific outputs before publication.
 For the independent validator's inputs:
 
 ```bash

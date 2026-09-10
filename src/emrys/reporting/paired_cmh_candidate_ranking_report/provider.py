@@ -11,7 +11,6 @@ from emrys.reporting import (
     AnalysisReportInputV1,
     AnalysisScientificReportV1,
     admit_report_input,
-    render_report_view,
     reporting_resource_path,
 )
 
@@ -26,7 +25,7 @@ from .figure_models import (
 from .figures import build_scientific_figures
 from .scientific_context import admit_scientific_context_results
 from .validation import validate_scientific_html
-from .view import build_scientific_view
+from .view import render_scientific_html
 
 
 def render_scientific_report(
@@ -94,9 +93,9 @@ def render_scientific_report(
         for artifact in context.artifacts
         if artifact.adapter in link_copy
     )
-    view = build_scientific_view(
+    html_bytes = render_scientific_html(
         summary,
-        {},
+        css,
         computational_results=computational,
         computational_unavailable_reason=computational_reason,
         scientific_context_results=scientific_context,
@@ -105,7 +104,6 @@ def render_scientific_report(
         scientific_figures=figures,
         result_links=links,
     )
-    html_bytes = render_report_view(view, css)
     validate_scientific_html(
         html_bytes,
         (

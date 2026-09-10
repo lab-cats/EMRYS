@@ -156,16 +156,11 @@ def _identity_paths(
     }
 
 
-def _attest_fixture_source_checkout(**kwargs: Any) -> tuple[Path, str]:
-    return Path(kwargs["root"]), str(kwargs["expected_commit"])
-
-
 def _ops(validator: Any) -> reporting_boundary.ReportingBoundaryOps:
     return replace(
         reporting_boundary.DEFAULT_REPORTING_BOUNDARY_OPS,
         now=lambda: FIXED_TIME,
         validate_semantic_receipt=validator,
-        attest_source_checkout=_attest_fixture_source_checkout,
     )
 
 
@@ -530,13 +525,13 @@ def test_boundary_attests_attempt_commit_and_projection_bytes(tmp_path: Path) ->
         wrong_commit.workflow_attempt_path,
         "workflow-attempt",
     )
-    wrong_attempt["source_checkout"]["commit"] = "f" * 40
+    wrong_attempt["installed_package"]["git_commit"] = "f" * 40
     wrong_commit.workflow_attempt_path.write_bytes(
         orchestration_contracts.canonical_json_bytes(wrong_attempt)
     )
     with pytest.raises(
         reporting_boundary.ReportingBoundaryError,
-        match="Source checkout HEAD differs from the workflow attempt commit",
+        match="Installed package differs from the workflow attempt",
     ):
         reporting_boundary.publish_start(
             kind="run_summary",

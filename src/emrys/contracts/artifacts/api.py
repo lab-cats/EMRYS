@@ -7,7 +7,7 @@ from typing import Any
 from ._artifact_contracts.artifact import validate_artifact_semantics
 from ._artifact_contracts.definitions import (
     INVENTORY_HEADER,
-    REPO_ROOT,
+    PACKAGE_ROOT,
     RUN_CONTRACT_COMPONENT_FIELDS,
     SAFE_ID_RE,
     ContractValidationError,
@@ -51,7 +51,7 @@ from ._artifact_contracts.schema import (
 
 __all__ = (
     "INVENTORY_HEADER",
-    "REPO_ROOT",
+    "PACKAGE_ROOT",
     "REPORT_OUTPUTS",
     "RUN_CONTRACT_COMPONENT_FIELDS",
     "RUN_SUMMARY_STATUS_FIELDS",

@@ -16,8 +16,9 @@ import pytest
 from emrys import analyses
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.libraries.source_authority import (
+    PACKAGE_ROOT,
     ArtifactSourceRoot,
-    SourceCheckout,
+    admit_installed_package,
 )
 from emrys.reporting import transaction_validation
 from emrys.reporting._artifact_index import context as artifact_context
@@ -34,15 +35,6 @@ from tests.reporting.fixtures.artifact_adapters_v1 import (
 from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as fixture
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-
-
-@pytest.fixture(autouse=True)
-def fixture_source_identity(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        artifact_context,
-        "matching_clean_checkout_head_commit",
-        lambda **_kwargs: workflow_fixture.source_checkout_commit(),
-    )
 
 
 @contextmanager
@@ -76,7 +68,7 @@ def complete_reporting(tmp_path: Path) -> tuple[Any, Path]:
     built = fixture.build_fixture(tmp_path / "run")
     report_root = built.root / "reports"
     arguments = argparse.Namespace(
-        source_checkout=REPO_ROOT,
+        package_root=PACKAGE_ROOT,
         artifact_source_root=built.root,
         run_summary=built.summary_json_path,
         analysis_policy=built.adapter_fixture.analysis_policy,
@@ -92,7 +84,7 @@ def test_direct_validators_recheck_each_complete_transaction(
 ) -> None:
     built, report_root = complete_reporting
     summary = transaction_validation.validate_run_summary_transaction(
-        source_checkout=REPO_ROOT,
+        package_root=PACKAGE_ROOT,
         artifact_source_root=built.root,
         run_id=built.run_id,
         run_contract=built.adapter_fixture.run_contract,
@@ -102,7 +94,7 @@ def test_direct_validators_recheck_each_complete_transaction(
         profile=adapter_fixture.analysis_profile_v1(),
     )
     rendered = transaction_validation.validate_report_transaction(
-        source_checkout=REPO_ROOT,
+        package_root=PACKAGE_ROOT,
         artifact_source_root=built.root,
         run_summary=built.summary_json_path,
         analysis_policy=built.adapter_fixture.analysis_policy,
@@ -159,7 +151,7 @@ def test_summary_revalidates_relative_artifacts_from_admitted_root(
     )
 
     validated = transaction_validation.validate_run_summary_transaction(
-        source_checkout=REPO_ROOT,
+        package_root=PACKAGE_ROOT,
         artifact_source_root=root,
         run_id=built.run_id,
         run_contract=built.adapter_fixture.run_contract,
@@ -192,7 +184,7 @@ def test_report_validator_rechecks_bound_reference_identity_without_rereading(
         observe_snapshot,
     )
     transaction_validation.validate_report_transaction(
-        source_checkout=REPO_ROOT,
+        package_root=PACKAGE_ROOT,
         artifact_source_root=built.root,
         run_summary=built.summary_json_path,
         analysis_policy=built.adapter_fixture.analysis_policy,
@@ -210,6 +202,7 @@ def test_fixed_dispatcher_accepts_successor_run_authority(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     analysis, plan, run, profile, attempt, _resources = successor_run_fixture()
+    attempt["installed_package"] = admit_installed_package().record
     run_root = (tmp_path / run.run_id).resolve()
     contract = run_root / "contract"
     contract.mkdir(parents=True)
@@ -243,11 +236,6 @@ def test_fixed_dispatcher_accepts_successor_run_authority(
     observed: dict[str, Any] = {}
     monkeypatch.setattr(
         transaction_validation,
-        "attest_source_checkout",
-        lambda **_kwargs: "stable-source",
-    )
-    monkeypatch.setattr(
-        transaction_validation,
         "validate_run_summary_transaction",
         lambda **kwargs: observed.update(kwargs) or expected,
     )
@@ -273,6 +261,7 @@ def test_fixed_dispatcher_accepts_successor_run_authority(
         run_root / config["primary_analysis_policy_path"]["path"]
     )
     assert observed["profile"] == profile
+    assert observed["package_root"] == PACKAGE_ROOT
 
 
 @pytest.mark.parametrize(
@@ -364,7 +353,7 @@ def test_manifest_rejects_mutation(
         transaction_validation.ReportingTransactionError, match="differs from current"
     ):
         transaction_validation.validate_run_summary_transaction(
-            source_checkout=REPO_ROOT,
+            package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_id=built.run_id,
             run_contract=built.adapter_fixture.run_contract,
@@ -392,7 +381,7 @@ def test_report_validator_rejects_each_receipted_html_mutation(
         match="receipt",
     ):
         transaction_validation.validate_report_transaction(
-            source_checkout=REPO_ROOT,
+            package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_summary=built.summary_json_path,
             analysis_policy=built.adapter_fixture.analysis_policy,
@@ -421,7 +410,7 @@ def test_receipt_identity_replacement_during_validation_fails_closed(
         ),
     ):
         transaction_validation.validate_run_summary_transaction(
-            source_checkout=REPO_ROOT,
+            package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_id=built.run_id,
             run_contract=built.adapter_fixture.run_contract,
@@ -448,7 +437,7 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
 
     def validate_artifact() -> None:
         transaction_validation.validate_run_summary_transaction(
-            source_checkout=REPO_ROOT,
+            package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_id=built.run_id,
             run_contract=built.adapter_fixture.run_contract,
@@ -460,7 +449,7 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
 
     def validate_summary() -> None:
         transaction_validation.validate_run_summary_transaction(
-            source_checkout=REPO_ROOT,
+            package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_id=built.run_id,
             run_contract=built.adapter_fixture.run_contract,
@@ -472,7 +461,7 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
 
     def validate_report() -> None:
         transaction_validation.validate_report_transaction(
-            source_checkout=REPO_ROOT,
+            package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_summary=built.summary_json_path,
             analysis_policy=built.adapter_fixture.analysis_policy,
@@ -534,7 +523,7 @@ def test_artifact_validator_rejects_roster_membership_fault(
         ),
     ):
         transaction_validation.validate_run_summary_transaction(
-            source_checkout=REPO_ROOT,
+            package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_id=built.run_id,
             run_contract=built.adapter_fixture.run_contract,
@@ -567,7 +556,7 @@ def test_artifact_validator_binds_nested_missing_source_to_existing_ancestor(
     fixture.publish_adapter_fixture(adapter)
 
     validated = transaction_validation.validate_run_summary_transaction(
-        source_checkout=REPO_ROOT,
+        package_root=PACKAGE_ROOT,
         artifact_source_root=adapter.root,
         run_id=adapter.run_id,
         run_contract=adapter.run_contract,
@@ -590,7 +579,7 @@ def test_artifact_validator_binds_nested_missing_source_to_existing_ancestor(
         ),
     ):
         transaction_validation.validate_run_summary_transaction(
-            source_checkout=REPO_ROOT,
+            package_root=PACKAGE_ROOT,
             artifact_source_root=adapter.root,
             run_id=adapter.run_id,
             run_contract=adapter.run_contract,
@@ -611,7 +600,7 @@ def test_each_validator_rejects_control_residue_injected_before_return(
 
     def validate_artifact() -> None:
         transaction_validation.validate_run_summary_transaction(
-            source_checkout=REPO_ROOT,
+            package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_id=built.run_id,
             run_contract=built.adapter_fixture.run_contract,
@@ -623,7 +612,7 @@ def test_each_validator_rejects_control_residue_injected_before_return(
 
     def validate_summary() -> None:
         transaction_validation.validate_run_summary_transaction(
-            source_checkout=REPO_ROOT,
+            package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_id=built.run_id,
             run_contract=built.adapter_fixture.run_contract,
@@ -635,7 +624,7 @@ def test_each_validator_rejects_control_residue_injected_before_return(
 
     def validate_report() -> None:
         transaction_validation.validate_report_transaction(
-            source_checkout=REPO_ROOT,
+            package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_summary=built.summary_json_path,
             analysis_policy=built.adapter_fixture.analysis_policy,
@@ -697,7 +686,7 @@ def test_preexisting_reporting_control_residue_fails_closed(
         match="owner control residue",
     ):
         transaction_validation.validate_run_summary_transaction(
-            source_checkout=REPO_ROOT,
+            package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_id=built.run_id,
             run_contract=built.adapter_fixture.run_contract,

@@ -142,7 +142,7 @@ validate_receipt_payloads() {
 }
 
 validate_safe_id "--analysis-id" "$analysis_id"
-[[ "$git_commit" =~ ^([0-9a-f]{40}|[0-9a-f]{64})$ ]] || die "--git-commit must be a full lowercase Git object ID."
+[[ "$git_commit" == unavailable || "$git_commit" =~ ^([0-9a-f]{40}|[0-9a-f]{64})$ ]] || die "--git-commit must be a full lowercase Git object ID or unavailable."
 rscript_bin="$(resolve_executable_value "Rscript" "$rscript_bin" "Rscript")"
 validate_nonempty_file "R projection script" "$r_script"
 validate_nonempty_file "step09 all sites" "$step09_all_sites"

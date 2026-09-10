@@ -14,9 +14,9 @@ inputs, outputs, locks, rollback, and recovery belong in that owner's
    picker; EMRYS never assumes latest. Add `--detail verbose` or `debug` for evidence.
 3. Preserve the complete Run, Project definition, manifests, receipts, locks,
    task/reporting ledgers, logs, native artifacts, partials, backups, and recovery
-   markers. Verify the checkout and runtime against live Git and admitted records.
+   markers. Verify the installed package identity and runtime against admitted records.
 4. Follow only the recovery offered by inspection or the owning contract.
-   Otherwise send the maintainer the command, commit, error, Run/Attempt identity,
+   Otherwise send the maintainer the command, package identity, error, Run/Attempt identity,
    and relevant log/receipt paths through an approved channel, without private
    study data or credentials.
 
@@ -63,19 +63,12 @@ lock/staging state together. Never recreate one member independently.
 
 ## Project and runtime checks
 
-**Missing command or wrong checkout.** Restore `EMRYS_SOURCE_ROOT` to the intended
-checkout and run:
-
-```bash
-source "$EMRYS_SOURCE_ROOT/.venv/bin/activate"
-emrys --help
-git -C "$EMRYS_SOURCE_ROOT" status --porcelain=v1 --untracked-files=all
-```
-
-Return to the Project for Project commands. Do not add `PYTHONPATH` or copy
-packages. A clean checkout excludes nonignored untracked files too; preserve
-unexpected work and choose a separate clean reviewed checkout instead of
-removing changes to satisfy Doctor.
+**Missing command or wrong installation.** Activate the Python environment in
+which EMRYS was installed, then check `emrys --version -v`. Install or update
+EMRYS in that environment using its package manager; Doctor does not repair
+Python packages. Return to the Project for Project commands. Do not add
+`PYTHONPATH` or copy package files. Execution identifies the installed code and
+its build metadata, independently of the working directory and Git checkout.
 
 **Project initialization or input rejected.** Enter the directory containing
 `project.yaml`, or supply its full path with `--project`. Preview-only `init`
@@ -89,8 +82,9 @@ replicate strata; names and row order do not establish pairing. See
 [configuration](../../configs/README.md).
 
 **Managed setup rejected.** Follow the quickstart's x86-64 Linux/Pixi prerequisites
-and activate the checkout's real writable `.venv`. Another or symlinked
-environment is not a repair target. Use an exact institutional runtime if managed
+and activate the Python environment where EMRYS is installed. Doctor repairs
+Project-owned native and R state; use the package manager for Python dependencies.
+Use an exact institutional runtime if managed
 setup is unavailable; do not edit locks to bypass platform or dependency checks.
 
 **Missing or ambiguous runtime tools.** Prepare one exact environment and preview

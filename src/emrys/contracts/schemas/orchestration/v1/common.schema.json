@@ -226,24 +226,18 @@
         }
       }
     },
-    "source_checkout": {
+    "installed_package": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "path",
-        "commit",
-        "clean"
-      ],
+      "required": ["path", "distribution", "version", "content_sha256", "git_commit", "git_dirty", "python_lock_sha256"],
       "properties": {
-        "path": {
-          "$ref": "#/$defs/absolute_path"
-        },
-        "commit": {
-          "$ref": "#/$defs/git_commit"
-        },
-        "clean": {
-          "const": true
-        }
+        "path": {"$ref": "#/$defs/absolute_path"},
+        "distribution": {"const": "emrys-rna-workflow"},
+        "version": {"$ref": "#/$defs/non_empty_string"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "git_commit": {"oneOf": [{"$ref": "#/$defs/git_commit"}, {"type": "null"}]},
+        "git_dirty": {"type": ["boolean", "null"]},
+        "python_lock_sha256": {"$ref": "#/$defs/sha256"}
       }
     }
   }

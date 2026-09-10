@@ -22,7 +22,6 @@ from emrys.orchestration.run_coordinator.normalization import admit_project
 from tests.orchestration.run_coordinator import fixture
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-LOCAL_PROFILE = REPO_ROOT / "workflow/contracts/local_cmh_v2.json"
 
 
 def test_analysis_revision_is_path_and_name_neutral(

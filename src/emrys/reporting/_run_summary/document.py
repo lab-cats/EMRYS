@@ -45,6 +45,7 @@ def build_summary(
     artifacts: list[dict[str, Any]],
     generated_at: str,
     git_commit: str,
+    installed_package: dict[str, object],
     analysis_policy_binding: dict[str, Any],
 ) -> tuple[dict[str, Any], bytes, bytes, bytes]:
     expected_scopes, artifact_scope_order = _build_expected_scopes(artifacts)
@@ -105,6 +106,7 @@ def build_summary(
             "producer": PRODUCER,
             "producer_version": PRODUCER_VERSION,
             "git_commit": git_commit,
+            "installed_package": installed_package,
             "created_at": generated_at,
         },
     }

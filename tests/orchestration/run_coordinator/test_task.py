@@ -21,7 +21,8 @@ import pytest
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.libraries.source_authority import (
-    SourceCheckoutAttestation,
+    PACKAGE_ROOT,
+    admit_installed_package,
     controlled_python_argv,
 )
 from emrys.orchestration.run_coordinator import lifecycle, task
@@ -70,7 +71,7 @@ def _materialize_active_lock(run_root: Path, attempt_path: Path) -> Path:
     return lock_path
 
 
-def _task_fixture(tmp_path: Path) -> TaskFixture:
+def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixture:
     intake = tmp_path / "intake"
     intake.mkdir(parents=True)
     profile = fixture.profile()
@@ -80,6 +81,15 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
     _request, candidate = fixture.build_run(
         intake, profile, required_tools=required_tools
     )
+    machine_key = (
+        "emrys.stage.preprocess_and_annotate_cohort_candidates.v1"
+        if prepublication
+        else MACHINE_KEY
+    )
+    scope_id = (
+        candidate.analysis.revision.scope_id("cohort") if prepublication else SCOPE_ID
+    )
+    step_id = "08" if prepublication else "01"
     execution = candidate.run_binding.record
     execution_bytes = candidate.run_binding.canonical_bytes
     profile = candidate.analysis.profile
@@ -92,18 +102,18 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
     mutable_input.parent.mkdir()
     mutable_input.write_bytes(b"stable owner input\n")
     task_root = (
-        run_root / "attempts" / WORKFLOW_ATTEMPT_ID / "tasks" / MACHINE_KEY / SCOPE_ID
+        run_root / "attempts" / WORKFLOW_ATTEMPT_ID / "tasks" / machine_key / scope_id
     )
-    verified_path = run_root / "state" / "verified" / MACHINE_KEY / f"{SCOPE_ID}.json"
+    verified_path = run_root / "state" / "verified" / machine_key / f"{scope_id}.json"
     (run_root / "attempts" / WORKFLOW_ATTEMPT_ID).mkdir(parents=True)
-    task_start = run_root / "state" / "task-starts" / MACHINE_KEY / f"{SCOPE_ID}.json"
+    task_start = run_root / "state" / "task-starts" / machine_key / f"{scope_id}.json"
     task_start.parent.mkdir(parents=True)
     verified_path.parent.mkdir(parents=True)
 
-    first_output = run_root / "results" / "samples" / SCOPE_ID / "aligned.bam"
-    second_output = run_root / "results" / "samples" / SCOPE_ID / "aligned.bam.bai"
-    receipt = run_root / "results" / "receipts" / f"{SCOPE_ID}.json"
-    report = run_root / "results" / "validation" / "01" / f"{SCOPE_ID}.tsv"
+    first_output = run_root / "results" / "samples" / scope_id / "aligned.bam"
+    second_output = run_root / "results" / "samples" / scope_id / "aligned.bam.bai"
+    receipt = run_root / "results" / "receipts" / f"{scope_id}.json"
+    report = run_root / "results" / "validation" / step_id / f"{scope_id}.tsv"
     producer = list(
         controlled_python_argv(
             sys.executable,
@@ -125,18 +135,20 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
             "--report",
             str(report),
             "--step-id",
-            "01",
+            step_id,
             "--scope-id",
-            SCOPE_ID,
+            scope_id,
         )
     )
+    if prepublication:
+        validator.extend(["--input", str(first_output)])
     dispatch_path = (
         run_root
         / "contract"
         / "dispatch"
         / WORKFLOW_ATTEMPT_ID
-        / MACHINE_KEY
-        / f"{SCOPE_ID}.json"
+        / machine_key
+        / f"{scope_id}.json"
     )
     dispatch = {
         "schema_version": task.DISPATCH_SCHEMA_VERSION,
@@ -146,8 +158,11 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
         "workflow_attempt_id": WORKFLOW_ATTEMPT_ID,
         "task_attempt_id": TASK_ATTEMPT_ID,
         "owner_run_token": "owner-run-ev-1",
-        "machine_key": MACHINE_KEY,
-        "scope": {"scope_type": "sample", "scope_id": SCOPE_ID},
+        "machine_key": machine_key,
+        "scope": {
+            "scope_type": "cohort" if prepublication else "sample",
+            "scope_id": scope_id,
+        },
         "producer_argv": producer,
         "validator_argv": validator,
         "inputs": [{"role": "owner_input", "path": str(mutable_input)}],
@@ -182,8 +197,8 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
     config_path = contract / "workflow-configs" / f"{WORKFLOW_ATTEMPT_ID}.json"
     config = {
         "dispatch_paths": {
-            MACHINE_KEY: {
-                SCOPE_ID: {
+            machine_key: {
+                scope_id: {
                     "path": str(dispatch_path),
                     "sha256": hashlib.sha256(
                         orchestration_contracts.canonical_json_bytes(dispatch)
@@ -191,7 +206,7 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
                 }
             }
         },
-        "source_checkout": str(Path(__file__).resolve().parents[3]),
+        "package_root": str(PACKAGE_ROOT),
     }
     _publish_json(dispatch_path, dispatch)
     _publish_json(config_path, config)
@@ -226,11 +241,7 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
         "normalizer": normalizer,
         "workspace": str(tmp_path.resolve()),
         "scratch": None,
-        "source_checkout": {
-            "path": str(Path(__file__).resolve().parents[3]),
-            "commit": workflow_fixture.source_checkout_commit(),
-            "clean": True,
-        },
+        "installed_package": admit_installed_package().record,
         "executor": "local",
         "execution_mode": "local-science-tools",
         "snakemake_argv": list(
@@ -261,18 +272,11 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
 def _fixed_ops() -> task.TaskOps:
     defaults = task.default_task_ops()
 
-    def attest_source_checkout(
-        *, root: Path, package_root: Path, expected_commit: str
-    ) -> SourceCheckoutAttestation:
-        del package_root
-        return SourceCheckoutAttestation(root=root, commit=expected_commit)
-
     return task.TaskOps(
         run_command=defaults.run_command,
         run_semantic_all_pass=defaults.run_semantic_all_pass,
         publish_bytes=defaults.publish_bytes,
         now=lambda: datetime(2026, 8, 12, 12, 2, tzinfo=UTC),
-        attest_source_checkout=attest_source_checkout,
     )
 
 
@@ -463,58 +467,12 @@ def _rewrite_dispatch(built: TaskFixture) -> None:
     attempt = orchestration_contracts.load_json_object(attempt_path)
     config_path = built.run_root / attempt["workflow_config"]["path"]
     config = orchestration_contracts.load_json_object(config_path)
-    config["dispatch_paths"][MACHINE_KEY][SCOPE_ID]["sha256"] = _dispatch_sha256(
-        built.dispatch_path
-    )
+    config["dispatch_paths"][built.dispatch_path.parent.name][built.dispatch_path.stem][
+        "sha256"
+    ] = _dispatch_sha256(built.dispatch_path)
     config_path.write_bytes(orchestration_contracts.canonical_json_bytes(config))
     attempt["workflow_config"]["sha256"] = _dispatch_sha256(config_path)
     attempt_path.write_bytes(orchestration_contracts.canonical_json_bytes(attempt))
-
-
-def _bind_clean_current_source_checkout(built: TaskFixture, tmp_path: Path) -> None:
-    checkout = tmp_path / "clean-source-checkout"
-    checkout.mkdir()
-    shutil.copy2(REPO_ROOT / "pyproject.toml", checkout / "pyproject.toml")
-    shutil.copytree(REPO_ROOT / "src" / "emrys", checkout / "src" / "emrys")
-    subprocess.run(["git", "init", "--quiet"], cwd=checkout, check=True)
-    subprocess.run(
-        ["git", "add", "pyproject.toml", "src/emrys"], cwd=checkout, check=True
-    )
-    subprocess.run(
-        [
-            "git",
-            "-c",
-            "user.name=EMRYS Fixture",
-            "-c",
-            "user.email=emrys-fixture@example.invalid",
-            "commit",
-            "--quiet",
-            "-m",
-            "current package",
-        ],
-        cwd=checkout,
-        check=True,
-    )
-    commit = subprocess.run(
-        ["git", "rev-parse", "--verify", "HEAD"],
-        cwd=checkout,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-    attempt_path = built.run_root / "attempts" / WORKFLOW_ATTEMPT_ID / "attempt.json"
-    attempt = orchestration_contracts.load_json_object(attempt_path)
-    config_path = built.run_root / attempt["workflow_config"]["path"]
-    config = orchestration_contracts.load_json_object(config_path)
-    config["source_checkout"] = str(checkout)
-    _publish_json(config_path, config)
-    attempt["source_checkout"] = {
-        "path": str(checkout),
-        "commit": commit,
-        "clean": True,
-    }
-    attempt["workflow_config"]["sha256"] = _dispatch_sha256(config_path)
-    _publish_json(attempt_path, attempt)
 
 
 def _dispatch_sha256(path: Path) -> str:
@@ -545,7 +503,7 @@ def _validate_verified(
         "run_root": built.run_root,
         "execution": _record(built.dispatch["execution_path"]),
         "profile": _record(built.dispatch["profile_path"]),
-        "machine_key": MACHINE_KEY,
+        "machine_key": built.dispatch["machine_key"],
         "scope": built.dispatch["scope"],
         **overrides,
     }
@@ -1485,7 +1443,6 @@ def test_internal_module_cli_is_isolated_and_not_a_public_lifecycle_command(
     assert "run/resume/inspect" in help_result.stdout
 
     built = _task_fixture(tmp_path)
-    _bind_clean_current_source_checkout(built, tmp_path)
     result = subprocess.run(
         [
             *controlled_python_argv(
@@ -1721,19 +1678,19 @@ def test_foreign_lock_namespace_blocks_task_entry(tmp_path: Path) -> None:
     assert not Path(built.dispatch["task_start_path"]).exists()
 
 
-def test_transient_wrong_source_head_blocks_before_task_start(tmp_path: Path) -> None:
+def test_changed_installed_package_blocks_before_task_start(tmp_path: Path) -> None:
     built = _task_fixture(tmp_path)
     calls: list[str] = []
 
     def reject_transient_head(**_kwargs: Any) -> None:
         calls.append("attest")
-        raise task.SourceCheckoutError(
-            "Source checkout HEAD differs from the workflow attempt commit"
+        raise task.InstalledPackageError(
+            "Installed package differs from the workflow attempt"
         )
 
     defaults = _fixed_ops()
-    ops = replace(defaults, attest_source_checkout=reject_transient_head)
-    with pytest.raises(task.TaskBoundaryError, match="Could not attest task child"):
+    ops = replace(defaults, admit_installed_package=reject_transient_head)
+    with pytest.raises(task.TaskBoundaryError, match="Could not admit task child"):
         _execute_dispatch(built.dispatch_path, ops=ops)
 
     assert calls == ["attest"]
@@ -1745,18 +1702,18 @@ def test_task_child_rechecks_source_identity_at_irreversible_entry(
 ) -> None:
     built = _task_fixture(tmp_path)
     calls = 0
-    production_attester = _fixed_ops().attest_source_checkout
+    production_attester = _fixed_ops().admit_installed_package
 
     def transient_move(**kwargs: Any) -> Any:
         nonlocal calls
         calls += 1
         if calls == 2:
-            raise task.SourceCheckoutError("transient wrong HEAD")
+            raise task.InstalledPackageError("changed package identity")
         return production_attester(**kwargs)
 
     defaults = _fixed_ops()
-    ops = replace(defaults, attest_source_checkout=transient_move)
-    with pytest.raises(task.TaskBoundaryError, match="transient wrong HEAD"):
+    ops = replace(defaults, admit_installed_package=transient_move)
+    with pytest.raises(task.TaskBoundaryError, match="changed package identity"):
         _execute_dispatch(built.dispatch_path, ops=ops)
 
     assert calls == 2
@@ -2168,3 +2125,39 @@ def test_reused_step00c_sidecar_rechecked_before_verified_publication(
         )
     assert _record(record["task_attempt_path"])["status"] == "succeeded"
     assert not Path(record["verified_task_path"]).exists()
+
+
+@pytest.mark.parametrize("outcome", ("pass", "fail", "changed-output"))
+def test_scientific_validation_precedes_native_publication(
+    tmp_path: Path, outcome: str
+) -> None:
+    built = _task_fixture(tmp_path, prepublication=True)
+    if outcome == "fail":
+        built.dispatch["validator_argv"].extend(["--status", "fail"])
+        _rewrite_dispatch(built)
+    defaults = _fixed_ops()
+    finals = [Path(item["path"]) for item in built.dispatch["outputs"]]
+    working = Path(built.dispatch["outputs"][0]["working_path"])
+
+    def command(argv, *arguments):
+        if "validator" in argv:
+            assert not any(path.exists() for path in finals)
+            assert str(working) in argv
+            assert str(finals[0]) not in argv
+        result = defaults.run_command(argv, *arguments)
+        if "validator" in argv and outcome == "changed-output":
+            working.write_bytes(b"changed after scientific validation\n")
+        return result
+
+    ops = replace(defaults, run_command=command)
+    if outcome == "pass":
+        _execute_dispatch(built.dispatch_path, ops=ops)
+        verified = _validate_verified(built)
+        assert str(working) in verified["validator"]["argv"]
+        assert all(path.is_file() for path in finals)
+    else:
+        with pytest.raises(task.TaskBoundaryError):
+            _execute_dispatch(built.dispatch_path, ops=ops)
+        assert not any(path.exists() for path in finals)
+        assert not Path(built.dispatch["verified_task_path"]).exists()
+        assert Path(built.dispatch["validation_report_path"]).is_file()

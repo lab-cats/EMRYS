@@ -12,11 +12,9 @@ defines the production contract and recovery rules.
 
 Publication and source-identity tests patch real filesystem or validation
 functions with scoped pytest monkeypatches. Each patch targets the relevant
-path or receipt and delegates other calls. The retired interfaces were
-`ArtifactPublicationOps`, `RunSummaryPublicationOps`, `ReportPublicationOps`,
-`ArtifactIdentityOps`, `ReportIdentityOps`, `ReceiptValidationOps`, and the public
-validators' `receipt_ops` parameter; they are not current test entry points.
-The artifact context still captures its real source observer for later rechecks,
+path or receipt and delegates other calls. File, lock, and staging faults target
+the shared reporting `_files` operations; signal faults target `_signals`.
+The artifact context captures its real installed-package observer for later rechecks,
 and validated transactions retain real input-recheck callbacks.
 
 Combined publication tests cover the index and summary output set, including

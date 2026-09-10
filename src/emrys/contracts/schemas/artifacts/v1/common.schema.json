@@ -281,6 +281,7 @@
         "git_commit": {
           "$ref": "#/$defs/git_commit"
         },
+        "installed_package": {"$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/installed_package"},
         "created_at": {
           "type": "string",
           "format": "date-time"

@@ -16,8 +16,8 @@
     "\"<REPO_ROOT>/.venv/bin/python\" ./scripts/documentation/validate_structure.py --repo \"<REPO_ROOT>\""
   ],
   "lint": [
-    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/emrys tests",
-    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" format --check --no-cache scripts src/emrys tests",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/emrys tests setup.py",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" format --check --no-cache scripts src/emrys tests setup.py",
     "bash -o pipefail -c 'git ls-files -z -- \"*.sh\" | xargs -0 \"$1\"' -- \"$(dirname -- \"<REPO_ROOT>/.venv/bin/python\")/shellcheck\"",
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"vulture\" \\",
     "\t\t--min-confidence 95 \\",
@@ -30,8 +30,8 @@
     "\t\tEMRYS_RENV_LIBRARY=\"\" \\",
     "\t\tEMRYS_RENV_VERSION=\"1.2.3\" \\",
     "\t\tRENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
-    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>\" \\",
-    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/.Rprofile\" \\",
+    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>/src/emrys\" \\",
+    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/src/emrys/.Rprofile\" \\",
     "\t\tSTEP08_TEST_RSCRIPT_BIN= STEP09_TEST_RSCRIPT_BIN= \\",
     "\t\tSCIENTIFIC_CONTEXT_TEST_RSCRIPT_BIN= \\",
     "\t\tRSCRIPT_BIN_OVERRIDE=\"Rscript\" \\",
@@ -259,16 +259,18 @@
     "\t\tEMRYS_RENV_LIBRARY=\"\" \\",
     "\t\tEMRYS_RENV_VERSION=\"1.2.3\" \\",
     "\t\tRENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
-    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>\" \\",
-    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/.Rprofile\" \\",
+    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>/src/emrys\" \\",
+    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/src/emrys/.Rprofile\" \\",
     "\t\t\"Rscript\" scripts/check_r_environment.R"
   ],
   "r-restore": [
+    "test -n \"\"",
+    "test -d \"\"",
     "EMRYS_USE_RENV=1 EMRYS_LOCAL_PILOT_R=0 \\",
     "\t\tRENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
-    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>\" \\",
-    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/.Rprofile\" \\",
-    "\t\t\"Rscript\" scripts/restore_r_environment.R"
+    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"\" \\",
+    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/src/emrys/.Rprofile\" \\",
+    "\t\t\"Rscript\" src/emrys/resources/runtime/restore_r_environment.R"
   ],
   "real-r-test": [
     "bash tests/stages/cohort_candidate_preprocessing/run_step_08_vcf_preprocessing_tests.sh",
@@ -313,8 +315,8 @@
     "\t\tEMRYS_RENV_LIBRARY=\"\" \\",
     "\t\tEMRYS_RENV_VERSION=\"1.2.3\" \\",
     "\t\tRENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
-    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>\" \\",
-    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/.Rprofile\" \\",
+    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>/src/emrys\" \\",
+    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/src/emrys/.Rprofile\" \\",
     "\t\t\"Rscript\" scripts/check_r_environment.R",
     "<MAKE> -s local-real-r-test",
     "test -n \"\"",
@@ -323,8 +325,8 @@
     "\t\tEMRYS_RENV_LIBRARY=\"\" \\",
     "\t\tEMRYS_RENV_VERSION=\"1.2.3\" \\",
     "\t\tRENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
-    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>\" \\",
-    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/.Rprofile\" \\",
+    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>/src/emrys\" \\",
+    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/src/emrys/.Rprofile\" \\",
     "\t\tSTEP08_TEST_RSCRIPT_BIN= STEP09_TEST_RSCRIPT_BIN= \\",
     "\t\tSCIENTIFIC_CONTEXT_TEST_RSCRIPT_BIN= \\",
     "\t\tRSCRIPT_BIN_OVERRIDE=\"Rscript\" \\",
@@ -346,8 +348,8 @@
     "bash tests/shell/test_local_r_environment.sh"
   ],
   "validation-static": [
-    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/emrys tests",
-    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" format --check --no-cache scripts src/emrys tests",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/emrys tests setup.py",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" format --check --no-cache scripts src/emrys tests setup.py",
     "bash -o pipefail -c 'git ls-files -z -- \"*.sh\" | xargs -0 \"$1\"' -- \"$(dirname -- \"<REPO_ROOT>/.venv/bin/python\")/shellcheck\"",
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"vulture\" \\",
     "\t\t--min-confidence 95 \\",

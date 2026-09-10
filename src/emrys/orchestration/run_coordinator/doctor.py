@@ -52,10 +52,10 @@ from emrys.libraries.process_environment import (
     sanitized_subprocess_environment,
 )
 from emrys.libraries.source_authority import (
-    SourceCheckout,
-    SourceCheckoutError,
+    InstalledPackage,
+    InstalledPackageError,
+    admit_installed_package,
     controlled_python_argv,
-    inspect_source_checkout,
 )
 from emrys.orchestration.run_coordinator import onboarding
 from emrys.orchestration.run_coordinator.execution_profile import (
@@ -72,10 +72,11 @@ DESCRIPTION = (
     "Diagnose one Project across inputs, storage, runtime, and execution. "
     "Diagnosis and repair preview are read-only; an explicitly confirmed "
     "repair may qualify direct storage and restore only EMRYS-owned runtime "
-    "state through uv, Pixi, and renv."
+    "native and R state through Pixi and renv."
 )
 
 StorageRequirement = Literal["direct", "slurm"]
+PYTHON_CHECK_IDS = frozenset({"python", "snakemake", "sha256_python"})
 
 
 class DoctorInputError(RuntimeError):
@@ -104,8 +105,7 @@ class DoctorResult:
 
     project: ProjectAdmission
     analysis: AnalysisAdmission
-    source_root: Path
-    source_commit: str | None
+    installed_package: InstalledPackage | None
     inspection: RuntimeInspection | None
     bindings: tuple[RuntimeBinding, ...]
     blockers: tuple[str, ...]
@@ -220,8 +220,8 @@ def workspace_location_blockers(
         or workspace in source_root.parents
         or source_root in workspace.parents
     ):
-        return [f"workspace overlaps the EMRYS source checkout: {workspace}"], [
-            "Choose a Project outside and not containing the EMRYS source checkout."
+        return [f"workspace overlaps the installed EMRYS package: {workspace}"], [
+            "Choose a Project outside and not containing the installed EMRYS package."
         ]
     try:
         state = workspace.lstat()
@@ -543,16 +543,12 @@ def diagnose_project(
     workspace_path = _absolute_path(project.parent if workspace is None else workspace)
     blockers, remediations = workspace_location_blockers(workspace_path, root)
     try:
-        source_commit = inspect_source_checkout(
-            root=root,
-            package_root=_PACKAGE_ROOT,
-            require_clean=True,
-        ).commit
-    except SourceCheckoutError as exc:
-        source_commit = None
-        blockers.append(f"source checkout is not ready: {exc}")
+        installed_package = admit_installed_package(root=root)
+    except InstalledPackageError as exc:
+        installed_package = None
+        blockers.append(f"installed EMRYS is not ready: {exc}")
         remediations.append(
-            "Use the clean reviewed EMRYS checkout and workflow environment."
+            "Reinstall EMRYS with its package manager, then rerun Doctor."
         )
     try:
         admitted_project = onboarding.validate_project(
@@ -686,7 +682,12 @@ def diagnose_project(
             for dependency in analysis.module.descriptor.dependencies
             if isinstance(dependency, analysis_modules.AnalysisDependencyV1)
         }
-        if any(item.check.check_id in fixed_ids for item in failed):
+        if any(item.check.check_id in PYTHON_CHECK_IDS for item in failed):
+            remediations.append(
+                "Reinstall EMRYS and its Python dependencies with the environment's "
+                "package manager; Doctor repairs only native tools and R."
+            )
+        if any(item.check.check_id in fixed_ids - PYTHON_CHECK_IDS for item in failed):
             remediations.append(
                 "Run `emrys doctor --repair` for an EMRYS-managed runtime, or repair "
                 "and re-admit the selected site environment without editing runtime.tsv."
@@ -715,8 +716,7 @@ def diagnose_project(
     return DoctorResult(
         project=admitted_project,
         analysis=analysis,
-        source_root=root,
-        source_commit=source_commit,
+        installed_package=installed_package,
         inspection=inspection,
         bindings=bindings,
         blockers=tuple(blockers),
@@ -729,24 +729,21 @@ def diagnose_project(
 
 @dataclass(frozen=True, slots=True)
 class _ManagedRuntimePlan:
-    source_root: Path
     managed_root: Path
     profile: Path
-    uv: Path
     pixi: Path
-    uv_sha256: str
     pixi_sha256: str
     profile_bytes: bytes | None
     manifest_bytes: bytes
     lock_bytes: bytes
+    r_settings_bytes: bytes
 
 
 @dataclass(frozen=True, slots=True)
 class _RepairPlan:
     project: ProjectAdmission
     analysis_name: str
-    source_root: Path
-    source_commit: str
+    installed_package: InstalledPackage
     storage: storage_qualification.DirectQualificationPlan | None
     runtime: _ManagedRuntimePlan | None
 
@@ -768,10 +765,10 @@ def _profile_is_managed(
         if check.check_type == "r_namespace":
             continue
         target = _absolute_path(check.target)
-        if check.check_id in {"python", "snakemake", "sha256_python"}:
+        if check.check_id in PYTHON_CHECK_IDS:
             allowed = target == Path(sys.executable)
         elif check.check_id == "renv_project":
-            allowed = target == plan.source_root
+            allowed = target == _PACKAGE_ROOT
         else:
             allowed = owned(target)
         if not allowed:
@@ -802,8 +799,8 @@ def _file_sha256(path: Path) -> str:
 
 
 def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
-    if result.source_commit is None:
-        raise DoctorRepairError("repair requires a clean reviewed EMRYS checkout")
+    if result.installed_package is None:
+        raise DoctorRepairError("repair requires an admitted installed EMRYS package")
     if not result.execution_ready:
         raise DoctorRepairError(
             "repair preserves execution profiles; restore runtime/profiles/default.yaml"
@@ -825,10 +822,17 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
         return _RepairPlan(
             project=project,
             analysis_name=result.analysis.name,
-            source_root=result.source_root,
-            source_commit=result.source_commit,
+            installed_package=result.installed_package,
             storage=storage,
             runtime=None,
+        )
+    if result.inspection is not None and any(
+        item.check.check_id in PYTHON_CHECK_IDS and item.status != "pass"
+        for item in result.inspection.observations
+    ):
+        raise DoctorRepairError(
+            "repair does not modify the Python environment; reinstall EMRYS and "
+            "its Python dependencies with their package manager, then rerun Doctor"
         )
     custom_dependencies = {
         dependency.dependency_id
@@ -855,26 +859,12 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
         raise DoctorRepairError(
             "managed repair currently supports x86-64 Linux; use site runtime discovery on this platform"
         )
-    venv = result.source_root / ".venv"
-    if _absolute_path(sys.prefix) != venv:
-        raise DoctorRepairError(
-            f"Python repair is restricted to the active checkout-owned .venv; found {sys.prefix}"
-        )
-    try:
-        state = venv.lstat()
-        owned_venv = stat.S_ISDIR(state.st_mode) and not stat.S_ISLNK(state.st_mode)
-        owned_venv = owned_venv and venv.resolve(strict=True) == venv
-    except OSError as exc:
-        raise DoctorRepairError(f"checkout-owned .venv is unavailable: {exc}") from exc
-    if not owned_venv or not os.access(venv, os.R_OK | os.W_OK | os.X_OK):
-        raise DoctorRepairError(
-            f"checkout-owned .venv is not canonical and writable: {venv}"
-        )
     try:
         runtime = onboarding.project_runtime_directory(project)
         resources = _PACKAGE_ROOT / "resources/runtime"
         manifest_bytes = (resources / "pixi.toml").read_bytes()
         lock_bytes = (resources / "pixi.lock").read_bytes()
+        r_settings_bytes = (_PACKAGE_ROOT / "renv/settings.json").read_bytes()
     except (OSError, onboarding.OnboardingError) as exc:
         raise DoctorRepairError(str(exc)) from exc
     managed = runtime / "managed"
@@ -892,18 +882,16 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
             raise DoctorRepairError(
                 f"could not re-admit the managed runtime inventory: {exc}"
             ) from exc
-    uv, pixi = _manager("uv"), _manager("pixi")
+    pixi = _manager("pixi")
     managed_plan = _ManagedRuntimePlan(
-        source_root=result.source_root,
         managed_root=managed,
         profile=profile,
-        uv=uv,
         pixi=pixi,
-        uv_sha256=_file_sha256(uv),
         pixi_sha256=_file_sha256(pixi),
         profile_bytes=profile_bytes,
         manifest_bytes=manifest_bytes,
         lock_bytes=lock_bytes,
+        r_settings_bytes=r_settings_bytes,
     )
     if result.inspection is not None:
         if not _profile_is_managed(profile_checks, managed_plan):
@@ -914,8 +902,7 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
     return _RepairPlan(
         project=project,
         analysis_name=result.analysis.name,
-        source_root=result.source_root,
-        source_commit=result.source_commit,
+        installed_package=result.installed_package,
         storage=storage,
         runtime=managed_plan,
     )
@@ -927,11 +914,9 @@ def _readmit_repair_plan(
     before_storage: bool,
 ) -> None:
     try:
-        source = inspect_source_checkout(
-            root=plan.source_root, package_root=_PACKAGE_ROOT, require_clean=True
-        )
+        installed_package = admit_installed_package(root=plan.installed_package.root)
         project = onboarding.validate_project(
-            plan.project.source_path, root=plan.source_root
+            plan.project.source_path, root=plan.installed_package.root
         ).project
         runtime_root = onboarding.project_runtime_directory(project)
         if before_storage and plan.storage is not None:
@@ -948,7 +933,7 @@ def _readmit_repair_plan(
     ) as exc:
         raise DoctorRepairError(f"repair plan changed before execution: {exc}") from exc
     if (
-        source.commit != plan.source_commit
+        installed_package != plan.installed_package
         or project != plan.project
         or (plan.storage is not None and observed_storage != plan.storage)
         or (
@@ -960,11 +945,18 @@ def _readmit_repair_plan(
     runtime = plan.runtime
     if runtime is None:
         return
-    if (
-        _file_sha256(runtime.uv) != runtime.uv_sha256
-        or _file_sha256(runtime.pixi) != runtime.pixi_sha256
-    ):
+    if _file_sha256(runtime.pixi) != runtime.pixi_sha256:
         raise DoctorRepairError("admitted package manager changed before execution")
+    if not before_storage:
+        settings = runtime.managed_root / "renv/settings.json"
+        try:
+            if (
+                settings.is_symlink()
+                or settings.read_bytes() != runtime.r_settings_bytes
+            ):
+                raise DoctorRepairError("managed R settings changed during repair")
+        except OSError as exc:
+            raise DoctorRepairError("managed R settings changed during repair") from exc
     if runtime.profile_bytes is None:
         if os.path.lexists(runtime.profile):
             raise DoctorRepairError(
@@ -1016,23 +1008,8 @@ def _admit_managed_root(plan: _ManagedRuntimePlan) -> None:
                 or root not in directory.resolve(strict=True).parents
             ):
                 raise DoctorRepairError(f"managed Pixi state is not owned: {directory}")
-        for name, data in (
-            ("pixi.toml", plan.manifest_bytes),
-            ("pixi.lock", plan.lock_bytes),
-        ):
-            destination = root / name
-            if os.path.lexists(destination):
-                state = destination.lstat()
-                observed = destination.read_bytes()
-                if not stat.S_ISREG(state.st_mode) or observed != data:
-                    raise DoctorRepairError(
-                        f"managed {name} differs from packaged bytes"
-                    )
-            else:
-                publish_exclusive(destination, data, DoctorRepairError)
         for relative in (
             "cache",
-            "cache/uv",
             "cache/pixi",
             "renv",
             "renv/cache",
@@ -1044,6 +1021,21 @@ def _admit_managed_root(plan: _ManagedRuntimePlan) -> None:
                 raise DoctorRepairError(
                     f"managed directory is not owned state: {directory}"
                 )
+        for name, data in (
+            ("pixi.toml", plan.manifest_bytes),
+            ("pixi.lock", plan.lock_bytes),
+            ("renv/settings.json", plan.r_settings_bytes),
+        ):
+            destination = root / name
+            if os.path.lexists(destination):
+                state = destination.lstat()
+                observed = destination.read_bytes()
+                if not stat.S_ISREG(state.st_mode) or observed != data:
+                    raise DoctorRepairError(
+                        f"managed {name} differs from packaged bytes"
+                    )
+            else:
+                publish_exclusive(destination, data, DoctorRepairError)
     except OSError as exc:
         raise DoctorRepairError(
             f"managed runtime is unavailable: {root}: {exc}"
@@ -1057,13 +1049,6 @@ def _repair_actions(
     if runtime is None:
         return ()
     base = sanitized_subprocess_environment()
-    uv = dict(base)
-    uv.update(
-        {
-            "UV_CACHE_DIR": str(runtime.managed_root / "cache/uv"),
-            "UV_PROJECT_ENVIRONMENT": sys.prefix,
-        }
-    )
     pixi = dict(base)
     for name in tuple(pixi):
         if name.startswith("PIXI_"):
@@ -1086,35 +1071,25 @@ def _repair_actions(
         {
             "EMRYS_USE_RENV": "1",
             "EMRYS_LOCAL_PILOT_R": "0",
-            "RENV_PROJECT": str(plan.source_root),
+            "RENV_PROJECT": str(runtime.managed_root),
             "RENV_PATHS_LIBRARY": str(runtime.managed_root / "renv/library"),
             "RENV_PATHS_CACHE": str(runtime.managed_root / "renv/cache"),
             "RENV_CONFIG_SANDBOX_ENABLED": "FALSE",
             "RENV_CONFIG_AUTO_SNAPSHOT": "FALSE",
-            "R_PROFILE_USER": str(plan.source_root / ".Rprofile"),
+            "R_PROFILE_USER": str(plan.installed_package.root / ".Rprofile"),
         }
     )
     manifest = str(runtime.managed_root / "pixi.toml")
     restore_argv = guarded_rscript_argv(
         str(runtime.managed_root / ".pixi/envs/r/bin/Rscript"),
-        (str(plan.source_root / "scripts/restore_r_environment.R"),),
+        (
+            str(
+                plan.installed_package.root
+                / "resources/runtime/restore_r_environment.R"
+            ),
+        ),
     )
     return (
-        (
-            (
-                str(runtime.uv),
-                "sync",
-                "--locked",
-                "--no-default-groups",
-                "--group",
-                "workflow",
-                "--python",
-                sys.executable,
-                "--project",
-                str(plan.source_root),
-            ),
-            uv,
-        ),
         (
             (
                 str(runtime.pixi),
@@ -1206,8 +1181,11 @@ def _print_result(result: DoctorResult, detail: LogLevel) -> None:
     ):
         _stderr(f"  {label:<10} {'PASS' if ready else 'FAIL'}")
     if detail in {LogLevel.VERBOSE, LogLevel.DEBUG}:
-        _stderr(f"Source checkout: {result.source_root}")
-        _stderr(f"Source commit: {result.source_commit or 'not admitted'}")
+        package = result.installed_package
+        if package is not None:
+            _stderr(f"Installed EMRYS: {package.root}")
+            _stderr(f"Package SHA-256: {package.content_sha256}")
+            _stderr(f"Build commit: {package.git_commit or 'unrecorded'}")
         if result.inspection is not None:
             _stderr(f"Runtime inventory: {result.inspection.profile_path}")
             _stderr(f"Runtime inventory SHA-256: {result.inspection.profile_sha256}")
@@ -1243,11 +1221,9 @@ def _print_repair_plan(plan: _RepairPlan) -> None:
     if plan.runtime is not None:
         runtime = plan.runtime
         _stderr(f"  Managed runtime: {runtime.managed_root}")
-        _stderr(f"  uv: {runtime.uv}")
         _stderr(f"  Pixi: {runtime.pixi}")
         actions.extend(
             (
-                "uv sync",
                 "Pixi native/R install",
                 "renv restore",
                 "runtime qualification",
@@ -1315,9 +1291,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
         started.update(
             {
                 "managed_root": runtime.managed_root,
-                "uv": runtime.uv,
                 "pixi": runtime.pixi,
-                "uv_sha256": runtime.uv_sha256,
                 "pixi_sha256": runtime.pixi_sha256,
                 "pixi_manifest_sha256": hashlib.sha256(
                     runtime.manifest_bytes
@@ -1361,7 +1335,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                 try:
                     completed = subprocess.run(
                         argv,
-                        cwd=plan.source_root,
+                        cwd=plan.installed_package.root,
                         env=environment,
                         stdout=sys.stderr,
                         stderr=sys.stderr,
@@ -1385,7 +1359,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
             candidate = onboarding.discover_runtime_profile(
                 project=plan.project.source_path,
                 environment=_managed_discovery_environment(plan),
-                root=plan.source_root,
+                root=plan.installed_package.root,
                 python_executable=Path(sys.executable),
             )
             if not _profile_is_managed(
@@ -1498,8 +1472,10 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
             onboarding.project_definition_path(arguments.project),
             analysis_name=arguments.analysis,
         )
+        if result.installed_package is None:
+            _print_result(result, LogLevel.NORMAL)
+            return 1
         controls = resolve_log_controls(
-            source_checkout=SourceCheckout(result.source_root),
             cli_level=arguments.log_level,
             cli_root=arguments.log_root,
             default_root=result.project.source_path.parent / "logs/application",

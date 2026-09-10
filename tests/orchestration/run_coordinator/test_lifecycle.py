@@ -16,6 +16,8 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
+
+from emrys.libraries.source_authority import PACKAGE_ROOT, admit_installed_package
 from typing import Any
 
 import pytest
@@ -1379,11 +1381,7 @@ def _attempt(
         "normalizer": normalizer,
         "workspace": str(built.run_root.parent.parent),
         "scratch": None,
-        "source_checkout": {
-            "path": str(workflow_fixture.REPO_ROOT),
-            "commit": workflow_fixture.source_checkout_commit(),
-            "clean": True,
-        },
+        "installed_package": admit_installed_package().record,
         "executor": "local",
         "execution_mode": "local-science-tools",
         "snakemake_argv": list(argv),
@@ -1423,9 +1421,7 @@ def _build_harness(
     argv = lifecycle.build_snakemake_argv(
         python_executable=Path(sys.executable),
         snakefile=workflow_fixture.SNAKEFILE.resolve(),
-        workflow_profile=(
-            workflow_fixture.REPO_ROOT / "workflow/profiles/local/profile.v9+.yaml"
-        ).resolve(),
+        workflow_profile=workflow_fixture.WORKFLOW_PROFILE.resolve(),
         configfile=config,
         run_root=built.run_root,
         target="cohort_slice",
@@ -1447,9 +1443,7 @@ def _build_harness(
         workflow_config_path=config,
         snakefile=workflow_fixture.SNAKEFILE.resolve(),
         python_executable=Path(sys.executable),
-        workflow_profile=(
-            workflow_fixture.REPO_ROOT / "workflow/profiles/local/profile.v9+.yaml"
-        ).resolve(),
+        workflow_profile=workflow_fixture.WORKFLOW_PROFILE.resolve(),
         target="cohort_slice",
         operation=operation,
         attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
@@ -1593,15 +1587,9 @@ def test_workflow_argv_binds_reviewed_absolute_source_files(tmp_path: Path) -> N
         "-m",
         "snakemake",
     ]
-    assert argv[argv.index("--snakefile") + 1] == str(
-        workflow_fixture.REPO_ROOT / "workflow" / "Snakefile"
-    )
+    assert argv[argv.index("--snakefile") + 1] == str(workflow_fixture.SNAKEFILE)
     assert argv[argv.index("--workflow-profile") + 1] == str(
-        workflow_fixture.REPO_ROOT
-        / "workflow"
-        / "profiles"
-        / "local"
-        / "profile.v9+.yaml"
+        workflow_fixture.WORKFLOW_PROFILE
     )
 
     injected = built.built.run_root / "profiles" / "local" / "profile.v9+.yaml"
@@ -1743,7 +1731,7 @@ def test_alternate_checkout_snakefile_is_rejected_before_attempt_publication(
     tmp_path: Path,
 ) -> None:
     built = _build_harness(tmp_path)
-    alternate = workflow_fixture.REPO_ROOT / "workflow" / "README.md"
+    alternate = PACKAGE_ROOT / "workflow" / "README.md"
     request = replace(built.request, snakefile=alternate)
     with pytest.raises(lifecycle.LifecycleError, match="reviewed workflow/Snakefile"):
         _run_attempt(request, ops=built.ops())

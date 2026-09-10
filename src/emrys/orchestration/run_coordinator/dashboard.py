@@ -790,7 +790,7 @@ def parse_identity(stdout_text):
         "run_id": r"^Run ID:\s*(.+)$",
         "run_root": r"^Run root:\s*(.+)$",
         "workspace": r"^Workspace:\s*(.+)$",
-        "source_commit": r"^Source commit:\s*(.+)$",
+        "package_sha256": r"^Package SHA-256:\s*(.+)$",
         "attempt": r"^Workflow attempt:\s*(.+)$",
         "attempt_status": r"^(?:Attempt receipt status|Attempt status):\s*(.+)$",
         "runtime_hash": r"^Runtime profile SHA-256:\s*(.+)$",
@@ -1500,9 +1500,9 @@ def job_lines(slurm, identity, width, attrs):
             "Run", identity.get("run_id", "waiting for control stream"), "value"
         ),
         field_line(
-            "Source / attempt",
+            "Code / attempt",
             "%s | %s"
-            % (identity.get("source_commit", "-"), identity.get("attempt", "-")),
+            % (identity.get("package_sha256", "-"), identity.get("attempt", "-")),
             "value",
         ),
         field_line(
@@ -2092,10 +2092,10 @@ def provenance_activity_lines(slurm, identity, model, now, width):
     )
     lines.extend(
         wrapped_field(
-            "Commit / runtime",
+            "Code / runtime",
             "%s | %s"
             % (
-                short_identity(identity.get("source_commit"), 10),
+                short_identity(identity.get("package_sha256"), 10),
                 short_identity(identity.get("runtime_hash"), 10),
             ),
             width,

@@ -64,7 +64,7 @@ command=("$producer" --analysis-id analysis
     --step09-all-sites "$tmp/inputs/all.tsv" --step09-significant-sites "$tmp/inputs/significant.tsv"
     --step09-summary "$tmp/inputs/summary.tsv" --reference-fasta "$tmp/inputs/reference.fa"
     --reference-fai "$tmp/inputs/reference.fa.fai" --rscript-bin "$fake_r"
-    --git-commit 0123456789012345678901234567890123456789)
+    --git-commit unavailable)
 for stem in candidate-context motif-hits sequence-logo motif-statistics; do
     command+=("--$stem-output" "$tmp/staged/$stem.tsv" "--$stem-final" "$tmp/final/$stem.tsv")
 done

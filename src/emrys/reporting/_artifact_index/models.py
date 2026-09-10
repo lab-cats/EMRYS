@@ -15,7 +15,7 @@ from emrys.libraries.validation.mpileup import RECEIPT_HEADER as STEP07_RECEIPT_
 from emrys.libraries.validation.report import HEADER as VALIDATION_REPORT_HEADER
 
 if TYPE_CHECKING:
-    from emrys.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
+    from emrys.libraries.source_authority import ArtifactSourceRoot, InstalledPackage
     from emrys.reporting._run_summary.models import OutputPaths
 
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -55,13 +55,6 @@ class SourceSnapshot:
     ctime_ns: int | None = None
 
 
-@dataclass(frozen=True)
-class LockOwnership:
-    device: int
-    inode: int
-    run_token: str
-
-
 @dataclass
 class Inspection:
     row: dict[str, str]
@@ -83,7 +76,7 @@ class Inspection:
 
 @dataclass
 class BuildContext:
-    source_checkout: SourceCheckout
+    installed_package: InstalledPackage
     artifact_source_root: ArtifactSourceRoot
     run_id: str
     run_contract_path: Path
@@ -105,7 +98,7 @@ class BuildContext:
     git_commit: str
     started_at: str
     finished_at: str
-    source_identity_observer: Callable[..., str | None]
+    source_identity_observer: Callable[..., InstalledPackage]
 
 
 @dataclass(frozen=True)

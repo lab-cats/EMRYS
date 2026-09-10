@@ -94,9 +94,9 @@ class ProjectValidation:
 
 
 def source_root() -> Path:
-    """Return the checkout root owning the selected package."""
+    """Return the executing installed package root."""
 
-    return Path(__file__).resolve().parents[4]
+    return Path(__file__).resolve().parents[2]
 
 
 def _absolute(value: str | Path) -> Path:
@@ -140,7 +140,7 @@ def _require_external_absent_output(value: str | Path, root: Path) -> Path:
         raise OnboardingError(f"output directory must be absent: {output}")
     if output == root or output in root.parents or root in output.parents:
         raise OnboardingError(
-            f"output directory must not overlap the EMRYS checkout: {output}"
+            f"output directory must not overlap the installed EMRYS package: {output}"
         )
     parent = output.parent
     try:
@@ -826,10 +826,10 @@ def validate_project(
 ) -> ProjectValidation:
     """Admit and compatibility-check one Project without runtime probes."""
 
-    checkout = source_root() if root is None else root
+    package_root = source_root() if root is None else root
     admission = admit_project(
         project,
-        checkout / PROFILE_RELATIVE_PATH,
+        package_root / PROFILE_RELATIVE_PATH,
     )
     return validate_project_admission(admission)
 
@@ -1076,7 +1076,7 @@ def _selected_environment_path(
 
 def _runtime_profile_bytes(
     environment: Mapping[str, str],
-    checkout: Path,
+    package_root: Path,
     python_executable: Path,
 ) -> tuple[bytes, Path]:
     try:
@@ -1126,7 +1126,7 @@ def _runtime_profile_bytes(
         elif check.check_id == "rscript":
             target = str(rscript)
         elif check.check_id == "renv_project":
-            target = str(checkout)
+            target = str(package_root)
         elif check.check_id == "renv_library":
             target = str(renv_library)
         elif check.check_type == "r_namespace":
@@ -1181,17 +1181,17 @@ def discover_runtime_profile(
 ) -> RuntimeInspection:
     """Discover and probe one candidate profile without publishing it."""
 
-    checkout = _absolute(source_root() if root is None else root)
-    admitted = validate_project(project, root=checkout).project
+    package_root = _absolute(source_root() if root is None else root)
+    admitted = validate_project(project, root=package_root).project
     destination = project_runtime_directory(admitted, writable=False) / "runtime.tsv"
     selected_environment = os.environ if environment is None else environment
     profile_bytes, renv_library = _runtime_profile_bytes(
         selected_environment,
-        checkout,
+        package_root,
         Path(sys.executable) if python_executable is None else python_executable,
     )
     inspection_environment = guarded_r_environment(
-        checkout,
+        package_root,
         renv_library,
         base_environment=selected_environment,
     )

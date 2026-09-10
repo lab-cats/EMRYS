@@ -48,13 +48,10 @@ def _result(
     ready: bool,
     inspection: RuntimeInspection | None = None,
 ) -> doctor.DoctorResult:
-    source_root = project.source_path.parent / "source"
-    source_root.mkdir(exist_ok=True)
     return doctor.DoctorResult(
         project=project,
         analysis=project.select_analysis(),
-        source_root=source_root,
-        source_commit="a" * 40,
+        installed_package=doctor.admit_installed_package(),
         inspection=inspection,
         bindings=(),
         blockers=() if ready else ("runtime inventory is not admitted",),
@@ -71,11 +68,6 @@ def _patch_foundations(
     receipt = project.source_path.parent / "storage.tsv"
     receipt.write_bytes(b"qualified\n")
     qualified = QualifiedStorage(receipt, "b" * 64, "site-1")
-    monkeypatch.setattr(
-        doctor,
-        "inspect_source_checkout",
-        lambda **_kwargs: SimpleNamespace(commit="a" * 40),
-    )
     monkeypatch.setattr(
         doctor.onboarding,
         "validate_project",
@@ -136,20 +128,17 @@ def _plan(project: ProjectAdmission) -> doctor._RepairPlan:
     return doctor._RepairPlan(
         project=project,
         analysis_name=project.select_analysis().name,
-        source_root=project.source_path.parent / "source",
-        source_commit="a" * 40,
+        installed_package=doctor.admit_installed_package(),
         storage=None,
         runtime=doctor._ManagedRuntimePlan(
-            source_root=project.source_path.parent / "source",
             managed_root=managed,
             profile=project.source_path.parent / "runtime/runtime.tsv",
-            uv=Path("/managers/uv"),
             pixi=Path("/managers/pixi"),
-            uv_sha256="b" * 64,
             pixi_sha256="c" * 64,
             profile_bytes=None,
             manifest_bytes=b'[workspace]\nname = "emrys"\n',
             lock_bytes=b"locked\n",
+            r_settings_bytes=b"{}\n",
         ),
     )
 
@@ -745,8 +734,6 @@ def test_repair_refuses_a_site_owned_runtime_without_mutation(
     )
     monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
     monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
-    (result.source_root / ".venv").mkdir()
-    monkeypatch.setattr(doctor.sys, "prefix", str(result.source_root / ".venv"))
     monkeypatch.setattr(doctor, "_manager", lambda name: Path(f"/manager/{name}"))
     monkeypatch.setattr(doctor, "_file_sha256", lambda _path: "d" * 64)
     before = _snapshot(tmp_path)
@@ -802,8 +789,6 @@ def test_managed_repair_accepts_missing_library_and_binds_base_profile(
     )
     monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
     monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
-    (result.source_root / ".venv").mkdir()
-    monkeypatch.setattr(doctor.sys, "prefix", str(result.source_root / ".venv"))
     monkeypatch.setattr(doctor, "_manager", lambda name: Path(f"/manager/{name}"))
     monkeypatch.setattr(doctor, "_file_sha256", lambda _path: "d" * 64)
     monkeypatch.setattr(
@@ -819,13 +804,15 @@ def test_managed_repair_accepts_missing_library_and_binds_base_profile(
     assert not missing_library.exists()
 
 
-def test_managed_repair_refuses_module_specific_dependency_installation(
+@pytest.mark.parametrize("check_id", ("collaborator_tool", "snakemake"))
+def test_managed_repair_refuses_external_dependency_installation(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    check_id: str,
 ) -> None:
     project = _project(tmp_path)
     missing = replace(
-        _check("collaborator_tool", "tool_version", str(tmp_path / "tool")),
+        _check(check_id, "tool_version", str(tmp_path / "tool")),
         status="fail",
         observed="missing",
     )
@@ -859,8 +846,6 @@ def test_managed_repair_refuses_module_specific_dependency_installation(
 
     monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
     monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
-    (result.source_root / ".venv").mkdir()
-    monkeypatch.setattr(doctor.sys, "prefix", str(result.source_root / ".venv"))
     monkeypatch.setattr(doctor, "_manager", lambda name: Path(f"/manager/{name}"))
     monkeypatch.setattr(doctor, "_file_sha256", lambda _path: "d" * 64)
 
@@ -885,8 +870,7 @@ def test_storage_only_repair_preserves_ready_site_runtime_and_skips_managers(
     blocked = doctor.DoctorResult(
         project=project,
         analysis=project.select_analysis(),
-        source_root=project.source_path.parent / "source",
-        source_commit="a" * 40,
+        installed_package=doctor.admit_installed_package(),
         inspection=inspection,
         bindings=(),
         blockers=("single-host storage is not qualified",),
@@ -997,6 +981,10 @@ def test_repair_isolates_and_refuses_pixi_configuration(
         "PIXI_CACHE_DETACHED_ENVIRONMENTS_DIR" not in environment
         for environment in pixi_environments
     )
+    assert pixi_environments[-1]["RENV_PROJECT"] == str(runtime.managed_root)
+    assert pixi_environments[-1]["R_PROFILE_USER"] == str(
+        plan.installed_package.root / ".Rprofile"
+    )
 
 
 class _Logger:
@@ -1057,16 +1045,12 @@ def _patch_logging(
     monkeypatch.setattr(doctor, "open_attempt_log", open_log)
 
 
-def test_repair_readmission_rejects_a_profile_that_appeared(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("changed", ("profile", "package", "settings"))
+def test_repair_readmission_rejects_changed_package_or_appeared_profile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, changed: str
 ) -> None:
     plan = _plan(_project(tmp_path))
     runtime = _runtime(plan)
-    monkeypatch.setattr(
-        doctor,
-        "inspect_source_checkout",
-        lambda **_kwargs: SimpleNamespace(commit=plan.source_commit),
-    )
     monkeypatch.setattr(
         doctor.onboarding,
         "validate_project",
@@ -1075,14 +1059,25 @@ def test_repair_readmission_rejects_a_profile_that_appeared(
     monkeypatch.setattr(
         doctor,
         "_file_sha256",
-        lambda path: runtime.uv_sha256 if path == runtime.uv else runtime.pixi_sha256,
+        lambda _path: runtime.pixi_sha256,
     )
-    runtime.profile.write_bytes(b"unapproved\n")
+    if changed == "profile":
+        runtime.profile.write_bytes(b"unapproved\n")
+    elif changed == "package":
+        plan = replace(
+            plan,
+            installed_package=replace(plan.installed_package, content_sha256="0" * 64),
+        )
+    else:
+        settings = runtime.managed_root / "renv/settings.json"
+        settings.parent.mkdir(parents=True)
+        settings.write_bytes(b"changed\n")
 
     with pytest.raises(
-        doctor.DoctorRepairError, match="appeared after repair confirmation"
+        doctor.DoctorRepairError,
+        match="appeared after repair confirmation|changed before execution|settings changed",
     ):
-        doctor._readmit_repair_plan(plan, before_storage=True)
+        doctor._readmit_repair_plan(plan, before_storage=changed != "settings")
 
 
 def test_repair_readmission_rejects_a_redirected_runtime_before_writing(
@@ -1097,11 +1092,6 @@ def test_repair_readmission_rejects_a_redirected_runtime_before_writing(
     default_profile.parent.rmdir()
     runtime.managed_root.parent.rmdir()
     runtime.managed_root.parent.symlink_to(external, target_is_directory=True)
-    monkeypatch.setattr(
-        doctor,
-        "inspect_source_checkout",
-        lambda **_kwargs: SimpleNamespace(commit=plan.source_commit),
-    )
     monkeypatch.setattr(
         doctor.onboarding,
         "validate_project",
@@ -1198,10 +1188,10 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     observed = doctor._execute_repair(plan, controls=_controls(project))
 
     assert observed is final
-    assert [Path(argv[0]).name for argv in commands] == ["uv", "pixi", "pixi"]
-    assert "sync" in commands[0] and "install" in commands[1]
-    assert "run" in commands[2] and "--environment" in commands[2]
-    assert commands[2][-1].endswith("scripts/restore_r_environment.R")
+    assert [Path(argv[0]).name for argv in commands] == ["pixi", "pixi"]
+    assert "install" in commands[0]
+    assert "run" in commands[1] and "--environment" in commands[1]
+    assert commands[1][-1].endswith("resources/runtime/restore_r_environment.R")
     assert discovery_calls[0]["environment"]["EMRYS_RENV_LIBRARY"].endswith(
         "R-4.6/x86_64-pc-linux-gnu"
     )

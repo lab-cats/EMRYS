@@ -908,8 +908,9 @@ main <- function() {
         usage_function = usage
     )
     validate_safe_id("analysis_id", arguments[["analysis-id"]])
-    if (!grepl("^[0-9a-f]{40}([0-9a-f]{24})?$", arguments[["git-commit"]])) {
-        abort("git_commit must be one full 40- or 64-character commit ID.")
+    if (arguments[["git-commit"]] != "unavailable" &&
+        !grepl("^[0-9a-f]{40}([0-9a-f]{24})?$", arguments[["git-commit"]])) {
+        abort("git_commit must be a full 40- or 64-character commit ID or unavailable.")
     }
 
     hash_arguments <- c(

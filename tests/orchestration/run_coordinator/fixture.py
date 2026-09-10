@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from emrys.libraries.source_authority import PACKAGE_ROOT
+
 
 def profile() -> dict[str, Any]:
     owners = (
@@ -258,7 +260,7 @@ def build_run(
     analysis = admit_project(
         project, profile() if selected_profile is None else selected_profile
     ).select_analysis()
-    source_root = Path(__file__).resolve().parents[3]
+    source_root = PACKAGE_ROOT
     resources = computational_resources
     if resources is None:
         resources = load_execution_profile(

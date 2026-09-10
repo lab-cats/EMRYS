@@ -54,6 +54,7 @@ validate_raw_vcf_counts <- function(path, sample_ids) {
     connection <- open_text_connection(path)
     on.exit(close(connection), add = TRUE)
     record_number <- 0L
+    header_count <- 0L
 
     repeat {
         lines <- readLines(connection, n = 10000L, warn = FALSE)
@@ -61,7 +62,19 @@ validate_raw_vcf_counts <- function(path, sample_ids) {
             break
         }
         lines <- sub("\r$", "", lines)
-        records <- lines[nzchar(lines) & !startsWith(lines, "#")]
+        if (any(!nzchar(trimws(lines)))) {
+            abort("VCF contains a blank physical row: ", path)
+        }
+        headers <- lines[startsWith(lines, "#CHROM")]
+        header_count <- header_count + length(headers)
+        expected_header <- paste(c(
+            "#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO",
+            "FORMAT", sample_ids
+        ), collapse = "\t")
+        if (any(headers != expected_header)) {
+            abort("VCF header does not match manifest sample order: ", path)
+        }
+        records <- lines[!startsWith(lines, "#")]
         for (line in records) {
             record_number <- record_number + 1L
             fields <- strsplit(line, "\t", fixed = TRUE)[[1L]]
@@ -147,6 +160,9 @@ validate_raw_vcf_counts <- function(path, sample_ids) {
                 )
             }
         }
+    }
+    if (header_count != 1L) {
+        abort("VCF must contain exactly one #CHROM header: ", path)
     }
     invisible(TRUE)
 }

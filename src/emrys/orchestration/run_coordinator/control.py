@@ -38,7 +38,7 @@ from emrys.libraries.application_logging import (
     render_failure_summary,
     resolve_log_controls,
 )
-from emrys.libraries.source_authority import SourceCheckout
+from emrys.libraries.source_authority import admit_installed_package
 from emrys.libraries.validation.errors import ValidationError
 from emrys.libraries.validation.inputs import read_bytes
 from emrys.orchestration.run_coordinator import (
@@ -217,7 +217,9 @@ def _plan_run(
             require_reporter=report_enabled and through == "analysis",
         )
         _require_ready(readiness)
-        validate_processing_graph(readiness.analysis.profile, readiness.source_root)
+        validate_processing_graph(
+            readiness.analysis.profile, readiness.installed_package.root
+        )
         policy = execution_profile.resource_policy
         processing_source = None
         if processing_source_run_id is not None:
@@ -692,7 +694,6 @@ def _resolve_controls(arguments: argparse.Namespace, workspace: Path) -> LogCont
         raise ControlError("Workspace must not be the filesystem root")
     try:
         return resolve_log_controls(
-            source_checkout=SourceCheckout(Path(__file__).resolve().parents[4]),
             cli_level=getattr(arguments, "log_level", None),
             cli_root=getattr(arguments, "log_root", None),
             default_root=root / "logs" / "application",
@@ -702,7 +703,7 @@ def _resolve_controls(arguments: argparse.Namespace, workspace: Path) -> LogCont
 
 
 def _admit_workspace_location(workspace: Path) -> None:
-    source_root = _absolute(Path(__file__).resolve().parents[4])
+    source_root = _absolute(Path(__file__).resolve().parents[2])
     try:
         blockers, remediations = doctor.workspace_location_blockers(
             _absolute(workspace), source_root

@@ -1,10 +1,17 @@
 # EMRYS temporary compression backlog
 
-Reviewed **2026-09-09** from `5499658a`. The [campaign](compression_campaign.md)
+Reviewed **2026-09-10** from `be06f608`. The [campaign](compression_campaign.md)
 owns the goals; this file owns CS scope, status, decisions, and proof. The
 [main matrix](backlog_matrix.md) owns broader outcomes and campaign completion.
 
 ## Working queue
+
+**[PR #157](https://github.com/lab-cats/EMRYS/pull/157): CS-23–26 are complete; implementation CI passed.**
+The approved outcome removes Python-to-R launch handoffs, report presentation
+copies, duplicate reporting publication mechanics, and runtime Git-checkout
+reconciliation. Scientific data and interpretation, both reports, exact code
+provenance, and current-version recovery remain required. The dashboard stays.
+
 
 **[PR #156](https://github.com/lab-cats/EMRYS/pull/156): CS-20–22 done; integration pending.** Reporting uses
 one manifest, task completion is stored once, and historical-version readers
@@ -15,9 +22,9 @@ data, provenance, current Run recovery, and retained evidence; dashboard work
 and scientific-validation roster changes remain excluded.
 
 The product baseline for the 20% target is **69,223 physical lines at `cab77a26`**;
-`5499658a` has **64,921**, a reduction of 4,302 (6.2%). The target is at most
+`be06f608` has **61,609**, a reduction of 7,614 (11.0%). The target is at most
 55,378 lines. Count tracked source `.py`, `.R`, `.sh`, `.css`, `.j2` files and
-`workflow/Snakefile`; report schemas/configuration, tests, docs, tooling, and
+the workflow `Snakefile` (including its new package location); report schemas/configuration, tests, docs, tooling, and
 evidence separately. This tranche is not presumed to reach the target.
 
 **[PR #155](https://github.com/lab-cats/EMRYS/pull/155), CS-18 runner-owned scientific execution, passed ordinary hosted CI at `5499658a` ([run 34383760078](https://github.com/lab-cats/EMRYS/actions/runs/34383760078)); integration is pending.**
@@ -107,6 +114,10 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-20](#cs-20-through-cs-22-current-result-contracts) | Persist one reporting result manifest, with shared identity/provenance once. | Done | 5 | 4 | Retire per-artifact files and duplicate receipts; preserve both HTML reports and useful TSVs. | `REPORT-ROSTER-01` |
 | [CS-21](#cs-20-through-cs-22-current-result-contracts) | Store terminal task completion details once. | Done | 4 | 4 | Verified marker references the terminal attempt; current admission and recovery follow that reference. | `COMPRESS-01` |
 | [CS-22](#cs-20-through-cs-22-current-result-contracts) | Accept only current persisted contracts. | Done | 5 | 4 | Remove old Run/request, policy, resource, dispatch, Attempt, and reporting readers across callers. | `COMPRESS-01` |
+| [CS-23](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Execute R workers directly and use native genomic intervals. | Done | 4 | 4 | Preserve independent scientific validation before publication. | `COMPRESS-01` |
+| [CS-24](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Render both reports directly through existing Jinja templates. | Done | 4 | 4 | Retire intermediate presentation dictionaries across both callers. | `COMPRESS-01` |
+| [CS-25](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Share equivalent reporting file and lock operations. | Done | 3 | 3 | Keep each stage's transaction order, rechecks, and owned rollback. | `COMPRESS-01` |
+| [CS-26](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Execute the installed package with its own workflow and R assets. | Done | 5 | 4 | Replace runtime Git reconciliation with exact package bytes and build provenance. | `COMPRESS-01` |
 
 ## Acceptance shared by every card
 
@@ -329,7 +340,7 @@ CS-08/09 passed PR #155's corrected final-state CI at `a0dc7526`.
 |---|---|---:|
 | CS-08 [BAM QC](../../src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh) | Two outputs; empty quickcheck success markers, nonempty success behavior, native flagstat text, and producer/validator interpretation differences. | 12–22 lines |
 | CS-09 [Duplicate marking](../../src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh) | BAM/index/metrics; `REMOVE_DUPLICATES=false`, Java/Picard admission, indexing, input/JAR identity, validation and partial-publication recovery. | 15–25 lines |
-| CS-10 [Paired CMH](../../src/emrys/analyses/paired_cmh_candidate_ranking/producer.py) | R computation, paired strata, statistical/threshold admission, six outputs/headers, summary-last publication, process groups, native/historical readers, and existing `.previous` residue. | 35–60 lines |
+| CS-10 [Paired CMH](../../src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R) | R computation, paired strata, statistical/threshold admission, six outputs/headers, summary-last publication, process groups, native/historical readers, and existing `.previous` residue. | 35–60 lines |
 
 These earlier branch estimates are superseded by CS-18's full migration and
 must not be added to its measured reduction. Independent scientific oracles,
@@ -339,16 +350,20 @@ checks replace repeated standalone lifecycle matrices.
 ### CS-11 Reporting source identity
 
 The [report-output decision](../design/decisions/execution-evidence-and-reporting.md#fixed-report-output-consolidation)
-owns the current source binding and historical read/resume rules. This card
-requires a decision separating scientific identity from reporting implementation.
+owns scientific versus reporting identity. CS-26 replaces checkout matching with
+installed-package observation and preserves the existing separate computation,
+Processing, module, and backend hashes. It does not change the contents of those
+identity scopes beyond relocating their files and binding the packaged lock.
 
-Map the affected adapters, materializers, contracts, and producers. Specify
-new Run binding, producer identity, and exact historical admission before
-migration. A report-only edit should allow compatible scientific resume and
-independent regeneration; changed science must still be refused. Preserve
-source rechecks, historical outputs/receipts, and extension ownership. Never
-rewrite an existing Run, bypass its binding with a translation layer, create
-an inspection/reporting cycle, or grow product code without approval.
+The remaining investigation concerns unnecessary scientific invalidation from
+shared files that contain several responsibilities. Map the affected adapters,
+materializers, contracts, and producers before changing those scopes. Preserve
+exact code provenance and rechecks, extension ownership, and immutable Runs.
+Current-version report-only changes should permit scientifically compatible
+resume; changed scientific computation must be refused. Historical-version
+inspection, resume, and regeneration are retired by the approved version policy;
+existing data and receipts remain untouched. No translation layer or duplicate
+identity authority is authorized by this card.
 
 ### CS-12 Canonical BAM command printing
 
@@ -718,7 +733,7 @@ artifact-template `scope_selector`.
 [`api.py`](../../src/emrys/contracts/orchestration/api.py) forces selectors
 from `scope_type`; this makes those values redundant in admitted records.
 However, `rule_name` is consumed:
-[`workflow/Snakefile`](../../workflow/Snakefile) reconstructs and checks the
+[`workflow/Snakefile`](../../src/emrys/workflow/Snakefile) reconstructs and checks the
 authored processing-rule projection against its static base graph.
 The profile schema also enforces its presence and admission checks uniqueness.
 It is incorrect to describe the field as unused merely because the
@@ -727,7 +742,7 @@ Execution-Plan projection omits it.
 The existing functional projection in `application_model.py` excludes
 both fields and provides a semantic starting point for a later migration.
 The tracked
-[current profile](../../workflow/contracts/local_cmh_v2.json) contains 81
+[current profile](../../src/emrys/workflow/contracts/local_cmh_v2.json) contains 81
 rule-name/selector occurrence lines; retaining the historical profile means
 these are not 81 automatically deletable lines.
 
@@ -964,3 +979,89 @@ documentation, workflow lint, and managed-runtime checks. Current resume and
 foreign-record refusal cases pass with the migrated fixtures. The subsequent
 closeout changes documentation only and passes documentation/whitespace checks;
 it does not invalidate the implementation evidence above.
+
+### CS-23 through CS-26 Direct science, rendering, and installed execution
+
+Approved together on 2026-09-10, based on `be06f608`. The tranche must reduce
+its maintained product surface; moved assets remain included in the count.
+One stacked PR carries the tranche and its necessary caller/fixture updates.
+
+- **Preserved:** scientific calculations, coordinates, explicit UTR precedence,
+  derived UTR behavior, independent Python/R checks, scientific outputs and
+  provenance, both report documents and figures, provider HTML-byte output,
+  exact file identities, immutable Runs, Processing compatibility boundaries,
+  current-version recovery, exclusive publication and ownership-aware cleanup.
+- **Replaced by approval:** Step08/09 Python launch wrappers, intermediate
+  report dictionaries and the public dictionary-rendering API, duplicate
+  publication mechanics, runtime Git-checkout requirements and Python
+  self-repair from the checkout. Python packages are installed by the operator's
+  package manager. Doctor continues managing Project-owned native and R tools.
+- **Excluded:** dashboard retirement, scientific validation roster changes,
+  broad Processing identity-policy changes, retained results and evidence.
+- **Environment-deferred:** institutional and Slurm execution, scientific review,
+  and biological validation. Hosted software tests do not establish these.
+
+The existing runner invokes both R workers and validates their staged outputs
+before publishing them. Publication must bind the same bytes that passed
+validation. Existing GRanges/IRanges operations replace handwritten interval
+merging and clipping while preserving transcript checks and output ordering.
+
+Both report owners render their existing values directly with Jinja. Admission
+and scientific formatting remain in their existing owners. The shared file
+owner supplies exclusive writes, directory synchronization, and lock ownership;
+report-specific file movement and rollback ordering remain in the publisher.
+
+The installed package contains the workflow, R startup guard, renv lock and
+bootstrap, restore command, and scientific worker scripts. Build metadata records
+the source revision when available, whether that build source was modified, and
+the Python lock hash. Runtime admission binds exact installed bytes and this
+metadata without invoking Git. Workflow Attempts and reporting provenance record
+that installed identity. Separate computation, Processing, module, and backend
+hashes remain; package identity does not replace Processing compatibility.
+
+Acceptance requires caller-complete code, schemas, installed assets, fixtures,
+and current documentation; focused publication/scientific/package checks;
+unchanged report content and figure comparisons; a real installed-wheel smoke;
+and ordinary hosted CI on the final commit. Start CI when the PR is published,
+continue remaining work, then inspect and fix failures. Record final size and
+validation results here before marking the cards Done.
+
+Final comparison against `be06f608`:
+
+| Maintained category | Added | Removed | Net |
+|---|---:|---:|---:|
+| Product | 1,608 | 3,893 | −2,285 |
+| Tests and fixtures | 713 | 2,293 | −1,580 |
+| Configuration and schemas | 113 | 52 | +61 |
+| Tooling | 61 | 5 | +56 |
+| Documentation | 288 | 143 | +145 |
+| Retained evidence | 0 | 0 | 0 |
+
+Documentation records the changed contracts and closeout. Four product files
+are retired. Moved workflow/R assets keep their original accounting categories;
+relocation contributes no deletion savings. On that same maintained-code scope,
+product size is 59,324 lines: 9,899 below the campaign baseline (14.3%), with
+3,946 lines still needed for the 20% target.
+
+Local scientific validators, native shell fixtures, orchestration schema checks,
+report content/figure comparisons, independent goldens, dashboard, logging,
+source dependencies, documentation, and lint pass. Fresh source-to-sdist-to-wheel
+builds preserve metadata; wheel inspection confirms required assets. A guarded
+R startup fixture verifies external bootstrap state and unchanged package bytes;
+it does not execute Bioconductor restoration or scientific annotation.
+
+All required [hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34490118042)
+passed at `c01d8882`: four Python shards (2,082 passed, 3 skipped),
+36 isolated subprocess checks, unchanged coverage thresholds, installed-wheel
+validation, Python 3.11 smoke, shell owners, real Step08/09 R semantic fixtures,
+managed native runtimes on Ubuntu/Rocky/Debian, and the complete managed
+scientific/reporting path. Coverage was 89.08% lines and 79.09% branches.
+Only the Snakemake DSL is excluded from Python reporting; Python source scope
+and independent workflow checks remain unchanged.
+
+The final documentation-only closeout changes this backlog. Documentation and
+whitespace checks validate that change; it does not invalidate the implementation
+evidence above. Local package-dependent checks were not used for acceptance:
+automatic approval review blocked a local reinstall pending separate installation
+authority, and the hosted checks exercised freshly installed packages instead.
+No institutional execution, scientific review, or biological validation is claimed.

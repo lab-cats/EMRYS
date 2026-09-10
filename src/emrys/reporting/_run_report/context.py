@@ -32,10 +32,9 @@ from emrys.libraries.installed_package_identity import (
 )
 from emrys.libraries.source_authority import (
     ArtifactSourceRootError,
-    SourceCheckoutError,
+    InstalledPackageError,
     admit_artifact_source_root,
-    admit_source_checkout,
-    matching_checkout_head_commit,
+    admit_installed_package,
 )
 
 from .inputs import (
@@ -60,7 +59,6 @@ from .models import (
 )
 from .receipt import read_receipt_tsv
 from .validation import render_html
-from .view import build_evidence_view
 
 
 def _resource_snapshot(resource: str, label: str) -> FileSnapshot:
@@ -388,14 +386,13 @@ def _result_links(
 
 def prepare_context(arguments: argparse.Namespace) -> ReportContext:
     try:
-        source_checkout = admit_source_checkout(
-            root=arguments.source_checkout,
-            package_root=Path(__file__).resolve().parents[2],
+        installed_package = admit_installed_package(
+            root=arguments.package_root,
         )
         artifact_source_root = admit_artifact_source_root(
             root=arguments.artifact_source_root,
         )
-    except (ArtifactSourceRootError, SourceCheckoutError) as exc:
+    except (ArtifactSourceRootError, InstalledPackageError) as exc:
         raise ReportRenderError(str(exc)) from exc
     source_root = artifact_source_root.root
     run_summary_path = _explicit_path(arguments.run_summary, "run-summary path")
@@ -412,15 +409,14 @@ def prepare_context(arguments: argparse.Namespace) -> ReportContext:
         _admit_analysis_policy(arguments, summary)
     )
     try:
-        producer_git_commit = (
-            matching_checkout_head_commit(
-                source_checkout=source_checkout,
-                package_root=Path(__file__).resolve().parents[2],
-            )
-            or "local_build"
-        )
-    except SourceCheckoutError as exc:
+        if (
+            admit_installed_package(root=installed_package.root).record
+            != installed_package.record
+        ):
+            _fail("Installed report package changed after admission")
+    except InstalledPackageError as exc:
         _fail(str(exc))
+    producer_git_commit = installed_package.git_commit or "unavailable"
     if importlib.metadata.version("Jinja2") != JINJA_VERSION:
         _fail(f"Installed Jinja2 version must match {JINJA_VERSION}")
     template_snapshot = _resource_snapshot(TEMPLATE_RESOURCE, "report Jinja template")
@@ -472,36 +468,35 @@ def prepare_context(arguments: argparse.Namespace) -> ReportContext:
         "run_summary_path": str(run_summary_snapshot.path),
         "run_summary_sha256": run_summary_snapshot.sha256,
         "state_banner": COMPUTATIONAL_BOUNDARY_BANNER,
-        "source_checkout": str(source_checkout.root),
+        "package_root": str(installed_package.root),
         "artifact_source_root": str(artifact_source_root.root),
         "template_path": f"emrys.reporting/{TEMPLATE_RESOURCE}",
         "template_sha256": template_snapshot.sha256,
     }
     evidence_html_bytes = render_html(
-        build_evidence_view(
-            summary,
-            metadata,
-            banner=COMPUTATIONAL_BOUNDARY_BANNER,
-            result_links=_result_links(report_artifacts, output_dir),
-            inspect_command=_inspect_command(source_root, output_root),
-            analysis_policy=analysis_policy,
-            renderer_details=scientific_report.renderer_details,
-            figure_evidence=scientific_report.figure_evidence,
-            report_inputs=tuple(
-                (
-                    item.label,
-                    str(item.path),
-                    item.sha256,
-                    "content hash" if item.rehash_content else "file identity",
-                )
-                for item in scientific_report.inputs
-                if item.path not in {artifact.path for artifact in report_artifacts}
-            ),
-        ),
+        summary,
         css,
+        report_view="evidence",
+        metadata=metadata,
+        banner=COMPUTATIONAL_BOUNDARY_BANNER,
+        result_links=_result_links(report_artifacts, output_dir),
+        inspect_command=_inspect_command(source_root, output_root),
+        analysis_policy=analysis_policy,
+        renderer_details=scientific_report.renderer_details,
+        figure_evidence=scientific_report.figure_evidence,
+        report_inputs=tuple(
+            (
+                item.label,
+                str(item.path),
+                item.sha256,
+                "content hash" if item.rehash_content else "file identity",
+            )
+            for item in scientific_report.inputs
+            if item.path not in {artifact.path for artifact in report_artifacts}
+        ),
     )
     context = ReportContext(
-        source_checkout=source_checkout,
+        installed_package=installed_package,
         artifact_source_root=artifact_source_root,
         producer_git_commit=producer_git_commit,
         run_summary_path=run_summary_path,

@@ -7,7 +7,7 @@ from pathlib import Path
 
 _MODULE_PATH = Path(__file__).resolve()
 
-REPO_ROOT = _MODULE_PATH.parents[5]
+PACKAGE_ROOT = _MODULE_PATH.parents[3]
 SCHEMA_ROOT = _MODULE_PATH.parents[2] / "schemas" / "artifacts"
 COMMON_SCHEMA_PATH = SCHEMA_ROOT / "v1" / "common.schema.json"
 SCHEMA_FILES = {

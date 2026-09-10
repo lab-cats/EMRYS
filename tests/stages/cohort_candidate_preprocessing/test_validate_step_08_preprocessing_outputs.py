@@ -21,6 +21,7 @@ from emrys.contracts.scientific_evidence.step08 import (
     STEP08_SUMMARY_HEADER,
 )
 from emrys.libraries.validation import Snapshot
+from emrys.libraries.validation.mpileup import RECEIPT_HEADER
 from emrys.stages.cohort_candidate_preprocessing import (
     validator as cohort_candidate_preprocessing_validator,
 )
@@ -433,3 +434,45 @@ def test_foreign_lock_is_preserved(tmp_path: Path) -> None:
 
     assert _run_validator(evidence, "--execute").returncode == 2
     assert lock.read_text(encoding="utf-8") == "foreign\n"
+
+
+@pytest.mark.parametrize("changed", ("receipt", "vcf"))
+def test_prepublication_reconciles_exact_step07_files(
+    tmp_path: Path, changed: str
+) -> None:
+    evidence = _build_validation_fixture(tmp_path)
+    root = tmp_path / "step07"
+    directory = root / "cohort" / "p1"
+    directory.mkdir(parents=True)
+    receipt = directory / "cohort.p1.step07_outputs.tsv"
+    inputs = _read_tsv(evidence.inputs)
+    rows = [dict(zip(inputs[0], row, strict=True)) for row in inputs[1:]]
+    receipt_rows = []
+    for row in rows:
+        vcf = directory / f"cohort.p1.{row['orientation']}.mpileup.vcf"
+        vcf.write_text("fixture VCF bytes independently admitted by R\n")
+        row.update(vcf_path=str(vcf), vcf_sha256=_sha256(vcf))
+        receipt_rows.append(
+            [
+                row.get(column, "1") if column != "vcf_record_count" else "1"
+                for column in RECEIPT_HEADER
+            ]
+        )
+    _write_tsv(receipt, RECEIPT_HEADER, receipt_rows)
+    for row in rows:
+        row.update(
+            step07_receipt_path=str(receipt), step07_receipt_sha256=_sha256(receipt)
+        )
+    _write_tsv(
+        evidence.inputs, inputs[0], ([row[key] for key in inputs[0]] for row in rows)
+    )
+    result = _run_validator(evidence, "--step07-root", str(root))
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == EXPECTED_DRY_STDOUT
+    path = receipt if changed == "receipt" else Path(rows[0]["vcf_path"])
+    with path.open("a") as stream:
+        stream.write("\n")
+    result = _run_validator(evidence, "--step07-root", str(root), "--execute")
+    assert result.returncode == 0, result.stderr
+    checks = {row["check_id"]: row for row in report_rows(evidence.output)}
+    assert checks["input_receipt_reconciliation"]["status"] == "fail"

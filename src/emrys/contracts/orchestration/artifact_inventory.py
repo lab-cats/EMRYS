@@ -16,20 +16,20 @@ from emrys.contracts.orchestration.application_model import (
 
 
 _PROCESSING_PRODUCERS = {
-    "00a": Path("src/emrys/stages/star_index/step_00a_build_star_index.sh"),
-    "00b": Path("src/emrys/stages/gtf_to_bed12/converter.py"),
-    "00c": Path("src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"),
-    "01": Path("src/emrys/stages/star_alignment/step_01_star_align.sh"),
-    "02": Path("src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh"),
-    "02b": Path("src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh"),
+    "00a": Path("stages/star_index/step_00a_build_star_index.sh"),
+    "00b": Path("stages/gtf_to_bed12/converter.py"),
+    "00c": Path("stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"),
+    "01": Path("stages/star_alignment/step_01_star_align.sh"),
+    "02": Path("stages/canonical_bam/step_02_sort_index_bam.sh"),
+    "02b": Path("evidence/canonical_bam_qc/step_02b_bam_qc.sh"),
     "03": Path(
-        "src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"
+        "evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"
     ),
-    "04": Path("src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh"),
-    "05": Path("src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"),
-    "06": Path("src/emrys/stages/mechanical_orientation/producer.py"),
-    "07": Path("src/emrys/stages/partitioned_cohort_mpileup/producer.py"),
-    "08": Path("src/emrys/stages/cohort_candidate_preprocessing/producer.py"),
+    "04": Path("stages/duplicate_marking/step_04_mark_duplicates.sh"),
+    "05": Path("stages/split_n_cigar/step_05_split_n_cigar_reads.sh"),
+    "06": Path("stages/mechanical_orientation/producer.py"),
+    "07": Path("stages/partitioned_cohort_mpileup/producer.py"),
+    "08": Path("stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"),
 }
 
 
@@ -40,7 +40,7 @@ def _processing_profile(source_root: Path) -> Mapping[str, Any]:
 
 
 def processing_tasks(source_root: Path) -> tuple[Mapping[str, Any], ...]:
-    """Read fixed processing tasks from the admitted implementation checkout."""
+    """Read fixed processing tasks from the admitted installed package."""
     profile = _processing_profile(source_root)
     return tuple(
         MappingProxyType(

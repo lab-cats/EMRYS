@@ -56,6 +56,7 @@ from emrys.orchestration.run_coordinator.run_implementation import (
     processing_implementation_identity,
 )
 from emrys.libraries.process_environment import (
+    guarded_rscript_argv,
     R_SELECTOR_PREFIXES,
     R_STARTUP_VARIABLES,
     guarded_r_environment,
@@ -131,9 +132,10 @@ class AttemptPlan:
             execution_path=self.execution_path,
             profile_path=self.profile_path,
             workflow_config_path=self.config_path,
-            snakefile=self.readiness.source_root / SNAKEFILE_RELATIVE,
+            snakefile=self.readiness.installed_package.root / SNAKEFILE_RELATIVE,
             python_executable=Path(sys.executable),
-            workflow_profile=self.readiness.source_root / WORKFLOW_PROFILE_RELATIVE,
+            workflow_profile=self.readiness.installed_package.root
+            / WORKFLOW_PROFILE_RELATIVE,
             target=BACKEND_TARGET,
             operation=self.operation,
             attempt_record_bytes=self.attempt_record_bytes,
@@ -177,6 +179,10 @@ def build_run_candidate(
 ) -> RunCandidate:
     """Construct the complete Run before allocation or Attempt identity exists."""
 
+    if readiness.installed_package is None:
+        raise MaterializationError(
+            "Run planning requires an admitted installed package"
+        )
     required_tools = doctor.required_tool_identities(
         readiness.inspection,
         bindings=readiness.bindings,
@@ -193,14 +199,14 @@ def build_run_candidate(
     executes_module = bool(module_owner_keys & set(stopping_owner_keys))
     try:
         implementation_sha256 = implementation_identity(
-            readiness.source_root,
+            readiness.installed_package.root,
             analysis.module.descriptor.module_id if executes_module else None,
             loaded_module=analysis.module if executes_module else None,
         )
         processing_implementation_sha256 = processing_implementation_identity(
-            readiness.source_root
+            readiness.installed_package.root
         )
-        backend_sha256 = backend_semantics_identity(readiness.source_root)
+        backend_sha256 = backend_semantics_identity(readiness.installed_package.root)
     except RunImplementationError as exc:
         raise MaterializationError(str(exc)) from exc
     toolchain = toolchain_from_required_tools(required_tools)
@@ -478,7 +484,7 @@ def _task_commands(
             producer = controlled_python_argv(
                 sys.executable,
                 "-m",
-                ".".join(producer_path.with_suffix("").parts[1:]),
+                ".".join(("emrys", *producer_path.with_suffix("").parts)),
                 *command_flags(
                     ("sample-id", scope_id),
                     ("input-bam", split_bam),
@@ -693,7 +699,7 @@ def _task_commands(
         producer = controlled_python_argv(
             sys.executable,
             "-m",
-            ".".join(producer_path.with_suffix("").parts[1:]),
+            ".".join(("emrys", *producer_path.with_suffix("").parts)),
             *command_flags(
                 ("cohort-id", cohort_id),
                 ("sample-manifest", sample_manifest),
@@ -761,23 +767,23 @@ def _task_commands(
                 ("inputs-output", working_paths[inputs]),
                 ("summary-output", working_paths[summary]),
                 ("threads", declared_threads()),
-                ("rscript-bin", rscript),
-                (
-                    "r-script",
-                    source_root
-                    / "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R",
-                ),
             ),
         )
         producer = _r_owner_command(
             bash,
             source_root,
             renv_library,
-            controlled_python_argv(
-                sys.executable,
-                "-m",
-                ".".join(producer_path.with_suffix("").parts[1:]),
-                *arguments,
+            tuple(
+                guarded_rscript_argv(
+                    rscript,
+                    (
+                        str(
+                            source_root
+                            / "stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"
+                        ),
+                        *arguments,
+                    ),
+                )
             ),
         )
         validator = _validator(
@@ -787,6 +793,7 @@ def _task_commands(
                 ("sample-manifest", sample_manifest),
                 ("partition-manifest", partition_manifest),
                 ("annotation-gtf", gtf),
+                ("step07-root", step07_root),
                 ("sites", sites),
                 ("inputs", inputs),
                 ("summary", summary),
@@ -911,11 +918,15 @@ def _dispatches(
     )
     expected = inspection.expected_tasks(authority, profile)
     owners = {str(item["machine_key"]): item for item in profile["owner_tasks"]}
-    if readiness.source_commit is None:
-        raise MaterializationError("Task planning requires an admitted source commit")
+    if readiness.installed_package is None:
+        raise MaterializationError(
+            "Task planning requires an admitted installed package"
+        )
     processing = {
         task["machine_key"]: task
-        for task in artifact_inventory.processing_tasks(readiness.source_root)
+        for task in artifact_inventory.processing_tasks(
+            readiness.installed_package.root
+        )
     }
     module = run.analysis.module.descriptor
     module_tasks = {task.owner_key: task for task in module.tasks}
@@ -1027,7 +1038,7 @@ def _dispatches(
                 source=source,
                 analysis_revision=analysis_revision,
                 run_root=run_root,
-                source_root=readiness.source_root,
+                source_root=readiness.installed_package.root,
                 runtime=runtime,
                 all_paths=paths_by_scope,
                 threads=(
@@ -1086,7 +1097,7 @@ def _dispatches(
                 partition_manifest=Path(str(source["partitions"]["manifest"]["path"])),
                 reference_fasta=Path(str(source["reference"]["fasta"]["path"])),
                 reference_gtf=Path(str(source["reference"]["gtf"]["path"])),
-                source_commit=str(readiness.source_commit),
+                source_commit=readiness.installed_package.git_commit or "unavailable",
                 configuration=_frozen_json(planning_configuration),
                 inputs=MappingProxyType(declared_inputs),
                 outputs=MappingProxyType(declared_outputs),
@@ -1108,7 +1119,7 @@ def _dispatches(
                 ),
                 r_owner_command=lambda command: _r_owner_command(
                     _runtime_path(runtime, "bash"),
-                    readiness.source_root,
+                    readiness.installed_package.root,
                     Path(_runtime_path(runtime, "renv_library")),
                     command,
                 ),
@@ -1415,7 +1426,7 @@ def build_attempt_plan(
         if snapshot.get("role")
         in {"step00c_reference_fai_v1", "step00c_reference_dict_v1"}
     }
-    source_root = readiness.source_root
+    source_root = readiness.installed_package.root
     runtime_profile_path = (
         run_root / "contract" / "runtime-profiles" / f"{attempt_id}.tsv"
     )
@@ -1468,7 +1479,7 @@ def build_attempt_plan(
         "execution_path": str(run_root / "contract" / "run.json"),
         "profile_path": str(run_root / "contract/profile.json"),
         "workflow_attempt_id": attempt_id,
-        "source_checkout": str(source_root),
+        "package_root": str(source_root),
         **reporting_config,
         "resource_policy": resource_policy_record,
         "dispatch_paths": dispatch_references,
@@ -1511,11 +1522,7 @@ def build_attempt_plan(
         "normalizer": normalizer_identity,
         "workspace": str(workspace_path),
         "scratch": None,
-        "source_checkout": {
-            "path": str(source_root),
-            "commit": readiness.source_commit,
-            "clean": True,
-        },
+        "installed_package": readiness.installed_package.record,
         "executor": executor,
         "execution_mode": "local-science-tools",
         "snakemake_argv": list(attempt_argv),

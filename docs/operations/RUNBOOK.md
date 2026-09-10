@@ -19,8 +19,8 @@ actual values; square brackets in command descriptions mark optional arguments.
 
 `emrys --version` works from any directory without a Project or scientific
 runtime. Add `-v` to see the loaded package path and Python version/executable.
-It writes no logs and can identify an installation from another checkout;
-ordinary commands reject a checkout that differs from the imported package.
+It writes no logs and identifies the executing installation independently of
+the working directory and Git checkout.
 Version flags cannot accompany a command.
 
 ## Institution-provided runtime
@@ -300,8 +300,8 @@ See [Troubleshooting](TROUBLESHOOTING.md) before retry or cleanup.
 
 ## Dependency maintenance
 
-Institutional R restoration below requires a clean checkout and permission to
-install packages. The [engineering guide](ENGINEERING_CONVENTIONS.md#dependencies-and-environments)
+Institutional R restoration below requires the installed EMRYS R guard and
+permission to install packages. The [engineering guide](ENGINEERING_CONVENTIONS.md#dependencies-and-environments)
 owns dependency policy and developer maintenance. First check the Python locks
 and selected workflow environment without changing them:
 
@@ -316,13 +316,18 @@ For a missing institutional R library, select the actual R 4.6.1 executable as
 checkout:
 
 ```bash
-export EMRYS_RENV_RESTORE_ROOT=/absolute/path/to/operator-owned/library-root
-RENV_PATHS_LIBRARY="$EMRYS_RENV_RESTORE_ROOT" \
+export EMRYS_RENV_RESTORE_ROOT=/absolute/path/to/operator-owned/r-environment
+mkdir -p "$EMRYS_RENV_RESTORE_ROOT"
+RENV_PROJECT="$EMRYS_RENV_RESTORE_ROOT" \
+RENV_PATHS_LIBRARY="$EMRYS_RENV_RESTORE_ROOT/library" \
+RENV_PATHS_CACHE="$EMRYS_RENV_RESTORE_ROOT/cache" \
   make r-restore RSCRIPT_BIN="$EMRYS_RSCRIPT"
 ```
 
 This installs through `renv` and needs locked package sources and system build
-dependencies. Obtain them from the institution, or use managed Doctor repair
+dependencies. The explicit external project holds renv settings, locks, staging,
+and downloaded sources; installed EMRYS supplies the pinned activation and lockfile.
+Obtain dependencies from the institution, or use managed Doctor repair
 for a fresh managed Project; it does not authorize changing a shared library.
 Copy the printed `project library:` path into `EMRYS_RENV_LIBRARY`, including
 any R/platform subdirectory, then check that exact library:

@@ -28,6 +28,7 @@ dependencies = [
     "jsonschema>=4.18.0",
     "referencing>=0.28.4",
     "simple-term-menu==1.6.6",
+    "snakemake==9.25.1",
 ]
 
 [project.urls]
@@ -72,9 +73,17 @@ namespaces = false
 
 [tool.setuptools.package-data]
 "emrys" = [
+    ".Rprofile",
+    "renv.lock",
+    "renv/activate.R",
+    "renv/settings.json",
+    "workflow/Snakefile",
+    "workflow/contracts/*.json",
+    "workflow/profiles/local/*.yaml",
     "resources/runtime/*.lock",
     "resources/runtime/*.toml",
     "resources/runtime/*.tsv",
+    "resources/runtime/*.R",
 ]
 "emrys.contracts" = [
     "schemas/artifacts/v1/*.json",
@@ -95,8 +104,19 @@ namespaces = false
     "argument_parsing.sh",
     "executable_resolution.sh",
     "file_checks.sh",
+    "gatk_invocation.sh",
     "input_contract.R",
 ]
+"emrys.stages.star_index" = ["*.sh"]
+"emrys.stages.fasta_sidecars" = ["*.sh"]
+"emrys.stages.star_alignment" = ["*.sh"]
+"emrys.stages.canonical_bam" = ["*.sh"]
+"emrys.stages.duplicate_marking" = ["*.sh"]
+"emrys.stages.split_n_cigar" = ["*.sh"]
+"emrys.stages.cohort_candidate_preprocessing" = ["*.R"]
+"emrys.evidence.canonical_bam_qc" = ["*.sh"]
+"emrys.evidence.rseqc_orientation" = ["*.sh"]
+"emrys.ingestion.sample_manifest_admission" = ["*.sh"]
 "emrys.orchestration.run_coordinator" = ["resources/*.yaml"]
 "emrys.reporting" = ["styles/*.css", "templates/*.html.j2"]
 

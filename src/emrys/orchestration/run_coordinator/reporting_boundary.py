@@ -24,8 +24,8 @@ from emrys.contracts.orchestration.projection import (
 )
 from emrys.libraries.exclusive_publication import publish_exclusive
 from emrys.libraries.source_authority import (
-    SourceCheckoutError,
-    attest_source_checkout,
+    InstalledPackageError,
+    admit_installed_package,
 )
 from emrys.libraries.validation.errors import ValidationError
 from emrys.libraries.validation.inputs import (
@@ -123,7 +123,7 @@ class ReportingBoundaryOps:
     now: Callable[[], datetime]
     validate_semantic_receipt: SemanticValidator
     sync_directory: Callable[[Path], None] = _sync_directory
-    attest_source_checkout: Callable[..., Any] = attest_source_checkout
+    admit_installed_package: Callable[..., Any] = admit_installed_package
 
 
 @dataclass(frozen=True, slots=True)
@@ -492,7 +492,7 @@ def _admit_identity(
     workflow_attempt_path: Path,
     workflow_config_path: Path,
     require_publishable_attempt: bool,
-    attest_source: Callable[..., Any] = attest_source_checkout,
+    attest_source: Callable[..., Any] = admit_installed_package,
 ) -> _AdmittedIdentity:
     root = _canonical_root(run_root)
     expected_profile = root / "contract" / "profile.json"
@@ -556,22 +556,22 @@ def _admit_identity(
     for field, expected in config_identity.items():
         if config.get(field) != expected:
             raise ReportingBoundaryError(f"Workflow config does not bind {field}")
-    source_checkout = attempt["source_checkout"]
-    source_checkout_root = Path(str(source_checkout["path"]))
-    if config.get("source_checkout") != str(source_checkout_root):
+    installed_package = attempt["installed_package"]
+    package_root = Path(str(installed_package["path"]))
+    if config.get("package_root") != str(package_root):
         raise ReportingBoundaryError(
-            "Workflow config does not bind the attempt source checkout"
+            "Workflow config does not bind the attempt package root"
         )
     if require_publishable_attempt:
         try:
-            attest_source(
-                root=source_checkout_root,
-                package_root=Path(__file__).resolve().parents[2],
-                expected_commit=str(source_checkout["commit"]),
-            )
-        except SourceCheckoutError as exc:
+            observed = attest_source(root=package_root)
+            if observed.record != installed_package:
+                raise InstalledPackageError(
+                    "Installed package differs from the workflow attempt"
+                )
+        except InstalledPackageError as exc:
             raise ReportingBoundaryError(
-                f"Could not attest reporting source checkout: {exc}"
+                f"Could not admit reporting package: {exc}"
             ) from exc
     _admit_reporting_projection(root=root, config=config)
     run_lock_reference = _run_lock_reference(
@@ -660,7 +660,7 @@ def publish_start(
         workflow_attempt_path=workflow_attempt_path,
         workflow_config_path=workflow_config_path,
         require_publishable_attempt=True,
-        attest_source=ops.attest_source_checkout,
+        attest_source=ops.admit_installed_package,
     )
     paths = ledger_paths(identity.root, admitted_kind)
     for existing_kind in reporting_kinds(identity.root):
@@ -696,7 +696,7 @@ def publish_start(
         workflow_attempt_path=workflow_attempt_path,
         workflow_config_path=workflow_config_path,
         require_publishable_attempt=True,
-        attest_source=ops.attest_source_checkout,
+        attest_source=ops.admit_installed_package,
     )
     if confirmed != identity:
         raise ReportingBoundaryError(
@@ -749,7 +749,7 @@ def publish_verified(
         workflow_attempt_path=workflow_attempt_path,
         workflow_config_path=workflow_config_path,
         require_publishable_attempt=True,
-        attest_source=ops.attest_source_checkout,
+        attest_source=ops.admit_installed_package,
     )
     paths = ledger_paths(identity.root, admitted_kind)
     _ensure_ledger_root(paths, identity.root, ops)
@@ -794,7 +794,7 @@ def publish_verified(
         workflow_attempt_path=workflow_attempt_path,
         workflow_config_path=workflow_config_path,
         require_publishable_attempt=True,
-        attest_source=ops.attest_source_checkout,
+        attest_source=ops.admit_installed_package,
     )
     if confirmed != identity:
         raise ReportingBoundaryError(

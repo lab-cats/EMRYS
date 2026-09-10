@@ -24,7 +24,7 @@ def producer_evidence(
     git_commit: str,
     *,
     analysis_module: analyses.LoadedAnalysisModuleV1,
-    source_root: Path = contracts.REPO_ROOT,
+    source_root: Path = contracts.PACKAGE_ROOT,
 ) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     for task in processing_tasks(source_root):
@@ -59,9 +59,7 @@ def producer_evidence(
             "sha256": analysis_module.provider.package.sha256,
         }
     ]
-    checked_out_builtin = (
-        source_root / "src/emrys/analyses/paired_cmh_candidate_ranking"
-    )
+    installed_builtin = source_root / "analyses/paired_cmh_candidate_ranking"
     for step_id in dict.fromkeys(
         task.step_id for task in analysis_module.descriptor.tasks
     ):
@@ -69,7 +67,7 @@ def producer_evidence(
             git_commit
             if analysis_module.descriptor.module_id
             == analyses.BUILTIN_PAIRED_CMH_MODULE_ID
-            and analysis_module.provider.package.root == checked_out_builtin
+            and analysis_module.provider.package.root == installed_builtin
             else None
         )
         result[step_id] = {

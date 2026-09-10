@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from emrys import analyses
 from emrys.contracts.artifacts import api as contracts
-from emrys.libraries.source_authority import matching_clean_checkout_head_commit
+from emrys.libraries.source_authority import admit_installed_package
 
 from .core import (
     load_run_contract,
@@ -37,16 +37,16 @@ from .records import (
 from .registry import build_adapter_registry
 
 if TYPE_CHECKING:
-    from emrys.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
+    from emrys.libraries.source_authority import ArtifactSourceRoot, InstalledPackage
 
 
 def prepare_context(
     arguments: argparse.Namespace,
     *,
-    source_checkout: SourceCheckout,
+    installed_package: InstalledPackage,
     artifact_source_root: ArtifactSourceRoot,
 ) -> BuildContext:
-    source_identity_observer = matching_clean_checkout_head_commit
+    source_identity_observer = admit_installed_package
     source_root = artifact_source_root.root
     if not contracts.SAFE_ID_RE.fullmatch(arguments.run_id):
         raise ArtifactIndexError("run_id must match [A-Za-z0-9][A-Za-z0-9._-]*")
@@ -86,7 +86,7 @@ def prepare_context(
     except analyses.AnalysisModuleLoadError as exc:
         raise ArtifactIndexError(str(exc)) from exc
     adapter_registry = build_adapter_registry(
-        analysis_module.descriptor, source_root=source_checkout.root
+        analysis_module.descriptor, source_root=installed_package.root
     )
     profile = getattr(arguments, "profile", None)
     if profile is None:
@@ -148,17 +148,15 @@ def prepare_context(
 
     started_at = utc_now()
     attempt_id = new_attempt_id(started_at)
-    git_commit = source_identity_observer(
-        source_checkout=source_checkout,
-        package_root=Path(__file__).resolve().parents[2],
-    )
-    if git_commit is None:
+    observed = source_identity_observer(root=installed_package.root)
+    if observed.record != installed_package.record:
         raise ArtifactIndexError(
-            "Artifact-index provenance requires a stable clean source checkout"
+            "Installed package changed before provenance attribution"
         )
+    git_commit = installed_package.git_commit or "unavailable"
     evidence = producer_evidence(
         git_commit,
-        source_root=source_checkout.root,
+        source_root=installed_package.root,
         analysis_module=analysis_module,
     )
     inspections = [
@@ -193,7 +191,7 @@ def prepare_context(
 
     finished_at = utc_now()
     context = BuildContext(
-        source_checkout=source_checkout,
+        installed_package=installed_package,
         artifact_source_root=artifact_source_root,
         run_id=arguments.run_id,
         run_contract_path=run_contract_path,
@@ -244,22 +242,19 @@ def recheck_inputs(context: BuildContext) -> None:
 
 
 def recheck_source_identity(context: BuildContext) -> None:
-    """Re-attest the exact clean producer checkout bound into the receipt."""
+    """Re-observe the exact installed producer bound into the manifest."""
 
-    observed = context.source_identity_observer(
-        source_checkout=context.source_checkout,
-        package_root=Path(__file__).resolve().parents[2],
-    )
-    if observed != context.git_commit:
+    observed = context.source_identity_observer(root=context.installed_package.root)
+    if observed.record != context.installed_package.record:
         raise ArtifactIndexError(
-            "Artifact-index producer checkout changed after provenance attribution"
+            "Artifact-index installed producer changed after provenance attribution"
         )
 
 
 def prepare_evidence_context(
     arguments: argparse.Namespace,
     *,
-    source_checkout: SourceCheckout,
+    installed_package: InstalledPackage,
     artifact_source_root: ArtifactSourceRoot,
 ) -> EvidenceContext:
     """Prepare the single Run result manifest and its human table projections."""
@@ -268,7 +263,7 @@ def prepare_evidence_context(
 
     context = prepare_context(
         arguments,
-        source_checkout=source_checkout,
+        installed_package=installed_package,
         artifact_source_root=artifact_source_root,
     )
     paths = OutputPaths(
@@ -290,6 +285,7 @@ def prepare_evidence_context(
         artifacts=context.records,
         generated_at=context.finished_at,
         git_commit=context.git_commit,
+        installed_package=context.installed_package.record,
         analysis_policy_binding=context.analysis_policy_binding,
         publication={
             "attempt_id": context.attempt_id,

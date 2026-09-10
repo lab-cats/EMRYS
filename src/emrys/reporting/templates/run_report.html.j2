@@ -1,243 +1,456 @@
+{%- set scientific = report_view == 'scientific' -%}
+{%- set title = 'EMRYS ' ~ ('scientific report' if scientific else 'evidence and operations report') ~ ': ' ~ summary.run_id -%}
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ view.document_title }}</title>
+  <title>{{ title }}</title>
   <style id="emrys-report-styles">
 {{ css | safe }}
   </style>
 </head>
 <body>
-{% macro render_table(block) -%}
-<div class="emrys-table-wrap{% if block.wide %} emrys-table-wrap-wide{% endif %}"{% if block.wide %} tabindex="0" role="region" aria-label="{{ block.caption }}"{% endif %}>
-  <table class="emrys-table" id="{{ block.id }}">
-    <caption>{{ block.caption }}</caption>
-    <thead><tr>{% for column in block.header %}<th scope="col">{{ column }}</th>{% endfor %}</tr></thead>
+{% macro row(values, row_headers=false) -%}
+<tr>{% for value in values %}{% if row_headers and loop.first %}<th scope="row">{{ value | display }}</th>{% else %}<td>{{ value | display }}</td>{% endif %}{% endfor %}</tr>
+{%- endmacro %}
+{% macro table(id, caption, header, rows=none, row_headers=false) -%}
+{% set wide = header | length > 6 %}
+<div class="emrys-table-wrap{% if wide %} emrys-table-wrap-wide{% endif %}"{% if wide %} tabindex="0" role="region" aria-label="{{ caption }}"{% endif %}>
+  <table class="emrys-table" id="{{ id }}">
+    <caption>{{ caption }}</caption>
+    <thead><tr>{% for column in header %}<th scope="col">{{ column }}</th>{% endfor %}</tr></thead>
     <tbody>
-    {% if block.rows %}
-      {% for row in block.rows %}
-      <tr>{% for value in row %}{% if block.row_headers and loop.first %}<th scope="row">{{ value }}</th>{% else %}<td>{{ value }}</td>{% endif %}{% endfor %}</tr>
-      {% endfor %}
-    {% else %}
-      <tr><td colspan="{{ block.header | length }}">No rows are available.</td></tr>
-    {% endif %}
+    {% if rows is not none %}
+      {% for values in rows %}{{ row(values, row_headers) }}{% else %}<tr><td colspan="{{ header | length }}">No rows are available.</td></tr>{% endfor %}
+    {% else %}{{ caller() }}{% endif %}
     </tbody>
   </table>
 </div>
 {%- endmacro %}
-
-{% macro render_fact_grid(block) -%}
-<div id="{{ block.id }}" class="fact-grid-block">
-  <h3>{{ block.title }}</h3>
-  <dl class="fact-grid">
-  {% for label, value in block.facts %}
-    <div class="fact-item"><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
-  {% endfor %}
-  </dl>
+{% macro empty(message) -%}<p class="empty-state">{{ message }}</p>{%- endmacro %}
+{% macro note(message, notice=false) -%}<p class="{{ 'notice' if notice else 'provenance-note' }}">{{ message }}</p>{%- endmacro %}
+{% macro fact(label, value) -%}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{%- endmacro %}
+{% macro section(id, title) -%}
+<section id="{{ id }}" class="report-section" aria-labelledby="{{ id }}-heading">
+  <h2 id="{{ id }}-heading">{{ title }}</h2>{{ caller() }}
+</section>
+{%- endmacro %}
+{% macro category(id, title, open=false) -%}
+{% if scientific %}<div id="{{ id }}" class="report-category report-category-static" aria-label="{{ title }}">{% else %}
+<details id="{{ id }}" class="report-category" name="emrys-report-categories"{% if open %} open{% endif %}><summary>{{ title }}</summary>{% endif %}
+  <div class="report-category-body">{{ caller() }}</div>
+{% if scientific %}</div>{% else %}</details>{% endif %}
+{%- endmacro %}
+{% macro scientific_figure(id) -%}
+{% set figure = figures[id] %}
+<figure id="{{ id }}" class="scientific-figure{% if figure.assets | length > 1 %} scientific-figure-multipanel{% endif %} figure-status-{{ figure.status }}" data-figure-status="{{ figure.status }}" aria-labelledby="{{ id }}-title {{ id }}-caption">
+  <h3 id="{{ id }}-title">{{ figure_labels[id] }} — {{ figure.title }}</h3>
+  <p class="figure-summary figure-takeaway"><strong>Takeaway:</strong> {{ figure.text_summary }}</p>
+  {% if figure.status == 'available' %}
+  <div class="scientific-figure-assets">
+  {% for asset in figure.assets %}<img id="{{ id }}-image-{{ loop.index }}" class="scientific-figure-image" data-panel-id="{{ asset.panel_id }}" src="{{ asset.data_uri }}" alt="{{ asset.alt_text }}">{% endfor %}
+  </div>
+  {% else %}<p class="empty-state figure-unavailable">{{ figure.unavailable_reason }}</p>{% endif %}
+  <figcaption id="{{ id }}-caption">{{ figure.caption }}</figcaption>
+</figure>
+{%- endmacro %}
+{% macro evidence_group(title) -%}
+<div class="candidate-evidence-group" data-evidence-group="{{ title | lower | replace(' ', '-') }}">
+  <h4>{{ title }}</h4><dl>{{ caller() }}</dl>
 </div>
 {%- endmacro %}
-
-{% macro render_block(block) -%}
-{% if block.kind == "table" %}
-{{ render_table(block) }}
-{% elif block.kind == "empty" %}
-<p class="empty-state">{{ block.message }}</p>
-{% elif block.kind == "note" %}
-<p class="{% if block.notice %}notice{% else %}provenance-note{% endif %}">{{ block.message }}</p>
-{% elif block.kind == "json" %}
-<h3>{{ block.title }}</h3>
-<pre aria-label="{{ block.title }}">{{ block.payload }}</pre>
-{% elif block.kind == "panel_grid" %}
-<div class="panel-grid">
-  {% for panel in block.panels %}
-  <div class="status-panel"><h3>{{ panel.title }}</h3>{{ render_block(panel.block) }}</div>
-  {% endfor %}
-</div>
-{% elif block.kind == "artifact_overview" %}
-<figure class="artifact-overview">
-  <svg viewBox="0 0 {{ block.width }} {{ block.height }}" role="img" aria-labelledby="artifact-overview-title artifact-overview-description">
-    <title id="artifact-overview-title">Expected artifact state overview</title>
-    <desc id="artifact-overview-description">{{ block.description }}</desc>
-    {% for segment in block.segments %}<rect x="{{ segment.x }}" y="18" width="{{ segment.width }}" height="30" fill="{{ segment.color }}"><title>{{ segment.name }}: {{ segment.count }}</title></rect>{% endfor %}
-    <text x="0" y="70" font-size="14" fill="#17202a">Expected artifacts: {{ block.total }}</text>
-  </svg>
-  <figcaption>Artifact availability is copied from the canonical run summary. This visualization is not validation evidence.</figcaption>
-</figure>
-<ul class="artifact-legend" aria-label="Artifact state legend">
-  {% for item in block.legend %}<li class="legend-{{ item.name | replace(' ', '-') }}">{{ item.name | title }}: {{ item.count }}</li>{% endfor %}
-</ul>
-{% elif block.kind == "metric_grid" %}
-<dl id="{{ block.id }}" class="metric-grid" aria-label="Key analysis counts">
-  {% for metric in block.metrics %}
-  <div class="metric-card"><dt>{{ metric.label }}</dt><dd>{{ metric.value }}</dd></div>
-  {% endfor %}
-</dl>
-{% elif block.kind == "fact_grid" %}
-{{ render_fact_grid(block) }}
-{% elif block.kind == "candidate_index" %}
-<div class="candidate-index-block">
-  <p class="provenance-note">{{ block.selection_note }}</p>
-  <section class="candidate-index-summary" aria-labelledby="{{ block.id }}-heading">
-    <h3 id="{{ block.id }}-heading">{{ block.caption }}</h3>
-    <ol class="candidate-index-list" id="{{ block.id }}">
-    {% for record in block.records %}
-      <li class="candidate-index-record" data-candidate-id="{{ record.candidate_id }}">
-        <div class="candidate-index-heading">
-          <span class="candidate-rank">{{ record.rank }}.</span>
-          <strong class="candidate-index-id">{{ record.candidate_id }}</strong>
-          <span class="candidate-gene">{{ record.gene_ids }}</span>
-          <span class="candidate-status">{{ record.call_status }}</span>
-        </div>
-        <dl class="candidate-index-facts">
-          <div><dt>Editing rate</dt><dd>{{ record.editing_rate }}</dd></div>
-          <div><dt>Location (1-based)</dt><dd>{{ record.location }}</dd></div>
-          <div><dt>Nearby motifs</dt><dd>{{ record.motif }}</dd></div>
-        </dl>
-      </li>
-    {% endfor %}
-    </ol>
-  </section>
-</div>
-{% elif block.kind == "candidate_record" %}
-<article id="{{ block.record.id }}" class="candidate-evidence-record" data-candidate-rank="{{ block.record.rank }}" data-candidate-id="{{ block.record.candidate_id }}">
-  <h3>{{ block.record.rank }}. {{ block.record.candidate_id }}</h3>
-  <p class="candidate-status">{{ block.record.call_status }}</p>
+{% macro candidate_record(candidate) -%}
+{% set location = candidate.location %}{% set motif = candidate.motif %}
+<article id="candidate-evidence-{{ candidate.display_rank }}" class="candidate-evidence-record" data-candidate-rank="{{ candidate.display_rank }}" data-candidate-id="{{ candidate.candidate_id }}">
+  <h3>{{ candidate.display_rank }}. {{ candidate.candidate_id }}</h3>
+  <p class="candidate-status">{{ candidate.call_status }}</p>
   <div class="candidate-evidence-groups">
-  {% for group in block.record.groups %}
-    <div class="candidate-evidence-group" data-evidence-group="{{ group.title | lower | replace(' ', '-') }}">
-      <h4>{{ group.title }}</h4>
-      <dl>
-      {% for label, value in group.facts %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}
-      </dl>
-    </div>
-  {% endfor %}
+  {% call evidence_group('Editing rate') %}
+    {{ fact(candidate_display.control_condition ~ ' mean', rate_text(candidate.mean_control_af)) }}
+    {{ fact(candidate_display.treatment_condition ~ ' mean', rate_text(candidate.mean_treatment_af)) }}
+    {{ fact('Treatment − control', difference_text(candidate.treatment_control_difference)) }}
+    {{ fact('Mean analysis depth', decimal_text(candidate.mean_analysis_dp)) }}
+  {% endcall %}
+  {% call evidence_group('Location') %}
+    {{ fact('Coordinate (1-based)', location.chromosome ~ ':' ~ location.position_1based) }}
+    {{
+      fact('Change', 'genomic ' ~ location.genomic_ref ~ '>' ~ location.genomic_alt
+      ~ '; RNA ' ~ location.rna_ref ~ '>' ~ location.rna_alt)
+    }}
+    {{ fact('Workflow orientation', location.workflow_orientation) }}
+    {{ fact('Admitted orientation policy', location.orientation_policy) }}
+    {{ fact('Annotation strand (carried)', location.annotation_strand) }}
+    {{ fact('Genes', location.gene_ids | join(', ') or 'Not available') }}
+    {{ fact('Recorded transcripts (no isoform selected)', location.transcript_ids | join(', ') or 'Not available') }}
+    {{ fact('Region memberships', location.region_memberships | join(', ') or 'No recorded transcript-region overlap') }}
+  {% endcall %}
+  {% call evidence_group('Statistical evidence') %}
+    {{ fact('Call status', candidate.call_status) }}
+    {{ fact('BH FDR', decimal_text(candidate.cmh_fdr_bh)) }}
+    {{ fact('Common odds ratio', decimal_text(candidate.common_odds_ratio)) }}
+  {% endcall %}
+  {% call evidence_group('Nearby motifs') %}
+    {{
+      fact('Registered motif', 'Not admitted because the Step 10 scientific-context transaction is unavailable'
+      if motif.state == 'step10_unavailable' else motif.motif_id ~ '; RNA '
+      ~ motif.rna_consensus ~ '; DNA ' ~ motif.dna_consensus)
+    }}
+    {{ fact('Match policy', motif.match_policy or 'Not admitted') }}
+    {{
+      fact('Admitted context window', 'Not available' if motif.window_start_1based is none
+      or motif.window_end_1based is none else location.chromosome ~ ':'
+      ~ motif.window_start_1based ~ '-' ~ motif.window_end_1based ~ '; registered radius ±'
+      ~ motif.context_radius ~ ' nt')
+    }}
+    {{ fact('Context state', motif.context_status or motif.state) }}
+    {{ fact('Context orientation action', motif.orientation_action or 'Not available') }}
+    {{
+      fact('Exact admitted hit count', motif.hits | length if motif.state in ('present',
+      'no_registered_hit') else 'Not available under the admitted context policy')
+    }}
+    {{ fact('Result', motif_index_text(motif)) }}
+    {{
+      fact('Display relationship', 'All admitted hits across the registered context are listed below. '
+      ~ figure_labels['selected-context-track-figure'] ~ ' highlights only spans intersecting its ±25-nt sequence panel; hits outside that panel remain listed here.')
+    }}
+  {% endcall %}
   </div>
-  {% if block.record.pairs %}
+  {% if candidate.pairs %}
   <div class="candidate-replicates">
-    {% for pair_batch in block.record.pairs | batch(4) %}
+  {% for pair_batch in candidate.pairs | batch(4) %}
     <div class="candidate-pair-batch">
-    <h4{% if not loop.first %} class="candidate-replicates-continuation"{% endif %}>Manifest-paired sample evidence — {{ block.record.candidate_id }}{% if not loop.first %} (continued){% endif %}</h4>
+    <h4{% if not loop.first %} class="candidate-replicates-continuation"{% endif %}>Manifest-paired sample evidence — {{ candidate.candidate_id }}{% if not loop.first %} (continued){% endif %}</h4>
     {% for pair in pair_batch %}
     <div class="candidate-pair">
       <p><strong>Replicate {{ pair.replicate }}</strong></p>
       <div class="candidate-pair-samples">
+      {%
+        for label, sample in ((candidate_display.control_condition, pair.control),
+        (candidate_display.treatment_condition, pair.treatment))
+      %}
         <dl class="candidate-sample">
-          <div><dt>Condition</dt><dd>{{ pair.control_label }}</dd></div>
-          <div><dt>Sample</dt><dd>{{ pair.control.sample_id }}</dd></div>
-          <div><dt>Editing rate</dt><dd>{{ pair.control.editing_rate }}</dd></div>
-          <div><dt>Read support</dt><dd>{{ pair.control.read_support }}</dd></div>
+          {{ fact('Condition', label) }}{{ fact('Sample', sample.sample_id) }}
+          {{ fact('Editing rate', rate_text(sample.allele_fraction)) }}
+          {{
+            fact('Read support', 'Not available' if sample.alternate_depth is none
+            or sample.total_depth is none else 'AD ' ~ sample.alternate_depth
+            ~ ' / DP ' ~ sample.total_depth)
+          }}
         </dl>
-        <dl class="candidate-sample">
-          <div><dt>Condition</dt><dd>{{ pair.treatment_label }}</dd></div>
-          <div><dt>Sample</dt><dd>{{ pair.treatment.sample_id }}</dd></div>
-          <div><dt>Editing rate</dt><dd>{{ pair.treatment.editing_rate }}</dd></div>
-          <div><dt>Read support</dt><dd>{{ pair.treatment.read_support }}</dd></div>
-        </dl>
+      {% endfor %}
       </div>
     </div>
     {% endfor %}
     </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-  {% if block.record.motif_hits %}
-  <div class="candidate-motif-hits">
-    <h4>Exact registered-motif hits</h4>
-    <ul>{% for hit in block.record.motif_hits %}<li>{{ hit }}</li>{% endfor %}</ul>
-  </div>
-  {% elif block.record.motif_unavailable_reason %}
-  <p class="provenance-note">{{ block.record.motif_unavailable_reason }}</p>
-  {% endif %}
-</article>
-{% elif block.kind == "scientific_figure" %}
-<figure id="{{ block.id }}" class="scientific-figure{% if block.assets | length > 1 %} scientific-figure-multipanel{% endif %} figure-status-{{ block.status }}" data-figure-status="{{ block.status }}" aria-labelledby="{{ block.id }}-title {{ block.id }}-caption">
-  <h3 id="{{ block.id }}-title">{{ block.label }} — {{ block.title }}</h3>
-  <p class="figure-summary figure-takeaway"><strong>Takeaway:</strong> {{ block.takeaway }}</p>
-  {% if block.status == "available" %}
-  <div class="scientific-figure-assets">
-  {% for asset in block.assets %}
-    <img id="{{ block.id }}-image-{{ loop.index }}" class="scientific-figure-image" data-panel-id="{{ asset.panel_id }}" src="{{ asset.data_uri }}" alt="{{ asset.alt_text }}">
   {% endfor %}
   </div>
-  {% else %}
-  <p class="empty-state figure-unavailable">{{ block.unavailable_reason }}</p>
   {% endif %}
-  <figcaption id="{{ block.id }}-caption">{{ block.caption }}</figcaption>
-</figure>
-{% elif block.kind == "figure_guide" %}
-<article id="{{ block.id }}" class="figure-guide-entry" data-figure-id="{{ block.figure_id }}">
-  <h3>{{ block.label }} — {{ block.title }}</h3>
-  <dl>
-    <div class="figure-guide-question"><dt>What it answers</dt><dd>{{ block.question }}</dd></div>
-    <div class="figure-guide-reading"><dt>How to read it</dt><dd>{{ block.how_to_read }}</dd></div>
-    <div class="figure-guide-inputs"><dt>Data inputs</dt><dd>{{ block.input_roles }}</dd></div>
-    <div class="figure-guide-population"><dt>Population</dt><dd>{{ block.population }}</dd></div>
-    <div class="figure-guide-limitations"><dt>Limitations</dt><dd>{{ block.limitations }}</dd></div>
-  </dl>
+  {% if motif.hits %}
+  <div class="candidate-motif-hits"><h4>Exact registered-motif hits</h4>
+    <ul>{% for hit in motif.hits %}<li>{{ hit.motif_id }} {{ hit.matched_sequence }}: offsets {{ '%+d' | format(hit.start_offset) }} to {{ '%+d' | format(hit.end_offset) }}; midpoint {{ signed_offset(hit.midpoint_offset) }} nt</li>{% endfor %}</ul>
+  </div>
+  {% elif motif.unavailable_reason %}{{ note(motif.unavailable_reason) }}{% endif %}
 </article>
-{% elif block.kind == "notice_list" %}
-<div class="notice"><p><strong>{{ block.title }}</strong></p><ul>{% for item in block["items"] %}<li>{{ item }}</li>{% endfor %}</ul></div>
-{% endif %}
 {%- endmacro %}
-
-<main id="emrys-report" tabindex="-1"
-  data-run-id="{{ view.run_id }}"
-  data-report-view="{{ view.report_view }}"
-{% if view.report_view == "scientific" %}
-  data-selected-candidate-count="{{ view.selected_candidate_ids | length }}"
-{% endif %}
-{% if view.report_view == "evidence" %}
-  data-run-summary-sha256="{{ view.metadata.run_summary_sha256 }}"
-  data-renderer-version="{{ view.metadata.renderer_version }}"
-  data-jinja-version="{{ view.metadata.jinja_version }}"
-  data-template-sha256="{{ view.metadata.template_sha256 }}"
-  data-css-sha256="{{ view.metadata.css_sha256 }}"
+<main id="emrys-report" tabindex="-1" data-run-id="{{ summary.run_id }}" data-report-view="{{ report_view }}"
+{% if scientific %}data-selected-candidate-count="{{ candidate_display.candidates | length if candidate_display is not none else 0 }}"
+{% else %}
+  data-run-summary-sha256="{{ metadata.run_summary_sha256 }}" data-renderer-version="{{ metadata.renderer_version }}"
+  data-jinja-version="{{ metadata.jinja_version }}" data-template-sha256="{{ metadata.template_sha256 }}" data-css-sha256="{{ metadata.css_sha256 }}"
 {% endif %}>
   <nav class="fact-grid" aria-label="Report purposes">
-    <a class="fact-item" href="{{ view.run_id }}.scientific_report.html"><strong>Scientific report</strong><span class="candidate-status">What did the analysis find?</span></a>
-    <a class="fact-item" href="{{ view.run_id }}.evidence_report.html#analysis-sources-section"><strong>Evidence and provenance</strong><span class="candidate-status">Why should the reader trust this result?</span></a>
-    <a class="fact-item" href="{{ view.run_id }}.evidence_report.html#attempt-lineage-section"><strong>Operations</strong><span class="candidate-status">How did execution proceed?</span></a>
+    <a class="fact-item" href="{{ summary.run_id }}.scientific_report.html"><strong>Scientific report</strong><span class="candidate-status">What did the analysis find?</span></a>
+    <a class="fact-item" href="{{ summary.run_id }}.evidence_report.html#analysis-sources-section"><strong>Evidence and provenance</strong><span class="candidate-status">Why should the reader trust this result?</span></a>
+    <a class="fact-item" href="{{ summary.run_id }}.evidence_report.html#attempt-lineage-section"><strong>Operations</strong><span class="candidate-status">How did execution proceed?</span></a>
   </nav>
-{% if view.result_links %}
+{% if result_links %}
   <nav class="fact-grid" aria-label="Result files">
-  {% for link in view.result_links %}
-    <a class="fact-item" href="{{ link.href }}"><strong>{{ link.label }}</strong><span class="candidate-status">{{ link.description }}</span></a>
-  {% endfor %}
+  {% for link in result_links %}<a class="fact-item" href="{{ link.href }}"><strong>{{ link.label }}</strong><span class="candidate-status">{{ link.description }}</span></a>{% endfor %}
   </nav>
 {% endif %}
-  <h1 id="emrys-report-title">{{ view.heading }}</h1>
-  <div class="state-banner state-{{ view.boundary_class }}" role="status" aria-live="polite">{{ view.banner }}</div>
-  <p class="report-disclaimer">{{ view.introduction }}</p>
+  <h1 id="emrys-report-title">{{ title }}</h1>
+  <div class="state-banner state-{{ report_view }}-boundary" role="status" aria-live="polite">{{ banner }}</div>
+  <p class="report-disclaimer">{% if scientific %}This read-only scientific view reports the completed Step 09 analysis as {{ candidate_terminology }}. It does not claim biological validation or validated RNA-editing sites.{% else %}This read-only core view records immutable Run identity, admitted artifacts, evidence, and operations without scientific interpretation.{% endif %}</p>
   <div class="report-category-tabs" role="group" aria-label="Report categories">
-  {% for category in view.categories %}
-  {% if view.report_view == "scientific" %}
-    <div id="{{ category.id }}" class="report-category report-category-static" aria-label="{{ category.title }}">
-      <div class="report-category-body">
-      {% for section in category.sections %}
-        <section id="{{ section.id }}" class="report-section" aria-labelledby="{{ section.id }}-heading">
-          <h2 id="{{ section.id }}-heading">{{ section.title }}</h2>
-          {% for block in section.blocks %}{{ render_block(block) }}{% endfor %}
-        </section>
+{% if scientific %}
+{% call category('scientific-category', 'Scientific results') %}
+  {% call section('scientific-summary-section', 'Scientific summary and selected candidates') %}
+    {{
+      note('COMPUTATIONAL RESULTS — NOT SCIENTIFICALLY ADJUDICATED. Threshold-passing rows are '
+      ~ candidate_terminology ~ ', not validated RNA-editing sites or biological conclusions.',
+      notice=true)
+    }}
+    {% if computational_results is none %}
+      {{ empty(computational_unavailable_reason or 'The exact complete primary-analysis Step 09 source bundle is not available. No computational candidate row was inferred.') }}
+    {% else %}
+    {% set analysis = computational_results.summary.display_rows[0] %}
+    <dl id="scientific-kpis" class="metric-grid" aria-label="Key analysis counts">
+    {%
+      for label, value in (('Samples', computational_results.sample_ids | length),
+      ('Replicate pairs', analysis.replicate_count), ('Successfully tested',
+      analysis.successfully_tested_count), ('Significant up', analysis.significant_up_count),
+      ('Significant down', analysis.significant_down_count))
+    %}
+      <div class="metric-card"><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
+    {% endfor %}
+    </dl>
+    <div id="scientific-method-summary" class="fact-grid-block">
+      <h3>Analysis and declared decision rules</h3><dl class="fact-grid">
+      {%
+        for label, value in (('Analysis', analysis.analysis_id), ('Cohort',
+        analysis.cohort_id), ('Comparison', analysis.control_condition ~ ' → '
+        ~ analysis.treatment_condition), ('Target RNA change', analysis.target_rna_change),
+        ('Minimum sample depth', analysis.min_sample_dp), ('Mean depth threshold',
+        analysis.mean_dp_threshold), ('BH FDR threshold', analysis.fdr_threshold),
+        ('Common odds-ratio threshold', analysis.common_or_threshold), ('Absolute editing-rate difference threshold',
+        analysis.absolute_difference_threshold), ('Background maximum fraction',
+        analysis.background_max_fraction))
+      %}
+        <div class="fact-item"><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
       {% endfor %}
-      </div>
+      </dl>
     </div>
-  {% else %}
-    <details id="{{ category.id }}" class="report-category" name="emrys-report-categories"{% if category.open %} open{% endif %}>
-      <summary>{{ category.title }}</summary>
-      <div class="report-category-body">
-      {% for section in category.sections %}
-        <section id="{{ section.id }}" class="report-section" aria-labelledby="{{ section.id }}-heading">
-          <h2 id="{{ section.id }}-heading">{{ section.title }}</h2>
-          {% for block in section.blocks %}{{ render_block(block) }}{% endfor %}
-        </section>
-      {% endfor %}
-      </div>
-    </details>
-  {% endif %}
-  {% endfor %}
+    {% if candidate_display is none %}
+      {{ empty('Selected candidate evidence is unavailable because no shared candidate-display projection was supplied.') }}
+    {% elif not candidate_display.candidates %}
+      {{ empty('No threshold-passing candidates are available for the bounded selected-candidate display.') }}
+    {% else %}
+    <div class="candidate-index-block">
+      <p class="provenance-note">Showing {{ candidate_display.candidates | length }} of {{ candidate_display.significant_candidate_count }} threshold-passing candidates using {{
+  'the admitted Step 10 display order' if candidate_display.selection_source == 'step10_display_rank'
+  else 'the fixed Step 09 fallback display rule'
+}}.</p>
+      <section class="candidate-index-summary" aria-labelledby="selected-candidate-index-heading">
+        <h3 id="selected-candidate-index-heading">Selected candidate index: editing rate, location, and nearby registered motifs</h3>
+        <ol class="candidate-index-list" id="selected-candidate-index">
+        {% for candidate in candidate_display.candidates %}{% set location = candidate.location %}
+          <li class="candidate-index-record" data-candidate-id="{{ candidate.candidate_id }}">
+            <div class="candidate-index-heading">
+              <span class="candidate-rank">{{ candidate.display_rank }}.</span>
+              <strong class="candidate-index-id">{{ candidate.candidate_id }}</strong>
+              <span class="candidate-gene">{{ location.gene_ids | join(', ') or 'No recorded gene' }}</span>
+              <span class="candidate-status">{{ candidate.call_status }}</span>
+            </div>
+            <dl class="candidate-index-facts">
+              <div><dt>Editing rate</dt><dd>{{ candidate_display.control_condition }}: {{ rate_text(candidate.mean_control_af) }}; {{ candidate_display.treatment_condition }}: {{ rate_text(candidate.mean_treatment_af) }}; Δ {{ difference_text(candidate.treatment_control_difference) }}</dd></div>
+              <div><dt>Location (1-based)</dt><dd>{{ location.chromosome }}:{{ location.position_1based }}; RNA {{ location.rna_ref }}&gt;{{ location.rna_alt }}; {{ location.region_memberships | join(', ') or 'No recorded overlap' }}</dd></div>
+              {{ fact('Nearby motifs', motif_index_text(candidate.motif)) }}
+            </dl>
+          </li>
+        {% endfor %}
+        </ol>
+      </section>
+    </div>
+    {% endif %}
+    {% endif %}
+  {% endcall %}
+  {% call section('primary-scientific-figures-section', 'Primary findings') %}
+    {{ scientific_figure('candidate-landscape-figure') }}
+    {{ scientific_figure('selected-context-track-figure') }}
+    {% if candidate_display is not none %}{% for candidate in candidate_display.candidates %}{{ candidate_record(candidate) }}{% endfor %}{% endif %}
+    {{ scientific_figure('location-membership-figure') }}
+    {{ scientific_figure('motif-context-enrichment-figure') }}
+  {% endcall %}
+  {% call section('supporting-scientific-figures-section', 'Supporting scientific analyses appendix') %}
+    {% for id in supporting_figure_ids %}{{ scientific_figure(id) }}{% endfor %}
+  {% endcall %}
+  {% call section('figure-guide-section', 'Scientific figure guide appendix') %}
+    {% for id in primary_figure_ids + supporting_figure_ids %}{% set figure = figures[id] %}{% set guidance = figure_guidance[id] %}
+    <article id="{{ id }}-guide" class="figure-guide-entry" data-figure-id="{{ id }}">
+      <h3>{{ figure_labels[id] }} — {{ figure.title }}</h3><dl>
+        <div class="figure-guide-question"><dt>What it answers</dt><dd>{{ guidance.question }}</dd></div>
+        <div class="figure-guide-reading"><dt>How to read it</dt><dd>{{ guidance.how_to_read }}</dd></div>
+        <div class="figure-guide-inputs"><dt>Data inputs</dt><dd>{% for role in figure.input_roles %}{{ input_labels.get(role, role | replace('_', ' ')) }}{% if not loop.last %}, {% endif %}{% endfor %}</dd></div>
+        <div class="figure-guide-population"><dt>Population</dt><dd>{{ figure.population }}</dd></div>
+        <div class="figure-guide-limitations"><dt>Limitations</dt><dd>{{ guidance.limitations }}</dd></div>
+      </dl>
+    </article>
+    {% endfor %}
+  {% endcall %}
+  {% call section('methods-data-note-section', 'Methods and complete-data note') %}
+    {% if computational_results is none %}{{ note(computational_unavailable_reason or 'Step 09 computational results unavailable.') }}
+    {% else %}
+      {% set all_count = computational_results.all_sites.row_count %}{% set significant_count = computational_results.significant_sites.row_count %}
+      {{
+        note('The complete admitted Step 09 all-sites (' ~ all_count ~ ' '
+        ~ ('row' if all_count == 1 else 'rows') ~ ') and threshold-passing ('
+        ~ significant_count ~ ' ' ~ ('row' if significant_count == 1 else 'rows')
+        ~ ') TSVs remain canonical data artifacts. They are not reproduced as wide HTML tables; exact paths and hashes are recorded in the operational evidence report.')
+      }}
+    {% endif %}
+    {{ note(scientific_context_unavailable_reason or 'Step 10 candidate context and exact registered-motif hits were admitted for the selected-candidate display projection.') }}
+    {{ note('The selected index and vertical evidence records are a bounded display projection. They do not replace the complete admitted TSVs and do not constitute a new biological ranking.') }}
+  {% endcall %}
+{% endcall %}
+{% else %}
+{% set contract = summary.run_contract %}{% set rollup = summary.computational_rollup %}
+{% call category('overview-category', 'Run overview', open=true) %}
+  {% call section('run-identity-section', 'Run identity') %}
+    {% call table('run-identity', 'Immutable Run, analysis, and source identities', ('Field', 'Value')) %}
+      {%
+        for label, value in (('Run ID', summary.run_id), ('Run-summary schema',
+        summary.schema_version), ('Summary state', summary.summary_state),
+        ('Generated at', summary.generated_at), ('Run-contract SHA-256', contract.run_contract_sha256),
+        ('Sample-manifest SHA-256', contract.sample_manifest_sha256), ('Reference-contract SHA-256',
+        contract.reference_contract_sha256), ('Partition-manifest SHA-256',
+        contract.partition_manifest_sha256), ('Primary analysis ID', contract.primary_analysis_id),
+        ('Primary-analysis-policy SHA-256', contract.primary_analysis_policy_sha256))
+      %}{{ row((label, value), true) }}{% endfor %}
+      {% if summary.analysis_policy is defined %}{{ row(('Analysis policy', summary.analysis_policy.path), true) }}{{ row(('Analysis-policy SHA-256', summary.analysis_policy.sha256), true) }}{% endif %}
+      {% if analysis_policy is not none and analysis_policy.module is defined %}
+        {% set module = analysis_policy.module %}
+        {%
+          for label, value in (('Analysis module', module.module_id), ('Analysis-module version',
+          module.module_version), ('Distribution', module.distribution_name),
+          ('Distribution version', module.distribution_version))
+        %}{{ row((label, value), true) }}{% endfor %}
+      {% endif %}
+      {%
+        for label, value in (('Inventory', summary.inventory.path), ('Inventory SHA-256',
+        summary.inventory.sha256), ('Run contract', summary.run_contract_file.path),
+        ('Run-contract file SHA-256', summary.run_contract_file.sha256))
+      %}{{ row((label, value), true) }}{% endfor %}
+    {% endcall %}
+  {% endcall %}
+  {% call section('status-section', 'Computational status') %}
+    {% call table('computational-status', 'Computational status dimensions', ('Field', 'Value')) %}{% for label, field in status_fields %}{{ row((label, rollup[field]), true) }}{% endfor %}{% endcall %}
+    {%
+      set states = (('complete', rollup.complete_artifact_count, '#287a5d'),
+      ('missing', rollup.missing_artifact_count, '#64748b'), ('incomplete',
+      rollup.incomplete_artifact_count, '#b7791f'), ('failed', rollup.failed_artifact_count,
+      '#b42318'), ('externally unavailable', rollup.externally_unavailable_artifact_count,
+      '#6b5ca5'))
+    %}
+    <figure class="artifact-overview">
+      <svg viewBox="0 0 720 82" role="img" aria-labelledby="artifact-overview-title artifact-overview-description">
+        <title id="artifact-overview-title">Expected artifact state overview</title>
+        <desc id="artifact-overview-description">{% for name, count, color in states %}{{ name }}: {{ count }}{% if not loop.last %}, {% endif %}{% endfor %}</desc>
+        {% set position = namespace(x=0.0) %}
+        {% for name, count, color in states %}{% set width = 720 * count / rollup.expected_artifact_count if rollup.expected_artifact_count else 0 %}
+          {% if count %}<rect x="{{ '%.3f' | format(position.x) }}" y="18" width="{{ '%.3f' | format(width) }}" height="30" fill="{{ color }}"><title>{{ name }}: {{ count }}</title></rect>{% endif %}
+          {% set position.x = position.x + width %}
+        {% endfor %}
+        <text x="0" y="70" font-size="14" fill="#17202a">Expected artifacts: {{ rollup.expected_artifact_count }}</text>
+      </svg>
+      <figcaption>Artifact availability is copied from the canonical run summary. This visualization is not validation evidence.</figcaption>
+    </figure>
+    <ul class="artifact-legend" aria-label="Artifact state legend">{% for name, count, color in states %}<li class="legend-{{ name | replace(' ', '-') }}">{{ name | title }}: {{ count }}</li>{% endfor %}</ul>
+    {% set failed = summary.expected_scopes | selectattr('aggregate_state', 'equalto', 'failed') | list %}
+    {% if failed %}<p class="provenance-note">Failed expected scopes: {% for item in failed %}{{ item.scope.step_id }} {{ item.scope.scope_type }} {{ item.scope.scope_id }} {{ item.aggregate_state }}{% if not loop.last %}; {% endif %}{% endfor %}</p>{% endif %}
+  {% endcall %}
+  {% call section('limitations-section', 'Limitations') %}
+    {% if summary.limitations %}
+      {%
+        call table('limitations', 'Recorded computational limitations and impact',
+        ('Limitation', 'Status', 'Description', 'Impact', 'Evidence IDs'))
+      %}
+        {% for item in summary.limitations %}{{ row((item.limitation_id, item.status, item.description, item.impact, item.evidence_ids | join(', ') or 'None declared')) }}{% endfor %}
+      {% endcall %}
+    {% else %}{{ empty('No computational limitations are recorded.') }}{% endif %}
+  {% endcall %}
+  {% call section('scope-matrix-section', 'Expected scopes') %}
+    {%
+      call table('expected-scope-matrix', 'Every expected computational scope',
+      ('Step', 'Scope type', 'Scope ID', 'Evidence state', 'Implementation',
+      'Local test', 'Runtime', 'Cluster dry-run', 'Cluster proof', 'Artifact IDs'))
+    %}
+      {% for item in summary.expected_scopes %}{{
+  row((item.scope.step_id, item.scope.scope_type, item.scope.scope_id,
+  item.aggregate_state, item.implementation_status, item.local_test_status,
+  item.runtime_validation_status, item.cluster_dry_run_status, item.cluster_proof_status,
+  item.artifact_ids | join(', ')))
+}}{% else %}<tr><td colspan="10">No rows are available.</td></tr>{% endfor %}
+    {% endcall %}
+  {% endcall %}
+{% endcall %}
+{% call category('evidence-category', 'Evidence and provenance') %}
+  {% call section('analysis-sources-section', 'Analysis sources') %}
+    {%
+      call table('analysis-report-sources', 'Admitted analysis artifacts available to the scientific reporter',
+      ('Artifact', 'Adapter', 'Availability', 'Path', 'SHA-256'))
+    %}
+      {%
+        for artifact in summary.artifacts if artifact.scope.scope_type == 'analysis'
+        and artifact.scope.scope_id == contract.primary_analysis_id
+      %}{{
+  row((artifact.artifact_id, artifact.adapter, artifact.availability_status,
+  artifact.source.path if artifact.source else none, artifact.source.sha256
+  if artifact.source else none))
+}}{% else %}<tr><td colspan="5">No rows are available.</td></tr>{% endfor %}
+    {% endcall %}
+    {% if report_inputs %}{{
+  table('analysis-input-records', 'Additional scientific-renderer inputs bound for receipt-last recheck',
+  ('Label', 'Path', 'SHA-256', 'Final verification'), report_inputs)
+}}{% else %}{{ empty('No additional scientific-renderer inputs were opened.') }}{% endif %}
+    {% if figure_evidence %}{{
+  table('scientific-figure-provenance', 'Scientific-figure inputs, mappings, outputs, and availability',
+  ('Figure ID', 'Status', 'Input roles', 'Mapping', 'Population', 'SVG asset SHA-256',
+  'SVG asset bytes', 'Unavailable reason'), figure_evidence)
+}}{% else %}{{ empty('No scientific-figure evidence was supplied.') }}{% endif %}
+  {% endcall %}
+  {% call section('qc-metrics-section', 'QC metrics') %}
+    {% if summary.artifacts | selectattr('metrics') | list %}
+      {%
+        call table('qc-metrics', 'Canonical artifact-level QC metrics', ('Artifact',
+        'Metric ID', 'Name', 'Value', 'Unit', 'Status'))
+      %}
+        {% for artifact in summary.artifacts %}{% for metric in artifact.metrics %}{{ row((artifact.artifact_id, metric.metric_id, metric.name, metric.value, metric.unit, metric.status)) }}{% endfor %}{% endfor %}
+      {% endcall %}
+    {% else %}{{ empty('No artifact-level QC metrics are present.') }}{% endif %}
+  {% endcall %}
+  {% call section('artifact-appendix-section', 'Artifact appendix') %}
+    {%
+      call table('artifact-evidence-index', 'Expected artifact evidence and selected source records',
+      ('Artifact', 'Adapter', 'Step', 'Scope', 'Availability', 'Completion',
+      'Source path', 'Source SHA-256'))
+    %}
+      {% for artifact in summary.artifacts %}{{
+  row((artifact.artifact_id, artifact.adapter, artifact.scope.step_id,
+  artifact.scope.scope_type ~ ':' ~ artifact.scope.scope_id, artifact.availability_status,
+  artifact.completion_status, artifact.source.path if artifact.source
+  else none, artifact.source.sha256 if artifact.source else none))
+}}{% else %}<tr><td colspan="8">No rows are available.</td></tr>{% endfor %}
+    {% endcall %}
+  {% endcall %}
+  {% call section('tools-issues-section', 'Tools and issues') %}
+    {% call table('software-provenance', 'Aggregate software provenance', ('Tool', 'Version', 'Role', 'Path', 'SHA-256')) %}
+      {% for tool in summary.tools %}{{ row((tool.name, tool.version, tool.role, tool.path, tool.sha256)) }}{% else %}<tr><td colspan="5">No rows are available.</td></tr>{% endfor %}
+    {% endcall %}
+    {% if summary.warnings or summary.errors %}
+      {% call table('run-summary-issues', 'Aggregate warnings and errors', ('Level', 'Code', 'Message')) %}
+        {% for level in ('warnings', 'errors') %}{% for item in summary[level] %}{{ row((level[:-1], item.code, item.message)) }}{% endfor %}{% endfor %}
+      {% endcall %}
+    {% else %}{{ empty('No aggregate run-summary warnings or errors are recorded.') }}{% endif %}
+  {% endcall %}
+  {% call section('report-provenance-section', 'Report provenance') %}
+    {% call table('report-renderer-provenance', 'Core evidence renderer provenance', ('Field', 'Value')) %}
+      {%
+        for label, value in (('Run-summary input', metadata.run_summary_path),
+        ('Run-summary SHA-256', metadata.run_summary_sha256), ('Renderer',
+        metadata.renderer ~ ' ' ~ metadata.renderer_version), ('Renderer package SHA-256',
+        metadata.renderer_package_sha256), ('Jinja2', metadata.jinja_version),
+        ('Template SHA-256', metadata.template_sha256), ('CSS SHA-256', metadata.css_sha256))
+      %}{{ row((label, value), true) }}{% endfor %}
+      {% if summary.analysis_policy is defined %}{{ row(('Analysis policy SHA-256', summary.analysis_policy.sha256), true) }}{% endif %}
+      {% for values in renderer_details %}{{ row(values, true) }}{% endfor %}
+    {% endcall %}
+  {% endcall %}
+{% endcall %}
+{% call category('operations-category', 'Operations') %}
+  {% call section('attempt-lineage-section', 'Attempt lineage') %}
+    {{ note('Inspect this Run: ' ~ inspect_command) }}
+    {%
+      call table('run-attempt-lineage', 'Immutable execution-attempt lineage',
+      ('Attempt', 'State', 'Started', 'Finished', 'Exit code', 'Supersedes'))
+    %}
+      {% for item in summary.attempts %}{{ row((item.attempt_id, item.state, item.started_at, item.finished_at, item.exit_code, item.supersedes_attempt_id)) }}{% else %}<tr><td colspan="6">No rows are available.</td></tr>{% endfor %}
+    {% endcall %}
+  {% endcall %}
+{% endcall %}
+{% endif %}
   </div>
-  <p class="report-disclaimer">{{ view.end_note }}</p>
+  <p class="report-disclaimer">{% if scientific %}End of scientific report. Biological validation remains outside EMRYS.{% else %}End of evidence report. Reporting changed no Run state.{% endif %}</p>
 </main>
 </body>
 </html>

@@ -33,6 +33,20 @@ CHECK_IDS = {
 
 InputPaths = dict[str, Path]
 InputSnapshots = dict[Path, Snapshot]
+EXPECTED_CONTEXT_FIELDS = (
+    "control_condition",
+    "treatment_condition",
+    "background_condition",
+    "target_rna_change",
+)
+EXPECTED_THRESHOLD_FIELDS = (
+    "min_sample_dp",
+    "mean_dp_threshold",
+    "fdr_threshold",
+    "common_or_threshold",
+    "absolute_difference_threshold",
+    "background_max_fraction",
+)
 
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:
@@ -49,6 +63,11 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--mutation-spectrum", required=True, type=Path)
     parser.add_argument("--mutation-spectrum-pdf", required=True, type=Path)
     parser.add_argument("--depth-delta-pdf", required=True, type=Path)
+    for field in EXPECTED_CONTEXT_FIELDS + EXPECTED_THRESHOLD_FIELDS:
+        parser.add_argument(
+            f"--expected-{field.replace('_', '-')}",
+            type=float if field in EXPECTED_THRESHOLD_FIELDS else str,
+        )
     add_output_arguments(parser)
 
 
@@ -248,6 +267,18 @@ def build_validation_report(
                 step08_inputs.rows[0]["orientation_policy"],
             ),
         )
+    if summary is not None:
+        for field in EXPECTED_CONTEXT_FIELDS + EXPECTED_THRESHOLD_FIELDS:
+            expected = getattr(arguments, f"expected_{field}", None)
+            observed = summary.rows[0][field]
+            if field in EXPECTED_THRESHOLD_FIELDS:
+                observed = float(observed)
+            if expected is not None and observed != expected:
+                summary = None
+                summary_detail = (
+                    f"summary {field} differs from requested analysis policy"
+                )
+                break
     semantic_detail = "result or summary prerequisite failed"
     if summary is not None and all_sites is not None and sample_result is not None:
         _, semantic_detail = step08.attempt(

@@ -7,7 +7,6 @@ import re
 import sys
 from pathlib import Path
 
-import emrys
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.artifact_inventory import processing_tasks
 from emrys.contracts.orchestration.application_model import (
@@ -15,8 +14,8 @@ from emrys.contracts.orchestration.application_model import (
     processing_stopping_owner_keys,
 )
 from emrys.libraries.source_authority import (
-    SourceCheckoutError,
-    attest_source_checkout,
+    InstalledPackageError,
+    admit_installed_package,
     require_controlled_python_runtime,
 )
 from emrys.orchestration.run_coordinator.task import (
@@ -38,7 +37,7 @@ from emrys.orchestration.run_coordinator.inspection import (
 
 try:
     require_controlled_python_runtime()
-except SourceCheckoutError as exc:
+except InstalledPackageError as exc:
     raise WorkflowError(f"Uncontrolled workflow Python runtime: {exc}") from exc
 
 
@@ -49,7 +48,7 @@ CONFIG_KEYS = {
     "execution_path",
     "profile_path",
     "workflow_attempt_id",
-    "source_checkout",
+    "package_root",
     "reference_contract_path",
     "primary_analysis_policy_path",
     "reporting_run_contract_path",
@@ -77,7 +76,7 @@ RUN_ROOT = _absolute_config_path("run_root")
 CONFIGURED_PYTHON = _absolute_config_path("python_executable")
 EXECUTION_PATH = _absolute_config_path("execution_path")
 PROFILE_SNAPSHOT_PATH = _absolute_config_path("profile_path")
-SOURCE_CHECKOUT = _absolute_config_path("source_checkout")
+PACKAGE_ROOT = _absolute_config_path("package_root")
 RESOURCE_POLICY = config.get("resource_policy")
 if not isinstance(RESOURCE_POLICY, dict):
     raise WorkflowError("Workflow config resource_policy is malformed")
@@ -104,8 +103,8 @@ if PROFILE_SNAPSHOT_PATH.read_bytes() != orchestration_contracts.canonical_json_
     PROFILE
 ):
     raise WorkflowError("Run profile snapshot must use canonical JSON bytes")
-if not SOURCE_CHECKOUT.is_dir() or SOURCE_CHECKOUT.is_symlink():
-    raise WorkflowError(f"source_checkout must be a real directory: {SOURCE_CHECKOUT}")
+if not PACKAGE_ROOT.is_dir() or PACKAGE_ROOT.is_symlink():
+    raise WorkflowError(f"package_root must be a real directory: {PACKAGE_ROOT}")
 EXECUTION, _EXECUTION_DATA, SUCCESSOR_AUTHORITY = admit_execution_path(
     EXECUTION_PATH, RUN_ROOT, PROFILE
 )
@@ -158,15 +157,12 @@ for attempt_field, expected_value in (
         raise WorkflowError(
             f"workflow_attempt_path does not bind normalized {attempt_field}"
         )
-if Path(WORKFLOW_ATTEMPT["source_checkout"]["path"]) != SOURCE_CHECKOUT:
-    raise WorkflowError("workflow attempt does not bind configured source_checkout")
+if Path(WORKFLOW_ATTEMPT["installed_package"]["path"]) != PACKAGE_ROOT:
+    raise WorkflowError("workflow attempt does not bind configured package_root")
 try:
-    attest_source_checkout(
-        root=SOURCE_CHECKOUT,
-        package_root=Path(emrys.__file__).resolve().parent,
-        expected_commit=WORKFLOW_ATTEMPT["source_checkout"]["commit"],
-    )
-except SourceCheckoutError as exc:
+    if admit_installed_package(root=PACKAGE_ROOT).record != WORKFLOW_ATTEMPT["installed_package"]:
+        raise InstalledPackageError("Installed package differs from workflow attempt")
+except InstalledPackageError as exc:
     raise WorkflowError(f"Could not attest workflow child source identity: {exc}") from exc
 PYTHON = sys.executable
 if Path(sys.executable) != CONFIGURED_PYTHON:
@@ -505,7 +501,7 @@ rule cohort_slice:
 
 # The profile in the admitted checkout defines processing; retained Run profiles
 # continue to supply only analysis-tail edges, including on historical resumes.
-for processing_task in processing_tasks(SOURCE_CHECKOUT):
+for processing_task in processing_tasks(PACKAGE_ROOT):
     machine_key = str(processing_task["machine_key"])
     step_id = str(processing_task["step_id"])
     scope_type = str(processing_task["scope_type"])

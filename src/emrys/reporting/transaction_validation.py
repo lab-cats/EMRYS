@@ -2,7 +2,7 @@
 
 The lifecycle calls this direct owner after Snakemake exits and again during
 inspection. A receipt pathname or hash is never sufficient: current
-transactions re-admit the current producer checkout. Every path
+transactions re-admit the current installed producer. Every path
 validates its bound inputs and outputs and reconstructs the deterministic
 projection where applicable.
 """
@@ -26,10 +26,9 @@ from emrys.contracts.orchestration import application_model
 from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.libraries.source_authority import (
     ArtifactSourceRoot,
-    SourceCheckout,
+    InstalledPackage,
     admit_artifact_source_root,
-    admit_source_checkout,
-    attest_source_checkout,
+    admit_installed_package,
 )
 from emrys.libraries.validation.errors import ValidationError
 from emrys.libraries.validation.inputs import (
@@ -354,13 +353,12 @@ def _receipt_is_in_roster(
 
 def _admit_authorities(
     *,
-    source_checkout: Path,
+    package_root: Path,
     artifact_source_root: Path,
-) -> tuple[SourceCheckout, ArtifactSourceRoot]:
+) -> tuple[InstalledPackage, ArtifactSourceRoot]:
     return (
-        admit_source_checkout(
-            root=source_checkout,
-            package_root=Path(__file__).resolve().parents[1],
+        admit_installed_package(
+            root=package_root,
         ),
         admit_artifact_source_root(root=artifact_source_root),
     )
@@ -449,7 +447,7 @@ def _contract_path(value: str, root: Path) -> Path:
 def _artifact_record_bound_paths(
     records: Iterable[Mapping[str, Any]],
     *,
-    source_checkout: Path,
+    package_root: Path,
     artifact_source_root: Path,
 ) -> set[Path]:
     paths: set[Path] = set()
@@ -470,7 +468,7 @@ def _artifact_record_bound_paths(
                 continue
             evidence_path = item.get("path")
             if isinstance(evidence_path, str) and evidence_path:
-                paths.add(_contract_path(evidence_path, source_checkout))
+                paths.add(_contract_path(evidence_path, package_root))
     return paths
 
 
@@ -518,7 +516,7 @@ def _reject_reporting_control_residue(
 
 def validate_report_transaction(
     *,
-    source_checkout: Path,
+    package_root: Path,
     artifact_source_root: Path,
     run_summary: Path,
     output_root: Path,
@@ -553,7 +551,7 @@ def validate_report_transaction(
     try:
         context = report_context.prepare_context(
             argparse.Namespace(
-                source_checkout=source_checkout,
+                package_root=package_root,
                 artifact_source_root=artifact_source_root,
                 run_summary=run_summary,
                 analysis_policy=analysis_policy,
@@ -575,13 +573,13 @@ def validate_report_transaction(
         output_dir=context.output_dir,
         output_paths=context.stable_paths[:3],
         report_receipt=context.output_receipt,
-        source_checkout=context.source_checkout.root,
+        package_root=context.installed_package.root,
         artifact_source_root=context.artifact_source_root.root,
         input_paths=(snapshot.path for snapshot in context.input_snapshots),
     )
     if validate_upstream:
         validate_run_summary_transaction(
-            source_checkout=source_checkout,
+            package_root=package_root,
             artifact_source_root=artifact_source_root,
             run_id=run_id,
             run_contract=Path(context.summary["run_contract_file"]["path"]),
@@ -681,7 +679,7 @@ def _report_roster(
     output_dir: Path,
     output_paths: Iterable[Path],
     report_receipt: Path,
-    source_checkout: Path,
+    package_root: Path,
     artifact_source_root: Path,
     input_paths: Iterable[Path] = (),
 ) -> _BoundRosterSnapshot:
@@ -700,7 +698,7 @@ def _report_roster(
             summary_dir / f"{run_id}.qc_summary.tsv",
             *_artifact_record_bound_paths(
                 summary["artifacts"],
-                source_checkout=source_checkout,
+                package_root=package_root,
                 artifact_source_root=artifact_source_root,
             ),
         },
@@ -710,7 +708,7 @@ def _report_roster(
 
 def validate_run_summary_transaction(
     *,
-    source_checkout: Path,
+    package_root: Path,
     artifact_source_root: Path,
     run_id: str,
     run_contract: Path,
@@ -736,8 +734,8 @@ def validate_run_summary_transaction(
     document = artifact_contracts.load_json_object_bytes(
         snapshot.payload, "Run result manifest"
     )
-    checkout, source_root = _admit_authorities(
-        source_checkout=source_checkout, artifact_source_root=artifact_source_root
+    installed_package, source_root = _admit_authorities(
+        package_root=package_root, artifact_source_root=artifact_source_root
     )
     evidence = artifact_context.prepare_evidence_context(
         argparse.Namespace(
@@ -749,7 +747,7 @@ def validate_run_summary_transaction(
             output_root=output_root,
             execute=False,
         ),
-        source_checkout=checkout,
+        installed_package=installed_package,
         artifact_source_root=source_root,
     )
     context = evidence.index
@@ -763,7 +761,7 @@ def validate_run_summary_transaction(
         Path(document["analysis_policy"]["path"]),
         *_artifact_record_bound_paths(
             context.records,
-            source_checkout=source_checkout,
+            package_root=package_root,
             artifact_source_root=artifact_source_root,
         ),
     }
@@ -863,20 +861,21 @@ def validate_receipt(
         if validated_predecessor._recheck is not None:
             validated_predecessor._recheck()
             reuse = True
-    declared = attempt["source_checkout"]
-    checkout = Path(str(declared["path"]))
+    declared = attempt["installed_package"]
+    package_root = Path(str(declared["path"]))
 
     def attest():
-        return attest_source_checkout(
-            root=checkout,
-            package_root=Path(__file__).resolve().parents[1],
-            expected_commit=str(declared["commit"]),
-        )
+        observed = admit_installed_package(root=package_root)
+        if observed.record != declared:
+            raise ReportingTransactionError(
+                "Installed reporting package differs from the Attempt"
+            )
+        return observed.record
 
     try:
         source = attest()
         common = dict(
-            source_checkout=checkout,
+            package_root=package_root,
             artifact_source_root=run_root,
             analysis_policy=run_root / config["primary_analysis_policy_path"]["path"],
             profile=profile,
@@ -898,7 +897,7 @@ def validate_receipt(
             )
         if attest() != source:
             raise ReportingTransactionError(
-                f"{kind} source checkout identity changed during validation"
+                f"{kind} installed package identity changed during validation"
             )
     except ReportingTransactionError:
         raise

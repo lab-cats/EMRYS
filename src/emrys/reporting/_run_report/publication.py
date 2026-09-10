@@ -8,15 +8,23 @@ import os
 import stat
 import sys
 import uuid
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
 from emrys.contracts.artifacts import api as artifact_contracts
+from emrys.libraries.source_authority import admit_installed_package
+from emrys.reporting import _files, _signals
 
-from . import transaction
 from .context import expected_html_identity
-from .inputs import _assert_input_recheck, _assert_snapshot, _fail, _snapshot_regular
-from .models import FileSnapshot, LockOwnership, ReportContext, ReportRenderError
+from .inputs import (
+    _assert_input_recheck,
+    _assert_snapshot,
+    _fail,
+    _reject_symlink_components,
+    _snapshot_regular,
+)
+from .models import FileSnapshot, ReportContext, ReportRenderError
 from .receipt import (
     read_receipt_tsv,
     receipt_document,
@@ -24,15 +32,76 @@ from .receipt import (
     summary_tsv_bytes,
     validate_summary_tsv,
 )
-from .transaction import (
-    _capture_moved_snapshot,
-    _create_directories,
-    _remove_empty_created_directories,
-)
 from .validation import validate_rendered_html
 
 
+def _create_directories(path: Path) -> list[Path]:
+    missing: list[Path] = []
+    current = path
+    while not os.path.lexists(current):
+        missing.append(current)
+        if current == current.parent:
+            break
+        current = current.parent
+    if os.path.lexists(current):
+        metadata = current.lstat()
+        if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
+            _fail(f"Report output ancestor is not a non-symlink directory: {current}")
+    created: list[Path] = []
+    try:
+        for directory in reversed(missing):
+            os.mkdir(directory, 0o755)
+            created.append(directory)
+    except OSError as exc:
+        for directory in reversed(created):
+            with contextlib.suppress(OSError):
+                directory.rmdir()
+        _fail(f"Could not create report output directory {path}: {exc}")
+    _reject_symlink_components(path, "report output directory")
+    return created
+
+
+def _remove_empty_created_directories(created: Sequence[Path]) -> None:
+    for directory in reversed(created):
+        try:
+            directory.rmdir()
+        except FileNotFoundError:
+            continue
+        except OSError:
+            break
+
+
+def _capture_moved_snapshot(
+    path: Path,
+    expected: FileSnapshot,
+    label: str,
+) -> FileSnapshot:
+    current = _snapshot_regular(path, label)
+    stable_identity = (
+        current.device,
+        current.inode,
+        current.size_bytes,
+        current.mtime_ns,
+        current.sha256,
+    )
+    expected_identity = (
+        expected.device,
+        expected.inode,
+        expected.size_bytes,
+        expected.mtime_ns,
+        expected.sha256,
+    )
+    if stable_identity != expected_identity:
+        _fail(f"{label} changed identity or content during publication: {path}")
+    return current
+
+
 def _recheck_inputs(context: ReportContext) -> None:
+    if (
+        admit_installed_package(root=context.installed_package.root).record
+        != context.installed_package.record
+    ):
+        _fail("Installed report package changed after admission")
     for recheck in context.input_rechecks:
         _assert_input_recheck(*recheck)
 
@@ -80,7 +149,14 @@ def publish_report(context: ReportContext) -> None:
     recovery = (
         context.output_dir / f".{context.summary['run_id']}.report.{token}.RECOVERY.txt"
     )
-    ownership: LockOwnership | None = None
+    lock_payload = (
+        "owner\tEMRYS_REPORT\n"
+        f"pid\t{os.getpid()}\n"
+        f"token\t{token}\n"
+        f"run_id\t{context.summary['run_id']}\n"
+        f"run_summary_sha256\t{context.run_summary_snapshot.sha256}\n"
+    ).encode("utf-8")
+    ownership: os.stat_result | None = None
     handlers: dict[int, Any] | None = None
     stage_identity: tuple[int, int] | None = None
     publication_anchors: dict[Path, FileSnapshot] = {}
@@ -96,8 +172,10 @@ def publish_report(context: ReportContext) -> None:
             _fail("Report output directory changed identity during publication")
 
     try:
-        handlers = transaction._install_publication_signal_handlers()
-        ownership = transaction._acquire_lock(context, token, os.write)
+        handlers = _signals.install(ReportRenderError, "Report", "report publication")
+        ownership = _files.acquire_lock(
+            context.lock_path, lock_payload, ReportRenderError
+        )
         assert_directory()
         _assert_outputs_absent(context)
         os.mkdir(stage, 0o700)
@@ -106,7 +184,7 @@ def publish_report(context: ReportContext) -> None:
         _recheck_inputs(context)
 
         staged_scientific_html = stage / context.output_scientific_html.name
-        transaction._write_owned_file(
+        _files.write_bytes_exclusive(
             staged_scientific_html, context.scientific_html_bytes
         )
         _assert_expected_bytes(
@@ -120,7 +198,7 @@ def publish_report(context: ReportContext) -> None:
             expected_identity=expected_html_identity(context, "scientific"),
         )
         staged_evidence_html = stage / context.output_evidence_html.name
-        transaction._write_owned_file(staged_evidence_html, context.evidence_html_bytes)
+        _files.write_bytes_exclusive(staged_evidence_html, context.evidence_html_bytes)
         _assert_expected_bytes(
             staged_evidence_html,
             context.evidence_html_bytes,
@@ -133,7 +211,7 @@ def publish_report(context: ReportContext) -> None:
         )
         staged_summary = stage / context.output_summary_tsv.name
         summary_bytes = summary_tsv_bytes(context)
-        transaction._write_owned_file(staged_summary, summary_bytes)
+        _files.write_bytes_exclusive(staged_summary, summary_bytes)
         _assert_expected_bytes(staged_summary, summary_bytes, "staged run-summary TSV")
         validate_summary_tsv(staged_summary, context)
         staged_outputs = tuple(
@@ -148,15 +226,15 @@ def publish_report(context: ReportContext) -> None:
         document = receipt_document(context, staged_outputs)
         staged_receipt = stage / context.output_receipt.name
         receipt_bytes = receipt_tsv_bytes(document)
-        transaction._write_owned_file(staged_receipt, receipt_bytes)
+        _files.write_bytes_exclusive(staged_receipt, receipt_bytes)
         _assert_expected_bytes(staged_receipt, receipt_bytes, "staged report receipt")
         if read_receipt_tsv(staged_receipt) != document:
             _fail("Staged report receipt did not round-trip deterministically")
         _recheck_inputs(context)
         assert_directory()
         _assert_outputs_absent(context)
-        transaction._fsync_directory(stage)
-        transaction._fsync_directory(context.output_dir)
+        _files.fsync_path(stage)
+        _files.fsync_path(context.output_dir)
 
         for _output_id, kind, staged, final in (
             *staged_outputs,
@@ -170,8 +248,8 @@ def publish_report(context: ReportContext) -> None:
             os.link(staged, final, follow_symlinks=False)
             assert_directory()
             _capture_moved_snapshot(final, staged_snapshot, f"published {kind}")
-            transaction._fsync_file(final)
-            transaction._fsync_directory(context.output_dir)
+            _files.fsync_path(final)
+            _files.fsync_path(context.output_dir)
 
         _assert_expected_bytes(
             context.output_scientific_html,
@@ -227,19 +305,21 @@ def publish_report(context: ReportContext) -> None:
                 except BaseException as rollback_exc:
                     rollback_errors.append(str(rollback_exc))
             assert_directory()
-            transaction._fsync_directory(context.output_dir)
+            _files.fsync_path(context.output_dir)
         except BaseException as rollback_exc:
             rollback_errors.append(str(rollback_exc))
         if rollback_errors:
             recovery_required = True
             with contextlib.suppress(OSError, ReportRenderError):
                 assert_directory()
-                transaction._write_recovery_marker(
+                _files.write_bytes_exclusive(
                     recovery,
-                    "Report rollback was incomplete.\n"
-                    f"Original error: {original}\n"
-                    f"Rollback errors: {'; '.join(rollback_errors)}\n"
-                    f"Stage: {stage}\nLock: {context.lock_path}\n",
+                    (
+                        "Report rollback was incomplete.\n"
+                        f"Original error: {original}\n"
+                        f"Rollback errors: {'; '.join(rollback_errors)}\n"
+                        f"Stage: {stage}\nLock: {context.lock_path}\n"
+                    ).encode("utf-8"),
                 )
             raise ReportRenderError(
                 "Report publication failed and rollback was incomplete; preserve "
@@ -256,30 +336,36 @@ def publish_report(context: ReportContext) -> None:
         if not recovery_required:
             try:
                 assert_directory()
-                transaction._remove_owned_stage(stage, token, stage_identity)
+                _files.remove_owned_stage(
+                    stage, token, stage_identity, ReportRenderError
+                )
                 assert_directory()
-                transaction._fsync_directory(context.output_dir)
+                _files.fsync_path(context.output_dir)
             except BaseException as exc:
                 cleanup_errors.append(str(exc))
         if ownership is not None and not recovery_required and not cleanup_errors:
             try:
                 assert_directory()
-                transaction._release_lock(ownership)
+                _files.release_lock(
+                    context.lock_path, ownership, lock_payload, ReportRenderError
+                )
             except BaseException as exc:
                 cleanup_errors.append(str(exc))
         if handlers is not None:
             try:
-                transaction._restore_signal_handlers(handlers)
+                _signals.restore(handlers)
             except BaseException as exc:
                 cleanup_errors.append(f"signal-handler restoration failed: {exc}")
         if cleanup_errors:
             with contextlib.suppress(OSError, ReportRenderError):
                 assert_directory()
-                transaction._write_recovery_marker(
+                _files.write_bytes_exclusive(
                     recovery,
-                    "Report cleanup was incomplete.\n"
-                    f"Active error: {active}\n"
-                    f"Cleanup errors: {'; '.join(cleanup_errors)}\n",
+                    (
+                        "Report cleanup was incomplete.\n"
+                        f"Active error: {active}\n"
+                        f"Cleanup errors: {'; '.join(cleanup_errors)}\n"
+                    ).encode("utf-8"),
                 )
             raise ReportRenderError(
                 "Report cleanup failed; preserve recovery evidence: "

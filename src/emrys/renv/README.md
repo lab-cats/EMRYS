@@ -14,10 +14,13 @@ Bioconductor 3.23 packages resolve through
 `Repository: Bioconductor 3.23` metadata.
 
 `make r-restore` and managed `emrys doctor --repair` use the same restoration
-script; Doctor selects its Project-owned library. Workflow execution never
+script; Doctor selects its Project-owned runtime. Bootstrap restoration uses an
+explicit external `RENV_PROJECT` for settings, locks, staging, and caches while
+the activation script and package lock remain installed read-only inputs.
+Workflow execution never
 installs packages. For an operator-owned library, follow the
-[runbook procedure](../docs/operations/RUNBOOK.md#dependency-maintenance), including
-R 4.6.1, `RENV_PATHS_LIBRARY` for restoration, and the exact platform-specific
+[runbook procedure](../../../docs/operations/RUNBOOK.md#dependency-maintenance), including
+R 4.6.1, `RENV_PROJECT` and `RENV_PATHS_LIBRARY` for restoration, and the exact platform-specific
 `RENV_LIBRARY` for checking. The check bypasses the renv autoloader, changes no
 dependencies, and rejects lock, version, or library-identity drift.
 

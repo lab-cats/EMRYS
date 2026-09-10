@@ -54,83 +54,11 @@ SCIENTIFIC_BINARIES = {
 }
 
 
-def _create_clean_source_checkout(checkout: Path) -> tuple[Path, str]:
-    checkout.mkdir()
-    for name in (".Rprofile", "pyproject.toml", "renv.lock", "uv.lock"):
-        shutil.copy2(workflow_fixture.REPO_ROOT / name, checkout)
-    shutil.copytree(
-        workflow_fixture.REPO_ROOT / "src" / "emrys",
-        checkout / "src" / "emrys",
-        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"),
-    )
-    shutil.copytree(
-        workflow_fixture.REPO_ROOT / "workflow",
-        checkout / "workflow",
-    )
-    subprocess.run(["git", "init", "--quiet"], cwd=checkout, check=True)
-    subprocess.run(["git", "add", "--all"], cwd=checkout, check=True)
-    subprocess.run(
-        [
-            "git",
-            "-c",
-            "user.name=EMRYS Fixture",
-            "-c",
-            "user.email=emrys-fixture@example.invalid",
-            "commit",
-            "--quiet",
-            "-m",
-            "current package",
-        ],
-        cwd=checkout,
-        check=True,
-    )
-    commit = subprocess.run(
-        ["git", "rev-parse", "--verify", "HEAD"],
-        cwd=checkout,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-    return checkout, commit
-
-
-@pytest.fixture(scope="session")
-def clean_source_checkout(
-    tmp_path_factory: pytest.TempPathFactory,
-) -> tuple[Path, str]:
-    checkout = tmp_path_factory.mktemp("workflow-source") / "checkout"
-    return _create_clean_source_checkout(checkout)
-
-
-def _bind_source_checkout(
-    built: workflow_fixture.WorkflowFixture,
-    source: tuple[Path, str],
-) -> None:
-    checkout, commit = source
-    attempt = orchestration_contracts.load_json_object(built.workflow_attempt_path)
-    config = orchestration_contracts.load_json_object(built.config_path)
-    config["source_checkout"] = str(checkout)
-    built.config_path.write_bytes(orchestration_contracts.canonical_json_bytes(config))
-    attempt["source_checkout"] = {
-        "path": str(checkout),
-        "commit": commit,
-        "clean": True,
-    }
-    attempt["workflow_config"]["sha256"] = hashlib.sha256(
-        built.config_path.read_bytes()
-    ).hexdigest()
-    built.workflow_attempt_path.write_bytes(
-        orchestration_contracts.canonical_json_bytes(attempt)
-    )
-
-
 @pytest.fixture()
 def built(
     tmp_path: Path,
-    clean_source_checkout: tuple[Path, str],
 ) -> workflow_fixture.WorkflowFixture:
     result = workflow_fixture.build(tmp_path / "fixture")
-    _bind_source_checkout(result, clean_source_checkout)
     workflow_fixture.materialize_active_run_lock(result)
     return result
 
@@ -423,13 +351,9 @@ def test_real_snakemake_dry_run_has_exact_owner_job_counts(
 
 def test_real_processing_plan_dry_run_closes_at_step_06(
     tmp_path: Path,
-    clean_source_checkout: tuple[Path, str],
 ) -> None:
-    checkout, commit = clean_source_checkout
     readiness, resources, _request, workspace = _readiness(
         tmp_path / "processing-plan",
-        source_root=checkout,
-        source_commit=commit,
     )
     plan = materialization.build_attempt_plan(
         _run_candidate(readiness, resources, through="processing"),
@@ -525,9 +449,7 @@ def test_profile_and_rule_rosters_are_exact_and_output_only_verified_state(
 
 
 def test_static_graph_rejects_schema_valid_owner_reassignment(tmp_path: Path) -> None:
-    checkout, _commit = _create_clean_source_checkout(tmp_path / "owner-swap-source")
-    profile_path = checkout / "workflow" / "contracts" / "local_cmh_v2.json"
-    profile = orchestration_contracts.load_json_object(profile_path)
+    profile = orchestration_contracts.load_json_object(workflow_fixture.PROFILE_PATH)
     by_rule = {str(task["rule_name"]): task for task in profile["owner_tasks"]}
     alignment = by_rule["align_RNA_reads_with_STAR"]
     canonical_bam = by_rule["construct_canonical_BAM"]
@@ -536,34 +458,9 @@ def test_static_graph_rejects_schema_valid_owner_reassignment(tmp_path: Path) ->
         alignment["machine_key"],
     )
     orchestration_contracts.validate_record("profile", profile)
-    profile_path.write_bytes(orchestration_contracts.canonical_json_bytes(profile))
-    subprocess.run(["git", "add", str(profile_path)], cwd=checkout, check=True)
-    subprocess.run(
-        [
-            "git",
-            "-c",
-            "user.name=EMRYS Fixture",
-            "-c",
-            "user.email=emrys-fixture@example.invalid",
-            "commit",
-            "--quiet",
-            "-m",
-            "reassign schema-valid owners",
-        ],
-        cwd=checkout,
-        check=True,
-    )
-    commit = subprocess.run(
-        ["git", "rev-parse", "--verify", "HEAD"],
-        cwd=checkout,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
     rebuilt = workflow_fixture.build(
         tmp_path / "owner-swap-fixture", profile_override=profile
     )
-    _bind_source_checkout(rebuilt, (checkout, commit))
     workflow_fixture.materialize_active_run_lock(rebuilt)
 
     failed = _snakemake(
@@ -572,7 +469,6 @@ def test_static_graph_rejects_schema_valid_owner_reassignment(tmp_path: Path) ->
         "--",
         "reference_slice",
         check=False,
-        snakefile=checkout / "workflow" / "Snakefile",
     )
 
     assert failed.returncode != 0
@@ -800,7 +696,6 @@ def test_pinned_snakemake_requires_ignore_incomplete_for_scientific_resume(
 
 def test_foreign_preexisting_verified_marker_fails_closed(
     built: workflow_fixture.WorkflowFixture,
-    clean_source_checkout: tuple[Path, str],
 ) -> None:
     machine_key = "emrys.stage.construct_STAR_index.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
@@ -808,7 +703,6 @@ def test_foreign_preexisting_verified_marker_fails_closed(
     marker.parent.mkdir(parents=True, exist_ok=True)
     # A copied schema-valid record from another run is not reusable.
     donor = workflow_fixture.build(built.root.parent / "donor-fixture")
-    _bind_source_checkout(donor, clean_source_checkout)
     workflow_fixture.materialize_active_run_lock(donor)
     _snakemake(donor, "--", "reference_slice")
     donor_marker = donor.verified_root / machine_key / f"{scope_id}.json"
@@ -844,7 +738,6 @@ def test_content_bound_verified_marker_is_reused_and_mutation_fails_closed(
 
 def test_foreign_dispatch_binding_and_unknown_scope_fail_closed(
     built: workflow_fixture.WorkflowFixture,
-    clean_source_checkout: tuple[Path, str],
 ) -> None:
     machine_key = "emrys.stage.construct_STAR_index.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
@@ -857,7 +750,6 @@ def test_foreign_dispatch_binding_and_unknown_scope_fail_closed(
     assert "Dispatch bytes do not match configured SHA-256" in failed.stdout
 
     semantic = workflow_fixture.build(built.root.parent / "semantic-fixture")
-    _bind_source_checkout(semantic, clean_source_checkout)
     workflow_fixture.materialize_active_run_lock(semantic)
     dispatch = Path(semantic.dispatch_paths[machine_key][scope_id])
     record = orchestration_contracts.load_json_object(dispatch)
@@ -873,7 +765,6 @@ def test_foreign_dispatch_binding_and_unknown_scope_fail_closed(
     assert "does not bind expected run_root" in failed.stdout
 
     rebuilt = workflow_fixture.build(built.root.parent / "second-fixture")
-    _bind_source_checkout(rebuilt, clean_source_checkout)
     workflow_fixture.materialize_active_run_lock(rebuilt)
     config = json.loads(rebuilt.config_path.read_text(encoding="utf-8"))
     config["dispatch_paths"][machine_key]["unexpected"] = config["dispatch_paths"][
@@ -939,7 +830,6 @@ def test_pending_dispatch_identity_and_task_evidence_paths_fail_closed(
 
 def test_config_and_profile_snapshot_are_closed_and_content_bound(
     built: workflow_fixture.WorkflowFixture,
-    clean_source_checkout: tuple[Path, str],
 ) -> None:
     config = json.loads(built.config_path.read_text(encoding="utf-8"))
     config["unknown"] = "not-allowed"
@@ -949,7 +839,6 @@ def test_config_and_profile_snapshot_are_closed_and_content_bound(
     assert "Workflow config keys must be exactly" in failed.stdout
 
     rebuilt = workflow_fixture.build(built.root.parent / "snapshot-fixture")
-    _bind_source_checkout(rebuilt, clean_source_checkout)
     workflow_fixture.materialize_active_run_lock(rebuilt)
     profile_path = rebuilt.run_root / "contract" / "profile.json"
     profile = json.loads(profile_path.read_text(encoding="utf-8"))
@@ -970,13 +859,13 @@ def test_child_python_identity_is_bound_before_graph_admission(
     assert "does not bind python_executable" in failed.stdout
 
 
-def test_child_source_commit_is_attested_before_graph_admission(
+def test_child_installed_package_identity_is_attested_before_graph_admission(
     built: workflow_fixture.WorkflowFixture,
 ) -> None:
     attempt = orchestration_contracts.load_record(
         built.workflow_attempt_path, "workflow-attempt"
     )
-    attempt["source_checkout"]["commit"] = "0" * 40
+    attempt["installed_package"]["content_sha256"] = "0" * 64
     built.workflow_attempt_path.write_bytes(
         orchestration_contracts.canonical_json_bytes(attempt)
     )
@@ -985,4 +874,4 @@ def test_child_source_commit_is_attested_before_graph_admission(
 
     assert failed.returncode != 0
     assert "Could not attest workflow child source identity" in failed.stdout
-    assert "HEAD differs from the workflow attempt commit" in failed.stdout
+    assert "Installed package differs from workflow attempt" in failed.stdout

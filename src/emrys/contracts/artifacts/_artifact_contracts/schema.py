@@ -71,7 +71,12 @@ def load_schema(name: str) -> dict[str, Any]:
 
 
 def load_schema_registry() -> tuple[dict[str, dict[str, Any]], Registry]:
-    schema_paths = {"common": COMMON_SCHEMA_PATH, **SCHEMA_FILES}
+    schema_paths = {
+        "common": COMMON_SCHEMA_PATH,
+        "orchestration-common": COMMON_SCHEMA_PATH.parents[2]
+        / "orchestration/v1/common.schema.json",
+        **SCHEMA_FILES,
+    }
     schemas: dict[str, dict[str, Any]] = {}
     registry = Registry()
     for name, schema_path in schema_paths.items():
