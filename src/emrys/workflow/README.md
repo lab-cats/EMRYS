@@ -22,8 +22,9 @@ profile invocation.
 artifact dependencies. The [run-coordinator contract](../orchestration/run_coordinator/CONTRACT.md)
 defines materialization, completion, reuse, reporting, and recovery.
 
-The graph reads dispatches through `task.load_dispatch` and resource records
-through `resource_policy.admit_resource_policy_record`, the same owners used by
-execution and resume. Workflow-specific checks still bind each dispatch to its
-Run, task scope, and Attempt. The named rules and dependency barriers remain
-unchanged; validating a graph does not replace checks immediately before a task.
+The graph reads the immutable Attempt manifest once and selects task definitions
+through the task owner. Workers use the same task parser and resource-policy
+owner. Verified tasks retain their original Attempt references on resume; pending
+tasks must belong to the new Attempt. The named rules and dependency barriers
+remain unchanged. Validating the graph does not replace identity and content
+checks immediately before a task.

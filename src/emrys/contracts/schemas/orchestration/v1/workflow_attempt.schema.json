@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:emrys:schema:orchestration:workflow-attempt:v1",
-  "title": "EMRYS workflow attempt v1",
+  "$id": "urn:emrys:schema:orchestration:workflow-attempt:v2",
+  "title": "EMRYS workflow attempt v2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -23,16 +23,17 @@
     "executor",
     "execution_mode",
     "snakemake_argv",
-    "workflow_config",
     "host",
     "process_id",
     "owner_token",
     "cores",
-    "required_tools"
+    "required_tools",
+    "workflow",
+    "tasks"
   ],
   "properties": {
     "schema_version": {
-      "const": "emrys.workflow-attempt.v1"
+      "const": "emrys.workflow-attempt.v2"
     },
     "run_id": {
       "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/run_id"
@@ -152,9 +153,6 @@
         "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/non_empty_string"
       }
     },
-    "workflow_config": {
-      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
-    },
     "host": {
       "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/non_empty_string"
     },
@@ -188,12 +186,18 @@
       ],
       "properties": {
         "kind": {
-          "enum": ["direct", "slurm"]
+          "enum": [
+            "direct",
+            "slurm"
+          ]
         },
         "source": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["path", "sha256"],
+          "required": [
+            "path",
+            "sha256"
+          ],
           "properties": {
             "path": {
               "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/absolute_path"
@@ -225,9 +229,13 @@
         {
           "if": {
             "properties": {
-              "kind": {"const": "direct"}
+              "kind": {
+                "const": "direct"
+              }
             },
-            "required": ["kind"]
+            "required": [
+              "kind"
+            ]
           },
           "then": {
             "properties": {
@@ -243,9 +251,13 @@
         {
           "if": {
             "properties": {
-              "kind": {"const": "slurm"}
+              "kind": {
+                "const": "slurm"
+              }
             },
-            "required": ["kind"]
+            "required": [
+              "kind"
+            ]
           },
           "then": {
             "properties": {
@@ -260,6 +272,70 @@
           }
         }
       ]
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference_contract_path",
+        "primary_analysis_policy_path",
+        "reporting_run_contract_path",
+        "artifact_inventory_path",
+        "resource_policy"
+      ],
+      "properties": {
+        "reference_contract_path": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
+        },
+        "primary_analysis_policy_path": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
+        },
+        "reporting_run_contract_path": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
+        },
+        "artifact_inventory_path": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
+        },
+        "resource_policy": {
+          "type": "object"
+        }
+      }
+    },
+    "tasks": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "propertyNames": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+        },
+        "additionalProperties": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "workflow_attempt_record"
+              ],
+              "properties": {
+                "workflow_attempt_record": {
+                  "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "not": {
+                "required": [
+                  "workflow_attempt_record"
+                ]
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "allOf": [

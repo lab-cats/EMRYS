@@ -80,17 +80,7 @@ def _build(
         built.workflow_attempt_path,
         "workflow-attempt",
     )
-    identifier = str(attempt["workflow_attempt_id"])
-    run_lock = {
-        "schema_version": "emrys.run-lock.v1",
-        "run_id": attempt["run_id"],
-        "workflow_attempt_id": identifier,
-        "attempt_record_path": f"attempts/{identifier}/attempt.json",
-        "owner_token": attempt["owner_token"],
-        "process_id": attempt["process_id"],
-        "host": attempt["host"],
-        "created_at": attempt["created_at"],
-    }
+    run_lock = orchestration_contracts.run_lock_record(attempt)
     orchestration_contracts.validate_record("run-lock", run_lock)
     lock_path = built.run_root / "locks" / "run.lock"
     lock_path.parent.mkdir(exist_ok=True)
@@ -152,7 +142,6 @@ def _identity_paths(
         "execution_path": built.run_root / "contract" / "run.json",
         "profile_path": built.run_root / "contract" / "profile.json",
         "workflow_attempt_path": built.workflow_attempt_path,
-        "workflow_config_path": built.config_path,
     }
 
 
@@ -228,7 +217,9 @@ def test_start_and_completion_publish_fixed_closed_records(
     tmp_path: Path,
 ) -> None:
     built = _build(tmp_path / "fixture")
-    config_document = orchestration_contracts.load_json_object(built.config_path)
+    config_document = orchestration_contracts.load_record(
+        built.workflow_attempt_path, "workflow-attempt"
+    )["workflow"]
     assert all(
         set(config_document[f"{name}_path"]) == {"path", "sha256"}
         for name in reporting_boundary.CONTRACT_PATHS
@@ -353,12 +344,14 @@ def test_historical_reporting_state_is_rejected_without_mutation(
     assert retained == (summary.start.read_bytes(), summary.verified.read_bytes())
 
 
-def test_current_boundary_uses_run_authority_and_exact_config_references(
+def test_current_boundary_uses_run_authority_and_exact_attempt_reference(
     tmp_path: Path,
 ) -> None:
     built = _build(tmp_path / "current")
     identity = _identity_paths(built)
-    config = orchestration_contracts.load_json_object(built.config_path)
+    config = orchestration_contracts.load_record(
+        built.workflow_attempt_path, "workflow-attempt"
+    )["workflow"]
     assert all(
         set(config[f"{name}_path"]) == {"path", "sha256"}
         for name in reporting_boundary.CONTRACT_PATHS
@@ -377,6 +370,9 @@ def test_current_boundary_uses_run_authority_and_exact_config_references(
         start["execution_contract_sha256"]
         == hashlib.sha256(identity["execution_path"].read_bytes()).hexdigest()
     )
+    assert start["workflow_attempt"] == _reference(
+        built.workflow_attempt_path, built.run_root
+    )
     admitted = reporting_boundary.validate_start(
         "run_summary",
         identity["run_root"],
@@ -390,7 +386,7 @@ def test_current_boundary_uses_run_authority_and_exact_config_references(
     ("case", "message"),
     (
         ("path", "does not use its fixed path"),
-        ("bytes", "bytes differ from workflow config identity"),
+        ("bytes", "bytes differ from workflow Attempt identity"),
     ),
 )
 def test_current_boundary_rejects_reporting_reference_tamper(
@@ -400,16 +396,16 @@ def test_current_boundary_rejects_reporting_reference_tamper(
 ) -> None:
     built = _build(tmp_path / case)
     identity = _identity_paths(built)
-    config = orchestration_contracts.load_json_object(built.config_path)
+    config = orchestration_contracts.load_record(
+        built.workflow_attempt_path, "workflow-attempt"
+    )["workflow"]
     if case == "path":
         config["reference_contract_path"]["path"] = "contract/other.json"
-        config_data = orchestration_contracts.canonical_json_bytes(config)
-        identity["workflow_config_path"].write_bytes(config_data)
         attempt = orchestration_contracts.load_record(
             identity["workflow_attempt_path"],
             "workflow-attempt",
         )
-        attempt["workflow_config"]["sha256"] = hashlib.sha256(config_data).hexdigest()
+        attempt["workflow"] = config
         identity["workflow_attempt_path"].write_bytes(
             orchestration_contracts.canonical_json_bytes(attempt)
         )
@@ -541,9 +537,9 @@ def test_boundary_attests_attempt_commit_and_projection_bytes(tmp_path: Path) ->
     changed_projection = _build(tmp_path / "changed-projection")
     projection_path = (
         changed_projection.run_root
-        / orchestration_contracts.load_json_object(changed_projection.config_path)[
-            "artifact_inventory_path"
-        ]["path"]
+        / orchestration_contracts.load_record(
+            changed_projection.workflow_attempt_path, "workflow-attempt"
+        )["workflow"]["artifact_inventory_path"]["path"]
     )
     projection_path.write_bytes(projection_path.read_bytes() + b"mutated\n")
     with pytest.raises(
@@ -573,9 +569,9 @@ def test_completion_rechecks_projection_after_semantic_validation(
     built.run_summary.write_bytes(b"semantic artifact receipt\n")
     projection_path = (
         built.run_root
-        / orchestration_contracts.load_json_object(built.config_path)[
-            "artifact_inventory_path"
-        ]["path"]
+        / orchestration_contracts.load_record(
+            built.workflow_attempt_path, "workflow-attempt"
+        )["workflow"]["artifact_inventory_path"]["path"]
     )
 
     def mutate_projection(*_arguments: Any) -> _SemanticResult:

@@ -106,9 +106,9 @@ class AttemptPlan:
     attempt_record_bytes: bytes
     fixed_files: tuple[PlannedFile, ...]
     attempt_files: tuple[PlannedFile, ...]
-    new_dispatch_files: tuple[PlannedFile, ...]
+    new_task_count: int
     directories: tuple[Path, ...]
-    dispatch_count: int
+    task_count: int
 
     @property
     def attempt_record(self) -> dict[str, Any]:
@@ -120,8 +120,8 @@ class AttemptPlan:
         )
 
     @property
-    def config_path(self) -> Path:
-        return self.run_root / str(self.attempt_record["workflow_config"]["path"])
+    def attempt_path(self) -> Path:
+        return self.run_root / "attempts" / self.workflow_attempt_id / "attempt.json"
 
     @property
     def lifecycle_request(self) -> lifecycle.LifecycleRequest:
@@ -131,7 +131,6 @@ class AttemptPlan:
             run_root=self.run_root,
             execution_path=self.execution_path,
             profile_path=self.profile_path,
-            workflow_config_path=self.config_path,
             snakefile=self.readiness.installed_package.root / SNAKEFILE_RELATIVE,
             python_executable=Path(sys.executable),
             workflow_profile=self.readiness.installed_package.root
@@ -879,21 +878,19 @@ def _publication_plan(
     }
 
 
-def _dispatches(
+def _tasks(
     run: RunCandidate,
     source: Mapping[str, Any],
     readiness: doctor.DoctorResult,
     run_root: Path,
     attempt_id: str,
     compact_time: str,
-    retained: Mapping[tuple[str, str], dict[str, str]],
+    retained: Mapping[tuple[str, str], dict[str, Any]],
     resources: ResourcePlan,
     processing_source_root: Path | None,
     processing_artifact_paths: Mapping[tuple[str, str, str], Path],
     bound_input_snapshots: Mapping[Path, Mapping[str, Any]],
-) -> tuple[
-    tuple[PlannedFile, ...], dict[str, dict[str, dict[str, str]]], tuple[Path, ...]
-]:
+) -> tuple[dict[str, dict[str, dict[str, Any]]], tuple[Path, ...]]:
     analysis_revision = run.analysis.revision
     profile = run.analysis.profile
     paths_by_scope: dict[tuple[str, str], dict[str, list[Path]]] = {}
@@ -910,8 +907,7 @@ def _dispatches(
             path if path.is_absolute() else run_root / path
         )
     runtime = {item.check.check_id: item for item in readiness.inspection.observations}
-    planned: list[PlannedFile] = []
-    references: dict[str, dict[str, dict[str, str]]] = {}
+    tasks: dict[str, dict[str, dict[str, Any]]] = {}
     directories: set[Path] = set()
     authority = inspection.SuccessorRunAuthority(
         run.analysis.revision, run.execution_plan, run.run_binding
@@ -973,9 +969,9 @@ def _dispatches(
     configuration = dict(source["analysis"]["policy"]["configuration"])
     for index, task in enumerate(expected, start=1):
         identity = (task.machine_key, task.scope_id)
-        references.setdefault(task.machine_key, {})
+        tasks.setdefault(task.machine_key, {})
         if identity in retained:
-            references[task.machine_key][task.scope_id] = dict(retained[identity])
+            tasks[task.machine_key][task.scope_id] = dict(retained[identity])
             continue
         owner = owners[task.machine_key]
         step_id = str(owner["step_id"])
@@ -1207,22 +1203,6 @@ def _dispatches(
             *producer,
         )
         task_id = f"task-{compact_time}-{suffix}"
-        task_root = (
-            run_root
-            / "attempts"
-            / attempt_id
-            / "tasks"
-            / task.machine_key
-            / task.scope_id
-        )
-        dispatch_path = (
-            run_root
-            / "contract"
-            / "dispatch"
-            / attempt_id
-            / task.machine_key
-            / f"{task.scope_id}.json"
-        )
         input_declarations = []
         for role, path in planned_inputs:
             declaration = {
@@ -1247,15 +1227,9 @@ def _dispatches(
                 )
             input_declarations.append(declaration)
         record = {
-            "schema_version": "emrys.local-task-dispatch.v2",
-            "run_root": str(run_root),
-            "execution_path": str(run_root / "contract" / "run.json"),
-            "profile_path": str(run_root / "contract/profile.json"),
-            "workflow_attempt_id": attempt_id,
             "task_attempt_id": task_id,
             "owner_run_token": owner_run_token,
-            "machine_key": task.machine_key,
-            "scope": task.scope,
+            "scope_type": task.scope["scope_type"],
             "producer_argv": list(producer),
             "validator_argv": list(validator),
             "inputs": input_declarations,
@@ -1272,30 +1246,8 @@ def _dispatches(
             ),
             "validation_report_path": str(validation),
             "native_receipt_path": None,
-            "task_start_path": str(
-                run_root
-                / "state"
-                / "task-starts"
-                / task.machine_key
-                / f"{task.scope_id}.json"
-            ),
-            "task_attempt_path": str(task_root / "task-attempt.json"),
-            "verified_task_path": str(
-                run_root
-                / "state"
-                / "verified"
-                / task.machine_key
-                / f"{task.scope_id}.json"
-            ),
-            "stdout_path": str(task_root / "stdout.log"),
-            "stderr_path": str(task_root / "stderr.log"),
         }
-        data = orchestration_contracts.canonical_json_bytes(record)
-        planned.append(PlannedFile(dispatch_path, data))
-        references[task.machine_key][task.scope_id] = {
-            "path": str(dispatch_path),
-            "sha256": _sha256(data),
-        }
+        tasks[task.machine_key][task.scope_id] = record
         output_directories = {
             path.parent for path in outputs if run_root in path.parents
         }
@@ -1307,14 +1259,13 @@ def _dispatches(
             output_directories = {next(iter(output_directories)).parent}
         directories.update(
             {
-                dispatch_path.parent,
                 validation.parent,
                 *output_directories,
                 run_root / "state" / "task-starts" / task.machine_key,
                 run_root / "state" / "verified" / task.machine_key,
             }
         )
-    return tuple(planned), references, tuple(sorted(directories))
+    return tasks, tuple(sorted(directories))
 
 
 def _admitted_input_snapshots(
@@ -1350,7 +1301,7 @@ def build_attempt_plan(
     operation: Operation,
     placement: Mapping[str, Any] | None = None,
     supersedes_workflow_attempt_id: str | None = None,
-    retained_dispatches: Mapping[tuple[str, str], dict[str, str]] | None = None,
+    retained_tasks: Mapping[tuple[str, str], dict[str, Any]] | None = None,
     processing_source: inspection.ProcessingSourceAdmission | None = None,
 ) -> AttemptPlan:
     """Build one complete attempt without touching the filesystem."""
@@ -1442,8 +1393,8 @@ def build_attempt_plan(
         "name": "emrys",
         "version": __version__,
     }
-    retained = {} if retained_dispatches is None else dict(retained_dispatches)
-    dispatch_files, dispatch_references, dispatch_directories = _dispatches(
+    retained = {} if retained_tasks is None else dict(retained_tasks)
+    tasks, task_directories = _tasks(
         run,
         source,
         readiness,
@@ -1473,24 +1424,13 @@ def build_attempt_plan(
             orchestration_contracts.canonical_json_bytes(analysis.profile),
         ),
     ]
-    config = {
-        "run_root": str(run_root),
-        "python_executable": sys.executable,
-        "execution_path": str(run_root / "contract" / "run.json"),
-        "profile_path": str(run_root / "contract/profile.json"),
-        "workflow_attempt_id": attempt_id,
-        "package_root": str(source_root),
-        **reporting_config,
-        "resource_policy": resource_policy_record,
-        "dispatch_paths": dispatch_references,
-    }
-    config_data = orchestration_contracts.canonical_json_bytes(config)
-    config_path = run_root / "contract" / "workflow-configs" / f"{attempt_id}.json"
+    workflow = {**reporting_config, "resource_policy": resource_policy_record}
+    attempt_path = run_root / "attempts" / attempt_id / "attempt.json"
     attempt_argv = lifecycle.build_snakemake_argv(
         python_executable=Path(sys.executable),
         snakefile=source_root / SNAKEFILE_RELATIVE,
         workflow_profile=source_root / WORKFLOW_PROFILE_RELATIVE,
-        configfile=config_path,
+        configfile=attempt_path,
         run_root=run_root,
         target=BACKEND_TARGET,
         operation=operation,
@@ -1499,7 +1439,7 @@ def build_attempt_plan(
     )
     authored_paths = analysis.authored_paths
     attempt = {
-        "schema_version": "emrys.workflow-attempt.v1",
+        "schema_version": "emrys.workflow-attempt.v2",
         "run_id": run.run_id,
         "execution_contract_sha256": _sha256(execution_bytes),
         "profile_sha256": _sha256(
@@ -1526,10 +1466,8 @@ def build_attempt_plan(
         "executor": executor,
         "execution_mode": "local-science-tools",
         "snakemake_argv": list(attempt_argv),
-        "workflow_config": {
-            "path": config_path.relative_to(run_root).as_posix(),
-            "sha256": _sha256(config_data),
-        },
+        "workflow": workflow,
+        "tasks": tasks,
         "host": socket.gethostname(),
         "process_id": os.getpid(),
         "owner_token": owner_token,
@@ -1565,18 +1503,14 @@ def build_attempt_plan(
         ) from exc
     orchestration_contracts.validate_record("workflow-attempt", attempt)
     attempt_files = (
-        *dispatch_files,
         *(PlannedFile(path, data) for path, data in reporting_files),
         *((selected_sample_file,) if selected_sample_file is not None else ()),
-        PlannedFile(config_path, config_data),
         PlannedFile(runtime_profile_path, readiness.inspection.profile_bytes),
     )
     directories = {
         run_root / "contract",
-        run_root / "contract" / "workflow-configs",
-        run_root / "contract" / "dispatch" / attempt_id,
         *reporting_directories,
-        *dispatch_directories,
+        *task_directories,
         *(item.path.parent for item in fixed_files),
         *(item.path.parent for item in attempt_files),
     }
@@ -1591,9 +1525,9 @@ def build_attempt_plan(
         attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
         fixed_files=tuple(fixed_files),
         attempt_files=tuple(attempt_files),
-        new_dispatch_files=tuple(dispatch_files),
+        new_task_count=sum(len(scopes) for scopes in tasks.values()) - len(retained),
         directories=tuple(sorted(directories)),
-        dispatch_count=sum(len(scopes) for scopes in dispatch_references.values()),
+        task_count=sum(len(scopes) for scopes in tasks.values()),
     )
 
 

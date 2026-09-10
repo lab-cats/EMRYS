@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:emrys:schema:orchestration:reporting-start:v1",
-  "title": "EMRYS reporting start marker",
+  "$id": "urn:emrys:schema:orchestration:reporting-start:v2",
+  "title": "EMRYS reporting start markerv2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -12,7 +12,6 @@
     "origin_workflow_attempt_id",
     "kind",
     "workflow_attempt",
-    "workflow_config",
     "run_lock",
     "created_at"
   ],
@@ -39,9 +38,6 @@
       ]
     },
     "workflow_attempt": {
-      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
-    },
-    "workflow_config": {
       "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
     },
     "run_lock": {

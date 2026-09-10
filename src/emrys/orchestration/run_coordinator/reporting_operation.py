@@ -81,12 +81,13 @@ def _arguments(identity: Any, kind: str) -> argparse.Namespace:
     artifact_run_root = artifact_root / run_id
     package_root = Path(str(identity.attempt["installed_package"]["path"]))
     authority = {"package_root": package_root, "artifact_source_root": root}
-    run_contract = root / str(identity.config["reporting_run_contract_path"]["path"])
-    policy_reference = identity.config.get("primary_analysis_policy_path")
+    workflow = identity.attempt["workflow"]
+    run_contract = root / str(workflow["reporting_run_contract_path"]["path"])
+    policy_reference = workflow.get("primary_analysis_policy_path")
     analysis_policy = (
         None if policy_reference is None else root / str(policy_reference["path"])
     )
-    inventory = root / str(identity.config["artifact_inventory_path"]["path"])
+    inventory = root / str(workflow["artifact_inventory_path"]["path"])
     values = {
         "run_summary": {
             "run_id": run_id,
@@ -166,8 +167,6 @@ def _admit_generation(state: inspection.RunInspection) -> Any:
         execution_path=state.run_root / "contract" / "run.json",
         profile_path=state.run_root / "contract" / "profile.json",
         workflow_attempt_path=attempt_path,
-        workflow_config_path=state.run_root
-        / str(state.latest_attempt["workflow_config"]["path"]),
         require_publishable_attempt=True,
     )
 
@@ -317,8 +316,6 @@ def run_reporting(
             "workflow_attempt_path": (
                 identity.root / "attempts" / identifier / "attempt.json"
             ),
-            "workflow_config_path": identity.root
-            / str(identity.attempt["workflow_config"]["path"]),
         }
         for kind in reporting_boundary.REPORTING_KINDS:
             try:

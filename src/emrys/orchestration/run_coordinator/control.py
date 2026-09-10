@@ -265,32 +265,10 @@ def _plan_run(
     return plan
 
 
-def _load_config_reference(
-    run_root: Path,
-    attempt: Mapping[str, Any],
-) -> dict[str, Any]:
-    reference = attempt["workflow_config"]
-    path = run_root / str(reference["path"])
-    try:
-        data = read_bytes(path, "prior workflow config")
-    except ValidationError as exc:
-        raise ControlError(f"Prior workflow config is unavailable: {path}") from exc
-
-    if hashlib.sha256(data).hexdigest() != reference["sha256"]:
-        raise ControlError("Prior workflow config differs from its attempt reference")
-    try:
-        value = orchestration_contracts.load_json_object_bytes(data, path)
-    except orchestration_contracts.ContractValidationError as exc:
-        raise ControlError(str(exc)) from exc
-    if orchestration_contracts.canonical_json_bytes(value) != data:
-        raise ControlError("Prior workflow config does not use canonical JSON bytes")
-    return value
-
-
 def _admit_resume_predecessor(
     run_root: Path,
-) -> tuple[inspection.RunInspection, dict[str, Any], dict[str, Any]]:
-    """Admit the one recoverable predecessor and its bound workflow config."""
+) -> tuple[inspection.RunInspection, dict[str, Any]]:
+    """Admit the one recoverable predecessor and its immutable Attempt manifest."""
 
     root = _absolute(run_root)
     try:
@@ -309,7 +287,7 @@ def _admit_resume_predecessor(
             )
         )
     previous = observed.latest_attempt
-    return observed, previous, _load_config_reference(root, previous)
+    return observed, previous
 
 
 def _resume_predecessor_policy(
@@ -320,7 +298,7 @@ def _resume_predecessor_policy(
 
     prior = predecessor_config.get("resource_policy")
     if not isinstance(prior, dict):
-        raise ControlError("Prior workflow config has no resource policy")
+        raise ControlError("Prior Attempt has no resource policy")
     try:
         predecessor = admit_resource_policy_record(prior).policy
         return resume_resource_policy(predecessor, overrides=overrides)
@@ -328,43 +306,46 @@ def _resume_predecessor_policy(
         raise ControlError(str(exc)) from exc
 
 
-def _retained_dispatches(
+def _retained_tasks(
     observed: inspection.RunInspection,
-    config: Mapping[str, Any],
-) -> tuple[dict[tuple[str, str], dict[str, str]], bytes | None]:
-    dispatches = config.get("dispatch_paths")
-    if not isinstance(dispatches, dict):
-        raise ControlError("Prior workflow config has no closed dispatch map")
-    retained: dict[tuple[str, str], dict[str, str]] = {}
+    attempt: Mapping[str, Any],
+) -> tuple[dict[tuple[str, str], dict[str, Any]], bytes | None]:
+    tasks = attempt["tasks"]
+    retained: dict[tuple[str, str], dict[str, Any]] = {}
+    attempt_reference = {
+        "path": f"attempts/{attempt['workflow_attempt_id']}/attempt.json",
+        "sha256": orchestration_contracts.canonical_sha256(attempt),
+    }
     selected_manifest: bytes | None = None
     selected_projection: bool | None = None
     for inspected in observed.tasks:
         if inspected.state != "verified":
             continue
         try:
-            reference = dispatches[inspected.expected.machine_key][
+            definition = tasks[inspected.expected.machine_key][
                 inspected.expected.scope_id
             ]
         except (KeyError, TypeError) as exc:
             raise ControlError(
-                "Prior workflow config omits a reusable verified dispatch: "
+                "Prior Attempt omits a reusable verified task: "
                 f"{inspected.expected.machine_key}/{inspected.expected.scope_id}"
             ) from exc
-        if not isinstance(reference, dict) or set(reference) != {"path", "sha256"}:
-            raise ControlError("Prior reusable dispatch reference is malformed")
-        path = Path(str(reference["path"]))
+        reference = definition.get("workflow_attempt_record", attempt_reference)
+        path = observed.run_root / reference["path"]
         try:
-            dispatch = task_boundary.load_dispatch(
+            dispatch = task_boundary.load_task(
                 path,
-                expected_sha256=str(reference["sha256"]),
+                expected_sha256=reference["sha256"],
+                machine_key=inspected.expected.machine_key,
+                scope_id=inspected.expected.scope_id,
             )
         except task_boundary.TaskBoundaryError as exc:
             raise ControlError(
-                f"Reusable dispatch is unavailable: {path}: {exc}"
+                f"Reusable task plan is unavailable: {path}: {exc}"
             ) from exc
-        retained[(inspected.expected.machine_key, inspected.expected.scope_id)] = dict(
-            reference
-        )
+        retained[(inspected.expected.machine_key, inspected.expected.scope_id)] = {
+            "workflow_attempt_record": dict(reference)
+        }
         if inspected.expected.step_id != "07":
             continue
         manifest_path = (
@@ -380,9 +361,7 @@ def _retained_dispatches(
         )
         projected = declaration is not None
         if selected_projection is not None and projected != selected_projection:
-            raise ControlError(
-                "Reusable Step 07 dispatches disagree on sample projection"
-            )
+            raise ControlError("Reusable Step 07 tasks disagree on sample projection")
         selected_projection = projected
         if not projected:
             continue
@@ -402,9 +381,7 @@ def _retained_dispatches(
                 "Reusable Step 07 sample projection differs from its binding"
             )
         if selected_manifest is not None and data != selected_manifest:
-            raise ControlError(
-                "Reusable Step 07 dispatches disagree on sample projection"
-            )
+            raise ControlError("Reusable Step 07 tasks disagree on sample projection")
         selected_manifest = data
     return retained, selected_manifest
 
@@ -470,7 +447,7 @@ def _plan_resume(
     """Plan a safe between-task resume without writing run state."""
 
     root = _absolute(run_root)
-    observed, previous, predecessor_config = _admit_resume_predecessor(root)
+    observed, previous = _admit_resume_predecessor(root)
     project_path = Path(str(previous["authored_paths"]["request"]))
     workspace = Path(str(previous["workspace"]))
     runtime_profile = _resume_runtime_profile_path(project_path, previous)
@@ -490,9 +467,9 @@ def _plan_resume(
         )
         _require_ready(readiness)
         analysis = readiness.analysis
-        retained_dispatches, retained_sample_manifest = _retained_dispatches(
+        retained_tasks, retained_sample_manifest = _retained_tasks(
             observed,
-            predecessor_config,
+            previous,
         )
         if retained_sample_manifest is not None:
             analysis = replace(
@@ -503,7 +480,7 @@ def _plan_resume(
         policy = execution_profile.resource_policy
         if not execution_profile.computational_resources_explicit:
             policy = _resume_predecessor_policy(
-                predecessor_config,
+                previous["workflow"],
                 resource_overrides,
             )
             execution_profile = replace(
@@ -536,7 +513,7 @@ def _plan_resume(
             resources=resources,
             operation="resume",
             supersedes_workflow_attempt_id=str(previous["workflow_attempt_id"]),
-            retained_dispatches=retained_dispatches,
+            retained_tasks=retained_tasks,
             placement=execution_profile.attempt_placement(scheduler_job_id),
             processing_source=processing_source,
         )
@@ -660,13 +637,11 @@ def _resolve_execution_profile(
         and isinstance(profile.placement, SlurmPlacement)
         and not profile.computational_resources_explicit
     ):
-        _observed, _previous, predecessor_config = _admit_resume_predecessor(
-            resume_run_root
-        )
+        _observed, previous = _admit_resume_predecessor(resume_run_root)
         profile = replace(
             profile,
             resource_policy=_resume_predecessor_policy(
-                predecessor_config,
+                previous["workflow"],
                 overrides,
             ),
         )
@@ -1219,8 +1194,7 @@ def _reporting_applicable(plan: AttemptPlan) -> bool:
 def _print_plan(
     plan: AttemptPlan, *, level: LogLevel, report_enabled: bool = True
 ) -> None:
-    new_dispatches = plan.new_dispatch_files
-    reused = plan.dispatch_count - len(new_dispatches)
+    reused = plan.task_count - plan.new_task_count
     resources = plan.resources
     project_label = plan.run.analysis.source_path.parent.name
     print(f"Project: {project_label!a}", file=sys.stderr)
@@ -1249,7 +1223,7 @@ def _print_plan(
             f"Processing source: {inspection.human_run_name(processing_source['source_run_id'])}",
             file=sys.stderr,
         )
-    print(f"Work: {len(new_dispatches)} pending, {reused} reusable", file=sys.stderr)
+    print(f"Work: {plan.new_task_count} pending, {reused} reusable", file=sys.stderr)
     print(f"Reporting: {reporting}", file=sys.stderr)
     if level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
         print(f"Run ID: {plan.run.run_id}", file=sys.stderr)
@@ -1282,20 +1256,16 @@ def _print_plan(
             "Snakemake command: " + shlex.join(plan.attempt_record["snakemake_argv"]),
             file=sys.stderr,
         )
-        for item in new_dispatches:
-            record = orchestration_contracts.load_json_object_bytes(
-                item.data, item.path
-            )
-            print(
-                f"TASK {record['machine_key']}/{record['scope']['scope_id']} producer: "
-                + shlex.join(record["producer_argv"]),
-                file=sys.stderr,
-            )
-            print(
-                f"TASK {record['machine_key']}/{record['scope']['scope_id']} validator: "
-                + shlex.join(record["validator_argv"]),
-                file=sys.stderr,
-            )
+        for machine_key, by_scope in plan.attempt_record["tasks"].items():
+            for scope_id, record in by_scope.items():
+                if "workflow_attempt_record" in record:
+                    continue
+                for command in ("producer", "validator"):
+                    print(
+                        f"TASK {machine_key}/{scope_id} {command}: "
+                        + shlex.join(record[f"{command}_argv"]),
+                        file=sys.stderr,
+                    )
     print(
         "Evidence boundary: this plan or execution proves only the admitted local "
         "workflow layer; it is not cluster, production, scientific-review, or "

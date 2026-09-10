@@ -21,8 +21,9 @@ processing profile's complete bytes because they now define executable tasks;
 changing that file requires new Processing results. Execution profiles separate
 Run-bound resources from Attempt-local placement.
 
-Attempts bind exact tools/runtime, immutable configuration, logs, task starts,
-task attempts, and verified tasks. Reporting records its own starts and verified
+Each Attempt manifest contains exact tools/runtime, workflow settings, and task
+definitions. Task starts bind that manifest once; logs, terminal task results,
+and verified markers remain separate execution evidence. Reporting records its own starts and verified
 results for the run manifest and HTML. Scientific receipts exclude reporting.
 Each task has one terminal result and a verified marker that binds that result.
 The registry admits the current forms only; current releases have no obligation

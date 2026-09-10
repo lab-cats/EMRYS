@@ -73,7 +73,9 @@ def _snakemake(
     metadata = built.root / metadata_name
     cache = built.root / "cache"
     python_executable = str(
-        orchestration_contracts.load_json_object(built.config_path)["python_executable"]
+        orchestration_contracts.load_json_object(built.workflow_attempt_path)[
+            "normalizer"
+        ]["path"]
     )
     command = [
         *controlled_python_argv(python_executable),
@@ -86,7 +88,7 @@ def _snakemake(
         "--runtime-source-cache-path",
         str(cache / "sources"),
         "--configfile",
-        str(built.config_path),
+        str(built.workflow_attempt_path),
         "--directory",
         str(metadata),
         "--nocolor",
@@ -107,22 +109,18 @@ def _snakemake(
     )
 
 
-def _publish_config(
+def _publish_attempt(
     built: workflow_fixture.WorkflowFixture,
-    config: dict[str, Any],
+    attempt: dict[str, Any],
 ) -> None:
-    payload = orchestration_contracts.canonical_json_bytes(config)
-    built.config_path.write_bytes(payload)
-    attempt = orchestration_contracts.load_record(
-        built.workflow_attempt_path, "workflow-attempt"
-    )
-    attempt["workflow_config"] = {
-        "path": built.config_path.relative_to(built.run_root).as_posix(),
-        "sha256": orchestration_contracts.canonical_sha256(config),
-    }
-    built.workflow_attempt_path.write_bytes(
-        orchestration_contracts.canonical_json_bytes(attempt)
-    )
+    for path, record in (
+        (built.workflow_attempt_path, attempt),
+        (
+            built.run_root / "locks/run.lock",
+            orchestration_contracts.run_lock_record(attempt),
+        ),
+    ):
+        path.write_bytes(orchestration_contracts.canonical_json_bytes(record))
 
 
 def _dag(
@@ -175,7 +173,9 @@ def _leave_real_incomplete_marker(
         encoding="utf-8",
     )
     python_executable = str(
-        orchestration_contracts.load_json_object(built.config_path)["python_executable"]
+        orchestration_contracts.load_json_object(built.workflow_attempt_path)[
+            "normalizer"
+        ]["path"]
     )
     process = subprocess.Popen(
         [
@@ -370,21 +370,13 @@ def test_real_processing_plan_dry_run_closes_at_step_06(
     (attempt_root / "request.yaml").write_bytes(plan.run.analysis.source_bytes)
     attempt_path = attempt_root / "attempt.json"
     attempt_path.write_bytes(plan.attempt_record_bytes)
-    config = orchestration_contracts.load_json_object(plan.config_path)
     built = workflow_fixture.WorkflowFixture(
         root=tmp_path / "processing-plan-workflow",
         run_root=plan.run_root,
-        config_path=plan.config_path,
         execution=plan.run.run_binding.record,
         profile=plan.run.analysis.profile,
-        dispatch_paths={
-            machine_key: {
-                scope_id: str(reference["path"])
-                for scope_id, reference in by_scope.items()
-            }
-            for machine_key, by_scope in config["dispatch_paths"].items()
-        },
         workflow_attempt_path=attempt_path,
+        attempt_record_bytes=plan.attempt_record_bytes,
     )
     built.root.mkdir()
     workflow_fixture.materialize_active_run_lock(built)
@@ -392,7 +384,7 @@ def test_real_processing_plan_dry_run_closes_at_step_06(
     nodes, _edges, output = _dag(built, "cohort_slice")
     owners = [label for label in nodes.values() if label in EXECUTABLE_RULES]
 
-    assert plan.dispatch_count == len(owners) == 31, output
+    assert plan.task_count == len(owners) == 31, output
     assert not {
         "generate_partitioned_cohort_mpileup_VCFs",
         "preprocess_and_annotate_cohort_candidates",
@@ -403,8 +395,8 @@ def test_real_processing_plan_dry_run_closes_at_step_06(
 def test_backend_projection_accepts_successor_resource_policy_record(
     built: workflow_fixture.WorkflowFixture,
 ) -> None:
-    config = orchestration_contracts.load_json_object(built.config_path)
-    resource_policy = config["resource_policy"]
+    config = orchestration_contracts.load_json_object(built.workflow_attempt_path)
+    resource_policy = config["workflow"]["resource_policy"]
     effective = resource_policy["effective"]
     symbolic = {
         **effective,
@@ -417,7 +409,7 @@ def test_backend_projection_accepts_successor_resource_policy_record(
     resource_policy["symbolic_sha256"] = orchestration_contracts.canonical_sha256(
         symbolic
     )
-    _publish_config(built, config)
+    _publish_attempt(built, config)
 
     nodes, _, output = _dag(built, "reference_slice")
 
@@ -521,11 +513,17 @@ def test_resume_reuses_every_completed_file_with_existing_engine_metadata(
     resumed = workflow_fixture.refresh_attempt(built, sequence=1)
     machine_key = "emrys.stage.construct_STAR_index.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
-    resumed_config = orchestration_contracts.load_json_object(resumed.config_path)
-    assert (
-        resumed_config["dispatch_paths"][machine_key][scope_id]["path"]
-        == (built.dispatch_paths[machine_key][scope_id])
+    resumed_attempt = orchestration_contracts.load_json_object(
+        resumed.workflow_attempt_path
     )
+    assert resumed_attempt["tasks"][machine_key][scope_id] == {
+        "workflow_attempt_record": {
+            "path": built.workflow_attempt_path.relative_to(built.run_root).as_posix(),
+            "sha256": hashlib.sha256(
+                built.workflow_attempt_path.read_bytes()
+            ).hexdigest(),
+        }
+    }
     completed = _snakemake(
         resumed,
         "--rerun-triggers",
@@ -552,13 +550,16 @@ def test_resume_refuses_dispatch_substitution_for_a_valid_completed_task(
     substituted = workflow_fixture.refresh_attempt(
         built,
         sequence=4,
-        rematerialize_dispatches=True,
+        rematerialize_tasks=True,
     )
     machine_key = "emrys.stage.construct_STAR_index.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
+    substituted_attempt = orchestration_contracts.load_json_object(
+        substituted.workflow_attempt_path
+    )
     assert (
-        substituted.dispatch_paths[machine_key][scope_id]
-        != built.dispatch_paths[machine_key][scope_id]
+        "workflow_attempt_record"
+        not in substituted_attempt["tasks"][machine_key][scope_id]
     )
     failed = _snakemake(
         substituted,
@@ -571,9 +572,7 @@ def test_resume_refuses_dispatch_substitution_for_a_valid_completed_task(
         check=False,
     )
     assert failed.returncode != 0
-    assert (
-        "Verified task dispatch does not match current workflow config" in failed.stdout
-    )
+    assert "Verified task origin does not match the Attempt manifest" in failed.stdout
 
 
 @pytest.mark.parametrize(
@@ -598,7 +597,7 @@ def test_verified_state_roster_rejects_every_unexpected_entry(
         (owner / "unexpected.json").write_text("{}\n", encoding="utf-8")
     elif entry_kind == "owner_symlink":
         owner.mkdir(parents=True, exist_ok=True)
-        (owner / "unexpected-link.json").symlink_to(built.config_path)
+        (owner / "unexpected-link.json").symlink_to(built.workflow_attempt_path)
     else:
         (owner / "unexpected-deep").mkdir(parents=True)
 
@@ -736,107 +735,90 @@ def test_content_bound_verified_marker_is_reused_and_mutation_fails_closed(
     assert "content binding no longer matches" in failed.stdout
 
 
-def test_foreign_dispatch_binding_and_unknown_scope_fail_closed(
+def test_task_origin_binding_and_unknown_scope_fail_closed(
     built: workflow_fixture.WorkflowFixture,
 ) -> None:
     machine_key = "emrys.stage.construct_STAR_index.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
-    dispatch = Path(built.dispatch_paths[machine_key][scope_id])
-    record = json.loads(dispatch.read_text(encoding="utf-8"))
-    record["run_root"] = str((built.root / "foreign-run").resolve())
-    dispatch.write_text(json.dumps(record, sort_keys=True), encoding="utf-8")
+    attempt = orchestration_contracts.load_json_object(built.workflow_attempt_path)
+    origin_id = "workflow-20260812T110000Z-" + "b" * 32
+    origin_path = built.run_root / "attempts" / origin_id / "attempt.json"
+    origin = {
+        **attempt,
+        "workflow_attempt_id": origin_id,
+        "created_at": "2026-08-12T11:00:00Z",
+    }
+    origin_path.parent.mkdir(parents=True)
+    origin_path.write_bytes(orchestration_contracts.canonical_json_bytes(origin))
+    attempt["tasks"][machine_key][scope_id] = {
+        "workflow_attempt_record": {
+            "path": origin_path.relative_to(built.run_root).as_posix(),
+            "sha256": "0" * 64,
+        }
+    }
+    _publish_attempt(built, attempt)
     failed = _snakemake(built, "--dry-run", "--", "reference_slice", check=False)
     assert failed.returncode != 0
-    assert "Dispatch bytes do not match configured SHA-256" in failed.stdout
+    assert "Original Attempt manifest bytes differ" in failed.stdout
 
-    semantic = workflow_fixture.build(built.root.parent / "semantic-fixture")
-    workflow_fixture.materialize_active_run_lock(semantic)
-    dispatch = Path(semantic.dispatch_paths[machine_key][scope_id])
-    record = orchestration_contracts.load_json_object(dispatch)
-    record["run_root"] = str((semantic.root / "foreign-run").resolve())
-    dispatch.write_bytes(orchestration_contracts.canonical_json_bytes(record))
-    config = orchestration_contracts.load_json_object(semantic.config_path)
-    config["dispatch_paths"][machine_key][scope_id]["sha256"] = (
-        orchestration_contracts.canonical_sha256(record)
+    origin["workspace"] = str(built.root / "foreign-workspace")
+    origin_path.write_bytes(orchestration_contracts.canonical_json_bytes(origin))
+    attempt["tasks"][machine_key][scope_id]["workflow_attempt_record"]["sha256"] = (
+        hashlib.sha256(origin_path.read_bytes()).hexdigest()
     )
-    _publish_config(semantic, config)
-    failed = _snakemake(semantic, "--dry-run", "--", "reference_slice", check=False)
+    _publish_attempt(built, attempt)
+    failed = _snakemake(built, "--dry-run", "--", "reference_slice", check=False)
     assert failed.returncode != 0
-    assert "does not bind expected run_root" in failed.stdout
+    assert "not at its exact Run path" in failed.stdout
 
     rebuilt = workflow_fixture.build(built.root.parent / "second-fixture")
     workflow_fixture.materialize_active_run_lock(rebuilt)
-    config = json.loads(rebuilt.config_path.read_text(encoding="utf-8"))
-    config["dispatch_paths"][machine_key]["unexpected"] = config["dispatch_paths"][
-        machine_key
-    ][scope_id]
-    _publish_config(rebuilt, config)
+    attempt = orchestration_contracts.load_json_object(rebuilt.workflow_attempt_path)
+    attempt["tasks"][machine_key]["unexpected"] = attempt["tasks"][machine_key][
+        scope_id
+    ]
+    _publish_attempt(rebuilt, attempt)
     failed = _snakemake(rebuilt, "--dry-run", "--", "reference_slice", check=False)
     assert failed.returncode != 0
-    assert "Dispatch scopes do not exactly match" in failed.stdout
+    assert "Attempt task scopes do not match" in failed.stdout
 
 
-@pytest.mark.parametrize(
-    ("mutation", "expected_message"),
-    (
-        (
-            "predecessor_pending",
-            "does not bind the current workflow attempt",
-        ),
-        (
-            "foreign_stdout",
-            "stdout_path does not match the exact workflow-attempt task path",
-        ),
-    ),
-)
-def test_pending_dispatch_identity_and_task_evidence_paths_fail_closed(
+def test_pending_task_cannot_execute_from_an_original_attempt(
     built: workflow_fixture.WorkflowFixture,
-    mutation: str,
-    expected_message: str,
 ) -> None:
     machine_key = "emrys.stage.construct_STAR_index.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
-    config = orchestration_contracts.load_json_object(built.config_path)
-    reference = config["dispatch_paths"][machine_key][scope_id]
-    dispatch_path = Path(reference["path"])
-    dispatch = orchestration_contracts.load_json_object(dispatch_path)
-    if mutation == "predecessor_pending":
-        dispatch_attempt_id = "workflow-20260812T110000Z-" + "b" * 32
-        dispatch["workflow_attempt_id"] = dispatch_attempt_id
-        task_root = (
-            built.run_root
-            / "attempts"
-            / dispatch_attempt_id
-            / "tasks"
-            / machine_key
-            / scope_id
-        )
-        dispatch["task_attempt_path"] = str(task_root / "task-attempt.json")
-        dispatch["stdout_path"] = str(task_root / "stdout.log")
-        dispatch["stderr_path"] = str(task_root / "stderr.log")
-    else:
-        dispatch["stdout_path"] = str(
-            built.run_root / "attempts" / "foreign-stdout.log"
-        )
-    dispatch_path.write_bytes(orchestration_contracts.canonical_json_bytes(dispatch))
-    reference["sha256"] = orchestration_contracts.canonical_sha256(dispatch)
-    _publish_config(built, config)
-
+    attempt = orchestration_contracts.load_json_object(built.workflow_attempt_path)
+    origin_id = "workflow-20260812T110000Z-" + "b" * 32
+    origin = {
+        **attempt,
+        "workflow_attempt_id": origin_id,
+        "created_at": "2026-08-12T11:00:00Z",
+    }
+    origin_path = built.run_root / "attempts" / origin_id / "attempt.json"
+    origin_path.parent.mkdir(parents=True)
+    origin_path.write_bytes(orchestration_contracts.canonical_json_bytes(origin))
+    attempt["tasks"][machine_key][scope_id] = {
+        "workflow_attempt_record": {
+            "path": origin_path.relative_to(built.run_root).as_posix(),
+            "sha256": hashlib.sha256(origin_path.read_bytes()).hexdigest(),
+        }
+    }
+    _publish_attempt(built, attempt)
     failed = _snakemake(built, "--dry-run", "--", "reference_slice", check=False)
-
     assert failed.returncode != 0
-    assert expected_message in failed.stdout
+    assert "does not bind the current workflow attempt" in failed.stdout
 
 
-def test_config_and_profile_snapshot_are_closed_and_content_bound(
+def test_attempt_and_profile_snapshot_are_closed_and_content_bound(
     built: workflow_fixture.WorkflowFixture,
 ) -> None:
-    config = json.loads(built.config_path.read_text(encoding="utf-8"))
+    config = json.loads(built.workflow_attempt_path.read_text(encoding="utf-8"))
     config["unknown"] = "not-allowed"
-    built.config_path.write_text(json.dumps(config), encoding="utf-8")
+    built.workflow_attempt_path.write_text(json.dumps(config), encoding="utf-8")
     failed = _snakemake(built, "--dry-run", "--", "reference_slice", check=False)
     assert failed.returncode != 0
-    assert "Workflow config keys must be exactly" in failed.stdout
+    assert "Additional properties" in failed.stdout
 
     rebuilt = workflow_fixture.build(built.root.parent / "snapshot-fixture")
     workflow_fixture.materialize_active_run_lock(rebuilt)
@@ -851,12 +833,15 @@ def test_config_and_profile_snapshot_are_closed_and_content_bound(
 def test_child_python_identity_is_bound_before_graph_admission(
     built: workflow_fixture.WorkflowFixture,
 ) -> None:
-    config = orchestration_contracts.load_json_object(built.config_path)
-    config["python_executable"] = str(workflow_fixture.REPO_ROOT / ".venv/bin/python3")
-    _publish_config(built, config)
+    config = orchestration_contracts.load_json_object(built.workflow_attempt_path)
+    config["normalizer"]["path"] = str(workflow_fixture.REPO_ROOT / ".venv/bin/python3")
+    _publish_attempt(built, config)
     failed = _snakemake(built, "--dry-run", "--", "reference_slice", check=False)
     assert failed.returncode != 0
-    assert "does not bind python_executable" in failed.stdout
+    assert (
+        "Workflow Python, Snakemake, and normalizer paths must be identical"
+        in failed.stdout
+    )
 
 
 def test_child_installed_package_identity_is_attested_before_graph_admission(
@@ -866,9 +851,7 @@ def test_child_installed_package_identity_is_attested_before_graph_admission(
         built.workflow_attempt_path, "workflow-attempt"
     )
     attempt["installed_package"]["content_sha256"] = "0" * 64
-    built.workflow_attempt_path.write_bytes(
-        orchestration_contracts.canonical_json_bytes(attempt)
-    )
+    _publish_attempt(built, attempt)
 
     failed = _snakemake(built, "--dry-run", "--", "reference_slice", check=False)
 

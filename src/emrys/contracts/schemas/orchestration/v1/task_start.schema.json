@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:emrys:schema:orchestration:task-start:v1",
-  "title": "EMRYS owner task entry ledger record v1",
+  "$id": "urn:emrys:schema:orchestration:task-start:v2",
+  "title": "EMRYS owner task entry ledger record v2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,14 +15,12 @@
     "scope",
     "owner_run_token",
     "workflow_attempt_record",
-    "workflow_config",
     "run_lock",
-    "task_dispatch_record",
     "created_at"
   ],
   "properties": {
     "schema_version": {
-      "const": "emrys.task-start.v1"
+      "const": "emrys.task-start.v2"
     },
     "run_id": {
       "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/run_id"
@@ -51,13 +49,7 @@
     "workflow_attempt_record": {
       "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
     },
-    "workflow_config": {
-      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
-    },
     "run_lock": {
-      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
-    },
-    "task_dispatch_record": {
       "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
     },
     "created_at": {
