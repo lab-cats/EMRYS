@@ -6,8 +6,16 @@
   "additionalProperties": false,
   "$defs": {
     "core_renderer": {
-      "type": "object", "additionalProperties": false,
-      "required": ["producer", "producer_version", "package", "content_sha256", "template_engine", "template_engine_version"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "producer",
+        "producer_version",
+        "package",
+        "content_sha256",
+        "template_engine",
+        "template_engine_version"
+      ],
       "properties": {
         "producer": {"const": "emrys.reporting.report"},
         "producer_version": {"type": "string", "minLength": 1},
@@ -16,9 +24,94 @@
         "template_engine": {"const": "Jinja2"},
         "template_engine_version": {"type": "string", "minLength": 1}
       }
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path"},
+        "sha256": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/sha256"}
+      }
+    },
+    "report_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["output_id", "kind", "path", "sha256", "size_bytes", "media_type"],
+      "properties": {
+        "output_id": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"},
+        "kind": {"enum": ["scientific_html", "evidence_html", "run_summary_tsv"]},
+        "path": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path"},
+        "sha256": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "media_type": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/non_empty_string"},
+        "self_contained": {"type": "boolean"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"enum": ["scientific_html", "evidence_html"]}}, "required": ["kind"]},
+          "then": {
+            "required": ["self_contained"],
+            "properties": {"media_type": {"const": "text/html"}, "self_contained": {"const": true}}
+          }
+        },
+        {
+          "if": {"properties": {"kind": {"const": "run_summary_tsv"}}, "required": ["kind"]},
+          "then": {
+            "properties": {"media_type": {"const": "text/tab-separated-values"}},
+            "not": {"required": ["self_contained"]}
+          }
+        }
+      ]
+    },
+    "truncation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "table_id",
+        "report_section",
+        "full_table_path",
+        "full_table_sha256",
+        "full_row_count",
+        "displayed_row_count"
+      ],
+      "properties": {
+        "table_id": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"},
+        "report_section": {"const": "computational-results-section"},
+        "full_table_path": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path"},
+        "full_table_sha256": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/sha256"},
+        "full_row_count": {"type": "integer", "minimum": 1},
+        "displayed_row_count": {"type": "integer", "minimum": 0}
+      }
     }
   },
-  "required": ["schema_name", "schema_version", "record_type", "run_id", "attempt_id", "generated_at", "publication_state", "transaction_state", "interpretation_boundary", "input_run_summary", "analysis_policy", "scientific_renderer", "evidence_renderer", "template", "stylesheet", "outputs", "state_banner", "truncations", "schema_versions", "analysis_execution_performed", "external_network_assets_used", "validation_claimed", "warnings", "errors", "provenance"],
+  "required": [
+    "schema_name",
+    "schema_version",
+    "record_type",
+    "run_id",
+    "attempt_id",
+    "generated_at",
+    "publication_state",
+    "transaction_state",
+    "interpretation_boundary",
+    "input_run_summary",
+    "analysis_policy",
+    "scientific_renderer",
+    "evidence_renderer",
+    "template",
+    "stylesheet",
+    "outputs",
+    "state_banner",
+    "truncations",
+    "schema_versions",
+    "analysis_execution_performed",
+    "external_network_assets_used",
+    "validation_claimed",
+    "warnings",
+    "errors",
+    "provenance"
+  ],
   "properties": {
     "schema_name": {"const": "emrys.report_receipt"},
     "schema_version": {"const": "5.0.0"},
@@ -30,17 +123,19 @@
     "transaction_state": {"const": "complete"},
     "interpretation_boundary": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/non_empty_string"},
     "input_run_summary": {
-      "type": "object", "additionalProperties": false,
+      "type": "object",
+      "additionalProperties": false,
       "required": ["path", "sha256", "schema_name", "schema_version"],
       "properties": {
         "path": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path"},
         "sha256": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/sha256"},
         "schema_name": {"const": "emrys.run_summary"},
-        "schema_version": {"const": "3.0.0"}
+        "schema_version": {"const": "4.0.0"}
       }
     },
     "analysis_policy": {
-      "type": "object", "additionalProperties": false,
+      "type": "object",
+      "additionalProperties": false,
       "required": ["path", "sha256", "size_bytes", "schema_version"],
       "properties": {
         "path": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path"},
@@ -50,8 +145,18 @@
       }
     },
     "scientific_renderer": {
-      "type": "object", "additionalProperties": false,
-      "required": ["module_id", "module_version", "distribution_name", "distribution_version", "package", "entry_point", "content_sha256", "core_support"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "module_id",
+        "module_version",
+        "distribution_name",
+        "distribution_version",
+        "package",
+        "entry_point",
+        "content_sha256",
+        "core_support"
+      ],
       "properties": {
         "module_id": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"},
         "module_version": {"type": "string", "minLength": 1},
@@ -64,15 +169,20 @@
       }
     },
     "evidence_renderer": {"$ref": "#/$defs/core_renderer"},
-    "template": {"$ref": "urn:emrys:schema:artifacts:report-receipt:v4#/$defs/resource"},
-    "stylesheet": {"$ref": "urn:emrys:schema:artifacts:report-receipt:v4#/$defs/resource"},
-    "outputs": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "urn:emrys:schema:artifacts:report-receipt:v4#/$defs/report_output"}},
+    "template": {"$ref": "#/$defs/resource"},
+    "stylesheet": {"$ref": "#/$defs/resource"},
+    "outputs": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/report_output"}},
     "state_banner": {"type": "string", "minLength": 1},
-    "truncations": {"type": "array", "items": {"$ref": "urn:emrys:schema:artifacts:report-receipt:v4#/$defs/truncation"}},
+    "truncations": {"type": "array", "items": {"$ref": "#/$defs/truncation"}},
     "schema_versions": {
-      "type": "object", "additionalProperties": false,
-      "required": ["artifact_record", "run_summary", "report_receipt"],
-      "properties": {"artifact_record": {"const": "2.0.0"}, "run_summary": {"const": "3.0.0"}, "report_receipt": {"const": "5.0.0"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_entry", "run_summary", "report_receipt"],
+      "properties": {
+        "artifact_entry": {"const": "1.0.0"},
+        "run_summary": {"const": "4.0.0"},
+        "report_receipt": {"const": "5.0.0"}
+      }
     },
     "analysis_execution_performed": {"const": false},
     "external_network_assets_used": {"const": false},

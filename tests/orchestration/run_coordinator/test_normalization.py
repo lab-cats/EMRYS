@@ -74,9 +74,6 @@ def test_explicit_module_normalizes_once_without_provider_facts_in_identity(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     project_path = fixture.build(tmp_path / "project-root")
-    flat_revision = (
-        admit_project(project_path, fixture.profile()).select_analysis().revision
-    )
     (project_path.parent / "target.bed").write_text(
         "chrSynthetic\t0\t10\n", encoding="utf-8"
     )
@@ -84,6 +81,9 @@ def test_explicit_module_normalizes_once_without_provider_facts_in_identity(
         "partition_id\tselector_type\tselector_value\n"
         "primary\tregions_file\ttarget.bed\n",
         encoding="utf-8",
+    )
+    flat_revision = (
+        admit_project(project_path, fixture.profile()).select_analysis().revision
     )
     definition = yaml.safe_load(project_path.read_text(encoding="utf-8"))
     authored = definition["analyses"]["primary"]
@@ -139,7 +139,7 @@ def test_explicit_module_normalizes_once_without_provider_facts_in_identity(
     assert calls == 2
     assert contexts[0].partitions[0]["selector_format"] == "bed"
     assert contexts[0].partitions[0]["selector_compression"] == "plain"
-    assert flat_revision.record["schema_version"] == "emrys.analysis-revision.v1"
+    assert flat_revision == first.revision
     assert first.revision.record["schema_version"] == "emrys.analysis-revision.v2"
     assert first.revision == second.revision
     assert (
@@ -286,7 +286,7 @@ def test_named_analysis_sample_selection_rejects_unknown_or_incomplete_cohorts(
     )
     with pytest.raises(
         contracts.ContractValidationError,
-        match="exactly one control and treatment",
+        match="exactly one control and one treatment",
     ):
         admit_project(project_path, fixture.profile())
 
@@ -513,8 +513,8 @@ def test_absent_optional_background_normalizes_to_explicit_null(
     assert omitted.select_analysis().revision == explicit.select_analysis().revision
     assert (
         omitted.select_analysis().workflow_inputs["analysis"]["policy"][
-            "background_condition"
-        ]
+            "configuration"
+        ]["background_condition"]
         is None
     )
 
@@ -696,6 +696,6 @@ def test_incomplete_paired_strata_are_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(
         contracts.ContractValidationError,
-        match="exactly one control and treatment",
+        match="exactly one control and one treatment",
     ):
         admit_project(request, fixture.profile())

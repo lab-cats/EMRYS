@@ -7,10 +7,13 @@ from empty owned state. Reporting failure does not change successful scientific
 Attempts or Results. Reports are computational evidence, not scientific
 adjudication or biological validation.
 
-One operation builds the artifact index and Run summary under
+One operation publishes the Run result manifest and its TSV views under
 `products/artifact-summary/RUN_ID`; a second builds HTML reports under
 `results/reports/RUN_ID`. The first operation inspects artifacts once and derives
-the summary from those admitted records, without a persisted intermediate handoff.
+the manifest from those admitted entries. `RUN_ID.run_summary.json` contains the
+shared Run identity, input hashes, publication provenance, and ordered artifact
+entries once. `RUN_ID.run_summary.tsv` and `RUN_ID.qc_summary.tsv` are human
+projections; no per-artifact JSON, artifact index, or summary receipt is persisted.
 A selected `emrys.analysis_reporters` provider supplies the scientific view;
 EMRYS supplies the evidence-and-operations view, safe rendering, portable links,
 and publication. Both views use the same validated input bytes. There is no
@@ -31,12 +34,11 @@ two outputs are HTML Results. The frozen `ReportContext.stable_paths` stores
 scientific HTML, evidence HTML, summary TSV, then receipt; receipt output rows
 use its first three `Path` objects.
 
-Flat paired-CMH Runs use run-summary v2/report-receipt v4; explicit modules use
-v3/v5, attributing the computation provider, scientific reporter, and core
-renderer separately. Reporter identity never changes Analysis or Run identity.
-Complete bundles are reused only after semantic revalidation, including
-supported historical bundles under their recorded producer identities.
-Reading a historical bundle does not authorize regenerating or replacing it.
+Current Runs use run-summary v4/report-receipt v5, attributing the computation
+provider, scientific reporter, and core renderer separately. Reporter identity
+never changes Analysis or Run identity. Complete bundles are reused only after
+current-source semantic revalidation. Old-version Run inspection, resume, and
+report regeneration are unsupported; their data and evidence remain untouched.
 
 ## Source and artifact roots
 
@@ -45,7 +47,7 @@ Before reading inputs, production callers validate two explicit roots through
 checkout must be a canonical EMRYS Git top level without symlinks and match the
 executing package's bytes. It supplies producer paths, hashes, and Git identity.
 The independent artifact root resolves contract-relative inventory and native
-paths, including historical and post-publication validation. Neither comes from
+paths, including post-publication validation. Neither comes from
 the working directory or a run-summary location.
 
 Both roots remain in prepared contexts through publication and input rechecks;
@@ -56,14 +58,13 @@ own established observation points and real input-recheck callbacks.
 
 ## Publication and recovery
 
-Each publisher creates only absent transaction-owned finals. A prepared context
-may validate existing outputs or history; it does not authorize replacing a
-predecessor. Publishers create no predecessor backups and restore none. Index and summary
-share one lock, staging operation, and rollback scope. Their summary receipt is
-the sole terminal marker; the artifact receipt remains bound provenance data.
+Each publisher creates only absent transaction-owned finals. Preparation never
+authorizes replacing existing outputs. Manifest and TSV views share one lock,
+staging operation, and rollback scope. Installing the manifest last completes
+that operation; its file hash is the lifecycle's single evidence identity.
 
 Publishers stage bytes, retain file anchors, install finals exclusively, and
-write the receipt last. They recheck inputs, source, outputs, and directories
+install the manifest or HTML projection receipt last. They recheck inputs, source, outputs, and directories
 at the relevant publication boundaries. Rollback removes only outputs with
 proven ownership. Uncertain ownership or failed rollback preserves remaining
 state and locks. Cleanup failure preserves committed outputs and remaining
@@ -91,12 +92,11 @@ issues, and Attempt history. Scientific-context admission reopens bound referenc
 files when required to validate the transaction. View rendering does not reopen
 references, rerun analysis, discover motifs, infer missing data, or hide required
 scientific caveats.
-Public [`transaction_validation.py`](transaction_validation.py) validates current
-and historical receipts without assigning them to the current checkout's producer.
-Summary reads reuse admitted artifact records and pure projections, without a
-publication builder. New reporting-start v2 records identify the combined-summary
-and HTML sequence; historical v1 starts retain their three-step interpretation.
-Missing historical stages and mixed versions remain invalid.
+Public [`transaction_validation.py`](transaction_validation.py) re-admits the
+current manifest, immutable inputs, native sources, and deterministic TSV and
+HTML projections. Revalidation binds source identities and complete file rosters;
+cached predecessors retain recheck callbacks. Reporting has two stages: the Run
+manifest followed by the HTML projections.
 
 ## Implementation and fault tests
 

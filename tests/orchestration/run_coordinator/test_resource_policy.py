@@ -11,7 +11,6 @@ import pytest
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.orchestration.run_coordinator.resource_policy import (
-    REPORTING_KINDS,
     REPEATABLE_STAGE_IDS,
     STAGE_IDS,
     AllocationCapacity,
@@ -113,7 +112,7 @@ def test_symbolic_declaration_is_allocation_independent_and_persistable() -> Non
 
     record = first.policy_record()
     assert record["symbolic"] == policy.document()
-    admitted = admit_resource_policy_record(record, require_symbolic=True)
+    admitted = admit_resource_policy_record(record)
     assert admitted.policy == first.policy
     assert admitted.effective_document() == first.effective_document()
     reallocated = resolve_resource_policy(
@@ -141,7 +140,7 @@ def test_resume_applies_explicit_overrides() -> None:
     )
 
 
-def test_current_and_historical_persisted_policy_resume() -> None:
+def test_persisted_policy_rejects_missing_symbolic_fields_and_tampering() -> None:
     large_job_id = "9" * 5000
     current = resolve_resource_policy(
         _policy(),
@@ -150,95 +149,42 @@ def test_current_and_historical_persisted_policy_resume() -> None:
     record = current.policy_record()
 
     assert record["allocation"]["slurm_job_id"] == large_job_id
-    assert (
-        admit_resource_policy_record(record, require_symbolic=True).allocation
-        == current.allocation
-    )
+    assert admit_resource_policy_record(record).allocation == current.allocation
     no_job_id = copy.deepcopy(record)
     no_job_id["allocation"].pop("slurm_job_id")
     assert (
         admit_resource_policy_record(
             no_job_id,
-            require_symbolic=True,
         ).allocation.slurm_job_id
         is None
     )
-
-    for field, memory in (("symbolic", "workflow"), ("effective", 16_384)):
-        record[field]["reporting_memory_mb"] = {
-            kind: memory for kind in REPORTING_KINDS
-        }
-        record[f"{field}_sha256"] = orchestration_contracts.canonical_sha256(
-            record[field]
-        )
-    retained_bytes = orchestration_contracts.canonical_json_bytes(record)
-    admitted = admit_resource_policy_record(record, require_symbolic=True)
-    assert admitted.declaration == current.declaration
-    assert admitted.policy.document() == current.policy.document()
-    assert orchestration_contracts.canonical_json_bytes(record) == retained_bytes
 
     historical = {
         key: value
         for key, value in record.items()
         if key not in {"symbolic", "symbolic_sha256"}
     }
-    resumed = resolve_resource_policy(
-        resume_resource_policy(historical), _allocation(memory_mb=32_768)
-    )
-    assert resumed.effective_document() == current.effective_document()
-    assert resumed.allocation.memory_mb == 32_768
-    legacy_input = {
-        key: value for key, value in historical.items() if key != "allocation"
-    }
-    assert resume_resource_policy(legacy_input) == resumed.policy
-    assert admit_resource_policy_record(historical).policy == resumed.policy
     with pytest.raises(ResourceConfigError, match="Persisted resource policy keys"):
-        admit_resource_policy_record(historical, require_symbolic=True)
+        admit_resource_policy_record(historical)
 
     symbolic_tamper = copy.deepcopy(record)
     symbolic_tamper["symbolic_sha256"] = "0" * 64
     with pytest.raises(ResourceConfigError, match="symbolic resource digest differs"):
-        admit_resource_policy_record(symbolic_tamper, require_symbolic=True)
-    effective_tamper = copy.deepcopy(historical)
+        admit_resource_policy_record(symbolic_tamper)
+    effective_tamper = copy.deepcopy(record)
     effective_tamper["effective_sha256"] = "0" * 64
     with pytest.raises(ResourceConfigError, match="effective resource digest differs"):
-        resume_resource_policy(effective_tamper)
+        admit_resource_policy_record(effective_tamper)
 
-    for memory, message in (
-        (1024, "does not reproduce its resolution"),
-        (32_769.0, "Reporting html_report memory exceeds workflow memory: 32769 >"),
-    ):
-        changed = copy.deepcopy(record)
-        if memory > 16_384:
-            changed["symbolic"]["reporting_memory_mb"]["html_report"] = memory
-            changed["symbolic_sha256"] = orchestration_contracts.canonical_sha256(
-                changed["symbolic"]
-            )
-        changed["effective"]["reporting_memory_mb"]["html_report"] = memory
-        changed["effective_sha256"] = orchestration_contracts.canonical_sha256(
-            changed["effective"]
-        )
-        with pytest.raises(ResourceConfigError, match=message):
-            admit_resource_policy_record(changed, require_symbolic=True)
+    changed = copy.deepcopy(record)
+    changed["effective"]["workflow_memory_mb"] = 1024
+    changed["effective_sha256"] = orchestration_contracts.canonical_sha256(
+        changed["effective"]
+    )
+    with pytest.raises(ResourceConfigError, match="does not reproduce its resolution"):
+        admit_resource_policy_record(changed)
     with pytest.raises(ResourceConfigError, match="Slurm job ID"):
         _allocation(slurm_job_id="0")
-
-
-def test_historical_thread_roster_defaults_analysis_steps_to_one() -> None:
-    document = _document()
-    document["step_threads"].pop("09")
-    document["step_threads"].pop("10")
-
-    policy = _policy(document)
-    plan = resolve_resource_policy(policy, _allocation())
-    resumed = resume_resource_policy(
-        policy,
-        overrides=ResourceOverrides(step_threads=(("09", 2),)),
-    )
-
-    assert policy.document() == document
-    assert plan.threads_for("09") == plan.threads_for("10") == 1
-    assert dict(resumed.declaration.step_threads)["09"] == 2
 
 
 @pytest.mark.parametrize(
@@ -299,7 +245,7 @@ def test_resolution_rejects_invalid_resource_relationships(
         ),
         (
             lambda record: record["step_threads"].pop("08"),
-            "Resolved step_threads keys must include",
+            "Resolved step_threads keys must be exactly",
         ),
     ),
 )

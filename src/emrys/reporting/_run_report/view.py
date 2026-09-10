@@ -149,8 +149,8 @@ def _run_identity(
             *module_rows,
             ("Inventory", summary["inventory"]["path"]),
             ("Inventory SHA-256", summary["inventory"]["sha256"]),
-            ("Artifact receipt", summary["artifact_receipt"]["path"]),
-            ("Artifact-receipt SHA-256", summary["artifact_receipt"]["sha256"]),
+            ("Run contract", summary["run_contract_file"]["path"]),
+            ("Run-contract file SHA-256", summary["run_contract_file"]["sha256"]),
         ),
     )
 

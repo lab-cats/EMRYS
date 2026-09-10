@@ -18,81 +18,9 @@ if TYPE_CHECKING:
     from emrys.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
     from emrys.reporting._run_summary.models import OutputPaths
 
-PRODUCER = "build_artifact_index"
-PRODUCER_VERSION = "2.0.0"
-ARTIFACT_SCHEMA_VERSION = "2.0.0"
-ARTIFACT_INDEX_SCHEMA_VERSION = "2.0.0"
-ARTIFACT_RECEIPT_SCHEMA_VERSION = "1.0.0"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 RUN_CONTRACT_FIELDS = ("run_contract_sha256", *contracts.RUN_CONTRACT_COMPONENT_FIELDS)
-ANCHOR_HASH_FIELDS = (
-    "sample_manifest_sha256",
-    "partition_manifest_sha256",
-)
-ARTIFACT_INDEX_HEADER = (
-    "run_id",
-    "run_contract_sha256",
-    *contracts.INVENTORY_HEADER,
-    "availability_status",
-    "completion_status",
-    "attempt_provenance_status",
-    "selected_attempt_id",
-    "implementation_status",
-    "local_test_status",
-    "runtime_validation_status",
-    "cluster_dry_run_status",
-    "cluster_proof_status",
-    "source_sha256",
-    "source_size_bytes",
-    "source_row_count",
-    "source_media_type",
-    "warning_count",
-    "error_count",
-    "record_path",
-    "record_sha256",
-    "record_schema_version",
-)
-
-ARTIFACT_RECEIPT_HEADER = (
-    "run_id",
-    "run_contract_sha256",
-    "run_contract_path",
-    "run_contract_file_sha256",
-    *contracts.RUN_CONTRACT_COMPONENT_FIELDS,
-    "inventory_path",
-    "inventory_sha256",
-    "inventory_row_count",
-    "artifact_schema_version",
-    "artifact_index_schema_version",
-    "artifact_receipt_schema_version",
-    "artifacts_index_path",
-    "artifacts_index_sha256",
-    "artifact_record_count",
-    "record_set_sha256",
-    "required_artifact_count",
-    "required_missing_artifact_count",
-    "present_artifact_count",
-    "missing_artifact_count",
-    "externally_unavailable_artifact_count",
-    "unknown_artifact_count",
-    "complete_artifact_count",
-    "not_attempted_artifact_count",
-    "in_progress_artifact_count",
-    "incomplete_artifact_count",
-    "failed_artifact_count",
-    "warning_count",
-    "error_count",
-    "published_output_count",
-    "adapter_attempt_id",
-    "supersedes_adapter_attempt_id",
-    "adapter_attempt_history",
-    "producer",
-    "producer_version",
-    "git_commit",
-    "started_at",
-    "finished_at",
-    "transaction_state",
-)
+ANCHOR_HASH_FIELDS = ("sample_manifest_sha256", "partition_manifest_sha256")
 
 
 class ArtifactIndexError(RuntimeError):
@@ -161,30 +89,22 @@ class BuildContext:
     run_contract_path: Path
     run_contract: dict[str, Any]
     run_contract_file_sha256: str
-    analysis_policy_path: Path | None
-    analysis_policy_binding: dict[str, Any] | None
-    recheck_analysis_policy: Callable[[], None] | None
+    analysis_policy_path: Path
+    analysis_policy_binding: dict[str, Any]
+    recheck_analysis_policy: Callable[[], None]
     inventory_path: Path
     inventory_sha256: str
     inventory_size_bytes: int
     recheck_contract_inputs: Callable[[], None]
     inventory_rows: list[dict[str, str]]
     output_dir: Path
-    records_dir: Path
-    artifacts_path: Path
-    receipt_path: Path
     lock_path: Path
     inspections: list[Inspection]
     records: list[dict[str, Any]]
-    record_bytes: list[bytes]
-    index_rows: list[dict[str, str]]
-    index_bytes: bytes
-    receipt_row: dict[str, str]
-    receipt_bytes: bytes
     attempt_id: str
-    previous_attempt_id: str | None
-    attempt_history: list[str]
-    previous_receipt: dict[str, str] | None
+    git_commit: str
+    started_at: str
+    finished_at: str
     source_identity_observer: Callable[..., str | None]
 
 
@@ -198,5 +118,3 @@ class EvidenceContext:
     summary_json_bytes: bytes
     summary_tsv_bytes: bytes
     qc_summary_bytes: bytes
-    summary_receipt_row: dict[str, Any]
-    summary_receipt_bytes: bytes

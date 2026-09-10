@@ -3,18 +3,17 @@
 from __future__ import annotations
 
 import copy
-import json
 
 import pytest
 
 from emrys.contracts.orchestration import api as contracts
 from emrys.contracts.orchestration import application_model as model
 from tests.contracts.orchestration.test_orchestration_contracts import (
-    execution as historical_execution,
+    execution,
+    lifecycle_records,
 )
-from tests.contracts.orchestration.test_orchestration_contracts import lifecycle_records
 from tests.contracts.orchestration.test_orchestration_contracts import (
-    profile as historical_profile,
+    profile as contract_profile,
 )
 
 ZERO_HASH = "0" * 64
@@ -74,7 +73,10 @@ def analysis_inputs() -> dict[str, object]:
             "fasta_sha256": ZERO_HASH,
             "gtf_sha256": ONE_HASH,
         },
-        "scientific_policy": {
+        "module_id": "emrys.paired-cmh",
+        "interface_version": "emrys.analysis-module.v2",
+        "module_version": "1",
+        "configuration": {
             "control_condition": "EV",
             "treatment_condition": "PUM1",
             "background_condition": None,
@@ -91,7 +93,7 @@ def analysis_inputs() -> dict[str, object]:
 
 
 def analysis_revision() -> model.AnalysisRevision:
-    return model.build_analysis_revision(**analysis_inputs())
+    return model.build_module_analysis_revision(**analysis_inputs())
 
 
 def functional_specification() -> dict[str, object]:
@@ -150,6 +152,7 @@ def implementation_digest() -> str:
 
 def execution_plan() -> model.ExecutionPlan:
     return model.build_execution_plan(
+        processing_compatibility_sha256=TWO_HASH,
         functional_specification=functional_specification(),
         scientific_stopping_owner_keys=["bam_qc", "star_index"],
         implementation_content_sha256=implementation_digest(),
@@ -205,9 +208,9 @@ def successor_run_fixture() -> tuple[
     dict[str, object],
     dict[str, object],
 ]:
-    profile = historical_profile()
-    execution = historical_execution()
-    analysis = model.analysis_revision_from_execution_fields(execution)
+    profile = contract_profile()
+    source = execution()
+    analysis = model.analysis_revision_from_execution_fields(source)
     attempt = lifecycle_records()["workflow-attempt"]
     resources = {
         "workflow_cores": 2,
@@ -217,6 +220,7 @@ def successor_run_fixture() -> tuple[
         "stage_memory_mb": {"00a": "workflow", "02b": 1024},
     }
     plan = model.build_execution_plan(
+        processing_compatibility_sha256=TWO_HASH,
         functional_specification=(model.functional_specification_from_profile(profile)),
         scientific_stopping_owner_keys=profile["required_owner_keys"],
         implementation_content_sha256=implementation_digest(),
@@ -224,7 +228,7 @@ def successor_run_fixture() -> tuple[
         backend="local",
         engine="snakemake",
         backend_semantics_sha256=ZERO_HASH,
-        star_index=execution["reference"]["star_index"],
+        star_index=source["reference"]["star_index"],
         computational_resources=resources,
     )
     run = model.bind_run(analysis, plan)
@@ -238,7 +242,6 @@ def successor_run_fixture() -> tuple[
         "stage_concurrency": {"02b": 1},
         "step_threads": {"00a": 2},
         "stage_memory_mb": {"00a": 4096, "02b": 1024},
-        "reporting_memory_mb": {},
     }
     resource_policy = {
         "symbolic": {
@@ -266,10 +269,10 @@ def successor_run_fixture() -> tuple[
 
 def test_analysis_revision_is_order_neutral_closed_and_deeply_immutable() -> None:
     inputs = analysis_inputs()
-    first = model.build_analysis_revision(**inputs)
+    first = model.build_module_analysis_revision(**inputs)
     inputs["samples"].reverse()  # type: ignore[union-attr]
     inputs["partitions"].reverse()  # type: ignore[union-attr]
-    second = model.build_analysis_revision(**inputs)
+    second = model.build_module_analysis_revision(**inputs)
     assert first.canonical_bytes == second.canonical_bytes
 
     mutable_projection = first.record
@@ -279,14 +282,14 @@ def test_analysis_revision_is_order_neutral_closed_and_deeply_immutable() -> Non
     invalid = analysis_inputs()
     invalid["reference"]["path"] = "/relocation/is/not/identity"  # type: ignore[index]
     with pytest.raises(contracts.ContractValidationError, match="unexpected path"):
-        model.build_analysis_revision(**invalid)
+        model.build_module_analysis_revision(**invalid)
 
 
 def test_analysis_content_and_versioned_scope_formulas_are_bound() -> None:
     first = analysis_revision()
     changed_inputs = analysis_inputs()
     changed_inputs["samples"][0]["r1_fastq_sha256"] = TWO_HASH  # type: ignore[index]
-    changed = model.build_analysis_revision(**changed_inputs)
+    changed = model.build_module_analysis_revision(**changed_inputs)
     assert changed.analysis_revision_id != first.analysis_revision_id
     assert changed.scope_id("cohort") != first.scope_id("cohort")
     assert first.scope_id("sample", "EV-1") == "EV-1"
@@ -308,10 +311,10 @@ def test_regions_file_identity_binds_filename_controlled_semantics(
     partition.update(  # type: ignore[union-attr]
         selector_format="bed", selector_compression="plain"
     )
-    first = model.build_analysis_revision(**inputs)
+    first = model.build_module_analysis_revision(**inputs)
     partition[field] = changed  # type: ignore[index]
 
-    assert model.build_analysis_revision(**inputs) != first
+    assert model.build_module_analysis_revision(**inputs) != first
 
 
 def test_execution_plan_canonicalizes_sets_graphs_tools_and_resource_maps() -> None:
@@ -320,6 +323,7 @@ def test_execution_plan_canonicalizes_sets_graphs_tools_and_resource_maps() -> N
     functional["owner_tasks"].reverse()  # type: ignore[union-attr]
     functional["required_owner_keys"].reverse()  # type: ignore[union-attr]
     second = model.build_execution_plan(
+        processing_compatibility_sha256=TWO_HASH,
         functional_specification=functional,
         scientific_stopping_owner_keys=["star_index", "bam_qc"],
         implementation_content_sha256=implementation_digest(),
@@ -407,6 +411,7 @@ def test_processing_boundary_requires_the_exact_processing_step_roster() -> None
         )
         functional["required_owner_keys"].append("downstream")
         return model.build_execution_plan(
+            processing_compatibility_sha256=TWO_HASH,
             functional_specification=functional,
             scientific_stopping_owner_keys=(
                 functional["required_owner_keys"]
@@ -458,6 +463,7 @@ def test_plan_contract_excludes_adapter_reporting_and_realization_fields() -> No
     functional["owner_tasks"][0]["rule_name"] = "backend_adapter"  # type: ignore[index]
     with pytest.raises(contracts.ContractValidationError, match="rule_name"):
         model.build_execution_plan(
+            processing_compatibility_sha256=TWO_HASH,
             functional_specification=functional,
             scientific_stopping_owner_keys=["bam_qc"],
             implementation_content_sha256=implementation_digest(),
@@ -500,22 +506,6 @@ def test_run_binding_uses_only_the_two_domain_separated_identity_digests() -> No
         model.RunBinding.from_record(tampered)
 
 
-def test_version_aware_reader_preserves_historical_execution_bytes() -> None:
-    legacy = historical_execution()
-    source_bytes = json.dumps(legacy, indent=2, sort_keys=False).encode("utf-8")
-    recognized = model.read_application_record(source_bytes)
-    assert isinstance(recognized, model.LegacyExecution)
-    assert recognized.source_bytes == source_bytes
-    assert not recognized.profile_validated
-
-    admitted = model.read_application_record(
-        source_bytes,
-        legacy_profile=historical_profile(),
-    )
-    assert isinstance(admitted, model.LegacyExecution)
-    assert admitted.profile_validated
-
-
 @pytest.mark.parametrize("version", (None, [], {}))
 def test_version_aware_reader_rejects_non_string_schema_versions(
     version: object,
@@ -527,38 +517,6 @@ def test_version_aware_reader_rejects_non_string_schema_versions(
         model.read_application_record(
             contracts.canonical_json_bytes({"schema_version": version})
         )
-
-
-def test_execution_view_accepts_only_historical_execution_v1() -> None:
-    legacy = historical_execution()
-    profile = historical_profile()
-    retired_projection = {"schema_version": "emrys.execution-projection.v1"}
-
-    model.validate_execution_view(legacy, profile=profile)
-    with pytest.raises(contracts.ContractValidationError, match="Unsupported"):
-        model.validate_execution_view(retired_projection, profile=profile)
-    with pytest.raises(contracts.ContractValidationError, match="Invalid"):
-        contracts.validate_record("application-model", retired_projection)
-    with pytest.raises(contracts.ContractValidationError, match="Unsupported"):
-        model.read_application_record(
-            contracts.canonical_json_bytes(retired_projection)
-        )
-
-
-def test_analysis_admission_requires_present_conditions_and_paired_replicates() -> None:
-    missing_condition = analysis_inputs()
-    missing_condition["scientific_policy"]["treatment_condition"] = "missing"  # type: ignore[index]
-    with pytest.raises(contracts.ContractValidationError, match="must exist"):
-        model.build_analysis_revision(**missing_condition)
-
-    incomplete_pair = analysis_inputs()
-    incomplete_pair["samples"] = [  # type: ignore[assignment]
-        row
-        for row in incomplete_pair["samples"]  # type: ignore[union-attr]
-        if row["sample_id"] != "PUM1-2"
-    ]
-    with pytest.raises(contracts.ContractValidationError, match="replicate strata"):
-        model.build_analysis_revision(**incomplete_pair)
 
 
 def test_plan_admission_rejects_rehashed_noncanonical_functional_lists() -> None:
@@ -589,6 +547,7 @@ def test_plan_admission_rejects_rehashed_noncanonical_functional_lists() -> None
         }
     )
     plan = model.build_execution_plan(
+        processing_compatibility_sha256=TWO_HASH,
         functional_specification=functional,
         scientific_stopping_owner_keys=["bam_qc", "star_index"],
         implementation_content_sha256=implementation_digest(),
@@ -675,12 +634,6 @@ def test_successor_run_proves_authority_and_optional_attempt_observations() -> N
         ),
         (("allocation", "cores"), 1, None, "exceed the observed allocation"),
         (("effective", "stage_concurrency"), {}, "effective", "stage_concurrency"),
-        (
-            ("effective", "reporting_memory_mb"),
-            {"html_report": 8192},
-            "effective",
-            "reporting memory html_report exceeds",
-        ),
     ),
 )
 def test_successor_run_rejects_invalid_resource_resolution(

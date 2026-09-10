@@ -421,23 +421,6 @@ def test_real_snakemake_dry_run_has_exact_owner_job_counts(
     assert not any(source in evidence for source, _ in owner_edges), output
 
 
-def test_analysis_owner_accepts_historical_single_thread_resource_record(
-    built: workflow_fixture.WorkflowFixture,
-) -> None:
-    config = orchestration_contracts.load_json_object(built.config_path)
-    effective = config["resource_policy"]["effective"]
-    effective["step_threads"].pop("09")
-    effective["step_threads"].pop("10")
-    config["resource_policy"]["effective_sha256"] = (
-        orchestration_contracts.canonical_sha256(effective)
-    )
-    _publish_config(built, config)
-
-    nodes, _edges, output = _dag(built, "cohort_slice")
-
-    assert any(label == "analysis_owner" for label in nodes.values()), output
-
-
 def test_real_processing_plan_dry_run_closes_at_step_06(
     tmp_path: Path,
     clean_source_checkout: tuple[Path, str],
@@ -505,9 +488,6 @@ def test_backend_projection_accepts_successor_resource_policy_record(
         "stage_memory_mb": {
             step_id: "workflow" for step_id in effective["stage_memory_mb"]
         },
-        "reporting_memory_mb": {
-            kind: "workflow" for kind in effective["reporting_memory_mb"]
-        },
     }
     resource_policy["symbolic"] = symbolic
     resource_policy["symbolic_sha256"] = orchestration_contracts.canonical_sha256(
@@ -540,8 +520,7 @@ def test_profile_and_rule_rosters_are_exact_and_output_only_verified_state(
         if line.startswith(str(built.run_root)) and "\t" in line
     }
     assert len(declared) == 35
-    assert built.artifact_receipt not in declared
-    assert built.run_summary_receipt not in declared
+    assert built.run_summary not in declared
     assert built.report_receipt not in declared
 
 
@@ -608,14 +587,18 @@ def test_resume_reuses_every_completed_file_with_existing_engine_metadata(
     starts = sorted((built.run_root / "state" / "task-starts").glob("*/*.json"))
     assert len(markers) == len(starts) == 35, completed.stdout
     for marker in markers:
-        record = orchestration_contracts.load_record(marker, "verified-task")
+        marker_record = orchestration_contracts.load_record(marker, "verified-task")
+        record = orchestration_contracts.load_record(
+            built.run_root / marker_record["task_attempt_record"]["path"],
+            "task-attempt",
+        )
         scope_id = record["scope"]["scope_id"]
         assert record["run_id"] == built.execution["run_id"]
         assert record["machine_key"] == marker.parent.name
         assert (
             marker == built.verified_root / record["machine_key"] / f"{scope_id}.json"
         )
-        assert record["all_pass"] is True
+        assert record["status"] == "succeeded"
         start_path = built.run_root / record["task_start_record"]["path"]
         start = orchestration_contracts.load_record(start_path, "task-start")
         assert start_path == (
@@ -631,8 +614,7 @@ def test_resume_reuses_every_completed_file_with_existing_engine_metadata(
             == hashlib.sha256(start_path.read_bytes()).hexdigest()
         )
     assert not built.reporting_root.exists()
-    assert not built.artifact_receipt.exists()
-    assert not built.run_summary_receipt.exists()
+    assert not built.run_summary.exists()
     assert not built.report_receipt.exists()
     assert not SCIENTIFIC_BINARIES.intersection(completed.stdout.split())
 
@@ -726,7 +708,9 @@ def test_verified_state_roster_rejects_every_unexpected_entry(
 
     blockers = inspection.verified_tree_blockers(
         built.run_root,
-        inspection.expected_tasks(built.execution, built.profile),
+        inspection.expected_tasks(
+            inspection.admit_successor_run(built.run_root), built.profile
+        ),
     )
     expected_message = (
         "Unexpected verified task owner state"

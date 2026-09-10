@@ -100,26 +100,14 @@ def report_output_root(run_root: Path, profile: Mapping[str, Any]) -> Path:
 def _template_contexts(
     selector: str,
     source: Mapping[str, Any],
-    analysis: AnalysisRevision | None,
+    analysis: AnalysisRevision,
 ) -> tuple[dict[str, str], ...]:
-    reference_id = (
-        analysis.scope_id("reference")
-        if analysis is not None
-        else str(source["reference"]["reference_id"])
-    )
+    reference_id = analysis.scope_id("reference")
     reference_fasta_path = str(source["reference"]["fasta"]["path"])
     reference_path = Path(reference_fasta_path)
     reference_dict_path = str(reference_path.with_name(f"{reference_path.stem}.dict"))
-    cohort_id = (
-        analysis.scope_id("cohort")
-        if analysis is not None
-        else str(source["analysis"]["cohort_id"])
-    )
-    analysis_id = (
-        analysis.scope_id("analysis")
-        if analysis is not None
-        else str(source["analysis"]["primary_analysis_id"])
-    )
+    cohort_id = analysis.scope_id("cohort")
+    analysis_id = analysis.scope_id("analysis")
     shared = {
         "run_id": str(source["run_id"]),
         "reference_id": reference_id,
@@ -144,10 +132,8 @@ def _template_contexts(
             {
                 **shared,
                 "partition_id": str(row["partition_id"]),
-                "scope_id": (
-                    analysis.scope_id("cohort_partition", str(row["partition_id"]))
-                    if analysis is not None
-                    else f"{cohort_id}__{row['partition_id']}"
+                "scope_id": analysis.scope_id(
+                    "cohort_partition", str(row["partition_id"])
                 ),
             }
             for row in source["partitions"]["rows"]
@@ -217,7 +203,7 @@ def _validate_rows(rows: Sequence[Mapping[str, str]]) -> None:
 def project_rows(
     source: Mapping[str, Any],
     profile: Mapping[str, Any],
-    analysis: AnalysisRevision | None = None,
+    analysis: AnalysisRevision,
     processing_source_root: Path | None = None,
     processing_artifact_paths: Mapping[tuple[str, str, str], Path] | None = None,
 ) -> tuple[dict[str, str], ...]:

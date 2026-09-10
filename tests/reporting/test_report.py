@@ -81,6 +81,12 @@ def arguments(
             else artifact_source_root
         ),
         run_summary=summary,
+        analysis_policy=(
+            Path(json.loads(summary.read_text())["analysis_policy"]["path"])
+            if summary.is_file()
+            and "analysis_policy" in json.loads(summary.read_text())
+            else None
+        ),
         output_root=output_root,
         execute=execute,
     )
@@ -329,12 +335,12 @@ def test_present_step10_record_mismatch_fails_closed(
         )
 
 
-def test_historical_summary_discloses_step10_unavailability_in_candidate_evidence(
+def test_missing_step10_discloses_unavailability_in_candidate_evidence(
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     copied, _paths = copied_step09_summary(
-        computational_summary, tmp_path / "historical"
+        computational_summary, tmp_path / "missing-step10"
     )
 
     context = report_context.prepare_context(arguments(copied, tmp_path / "reports"))
@@ -494,7 +500,7 @@ def test_dry_run_is_side_effect_free(
     assert not output_root.exists()
 
 
-def test_success_publishes_two_html_views_summary_and_v4_receipt_last(
+def test_success_publishes_two_html_views_summary_and_current_receipt_last(
     computational_summary: Path,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -527,11 +533,10 @@ def test_success_publishes_two_html_views_summary_and_v4_receipt_last(
         context.output_dir / f"{context.summary['run_id']}.run_report.pdf"
     ).exists()
     document = receipt_document(context.output_receipt)
-    assert document["schema_version"] == "4.0.0"
-    assert document["interpretation_boundary"] == (
-        "computational_candidates_only_biological_validation_outside_emrys"
-    )
-    assert document["renderer"] == {"name": "Jinja2", "version": JINJA_VERSION}
+    assert document["schema_version"] == "5.0.0"
+    assert document["interpretation_boundary"] == COMPUTATIONAL_BOUNDARY_BANNER
+    assert document["evidence_renderer"]["template_engine"] == "Jinja2"
+    assert document["evidence_renderer"]["template_engine_version"] == JINJA_VERSION
     assert [item["kind"] for item in document["outputs"]] == [
         "scientific_html",
         "evidence_html",
@@ -578,14 +583,14 @@ def test_report_validation_rejects_provider_active_markup(
         )
 
 
-def test_report_rejects_a_run_summary_without_the_computational_boundary(
+def test_report_rejects_a_run_summary_without_the_analysis_policy_binding(
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     copied = write_summary_copy(
         computational_summary,
         tmp_path / "input",
-        lambda document: document.pop("interpretation_boundary"),
+        lambda document: document.pop("analysis_policy"),
     )
 
     with pytest.raises(ReportRenderError, match="failed validation"):
@@ -595,7 +600,7 @@ def test_report_rejects_a_run_summary_without_the_computational_boundary(
 def test_receipt_validation_reports_schema_and_semantic_failures(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    document = {"schema_version": "4.0.0"}
+    document = {"schema_version": "5.0.0"}
     with pytest.raises(ReportRenderError, match="schema validation failed"):
         receipt.validate_receipt(document)
 
@@ -606,7 +611,7 @@ def test_receipt_validation_reports_schema_and_semantic_failures(
     monkeypatch.setattr(
         receipt.contracts,
         "schema_validator",
-        lambda _name, _version: NoSchemaErrors(),
+        lambda _name: NoSchemaErrors(),
     )
 
     def reject_semantics(_document: dict[str, Any]) -> None:
@@ -1519,22 +1524,7 @@ def test_report_rejects_a_non_directory_output_root(
         report_context.prepare_context(arguments(computational_summary, output_root))
 
 
-@pytest.mark.parametrize("suffix", ("run_report.html", "run_report.pdf"))
-def test_retired_single_report_predecessors_require_fresh_output_root(
-    computational_summary: Path,
-    tmp_path: Path,
-    suffix: str,
-) -> None:
-    run_id = json.loads(computational_summary.read_text(encoding="utf-8"))["run_id"]
-    output_root = tmp_path / "reports"
-    output_dir = output_root / run_id
-    output_dir.mkdir(parents=True)
-    (output_dir / f"{run_id}.{suffix}").write_text("retired", encoding="utf-8")
-    with pytest.raises(ReportRenderError, match="fresh output root"):
-        report_context.prepare_context(arguments(computational_summary, output_root))
-
-
-def test_bare_v4_output_requires_fresh_output_root(
+def test_partial_current_output_requires_fresh_output_root(
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
@@ -1547,26 +1537,6 @@ def test_bare_v4_output_requires_fresh_output_root(
         encoding="utf-8",
     )
     with pytest.raises(ReportRenderError, match="fresh output root"):
-        report_context.prepare_context(arguments(computational_summary, output_root))
-
-
-def test_v3_receipt_requires_fresh_output_root(
-    computational_summary: Path,
-    tmp_path: Path,
-) -> None:
-    run_id = json.loads(computational_summary.read_text(encoding="utf-8"))["run_id"]
-    output_root = tmp_path / "reports"
-    output_dir = output_root / run_id
-    output_dir.mkdir(parents=True)
-    v3 = json.loads(
-        (
-            REPO_ROOT / "tests/contracts/artifacts/fixtures/report_receipt_v3.json"
-        ).read_text(encoding="utf-8")
-    )
-    (output_dir / f"{run_id}.report_outputs.tsv").write_bytes(
-        receipt.receipt_tsv_bytes(v3)
-    )
-    with pytest.raises(ReportRenderError, match="Unsupported report receipt"):
         report_context.prepare_context(arguments(computational_summary, output_root))
 
 

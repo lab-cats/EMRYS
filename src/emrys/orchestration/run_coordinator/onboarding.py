@@ -823,7 +823,6 @@ def validate_project(
     project: str | Path,
     *,
     root: Path | None = None,
-    allow_legacy: bool = False,
 ) -> ProjectValidation:
     """Admit and compatibility-check one Project without runtime probes."""
 
@@ -831,7 +830,6 @@ def validate_project(
     admission = admit_project(
         project,
         checkout / PROFILE_RELATIVE_PATH,
-        allow_legacy=allow_legacy,
     )
     return validate_project_admission(admission)
 

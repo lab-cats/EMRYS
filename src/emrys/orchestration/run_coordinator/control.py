@@ -59,7 +59,6 @@ from emrys.orchestration.run_coordinator.execution_profile import (
 )
 from emrys.orchestration.run_coordinator.materialization import (
     AttemptPlan,
-    HistoricalRun,
     MaterializationError,
     admit_run,
     build_attempt_plan,
@@ -68,7 +67,6 @@ from emrys.orchestration.run_coordinator.materialization import (
     publish_attempt,
     validate_run_destination,
 )
-from emrys.orchestration.run_coordinator.normalization import _historical_execution_v1
 from emrys.orchestration.run_coordinator.resource_policy import (
     ResourceConfigError,
     ResourceOverrides,
@@ -313,7 +311,6 @@ def _admit_resume_predecessor(
 
 
 def _resume_predecessor_policy(
-    observed: inspection.RunInspection,
     predecessor_config: Mapping[str, Any],
     overrides: ResourceOverrides,
 ) -> ResourcePolicy:
@@ -323,12 +320,7 @@ def _resume_predecessor_policy(
     if not isinstance(prior, dict):
         raise ControlError("Prior workflow config has no resource policy")
     try:
-        has_symbolic_policy = "symbolic" in prior or "symbolic_sha256" in prior
-        predecessor: ResourcePolicy | Mapping[str, Any] = (
-            admit_resource_policy_record(prior, require_symbolic=True).policy
-            if observed.authority is not None or has_symbolic_policy
-            else prior
-        )
+        predecessor = admit_resource_policy_record(prior).policy
         return resume_resource_policy(predecessor, overrides=overrides)
     except ResourceConfigError as exc:
         raise ControlError(str(exc)) from exc
@@ -454,45 +446,15 @@ def _retained_runtime_profile_path(
 def _resume_runtime_profile_path(
     project_path: Path,
     predecessor: Mapping[str, Any],
-    retained: Path | None,
 ) -> Path:
-    """Prefer a historical Attempt's retained runtime over Project state."""
+    """Select current Project runtime or its exact predecessor binding."""
 
-    if retained is not None:
-        return retained
     candidate = onboarding.runtime_profile_path(project_path)
     return (
         candidate
         if os.path.lexists(candidate)
         else _retained_runtime_profile_path(predecessor)
     )
-
-
-def _predecessor_source_schema(
-    root: Path,
-    predecessor: Mapping[str, Any],
-) -> str:
-    identifier = str(predecessor["workflow_attempt_id"])
-    path = root / "attempts" / identifier / "request.yaml"
-    try:
-        data = read_bytes(path, "predecessor Project snapshot")
-        reference = predecessor["request"]
-        identity = (len(data), hashlib.sha256(data).hexdigest())
-        if identity != (reference["size_bytes"], reference["sha256"]):
-            raise ControlError("Predecessor Project snapshot differs from its binding")
-        schema = orchestration_contracts.load_yaml_object_bytes(data)["schema_version"]
-    except (
-        KeyError,
-        TypeError,
-        ValidationError,
-        orchestration_contracts.ContractValidationError,
-    ) as exc:
-        raise ControlError(
-            f"Could not admit predecessor Project snapshot: {exc}"
-        ) from exc
-    if schema not in ("emrys.project.v1", "emrys.request.v3"):
-        raise ControlError(f"Unsupported predecessor Project schema: {schema!r}")
-    return schema
 
 
 def _plan_resume(
@@ -507,37 +469,22 @@ def _plan_resume(
 
     root = _absolute(run_root)
     observed, previous, predecessor_config = _admit_resume_predecessor(root)
-    predecessor_schema = _predecessor_source_schema(root, previous)
-    legacy_source = predecessor_schema == "emrys.request.v3"
     project_path = Path(str(previous["authored_paths"]["request"]))
     workspace = Path(str(previous["workspace"]))
-    retained_runtime_profile = (
-        _retained_runtime_profile_path(previous) if observed.authority is None else None
-    )
-    runtime_profile = _resume_runtime_profile_path(
-        project_path,
-        previous,
-        retained_runtime_profile,
-    )
+    runtime_profile = _resume_runtime_profile_path(project_path, previous)
+    authority = observed.authority
+    if authority is None:
+        raise ControlError("Resume requires current immutable Run authority")
     try:
         readiness = doctor.diagnose_project(
             project_path,
             workspace,
             runtime_profile,
             storage_requirement=execution_profile.placement.kind,
-            analysis_name=None if legacy_source else previous.get("request_label"),
-            expected_analysis_revision=(
-                None
-                if observed.authority is None
-                else observed.authority.analysis_revision
-            ),
-            allow_legacy=legacy_source,
+            analysis_name=previous.get("request_label"),
+            expected_analysis_revision=authority.analysis_revision,
             require_reporter=report_enabled
-            and (
-                observed.authority is None
-                or execution_plan_boundary(observed.authority.execution_plan)
-                == "analysis"
-            ),
+            and execution_plan_boundary(authority.execution_plan) == "analysis",
         )
         _require_ready(readiness)
         analysis = readiness.analysis
@@ -554,7 +501,6 @@ def _plan_resume(
         policy = execution_profile.resource_policy
         if not execution_profile.computational_resources_explicit:
             policy = _resume_predecessor_policy(
-                observed,
                 predecessor_config,
                 resource_overrides,
             )
@@ -563,40 +509,23 @@ def _plan_resume(
                 resource_policy=policy,
             )
         processing_source = observed.processing_source
-        if observed.authority is not None:
-            candidate = build_run_candidate(
-                analysis,
-                readiness,
-                policy.declaration,
-                scientific_stopping_owner_keys=observed.authority.execution_plan.record[
-                    "identity"
-                ]["scientific_stopping_owner_keys"],
-                processing_source=(
-                    None if processing_source is None else processing_source.binding
-                ),
-            )
-            if (
-                candidate.run_binding.canonical_bytes
-                != observed.authority.run_binding.canonical_bytes
-            ):
-                raise ControlError("Current inputs resolve to a different Run")
-            run = candidate
-        else:
-            legacy_execution, legacy_bytes = _historical_execution_v1(analysis)
-            fixed_execution = root / "contract/normalized.json"
-            if legacy_execution["run_id"] != observed.run_id:
-                raise ControlError("Current Project resolves to a different Run")
-            if (
-                fixed_execution.is_symlink()
-                or not fixed_execution.is_file()
-                or fixed_execution.read_bytes() != legacy_bytes
-            ):
-                raise ControlError("Current Project differs from immutable Run bytes")
-            run = HistoricalRun(
-                analysis=analysis,
-                run_id=observed.run_id,
-                execution_projection_bytes=legacy_bytes,
-            )
+        candidate = build_run_candidate(
+            analysis,
+            readiness,
+            policy.declaration,
+            scientific_stopping_owner_keys=authority.execution_plan.record["identity"][
+                "scientific_stopping_owner_keys"
+            ],
+            processing_source=(
+                None if processing_source is None else processing_source.binding
+            ),
+        )
+        if (
+            candidate.run_binding.canonical_bytes
+            != authority.run_binding.canonical_bytes
+        ):
+            raise ControlError("Current inputs resolve to a different Run")
+        run = candidate
         resources = resolve_resource_policy(policy, capacity.observe_allocation())
         plan = build_attempt_plan(
             run,
@@ -606,7 +535,6 @@ def _plan_resume(
             operation="resume",
             supersedes_workflow_attempt_id=str(previous["workflow_attempt_id"]),
             retained_dispatches=retained_dispatches,
-            retained_runtime_profile_path=retained_runtime_profile,
             placement=execution_profile.attempt_placement(scheduler_job_id),
             processing_source=processing_source,
         )
@@ -614,7 +542,7 @@ def _plan_resume(
         raise ControlError(str(exc)) from exc
     if plan.run_root != root:
         raise ControlError("Resume workspace resolves to a different run root")
-    for field in inspection.attempt_fields(observed.authority is not None):
+    for field in inspection.attempt_fields():
         if plan.attempt_record[field] != previous[field]:
             raise ControlError(f"Resume is incompatible with predecessor on {field}")
     return plan
@@ -730,13 +658,12 @@ def _resolve_execution_profile(
         and isinstance(profile.placement, SlurmPlacement)
         and not profile.computational_resources_explicit
     ):
-        observed, _previous, predecessor_config = _admit_resume_predecessor(
+        _observed, _previous, predecessor_config = _admit_resume_predecessor(
             resume_run_root
         )
         profile = replace(
             profile,
             resource_policy=_resume_predecessor_policy(
-                observed,
                 predecessor_config,
                 overrides,
             ),
@@ -1285,9 +1212,7 @@ def _execute_plan(
 
 
 def _reporting_applicable(plan: AttemptPlan) -> bool:
-    return isinstance(plan.run, HistoricalRun) or (
-        execution_plan_boundary(plan.run.execution_plan) == "analysis"
-    )
+    return execution_plan_boundary(plan.run.execution_plan) == "analysis"
 
 
 def _print_plan(
@@ -1315,14 +1240,10 @@ def _print_plan(
         reporting = "disabled for this execution"
     print(f"Scientific boundary: {boundary}", file=sys.stderr)
     if (
-        not isinstance(plan.run, HistoricalRun)
-        and (
-            processing_source := plan.run.execution_plan.record["identity"].get(
-                "processing_source"
-            )
+        processing_source := plan.run.execution_plan.record["identity"].get(
+            "processing_source"
         )
-        is not None
-    ):
+    ) is not None:
         print(
             f"Processing source: {inspection.human_run_name(processing_source['source_run_id'])}",
             file=sys.stderr,
@@ -1331,7 +1252,7 @@ def _print_plan(
     print(f"Reporting: {reporting}", file=sys.stderr)
     if level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
         print(f"Run ID: {plan.run.run_id}", file=sys.stderr)
-        if not isinstance(plan.run, HistoricalRun) and processing_source is not None:
+        if processing_source is not None:
             print(
                 f"Processing source Run ID: {processing_source['source_run_id']}",
                 file=sys.stderr,
@@ -1340,11 +1261,10 @@ def _print_plan(
             f"Analysis revision: {plan.run.analysis.revision.analysis_revision_id}",
             file=sys.stderr,
         )
-        if not isinstance(plan.run, HistoricalRun):
-            print(
-                f"Execution Plan ID: {plan.run.execution_plan.execution_plan_id}",
-                file=sys.stderr,
-            )
+        print(
+            f"Execution Plan ID: {plan.run.execution_plan.execution_plan_id}",
+            file=sys.stderr,
+        )
         print(f"Run root: {plan.run_root}", file=sys.stderr)
         print(
             f"Resources: {resources.workflow_cores} cores, {resources.workflow_memory_mb} MiB",
@@ -1819,9 +1739,7 @@ def inspect_from_args(
         if observed.processing_source_run_id is not None:
             print(f"Processing source Run ID: {observed.processing_source_run_id}")
         authority = observed.authority
-        if authority is None:
-            print("Identity model: historical execution.v1")
-        else:
+        if authority is not None:
             print(f"Analysis ID: {authority.analysis_revision.analysis_revision_id}")
             print(f"Execution Plan ID: {authority.execution_plan.execution_plan_id}")
         _print_safe(f"Run root: {observed.run_root}")
@@ -1829,9 +1747,7 @@ def inspect_from_args(
         print(f"Attempt ID: {attempt_id}")
         if latest is not None:
             placement = latest.get("placement")
-            placement_kind = (
-                "legacy/unrecorded" if placement is None else placement["kind"]
-            )
+            placement_kind = "unrecorded" if placement is None else placement["kind"]
             scheduler_job_id = (
                 "none" if placement is None else placement["scheduler_job_id"] or "none"
             )
@@ -1852,28 +1768,23 @@ def inspect_from_args(
                 print(f"  {kind}: {state}")
     if detail == "debug":
         authority = observed.authority
-        if authority is None:
-            _print_safe(
-                f"Historical authority record: {observed.run_root / 'contract/normalized.json'}"
-            )
-        else:
-            print("Run authority records:")
-            for label, name, record in (
-                ("Analysis", "analysis.json", authority.analysis_revision),
-                ("Execution Plan", "execution-plan.json", authority.execution_plan),
-                ("Run", "run.json", authority.run_binding),
-            ):
-                path = observed.run_root / "contract" / name
-                _print_safe(f"  {label}: path={path}; SHA-256={record.record_sha256}")
-            plan_identity = authority.execution_plan.record["identity"]
-            backend = plan_identity["backend"]
-            resources = plan_identity["computational_resources"]
-            _print_safe(
-                "Effective plan: "
-                f"backend={backend['backend']}; engine={backend['engine']}; "
-                f"cores={resources['workflow_cores']}; "
-                f"memory_mib={resources['workflow_memory_mb']}"
-            )
+        print("Run authority records:")
+        for label, name, record in (
+            ("Analysis", "analysis.json", authority.analysis_revision),
+            ("Execution Plan", "execution-plan.json", authority.execution_plan),
+            ("Run", "run.json", authority.run_binding),
+        ):
+            path = observed.run_root / "contract" / name
+            _print_safe(f"  {label}: path={path}; SHA-256={record.record_sha256}")
+        plan_identity = authority.execution_plan.record["identity"]
+        backend = plan_identity["backend"]
+        resources = plan_identity["computational_resources"]
+        _print_safe(
+            "Effective plan: "
+            f"backend={backend['backend']}; engine={backend['engine']}; "
+            f"cores={resources['workflow_cores']}; "
+            f"memory_mib={resources['workflow_memory_mb']}"
+        )
         if latest is not None:
             attempt_id = str(latest["workflow_attempt_id"])
             attempt_root = observed.run_root / "attempts" / attempt_id
@@ -1898,8 +1809,15 @@ def inspect_from_args(
                     f"; verified={observed.run_root / task.record_reference['path']}"
                 )
             if task.record is not None:
-                attempt_reference = task.record["task_attempt_record"]
-                attempt_path = observed.run_root / attempt_reference["path"]
+                attempt_path = (
+                    observed.run_root
+                    / "attempts"
+                    / task.record["workflow_attempt_id"]
+                    / "tasks"
+                    / task.expected.machine_key
+                    / task.expected.scope_id
+                    / "task-attempt.json"
+                )
                 task_detail += (
                     f"; attempt={attempt_path}"
                     f"; stdout={attempt_path.with_name('stdout.log')}"

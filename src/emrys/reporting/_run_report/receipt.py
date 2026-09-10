@@ -15,7 +15,6 @@ from emrys.contracts.artifacts import api as contracts
 from .inputs import _assert_snapshot, _fail, _snapshot_regular
 from .models import (
     CSS_RESOURCE,
-    HISTORICAL_REPORT_RECEIPT_SCHEMA_VERSION,
     JINJA_VERSION,
     PRODUCER,
     PRODUCER_VERSION,
@@ -30,11 +29,10 @@ from .models import (
 def validate_receipt(document: Mapping[str, Any]) -> None:
     version = str(document.get("schema_version", ""))
     if version not in {
-        HISTORICAL_REPORT_RECEIPT_SCHEMA_VERSION,
         REPORT_RECEIPT_SCHEMA_VERSION,
     }:
         _fail(f"Unsupported report receipt schema version: {version!r}")
-    validator = contracts.schema_validator("report-receipt", version)
+    validator = contracts.schema_validator("report-receipt")
     errors = sorted(validator.iter_errors(document), key=lambda error: list(error.path))
     if errors:
         first = errors[0]
@@ -106,33 +104,16 @@ def receipt_document(
         if kind in {"scientific_html", "evidence_html"}:
             descriptor["self_contained"] = True
         descriptors.append(descriptor)
-    version = context.report_receipt_schema_version
-    identity_snapshots = tuple(
-        snapshot
-        for snapshot in context.input_snapshots
-        if snapshot != context.analysis_policy_snapshot
+    version = REPORT_RECEIPT_SCHEMA_VERSION
+    identity_payload = "\0".join(
+        (
+            *(snapshot.sha256 for snapshot in context.input_snapshots),
+            context.scientific_renderer["content_sha256"],
+            context.render_metadata["renderer_package_sha256"],
+            JINJA_VERSION,
+            PRODUCER_VERSION,
+        )
     )
-    if version == HISTORICAL_REPORT_RECEIPT_SCHEMA_VERSION:
-        identity_payload = "\0".join(
-            (
-                *(snapshot.sha256 for snapshot in identity_snapshots),
-                JINJA_VERSION,
-                context.render_metadata["figure_renderer_version"],
-                context.render_metadata["logo_renderer_version"],
-                context.render_metadata["figure_policy_version"],
-                PRODUCER_VERSION,
-            )
-        )
-    else:
-        identity_payload = "\0".join(
-            (
-                *(snapshot.sha256 for snapshot in context.input_snapshots),
-                context.scientific_renderer["content_sha256"],
-                context.render_metadata["renderer_package_sha256"],
-                JINJA_VERSION,
-                PRODUCER_VERSION,
-            )
-        )
     identity = hashlib.sha256(identity_payload.encode("utf-8")).hexdigest()[:20]
     summary = context.summary
     core_renderer = {
@@ -171,7 +152,7 @@ def receipt_document(
         "state_banner": context.render_metadata["state_banner"],
         "truncations": [],
         "schema_versions": {
-            "artifact_record": "2.0.0",
+            "artifact_entry": "1.0.0",
             "run_summary": summary["schema_version"],
             "report_receipt": version,
         },
@@ -187,33 +168,27 @@ def receipt_document(
             "created_at": summary["generated_at"],
         },
     }
-    if version == HISTORICAL_REPORT_RECEIPT_SCHEMA_VERSION:
-        document = {
-            **common,
-            "renderer": {"name": "Jinja2", "version": JINJA_VERSION},
-        }
-    else:
-        if (
-            context.analysis_policy_path is None
-            or context.analysis_policy_snapshot is None
-            or context.analysis_policy is None
-        ):
-            _fail("Modular report receipt requires an admitted analysis policy")
-        document = {
-            **common,
-            "analysis_policy": {
-                "path": str(context.analysis_policy_path),
-                "sha256": context.analysis_policy_snapshot.sha256,
-                "size_bytes": context.analysis_policy_snapshot.size_bytes,
-                "schema_version": context.analysis_policy["schema_version"],
-            },
-            "scientific_renderer": {
-                **context.scientific_renderer,
-                "module_version": context.analysis_module.descriptor.module_version,
-                "core_support": core_renderer,
-            },
-            "evidence_renderer": core_renderer,
-        }
+    if (
+        context.analysis_policy_path is None
+        or context.analysis_policy_snapshot is None
+        or context.analysis_policy is None
+    ):
+        _fail("Modular report receipt requires an admitted analysis policy")
+    document = {
+        **common,
+        "analysis_policy": {
+            "path": str(context.analysis_policy_path),
+            "sha256": context.analysis_policy_snapshot.sha256,
+            "size_bytes": context.analysis_policy_snapshot.size_bytes,
+            "schema_version": context.analysis_policy["schema_version"],
+        },
+        "scientific_renderer": {
+            **context.scientific_renderer,
+            "module_version": context.analysis_module.descriptor.module_version,
+            "core_support": core_renderer,
+        },
+        "evidence_renderer": core_renderer,
+    }
     validate_receipt(document)
     return document
 

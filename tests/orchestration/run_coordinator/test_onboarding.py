@@ -589,7 +589,7 @@ def test_synthetic_fixture_is_deterministic_complete_and_normalizable(
     validation = onboarding.validate_project(first / "project.yaml")
     analysis = validation.project.select_analysis()
     source = analysis.workflow_inputs
-    control = source["analysis"]["policy"]["control_condition"]
+    control = source["analysis"]["policy"]["configuration"]["control_condition"]
     assert validation.sample_count == 4
     assert analysis.name == "primary"
     assert (
@@ -1232,20 +1232,6 @@ def test_runtime_discovery_does_not_require_writable_project_state(
     )
 
     assert runtime_admissions == [False]
-
-
-def test_historical_resume_prefers_its_retained_runtime_over_project_state(
-    tmp_path: Path,
-) -> None:
-    project = tmp_path / "project.yaml"
-    project_runtime = tmp_path / "runtime/runtime.tsv"
-    retained = tmp_path / "historical/runtime.tsv"
-    project_runtime.parent.mkdir()
-    retained.parent.mkdir()
-    project_runtime.write_bytes(b"new Project runtime\n")
-    retained.write_bytes(b"retained historical runtime\n")
-
-    assert control._resume_runtime_profile_path(project, {}, retained) == retained
 
 
 def test_runtime_discovery_rejects_missing_and_ambiguous_tools(

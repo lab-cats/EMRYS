@@ -519,22 +519,17 @@ def readmit_analysis_module(
     """Reload the provider bound by persisted policy without renormalizing config."""
 
     persisted = policy.get("module")
-    if policy.get("schema_version") == "emrys.analysis-policy.v1":
-        module_id = BUILTIN_PAIRED_CMH_MODULE_ID
-    elif isinstance(persisted, Mapping) and isinstance(persisted.get("module_id"), str):
+    if isinstance(persisted, Mapping) and isinstance(persisted.get("module_id"), str):
         module_id = str(persisted["module_id"])
     else:
         raise AnalysisModuleLoadError("Persisted analysis policy has no module")
     loaded = load_analysis_module(module_id)
-    if persisted is not None and persisted != module_identity_record(loaded):
+    if persisted != module_identity_record(loaded):
         raise AnalysisModuleLoadError(
             "Installed analysis module differs from persisted Run policy"
         )
     persisted_implementation = policy.get("implementation_sha256")
-    if (
-        policy.get("schema_version") == "emrys.analysis-module-policy.v1"
-        and persisted_implementation != loaded.provider.package.sha256
-    ):
+    if persisted_implementation != loaded.provider.package.sha256:
         raise AnalysisModuleLoadError(
             "Installed analysis module implementation differs from persisted Run policy"
         )

@@ -50,13 +50,9 @@ from .inputs import (
 )
 from .models import (
     CSS_RESOURCE,
-    HISTORICAL_REPORT_RECEIPT_SCHEMA_VERSION,
-    HISTORICAL_RUN_SUMMARY_SCHEMA_VERSION,
     JINJA_VERSION,
     PRODUCER,
     PRODUCER_VERSION,
-    REPORT_RECEIPT_SCHEMA_VERSION,
-    RUN_SUMMARY_SCHEMA_VERSION,
     TEMPLATE_RESOURCE,
     FileSnapshot,
     ReportContext,
@@ -87,11 +83,8 @@ def _admit_analysis_policy(
     summary: Mapping[str, object],
 ) -> tuple[Path | None, FileSnapshot | None, dict[str, object] | None]:
     value = getattr(arguments, "analysis_policy", None)
-    version = str(summary["schema_version"])
     if value is None:
-        if version == RUN_SUMMARY_SCHEMA_VERSION:
-            _fail("Modular report publication requires an explicit analysis policy")
-        return None, None, None
+        _fail("Report publication requires an explicit analysis policy")
     path = _explicit_path(Path(value), "primary analysis policy")
     snapshot = _snapshot_regular(path, "primary analysis policy")
     payload = _read_snapshot_bytes(snapshot, "primary analysis policy")
@@ -110,17 +103,14 @@ def _admit_analysis_policy(
         or policy["analysis_id"] != contract["primary_analysis_id"]
     ):
         _fail("Primary analysis policy differs from the immutable run contract")
-    modular = policy["schema_version"] == "emrys.analysis-module-policy.v1"
-    if version == RUN_SUMMARY_SCHEMA_VERSION:
-        binding = summary["analysis_policy"]
-        if not modular or binding != {
-            "path": str(snapshot.path),
-            "sha256": snapshot.sha256,
-            "size_bytes": snapshot.size_bytes,
-        }:
-            _fail("Modular run summary does not bind its exact analysis policy")
-    elif modular:
-        _fail("Run-summary v2 requires the built-in paired-CMH analysis policy")
+    if policy["schema_version"] != "emrys.analysis-module-policy.v1" or summary[
+        "analysis_policy"
+    ] != {
+        "path": str(snapshot.path),
+        "sha256": snapshot.sha256,
+        "size_bytes": snapshot.size_bytes,
+    }:
+        _fail("Run summary does not bind its exact current analysis policy")
     return snapshot.path, snapshot, policy
 
 
@@ -250,7 +240,7 @@ def _render_scientific_report(
     tuple[AnalysisReportArtifactV1, ...],
     tuple[tuple[FileSnapshot, str, bool], ...],
 ]:
-    policy = analysis_policy or {"schema_version": "emrys.analysis-policy.v1"}
+    policy = analysis_policy
     analysis_id = str(summary["run_contract"]["primary_analysis_id"])
     try:
         module = analyses.readmit_analysis_module(policy)
@@ -346,28 +336,17 @@ def _validate_output_root(output_root: Path, output_dir: Path) -> None:
 def _existing_outputs(
     output_dir: Path,
     stable_paths: tuple[Path, ...],
-    retired_paths: tuple[Path, ...],
-    expected_receipt_version: str,
 ) -> dict[Path, FileSnapshot]:
-    present = [
-        path for path in (*stable_paths, *retired_paths) if os.path.lexists(path)
-    ]
+    present = [path for path in stable_paths if os.path.lexists(path)]
     if not present:
         return {}
     receipt_path = stable_paths[-1]
-    if any(path in present for path in retired_paths) or not os.path.lexists(
-        receipt_path
-    ):
+    if not os.path.lexists(receipt_path):
         _fail(
-            "Existing report outputs are incomplete or retired; preserve them "
+            "Existing report outputs are incomplete; preserve them "
             "and use a fresh output root"
         )
     document = read_receipt_tsv(receipt_path)
-    if document["schema_version"] != expected_receipt_version:
-        _fail(
-            "Existing report evidence uses another schema version and cannot "
-            "be rewritten by this publisher"
-        )
     snapshots: dict[Path, FileSnapshot] = {}
     for output in document["outputs"]:
         path = Path(output["path"])
@@ -432,11 +411,6 @@ def prepare_context(arguments: argparse.Namespace) -> ReportContext:
     analysis_policy_path, analysis_policy_snapshot, analysis_policy = (
         _admit_analysis_policy(arguments, summary)
     )
-    receipt_version = (
-        REPORT_RECEIPT_SCHEMA_VERSION
-        if summary["schema_version"] == RUN_SUMMARY_SCHEMA_VERSION
-        else HISTORICAL_REPORT_RECEIPT_SCHEMA_VERSION
-    )
     try:
         producer_git_commit = (
             matching_checkout_head_commit(
@@ -461,12 +435,8 @@ def prepare_context(arguments: argparse.Namespace) -> ReportContext:
     output_scientific_html, output_evidence_html, output_summary_tsv = output_paths
     output_receipt = output_dir / f"{run_id}.report_outputs.tsv"
     stable_paths = (*output_paths, output_receipt)
-    retired_paths = (
-        output_dir / f"{run_id}.run_report.html",
-        output_dir / f"{run_id}.run_report.pdf",
-    )
     lock_path = output_dir / f".{run_id}.report.lock"
-    for path in (output_dir, *stable_paths, *retired_paths, lock_path):
+    for path in (output_dir, *stable_paths, lock_path):
         _reject_symlink_components(path, "report publication path")
     _validate_output_root(output_root, output_dir)
     if os.path.lexists(lock_path):
@@ -474,8 +444,6 @@ def prepare_context(arguments: argparse.Namespace) -> ReportContext:
     previous = _existing_outputs(
         output_dir,
         stable_paths,
-        retired_paths,
-        receipt_version,
     )
     (
         admitted_module,
@@ -509,19 +477,6 @@ def prepare_context(arguments: argparse.Namespace) -> ReportContext:
         "template_path": f"emrys.reporting/{TEMPLATE_RESOURCE}",
         "template_sha256": template_snapshot.sha256,
     }
-    if summary["schema_version"] == HISTORICAL_RUN_SUMMARY_SCHEMA_VERSION:
-        renderer_details = dict(scientific_report.renderer_details)
-        metadata.update(
-            {
-                "figure_renderer_version": renderer_details[
-                    "Figure renderer"
-                ].removeprefix("Matplotlib "),
-                "logo_renderer_version": renderer_details["Logo renderer"].removeprefix(
-                    "Logomaker "
-                ),
-                "figure_policy_version": renderer_details["Figure policy version"],
-            }
-        )
     evidence_html_bytes = render_html(
         build_evidence_view(
             summary,
@@ -571,13 +526,8 @@ def prepare_context(arguments: argparse.Namespace) -> ReportContext:
         evidence_html_bytes=evidence_html_bytes,
         analysis_module=admitted_module,
         scientific_renderer=reporter,
-        report_receipt_schema_version=receipt_version,
         report_input_rechecks=report_input_rechecks,
-        interpretation_boundary=(
-            str(summary["interpretation_boundary"])
-            if summary["schema_version"] == HISTORICAL_RUN_SUMMARY_SCHEMA_VERSION
-            else COMPUTATIONAL_BOUNDARY_BANNER
-        ),
+        interpretation_boundary=COMPUTATIONAL_BOUNDARY_BANNER,
     )
     for recheck in context.input_rechecks:
         _assert_input_recheck(*recheck)

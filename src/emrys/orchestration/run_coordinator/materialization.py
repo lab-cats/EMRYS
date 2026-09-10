@@ -92,29 +92,10 @@ class RunCandidate:
 
 
 @dataclass(frozen=True, slots=True)
-class HistoricalRun:
-    """Exact existing execution.v1 authority retained only for resume."""
-
-    analysis: AnalysisAdmission
-    run_id: str
-    execution_projection_bytes: bytes
-
-    @property
-    def execution_projection(self) -> dict[str, Any]:
-        return orchestration_contracts.load_json_object_bytes(
-            self.execution_projection_bytes,
-            "historical execution.v1",
-        )
-
-
-MaterializedRun = RunCandidate | HistoricalRun
-
-
-@dataclass(frozen=True, slots=True)
 class AttemptPlan:
     """Pure, complete publication and command plan for one workflow attempt."""
 
-    run: MaterializedRun
+    run: RunCandidate
     readiness: doctor.DoctorResult
     resources: ResourcePlan
     operation: Operation
@@ -161,7 +142,7 @@ class AttemptPlan:
 
     @property
     def execution_path(self) -> Path:
-        return _execution_path(self.run, self.run_root)
+        return self.run_root / "contract" / "run.json"
 
     @property
     def profile_path(self) -> Path:
@@ -249,11 +230,6 @@ def build_run_candidate(
     return RunCandidate(analysis, plan, bind_run(analysis.revision, plan))
 
 
-def _execution_path(run: MaterializedRun, root: Path) -> Path:
-    name = "run.json" if isinstance(run, RunCandidate) else "normalized.json"
-    return root / "contract" / name
-
-
 def _within(path: Path, root: Path, label: str) -> None:
     try:
         path.relative_to(root)
@@ -274,44 +250,24 @@ def _one(paths: Mapping[str, list[Path]], adapter: str) -> Path:
     return values[0]
 
 
-def _scope_ids(
-    source: Mapping[str, Any], analysis: AnalysisRevision | None
-) -> tuple[str, str, str]:
-    if analysis is not None:
-        return tuple(
-            analysis.scope_id(scope) for scope in ("reference", "cohort", "analysis")
-        )
-    return (
-        str(source["reference"]["reference_id"]),
-        str(source["analysis"]["cohort_id"]),
-        str(source["analysis"]["primary_analysis_id"]),
-    )
-
-
 def _readmit_execution_module(
-    run: MaterializedRun,
+    run: RunCandidate,
     source: Mapping[str, Any],
 ) -> analysis_modules.LoadedAnalysisModuleV1:
     try:
         policy = source["analysis"]["policy"]
         loaded = analysis_modules.readmit_analysis_module(policy)
-        if (
-            isinstance(run, RunCandidate)
-            and policy.get("schema_version") == "emrys.analysis-module-policy.v1"
-        ):
-            module = policy["module"]
-            revision_module = run.analysis.revision.record["identity"][
-                "analysis_module"
-            ]
-            expected = {
-                key: module[key]
-                for key in ("module_id", "interface_version", "module_version")
-            }
-            expected["configuration"] = policy["configuration"]
-            if revision_module != expected:
-                raise analysis_modules.AnalysisModuleLoadError(
-                    "Analysis revision differs from persisted module policy"
-                )
+        module = policy["module"]
+        revision_module = run.analysis.revision.record["identity"]["analysis_module"]
+        expected = {
+            key: module[key]
+            for key in ("module_id", "interface_version", "module_version")
+        }
+        expected["configuration"] = policy["configuration"]
+        if revision_module != expected:
+            raise analysis_modules.AnalysisModuleLoadError(
+                "Analysis revision differs from persisted module policy"
+            )
         return loaded
     except (analysis_modules.AnalysisModuleLoadError, KeyError, TypeError) as exc:
         raise MaterializationError(str(exc)) from exc
@@ -369,7 +325,7 @@ def _task_commands(
     validation: Path,
     working_paths: Mapping[Path, Path],
     source: Mapping[str, Any],
-    analysis_revision: AnalysisRevision | None,
+    analysis_revision: AnalysisRevision,
     run_root: Path,
     source_root: Path,
     runtime: Mapping[str, Any],
@@ -385,13 +341,10 @@ def _task_commands(
     partition_manifest = Path(str(source["partitions"]["manifest"]["path"]))
     fasta = Path(str(reference["fasta"]["path"]))
     gtf = Path(str(reference["gtf"]["path"]))
-    reference_id, cohort_id, _analysis_id = _scope_ids(source, analysis_revision)
+    reference_id = analysis_revision.scope_id("reference")
+    cohort_id = analysis_revision.scope_id("cohort")
     partition_scopes = {
-        partition_id: (
-            analysis_revision.scope_id("cohort_partition", partition_id)
-            if analysis_revision is not None
-            else f"{cohort_id}__{partition_id}"
-        )
+        partition_id: analysis_revision.scope_id("cohort_partition", partition_id)
         for partition_id in partition_rows
     }
     bash = _runtime_path(runtime, "bash")
@@ -920,7 +873,7 @@ def _publication_plan(
 
 
 def _dispatches(
-    run: MaterializedRun,
+    run: RunCandidate,
     source: Mapping[str, Any],
     readiness: doctor.DoctorResult,
     run_root: Path,
@@ -934,8 +887,7 @@ def _dispatches(
 ) -> tuple[
     tuple[PlannedFile, ...], dict[str, dict[str, dict[str, str]]], tuple[Path, ...]
 ]:
-    successor = isinstance(run, RunCandidate)
-    analysis_revision = run.analysis.revision if successor else None
+    analysis_revision = run.analysis.revision
     profile = run.analysis.profile
     paths_by_scope: dict[tuple[str, str], dict[str, list[Path]]] = {}
     for row in artifact_inventory.project_rows(
@@ -954,12 +906,8 @@ def _dispatches(
     planned: list[PlannedFile] = []
     references: dict[str, dict[str, dict[str, str]]] = {}
     directories: set[Path] = set()
-    authority = (
-        run.execution_projection
-        if isinstance(run, HistoricalRun)
-        else inspection.SuccessorRunAuthority(
-            run.analysis.revision, run.execution_plan, run.run_binding
-        )
+    authority = inspection.SuccessorRunAuthority(
+        run.analysis.revision, run.execution_plan, run.run_binding
     )
     expected = inspection.expected_tasks(authority, profile)
     owners = {str(item["machine_key"]): item for item in profile["owner_tasks"]}
@@ -994,43 +942,24 @@ def _dispatches(
                     f"Analysis module Step {requirement.step_id} requires at least "
                     f"{requirement.minimum_threads} threads"
                 )
-    reference_id, cohort_id, analysis_id = _scope_ids(source, analysis_revision)
-    analysis_identity = (
-        None if analysis_revision is None else analysis_revision.record["identity"]
+    reference_id, cohort_id, analysis_id = (
+        analysis_revision.scope_id(scope)
+        for scope in ("reference", "cohort", "analysis")
     )
     scope_ids = {
-        "reference": (reference_id,),
+        "reference": (analysis_revision.scope_id("reference"),),
         "sample": tuple(
             str(row["sample_id"])
-            for row in (
-                source["samples"]["rows"]
-                if analysis_identity is None
-                else analysis_identity["samples"]
-            )
+            for row in analysis_revision.record["identity"]["samples"]
         ),
         "cohort_partition": tuple(
-            (
-                f"{cohort_id}__{row['partition_id']}"
-                if analysis_revision is None
-                else analysis_revision.scope_id(
-                    "cohort_partition", str(row["partition_id"])
-                )
-            )
+            analysis_revision.scope_id("cohort_partition", str(row["partition_id"]))
             for row in source["partitions"]["rows"]
         ),
-        "cohort": (cohort_id,),
-        "analysis": (analysis_id,),
+        "cohort": (analysis_revision.scope_id("cohort"),),
+        "analysis": (analysis_revision.scope_id("analysis"),),
     }
-    policy = source["analysis"]["policy"]
-    configuration = (
-        dict(policy["configuration"])
-        if policy["schema_version"] == "emrys.analysis-module-policy.v1"
-        else {
-            key: value
-            for key, value in policy.items()
-            if key not in {"schema_version", "analysis_id"}
-        }
-    )
+    configuration = dict(source["analysis"]["policy"]["configuration"])
     for index, task in enumerate(expected, start=1):
         identity = (task.machine_key, task.scope_id)
         references.setdefault(task.machine_key, {})
@@ -1309,7 +1238,7 @@ def _dispatches(
         record = {
             "schema_version": "emrys.local-task-dispatch.v2",
             "run_root": str(run_root),
-            "execution_path": str(_execution_path(run, run_root)),
+            "execution_path": str(run_root / "contract" / "run.json"),
             "profile_path": str(run_root / "contract/profile.json"),
             "workflow_attempt_id": attempt_id,
             "task_attempt_id": task_id,
@@ -1402,7 +1331,7 @@ def _admitted_input_snapshots(
 
 
 def build_attempt_plan(
-    run: MaterializedRun,
+    run: RunCandidate,
     readiness: doctor.DoctorResult,
     workspace: Path,
     *,
@@ -1411,21 +1340,13 @@ def build_attempt_plan(
     placement: Mapping[str, Any] | None = None,
     supersedes_workflow_attempt_id: str | None = None,
     retained_dispatches: Mapping[tuple[str, str], dict[str, str]] | None = None,
-    retained_runtime_profile_path: Path | None = None,
     processing_source: inspection.ProcessingSourceAdmission | None = None,
 ) -> AttemptPlan:
     """Build one complete attempt without touching the filesystem."""
 
     analysis = run.analysis
-    successor = isinstance(run, RunCandidate)
-    executor = (
-        str(run.execution_plan.record["identity"]["backend"]["backend"])
-        if successor
-        else "local"
-    )
-    execution_bytes = (
-        run.run_binding.canonical_bytes if successor else run.execution_projection_bytes
-    )
+    executor = str(run.execution_plan.record["identity"]["backend"]["backend"])
+    execution_bytes = run.run_binding.canonical_bytes
     resource_policy_record = resources.policy_record()
     workflow_cores = resources.workflow_cores
     now = datetime.now(UTC).replace(microsecond=0)
@@ -1436,16 +1357,11 @@ def build_attempt_plan(
     owner_token = f"workflow-owner-{suffix}"
     workspace_path = _absolute(workspace)
     run_root = workspace_path / "runs" / run.run_id
-    source = (
-        run.execution_projection
-        if isinstance(run, HistoricalRun)
-        else {**run.analysis.workflow_inputs, "run_id": run.run_id}
-    )
+    source = {**run.analysis.workflow_inputs, "run_id": run.run_id}
     selected_sample_manifest = analysis.selected_sample_manifest_bytes
     selected_sample_file = None
     if (
-        successor
-        and selected_sample_manifest is not None
+        selected_sample_manifest is not None
         and execution_plan_boundary(run.execution_plan) == "analysis"
     ):
         selected_sample_path = (
@@ -1466,11 +1382,7 @@ def build_attempt_plan(
             selected_sample_path,
             selected_sample_manifest,
         )
-    plan_source = (
-        run.execution_plan.record["identity"].get("processing_source")
-        if isinstance(run, RunCandidate)
-        else None
-    )
+    plan_source = run.execution_plan.record["identity"].get("processing_source")
     if (plan_source is None) != (processing_source is None) or (
         processing_source is not None and processing_source.binding != plan_source
     ):
@@ -1504,16 +1416,9 @@ def build_attempt_plan(
         in {"step00c_reference_fai_v1", "step00c_reference_dict_v1"}
     }
     source_root = readiness.source_root
-    if retained_runtime_profile_path is not None:
-        if successor or operation != "resume":
-            raise MaterializationError(
-                "Only a historical resume may retain its predecessor runtime profile"
-            )
-        runtime_profile_path = _absolute(retained_runtime_profile_path)
-    else:
-        runtime_profile_path = (
-            run_root / "contract" / "runtime-profiles" / f"{attempt_id}.tsv"
-        )
+    runtime_profile_path = (
+        run_root / "contract" / "runtime-profiles" / f"{attempt_id}.tsv"
+    )
     required_tools = doctor.required_tool_identities(
         readiness.inspection,
         bindings=readiness.bindings,
@@ -1545,8 +1450,8 @@ def build_attempt_plan(
             source,
             analysis.profile,
             run_root,
-            analysis=(analysis.revision if successor else None),
-            attempt_id=(attempt_id if successor else None),
+            analysis=analysis.revision,
+            attempt_id=attempt_id,
             processing_source_root=processing_source_root,
             processing_artifact_paths=processing_artifact_paths,
         )
@@ -1557,20 +1462,10 @@ def build_attempt_plan(
             orchestration_contracts.canonical_json_bytes(analysis.profile),
         ),
     ]
-    if not successor:
-        fixed_files.extend(
-            (
-                PlannedFile(
-                    run_root / "contract/normalized.json",
-                    run.execution_projection_bytes,
-                ),
-                *(PlannedFile(path, data) for path, data in reporting_files),
-            )
-        )
     config = {
         "run_root": str(run_root),
         "python_executable": sys.executable,
-        "execution_path": str(_execution_path(run, run_root)),
+        "execution_path": str(run_root / "contract" / "run.json"),
         "profile_path": str(run_root / "contract/profile.json"),
         "workflow_attempt_id": attempt_id,
         "source_checkout": str(source_root),
@@ -1636,48 +1531,38 @@ def build_attempt_plan(
     }
     if placement is not None:
         attempt["placement"] = dict(placement)
-    if successor:
-        selected_module_id = execution_module_id(
-            run.analysis.revision, run.execution_plan
+    selected_module_id = execution_module_id(run.analysis.revision, run.execution_plan)
+    try:
+        validate_successor_run(
+            analysis=analysis.revision,
+            plan=run.execution_plan,
+            run=run.run_binding,
+            profile=analysis.profile,
+            attempt=attempt,
+            resource_policy=resource_policy_record,
+            observed_implementation_content_sha256=implementation_identity(
+                source_root,
+                selected_module_id,
+                loaded_module=(
+                    analysis.module if selected_module_id is not None else None
+                ),
+            ),
+            observed_backend_semantics_sha256=backend_semantics_identity(source_root),
         )
-        try:
-            validate_successor_run(
-                analysis=analysis.revision,
-                plan=run.execution_plan,
-                run=run.run_binding,
-                profile=analysis.profile,
-                attempt=attempt,
-                resource_policy=resource_policy_record,
-                observed_implementation_content_sha256=implementation_identity(
-                    source_root,
-                    selected_module_id,
-                    loaded_module=(
-                        analysis.module if selected_module_id is not None else None
-                    ),
-                ),
-                observed_backend_semantics_sha256=backend_semantics_identity(
-                    source_root
-                ),
-            )
-        except (
-            orchestration_contracts.ContractValidationError,
-            RunImplementationError,
-        ) as exc:
-            raise MaterializationError(
-                f"Attempt differs from immutable Run: {exc}"
-            ) from exc
+    except (
+        orchestration_contracts.ContractValidationError,
+        RunImplementationError,
+    ) as exc:
+        raise MaterializationError(
+            f"Attempt differs from immutable Run: {exc}"
+        ) from exc
     orchestration_contracts.validate_record("workflow-attempt", attempt)
-    runtime_profile_files = (
-        ()
-        if retained_runtime_profile_path is not None
-        else (PlannedFile(runtime_profile_path, readiness.inspection.profile_bytes),)
-    )
     attempt_files = (
         *dispatch_files,
-        *(PlannedFile(path, data) for path, data in reporting_files if successor),
+        *(PlannedFile(path, data) for path, data in reporting_files),
         *((selected_sample_file,) if selected_sample_file is not None else ()),
         PlannedFile(config_path, config_data),
-        *runtime_profile_files,
+        PlannedFile(runtime_profile_path, readiness.inspection.profile_bytes),
     )
     directories = {
         run_root / "contract",
@@ -1932,7 +1817,6 @@ def publish_attempt(
 __all__ = (
     "AttemptPlan",
     "MaterializationError",
-    "HistoricalRun",
     "PlannedFile",
     "RunCandidate",
     "admit_run",

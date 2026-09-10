@@ -17,9 +17,6 @@ if TYPE_CHECKING:
 
 PRODUCER = "emrys.reporting.report"
 PRODUCER_VERSION = "5.2.0"
-HISTORICAL_RUN_SUMMARY_SCHEMA_VERSION = "2.0.0"
-RUN_SUMMARY_SCHEMA_VERSION = "3.0.0"
-HISTORICAL_REPORT_RECEIPT_SCHEMA_VERSION = "4.0.0"
 REPORT_RECEIPT_SCHEMA_VERSION = "5.0.0"
 JINJA_VERSION = "3.1.6"
 TEMPLATE_RESOURCE = "templates/run_report.html.j2"
@@ -137,7 +134,6 @@ class ReportContext:
     evidence_html_bytes: bytes
     analysis_module: LoadedAnalysisModuleV1
     scientific_renderer: Mapping[str, str]
-    report_receipt_schema_version: str
     report_input_rechecks: tuple[tuple[FileSnapshot, str, bool], ...]
     interpretation_boundary: str
 

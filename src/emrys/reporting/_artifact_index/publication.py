@@ -1,4 +1,4 @@
-"""Receipt-last publication for the combined artifact and summary evidence."""
+"""Publish table projections exclusively, then install the Run result manifest."""
 
 from __future__ import annotations
 
@@ -9,15 +9,13 @@ import stat
 import sys
 import uuid
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from emrys.reporting._signals import install as _install_signal_handlers
 from emrys.reporting._signals import restore as restore_signal_handlers
 
 from .context import recheck_inputs, recheck_source_identity
 from .models import ArtifactIndexError, BuildContext, EvidenceContext, LockOwnership
-from .validation import validate_published_transaction
-from .core import safe_tsv
 
 
 def write_bytes_exclusive(path: Path, payload: bytes) -> None:
@@ -190,9 +188,8 @@ def _admit_output_directory(context: BuildContext) -> None:
 
 
 def publish_context(evidence: EvidenceContext) -> None:
-    """Publish index and summary together, with the summary receipt last."""
+    """Publish the Run result manifest last under the shared reporting lock."""
 
-    from emrys.reporting._run_summary.validation import _validate_existing_summary
     from emrys.reporting.transaction_validation import (
         ReportingTransactionError,
         _reject_reporting_control_residue,
@@ -202,7 +199,6 @@ def publish_context(evidence: EvidenceContext) -> None:
     _admit_output_directory(context)
     directory = context.output_dir.stat()
     directory_identity = (directory.st_dev, directory.st_ino)
-    records_identity: tuple[int, int] | None = None
 
     def assert_directory() -> None:
         current = context.output_dir.lstat()
@@ -212,28 +208,18 @@ def publish_context(evidence: EvidenceContext) -> None:
             or context.output_dir.resolve(strict=True) != context.output_dir
         ):
             raise ArtifactIndexError("Artifact-index output directory changed identity")
-        if records_identity is not None:
-            current = context.records_dir.lstat()
-            if (
-                not stat.S_ISDIR(current.st_mode)
-                or (current.st_dev, current.st_ino) != records_identity
-            ):
-                raise ArtifactIndexError("Artifact records directory changed identity")
 
     projected = (
-        (context.artifacts_path, context.index_bytes),
-        (context.receipt_path, context.receipt_bytes),
-        (evidence.summary_paths.summary_json, evidence.summary_json_bytes),
         (evidence.summary_paths.summary_tsv, evidence.summary_tsv_bytes),
         (evidence.summary_paths.qc_summary, evidence.qc_summary_bytes),
-        (evidence.summary_paths.receipt, evidence.summary_receipt_bytes),
+        (evidence.summary_paths.summary_json, evidence.summary_json_bytes),
     )
-    finals = (context.records_dir, *(path for path, _payload in projected))
+    finals = tuple(path for path, _payload in projected)
 
-    def reject_residue(kind: Literal["artifact_index", "run_summary"]) -> None:
+    def reject_residue() -> None:
         try:
             _reject_reporting_control_residue(
-                kind=kind,
+                kind="run_summary",
                 output_dir=context.output_dir,
                 run_id=context.run_id,
                 output_names=(
@@ -243,8 +229,7 @@ def publish_context(evidence: EvidenceContext) -> None:
         except ReportingTransactionError as exc:
             raise ArtifactIndexError(str(exc)) from exc
 
-    reject_residue("artifact_index")
-    reject_residue("run_summary")
+    reject_residue()
     for path in finals:
         if os.path.lexists(path):
             raise ArtifactIndexError(
@@ -279,7 +264,6 @@ def publish_context(evidence: EvidenceContext) -> None:
     committed = rollback_failed = False
     try:
         assert_directory()
-        reject_residue("run_summary")
         for path in finals:
             if os.path.lexists(path):
                 raise ArtifactIndexError(
@@ -288,35 +272,18 @@ def publish_context(evidence: EvidenceContext) -> None:
         temp_records.mkdir()
         current = temp_records.lstat()
         scratch_identity[temp_records] = (current.st_dev, current.st_ino)
-        for record, payload in zip(context.records, context.record_bytes, strict=True):
-            write_bytes_exclusive(
-                temp_records / f"{record['artifact_id']}.json", payload
-            )
         for path, payload in projected:
             write_bytes_exclusive(temp_records / path.name, payload)
         fsync_directory(temp_records)
         recheck_inputs(context)
         recheck_source_identity(context)
         assert_directory()
-        # mkdir reserves the records directory exclusively; rename could replace
-        # an empty directory created by another process after admission.
-        context.records_dir.mkdir()
-        current = context.records_dir.lstat()
-        records_identity = (current.st_dev, current.st_ino)
-        outputs = (
-            *(
-                (
-                    temp_records / f"{record['artifact_id']}.json",
-                    context.records_dir / f"{record['artifact_id']}.json",
-                )
-                for record in context.records
-            ),
-            *((temp_records / path.name, path) for path, _payload in projected),
+        outputs = tuple(
+            (temp_records / path.name, path) for path, _payload in projected
         )
         for staged, final in outputs:
             assert_directory()
-            if final == evidence.summary_paths.receipt:
-                fsync_directory(context.records_dir)
+            if final == evidence.summary_paths.summary_json:
                 fsync_directory(context.output_dir)
                 recheck_inputs(context)
                 recheck_source_identity(context)
@@ -331,35 +298,11 @@ def publish_context(evidence: EvidenceContext) -> None:
                 )
             assert_directory()
         fsync_directory(context.output_dir)
-        validate_published_transaction(
-            run_id=context.run_id,
-            run_contract=context.run_contract,
-            run_contract_path=context.run_contract_path,
-            run_contract_file_sha256=context.run_contract_file_sha256,
-            inventory_path=context.inventory_path,
-            inventory_sha256=context.inventory_sha256,
-            inventory_rows=context.inventory_rows,
-            records_dir=context.records_dir,
-            artifacts_path=context.artifacts_path,
-            receipt_path=context.receipt_path,
-            require_current_source_locations=True,
-            source_root=context.artifact_source_root.root,
-        )
         for path, expected in projected:
             if path.read_bytes() != expected:
                 raise ArtifactIndexError(
                     f"Published evidence differs from prepared bytes: {path}"
                 )
-        _validate_existing_summary(
-            paths=evidence.summary_paths,
-            receipt={
-                key: safe_tsv(value)
-                for key, value in evidence.summary_receipt_row.items()
-            },
-            expected_run_id=context.run_id,
-            expected_run_contract=context.run_contract,
-            source_root=context.artifact_source_root.root,
-        )
         recheck_inputs(context)
         recheck_source_identity(context)
         assert_directory()
@@ -393,11 +336,6 @@ def publish_context(evidence: EvidenceContext) -> None:
                     assert_directory()
                 except (OSError, ArtifactIndexError) as cleanup_exc:
                     rollback_errors.append(str(cleanup_exc))
-            if records_identity is not None:
-                assert_directory()
-                context.records_dir.rmdir()
-                records_identity = None
-                assert_directory()
             remaining = [str(path) for path in finals if os.path.lexists(path)]
             if remaining:
                 rollback_errors.append(

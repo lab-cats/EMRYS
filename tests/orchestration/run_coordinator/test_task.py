@@ -74,17 +74,19 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
     intake = tmp_path / "intake"
     intake.mkdir(parents=True)
     profile = fixture.profile()
-    _request, execution, execution_bytes, profile = fixture.build_legacy_execution(
-        intake, profile
+    storage_receipt = tmp_path / "storage.qualified.json"
+    storage_receipt.write_bytes(b"bounded task-fixture storage qualification\n")
+    normalizer, required_tools = workflow_fixture._attempt_runtime_identities(tmp_path)
+    _request, candidate = fixture.build_run(
+        intake, profile, required_tools=required_tools
     )
-
-    run_root = tmp_path / "run"
+    execution = candidate.run_binding.record
+    execution_bytes = candidate.run_binding.canonical_bytes
+    profile = candidate.analysis.profile
+    run_root = tmp_path / candidate.run_id
+    execution_path = fixture.publish_run(candidate, run_root)
     contract = run_root / "contract"
-    contract.mkdir(parents=True)
     profile_path = contract / "profile.json"
-    execution_path = contract / "normalized.json"
-    _publish_json(profile_path, profile)
-    execution_path.write_bytes(execution_bytes)
 
     mutable_input = run_root / "inputs" / "owner-input.txt"
     mutable_input.parent.mkdir()
@@ -198,9 +200,6 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
     request_bytes = b"task-fixture: true\n"
     request_snapshot.write_bytes(request_bytes)
     config_bytes = config_path.read_bytes()
-    storage_receipt = tmp_path / "storage.qualified.json"
-    storage_receipt.write_bytes(b"bounded task-fixture storage qualification\n")
-    normalizer, required_tools = workflow_fixture._attempt_runtime_identities(tmp_path)
     attempt = {
         "schema_version": "emrys.workflow-attempt.v1",
         "run_id": execution["run_id"],
@@ -602,7 +601,17 @@ def test_success_publishes_schema_valid_content_bound_records(tmp_path: Path) ->
     orchestration_contracts.validate_record("verified-task", verified)
     assert attempt["status"] == "succeeded"
     assert task_scope.is_dir()
-    assert attempt["task_start_record"] == verified["task_start_record"]
+    assert verified == {
+        "schema_version": "emrys.verified-task.v2",
+        "task_attempt_record": {
+            "path": outcome.task_attempt_path.relative_to(built.run_root).as_posix(),
+            "sha256": hashlib.sha256(
+                outcome.task_attempt_path.read_bytes()
+            ).hexdigest(),
+        },
+    }
+    verified = _validate_verified(built)
+    assert verified == attempt
     assert attempt["task_start_record"]["path"] == (
         Path(built.dispatch["task_start_path"]).relative_to(built.run_root).as_posix()
     )
@@ -614,7 +623,7 @@ def test_success_publishes_schema_valid_content_bound_records(tmp_path: Path) ->
         "path": (f"attempts/{WORKFLOW_ATTEMPT_ID}/released-run-lock.json"),
         "sha256": hashlib.sha256(lock_path.read_bytes()).hexdigest(),
     }
-    assert verified["all_pass"] is True
+    assert verified["status"] == "succeeded"
     assert verified["stable_inputs_rechecked"] is True
     assert [item["role"] for item in verified["inputs"]] == [
         "task_dispatch",
@@ -754,16 +763,16 @@ def test_records_exact_public_commands_and_exit_codes(tmp_path: Path) -> None:
 
     _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
 
-    verified = _record(built.dispatch["verified_task_path"])
-    assert verified["commands"]["producer"] == {
+    verified = _validate_verified(built)
+    assert verified["producer"] == {
         "argv": built.dispatch["producer_argv"],
         "exit_code": 0,
     }
-    assert verified["commands"]["validator"] == {
+    assert verified["validator"] == {
         "argv": built.dispatch["validator_argv"],
         "exit_code": 0,
     }
-    semantic = verified["commands"]["semantic_all_pass"]
+    semantic = verified["semantic_all_pass"]
     assert semantic["exit_code"] == 0
     assert semantic["argv"] == list(
         controlled_python_argv(
@@ -953,7 +962,7 @@ def test_star_publication_and_input_directory_roster_are_content_bound(
         "Log.out",
         "Log.progress.out",
     }
-    verified = _record(outcome.verified_task_path)
+    verified = _validate_verified(built)
     assert {Path(item["path"]).name for item in verified["outputs"]} == {
         "Genome",
         "Log.out",
@@ -961,7 +970,7 @@ def test_star_publication_and_input_directory_roster_are_content_bound(
     }
     assert any(item["path"] == str(member) for item in verified["inputs"])
     assert not working.exists()
-    assert _validate_verified(built)["all_pass"] is True
+    assert _validate_verified(built)["status"] == "succeeded"
 
 
 def test_catchable_task_termination_kills_worker_group_and_preserves_attempt(
@@ -991,7 +1000,7 @@ def test_catchable_task_termination_kills_worker_group_and_preserves_attempt(
     assert not Path(built.dispatch["outputs"][0]["working_path"]).parent.exists()
 
 
-def test_historical_dispatch_remains_readable_but_cannot_start_new_worker(
+def test_historical_dispatch_is_rejected_before_task_mutation(
     tmp_path: Path,
 ) -> None:
     built = _task_fixture(tmp_path)
@@ -1001,13 +1010,7 @@ def test_historical_dispatch_remains_readable_but_cannot_start_new_worker(
     for output in built.dispatch["outputs"]:
         output.pop("working_path")
     _rewrite_dispatch(built)
-    admitted = task.load_dispatch(
-        built.dispatch_path, expected_sha256=_dispatch_sha256(built.dispatch_path)
-    )
-    assert admitted.publication is None
-    with pytest.raises(
-        task.TaskBoundaryError, match="Historical task dispatch is read-only"
-    ):
+    with pytest.raises(task.TaskBoundaryError, match="schema_version must be"):
         _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
     assert not Path(built.dispatch["task_start_path"]).exists()
 
@@ -1421,22 +1424,36 @@ def test_same_byte_log_replacement_while_descriptor_open_is_not_admitted(
     assert not Path(built.dispatch["verified_task_path"]).exists()
 
 
-@pytest.mark.parametrize("label", ["stdout", "stderr"])
-def test_log_change_during_attempt_publication_blocks_verified_record(
+@pytest.mark.parametrize(
+    ("field", "message"),
+    [
+        ("stdout_path", "Task stdout changed"),
+        ("stderr_path", "Task stderr changed"),
+        ("task_attempt_path", "Terminal task result changed"),
+        ("validation_report_path", "Validation report changed"),
+        ("outputs", "producer output changed"),
+    ],
+)
+def test_evidence_change_during_terminal_publication_blocks_verified_marker(
     tmp_path: Path,
-    label: str,
+    field: str,
+    message: str,
 ) -> None:
     built = _task_fixture(tmp_path)
     defaults = _fixed_ops()
-    field = f"{label}_path"
+    target = Path(
+        built.dispatch[field][0]["path"]
+        if field == "outputs"
+        else built.dispatch[field]
+    )
 
     def publish(path: Path, data: bytes) -> None:
         defaults.publish_bytes(path, data)
         if path == Path(built.dispatch["task_attempt_path"]):
-            with Path(built.dispatch[field]).open("ab") as stream:
-                stream.write(b"foreign log bytes\n")
+            with target.open("ab") as stream:
+                stream.write(b"foreign evidence bytes\n")
 
-    with pytest.raises(task.TaskBoundaryError, match=rf"Task {label} changed"):
+    with pytest.raises(task.TaskBoundaryError, match=message):
         _execute_dispatch(
             built.dispatch_path,
             ops=replace(defaults, publish_bytes=publish),
@@ -1569,7 +1586,7 @@ def test_read_only_verified_admission_rechecks_every_content_binding(
         execution=execution,
         profile=profile,
     )
-    assert admitted["all_pass"] is True
+    assert admitted["status"] == "succeeded"
 
     output = Path(built.dispatch["outputs"][0]["path"])
     output.write_bytes(b"changed after verification\n")
@@ -2014,7 +2031,7 @@ def test_complete_step00c_sidecar_pair_is_reused_and_content_bound(
 
     assert calls == [tuple(record["validator_argv"])]
     assert b"producer command skipped" in Path(record["stdout_path"]).read_bytes()
-    verified = _record(outcome.verified_task_path)
+    verified = _record(outcome.task_attempt_path)
     assert verified["outputs"] == [
         {
             "role": declaration["role"],

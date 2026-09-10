@@ -2,8 +2,7 @@
 
 The lifecycle calls this direct owner after Snakemake exits and again during
 inspection. A receipt pathname or hash is never sufficient: current
-transactions re-admit the producer checkout, while historical reads
-admit the current reader and verify recorded producer identities. Every path
+transactions re-admit the current producer checkout. Every path
 validates its bound inputs and outputs and reconstructs the deterministic
 projection where applicable.
 """
@@ -11,7 +10,6 @@ projection where applicable.
 from __future__ import annotations
 
 import argparse
-import copy
 import hashlib
 import os
 import re
@@ -29,7 +27,6 @@ from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.libraries.source_authority import (
     ArtifactSourceRoot,
     SourceCheckout,
-    SourceCheckoutError,
     admit_artifact_source_root,
     admit_source_checkout,
     attest_source_checkout,
@@ -40,7 +37,7 @@ from emrys.libraries.validation.inputs import (
     read_bytes_with_identity,
 )
 
-TransactionKind = Literal["artifact_index", "run_summary", "html_report"]
+TransactionKind = Literal["run_summary", "html_report"]
 
 
 class ReportingTransactionError(RuntimeError):
@@ -55,9 +52,6 @@ class ValidatedTransaction:
     receipt_sha256: str
     verified_report_locations: tuple[tuple[str, Path], ...] = ()
     _recheck: Callable[[], None] | None = field(default=None, repr=False, compare=False)
-    _artifacts: _ArtifactEvidence | None = field(
-        default=None, repr=False, compare=False
-    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,18 +95,6 @@ class _BoundDirectorySnapshot:
 class _BoundRosterSnapshot:
     files: tuple[_BoundFileSnapshot, ...]
     directories: tuple[_BoundDirectorySnapshot, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class _ArtifactEvidence:
-    """Admitted artifact values reused by the summary projection."""
-
-    run_contract_path: Path
-    run_contract: dict[str, Any]
-    inventory: _ReceiptSnapshot
-    inventory_rows: list[dict[str, str]]
-    receipt: dict[str, str]
-    records: tuple[dict[str, Any], ...]
 
 
 def _snapshot_receipt(path: Path) -> _ReceiptSnapshot:
@@ -390,16 +372,13 @@ def _validated_result(
     reject_control_residue: Callable[[], None],
     *,
     identity_only_paths: Iterable[Path] = (),
-    reusable_expandable_directories: Iterable[Path] = (),
     verified_report_locations: tuple[tuple[str, Path], ...] = (),
-    artifacts: _ArtifactEvidence | None = None,
 ) -> ValidatedTransaction:
     if not _receipt_is_in_roster(receipt, roster):
         raise ReportingTransactionError(
             f"Reporting receipt changed before roster admission: {receipt.path}"
         )
     identity_only = frozenset(identity_only_paths)
-    expandable = frozenset(reusable_expandable_directories)
     reject_control_residue()
     _recheck_bound_roster(roster, identity_only_paths=identity_only)
 
@@ -408,7 +387,6 @@ def _validated_result(
         _recheck_bound_roster(
             roster,
             identity_only_paths=identity_only,
-            expandable_directory_paths=expandable,
         )
 
     return ValidatedTransaction(
@@ -416,7 +394,6 @@ def _validated_result(
         receipt_sha256=receipt.sha256,
         verified_report_locations=verified_report_locations,
         _recheck=recheck,
-        _artifacts=artifacts,
     )
 
 
@@ -424,7 +401,6 @@ def _recheck_bound_roster(
     roster: _BoundRosterSnapshot,
     *,
     identity_only_paths: Iterable[Path] = (),
-    expandable_directory_paths: Iterable[Path] = (),
 ) -> None:
     """Require an admitted transaction roster to retain the same identities."""
 
@@ -458,14 +434,7 @@ def _recheck_bound_roster(
         and (before.path in identity_only or before.sha256 == after.sha256)
         for before, after in zip(roster.files, observed.files, strict=True)
     )
-    expandable = set(expandable_directory_paths)
-    directories_match = len(observed.directories) == len(roster.directories) and all(
-        before == after
-        if before.path not in expandable
-        else (before.path, before.device, before.inode, before.mode)
-        == (after.path, after.device, after.inode, after.mode)
-        for before, after in zip(roster.directories, observed.directories, strict=True)
-    )
+    directories_match = observed.directories == roster.directories
     if not files_match or not directories_match:
         raise ReportingTransactionError(
             "Reporting transaction roster changed during semantic validation"
@@ -482,7 +451,6 @@ def _artifact_record_bound_paths(
     *,
     source_checkout: Path,
     artifact_source_root: Path,
-    include_implementation_evidence: bool = True,
 ) -> set[Path]:
     paths: set[Path] = set()
     for record in records:
@@ -491,8 +459,6 @@ def _artifact_record_bound_paths(
             source_path = expectation.get("source_path")
             if isinstance(source_path, str) and source_path:
                 paths.add(_contract_path(source_path, artifact_source_root))
-        if not include_implementation_evidence:
-            continue
         implementation = record.get("implementation")
         if not isinstance(implementation, Mapping):
             continue
@@ -522,32 +488,11 @@ def _reject_reporting_control_residue(
 
     entries = _snapshot_bound_directory(output_dir).entries
     escaped_run_id = re.escape(run_id)
-    if kind == "artifact_index":
+    if kind == "run_summary":
         exact = {f".{run_id}.artifact-index.lock"}
         patterns = (
             re.compile(
-                rf"\.artifact-index\.{_CONTROL_TOKEN}\."
-                r"(?:tmp\.records|tmp\.tsv|previous\.records|previous\.tsv|"
-                r"RECOVERY\.txt)"
-            ),
-            re.compile(
-                rf"\.artifact-receipt\.{_CONTROL_TOKEN}\."
-                r"(?:tmp|previous)\.tsv"
-            ),
-        )
-    elif kind == "run_summary":
-        exact = {f".{run_id}.run-summary.lock"}
-        patterns = (
-            re.compile(
-                rf"\.{escaped_run_id}\.run-summary\.{_CONTROL_TOKEN}\."
-                r"RECOVERY\.txt"
-            ),
-            *(
-                re.compile(
-                    rf"\.{re.escape(name)}\.{_CONTROL_TOKEN}\."
-                    r"(?:tmp|previous)"
-                )
-                for name in output_names
+                rf"\.artifact-index\.{_CONTROL_TOKEN}\.(?:tmp\.records|RECOVERY\.txt)"
             ),
         )
     else:
@@ -569,628 +514,6 @@ def _reject_reporting_control_residue(
         raise ReportingTransactionError(
             f"{kind} transaction retains owner control residue: " + ", ".join(residue)
         )
-
-
-def _artifact_context_roster(context: Any) -> _BoundRosterSnapshot:
-    record_paths = {
-        context.records_dir / f"{record['artifact_id']}.json"
-        for record in context.records
-    }
-    files = {
-        context.run_contract_path,
-        context.inventory_path,
-        *(
-            (context.analysis_policy_path,)
-            if context.analysis_policy_path is not None
-            else ()
-        ),
-        context.artifacts_path,
-        context.receipt_path,
-        *record_paths,
-        *(inspection.resolved_path for inspection in context.inspections),
-        *_artifact_record_bound_paths(
-            context.records,
-            source_checkout=context.source_checkout.root,
-            artifact_source_root=context.artifact_source_root.root,
-        ),
-    }
-    return _snapshot_bound_roster(
-        files,
-        (context.output_dir, context.records_dir),
-    )
-
-
-def _report_roster(
-    summary: Mapping[str, Any],
-    *,
-    run_summary_path: Path,
-    output_dir: Path,
-    output_paths: Iterable[Path],
-    report_receipt: Path,
-    source_checkout: Path,
-    artifact_source_root: Path,
-    input_paths: Iterable[Path] = (),
-    include_implementation_evidence: bool = True,
-    expected_run_contract: Path | None = None,
-    expected_inventory: Path | None = None,
-) -> _BoundRosterSnapshot:
-    from emrys.reporting._artifact_index import api as artifact_api
-    from emrys.reporting._artifact_index.models import ARTIFACT_RECEIPT_HEADER
-
-    run_id = str(summary["run_id"])
-    summary_dir = run_summary_path.parent
-    artifact_receipt = summary_dir / f"{run_id}.artifact_receipt.tsv"
-    if Path(str(summary["artifact_receipt"]["path"])) != artifact_receipt:
-        raise ReportingTransactionError(
-            "Run summary binds a noncanonical artifact receipt path"
-        )
-    receipt_row = artifact_api.read_exact_tsv(
-        artifact_receipt,
-        ARTIFACT_RECEIPT_HEADER,
-        exact_rows=1,
-    )[0]
-    artifact_index = summary_dir / f"{run_id}.artifacts.tsv"
-    records_dir = summary_dir / "records"
-    record_paths = {
-        records_dir / f"{record['artifact_id']}.json" for record in summary["artifacts"]
-    }
-    run_contract = expected_run_contract or Path(receipt_row["run_contract_path"])
-    inventory = expected_inventory or Path(receipt_row["inventory_path"])
-    analysis_policy = summary.get("analysis_policy")
-    files = {
-        *input_paths,
-        run_summary_path,
-        *(() if analysis_policy is None else (Path(analysis_policy["path"]),)),
-        *output_paths,
-        report_receipt,
-        summary_dir / f"{run_id}.run_summary.tsv",
-        summary_dir / f"{run_id}.qc_summary.tsv",
-        summary_dir / f"{run_id}.run_summary_receipt.tsv",
-        artifact_receipt,
-        run_contract,
-        inventory,
-        artifact_index,
-        *record_paths,
-        *_artifact_record_bound_paths(
-            summary["artifacts"],
-            source_checkout=source_checkout,
-            artifact_source_root=artifact_source_root,
-            include_implementation_evidence=include_implementation_evidence,
-        ),
-    }
-    return _snapshot_bound_roster(
-        files,
-        (output_dir, records_dir, summary_dir),
-    )
-
-
-def _validate_historical_artifact_index_transaction(
-    *,
-    source_checkout: Path,
-    artifact_source_root: Path,
-    run_id: str,
-    run_contract: Path,
-    inventory: Path,
-    output_root: Path,
-) -> ValidatedTransaction:
-    """Validate an immutable artifact ledger without today's producer registry."""
-
-    from emrys.reporting._artifact_index import api as artifact_api
-    from emrys.reporting._artifact_index import records as artifact_records
-    from emrys.reporting._artifact_index.models import (
-        ARTIFACT_INDEX_HEADER,
-        ARTIFACT_RECEIPT_HEADER,
-    )
-    from emrys.reporting._artifact_index.validation import (
-        validate_published_transaction,
-    )
-
-    output_dir = output_root / run_id
-    records_dir = output_dir / "records"
-    artifacts_path = output_dir / f"{run_id}.artifacts.tsv"
-    receipt_path = output_dir / f"{run_id}.artifact_receipt.tsv"
-    reject_control_residue = partial(
-        _reject_reporting_control_residue,
-        kind="artifact_index",
-        output_dir=output_dir,
-        run_id=run_id,
-    )
-    reject_control_residue()
-    receipt_snapshot = _snapshot_receipt(receipt_path)
-    _checkout, source_root = _admit_authorities(
-        source_checkout=source_checkout,
-        artifact_source_root=artifact_source_root,
-    )
-    run_contract_snapshot = _snapshot_receipt(run_contract)
-    inventory_snapshot = _snapshot_receipt(inventory)
-    artifacts_snapshot = _snapshot_receipt(artifacts_path)
-    receipt_row = artifact_records.read_exact_tsv_bytes(
-        receipt_snapshot.payload,
-        receipt_path,
-        ARTIFACT_RECEIPT_HEADER,
-        exact_rows=1,
-    )[0]
-    for field, expected in (
-        ("run_contract_path", run_contract),
-        ("inventory_path", inventory),
-        ("artifacts_index_path", artifacts_path),
-    ):
-        if Path(receipt_row[field]) != expected:
-            raise ReportingTransactionError(
-                f"Historical artifact receipt binds a noncanonical {field}"
-            )
-
-    admitted_run_contract = artifact_contracts.load_json_object_bytes(
-        run_contract_snapshot.payload,
-        f"historical run contract {run_contract}",
-    )
-    run_contract_document, run_contract_sha256 = artifact_api.load_run_contract(
-        run_contract
-    )
-    if (
-        run_contract_document != admitted_run_contract
-        or run_contract_sha256 != run_contract_snapshot.sha256
-    ):
-        raise ReportingTransactionError(
-            "Historical run contract changed during ledger admission"
-        )
-    admitted_inventory_rows = artifact_records.read_exact_tsv_bytes(
-        inventory_snapshot.payload,
-        inventory,
-        artifact_contracts.INVENTORY_HEADER,
-    )
-    inventory_rows = artifact_contracts.validate_inventory(
-        inventory,
-        source_root=source_root.root,
-    )
-    if inventory_rows != admitted_inventory_rows:
-        raise ReportingTransactionError(
-            "Historical inventory changed during ledger admission"
-        )
-    run_contract_document = admitted_run_contract
-    inventory_rows = admitted_inventory_rows
-    record_paths = {
-        records_dir / f"{row['artifact_id']}.json" for row in inventory_rows
-    }
-    record_snapshots = tuple(
-        _snapshot_receipt(path) for path in sorted(record_paths, key=os.fspath)
-    )
-    native_roster = _snapshot_bound_roster(
-        {
-            _contract_path(row["source_path"], source_root.root)
-            for row in inventory_rows
-        },
-        (output_dir, records_dir),
-    )
-    files_by_path = {snapshot.path: snapshot for snapshot in native_roster.files}
-    for snapshot in (
-        receipt_snapshot,
-        run_contract_snapshot,
-        inventory_snapshot,
-        artifacts_snapshot,
-        *record_snapshots,
-    ):
-        bound = _bound_file_snapshot(snapshot)
-        previous = files_by_path.setdefault(bound.path, bound)
-        if previous != bound:
-            raise ReportingTransactionError(
-                f"Historical ledger path has conflicting identities: {bound.path}"
-            )
-    roster = _BoundRosterSnapshot(
-        files=tuple(
-            sorted(files_by_path.values(), key=lambda item: os.fspath(item.path))
-        ),
-        directories=native_roster.directories,
-    )
-    admitted_bytes = {
-        snapshot.path: snapshot.payload
-        for snapshot in (receipt_snapshot, artifacts_snapshot, *record_snapshots)
-    }
-    receipt_row, records = validate_published_transaction(
-        run_id=run_id,
-        run_contract=run_contract_document,
-        run_contract_path=run_contract,
-        run_contract_file_sha256=run_contract_sha256,
-        inventory_path=inventory,
-        inventory_sha256=inventory_snapshot.sha256,
-        inventory_rows=inventory_rows,
-        records_dir=records_dir,
-        artifacts_path=artifacts_path,
-        receipt_path=receipt_path,
-        require_current_source_locations=True,
-        source_root=source_root.root,
-        admitted_bytes=admitted_bytes,
-    )
-    snapshots = {snapshot.path: snapshot for snapshot in roster.files}
-    recorded_commit = receipt_row["git_commit"]
-    for record in records:
-        provenance = record["provenance"]
-        implementation = record["implementation"]
-        if (
-            provenance["producer"] != receipt_row["producer"]
-            or provenance["producer_version"] != receipt_row["producer_version"]
-            or provenance["git_commit"] != recorded_commit
-            or implementation["git_commit"] != recorded_commit
-        ):
-            raise ReportingTransactionError(
-                "Historical artifact record differs from its recorded producer identity: "
-                f"{record['artifact_id']}"
-            )
-        source = record.get("source")
-        source_path = _contract_path(
-            record["expectation"]["source_path"],
-            source_root.root,
-        )
-        snapshot = snapshots[source_path]
-        if source is None:
-            if snapshot.state != "missing":
-                raise ReportingTransactionError(
-                    "Historical artifact source appeared after publication: "
-                    f"{record['artifact_id']}"
-                )
-        elif (
-            snapshot.state != "regular"
-            or snapshot.sha256 != source["sha256"]
-            or snapshot.size_bytes != source["size_bytes"]
-        ):
-            raise ReportingTransactionError(
-                "Historical artifact source differs from its recorded identity: "
-                f"{record['artifact_id']}"
-            )
-    return _validated_result(
-        receipt_snapshot,
-        roster,
-        reject_control_residue,
-        reusable_expandable_directories=(output_dir,),
-        artifacts=_ArtifactEvidence(
-            run_contract,
-            run_contract_document,
-            inventory_snapshot,
-            inventory_rows,
-            receipt_row,
-            records,
-        ),
-    )
-
-
-def validate_artifact_index_transaction(
-    *,
-    source_checkout: Path,
-    artifact_source_root: Path,
-    run_id: str,
-    run_contract: Path,
-    inventory: Path,
-    output_root: Path,
-    analysis_policy: Path | None = None,
-    profile: Mapping[str, Any] | None = None,
-) -> ValidatedTransaction:
-    """Revalidate one artifact index plus current native artifact sources."""
-
-    output_dir = output_root / run_id
-    reject_control_residue = partial(
-        _reject_reporting_control_residue,
-        kind="artifact_index",
-        output_dir=output_dir,
-        run_id=run_id,
-    )
-    reject_control_residue()
-    receipt_snapshot = _snapshot_receipt(output_dir / f"{run_id}.artifact_receipt.tsv")
-
-    from emrys.reporting._artifact_index import context as artifact_context
-    from emrys.reporting._artifact_index import records as artifact_records
-    from emrys.reporting._artifact_index.validation import (  # noqa: PLC0415
-        validate_published_transaction,
-    )
-
-    checkout, source_root = _admit_authorities(
-        source_checkout=source_checkout,
-        artifact_source_root=artifact_source_root,
-    )
-    arguments = argparse.Namespace(
-        run_id=run_id,
-        run_contract=run_contract,
-        analysis_policy=analysis_policy,
-        profile=profile,
-        inventory=inventory,
-        output_root=output_root,
-        execute=False,
-    )
-    context = artifact_context.prepare_context(
-        arguments,
-        source_checkout=checkout,
-        artifact_source_root=source_root,
-    )
-    if context.previous_receipt is None:
-        raise ReportingTransactionError(
-            f"Artifact-index transaction is absent: {context.receipt_path}"
-        )
-    admitted_receipt = artifact_records.tsv_bytes(
-        artifact_context.ARTIFACT_RECEIPT_HEADER,
-        [context.previous_receipt],
-    )
-    if admitted_receipt != receipt_snapshot.payload:
-        raise ReportingTransactionError(
-            "Artifact-index semantic validation admitted a different receipt"
-        )
-    roster = _artifact_context_roster(context)
-    receipt_row, published_records = validate_published_transaction(
-        run_id=context.run_id,
-        run_contract=context.run_contract,
-        run_contract_path=context.run_contract_path,
-        run_contract_file_sha256=context.run_contract_file_sha256,
-        inventory_path=context.inventory_path,
-        inventory_sha256=context.inventory_sha256,
-        inventory_rows=context.inventory_rows,
-        records_dir=context.records_dir,
-        artifacts_path=context.artifacts_path,
-        receipt_path=context.receipt_path,
-        require_current_source_locations=True,
-        source_root=context.artifact_source_root.root,
-    )
-
-    if receipt_row["git_commit"] != context.receipt_row["git_commit"]:
-        raise ReportingTransactionError(
-            "Published artifact receipt differs from current producer identity"
-        )
-
-    reconstructed: list[dict[str, Any]] = []
-    reconstructed_bytes: list[bytes] = []
-    for regenerated, existing in zip(context.records, published_records, strict=True):
-        current = copy.deepcopy(regenerated)
-        path = context.records_dir / f"{current['artifact_id']}.json"
-        # created_at identifies the original index projection, not native
-        # scientific content. Reusing it makes every other regenerated field
-        # and byte deterministic for an exact comparison.
-        current["provenance"]["created_at"] = existing["provenance"]["created_at"]
-        if current != existing:
-            raise ReportingTransactionError(
-                "Published artifact record differs from current declared source: "
-                f"{current['artifact_id']}"
-            )
-        payload = artifact_context.canonical_json_bytes(current)
-        if path.read_bytes() != payload:
-            raise ReportingTransactionError(
-                f"Published artifact record is not canonical: {path}"
-            )
-        reconstructed.append(current)
-        reconstructed_bytes.append(payload)
-    expected_rows = artifact_records.build_index_rows(
-        records=reconstructed,
-        record_bytes=reconstructed_bytes,
-        records_dir=context.records_dir,
-    )
-    expected_index = artifact_records.tsv_bytes(
-        artifact_context.ARTIFACT_INDEX_HEADER,
-        expected_rows,
-    )
-    if context.artifacts_path.read_bytes() != expected_index:
-        raise ReportingTransactionError(
-            "Published artifact index differs from current reconstructed records"
-        )
-    artifact_context.recheck_inputs(context)
-    if context.receipt_path != receipt_snapshot.path:
-        raise ReportingTransactionError(
-            "Artifact-index context selected a different receipt path"
-        )
-    inventory_snapshot = _snapshot_receipt(context.inventory_path)
-    if inventory_snapshot.sha256 != context.inventory_sha256:
-        raise ReportingTransactionError("Artifact inventory changed during admission")
-    return _validated_result(
-        receipt_snapshot,
-        roster,
-        reject_control_residue,
-        reusable_expandable_directories=(context.output_dir,),
-        artifacts=_ArtifactEvidence(
-            context.run_contract_path,
-            context.run_contract,
-            inventory_snapshot,
-            context.inventory_rows,
-            receipt_row,
-            published_records,
-        ),
-    )
-
-
-def validate_run_summary_transaction(
-    *,
-    source_checkout: Path,
-    artifact_source_root: Path,
-    run_id: str,
-    artifact_receipt: Path,
-    output_root: Path,
-    recorded_producer_commit: str | None = None,
-    expected_run_contract: Path | None = None,
-    expected_inventory: Path | None = None,
-    analysis_policy: Path | None = None,
-    profile: Mapping[str, Any] | None = None,
-    validate_upstream: bool = True,
-    validated_predecessor: ValidatedTransaction | None = None,
-) -> ValidatedTransaction:
-    """Read and verify a summary from admitted artifact evidence, without a writer."""
-
-    from emrys.reporting._artifact_index import records as artifact_records
-    from emrys.reporting._run_summary.document import (
-        admit_analysis_policy,
-        build_summary,
-    )
-    from emrys.reporting._run_summary.models import (
-        OutputPaths,
-        RUN_SUMMARY_RECEIPT_HEADER,
-    )
-    from emrys.reporting._run_summary.validation import _validate_existing_summary
-
-    historical_read = any(
-        value is not None
-        for value in (
-            recorded_producer_commit,
-            expected_run_contract,
-            expected_inventory,
-        )
-    )
-    if historical_read and (
-        expected_run_contract is None or expected_inventory is None
-    ):
-        raise ReportingTransactionError(
-            "Historical run-summary admission requires fixed contract inputs"
-        )
-    output_dir = output_root / run_id
-    if artifact_receipt != output_dir / f"{run_id}.artifact_receipt.tsv":
-        raise ReportingTransactionError(
-            "Run summary requires the canonical artifact receipt"
-        )
-    paths = OutputPaths(
-        output_dir=output_dir,
-        summary_json=output_dir / f"{run_id}.run_summary.json",
-        summary_tsv=output_dir / f"{run_id}.run_summary.tsv",
-        qc_summary=output_dir / f"{run_id}.qc_summary.tsv",
-        receipt=output_dir / f"{run_id}.run_summary_receipt.tsv",
-    )
-    reject_control_residue = partial(
-        _reject_reporting_control_residue,
-        kind="run_summary",
-        output_dir=output_dir,
-        run_id=run_id,
-        output_names=tuple(path.name for path in paths.ordered_outputs),
-    )
-    reject_control_residue()
-    receipt_snapshot = _snapshot_receipt(paths.receipt)
-    artifact_snapshot = _snapshot_receipt(artifact_receipt)
-    receipt = artifact_records.read_exact_tsv_bytes(
-        receipt_snapshot.payload,
-        paths.receipt,
-        RUN_SUMMARY_RECEIPT_HEADER,
-        exact_rows=1,
-    )[0]
-    if (
-        artifact_records.tsv_bytes(RUN_SUMMARY_RECEIPT_HEADER, [receipt])
-        != receipt_snapshot.payload
-    ):
-        raise ReportingTransactionError("Run-summary receipt is not canonical")
-    if historical_read and recorded_producer_commit is None:
-        recorded_producer_commit = receipt["git_commit"]
-    predecessor = validated_predecessor if not validate_upstream else None
-    if predecessor is None or predecessor._artifacts is None:
-        artifact_row = artifact_records.read_exact_tsv_bytes(
-            artifact_snapshot.payload,
-            artifact_receipt,
-            artifact_records.ARTIFACT_RECEIPT_HEADER,
-            exact_rows=1,
-        )[0]
-        options = dict(
-            source_checkout=source_checkout,
-            artifact_source_root=artifact_source_root,
-            run_id=run_id,
-            run_contract=expected_run_contract
-            or Path(artifact_row["run_contract_path"]),
-            inventory=expected_inventory or Path(artifact_row["inventory_path"]),
-            output_root=output_root,
-        )
-        predecessor = (
-            _validate_historical_artifact_index_transaction(**options)
-            if historical_read
-            else validate_artifact_index_transaction(
-                **options,
-                analysis_policy=analysis_policy,
-                profile=profile,
-            )
-        )
-    if (
-        predecessor.receipt_path != artifact_receipt
-        or predecessor.receipt_sha256 != artifact_snapshot.sha256
-    ):
-        raise ReportingTransactionError(
-            "Previously validated artifact receipt no longer matches"
-        )
-    assert predecessor._artifacts is not None and predecessor._recheck is not None
-    predecessor._recheck()
-    evidence = predecessor._artifacts
-    for observed, expected in (
-        (evidence.run_contract_path, expected_run_contract),
-        (evidence.inventory.path, expected_inventory),
-    ):
-        if expected is not None and observed != expected:
-            raise ReportingTransactionError(
-                "Artifact evidence binds a noncanonical contract input"
-            )
-    checkout, source_root = _admit_authorities(
-        source_checkout=source_checkout,
-        artifact_source_root=artifact_source_root,
-    )
-    files = {
-        artifact_receipt,
-        evidence.run_contract_path,
-        evidence.inventory.path,
-        output_dir / f"{run_id}.artifacts.tsv",
-        *paths.ordered_outputs,
-        *(
-            output_dir / "records" / f"{record['artifact_id']}.json"
-            for record in evidence.records
-        ),
-        *_artifact_record_bound_paths(
-            evidence.records,
-            source_checkout=checkout.root,
-            artifact_source_root=source_root.root,
-            include_implementation_evidence=not historical_read,
-        ),
-    }
-    if analysis_policy is not None:
-        files.add(analysis_policy)
-    roster = _snapshot_bound_roster(files, (output_dir, output_dir / "records"))
-    existing = _validate_existing_summary(
-        paths=paths,
-        receipt=receipt,
-        expected_run_id=run_id,
-        expected_run_contract=evidence.run_contract,
-        source_root=source_root.root,
-    )
-    _, policy_binding, recheck_policy = admit_analysis_policy(
-        analysis_policy, evidence.run_contract
-    )
-    if recorded_producer_commit is None:
-        recorded_producer_commit = evidence.receipt["git_commit"]
-    document, json_bytes, summary_bytes, qc_bytes = build_summary(
-        source_root=source_root.root,
-        run_id=run_id,
-        run_contract=evidence.run_contract,
-        inventory_path=evidence.inventory.path,
-        inventory_sha256=evidence.inventory.sha256,
-        inventory_size_bytes=evidence.inventory.size_bytes,
-        inventory_rows=evidence.inventory_rows,
-        artifact_receipt_path=artifact_receipt,
-        artifact_receipt_sha256=artifact_snapshot.sha256,
-        artifact_receipt_size_bytes=artifact_snapshot.size_bytes,
-        artifact_receipt=evidence.receipt,
-        artifacts=list(evidence.records),
-        generated_at=evidence.receipt["finished_at"],
-        git_commit=recorded_producer_commit,
-        analysis_policy_binding=policy_binding,
-    )
-    if existing != document:
-        raise ReportingTransactionError(
-            "Published run-summary JSON differs from current projection"
-        )
-    for field in (
-        "artifacts_index_path",
-        "artifacts_index_sha256",
-        "record_set_sha256",
-    ):
-        if receipt[field] != evidence.receipt[field]:
-            raise ReportingTransactionError(
-                f"Run-summary artifact binding differs: {field}"
-            )
-    for path, expected, label in (
-        (paths.summary_json, json_bytes, "JSON"),
-        (paths.summary_tsv, summary_bytes, "TSV"),
-        (paths.qc_summary, qc_bytes, "QC TSV"),
-    ):
-        if path.read_bytes() != expected:
-            raise ReportingTransactionError(
-                f"Published run-summary {label} differs from current projection: {path}"
-            )
-    predecessor._recheck()
-    if recheck_policy is not None:
-        recheck_policy()
-    return _validated_result(receipt_snapshot, roster, reject_control_residue)
 
 
 def validate_report_transaction(
@@ -1257,13 +580,13 @@ def validate_report_transaction(
         input_paths=(snapshot.path for snapshot in context.input_snapshots),
     )
     if validate_upstream:
-        artifact_receipt = Path(str(context.summary["artifact_receipt"]["path"]))
         validate_run_summary_transaction(
             source_checkout=source_checkout,
             artifact_source_root=artifact_source_root,
             run_id=run_id,
-            artifact_receipt=artifact_receipt,
-            output_root=artifact_receipt.parent.parent,
+            run_contract=Path(context.summary["run_contract_file"]["path"]),
+            inventory=Path(context.summary["inventory"]["path"]),
+            output_root=run_summary.parent.parent,
             analysis_policy=analysis_policy,
             profile=profile,
         )
@@ -1351,172 +674,120 @@ def validate_report_transaction(
     )
 
 
-def _validate_historical_report_transaction(
+def _report_roster(
+    summary: Mapping[str, Any],
+    *,
+    run_summary_path: Path,
+    output_dir: Path,
+    output_paths: Iterable[Path],
+    report_receipt: Path,
+    source_checkout: Path,
+    artifact_source_root: Path,
+    input_paths: Iterable[Path] = (),
+) -> _BoundRosterSnapshot:
+    run_id = str(summary["run_id"])
+    summary_dir = run_summary_path.parent
+    return _snapshot_bound_roster(
+        {
+            *input_paths,
+            run_summary_path,
+            *output_paths,
+            report_receipt,
+            Path(summary["analysis_policy"]["path"]),
+            Path(summary["run_contract_file"]["path"]),
+            Path(summary["inventory"]["path"]),
+            summary_dir / f"{run_id}.run_summary.tsv",
+            summary_dir / f"{run_id}.qc_summary.tsv",
+            *_artifact_record_bound_paths(
+                summary["artifacts"],
+                source_checkout=source_checkout,
+                artifact_source_root=artifact_source_root,
+            ),
+        },
+        (output_dir, summary_dir),
+    )
+
+
+def validate_run_summary_transaction(
     *,
     source_checkout: Path,
     artifact_source_root: Path,
     run_id: str,
-    run_summary: Path,
+    run_contract: Path,
+    inventory: Path,
     output_root: Path,
-    expected_source_commit: str,
-    expected_run_contract: Path,
-    expected_inventory: Path,
     analysis_policy: Path | None = None,
-    validate_upstream: bool = True,
+    profile: Mapping[str, Any] | None = None,
 ) -> ValidatedTransaction:
-    """Admit a ledger-bound legacy report without re-rendering it as current."""
+    """Re-admit the current result manifest, native sources and table projections."""
+    from emrys.reporting._artifact_index import context as artifact_context
+    from emrys.reporting._artifact_index.core import canonical_json_bytes
+    from emrys.reporting._run_summary.validation import _validate_document
 
-    from emrys.reporting import ReportProviderError
-    from emrys.reporting._run_report.inputs import _load_run_summary
-    from emrys.reporting._run_report import receipt
-    from emrys.reporting._run_report.models import (
-        HISTORICAL_REPORT_RECEIPT_SCHEMA_VERSION,
-        HISTORICAL_RUN_SUMMARY_SCHEMA_VERSION,
-        PRODUCER,
-        REPORT_RECEIPT_SCHEMA_VERSION,
-        RUN_SUMMARY_SCHEMA_VERSION,
-    )
-
-    if not artifact_contracts.SAFE_ID_RE.fullmatch(run_id):
-        raise ReportingTransactionError("Historical report Run ID is invalid")
-    expected_summary_name = f"{run_id}.run_summary.json"
-    if run_summary.name != expected_summary_name or run_summary.parent.name != run_id:
-        raise ReportingTransactionError(
-            "Historical report requires the fixed Run-summary path"
-        )
-    summary_snapshot = _snapshot_receipt(run_summary)
-    summary = artifact_contracts.load_json_object_bytes(
-        summary_snapshot.payload,
-        "run summary",
-    )
-    if str(summary.get("run_id", "")) != run_id:
-        raise ReportingTransactionError(
-            "Historical report Run summary binds another Run"
-        )
-    if analysis_policy is None and summary.get("analysis_policy") is not None:
-        analysis_policy = Path(str(summary["analysis_policy"]["path"]))
-        if not analysis_policy.is_absolute():
-            analysis_policy = artifact_source_root / analysis_policy
     output_dir = output_root / run_id
-    output_names = tuple(
-        f"{run_id}.{suffix}" for _id, _kind, suffix in artifact_contracts.REPORT_OUTPUTS
-    ) + (f"{run_id}.report_outputs.tsv",)
     reject_control_residue = partial(
         _reject_reporting_control_residue,
-        kind="html_report",
+        kind="run_summary",
         output_dir=output_dir,
         run_id=run_id,
-        output_names=output_names,
     )
     reject_control_residue()
-    receipt_path = output_dir / output_names[-1]
-    receipt_snapshot = _snapshot_receipt(receipt_path)
-    try:
-        summary = _load_run_summary(
-            run_summary,
-            source_root=artifact_source_root,
-        )
-        document = receipt.read_receipt_tsv(receipt_path)
-    except ReportProviderError as exc:
-        raise ReportingTransactionError(
-            f"Historical report receipt failed validation: {exc}"
-        ) from exc
-    if _snapshot_receipt(run_summary) != summary_snapshot:
-        raise ReportingTransactionError(
-            "Historical report Run summary changed during admission"
-        )
-    if (
-        summary["schema_version"],
-        document["schema_version"],
-    ) not in {
-        (
-            HISTORICAL_RUN_SUMMARY_SCHEMA_VERSION,
-            HISTORICAL_REPORT_RECEIPT_SCHEMA_VERSION,
-        ),
-        (RUN_SUMMARY_SCHEMA_VERSION, REPORT_RECEIPT_SCHEMA_VERSION),
-    }:
-        raise ReportingTransactionError(
-            "Historical report receipt and Run-summary versions do not match"
-        )
-    if document["run_id"] != run_id:
-        raise ReportingTransactionError("Historical report receipt binds another Run")
-    if (
-        document["provenance"]["producer"] != PRODUCER
-        or document["provenance"]["git_commit"] != expected_source_commit
-    ):
-        raise ReportingTransactionError(
-            "Historical report receipt does not bind its recorded producer identity"
-        )
-    summary_binding = document["input_run_summary"]
-    if Path(summary_binding["path"]) != run_summary:
-        raise ReportingTransactionError(
-            "Historical report receipt binds another run summary"
-        )
-    expected_outputs = {
-        output_id: output_dir / f"{run_id}.{suffix}"
-        for output_id, _kind, suffix in artifact_contracts.REPORT_OUTPUTS
-    }
-    if any(
-        Path(output["path"]) != expected_outputs[output["output_id"]]
-        for output in document["outputs"]
-    ):
-        raise ReportingTransactionError(
-            "Historical report receipt binds a noncanonical output path"
-        )
-    roster = _report_roster(
-        summary,
-        run_summary_path=run_summary,
-        output_dir=output_dir,
-        output_paths=expected_outputs.values(),
-        report_receipt=receipt_path,
-        source_checkout=source_checkout,
-        artifact_source_root=artifact_source_root,
-        include_implementation_evidence=False,
-        expected_run_contract=expected_run_contract,
-        expected_inventory=expected_inventory,
+    snapshot = _snapshot_receipt(output_dir / f"{run_id}.run_summary.json")
+    document = artifact_contracts.load_json_object_bytes(
+        snapshot.payload, "Run result manifest"
     )
-    snapshots = {snapshot.path: snapshot for snapshot in roster.files}
-    bound_summary = snapshots[run_summary]
-    if (
-        bound_summary.state != "regular"
-        or bound_summary.sha256 != summary_binding["sha256"]
-    ):
-        raise ReportingTransactionError(
-            "Historical report receipt run-summary identity differs"
-        )
-    for output in document["outputs"]:
-        snapshot = snapshots[Path(output["path"])]
-        if (
-            snapshot.state != "regular"
-            or snapshot.sha256 != output["sha256"]
-            or snapshot.size_bytes != output["size_bytes"]
-        ):
-            raise ReportingTransactionError(
-                f"Historical report output differs: {output['path']}"
-            )
-    if validate_upstream:
-        artifact_receipt = Path(str(summary["artifact_receipt"]["path"]))
-        validate_run_summary_transaction(
+    checkout, source_root = _admit_authorities(
+        source_checkout=source_checkout, artifact_source_root=artifact_source_root
+    )
+    evidence = artifact_context.prepare_evidence_context(
+        argparse.Namespace(
+            run_id=run_id,
+            run_contract=run_contract,
+            inventory=inventory,
+            analysis_policy=analysis_policy,
+            profile=profile,
+            output_root=output_root,
+            execute=False,
+        ),
+        source_checkout=checkout,
+        artifact_source_root=source_root,
+    )
+    context = evidence.index
+    _validate_document(
+        document, context.inventory_rows, inventory, source_root=artifact_source_root
+    )
+    files = {
+        *evidence.summary_paths.ordered_outputs,
+        run_contract,
+        inventory,
+        Path(document["analysis_policy"]["path"]),
+        *_artifact_record_bound_paths(
+            context.records,
             source_checkout=source_checkout,
             artifact_source_root=artifact_source_root,
-            run_id=run_id,
-            artifact_receipt=artifact_receipt,
-            output_root=artifact_receipt.parent.parent,
-            recorded_producer_commit=str(summary["provenance"]["git_commit"]),
-            expected_run_contract=expected_run_contract,
-            expected_inventory=expected_inventory,
-            analysis_policy=analysis_policy,
+        ),
+    }
+    roster = _snapshot_bound_roster(files, (output_dir,))
+    expected = evidence.summary_document
+    # Only the original publication clock and attempt ID survive regeneration.
+    expected["generated_at"] = document["generated_at"]
+    expected["provenance"]["created_at"] = document["generated_at"]
+    expected["publication"] = document["publication"]
+    if snapshot.payload != canonical_json_bytes(expected):
+        raise ReportingTransactionError(
+            "Published Run result manifest differs from current sources, immutable inputs or canonical projection"
         )
-    locations = tuple(
-        (str(output["output_id"]), Path(str(output["path"])))
-        for output in document["outputs"][:2]
-    )
-    return _validated_result(
-        receipt_snapshot,
-        roster,
-        reject_control_residue,
-        verified_report_locations=locations,
-    )
+    for path, payload in (
+        (evidence.summary_paths.summary_tsv, evidence.summary_tsv_bytes),
+        (evidence.summary_paths.qc_summary, evidence.qc_summary_bytes),
+    ):
+        if path.read_bytes() != payload:
+            raise ReportingTransactionError(
+                f"Published Run result table differs from its manifest: {path}"
+            )
+    artifact_context.recheck_inputs(context)
+    artifact_context.recheck_source_identity(context)
+    return _validated_result(snapshot, roster, reject_control_residue)
 
 
 def validate_receipt(
@@ -1528,178 +799,106 @@ def validate_receipt(
     attempt: Mapping[str, Any],
     config: Mapping[str, Any],
     *,
-    historical_read: bool = False,
-    combined: bool = False,
     validated_predecessor: ValidatedTransaction | None = None,
 ) -> ValidatedTransaction:
-    """Validate the exact fixed-profile receipt selected by lifecycle state.
-
-    ``historical_read`` is restricted to transactions selected by an exact
-    legacy profile. It verifies each recorded producer identity without
-    claiming that the current reader checkout produced the preserved bytes.
-    """
-
-    if kind not in {"artifact_index", "run_summary", "html_report"}:
+    """Validate the current Run result or its HTML projection transaction."""
+    if kind not in {"run_summary", "html_report"}:
         raise ReportingTransactionError(f"Unknown reporting transaction kind: {kind}")
     try:
         orchestration_contracts.validate_record("profile", profile)
         authority = application_model.read_application_record(
-            orchestration_contracts.canonical_json_bytes(execution),
-            legacy_profile=profile,
+            orchestration_contracts.canonical_json_bytes(execution)
         )
-        successor = isinstance(authority, application_model.RunBinding)
-        if not successor and not isinstance(
-            authority, application_model.LegacyExecution
-        ):
-            raise ReportingTransactionError("Reporting authority is not a Run binding")
+        if not isinstance(authority, application_model.RunBinding):
+            raise ReportingTransactionError(
+                "Reporting authority is not a current Run binding"
+            )
         orchestration_contracts.validate_record("workflow-attempt", attempt)
     except Exception as exc:
         raise ReportingTransactionError(
             f"Could not admit {kind} orchestration identity: {exc}"
         ) from exc
     run_id = str(execution["run_id"])
-    execution_sha256 = hashlib.sha256(
-        orchestration_contracts.canonical_json_bytes(execution)
-    ).hexdigest()
-    profile_sha256 = hashlib.sha256(
-        orchestration_contracts.canonical_json_bytes(profile)
-    ).hexdigest()
-    for field, expected_value in (
+    for field, expected in (
         ("run_id", run_id),
-        ("execution_contract_sha256", execution_sha256),
-        ("profile_sha256", profile_sha256),
+        (
+            "execution_contract_sha256",
+            hashlib.sha256(
+                orchestration_contracts.canonical_json_bytes(execution)
+            ).hexdigest(),
+        ),
+        (
+            "profile_sha256",
+            hashlib.sha256(
+                orchestration_contracts.canonical_json_bytes(profile)
+            ).hexdigest(),
+        ),
     ):
-        if attempt[field] != expected_value:
+        if attempt[field] != expected:
             raise ReportingTransactionError(
                 f"Workflow attempt does not bind reporting {field}"
             )
     artifact_root = run_root / "products" / "artifact-summary"
-    html_report_root = report_output_root(run_root, profile)
-    receipts = {
-        "artifact_index": artifact_root / run_id / f"{run_id}.artifact_receipt.tsv",
-        "run_summary": artifact_root / run_id / f"{run_id}.run_summary_receipt.tsv",
-        "html_report": html_report_root / run_id / f"{run_id}.report_outputs.tsv",
-    }
-    expected = receipts[kind]
+    html_root = report_output_root(run_root, profile)
+    manifest = artifact_root / run_id / f"{run_id}.run_summary.json"
+    expected = (
+        manifest
+        if kind == "run_summary"
+        else html_root / run_id / f"{run_id}.report_outputs.tsv"
+    )
     if receipt_path != expected:
         raise ReportingTransactionError(
             f"{kind} receipt path is not the fixed transaction path: {receipt_path}"
         )
-    historical_transaction = (
-        historical_read and html_report_root == run_root / "products" / "report"
-    )
-    if historical_read and not historical_transaction:
-        raise ReportingTransactionError(
-            "Historical transaction admission requires the bound legacy profile"
-        )
-    predecessor_kind = {
-        **({} if combined else {"run_summary": "artifact_index"}),
-        "html_report": "run_summary",
-    }.get(kind)
-    reuse_predecessor = (
-        predecessor_kind is not None and validated_predecessor is not None
-    )
-    if reuse_predecessor:
-        assert validated_predecessor is not None
-        predecessor_receipt = _snapshot_receipt(receipts[predecessor_kind])
+    reuse = False
+    if kind == "html_report" and validated_predecessor is not None:
+        predecessor = _snapshot_receipt(manifest)
         if (
-            validated_predecessor.receipt_path != predecessor_receipt.path
-            or validated_predecessor.receipt_sha256 != predecessor_receipt.sha256
+            validated_predecessor.receipt_path != manifest
+            or validated_predecessor.receipt_sha256 != predecessor.sha256
         ):
             raise ReportingTransactionError(
                 "Previously validated reporting predecessor no longer matches"
             )
-        if validated_predecessor._recheck is None:
-            reuse_predecessor = False
-        else:
+        if validated_predecessor._recheck is not None:
             validated_predecessor._recheck()
-    declared_checkout = attempt["source_checkout"]
-    source_checkout = Path(str(declared_checkout["path"]))
-    package_root = Path(__file__).resolve().parents[1]
-    source_attestation = None
-    if not historical_transaction:
-        try:
-            source_attestation = attest_source_checkout(
-                root=source_checkout,
-                package_root=package_root,
-                expected_commit=str(declared_checkout["commit"]),
-            )
-        except SourceCheckoutError as exc:
-            raise ReportingTransactionError(
-                f"Could not attest {kind} source checkout to its workflow attempt: {exc}"
-            ) from exc
-    contract_root = run_root / "contract"
-    run_contract = contract_root / "reporting_run_contract.json"
-    inventory = contract_root / "artifact_inventory.tsv"
-    analysis_policy = None
-    if successor:
-        run_contract = run_root / config["reporting_run_contract_path"]["path"]
-        inventory = run_root / config["artifact_inventory_path"]["path"]
-    if successor and not historical_transaction:
-        analysis_policy = run_root / config["primary_analysis_policy_path"]["path"]
-    artifact_receipt = artifact_root / run_id / f"{run_id}.artifact_receipt.tsv"
+            reuse = True
+    declared = attempt["source_checkout"]
+    checkout = Path(str(declared["path"]))
+
+    def attest():
+        return attest_source_checkout(
+            root=checkout,
+            package_root=Path(__file__).resolve().parents[1],
+            expected_commit=str(declared["commit"]),
+        )
+
     try:
-        if kind == "artifact_index":
-            if historical_transaction:
-                artifact_validator = _validate_historical_artifact_index_transaction
-            else:
-                artifact_validator = validate_artifact_index_transaction
-            artifact_options = {
-                "source_checkout": source_checkout,
-                "artifact_source_root": run_root,
-                "run_id": run_id,
-                "run_contract": run_contract,
-                "inventory": inventory,
-                "output_root": artifact_root,
-            }
-            if successor and not historical_transaction:
-                artifact_options.update(
-                    analysis_policy=analysis_policy,
-                    profile=profile,
-                )
-            result = artifact_validator(
-                **artifact_options,
-            )
-        elif kind == "run_summary":
+        source = attest()
+        common = dict(
+            source_checkout=checkout,
+            artifact_source_root=run_root,
+            analysis_policy=run_root / config["primary_analysis_policy_path"]["path"],
+            profile=profile,
+        )
+        if kind == "run_summary":
             result = validate_run_summary_transaction(
-                source_checkout=source_checkout,
-                artifact_source_root=run_root,
+                **common,
                 run_id=run_id,
-                artifact_receipt=artifact_receipt,
+                run_contract=run_root / config["reporting_run_contract_path"]["path"],
+                inventory=run_root / config["artifact_inventory_path"]["path"],
                 output_root=artifact_root,
-                expected_run_contract=(
-                    run_contract if historical_transaction else None
-                ),
-                expected_inventory=(inventory if historical_transaction else None),
-                analysis_policy=analysis_policy,
-                profile=profile,
-                validate_upstream=not reuse_predecessor,
-                validated_predecessor=validated_predecessor
-                if reuse_predecessor
-                else None,
-            )
-        elif historical_transaction:
-            result = _validate_historical_report_transaction(
-                source_checkout=source_checkout,
-                artifact_source_root=run_root,
-                run_id=run_id,
-                run_summary=artifact_root / run_id / f"{run_id}.run_summary.json",
-                output_root=html_report_root,
-                expected_source_commit=str(declared_checkout["commit"]),
-                expected_run_contract=run_contract,
-                expected_inventory=inventory,
-                analysis_policy=analysis_policy,
-                validate_upstream=not reuse_predecessor,
             )
         else:
             result = validate_report_transaction(
-                source_checkout=source_checkout,
-                artifact_source_root=run_root,
-                run_summary=artifact_root / run_id / f"{run_id}.run_summary.json",
-                output_root=html_report_root,
-                analysis_policy=analysis_policy,
-                profile=profile,
-                validate_upstream=not reuse_predecessor,
+                **common,
+                run_summary=manifest,
+                output_root=html_root,
+                validate_upstream=not reuse,
+            )
+        if attest() != source:
+            raise ReportingTransactionError(
+                f"{kind} source checkout identity changed during validation"
             )
     except ReportingTransactionError:
         raise
@@ -1707,28 +906,12 @@ def validate_receipt(
         raise ReportingTransactionError(
             f"Could not validate {kind} reporting transaction: {exc}"
         ) from exc
-    if not historical_transaction:
-        try:
-            confirmed_source = attest_source_checkout(
-                root=source_checkout,
-                package_root=package_root,
-                expected_commit=str(declared_checkout["commit"]),
-            )
-        except SourceCheckoutError as exc:
-            raise ReportingTransactionError(
-                f"Could not reattest {kind} source checkout: {exc}"
-            ) from exc
-        if confirmed_source != source_attestation:
-            raise ReportingTransactionError(
-                f"{kind} source checkout identity changed during validation"
-            )
     return result
 
 
 __all__ = (
     "ReportingTransactionError",
     "ValidatedTransaction",
-    "validate_artifact_index_transaction",
     "validate_receipt",
     "validate_report_transaction",
     "validate_run_summary_transaction",

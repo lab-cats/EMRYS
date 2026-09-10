@@ -23,7 +23,7 @@ from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.contracts.scientific_evidence import scientific_context, step08, step09
 from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys.libraries.source_authority import controlled_python_argv
-from emrys.orchestration.run_coordinator import inspection
+from emrys.orchestration.run_coordinator import inspection, reporting_boundary
 from emrys.orchestration.run_coordinator.lifecycle import build_snakemake_argv
 from emrys.reporting._artifact_index.registry import build_adapter_registry
 from tests.reporting.fixtures.artifact_adapters_v1.build_fixture import (
@@ -31,7 +31,7 @@ from tests.reporting.fixtures.artifact_adapters_v1.build_fixture import (
     minimal_bam_bytes,
     minimal_pdf_bytes,
 )
-from tests.orchestration.run_coordinator.fixture import build_legacy_execution
+from tests.orchestration.run_coordinator.fixture import build_run, publish_run
 from tests.scientific_context_test_support import build_transaction
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -73,13 +73,10 @@ def _resource_policy() -> dict[str, Any]:
                 "10",
             )
         },
-        "reporting_memory_mb": {
-            "artifact_index": 1024,
-            "run_summary": 1024,
-            "html_report": 1024,
-        },
     }
     return {
+        "symbolic": effective,
+        "symbolic_sha256": orchestration_contracts.canonical_sha256(effective),
         "effective": effective,
         "effective_sha256": orchestration_contracts.canonical_sha256(effective),
         "allocation": {"cores": 1, "memory_mb": 1024, "source": "test"},
@@ -182,25 +179,15 @@ class WorkflowFixture:
         return self.reporting_root / kind / "verified.json"
 
     @property
-    def artifact_receipt(self) -> Path:
+    def run_summary(self) -> Path:
         run_id = str(self.execution["run_id"])
         return (
             self.run_root
             / "products"
             / "artifact-summary"
             / run_id
-            / f"{run_id}.artifact_receipt.tsv"
+            / f"{run_id}.run_summary.json"
         )
-
-    @property
-    def run_summary(self) -> Path:
-        run_id = str(self.execution["run_id"])
-        return self.artifact_receipt.parent / f"{run_id}.run_summary.json"
-
-    @property
-    def run_summary_receipt(self) -> Path:
-        run_id = str(self.execution["run_id"])
-        return self.artifact_receipt.parent / f"{run_id}.run_summary_receipt.tsv"
 
     @property
     def report_receipt(self) -> Path:
@@ -263,7 +250,9 @@ def _terminalize_active_attempt(
     released_path = built.workflow_attempt_path.with_name("released-run-lock.json")
     lock_path.rename(released_path)
 
-    expected = inspection.expected_tasks(built.execution, built.profile)
+    expected = inspection.expected_tasks(
+        inspection.admit_successor_run(built.run_root), built.profile
+    )
     starts = []
     for item in sorted(
         expected,
@@ -301,20 +290,8 @@ def _terminalize_active_attempt(
                     "record": _reference(path, built.run_root),
                 }
             )
-    reporting = {}
-    for kind in ("artifact_index", "run_summary", "html_report"):
-        kind_root = built.run_root / "state" / "reporting" / kind
-        reporting[kind] = {
-            state: (
-                _reference(kind_root / f"{state}.json", built.run_root)
-                if (kind_root / f"{state}.json").is_file()
-                and not (kind_root / f"{state}.json").is_symlink()
-                else None
-            )
-            for state in ("start", "verified")
-        }
     receipt = {
-        "schema_version": "emrys.attempt-receipt.v1",
+        "schema_version": "emrys.attempt-receipt.v2",
         "run_id": attempt["run_id"],
         "execution_contract_sha256": attempt["execution_contract_sha256"],
         "profile_sha256": attempt["profile_sha256"],
@@ -328,10 +305,9 @@ def _terminalize_active_attempt(
         "preentry_task_attempt_records": [],
         "task_start_records": starts,
         "verified_tasks": verified,
-        "reporting_completion_records": reporting,
         "blockers": [],
         "message": "direct workflow fixture resume boundary",
-        "local_pipeline_complete": False,
+        "results_complete": False,
     }
     orchestration_contracts.validate_record("attempt-receipt", receipt)
     built.workflow_attempt_path.with_name("attempt-receipt.json").write_bytes(
@@ -513,7 +489,10 @@ def artifact_payloads(
     partition_id = str(execution["partitions"]["rows"][0]["partition_id"])
     sample_hash = str(execution["samples"]["manifest"]["sha256"])
     partition_hash = str(execution["partitions"]["manifest"]["sha256"])
-    policy = execution["analysis"]["policy"]
+    policy = {
+        **execution["analysis"]["policy"]["configuration"],
+        "analysis_id": execution["analysis"]["primary_analysis_id"],
+    }
     by_adapter: dict[str, list[dict[str, str]]] = {}
     payloads: dict[str, bytes] = {}
     for row in rows:
@@ -969,12 +948,12 @@ def _write_dispatch(
     )
     input_declarations = [{"role": "fixture_input", "path": str(fixture_input)}]
     if step_id == "00c":
-        input_declarations.append(
+        input_declarations = [
             {
                 "role": "reference_fasta",
                 "path": str(execution["reference"]["fasta"]["path"]),
             }
-        )
+        ]
     record = {
         "schema_version": "emrys.local-task-dispatch.v2",
         "run_root": str(run_root),
@@ -1036,30 +1015,40 @@ def build(
         if profile_override is None
         else profile_override
     )
-    request_path, execution, execution_bytes, profile = build_legacy_execution(
-        intake_root, profile_base
+    storage_receipt = root / "storage.qualified.json"
+    storage_receipt.write_bytes(b"bounded no-science storage qualification\n")
+    normalizer, required_tools = _attempt_runtime_identities(root)
+    request_path, run = build_run(
+        intake_root,
+        profile_base,
+        required_tools=required_tools,
+        computational_resources={
+            key: value
+            for key, value in _resource_policy()["symbolic"].items()
+            if key != "schema_version"
+        },
     )
-
-    run_root = (root / "run").resolve()
+    execution = {**run.analysis.workflow_inputs, "run_id": run.run_id}
+    execution_bytes = run.run_binding.canonical_bytes
+    profile = run.analysis.profile
+    run_root = root / run.run_id
+    execution_path = publish_run(run, run_root)
     contract_root = run_root / "contract"
-    contract_root.mkdir(parents=True)
-    execution_path = contract_root / "normalized.json"
-    execution_path.write_bytes(execution_bytes)
     profile_snapshot = contract_root / "profile.json"
-    profile_snapshot.write_bytes(orchestration_contracts.canonical_json_bytes(profile))
-    reporting = build_reporting_bundle(execution, profile)
-    projection_bytes = {
-        "reference_contract": reporting.reference_contract_bytes,
-        "primary_analysis_policy": reporting.primary_analysis_policy_bytes,
-        "reporting_run_contract": reporting.reporting_run_contract_bytes,
-        "artifact_inventory": reporting.artifact_inventory_bytes,
-    }
-    projection_paths: dict[str, Path] = {}
-    for name, reference in execution["reporting_projection"].items():
-        projection_path = run_root / str(reference["path"])
+    reporting = build_reporting_bundle(execution, profile, run.analysis.revision)
+    workflow_attempt_id = "workflow-20260812T120000Z-" + "a" * 32
+    files, reporting_config, _directories = (
+        reporting_boundary._attempt_reporting_materialization(
+            execution,
+            profile,
+            run_root,
+            analysis=run.analysis.revision,
+            attempt_id=workflow_attempt_id,
+        )
+    )
+    for projection_path, data in files:
         projection_path.parent.mkdir(parents=True, exist_ok=True)
-        projection_path.write_bytes(projection_bytes[name])
-        projection_paths[name] = projection_path
+        projection_path.write_bytes(data)
     fixture_input = run_root / "contract" / "fixture_input.txt"
     fixture_input.write_text("bounded no-science workflow fixture\n", encoding="utf-8")
     inventory_rows = tuple(dict(row) for row in reporting.artifact_inventory_rows)
@@ -1077,7 +1066,6 @@ def build(
     git_commit = source_checkout_commit()
     storage_receipt = root / "storage.qualified.json"
     storage_receipt.write_bytes(b"bounded no-science storage qualification\n")
-    normalizer, required_tools = _attempt_runtime_identities(root)
     attempt = {
         "schema_version": "emrys.workflow-attempt.v1",
         "run_id": execution["run_id"],
@@ -1122,7 +1110,9 @@ def build(
     dispatch_references: dict[str, dict[str, dict[str, str]]] = {}
     owners = {str(task["machine_key"]): task for task in profile["owner_tasks"]}
     index = 0
-    for expected in inspection.expected_tasks(execution, profile):
+    for expected in inspection.expected_tasks(
+        inspection.admit_successor_run(run_root), profile
+    ):
         machine_key = expected.machine_key
         scope_id = expected.scope_id
         index += 1
@@ -1160,12 +1150,7 @@ def build(
         "profile_path": str(profile_snapshot),
         "workflow_attempt_id": workflow_attempt_id,
         "source_checkout": str(REPO_ROOT.resolve(strict=True)),
-        "reference_contract_path": str(projection_paths["reference_contract"]),
-        "primary_analysis_policy_path": str(
-            projection_paths["primary_analysis_policy"]
-        ),
-        "reporting_run_contract_path": str(projection_paths["reporting_run_contract"]),
-        "artifact_inventory_path": str(projection_paths["artifact_inventory"]),
+        **reporting_config,
         "resource_policy": _resource_policy(),
         "dispatch_paths": dispatch_references,
     }

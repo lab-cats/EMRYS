@@ -1,11 +1,8 @@
-# Valid artifact schema v2 examples
+# Valid current artifact examples
 
-This directory owns one accepted JSON example for each v2 record schema: an
-artifact record and run summary. The active
-[report-receipt fixture](../../report_receipt_v4.json) is version 4. The direct
-[artifact-contract test](../../../test_artifact_schema_contracts.py) validates
-their schema and semantic behavior.
-
-These files are synthetic immutable test inputs. Do not regenerate them from
-production serializers or treat schema validity as runtime or
-biological evidence.
+These reviewed synthetic inputs cover an artifact entry and result manifest 4.
+The [report-receipt fixture](../../report_receipt_v5.json) uses version 5. The
+[contract tests](../../../test_artifact_schema_contracts.py) validate schema and
+scientific/status semantics. Preserve their scientific claims when changing
+representation; do not regenerate them from production serializers or treat
+schema validity as runtime or biological evidence.

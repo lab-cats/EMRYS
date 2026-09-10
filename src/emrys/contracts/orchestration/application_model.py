@@ -1,4 +1,4 @@
-"""Immutable successor records for Analysis, Execution Plan, and Run.
+"""Immutable records for Analysis, Execution Plan, and Run.
 
 This module owns canonical values only.  It does not publish files, allocate
 resources, or create Attempts.
@@ -16,18 +16,14 @@ from .api import (
     canonical_json_bytes,
     canonical_sha256,
     load_json_object_bytes,
-    schema_errors,
     validate_record,
 )
 
-ANALYSIS_SCHEMA_VERSION = "emrys.analysis-revision.v1"
-MODULE_ANALYSIS_SCHEMA_VERSION = "emrys.analysis-revision.v2"
+ANALYSIS_SCHEMA_VERSION = "emrys.analysis-revision.v2"
 EXECUTION_PLAN_SCHEMA_VERSION = "emrys.execution-plan.v1"
 RUN_BINDING_SCHEMA_VERSION = "emrys.run-binding.v1"
-LEGACY_EXECUTION_SCHEMA_VERSION = "emrys.execution.v1"
 
-ANALYSIS_IDENTITY_DOMAIN = "emrys.analysis-revision-identity.v1"
-MODULE_ANALYSIS_IDENTITY_DOMAIN = "emrys.analysis-revision-identity.v2"
+ANALYSIS_IDENTITY_DOMAIN = "emrys.analysis-revision-identity.v2"
 EXECUTION_PLAN_IDENTITY_DOMAIN = "emrys.execution-plan-identity.v1"
 RUN_IDENTITY_DOMAIN = "emrys.run-identity.v1"
 IMPLEMENTATION_IDENTITY_DOMAIN = "emrys.implementation-content-identity.v1"
@@ -36,19 +32,6 @@ PROCESSING_STEP_IDS = frozenset(
     {"00a", "00b", "00c", "01", "02", "02b", "03", "04", "05", "06"}
 )
 
-_POLICY_FIELDS = (
-    "control_condition",
-    "treatment_condition",
-    "background_condition",
-    "rna_ref",
-    "rna_alt",
-    "min_sample_dp",
-    "mean_dp_threshold",
-    "fdr_threshold",
-    "common_or_threshold",
-    "absolute_difference_threshold",
-    "background_max_fraction",
-)
 _SAMPLE_FIELDS = (
     "sample_id",
     "condition",
@@ -176,7 +159,6 @@ class _CanonicalRecord:
 
     _record_bytes: bytes
     schema_version: ClassVar[str]
-    accepted_schema_versions: ClassVar[tuple[str, ...] | None] = None
 
     def __post_init__(self) -> None:
         record = load_json_object_bytes(
@@ -188,11 +170,9 @@ class _CanonicalRecord:
                 f"{self.schema_version} record bytes must use canonical JSON"
             )
         validate_record("application-model", record)
-        accepted = self.accepted_schema_versions or (self.schema_version,)
-        if record.get("schema_version") not in accepted:
+        if record.get("schema_version") != self.schema_version:
             raise ContractValidationError(
-                f"Expected one of {', '.join(accepted)}, "
-                f"got {record.get('schema_version')!r}"
+                f"Expected {self.schema_version}, got {record.get('schema_version')!r}"
             )
 
     @classmethod
@@ -226,10 +206,6 @@ class AnalysisRevision(_CanonicalRecord):
     """One admitted, content-addressed scientific Analysis revision."""
 
     schema_version = ANALYSIS_SCHEMA_VERSION
-    accepted_schema_versions = (
-        ANALYSIS_SCHEMA_VERSION,
-        MODULE_ANALYSIS_SCHEMA_VERSION,
-    )
 
     @property
     def analysis_revision_id(self) -> str:
@@ -306,33 +282,21 @@ class RunBinding(_CanonicalRecord):
         return str(self.record["run_id"])
 
 
-@dataclass(frozen=True, slots=True)
-class LegacyExecution:
-    """Recognized historical execution.v1 bytes, never rewritten as a new Run."""
-
-    source_bytes: bytes
-    profile_validated: bool
-
-    @property
-    def record(self) -> dict[str, Any]:
-        return load_json_object_bytes(
-            self.source_bytes, LEGACY_EXECUTION_SCHEMA_VERSION
-        )
-
-
 ApplicationRecord: TypeAlias = AnalysisRevision | ExecutionPlan | RunBinding
-ReadableApplicationRecord: TypeAlias = ApplicationRecord | LegacyExecution
 
 
-def _build_analysis_revision(
+def build_module_analysis_revision(
     *,
-    schema_version: str,
-    identity_domain: str,
     samples: Iterable[Mapping[str, Any]],
     partitions: Iterable[Mapping[str, Any]],
     reference: Mapping[str, Any],
-    selected_analysis: Mapping[str, Any],
+    module_id: str,
+    interface_version: str,
+    module_version: str,
+    configuration: Mapping[str, Any],
 ) -> AnalysisRevision:
+    """Build one path-neutral scientific identity for an explicit module."""
+
     sample_rows = _canonical_rows(
         samples,
         _SAMPLE_FIELDS,
@@ -359,7 +323,7 @@ def _build_analysis_revision(
     )
 
     identity = {
-        "identity_domain": identity_domain,
+        "identity_domain": ANALYSIS_IDENTITY_DOMAIN,
         "samples": sample_rows,
         "partitions": partition_rows,
         "reference": _closed_copy(
@@ -367,69 +331,20 @@ def _build_analysis_revision(
             ("fasta_sha256", "gtf_sha256"),
             "Analysis reference",
         ),
-        **selected_analysis,
+        "analysis_module": {
+            "module_id": module_id,
+            "interface_version": interface_version,
+            "module_version": module_version,
+            "configuration": dict(configuration),
+        },
     }
     digest = canonical_sha256(identity)
     return AnalysisRevision.from_record(
         {
-            "schema_version": schema_version,
+            "schema_version": ANALYSIS_SCHEMA_VERSION,
             "identity": identity,
             "analysis_revision_id": f"analysis-{digest}",
         }
-    )
-
-
-def build_analysis_revision(
-    *,
-    samples: Iterable[Mapping[str, Any]],
-    partitions: Iterable[Mapping[str, Any]],
-    reference: Mapping[str, Any],
-    scientific_policy: Mapping[str, Any],
-) -> AnalysisRevision:
-    """Build the exact historical paired-CMH scientific identity record."""
-
-    return _build_analysis_revision(
-        schema_version=ANALYSIS_SCHEMA_VERSION,
-        identity_domain=ANALYSIS_IDENTITY_DOMAIN,
-        samples=samples,
-        partitions=partitions,
-        reference=reference,
-        selected_analysis={
-            "scientific_policy": _closed_copy(
-                scientific_policy,
-                _POLICY_FIELDS,
-                "Analysis scientific_policy",
-            )
-        },
-    )
-
-
-def build_module_analysis_revision(
-    *,
-    samples: Iterable[Mapping[str, Any]],
-    partitions: Iterable[Mapping[str, Any]],
-    reference: Mapping[str, Any],
-    module_id: str,
-    interface_version: str,
-    module_version: str,
-    configuration: Mapping[str, Any],
-) -> AnalysisRevision:
-    """Build one path-neutral scientific identity for an explicit module."""
-
-    return _build_analysis_revision(
-        schema_version=MODULE_ANALYSIS_SCHEMA_VERSION,
-        identity_domain=MODULE_ANALYSIS_IDENTITY_DOMAIN,
-        samples=samples,
-        partitions=partitions,
-        reference=reference,
-        selected_analysis={
-            "analysis_module": {
-                "module_id": module_id,
-                "interface_version": interface_version,
-                "module_version": module_version,
-                "configuration": dict(configuration),
-            }
-        },
     )
 
 
@@ -457,7 +372,7 @@ def _analysis_partition_from_execution_fields(
 def analysis_revision_from_execution_fields(
     execution: Mapping[str, Any],
 ) -> AnalysisRevision:
-    """Derive the Analysis value carried by a historical or adapter view."""
+    """Derive the Analysis value carried by the current workflow view."""
 
     samples = execution["samples"]["rows"]
     partitions = execution["partitions"]["rows"]
@@ -483,22 +398,13 @@ def analysis_revision_from_execution_fields(
             "gtf_sha256": reference["gtf"]["sha256"],
         },
     }
-    if policy.get("schema_version") == "emrys.analysis-module-policy.v1":
-        module = policy["module"]
-        return build_module_analysis_revision(
-            **common,
-            module_id=module["module_id"],
-            interface_version=module["interface_version"],
-            module_version=module["module_version"],
-            configuration=policy["configuration"],
-        )
-    return build_analysis_revision(
+    module = policy["module"]
+    return build_module_analysis_revision(
         **common,
-        scientific_policy={
-            key: value
-            for key, value in policy.items()
-            if key not in {"schema_version", "analysis_id"}
-        },
+        module_id=module["module_id"],
+        interface_version=module["interface_version"],
+        module_version=module["module_version"],
+        configuration=policy["configuration"],
     )
 
 
@@ -731,7 +637,7 @@ def build_execution_plan(
     backend_semantics_sha256: str,
     star_index: Mapping[str, Any],
     computational_resources: Mapping[str, Any],
-    processing_compatibility_sha256: str | None = None,
+    processing_compatibility_sha256: str,
     processing_source: Mapping[str, Any] | None = None,
 ) -> ExecutionPlan:
     """Build the exact pre-allocation, reporting-neutral Execution Plan."""
@@ -784,8 +690,7 @@ def build_execution_plan(
             _PROCESSING_SOURCE_FIELDS,
             "processing source",
         )
-    if processing_compatibility_sha256 is not None:
-        identity["processing_compatibility_sha256"] = processing_compatibility_sha256
+    identity["processing_compatibility_sha256"] = processing_compatibility_sha256
     digest = canonical_sha256(identity)
     return ExecutionPlan.from_record(
         {
@@ -856,23 +761,13 @@ def execution_owner_keys(plan: ExecutionPlan) -> tuple[str, ...]:
     return tuple(sorted(selected))
 
 
-def read_application_record(
-    data: bytes,
-    *,
-    legacy_profile: Mapping[str, Any] | None = None,
-) -> ReadableApplicationRecord:
-    """Read a successor record or recognize historical execution.v1 unchanged.
-
-    Historical bytes are preserved exactly.  Supplying the exact historical
-    profile upgrades recognition to full legacy semantic validation; without
-    it, the closed legacy schema is checked but no successor record is made.
-    """
+def read_application_record(data: bytes) -> ApplicationRecord:
+    """Read one current immutable Analysis, Execution Plan, or Run record."""
 
     record = load_json_object_bytes(data, "application record")
     version = record.get("schema_version")
     record_types: dict[str, type[_CanonicalRecord]] = {
         ANALYSIS_SCHEMA_VERSION: AnalysisRevision,
-        MODULE_ANALYSIS_SCHEMA_VERSION: AnalysisRevision,
         EXECUTION_PLAN_SCHEMA_VERSION: ExecutionPlan,
         RUN_BINDING_SCHEMA_VERSION: RunBinding,
     }
@@ -882,29 +777,7 @@ def read_application_record(
         )
     if version in record_types:
         return record_types[version].from_bytes(data)
-    if version == LEGACY_EXECUTION_SCHEMA_VERSION:
-        errors = schema_errors("execution", record)
-        if errors:
-            raise ContractValidationError(
-                "Invalid historical execution record:\n" + "\n".join(errors)
-            )
-        if legacy_profile is not None:
-            validate_record("execution", record, profile=legacy_profile)
-        return LegacyExecution(bytes(data), legacy_profile is not None)
     raise ContractValidationError(f"Unsupported application record: {version!r}")
-
-
-def validate_execution_view(
-    record: Mapping[str, Any],
-    *,
-    profile: Mapping[str, Any],
-) -> None:
-    """Validate an exact historical execution.v1 view."""
-
-    version = record.get("schema_version")
-    if version != LEGACY_EXECUTION_SCHEMA_VERSION:
-        raise ContractValidationError(f"Unsupported execution view: {version!r}")
-    validate_record("execution", record, profile=profile)
 
 
 def _positive_integer(value: Any, label: str) -> int:
@@ -1067,15 +940,6 @@ def _validate_resource_resolution(
             raise ContractValidationError(
                 f"Resolved stage {step_id} memory demand exceeds workflow memory"
             )
-    reporting_memory = effective.get("reporting_memory_mb", {})
-    if not isinstance(reporting_memory, Mapping):
-        raise ContractValidationError("Resolved reporting_memory_mb must be a mapping")
-    for kind, value in reporting_memory.items():
-        memory = _positive_integer(value, f"Resolved reporting memory {kind}")
-        if memory > workflow_memory:
-            raise ContractValidationError(
-                f"Resolved reporting memory {kind} exceeds workflow memory"
-            )
 
 
 def validate_successor_run(
@@ -1172,48 +1036,6 @@ def _validate_analysis_semantics(record: Mapping[str, Any]) -> None:
         )
     _require_unique((row["sample_id"] for row in samples), "sample_id")
     _require_unique((row["partition_id"] for row in partitions), "partition_id")
-    if record["schema_version"] == MODULE_ANALYSIS_SCHEMA_VERSION:
-        return
-    policy = identity["scientific_policy"]
-    if policy["control_condition"] == policy["treatment_condition"]:
-        raise ContractValidationError("Analysis conditions must differ")
-    if policy["background_condition"] in {
-        policy["control_condition"],
-        policy["treatment_condition"],
-    }:
-        raise ContractValidationError("Analysis background condition must differ")
-    if policy["rna_ref"] == policy["rna_alt"]:
-        raise ContractValidationError(
-            "Analysis reference and alternate bases must differ"
-        )
-    conditions = {row["condition"] for row in samples}
-    required_conditions = {
-        policy["control_condition"],
-        policy["treatment_condition"],
-    }
-    if policy["background_condition"] is not None:
-        required_conditions.add(policy["background_condition"])
-    if not required_conditions <= conditions:
-        raise ContractValidationError(
-            "Analysis policy conditions must exist in the admitted samples"
-        )
-    controls: dict[str, int] = {}
-    treatments: dict[str, int] = {}
-    for sample in samples:
-        replicate = sample["replicate"]
-        if sample["condition"] == policy["control_condition"]:
-            controls[replicate] = controls.get(replicate, 0) + 1
-        if sample["condition"] == policy["treatment_condition"]:
-            treatments[replicate] = treatments.get(replicate, 0) + 1
-    if (
-        set(controls) != set(treatments)
-        or len(controls) < 2
-        or any(count != 1 for count in (*controls.values(), *treatments.values()))
-    ):
-        raise ContractValidationError(
-            "Analysis samples must define exactly one control and treatment "
-            "for each of at least two complete replicate strata"
-        )
 
 
 def _validate_graph(edges: list[Mapping[str, Any]], owners: set[str]) -> None:
@@ -1347,7 +1169,7 @@ def _validate_application_model_semantics(record: Mapping[str, Any]) -> None:
     """Validate content identities after the shared closed schema succeeds."""
 
     version = record["schema_version"]
-    if version in {ANALYSIS_SCHEMA_VERSION, MODULE_ANALYSIS_SCHEMA_VERSION}:
+    if version == ANALYSIS_SCHEMA_VERSION:
         _validate_analysis_semantics(record)
     elif version == EXECUTION_PLAN_SCHEMA_VERSION:
         _validate_plan_semantics(record)
@@ -1359,19 +1181,14 @@ def _validate_application_model_semantics(record: Mapping[str, Any]) -> None:
 
 __all__ = (
     "ANALYSIS_SCHEMA_VERSION",
-    "MODULE_ANALYSIS_SCHEMA_VERSION",
     "EXECUTION_PLAN_SCHEMA_VERSION",
     "RUN_BINDING_SCHEMA_VERSION",
-    "LEGACY_EXECUTION_SCHEMA_VERSION",
     "AnalysisRevision",
     "ExecutionPlan",
     "RunBinding",
-    "LegacyExecution",
     "ApplicationRecord",
-    "ReadableApplicationRecord",
     "bind_run",
     "analysis_revision_from_execution_fields",
-    "build_analysis_revision",
     "build_module_analysis_revision",
     "build_execution_plan",
     "functional_specification_from_profile",
@@ -1382,6 +1199,5 @@ __all__ = (
     "processing_stopping_owner_keys",
     "read_application_record",
     "toolchain_from_required_tools",
-    "validate_execution_view",
     "validate_successor_run",
 )

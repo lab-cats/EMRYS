@@ -23,11 +23,8 @@ PYTHON_FILES: Mapping[str, bytes] = {
 RESOURCE_FILES: Mapping[str, bytes] = {
     "contracts/schemas/artifacts/v1/example.json": b'{"schema": true}\n',
     "contracts/schemas/artifacts/v2/artifact_record.schema.json": b'{"schema": true}\n',
-    "contracts/schemas/artifacts/v3/report_receipt.schema.json": b'{"schema": 3}\n',
-    "contracts/schemas/artifacts/v4/report_receipt.schema.json": b'{"schema": 4}\n',
     "contracts/schemas/artifacts/v5/report_receipt.schema.json": b'{"schema": 5}\n',
     "contracts/schemas/orchestration/v1/common.schema.json": b'{"schema": true}\n',
-    "contracts/schemas/orchestration/v2/request.schema.json": b'{"schema": true}\n',
     "contracts/schemas/orchestration/v3/execution_profile.schema.json": b'{"schema": 3}\n',
     "orchestration/run_coordinator/resources/default_execution.yaml": (
         b"schema_version: emrys.execution-profile.v1\n"
@@ -140,7 +137,7 @@ def _project_configuration(name: str = PROJECT_NAME) -> bytes:
         "namespaces = false\n"
         "\n"
         "[tool.setuptools.package-data]\n"
-        '"emrys.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json", "schemas/artifacts/v3/*.json", "schemas/artifacts/v4/*.json", "schemas/artifacts/v5/*.json", "schemas/orchestration/v1/*.json", "schemas/orchestration/v2/*.json", "schemas/orchestration/v3/*.json"]\n'
+        '"emrys.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json", "schemas/artifacts/v3/*.json", "schemas/artifacts/v5/*.json", "schemas/orchestration/v1/*.json", "schemas/orchestration/v2/*.json", "schemas/orchestration/v3/*.json"]\n'
         '"emrys.analyses.paired_cmh_candidate_ranking" = ["*.R"]\n'
         '"emrys.analyses.paired_cmh_candidate_ranking.scientific_context_projection" = ["*.R", "*.sh", "resources/*.tsv"]\n'
         '"emrys.libraries" = ["argument_parsing.sh", "executable_resolution.sh", "file_checks.sh", "input_contract.R"]\n'
@@ -432,8 +429,6 @@ def test_package_identity_rejects_dirty_tracked_checkout_bytes(tmp_path: Path) -
 @pytest.mark.parametrize(
     "relative",
     (
-        Path("contracts/schemas/artifacts/v3/report_receipt.schema.json"),
-        Path("contracts/schemas/artifacts/v4/report_receipt.schema.json"),
         Path("contracts/schemas/artifacts/v5/report_receipt.schema.json"),
         Path("analyses/paired_cmh_candidate_ranking/analysis.R"),
         Path(

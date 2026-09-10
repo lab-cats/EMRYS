@@ -154,7 +154,7 @@ def _processing_source(
     return source, context
 
 
-def test_complete_historical_reporting_is_reused_read_only(
+def test_complete_current_reporting_is_reused_read_only(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -163,7 +163,6 @@ def test_complete_historical_reporting_is_reused_read_only(
     locations = (("scientific-report-html", root / "scientific.html"),)
     state = _state(
         root,
-        receipt_version="emrys.attempt-receipt.v1",
         reporting_status="complete",
     )
     state.verified_report_locations = locations
@@ -459,52 +458,25 @@ def test_generation_rejects_blocked_scientific_state_before_publication(
         reporting_operation.run_reporting(root, execute=True)
 
 
-@pytest.mark.parametrize(
-    ("version", "records", "message"),
-    (
-        (
-            "emrys.attempt-receipt.v1",
-            None,
-            "supported only for v2 Attempt receipts",
-        ),
-        (
-            "emrys.attempt-receipt.v2",
-            {
-                "run_summary": {"start": {"path": "start"}, "verified": None},
-                "run_summary": {"start": None, "verified": None},
-                "html_report": {"start": None, "verified": None},
-            },
-            "Reporting state is blocked",
-        ),
-    ),
-)
-def test_generation_rejects_historical_or_partial_state(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    version: str,
-    records: dict[str, dict[str, object | None]] | None,
-    message: str,
+def test_generation_rejects_partial_reporting_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    root = (tmp_path / version).resolve()
+    root = (tmp_path / "partial-reporting").resolve()
     root.mkdir()
-    state = _state(root, receipt_version=version, records=records)
-    if records is not None:
-        state.reporting_status = "blocked"
+    state = _state(
+        root,
+        reporting_status="blocked",
+        records={
+            "run_summary": {"start": {"path": "start"}, "verified": None},
+            "html_report": {"start": None, "verified": None},
+        },
+    )
     monkeypatch.setattr(
         reporting_operation.inspection, "inspect_run", lambda _root: state
     )
-    if version == "emrys.attempt-receipt.v1":
-        monkeypatch.setattr(
-            reporting_operation.reporting_boundary,
-            "_admit_identity",
-            lambda **_kwargs: (_ for _ in ()).throw(
-                reporting_operation.reporting_boundary.ReportingBoundaryError(
-                    "New reporting generation is supported only for v2 Attempt receipts"
-                )
-            ),
-        )
-
-    with pytest.raises(reporting_operation.ReportingOperationError, match=message):
+    with pytest.raises(
+        reporting_operation.ReportingOperationError, match="Reporting state is blocked"
+    ):
         reporting_operation.run_reporting(root, execute=False)
 
 
@@ -620,6 +592,9 @@ def test_real_artifact_publisher_failure_stops_reporting_after_start(
     identity.config["artifact_inventory_path"]["path"] = built.inventory.relative_to(
         root
     ).as_posix()
+    identity.config["primary_analysis_policy_path"] = {
+        "path": built.analysis_policy.relative_to(root).as_posix()
+    }
     _install_admission(monkeypatch, state, identity)
     monkeypatch.setattr(
         context,
@@ -640,18 +615,20 @@ def test_real_artifact_publisher_failure_stops_reporting_after_start(
     real_write = publication.write_bytes_exclusive
     failed = False
 
-    def fail_after_staged_index(path: Path, payload: bytes) -> None:
+    def fail_after_staged_projection(path: Path, payload: bytes) -> None:
         nonlocal failed
         real_write(path, payload)
         if (
-            path.name == f"{root.name}.artifacts.tsv"
+            path.name == f"{root.name}.run_summary.tsv"
             and path.parent.name.startswith(".artifact-index.")
             and path.parent.name.endswith(".tmp.records")
         ):
             failed = True
             raise OSError("injected staged artifact-index failure")
 
-    monkeypatch.setattr(publication, "write_bytes_exclusive", fail_after_staged_index)
+    monkeypatch.setattr(
+        publication, "write_bytes_exclusive", fail_after_staged_projection
+    )
 
     with pytest.raises(
         reporting_operation.ReportingOperationError,

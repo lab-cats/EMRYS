@@ -351,17 +351,17 @@ def test_all_four_motif_states_are_explicit_and_nonoverlapping(tmp_path: Path) -
     assert motifs[2].hits == ()
     assert motifs[2].unavailable_reason is not None
 
-    historical = build_candidate_display(
+    without_context = build_candidate_display(
         computational,
         scientific_context_unavailable_reason="Step 10 was not declared.",
     )
     assert all(
         candidate.motif.state == "step10_unavailable"
-        for candidate in historical.candidates
+        for candidate in without_context.candidates
     )
     assert all(
         candidate.motif.unavailable_reason == "Step 10 was not declared."
-        for candidate in historical.candidates
+        for candidate in without_context.candidates
     )
     assert all(
         (
@@ -372,11 +372,11 @@ def test_all_four_motif_states_are_explicit_and_nonoverlapping(tmp_path: Path) -
             candidate.motif.match_policy,
         )
         == (None, None, None, None, None)
-        for candidate in historical.candidates
+        for candidate in without_context.candidates
     )
 
 
-def test_historical_fallback_uses_bounded_fdr_effect_id_display_rule(
+def test_missing_context_uses_bounded_fdr_effect_id_display_rule(
     tmp_path: Path,
 ) -> None:
     rows: list[dict[str, str]] = []

@@ -359,7 +359,7 @@ def test_scientific_figure_assets_bind_shape_hash_size_and_unique_panel_ids(
             ),
         ),
     )
-    with pytest.raises(ReportRenderError, match="mixes legacy and panel"):
+    with pytest.raises(ReportRenderError, match="mixes single and panel"):
         mixed.validate()
 
     duplicated = replace(

@@ -1,6 +1,6 @@
 {
   "schema_name": "emrys.run_summary",
-  "schema_version": "2.0.0",
+  "schema_version": "4.0.0",
   "record_type": "run_summary",
   "run_id": "run_fixture",
   "run_contract": {
@@ -17,13 +17,6 @@
     "path": "tests/fixtures/artifact_schema_v1/source/configs/artifact_inventory.tsv",
     "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
     "size_bytes": 256,
-    "row_count": 1,
-    "media_type": "text/tab-separated-values"
-  },
-  "artifact_receipt": {
-    "path": "tests/fixtures/artifact_schema_v1/source/results/artifacts/run_fixture/run_fixture.artifact_receipt.tsv",
-    "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-    "size_bytes": 128,
     "row_count": 1,
     "media_type": "text/tab-separated-values"
   },
@@ -60,18 +53,6 @@
   ],
   "artifacts": [
     {
-      "schema_name": "emrys.artifact_record",
-      "schema_version": "2.0.0",
-      "record_type": "artifact_record",
-      "run_id": "run_fixture",
-      "run_contract": {
-      "run_contract_sha256": "284446856367c83d6a7ff61008230d979c33238f77aae087fb87405d9c216245",
-        "sample_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
-        "reference_contract_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
-        "partition_manifest_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
-        "primary_analysis_id": "synthetic_analysis",
-        "primary_analysis_policy_sha256": "4444444444444444444444444444444444444444444444444444444444444444"
-      },
       "artifact_id": "analysis.synthetic.cmh_summary",
       "scope": {
         "step_id": "09",
@@ -94,16 +75,16 @@
         "git_commit": "fixturecommit",
         "evidence": []
       },
-    "local_testing": {
-      "status": "passed",
-      "evidence": [
-        {
-          "evidence_id": "artifact_schema_test",
-          "role": "local_test",
-          "path": "tests/contracts/artifacts/test_artifact_schema_contracts.py",
-          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-        }
-      ]
+      "local_testing": {
+        "status": "passed",
+        "evidence": [
+          {
+            "evidence_id": "artifact_schema_test",
+            "role": "local_test",
+            "path": "tests/contracts/artifacts/test_artifact_schema_contracts.py",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        ]
       },
       "runtime_validation": {
         "status": "blocked",
@@ -130,13 +111,7 @@
           "evidence": []
         }
       ],
-      "errors": [],
-      "provenance": {
-        "producer": "artifact_schema_fixture",
-        "producer_version": "1.0.0",
-        "git_commit": "fixturecommit",
-        "created_at": "2000-01-01T00:00:04Z"
-      }
+      "errors": []
     }
   ],
   "computational_rollup": {
@@ -166,8 +141,6 @@
       "evidence_ids": []
     }
   ],
-  "candidate_terminology": "CMH-ranked candidates",
-  "interpretation_boundary": "computational_candidates_only_biological_validation_outside_emrys",
   "warnings": [
     {
       "code": "production_output_missing",
@@ -184,5 +157,20 @@
     "producer_version": "1.0.0",
     "git_commit": "fixturecommit",
     "created_at": "2000-01-01T00:00:04Z"
+  },
+  "analysis_policy": {
+    "path": "contract/primary_analysis_policy.json",
+    "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+    "size_bytes": 512
+  },
+  "run_contract_file": {
+    "path": "contract/reporting_run_contract.json",
+    "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "publication": {
+    "attempt_id": "summary-attempt-001",
+    "started_at": "2000-01-01T00:00:03Z",
+    "finished_at": "2000-01-01T00:00:04Z",
+    "transaction_state": "complete"
   }
 }

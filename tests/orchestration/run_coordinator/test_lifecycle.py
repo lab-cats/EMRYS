@@ -63,10 +63,11 @@ def test_successor_lifecycle_requires_symbolic_resource_policy() -> None:
     config = {"resource_policy": workflow_fixture._resource_policy()}
 
     assert lifecycle._resource_plan_from_workflow_config(config).workflow_cores == 1
+    del config["resource_policy"]["symbolic"]
+    del config["resource_policy"]["symbolic_sha256"]
     with pytest.raises(lifecycle.LifecycleError, match="resource policy keys"):
         lifecycle._resource_plan_from_workflow_config(
             config,
-            require_symbolic=True,
         )
 
 
@@ -487,7 +488,11 @@ class Harness:
             )
         if self.mutate_verified:
             marker = next(self.built.verified_root.glob("*/*.json"))
-            record = orchestration_contracts.load_record(marker, "verified-task")
+            marker_record = orchestration_contracts.load_record(marker, "verified-task")
+            record = orchestration_contracts.load_record(
+                self.built.run_root / marker_record["task_attempt_record"]["path"],
+                "task-attempt",
+            )
             Path(record["outputs"][0]["path"]).write_bytes(b"foreign mutation\n")
         if self.inject_state_entry_after_child:
             (self.built.run_root / "state" / "foreign").mkdir()
@@ -1028,7 +1033,9 @@ def _first_task_context(
     built: workflow_fixture.WorkflowFixture,
     attempt_path: Path,
 ) -> tuple[inspection.ExpectedTask, dict[str, Any], Path, dict[str, Any]]:
-    expected = inspection.expected_tasks(built.execution, built.profile)[0]
+    expected = inspection.expected_tasks(
+        inspection.admit_successor_run(built.run_root), built.profile
+    )[0]
     attempt = orchestration_contracts.load_record(attempt_path, "workflow-attempt")
     config = orchestration_contracts.load_json_object(
         built.run_root / str(attempt["workflow_config"]["path"])
@@ -1055,7 +1062,7 @@ def _materialize_start_only(
         "schema_version": "emrys.task-start.v1",
         "run_id": built.execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(
-            (built.run_root / "contract" / "normalized.json").read_bytes()
+            (built.run_root / "contract" / "run.json").read_bytes()
         ).hexdigest(),
         "profile_sha256": hashlib.sha256(
             (built.run_root / "contract" / "profile.json").read_bytes()
@@ -1095,10 +1102,10 @@ def _materialize_preentry_failure(
     stdout.write_bytes(stdout_data)
     stderr.write_bytes(stderr_data)
     record = {
-        "schema_version": "emrys.task-attempt.v1",
+        "schema_version": "emrys.task-attempt.v2",
         "run_id": built.execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(
-            (built.run_root / "contract" / "normalized.json").read_bytes()
+            (built.run_root / "contract" / "run.json").read_bytes()
         ).hexdigest(),
         "profile_sha256": hashlib.sha256(
             (built.run_root / "contract" / "profile.json").read_bytes()
@@ -1120,6 +1127,9 @@ def _materialize_preentry_failure(
         "stdout_log": _record_reference(stdout, built.run_root),
         "stderr_log": _record_reference(stderr, built.run_root),
         "failure_message": "fixture preentry admission failure",
+        "inputs": [],
+        "outputs": [],
+        "native_receipt": None,
     }
     orchestration_contracts.validate_record("task-attempt", record)
     task_attempt_path.write_bytes(orchestration_contracts.canonical_json_bytes(record))
@@ -1129,12 +1139,13 @@ def _materialize_preentry_failure(
 def _materialize_verified(
     built: workflow_fixture.WorkflowFixture, attempt_path: Path
 ) -> None:
+    from emrys.orchestration.run_coordinator import task
+
     execution_hash = hashlib.sha256(
-        orchestration_contracts.canonical_json_bytes(built.execution)
+        (built.run_root / "contract" / "run.json").read_bytes()
     ).hexdigest()
     profile_hash = orchestration_contracts.canonical_sha256(built.profile)
     owners = {str(item["machine_key"]): item for item in built.profile["owner_tasks"]}
-    command = {"argv": ["fixture-owner", "--execute"], "exit_code": 0}
     workflow_id = str(
         orchestration_contracts.load_record(attempt_path, "workflow-attempt")[
             "workflow_attempt_id"
@@ -1148,7 +1159,10 @@ def _materialize_verified(
         built.run_root / str(workflow_config["path"])
     )
     for index, expected in enumerate(
-        inspection.expected_tasks(built.execution, built.profile), start=1
+        inspection.expected_tasks(
+            inspection.admit_successor_run(built.run_root), built.profile
+        ),
+        start=1,
     ):
         machine = expected.machine_key
         scope_id = expected.scope_id
@@ -1169,7 +1183,8 @@ def _materialize_verified(
         )
         artifact_root.mkdir(parents=True, exist_ok=True)
         input_path = artifact_root / "input.txt"
-        report_path = artifact_root / "validation.tsv"
+        report_path = Path(dispatch["validation_report_path"])
+        report_path.parent.mkdir(parents=True, exist_ok=True)
         input_path.write_text(f"input {machine} {scope_id}\n", encoding="utf-8")
         for output in dispatch["outputs"]:
             output_path = Path(output["path"])
@@ -1214,7 +1229,7 @@ def _materialize_verified(
         (task_root / "stderr.log").write_bytes(b"fixture owner stderr\n")
         report_reference = _record_reference(report_path, built.run_root)
         task_attempt = {
-            "schema_version": "emrys.task-attempt.v1",
+            "schema_version": "emrys.task-attempt.v2",
             "run_id": built.execution["run_id"],
             "execution_contract_sha256": execution_hash,
             "profile_sha256": profile_hash,
@@ -1227,46 +1242,41 @@ def _materialize_verified(
             "status": "succeeded",
             "started_at": "2026-08-12T12:01:00Z",
             "finished_at": "2026-08-12T12:02:00Z",
-            "producer": command,
-            "validator": command,
-            "semantic_all_pass": command,
+            "producer": {"argv": dispatch["producer_argv"], "exit_code": 0},
+            "validator": {"argv": dispatch["validator_argv"], "exit_code": 0},
+            "semantic_all_pass": {
+                "argv": list(
+                    task._semantic_argv(
+                        task.load_dispatch(
+                            dispatch_path,
+                            expected_sha256=config_document["dispatch_paths"][machine][
+                                scope_id
+                            ]["sha256"],
+                        ),
+                        str(owner["step_id"]),
+                    )
+                ),
+                "exit_code": 0,
+            },
             "stable_inputs_rechecked": True,
             "validation_report": report_reference,
             "stdout_log": _record_reference(task_root / "stdout.log", built.run_root),
             "stderr_log": _record_reference(task_root / "stderr.log", built.run_root),
             "failure_message": None,
-        }
-        orchestration_contracts.validate_record("task-attempt", task_attempt)
-        task_attempt_path.write_bytes(
-            orchestration_contracts.canonical_json_bytes(task_attempt)
-        )
-        verified = {
-            "schema_version": "emrys.verified-task.v1",
-            "run_id": built.execution["run_id"],
-            "execution_contract_sha256": execution_hash,
-            "profile_sha256": profile_hash,
-            "workflow_attempt_id": workflow_id,
-            "task_attempt_id": task_id,
-            "task_attempt_record": _record_reference(task_attempt_path, built.run_root),
-            "task_start_record": task_start_reference,
-            "machine_key": machine,
-            "scope": expected.scope,
-            "owner_run_token": owner_token,
-            "commands": {
-                "producer": command,
-                "validator": command,
-                "semantic_all_pass": command,
-            },
             "inputs": [_bound("fixture_input", input_path)],
             "outputs": [
                 _bound(output["role"], Path(output["path"]))
                 for output in dispatch["outputs"]
             ],
             "native_receipt": None,
-            "validation_report": {**report_reference, "all_pass": True},
-            "stable_inputs_rechecked": True,
-            "all_pass": True,
-            "created_at": "2026-08-12T12:02:00Z",
+        }
+        orchestration_contracts.validate_record("task-attempt", task_attempt)
+        task_attempt_path.write_bytes(
+            orchestration_contracts.canonical_json_bytes(task_attempt)
+        )
+        verified = {
+            "schema_version": "emrys.verified-task.v2",
+            "task_attempt_record": _record_reference(task_attempt_path, built.run_root),
         }
         orchestration_contracts.validate_record("verified-task", verified)
         marker.parent.mkdir(parents=True, exist_ok=True)
@@ -1334,7 +1344,7 @@ def _attempt(
     supersedes: str | None,
     argv: tuple[str, ...],
 ) -> dict[str, Any]:
-    execution_bytes = (built.run_root / "contract" / "normalized.json").read_bytes()
+    execution_bytes = (built.run_root / "contract" / "run.json").read_bytes()
     profile_bytes = (built.run_root / "contract" / "profile.json").read_bytes()
     created = identifier.split("-")[1]
     created_at = datetime.strptime(created, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
@@ -1352,14 +1362,14 @@ def _attempt(
         "created_at": created_at.isoformat(timespec="seconds").replace("+00:00", "Z"),
         "request": {
             "path": str(built.run_root / "attempts" / identifier / "request.yaml"),
-            "size_bytes": (built.root / "intake" / "request.yaml").stat().st_size,
+            "size_bytes": (built.root / "intake" / "project.yaml").stat().st_size,
             "sha256": hashlib.sha256(
-                (built.root / "intake" / "request.yaml").read_bytes()
+                (built.root / "intake" / "project.yaml").read_bytes()
             ).hexdigest(),
         },
         "request_label": "fixture lifecycle",
         "authored_paths": {
-            "request": str((built.root / "intake" / "request.yaml").resolve()),
+            "request": str((built.root / "intake" / "project.yaml").resolve()),
             "sample_manifest": "samples.tsv",
             "partition_manifest": "partitions.tsv",
             "reference_fasta": "reference/genome.fa",
@@ -1432,7 +1442,7 @@ def _build_harness(
     )
     request = lifecycle.LifecycleRequest(
         run_root=built.run_root,
-        execution_path=built.run_root / "contract" / "normalized.json",
+        execution_path=built.run_root / "contract" / "run.json",
         profile_path=built.run_root / "contract" / "profile.json",
         workflow_config_path=config,
         snakefile=workflow_fixture.SNAKEFILE.resolve(),
@@ -1443,7 +1453,7 @@ def _build_harness(
         target="cohort_slice",
         operation=operation,
         attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
-        request_source_path=(built.root / "intake" / "request.yaml").resolve(),
+        request_source_path=(built.root / "intake" / "project.yaml").resolve(),
     )
     return Harness(
         built=built,
@@ -1501,7 +1511,9 @@ def test_success_publishes_receipt_last_and_inspection_ignores_engine_metadata(
     assert "reporting_completion_records" not in outcome.receipt
     assert "local_pipeline_complete" not in outcome.receipt
     expected_task_count = len(
-        inspection.expected_tasks(built.built.execution, built.built.profile)
+        inspection.expected_tasks(
+            inspection.admit_successor_run(built.built.run_root), built.built.profile
+        )
     )
     assert len(outcome.receipt["verified_tasks"]) == expected_task_count
     assert not outcome.lock_path.exists()
@@ -1671,8 +1683,8 @@ def test_cached_runtime_probe_rechecks_executable_permission(tmp_path: Path) -> 
 
 def test_explicit_package_tree_mutation_before_workflow_retains_ambiguous_lock(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    built = _build_harness(tmp_path)
     package = tmp_path / "renv-library" / "VariantAnnotation"
     database = package / "R" / "VariantAnnotation.rdb"
     database.parent.mkdir(parents=True)
@@ -1682,22 +1694,26 @@ def test_explicit_package_tree_mutation_before_workflow_retains_ambiguous_lock(
         encoding="utf-8",
     )
     package_identity = installed_package_tree_identity(package)
-    attempt = _attempt_record(built.request)
-    attempt["required_tools"].append(
-        {
-            "name": "collaborator_assets",
-            "version": "1.0.0",
-            "path": str(package),
-            "resolved_path": str(package),
-            "sha256": package_identity.sha256,
-            "identity_kind": "package_tree",
-        },
+    runtime_identities = workflow_fixture._attempt_runtime_identities
+
+    def bound_identities(root: Path):
+        normalizer, tools = runtime_identities(root)
+        tools.append(
+            {
+                "name": "collaborator_assets",
+                "version": "1.0.0",
+                "path": str(package),
+                "resolved_path": str(package),
+                "sha256": package_identity.sha256,
+                "identity_kind": "package_tree",
+            }
+        )
+        return normalizer, sorted(tools, key=lambda item: item["name"])
+
+    monkeypatch.setattr(
+        workflow_fixture, "_attempt_runtime_identities", bound_identities
     )
-    attempt["required_tools"].sort(key=lambda item: item["name"])
-    built.request = replace(
-        built.request,
-        attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
-    )
+    built = _build_harness(tmp_path)
 
     def mutate(phase: str) -> None:
         if phase == "before_workflow":
@@ -1764,31 +1780,25 @@ def test_clean_failure_and_interruption_are_resume_available(
     assert observed.recovery_available
 
 
-@pytest.mark.parametrize(
-    ("schema_version", "expected"),
-    [
-        ("emrys.attempt-receipt.v1", "succeeded"),
-        ("emrys.attempt-receipt.v2", "failed"),
-    ],
-)
-def test_complete_results_do_not_replace_latest_scientific_attempt_outcome(
-    schema_version: str,
-    expected: str,
-) -> None:
+def test_complete_results_do_not_replace_latest_scientific_attempt_outcome() -> None:
     assert (
         inspection._attempt_outcome(
             latest={"workflow_attempt_id": "latest"},
-            receipt={"schema_version": schema_version, "status": "failed"},
+            receipt={"schema_version": "emrys.attempt-receipt.v2", "status": "failed"},
             running=False,
             integrity_blockers=(),
             results_status="complete",
         )
-        == expected
+        == "failed"
     )
 
 
-def test_rederived_results_blocker_does_not_block_run_integrity_by_wording() -> None:
+def test_rederived_results_blocker_does_not_block_run_integrity_by_wording(
+    tmp_path: Path,
+) -> None:
+    built = workflow_fixture.build(tmp_path)
     state = inspection.RunInspection(
+        authority=inspection.admit_successor_run(built.run_root),
         run_root=Path("/run"),
         run_id=f"run-{'a' * 64}",
         attempt_outcome="blocked",
@@ -1916,7 +1926,7 @@ def test_verified_tree_residue_blocks_lifecycle_and_inspection(
         residue.write_text("foreign\n", encoding="utf-8")
     else:
         expected = inspection.expected_tasks(
-            built.built.execution, built.built.profile
+            inspection.admit_successor_run(built.built.run_root), built.built.profile
         )[0]
         residue = verified_root / expected.machine_key / f"{expected.scope_id}.json"
         residue.parent.mkdir(parents=True, exist_ok=True)

@@ -1,12 +1,25 @@
 # EMRYS temporary compression backlog
 
-Reviewed **2026-09-09** from `a0dc7526`. The [campaign](compression_campaign.md)
+Reviewed **2026-09-09** from `5499658a`. The [campaign](compression_campaign.md)
 owns the goals; this file owns CS scope, status, decisions, and proof. The
 [main matrix](backlog_matrix.md) owns broader outcomes and campaign completion.
 
 ## Working queue
 
-**[PR #155](https://github.com/lab-cats/EMRYS/pull/155), CS-18 runner-owned scientific execution, passed ordinary hosted CI at `a0dc7526`; integration is pending.**
+**Verification pending: CS-20–22, approved together on 2026-09-09.** Consolidate reporting
+into one manifest, store task completion once, and retire historical-version
+readers. The [version policy](../design/decisions/platform-direction.md#version-support)
+replaces earlier compatibility requirements in these cards. Preserve scientific
+data, provenance, current Run recovery, and retained evidence; dashboard work
+and scientific-validation roster changes remain excluded.
+
+The product baseline for the 20% target is **69,223 physical lines at `cab77a26`**;
+`5499658a` has **64,921**, a reduction of 4,302 (6.2%). The target is at most
+55,378 lines. Count tracked source `.py`, `.R`, `.sh`, `.css`, `.j2` files and
+`workflow/Snakefile`; report schemas/configuration, tests, docs, tooling, and
+evidence separately. This tranche is not presumed to reach the target.
+
+**[PR #155](https://github.com/lab-cats/EMRYS/pull/155), CS-18 runner-owned scientific execution, passed ordinary hosted CI at `5499658a` ([run 34383760078](https://github.com/lab-cats/EMRYS/actions/runs/34383760078)); integration is pending.**
 The user approved moving working paths, locks, process supervision, logging,
 publication, and recovery into the existing runner. Producers retain scientific
 computation, outputs, and provenance; there is no separate manager hierarchy.
@@ -84,12 +97,15 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-11](#cs-11-reporting-source-identity) | Define a reporting-source boundary that permits reporting-only changes without changing scientific Run identity. | Needs decision | 4 | 4 | Specify new Run binding, producer identity, historical admission, and resume before a structural migration. | `REPORT-ROSTER-01` |
 | [CS-12](#cs-12-canonical-bam-command-printing) | Remove canonical BAM's four print-only command arrays. | Done | 2 | 1 | Retired with standalone preview in PR #155; ordinary hosted CI passes at a0dc7526; integration pending. | `COMPRESS-01` |
 | [CS-13](#cs-13-runtime-profile-construction) | Remove the redundant RuntimeCheck field-copy construction in onboarding. | Opportunistic | 1 | 2 | Use standard dataclass replacement only after field/order/admission comparison; approximately 11–20 lines. | `COMPRESS-01` |
-| [CS-14](#cs-14-paired-cmh-configuration) | Let the existing module normalizer own equivalent newly admitted paired-CMH configuration. | Needs qualification | 2 | 4 | First prove canonical values/errors equivalent; a changed public form or policy needs a separate decision. Retain historical semantics. | `COMPRESS-01` |
-| [CS-15](#cs-15-reporting-tsv-grammar) | Retire both reporting CSV engines through the existing strict TSV owner. | Needs decision | 2 | 3 | Agree accepted grammar and diagnostic precedence; stop if a configurable compatibility adapter is required. | `COMPRESS-01` |
+| [CS-14](#cs-14-paired-cmh-configuration) | Let the existing module normalizer own equivalent newly admitted paired-CMH configuration. | Verification pending | 2 | 4 | CS-22 uses one module normalizer for both current Project forms; focused checks pass; hosted CI pending. | `COMPRESS-01` |
+| [CS-15](#cs-15-reporting-tsv-grammar) | Retire both reporting CSV engines through the existing strict TSV owner. | Verification pending | 2 | 3 | CS-20 retires the duplicate persisted TSV readers with their formats; native TSV grammar is unchanged; hosted CI pending. | `COMPRESS-01` |
 | [CS-16](#cs-16-operator-and-developer-documentation) | Complete operator/developer guidance with clear ownership and plain language. | Done | 5 | 3 | PR #151 passed ordinary CI at `76acb9c5`; integration pending. | `COMPRESS-01` |
 | [CS-17](#cs-17-scientific-and-owner-documentation) | Consolidate and explain remaining scientific/owner documentation. | Done | 5 | 4 | All 169 Markdown files reviewed; PR #151 passed ordinary CI at `76acb9c5`. | `COMPRESS-01` |
 | [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | Done | 4 | 4 | All fourteen first-party tasks use runner-owned execution; ordinary hosted CI passes at a0dc7526; integration pending. | `OPS-03` |
 | [CS-19](#cs-19-scientific-report-table-handling) | Use one admitted table representation across scientific report consumers. | Done | 4 | 3 | PR #152 at `72fdf806`: focused checks and all ordinary hosted CI passed; integration pending. | `COMPRESS-01` |
+| [CS-20](#cs-20-through-cs-22-current-result-contracts) | Persist one reporting result manifest, with shared identity/provenance once. | Verification pending | 5 | 4 | Retire per-artifact files and duplicate receipts; preserve both HTML reports and useful TSVs. | `REPORT-ROSTER-01` |
+| [CS-21](#cs-20-through-cs-22-current-result-contracts) | Store terminal task completion details once. | Verification pending | 4 | 4 | Verified marker references the terminal attempt; current admission and recovery follow that reference. | `COMPRESS-01` |
+| [CS-22](#cs-20-through-cs-22-current-result-contracts) | Accept only current persisted contracts. | Verification pending | 5 | 4 | Remove old Run/request, policy, resource, dispatch, Attempt, and reporting readers across callers. | `COMPRESS-01` |
 
 ## Acceptance shared by every card
 
@@ -358,37 +374,22 @@ checkout admission is authorized.
 
 ### CS-14 Paired-CMH configuration
 
-Project v1 accepts flat paired-CMH fields and a module form; onboarding still
-writes flat fields. Its [normalizer](../../src/emrys/orchestration/run_coordinator/normalization.py)
-repeats target/background transformation from the [module normalizer](../../src/emrys/analyses/paired_cmh_candidate_ranking/__init__.py).
-Policy envelopes and provider binding differ. The 17-line transformation is
-only a small opportunity unless equivalent validation can also retire.
-
-Use the existing module normalizer only after proving equal canonical values,
-defaults, errors/order, target aliases, absent/null backgrounds, conditions,
-pairs, and provider binding, or approving their changed behavior. Preserve
-request-v3/execution-v1 reads, module readmission's flat fallback, and exact
-historical bytes. Changing onboarding's emitted form requires its own decision.
-Reuse normalization/onboarding/module/profile/materialization tests; retain the
-current forms if compatibility would need a new adapter or parallel path.
+**Implemented with CS-22; verification pending.** Current Project v1 retains
+both flat and explicit module syntax. Both now use the existing module
+normalizer, then persist the same module policy and Analysis revision v2.
+This removes the duplicate target/background transformation and old policy
+fallback. Current normalization, onboarding, module, profile, and planning
+checks pass; historical format support retires under the approved version policy.
 
 ### CS-15 Reporting TSV grammar
 
-[Run summary](../../src/emrys/reporting/_run_summary/inputs.py) uses strict CSV
-quoting; [artifact index](../../src/emrys/reporting/_artifact_index/records.py)
-uses lax quoting. Both use `DictReader`, skip blank records, retain ragged row
-shapes, and can reject headers before lexing the remaining body. Their combined
-49-line parsing surface is not an estimate of net savings.
-
-The [shared strict TSV parser](../../src/emrys/libraries/validation/tsv.py)
-rejects blank/ragged rows and empty/duplicate headers, and lexes before reporting
-shape/header errors. Reuse needs a decision on quote/tab/newline grammar, CRLF,
-UTF-8, header rules, and diagnostic precedence, including bad headers followed
-by bad quoting. Then parse already captured bytes through that owner, retaining
-domain checks, hashes, rechecks, and diagnostics. Verify complete transactions,
-historical valid TSVs, and raw-byte provenance. Exclude sample manifests,
-storage roots/policy, and all-pass reading: their semantics differ. Do not add
-a configurable compatibility parser or reopen paths to avoid this decision.
+**Absorbed into CS-20; verification pending.** The manifest replaces the
+persisted artifact-index and summary-receipt inputs, so their two CSV readers
+retire with those formats. No configurable parser or change to native scientific
+TSV grammar is needed. The summary and QC TSVs remain deterministic projections.
+The earlier grammar question concerned blank/ragged rows, quoting, header error
+order, and raw-byte identity; it does not authorize changing unrelated manifest,
+storage, all-pass, or scientific evidence readers.
 
 ### CS-16 Operator and developer documentation
 
@@ -679,23 +680,10 @@ consolidation was not selected.
   instead returns fresh mutable dictionaries and lists. Neither replaces the
   other without changing the provider boundary. Canonical record storage is
   already shared by the existing application-model owner.
-- **TSV readers have different admission contracts.** [Run-summary parsing](../../src/emrys/reporting/_run_summary/inputs.py)
-  uses strict quoting while [artifact-index parsing](../../src/emrys/reporting/_artifact_index/records.py)
-  uses lax quoting; both retain `DictReader` row shapes. The [shared strict parser](../../src/emrys/libraries/validation/tsv.py)
-  rejects ragged rows and defers header and row-shape errors until lexing ends.
-  Blank rows, malformed quotes, duplicate or empty headers, and diagnostics
-  therefore differ. The [all-pass reader](../../src/emrys/orchestration/run_coordinator/all_pass.py)
-  also accepts its own unique check roster and requires every status to pass;
-  report validation checks an external roster and accepts pass/fail. Reuse
-  would change behavior or need a new configurable adapter; defer consolidation.
-- **Resource normalization preserves historical identity.** [Resource policy](../../src/emrys/orchestration/run_coordinator/resource_policy.py)
-  distinguishes partial fragments, complete symbolic policies, persisted
-  effective records, and allocation resolution. Historical records retain
-  fixed numeric memory; symbolic records re-resolve allocation/workflow values.
-  Historical omissions of thread settings for Steps 09 and 10 default to one
-  without adding fields, and integer conversion canonicalizes accepted integral
-  numbers. Existing owners already share admission and record mechanics;
-  no substantial preserving retirement was qualified.
+- **Earlier TSV and resource compatibility findings are superseded by CS-20/22.**
+  Retiring those old persisted formats removes their CSV readers and missing-field
+  fallbacks. Current scientific TSV grammar, symbolic/effective resource policy,
+  allocation resolution, and current recovery checks remain distinct responsibilities.
 - **Limitation-ID collision handling has no current collision input.** The
   [summary projection](../../src/emrys/reporting/_run_summary/projection.py)
   emits zero or one limitation with a fixed base ID, and its ID allocator starts
@@ -709,38 +697,12 @@ consolidation was not selected.
 
 ### Artifact CLI document-version admission
 
-**Characterized defect.** The artifact owner's [known CLI version limit](../../src/emrys/contracts/artifacts/README.md#known-cli-version-limit)
-records the current/default schema mismatch, source selection, and prior local
-production-path reproduction. This card owns the proposed correction.
-
-**Proposed correction, not selected.** For an object document, pass its declared version
-through the existing schema selection owner. Reuse the resulting ordered
-error collection at the two manual call sites in
-[`_run_summary/validation.py`](../../src/emrys/reporting/_run_summary/validation.py)
-and the one in
-[`_run_report/inputs.py`](../../src/emrys/reporting/_run_report/inputs.py).
-This could remove about 9–13 net product lines across three existing files.
-This would change public correctness behavior; it requires a separate
-selection and the checks below before acceptance.
-
-**Preserve.** Keep default `schema_validator` behavior, raw registry keys
-and schema IDs, local references, deterministic diagnostic ordering,
-the active artifact-record v2 and supported flat summary v2 and receipt v4.
-Frozen receipt v3 remains outside this public admission proposal. Retain
-explicit supported-version guards with their distinct first errors,
-duplicate-key/non-finite JSON rejection, and semantic validation after
-schema success. Unknown versions must not become silently accepted.
-
-**Proof.** Use the real public CLI and API for valid current/historical
-records and malformed versions; cover non-object documents, missing,
-unknown, non-string versions, schema-first failures, and semantic failures.
-In particular, object/array version values must produce a schema failure,
-not an unhashable registry-key exception.
-The starting suites are
-[artifact-schema contracts](../../tests/contracts/artifacts/test_artifact_schema_contracts.py),
-artifact/run-summary tests, and report transaction tests. Verify that local
-invocation imports the selected checkout rather than an older installed
-package. This review did not rerun the prior reproduction.
+**Implemented with CS-20/22; verification pending.** The public validator and
+reporting now share one current schema registry. Current artifact entries,
+manifest 4, and report receipt 5 pass; unsupported versions reject. The former
+current/default mismatch no longer requires a separate version-dispatch patch.
+The [artifact owner](../../src/emrys/contracts/artifacts/README.md) owns the
+contract; direct schema/CLI tests cover the current documents and malformed input.
 
 ### Workflow-profile fields
 
@@ -953,3 +915,44 @@ Record each card's result and exact evidence; update broader rows only when
 those outcomes change. An original PR closed through an integration is not
 abandoned work. A repaired example or rejected shortcut does not close its
 family, and no unfinished concern disappears without a recorded disposition.
+
+### CS-20 through CS-22 Current result contracts
+
+**Approved as one implementation tranche; verification pending.** Existing
+reporting, task, and Run-admission owners absorb the changes; no manager,
+compatibility adapter, or new product file is needed.
+
+- **Preserved:** scientific computation and data, file hashes and provenance,
+  independent validators and goldens, both HTML views, immutable Run identity,
+  exclusive publication, ownership-aware rollback, current-version resume,
+  and cumulative evidence checks for earlier Attempts of the same Run.
+- **Replaced by approval:** old-version inspection/resume/report generation;
+  repeated artifact records and receipts; duplicated verified-task payloads.
+  Current flat Project syntax remains accepted and normalizes through the same
+  module owner as explicit module configuration.
+- **Undecided and excluded:** validation-check membership (CS-05), report-only
+  source-identity policy (CS-11), and dashboard replacement/retirement.
+- **Environment-deferred:** Slurm and institutional-site operation, scientific
+  review, and biological validation. Local fixtures and hosted software checks
+  must be reported separately.
+
+Acceptance requires caller-complete writers/readers/fixtures, focused production
+path checks, ordinary hosted CI on the final state, separate size accounting,
+and updated current owner documentation. Old-format test cases may retire with
+their behavior; current scientific, recovery, and drift cases must survive.
+Existing result directories and retained evidence are outside the edit scope.
+
+Implementation comparison against `5499658a`: **3,312 product lines removed net**
+(+1,010/−4,322), with two product files retired and none added. Product size is
+61,609 lines: 7,614 below `cab77a26` (**11.0%**), with 6,231 lines remaining to
+reach the 20% target. Tests/fixtures are separately net −1,815; schemas and
+configuration net −1,535. Documentation is separately net negative. No tooling
+or retained evidence was removed to improve those product counts.
+
+Focused task, current Run/resource admission, processing reuse, reporting,
+normalization, and schema/CLI checks pass. Static validation, documentation,
+source dependencies, and all 13 independent contract goldens pass. The scientific
+HTML golden is byte-identical; the evidence HTML diff changes manifest/version
+and policy/Run-contract references only. Independent review found and corrected
+non-directory reporting-state handling; a focused probe confirms a reporting
+blocker rather than an uncaught filesystem exception. Hosted CI remains pending.

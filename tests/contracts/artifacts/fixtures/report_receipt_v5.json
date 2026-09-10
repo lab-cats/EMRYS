@@ -1,6 +1,6 @@
 {
   "schema_name": "emrys.report_receipt",
-  "schema_version": "3.0.0",
+  "schema_version": "5.0.0",
   "record_type": "report_receipt",
   "run_id": "run_fixture",
   "attempt_id": "report-attempt-001",
@@ -12,11 +12,7 @@
     "path": "tests/fixtures/artifact_schema_v1/source/results/artifacts/run_fixture/run_fixture.run_summary.json",
     "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
     "schema_name": "emrys.run_summary",
-    "schema_version": "2.0.0"
-  },
-  "renderer": {
-    "name": "Jinja2",
-    "version": "3.1.6"
+    "schema_version": "4.0.0"
   },
   "template": {
     "path": "emrys.reporting/templates/run_report.html.j2",
@@ -28,16 +24,25 @@
   },
   "outputs": [
     {
-      "output_id": "run_report_html",
-      "kind": "html",
-      "path": "results/reports/run_fixture/run_fixture.run_report.html",
+      "output_id": "scientific-report-html",
+      "kind": "scientific_html",
+      "path": "results/reports/run_fixture/run_fixture.scientific_report.html",
       "sha256": "1212121212121212121212121212121212121212121212121212121212121212",
       "size_bytes": 4096,
       "media_type": "text/html",
       "self_contained": true
     },
     {
-      "output_id": "run_summary_tsv",
+      "output_id": "evidence-report-html",
+      "kind": "evidence_html",
+      "path": "results/reports/run_fixture/run_fixture.evidence_report.html",
+      "sha256": "1313131313131313131313131313131313131313131313131313131313131313",
+      "size_bytes": 3072,
+      "media_type": "text/html",
+      "self_contained": true
+    },
+    {
+      "output_id": "run-summary-tsv",
       "kind": "run_summary_tsv",
       "path": "results/reports/run_fixture/run_fixture.run_summary.tsv",
       "sha256": "1414141414141414141414141414141414141414141414141414141414141414",
@@ -45,11 +50,11 @@
       "media_type": "text/tab-separated-values"
     }
   ],
-  "state_banner": "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE EMRYS.",
+  "state_banner": "COMPUTATIONAL RESULTS \u2014 BIOLOGICAL VALIDATION IS OUTSIDE EMRYS.",
   "truncations": [
     {
       "table_id": "cmh_ranked_candidates",
-      "report_section": "candidate_summary",
+      "report_section": "computational-results-section",
       "full_table_path": "results/editing/synthetic_analysis/synthetic_analysis.cmh_all_sites.tsv",
       "full_table_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
       "full_row_count": 100,
@@ -57,9 +62,9 @@
     }
   ],
   "schema_versions": {
-    "artifact_record": "2.0.0",
-    "run_summary": "2.0.0",
-    "report_receipt": "3.0.0"
+    "artifact_entry": "1.0.0",
+    "run_summary": "4.0.0",
+    "report_receipt": "5.0.0"
   },
   "analysis_execution_performed": false,
   "external_network_assets_used": false,
@@ -74,9 +79,40 @@
   ],
   "errors": [],
   "provenance": {
-    "producer": "artifact_schema_fixture",
-    "producer_version": "2.0.0",
+    "producer": "emrys.reporting.report",
+    "producer_version": "5.0.0",
     "git_commit": "fixturecommit",
     "created_at": "2000-01-01T00:00:05Z"
+  },
+  "analysis_policy": {
+    "path": "contract/primary_analysis_policy.json",
+    "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+    "size_bytes": 512,
+    "schema_version": "emrys.analysis-module-policy.v1"
+  },
+  "evidence_renderer": {
+    "producer": "emrys.reporting.report",
+    "producer_version": "5.0.0",
+    "package": "emrys.reporting",
+    "content_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "template_engine": "Jinja2",
+    "template_engine_version": "3.1.6"
+  },
+  "scientific_renderer": {
+    "module_id": "emrys.paired-cmh",
+    "module_version": "1",
+    "distribution_name": "emrys",
+    "distribution_version": "1",
+    "package": "emrys.analyses.paired_cmh_candidate_ranking",
+    "entry_point": "emrys.analyses.paired_cmh_candidate_ranking:analysis_module_v1",
+    "content_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "core_support": {
+      "producer": "emrys.reporting.report",
+      "producer_version": "5.0.0",
+      "package": "emrys.reporting",
+      "content_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "template_engine": "Jinja2",
+      "template_engine_version": "3.1.6"
+    }
   }
 }
