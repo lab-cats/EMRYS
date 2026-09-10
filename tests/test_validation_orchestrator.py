@@ -71,6 +71,7 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
         "jsonschema>=4.18.0",
         "referencing>=0.28.4",
         "simple-term-menu==1.6.6",
+        "snakemake==9.25.1",
     }
     assert set(configuration["dependency-groups"]["dev"]) == {
         "coverage==7.15.2",

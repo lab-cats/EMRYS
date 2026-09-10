@@ -387,7 +387,7 @@ validate_partition_nonoverlap <- function(partitions, manifest_path) {
                 row$selector_value, row$partition_id, manifest_path
             )
         }
-        ranges <- GenomicRanges::reduce(GenomicRanges::GRanges(
+        ranges <- IRanges::reduce(GenomicRanges::GRanges(
             seqnames = intervals$chromosome,
             ranges = IRanges::IRanges(start = intervals$start, end = intervals$end)
         ))

@@ -1030,8 +1030,8 @@ Implemented comparison against `be06f608` before hosted validation:
 
 | Maintained category | Added | Removed | Net |
 |---|---:|---:|---:|
-| Product | 1,607 | 3,893 | −2,286 |
-| Tests and fixtures | 696 | 2,295 | −1,599 |
+| Product | 1,608 | 3,893 | −2,285 |
+| Tests and fixtures | 702 | 2,294 | −1,592 |
 | Configuration and schemas | 111 | 52 | +59 |
 | Tooling | 61 | 5 | +56 |
 
@@ -1039,8 +1039,8 @@ Documentation is separately net positive because the tranche records its changed
 contracts and current status. Retained evidence is unchanged. Four product files
 are retired. Moved workflow/R assets keep their original accounting categories;
 relocation contributes no deletion savings. On that same maintained-code scope,
-product size is 59,323 lines: 9,900 below the campaign baseline (14.3%), with
-3,945 lines still needed for the 20% target.
+product size is 59,324 lines: 9,899 below the campaign baseline (14.3%), with
+3,946 lines still needed for the 20% target.
 
 Local scientific validators, native shell fixtures, orchestration schema checks,
 report content/figure comparisons, independent goldens, dashboard, logging,

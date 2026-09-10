@@ -90,7 +90,8 @@ def admit_installed_package(*, root: Path = PACKAGE_ROOT) -> InstalledPackage:
             )
         if build["git_commit"] is not None and (
             not isinstance(build["git_commit"], str)
-            or re.fullmatch(r"[0-9a-f]{40}", build["git_commit"]) is None
+            or re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", build["git_commit"])
+            is None
         ):
             raise InstalledPackageError("Installed build origin is malformed")
         if build["git_dirty"] is not None and not isinstance(build["git_dirty"], bool):

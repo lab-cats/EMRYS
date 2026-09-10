@@ -8,6 +8,6 @@ change scientific identity.
 
 Every job runs on the same host or allocation. Slurm submission enters this
 same profile inside the allocation; there are no standalone stage scheduler
-commands. Materialization binds the exact checkout file and the lifecycle passes
+commands. Materialization binds the exact installed profile and the lifecycle passes
 it to Snakemake. Use `emrys run` or `emrys resume`, as described in the
 [workflow overview](../../README.md) and [runbook](../../../../../docs/operations/RUNBOOK.md).

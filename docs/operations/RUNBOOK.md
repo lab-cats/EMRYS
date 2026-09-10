@@ -19,8 +19,8 @@ actual values; square brackets in command descriptions mark optional arguments.
 
 `emrys --version` works from any directory without a Project or scientific
 runtime. Add `-v` to see the loaded package path and Python version/executable.
-It writes no logs and can identify an installation from another checkout;
-ordinary commands reject a checkout that differs from the imported package.
+It writes no logs and identifies the executing installation independently of
+the working directory and Git checkout.
 Version flags cannot accompany a command.
 
 ## Institution-provided runtime

@@ -467,9 +467,9 @@ def _rewrite_dispatch(built: TaskFixture) -> None:
     attempt = orchestration_contracts.load_json_object(attempt_path)
     config_path = built.run_root / attempt["workflow_config"]["path"]
     config = orchestration_contracts.load_json_object(config_path)
-    config["dispatch_paths"][built.dispatch["machine_key"]][
-        built.dispatch["scope"]["scope_id"]
-    ]["sha256"] = _dispatch_sha256(built.dispatch_path)
+    config["dispatch_paths"][built.dispatch_path.parent.name][built.dispatch_path.stem][
+        "sha256"
+    ] = _dispatch_sha256(built.dispatch_path)
     config_path.write_bytes(orchestration_contracts.canonical_json_bytes(config))
     attempt["workflow_config"]["sha256"] = _dispatch_sha256(config_path)
     attempt_path.write_bytes(orchestration_contracts.canonical_json_bytes(attempt))

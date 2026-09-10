@@ -173,6 +173,7 @@ def test_all_tracked_schemas_are_valid_draft_2020_12_and_local_only() -> None:
 
     assert set(schemas) == {
         "common",
+        "orchestration-common",
         "artifact-record",
         "run-summary",
         "report-receipt",
@@ -213,7 +214,7 @@ def test_cli_checks_all_schemas_inventory_and_help() -> None:
     help_result = run_cli("--help")
 
     assert result.returncode == 0, result.stderr
-    assert result.stdout.count("Schema passed Draft 2020-12") == len(FIXTURES) + 1
+    assert result.stdout.count("Schema passed Draft 2020-12") == len(FIXTURES) + 2
     assert "Artifacts: 74" in result.stdout
     assert help_result.returncode == 0
     assert "--check-schemas" in help_result.stdout

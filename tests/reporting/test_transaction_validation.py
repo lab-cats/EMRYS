@@ -202,6 +202,7 @@ def test_fixed_dispatcher_accepts_successor_run_authority(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     analysis, plan, run, profile, attempt, _resources = successor_run_fixture()
+    attempt["installed_package"] = admit_installed_package().record
     run_root = (tmp_path / run.run_id).resolve()
     contract = run_root / "contract"
     contract.mkdir(parents=True)
@@ -260,6 +261,7 @@ def test_fixed_dispatcher_accepts_successor_run_authority(
         run_root / config["primary_analysis_policy_path"]["path"]
     )
     assert observed["profile"] == profile
+    assert observed["package_root"] == PACKAGE_ROOT
 
 
 @pytest.mark.parametrize(

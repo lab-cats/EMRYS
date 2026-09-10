@@ -118,7 +118,7 @@ read_annotation_model <- function(path) {
             )
         }
         exonic <- IRanges::reduce(IRanges::ranges(tx_exons_raw))
-        span <- IRanges::range(exonic)
+        span <- base::range(exonic)
         empty <- make_ranges(IRanges::IRanges())
         rows <- list(
             transcripts = make_ranges(span),
@@ -135,12 +135,12 @@ read_annotation_model <- function(path) {
         ))
         if (length(cds) > 0L) {
             rows$cds <- make_ranges(cds)
-            cds_span <- IRanges::range(cds)
+            cds_span <- base::range(cds)
             generic_utr <- IRanges::ranges(tx_features[tx_features$type_normalized == "utr"])
             source <- if (length(generic_utr) > 0L) {
                 generic_utr
             } else {
-                IRanges::setdiff(exonic, cds_span)
+                BiocGenerics::setdiff(exonic, cds_span)
             }
             low <- BiocGenerics::end(source) < BiocGenerics::start(cds_span)
             high <- BiocGenerics::start(source) > BiocGenerics::end(cds_span)

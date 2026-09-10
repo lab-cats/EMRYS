@@ -1,7 +1,7 @@
 # Workflow scheduling
 
 [`Snakefile`](Snakefile) schedules the [common processing graph](contracts/README.md)
-from the admitted implementation checkout and the selected Analysis module.
+from the admitted installed package and the selected Analysis module.
 New Run planning rejects processing dependencies that differ from that graph,
 then freezes the combined plan. Existing Runs retain their profile bytes and
 resume with the same fixed processing dependencies as before. Snakemake
