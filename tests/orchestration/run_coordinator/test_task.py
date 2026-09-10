@@ -54,17 +54,7 @@ def _publish_json(path: Path, value: Any) -> None:
 
 def _materialize_active_lock(run_root: Path, attempt_path: Path) -> Path:
     attempt = orchestration_contracts.load_record(attempt_path, "workflow-attempt")
-    identifier = str(attempt["workflow_attempt_id"])
-    lock = {
-        "schema_version": "emrys.run-lock.v1",
-        "run_id": attempt["run_id"],
-        "workflow_attempt_id": identifier,
-        "attempt_record_path": f"attempts/{identifier}/attempt.json",
-        "owner_token": attempt["owner_token"],
-        "process_id": attempt["process_id"],
-        "host": attempt["host"],
-        "created_at": attempt["created_at"],
-    }
+    lock = orchestration_contracts.run_lock_record(attempt)
     orchestration_contracts.validate_record("run-lock", lock)
     lock_path = run_root / "locks" / "run.lock"
     lock_path.parent.mkdir()
@@ -442,6 +432,10 @@ def _rewrite_task(built: TaskFixture) -> None:
         built.definition
     )
     _publish_json(built.manifest_path, attempt)
+    _publish_json(
+        built.run_root / "locks/run.lock",
+        orchestration_contracts.run_lock_record(attempt),
+    )
 
 
 def _manifest_sha256(path: Path) -> str:
@@ -1153,8 +1147,11 @@ def test_dispatch_hash_is_bound_before_parsing_or_producer_execution(
         machine_key=MACHINE_KEY,
         scope_id=SCOPE_ID,
     )
-    changed.definition["producer_argv"].append("--foreign-change")
-    _rewrite_task(changed)
+    modified_attempt = _record(changed.manifest_path)
+    modified_attempt["tasks"][MACHINE_KEY][SCOPE_ID]["producer_argv"].append(
+        "--foreign-change"
+    )
+    _publish_json(changed.manifest_path, modified_attempt)
     calls: list[tuple[str, ...]] = []
 
     def command(
@@ -1176,6 +1173,10 @@ def test_dispatch_hash_is_bound_before_parsing_or_producer_execution(
     )
     with pytest.raises(task.TaskBoundaryError, match="Workflow attempt changed"):
         task.run_task(admitted, backend=admitted.backend, ops=ops)
+    # Even a caller forwarding the modified file's matching hash cannot replace
+    # the original plan admitted by the already-published outer Run lock.
+    with pytest.raises(task.TaskBoundaryError, match="attempt_record_sha256"):
+        _execute_task(changed.plan, ops=ops)
     assert calls == []
 
 

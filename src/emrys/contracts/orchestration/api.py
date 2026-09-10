@@ -58,6 +58,7 @@ SCHEMA_IDS = {
 }
 SCHEMA_IDS.update(
     {
+        "run-lock": "urn:emrys:schema:orchestration:run-lock:v2",
         "resource-config": "urn:emrys:schema:orchestration:resource-config:v1",
         "execution-profile": "urn:emrys:schema:orchestration:execution-profile:v1",
         "profile": "urn:emrys:schema:orchestration:profile:v2",
@@ -191,10 +192,11 @@ def run_lock_record(attempt: Mapping[str, Any]) -> dict[str, Any]:
 
     identifier = str(attempt["workflow_attempt_id"])
     return {
-        "schema_version": "emrys.run-lock.v1",
+        "schema_version": "emrys.run-lock.v2",
         "run_id": attempt["run_id"],
         "workflow_attempt_id": identifier,
         "attempt_record_path": f"attempts/{identifier}/attempt.json",
+        "attempt_record_sha256": canonical_sha256(attempt),
         "owner_token": attempt["owner_token"],
         "process_id": attempt["process_id"],
         "host": attempt["host"],

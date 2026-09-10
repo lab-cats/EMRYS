@@ -203,17 +203,7 @@ def materialize_active_run_lock(built: WorkflowFixture) -> Path:
     attempt = orchestration_contracts.load_record(
         built.workflow_attempt_path, "workflow-attempt"
     )
-    identifier = str(attempt["workflow_attempt_id"])
-    record = {
-        "schema_version": "emrys.run-lock.v1",
-        "run_id": attempt["run_id"],
-        "workflow_attempt_id": identifier,
-        "attempt_record_path": f"attempts/{identifier}/attempt.json",
-        "owner_token": attempt["owner_token"],
-        "process_id": attempt["process_id"],
-        "host": attempt["host"],
-        "created_at": attempt["created_at"],
-    }
+    record = orchestration_contracts.run_lock_record(attempt)
     orchestration_contracts.validate_record("run-lock", record)
     locks_root = built.run_root / "locks"
     locks_root.mkdir(exist_ok=True)

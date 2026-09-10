@@ -152,8 +152,9 @@ scientific authority outside its declared tasks and artifacts.
 
 The initial Run tree and each Attempt directory must be absent before creation.
 Lifecycle holds a persistent advisory mutex while it revalidates the prepared
-Attempt. It then publishes the Run lock, including its evidence, before writing
-Attempt-specific inputs or records. A competing process
+Attempt. It then publishes the Run lock, including the admitted manifest's hash,
+before writing Attempt-specific inputs or records. Snakemake and workers check
+the manifest against that independently published lock before task entry. A competing process
 whose prepared state became stale while waiting exits before these writes and
 leaves no new Attempt residue.
 

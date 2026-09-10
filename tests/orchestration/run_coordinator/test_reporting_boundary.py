@@ -80,17 +80,7 @@ def _build(
         built.workflow_attempt_path,
         "workflow-attempt",
     )
-    identifier = str(attempt["workflow_attempt_id"])
-    run_lock = {
-        "schema_version": "emrys.run-lock.v1",
-        "run_id": attempt["run_id"],
-        "workflow_attempt_id": identifier,
-        "attempt_record_path": f"attempts/{identifier}/attempt.json",
-        "owner_token": attempt["owner_token"],
-        "process_id": attempt["process_id"],
-        "host": attempt["host"],
-        "created_at": attempt["created_at"],
-    }
+    run_lock = orchestration_contracts.run_lock_record(attempt)
     orchestration_contracts.validate_record("run-lock", run_lock)
     lock_path = built.run_root / "locks" / "run.lock"
     lock_path.parent.mkdir(exist_ok=True)

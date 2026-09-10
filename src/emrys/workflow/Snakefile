@@ -28,6 +28,8 @@ from emrys.orchestration.run_coordinator.resource_policy import (
     admit_resource_policy_record,
 )
 from emrys.orchestration.run_coordinator.inspection import (
+    InspectionError,
+    admit_attempt_run_lock,
     admit_execution_path,
     expected_tasks,
     state_tree_blockers,
@@ -45,6 +47,10 @@ WORKFLOW_ROOT = Path(workflow.basedir).resolve()
 WORKFLOW_ATTEMPT = dict(config)
 orchestration_contracts.validate_record("workflow-attempt", WORKFLOW_ATTEMPT)
 RUN_ROOT = Path(WORKFLOW_ATTEMPT["workspace"]) / "runs" / WORKFLOW_ATTEMPT["run_id"]
+try:
+    admit_attempt_run_lock(RUN_ROOT, WORKFLOW_ATTEMPT, require_active=True)
+except InspectionError as exc:
+    raise WorkflowError(f"Could not admit Attempt from run-lock evidence: {exc}") from exc
 CONFIGURED_PYTHON = Path(WORKFLOW_ATTEMPT["normalizer"]["path"])
 EXECUTION_PATH = RUN_ROOT / "contract" / "run.json"
 PROFILE_SNAPSHOT_PATH = RUN_ROOT / "contract" / "profile.json"

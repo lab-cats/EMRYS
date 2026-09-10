@@ -113,9 +113,14 @@ def _publish_attempt(
     built: workflow_fixture.WorkflowFixture,
     attempt: dict[str, Any],
 ) -> None:
-    built.workflow_attempt_path.write_bytes(
-        orchestration_contracts.canonical_json_bytes(attempt)
-    )
+    for path, record in (
+        (built.workflow_attempt_path, attempt),
+        (
+            built.run_root / "locks/run.lock",
+            orchestration_contracts.run_lock_record(attempt),
+        ),
+    ):
+        path.write_bytes(orchestration_contracts.canonical_json_bytes(record))
 
 
 def _dag(
@@ -846,9 +851,7 @@ def test_child_installed_package_identity_is_attested_before_graph_admission(
         built.workflow_attempt_path, "workflow-attempt"
     )
     attempt["installed_package"]["content_sha256"] = "0" * 64
-    built.workflow_attempt_path.write_bytes(
-        orchestration_contracts.canonical_json_bytes(attempt)
-    )
+    _publish_attempt(built, attempt)
 
     failed = _snakemake(built, "--dry-run", "--", "reference_slice", check=False)
 

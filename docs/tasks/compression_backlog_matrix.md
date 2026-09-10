@@ -11,7 +11,7 @@ The manifest replaces separate workflow configuration and task dispatch files.
 [The card](#cs-28-one-immutable-attempt-manifest) records the caller migration,
 recovery guarantees, measured serialization tradeoff, and outstanding checks.
 
-**CS-27: storage-inventory reporting retirement is implemented; verification is pending.**
+**[PR #158](https://github.com/lab-cats/EMRYS/pull/158): CS-27 is complete; hosted CI passed.**
 The user decided EMRYS should not own storage planning or retention-policy
 recordkeeping. Filesystem qualification remains required. The [card](#cs-27-retire-storage-inventory-reporting)
 records the removed surface and validation; existing data and evidence remain.
@@ -128,7 +128,7 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-24](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Render both reports directly through existing Jinja templates. | Done | 4 | 4 | Retire intermediate presentation dictionaries across both callers. | `COMPRESS-01` |
 | [CS-25](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Share equivalent reporting file and lock operations. | Done | 3 | 3 | Keep each stage's transaction order, rechecks, and owned rollback. | `COMPRESS-01` |
 | [CS-26](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Execute the installed package with its own workflow and R assets. | Done | 5 | 4 | Replace runtime Git reconciliation with exact package bytes and build provenance. | `COMPRESS-01` |
-| [CS-27](#cs-27-retire-storage-inventory-reporting) | Retire optional storage planning and retention-policy reporting. | Verification pending | 3 | 2 | Remove the entire optional command; preserve required filesystem qualification and retained evidence. | `COMPRESS-01` |
+| [CS-27](#cs-27-retire-storage-inventory-reporting) | Retire optional storage planning and retention-policy reporting. | Done | 3 | 2 | Remove the entire optional command; preserve required filesystem qualification and retained evidence. | `COMPRESS-01` |
 | [CS-28](#cs-28-one-immutable-attempt-manifest) | Persist one immutable Attempt manifest for workflow settings and task plans. | Verification pending | 4 | 4 | Retire configuration/dispatch files across execution, resume, inspection, reporting, and fixtures; preserve original task provenance. | `COMPRESS-01` |
 
 ## Acceptance shared by every card
@@ -1105,8 +1105,11 @@ locks, and recovery files are untouched.
 Local validation passes: 157 qualification and public-CLI cases, the source
 dependency checker, documentation structure, focused Ruff lint/format checks,
 and whitespace checks. No dependency installation or institutional execution
-was performed. Hosted CI remains pending on the published change; this card
-stays Verification pending until that run passes.
+was performed. [Hosted PR CI](https://github.com/lab-cats/EMRYS/actions/runs/34494756292)
+passed on `c751bb5f`: Python 3.14 shards and coverage, Python 3.11 smoke,
+workflow/static/docs/wheel, shell owners, guarded R, three managed-runtime
+platforms, and the managed golden path. Scheduled-only lanes were not run;
+this does not establish institutional execution or biological validation.
 
 The comparison against `de804299` removes 515 maintained product lines and
 four product files. Tests decrease by 493 lines, configuration by 6, and tooling
@@ -1128,7 +1131,10 @@ The migration covers materialization, lifecycle, task execution, Snakemake,
 resume, inspection, reporting, schema registration, shared fixtures, and the
 real synthetic E2E driver's resource inspection. Task starts and reporting
 starts bind the manifest once. Existing current-only version policy applies:
-Attempt, task-start, and reporting-start use v2; older records are not migrated.
+Attempt, run-lock, task-start, and reporting-start use v2; older records are not
+migrated. The runner publishes the manifest's hash in the existing Run lock
+before the manifest itself. Snakemake and workers reject a changed manifest
+against that independent hash before task entry.
 
 - **Preserved:** scientific commands and outputs, validation meaning, exact
   file and installed-package identities, publication order, locks, owned
@@ -1143,9 +1149,10 @@ Attempt, task-start, and reporting-start use v2; older records are not migrated.
 - **Environment-deferred:** fresh-install hosted integration, institutional
   filesystem execution, scientific review, and biological validation.
 
-The workflow reads each original manifest once. A worker decodes its selected
-manifest once and retains exact-byte rechecks at the existing boundaries.
-Inspection independently reloads evidence; it is not a shared mutable cache.
+Graph construction shares decoded manifests across task definitions. A worker
+decodes its selected manifest at startup and retains exact-byte rechecks at the
+existing boundaries. Inspection and reuse verification independently reload
+evidence; there is no shared mutable cache.
 
 A local synthetic probe on macOS/Python 3.13.15 compared the split layout with
 one manifest, using the same representative task definitions. These counts
