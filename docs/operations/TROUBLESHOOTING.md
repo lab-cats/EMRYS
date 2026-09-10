@@ -63,19 +63,12 @@ lock/staging state together. Never recreate one member independently.
 
 ## Project and runtime checks
 
-**Missing command or wrong checkout.** Restore `EMRYS_SOURCE_ROOT` to the intended
-checkout and run:
-
-```bash
-source "$EMRYS_SOURCE_ROOT/.venv/bin/activate"
-emrys --help
-git -C "$EMRYS_SOURCE_ROOT" status --porcelain=v1 --untracked-files=all
-```
-
-Return to the Project for Project commands. Do not add `PYTHONPATH` or copy
-packages. A clean checkout excludes nonignored untracked files too; preserve
-unexpected work and choose a separate clean reviewed checkout instead of
-removing changes to satisfy Doctor.
+**Missing command or wrong installation.** Activate the Python environment in
+which EMRYS was installed, then check `emrys --version -v`. Install or update
+EMRYS in that environment using its package manager; Doctor does not repair
+Python packages. Return to the Project for Project commands. Do not add
+`PYTHONPATH` or copy package files. Execution identifies the installed code and
+its build metadata, independently of the working directory and Git checkout.
 
 **Project initialization or input rejected.** Enter the directory containing
 `project.yaml`, or supply its full path with `--project`. Preview-only `init`

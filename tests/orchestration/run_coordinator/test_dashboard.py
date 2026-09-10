@@ -47,6 +47,7 @@ def test_parse_and_render_dynamic_per_stage_resource_plan() -> None:
     control = f"""
 Run ID: {RUN_ID}
 Run root: /work/runs/{RUN_ID}
+Package SHA-256: {"d" * 64}
 Step thread allocations:
   Step 00a: 12
   Step 01: 2
@@ -77,6 +78,7 @@ Reporting memory per transaction:
 """
 
     identity = dashboard.parse_identity(control)
+    assert identity["package_sha256"] == "d" * 64
 
     assert identity["workflow_cores"] == "12"
     assert identity["workflow_memory_mb"] == "524288"
@@ -715,7 +717,7 @@ def _dashboard_identity() -> dict[str, object]:
     return {
         "run_id": RUN_ID,
         "run_root": f"/work/runs/{RUN_ID}",
-        "source_commit": "a" * 40,
+        "package_sha256": "a" * 64,
         "attempt": "attempt-" + "b" * 20,
         "attempt_status": "running",
         "runtime_hash": "c" * 64,

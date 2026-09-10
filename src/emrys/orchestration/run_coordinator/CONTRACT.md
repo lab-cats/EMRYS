@@ -187,7 +187,7 @@ Run are the exact Step `00c` FAI/dictionary pair beside their canonical FASTA;
 partial or changed pairs fail before owner entry.
 
 The Attempt binds canonical Project, Execution Plan, composed-profile,
-workflow-config, backend, source checkout, runtime, tools, and storage evidence.
+workflow-config, backend, installed package, runtime, tools, and storage evidence.
 Source/runtime/tool identity is checked before mutation and after delegated
 execution. Direct placement requires an admitted same-host storage receipt;
 Slurm requires the stronger two-phase head/compute-node receipt. Neither

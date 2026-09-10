@@ -13,7 +13,7 @@ from emrys.reporting._files import FileSnapshot
 
 if TYPE_CHECKING:
     from emrys.analyses import LoadedAnalysisModuleV1
-    from emrys.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
+    from emrys.libraries.source_authority import ArtifactSourceRoot, InstalledPackage
 
 PRODUCER = "emrys.reporting.report"
 PRODUCER_VERSION = "5.2.0"
@@ -100,16 +100,8 @@ ReportRenderError = ReportProviderError
 
 
 @dataclass(frozen=True)
-class LockOwnership:
-    path: Path
-    token: str
-    device: int
-    inode: int
-
-
-@dataclass(frozen=True)
 class ReportContext:
-    source_checkout: SourceCheckout
+    installed_package: InstalledPackage
     artifact_source_root: ArtifactSourceRoot
     producer_git_commit: str
     run_summary_path: Path

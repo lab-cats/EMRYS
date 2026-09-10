@@ -36,13 +36,13 @@ options(
 if (!requireNamespace("renv", quietly = TRUE)) {
     stop(
         "The guarded renv activation did not load renv. ",
-        "Run through `make r-restore` from the repository root."
+        "Use Doctor repair, or the documented operator R restore command."
     )
 }
 
 project_request <- Sys.getenv("RENV_PROJECT", unset = "")
 if (!nzchar(project_request)) {
-    stop("RENV_PROJECT must identify the EMRYS repository root.")
+    stop("RENV_PROJECT must identify the external operator-owned R project.")
 }
 project_root <- normalizePath(project_request, winslash = "/", mustWork = TRUE)
 active_project <- normalizePath(
@@ -63,7 +63,7 @@ if (!identical(as.character(getRversion()), "4.6.1")) {
     stop("EMRYS local restore requires R 4.6.1; found ", R.version.string)
 }
 
-lockfile <- file.path(project_root, "renv.lock")
+lockfile <- Sys.getenv("RENV_PATHS_LOCKFILE", unset = "")
 if (!file.exists(lockfile)) {
     stop("Missing renv lockfile: ", lockfile)
 }

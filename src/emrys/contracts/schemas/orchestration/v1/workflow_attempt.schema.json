@@ -19,7 +19,7 @@
     "normalizer",
     "workspace",
     "scratch",
-    "source_checkout",
+    "installed_package",
     "executor",
     "execution_mode",
     "snakemake_argv",
@@ -133,8 +133,8 @@
         }
       ]
     },
-    "source_checkout": {
-      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/source_checkout"
+    "installed_package": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/installed_package"
     },
     "executor": {
       "const": "local"

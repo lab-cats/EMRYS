@@ -4,24 +4,24 @@ This private package prepares and publishes the Run result manifest and TSV view
 as one operation for the Run reporting coordinator and developer fixtures.
 [`context.py`](context.py) inspects native artifacts and derives the manifest and its projections;
 [`publication.py`](publication.py) owns their combined publication. Sibling reporting packages use private
-[`api.py`](api.py) for parsing, validation, serialization, and transaction helpers.
+[`api.py`](api.py) for parsing, validation, and serialization.
 Neither interface is a public command or operator recovery route. Filesystem
 identity helpers remain in [`source_authority.py`](../../libraries/source_authority.py)
 and are not re-exported here.
 
 ## Inputs and responsibilities
 
-The coordinator validates explicit source and artifact roots before Run inputs.
-Both stay on `BuildContext` under the common
-[root rules](../README.md#source-and-artifact-roots). Git `HEAD` and producer
-observations remain at their existing points during context construction,
-retaining their timing, diagnostics, and recorded evidence.
+The coordinator admits the installed package and an independent artifact root
+before Run inputs. Both stay on `BuildContext` under the common
+[root rules](../README.md#code-and-artifact-roots). Full installed-package identity
+is reobserved before attribution and publication; build-origin Git metadata is
+recorded when available, without running Git.
 
 The canonical processing profile and task definitions supply artifact ownership
 and producer paths through the orchestration contract owner. Reporting adds each
 native reader's file, header, and row-count rules; the selected Analysis descriptor
 supplies its own typed declarations. The immutable Run profile controls its artifact locations and transaction roster. Current processing ownership comes
-from the admitted source checkout, so a Run profile cannot authorize an artifact
+from the admitted installed package, so a Run profile cannot authorize an artifact
 under another owner. These inputs drive `registry.py`, `records.py`, and context
 preparation without scanning installed modules or discovering files.
 
@@ -57,8 +57,9 @@ expectations until this separately reviewed defect is fixed.
 
 ## Publication
 
-[`publication.py`](publication.py) provides byte writes, durability syncing,
-locks, removal, and signals under the common
+[`publication.py`](publication.py) uses the shared
+[`_files.py`](../_files.py) byte writes, durability syncing, locks, and owned-stage
+removal, with [`_signals.py`](../_signals.py) interruption handling under the common
 [recovery contract](../README.md#publication-and-recovery). One
 `.artifact-index.<token>.tmp.records` directory holds the two TSV projections
 and the canonical Run result manifest, retaining inode anchors while linking

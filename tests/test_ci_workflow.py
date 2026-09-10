@@ -190,7 +190,7 @@ def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
     assert "pixi-native-packages.json" in authorities["run"]
     assert "pixi-r-packages.json" in authorities["run"]
     assert "uv.lock" in authorities["run"]
-    assert "renv.lock" in authorities["run"]
+    assert "src/emrys/renv.lock" in authorities["run"]
     assert "picard-slim-3.1.1-*/picard.jar" in authorities["run"]
     assert "*/picard-3.1.1-*/picard.jar" not in authorities["run"]
 
@@ -382,7 +382,7 @@ def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
     assert cache["with"]["path"] == (
         "${{ runner.temp }}/emrys-managed-golden/project/runtime/managed/renv/cache"
     )
-    assert "renv.lock" in cache["with"]["key"]
+    assert "src/emrys/renv.lock" in cache["with"]["key"]
     assert "src/emrys/resources/runtime/pixi.lock" in cache["with"]["key"]
 
     path = journey["run"]

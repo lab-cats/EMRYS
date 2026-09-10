@@ -1,6 +1,6 @@
 # Paired-CMH analysis tests
 
-These tests cover Step 09 scientific worker arguments and outputs, independent
+These tests cover direct R outputs and planned arguments, requested-policy
 validation, an oracle calculated from counts, and a committed guarded real-R
 corpus. Shared runner tests cover publication and recovery. The
 [analysis contract](../../../src/emrys/analyses/paired_cmh_candidate_ranking/CONTRACT.md)

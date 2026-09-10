@@ -405,6 +405,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "referencing" },
     { name = "simple-term-menu" },
+    { name = "snakemake" },
 ]
 
 [package.dev-dependencies]
@@ -433,6 +434,7 @@ requires-dist = [
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "referencing", specifier = ">=0.28.4" },
     { name = "simple-term-menu", specifier = "==1.6.6" },
+    { name = "snakemake", specifier = "==9.25.1" },
 ]
 
 [package.metadata.requires-dev]

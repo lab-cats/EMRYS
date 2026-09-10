@@ -9,13 +9,13 @@ import hashlib
 import importlib
 import json
 import os
-import subprocess
 from collections import Counter
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 import pytest
+from emrys.libraries.source_authority import PACKAGE_ROOT
 from jsonschema import Draft202012Validator, FormatChecker
 from emrys import analyses
 from emrys.contracts.artifacts import api as ARTIFACT_CONTRACTS
@@ -24,36 +24,24 @@ from tests.contract_integration.validation_rosters.validation_roster_expectation
     assert_exact_check_roster,
 )
 from tests.reporting.fixtures.artifact_adapters_v1 import build_fixture as FIXTURE
+from emrys.reporting import _files
 from emrys.reporting._run_summary.models import RunSummaryError
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXED_EPOCH = "1700000000"
-GIT_ROUTING_VARIABLES = (
-    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
-    "GIT_CEILING_DIRECTORIES",
-    "GIT_COMMON_DIR",
-    "GIT_DIR",
-    "GIT_INDEX_FILE",
-    "GIT_OBJECT_DIRECTORY",
-    "GIT_WORK_TREE",
-    "GIT_FUTURE_ROUTING",
-)
 EXPECTED_PRODUCER_PATHS = {
-    "00a": "src/emrys/stages/star_index/step_00a_build_star_index.sh",
-    "00b": "src/emrys/stages/gtf_to_bed12/converter.py",
-    "00c": "src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
-    "01": "src/emrys/stages/star_alignment/step_01_star_align.sh",
-    "02": "src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh",
-    "02b": "src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
-    "03": (
-        "src/emrys/evidence/rseqc_orientation/"
-        "step_03_infer_strandedness_and_orientation.sh"
-    ),
-    "04": "src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh",
-    "05": "src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
-    "06": "src/emrys/stages/mechanical_orientation/producer.py",
-    "07": ("src/emrys/stages/partitioned_cohort_mpileup/producer.py"),
-    "08": ("src/emrys/stages/cohort_candidate_preprocessing/producer.py"),
+    "00a": "stages/star_index/step_00a_build_star_index.sh",
+    "00b": "stages/gtf_to_bed12/converter.py",
+    "00c": "stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
+    "01": "stages/star_alignment/step_01_star_align.sh",
+    "02": "stages/canonical_bam/step_02_sort_index_bam.sh",
+    "02b": "evidence/canonical_bam_qc/step_02b_bam_qc.sh",
+    "03": ("evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"),
+    "04": "stages/duplicate_marking/step_04_mark_duplicates.sh",
+    "05": "stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
+    "06": "stages/mechanical_orientation/producer.py",
+    "07": ("stages/partitioned_cohort_mpileup/producer.py"),
+    "08": "stages/cohort_candidate_preprocessing/r/preprocess_cohort.R",
 }
 VALIDATION_ARTIFACT_STEPS = {
     "ref.star_index.validation": "00a",
@@ -93,17 +81,6 @@ ARTIFACT_NATIVE = importlib.import_module(
 SOURCE_AUTHORITY = importlib.import_module("emrys.libraries.source_authority")
 
 
-@pytest.fixture(autouse=True)
-def fixture_source_observer(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        ARTIFACT_CONTEXT,
-        "matching_clean_checkout_head_commit",
-        lambda **_kwargs: ARTIFACT_CORE.get_git_commit(
-            source_root=REPO_ROOT, sanitize_git_routing=True
-        ),
-    )
-
-
 @pytest.fixture
 def artifact_fixture(tmp_path: Path) -> Any:
     return FIXTURE.build_fixture(tmp_path / "fixture")
@@ -115,7 +92,7 @@ def artifact_index_arguments(
     execute: bool = False,
 ) -> argparse.Namespace:
     return argparse.Namespace(
-        source_checkout=REPO_ROOT,
+        package_root=PACKAGE_ROOT,
         artifact_source_root=fixture.root,
         run_id=fixture.run_id,
         run_contract=fixture.run_contract,
@@ -159,7 +136,7 @@ def run_builder(
         try:
             context = ARTIFACT_CONTEXT.prepare_evidence_context(
                 prepared_arguments,
-                source_checkout=SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT),
+                installed_package=SOURCE_AUTHORITY.admit_installed_package(),
                 artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(
                     root=prepared_arguments.artifact_source_root
                 ),
@@ -171,7 +148,7 @@ def run_builder(
             ARTIFACT_MODELS.ArtifactIndexError,
             RunSummaryError,
             SOURCE_AUTHORITY.ArtifactSourceRootError,
-            SOURCE_AUTHORITY.SourceCheckoutError,
+            SOURCE_AUTHORITY.InstalledPackageError,
             ARTIFACT_CONTRACTS.ContractValidationError,
             OSError,
             ValueError,
@@ -223,7 +200,7 @@ def context_for(fixture: Any) -> Any:
             profile=FIXTURE.analysis_profile_v1(),
             execute=True,
         ),
-        source_checkout=SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT),
+        installed_package=SOURCE_AUTHORITY.admit_installed_package(),
         artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(root=fixture.root),
     )
 
@@ -279,7 +256,7 @@ def test_fixture_covers_exact_tracked_inventory_and_adapter_registry(
         row["artifact_id"] for row in FIXTURE.read_inventory_template()
     ]
     registry = ARTIFACT_REGISTRY.build_adapter_registry(
-        FIXTURE.analysis_module_v1(), source_root=REPO_ROOT
+        FIXTURE.analysis_module_v1(), source_root=PACKAGE_ROOT
     )
     assert {row["adapter"] for row in rows} == set(registry)
     assert len(artifact_fixture.source_paths) == 74
@@ -309,7 +286,7 @@ def test_migrated_implementation_evidence_uses_final_paths_and_current_bytes() -
         assert row["role"] == "implementation"
         assert row["path"] == expected_path
         expected_sha256 = hashlib.sha256(
-            (REPO_ROOT / expected_path).read_bytes()
+            (PACKAGE_ROOT / expected_path).read_bytes()
         ).hexdigest()
         assert row["sha256"] == expected_sha256
     assert evidence["09"] == evidence["10"]
@@ -341,80 +318,24 @@ def test_checkout_local_wheel_does_not_claim_the_core_commit() -> None:
     assert evidence["09"]["evidence"][0]["sha256"] == (module.provider.package.sha256)
 
 
-def test_git_commit_routing_sanitization_is_explicit_and_complete(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    commit = "a" * 40
-    calls: list[tuple[tuple[str, ...], dict[str, object]]] = []
-
-    def observe_run(
-        command: list[str],
-        **options: object,
-    ) -> subprocess.CompletedProcess[str]:
-        calls.append((tuple(command), options))
-        return subprocess.CompletedProcess(
-            args=command,
-            returncode=0,
-            stdout=f"{commit}\n",
-            stderr="",
-        )
-
-    for name in GIT_ROUTING_VARIABLES:
-        monkeypatch.setenv(name, f"hostile-{name}")
-    monkeypatch.setenv("EMRYS_GIT_ENV_SENTINEL", "retained")
-    monkeypatch.setattr(ARTIFACT_CORE.subprocess, "run", observe_run)
-
-    assert ARTIFACT_CORE.get_git_commit() == commit
-    assert (
-        ARTIFACT_CORE.get_git_commit(
-            source_root=tmp_path,
-            sanitize_git_routing=True,
-        )
-        == commit
-    )
-
-    expected_call_count = 2
-    assert len(calls) == expected_call_count
-    default_command, default_options = calls[0]
-    assert default_command == ("git", "rev-parse", "--verify", "HEAD")
-    assert default_options["cwd"] == ARTIFACT_CONTRACTS.REPO_ROOT
-    assert default_options["env"] is None
-    sanitized_command, sanitized_options = calls[1]
-    assert sanitized_command == default_command
-    assert sanitized_options["cwd"] == tmp_path
-    assert sanitized_options["check"] is True
-    assert sanitized_options["capture_output"] is True
-    assert sanitized_options["text"] is True
-    environment = sanitized_options["env"]
-    assert isinstance(environment, dict)
-    assert not any(name.startswith("GIT_") for name in environment)
-    assert environment["EMRYS_GIT_ENV_SENTINEL"] == "retained"
-
-
-def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
+def test_prepare_context_keeps_package_and_artifact_roots_distinct(
     artifact_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    source_checkout = SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT)
+    installed_package = SOURCE_AUTHORITY.admit_installed_package()
     artifact_source_root = SOURCE_AUTHORITY.ArtifactSourceRoot(
         root=artifact_fixture.root
     )
     root_calls: Counter[str] = Counter()
-    real_get_git_commit = ARTIFACT_CORE.get_git_commit
+    real_admit_package = SOURCE_AUTHORITY.admit_installed_package
     real_producer_evidence = ARTIFACT_CONTEXT.producer_evidence
     real_declared_contract_path = ARTIFACT_NATIVE.declared_contract_path
     real_validate_artifact_semantics = ARTIFACT_CONTRACTS.validate_artifact_semantics
 
-    def matching_clean_checkout_head_commit(
-        *,
-        source_checkout: Any,
-        package_root: Path,
-    ) -> str:
-        assert source_checkout.root == REPO_ROOT
-        assert package_root == Path(ARTIFACT_CONTEXT.__file__).resolve().parents[2]
-        root_calls["git"] += 1
-        return real_get_git_commit(source_root=REPO_ROOT, sanitize_git_routing=True)
+    def observe_package(*, root: Path) -> Any:
+        assert root == PACKAGE_ROOT
+        root_calls["package"] += 1
+        return real_admit_package(root=root)
 
     def producer_evidence(
         git_commit: str,
@@ -422,7 +343,7 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
         source_root: Path,
         analysis_module: Any,
     ) -> dict[str, dict[str, Any]]:
-        assert source_root == source_checkout.root
+        assert source_root == installed_package.root
         root_calls["producers"] += 1
         return real_producer_evidence(
             git_commit,
@@ -458,8 +379,8 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
 
     monkeypatch.setattr(
         ARTIFACT_CONTEXT,
-        "matching_clean_checkout_head_commit",
-        matching_clean_checkout_head_commit,
+        "admit_installed_package",
+        observe_package,
     )
     context = ARTIFACT_CONTEXT.prepare_evidence_context(
         argparse.Namespace(
@@ -471,28 +392,32 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
             profile=FIXTURE.analysis_profile_v1(),
             execute=False,
         ),
-        source_checkout=source_checkout,
+        installed_package=installed_package,
         artifact_source_root=artifact_source_root,
     )
 
-    assert context.index.source_checkout == source_checkout
+    assert context.index.installed_package == installed_package
     assert context.index.artifact_source_root == artifact_source_root
-    assert root_calls["git"] == 1
+    assert root_calls["package"] == 1
     assert root_calls["producers"] == 1
     assert root_calls["native_references"] > 0
     assert root_calls["record_semantics"] == len(artifact_fixture.inventory_rows)
 
 
-def test_prepare_context_rejects_unattributable_dirty_checkout(
+def test_prepare_context_rejects_changed_installed_package(
     artifact_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        ARTIFACT_CONTEXT, "matching_clean_checkout_head_commit", lambda **_kwargs: None
+        ARTIFACT_CONTEXT,
+        "admit_installed_package",
+        lambda **_kwargs: dataclasses.replace(
+            SOURCE_AUTHORITY.admit_installed_package(), content_sha256="0" * 64
+        ),
     )
     with pytest.raises(
         ARTIFACT_MODELS.ArtifactIndexError,
-        match="requires a stable clean source checkout",
+        match="Installed package changed before provenance attribution",
     ):
         ARTIFACT_CONTEXT.prepare_evidence_context(
             argparse.Namespace(
@@ -504,7 +429,7 @@ def test_prepare_context_rejects_unattributable_dirty_checkout(
                 profile=FIXTURE.analysis_profile_v1(),
                 execute=False,
             ),
-            source_checkout=SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT),
+            installed_package=SOURCE_AUTHORITY.admit_installed_package(),
             artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(
                 root=artifact_fixture.root
             ),
@@ -1216,14 +1141,19 @@ def test_post_commit_stage_cleanup_failure_preserves_new_transaction(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     context = context_for(artifact_fixture)
-    real_remove = ARTIFACT_PUBLICATION.remove_owned
+    real_remove = _files.remove_owned_stage
 
-    def fail_stage_cleanup(path: Path) -> None:
+    def fail_stage_cleanup(
+        path: Path,
+        token: str,
+        identity: tuple[int, int] | None,
+        error_type: type[Exception],
+    ) -> None:
         if path.name.endswith(".tmp.records"):
             raise OSError("injected stage cleanup failure")
-        real_remove(path)
+        real_remove(path, token, identity, error_type)
 
-    monkeypatch.setattr(ARTIFACT_PUBLICATION, "remove_owned", fail_stage_cleanup)
+    monkeypatch.setattr(_files, "remove_owned_stage", fail_stage_cleanup)
     with pytest.raises(ARTIFACT_MODELS.ArtifactIndexError, match="cleanup failed"):
         ARTIFACT_PUBLICATION.publish_context(context)
     assert (
@@ -1806,7 +1736,7 @@ def test_first_publication_rollback_fsync_failure_retains_recovery_lock(
     context = context_for(artifact_fixture)
     default_ops = ARTIFACT_PUBLICATION
     real_validate = default_ops.recheck_inputs
-    real_fsync_directory = default_ops.fsync_directory
+    real_fsync_directory = _files.fsync_path
     validation_failed = rollback_sync_failed = False
 
     def fail_post_publication_validation(value: Any) -> None:
@@ -1830,7 +1760,7 @@ def test_first_publication_rollback_fsync_failure_retains_recovery_lock(
         "recheck_inputs",
         fail_post_publication_validation,
     )
-    monkeypatch.setattr(ARTIFACT_PUBLICATION, "fsync_directory", fail_rollback_sync)
+    monkeypatch.setattr(_files, "fsync_path", fail_rollback_sync)
     with pytest.raises(
         ARTIFACT_MODELS.ArtifactIndexError,
         match="rollback was incomplete",

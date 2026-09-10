@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .definitions import REPO_ROOT, ContractValidationError
+from .definitions import PACKAGE_ROOT, ContractValidationError
 from .evidence import validate_computational_statuses
 from .identity import (
     require_unique_key,
@@ -25,7 +25,7 @@ _INCOMPLETE_SELECTED_ATTEMPT_STATES = {"failed", "cancelled", "blocked"}
 def validate_artifact_semantics(
     document: dict[str, Any],
     *,
-    source_root: Path = REPO_ROOT,
+    source_root: Path = PACKAGE_ROOT,
 ) -> None:
     artifact_label = f"artifact {document['artifact_id']!r}"
     implementation = document["implementation"]

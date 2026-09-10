@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from emrys.libraries.source_authority import admit_installed_package
 
 from emrys.orchestration.run_coordinator import reporting_operation
 
@@ -56,7 +57,7 @@ def _identity(root: Path, state: SimpleNamespace) -> SimpleNamespace:
         },
         attempt={
             **state.latest_attempt,
-            "source_checkout": {"path": str(root.parent), "commit": "b" * 40},
+            "installed_package": admit_installed_package().record,
         },
         config={
             "reporting_run_contract_path": {
@@ -576,8 +577,7 @@ def test_real_artifact_publisher_failure_stops_reporting_after_start(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from emrys.reporting._artifact_index import context, publication
-    from tests.orchestration.run_coordinator.fixtures import workflow
+    from emrys.reporting._artifact_index import publication
     from tests.reporting.fixtures.artifact_adapters_v1 import build_fixture
 
     root = (tmp_path / "run-real-producer-failure").resolve()
@@ -585,7 +585,6 @@ def test_real_artifact_publisher_failure_stops_reporting_after_start(
     state = _state(root)
     identity = _identity(root, state)
     identity.profile = build_fixture.analysis_profile_v1()
-    identity.attempt["source_checkout"]["path"] = str(build_fixture.REPO_ROOT)
     identity.config["reporting_run_contract_path"]["path"] = (
         built.run_contract.relative_to(root).as_posix()
     )
@@ -596,11 +595,6 @@ def test_real_artifact_publisher_failure_stops_reporting_after_start(
         "path": built.analysis_policy.relative_to(root).as_posix()
     }
     _install_admission(monkeypatch, state, identity)
-    monkeypatch.setattr(
-        context,
-        "matching_clean_checkout_head_commit",
-        lambda **_kwargs: workflow.source_checkout_commit(),
-    )
     events: list[str] = []
     monkeypatch.setattr(
         reporting_operation.reporting_boundary,
@@ -612,12 +606,12 @@ def test_real_artifact_publisher_failure_stops_reporting_after_start(
         "publish_verified",
         lambda **_kwargs: pytest.fail("failed producer cannot publish completion"),
     )
-    real_write = publication.write_bytes_exclusive
+    real_write = publication._files.write_bytes_exclusive
     failed = False
 
-    def fail_after_staged_projection(path: Path, payload: bytes) -> None:
+    def fail_after_staged_projection(path: Path, payload: bytes, *, mode: int) -> None:
         nonlocal failed
-        real_write(path, payload)
+        real_write(path, payload, mode=mode)
         if (
             path.name == f"{root.name}.run_summary.tsv"
             and path.parent.name.startswith(".artifact-index.")
@@ -627,7 +621,7 @@ def test_real_artifact_publisher_failure_stops_reporting_after_start(
             raise OSError("injected staged artifact-index failure")
 
     monkeypatch.setattr(
-        publication, "write_bytes_exclusive", fail_after_staged_projection
+        publication._files, "write_bytes_exclusive", fail_after_staged_projection
     )
 
     with pytest.raises(

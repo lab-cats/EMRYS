@@ -40,21 +40,20 @@ never changes Analysis or Run identity. Complete bundles are reused only after
 current-source semantic revalidation. Old-version Run inspection, resume, and
 report regeneration are unsupported; their data and evidence remain untouched.
 
-## Source and artifact roots
+## Code and artifact roots
 
-Before reading inputs, production callers validate two explicit roots through
-[`libraries/source_authority.py`](../libraries/source_authority.py). The source
-checkout must be a canonical EMRYS Git top level without symlinks and match the
-executing package's bytes. It supplies producer paths, hashes, and Git identity.
-The independent artifact root resolves contract-relative inventory and native
-paths, including post-publication validation. Neither comes from
-the working directory or a run-summary location.
+Production callers observe the installed EMRYS package through
+[`source_authority.py`](../libraries/source_authority.py). Its exact code hash,
+version, and build provenance enter the manifest and report receipt. Native
+producer paths resolve within that package. Admission repeats at the existing
+input and publication boundaries to detect changes during the operation; it
+does not require Git or a matching checkout.
 
-Both roots remain in prepared contexts through publication and input rechecks;
-publishers neither infer nor re-admit them. Git observations ignore ambient
-`GIT_*` routing but preserve unrelated environment settings. Source authority
-caches neither the Git commit nor producer state; each transaction keeps its
-own established observation points and real input-recheck callbacks.
+An independent canonical artifact root resolves contract-relative inventory and
+native data paths. Both roots remain explicit in prepared contexts through
+publication and rechecks; neither is inferred from the working directory or
+from the summary's location. This keeps the generating code distinct from the
+scientific data it reads.
 
 ## Publication and recovery
 

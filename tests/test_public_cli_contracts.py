@@ -159,7 +159,9 @@ DIRECT_SHELL_ENTRYPOINTS = SHELL_ENTRYPOINTS - INTERPRETER_ONLY_SHELL_DEFECTS
 
 R_ENTRYPOINT_PATHS = {
     "check_r_environment.R": Path("scripts/check_r_environment.R"),
-    "restore_r_environment.R": Path("scripts/restore_r_environment.R"),
+    "restore_r_environment.R": Path(
+        "src/emrys/resources/runtime/restore_r_environment.R"
+    ),
     "step_08_vcf_preprocessing.R": Path(
         "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"
     ),
@@ -550,53 +552,6 @@ def test_installed_emrys_commands_are_isolated_and_cwd_independent(
     assert parse_failure.returncode != 0
     assert expected_usage in parse_failure.stderr
     assert "foreign emrys package imported" not in help_result.stderr
-    assert relative_snapshot(tmp_path) == before
-
-
-@pytest.mark.parametrize(
-    ("configuration", "expected_status"),
-    (
-        ("[project\n", 0),
-        ('[project]\nname = "another-project"\n', 0),
-        ('[project]\nname = "emrys-rna-workflow"\n', CLI_USAGE_ERROR),
-    ),
-)
-def test_checkout_authority_ignores_nonowners_and_rejects_another_owner(
-    tmp_path: Path,
-    configuration: str,
-    expected_status: int,
-) -> None:
-    checkout = tmp_path / "checkout"
-    invocation_cwd = checkout / "nested"
-    package = checkout / "src" / "emrys"
-    invocation_cwd.mkdir(parents=True)
-    package.mkdir(parents=True)
-    (package / "__init__.py").write_text("", encoding="utf-8")
-    (checkout / "pyproject.toml").write_text(configuration, encoding="utf-8")
-    before = relative_snapshot(tmp_path)
-
-    result = run_command(
-        [sys.executable, "-I", "-m", "emrys", "--help"],
-        cwd=invocation_cwd,
-    )
-
-    assert result.returncode == expected_status
-    if expected_status == 0:
-        assert "usage: emrys" in result.stdout
-    else:
-        assert "not the current checkout" in result.stderr
-        version = run_command(
-            [sys.executable, "-I", "-m", "emrys", "--version", "-v"],
-            cwd=invocation_cwd,
-        )
-        assert version.returncode == 0, version.stderr
-        assert f"Package: {Path(emrys.__file__).resolve().parent}" in version.stdout
-        literal = run_command(
-            [sys.executable, "-I", "-m", "emrys", "inspect", "--", "--version"],
-            cwd=invocation_cwd,
-        )
-        assert literal.returncode == CLI_USAGE_ERROR
-        assert "not the current checkout" in literal.stderr
     assert relative_snapshot(tmp_path) == before
 
 

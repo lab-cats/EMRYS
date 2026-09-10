@@ -23,6 +23,7 @@ from pathlib import Path
 from emrys.contracts.scientific_evidence import step09
 from emrys.contracts.scientific_evidence import scientific_context
 from emrys import analyses
+from emrys.libraries.source_authority import PACKAGE_ROOT
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys.reporting._artifact_index.registry import build_adapter_registry
@@ -31,7 +32,9 @@ from tests.scientific_context_test_support import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-ADAPTER_REGISTRY = build_adapter_registry(analysis_module_v1(), source_root=REPO_ROOT)
+ADAPTER_REGISTRY = build_adapter_registry(
+    analysis_module_v1(), source_root=PACKAGE_ROOT
+)
 INVENTORY_TEMPLATE = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
 INVENTORY_HEADER = (
     "artifact_id",
@@ -66,7 +69,7 @@ CANONICAL_BGZF_EOF_BLOCK = bytes.fromhex(
 
 def analysis_profile_v1() -> dict[str, object]:
     base = orchestration_contracts.load_json_object(
-        REPO_ROOT / "workflow/contracts/local_cmh_v2.json"
+        PACKAGE_ROOT / "workflow/contracts/local_cmh_v2.json"
     )
     descriptor = analysis_module_v1()
     profile = analyses.compose_profile(base, descriptor)
@@ -121,25 +124,6 @@ class FixturePaths:
     @property
     def lock_path(self) -> Path:
         return self.output_dir / f".{self.run_id}.artifact-index.lock"
-
-    def command_args(self, *, execute: bool = False) -> list[str]:
-        arguments = [
-            "--source-checkout",
-            str(REPO_ROOT),
-            "--artifact-source-root",
-            str(self.root),
-            "--run-id",
-            self.run_id,
-            "--run-contract",
-            str(self.run_contract),
-            "--inventory",
-            str(self.inventory),
-            "--output-root",
-            str(self.output_root),
-        ]
-        if execute:
-            arguments.append("--execute")
-        return arguments
 
     def source_for(self, artifact_id: str) -> Path:
         return self.source_paths[artifact_id]

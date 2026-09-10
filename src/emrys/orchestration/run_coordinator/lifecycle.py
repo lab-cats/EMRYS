@@ -535,16 +535,16 @@ def _within(path: Path, root: Path, label: str) -> None:
         raise LifecycleError(f"{label} must be beneath run_root: {path}") from exc
 
 
-def _require_disjoint_roots(run_root: Path, source_checkout: Path) -> None:
+def _require_disjoint_roots(run_root: Path, package_root: Path) -> None:
     """Keep orchestration mutations wholly outside the reviewed source tree."""
 
     if (
-        run_root == source_checkout
-        or run_root in source_checkout.parents
-        or source_checkout in run_root.parents
+        run_root == package_root
+        or run_root in package_root.parents
+        or package_root in run_root.parents
     ):
         raise LifecycleError(
-            "run_root and source_checkout must be disjoint canonical directories"
+            "run_root and package_root must be disjoint canonical directories"
         )
 
 
@@ -1175,27 +1175,23 @@ def _admit_runtime_context(
     storage_binding: "RuntimeBinding | None",
     initial_inspection: "RuntimeInspection | None",
 ) -> None:
-    """Observe clean source/package and exact required executor identity."""
+    """Observe installed package and exact required executor identity."""
 
     from emrys.libraries import source_authority  # noqa: PLC0415
 
-    declared = attempt["source_checkout"]
+    declared = attempt["installed_package"]
     _admit_python_launcher(request.python_executable)
-    observed = source_authority.inspect_source_checkout(
-        root=Path(str(declared["path"])),
-        package_root=Path(__file__).resolve().parents[2],
-        require_clean=True,
+    observed = source_authority.admit_installed_package(
+        root=Path(str(declared["path"]))
     )
-    if (
-        observed.root != Path(str(declared["path"]))
-        or observed.commit != declared["commit"]
-        or observed.clean is not True
-    ):
-        raise LifecycleError("Declared source checkout differs from observed identity")
+    if observed.record != declared:
+        raise LifecycleError(
+            "Declared package differs from observed installed identity"
+        )
     try:
         request.snakefile.relative_to(observed.root)
     except ValueError as exc:
-        raise LifecycleError("Snakefile is outside declared source checkout") from exc
+        raise LifecycleError("Snakefile is outside declared installed package") from exc
     tools = {str(item["name"]): item for item in attempt["required_tools"]}
     for identity in tools.values():
         _admit_required_tool_identity(identity)
@@ -1483,7 +1479,7 @@ def _admit_request(
         resource_limits=resources.scheduler_limits(),
     )
     identifier = str(attempt["workflow_attempt_id"])
-    source_root = Path(str(attempt["source_checkout"]["path"]))
+    source_root = Path(str(attempt["installed_package"]["path"]))
     _require_disjoint_roots(root, source_root)
     expected_snakefile = source_root / SNAKEFILE_RELATIVE
     expected_workflow_profile = source_root / WORKFLOW_PROFILE_RELATIVE

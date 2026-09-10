@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-import tomllib
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any, cast
@@ -37,7 +36,7 @@ import emrys.stages.star_alignment.validator as star_alignment_validation_comman
 import emrys.stages.star_index.validator as star_index_validation_command
 from emrys import __version__
 from emrys.libraries.source_authority import (
-    SourceCheckoutError,
+    InstalledPackageError,
     require_controlled_python_runtime,
 )
 
@@ -67,37 +66,6 @@ _VALIDATION_OWNERS = (
     ("star-index", star_index_validation_command),
     ("star-alignment", star_alignment_validation_command),
 )
-
-
-def _find_checkout_root(start: Path) -> Path | None:
-    for candidate in (start, *start.parents):
-        configuration_path = candidate / "pyproject.toml"
-        package_path = candidate / "src" / "emrys" / "__init__.py"
-        if not configuration_path.is_file() or not package_path.is_file():
-            continue
-        try:
-            configuration = tomllib.loads(
-                configuration_path.read_text(encoding="utf-8")
-            )
-        except (OSError, tomllib.TOMLDecodeError):
-            continue
-        if configuration.get("project", {}).get("name") == "emrys-rna-workflow":
-            return candidate
-    return None
-
-
-def _checkout_mismatch() -> str | None:
-    checkout_root = _find_checkout_root(Path.cwd().resolve())
-    if checkout_root is None:
-        return None
-    expected_package = checkout_root / "src" / "emrys"
-    imported_package = Path(__file__).resolve().parent
-    if imported_package == expected_package.resolve():
-        return None
-    return (
-        f"selected interpreter imports EMRYS from {imported_package}, "
-        f"not the current checkout at {expected_package}"
-    )
 
 
 def _add_owned_command(
@@ -230,7 +198,7 @@ def _add_onboarding_commands(command_parsers: Any) -> None:
 def _admit_controlled_runtime() -> bool:
     try:
         require_controlled_python_runtime()
-    except SourceCheckoutError as exc:
+    except InstalledPackageError as exc:
         print(f"emrys: error: {exc}", file=sys.stderr)
         return False
     return True
@@ -378,10 +346,6 @@ def _normalize_public_argv(argv: Sequence[str]) -> tuple[str, ...]:
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse and dispatch one supported EMRYS command."""
     supplied = sys.argv[1:] if argv is None else argv
-    version_display = "--version" in supplied and set(supplied) <= {"--version", "-v"}
-    if not version_display and (mismatch := _checkout_mismatch()):
-        print(f"emrys: error: {mismatch}", file=sys.stderr)
-        return 2
     parser = build_parser()
     arguments, unrecognized = parser.parse_known_args(_normalize_public_argv(supplied))
     if unrecognized:

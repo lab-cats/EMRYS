@@ -68,7 +68,7 @@ rank or modification of Step `09`.
 
 Inputs are a safe analysis ID; nonempty Step `09` all/significant/summary TSVs;
 nonempty FASTA and exact FAI; the exact one-row owner motif catalog; output
-destinations; explicit Rscript/R-program resolution; and the repository commit.
+destinations; explicit Rscript/R-program resolution; and the recorded build origin.
 The shell hashes all six scientific inputs before R and passes those digests
 to the receipt producer. The runner owns stable-input rechecks.
 
@@ -86,7 +86,11 @@ The four payload headers and canonical receipt header are owned by
 `emrys.contracts.scientific_evidence.scientific_context`. The receipt binds
 absolute canonical input/output paths, lowercase hashes, data-row counts,
 the transaction and receipt schema versions, every fixed policy,
-R/Biostrings/Rsamtools versions, producer, commit, and complete state. The R
+R/Biostrings/Rsamtools versions, producer, build origin, and complete state.
+`git_commit` contains the known full lowercase Git object ID, or the literal
+`unavailable` when the installed build has no Git origin. The Attempt and report
+retain the exact installed-package content hash separately; a content hash is
+never presented as a Git commit. The R
 producer serializes and hashes all four payloads before serializing the
 receipt. The shell independently reconciles its four hashes and row counts
 against the staged payloads before returning.

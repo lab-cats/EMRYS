@@ -74,6 +74,8 @@ def _produce(arguments: argparse.Namespace) -> int:
 
 
 def _validate(arguments: argparse.Namespace) -> int:
+    if arguments.input is not None:
+        arguments.input.read_bytes()
     row = (
         arguments.step_id,
         arguments.scope_id,
@@ -114,6 +116,7 @@ def _parser() -> argparse.ArgumentParser:
     producer.set_defaults(action=_produce)
 
     validator = subparsers.add_parser("validator")
+    validator.add_argument("--input", type=Path)
     validator.add_argument("--report", required=True, type=Path)
     validator.add_argument("--step-id", required=True)
     validator.add_argument("--scope-id", required=True)

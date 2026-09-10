@@ -76,27 +76,9 @@ main <- function() {
         abort("Step 07 root does not exist or is not a directory: ", step07_root)
     }
 
-    sample_hash <- validate_hash(
-        "sample-manifest-sha256",
-        arguments[["sample-manifest-sha256"]]
-    )
-    partition_hash <- validate_hash(
-        "partition-manifest-sha256",
-        arguments[["partition-manifest-sha256"]]
-    )
-    annotation_hash <- validate_hash(
-        "annotation-gtf-sha256",
-        arguments[["annotation-gtf-sha256"]]
-    )
-    if (sha256_file(sample_manifest) != sample_hash) {
-        abort("Sample manifest SHA-256 changed before R processing.")
-    }
-    if (sha256_file(partition_manifest) != partition_hash) {
-        abort("Partition manifest SHA-256 changed before R processing.")
-    }
-    if (sha256_file(annotation_gtf) != annotation_hash) {
-        abort("Annotation GTF SHA-256 changed before R processing.")
-    }
+    sample_hash <- sha256_file(sample_manifest)
+    partition_hash <- sha256_file(partition_manifest)
+    annotation_hash <- sha256_file(annotation_gtf)
 
     output_paths <- c(
         arguments[["sites-output"]],

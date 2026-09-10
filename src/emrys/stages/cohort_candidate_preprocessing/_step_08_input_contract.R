@@ -4,8 +4,7 @@
 
 ARGUMENT_NAMES <- c(
     "cohort-id", "sample-manifest", "partition-manifest", "step07-root",
-    "annotation-gtf", "sample-manifest-sha256", "partition-manifest-sha256",
-    "annotation-gtf-sha256", "threads", "sites-output", "inputs-output",
+    "annotation-gtf", "threads", "sites-output", "inputs-output",
     "summary-output"
 )
 REQUIRED_ARGUMENT_NAMES <- setdiff(ARGUMENT_NAMES, "threads")
@@ -19,9 +18,6 @@ usage <- function() {
         "    --partition-manifest PARTITION_MANIFEST \\\n",
         "    --step07-root STEP07_ROOT \\\n",
         "    --annotation-gtf ANNOTATION_GTF \\\n",
-        "    --sample-manifest-sha256 SHA256 \\\n",
-        "    --partition-manifest-sha256 SHA256 \\\n",
-        "    --annotation-gtf-sha256 SHA256 \\\n",
         "    [--threads THREADS] \\\n",
         "    --sites-output PATH \\\n",
         "    --inputs-output PATH \\\n",
@@ -61,13 +57,6 @@ validate_safe_id <- function(label, value) {
             label, " must match [A-Za-z0-9][A-Za-z0-9._-]*; got: ", value
         )
     }
-}
-
-validate_hash <- function(label, value) {
-    if (!grepl("^[[:xdigit:]]{64}$", value)) {
-        abort(label, " is not a 64-character SHA-256 digest: ", value)
-    }
-    tolower(value)
 }
 
 sha256_file <- function(path) {
@@ -387,38 +376,6 @@ parse_regions_file <- function(value, partition_id, manifest_path) {
     do.call(rbind, result)
 }
 
-merge_intervals <- function(intervals) {
-    if (nrow(intervals) == 0L) {
-        return(intervals)
-    }
-    ordered <- intervals[order(
-        intervals$chromosome, intervals$start, intervals$end,
-        method = "radix"
-    ), , drop = FALSE]
-    output <- vector("list", nrow(ordered))
-    output_count <- 0L
-    for (index in seq_len(nrow(ordered))) {
-        current <- ordered[index, , drop = FALSE]
-        if (output_count == 0L) {
-            output_count <- 1L
-            output[[output_count]] <- current
-            next
-        }
-        previous <- output[[output_count]]
-        adjacent <- previous$end < (.Machine$integer.max - 1L) &&
-            current$start == previous$end + 1L
-        if (current$chromosome == previous$chromosome &&
-            (current$start <= previous$end || adjacent)) {
-            previous$end <- max(previous$end, current$end)
-            output[[output_count]] <- previous
-        } else {
-            output_count <- output_count + 1L
-            output[[output_count]] <- current
-        }
-    }
-    do.call(rbind, output[seq_len(output_count)])
-}
-
 validate_partition_nonoverlap <- function(partitions, manifest_path) {
     interval_sets <- vector("list", nrow(partitions))
     for (index in seq_len(nrow(partitions))) {
@@ -430,30 +387,40 @@ validate_partition_nonoverlap <- function(partitions, manifest_path) {
                 row$selector_value, row$partition_id, manifest_path
             )
         }
-        interval_sets[[index]] <- merge_intervals(intervals)
+        ranges <- GenomicRanges::reduce(GenomicRanges::GRanges(
+            seqnames = intervals$chromosome,
+            ranges = IRanges::IRanges(start = intervals$start, end = intervals$end)
+        ))
+        ranges <- ranges[order(
+            as.character(GenomeInfoDb::seqnames(ranges)),
+            BiocGenerics::start(ranges), BiocGenerics::end(ranges), method = "radix"
+        )]
+        ranges$partition_id <- rep(row$partition_id, length(ranges))
+        interval_sets[[index]] <- ranges
     }
-    combined <- do.call(rbind, interval_sets)
-    ranges <- GenomicRanges::GRanges(
-        seqnames = combined$chromosome,
-        ranges = IRanges::IRanges(start = combined$start, end = combined$end)
-    )
-    S4Vectors::mcols(ranges)$partition_id <- combined$partition_id
+    seqlevels <- sort(unique(unlist(lapply(
+        interval_sets, GenomeInfoDb::seqlevels
+    ))), method = "radix")
+    for (index in seq_along(interval_sets)) {
+        GenomeInfoDb::seqlevels(interval_sets[[index]]) <- seqlevels
+    }
+    ranges <- do.call(c, interval_sets)
     hits <- GenomicRanges::findOverlaps(ranges, ranges, ignore.strand = TRUE)
     query <- S4Vectors::queryHits(hits)
     subject <- S4Vectors::subjectHits(hits)
     cross <- query < subject &
-        combined$partition_id[query] != combined$partition_id[subject]
+        ranges$partition_id[query] != ranges$partition_id[subject]
     if (any(cross)) {
         hit <- which(cross)[[1L]]
         left <- query[[hit]]
         right <- subject[[hit]]
         abort(
-            "Partition selectors overlap: ", combined$partition_id[[left]],
-            " (", combined$chromosome[[left]], ":", combined$start[[left]], "-",
-            combined$end[[left]], ") and ",
-            combined$partition_id[[right]], " (",
-            combined$chromosome[[right]], ":", combined$start[[right]], "-",
-            combined$end[[right]], ")."
+            "Partition selectors overlap: ", ranges$partition_id[[left]],
+            " (", as.character(GenomeInfoDb::seqnames(ranges))[[left]], ":", BiocGenerics::start(ranges)[[left]], "-",
+            BiocGenerics::end(ranges)[[left]], ") and ",
+            ranges$partition_id[[right]], " (",
+            as.character(GenomeInfoDb::seqnames(ranges))[[right]], ":", BiocGenerics::start(ranges)[[right]], "-",
+            BiocGenerics::end(ranges)[[right]], ")."
         )
     }
     invisible(TRUE)

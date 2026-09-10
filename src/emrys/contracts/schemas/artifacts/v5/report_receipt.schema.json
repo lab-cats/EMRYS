@@ -189,6 +189,9 @@
     "validation_claimed": {"const": false},
     "warnings": {"type": "array", "items": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/issue"}},
     "errors": {"type": "array", "maxItems": 0, "items": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/issue"}},
-    "provenance": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/provenance"}
+    "provenance": {"allOf": [
+      {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/provenance"},
+      {"required": ["installed_package"]}
+    ]}
   }
 }

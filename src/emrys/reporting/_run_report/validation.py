@@ -22,6 +22,7 @@ from .models import (
     ACTIVE_RESOURCE_ATTRIBUTES,
     ACTIVE_URI_RE,
     CSS_RESOURCE_RE,
+    COMPUTATIONAL_STATUS_FIELDS,
     EVIDENCE_REPORT_SECTION_IDS,
     REMOTE_URI_RE,
     ReportRenderError,
@@ -31,7 +32,7 @@ from .models import (
 def build_environment() -> Environment:
     """Return the closed deterministic environment used by installed reports."""
 
-    return Environment(
+    environment = Environment(
         loader=PackageLoader("emrys.reporting", "templates"),
         autoescape=select_autoescape(enabled_extensions=("html", "j2"), default=True),
         undefined=StrictUndefined,
@@ -40,6 +41,13 @@ def build_environment() -> Environment:
         keep_trailing_newline=True,
         newline_sequence="\n",
     )
+
+    environment.filters["display"] = lambda value: (
+        "Not available"
+        if value is None
+        else (str(value).lower() if isinstance(value, bool) else str(value))
+    )
+    return environment
 
 
 def validate_template_source(source: str) -> None:
@@ -73,14 +81,29 @@ def _validate_css_resources(css: str, label: str) -> None:
         _fail(f"{label} contains an unsafe raw HTML boundary")
 
 
-def render_html(view: Mapping[str, Any], css: str) -> bytes:
+def render_html(
+    summary: Mapping[str, Any], css: str, *, report_view: str, **content: Any
+) -> bytes:
     environment = build_environment()
     source, _, _ = environment.loader.get_source(environment, "run_report.html.j2")
     validate_template_source(source)
     _validate_css_resources(css, "Report CSS resource")
+    values = dict(
+        metadata={},
+        result_links=(),
+        inspect_command="emrys inspect <RUN>",
+        renderer_details=(),
+        figure_evidence=(),
+        report_inputs=(),
+        analysis_policy=None,
+    )
+    values.update(content)
     rendered = environment.get_template("run_report.html.j2").render(
-        view=view,
+        summary=summary,
         css=css,
+        report_view=report_view,
+        status_fields=COMPUTATIONAL_STATUS_FIELDS,
+        **values,
     )
     return rendered.encode("utf-8")
 

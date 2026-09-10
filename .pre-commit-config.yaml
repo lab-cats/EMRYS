@@ -7,13 +7,13 @@ repos:
         entry: .venv/bin/ruff check --no-cache
         language: system
         types_or: [python, pyi]
-        files: ^(scripts|src/emrys|tests)/
+        files: ^((scripts|src/emrys|tests)/|setup\.py$)
       - id: ruff-format
         name: Ruff formatting
         entry: .venv/bin/ruff format --check --no-cache
         language: system
         types_or: [python, pyi]
-        files: ^(scripts|src/emrys|tests)/
+        files: ^((scripts|src/emrys|tests)/|setup\.py$)
       - id: shellcheck
         name: ShellCheck
         entry: .venv/bin/shellcheck

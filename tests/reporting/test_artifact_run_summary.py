@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from emrys.libraries.source_authority import PACKAGE_ROOT
 from jsonschema import Draft202012Validator, FormatChecker
 
 from emrys.contracts.artifacts import api as CONTRACTS
@@ -24,14 +25,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture
-def run_summary_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Any:
-    monkeypatch.setattr(
-        FIXTURE.ARTIFACT_CONTEXT,
-        "matching_clean_checkout_head_commit",
-        lambda **_kwargs: FIXTURE.ARTIFACT_CORE.get_git_commit(
-            source_root=REPO_ROOT, sanitize_git_routing=True
-        ),
-    )
+def run_summary_fixture(tmp_path: Path) -> Any:
     return FIXTURE.build_fixture(tmp_path / "fixture")
 
 
@@ -294,7 +288,7 @@ def test_combined_readmission_keeps_summary_json_and_views_byte_identical(
     before = summary_snapshot(run_summary_fixture)
 
     result = REPORTING_VALIDATION.validate_run_summary_transaction(
-        source_checkout=REPO_ROOT,
+        package_root=PACKAGE_ROOT,
         artifact_source_root=run_summary_fixture.root,
         run_id=run_summary_fixture.run_id,
         run_contract=run_summary_fixture.adapter_fixture.run_contract,

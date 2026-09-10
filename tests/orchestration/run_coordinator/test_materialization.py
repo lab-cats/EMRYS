@@ -132,8 +132,7 @@ class _TerminalOutput:
 def _readiness(
     tmp_path: Path,
     *,
-    source_root: Path = REPO_ROOT,
-    source_commit: str = "a" * 40,
+    source_root: Path = source_authority.PACKAGE_ROOT,
     workflow_cores: int = 1,
     stage_concurrency: dict[str, int] | None = None,
     step_threads: dict[str, int] | None = None,
@@ -296,8 +295,9 @@ def _readiness(
     readiness = doctor.DoctorResult(
         project=project,
         analysis=analysis,
-        source_root=source_root,
-        source_commit=source_commit,
+        installed_package=replace(
+            source_authority.admit_installed_package(), root=source_root
+        ),
         inspection=runtime_inspection,
         bindings=bindings,
         blockers=(),
@@ -794,7 +794,8 @@ def test_plan_is_no_write_and_projects_exact_worker_roster(
     assert "EMRYS_USE_RENV" in r_bootstrap
     assert "RENV_PATHS_LIBRARY" in r_bootstrap
     assert "R_DEFAULT_PACKAGES" in r_bootstrap
-    assert "--no-environ" not in producer
+    assert "--no-environ" in producer
+    assert any(item.endswith("step_08_vcf_preprocessing.R") for item in producer)
     assert str(tmp_path / "renv-library") in producer
     assert_root(step08, "--step07-root", ".FWD_like.mpileup.vcf", 2)
     for flag, suffix in (
@@ -811,15 +812,9 @@ def test_plan_is_no_write_and_projects_exact_worker_roster(
         if record["machine_key"]
         == "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1"
     )
-    step09_prefix = controlled_python_argv(
-        sys.executable,
-        "-m",
-        "emrys.analyses.paired_cmh_candidate_ranking.producer",
-    )
     producer_argv = tuple(step09["producer_argv"])
     assert any(
-        producer_argv[index : index + len(step09_prefix)] == step09_prefix
-        for index in range(len(producer_argv) - len(step09_prefix) + 1)
+        item.endswith("step_09_cmh_editing_site_calling.R") for item in producer_argv
     )
     assert (
         next(item for item in producer_argv if "EMRYS_LOCAL_PILOT_R" in item)
@@ -828,7 +823,12 @@ def test_plan_is_no_write_and_projects_exact_worker_roster(
     assert "step_09_cmh_editing_site_calling.sh" not in " ".join(
         step09["producer_argv"]
     )
-    assert_root(step09, "--step08-root", ".step08_sites.tsv", 1)
+    assert producer_argument(step09, "--step08-sites") == next(
+        Path(item["path"])
+        for item in step09["inputs"]
+        if item["path"].endswith(".step08_sites.tsv")
+    )
+    assert "--expected-mean-dp-threshold" in step09["validator_argv"]
     assert producer_argument(step09, "--all-sites-output") == Path(
         step09["outputs"][0]["working_path"]
     )
@@ -1419,12 +1419,8 @@ def _runtime_admission_fixture(
     publish_attempt(plan, ops=ops)
     monkeypatch.setattr(
         source_authority,
-        "inspect_source_checkout",
-        lambda **_kwargs: SimpleNamespace(
-            root=plan.readiness.source_root,
-            commit=plan.readiness.source_commit,
-            clean=True,
-        ),
+        "admit_installed_package",
+        lambda **_kwargs: plan.readiness.installed_package,
     )
     monkeypatch.setattr(
         doctor,
@@ -1734,24 +1730,21 @@ def test_attempt_plan_records_placement_without_making_it_run_compatibility(
 def test_run_identity_excludes_attempt_reporting_and_cli_adapter_code(
     tmp_path: Path,
 ) -> None:
-    checkout, commit = _clean_checkout(tmp_path)
+    checkout = _package_copy(tmp_path)
     readiness, resources, _request, _workspace = _readiness(
         tmp_path / "case",
         source_root=checkout,
-        source_commit=commit,
     )
     baseline = _run_candidate(readiness, resources)
     baseline_backend = backend_semantics_identity(checkout)
 
-    report_renderer = checkout / "src/emrys/reporting/_run_report/context.py"
+    report_renderer = checkout / "reporting/_run_report/context.py"
     report_renderer.write_bytes(
         report_renderer.read_bytes() + b"\n# reporting-only change\n"
     )
     assert _run_candidate(readiness, resources).run_id == baseline.run_id
 
-    resource_policy = (
-        checkout / "src/emrys/orchestration/run_coordinator/resource_policy.py"
-    )
+    resource_policy = checkout / "orchestration/run_coordinator/resource_policy.py"
     resource_policy.write_bytes(resource_policy.read_bytes() + b"\n# policy change\n")
     assert _run_candidate(readiness, resources).run_id == baseline.run_id
 
@@ -1762,27 +1755,25 @@ def test_run_identity_excludes_attempt_reporting_and_cli_adapter_code(
     assert _run_candidate(readiness, resources).run_id != baseline.run_id
     snakefile.write_bytes(snakefile_bytes)
 
-    cli_adapter = checkout / "src/emrys/__main__.py"
+    cli_adapter = checkout / "__main__.py"
     cli_adapter.write_bytes(cli_adapter.read_bytes() + b"\n# CLI adapter change\n")
     assert _run_candidate(readiness, resources).run_id == baseline.run_id
 
     reporting_materializer = (
-        checkout / "src/emrys/orchestration/run_coordinator/reporting_boundary.py"
+        checkout / "orchestration/run_coordinator/reporting_boundary.py"
     )
     reporting_materializer.write_bytes(
         reporting_materializer.read_bytes() + b"\n# reporting materialization change\n"
     )
     assert _run_candidate(readiness, resources).run_id == baseline.run_id
 
-    reporting_projection = checkout / "src/emrys/contracts/orchestration/projection.py"
+    reporting_projection = checkout / "contracts/orchestration/projection.py"
     reporting_projection.write_bytes(
         reporting_projection.read_bytes() + b"\n# reporting projection change\n"
     )
     assert _run_candidate(readiness, resources).run_id == baseline.run_id
 
-    materializer = (
-        checkout / "src/emrys/orchestration/run_coordinator/materialization.py"
-    )
+    materializer = checkout / "orchestration/run_coordinator/materialization.py"
     materializer.write_bytes(materializer.read_bytes() + b"\n# dispatch change\n")
     assert _run_candidate(readiness, resources).run_id != baseline.run_id
 
@@ -1790,23 +1781,22 @@ def test_run_identity_excludes_attempt_reporting_and_cli_adapter_code(
 @pytest.mark.parametrize(
     "relative",
     (
-        "src/emrys/orchestration/run_coordinator/_inspection_admission.py",
-        "src/emrys/orchestration/run_coordinator/_inspection_attempts.py",
-        "src/emrys/orchestration/run_coordinator/_inspection_evidence.py",
-        "src/emrys/orchestration/run_coordinator/all_pass.py",
-        "src/emrys/contracts/orchestration/artifact_inventory.py",
-        "src/emrys/contracts/schemas/orchestration/v2/attempt_receipt.schema.json",
+        "orchestration/run_coordinator/_inspection_admission.py",
+        "orchestration/run_coordinator/_inspection_attempts.py",
+        "orchestration/run_coordinator/_inspection_evidence.py",
+        "orchestration/run_coordinator/all_pass.py",
+        "contracts/orchestration/artifact_inventory.py",
+        "contracts/schemas/orchestration/v2/attempt_receipt.schema.json",
     ),
 )
 def test_run_identity_binds_semantic_admission_code(
     tmp_path: Path,
     relative: str,
 ) -> None:
-    checkout, commit = _clean_checkout(tmp_path)
+    checkout = _package_copy(tmp_path)
     readiness, resources, _request, _workspace = _readiness(
         tmp_path / "case",
         source_root=checkout,
-        source_commit=commit,
     )
     baseline_implementation = implementation_identity(checkout)
     baseline = _run_candidate(readiness, resources)
@@ -1821,16 +1811,16 @@ def test_run_identity_binds_semantic_admission_code(
 def test_implementation_identity_closes_direct_scientific_dependencies(
     tmp_path: Path,
 ) -> None:
-    checkout, _ = _clean_checkout(tmp_path)
+    checkout = _package_copy(tmp_path)
     baseline = implementation_identity(checkout)
     dependencies = (
         ".Rprofile",
-        "src/emrys/libraries/argument_parsing.sh",
-        "src/emrys/libraries/executable_resolution.sh",
-        "src/emrys/libraries/file_checks.sh",
-        "src/emrys/libraries/gatk_invocation.sh",
-        "src/emrys/libraries/input_contract.R",
-        "src/emrys/contracts/orchestration/artifact_inventory.py",
+        "libraries/argument_parsing.sh",
+        "libraries/executable_resolution.sh",
+        "libraries/file_checks.sh",
+        "libraries/gatk_invocation.sh",
+        "libraries/input_contract.R",
+        "contracts/orchestration/artifact_inventory.py",
         "workflow/contracts/local_cmh_v2.json",
     )
     processing_baseline = processing_implementation_identity(checkout)
@@ -1850,11 +1840,10 @@ def test_implementation_identity_closes_direct_scientific_dependencies(
 def test_processing_compatibility_binds_only_processing_semantics(
     tmp_path: Path,
 ) -> None:
-    checkout, commit = _clean_checkout(tmp_path)
+    checkout = _package_copy(tmp_path)
     readiness, resources, _request, _workspace = _readiness(
         tmp_path / "case",
         source_root=checkout,
-        source_commit=commit,
     )
     baseline = _run_candidate(readiness, resources)
 
@@ -1874,8 +1863,8 @@ def test_processing_compatibility_binds_only_processing_semantics(
 
     baseline_compatibility = compatibility(baseline)
     for relative in (
-        "src/emrys/analyses/__init__.py",
-        "src/emrys/stages/cohort_candidate_preprocessing/producer.py",
+        "analyses/__init__.py",
+        "stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R",
     ):
         path = checkout / relative
         original = path.read_bytes()
@@ -1886,7 +1875,7 @@ def test_processing_compatibility_binds_only_processing_semantics(
         path.write_bytes(original)
 
     for relative in (
-        "src/emrys/orchestration/run_coordinator/materialization.py",
+        "orchestration/run_coordinator/materialization.py",
         "workflow/Snakefile",
         "workflow/contracts/local_cmh_v2.json",
     ):
@@ -1906,7 +1895,7 @@ def test_processing_compatibility_binds_only_processing_semantics(
     assert downstream_tool.run_id != baseline.run_id
     assert compatibility(downstream_tool) == baseline_compatibility
 
-    processing_owner = checkout / "src/emrys/stages/mechanical_orientation/producer.py"
+    processing_owner = checkout / "stages/mechanical_orientation/producer.py"
     processing_owner_bytes = processing_owner.read_bytes()
     processing_owner.write_bytes(processing_owner_bytes + b"\n# processing change\n")
     owner_changed = _run_candidate(readiness, resources)
@@ -1924,15 +1913,15 @@ def test_processing_compatibility_binds_only_processing_semantics(
     ("relative", "error"),
     (
         (
-            "src/emrys/orchestration/run_coordinator/materialization.py",
+            "orchestration/run_coordinator/materialization.py",
             "implementation content",
         ),
         (
-            "src/emrys/orchestration/run_coordinator/all_pass.py",
+            "orchestration/run_coordinator/all_pass.py",
             "implementation content",
         ),
         (
-            "src/emrys/contracts/orchestration/artifact_inventory.py",
+            "contracts/orchestration/artifact_inventory.py",
             "implementation content",
         ),
         ("workflow/Snakefile", "backend semantics"),
@@ -1943,11 +1932,10 @@ def test_lifecycle_refuses_run_bound_implementation_drift_before_attempt(
     relative: str,
     error: str,
 ) -> None:
-    checkout, commit = _clean_checkout(tmp_path)
+    checkout = _package_copy(tmp_path)
     readiness, resources, _request, workspace = _readiness(
         tmp_path / "case",
         source_root=checkout,
-        source_commit=commit,
     )
     plan = build_attempt_plan(
         _run_candidate(readiness, resources),
@@ -2061,7 +2049,7 @@ def test_r_owner_bootstrap_clears_hostile_selectors_and_exports_exact_library(
     )
     command = materialization._r_owner_command(
         "/bin/bash",
-        REPO_ROOT,
+        source_authority.PACKAGE_ROOT,
         library,
         ("/bin/bash", str(probe)),
     )
@@ -2091,7 +2079,9 @@ def test_r_owner_bootstrap_clears_hostile_selectors_and_exports_exact_library(
     assert observed["RENV_PATHS_LIBRARY"] == str(library)
     assert observed["R_LIBS"] == str(library)
     assert observed["R_DEFAULT_PACKAGES"] == "NULL"
-    assert observed["R_PROFILE_USER"] == str(REPO_ROOT / ".Rprofile")
+    assert observed["R_PROFILE_USER"] == str(
+        source_authority.PACKAGE_ROOT / ".Rprofile"
+    )
 
 
 def test_every_projected_owner_command_is_accepted_by_public_help(
@@ -2570,17 +2560,15 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     second_source = tmp_path / "second-source"
     first_source.mkdir()
     second_source.mkdir()
-    checkout_one, commit_one = _clean_checkout(first_source)
-    checkout_two, commit_two = _clean_checkout(second_source)
+    checkout_one = _package_copy(first_source)
+    checkout_two = _package_copy(second_source)
     readiness_one, resources, _request, workspace = _readiness(
         tmp_path / "first-case",
         source_root=checkout_one,
-        source_commit=commit_one,
     )
     readiness_two, _unused_resources, _request_two, _workspace_two = _readiness(
         tmp_path / "second-case",
         source_root=checkout_two,
-        source_commit=commit_two,
     )
     runtime_bytes = b"different admitted runtime profile\n"
     readiness_two.inspection.profile_path.write_bytes(runtime_bytes)
@@ -2737,8 +2725,8 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         if item["name"] == "runtime_profile"
     )
     assert (
-        first.attempt_record["source_checkout"]
-        != second.attempt_record["source_checkout"]
+        first.attempt_record["installed_package"]
+        != second.attempt_record["installed_package"]
     )
     assert first_runtime["path"] != second_runtime["path"]
     assert first_runtime["sha256"] != second_runtime["sha256"]
@@ -4251,38 +4239,14 @@ def test_public_help_routes() -> None:
             assert "--profile NAME_OR_ABSOLUTE_PATH" in result.stdout
 
 
-def _clean_checkout(tmp_path: Path) -> tuple[Path, str]:
-    checkout = tmp_path / "clean-checkout"
-    checkout.mkdir()
-    for name in (".Rprofile", "pyproject.toml", "uv.lock", "renv.lock"):
-        shutil.copy2(REPO_ROOT / name, checkout)
-    shutil.copytree(REPO_ROOT / "src", checkout / "src")
-    shutil.copytree(REPO_ROOT / "workflow", checkout / "workflow")
-    subprocess.run(["git", "init", "--quiet"], cwd=checkout, check=True)
-    subprocess.run(["git", "add", "."], cwd=checkout, check=True)
-    subprocess.run(
-        [
-            "git",
-            "-c",
-            "user.name=EMRYS Fixture",
-            "-c",
-            "user.email=emrys-fixture@example.invalid",
-            "commit",
-            "--quiet",
-            "-m",
-            "B5 no-science source",
-        ],
-        cwd=checkout,
-        check=True,
+def _package_copy(tmp_path: Path) -> Path:
+    package = tmp_path / "installed-package"
+    shutil.copytree(
+        source_authority.PACKAGE_ROOT,
+        package,
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
     )
-    commit = subprocess.run(
-        ["git", "rev-parse", "--verify", "HEAD"],
-        cwd=checkout,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-    return checkout, commit
+    return package
 
 
 def _doubled_lifecycle_ops(
@@ -4356,11 +4320,10 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     capsys,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    checkout, commit = _clean_checkout(tmp_path)
+    checkout = source_authority.PACKAGE_ROOT
     readiness, resources, request, workspace = _readiness(
         tmp_path / "case",
         source_root=checkout,
-        source_commit=commit,
     )
     real_build = control.build_attempt_plan
     real_ops = control.lifecycle.default_lifecycle_ops
@@ -4528,11 +4491,10 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     capsys,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    checkout, commit = _clean_checkout(tmp_path)
+    checkout = source_authority.PACKAGE_ROOT
     readiness, resources, project, workspace = _readiness(
         tmp_path / "case",
         source_root=checkout,
-        source_commit=commit,
         replicate_count=3,
     )
     authored = yaml.safe_load(project.read_text(encoding="utf-8"))

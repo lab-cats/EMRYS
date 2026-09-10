@@ -242,6 +242,9 @@ jobs:
       - name: Select isolated R cache and library paths
         shell: bash
         run: |
+          mkdir -p "${RUNNER_TEMP}/emrys-renv"
+          printf 'RENV_PROJECT=%s/emrys-renv\n' \
+            "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
           printf 'RENV_PATHS_CACHE=%s/emrys-renv/cache\n' \
             "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
           printf 'RENV_PATHS_LIBRARY=%s/emrys-renv/library\n' \
@@ -287,7 +290,7 @@ jobs:
             ${{ runner.temp }}/emrys-renv/cache
             ${{ runner.temp }}/emrys-renv/library
           key: >-
-            emrys-renv-${{ runner.os }}-${{ runner.arch }}-R-${{ env.R_VERSION }}-${{ hashFiles('renv.lock') }}
+            emrys-renv-${{ runner.os }}-${{ runner.arch }}-R-${{ env.R_VERSION }}-${{ hashFiles('src/emrys/renv.lock') }}
 
       - name: Restore locked Python environment
         shell: bash
@@ -304,8 +307,7 @@ jobs:
             EMRYS_LOCAL_PILOT_R=0 \
             RENV_CONFIG_SANDBOX_ENABLED=FALSE \
             RENV_CONFIG_AUTO_SNAPSHOT=FALSE \
-            RENV_PROJECT="${GITHUB_WORKSPACE}" \
-            R_PROFILE_USER="${GITHUB_WORKSPACE}/.Rprofile" \
+            R_PROFILE_USER="${GITHUB_WORKSPACE}/src/emrys/.Rprofile" \
               "${rscript_bin}" -e \
                 'cat(normalizePath(.libPaths()[[1L]], winslash = "/", mustWork = TRUE))'
           })"
@@ -506,7 +508,7 @@ jobs:
         with:
           path: ${{ runner.temp }}/emrys-managed-golden/project/runtime/managed/renv/cache
           key: >-
-            emrys-managed-golden-renv-v1-${{ runner.os }}-${{ runner.arch }}-R-${{ env.R_VERSION }}-${{ hashFiles('renv.lock', 'src/emrys/resources/runtime/pixi.lock') }}
+            emrys-managed-golden-renv-v1-${{ runner.os }}-${{ runner.arch }}-R-${{ env.R_VERSION }}-${{ hashFiles('src/emrys/renv.lock', 'src/emrys/resources/runtime/pixi.lock') }}
 
       - name: Repair and exercise the supported managed golden path
         shell: bash
@@ -869,8 +871,10 @@ jobs:
               "${GITHUB_EVENT_NAME}" "${GITHUB_SHA}" \
               > "${evidence_root}/100000/selection.tsv"
           fi
+          mkdir -p "${RUNNER_TEMP}/emrys-renv"
           {
             printf 'E2E_EVIDENCE_ROOT=%s\n' "${evidence_root}"
+            printf 'RENV_PROJECT=%s/emrys-renv\n' "${RUNNER_TEMP}"
             printf 'RENV_PATHS_CACHE=%s/emrys-renv/cache\n' "${RUNNER_TEMP}"
             printf 'RENV_PATHS_LIBRARY=%s/emrys-renv/library\n' "${RUNNER_TEMP}"
           } >> "${GITHUB_ENV}"
@@ -934,7 +938,7 @@ jobs:
             ${{ runner.temp }}/emrys-renv/cache
             ${{ runner.temp }}/emrys-renv/library
           key: >-
-            emrys-real-e2e-pixi-renv-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('renv.lock', 'src/emrys/resources/runtime/pixi.lock') }}
+            emrys-real-e2e-pixi-renv-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('src/emrys/renv.lock', 'src/emrys/resources/runtime/pixi.lock') }}
 
       - name: Restore locked Python environment
         shell: bash
@@ -951,8 +955,7 @@ jobs:
             EMRYS_LOCAL_PILOT_R=0 \
             RENV_CONFIG_SANDBOX_ENABLED=FALSE \
             RENV_CONFIG_AUTO_SNAPSHOT=FALSE \
-            RENV_PROJECT="${GITHUB_WORKSPACE}" \
-            R_PROFILE_USER="${GITHUB_WORKSPACE}/.Rprofile" \
+            R_PROFILE_USER="${GITHUB_WORKSPACE}/src/emrys/.Rprofile" \
               "${rscript_bin}" -e \
                 'cat(normalizePath(.libPaths()[[1L]], winslash = "/", mustWork = TRUE))'
           })"
@@ -985,7 +988,7 @@ jobs:
           cp -- \
             src/emrys/resources/runtime/pixi.toml \
             src/emrys/resources/runtime/pixi.lock \
-            renv.lock \
+            src/emrys/renv.lock \
             uv.lock \
             "${runtime_evidence}/"
           cp -a -- \

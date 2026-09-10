@@ -41,7 +41,6 @@ SCIENTIFIC_REPORT_VIEW = importlib.import_module(
     "emrys.reporting.paired_cmh_candidate_ranking_report.view"
 )
 REPORT_VALIDATION = importlib.import_module("emrys.reporting._run_report.validation")
-REPORT_VIEW = importlib.import_module("emrys.reporting._run_report.view")
 
 
 HEADER_MODULES: Mapping[str, ModuleType] = {
@@ -143,21 +142,17 @@ def report_html_bytes(document: Mapping[str, Any]) -> dict[str, bytes]:
     )
     scientific_figures = REPORT_FIGURES.build_scientific_figures(None, None)
     return {
-        "scientific": REPORT_VALIDATION.render_html(
-            SCIENTIFIC_REPORT_VIEW.build_scientific_view(
-                summary,
-                document["metadata"],
-                scientific_figures=scientific_figures,
-            ),
+        "scientific": SCIENTIFIC_REPORT_VIEW.render_scientific_html(
+            summary,
             document["css"],
+            scientific_figures=scientific_figures,
         ),
         "evidence": REPORT_VALIDATION.render_html(
-            REPORT_VIEW.build_evidence_view(
-                summary,
-                document["metadata"],
-                banner=REPORT_CONSTANTS.BOUNDARY_BANNER,
-            ),
+            summary,
             document["css"],
+            report_view="evidence",
+            metadata=document["metadata"],
+            banner=REPORT_CONSTANTS.BOUNDARY_BANNER,
         ),
     }
 

@@ -36,7 +36,12 @@ changing it. Synthetic dataset choices belong in the [quickstart](../../../../qu
 Scientific algorithms, native-output publication, scientific validation,
 report rendering, and package installation remain with their respective owners.
 The coordinator calls them; it does not reproduce their implementation.
-[Workflow composition](../../../../workflow/README.md) explains the graph;
+Doctor binds the executing installed package and rechecks its full identity
+before and after repair. Managed repair uses Pixi and renv for Project-owned
+native tools and R libraries; Python installation stays with the environment's
+package manager. Existing site runtimes and operator execution profiles remain
+outside managed repair.
+[Workflow composition](../../workflow/README.md) explains the graph;
 [the profile contract](CONTRACT.md#profiles-and-immutable-planning) defines resource selection.
 
 The old CSU-oriented `dashboard.py` preview is frozen. It remains until a

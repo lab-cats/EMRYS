@@ -16,6 +16,8 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
+
+from emrys.libraries.source_authority import PACKAGE_ROOT, admit_installed_package
 from typing import Any
 
 import pytest
@@ -1379,11 +1381,7 @@ def _attempt(
         "normalizer": normalizer,
         "workspace": str(built.run_root.parent.parent),
         "scratch": None,
-        "source_checkout": {
-            "path": str(workflow_fixture.REPO_ROOT),
-            "commit": workflow_fixture.source_checkout_commit(),
-            "clean": True,
-        },
+        "installed_package": admit_installed_package().record,
         "executor": "local",
         "execution_mode": "local-science-tools",
         "snakemake_argv": list(argv),

@@ -37,13 +37,19 @@ and the affected owner contract before changing a transaction.
 
 | Authority | Purpose |
 |---|---|
-| `.Rprofile`, `renv.lock` | Opt-in R activation and the reviewed package snapshot. Activation does not restore packages or authorize lock changes. |
+| `src/emrys/.Rprofile`, `src/emrys/renv.lock` | Opt-in R activation and the reviewed package snapshot. Activation does not restore packages or authorize lock changes. |
 | `pyproject.toml`, `uv.lock` | Python package, direct dependencies, commands, tool settings, and the resolved dependency graph. |
 | `.coveragerc` | Branch/subprocess coverage configuration; the [test baseline](../design/TEST_BASELINE.md) owns acceptance. |
 
+Installed EMRYS includes its workflow, scientific scripts, R guard, and R lock.
+The setuptools build records source origin when available and the Python lock
+hash; execution records those facts with an exact installed-code hash. Python
+installation is the operator's package-manager responsibility. Doctor repairs
+only Project-owned native and R environments.
+
 Installation and lock changes require explicit setup or maintenance work.
 Computation, validators, renderers, and tests never install packages or change
-locks. Repository R activation requires `EMRYS_USE_RENV=1`; invalid values fail
+locks. Packaged R activation requires `EMRYS_USE_RENV=1`; invalid values fail
 and automatic snapshots stay disabled. The Runbook owns
 [institution-provided R restoration](RUNBOOK.md#dependency-maintenance).
 

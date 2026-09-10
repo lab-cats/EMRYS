@@ -1238,8 +1238,13 @@ def _validate_receipt_constants(row: Mapping[str, str], analysis_id: str) -> Non
             )
     for field in ("r_version", "biostrings_version", "rsamtools_version"):
         require_text(f"Scientific-context receipt {field}", row[field])
-    if _GIT_COMMIT_RE.fullmatch(row["git_commit"]) is None:
-        fail("Scientific-context receipt git_commit must be a full hexadecimal commit.")
+    if (
+        row["git_commit"] != "unavailable"
+        and _GIT_COMMIT_RE.fullmatch(row["git_commit"]) is None
+    ):
+        fail(
+            "Scientific-context receipt git_commit must be a full hexadecimal commit or unavailable."
+        )
 
 
 def _reconcile_step09_candidates(

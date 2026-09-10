@@ -9,7 +9,7 @@ from typing import Any
 
 from .artifact import validate_artifact_semantics
 from .definitions import (
-    REPO_ROOT,
+    PACKAGE_ROOT,
     ContractValidationError,
 )
 from .identity import (
@@ -49,7 +49,7 @@ def _validate_scope_statuses(
 def validate_run_summary_semantics(
     document: dict[str, Any],
     *,
-    source_root: Path = REPO_ROOT,
+    source_root: Path = PACKAGE_ROOT,
 ) -> None:
     validate_run_contract(document["run_contract"], "run summary")
     validate_document_paths(document)

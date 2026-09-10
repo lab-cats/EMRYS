@@ -25,6 +25,7 @@ RUNTIME_DEPENDENCIES = {
     "pyyaml",
     "referencing",
     "simple-term-menu",
+    "snakemake",
 }
 RUNTIME_REQUIREMENT_SPECIFIERS = {
     "coolname": "==4.1.0",
@@ -36,8 +37,19 @@ RUNTIME_REQUIREMENT_SPECIFIERS = {
     "pyyaml": "==6.0.3",
     "referencing": ">=0.28.4",
     "simple-term-menu": "==1.6.6",
+    "snakemake": "==9.25.1",
 }
 RESOURCE_PATHS = (
+    "emrys/.Rprofile",
+    "emrys/renv.lock",
+    "emrys/renv/activate.R",
+    "emrys/renv/settings.json",
+    "emrys/workflow/Snakefile",
+    "emrys/workflow/contracts/local_cmh_v2.json",
+    "emrys/workflow/profiles/local/profile.v9+.yaml",
+    "emrys/resources/runtime/restore_r_environment.R",
+    "emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R",
+    "emrys/stages/star_alignment/step_01_star_align.sh",
     "emrys/contracts/schemas/artifacts/v2/artifact_record.schema.json",
     "emrys/contracts/schemas/artifacts/v1/common.schema.json",
     "emrys/contracts/schemas/artifacts/v3/run_summary.schema.json",
@@ -122,7 +134,14 @@ def uv_executable() -> str:
 def build_wheel(tmp_path: Path) -> Path:
     project = tmp_path / "project"
     project.mkdir()
-    for name in ("pyproject.toml", "README.md", "LICENSE", "NOTICE"):
+    for name in (
+        "pyproject.toml",
+        "setup.py",
+        "uv.lock",
+        "README.md",
+        "LICENSE",
+        "NOTICE",
+    ):
         shutil.copy2(REPO_ROOT / name, project / name)
     shutil.copytree(REPO_ROOT / "LICENSES", project / "LICENSES")
     shutil.copytree(
@@ -136,7 +155,6 @@ def build_wheel(tmp_path: Path) -> Path:
         [
             uv_executable(),
             "build",
-            "--wheel",
             "--force-pep517",
             "--offline",
             "--no-python-downloads",
@@ -147,6 +165,8 @@ def build_wheel(tmp_path: Path) -> Path:
         cwd=tmp_path,
     )
     require_success(result)
+    # The default uv build produces an sdist, then a wheel from that sdist.
+    assert len(list(wheel_directory.glob("*.tar.gz"))) == 1
     wheels = list(wheel_directory.glob("*.whl"))
     assert len(wheels) == 1
     return wheels[0]
@@ -422,23 +442,27 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from emrys.libraries.source_authority import PACKAGE_ROOT, admit_installed_package
 
 from emrys.reporting._run_report.context import prepare_context
 from emrys.reporting._run_report.publication import publish_report
+from emrys.orchestration.run_coordinator import onboarding, run_implementation
+from emrys.contracts.orchestration.artifact_inventory import processing_tasks
+
+assert onboarding.source_root() == PACKAGE_ROOT
+assert run_implementation.implementation_identity(PACKAGE_ROOT)
+assert run_implementation.backend_semantics_identity(PACKAGE_ROOT)
+assert all((PACKAGE_ROOT / task["producer_path"]).is_file() for task in processing_tasks(PACKAGE_ROOT))
 
 # Load shared fixture helpers without exposing the checkout's src directory.
 sys.path.insert(0, sys.argv[1])
 from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
 sys.path.pop(0)
 assert Path(FIXTURE.ARTIFACT_CONTEXT.__file__).is_relative_to(Path(sys.prefix))
-with patch.object(
-    FIXTURE.ARTIFACT_CORE, "get_git_commit", return_value="upstream-summary-commit"
-):
-    fixture = FIXTURE.build_fixture(Path(sys.argv[2]))
+fixture = FIXTURE.build_fixture(Path(sys.argv[2]))
 
 context = prepare_context(argparse.Namespace(
-    source_checkout=Path(sys.argv[1]),
+    package_root=PACKAGE_ROOT,
     artifact_source_root=fixture.root,
     run_summary=fixture.summary_json_path,
     output_root=Path(sys.argv[3]),
@@ -449,6 +473,7 @@ print(json.dumps({
     "run_id": fixture.run_id,
     "artifact_source_root": str(fixture.root),
     "receipt": str(context.output_receipt),
+    "installed_package": admit_installed_package().record,
 }))
 """
     rendered = run_command(
@@ -519,24 +544,21 @@ print(json.dumps({
     receipt_values = {row["report_receipt_json"] for row in receipt_rows}
     assert len(receipt_values) == 1
     receipt = json.loads(receipt_values.pop())
-    checkout_commit = run_command(
-        ["git", "rev-parse", "--verify", "HEAD"],
-        cwd=REPO_ROOT,
-    )
-    require_success(checkout_commit)
     assert Path(receipt["input_run_summary"]["path"]).is_relative_to(
         artifact_source_root
     )
     assert not Path(receipt["input_run_summary"]["path"]).is_relative_to(REPO_ROOT)
-    assert receipt["provenance"]["git_commit"] in {
-        "local_build",
-        checkout_commit.stdout.strip(),
-    }
-    assert receipt["provenance"]["git_commit"] != "upstream-summary-commit"
-    wrong_checkout = run_command(
+    assert receipt["provenance"]["git_commit"] == "unavailable"
+    assert (
+        receipt["provenance"]["installed_package"]
+        == rendered_paths["installed_package"]
+    )
+    assert not Path(rendered_paths["installed_package"]["path"]).is_relative_to(
+        REPO_ROOT
+    )
+    from_checkout = run_command(
         [str(environment_python), "-I", "-m", "emrys", "--help"],
         cwd=REPO_ROOT,
         hostile_pythonpath=True,
     )
-    assert wrong_checkout.returncode == 2
-    assert "not the current checkout" in wrong_checkout.stderr
+    require_success(from_checkout)

@@ -264,9 +264,7 @@ def _run_projection(
             "--context-receipt-output",
             str(work_dir / output_paths[-1].name),
             "--git-commit",
-            subprocess.check_output(
-                ["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, text=True
-            ).strip(),
+            "unavailable",
             "--rscript-bin",
             rscript,
         ],

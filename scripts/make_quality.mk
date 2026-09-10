@@ -4,7 +4,7 @@ SHFMT_BIN ?= shfmt
 RUFF_BIN ?= ruff
 VULTURE_BIN ?= vulture
 DEAD_CODE_PATHS ?= scripts src/emrys
-PYTHON_LINT_PATHS ?= scripts src/emrys tests
+PYTHON_LINT_PATHS ?= scripts src/emrys tests setup.py
 VULTURE_MIN_CONFIDENCE ?= 95
 EMRYS_RENV_VERSION := 1.2.3
 PYTHON_COVERAGE_NEW_SHARED_MODULES ?= \
@@ -64,11 +64,13 @@ real-r-test:
 	bash tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh
 
 r-restore:
+	test -n "$(RENV_PROJECT)"
+	test -d "$(RENV_PROJECT)"
 	EMRYS_USE_RENV=1 EMRYS_LOCAL_PILOT_R=0 \
 		RENV_CONFIG_SANDBOX_ENABLED=FALSE \
-		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)" \
-		R_PROFILE_USER="$(CURDIR)/.Rprofile" \
-		"$(RSCRIPT_BIN)" scripts/restore_r_environment.R
+		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(RENV_PROJECT)" \
+		R_PROFILE_USER="$(CURDIR)/src/emrys/.Rprofile" \
+		"$(RSCRIPT_BIN)" src/emrys/resources/runtime/restore_r_environment.R
 
 r-check:
 	test -n "$(RENV_LIBRARY)"
@@ -77,8 +79,8 @@ r-check:
 		EMRYS_RENV_LIBRARY="$(RENV_LIBRARY)" \
 		EMRYS_RENV_VERSION="$(EMRYS_RENV_VERSION)" \
 		RENV_CONFIG_SANDBOX_ENABLED=FALSE \
-		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)" \
-		R_PROFILE_USER="$(CURDIR)/.Rprofile" \
+		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)/src/emrys" \
+		R_PROFILE_USER="$(CURDIR)/src/emrys/.Rprofile" \
 		"$(RSCRIPT_BIN)" scripts/check_r_environment.R
 
 local-real-r-test:
@@ -88,8 +90,8 @@ local-real-r-test:
 		EMRYS_RENV_LIBRARY="$(RENV_LIBRARY)" \
 		EMRYS_RENV_VERSION="$(EMRYS_RENV_VERSION)" \
 		RENV_CONFIG_SANDBOX_ENABLED=FALSE \
-		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)" \
-		R_PROFILE_USER="$(CURDIR)/.Rprofile" \
+		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)/src/emrys" \
+		R_PROFILE_USER="$(CURDIR)/src/emrys/.Rprofile" \
 		STEP08_TEST_RSCRIPT_BIN= STEP09_TEST_RSCRIPT_BIN= \
 		SCIENTIFIC_CONTEXT_TEST_RSCRIPT_BIN= \
 		RSCRIPT_BIN_OVERRIDE="$(RSCRIPT_BIN)" \

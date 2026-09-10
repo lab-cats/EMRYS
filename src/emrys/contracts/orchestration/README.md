@@ -5,7 +5,7 @@ hashes, and consistency rules for Project, Analysis, immutable Execution Plan
 and Run, Attempt, task, lock, receipt, and reporting records. It validates
 records and parses closed JSON and YAML; it does not choose an Analysis, run work, infer state,
 publish records, or provide a CLI. The artifact-inventory owner reads fixed
-processing tasks and artifact ownership from the admitted source checkout's
+processing tasks and artifact ownership from the admitted installed package's
 shipped profile. A retained Run profile cannot redefine those implementation
 facts. The [Run-coordinator contract](../../orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
 owns new-Run and resume admission.

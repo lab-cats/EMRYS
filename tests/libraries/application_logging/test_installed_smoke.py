@@ -16,17 +16,11 @@ def test_clean_installed_scheduler_delegate_owns_one_attempt_and_separates_strea
     script = textwrap.dedent(
         """
         import os
-        import sys
-        from pathlib import Path
         from emrys.libraries.application_logging import (
             AttemptIdentity, event, open_attempt_log, resolve_log_controls
         )
-        from emrys.libraries.source_authority import SourceCheckout
 
-        controls = resolve_log_controls(
-            source_checkout=SourceCheckout(Path(sys.argv[1])),
-            environment=os.environ,
-        )
+        controls = resolve_log_controls(environment=os.environ)
         attempt = open_attempt_log(
             controls=controls,
             identity=AttemptIdentity("run", "run-1", "attempt-1", "smoke"),
@@ -59,7 +53,7 @@ def test_clean_installed_scheduler_delegate_owns_one_attempt_and_separates_strea
         scheduler_err.open("w", encoding="utf-8") as stderr,
     ):
         result = subprocess.run(
-            [sys.executable, "-I", "-c", script, str(tmp_path / "checkout")],
+            [sys.executable, "-I", "-c", script],
             stdout=stdout,
             stderr=stderr,
             text=True,

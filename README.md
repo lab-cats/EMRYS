@@ -47,12 +47,12 @@ the [runbook's reuse procedure](docs/operations/RUNBOOK.md#reusable-processing).
   not run scientific work on a cluster login node.
 - One cooperative user and storage that passes Doctor's checks for links,
   locking, atomic publication, visibility, durability, and access.
-- Inputs and Projects outside the source checkout. EMRYS owns each Project's
+- Inputs and Projects outside the installed EMRYS package. EMRYS owns each Project's
   `runs/`, `logs/`, and `runtime/` directories but leaves source data in place.
 
 `emrys doctor` checks readiness without changing files. Managed dependency repair currently
-supports x86-64 Linux and requires installed `uv` and Pixi. It delegates
-dependency work to `uv`, Pixi, and `renv` within declared EMRYS-owned locations;
+supports x86-64 Linux and requires Pixi. It delegates native and R
+dependency work to Pixi and `renv` within Project-owned locations;
 runtime discovery checks and records an existing site environment. EMRYS does
 not download scientific inputs, force retries, delete uncertain locks, or
 repair result artifacts.

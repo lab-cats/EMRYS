@@ -80,9 +80,40 @@ local({
         if (!nzchar(Sys.getenv("RENV_CONFIG_AUTO_SNAPSHOT", unset = ""))) {
             Sys.setenv(RENV_CONFIG_AUTO_SNAPSHOT = "FALSE")
         }
-        project_root <- Sys.getenv("RENV_PROJECT", unset = getwd())
+        project_request <- Sys.getenv("RENV_PROJECT", unset = "")
+        if (!nzchar(project_request)) {
+            stop("R restoration requires an explicit external RENV_PROJECT.")
+        }
+        project_root <- normalizePath(project_request, winslash = "/", mustWork = TRUE)
+        package_root <- dirname(normalizePath(
+            Sys.getenv("R_PROFILE_USER"), winslash = "/", mustWork = TRUE
+        ))
+        if (identical(project_root, package_root) ||
+            startsWith(project_root, paste0(package_root, "/")) ||
+            startsWith(package_root, paste0(project_root, "/"))) {
+            stop("R restoration project must be outside the installed EMRYS package.")
+        }
+        Sys.setenv(
+            RENV_PROJECT = project_root,
+            RENV_PATHS_RENV = file.path(project_root, "renv"),
+            RENV_PATHS_ROOT = file.path(project_root, "renv", "state"),
+            RENV_PATHS_LIBRARY_STAGING = file.path(project_root, "renv", "staging"),
+            RENV_PATHS_LOCKFILE = file.path(package_root, "renv.lock")
+        )
+        if (!nzchar(Sys.getenv("RENV_PATHS_CACHE"))) {
+            Sys.setenv(RENV_PATHS_CACHE = file.path(project_root, "renv", "cache"))
+        }
+        settings <- file.path(project_root, "renv", "settings.json")
+        packaged_settings <- file.path(package_root, "renv", "settings.json")
+        if (!file.exists(settings)) {
+            dir.create(dirname(settings), recursive = TRUE, showWarnings = FALSE)
+            file.copy(packaged_settings, settings, overwrite = FALSE)
+        }
+        if (!identical(readLines(settings), readLines(packaged_settings))) {
+            stop("R restoration settings differ from the installed EMRYS package.")
+        }
         activation_script <- file.path(
-            project_root,
+            package_root,
             "renv",
             "activate.R"
         )

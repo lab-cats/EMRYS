@@ -44,33 +44,33 @@ mkdir -p "$fake_renv_library/renv"
 printf 'Package: renv\nVersion: 1.2.3\n' \
     >"$fake_renv_library/renv/DESCRIPTION"
 
-grep -Fq 'identical(use_renv, "1")' .Rprofile ||
+grep -Fq 'identical(use_renv, "1")' src/emrys/.Rprofile ||
     fail ".Rprofile does not guard renv activation"
-grep -Fq 'EMRYS_USE_RENV must be exactly 0 or 1' .Rprofile ||
+grep -Fq 'EMRYS_USE_RENV must be exactly 0 or 1' src/emrys/.Rprofile ||
     fail ".Rprofile does not reject invalid activation values"
 for legacy_selector in \
     NORAD_USE_RENV NORAD_LOCAL_PILOT_R NORAD_RENV_LIBRARY NORAD_RENV_VERSION; do
-    grep -Fq "\"$legacy_selector\"" .Rprofile ||
+    grep -Fq "\"$legacy_selector\"" src/emrys/.Rprofile ||
         fail ".Rprofile does not detect legacy selector $legacy_selector"
 done
-grep -Fq 'Legacy NORAD R selectors are not accepted by EMRYS' .Rprofile ||
+grep -Fq 'Legacy NORAD R selectors are not accepted by EMRYS' src/emrys/.Rprofile ||
     fail ".Rprofile does not reject legacy R selectors"
-if grep -Eq '^source\\("renv/activate\\.R"\\)' .Rprofile; then
+if grep -Eq '^source\\("renv/activate\\.R"\\)' src/emrys/.Rprofile; then
     fail ".Rprofile activates renv unconditionally"
 fi
 
-grep -Fq '"bioconductor.version": "3.23"' renv/settings.json ||
+grep -Fq '"bioconductor.version": "3.23"' src/emrys/renv/settings.json ||
     fail "renv settings do not pin Bioconductor 3.23"
-test -s renv/activate.R || fail "renv activation script is missing"
-test -s renv.lock || fail "renv lockfile is missing"
-grep -Fq '"Version": "4.6.1"' renv.lock ||
+test -s src/emrys/renv/activate.R || fail "renv activation script is missing"
+test -s src/emrys/renv.lock || fail "renv lockfile is missing"
+grep -Fq '"Version": "4.6.1"' src/emrys/renv.lock ||
     fail "renv lockfile does not pin R 4.6.1"
-grep -Fq '"Version": "3.23"' renv.lock ||
+grep -Fq '"Version": "3.23"' src/emrys/renv.lock ||
     fail "renv lockfile does not record Bioconductor 3.23"
 for package_name in \
     VariantAnnotation Biostrings GenomicRanges IRanges Rsamtools S4Vectors \
     SummarizedExperiment GenomeInfoDb BiocGenerics rtracklayer; do
-    grep -Fq "\"$package_name\":" renv.lock ||
+    grep -Fq "\"$package_name\":" src/emrys/renv.lock ||
         fail "renv lockfile is missing $package_name"
 done
 
@@ -81,7 +81,7 @@ for ignored_path in \
 done
 
 python_bin="${PYTHON_BIN:-python3}"
-"$python_bin" - "$repo_root/renv.lock" <<'PY'
+"$python_bin" - "$repo_root/src/emrys/renv.lock" <<'PY'
 import json
 import sys
 
@@ -120,27 +120,27 @@ if bad:
         + "; ".join(sorted(bad))
     )
 PY
-grep -Fq '"BiocVersion":' renv.lock ||
+grep -Fq '"BiocVersion":' src/emrys/renv.lock ||
     fail "renv lockfile does not include the Bioconductor release marker"
-grep -Fq 'restore_status <- renv::status' scripts/restore_r_environment.R ||
+grep -Fq 'restore_status <- renv::status' src/emrys/resources/runtime/restore_r_environment.R ||
     fail "r-restore does not attest the restored library"
 # Match the R member access literally, without shell expansion.
 # shellcheck disable=SC2016
 grep -Fq 'lock_recorded_packages <- names(lock$Packages)' \
-    scripts/restore_r_environment.R ||
+    src/emrys/resources/runtime/restore_r_environment.R ||
     fail "r-restore does not inventory every lock-recorded package"
-grep -Fq 'hydration <- renv::hydrate' scripts/restore_r_environment.R ||
+grep -Fq 'hydration <- renv::hydrate' src/emrys/resources/runtime/restore_r_environment.R ||
     fail "r-restore does not hydrate lock-recorded external packages"
-grep -Fq 'library = restored_library' scripts/restore_r_environment.R ||
+grep -Fq 'library = restored_library' src/emrys/resources/runtime/restore_r_environment.R ||
     fail "r-restore does not bind hydration and status to the selected library"
 # Match the R member access literally, without shell expansion.
 # shellcheck disable=SC2016
 grep -Fq 'length(hydration$unresolved) > 0L' \
-    scripts/restore_r_environment.R ||
+    src/emrys/resources/runtime/restore_r_environment.R ||
     fail "r-restore does not reject unresolved hydration packages"
 
 for r_entrypoint in \
-    scripts/check_r_environment.R scripts/restore_r_environment.R; do
+    scripts/check_r_environment.R src/emrys/resources/runtime/restore_r_environment.R; do
     grep -Fq 'commandArgs(trailingOnly = TRUE)' "$r_entrypoint" ||
         fail "$r_entrypoint does not inspect positional arguments"
     grep -Fq 'does not accept positional arguments.' "$r_entrypoint" ||
@@ -157,10 +157,36 @@ fi
 
 rscript_bin="${RSCRIPT_BIN:-Rscript}"
 if resolved_rscript="$(command -v "$rscript_bin" 2>/dev/null)"; then
+    "$resolved_rscript" --vanilla - "$repo_root/src/emrys" "$tmp" <<'R'
+args <- commandArgs(trailingOnly = TRUE)
+package <- file.path(normalizePath(args[[2L]]), "package")
+project <- file.path(normalizePath(args[[2L]]), "project")
+dir.create(file.path(package, "renv"), recursive = TRUE)
+dir.create(project)
+for (path in c(".Rprofile", "renv.lock", "renv/settings.json")) {
+    file.copy(file.path(args[[1L]], path), file.path(package, path))
+}
+writeLines("options(emrys.activation.selected = TRUE)",
+           file.path(package, "renv/activate.R"))
+before <- tools::md5sum(list.files(package, recursive = TRUE, all.files = TRUE,
+                                 full.names = TRUE))
+Sys.setenv(EMRYS_USE_RENV = "1", EMRYS_LOCAL_PILOT_R = "0",
+           RENV_PROJECT = project, R_PROFILE_USER = file.path(package, ".Rprofile"))
+source(Sys.getenv("R_PROFILE_USER"))
+stopifnot(isTRUE(getOption("emrys.activation.selected")),
+          Sys.getenv("RENV_PATHS_LOCKFILE") == file.path(package, "renv.lock"),
+          Sys.getenv("RENV_PATHS_ROOT") == file.path(project, "renv/state"),
+          Sys.getenv("RENV_PATHS_LIBRARY_STAGING") == file.path(project, "renv/staging"),
+          file.exists(file.path(project, "renv/settings.json")),
+          identical(before, tools::md5sum(names(before))))
+Sys.setenv(RENV_PROJECT = package)
+stopifnot(tryCatch({ source(Sys.getenv("R_PROFILE_USER")); FALSE },
+                  error = function(e) grepl("outside the installed", conditionMessage(e))))
+R
     r_cli_cwd="$tmp/r-cli-cwd"
     mkdir -p "$r_cli_cwd"
     for r_entrypoint in \
-        scripts/check_r_environment.R scripts/restore_r_environment.R; do
+        scripts/check_r_environment.R src/emrys/resources/runtime/restore_r_environment.R; do
         entrypoint_name="$(basename "$r_entrypoint")"
         for argument in --help unexpected-positional-argument; do
             stdout_path="$tmp/${entrypoint_name}.${argument#--}.stdout"
@@ -193,7 +219,10 @@ else
     printf 'SKIP: Rscript unavailable for direct environment-CLI checks\n'
 fi
 
-FAKE_R_LOG="$fake_log" make RSCRIPT_BIN="$fake_rscript" r-restore >/dev/null
+fake_restore_project="$tmp/restore-project"
+mkdir -p "$fake_restore_project"
+FAKE_R_LOG="$fake_log" make RSCRIPT_BIN="$fake_rscript" \
+    RENV_PROJECT="$fake_restore_project" r-restore >/dev/null
 FAKE_R_LOG="$fake_log" make \
     RSCRIPT_BIN="$fake_rscript" \
     RENV_LIBRARY="$fake_renv_library" \
@@ -215,17 +244,19 @@ while IFS= read -r line; do
         fail "Make target did not disable the pathological local sandbox: $line"
     [[ "$line" == *$'\tRENV_AUTO_SNAPSHOT=FALSE\t'* ]] ||
         fail "Make target allowed automatic lockfile snapshots: $line"
-    [[ "$line" == *$'\tRENV_PROJECT='"$repo_root"$'\t'* ]] ||
-        fail "Make target invoked R without the repository project: $line"
-    [[ "$line" == *$'\tR_PROFILE_USER='"$repo_root/.Rprofile"$'\t'* ]] ||
+    [[ "$line" == *$'\tR_PROFILE_USER='"$repo_root/src/emrys/.Rprofile"$'\t'* ]] ||
         fail "Make target invoked R without the guarded profile: $line"
 done <"$fake_log"
 
 restore_line="$(sed -n '1p' "$fake_log")"
 [[ "$restore_line" == *$'\tEMRYS_LOCAL_PILOT_R=0\t'* ]] ||
     fail "r-restore did not select bootstrap-capable operator mode"
+[[ "$restore_line" == *$'\tRENV_PROJECT='"$fake_restore_project"$'\t'* ]] ||
+    fail "r-restore did not select the external mutable project"
 
 tail -n +2 "$fake_log" | while IFS= read -r line; do
+    [[ "$line" == *$'\tRENV_PROJECT='"$repo_root/src/emrys"$'\t'* ]] ||
+        fail "Make target invoked guarded R without the installed package project: $line"
     [[ "$line" == *$'\tEMRYS_LOCAL_PILOT_R=1\t'* ]] ||
         fail "R check/test did not select non-bootstrapping mode: $line"
     [[ "$line" == *$'\tEMRYS_RENV_LIBRARY='"$fake_renv_library"$'\t'* ]] ||
@@ -234,7 +265,7 @@ tail -n +2 "$fake_log" | while IFS= read -r line; do
         fail "R check/test did not bind the exact renv version: $line"
 done
 
-grep -Fq 'scripts/restore_r_environment.R' "$fake_log" ||
+grep -Fq 'src/emrys/resources/runtime/restore_r_environment.R' "$fake_log" ||
     fail "r-restore did not invoke the restore script"
 grep -Fq 'scripts/check_r_environment.R' "$fake_log" ||
     fail "r-check did not invoke the check script"

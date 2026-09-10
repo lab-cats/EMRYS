@@ -51,10 +51,9 @@ filename's “calling” does not elevate the scientific evidence state.
 
 ## Inputs and six-output transaction
 
-Inputs are safe analysis/cohort IDs, manifests, Step `08` root, staged output paths,
+Inputs are safe analysis/cohort IDs, manifests, explicit Step `08` sites/input paths, staged output paths,
 control/treatment and optional background conditions, target RNA alleles,
-coverage/FDR/effect/background thresholds, and explicit Rscript/R-program
-resolution. The six outputs under `<output-root>/<analysis-id>/` are:
+coverage/FDR/effect/background thresholds, and the selected R runtime. The six outputs under `<output-root>/<analysis-id>/` are:
 
 ```text
 <analysis>.cmh_all_sites.tsv
@@ -73,9 +72,11 @@ hashes, analysis conditions, thresholds, method, provisional policy, and
 reconciled counts. Mutation-spectrum TSV/PDF and depth/delta PDF are derived
 diagnostics. Header-only candidate tables are valid when all counts reconcile.
 
-Private [`producer.py`](producer.py) invokes R with six explicit staged paths
-and checks their scientific contents. The runner publishes the five result
-files before the summary, then invokes the independent validator. Execution,
+The runner invokes R directly with six staged paths, then runs the existing
+validator and semantic all-pass gate before publication. The validator compares
+the summary's conditions, target change, and thresholds with the requested
+policy supplied as `--expected-*` arguments. The runner binds the validated
+bytes and publishes the five result files before the summary. Execution,
 input stability, publication, and recovery belong to the [runner contract](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
 The summary does not hash its five sibling outputs; its presence alone is not

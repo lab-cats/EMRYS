@@ -109,6 +109,12 @@
     {
       "expected": false,
       "pointer": "/properties/validation_claimed/const"
+    },
+    {
+      "expected": [
+        "installed_package"
+      ],
+      "pointer": "/properties/provenance/allOf/1/required"
     }
   ],
   "run_summary.schema.json": [
@@ -131,6 +137,12 @@
         "failed"
       ],
       "pointer": "/properties/summary_state/enum"
+    },
+    {
+      "expected": [
+        "installed_package"
+      ],
+      "pointer": "/properties/provenance/allOf/1/required"
     }
   ]
 }

@@ -542,14 +542,15 @@ This sharpens the existing example's acceptance, not a second extension task.
 releases endpoint returned no published releases during the audit. Package
 version is `0.1.0.dev0`. No claim was made that Git tags are absent.
 
-The [isolated wheel test][release-wheel] covers
-installation, packaged resources, public help, and manifest validation. Its
-report exercise calls private publication code and supplies the original
-checkout as `REPO_ROOT`. [Onboarding][release-root]
-derives a checkout-relative root, and
-[source admission][release-source] requires a
-matching Git checkout. These checks cover installed components. They do not establish that an
-independently installed wheel supports the complete Project-to-Results workflow. No standalone-install failure was reproduced in this audit.
+The [isolated wheel test][release-wheel] covers installation, packaged resources,
+public help, manifest validation, and report publication. At discovery it relied
+on the original checkout for workflow assets and source admission. Approved
+[CS-26](compression_backlog_matrix.md#cs-23-through-cs-26-direct-science-rendering-and-installed-execution)
+replaces that requirement with installed workflow/R assets and exact package
+identity. Its installed integration checks remain pending; neither packaging
+nor synthetic reports establish institutional scientific operation. This card
+still owns release selection and the independently installed Project-to-Results
+release journey.
 
 The [wheel installer][release-constraints] also constrains dependencies to
 the versions in `uv.lock`.

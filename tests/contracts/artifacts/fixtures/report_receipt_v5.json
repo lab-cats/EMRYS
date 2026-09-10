@@ -50,7 +50,7 @@
       "media_type": "text/tab-separated-values"
     }
   ],
-  "state_banner": "COMPUTATIONAL RESULTS \u2014 BIOLOGICAL VALIDATION IS OUTSIDE EMRYS.",
+  "state_banner": "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE EMRYS.",
   "truncations": [
     {
       "table_id": "cmh_ranked_candidates",
@@ -82,7 +82,16 @@
     "producer": "emrys.reporting.report",
     "producer_version": "5.0.0",
     "git_commit": "fixturecommit",
-    "created_at": "2000-01-01T00:00:05Z"
+    "created_at": "2000-01-01T00:00:05Z",
+    "installed_package": {
+      "path": "/fixtures/installed/emrys",
+      "distribution": "emrys-rna-workflow",
+      "version": "0.0.0+fixture",
+      "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "git_commit": null,
+      "git_dirty": null,
+      "python_lock_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
   },
   "analysis_policy": {
     "path": "contract/primary_analysis_policy.json",

@@ -11,7 +11,7 @@ the `emrys.analysis_modules` contract without editing this directory. Changing
 the common graph requires explicit approval and checks of planning, stored Run
 records, scheduling, task/inspection validation, and derived reporting inventory.
 
-The [orchestration contract](../../src/emrys/contracts/orchestration/README.md)
-defines schemas and serialization; [STAGE_MAP](../../src/emrys/contracts/STAGE_MAP.md)
+The [orchestration contract](../../contracts/orchestration/README.md)
+defines schemas and serialization; [STAGE_MAP](../../contracts/STAGE_MAP.md)
 defines scientific identities and dependencies. See the [workflow overview](../README.md)
 for execution and profile selection.

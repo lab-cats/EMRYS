@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .definitions import (
-    REPO_ROOT,
+    PACKAGE_ROOT,
     RUN_CONTRACT_COMPONENT_FIELDS,
     ContractValidationError,
 )
@@ -185,7 +185,7 @@ def validate_attempt_graph(
 def resolve_contract_path(
     value: str,
     *,
-    source_root: Path = REPO_ROOT,
+    source_root: Path = PACKAGE_ROOT,
 ) -> Path:
     path = Path(value)
     if not path.is_absolute():

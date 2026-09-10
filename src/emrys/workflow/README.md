@@ -18,8 +18,8 @@ a workstation or a single Slurm allocation. Run planning supplies capacity and
 task resources. Use `emrys run` and `emrys resume`, not bare Snakemake or direct
 profile invocation.
 
-[STAGE_MAP](../src/emrys/contracts/STAGE_MAP.md) defines producer identities and
-artifact dependencies. The [run-coordinator contract](../src/emrys/orchestration/run_coordinator/CONTRACT.md)
+[STAGE_MAP](../contracts/STAGE_MAP.md) defines producer identities and
+artifact dependencies. The [run-coordinator contract](../orchestration/run_coordinator/CONTRACT.md)
 defines materialization, completion, reuse, reporting, and recovery.
 
 The graph reads dispatches through `task.load_dispatch` and resource records

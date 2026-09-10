@@ -7,7 +7,6 @@ import hashlib
 import json
 import os
 import re
-import subprocess
 import uuid
 from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
@@ -72,39 +71,6 @@ def utc_now() -> str:
 def new_attempt_id(timestamp: str) -> str:
     compact = re.sub(r"[^0-9]", "", timestamp)[:14]
     return f"artifact-index-{compact}-{uuid.uuid4().hex[:12]}"
-
-
-def get_git_commit(
-    *,
-    source_root: Path = contracts.REPO_ROOT,
-    sanitize_git_routing: bool = False,
-) -> str:
-    environment = (
-        {
-            name: value
-            for name, value in os.environ.items()
-            if not name.startswith("GIT_")
-        }
-        if sanitize_git_routing
-        else None
-    )
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--verify", "HEAD"],
-            cwd=source_root,
-            env=environment,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-    except (OSError, subprocess.CalledProcessError) as exc:
-        raise ArtifactIndexError(
-            f"Could not resolve the current Git commit: {exc}"
-        ) from exc
-    value = result.stdout.strip()
-    if not contracts.SAFE_ID_RE.fullmatch(value):
-        raise ArtifactIndexError(f"Resolved Git commit is invalid: {value!r}")
-    return value
 
 
 def load_run_contract(path: Path) -> tuple[dict[str, Any], str]:
