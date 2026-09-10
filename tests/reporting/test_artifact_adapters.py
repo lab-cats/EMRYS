@@ -41,7 +41,7 @@ EXPECTED_PRODUCER_PATHS = {
     "05": "stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
     "06": "stages/mechanical_orientation/producer.py",
     "07": ("stages/partitioned_cohort_mpileup/producer.py"),
-    "08": "stages/cohort_candidate_preprocessing/r/preprocess_cohort.R",
+    "08": "stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R",
 }
 VALIDATION_ARTIFACT_STEPS = {
     "ref.star_index.validation": "00a",

@@ -124,6 +124,8 @@ grep -Fq '"BiocVersion":' src/emrys/renv.lock ||
     fail "renv lockfile does not include the Bioconductor release marker"
 grep -Fq 'restore_status <- renv::status' src/emrys/resources/runtime/restore_r_environment.R ||
     fail "r-restore does not attest the restored library"
+grep -Fq 'project = dirname(lockfile)' src/emrys/resources/runtime/restore_r_environment.R ||
+    fail "r-restore does not scan installed EMRYS sources for dependencies"
 # Match the R member access literally, without shell expansion.
 # shellcheck disable=SC2016
 grep -Fq 'lock_recorded_packages <- names(lock$Packages)' \
@@ -174,6 +176,7 @@ Sys.setenv(EMRYS_USE_RENV = "1", EMRYS_LOCAL_PILOT_R = "0",
            RENV_PROJECT = project, R_PROFILE_USER = file.path(package, ".Rprofile"))
 source(Sys.getenv("R_PROFILE_USER"))
 stopifnot(isTRUE(getOption("emrys.activation.selected")),
+          Sys.getenv("RENV_CONFIG_SYNCHRONIZED_CHECK") == "FALSE",
           Sys.getenv("RENV_PATHS_LOCKFILE") == file.path(package, "renv.lock"),
           Sys.getenv("RENV_PATHS_ROOT") == file.path(project, "renv/state"),
           Sys.getenv("RENV_PATHS_LIBRARY_STAGING") == file.path(project, "renv/staging"),

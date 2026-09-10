@@ -94,6 +94,7 @@ local({
             stop("R restoration project must be outside the installed EMRYS package.")
         }
         Sys.setenv(
+            RENV_CONFIG_SYNCHRONIZED_CHECK = "FALSE",
             RENV_PROJECT = project_root,
             RENV_PATHS_RENV = file.path(project_root, "renv"),
             RENV_PATHS_ROOT = file.path(project_root, "renv", "state"),

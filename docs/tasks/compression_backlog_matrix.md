@@ -6,7 +6,7 @@ owns the goals; this file owns CS scope, status, decisions, and proof. The
 
 ## Working queue
 
-**CS-23–26 are implemented; hosted validation is pending for one tranche based on PR #156.**
+**[PR #157](https://github.com/lab-cats/EMRYS/pull/157): CS-23–26 are implemented; hosted validation is pending.**
 The approved outcome removes Python-to-R launch handoffs, report presentation
 copies, duplicate reporting publication mechanics, and runtime Git-checkout
 reconciliation. Scientific data and interpretation, both reports, exact code
@@ -982,7 +982,7 @@ it does not invalidate the implementation evidence above.
 
 ### CS-23 through CS-26 Direct science, rendering, and installed execution
 
-Approved together on 2026-09-10, based on `be06f608`. Each commit must reduce
+Approved together on 2026-09-10, based on `be06f608`. The tranche must reduce
 its maintained product surface; moved assets remain included in the count.
 One stacked PR carries the tranche and its necessary caller/fixture updates.
 
@@ -1031,9 +1031,9 @@ Implemented comparison against `be06f608` before hosted validation:
 | Maintained category | Added | Removed | Net |
 |---|---:|---:|---:|
 | Product | 1,607 | 3,893 | −2,286 |
-| Tests and fixtures | 686 | 2,278 | −1,592 |
-| Configuration and schemas | 107 | 48 | +59 |
-| Tooling | 59 | 4 | +55 |
+| Tests and fixtures | 696 | 2,295 | −1,599 |
+| Configuration and schemas | 111 | 52 | +59 |
+| Tooling | 61 | 5 | +56 |
 
 Documentation is separately net positive because the tranche records its changed
 contracts and current status. Retained evidence is unchanged. Four product files
@@ -1052,6 +1052,13 @@ it does not execute Bioconductor restoration or scientific annotation.
 Local package-dependent integration checks remain incomplete: the existing
 editable installation lacks the newly added build metadata, and automatic
 approval review rejected refreshing that environment without separate operator
-approval. That approval is pending. The ordinary hosted CI workflow will validate
-the published installation; the cards remain In progress until its required
-checks pass. No scientific, institutional, or cluster validation is claimed.
+approval. That approval is pending. The first [hosted run](https://github.com/lab-cats/EMRYS/actions/runs/34485912772)
+at `ef321aa1` passed installed-wheel validation, Python 3.11 smoke, shell owners,
+and managed native runtime checks on Ubuntu, Rocky, and Debian. It exposed stale
+workflow paths in test fixtures, one report-provenance path expectation, a
+workflow style error, and R dependency discovery scanning runtime caches.
+Corrections preserve the tests and full R lock/library/source validation, while
+directing dependency discovery to installed EMRYS sources. Focused path/report
+checks, workflow lint, and the guarded R contract pass locally. Final hosted
+validation remains required; the cards stay In progress. No scientific,
+institutional, or cluster validation is claimed.

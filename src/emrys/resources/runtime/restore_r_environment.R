@@ -117,7 +117,8 @@ if (length(missing_from_restored_library) > 0L) {
 }
 
 restore_status <- renv::status(
-    project = project_root,
+    project = dirname(lockfile),
+    lockfile = lockfile,
     library = restored_library
 )
 if (!isTRUE(restore_status$synchronized)) {

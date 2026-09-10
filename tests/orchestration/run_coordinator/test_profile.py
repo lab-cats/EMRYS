@@ -15,11 +15,12 @@ from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.projection import build_reporting_bundle
+from emrys.libraries.source_authority import PACKAGE_ROOT
 from emrys.orchestration.run_coordinator.normalization import admit_project
 from tests.orchestration.run_coordinator.fixture import build
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-PROFILE_PATH = REPO_ROOT / "workflow" / "contracts" / "local_cmh_v2.json"
+PROFILE_PATH = PACKAGE_ROOT / "workflow" / "contracts" / "local_cmh_v2.json"
 STAGE_MAP_PATH = REPO_ROOT / "src" / "emrys" / "contracts" / "STAGE_MAP.md"
 PUBLIC_INVENTORY_PATH = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
 
