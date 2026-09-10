@@ -12,7 +12,6 @@ from .identity import (
     resolve_contract_path,
     validate_attempt_graph,
     validate_document_paths,
-    validate_run_contract,
 )
 
 _SELECTED_ATTEMPT_STATE_BY_COMPLETION = {
@@ -43,10 +42,6 @@ def validate_artifact_semantics(
         raise ContractValidationError(
             f"{artifact_label} external implementation must bind exact module bytes"
         )
-    validate_run_contract(
-        document["run_contract"],
-        artifact_label,
-    )
     validate_document_paths(document)
     attempts = document["attempts"]
     attempt_index = validate_attempt_graph(

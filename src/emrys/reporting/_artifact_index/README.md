@@ -1,8 +1,8 @@
 # Artifact-index implementation
 
-This private package prepares and publishes the artifact index and Run summary
+This private package prepares and publishes the Run result manifest and TSV views
 as one operation for the Run reporting coordinator and developer fixtures.
-[`context.py`](context.py) inspects native artifacts and derives both outputs;
+[`context.py`](context.py) inspects native artifacts and derives the manifest and its projections;
 [`publication.py`](publication.py) owns their combined publication. Sibling reporting packages use private
 [`api.py`](api.py) for parsing, validation, serialization, and transaction helpers.
 Neither interface is a public command or operator recovery route. Filesystem
@@ -20,15 +20,14 @@ retaining their timing, diagnostics, and recorded evidence.
 The canonical processing profile and task definitions supply artifact ownership
 and producer paths through the orchestration contract owner. Reporting adds each
 native reader's file, header, and row-count rules; the selected Analysis descriptor
-supplies its own typed declarations. The historical Run profile still controls
-its artifact locations and transaction roster. Current processing ownership comes
+supplies its own typed declarations. The immutable Run profile controls its artifact locations and transaction roster. Current processing ownership comes
 from the admitted source checkout, so a Run profile cannot authorize an artifact
 under another owner. These inputs drive `registry.py`, `records.py`, and context
 preparation without scanning installed modules or discovering files.
 
 Modules separate contracts and models, adapters, text/binary readers, inspection,
-native-file reconciliation, record/receipt assembly, context preparation,
-publication, and published-transaction validation. Text readers are
+native-file reconciliation, artifact-entry assembly, context preparation,
+and publication. Text readers are
 `_text_common.py` (UTF-8 lines), `_text_tabular.py` (TSV, sample blocks, native
 anchors), and `_text_genomic.py` (VCF, references, BED12, STAR, Picard).
 Stage-specific reconciliation stays with its named module.
@@ -59,13 +58,11 @@ expectations until this separately reviewed defect is fixed.
 ## Publication
 
 [`publication.py`](publication.py) provides byte writes, durability syncing,
-locks, removal, signals, and artifact-index publication order under the common
+locks, removal, and signals under the common
 [recovery contract](../README.md#publication-and-recovery). One
-`.artifact-index.<token>.tmp.records` directory holds staged records, index,
-artifact provenance receipt, and summary files, retaining their file anchors
-while publishing. Exclusive `mkdir` reserves the final records directory before
-linking files. The summary receipt is installed last and completes the combined
-operation. Input and source rechecks cover the whole operation; rollback handles
-its complete output set. Old index and summary recovery state still blocks
-publication. The native inspection context also supports current-source
-validation without preparing another summary.
+`.artifact-index.<token>.tmp.records` directory holds the two TSV projections
+and the canonical Run result manifest, retaining inode anchors while linking
+finals exclusively. The manifest is installed last. Source, input and directory
+rechecks cover the full operation; rollback removes only proven owned outputs.
+Current-source revalidation reconstructs the same entries and projections from
+the admitted inputs and compares exact bytes.

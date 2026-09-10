@@ -16,7 +16,6 @@ from emrys.contracts.artifacts.api import REPORT_OUTPUTS
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.application_model import (
-    RUN_BINDING_SCHEMA_VERSION,
     AnalysisRevision,
 )
 from emrys.contracts.orchestration.projection import (
@@ -40,12 +39,8 @@ from emrys.orchestration.run_coordinator._inspection_admission import (
     admit_execution_path,
 )
 
-ReportingKind = Literal["artifact_index", "run_summary", "html_report"]
+ReportingKind = Literal["run_summary", "html_report"]
 REPORTING_KINDS: tuple[ReportingKind, ...] = ("run_summary", "html_report")
-_HISTORICAL_REPORTING_KINDS: tuple[ReportingKind, ...] = (
-    "artifact_index",
-    *REPORTING_KINDS,
-)
 
 
 class ReportingBoundaryError(RuntimeError):
@@ -145,7 +140,7 @@ class _AdmittedIdentity:
     run_lock_reference: dict[str, str]
 
 
-def _validate_semantic_receipt(
+def validate_semantic_receipt(
     kind: str,
     receipt_path: Path,
     run_root: Path,
@@ -154,16 +149,10 @@ def _validate_semantic_receipt(
     attempt: Mapping[str, Any],
     config: Mapping[str, Any],
     *,
-    read: bool = False,
     validated_predecessor: SemanticTransaction | None = None,
 ) -> SemanticTransaction:
     from emrys.reporting.transaction_validation import validate_receipt  # noqa: PLC0415
 
-    start, _ = _admit_record(
-        run_root / "state" / "reporting" / kind / "start.json",
-        run_root,
-        "reporting-start",
-    )
     return validate_receipt(
         kind,
         receipt_path,
@@ -172,29 +161,19 @@ def _validate_semantic_receipt(
         profile,
         attempt,
         config,
-        historical_read=(
-            read
-            and report_output_root(run_root, profile)
-            == run_root / "products" / "report"
-        ),
         validated_predecessor=validated_predecessor,
-        combined=start["schema_version"] == "emrys.reporting-start.v2",
     )
 
 
-_semantic_validator = partial(_validate_semantic_receipt, read=False)
-validate_read_semantic_receipt = partial(_validate_semantic_receipt, read=True)
-
-
-def semantic_validator_session(*, read: bool) -> SemanticValidator:
+def semantic_validator_session() -> SemanticValidator:
     """Reuse only the immediately preceding transaction in one fixed sequence."""
 
     predecessor: SemanticTransaction | None = None
 
     def validate(*args: Any) -> SemanticTransaction:
         nonlocal predecessor
-        predecessor = _validate_semantic_receipt(
-            *args, read=read, validated_predecessor=predecessor
+        predecessor = validate_semantic_receipt(
+            *args, validated_predecessor=predecessor
         )
         return predecessor
 
@@ -213,37 +192,36 @@ def _publish_exclusive(path: Path, data: bytes) -> None:
 DEFAULT_REPORTING_BOUNDARY_OPS = ReportingBoundaryOps(
     publish_bytes=_publish_exclusive,
     now=lambda: datetime.now(UTC),
-    validate_semantic_receipt=_semantic_validator,
+    validate_semantic_receipt=validate_semantic_receipt,
 )
 
 
 def _kind(value: str) -> ReportingKind:
-    if value not in _HISTORICAL_REPORTING_KINDS:
+    if value not in REPORTING_KINDS:
         raise ReportingBoundaryError(f"Unknown reporting kind: {value}")
     return cast("ReportingKind", value)
 
 
 def reporting_kinds(run_root: Path) -> tuple[ReportingKind, ...]:
-    """Select the exact protocol from admitted starts, never from missing stages."""
-    versions = set()
-    for kind in _HISTORICAL_REPORTING_KINDS:
-        path = run_root / "state" / "reporting" / kind / "start.json"
-        if path.exists() or path.is_symlink():
-            record, _ = _admit_record(path, run_root, "reporting-start")
-            if record["kind"] != kind:
-                raise ReportingBoundaryError(
-                    "Reporting start kind differs from its path"
-                )
-            versions.add(record["schema_version"])
-    if len(versions) > 1:
-        raise ReportingBoundaryError(
-            "Reporting ledger mixes incompatible start versions"
-        )
-    return (
-        REPORTING_KINDS
-        if versions == {"emrys.reporting-start.v2"}
-        else _HISTORICAL_REPORTING_KINDS
-    )
+    """Return the current reporting stages after checking the ledger roster."""
+
+    root = run_root / "state" / "reporting"
+    if root.exists() or root.is_symlink():
+        if root.is_symlink() or not root.is_dir():
+            raise ReportingBoundaryError(
+                f"Reporting ledger root is not a real directory: {root}"
+            )
+        try:
+            unexpected = {path.name for path in root.iterdir()} - set(REPORTING_KINDS)
+        except OSError as exc:
+            raise ReportingBoundaryError(
+                f"Could not read reporting ledger: {root}: {exc}"
+            ) from exc
+        if unexpected:
+            raise ReportingBoundaryError(
+                "Unknown reporting stages: " + ", ".join(sorted(unexpected))
+            )
+    return REPORTING_KINDS
 
 
 def _canonical_root(path: Path) -> Path:
@@ -331,22 +309,15 @@ def _reporting_relative(relative: str, attempt_id: object | None) -> str:
 def _admit_reporting_projection(
     *,
     root: Path,
-    execution: Mapping[str, Any],
     config: Mapping[str, Any],
 ) -> None:
-    successor = execution.get("schema_version") == RUN_BINDING_SCHEMA_VERSION
-    projection = None if successor else execution["reporting_projection"]
-    if projection is not None and set(projection) != set(CONTRACT_PATHS):
-        raise ReportingBoundaryError(
-            "Execution reporting projection does not use the fixed complete roster"
-        )
     for name, relative in CONTRACT_PATHS.items():
         expected_relative = _reporting_relative(
             relative,
-            config.get("workflow_attempt_id") if successor else None,
+            config["workflow_attempt_id"],
         )
-        reference = config.get(f"{name}_path") if successor else projection[name]
-        if successor and (
+        reference = config.get(f"{name}_path")
+        if (
             not isinstance(reference, Mapping)
             or set(reference) != {"path", "sha256"}
             or not all(isinstance(value, str) for value in reference.values())
@@ -360,15 +331,10 @@ def _admit_reporting_projection(
                 f"Reporting projection {name} does not use its fixed path"
             )
         path = root / expected_relative
-        if not successor and config.get(f"{name}_path") != str(path):
-            raise ReportingBoundaryError(
-                f"Workflow config does not bind reporting projection {name}"
-            )
         data = _read_bound(path, root, f"reporting projection {name}")
         if hashlib.sha256(data).hexdigest() != reference["sha256"]:
             raise ReportingBoundaryError(
-                f"Reporting projection {name} bytes differ from "
-                f"{'workflow config' if successor else 'execution'} identity"
+                f"Reporting projection {name} bytes differ from workflow config identity"
             )
         if path.suffix == ".json":
             try:
@@ -391,8 +357,8 @@ def _attempt_reporting_materialization(
     profile: Mapping[str, Any],
     run_root: Path,
     *,
-    analysis: AnalysisRevision | None = None,
-    attempt_id: str | None = None,
+    analysis: AnalysisRevision,
+    attempt_id: str,
     processing_source_root: Path | None = None,
     processing_artifact_paths: Mapping[tuple[str, str, str], Path] | None = None,
 ) -> tuple[
@@ -417,17 +383,14 @@ def _attempt_reporting_materialization(
     }
     files: list[tuple[Path, bytes]] = []
     config: dict[str, Any] = {}
-    successor = analysis is not None
-    references = (
-        reporting.projection_references if successor else source["reporting_projection"]
-    )
-    for name in CONTRACT_PATHS:
-        reference = dict(references[name])
-        if successor:
-            reference["path"] = _reporting_relative(reference["path"], attempt_id)
-        path = run_root / str(reference["path"])
+    for name, bound_reference in reporting.projection_references.items():
+        reference = {
+            **bound_reference,
+            "path": _reporting_relative(bound_reference["path"], attempt_id),
+        }
+        path = run_root / reference["path"]
         files.append((path, projection_data[name]))
-        config[f"{name}_path"] = reference if successor else str(path)
+        config[f"{name}_path"] = reference
     directories = (
         run_root / "products" / "artifact-summary",
         report_output_root(run_root, profile),
@@ -533,8 +496,10 @@ def _admit_identity(
 ) -> _AdmittedIdentity:
     root = _canonical_root(run_root)
     expected_profile = root / "contract" / "profile.json"
-    allowed = {root / "contract" / name for name in ("normalized.json", "run.json")}
-    if profile_path != expected_profile or execution_path not in allowed:
+    if (
+        profile_path != expected_profile
+        or execution_path != root / "contract" / "run.json"
+    ):
         raise ReportingBoundaryError(
             "Reporting identity must use the fixed execution/profile contract paths"
         )
@@ -544,16 +509,6 @@ def _admit_identity(
         root,
         profile,
     )
-    name = (
-        "run.json"
-        if execution["schema_version"] == RUN_BINDING_SCHEMA_VERSION
-        else "normalized.json"
-    )
-    expected_execution = root / "contract" / name
-    if execution_path != expected_execution:
-        raise ReportingBoundaryError(
-            "Reporting execution schema does not use its fixed contract path"
-        )
     attempt, attempt_data = _admit_record(
         workflow_attempt_path,
         root,
@@ -618,7 +573,7 @@ def _admit_identity(
             raise ReportingBoundaryError(
                 f"Could not attest reporting source checkout: {exc}"
             ) from exc
-    _admit_reporting_projection(root=root, execution=execution, config=config)
+    _admit_reporting_projection(root=root, config=config)
     run_lock_reference = _run_lock_reference(
         root,
         attempt,
@@ -698,10 +653,6 @@ def publish_start(
     """Publish the immutable marker immediately before one reporting producer."""
 
     admitted_kind = _kind(kind)
-    if admitted_kind not in REPORTING_KINDS:
-        raise ReportingBoundaryError(
-            "Artifact indexing is part of combined run-summary publication"
-        )
     identity = _admit_identity(
         run_root=run_root,
         execution_path=execution_path,
@@ -791,10 +742,6 @@ def publish_verified(
     """Semantically validate a completed transaction and publish proof last."""
 
     admitted_kind = _kind(kind)
-    if admitted_kind not in REPORTING_KINDS:
-        raise ReportingBoundaryError(
-            "Artifact indexing is part of combined run-summary publication"
-        )
     identity = _admit_identity(
         run_root=run_root,
         execution_path=execution_path,
@@ -907,12 +854,9 @@ def _identity_from_origin(
     attempt_path = root / "attempts" / origin / "attempt.json"
     attempt, _attempt_data = _admit_record(attempt_path, root, "workflow-attempt")
     config_path = root / str(attempt["workflow_config"]["path"])
-    name = (
-        "run.json" if (root / "contract" / "run.json").exists() else "normalized.json"
-    )
     identity = _admit_identity(
         run_root=root,
-        execution_path=root / "contract" / name,
+        execution_path=root / "contract" / "run.json",
         profile_path=root / "contract" / "profile.json",
         workflow_attempt_path=attempt_path,
         workflow_config_path=config_path,
@@ -958,7 +902,7 @@ def validate_verified(
     execution: Mapping[str, Any],
     profile: Mapping[str, Any],
     *,
-    semantic_validator: SemanticValidator = validate_read_semantic_receipt,
+    semantic_validator: SemanticValidator = validate_semantic_receipt,
 ) -> ReportingLedgerAdmission:
     """Admit a verified ledger and retain its immutable references."""
 
@@ -1064,7 +1008,7 @@ __all__ = (
     "reporting_kinds",
     "publish_start",
     "publish_verified",
-    "validate_read_semantic_receipt",
+    "validate_semantic_receipt",
     "validate_start",
     "validate_verified",
 )

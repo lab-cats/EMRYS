@@ -15,15 +15,12 @@ from typing import Any
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
-    LEGACY_EXECUTION_SCHEMA_VERSION,
-    RUN_BINDING_SCHEMA_VERSION,
     AnalysisRevision,
     ExecutionPlan,
     RunBinding,
     bind_run,
     execution_owner_keys,
     read_application_record,
-    validate_execution_view,
     validate_successor_run,
 )
 from emrys.libraries.validation import inputs as validation_inputs
@@ -136,8 +133,8 @@ def admit_canonical_record(
     return record, data
 
 
-def admit_successor_run(root: Path) -> SuccessorRunAuthority | None:
-    """Admit a complete successor triple, or return None for a legacy namespace."""
+def admit_successor_run(root: Path) -> SuccessorRunAuthority:
+    """Admit the current Analysis, Execution Plan, and Run binding."""
 
     paths = {
         "analysis": root / "contract" / "analysis.json",
@@ -147,18 +144,16 @@ def admit_successor_run(root: Path) -> SuccessorRunAuthority | None:
     present = {
         name for name, path in paths.items() if path.exists() or path.is_symlink()
     }
-    if not present:
-        return None
     if present != set(paths):
         missing = ", ".join(sorted(set(paths) - present))
-        raise InspectionError(f"Incomplete successor Run authority; missing: {missing}")
+        raise InspectionError(f"Incomplete Run authority; missing: {missing}")
     values: dict[str, Any] = {}
     for name, path in paths.items():
-        data = _read_bytes(path, root, f"successor {name} authority")
+        data = _read_bytes(path, root, f"{name} authority")
         try:
             values[name] = read_application_record(data)
         except orchestration_contracts.ContractValidationError as exc:
-            raise InspectionError(f"Invalid successor {name} authority: {exc}") from exc
+            raise InspectionError(f"Invalid {name} authority: {exc}") from exc
     analysis = values["analysis"]
     plan = values["execution_plan"]
     run = values["run"]
@@ -173,7 +168,7 @@ def admit_successor_run(root: Path) -> SuccessorRunAuthority | None:
             "Run binding does not bind its Analysis and Execution Plan"
         )
     if root.name != run.run_id:
-        raise InspectionError("Run root name does not match successor Run ID")
+        raise InspectionError("Run root name does not match Run ID")
     return SuccessorRunAuthority(analysis, plan, run)
 
 
@@ -184,8 +179,8 @@ def admit_execution_path(
     *,
     read_bytes: Callable[[Path, Path, str], bytes] = _read_bytes,
     error_type: type[RuntimeError] = InspectionError,
-) -> tuple[dict[str, Any], bytes, SuccessorRunAuthority | None]:
-    """Admit exact historical execution or successor Run bytes from one path."""
+) -> tuple[dict[str, Any], bytes, SuccessorRunAuthority]:
+    """Admit exact current Run bytes and their immutable authority."""
 
     data = read_bytes(path, root, "execution authority")
     try:
@@ -193,24 +188,15 @@ def admit_execution_path(
             data, f"execution {path}"
         )
         canonical = orchestration_contracts.canonical_json_bytes(record)
-        version = record.get("schema_version")
-        authority = None
-        if version == LEGACY_EXECUTION_SCHEMA_VERSION:
-            validate_execution_view(record, profile=profile)
-        elif version == RUN_BINDING_SCHEMA_VERSION:
-            authority = admit_successor_run(root)
-            if authority is None or authority.run_binding.canonical_bytes != canonical:
-                raise InspectionError(
-                    "Execution bytes differ from successor Run authority"
-                )
-            validate_successor_run(
-                analysis=authority.analysis_revision,
-                plan=authority.execution_plan,
-                run=authority.run_binding,
-                profile=profile,
-            )
-        else:
-            raise InspectionError(f"Unsupported execution authority: {version!r}")
+        authority = admit_successor_run(root)
+        if authority.run_binding.canonical_bytes != canonical:
+            raise InspectionError("Execution bytes differ from Run authority")
+        validate_successor_run(
+            analysis=authority.analysis_revision,
+            plan=authority.execution_plan,
+            run=authority.run_binding,
+            profile=profile,
+        )
     except (orchestration_contracts.ContractValidationError, InspectionError) as exc:
         raise error_type(f"Invalid execution at {path}: {exc}") from exc
     if data != canonical:
@@ -250,43 +236,12 @@ def _successor_expected_tasks(
 
 
 def expected_tasks(
-    execution: Mapping[str, Any] | SuccessorRunAuthority,
+    execution: SuccessorRunAuthority,
     profile: Mapping[str, Any],
 ) -> tuple[ExpectedTask, ...]:
-    """Project the exact required owner/scope roster from its authority."""
+    """Project the required owner and scope roster from current Run authority."""
 
-    if isinstance(execution, SuccessorRunAuthority):
-        return _successor_expected_tasks(execution)
-
-    orchestration_contracts.validate_record("profile", profile)
-    validate_execution_view(execution, profile=profile)
-    required = set(profile["required_owner_keys"])
-    cohort_id = str(execution["analysis"]["cohort_id"])
-    scopes = {
-        "reference": (str(execution["reference"]["reference_id"]),),
-        "samples": tuple(str(row["sample_id"]) for row in execution["samples"]["rows"]),
-        "partitions": tuple(
-            f"{cohort_id}__{row['partition_id']}"
-            for row in execution["partitions"]["rows"]
-        ),
-        "cohort": (cohort_id,),
-        "analysis": (str(execution["analysis"]["primary_analysis_id"]),),
-    }
-    projected: list[ExpectedTask] = []
-    for owner in profile["owner_tasks"]:
-        machine_key = str(owner["machine_key"])
-        if machine_key not in required:
-            continue
-        for scope_id in scopes[str(owner["scope_selector"])]:
-            projected.append(
-                ExpectedTask(
-                    machine_key=machine_key,
-                    step_id=str(owner["step_id"]),
-                    scope_type=str(owner["scope_type"]),
-                    scope_id=scope_id,
-                )
-            )
-    return tuple(projected)
+    return _successor_expected_tasks(execution)
 
 
 def verified_tree_blockers(

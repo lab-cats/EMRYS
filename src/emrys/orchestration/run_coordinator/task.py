@@ -27,9 +27,6 @@ from pathlib import Path
 from typing import Any
 
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.orchestration.application_model import (
-    RUN_BINDING_SCHEMA_VERSION,
-)
 from emrys.libraries.exclusive_publication import publish_exclusive
 from emrys.libraries.process_environment import sanitized_subprocess_environment
 from emrys.libraries.source_authority import (
@@ -54,7 +51,6 @@ from emrys.orchestration.run_coordinator._inspection_admission import (
 )
 
 DISPATCH_SCHEMA_VERSION = "emrys.local-task-dispatch.v2"
-_HISTORICAL_DISPATCH_SCHEMA_VERSION = "emrys.local-task-dispatch.v1"
 _DISPATCH_FIELDS = frozenset(
     {
         "schema_version",
@@ -77,6 +73,7 @@ _DISPATCH_FIELDS = frozenset(
         "verified_task_path",
         "stdout_path",
         "stderr_path",
+        "publication",
     }
 )
 _DECLARATION_FIELDS = frozenset({"role", "path"})
@@ -162,7 +159,7 @@ class TaskDispatch:
     verified_task_path: Path
     stdout_path: Path
     stderr_path: Path
-    publication: PublicationPlan | None = None
+    publication: PublicationPlan
 
 
 @dataclass(frozen=True, slots=True)
@@ -379,19 +376,15 @@ def load_dispatch(path: Path, *, expected_sha256: str) -> TaskDispatch:
         raise TaskBoundaryError(
             f"task dispatch must use canonical JSON bytes: {dispatch_path}"
         )
-    current = raw.get("schema_version") == DISPATCH_SCHEMA_VERSION
-    record = _closed_object(
-        raw,
-        fields=_DISPATCH_FIELDS | {"publication"} if current else _DISPATCH_FIELDS,
-        label="task dispatch",
-    )
-    if record["schema_version"] not in {
-        DISPATCH_SCHEMA_VERSION,
-        _HISTORICAL_DISPATCH_SCHEMA_VERSION,
-    }:
+    if raw.get("schema_version") != DISPATCH_SCHEMA_VERSION:
         raise TaskBoundaryError(
             f"task dispatch schema_version must be {DISPATCH_SCHEMA_VERSION}"
         )
+    record = _closed_object(
+        raw,
+        fields=_DISPATCH_FIELDS,
+        label="task dispatch",
+    )
 
     run_root = _absolute_path(record["run_root"], "run_root")
     if not run_root.is_dir() or run_root.is_symlink():
@@ -411,32 +404,28 @@ def load_dispatch(path: Path, *, expected_sha256: str) -> TaskDispatch:
         if native_value is None
         else _absolute_path(native_value, "native_receipt_path")
     )
-    publication = None
-    if current:
-        declared = _closed_object(
-            record["publication"], fields=_PUBLICATION_FIELDS, label="publication"
-        )
-        sequences = {}
-        for name in ("locks", "forbidden_paths", "input_directories"):
-            values = declared[name]
-            if not isinstance(values, list):
-                raise TaskBoundaryError(f"publication.{name} must be an array")
-            paths = tuple(
-                _absolute_path(value, f"publication.{name}") for value in values
+    declared = _closed_object(
+        record["publication"], fields=_PUBLICATION_FIELDS, label="publication"
+    )
+    sequences = {}
+    for name in ("locks", "forbidden_paths", "input_directories"):
+        values = declared[name]
+        if not isinstance(values, list):
+            raise TaskBoundaryError(f"publication.{name} must be an array")
+        paths = tuple(_absolute_path(value, f"publication.{name}") for value in values)
+        if len(set(paths)) != len(paths):
+            raise TaskBoundaryError(f"publication.{name} repeats a path")
+        sequences[name] = paths
+    publication = PublicationPlan(
+        **sequences,
+        output_directory=(
+            None
+            if declared["output_directory"] is None
+            else _absolute_path(
+                declared["output_directory"], "publication.output_directory"
             )
-            if len(set(paths)) != len(paths):
-                raise TaskBoundaryError(f"publication.{name} repeats a path")
-            sequences[name] = paths
-        publication = PublicationPlan(
-            **sequences,
-            output_directory=(
-                None
-                if declared["output_directory"] is None
-                else _absolute_path(
-                    declared["output_directory"], "publication.output_directory"
-                )
-            ),
-        )
+        ),
+    )
     result = TaskDispatch(
         path=dispatch_path,
         dispatch_sha256=expected_sha256,
@@ -455,7 +444,7 @@ def load_dispatch(path: Path, *, expected_sha256: str) -> TaskDispatch:
             validator_argv=_command(record["validator_argv"], "validator_argv"),
         ),
         inputs=_declarations(record["inputs"], "inputs", allow_binding=True),
-        outputs=_declarations(record["outputs"], "outputs", working=current),
+        outputs=_declarations(record["outputs"], "outputs", working=True),
         validation_report_path=_absolute_path(
             record["validation_report_path"], "validation_report_path"
         ),
@@ -483,17 +472,11 @@ def load_dispatch(path: Path, *, expected_sha256: str) -> TaskDispatch:
     }
     if result.native_receipt_path is not None:
         mutable_paths.add(result.native_receipt_path)
-    declared_native = current and result.native_receipt_path is not None
-    if declared_native and result.native_receipt_path not in {
+    if result.native_receipt_path is not None and result.native_receipt_path not in {
         item.path for item in result.outputs
     }:
         raise TaskBoundaryError("Current native receipt must be a declared output")
-    expected_mutable_count = (
-        len(result.outputs)
-        + 6
-        + (result.native_receipt_path is not None and not declared_native)
-    )
-    if len(mutable_paths) != expected_mutable_count:
+    if len(mutable_paths) != len(result.outputs) + 6:
         raise TaskBoundaryError("task dispatch aliases mutable destination paths")
     admitted_inputs = {
         result.path,
@@ -505,45 +488,41 @@ def load_dispatch(path: Path, *, expected_sha256: str) -> TaskDispatch:
         raise TaskBoundaryError(
             "task dispatch aliases an input and mutable destination"
         )
-    if publication is not None:
-        working_paths = {item.working_path for item in result.outputs}
-        if len(working_paths) != len(result.outputs) or working_paths & (
-            mutable_paths | admitted_inputs
-        ):
-            raise TaskBoundaryError("Task working paths repeat or alias a bound path")
-        directory = publication.output_directory
-        if directory is not None and (
-            {item.path.parent for item in result.outputs} != {directory}
-            or len({item.working_path.parent for item in result.outputs}) != 1
+    working_paths = {item.working_path for item in result.outputs}
+    if len(working_paths) != len(result.outputs) or working_paths & (
+        mutable_paths | admitted_inputs
+    ):
+        raise TaskBoundaryError("Task working paths repeat or alias a bound path")
+    directory = publication.output_directory
+    if directory is not None and (
+        {item.path.parent for item in result.outputs} != {directory}
+        or len({item.working_path.parent for item in result.outputs}) != 1
+    ):
+        raise TaskBoundaryError(
+            "Directory publication must contain every declared output"
+        )
+    for output in result.outputs:
+        assert output.working_path is not None
+        parent = directory.parent if directory is not None else output.path.parent
+        if (
+            output.working_path.parent.parent != parent
+            or output.working_path.name != output.path.name
         ):
             raise TaskBoundaryError(
-                "Directory publication must contain every declared output"
+                "Working outputs must retain final basenames in an adjacent staging directory"
             )
-        for output in result.outputs:
-            assert output.working_path is not None
-            parent = directory.parent if directory is not None else output.path.parent
-            if (
-                output.working_path.parent.parent != parent
-                or output.working_path.name != output.path.name
-            ):
-                raise TaskBoundaryError(
-                    "Working outputs must retain final basenames in an adjacent staging directory"
-                )
-        working_parents = {path.parent for path in working_paths}
-        if (
-            working_parents & (mutable_paths | admitted_inputs)
-            or directory in working_parents
-        ):
-            raise TaskBoundaryError("Staging directory aliases a bound path")
-        for lock in publication.locks:
-            if (
-                lock
-                in mutable_paths | admitted_inputs | working_paths | working_parents
-            ):
-                raise TaskBoundaryError("Publication lock aliases a bound path")
-        for pattern in publication.forbidden_paths:
-            if glob.has_magic(str(pattern.parent)):
-                raise TaskBoundaryError("Recovery patterns may match only a basename")
+    working_parents = {path.parent for path in working_paths}
+    if (
+        working_parents & (mutable_paths | admitted_inputs)
+        or directory in working_parents
+    ):
+        raise TaskBoundaryError("Staging directory aliases a bound path")
+    for lock in publication.locks:
+        if lock in mutable_paths | admitted_inputs | working_paths | working_parents:
+            raise TaskBoundaryError("Publication lock aliases a bound path")
+    for pattern in publication.forbidden_paths:
+        if glob.has_magic(str(pattern.parent)):
+            raise TaskBoundaryError("Recovery patterns may match only a basename")
     in_run_paths = mutable_paths - {item.path for item in result.outputs}
     for mutable in in_run_paths:
         _safe_in_run_destination(mutable, result.run_root, "mutable task path")
@@ -1091,23 +1070,17 @@ def _materialize_task_scope(dispatch: TaskDispatch) -> None:
 
 def _expected_scope_ids(
     task: Mapping[str, Any],
-    execution: Mapping[str, Any],
     profile: Mapping[str, Any],
-    authority: SuccessorRunAuthority | None,
+    authority: SuccessorRunAuthority,
 ) -> set[str]:
     return {
         item.scope_id
-        for item in expected_tasks(authority or execution, profile)
+        for item in expected_tasks(authority, profile)
         if item.machine_key == task["machine_key"]
     }
 
 
-def _step00c_fasta(
-    dispatch: TaskDispatch,
-    execution: Mapping[str, Any],
-) -> Path:
-    if execution.get("schema_version") != RUN_BINDING_SCHEMA_VERSION:
-        return Path(str(execution["reference"]["fasta"]["path"]))
+def _step00c_fasta(dispatch: TaskDispatch) -> Path:
     if len(dispatch.inputs) != 1:
         raise TaskBoundaryError("Step 00c dispatch must bind exactly one FASTA input")
     return dispatch.inputs[0].path
@@ -1115,7 +1088,6 @@ def _step00c_fasta(
 
 def _admit_output_locations(
     dispatch: TaskDispatch,
-    execution: Mapping[str, Any],
 ) -> None:
     """Admit run-local outputs plus the exact stationary Step 00c sidecars."""
 
@@ -1135,7 +1107,7 @@ def _admit_output_locations(
     if not outside:
         return
     sidecar_owner = "emrys.stage.construct_FASTA_sidecars.v1"
-    fasta = _step00c_fasta(dispatch, execution)
+    fasta = _step00c_fasta(dispatch)
     try:
         if fasta.resolve(strict=True) != fasta:
             raise TaskBoundaryError(
@@ -1167,7 +1139,6 @@ def _admit_output_locations(
 
 def _admit_step00c_external_parent_access(
     dispatch: TaskDispatch,
-    execution: Mapping[str, Any],
     *,
     path_access: PathAccess,
 ) -> None:
@@ -1175,7 +1146,7 @@ def _admit_step00c_external_parent_access(
 
     if dispatch.machine_key != "emrys.stage.construct_FASTA_sidecars.v1":
         return
-    fasta = _step00c_fasta(dispatch, execution)
+    fasta = _step00c_fasta(dispatch)
     if not path_access(fasta, os.R_OK):
         raise TaskBoundaryError(
             f"Step 00c stationary FASTA is not readable before task entry: {fasta}"
@@ -1189,13 +1160,12 @@ def _admit_step00c_external_parent_access(
 
 def _step00c_external_outputs(
     dispatch: TaskDispatch,
-    execution: Mapping[str, Any],
 ) -> tuple[FileDeclaration, ...]:
     """Return the exact stationary Step 00c pair, or no reusable outputs."""
 
     if dispatch.machine_key != "emrys.stage.construct_FASTA_sidecars.v1":
         return ()
-    fasta = _step00c_fasta(dispatch, execution)
+    fasta = _step00c_fasta(dispatch)
     expected_paths = {
         Path(f"{fasta}.fai"),
         fasta.with_name(f"{fasta.stem}.dict"),
@@ -1220,11 +1190,10 @@ def _step00c_external_outputs(
 
 def _admit_native_destinations(
     dispatch: TaskDispatch,
-    execution: Mapping[str, Any],
 ) -> dict[FileDeclaration, _BoundFileSnapshot]:
     """Require create-absent outputs except an already-complete Step 00c pair."""
 
-    reusable = _step00c_external_outputs(dispatch, execution)
+    reusable = _step00c_external_outputs(dispatch)
     reusable_paths = {output.path for output in reusable}
     observed_present: set[Path] = set()
     for output in reusable:
@@ -1305,7 +1274,6 @@ class _NativePublication:
 
     @property
     def plan(self) -> PublicationPlan:
-        assert self.dispatch.publication is not None
         return self.dispatch.publication
 
     @staticmethod
@@ -1507,11 +1475,6 @@ def _admit_identity(
         profile,
     )
     profile_sha256 = hashlib.sha256(profile_data).hexdigest()
-    if (
-        "profile" in execution
-        and execution["profile"]["profile_sha256"] != profile_sha256
-    ):
-        raise TaskBoundaryError("Execution does not bind the admitted profile")
     tasks = [
         task
         for task in profile["owner_tasks"]
@@ -1528,11 +1491,9 @@ def _admit_identity(
         )
     if task["scope_type"] != dispatch.scope["scope_type"]:
         raise TaskBoundaryError("Dispatch scope_type does not match its profile owner")
-    if dispatch.scope["scope_id"] not in _expected_scope_ids(
-        task, execution, profile, authority
-    ):
+    if dispatch.scope["scope_id"] not in _expected_scope_ids(task, profile, authority):
         raise TaskBoundaryError("Dispatch scope_id is not selected by Run authority")
-    _admit_output_locations(dispatch, execution)
+    _admit_output_locations(dispatch)
 
     return (
         profile,
@@ -1944,9 +1905,38 @@ def validate_verified_task(
         run_root, machine_key, scope
     )
     verified_path = _absolute_path(str(path), "verified task path")
+    if (
+        verified_path
+        != canonical_root
+        / "state"
+        / "verified"
+        / owner_key
+        / f"{expected_scope['scope_id']}.json"
+    ):
+        raise TaskBoundaryError(
+            "Verified task path does not match its exact owner/scope"
+        )
     _safe_in_run_destination(verified_path, canonical_root, "verified task path")
     orchestration_contracts.validate_record("profile", profile)
-    record, _ = _admit_record(verified_path, canonical_root, "verified-task")
+    marker, marker_bytes = _admit_record(verified_path, canonical_root, "verified-task")
+    attempt_reference = marker["task_attempt_record"]
+    parts = Path(attempt_reference["path"]).parts
+    if len(parts) != 6:
+        raise TaskBoundaryError(
+            "Verified task does not reference one exact task attempt"
+        )
+    record, admitted_attempt_reference = _admit_task_attempt(
+        run_root=canonical_root,
+        execution=execution,
+        profile=profile,
+        workflow_attempt_id=parts[1],
+        machine_key=owner_key,
+        scope=expected_scope,
+    )
+    if admitted_attempt_reference != attempt_reference:
+        raise TaskBoundaryError("Task-attempt record reference no longer matches")
+    if record["status"] != "succeeded":
+        raise TaskBoundaryError("Referenced task attempt is not successful")
     profile_tasks = [
         item for item in profile["owner_tasks"] if item["machine_key"] == owner_key
     ]
@@ -1955,10 +1945,6 @@ def validate_verified_task(
     owner = profile_tasks[0]
     if owner["scope_type"] != expected_scope["scope_type"]:
         raise TaskBoundaryError("Verified task scope_type does not match profile owner")
-    identity = _task_identity(execution, profile, owner_key, expected_scope)
-    for field, expected in identity.items():
-        if record[field] != expected:
-            raise TaskBoundaryError(f"Verified task {field} does not match")
 
     roles: set[str] = set()
     paths: set[str] = set()
@@ -1974,29 +1960,6 @@ def validate_verified_task(
             paths.add(file_path)
             _bound_file_matches(bound, f"verified {group}[{index}]")
 
-    attempt_reference = record["task_attempt_record"]
-    attempt, admitted_attempt_reference = _admit_task_attempt(
-        run_root=canonical_root,
-        execution=execution,
-        profile=profile,
-        workflow_attempt_id=str(record["workflow_attempt_id"]),
-        machine_key=owner_key,
-        scope=expected_scope,
-    )
-    if admitted_attempt_reference != attempt_reference:
-        raise TaskBoundaryError("Task-attempt record reference no longer matches")
-    for field in (
-        "task_attempt_id",
-        "owner_run_token",
-    ):
-        if attempt[field] != record[field]:
-            raise TaskBoundaryError(
-                f"Task attempt and verified task disagree on {field}"
-            )
-    if attempt["status"] != "succeeded" or attempt["failure_message"] is not None:
-        raise TaskBoundaryError("Referenced task attempt is not successful")
-    if attempt["task_start_record"] != record["task_start_record"]:
-        raise TaskBoundaryError("Task attempt and verified task disagree on task start")
     start_path = (
         canonical_root
         / "state"
@@ -2017,25 +1980,22 @@ def validate_verified_task(
         canonical_root / dispatch_reference["path"],
         expected_sha256=dispatch_reference["sha256"],
     )
-    if dispatch.publication is not None:
-        directories = [
-            (path, "inputs") for path in dispatch.publication.input_directories
-        ]
-        if dispatch.publication.output_directory is not None:
-            directories.append((dispatch.publication.output_directory, "outputs"))
-        for directory, group in directories:
-            expected_paths = {
-                Path(item["path"])
-                for item in record[group]
-                if Path(item["path"]).parent == directory
-            }
-            if {
-                path
-                for path, _ in _directory_members(directory, nonempty=group == "inputs")
-            } != expected_paths:
-                raise TaskBoundaryError(
-                    f"Verified task directory membership differs: {directory}"
-                )
+    directories = [(path, "inputs") for path in dispatch.publication.input_directories]
+    if dispatch.publication.output_directory is not None:
+        directories.append((dispatch.publication.output_directory, "outputs"))
+    for directory, group in directories:
+        expected_paths = {
+            Path(item["path"])
+            for item in record[group]
+            if Path(item["path"]).parent == directory
+        }
+        if {
+            path
+            for path, _ in _directory_members(directory, nonempty=group == "inputs")
+        } != expected_paths:
+            raise TaskBoundaryError(
+                f"Verified task directory membership differs: {directory}"
+            )
     for field in (
         "workflow_attempt_id",
         "task_attempt_id",
@@ -2045,12 +2005,15 @@ def validate_verified_task(
     ):
         if start[field] != record[field]:
             raise TaskBoundaryError(f"Task start and verified task disagree on {field}")
-    if attempt["producer"] != record["commands"]["producer"]:
-        raise TaskBoundaryError("Producer command differs from task attempt")
-    if attempt["validator"] != record["commands"]["validator"]:
-        raise TaskBoundaryError("Validator command differs from task attempt")
-    if attempt["semantic_all_pass"] != record["commands"]["semantic_all_pass"]:
-        raise TaskBoundaryError("Semantic command differs from task attempt")
+    if dispatch.verified_task_path != verified_path:
+        raise TaskBoundaryError("Task dispatch binds a different verified path")
+    for name, argv in (
+        ("producer", dispatch.backend.producer_argv),
+        ("validator", dispatch.backend.validator_argv),
+        ("semantic_all_pass", _semantic_argv(dispatch, str(owner["step_id"]))),
+    ):
+        if record[name] != CommandResult(argv, 0).record:
+            raise TaskBoundaryError(f"Terminal {name} command differs from dispatch")
 
     report_reference = record["validation_report"]
     report_path = canonical_root / str(report_reference["path"])
@@ -2058,11 +2021,8 @@ def validate_verified_task(
     report_data, _ = _read_bound_file(report_path, "validation report")
     if hashlib.sha256(report_data).hexdigest() != report_reference["sha256"]:
         raise TaskBoundaryError("Verified validation report SHA-256 no longer matches")
-    if attempt["validation_report"] != {
-        "path": report_reference["path"],
-        "sha256": report_reference["sha256"],
-    }:
-        raise TaskBoundaryError("Task attempt and verified validation report disagree")
+    if report_path != dispatch.validation_report_path:
+        raise TaskBoundaryError("Terminal validation report differs from dispatch")
     from emrys.orchestration.run_coordinator.all_pass import (  # noqa: PLC0415
         require_all_pass,
     )
@@ -2076,12 +2036,23 @@ def validate_verified_task(
         raise TaskBoundaryError("Semantic all-pass observed a different report")
 
     native = record["native_receipt"]
-    if native is not None:
-        _verify_reference(
-            native,
-            run_root=canonical_root,
-            label="native receipt",
-        )
+    native_path = (
+        None
+        if native is None
+        else _verify_reference(native, run_root=canonical_root, label="native receipt")
+    )
+    if native_path != dispatch.native_receipt_path:
+        raise TaskBoundaryError("Terminal native receipt differs from dispatch")
+    if (
+        _record_reference(verified_path, canonical_root)
+        != {
+            "path": _relative(verified_path, canonical_root),
+            "sha256": hashlib.sha256(marker_bytes).hexdigest(),
+        }
+        or _record_reference(canonical_root / attempt_reference["path"], canonical_root)
+        != attempt_reference
+    ):
+        raise TaskBoundaryError("Task result changed during verified admission")
     return record
 
 
@@ -2104,7 +2075,10 @@ def _publish_attempt(
     task_start_reference: Mapping[str, str] | None,
     failure_message: str | None,
     streams: _TaskStreamCapture,
-) -> tuple[dict[str, Any], bytes]:
+    inputs: tuple[dict[str, Any], ...],
+    outputs: tuple[dict[str, Any], ...],
+    native_receipt: dict[str, str] | None,
+) -> bytes:
     stdout_reference, stderr_reference = streams.finalize()
     report_reference = None
     if task_start_reference is not None:
@@ -2117,7 +2091,7 @@ def _publish_attempt(
                 raise
     status = "succeeded" if failure_message is None else "failed"
     attempt = {
-        "schema_version": "emrys.task-attempt.v1",
+        "schema_version": "emrys.task-attempt.v2",
         "run_id": execution["run_id"],
         "execution_contract_sha256": execution_sha256,
         "profile_sha256": profile_sha256,
@@ -2140,12 +2114,15 @@ def _publish_attempt(
         "stdout_log": stdout_reference,
         "stderr_log": stderr_reference,
         "failure_message": failure_message,
+        "inputs": list(inputs),
+        "outputs": list(outputs),
+        "native_receipt": native_receipt,
     }
     orchestration_contracts.validate_record("task-attempt", attempt)
     attempt_bytes = orchestration_contracts.canonical_json_bytes(attempt)
     ops.publish_bytes(dispatch.task_attempt_path, attempt_bytes)
     streams.revalidate_after_attempt_publication()
-    return attempt, attempt_bytes
+    return attempt_bytes
 
 
 def run_task(
@@ -2158,10 +2135,6 @@ def run_task(
 
     if backend != dispatch.backend:
         raise TaskBoundaryError("Task backend does not match the admitted dispatch")
-    if dispatch.publication is None:
-        raise TaskBoundaryError(
-            "Historical task dispatch is read-only; execute it with its original bound source checkout"
-        )
     started_at = _timestamp_from_task_id(dispatch.task_attempt_id)
     profile: dict[str, Any] = {}
     execution: dict[str, Any] = {}
@@ -2172,6 +2145,9 @@ def run_task(
     validator: CommandResult | None = None
     semantic: CommandResult | None = None
     stable_inputs_rechecked = False
+    initial_inputs: tuple[dict[str, Any], ...] = ()
+    outputs: tuple[dict[str, Any], ...] = ()
+    native_receipt: dict[str, str] | None = None
     task_start_reference: dict[str, str] | None = None
     task_scope_materialized = False
     reused_outputs: dict[FileDeclaration, _BoundFileSnapshot] = {}
@@ -2218,7 +2194,6 @@ def run_task(
         )
         _admit_step00c_external_parent_access(
             dispatch,
-            execution,
             path_access=ops.path_access,
         )
         _admit_start_origins(
@@ -2259,7 +2234,7 @@ def run_task(
         if len({item["role"] for item in initial_inputs}) != len(initial_inputs):
             raise TaskBoundaryError("Input roles collide with reserved contract roles")
 
-        reused_outputs = _admit_native_destinations(dispatch, execution)
+        reused_outputs = _admit_native_destinations(dispatch)
 
         entry_inputs = tuple(
             _snapshot(item)
@@ -2283,7 +2258,6 @@ def run_task(
         _recheck_reused_outputs(reused_outputs, phase="before producer entry")
         _admit_step00c_external_parent_access(
             dispatch,
-            execution,
             path_access=ops.path_access,
         )
 
@@ -2395,8 +2369,10 @@ def run_task(
         native_publication.committed = True
         native_publication.close()
         native_publication = None
-        producer_outputs = tuple(_snapshot(output) for output in output_declarations)
-        producer_native_receipt = (
+        outputs = producer_outputs = tuple(
+            _snapshot(output) for output in output_declarations
+        )
+        native_receipt = producer_native_receipt = (
             None
             if dispatch.native_receipt_path is None
             else _record_reference(dispatch.native_receipt_path, dispatch.run_root)
@@ -2485,28 +2461,12 @@ def run_task(
         for signum, handler in previous_handlers.items():
             signal.signal(signum, handler)
 
-    if failure is not None:
-        message = str(failure).strip() or type(failure).__name__
-        if not execution or not task_scope_materialized:
-            raise TaskBoundaryError(message) from failure
-        _publish_attempt(
-            dispatch,
-            ops=ops,
-            execution=execution,
-            execution_sha256=execution_sha256,
-            profile_sha256=profile_sha256,
-            started_at=started_at,
-            producer=producer,
-            validator=validator,
-            semantic=semantic,
-            stable_inputs_rechecked=stable_inputs_rechecked,
-            task_start_reference=task_start_reference,
-            failure_message=message,
-            streams=streams,
-        )
+    message = (
+        None if failure is None else str(failure).strip() or type(failure).__name__
+    )
+    if failure is not None and (not execution or not task_scope_materialized):
         raise TaskBoundaryError(message) from failure
-
-    attempt, attempt_bytes = _publish_attempt(
+    attempt_bytes = _publish_attempt(
         dispatch,
         ops=ops,
         execution=execution,
@@ -2516,41 +2476,23 @@ def run_task(
         producer=producer,
         validator=validator,
         semantic=semantic,
-        stable_inputs_rechecked=True,
+        stable_inputs_rechecked=stable_inputs_rechecked,
         task_start_reference=task_start_reference,
-        failure_message=None,
+        failure_message=message,
         streams=streams,
+        inputs=initial_inputs,
+        outputs=outputs,
+        native_receipt=native_receipt,
     )
-    assert producer is not None and validator is not None and semantic is not None
-    assert task_start_reference is not None
+    if failure is not None:
+        raise TaskBoundaryError(message) from failure
     task_attempt_reference = {
         "path": _relative(dispatch.task_attempt_path, dispatch.run_root),
         "sha256": hashlib.sha256(attempt_bytes).hexdigest(),
     }
     verified = {
-        "schema_version": "emrys.verified-task.v1",
-        "run_id": execution["run_id"],
-        "execution_contract_sha256": execution_sha256,
-        "profile_sha256": profile_sha256,
-        "workflow_attempt_id": dispatch.workflow_attempt_id,
-        "task_attempt_id": dispatch.task_attempt_id,
+        "schema_version": "emrys.verified-task.v2",
         "task_attempt_record": task_attempt_reference,
-        "task_start_record": task_start_reference,
-        "machine_key": dispatch.machine_key,
-        "scope": dict(dispatch.scope),
-        "owner_run_token": dispatch.owner_run_token,
-        "commands": {
-            "producer": producer.record,
-            "validator": validator.record,
-            "semantic_all_pass": semantic.record,
-        },
-        "inputs": list(final_inputs),
-        "outputs": list(outputs),
-        "native_receipt": native_receipt,
-        "validation_report": {**validation_reference, "all_pass": True},
-        "stable_inputs_rechecked": True,
-        "all_pass": True,
-        "created_at": attempt["finished_at"],
     }
     orchestration_contracts.validate_record("verified-task", verified)
     _recheck_reused_outputs(reused_outputs, phase="before verified publication")
@@ -2562,6 +2504,18 @@ def run_task(
     ):
         raise TaskBoundaryError(
             "A task input directory changed before verified publication"
+        )
+    if (
+        _record_reference(dispatch.validation_report_path, dispatch.run_root)
+        != validation_reference
+    ):
+        raise TaskBoundaryError("Validation report changed before verified publication")
+    if (
+        _record_reference(dispatch.task_attempt_path, dispatch.run_root)
+        != task_attempt_reference
+    ):
+        raise TaskBoundaryError(
+            "Terminal task result changed before verified publication"
         )
     ops.publish_bytes(
         dispatch.verified_task_path,

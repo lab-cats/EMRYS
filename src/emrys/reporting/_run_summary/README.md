@@ -1,29 +1,23 @@
-# Run-summary implementation
+# Run result manifest
 
-This private package derives deterministic Run summaries from admitted artifact
-records. The [artifact-index owner](../_artifact_index/README.md) prepares and
-publishes the index and summary together. Summary generation has no separate
-publisher, lock, command, or recovery interface.
+This private package derives the canonical Run result manifest and its human
+TSV views from admitted artifact entries. The [artifact-index owner](../_artifact_index/README.md)
+prepares and publishes that output set under one lock. No separate summary
+receipt, publisher, or recovery interface remains.
 
 | Module | Responsibility |
 | --- | --- |
-| [`document.py`](document.py) | Admit the Analysis policy and assemble canonical JSON and TSV projections from the same artifact records. |
-| [`projection.py`](projection.py) | Derive computational status, summary rows, and QC rows. |
-| [`validation.py`](validation.py) | Validate existing summaries and receipts; assemble the new receipt. |
-| [`models.py`](models.py) | Constants, headers, errors, and output paths. |
-| [`inputs.py`](inputs.py) | Admit existing summary files. |
-| [`transaction.py`](transaction.py) | Stable value and historical-attempt helpers. |
+| [`document.py`](document.py) | Admit the current module policy and assemble the manifest and TSV projections. |
+| [`projection.py`](projection.py) | Derive computational status, artifact summary rows, and QC rows. |
+| [`validation.py`](validation.py) | Validate the manifest schema, semantics and inventory. |
+| [`models.py`](models.py) | Constants, table headers, errors and output paths. |
+| [`transaction.py`](transaction.py) | Stable value projections. |
 
-Flat paired-CMH summaries retain v2; explicit modules retain v3 and their
-Analysis-policy path, hash, and size. Artifact and summary files keep their
-formats. The summary receipt is published last and completes the combined
-operation; the artifact receipt remains bound provenance data.
+`RUN_ID.run_summary.json` v4 contains the shared Run contract, immutable input
+bindings, publication identity, provenance, and ordered artifact entries.
+Installing it last commits the two TSV projections. The reader reconstructs
+these values from current sources and checks canonical bytes and bound file
+identities. Old-version Runs are unsupported and never migrated or deleted.
 
-[`transaction_validation.py`](../transaction_validation.py) reads current and
-historical summaries without preparing a new publication. It reuses admitted
-artifact records, reconstructs the expected projections, and checks their
-bytes, source identities, receipts, and bound inputs. Historical reads retain
-recorded producer identities and never authorize replacement or regeneration.
-
-The summary records computational state. Candidate review, adjudication,
+The manifest records computational state. Candidate review, adjudication,
 biological interpretation, and scientific completion remain external processes.

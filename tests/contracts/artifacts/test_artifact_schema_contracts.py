@@ -1,4 +1,4 @@
-"""Contract tests for the version-spanning artifact schema registry."""
+"""Contract tests for the current artifact schema registry."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ INVENTORY = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
 FIXTURES = {
     "artifact-record": FIXTURE_ROOT / "artifact_record.json",
     "run-summary": FIXTURE_ROOT / "run_summary.json",
-    "report-receipt": FIXTURE_ROOT.parents[1] / "report_receipt_v4.json",
+    "report-receipt": FIXTURE_ROOT.parents[1] / "report_receipt_v5.json",
 }
 EXPECTED_INVENTORY_ARTIFACT_COUNT = 74
 
@@ -193,13 +193,8 @@ def test_all_tracked_schemas_are_valid_draft_2020_12_and_local_only() -> None:
                 stack.extend(value)
 
     report_schema = schemas["report-receipt"]
-    assert report_schema["$id"] == "urn:emrys:schema:artifacts:report-receipt:v4"
-    assert report_schema["properties"]["schema_version"]["const"] == "4.0.0"
-    historical = read_json(
-        REPO_ROOT
-        / "src/emrys/contracts/schemas/artifacts/v3/report_receipt.schema.json"
-    )
-    assert historical["properties"]["schema_version"]["const"] == "3.0.0"
+    assert report_schema["$id"] == "urn:emrys:schema:artifacts:report-receipt:v5"
+    assert report_schema["properties"]["schema_version"]["const"] == "5.0.0"
 
 
 @pytest.mark.parametrize(("name", "path"), FIXTURES.items())
@@ -236,12 +231,12 @@ def test_cli_checks_all_schemas_inventory_and_help() -> None:
     assert "unsupported" in unsupported.stderr
 
 
-def test_artifact_schema_rejects_version_extra_property_hash_and_glob() -> None:
+def test_artifact_schema_rejects_envelope_extra_property_hash_and_glob() -> None:
     artifact = read_json(FIXTURES["artifact-record"])
 
     wrong_version = copy.deepcopy(artifact)
     wrong_version["schema_version"] = "1.0.0"
-    assert_schema_invalid("artifact-record", wrong_version, "2.0.0")
+    assert_schema_invalid("artifact-record", wrong_version, "additional properties")
 
     extra = copy.deepcopy(artifact)
     extra["unexpected"] = True
@@ -554,19 +549,13 @@ def test_attempt_states_are_temporally_and_graph_consistent() -> None:
 
 
 def test_run_contract_digest_is_canonical_and_recomputed() -> None:
-    artifact = read_json(FIXTURES["artifact-record"])
+    summary = read_json(FIXTURES["run-summary"])
     assert (
-        identity.canonical_run_contract_sha256(artifact["run_contract"])
-        == artifact["run_contract"]["run_contract_sha256"]
+        identity.canonical_run_contract_sha256(summary["run_contract"])
+        == summary["run_contract"]["run_contract_sha256"]
     )
-
-    changed = copy.deepcopy(artifact)
-    changed["run_contract"]["sample_manifest_sha256"] = "f" * 64
-    assert_contract_failure(
-        "artifact-record",
-        changed,
-        "canonical component contract",
-    )
+    summary["run_contract"]["sample_manifest_sha256"] = "f" * 64
+    assert_contract_failure("run-summary", summary, "canonical component contract")
 
 
 def test_run_summary_reconciles_inventory_order_run_identity_and_rollups() -> None:
@@ -574,7 +563,7 @@ def test_run_summary_reconciles_inventory_order_run_identity_and_rollups() -> No
 
     wrong_run = copy.deepcopy(summary)
     wrong_run["artifacts"][0]["run_id"] = "different_run"
-    assert_contract_failure("run-summary", wrong_run, "different run_id")
+    assert_schema_invalid("run-summary", wrong_run, "additional properties")
 
     omitted = copy.deepcopy(summary)
     omitted["expected_scopes"][0]["artifact_ids"].append("missing.artifact")
@@ -763,17 +752,17 @@ def test_run_summary_reconciles_qc_sources() -> None:
 def test_report_receipt_enforces_renderer_safety_outputs_and_banners() -> None:
     receipt = read_json(FIXTURES["report-receipt"])
 
-    wrong_jinja = copy.deepcopy(receipt)
-    wrong_jinja["renderer"]["version"] = "3.1.5"
-    assert_schema_invalid("report-receipt", wrong_jinja, "3.1.6")
+    wrong_engine = copy.deepcopy(receipt)
+    wrong_engine["evidence_renderer"]["template_engine"] = "other"
+    assert_schema_invalid("report-receipt", wrong_engine, "Jinja2")
 
     networked = copy.deepcopy(receipt)
     networked["external_network_assets_used"] = True
     assert_schema_invalid("report-receipt", networked, "false")
 
-    bad_banner = copy.deepcopy(receipt)
-    bad_banner["state_banner"] = "Looks good."
-    assert_schema_invalid("report-receipt", bad_banner, "COMPUTATIONAL RESULTS")
+    missing_banner = copy.deepcopy(receipt)
+    missing_banner["state_banner"] = ""
+    assert_schema_invalid("report-receipt", missing_banner, "non-empty")
 
     missing_scientific = copy.deepcopy(receipt)
     missing_scientific["outputs"] = [

@@ -9,7 +9,7 @@ from typing import Any
 
 from emrys.contracts.artifacts import api as contracts
 
-from .inputs import _fail
+from .models import RunSummaryError
 from .transaction import _stable_unique
 
 
@@ -77,7 +77,7 @@ def _build_attempts(
             prior = attempt_index.get(attempt_id)
             if prior is not None:
                 if prior != attempt:
-                    _fail(
+                    raise RunSummaryError(
                         f"Artifact attempt {attempt_id!r} has conflicting definitions"
                     )
                 continue

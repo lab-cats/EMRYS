@@ -221,16 +221,16 @@ class ScientificFigure:
     def validate(self) -> None:
         """Reject inconsistent availability and single/multi-panel provenance."""
 
-        legacy_values = (self.data_uri, self.svg_sha256, self.svg_size_bytes)
-        legacy_present = any(value is not None for value in legacy_values)
-        legacy_complete = all(value is not None for value in legacy_values)
-        if legacy_present and not legacy_complete:
+        single_values = (self.data_uri, self.svg_sha256, self.svg_size_bytes)
+        single_present = any(value is not None for value in single_values)
+        single_complete = all(value is not None for value in single_values)
+        if single_present and not single_complete:
             raise ReportRenderError(
-                f"Scientific figure {self.figure_id!r} has partial legacy SVG provenance"
+                f"Scientific figure {self.figure_id!r} has partial single SVG provenance"
             )
-        if self.panels and legacy_present:
+        if self.panels and single_present:
             raise ReportRenderError(
-                f"Scientific figure {self.figure_id!r} mixes legacy and panel SVGs"
+                f"Scientific figure {self.figure_id!r} mixes single and panel SVGs"
             )
         if self.status == "available":
             if self.unavailable_reason is not None:
@@ -238,12 +238,12 @@ class ScientificFigure:
                     f"Available scientific figure {self.figure_id!r} has an "
                     "unavailable reason"
                 )
-            if not self.panels and not legacy_complete:
+            if not self.panels and not single_complete:
                 raise ReportRenderError(
                     f"Available scientific figure {self.figure_id!r} has no SVG asset"
                 )
         elif self.status == "unavailable":
-            if self.panels or legacy_present:
+            if self.panels or single_present:
                 raise ReportRenderError(
                     f"Unavailable scientific figure {self.figure_id!r} has SVG assets"
                 )
@@ -257,7 +257,7 @@ class ScientificFigure:
             )
 
         assets = self.panels
-        if legacy_complete:
+        if single_complete:
             assert self.data_uri is not None
             assert self.svg_sha256 is not None
             assert self.svg_size_bytes is not None

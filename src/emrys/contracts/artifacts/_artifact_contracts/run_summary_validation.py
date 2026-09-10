@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -52,13 +53,22 @@ def validate_run_summary_semantics(
 ) -> None:
     validate_run_contract(document["run_contract"], "run summary")
     validate_document_paths(document)
-    if document.get("schema_version") == "3.0.0" and (
+    if (
         document["analysis_policy"]["sha256"]
         != document["run_contract"]["primary_analysis_policy_sha256"]
     ):
         raise ContractValidationError(
             "modular run summary analysis policy differs from its run contract"
         )
+
+    publication = document["publication"]
+    if (
+        publication["finished_at"] != document["generated_at"]
+        or document["generated_at"] != document["provenance"]["created_at"]
+        or datetime.fromisoformat(publication["started_at"].replace("Z", "+00:00"))
+        > datetime.fromisoformat(publication["finished_at"].replace("Z", "+00:00"))
+    ):
+        raise ContractValidationError("Run result publication timestamps disagree")
 
     attempts = validate_attempt_graph(
         document["attempts"],
@@ -89,15 +99,6 @@ def validate_run_summary_semantics(
     physical_path_records: dict[Path, tuple[Any, ...]] = {}
     for artifact in artifacts:
         validate_artifact_semantics(artifact, source_root=source_root)
-        if artifact["run_id"] != document["run_id"]:
-            raise ContractValidationError(
-                f"artifact {artifact['artifact_id']!r} has a different run_id"
-            )
-        if artifact["run_contract"] != document["run_contract"]:
-            raise ContractValidationError(
-                f"artifact {artifact['artifact_id']!r} has a different "
-                "immutable run contract"
-            )
         for attempt in artifact["attempts"]:
             attempt_id = attempt["attempt_id"]
             if (

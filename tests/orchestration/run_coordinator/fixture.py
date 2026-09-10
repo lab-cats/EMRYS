@@ -216,60 +216,101 @@ def build(root: Path, *, replicate_count: int = 2) -> Path:
     return project
 
 
-def build_legacy(root: Path) -> Path:
-    """Build the exact request-v3 shape retained only by historical tests."""
-
-    project = build(root)
-    project.unlink()
-    request = root / "request.yaml"
-    request.write_text(
-        "schema_version: emrys.request.v3\n"
-        "label: first label\n"
-        "profile: emrys.profile.local_cmh.v2\n"
-        "sample_manifest: samples.tsv\n"
-        "partition_manifest: partitions.tsv\n"
-        "reference:\n"
-        "  id: synthetic_ref\n"
-        "  fasta: reference/genome.fa\n"
-        "  gtf: reference/genome.gtf\n"
-        "  star_index:\n"
-        "    sjdb_overhang: 74\n"
-        "    genome_sa_index_nbases: 3\n"
-        "cohort_id: synthetic_cohort\n"
-        "analysis:\n"
-        "  id: synthetic_analysis\n"
-        "  control_condition: EV\n"
-        "  treatment_condition: PUM1\n"
-        "  rna_ref: A\n"
-        "  rna_alt: G\n"
-        "  min_sample_dp: 1\n"
-        "  mean_dp_threshold: 50\n"
-        "  fdr_threshold: 0.05\n"
-        "  common_or_threshold: 1.2\n"
-        "  absolute_difference_threshold: 0.005\n"
-        "  background_condition: null\n"
-        "  background_max_fraction: 0.01\n",
-        encoding="utf-8",
-    )
-    return request
-
-
-def build_legacy_execution(
+def build_run(
     root: Path,
     selected_profile: dict[str, Any] | None = None,
-) -> tuple[Path, dict[str, Any], bytes, dict[str, Any]]:
-    """Build and admit the one exact historical execution fixture."""
+    *,
+    required_tools=None,
+    computational_resources: dict[str, Any] | None = None,
+):
+    """Build a current immutable Run through production admission and binding."""
 
-    from emrys.orchestration.run_coordinator.normalization import (
-        _historical_execution_v1,
-        admit_project,
+    from emrys.contracts.orchestration.application_model import (
+        bind_run,
+        build_execution_plan,
+        functional_specification_from_profile,
+        toolchain_from_required_tools,
+        processing_compatibility_sha256,
+    )
+    from emrys.orchestration.run_coordinator.execution_profile import (
+        load_execution_profile,
+    )
+    from emrys.orchestration.run_coordinator.materialization import RunCandidate
+    from emrys.orchestration.run_coordinator.normalization import admit_project
+    from emrys.orchestration.run_coordinator.run_implementation import (
+        backend_semantics_identity,
+        implementation_identity,
+        processing_implementation_identity,
     )
 
-    request = build_legacy(root)
-    admitted = admit_project(
-        request,
-        profile() if selected_profile is None else selected_profile,
-        allow_legacy=True,
+    project = build(root)
+    if required_tools is None:
+        import sys
+        import hashlib
+
+        python = Path(sys.executable).resolve(strict=True)
+        required_tools = (
+            {
+                "name": "python",
+                "sha256": hashlib.sha256(python.read_bytes()).hexdigest(),
+            },
+        )
+    analysis = admit_project(
+        project, profile() if selected_profile is None else selected_profile
     ).select_analysis()
-    execution, execution_bytes = _historical_execution_v1(admitted)
-    return request, execution, execution_bytes, admitted.profile
+    source_root = Path(__file__).resolve().parents[3]
+    resources = computational_resources
+    if resources is None:
+        resources = load_execution_profile(
+            root / "runtime" / "profiles" / "default.yaml"
+        ).resource_policy.declaration.identity_document()
+    processing_digest = processing_compatibility_sha256(
+        functional_specification=functional_specification_from_profile(
+            analysis.profile
+        ),
+        processing_implementation_sha256=processing_implementation_identity(
+            source_root
+        ),
+        toolchain=toolchain_from_required_tools(required_tools),
+        backend="local",
+        engine="snakemake",
+        backend_semantics_sha256=backend_semantics_identity(source_root),
+        star_index=analysis.workflow_inputs["reference"]["star_index"],
+        computational_resources=resources,
+    )
+    plan = build_execution_plan(
+        processing_compatibility_sha256=processing_digest,
+        functional_specification=functional_specification_from_profile(
+            analysis.profile
+        ),
+        scientific_stopping_owner_keys=analysis.profile["required_owner_keys"],
+        implementation_content_sha256=implementation_identity(
+            source_root,
+            analysis.module.descriptor.module_id,
+            loaded_module=analysis.module,
+        ),
+        toolchain=toolchain_from_required_tools(required_tools),
+        backend="local",
+        engine="snakemake",
+        backend_semantics_sha256=backend_semantics_identity(source_root),
+        star_index=analysis.workflow_inputs["reference"]["star_index"],
+        computational_resources=resources,
+    )
+    return project, RunCandidate(analysis, plan, bind_run(analysis.revision, plan))
+
+
+def publish_run(run, root: Path) -> Path:
+    """Write the current Run authority and profile into one fixture namespace."""
+
+    from emrys.contracts.orchestration.api import canonical_json_bytes
+
+    contract = root / "contract"
+    contract.mkdir(parents=True)
+    for name, data in (
+        ("analysis.json", run.analysis.revision.canonical_bytes),
+        ("execution-plan.json", run.execution_plan.canonical_bytes),
+        ("run.json", run.run_binding.canonical_bytes),
+        ("profile.json", canonical_json_bytes(run.analysis.profile)),
+    ):
+        (contract / name).write_bytes(data)
+    return contract / "run.json"

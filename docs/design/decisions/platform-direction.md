@@ -11,6 +11,22 @@ a characterized defect, an unresolved decision, or environment-deferred. Add
 or identify protection for preserved behavior before mutation. A refactor does
 not silently change science or a public contract.
 
+## Version support
+
+**Approved 2026-09-09:** a Run's lasting result is its scientific data. Current
+EMRYS supports its current record formats; it does not inspect, resume, migrate,
+or regenerate reporting for Runs made under obsolete contracts. An unsupported
+record is rejected. Existing scientific files, provenance, logs, reports, and
+recovery evidence remain untouched and can be read with ordinary tools or the
+original software. Keeping those records does not require maintaining their
+readers in new releases.
+
+Current-version recovery and reuse remain supported: earlier Attempts of the
+same immutable Run must still pass the complete identity and evidence checks.
+This decision replaces historical-format compatibility obligations elsewhere
+in older campaign and design records; it does not permit deleting retained
+evidence or weakening scientific validation.
+
 ## Ratified architectural invariant constitution
 
 These invariants are permanent design constraints. Exact behavior lives in the

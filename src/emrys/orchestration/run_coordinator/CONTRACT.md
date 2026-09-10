@@ -33,8 +33,9 @@ identity and content for use:
 
 Ordinary Project-aware commands read `project.yaml` in the current directory. Optional `--project` accepts one named Project directory or an
 exact `project.yaml`; no parent-directory or global lookup occurs. The file's
-parent is the Project root. Active commands reject request-v3; its closed
-schema survives only to read exact historical Runs.
+parent is the Project root. Only current Project and Run contracts are accepted;
+[version support](../../../../docs/design/decisions/platform-direction.md#version-support)
+defines the boundary.
 
 Admission uses a closed safe YAML loader, resolves paths against the Project
 root, and binds regular non-symlink file bytes through descriptor/path identity
@@ -168,9 +169,11 @@ stderr files are create-exclusive, no-follow, drained through EOF, byte- and
 order-preserving within each stream, synchronized, hash-bound, and revalidated.
 No ordering between streams is claimed.
 
-A task publishes an immutable failed or succeeded attempt after entry and a
-verified-task record only after producer success, output and native-receipt
-admission, validator completion, and semantic all-pass. A pre-entry failure may
+A task publishes one immutable terminal attempt containing its status, commands,
+input/output identities, native receipt, validation report, and log references.
+After producer success, output admission, validator completion, and semantic
+all-pass, it publishes a small verified marker containing only the terminal
+attempt path and hash. Inspection follows that reference and rechecks the evidence. A pre-entry failure may
 retain its exact bound diagnostics without marking the scope entered, so a
 later Attempt may retry it. Unexpected interruption after stream creation may
 leave partial diagnostics but no terminal or verified record. Log presence or
@@ -255,11 +258,8 @@ cleanup.
 Inspection is read-only. It admits the immutable record chain, live lock,
 receipts, verified content, Results, reporting, and recovery state without
 using timestamps, raw output presence, task logs, or `.snakemake/` as
-authority. Historical Runs are never rewritten or assigned successor
-identities. The version-aware compatibility path may resume only an explicitly
-supported historical layout whose current Project, retained request/execution
-and profile, source/runtime/tool identities, and prior evidence re-admit
-exactly; it does not make any other old layout resumable.
+authority. Current-version resume validates earlier Attempts of the same Run;
+it does not translate old-version records.
 
 Inspection reports four independent states:
 
@@ -280,11 +280,11 @@ regeneration cannot invalidate science and creates neither a Run nor an
 Attempt. Result locations are shown only from a fully revalidated report
 receipt; incomplete, failed, blocked, or dry-run state prints none.
 
-New reporting writes v2 start records for a combined index/summary operation
-and then HTML. The summary receipt completes the first operation. Inspection
-reads historical v1 index, summary, and HTML starts under their original
-three-step rules; missing stages or mixed versions block admission. This
-reporting-record version does not change immutable Run or profile formats.
+Reporting has two transactions: build the result manifest, then render HTML.
+The manifest contains artifact status, identities, validation results, and shared
+Run and publication provenance. It is published last after the summary and QC
+TSVs. There are no per-artifact record files, separate artifact index, or summary
+receipt. HTML keeps its own publication receipt and the two existing reports.
 
 ## Run-root contract
 
@@ -297,23 +297,18 @@ EMRYS Run.
 | `contract/` | Immutable Analysis, Execution Plan, Run, profile, runtime, reporting projection, workflow configs, and task dispatches. |
 | `attempts/<workflow-attempt-id>/` | Attempt record, task attempts and streams, and receipt published last. |
 | `state/task-starts/` | Immutable producer-entry records. |
-| `state/verified/` | Hash-bound successful task records. |
+| `state/verified/` | Path/hash references to successful terminal task attempts. |
 | `state/reporting/` | Start and verified records for reporting transactions. |
 | `results/` | Sole scientist-facing Results authority; modules declare final paths beneath it. |
 | `results/editing/` | Built-in paired-CMH candidate tables, summary, spectrum, and diagnostics. |
 | `results/scientific_context/` | Built-in context, motif, population, enrichment, and receipt. |
 | `results/reports/<run-id>/` | Self-contained scientific and evidence/operations reports, summary, and receipt published last. |
 | `products/native/` | Nonfinal native artifacts and QC/validation evidence needed for resume or downstream work. |
-| `products/artifact-summary/<run-id>/records/` | Canonical record for every declared artifact, including unavailable or incomplete state. |
-| `products/artifact-summary/<run-id>/<run-id>.artifacts.tsv` | Deterministic artifact index. |
-| `products/artifact-summary/<run-id>/<run-id>.artifact_receipt.tsv` | Artifact provenance bound by the combined summary receipt. |
-| `products/artifact-summary/<run-id>/<run-id>.run_summary.json` | Canonical machine-readable Run summary. |
+| `products/artifact-summary/<run-id>/<run-id>.run_summary.json` | Authoritative reporting result manifest, published last. |
 | `products/artifact-summary/<run-id>/<run-id>.run_summary.tsv` | Tabular Run-status summary. |
 | `products/artifact-summary/<run-id>/<run-id>.qc_summary.tsv` | Consolidated QC projection. |
-| `products/artifact-summary/<run-id>/<run-id>.run_summary_receipt.tsv` | Terminal receipt for the combined index and summary, published last. |
 | Beside the declared FASTA | Step `00c` `.fai` and `.dict`, the only owner outputs outside the Run root. |
 
 Locks, released-lock evidence, partials, backups, streams, and failed Attempts
-remain evidence even after later success. Historical report locations and
-request-era field names remain read-only evidence, not additional current
-publication roots or public configuration interfaces.
+remain evidence even after later success. Existing data and evidence are never
+migrated or deleted by record admission.

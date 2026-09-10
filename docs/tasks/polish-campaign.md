@@ -103,9 +103,10 @@ approved ShellCheck, Ruff formatting, and optional fast hooks under `DEV-01`
 (item 43), and the bounded Python/R test-runtime work under `CI-01` (item 23).
 Those slices passed ordinary hosted CI in [run 34306975901](https://github.com/lab-cats/EMRYS/actions/runs/34306975901)
 at `b491aac5`, including the complete Python suite/coverage, guarded R, and
-managed golden path. PR #148 awaits master integration. The artifact-version
-correction, other publication-recovery owners, Project preview, type checker,
-and other unselected proposals retain their separate decision boundaries.
+managed golden path. PR #148 awaits master integration. Compression CS-20/22
+completed the artifact-version correction with passing hosted CI at `f8fd5346`.
+Other publication-recovery owners, Project preview, type checker, and unselected
+proposals retain their separate decision boundaries.
 
 The second pass prioritizes the installed-package journey and runtime identity
 audits, followed by rendered report review. The merge-rule gap is concrete;
@@ -171,19 +172,12 @@ No compression claim is established for the small descriptor fix.
 
 ### 5. Admit current artifacts through the public validator
 
-**Finding:** The artifact owner's [known CLI version limit](../../src/emrys/contracts/artifacts/README.md#known-cli-version-limit)
-records the default/current schema mismatch and prior local reproduction.
-The audit independently traced that source selection.
-
-**Outcome and acceptance:** Public and internal validators must select a document
-version through the same existing code. Current outputs pass, malformed versions
-fail, and explicitly supported historical records retain their intended
-admission and semantic checks. Cover real reporting outputs and deterministic
-diagnostics. This is a separate unselected artifact correction; completed
-`CONTRACT-API-01` and PR #117 address orchestration Attempt receipts. The later
-reporting changes in PRs #145 and #147 do not change this public validator's
-version dispatch. Quantify any net reduction before describing this correctness
-fix as compression.
+**Done through compression CS-20/22 in PR #156; integration pending.** The
+[artifact validator](../../src/emrys/contracts/artifacts/README.md) and reporting
+share one current schema registry, removing the former current/default mismatch.
+Current artifact entries, manifest 4, and receipt 5 pass the public validation
+path; unsupported versions and malformed content reject. Focused schema/CLI
+checks and ordinary hosted CI pass at `f8fd5346`; the compression backlog owns the evidence.
 
 ### 6. Make timestamp admission deterministic
 
@@ -563,11 +557,10 @@ the versions in `uv.lock`.
 `jsonschema` and `referencing`; the test does not establish compatibility across
 those ranges or their lower bounds. No dependency incompatibility is established.
 
-Historical-schema tests can use [current fixture builders][historical-reader-test],
-while [provider readmission][provider-readmission] intentionally rejects changed
-metadata or implementation. Schema-read support alone therefore does not
-promise that a newer installation can inspect, report on, or resume an older
-Run. This distinction does not invalidate the existing per-schema tests.
+The approved [version policy](../design/decisions/platform-direction.md#version-support)
+limits releases to current Run contracts. This removes predecessor-Run support
+from release acceptance; preserving old data does not promise new-version
+inspection, report regeneration, or resume.
 
 **Outcome and acceptance:** Define the supported distributed artifact and an
 exact reviewed revision, then produce coherent versioning, release notes,
@@ -588,14 +581,9 @@ release outcome with three decisions and their corresponding evidence:
   dependency check to inform accurate metadata. Keep one explicit support
   policy; do not multiply platform and dependency matrices without a promise
   they verify. Item 6 retains the separate timestamp-checker issue.
-- For the first supported upgrade transition, state compatibility separately
-  for Project admission, inspection, report regeneration, and resume. Identify
-  which operations require the original environment. Retain a tiny artifact
-  actually produced by the named predecessor revision and exercise promised
-  operations through the new public command. Verify that unsupported resume
-  or provider changes fail closed without modifying the Run. Reconcile
-  `QUAL-05` and historical-reader contracts; do not imply universal backward
-  compatibility, automatic migration, or weaker source identity.
+- State the current record formats and original-environment requirement for
+  older Runs in release notes. Verify unsupported records reject without
+  modifying retained data; do not introduce migration or historical readers.
 
 Reuse existing package checks and environment owners. These are release
 acceptance details, separate from update bots and vulnerability scanning;
@@ -759,8 +747,8 @@ already supplies the facts.
 selecting a stable machine-readable projection of existing facts: Run/Attempt
 identity, integrity, execution/scientific/reporting state, blockers, recovery
 availability, and verified paths. Preserve human output and existing exit
-semantics. Verify agreement across running, failed, blocked, complete, and
-supported historical Runs through the same inspection authority. Add no
+semantics. Verify agreement across running, failed, blocked, and complete
+current Runs through the same inspection authority. Add no
 status database, persistent digest cache, or weaker verification mode. This is
 an optional public output contract requiring explicit selection and footprint
 approval, not a dashboard replacement or a latency optimization.

@@ -3,24 +3,22 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
-import json
 from pathlib import Path
-
-import pytest
 
 from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.orchestration.projection import project_reporting
+from emrys.contracts.orchestration.projection import build_reporting_bundle
 from tests.orchestration.run_coordinator import fixture
 
 
-def test_reporting_projection_is_exact_deterministic_and_legacy_compatible(
+def test_reporting_projection_is_exact_and_deterministic(
     tmp_path: Path,
 ) -> None:
-    _request, execution, _execution_bytes, profile = fixture.build_legacy_execution(
-        tmp_path / "request-root"
+    _request, candidate = fixture.build_run(tmp_path / "request-root")
+    source = {**candidate.analysis.workflow_inputs, "run_id": candidate.run_id}
+    bundle = build_reporting_bundle(
+        source, candidate.analysis.profile, candidate.analysis.revision
     )
-    bundle = project_reporting(execution, profile)
 
     assert tuple(bundle.reporting_run_contract) == (
         "run_contract_sha256",
@@ -35,45 +33,19 @@ def test_reporting_projection_is_exact_deterministic_and_legacy_compatible(
     assert bundle.reporting_run_contract["primary_analysis_policy_sha256"] == (
         hashlib.sha256(bundle.primary_analysis_policy_bytes).hexdigest()
     )
-    assert bundle.projection_references == execution["reporting_projection"]
     assert bundle.artifact_inventory_bytes.endswith(b"\n")
     assert b"\t09c\t" not in bundle.artifact_inventory_bytes
     assert b"scientific_review" not in bundle.artifact_inventory_bytes
 
 
-def test_execution_rejects_profile_identity_that_only_matches_digest(
-    tmp_path: Path,
-) -> None:
-    profile = fixture.profile()
-    _request, execution, _execution_bytes, profile = fixture.build_legacy_execution(
-        tmp_path / "request-root", profile
-    )
-    mutated = json.loads(json.dumps(execution))
-    mutated["profile"]["profile_id"] = "wrong.profile"
-    mutated["profile"]["profile_version"] = "wrong"
-    mutated["identity_envelope"]["profile"] = mutated["profile"]
-    digest = orchestration_contracts.canonical_sha256(mutated["identity_envelope"])
-    mutated["identity_envelope_sha256"] = digest
-    mutated["run_id"] = f"run-{digest}"
-
-    with pytest.raises(
-        orchestration_contracts.ContractValidationError,
-        match="profile identity does not match",
-    ):
-        orchestration_contracts.validate_record(
-            "execution",
-            mutated,
-            profile=profile,
-        )
-
-
 def test_inventory_expansion_keeps_each_logical_scope_contiguous(
     tmp_path: Path,
 ) -> None:
-    _request, execution, _execution_bytes, profile = fixture.build_legacy_execution(
-        tmp_path / "request-root"
+    _request, candidate = fixture.build_run(tmp_path / "request-root")
+    source = {**candidate.analysis.workflow_inputs, "run_id": candidate.run_id}
+    bundle = build_reporting_bundle(
+        source, candidate.analysis.profile, candidate.analysis.revision
     )
-    bundle = project_reporting(execution, profile)
     inventory = tmp_path / "artifact_inventory.tsv"
     inventory.write_bytes(bundle.artifact_inventory_bytes)
 
@@ -101,10 +73,11 @@ def test_inventory_expansion_keeps_each_logical_scope_contiguous(
 def test_inventory_bytes_preserve_row_and_scope_semantics_without_publication(
     tmp_path: Path,
 ) -> None:
-    _request, execution, _execution_bytes, profile = fixture.build_legacy_execution(
-        tmp_path / "request-root"
+    _request, candidate = fixture.build_run(tmp_path / "request-root")
+    source = {**candidate.analysis.workflow_inputs, "run_id": candidate.run_id}
+    bundle = build_reporting_bundle(
+        source, candidate.analysis.profile, candidate.analysis.revision
     )
-    bundle = project_reporting(execution, profile)
     reader = csv.DictReader(
         io.StringIO(bundle.artifact_inventory_bytes.decode("utf-8"), newline=""),
         delimiter="\t",
@@ -151,14 +124,16 @@ def test_reference_sidecar_templates_can_bind_stationary_external_paths(
             },
         ]
     )
-    request, execution, _execution_bytes, profile = fixture.build_legacy_execution(
-        tmp_path / "request-root", profile
+    request, candidate = fixture.build_run(tmp_path / "request-root", profile)
+    source = {**candidate.analysis.workflow_inputs, "run_id": candidate.run_id}
+    bundle = build_reporting_bundle(
+        source, candidate.analysis.profile, candidate.analysis.revision
     )
-    bundle = project_reporting(execution, profile)
     by_id = {row["artifact_id"]: row for row in bundle.artifact_inventory_rows}
 
     fasta = request.parent / "reference" / "genome.fa"
-    assert by_id["ref.synthetic_ref.fasta"]["source_path"] == str(fasta)
-    assert by_id["ref.synthetic_ref.dict"]["source_path"] == str(
+    reference_id = candidate.analysis.revision.scope_id("reference")
+    assert by_id[f"ref.{reference_id}.fasta"]["source_path"] == str(fasta)
+    assert by_id[f"ref.{reference_id}.dict"]["source_path"] == str(
         fasta.with_name("genome.dict")
     )

@@ -1,16 +1,8 @@
 {
   "artifact_record.schema.json": [
     {
-      "expected": "urn:emrys:schema:artifacts:artifact-record:v2",
+      "expected": "urn:emrys:schema:artifacts:artifact-entry:v1",
       "pointer": "/$id"
-    },
-    {
-      "expected": "emrys.artifact_record",
-      "pointer": "/properties/schema_name/const"
-    },
-    {
-      "expected": "2.0.0",
-      "pointer": "/properties/schema_version/const"
     },
     {
       "expected": [
@@ -75,7 +67,7 @@
   ],
   "report_receipt.schema.json": [
     {
-      "expected": "urn:emrys:schema:artifacts:report-receipt:v4",
+      "expected": "urn:emrys:schema:artifacts:report-receipt:v5",
       "pointer": "/$id"
     },
     {
@@ -83,7 +75,7 @@
       "pointer": "/properties/schema_name/const"
     },
     {
-      "expected": "4.0.0",
+      "expected": "5.0.0",
       "pointer": "/properties/schema_version/const"
     },
     {
@@ -104,19 +96,11 @@
     },
     {
       "expected": "Jinja2",
-      "pointer": "/properties/renderer/properties/name/const"
+      "pointer": "/$defs/core_renderer/properties/template_engine/const"
     },
     {
-      "expected": "3.1.6",
-      "pointer": "/properties/renderer/properties/version/const"
-    },
-    {
-      "expected": "computational_candidates_only_biological_validation_outside_emrys",
-      "pointer": "/properties/interpretation_boundary/const"
-    },
-    {
-      "expected": "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE EMRYS.",
-      "pointer": "/properties/state_banner/const"
+      "expected": "urn:emrys:schema:artifacts:common:v1#/$defs/non_empty_string",
+      "pointer": "/properties/interpretation_boundary/$ref"
     },
     {
       "expected": false,
@@ -129,7 +113,7 @@
   ],
   "run_summary.schema.json": [
     {
-      "expected": "urn:emrys:schema:artifacts:run-summary:v2",
+      "expected": "urn:emrys:schema:artifacts:run-summary:v4",
       "pointer": "/$id"
     },
     {
@@ -137,7 +121,7 @@
       "pointer": "/properties/schema_name/const"
     },
     {
-      "expected": "2.0.0",
+      "expected": "4.0.0",
       "pointer": "/properties/schema_version/const"
     },
     {
@@ -147,14 +131,6 @@
         "failed"
       ],
       "pointer": "/properties/summary_state/enum"
-    },
-    {
-      "expected": "CMH-ranked candidates",
-      "pointer": "/properties/candidate_terminology/const"
-    },
-    {
-      "expected": "computational_candidates_only_biological_validation_outside_emrys",
-      "pointer": "/properties/interpretation_boundary/const"
     }
   ]
 }

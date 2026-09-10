@@ -14,8 +14,6 @@ import zipfile
 from email.parser import Parser
 from pathlib import Path
 
-from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_DEPENDENCIES = {
     "coolname",
@@ -42,26 +40,19 @@ RUNTIME_REQUIREMENT_SPECIFIERS = {
 RESOURCE_PATHS = (
     "emrys/contracts/schemas/artifacts/v2/artifact_record.schema.json",
     "emrys/contracts/schemas/artifacts/v1/common.schema.json",
-    "emrys/contracts/schemas/artifacts/v2/run_summary.schema.json",
-    "emrys/contracts/schemas/artifacts/v3/report_receipt.schema.json",
     "emrys/contracts/schemas/artifacts/v3/run_summary.schema.json",
-    "emrys/contracts/schemas/artifacts/v4/report_receipt.schema.json",
     "emrys/contracts/schemas/artifacts/v5/report_receipt.schema.json",
     "emrys/contracts/schemas/orchestration/v1/project.schema.json",
     "emrys/contracts/schemas/orchestration/v2/profile.schema.json",
-    "emrys/contracts/schemas/orchestration/v2/request.schema.json",
-    "emrys/contracts/schemas/orchestration/v3/request.schema.json",
     "emrys/contracts/schemas/orchestration/v3/resource_config.schema.json",
     "emrys/contracts/schemas/orchestration/v3/execution_profile.schema.json",
     "emrys/orchestration/run_coordinator/resources/default_execution.yaml",
     "emrys/resources/runtime/runtime_policy.tsv",
     "emrys/resources/runtime/pixi.toml",
     "emrys/resources/runtime/pixi.lock",
-    "emrys/contracts/schemas/orchestration/v1/execution.schema.json",
     "emrys/contracts/schemas/orchestration/v1/reference.schema.json",
     "emrys/contracts/schemas/orchestration/v1/policy.schema.json",
     "emrys/contracts/schemas/orchestration/v1/workflow_attempt.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/attempt_receipt.schema.json",
     "emrys/contracts/schemas/orchestration/v2/attempt_receipt.schema.json",
     "emrys/contracts/schemas/orchestration/v1/run_lock.schema.json",
     "emrys/contracts/schemas/orchestration/v1/task_start.schema.json",
@@ -324,14 +315,6 @@ def installed_probe(environment_python: Path, cwd: Path) -> dict[str, object]:
 
 
 def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -> None:
-    fixture = FIXTURE.build_fixture(tmp_path / "report-fixture")
-    artifact_source_root = fixture.root
-    summary = json.loads(fixture.summary_json_path.read_text(encoding="utf-8"))
-    summary["provenance"]["git_commit"] = "upstream-summary-commit"
-    fixture.summary_json_path.write_text(
-        json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
     wheel = build_wheel(tmp_path)
     inspect_wheel(wheel)
     environment_python, console = install_locked_wheel(wheel, tmp_path)
@@ -436,20 +419,37 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     report_output_root = arbitrary_cwd / "reports"
     render_program = """
 import argparse
+import json
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 from emrys.reporting._run_report.context import prepare_context
 from emrys.reporting._run_report.publication import publish_report
 
+# Load shared fixture helpers without exposing the checkout's src directory.
+sys.path.insert(0, sys.argv[1])
+from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
+sys.path.pop(0)
+assert Path(FIXTURE.ARTIFACT_CONTEXT.__file__).is_relative_to(Path(sys.prefix))
+with patch.object(
+    FIXTURE.ARTIFACT_CORE, "get_git_commit", return_value="upstream-summary-commit"
+):
+    fixture = FIXTURE.build_fixture(Path(sys.argv[2]))
+
 context = prepare_context(argparse.Namespace(
     source_checkout=Path(sys.argv[1]),
-    artifact_source_root=Path(sys.argv[2]),
-    run_summary=Path(sys.argv[3]),
-    output_root=Path(sys.argv[4]),
+    artifact_source_root=fixture.root,
+    run_summary=fixture.summary_json_path,
+    output_root=Path(sys.argv[3]),
+    analysis_policy=fixture.adapter_fixture.analysis_policy,
 ))
 publish_report(context)
-print(context.output_receipt)
+print(json.dumps({
+    "run_id": fixture.run_id,
+    "artifact_source_root": str(fixture.root),
+    "receipt": str(context.output_receipt),
+}))
 """
     rendered = run_command(
         [
@@ -460,17 +460,21 @@ print(context.output_receipt)
             "-c",
             render_program,
             str(REPO_ROOT),
-            str(artifact_source_root),
-            str(fixture.summary_json_path),
+            str(tmp_path / "report-fixture"),
             str(report_output_root),
         ],
         cwd=arbitrary_cwd,
         hostile_pythonpath=True,
     )
     require_success(rendered)
-    run_id = fixture.run_id
+    rendered_paths = json.loads(rendered.stdout.splitlines()[-1])
+    run_id = rendered_paths["run_id"]
+    artifact_source_root = Path(rendered_paths["artifact_source_root"])
     report_directory = report_output_root / run_id
-    assert str(report_directory / f"{run_id}.report_outputs.tsv") in rendered.stdout
+    assert (
+        str(report_directory / f"{run_id}.report_outputs.tsv")
+        == rendered_paths["receipt"]
+    )
     assert {path.name for path in report_directory.iterdir()} == {
         f"{run_id}.scientific_report.html",
         f"{run_id}.evidence_report.html",

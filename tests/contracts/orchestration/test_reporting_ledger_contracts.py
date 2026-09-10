@@ -24,10 +24,10 @@ def _records() -> dict[str, dict[str, Any]]:
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
         "origin_workflow_attempt_id": ATTEMPT_ID,
-        "kind": "artifact_index",
+        "kind": "run_summary",
     }
     start = {
-        "schema_version": "emrys.reporting-start.v1",
+        "schema_version": "emrys.reporting-start.v2",
         **identity,
         "workflow_attempt": _reference(f"attempts/{ATTEMPT_ID}/attempt.json"),
         "workflow_config": _reference("contract/workflow-config.json"),
@@ -37,10 +37,10 @@ def _records() -> dict[str, dict[str, Any]]:
     verified = {
         "schema_version": "emrys.verified-reporting.v1",
         **identity,
-        "reporting_start": _reference("state/reporting/artifact_index/start.json"),
+        "reporting_start": _reference("state/reporting/run_summary/start.json"),
         "semantic_receipt": _reference(
             f"products/artifact-summary/run-{ZERO_HASH}/"
-            f"run-{ZERO_HASH}.artifact_receipt.tsv"
+            f"run-{ZERO_HASH}.run_summary.json"
         ),
         "created_at": "2026-08-12T12:01:00Z",
     }
@@ -62,7 +62,6 @@ def test_reporting_ledger_schemas_are_registered_and_closed() -> None:
             orchestration_contracts.validate_record(name, mutated)
 
     start = _records()["reporting-start"]
-    start["schema_version"] = "emrys.reporting-start.v2"
     for kind in ("run_summary", "html_report"):
         start["kind"] = kind
         orchestration_contracts.validate_record("reporting-start", start)
@@ -77,6 +76,6 @@ def test_reporting_ledger_kind_is_closed(name: str) -> None:
     record["kind"] = "pdf_report"
     with pytest.raises(
         orchestration_contracts.ContractValidationError,
-        match="artifact_index",
+        match="run_summary",
     ):
         orchestration_contracts.validate_record(name, record)

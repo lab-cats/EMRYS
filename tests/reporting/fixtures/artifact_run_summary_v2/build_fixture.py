@@ -35,7 +35,6 @@ class RunSummaryFixture:
 
     root: Path
     run_id: str
-    artifact_receipt: Path
     output_root: Path
     adapter_fixture: Any
 
@@ -54,10 +53,6 @@ class RunSummaryFixture:
     @property
     def qc_summary_path(self) -> Path:
         return self.output_dir / f"{self.run_id}.qc_summary.tsv"
-
-    @property
-    def summary_receipt_path(self) -> Path:
-        return self.output_dir / f"{self.run_id}.run_summary_receipt.tsv"
 
     @property
     def lock_path(self) -> Path:
@@ -96,6 +91,7 @@ def prepare_adapter_fixture(fixture: Any) -> Any:
                     run_id=fixture.run_id,
                     run_contract=fixture.run_contract,
                     inventory=fixture.inventory,
+                    analysis_policy=fixture.analysis_policy,
                     output_root=fixture.output_root,
                     profile=ADAPTER_FIXTURE.analysis_profile_v1(),
                     execute=True,
@@ -119,7 +115,6 @@ def _fixture_from_adapter(adapter_fixture: Any) -> RunSummaryFixture:
     return RunSummaryFixture(
         root=adapter_fixture.root,
         run_id=adapter_fixture.run_id,
-        artifact_receipt=adapter_fixture.receipt_path,
         output_root=adapter_fixture.output_root,
         adapter_fixture=adapter_fixture,
     )
@@ -199,6 +194,7 @@ def publish_report(
                 source_checkout=REPO_ROOT,
                 artifact_source_root=fixture.root,
                 run_summary=fixture.summary_json_path,
+                analysis_policy=fixture.adapter_fixture.analysis_policy,
                 output_root=output_root,
             )
         )
@@ -251,7 +247,6 @@ def main() -> int:
     parser.add_argument("--report-output-root", type=Path)
     arguments = parser.parse_args()
     fixture = build_fixture(arguments.root, run_id=arguments.run_id)
-    print(f"Artifact receipt: {fixture.artifact_receipt}")
     print(f"Run summary: {fixture.summary_json_path}")
     if arguments.report_output_root is not None:
         for execute in (False, True):

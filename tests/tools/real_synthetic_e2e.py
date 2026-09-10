@@ -854,7 +854,6 @@ def _resource_snapshot(
         document = json.loads(path.read_bytes())
         plan = admit_resource_policy_record(
             document["resource_policy"],
-            require_symbolic=True,
         )
     except (KeyError, TypeError, ValueError) as exc:
         raise DriverError(
@@ -1083,7 +1082,7 @@ def _admitted_failure(run_root: Path, *, job: Job | None) -> dict[str, Any]:
         raise DriverError("assert-parity", "Failed Run Attempt chain differs")
     task_roster = _task_roster(observed)
     _assert_no_task_entry(task_roster, receipt)
-    expected_reporting = {"artifact_index", "run_summary", "html_report"}
+    expected_reporting = {"run_summary", "html_report"}
     if set(observed.reporting_completion_records) != expected_reporting or any(
         records["start"] is not None or records["verified"] is not None
         for records in observed.reporting_completion_records.values()
@@ -1133,7 +1132,7 @@ def _admitted_completion(
     expected_count = 2 if failure is not None else 1
     if blockers or len(attempts) != expected_count or len(receipts) != expected_count:
         raise DriverError("assert-parity", "Completed Run Attempt chain differs")
-    expected_reporting = {"artifact_index", "run_summary", "html_report"}
+    expected_reporting = {"run_summary", "html_report"}
     if set(observed.reporting_completion_records) != expected_reporting or any(
         records["start"] is None or records["verified"] is None
         for records in observed.reporting_completion_records.values()

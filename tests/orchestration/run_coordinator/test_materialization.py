@@ -28,7 +28,7 @@ from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration import artifact_inventory
 from emrys.contracts.orchestration.application_model import (
     PROCESSING_STEP_IDS,
-    build_analysis_revision,
+    build_module_analysis_revision,
     execution_plan_boundary,
 )
 from emrys.contracts.orchestration.projection import build_reporting_bundle
@@ -70,7 +70,6 @@ from emrys.orchestration.run_coordinator.materialization import (
     publish_attempt,
 )
 from emrys.orchestration.run_coordinator.normalization import (
-    _historical_execution_v1,
     admit_project,
 )
 from emrys.orchestration.run_coordinator.execution_profile import load_execution_profile
@@ -85,7 +84,7 @@ from emrys.orchestration.run_coordinator.run_implementation import (
     implementation_identity,
     processing_implementation_identity,
 )
-from tests.orchestration.run_coordinator.fixture import build, build_legacy
+from tests.orchestration.run_coordinator.fixture import build
 from tests.orchestration.run_coordinator.fixtures.b5_doubles import with_owner_doubles
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -138,7 +137,6 @@ def _readiness(
     workflow_cores: int = 1,
     stage_concurrency: dict[str, int] | None = None,
     step_threads: dict[str, int] | None = None,
-    legacy: bool = False,
     replicate_count: int = 2,
     sample_ids: list[str] | None = None,
     regions_file: bool = False,
@@ -146,11 +144,7 @@ def _readiness(
     tmp_path.mkdir(parents=True, exist_ok=True)
     workspace = tmp_path / "project"
     workspace.mkdir()
-    request = (
-        build_legacy(workspace)
-        if legacy
-        else build(workspace, replicate_count=replicate_count)
-    )
+    request = build(workspace, replicate_count=replicate_count)
     if regions_file:
         (workspace / "target.bed").write_text("chrSynthetic\t0\t12\n", encoding="utf-8")
         (workspace / "partitions.tsv").write_text(
@@ -189,7 +183,6 @@ def _readiness(
     project = admit_project(
         request,
         source_root / "workflow/contracts/local_cmh_v2.json",
-        allow_legacy=legacy,
     )
     analysis = project.select_analysis()
     resources = resolve_resource_policy(
@@ -333,7 +326,6 @@ def _plan(
     step_threads: dict[str, int] | None = None,
     workflow_cores: int = 1,
     stage_concurrency: dict[str, int] | None = None,
-    legacy: bool = False,
     through: str = "analysis",
     regions_file: bool = False,
 ):
@@ -342,7 +334,6 @@ def _plan(
         workflow_cores=workflow_cores,
         stage_concurrency=stage_concurrency,
         step_threads=step_threads,
-        legacy=legacy,
         regions_file=regions_file,
     )
     return build_attempt_plan(
@@ -1183,11 +1174,11 @@ def test_processing_source_rejects_every_incompatible_target_dimension(
     for condition in ("EV", "PUM1"):
         row = next(item for item in source_samples if item["condition"] == condition)
         source_samples.append({**row, "sample_id": f"{condition}_3", "replicate": "3"})
-    source_analysis = build_analysis_revision(
+    source_analysis = build_module_analysis_revision(
         samples=source_samples,
         partitions=identity["partitions"],
         reference=identity["reference"],
-        scientific_policy=identity["scientific_policy"],
+        **identity["analysis_module"],
     )
     source = inspection.ProcessingSourceAdmission(
         root=workspace / "runs" / source_run.run_id,
@@ -1208,17 +1199,17 @@ def test_processing_source_rejects_every_incompatible_target_dimension(
 
     samples = [dict(row) for row in identity["samples"]]
     samples[0]["r1_fastq_sha256"] = "3" * 64
-    sample_changed = build_analysis_revision(
+    sample_changed = build_module_analysis_revision(
         samples=samples,
         partitions=identity["partitions"],
         reference=identity["reference"],
-        scientific_policy=identity["scientific_policy"],
+        **identity["analysis_module"],
     )
-    reference_changed = build_analysis_revision(
+    reference_changed = build_module_analysis_revision(
         samples=identity["samples"],
         partitions=identity["partitions"],
         reference={**identity["reference"], "fasta_sha256": "4" * 64},
-        scientific_policy=identity["scientific_policy"],
+        **identity["analysis_module"],
     )
     different_binding = {**binding, "attempt_receipt_sha256": "5" * 64}
     binding_changed = build_run_candidate(
@@ -1638,22 +1629,6 @@ def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
     scheduled_attempt["workflow_config"].pop("sha256")
     assert direct_attempt == scheduled_attempt
 
-    historical = resources.policy_record()
-    for field in ("symbolic", "effective"):
-        historical[field]["reporting_memory_mb"] = {
-            "artifact_index": 512,
-            "run_summary": 512,
-            "html_report": 512,
-        }
-        historical[f"{field}_sha256"] = orchestration_contracts.canonical_sha256(
-            historical[field]
-        )
-    reporting_changed = admit_resource_policy_record(historical)
-    assert (
-        _run_candidate(readiness, reporting_changed, through=through).run_id
-        == direct_run.run_id
-    )
-
     computational_change = replace(resources.declaration, workflow_cores=2)
     stopping = (
         None
@@ -1730,7 +1705,7 @@ def test_attempt_plan_records_placement_without_making_it_run_compatibility(
         "scheduler_job_id": "700123",
     }
 
-    historical = build_attempt_plan(run, readiness, workspace, **context)
+    unplaced = build_attempt_plan(run, readiness, workspace, **context)
     direct = build_attempt_plan(
         run,
         readiness,
@@ -1746,16 +1721,11 @@ def test_attempt_plan_records_placement_without_making_it_run_compatibility(
         **context,
     )
 
-    assert "placement" not in historical.attempt_record
+    assert "placement" not in unplaced.attempt_record
     assert direct.attempt_record["placement"] == direct_placement
     assert scheduled.attempt_record["placement"] == slurm_placement
-    compatibility = inspection.attempt_fields(True)
+    compatibility = inspection.attempt_fields()
     assert "placement" not in compatibility
-    assert set(inspection.attempt_fields(False)) == {
-        *compatibility,
-        "source_checkout",
-        "required_tools",
-    }
     assert {field: direct.attempt_record[field] for field in compatibility} == {
         field: scheduled.attempt_record[field] for field in compatibility
     }
@@ -2225,27 +2195,16 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     assert "Attempt receipt:" not in debug
     assert "Engine command:" not in debug
 
-    historical = replace(
+    escaped = replace(
         observed,
-        run_root=Path("/tmp/café\\historical\n\x1b[31m-run"),
-        authority=None,
+        run_root=Path("/tmp/café\\display\n\x1b[31m-run"),
     )
-    monkeypatch.setattr(control.inspection, "inspect_run", lambda _root: historical)
+    monkeypatch.setattr(control.inspection, "inspect_run", lambda _root: escaped)
     arguments.detail = "verbose"
     assert control.inspect_from_args(arguments) == 0
-    historical_output = capsys.readouterr().out
-    assert "Identity model: historical execution.v1" in historical_output
-    assert "Analysis ID:" not in historical_output
-    assert "Execution Plan ID:" not in historical_output
-    assert "\x1b" not in historical_output
-    assert "Run root: /tmp/café\\historical\\n\\x1b[31m-run" in historical_output
-
-    arguments.detail = "debug"
-    assert control.inspect_from_args(arguments) == 0
-    historical_debug = capsys.readouterr().out
-    assert "Historical authority record:" in historical_debug
-    assert "Run authority records:" not in historical_debug
-    assert "contract/execution-plan.json" not in historical_debug
+    escaped_output = capsys.readouterr().out
+    assert "\x1b" not in escaped_output
+    assert "Run root: /tmp/café\\display\\n\\x1b[31m-run" in escaped_output
 
     monkeypatch.setattr(
         control.inspection,
@@ -2277,7 +2236,7 @@ def test_attempt_refuses_incomplete_run_authority_before_mutex_or_materializatio
     def unexpected_materialization() -> None:
         raise AssertionError("materialization must remain unreachable")
 
-    with pytest.raises(lifecycle.LifecycleError, match="successor Run"):
+    with pytest.raises(lifecycle.LifecycleError, match="Could not admit Run"):
         lifecycle.run_materialized_attempt(
             plan.lifecycle_request,
             unexpected_materialization,
@@ -2433,14 +2392,7 @@ def _failed_run(plan):
         admit_storage_context=lambda _attempt, _execution: None,
         admit_runtime_context=lambda _attempt, _request, _storage, _inspection: None,
     )
-    if isinstance(plan.run, materialization.HistoricalRun):
-        for item in plan.fixed_files:
-            item.path.parent.mkdir(parents=True, exist_ok=True)
-            item.path.write_bytes(item.data)
-        for name in ("attempts", "locks", "state"):
-            (plan.run_root / name).mkdir()
-    else:
-        admit_run(plan, ops=ops)
+    admit_run(plan, ops=ops)
     outcome = lifecycle.run_materialized_attempt(
         plan.lifecycle_request,
         lambda: publish_attempt(plan, ops=ops),
@@ -2465,19 +2417,14 @@ def _patch_resume_control(
         runtime_profile: Path,
         **_kwargs: object,
     ) -> doctor.DoctorResult:
-        legacy = (
-            yaml.safe_load(readiness.analysis.source_bytes)["schema_version"]
-            == "emrys.request.v3"
-        )
         assert _kwargs == {
             "storage_requirement": "direct",
-            "analysis_name": None if legacy else readiness.analysis.evidence_label,
+            "analysis_name": readiness.analysis.evidence_label,
             "expected_analysis_revision": (
                 None
                 if observed.authority is None
                 else observed.authority.analysis_revision
             ),
-            "allow_legacy": legacy,
             "require_reporter": observed.authority is None
             or execution_plan_boundary(observed.authority.execution_plan) == "analysis",
         }
@@ -2536,104 +2483,13 @@ def test_new_run_rejects_processing_edge_drift_but_existing_run_resumes(
     assert second.run.analysis.profile == profile
 
 
-def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    readiness, resources, request, workspace = _readiness(
-        tmp_path,
-        legacy=True,
-    )
-    analysis = readiness.analysis
-    symbolic_policy = replace(
-        resources.policy,
-        declaration=replace(
-            resources.declaration,
-            workflow_memory_mb="allocation",
-        ),
-    )
-    resources = resolve_resource_policy(
-        symbolic_policy,
-        AllocationCapacity(cores=1, memory_mb=16_384, source="first allocation"),
-    )
-    legacy, legacy_bytes = _historical_execution_v1(analysis)
-    first = build_attempt_plan(
-        materialization.HistoricalRun(
-            analysis=analysis,
-            run_id=str(legacy["run_id"]),
-            execution_projection_bytes=legacy_bytes,
-        ),
-        readiness,
-        workspace,
-        resources=resources,
-        operation="execute",
-    )
-    observed = _failed_run(first)
-    assert observed.authority is None
-    retained = next(
-        Path(str(item["path"]))
-        for item in first.attempt_record["required_tools"]
-        if item["name"] == "runtime_profile"
-    )
-    request.write_text(
-        request.read_text(encoding="utf-8").replace(
-            "label: first label",
-            "label: renamed label",
-        ),
-        encoding="utf-8",
-    )
-    renamed_project = admit_project(
-        request,
-        REPO_ROOT / "workflow/contracts/local_cmh_v2.json",
-        allow_legacy=True,
-    )
-    onboarding.runtime_profile_path(analysis.source_path).unlink()
-    fallback_readiness = replace(
-        readiness,
-        project=renamed_project,
-        analysis=renamed_project.select_analysis(),
-        inspection=replace(readiness.inspection, profile_path=retained),
-    )
-    selected: list[Path] = []
-    _patch_resume_control(
-        monkeypatch,
-        observed,
-        fallback_readiness,
-        resolve_resource_policy(
-            symbolic_policy,
-            AllocationCapacity(cores=1, memory_mb=8_192, source="resume allocation"),
-        ),
-        selected,
-    )
-    second = control._plan_resume(
-        first.run_root,
-        execution_profile=load_execution_profile(),
-    )
-
-    assert selected == [retained]
-    assert second.attempt_record["request_label"] == "renamed label"
-    assert second.resources.workflow_memory_mb == 8_192
-    assert (
-        second.attempt_record["required_tools"]
-        == first.attempt_record["required_tools"]
-    )
-    assert not {
-        retained,
-        second.run_root
-        / "contract/runtime-profiles"
-        / f"{second.workflow_attempt_id}.tsv",
-    } & {item.path for item in second.attempt_files}
-
-
-@pytest.mark.parametrize("legacy", (False, True))
 @pytest.mark.parametrize("through", ("analysis", "processing"))
 def test_successor_resume_snapshots_current_runtime_profile(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    legacy: bool,
     through: str,
 ) -> None:
-    first = _plan(tmp_path, legacy=legacy, through=through)
+    first = _plan(tmp_path, through=through)
     observed = _failed_run(first)
     assert observed.authority is not None
     retained = next(
@@ -2704,24 +2560,6 @@ def test_placement_profile_inherits_computation_without_reporting_resources(
     assert "reporting_memory_mb" not in second.resources.policy.document()
     assert "reporting_memory_mb" not in second.resources.effective_document()
     assert second.attempt_record["placement"]["source"]["path"] == str(selected)
-
-
-def test_project_v1_predecessor_does_not_enable_request_v3_resume(
-    tmp_path: Path,
-) -> None:
-    first = _plan(tmp_path / "current")
-    _failed_run(first)
-    legacy = build_legacy(tmp_path / "legacy")
-    first.run.analysis.source_path.write_bytes(legacy.read_bytes())
-
-    with pytest.raises(
-        control.ControlError,
-        match="emrys.request.v3 is historical",
-    ):
-        control._plan_resume(
-            first.run_root,
-            execution_profile=load_execution_profile(),
-        )
 
 
 def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
@@ -2815,7 +2653,6 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
             "storage_requirement": "slurm",
             "analysis_name": "primary",
             "expected_analysis_revision": first.run.analysis.revision,
-            "allow_legacy": False,
             "require_reporter": True,
         }
         selected_runtime_profiles.append(runtime_profile)
@@ -4224,7 +4061,7 @@ def test_next_supported_action_uses_separated_status_domains() -> None:
                 reporting_status=reporting,
                 recovery_available=recovery,
                 latest_receipt={
-                    "schema_version": "emrys.attempt-receipt.v1",
+                    "schema_version": "emrys.attempt-receipt.v2",
                     "status": receipt,
                 },
                 run_root=Path.cwd() / "runs" / ("run-" + "a" * 64),

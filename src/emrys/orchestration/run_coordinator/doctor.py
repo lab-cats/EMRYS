@@ -213,7 +213,7 @@ def _absolute_path(value: str | Path) -> Path:
 def workspace_location_blockers(
     workspace: Path, source_root: Path
 ) -> tuple[list[str], list[str]]:
-    """Admit the already-created Project root without legacy absent-workspace logic."""
+    """Admit the already-created Project root."""
 
     if (
         workspace == source_root
@@ -525,7 +525,6 @@ def diagnose_project(
     storage_requirement: StorageRequirement | None = None,
     analysis_name: str | None = None,
     expected_analysis_revision: AnalysisRevision | None = None,
-    allow_legacy: bool = False,
     require_reporter: bool = True,
 ) -> DoctorResult:
     """Diagnose Project execution, storage, and runtime readiness without writes."""
@@ -559,7 +558,6 @@ def diagnose_project(
         admitted_project = onboarding.validate_project(
             project,
             root=root,
-            allow_legacy=allow_legacy,
         ).project
         analysis = admitted_project.select_analysis(
             analysis_name,

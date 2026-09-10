@@ -1,16 +1,4 @@
 {
-  "schema_name": "emrys.artifact_record",
-  "schema_version": "2.0.0",
-  "record_type": "artifact_record",
-  "run_id": "run_fixture",
-  "run_contract": {
-    "run_contract_sha256": "284446856367c83d6a7ff61008230d979c33238f77aae087fb87405d9c216245",
-    "sample_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
-    "reference_contract_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
-    "partition_manifest_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
-    "primary_analysis_id": "synthetic_analysis",
-    "primary_analysis_policy_sha256": "4444444444444444444444444444444444444444444444444444444444444444"
-  },
   "artifact_id": "analysis.synthetic.cmh_summary",
   "scope": {
     "step_id": "09",
@@ -107,11 +95,5 @@
       "evidence": []
     }
   ],
-  "errors": [],
-  "provenance": {
-    "producer": "artifact_schema_fixture",
-    "producer_version": "1.0.0",
-    "git_commit": "fixturecommit",
-    "created_at": "2000-01-01T00:00:02Z"
-  }
+  "errors": []
 }

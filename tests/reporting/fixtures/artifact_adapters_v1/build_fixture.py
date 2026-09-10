@@ -100,16 +100,12 @@ class FixturePaths:
         return self.output_root / self.run_id
 
     @property
-    def records_dir(self) -> Path:
-        return self.output_dir / "records"
+    def manifest_path(self) -> Path:
+        return self.output_dir / f"{self.run_id}.run_summary.json"
 
     @property
-    def artifacts_path(self) -> Path:
-        return self.output_dir / f"{self.run_id}.artifacts.tsv"
-
-    @property
-    def receipt_path(self) -> Path:
-        return self.output_dir / f"{self.run_id}.artifact_receipt.tsv"
+    def analysis_policy(self) -> Path:
+        return self.root / "analysis_policy.json"
 
     @property
     def summary_paths(self) -> tuple[Path, ...]:
@@ -119,7 +115,6 @@ class FixturePaths:
                 "run_summary.json",
                 "run_summary.tsv",
                 "qc_summary.tsv",
-                "run_summary_receipt.tsv",
             )
         )
 
@@ -160,13 +155,38 @@ def canonical_run_contract_sha256(components: Mapping[str, str]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def build_analysis_policy() -> dict[str, object]:
+    module = analyses.load_analysis_module(analyses.BUILTIN_PAIRED_CMH_MODULE_ID)
+    return {
+        "schema_version": "emrys.analysis-module-policy.v1",
+        "analysis_id": PRIMARY_ANALYSIS_ID,
+        "module": analyses.module_identity_record(module),
+        "implementation_sha256": module.provider.package.sha256,
+        "configuration": {
+            "control_condition": "control",
+            "treatment_condition": "treatment",
+            "background_condition": None,
+            "rna_ref": "A",
+            "rna_alt": "G",
+            "min_sample_dp": 1,
+            "mean_dp_threshold": 0,
+            "fdr_threshold": 0.05,
+            "common_or_threshold": 1.2,
+            "absolute_difference_threshold": 0.005,
+            "background_max_fraction": 0.01,
+        },
+    }
+
+
 def build_run_contract() -> dict[str, str]:
     components = {
         "sample_manifest_sha256": SAMPLE_MANIFEST_SHA256,
         "reference_contract_sha256": REFERENCE_CONTRACT_SHA256,
         "partition_manifest_sha256": PARTITION_MANIFEST_SHA256,
         "primary_analysis_id": PRIMARY_ANALYSIS_ID,
-        "primary_analysis_policy_sha256": PRIMARY_ANALYSIS_POLICY_SHA256,
+        "primary_analysis_policy_sha256": orchestration_contracts.canonical_sha256(
+            build_analysis_policy()
+        ),
     }
     return {
         "run_contract_sha256": canonical_run_contract_sha256(components),
@@ -963,6 +983,9 @@ def write_scientific_context_transaction(
 def build_fixture(root: Path, *, run_id: str = RUN_ID) -> FixturePaths:
     root = root.resolve()
     root.mkdir(parents=True, exist_ok=True)
+    (root / "analysis_policy.json").write_bytes(
+        orchestration_contracts.canonical_json_bytes(build_analysis_policy())
+    )
     source_root = root / "source"
     inventory_path = root / "artifact_inventory.tsv"
     run_contract_path = root / "run_contract.json"

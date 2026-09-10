@@ -1,16 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:emrys:schema:artifacts:artifact-record:v2",
-  "title": "EMRYS artifact record v2",
-  "description": "One explicitly expected pipeline artifact and its independent implementation, testing, runtime, cluster, attempt, and provenance state.",
+  "$id": "urn:emrys:schema:artifacts:artifact-entry:v1",
+  "title": "EMRYS Run artifact entry",
+  "description": "One expected artifact; the containing Run manifest owns shared identity and publication provenance.",
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schema_name",
-    "schema_version",
-    "record_type",
-    "run_id",
-    "run_contract",
     "artifact_id",
     "scope",
     "adapter",
@@ -31,25 +26,9 @@
     "parameters",
     "metrics",
     "warnings",
-    "errors",
-    "provenance"
+    "errors"
   ],
   "properties": {
-    "schema_name": {
-      "const": "emrys.artifact_record"
-    },
-    "schema_version": {
-      "const": "2.0.0"
-    },
-    "record_type": {
-      "const": "artifact_record"
-    },
-    "run_id": {
-      "$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"
-    },
-    "run_contract": {
-      "$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/run_contract"
-    },
     "artifact_id": {
       "$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"
     },
@@ -176,9 +155,6 @@
       "items": {
         "$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/issue"
       }
-    },
-    "provenance": {
-      "$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/provenance"
     }
   },
   "$defs": {

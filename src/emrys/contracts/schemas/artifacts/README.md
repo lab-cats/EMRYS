@@ -1,15 +1,10 @@
-# Artifact schema versions
+# Current artifact schemas
 
-Active artifact schemas span several versions, all registered by the
-[artifact contract](../../artifacts/README.md):
+The closed [artifact contract registry](../../artifacts/README.md) admits only current documents:
 
-- [`v1/`](v1/README.md): shared definitions.
-- [`v2/`](v2/README.md): artifact records and flat paired-CMH run summaries.
-- [`v3/`](v3/README.md): module-neutral run summaries and the frozen historical single-HTML receipt.
-- [`v4/`](v4/README.md): flat paired-CMH receipts for scientific HTML, evidence HTML, and summary TSV.
-- [`v5/`](v5/README.md): explicit-module receipts, attributing computation provider,
-  scientific reporter, and fixed core renderer separately.
+- [Artifact entries](v2/artifact_record.schema.json) contain independent artifact state.
+- [Run result manifest v4](v3/run_summary.schema.json) owns shared Run identity, input bindings and publication provenance.
+- [Report receipt v5](v5/report_receipt.schema.json) binds both HTML projections and their renderer identities.
+- [Common definitions](v1/common.schema.json) supply shared paths, hashes, status and evidence vocabulary.
 
-Each directory participates in packaging and local reference resolution. Follow
-the common [version and identity rules](../README.md#version-and-identity-rules)
-before changing a resource or its consumers.
+Older document versions are unsupported. Stored Run data and retained evidence are not migrated or deleted.

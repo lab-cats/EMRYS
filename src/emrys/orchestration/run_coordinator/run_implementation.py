@@ -90,9 +90,7 @@ _ADMISSION_ROOTS = (
     "src/emrys/contracts/orchestration/application_model.py",
     "src/emrys/contracts/orchestration/artifact_inventory.py",
     "src/emrys/contracts/schemas/orchestration/v1/application_model.schema.json",
-    "src/emrys/contracts/schemas/orchestration/v1/attempt_receipt.schema.json",
     "src/emrys/contracts/schemas/orchestration/v1/common.schema.json",
-    "src/emrys/contracts/schemas/orchestration/v1/execution.schema.json",
     "src/emrys/contracts/schemas/orchestration/v1/policy.schema.json",
     "src/emrys/contracts/schemas/orchestration/v1/reference.schema.json",
     "src/emrys/contracts/schemas/orchestration/v1/run_lock.schema.json",
@@ -273,12 +271,7 @@ def execution_module_id(
         steps.get(owner_key) in {"09", "10"} for owner_key in execution_owner_keys(plan)
     ):
         return None
-    module = analysis.record["identity"].get("analysis_module")
-    return (
-        str(module["module_id"])
-        if isinstance(module, dict)
-        else BUILTIN_PAIRED_CMH_MODULE_ID
-    )
+    return str(analysis.record["identity"]["analysis_module"]["module_id"])
 
 
 def backend_semantics_identity(source_root: Path) -> str:

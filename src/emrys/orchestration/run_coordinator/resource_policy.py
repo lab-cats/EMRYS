@@ -29,9 +29,7 @@ STAGE_IDS = (
     "10",
 )
 REPEATABLE_STAGE_IDS = ("01", "02", "02b", "03", "04", "05", "06", "07")
-_HISTORICAL_THREAD_CAPABLE_STAGE_IDS = ("00a", "01", "02", "06", "08")
-THREAD_CAPABLE_STAGE_IDS = (*_HISTORICAL_THREAD_CAPABLE_STAGE_IDS, "09", "10")
-REPORTING_KINDS = ("artifact_index", "run_summary", "html_report")
+THREAD_CAPABLE_STAGE_IDS = ("00a", "01", "02", "06", "08", "09", "10")
 _SCALAR_RESOURCE_CONTROLS = ("workflow_cores", "workflow_memory_mb")
 _KEYED_RESOURCE_CONTROLS = (
     ("stage_concurrency", REPEATABLE_STAGE_IDS, "STEP=COUNT"),
@@ -328,24 +326,8 @@ def admit_resource_policy(
     except orchestration_contracts.ContractValidationError as exc:
         raise ResourceConfigError(str(exc)) from exc
     stage_concurrency = _closed_map(value, "stage_concurrency", REPEATABLE_STAGE_IDS)
-    step_threads = value.get("step_threads")
-    observed_thread_steps = (
-        set(step_threads) if isinstance(step_threads, dict) else set()
-    )
-    if not (
-        isinstance(step_threads, dict)
-        and set(_HISTORICAL_THREAD_CAPABLE_STAGE_IDS)
-        <= observed_thread_steps
-        <= set(THREAD_CAPABLE_STAGE_IDS)
-    ):
-        raise ResourceConfigError(
-            "Resolved step_threads keys must include: "
-            + ", ".join(_HISTORICAL_THREAD_CAPABLE_STAGE_IDS)
-            + "; optional keys: 09, 10"
-        )
+    step_threads = _closed_map(value, "step_threads", THREAD_CAPABLE_STAGE_IDS)
     stage_memory = _closed_map(value, "stage_memory_mb", STAGE_IDS)
-    if "reporting_memory_mb" in value:
-        _closed_map(value, "reporting_memory_mb", REPORTING_KINDS)
     try:
         workflow_cores = int(value["workflow_cores"])
         configured_workflow_memory = value["workflow_memory_mb"]
@@ -369,9 +351,7 @@ def admit_resource_policy(
             (key, int(stage_concurrency[key])) for key in REPEATABLE_STAGE_IDS
         ),
         step_threads=tuple(
-            (key, int(step_threads[key]))
-            for key in THREAD_CAPABLE_STAGE_IDS
-            if key in step_threads
+            (key, int(step_threads[key])) for key in THREAD_CAPABLE_STAGE_IDS
         ),
         stage_memory_mb=tuple((key, declared_stage_memory[key]) for key in STAGE_IDS),
     )
@@ -473,31 +453,17 @@ def _admit_policy_sources(
 
 
 def resume_resource_policy(
-    predecessor_policy: ResourcePolicy | Mapping[str, Any],
+    predecessor_policy: ResourcePolicy,
     *,
     overrides: ResourceOverrides = ResourceOverrides(),
 ) -> ResourcePolicy:
     """Re-admit a predecessor policy and explicit overrides without allocation."""
 
-    if isinstance(predecessor_policy, ResourcePolicy):
-        document = predecessor_policy.document()
-        default_sha256 = predecessor_policy.default_sha256
-        config_path = predecessor_policy.config_path
-        config_sha256 = predecessor_policy.config_sha256
-        prior_labels = predecessor_policy.override_labels
-    else:
-        effective = predecessor_policy.get("effective")
-        sources = predecessor_policy.get("sources")
-        if not isinstance(effective, dict):
-            raise ResourceConfigError("Predecessor resource policy is malformed")
-        if orchestration_contracts.canonical_sha256(
-            effective
-        ) != predecessor_policy.get("effective_sha256"):
-            raise ResourceConfigError("Predecessor effective resource digest differs")
-        document = copy.deepcopy(effective)
-        default_sha256, config_path, config_sha256, prior_labels = (
-            _admit_policy_sources(sources, label="Predecessor")
-        )
+    document = predecessor_policy.document()
+    default_sha256 = predecessor_policy.default_sha256
+    config_path = predecessor_policy.config_path
+    config_sha256 = predecessor_policy.config_sha256
+    prior_labels = predecessor_policy.override_labels
     _apply_overrides(document, overrides)
     combined_labels = tuple(dict.fromkeys((*prior_labels, *overrides.labels())))
     return admit_resource_policy(
@@ -509,31 +475,21 @@ def resume_resource_policy(
     )
 
 
-def admit_resource_policy_record(
-    record: Mapping[str, Any],
-    *,
-    require_symbolic: bool = False,
-) -> ResourcePlan:
-    """Re-admit one closed persisted policy record.
+def admit_resource_policy_record(record: Mapping[str, Any]) -> ResourcePlan:
+    """Re-admit one closed current symbolic policy and its allocation resolution."""
 
-    Historical records contain only the allocation-resolved policy. Successor
-    records additionally retain the symbolic policy so a later Attempt can
-    resolve the same Run declaration against a different allocation.
-    """
-
-    legacy_keys = {"effective", "effective_sha256", "allocation", "sources"}
-    successor_keys = legacy_keys | {"symbolic", "symbolic_sha256"}
-    observed_keys = set(record)
-    if observed_keys == successor_keys:
-        successor = True
-    elif observed_keys == legacy_keys and not require_symbolic:
-        successor = False
-    else:
-        expected = successor_keys if require_symbolic else legacy_keys
+    expected = {
+        "effective",
+        "effective_sha256",
+        "allocation",
+        "sources",
+        "symbolic",
+        "symbolic_sha256",
+    }
+    if set(record) != expected:
         raise ResourceConfigError(
             "Persisted resource policy keys are malformed; expected "
             + ", ".join(sorted(expected))
-            + (" plus optional symbolic fields" if not require_symbolic else "")
         )
 
     allocation = record.get("allocation")
@@ -550,28 +506,25 @@ def admit_resource_policy_record(
     )
 
     effective = record.get("effective")
-    symbolic = record.get("symbolic") if successor else effective
+    symbolic = record.get("symbolic")
     sources = record.get("sources")
-    if successor and (
+    if (
         not isinstance(symbolic, dict)
         or not isinstance(effective, dict)
         or not isinstance(sources, dict)
     ):
         raise ResourceConfigError("Persisted resource policy is malformed")
-    if not successor and not isinstance(effective, dict):
-        raise ResourceConfigError("Predecessor resource policy is malformed")
-    if successor and orchestration_contracts.canonical_sha256(symbolic) != record.get(
+    if orchestration_contracts.canonical_sha256(symbolic) != record.get(
         "symbolic_sha256"
     ):
         raise ResourceConfigError("Persisted symbolic resource digest differs")
-    label = "Persisted" if successor else "Predecessor"
     if orchestration_contracts.canonical_sha256(effective) != record.get(
         "effective_sha256"
     ):
-        raise ResourceConfigError(f"{label} effective resource digest differs")
+        raise ResourceConfigError("Persisted effective resource digest differs")
 
     default_sha256, config_path, config_sha256, override_labels = _admit_policy_sources(
-        sources, label=label
+        sources, label="Persisted"
     )
 
     policy = admit_resource_policy(
@@ -583,22 +536,7 @@ def admit_resource_policy_record(
     )
     resolved = resolve_resource_policy(policy, capacity)
     projected = resolved.effective_document()
-    if "reporting_memory_mb" in symbolic:
-        # Validate the retained member without carrying it into a new Attempt.
-        retained = symbolic["reporting_memory_mb"]
-        projected["reporting_memory_mb"] = {
-            kind: resolved.workflow_memory_mb
-            if retained[kind] == "workflow"
-            else int(retained[kind])
-            for kind in REPORTING_KINDS
-        }
-        for kind, memory in projected["reporting_memory_mb"].items():
-            if memory > resolved.workflow_memory_mb:
-                raise ResourceConfigError(
-                    f"Reporting {kind} memory exceeds workflow memory: "
-                    f"{memory} > {resolved.workflow_memory_mb} MiB"
-                )
-    if successor and projected != effective:
+    if projected != effective:
         raise ResourceConfigError(
             "Persisted symbolic resource policy does not reproduce its resolution"
         )
@@ -673,7 +611,6 @@ __all__ = (
     "AllocationCapacity",
     "AttemptResourceResolution",
     "ComputationalResourceDeclaration",
-    "REPORTING_KINDS",
     "REPEATABLE_STAGE_IDS",
     "ResourceConfigError",
     "ResourceOverrides",

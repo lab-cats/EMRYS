@@ -1,4 +1,4 @@
-"""Task, Results, reporting, and historical-receipt evidence admission."""
+"""Admit task, Results, reporting, and cumulative Attempt evidence."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from emrys.orchestration.run_coordinator._inspection_admission import (
     ExpectedTask,
     InspectionError,
     SuccessorRunAuthority,
+    admit_successor_run,
     _record_reference,
     expected_tasks,
     task_start_tree_blockers,
@@ -29,10 +30,6 @@ from emrys.orchestration.run_coordinator.reporting_boundary import (
 )
 
 TaskState = Literal["pending", "verified", "blocked"]
-
-
-def _receipt_binds_reporting(receipt: Mapping[str, Any]) -> bool:
-    return receipt.get("schema_version") == "emrys.attempt-receipt.v1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,7 +71,6 @@ def _inspect_reporting_ledger_with_locations(
     dict[str, dict[str, dict[str, str] | None]],
     list[str],
     tuple[tuple[str, Path], ...],
-    dict[str, str | None],
 ]:
     """Admit the reporting ledger and retain verified report output locations."""
 
@@ -83,10 +79,9 @@ def _inspect_reporting_ledger_with_locations(
     try:
         kinds = reporting_boundary.reporting_kinds(root)
     except reporting_boundary.ReportingBoundaryError as exc:
-        return {}, [str(exc)], (), {}
+        return {}, [str(exc)], ()
     state_root = root / "state" / "reporting"
     result = {kind: {"start": None, "verified": None} for kind in kinds}
-    origins: dict[str, str | None] = dict.fromkeys(kinds)
     blockers: list[str] = []
     verified_report_locations: tuple[tuple[str, Path], ...] = ()
     if state_root.exists() or state_root.is_symlink():
@@ -95,7 +90,6 @@ def _inspect_reporting_ledger_with_locations(
                 result,
                 [f"Reporting ledger root is not a real directory: {state_root}"],
                 (),
-                origins,
             )
         for kind_path in state_root.iterdir():
             if kind_path.name not in kinds:
@@ -122,8 +116,7 @@ def _inspect_reporting_ledger_with_locations(
             else root / "products" / "artifact-summary"
         )
         suffix = {
-            "artifact_index": "artifact_receipt.tsv",
-            "run_summary": "run_summary_receipt.tsv",
+            "run_summary": "run_summary.json",
             "html_report": "report_outputs.tsv",
         }[kind]
         semantic_path = output_root / run_id / f"{run_id}.{suffix}"
@@ -137,10 +130,7 @@ def _inspect_reporting_ledger_with_locations(
                 verified_prefix_origin = None
             if verified_exists:
                 blockers.append(f"{kind} verified reporting exists without a start")
-            receipts = (semantic_path,)
-            if kind == "run_summary" and "artifact_index" not in kinds:
-                receipts += (semantic_path.with_name(f"{run_id}.artifact_receipt.tsv"),)
-            if any(path.exists() or path.is_symlink() for path in receipts):
+            if semantic_path.exists() or semantic_path.is_symlink():
                 blockers.append(
                     f"{kind} semantic receipt exists without a start ledger"
                 )
@@ -158,7 +148,6 @@ def _inspect_reporting_ledger_with_locations(
                 else reporting_boundary.validate_start(kind, root, execution, profile)
             )
             result[kind]["start"] = admission.start_reference
-            origins[kind] = admission.origin_workflow_attempt_id
             if verified_exists:
                 result[kind]["verified"] = admission.verified_reference
                 verified_prefix_origin = admission.origin_workflow_attempt_id
@@ -170,7 +159,7 @@ def _inspect_reporting_ledger_with_locations(
                 )
         except Exception as exc:
             blockers.append(f"Could not close {kind} reporting ledger: {exc}")
-    return result, blockers, verified_report_locations, origins
+    return result, blockers, verified_report_locations
 
 
 def _inspect_task_evidence(
@@ -188,7 +177,7 @@ def _inspect_task_evidence(
 
     from emrys.orchestration.run_coordinator import task  # noqa: PLC0415
 
-    expected = expected_tasks(authority or execution, profile)
+    expected = expected_tasks(authority or admit_successor_run(root), profile)
     blockers = [
         *verified_tree_blockers(root, expected),
         *task_start_tree_blockers(root, expected),
@@ -304,13 +293,11 @@ def _inspect_task_evidence(
     return tuple(inspected), blockers
 
 
-def _historical_receipt_evidence_blockers(
+def _receipt_evidence_blockers(
     attempts: Sequence[Mapping[str, Any]],
     receipts: Mapping[str, Mapping[str, Any]],
     projections: Sequence[tuple[str, Sequence[tuple[Any, dict[str, Any]]], str]],
-    reporting: Mapping[str, Mapping[str, dict[str, str] | None]],
-    reporting_origins: Mapping[str, str | None],
-) -> tuple[list[str], list[str], list[str]]:
+) -> tuple[list[str], list[str]]:
     """Require every receipt to bind the exact cumulative evidence at its time."""
 
     positions = {
@@ -323,7 +310,6 @@ def _historical_receipt_evidence_blockers(
 
     integrity_blockers: list[str] = []
     results_blockers: list[str] = []
-    reporting_blockers: list[str] = []
     for identifier, receipt in receipts.items():
         if identifier not in positions:
             integrity_blockers.append(
@@ -340,22 +326,7 @@ def _historical_receipt_evidence_blockers(
                     f"Attempt receipt omits or adds cumulative {label}: {identifier}"
                 )
 
-        if _receipt_binds_reporting(receipt):
-            expected_reporting: dict[str, dict[str, dict[str, str] | None]] = {}
-            for kind, states in reporting.items():
-                expected_reporting[kind] = {"start": None, "verified": None}
-                for state_name in ("start", "verified"):
-                    reference = states[state_name]
-                    if reference is None:
-                        continue
-                    if admitted(reporting_origins[kind], position):
-                        expected_reporting[kind][state_name] = reference
-            if receipt["reporting_completion_records"] != expected_reporting:
-                reporting_blockers.append(
-                    "Attempt receipt omits or adds cumulative reporting evidence: "
-                    f"{identifier}"
-                )
-    return integrity_blockers, results_blockers, reporting_blockers
+    return integrity_blockers, results_blockers
 
 
 def inspect_evidence(
@@ -386,14 +357,12 @@ def inspect_evidence(
         allow_incomplete_origin=allow_incomplete_origin,
         authority=authority,
     )
-    reporting, reporting_blockers, locations, reporting_origins = (
-        _inspect_reporting_ledger_with_locations(
-            root,
-            execution,
-            profile,
-            validator,
-            allow_incomplete_origin=allow_incomplete_origin,
-        )
+    reporting, reporting_blockers, locations = _inspect_reporting_ledger_with_locations(
+        root,
+        execution,
+        profile,
+        validator,
+        allow_incomplete_origin=allow_incomplete_origin,
     )
     ordered_starts = sorted(
         (item for item in tasks if item.start_reference is not None),
@@ -443,14 +412,10 @@ def inspect_evidence(
             "verified tasks",
         ),
     )
-    historical_integrity, historical_results, historical_reporting = (
-        _historical_receipt_evidence_blockers(
-            attempts,
-            receipts,
-            projections,
-            reporting,
-            reporting_origins,
-        )
+    receipt_integrity, receipt_results = _receipt_evidence_blockers(
+        attempts,
+        receipts,
+        projections,
     )
     return EvidenceInspection(
         tasks=tasks,
@@ -464,9 +429,7 @@ def inspect_evidence(
         ),
         reporting_completion_records=reporting,
         verified_report_locations=locations,
-        integrity_blockers=tuple(historical_integrity),
-        results_blockers=tuple(
-            (*task_blockers, *task_tree_blockers, *historical_results)
-        ),
-        reporting_blockers=tuple((*reporting_blockers, *historical_reporting)),
+        integrity_blockers=tuple(receipt_integrity),
+        results_blockers=tuple((*task_blockers, *task_tree_blockers, *receipt_results)),
+        reporting_blockers=tuple(reporting_blockers),
     )

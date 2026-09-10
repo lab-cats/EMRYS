@@ -38,8 +38,9 @@ Follow the [workflow](../operations/WORKFLOW.md) and
 Report product, test, documentation, configuration, tooling, and evidence
 changes separately. Documentation-only work must reduce and improve the
 documentation; it cannot offset product growth. Preserve scientific meaning,
-immutable Runs, public behavior, historical readers, and recovery guarantees.
-Changing those guarantees or deleting retained evidence needs its own approval.
+immutable Runs, scientific behavior, provenance, and current-version recovery.
+The approved [version policy](../design/decisions/platform-direction.md#version-support)
+retires historical-format readers. Retained evidence stays untouched.
 
 ## Completion and retirement
 

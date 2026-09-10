@@ -27,7 +27,6 @@ from emrys.contracts.orchestration.application_model import (
     analysis_revision_from_execution_fields,
 )
 from emrys.libraries.validation.mpileup import selector_file_semantics
-from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.contracts.scientific_evidence import step08
 from emrys.libraries.validation.errors import ValidationError
 from emrys.libraries.validation.inputs import read_bytes, sha256_with_identity
@@ -322,8 +321,6 @@ def _admit_project_data(
     project_path: str | Path,
     project_data: bytes,
     profile: Mapping[str, Any] | str | Path,
-    *,
-    allow_legacy: bool = False,
 ) -> ProjectAdmission:
     """Admit prepared Project bytes at their intended canonical location."""
 
@@ -334,43 +331,10 @@ def _admit_project_data(
     )
     profile_record = _load_profile(profile)
     project_dir = resolved_project.parent
-    if definition.get("schema_version") == "emrys.request.v3":
-        if not allow_legacy:
-            raise orchestration_contracts.ContractValidationError(
-                "emrys.request.v3 is historical; create an emrys.project.v1 Project"
-            )
-        orchestration_contracts.validate_record("request", definition)
-        expected_profile = (
-            f"{profile_record['profile_id']}.{profile_record['profile_version']}"
-        )
-        if definition["profile"] != expected_profile:
-            raise orchestration_contracts.ContractValidationError(
-                f"Historical Project profile {definition['profile']} does not match "
-                f"{expected_profile}"
-            )
-        sample_manifest = definition["sample_manifest"]
-        reference_definition = definition["reference"]
-        analysis_specs = (
-            (
-                str(definition.get("label") or definition["analysis"]["id"]),
-                definition["partition_manifest"],
-                definition["analysis"],
-                {
-                    "reference": definition["reference"]["id"],
-                    "cohort": definition["cohort_id"],
-                    "analysis": definition["analysis"]["id"],
-                },
-                definition.get("label"),
-            ),
-        )
-    else:
-        orchestration_contracts.validate_record("project", definition)
-        sample_manifest = definition["dataset"]["samples"]
-        reference_definition = definition["reference"]
-        analysis_specs = tuple(
-            (name, item["partitions"], item, None, name)
-            for name, item in sorted(definition["analyses"].items())
-        )
+    orchestration_contracts.validate_record("project", definition)
+    sample_manifest = definition["dataset"]["samples"]
+    reference_definition = definition["reference"]
+    analysis_specs = tuple(sorted(definition["analyses"].items()))
 
     sample_path, sample_data = _resolve_authored_path(
         sample_manifest, project_dir, "Sample manifest"
@@ -395,13 +359,8 @@ def _admit_project_data(
     }
     partition_cache: dict[str, dict[str, Any]] = {}
     analyses: list[AnalysisAdmission] = []
-    for (
-        name,
-        partition_manifest,
-        analysis_definition,
-        legacy_ids,
-        label,
-    ) in analysis_specs:
+    for name, analysis_definition in analysis_specs:
+        partition_manifest = analysis_definition["partitions"]
         selected_sample_manifest_bytes = None
         selected_samples = samples
         declared_sample_ids = analysis_definition.get("sample_ids")
@@ -449,59 +408,50 @@ def _admit_project_data(
                 f"Analysis {name} module admission failed: {exc}"
             ) from exc
         if "module" in analysis_definition:
-            try:
-                scientific_policy = admit_configuration(
-                    module.descriptor,
-                    analysis_definition["config"],
-                    AnalysisInputContextV1(
-                        samples=tuple(
-                            {
-                                key: row[key]
-                                for key in (
-                                    "sample_id",
-                                    "condition",
-                                    "replicate",
-                                    "strandedness",
-                                )
-                            }
-                            for row in selected_samples["rows"]
-                        ),
-                        partitions=tuple(
-                            _analysis_partition_from_execution_fields(row)
-                            for row in partitions["rows"]
-                        ),
-                        reference={
-                            "fasta_sha256": reference_input["fasta"]["sha256"],
-                            "gtf_sha256": reference_input["gtf"]["sha256"],
-                        },
-                    ),
-                )
-            except (AnalysisModuleLoadError, TypeError, ValueError) as exc:
-                raise orchestration_contracts.ContractValidationError(
-                    f"Analysis {name} module admission failed: {exc}"
-                ) from exc
-            module_identity = module_identity_record(module)
-            policy_body = {
-                "schema_version": "emrys.analysis-module-policy.v1",
-                "module": module_identity,
-                "implementation_sha256": module.provider.package.sha256,
-                "configuration": scientific_policy,
-            }
+            configuration = analysis_definition["config"]
         else:
-            scientific_policy = dict(analysis_definition)
-            scientific_policy.pop("id", None)
-            scientific_policy.pop("partitions", None)
-            scientific_policy.pop("sample_ids", None)
-            if "target_change" in scientific_policy:
-                target = str(scientific_policy.pop("target_change"))
-                scientific_policy["rna_ref"], scientific_policy["rna_alt"] = (
-                    target.split(">")
-                )
-            scientific_policy.setdefault("background_condition", None)
-            policy_body = {
-                "schema_version": "emrys.analysis-policy.v1",
-                **scientific_policy,
+            configuration = {
+                key: value
+                for key, value in analysis_definition.items()
+                if key not in {"partitions", "sample_ids"}
             }
+        try:
+            scientific_policy = admit_configuration(
+                module.descriptor,
+                configuration,
+                AnalysisInputContextV1(
+                    samples=tuple(
+                        {
+                            key: row[key]
+                            for key in (
+                                "sample_id",
+                                "condition",
+                                "replicate",
+                                "strandedness",
+                            )
+                        }
+                        for row in selected_samples["rows"]
+                    ),
+                    partitions=tuple(
+                        _analysis_partition_from_execution_fields(row)
+                        for row in partitions["rows"]
+                    ),
+                    reference={
+                        "fasta_sha256": reference_input["fasta"]["sha256"],
+                        "gtf_sha256": reference_input["gtf"]["sha256"],
+                    },
+                ),
+            )
+        except (AnalysisModuleLoadError, TypeError, ValueError) as exc:
+            raise orchestration_contracts.ContractValidationError(
+                f"Analysis {name} module admission failed: {exc}"
+            ) from exc
+        policy_body = {
+            "schema_version": "emrys.analysis-module-policy.v1",
+            "module": module_identity_record(module),
+            "implementation_sha256": module.provider.package.sha256,
+            "configuration": scientific_policy,
+        }
         profile_bytes = orchestration_contracts.canonical_json_bytes(admitted_profile)
         profile_identity = {
             key: admitted_profile[key] for key in ("profile_id", "profile_version")
@@ -517,14 +467,10 @@ def _admit_project_data(
                 "analysis": {"policy": policy_body},
             }
         )
-        ids = dict(
-            legacy_ids
-            or {
-                "reference": revision.scope_id("reference"),
-                "cohort": revision.scope_id("cohort"),
-                "analysis": revision.scope_id("analysis"),
-            }
-        )
+        ids = {
+            scope: revision.scope_id(scope)
+            for scope in ("reference", "cohort", "analysis")
+        }
         policy = {
             **policy_body,
             "analysis_id": ids["analysis"],
@@ -569,7 +515,7 @@ def _admit_project_data(
                     authored_paths
                 ),
                 module=module,
-                evidence_label=label,
+                evidence_label=name,
                 selected_sample_manifest_bytes=selected_sample_manifest_bytes,
             )
         )
@@ -581,42 +527,9 @@ def _admit_project_data(
     )
 
 
-def _historical_execution_v1(
-    analysis: AnalysisAdmission,
-) -> tuple[dict[str, Any], bytes]:
-    """Reconstruct exact execution.v1 only from a historical request-v3 source."""
-
-    source = analysis.workflow_inputs
-    fields = {
-        key: source[key]
-        for key in ("profile", "samples", "partitions", "reference", "analysis")
-    }
-    envelope = {
-        "schema_version": "emrys.identity-envelope.v1",
-        **fields,
-    }
-    digest = orchestration_contracts.canonical_sha256(envelope)
-    execution = {
-        "schema_version": "emrys.execution.v1",
-        **fields,
-        "identity_envelope": envelope,
-        "identity_envelope_sha256": digest,
-        "run_id": f"run-{digest}",
-        "reporting_projection": {},
-    }
-    reporting = build_reporting_bundle(execution, analysis.profile)
-    execution["reporting_projection"] = reporting.projection_references
-    orchestration_contracts.validate_record(
-        "execution", execution, profile=analysis.profile
-    )
-    return execution, orchestration_contracts.canonical_json_bytes(execution)
-
-
 def admit_project(
     project_path: str | Path,
     profile: Mapping[str, Any] | str | Path,
-    *,
-    allow_legacy: bool = False,
 ) -> ProjectAdmission:
     """Admit one file-bound Project and all of its named Analyses."""
 
@@ -630,7 +543,6 @@ def admit_project(
         resolved_project,
         project_data,
         profile,
-        allow_legacy=allow_legacy,
     )
 
 

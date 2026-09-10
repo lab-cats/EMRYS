@@ -52,7 +52,6 @@ from emrys.orchestration.run_coordinator._inspection_evidence import (
     ReportingReceiptValidator,
     TaskInspection,
     ValidatedReportingReceipt,
-    _receipt_binds_reporting,
     inspect_evidence,
 )
 
@@ -143,16 +142,14 @@ class RunInspection:
     integrity_blockers: tuple[str, ...]
     results_blockers: tuple[str, ...]
     reporting_blockers: tuple[str, ...]
+    authority: SuccessorRunAuthority
     verified_report_locations: tuple[tuple[str, Path], ...] = ()
-    authority: SuccessorRunAuthority | None = None
     processing_source: ProcessingSourceAdmission | None = None
 
     @property
     def processing_source_run_id(self) -> str | None:
         """Return the source ID derived from immutable Execution-Plan authority."""
 
-        if self.authority is None:
-            return None
         source = self.authority.execution_plan.record["identity"].get(
             "processing_source"
         )
@@ -166,10 +163,6 @@ class RunInspection:
             self.latest_receipt is not None
             and self.latest_receipt["status"] == "blocked"
             and not self.results_blockers
-            and not (
-                _receipt_binds_reporting(self.latest_receipt)
-                and self.reporting_blockers
-            )
         )
         return (
             "blocked"
@@ -189,10 +182,7 @@ class RunInspection:
 
         if self.reporting_blockers:
             return "blocked"
-        if (
-            self.authority is not None
-            and execution_plan_boundary(self.authority.execution_plan) != "analysis"
-        ):
+        if execution_plan_boundary(self.authority.execution_plan) != "analysis":
             return "not applicable"
         if self.reporting_completion_records and all(
             records["start"] is not None and records["verified"] is not None
@@ -261,8 +251,6 @@ def _attempt_outcome(
         return "running"
     if receipt is None or results_status == "blocked" or integrity_blockers:
         return "blocked"
-    if _receipt_binds_reporting(receipt) and results_status == "complete":
-        return "succeeded"
     return cast(AttemptOutcome, receipt["status"])
 
 
@@ -284,9 +272,7 @@ def default_inspection_ops() -> InspectionOps:
     return InspectionOps(
         host_name=socket.gethostname,
         process_is_alive=process_is_alive,
-        validate_reporting_receipt=reporting_boundary.semantic_validator_session(
-            read=True
-        ),
+        validate_reporting_receipt=reporting_boundary.semantic_validator_session(),
     )
 
 
@@ -359,10 +345,6 @@ def inspect_run(
     authority = admit_successor_run(root)
     profile_path = root / "contract" / "profile.json"
     profile_present = profile_path.exists() or profile_path.is_symlink()
-    legacy_execution_path = root / "contract" / "normalized.json"
-    legacy_execution_present = (
-        legacy_execution_path.exists() or legacy_execution_path.is_symlink()
-    )
     state_integrity, state_results, state_reporting = _state_tree_blockers_by_domain(
         root
     )
@@ -370,57 +352,31 @@ def inspect_run(
     results_blockers = list(state_results)
     reporting_blockers = list(state_reporting)
     processing_source = None
-    if authority is not None:
-        execution = authority.run_binding.record
-        execution_data = authority.run_binding.canonical_bytes
-        if legacy_execution_present:
-            integrity_blockers.append(
-                "Successor Run retains a retired execution projection"
-            )
-        if profile_present:
-            profile, profile_data = admit_canonical_record(
-                profile_path, root, "profile"
-            )
-            try:
-                validate_successor_run(
-                    analysis=authority.analysis_revision,
-                    plan=authority.execution_plan,
-                    run=authority.run_binding,
-                    profile=profile,
-                )
-            except orchestration_contracts.ContractValidationError as exc:
-                integrity_blockers.append(f"Profile differs from immutable Run: {exc}")
-            try:
-                processing_source = admit_bound_processing_source(root, authority)
-            except (OSError, InspectionError) as exc:
-                results_blockers.append(f"Processing source is not admissible: {exc}")
-        else:
-            profile = None
-            profile_data = None
-    else:
-        if profile_present != legacy_execution_present:
-            raise InspectionError(
-                "Run has an incomplete profile/execution contract pair"
-            )
+    execution = authority.run_binding.record
+    execution_data = authority.run_binding.canonical_bytes
+    if profile_present:
         profile, profile_data = admit_canonical_record(profile_path, root, "profile")
-        execution, execution_data = admit_canonical_record(
-            legacy_execution_path,
-            root,
-            "execution",
-            profile=profile,
-        )
-        if (
-            execution["profile"]["profile_sha256"]
-            != hashlib.sha256(profile_data).hexdigest()
-        ):
-            integrity_blockers.append(
-                "Execution contract no longer binds profile snapshot bytes"
+        try:
+            validate_successor_run(
+                analysis=authority.analysis_revision,
+                plan=authority.execution_plan,
+                run=authority.run_binding,
+                profile=profile,
             )
+        except orchestration_contracts.ContractValidationError as exc:
+            integrity_blockers.append(f"Profile differs from immutable Run: {exc}")
+        try:
+            processing_source = admit_bound_processing_source(root, authority)
+        except (OSError, InspectionError) as exc:
+            results_blockers.append(f"Processing source is not admissible: {exc}")
+    else:
+        profile = None
+        profile_data = None
 
     attempts, receipts, attempt_blockers = inspect_attempt_chain(
         root,
         authority=authority,
-        profile=profile if authority is not None else None,
+        profile=profile,
     )
     integrity_blockers.extend(attempt_blockers)
     latest = attempts[-1] if attempts else None
@@ -445,7 +401,7 @@ def inspect_run(
         allowed_next_attempt=allowed_next_attempt,
     )
     integrity_blockers.extend(lock_blockers)
-    if authority is not None and not profile_present:
+    if not profile_present:
         if latest is not None:
             integrity_blockers.append(
                 "Successor Attempt exists without its backend adapters"
@@ -453,10 +409,6 @@ def inspect_run(
             results_blockers.append(
                 "Scientific Results cannot be admitted without backend adapters"
             )
-            if any(_receipt_binds_reporting(receipt) for receipt in receipts.values()):
-                reporting_blockers.append(
-                    "Reporting evidence cannot be admitted without backend adapters"
-                )
         expected = _successor_expected_tasks(authority)
         tasks = tuple(TaskInspection(item, "pending", None, None) for item in expected)
         outcome = _attempt_outcome(
@@ -507,13 +459,7 @@ def inspect_run(
                 results_blockers.append(
                     "Successful attempt receipt is missing required verified tasks"
                 )
-            if _receipt_binds_reporting(latest_receipt) and any(
-                state["start"] is None or state["verified"] is None
-                for state in reporting.values()
-            ):
-                reporting_blockers.append(
-                    "Successful attempt receipt is missing reporting transactions"
-                )
+
     if (
         latest is not None
         and latest_receipt is None
@@ -531,11 +477,7 @@ def inspect_run(
     )
     return RunInspection(
         run_root=root,
-        run_id=(
-            authority.run_binding.run_id
-            if authority is not None
-            else str(execution["run_id"])
-        ),
+        run_id=authority.run_binding.run_id,
         attempt_outcome=outcome,
         latest_attempt=latest,
         latest_receipt=latest_receipt,
@@ -557,8 +499,6 @@ def admit_processing_source(run_root: Path) -> ProcessingSourceAdmission:
     authority = state.authority
     receipt = state.latest_receipt
     attempt = state.latest_attempt
-    if authority is None:
-        raise InspectionError("A processing source must use successor Run authority")
     if execution_plan_boundary(authority.execution_plan) != "processing":
         raise InspectionError(
             "A processing source must stop at the exact Step 06 boundary"
@@ -616,7 +556,6 @@ def validate_processing_source(
     """Require exact subset-compatible processing for one target Analysis Run."""
 
     authority = source.state.authority
-    assert authority is not None
     source_analysis = authority.analysis_revision.record["identity"]
     target_identity = target_analysis.record["identity"]
     if source_analysis["reference"] != target_identity["reference"]:
@@ -638,26 +577,10 @@ def validate_processing_source(
         raise InspectionError(
             "Target Execution Plan binds a different processing source"
         )
-    source_compatibility = source_plan.get("processing_compatibility_sha256")
-    target_compatibility = target_plan_identity.get("processing_compatibility_sha256")
-    if source_compatibility is not None and target_compatibility is not None:
-        if source_compatibility != target_compatibility:
-            raise InspectionError(
-                "Processing source and target execution semantics differ"
-            )
-        return
-
-    # Historical execution-plan.v1 records predate the processing projection.
-    # They remain reusable only when the former whole-plan comparison proves
-    # exact compatibility; no missing digest is synthesized or trusted.
-    ignored = {
-        "scientific_stopping_owner_keys",
-        "processing_source",
-        "processing_compatibility_sha256",
-    }
-    if {key: value for key, value in source_plan.items() if key not in ignored} != {
-        key: value for key, value in target_plan_identity.items() if key not in ignored
-    }:
+    if (
+        source_plan["processing_compatibility_sha256"]
+        != target_plan_identity["processing_compatibility_sha256"]
+    ):
         raise InspectionError("Processing source and target execution semantics differ")
 
 

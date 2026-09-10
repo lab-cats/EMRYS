@@ -82,14 +82,16 @@ def inspect_attempt_tree(root: Path) -> tuple[tuple[Path, ...], tuple[str, ...]]
     return tuple(entries), tuple(blockers)
 
 
-def attempt_fields(successor: bool) -> tuple[str, ...]:
-    """Return fields that must remain equal across Attempts for one Run format."""
+def attempt_fields() -> tuple[str, ...]:
+    """Return the fields that remain equal across Attempts of one Run."""
 
-    common = ("run_id", "execution_contract_sha256", "profile_sha256")
-    attempt_semantics = ("execution_mode", "executor")
-    if successor:
-        return (*common, *attempt_semantics)
-    return (*common, "source_checkout", "required_tools", *attempt_semantics)
+    return (
+        "run_id",
+        "execution_contract_sha256",
+        "profile_sha256",
+        "execution_mode",
+        "executor",
+    )
 
 
 def inspect_attempt_chain(
@@ -104,7 +106,6 @@ def inspect_attempt_chain(
 ]:
     if authority is None:
         authority = admit_successor_run(root)
-    successor_format = authority is not None
     records: dict[str, dict[str, Any]] = {}
     attempt_references: dict[str, dict[str, str]] = {}
     receipts: dict[str, dict[str, Any]] = {}
@@ -191,7 +192,7 @@ def inspect_attempt_chain(
                 f"{identifier}/{predecessor_receipt['status']}"
             )
         next_attempt = ordered[index + 1]
-        for field in attempt_fields(successor_format):
+        for field in attempt_fields():
             if next_attempt[field] != attempt[field]:
                 blockers.append(
                     f"Adjacent workflow attempts differ on {field}: {identifier}"
@@ -253,11 +254,7 @@ def inspect_attempt_chain(
                 )
             expected_config_identity = {
                 "run_root": str(root),
-                "execution_path": str(
-                    root
-                    / "contract"
-                    / ("run.json" if successor_format else "normalized.json")
-                ),
+                "execution_path": str(root / "contract" / "run.json"),
                 "profile_path": str(root / "contract" / "profile.json"),
                 "workflow_attempt_id": identifier,
                 "python_executable": str(attempt["normalizer"]["path"]),
@@ -277,7 +274,7 @@ def inspect_attempt_chain(
                 blockers.append(
                     f"Workflow attempt config binding no longer matches: {identifier}"
                 )
-            if authority is not None and profile is not None:
+            if profile is not None:
                 try:
                     validate_successor_run(
                         analysis=authority.analysis_revision,
@@ -349,11 +346,11 @@ def inspect_attempt_task_trees(
 ) -> tuple[list[dict[str, Any]], list[str]]:
     from emrys.orchestration.run_coordinator import task  # noqa: PLC0415
 
-    """Close all historical task trees and bind exact preentry diagnostics."""
+    """Close all task trees from earlier Attempts and bind exact preentry diagnostics."""
 
     expected = {
         (item.machine_key, item.scope_id): item
-        for item in expected_tasks(authority or execution, profile)
+        for item in expected_tasks(authority or admit_successor_run(root), profile)
     }
     attempt_order = {
         str(attempt["workflow_attempt_id"]): index

@@ -21,6 +21,6 @@ and validated transactions retain real input-recheck callbacks.
 
 Combined publication tests cover the index and summary output set, including
 terminal-receipt failure and owned rollback. Summary tests retain independent
-schema, deterministic projection, QC, provenance, and historical-read checks.
+schema, deterministic projection, QC, provenance, and current-source checks.
 Faults target the actual publisher and read validator, without test-only
 production behavior or a second suite for the retired summary publisher.

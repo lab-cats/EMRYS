@@ -128,29 +128,26 @@ A filename or reporting caller does not make a whole owner presentation-only:
   to scientific inventory admission. In particular, `run_summary_status.scope_key`
   serves scientific consumers.
 - [`artifact_inventory.py`](../../../src/emrys/contracts/orchestration/artifact_inventory.py)
-  combines path, uniqueness, and contiguous-scope validation with current and
-  historical report-root interpretation.
+  combines path, uniqueness, contiguous-scope validation, and report-root admission.
 - Artifact, evidence, summary, and schema owners validate provenance, status,
-  strict JSON, and historical records even when they do not execute science.
+  strict JSON, and current records even when they do not execute science.
 - Inspection owners combine immutable Run/Attempt chains, locks, task scopes,
-  scientific Results, and reporting observations. Historical Attempt receipt v1
-  retains its reporting relationships; current Results and recovery use separate
-  calculations. Excluding those whole files would drop substantive coverage.
+  scientific Results, and reporting observations. Results and recovery use
+  separate calculations. Excluding those whole files would drop substantive coverage.
 - The reporting package, `reporting_boundary.py`, `reporting_operation.py`, and
   orchestration `projection.py` are already outside the explicit Run source
   roster. Their source, receipt, and publication checks still apply.
 
-Reading, resuming, and reusing reports are separate promises:
+Under the [version policy](platform-direction.md#version-support), reading,
+resuming, and reusing current reports are separate promises:
 
 | Operation | Required behavior |
 |---|---|
-| Read successor Run/Attempt records | Validate the original canonical records, IDs, hashes, profile, tools, and resources. This read does not itself recompute the installed scientific implementation; full inspection can report separate reporting blockers. |
-| Resume a successor Run | Rebuild the candidate, require identical binding bytes, and recheck implementation/backend identities. A report-contract source edit can change this comparison. |
-| Resume historical `execution.v1` | Use its separate normalized-execution reconstruction, exact byte comparison, and source/tool compatibility checks. It is not an alias for current Run binding and Execution Plan records. |
+| Read current Run/Attempt records | Validate the original canonical records, IDs, hashes, profile, tools, and resources. This read does not itself recompute the installed scientific implementation; full inspection can report separate reporting blockers. |
+| Resume a current Run | Rebuild the candidate, require identical binding bytes, and recheck implementation/backend identities. A report-contract source edit can change this comparison. |
 | Resume through Slurm | The child repeats full planning and execution admission. Successful submission alone proves no compatibility. |
 | Reuse current-root reports | Transaction validation attests the executing package against the originating Attempt checkout and commit. New core code can block reuse independently of the Run hash. |
-| Read supported legacy-root reports | Check the recorded producer, canonical paths, summary/receipt version pair, input/output hashes and sizes, and upstream evidence. The current renderer need not equal the historical producer. |
-| Generate missing reports | Require successor authority, successful complete Results, terminal Attempt receipt v2, admissible empty output locations, and the originating Attempt's source attestation. Historical `execution.v1` generation is refused; partial or ambiguous state is preserved. |
+| Generate missing reports | Require current authority, successful complete Results, terminal Attempt receipt v2, admissible empty output locations, and the originating Attempt's source attestation. Partial or ambiguous state is preserved. |
 
 The bound profile determines the report root; a Run's age or schema directory
 name does not. A complete bundle is not automatically reusable by a newer
@@ -165,10 +162,9 @@ compatibility design covering:
 - **Source coverage.** Identify the exact excluded responsibility, initially
   the report-receipt leaf. Keep every scientific and admission dependency
   bound; do not exclude the artifacts directory or mixed inspection owners.
-- **New and historical plans.** Define new-plan identity while retaining exact
-  old-record reads. A new Execution-Plan version is an option, not an approved
-  schema change. Since the hasher is itself hashed, removing a file or changing
-  a digest label cannot make old Runs compatible.
+- **Plan identity.** Define which current code determines scientific execution.
+  Since the hasher is itself hashed, removing a file or changing a digest label
+  changes Run compatibility. Old-version reads are outside support.
 - **Reporting provenance.** The core-renderer digest hashes `emrys.reporting`,
   not the receipt-contract leaf. A checkout commit is recorded when available;
   standalone `local_build` attribution is not an independent content digest
@@ -242,15 +238,15 @@ summary builder and publisher; readers use admitted records and pure projections
 
 The surviving publication path records ownership before linking, verifies
 successful links, and stops path-based cleanup when the output directory is
-replaced. Existing schemas, output order, historical reads, Attempt lineage,
+replaced. Current contracts, output order, Attempt lineage,
 source attribution, input rechecks, independent goldens, scientific oracles,
 and retained evidence remain protected. Local filesystem and signal tests do
 not establish Slurm, institutional-site, production, or biological behavior.
 
 Indexing and summary generation now share one publication owner, completion
-marker, and recovery scope. The artifact receipt retains provenance within that
-combined output. Versioned start records distinguish this two-step reporting
-sequence from historical three-step records before any outputs are committed.
+marker, and recovery scope. The result manifest contains shared Run and publication provenance once, with
+per-artifact computation and validation facts. It commits the summary and QC
+TSVs without a second receipt or per-artifact record files.
 HTML publication and validation-roster policy retain their separate scope. Reporting-memory policy belongs to the
 [Run contract](../../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning).
 Dashboard replacement and retirement remain separate decisions.

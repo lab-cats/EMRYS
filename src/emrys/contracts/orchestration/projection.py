@@ -84,14 +84,14 @@ def _inventory_bytes(rows: Sequence[Mapping[str, str]]) -> bytes:
 def build_reporting_bundle(
     source: Mapping[str, Any],
     profile: Mapping[str, Any],
-    analysis: AnalysisRevision | None = None,
+    analysis: AnalysisRevision,
     processing_source_root: Path | None = None,
     processing_artifact_paths: Mapping[tuple[str, str, str], Path] | None = None,
 ) -> ReportingBundle:
-    """Build exact reporting inputs before the execution contract is finalized."""
+    """Build exact reporting inputs for one admitted immutable Run."""
 
     orchestration_contracts.validate_record("profile", profile)
-    if analysis is not None and (
+    if (
         analysis_revision_from_execution_fields(source).canonical_bytes
         != analysis.canonical_bytes
     ):
@@ -102,11 +102,7 @@ def build_reporting_bundle(
     primary_analysis_policy = dict(source["analysis"]["policy"])
     reference_bytes = orchestration_contracts.canonical_json_bytes(reference_contract)
     policy_bytes = orchestration_contracts.canonical_json_bytes(primary_analysis_policy)
-    primary_analysis_id = (
-        analysis.scope_id("analysis")
-        if analysis is not None
-        else str(source["analysis"]["primary_analysis_id"])
-    )
+    primary_analysis_id = analysis.scope_id("analysis")
     components = {
         "sample_manifest_sha256": str(source["samples"]["manifest"]["sha256"]),
         "reference_contract_sha256": _sha256_bytes(reference_bytes),
@@ -142,52 +138,8 @@ def build_reporting_bundle(
     )
 
 
-def project_reporting(
-    execution_contract: Mapping[str, Any],
-    profile: Mapping[str, Any],
-) -> ReportingBundle:
-    """Rebuild and verify the reporting projection of a complete execution."""
-
-    orchestration_contracts.validate_record(
-        "execution", execution_contract, profile=profile
-    )
-    return build_reporting_bundle(execution_contract, profile)
-
-
-def validate_reporting_projection(
-    execution_contract: Mapping[str, Any],
-    profile: Mapping[str, Any],
-) -> None:
-    """Require the complete deterministic projection without recursion."""
-
-    expected_profile_identity = {
-        "profile_id": profile["profile_id"],
-        "profile_version": profile["profile_version"],
-    }
-    observed_profile_identity = {
-        "profile_id": execution_contract["profile"]["profile_id"],
-        "profile_version": execution_contract["profile"]["profile_version"],
-    }
-    if observed_profile_identity != expected_profile_identity:
-        raise orchestration_contracts.ContractValidationError(
-            "Execution profile identity does not match the supplied profile"
-        )
-    expected_profile_sha = orchestration_contracts.canonical_sha256(profile)
-    if execution_contract["profile"]["profile_sha256"] != expected_profile_sha:
-        raise orchestration_contracts.ContractValidationError(
-            "Execution profile digest does not match the supplied profile"
-        )
-    bundle = build_reporting_bundle(execution_contract, profile)
-    if execution_contract["reporting_projection"] != bundle.projection_references:
-        raise orchestration_contracts.ContractValidationError(
-            "Execution reporting_projection does not match deterministic documents"
-        )
-
-
 __all__ = (
     "CONTRACT_PATHS",
     "ReportingBundle",
     "build_reporting_bundle",
-    "project_reporting",
-    "validate_reporting_projection",
 )

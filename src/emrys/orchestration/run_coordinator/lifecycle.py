@@ -618,8 +618,6 @@ def build_snakemake_argv(
 
 def _resource_plan_from_workflow_config(
     config_document: Mapping[str, Any],
-    *,
-    require_symbolic: bool = False,
 ) -> ResourcePlan:
     policy = config_document.get("resource_policy")
     if not isinstance(policy, dict):
@@ -627,7 +625,6 @@ def _resource_plan_from_workflow_config(
     try:
         return admit_resource_policy_record(
             policy,
-            require_symbolic=require_symbolic,
         )
     except ResourceConfigError as exc:
         raise LifecycleError(
@@ -1397,31 +1394,14 @@ def _reference(path: Path, root: Path, label: str) -> dict[str, str]:
 
 
 def _admit_run_before_attempt(root: Path, expected_run_id: str) -> None:
-    """Require one committed historical or successor Run before any mutex."""
+    """Require a committed current Run before acquiring its mutex."""
 
     try:
-        successor = inspection.admit_successor_run(root)
+        authority = inspection.admit_successor_run(root)
     except inspection.InspectionError as exc:
-        raise LifecycleError(f"Could not admit successor Run: {exc}") from exc
-    if successor is not None:
-        if successor.run_binding.run_id != expected_run_id:
-            raise LifecycleError("Prepared Attempt does not bind admitted Run ID")
-        return
-    profile_path = _canonical_file(
-        root / "contract" / "profile.json", "profile snapshot"
-    )
-    execution_path = _canonical_file(
-        root / "contract" / "normalized.json", "historical execution contract"
-    )
-    profile, _profile_data = _admit_record(profile_path, root, "profile")
-    execution, _execution_data = _admit_record(
-        execution_path,
-        root,
-        "execution",
-        profile=profile,
-    )
-    if execution["run_id"] != expected_run_id:
-        raise LifecycleError("Prepared Attempt does not bind historical Run ID")
+        raise LifecycleError(f"Could not admit Run: {exc}") from exc
+    if authority.run_binding.run_id != expected_run_id:
+        raise LifecycleError("Prepared Attempt does not bind admitted Run ID")
 
 
 _admit_execution = partial(
@@ -1440,7 +1420,7 @@ def _admit_request(
     Path,
     dict[str, Any],
     dict[str, Any],
-    inspection.SuccessorRunAuthority | None,
+    inspection.SuccessorRunAuthority,
     dict[str, Any],
     tuple[str, ...],
     dict[str, str],
@@ -1466,9 +1446,7 @@ def _admit_request(
         root,
         profile,
     )
-    expected_execution_path = (
-        root / "contract" / ("run.json" if successor is not None else "normalized.json")
-    )
+    expected_execution_path = root / "contract" / "run.json"
     if execution_path != expected_execution_path:
         raise LifecycleError("Lifecycle execution path differs from Run authority")
     config_data = _read_stable(config_path, root, "workflow config")
@@ -1488,7 +1466,6 @@ def _admit_request(
     }
     resources = _resource_plan_from_workflow_config(
         config_document,
-        require_symbolic=successor is not None,
     )
     if resources.workflow_cores != attempt["cores"]:
         raise LifecycleError(
@@ -1533,10 +1510,8 @@ def _admit_request(
     for field, value in config_identity.items():
         if config_document.get(field) != value:
             raise LifecycleError(f"Workflow config does not bind {field}")
-    expected_executor = (
-        "local"
-        if successor is None
-        else str(successor.execution_plan.record["identity"]["backend"]["backend"])
+    expected_executor = str(
+        successor.execution_plan.record["identity"]["backend"]["backend"]
     )
     expected = {
         "run_id": execution["run_id"],
@@ -1569,36 +1544,33 @@ def _admit_request(
     ops.admit_runtime_context(
         attempt, request, storage_binding, initial_runtime_inspection
     )
-    if successor is not None:
-        try:
-            validate_successor_run(
-                analysis=successor.analysis_revision,
-                plan=successor.execution_plan,
-                run=successor.run_binding,
-                profile=profile,
-                attempt=attempt,
-                resource_policy=config_document["resource_policy"],
-                observed_implementation_content_sha256=implementation_identity(
-                    source_root,
-                    execution_module_id(
-                        successor.analysis_revision,
-                        successor.execution_plan,
-                    ),
+    try:
+        validate_successor_run(
+            analysis=successor.analysis_revision,
+            plan=successor.execution_plan,
+            run=successor.run_binding,
+            profile=profile,
+            attempt=attempt,
+            resource_policy=config_document["resource_policy"],
+            observed_implementation_content_sha256=implementation_identity(
+                source_root,
+                execution_module_id(
+                    successor.analysis_revision,
+                    successor.execution_plan,
                 ),
-                observed_backend_semantics_sha256=backend_semantics_identity(
-                    source_root
-                ),
-            )
-            inspection.admit_bound_processing_source(root, successor)
-        except (
-            KeyError,
-            inspection.InspectionError,
-            RunImplementationError,
-            orchestration_contracts.ContractValidationError,
-        ) as exc:
-            raise LifecycleError(
-                f"Successor Attempt differs from immutable Run: {exc}"
-            ) from exc
+            ),
+            observed_backend_semantics_sha256=backend_semantics_identity(source_root),
+        )
+        inspection.admit_bound_processing_source(root, successor)
+    except (
+        KeyError,
+        inspection.InspectionError,
+        RunImplementationError,
+        orchestration_contracts.ContractValidationError,
+    ) as exc:
+        raise LifecycleError(
+            f"Successor Attempt differs from immutable Run: {exc}"
+        ) from exc
     workspace = Path(str(attempt["workspace"]))
     if not workspace.is_absolute():
         raise LifecycleError("Workflow attempt workspace must be absolute")
@@ -1673,7 +1645,7 @@ def _operation_preflight(
         raise LifecycleError("Only a failed or interrupted attempt may be resumed")
     if attempt["supersedes_workflow_attempt_id"] != latest["workflow_attempt_id"]:
         raise LifecycleError("Resume must supersede the exact latest workflow attempt")
-    for field in inspection.attempt_fields(observed.authority is not None):
+    for field in inspection.attempt_fields():
         if attempt[field] != latest[field]:
             raise LifecycleError(f"Resume attempt is incompatible on {field}")
 
@@ -1734,7 +1706,7 @@ def _under_lock_attempt_preflight(
         "workflow_attempt_id"
     ] or observed.latest_receipt["status"] not in {"failed", "interrupted"}:
         raise LifecycleError("Resume lost its admissible terminal predecessor")
-    for field in inspection.attempt_fields(observed.authority is not None):
+    for field in inspection.attempt_fields():
         if attempt[field] != observed.latest_attempt[field]:
             raise LifecycleError(f"Resume became incompatible on {field}")
 
@@ -2042,13 +2014,12 @@ def _run_attempt_locked(
                 )
         except Exception as exc:
             runtime_blockers.append(str(exc))
-        if authority is not None:
-            try:
-                inspection.admit_bound_processing_source(root, authority)
-            except (OSError, inspection.InspectionError) as exc:
-                runtime_blockers.append(
-                    f"Processing source changed during workflow execution: {exc}"
-                )
+        try:
+            inspection.admit_bound_processing_source(root, authority)
+        except (OSError, inspection.InspectionError) as exc:
+            runtime_blockers.append(
+                f"Processing source changed during workflow execution: {exc}"
+            )
         attempts, receipts, chain_blockers = inspection.inspect_attempt_chain(root)
         evidence = inspection.inspect_evidence(
             root,

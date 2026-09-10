@@ -12,12 +12,8 @@ SCHEMA_ROOT = _MODULE_PATH.parents[2] / "schemas" / "artifacts"
 COMMON_SCHEMA_PATH = SCHEMA_ROOT / "v1" / "common.schema.json"
 SCHEMA_FILES = {
     "artifact-record": SCHEMA_ROOT / "v2" / "artifact_record.schema.json",
-    "run-summary": SCHEMA_ROOT / "v2" / "run_summary.schema.json",
-    "report-receipt": SCHEMA_ROOT / "v4" / "report_receipt.schema.json",
-}
-VERSIONED_SCHEMA_FILES = {
-    ("run-summary", "3.0.0"): SCHEMA_ROOT / "v3" / "run_summary.schema.json",
-    ("report-receipt", "5.0.0"): SCHEMA_ROOT / "v5" / "report_receipt.schema.json",
+    "run-summary": SCHEMA_ROOT / "v3" / "run_summary.schema.json",
+    "report-receipt": SCHEMA_ROOT / "v5" / "report_receipt.schema.json",
 }
 INVENTORY_HEADER = (
     "artifact_id",

@@ -85,8 +85,8 @@ def schema_documents() -> dict[str, Any]:
     schema_versions = {
         "artifact_record.schema.json": "v2",
         "common.schema.json": "v1",
-        "report_receipt.schema.json": "v4",
-        "run_summary.schema.json": "v2",
+        "report_receipt.schema.json": "v5",
+        "run_summary.schema.json": "v3",
     }
     return {
         name: load_json(SCHEMAS / schema_versions[name] / name) for name in contracts
@@ -203,7 +203,7 @@ def test_representative_public_headers_match_literal_ordered_oracles() -> None:
 @pytest.mark.parametrize(
     ("module_name", "constant_name"),
     (
-        ("build_artifact_index", "ARTIFACT_INDEX_HEADER"),
+        ("build_artifact_index", "VALIDATION_REPORT_HEADER"),
         ("build_run_summary", "RUN_SUMMARY_HEADER"),
         ("build_report", "RECEIPT_HEADER"),
     ),

@@ -12,20 +12,15 @@ from emrys.contracts.artifacts import api as contracts
 from emrys.libraries.source_authority import matching_clean_checkout_head_commit
 
 from .core import (
-    canonical_digest,
-    canonical_json_bytes,
     load_run_contract,
     new_attempt_id,
     scope_adapter_rosters,
-    sha256_bytes,
     stat_source,
     utc_now,
     validate_inventory_registry,
 )
 from .inspection import apply_run_contract_checks, inspect_source
 from .models import (
-    ARTIFACT_INDEX_HEADER,
-    ARTIFACT_RECEIPT_HEADER,
     ArtifactIndexError,
     BuildContext,
     EvidenceContext,
@@ -36,17 +31,10 @@ from .reconciliation import (
 )
 from .records import (
     build_artifact_record,
-    build_index_rows,
-    build_receipt_row,
-    load_existing_receipt,
     producer_evidence,
-    record_manifest,
-    tsv_bytes,
-    validate_existing_identity,
     validate_record_in_memory,
 )
 from .registry import build_adapter_registry
-from .validation import validate_existing_transaction
 
 if TYPE_CHECKING:
     from emrys.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
@@ -127,9 +115,6 @@ def prepare_context(
     inventory_sha256 = contract_inputs[1].sha256
     recheck_contract_inputs()
     output_dir = output_root / arguments.run_id
-    records_dir = output_dir / "records"
-    artifacts_path = output_dir / f"{arguments.run_id}.artifacts.tsv"
-    receipt_path = output_dir / f"{arguments.run_id}.artifact_receipt.tsv"
     lock_path = output_dir / f".{arguments.run_id}.artifact-index.lock"
     if output_dir.is_symlink():
         raise ArtifactIndexError(
@@ -160,22 +145,6 @@ def prepare_context(
                 "Inventory source paths must not point inside the generated "
                 f"run directory: {row['source_path']}"
             )
-
-    existing = load_existing_receipt(receipt_path, artifacts_path, records_dir)
-    previous_attempt_id, attempt_history = validate_existing_identity(
-        existing,
-        run_contract,
-    )
-    if existing is not None:
-        validate_existing_transaction(
-            existing=existing,
-            run_id=arguments.run_id,
-            run_contract=run_contract,
-            records_dir=records_dir,
-            artifacts_path=artifacts_path,
-            receipt_path=receipt_path,
-            source_root=source_root,
-        )
 
     started_at = utc_now()
     attempt_id = new_attempt_id(started_at)
@@ -209,15 +178,10 @@ def prepare_context(
 
     validator = contracts.schema_validator("artifact-record")
     records: list[dict[str, Any]] = []
-    record_bytes: list[bytes] = []
     for inspection, inventory_row in zip(inspections, inventory_rows, strict=True):
         record = build_artifact_record(
-            run_id=arguments.run_id,
-            run_contract=run_contract,
             inspection=inspection,
             implementation=evidence[inventory_row["step_id"]],
-            git_commit=git_commit,
-            created_at=started_at,
         )
         validate_record_in_memory(
             record,
@@ -226,34 +190,8 @@ def prepare_context(
             source_root=source_root,
         )
         records.append(record)
-        record_bytes.append(canonical_json_bytes(record))
 
-    index_rows = build_index_rows(
-        records=records,
-        record_bytes=record_bytes,
-        records_dir=records_dir,
-    )
-    index_bytes = tsv_bytes(ARTIFACT_INDEX_HEADER, index_rows)
     finished_at = utc_now()
-    receipt_row = build_receipt_row(
-        run_id=arguments.run_id,
-        run_contract=run_contract,
-        run_contract_path=run_contract_path,
-        run_contract_file_sha256=run_contract_file_sha256,
-        inventory_path=inventory_path,
-        inventory_sha256=inventory_sha256,
-        inventory_row_count=len(inventory_rows),
-        artifacts_path=artifacts_path,
-        index_bytes=index_bytes,
-        index_rows=index_rows,
-        attempt_id=attempt_id,
-        previous_attempt_id=previous_attempt_id,
-        attempt_history=attempt_history,
-        git_commit=git_commit,
-        started_at=started_at,
-        finished_at=finished_at,
-    )
-    receipt_bytes = tsv_bytes(ARTIFACT_RECEIPT_HEADER, [receipt_row])
     context = BuildContext(
         source_checkout=source_checkout,
         artifact_source_root=artifact_source_root,
@@ -270,129 +208,16 @@ def prepare_context(
         recheck_contract_inputs=recheck_contract_inputs,
         inventory_rows=inventory_rows,
         output_dir=output_dir,
-        records_dir=records_dir,
-        artifacts_path=artifacts_path,
-        receipt_path=receipt_path,
         lock_path=lock_path,
         inspections=inspections,
         records=records,
-        record_bytes=record_bytes,
-        index_rows=index_rows,
-        index_bytes=index_bytes,
-        receipt_row=receipt_row,
-        receipt_bytes=receipt_bytes,
         attempt_id=attempt_id,
-        previous_attempt_id=previous_attempt_id,
-        attempt_history=attempt_history,
-        previous_receipt=existing,
+        git_commit=git_commit,
+        started_at=started_at,
+        finished_at=finished_at,
         source_identity_observer=source_identity_observer,
     )
-    validate_context_in_memory(context)
     return context
-
-
-def prepare_evidence_context(
-    arguments: argparse.Namespace,
-    *,
-    source_checkout: SourceCheckout,
-    artifact_source_root: ArtifactSourceRoot,
-) -> EvidenceContext:
-    """Prepare summary views directly from the admitted index records."""
-
-    from emrys.reporting._run_summary.document import build_summary
-    from emrys.reporting._run_summary.models import (
-        OutputPaths,
-        RUN_SUMMARY_RECEIPT_HEADER,
-    )
-    from emrys.reporting._run_summary.transaction import _new_attempt_id
-    from emrys.reporting._run_summary.validation import _build_receipt_row
-
-    context = prepare_context(
-        arguments,
-        source_checkout=source_checkout,
-        artifact_source_root=artifact_source_root,
-    )
-    paths = OutputPaths(
-        output_dir=context.output_dir,
-        summary_json=context.output_dir / f"{context.run_id}.run_summary.json",
-        summary_tsv=context.output_dir / f"{context.run_id}.run_summary.tsv",
-        qc_summary=context.output_dir / f"{context.run_id}.qc_summary.tsv",
-        receipt=context.output_dir / f"{context.run_id}.run_summary_receipt.tsv",
-    )
-    document, summary_json, summary_tsv, qc_summary = build_summary(
-        source_root=artifact_source_root.root,
-        run_id=context.run_id,
-        run_contract=context.run_contract,
-        inventory_path=context.inventory_path,
-        inventory_sha256=context.inventory_sha256,
-        inventory_size_bytes=context.inventory_size_bytes,
-        inventory_rows=context.inventory_rows,
-        artifact_receipt_path=context.receipt_path,
-        artifact_receipt_sha256=sha256_bytes(context.receipt_bytes),
-        artifact_receipt_size_bytes=len(context.receipt_bytes),
-        artifact_receipt=context.receipt_row,
-        artifacts=context.records,
-        generated_at=context.receipt_row["finished_at"],
-        git_commit=context.receipt_row["git_commit"],
-        analysis_policy_binding=context.analysis_policy_binding,
-    )
-    timestamp = utc_now()
-    receipt_row = _build_receipt_row(
-        run_id=context.run_id,
-        run_contract=context.run_contract,
-        artifact_receipt_path=context.receipt_path,
-        artifact_receipt_sha256=sha256_bytes(context.receipt_bytes),
-        artifact_receipt=context.receipt_row,
-        inventory_path=context.inventory_path,
-        inventory_sha256=context.inventory_sha256,
-        inventory_row_count=len(context.inventory_rows),
-        artifacts_path=context.artifacts_path,
-        artifacts_sha256=sha256_bytes(context.index_bytes),
-        summary_json_path=paths.summary_json,
-        summary_json_bytes=summary_json,
-        summary_tsv_path=paths.summary_tsv,
-        summary_tsv_bytes=summary_tsv,
-        summary_tsv_row_count=len(context.records),
-        qc_summary_path=paths.qc_summary,
-        qc_summary_bytes=qc_summary,
-        qc_summary_row_count=sum(len(record["metrics"]) for record in context.records),
-        document=document,
-        attempt_id=_new_attempt_id(timestamp),
-        previous_attempt_id=None,
-        previous_attempt_history=[],
-        git_commit=context.receipt_row["git_commit"],
-        started_at=timestamp,
-        finished_at=timestamp,
-    )
-    return EvidenceContext(
-        index=context,
-        summary_paths=paths,
-        summary_document=document,
-        summary_json_bytes=summary_json,
-        summary_tsv_bytes=summary_tsv,
-        qc_summary_bytes=qc_summary,
-        summary_receipt_row=receipt_row,
-        summary_receipt_bytes=tsv_bytes(RUN_SUMMARY_RECEIPT_HEADER, [receipt_row]),
-    )
-
-
-def validate_context_in_memory(context: BuildContext) -> None:
-    if [row["artifact_id"] for row in context.index_rows] != [
-        row["artifact_id"] for row in context.inventory_rows
-    ]:
-        raise ArtifactIndexError(
-            "Generated artifact index order differs from inventory order"
-        )
-    if context.receipt_row["artifacts_index_sha256"] != sha256_bytes(
-        context.index_bytes
-    ):
-        raise ArtifactIndexError("Generated artifact index hash is inconsistent")
-    if context.receipt_row["record_set_sha256"] != canonical_digest(
-        record_manifest(context.index_rows)
-    ):
-        raise ArtifactIndexError("Generated record-set hash is inconsistent")
-    if context.receipt_row["transaction_state"] != "complete":
-        raise ArtifactIndexError("Generated receipt is not complete")
 
 
 def recheck_inputs(context: BuildContext) -> None:
@@ -425,7 +250,54 @@ def recheck_source_identity(context: BuildContext) -> None:
         source_checkout=context.source_checkout,
         package_root=Path(__file__).resolve().parents[2],
     )
-    if observed != context.receipt_row["git_commit"]:
+    if observed != context.git_commit:
         raise ArtifactIndexError(
             "Artifact-index producer checkout changed after provenance attribution"
         )
+
+
+def prepare_evidence_context(
+    arguments: argparse.Namespace,
+    *,
+    source_checkout: SourceCheckout,
+    artifact_source_root: ArtifactSourceRoot,
+) -> EvidenceContext:
+    """Prepare the single Run result manifest and its human table projections."""
+    from emrys.reporting._run_summary.document import build_summary
+    from emrys.reporting._run_summary.models import OutputPaths
+
+    context = prepare_context(
+        arguments,
+        source_checkout=source_checkout,
+        artifact_source_root=artifact_source_root,
+    )
+    paths = OutputPaths(
+        output_dir=context.output_dir,
+        summary_json=context.output_dir / f"{context.run_id}.run_summary.json",
+        summary_tsv=context.output_dir / f"{context.run_id}.run_summary.tsv",
+        qc_summary=context.output_dir / f"{context.run_id}.qc_summary.tsv",
+    )
+    document, summary_json, summary_tsv, qc_summary = build_summary(
+        source_root=artifact_source_root.root,
+        run_id=context.run_id,
+        run_contract=context.run_contract,
+        run_contract_path=context.run_contract_path,
+        run_contract_file_sha256=context.run_contract_file_sha256,
+        inventory_path=context.inventory_path,
+        inventory_sha256=context.inventory_sha256,
+        inventory_size_bytes=context.inventory_size_bytes,
+        inventory_rows=context.inventory_rows,
+        artifacts=context.records,
+        generated_at=context.finished_at,
+        git_commit=context.git_commit,
+        analysis_policy_binding=context.analysis_policy_binding,
+        publication={
+            "attempt_id": context.attempt_id,
+            "started_at": context.started_at,
+            "finished_at": context.finished_at,
+            "transaction_state": "complete",
+        },
+    )
+    return EvidenceContext(
+        context, paths, document, summary_json, summary_tsv, qc_summary
+    )

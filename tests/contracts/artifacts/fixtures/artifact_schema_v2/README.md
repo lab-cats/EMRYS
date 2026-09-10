@@ -1,10 +1,8 @@
-# Artifact schema v2 fixtures
+# Current artifact contract fixtures
 
-This directory groups test documents for version `2` of the public artifact
-schema family. [`valid/`](valid/README.md) contains the accepted examples.
-
-The corresponding packaged schemas and their distribution boundary are owned
-by the
-[version 2 schema directory](../../../../../src/emrys/contracts/schemas/artifacts/v2/README.md).
-Fixture changes require review against both that owner and the
-[direct contract test](../../test_artifact_schema_contracts.py).
+This directory contains reviewed synthetic artifact entries and result manifests.
+Its directory name is historical; the documents use the current schemas linked
+from the [artifact schema owner](../../../../../src/emrys/contracts/schemas/artifacts/README.md).
+[Valid examples](valid/README.md) and the
+[contract tests](../../test_artifact_schema_contracts.py) retain scientific claims
+and exercise current structure. These fixtures are not production evidence.

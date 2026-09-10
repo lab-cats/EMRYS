@@ -138,7 +138,7 @@ def _publish_prepared(kind: str, context: Any) -> Path:
         from emrys.reporting._artifact_index.publication import publish_context  # noqa: PLC0415
 
         publish_context(context)
-        return context.summary_paths.receipt
+        return context.summary_paths.summary_json
     from emrys.reporting._run_report.publication import publish_report  # noqa: PLC0415
 
     publish_report(context)
@@ -158,10 +158,6 @@ def _require_successful_results(state: inspection.RunInspection) -> None:
 
 
 def _admit_generation(state: inspection.RunInspection) -> Any:
-    if state.authority is None:
-        raise ReportingOperationError(
-            "New reporting generation requires a successor Run authority"
-        )
     assert state.latest_attempt is not None
     if state.reporting_status == "blocked":
         raise ReportingOperationError("Reporting state is blocked")
@@ -314,9 +310,7 @@ def run_reporting(
 
         publish_ops = replace(
             reporting_boundary.DEFAULT_REPORTING_BOUNDARY_OPS,
-            validate_semantic_receipt=reporting_boundary.semantic_validator_session(
-                read=False
-            ),
+            validate_semantic_receipt=reporting_boundary.semantic_validator_session(),
         )
         identifier = str(identity.attempt["workflow_attempt_id"])
         identity_paths = {
