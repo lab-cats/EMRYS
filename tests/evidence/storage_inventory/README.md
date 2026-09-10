@@ -1,10 +1,9 @@
-# Storage inventory and qualification tests
+# Storage qualification tests
 
-These tests cover two [storage-owner](../../../src/emrys/evidence/storage_inventory/README.md)
-outputs: optional inventory of declared roots, measurements, and retention policy;
-and required compute/finalize qualification whose final receipt Doctor reads.
-Both suites check input rejection, deterministic output, publication, rollback,
-and CLI failures.
+These tests cover [filesystem qualification](../../../src/emrys/evidence/storage_inventory/README.md)
+for direct local execution and the compute/finalize workflow whose receipt
+Doctor reads. They check input rejection, filesystem identity, publication,
+recovery, and evidence admission.
 
-Synthetic filesystem cases neither qualify a production path nor verify its
-inventory or retention policy. They authorize no retention action.
+Synthetic filesystem cases do not qualify a production path or establish site
+approval.

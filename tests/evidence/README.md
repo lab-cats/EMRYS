@@ -7,8 +7,8 @@ The suites cover three different uses of evidence:
 - [Runtime availability](runtime_availability/README.md) and
   [storage qualification](storage_inventory/README.md) check results that Doctor
   requires before execution.
-- [Reference provenance](reference_provenance/README.md), storage inventory,
-  and the standalone runtime probe check optional operator diagnostics.
+- [Reference provenance](reference_provenance/README.md) and the standalone
+  runtime probe check optional operator diagnostics.
 
 One source owner can provide both a required Doctor check and an optional
 command. Tests keep those roles separate: passing one does not substitute for
