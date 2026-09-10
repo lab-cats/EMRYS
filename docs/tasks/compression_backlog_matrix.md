@@ -1031,8 +1031,8 @@ Implemented comparison against `be06f608` before hosted validation:
 | Maintained category | Added | Removed | Net |
 |---|---:|---:|---:|
 | Product | 1,608 | 3,893 | −2,285 |
-| Tests and fixtures | 702 | 2,294 | −1,592 |
-| Configuration and schemas | 111 | 52 | +59 |
+| Tests and fixtures | 713 | 2,293 | −1,580 |
+| Configuration and schemas | 113 | 52 | +61 |
 | Tooling | 61 | 5 | +56 |
 
 Documentation is separately net positive because the tranche records its changed
@@ -1052,13 +1052,17 @@ it does not execute Bioconductor restoration or scientific annotation.
 Local package-dependent integration checks remain incomplete: the existing
 editable installation lacks the newly added build metadata, and automatic
 approval review rejected refreshing that environment without separate operator
-approval. That approval is pending. The first [hosted run](https://github.com/lab-cats/EMRYS/actions/runs/34485912772)
-at `ef321aa1` passed installed-wheel validation, Python 3.11 smoke, shell owners,
-and managed native runtime checks on Ubuntu, Rocky, and Debian. It exposed stale
-workflow paths in test fixtures, one report-provenance path expectation, a
-workflow style error, and R dependency discovery scanning runtime caches.
-Corrections preserve the tests and full R lock/library/source validation, while
-directing dependency discovery to installed EMRYS sources. Focused path/report
-checks, workflow lint, and the guarded R contract pass locally. Final hosted
-validation remains required; the cards stay In progress. No scientific,
-institutional, or cluster validation is claimed.
+approval. Hosted checks use freshly installed packages.
+
+At `06356f37`, the [hosted run](https://github.com/lab-cats/EMRYS/actions/runs/34487838290)
+passed all four Python shards, installed-wheel validation, Python 3.11 smoke,
+shell owners, real Step08/09 R semantic fixtures, managed native runtime checks
+on Ubuntu/Rocky/Debian, and the complete managed scientific/reporting path.
+Coverage reporting alone failed because it tried to parse the relocated
+Snakemake DSL as Python. The corrected configuration omits that exact DSL file
+from Python reporting; Python source scope, thresholds, and independent workflow
+checks remain unchanged. One existing negative admission test now also covers
+invalid lock metadata and metadata replacement during hashing. Final hosted
+coverage validation remains required;
+the cards stay In progress. No institutional execution, scientific review,
+or biological validation is claimed.

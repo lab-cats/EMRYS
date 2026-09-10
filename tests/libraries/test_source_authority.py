@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -139,7 +140,7 @@ def test_installed_identity_binds_code_and_build_metadata(
         source_authority.admit_installed_package(root=package)
 
 
-def test_installed_admission_rejects_different_root_and_missing_build_metadata(
+def test_installed_admission_rejects_different_root_and_invalid_build_metadata(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     with pytest.raises(
@@ -149,11 +150,21 @@ def test_installed_admission_rejects_different_root_and_missing_build_metadata(
     distribution = source_authority.importlib.metadata.distribution(
         source_authority.PROJECT_NAME
     )
-    monkeypatch.setattr(distribution, "read_text", lambda _name: None)
     monkeypatch.setattr(
         source_authority.importlib.metadata, "distribution", lambda _name: distribution
     )
-    with pytest.raises(
-        source_authority.InstalledPackageError, match="build provenance"
+    metadata = json.dumps(
+        {"git_commit": None, "git_dirty": None, "python_lock_sha256": "a" * 64}
+    )
+    for values, message in (
+        ((None,), "build provenance"),
+        ((metadata.replace("a" * 64, "invalid"),), "Python lock identity"),
+        ((metadata, metadata.replace("a" * 64, "b" * 64)), "metadata changed"),
     ):
-        source_authority.admit_installed_package()
+        monkeypatch.setattr(
+            distribution,
+            "read_text",
+            lambda _name, reads=iter(values): next(reads),
+        )
+        with pytest.raises(source_authority.InstalledPackageError, match=message):
+            source_authority.admit_installed_package()
