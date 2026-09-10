@@ -440,6 +440,7 @@ context = prepare_context(argparse.Namespace(
     artifact_source_root=Path(sys.argv[2]),
     run_summary=Path(sys.argv[3]),
     output_root=Path(sys.argv[4]),
+    analysis_policy=Path(sys.argv[5]),
 ))
 publish_report(context)
 print(context.output_receipt)
@@ -456,6 +457,7 @@ print(context.output_receipt)
             str(artifact_source_root),
             str(fixture.summary_json_path),
             str(report_output_root),
+            str(fixture.adapter_fixture.analysis_policy),
         ],
         cwd=arbitrary_cwd,
         hostile_pythonpath=True,

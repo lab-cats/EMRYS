@@ -6,7 +6,7 @@ owns the goals; this file owns CS scope, status, decisions, and proof. The
 
 ## Working queue
 
-**Verification pending: CS-20–22, approved together on 2026-09-09.** Consolidate reporting
+**[PR #156](https://github.com/lab-cats/EMRYS/pull/156): CS-20–22, verification pending.** Consolidate reporting
 into one manifest, store task completion once, and retire historical-version
 readers. The [version policy](../design/decisions/platform-direction.md#version-support)
 replaces earlier compatibility requirements in these cards. Preserve scientific
@@ -945,7 +945,7 @@ Existing result directories and retained evidence are outside the edit scope.
 Implementation comparison against `5499658a`: **3,312 product lines removed net**
 (+1,010/−4,322), with two product files retired and none added. Product size is
 61,609 lines: 7,614 below `cab77a26` (**11.0%**), with 6,231 lines remaining to
-reach the 20% target. Tests/fixtures are separately net −1,815; schemas and
+reach the 20% target. Tests/fixtures are separately net −1,809; schemas and
 configuration net −1,535. Documentation is separately net negative. No tooling
 or retained evidence was removed to improve those product counts.
 
@@ -955,4 +955,7 @@ source dependencies, and all 13 independent contract goldens pass. The scientifi
 HTML golden is byte-identical; the evidence HTML diff changes manifest/version
 and policy/Run-contract references only. Independent review found and corrected
 non-directory reporting-state handling; a focused probe confirms a reporting
-blocker rather than an uncaught filesystem exception. Hosted CI remains pending.
+blocker rather than an uncaught filesystem exception. Initial hosted CI at
+`2fc9e68e` found a packaged-report fixture missing its explicit Analysis policy.
+The follow-up supplies that policy and migrates one remaining workflow marker
+reader to the terminal task record; focused checks pass. Hosted CI remains pending.

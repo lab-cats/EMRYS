@@ -829,7 +829,10 @@ def test_content_bound_verified_marker_is_reused_and_mutation_fails_closed(
     machine_key = "emrys.stage.construct_STAR_index.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
     marker = built.verified_root / machine_key / f"{scope_id}.json"
-    record = orchestration_contracts.load_record(marker, "verified-task")
+    marker_record = orchestration_contracts.load_record(marker, "verified-task")
+    record = orchestration_contracts.load_record(
+        built.run_root / marker_record["task_attempt_record"]["path"], "task-attempt"
+    )
     native_output = Path(record["outputs"][0]["path"])
     with native_output.open("ab") as stream:
         stream.write(b"mutated after verification\n")
