@@ -1,26 +1,8 @@
-# Storage-inventory evidence owner
+# Storage qualification
 
-This owner has two jobs: measure declared storage roots and qualify filesystem
-behavior for execution. Inventory records `retain`, `archive`, or
-`review_then_delete` policy; it never carries out those actions.
-
-## Inventory use and outputs
-
-Prepare [storage roots](../../../../configs/storage_roots.example.tsv) and
-[retention policy](../../../../configs/retention_policy.example.tsv) using the
-example formats. Replace their values with your explicit paths and policy, then
-preview without publication:
-
-```bash
-emrys debug storage-inventory \
-  --roots /absolute/path/to/storage_roots.tsv \
-  --retention-policy /absolute/path/to/retention_policy.tsv \
-  --output-root /absolute/existing/output-directory
-```
-
-Measurement does not follow symlinks. Add `--execute` to publish
-`storage_inventory.tsv`, `retention_policy.tsv`, and
-`storage_retention_summary.tsv`, with the summary last.
+This owner checks whether the exact Project and reference filesystems support
+safe execution. Storage capacity planning and retention policy are external
+operator responsibilities.
 
 ## Qualification and recovery
 
@@ -43,19 +25,5 @@ mount source/type, capacity, locking, rename visibility, and durability after
 the allocation ends. Device numbers are diagnostic and may differ by node.
 Failure never authorizes staging around an unqualified shared filesystem.
 
-## Known inventory-publication limits
-
-Inventory replacement is separate from qualification. Its
-[publisher](_storage_publication.py) validates and moves each predecessor to a
-`.previous` path before entering the final-publication rollback handler. A
-failure during those moves can leave earlier files backed up without restoration.
-If publication and subsequent restoration fail, cleanup can release the lock
-while backups and an incomplete final set remain, without a recovery marker.
-A restoration error can replace the original publication exception; a later
-cleanup failure may prevent remaining cleanup steps.
-
-The [owner tests](../../../../tests/evidence/storage_inventory/test_storage_inventory.py)
-characterize incomplete restoration. Preserve finals, staging, backups, and
-locks together. Neither inventory nor qualification receipt presence alone
-establishes site approval, production suitability, retention authorization,
-scientific review, or biological validity.
+Qualification evidence alone does not establish site approval, production
+suitability, scientific review, or biological validity.

@@ -135,16 +135,17 @@ change to Steps 07–09 and storage qualification. Product reduction is unproven
 
 ### 2. Make storage-inventory replacement recoverable
 
-**Finding:** The storage owner's [known inventory-publication limits](../../src/emrys/evidence/storage_inventory/README.md#known-inventory-publication-limits)
-describe backup and restoration failures and their existing evidence.
+**Superseded by approved feature retirement:** Storage capacity planning and
+retention-policy reporting are outside EMRYS's responsibility. [CS-27](compression_backlog_matrix.md#cs-27-retire-storage-inventory-reporting)
+owns removal of the command, its implementation, examples, and tests. Storage
+qualification and retained reports and recovery files remain.
 
-**Outcome and acceptance:** Preserve a recoverable three-file predecessor or
-complete replacement across failures during backup, publication, restoration,
-and cleanup. Review the [existing tests](../../tests/evidence/storage_inventory/test_storage_inventory.py)
-and contract together. Storage inventory and storage qualification are distinct
-transactions; PR #115 does not close this proposed owner-specific correction.
-The merged measurement-row consolidation in PR #128 and its filesystem-call
-test correction in PR #134 also leave this publication defect unresolved.
+The retired publisher could leave a partial predecessor after a backup failure,
+release its lock after failed restoration, or obscure the original error during
+cleanup. PR #115 did not repair it; PR #128's measurement consolidation and
+PR #134's test correction also left those defects unresolved. The feature is
+being removed, not repaired; there is no remaining publication work for this
+owner once CS-27 is complete.
 
 ### 3. Make reference-provenance replacement recoverable
 

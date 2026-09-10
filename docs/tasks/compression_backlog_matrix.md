@@ -1,10 +1,15 @@
 # EMRYS temporary compression backlog
 
-Reviewed **2026-09-10** from `be06f608`. The [campaign](compression_campaign.md)
+Reviewed **2026-09-10** from `de804299`. The [campaign](compression_campaign.md)
 owns the goals; this file owns CS scope, status, decisions, and proof. The
 [main matrix](backlog_matrix.md) owns broader outcomes and campaign completion.
 
 ## Working queue
+
+**CS-27: storage-inventory reporting retirement is implemented; verification is pending.**
+The user decided EMRYS should not own storage planning or retention-policy
+recordkeeping. Filesystem qualification remains required. The [card](#cs-27-retire-storage-inventory-reporting)
+records the removed surface and validation; existing data and evidence remain.
 
 **[PR #157](https://github.com/lab-cats/EMRYS/pull/157): CS-23–26 are complete; implementation CI passed.**
 The approved outcome removes Python-to-R launch handoffs, report presentation
@@ -118,6 +123,7 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-24](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Render both reports directly through existing Jinja templates. | Done | 4 | 4 | Retire intermediate presentation dictionaries across both callers. | `COMPRESS-01` |
 | [CS-25](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Share equivalent reporting file and lock operations. | Done | 3 | 3 | Keep each stage's transaction order, rechecks, and owned rollback. | `COMPRESS-01` |
 | [CS-26](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Execute the installed package with its own workflow and R assets. | Done | 5 | 4 | Replace runtime Git reconciliation with exact package bytes and build provenance. | `COMPRESS-01` |
+| [CS-27](#cs-27-retire-storage-inventory-reporting) | Retire optional storage planning and retention-policy reporting. | Verification pending | 3 | 2 | Remove the entire optional command; preserve required filesystem qualification and retained evidence. | `COMPRESS-01` |
 
 ## Acceptance shared by every card
 
@@ -610,7 +616,7 @@ full below so an unresolved finding cannot disappear during conversion.
 
 | Original discussion | Disposition and surviving home / next action |
 |---|---|
-| 1–4: validation, storage inventory, reference provenance, runtime publication | Correctness/recovery work in [polish items 1–4](polish-campaign.md#correctness-and-recovery). Validation rollback may delete another process's output; inventory/reference backup moves precede their rollback handler; several owners release locks after failed restoration; runtime also has descriptor/sync/unlink failure handling. PR #115 did not repair these owners. Their distinct guarantees do not justify a shared transaction abstraction. |
+| 1–4: validation, storage inventory, reference provenance, runtime publication | [CS-27](#cs-27-retire-storage-inventory-reporting) supersedes inventory repair by retiring the optional feature. [Polish items 1, 3, and 4](polish-campaign.md#correctness-and-recovery) retain validation, reference, and runtime recovery work: unsafe cleanup, backup moves before rollback, failed restoration, and descriptor/sync/unlink handling. PR #115 did not repair these owners. Their distinct guarantees do not justify a shared transaction abstraction. |
 | 5: input snapshots | Needs an explicit stability guarantee before consolidation: four-field metadata omits mode/change time retained by descriptor-bound reads. An existing test changes bytes while preserving size/mtime. Metadata does not establish content identity. Retain both mechanisms pending a bounded caller/threat-model decision. |
 | 6: Doctor storage repair | Routed to [polish item 9](polish-campaign.md#9-make-doctors-proposed-storage-repair-match-placement): a direct repair is proposed for unready Slurm qualification. Validate the local plan separately from site execution. |
 | 7: empty FASTA header | Deferred correctness correction retained here: [the contig parser](../../src/emrys/libraries/references/contigs.py) indexes an empty token list and raises `IndexError`. Reopen as a bounded normal-input-error correction with all callers and the existing contig test; no substantial compression is established. |
@@ -1065,3 +1071,40 @@ evidence above. Local package-dependent checks were not used for acceptance:
 automatic approval review blocked a local reinstall pending separate installation
 authority, and the hosted checks exercised freshly installed packages instead.
 No institutional execution, scientific review, or biological validation is claimed.
+
+### CS-27 Retire storage-inventory reporting
+
+Approved on 2026-09-10 against `de804299`: storage capacity planning and
+retention-policy recordkeeping belong outside EMRYS. The command was a real
+optional feature, not duplicate scientific or execution behavior. No external
+replacement is added.
+
+- **Retired by approval:** `emrys debug storage-inventory`, its roots and policy
+  readers, directory measurements, three-report publisher, two example inputs,
+  nine feature-specific test functions, CLI help case, and dependency seam.
+- **Preserved:** `emrys debug storage-qualification`, direct and two-phase
+  qualification, Doctor and runner admission, filesystem locks and durability
+  checks, scientific outputs, provenance, and all saved data and evidence.
+- **Defective but retired:** inventory backup, restoration, and cleanup behavior
+  documented in [polish item 2](polish-campaign.md#2-make-storage-inventory-replacement-recoverable).
+  Retirement supersedes its repair proposal; it does not claim a repair.
+- **Environment-deferred:** hosted CI, institutional filesystem execution,
+  scientific review, and biological validation.
+
+The four optional modules and CLI wiring are removed. Qualification keeps its
+existing owner and every surviving test; no migration, compatibility command,
+manager, or cleanup routine is introduced. Existing inventory TSVs, backups,
+locks, and recovery files are untouched.
+
+Local validation passes: 157 qualification and public-CLI cases, the source
+dependency checker, documentation structure, focused Ruff lint/format checks,
+and whitespace checks. No dependency installation or institutional execution
+was performed. Hosted CI remains pending on the published change; this card
+stays Verification pending until that run passes.
+
+The comparison against `de804299` removes 515 maintained product lines and
+four product files. Tests decrease by 493 lines, configuration by 6, and tooling
+by 1; no retained evidence changes. Documentation grows by 10 lines to record
+retirement and preserve qualification guidance. Product size is 58,809 lines,
+10,414 below the 69,223-line campaign baseline (15.0%); another 3,431 lines are
+needed for the 20% target.

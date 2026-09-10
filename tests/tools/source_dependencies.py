@@ -70,7 +70,6 @@ COMPOSITION_SEAMS: tuple[tuple[str, str], ...] = (
     ("CLI-SEAM-005", "emrys.evidence.reference_provenance.reconciler"),
     ("CLI-SEAM-006", "emrys.evidence.rseqc_orientation.validator"),
     ("CLI-SEAM-007", "emrys.evidence.runtime_availability.inspector"),
-    ("CLI-SEAM-008", "emrys.evidence.storage_inventory.inspector"),
     ("CLI-SEAM-009", "emrys.evidence.storage_inventory.qualification"),
     ("CLI-SEAM-010", "emrys.ingestion.sample_manifest_admission.validator"),
     ("CLI-SEAM-011", "emrys.libraries.source_authority"),

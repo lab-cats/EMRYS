@@ -15,7 +15,6 @@ import emrys.evidence.canonical_bam_qc.validator as canonical_bam_qc_validation_
 import emrys.evidence.reference_provenance.reconciler as reference_provenance_reconciliation_command
 import emrys.evidence.rseqc_orientation.validator as rseqc_orientation_validation_command
 import emrys.evidence.runtime_availability.inspector as runtime_availability_inspection_command
-import emrys.evidence.storage_inventory.inspector as storage_inventory_inspection_command
 import emrys.evidence.storage_inventory.qualification as storage_qualification_inspection_command
 import emrys.ingestion.sample_manifest_admission.validator as manifest_command
 import emrys.orchestration.run_coordinator.all_pass as all_pass_validation_command
@@ -282,12 +281,6 @@ def build_parser() -> argparse.ArgumentParser:
                 runtime_availability_inspection_command,
                 "inspect",
                 "Inspect declared runtime availability without installation or repair.",
-            ),
-            (
-                "storage-inventory",
-                storage_inventory_inspection_command,
-                "inspect",
-                "Inspect declared storage and retention-policy state without mutation.",
             ),
             (
                 "storage-qualification",

@@ -1,1 +1,1 @@
-"""Private implementation package for storage-inventory evidence."""
+"""Filesystem qualification evidence required before execution."""
