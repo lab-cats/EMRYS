@@ -307,7 +307,6 @@ def _terminalize_active_attempt(
         "verified_tasks": verified,
         "blockers": [],
         "message": "direct workflow fixture resume boundary",
-        "results_complete": False,
     }
     orchestration_contracts.validate_record("attempt-receipt", receipt)
     built.workflow_attempt_path.with_name("attempt-receipt.json").write_bytes(

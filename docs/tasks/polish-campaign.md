@@ -103,9 +103,10 @@ approved ShellCheck, Ruff formatting, and optional fast hooks under `DEV-01`
 (item 43), and the bounded Python/R test-runtime work under `CI-01` (item 23).
 Those slices passed ordinary hosted CI in [run 34306975901](https://github.com/lab-cats/EMRYS/actions/runs/34306975901)
 at `b491aac5`, including the complete Python suite/coverage, guarded R, and
-managed golden path. PR #148 awaits master integration. The artifact-version
-correction, other publication-recovery owners, Project preview, type checker,
-and other unselected proposals retain their separate decision boundaries.
+managed golden path. PR #148 awaits master integration. Compression CS-20/22
+implements the artifact-version correction; hosted verification is pending.
+Other publication-recovery owners, Project preview, type checker, and unselected
+proposals retain their separate decision boundaries.
 
 The second pass prioritizes the installed-package journey and runtime identity
 audits, followed by rendered report review. The merge-rule gap is concrete;

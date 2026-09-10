@@ -816,7 +816,7 @@ def test_foreign_preexisting_verified_marker_fails_closed(
     failed = _snakemake(built, "--dry-run", "--", "cohort_slice", check=False)
     assert failed.returncode != 0
     assert "Could not admit reusable verified task" in failed.stdout
-    assert "run_id does not match" in failed.stdout
+    assert "Could not resolve task-attempt" in failed.stdout
 
 
 def test_content_bound_verified_marker_is_reused_and_mutation_fails_closed(

@@ -598,7 +598,7 @@ full below so an unresolved finding cannot disappear during conversion.
 | 5: input snapshots | Needs an explicit stability guarantee before consolidation: four-field metadata omits mode/change time retained by descriptor-bound reads. An existing test changes bytes while preserving size/mtime. Metadata does not establish content identity. Retain both mechanisms pending a bounded caller/threat-model decision. |
 | 6: Doctor storage repair | Routed to [polish item 9](polish-campaign.md#9-make-doctors-proposed-storage-repair-match-placement): a direct repair is proposed for unready Slurm qualification. Validate the local plan separately from site execution. |
 | 7: empty FASTA header | Deferred correctness correction retained here: [the contig parser](../../src/emrys/libraries/references/contigs.py) indexes an empty token list and raises `IndexError`. Reopen as a bounded normal-input-error correction with all callers and the existing contig test; no substantial compression is established. |
-| 8: artifact CLI document version | Characterized correctness proposal retained [below](#artifact-cli-document-version-admission), overlapping [polish item 5](polish-campaign.md#5-admit-current-artifacts-through-the-public-validator). It is unselected and unrelated to the delivered package `--version` option. |
+| 8: artifact CLI document version | Implemented with CS-20/22; final hosted verification is pending [below](#artifact-cli-document-version-admission). This also addresses [polish item 5](polish-campaign.md#5-admit-current-artifacts-through-the-public-validator) and is unrelated to the delivered package `--version` option. |
 | 9: Snakemake package identity | [Polish item 35](polish-campaign.md#35-settle-the-installed-snakemake-content-guarantee) owns the undecided package-content guarantee. Current binding identifies the Python executable; package-change reproduction and the full identity audit remain absent. R dependency closure is a separate `RUNTIME-CLOSURE-01` outcome. |
 | 10: runtime private/public models | Delivered in PR #139: one immutable check/observation model and internal path objects; do not reselect it. |
 | 11: whole reference reads | Routed to [optimization](optimization_campaign.md): streaming hashes/FASTA parsing may reduce memory. Preserve second observations, decoding/newline/error order. No measured speed or peak-memory claim. |
@@ -945,7 +945,7 @@ Existing result directories and retained evidence are outside the edit scope.
 Implementation comparison against `5499658a`: **3,312 product lines removed net**
 (+1,010/−4,322), with two product files retired and none added. Product size is
 61,609 lines: 7,614 below `cab77a26` (**11.0%**), with 6,231 lines remaining to
-reach the 20% target. Tests/fixtures are separately net −1,809; schemas and
+reach the 20% target. Tests/fixtures are separately net −1,802; schemas and
 configuration net −1,535. Documentation is separately net negative. No tooling
 or retained evidence was removed to improve those product counts.
 
@@ -955,7 +955,11 @@ source dependencies, and all 13 independent contract goldens pass. The scientifi
 HTML golden is byte-identical; the evidence HTML diff changes manifest/version
 and policy/Run-contract references only. Independent review found and corrected
 non-directory reporting-state handling; a focused probe confirms a reporting
-blocker rather than an uncaught filesystem exception. Initial hosted CI at
-`2fc9e68e` found a packaged-report fixture missing its explicit Analysis policy.
-The follow-up supplies that policy and migrates one remaining workflow marker
-reader to the terminal task record; focused checks pass. Hosted CI remains pending.
+blocker rather than an uncaught filesystem exception. Hosted CI at `468dd25f`
+passed the managed golden path, guarded R, shell, workflow lint, and managed
+runtime checks. Its wheel and resume failures exposed stale fixtures, now
+corrected: installed-wheel records bind that wheel before publication, and
+workflow fixtures use the current terminal-record contract. Local installed-wheel
+smoke, terminal receipt validation, and foreign-marker refusal pass. The installed
+wheel probe reused existing dependencies; canonical dependency isolation and the
+complete Python suite/coverage remain pending in replacement hosted CI.
