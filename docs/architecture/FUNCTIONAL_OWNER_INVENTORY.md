@@ -24,7 +24,7 @@ owns permitted dependencies and shared seams. Each implementation's adjacent
 | Audience | Surfaces |
 | --- | --- |
 | Scientist | `init`, `validate`, `doctor`, `run`, `resume`, `inspect`, and `report` |
-| Operator | `runtime discover`, specialist `validate`, `reconcile`, `debug`, `convert`, and documented direct owner tools |
+| Operator | `runtime discover`, specialist `validate`, `reconcile`, `debug`, and documented direct owner tools |
 | Workflow | `validate all-pass` and the private Run task boundary |
 | Maintainer | Make targets and repository scripts documented by their own `--help`, adjacent README, or engineering convention |
 

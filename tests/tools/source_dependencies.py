@@ -81,7 +81,6 @@ COMPOSITION_SEAMS: tuple[tuple[str, str], ...] = (
     ("CLI-SEAM-019", "emrys.stages.cohort_candidate_preprocessing.validator"),
     ("CLI-SEAM-020", "emrys.stages.duplicate_marking.validator"),
     ("CLI-SEAM-021", "emrys.stages.fasta_sidecars.validator"),
-    ("CLI-SEAM-022", "emrys.stages.gtf_to_bed12.converter"),
     ("CLI-SEAM-023", "emrys.stages.gtf_to_bed12.validator"),
     ("CLI-SEAM-024", "emrys.stages.mechanical_orientation.validator"),
     ("CLI-SEAM-025", "emrys.stages.partitioned_cohort_mpileup.validator"),

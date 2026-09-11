@@ -1,8 +1,7 @@
 # GTF-to-BED12 tests
 
-These cases check Step 00b conversion and validation, side-effect-free dry-run,
-execution from other working directories, exclusive publication, rollback,
-existing-output refusal, and blocking on interruption residue. Mocked scheduler
-cases also document the later bedtools partial-publication behavior. The
+These cases check the Run worker's Step 00b conversion and the BED12 validator
+using synthetic GTF/BED files. They cover coordinates, exon grouping, names,
+ordering, rejected rows and transcripts, and source-GTF agreement. The
 [stage contract](../../../src/emrys/stages/gtf_to_bed12/CONTRACT.md)
-defines commands and recovery; inputs are synthetic GTF/BED files.
+defines scientific behavior; runner tests cover publication and recovery.

@@ -108,7 +108,6 @@ The source-dependency gate rejects additions and stale entries.
 | `CLI-SEAM-019` | `emrys.stages.cohort_candidate_preprocessing.validator` | Owner validation command |
 | `CLI-SEAM-020` | `emrys.stages.duplicate_marking.validator` | Owner validation command |
 | `CLI-SEAM-021` | `emrys.stages.fasta_sidecars.validator` | Owner validation command |
-| `CLI-SEAM-022` | `emrys.stages.gtf_to_bed12.converter` | Owner conversion command |
 | `CLI-SEAM-023` | `emrys.stages.gtf_to_bed12.validator` | Owner validation command |
 | `CLI-SEAM-024` | `emrys.stages.mechanical_orientation.validator` | Owner validation command |
 | `CLI-SEAM-025` | `emrys.stages.partitioned_cohort_mpileup.validator` | Owner validation command |

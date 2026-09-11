@@ -25,7 +25,6 @@ import emrys.stages.canonical_bam.validator as canonical_bam_validation_command
 import emrys.stages.cohort_candidate_preprocessing.validator as cohort_candidate_preprocessing_validation_command
 import emrys.stages.duplicate_marking.validator as duplicate_marking_validation_command
 import emrys.stages.fasta_sidecars.validator as fasta_sidecars_validation_command
-import emrys.stages.gtf_to_bed12.converter as gtf_to_bed12_command
 import emrys.stages.gtf_to_bed12.validator as bed12_validation_command
 import emrys.stages.mechanical_orientation.validator as mechanical_orientation_validation_command
 import emrys.stages.partitioned_cohort_mpileup.validator as partitioned_cohort_mpileup_validation_command
@@ -280,20 +279,6 @@ def build_parser() -> argparse.ArgumentParser:
                 storage_qualification_inspection_command,
                 "qualify",
                 "Qualify workflow storage across compute and head nodes.",
-            ),
-        ),
-    )
-    _add_group(
-        command_parsers,
-        "convert",
-        "Convert an explicitly selected EMRYS input.",
-        "conversion",
-        (
-            (
-                "gtf-to-bed12",
-                gtf_to_bed12_command,
-                "convert",
-                "Convert GTF transcript models to BED12.",
             ),
         ),
     )

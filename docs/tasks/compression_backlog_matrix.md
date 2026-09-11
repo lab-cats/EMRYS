@@ -6,10 +6,10 @@ owns the goals; this file owns CS scope, status, decisions, and proof. The
 
 ## Working queue
 
-**CS-29 is in progress:** retire the optional standalone runtime report while
-preserving the runtime checks used by Doctor, discovery, and Run admission.
-The user approved this removal together with the standalone GTF conversion
-command, in one PR with separate feature commits. Hosted validation is pending.
+**CS-29–30 are implemented; validation is in progress.** The optional standalone
+runtime-report and GTF-conversion commands retire together in one PR with
+separate feature commits. Required runtime probes and conversion through the Run
+remain. Hosted validation is pending.
 
 **[PR #159](https://github.com/lab-cats/EMRYS/pull/159): CS-28 is complete; implementation CI passed.**
 The manifest replaces separate workflow configuration and task dispatch files.
@@ -138,6 +138,7 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-27](#cs-27-retire-storage-inventory-reporting) | Retire optional storage planning and retention-policy reporting. | Done | 3 | 2 | Remove the entire optional command; preserve required filesystem qualification and retained evidence. | `COMPRESS-01` |
 | [CS-28](#cs-28-one-immutable-attempt-manifest) | Persist one immutable Attempt manifest for workflow settings and task plans. | Done | 4 | 4 | Retire configuration/dispatch files across execution, resume, inspection, reporting, and fixtures; preserve original task provenance. | `COMPRESS-01` |
 | [CS-29](#cs-29-retire-standalone-runtime-reports) | Retire optional standalone runtime reports. | In progress | 3 | 2 | Remove command, TSV publisher, example, and feature-only tests; preserve required runtime probes and their callers. | `COMPRESS-01` |
+| [CS-30](#cs-30-retire-standalone-gtf-conversion) | Execute GTF-to-BED12 conversion through the Run. | In progress | 3 | 2 | Retire standalone command and publication lifecycle; preserve conversion, source agreement checks, and runner protections. | `OPS-03` |
 
 ## Acceptance shared by every card
 
@@ -1235,5 +1236,51 @@ Local validation passes: 42 runtime probe/profile cases, runtime-file identity,
 and cached executable-permission checks, plus focused Ruff and whitespace.
 Two Doctor diagnostic cases encounter the existing local installation's missing
 build provenance; hosted CI must validate them with a fresh installation.
-Public-command, dependency, documentation, and ordinary hosted validation remain
-pending. Final accounting will include the complete shared integration.
+Public-command, source-dependency, documentation, and whitespace checks also
+pass. Ordinary hosted validation remains pending. This slice removes 296
+maintained product lines and one product file; its shared integration is
+included in the tranche accounting below.
+
+### CS-30 Retire standalone GTF conversion
+
+Approved with CS-29 on 2026-09-10 against `2bde5c42`. The user selected Run-owned
+execution for GTF conversion as well as the other scientific producers.
+
+- **Retired by approval:** `emrys convert gtf-to-bed12`, the now-empty `convert`
+  command group, standalone preview, custom feature/attribute selectors, and
+  separate lock, staging, publication, and rollback machinery. Independent
+  conversion outside a Project Run is no longer a supported public feature.
+- **Preserved:** exon conversion with `transcript_id` and optional `gene_id`,
+  coordinate and naming rules, warnings, transcript rejection, deterministic
+  ordering and bytes, Project reference checks, BED12 validation, provenance,
+  and the runner's locks, no-overwrite publication, logging, and recovery.
+- **Environment-deferred:** institutional execution, scientific review, and
+  biological validation. No runtime performance improvement is claimed.
+
+The owner audit covered the converter, private worker, Project validation,
+BED12 validator, CLI registration, publication tests, subprocess coverage
+policy, dependency rules, contracts, and operator guidance. Every surviving
+normalization caller used the same three selectors; they now call that fixed
+scientific operation without a selection object or repeated arguments.
+
+Scientific expectations now run through the existing private worker. Tests for
+the retired standalone publisher disappear; output refusal and scientific
+expectations survive. The subprocess coverage route is renamed to identify the
+worker; its source path, test command, prior measurements, and every numerical
+coverage threshold remain unchanged. No compatibility layer or manager is
+introduced, and no saved output or recovery evidence is changed.
+
+Local validation passes: 12 converter worker cases, two Project reference
+compatibility cases, 17 coverage-policy cases, and 104 public-command/BED12
+validator cases. The retired `convert` group help case was removed; its two
+surviving routing cases pass on the final test roster. Ruff, source-dependency,
+documentation, and whitespace checks pass. Independent source/test review found
+no loss of required runtime checks, scientific behavior, or Run protections.
+Ordinary hosted CI remains pending. This slice removes 305 maintained product
+lines with no product-file growth.
+
+Together CS-29–30 remove 601 maintained product lines and one product file.
+The stack contains 57,810 maintained product lines, 11,413 below the 69,223
+campaign baseline (16.5%); another 2,432 lines are needed for the 20% target.
+No saved evidence changes. The separate SETUP-02 documentation commit records
+the already-approved benchmark retirement after optimization; the tool stays.

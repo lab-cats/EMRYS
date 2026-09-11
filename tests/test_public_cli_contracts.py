@@ -64,7 +64,6 @@ EMRYS_COMMANDS = (
         ("debug", "storage-qualification"),
         "usage: emrys debug storage-qualification",
     ),
-    (("convert", "gtf-to-bed12"), "usage: emrys convert gtf-to-bed12"),
     (("validate", "bed12"), "usage: emrys validate bed12"),
     (("validate", "canonical-bam"), "usage: emrys validate canonical-bam"),
     (
@@ -621,7 +620,6 @@ print(json.dumps({
     (
         ("--help",),
         ("runtime", "--help"),
-        ("convert", "--help"),
     ),
 )
 def test_installed_emrys_command_routing_help(

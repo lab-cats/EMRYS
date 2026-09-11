@@ -222,9 +222,8 @@ context. Producers compute the scientific outputs, perform their native checks,
 and write provenance. They receive explicit working destinations and scratch
 space; they do not choose final working paths, acquire locks, publish results,
 supervise process groups, or implement operational recovery. There is no separate
-manager per producer. The independently useful `emrys convert gtf-to-bed12`
-utility keeps its public conversion interface; the Run uses its normalization
-code through a private worker entry point.
+manager per producer. GTF-to-BED12 conversion also runs through a private
+worker; its normalization code is shared with Project and BED12 validation.
 
 Task definitions bind working paths, final paths, publication order,
 locks, old recovery locations, and any complete directory input. Working files
