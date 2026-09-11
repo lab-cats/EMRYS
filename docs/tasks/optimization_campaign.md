@@ -324,7 +324,8 @@ candidate must preserve that outcome rather than redefine its acceptance.
   is preserved; the draft changed zero-byte header handling. Its optimization
   cannot count as pipeline savings unless the measured operator journey
   actually includes it.
-- `SETUP-02` owns portable advisory benchmarking; `FUT-INDEX-01` owns explicit
+- `SETUP-02` owns retirement of the benchmark helper after this campaign;
+  `FUT-INDEX-01` owns explicit
   prebuilt STAR-index admission; `PERF-01` retains the separate cross-node
   experiment. Refer to their current [backlog outcomes](backlog_matrix.md),
   rather than creating duplicate acceptance or status here.
