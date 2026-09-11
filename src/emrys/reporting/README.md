@@ -91,11 +91,15 @@ issues, and Attempt history. Scientific-context admission reopens bound referenc
 files when required to validate the transaction. View rendering does not reopen
 references, rerun analysis, discover motifs, infer missing data, or hide required
 scientific caveats.
-Public [`transaction_validation.py`](transaction_validation.py) re-admits the
-current manifest, immutable inputs, native sources, and deterministic TSV and
-HTML projections. Revalidation binds source identities and complete file rosters;
-cached predecessors retain recheck callbacks. Reporting has two stages: the Run
-manifest followed by the HTML projections.
+[`transaction_validation.py`](transaction_validation.py) validates the current
+manifest, immutable inputs, native sources and report projections. Within one
+operation, it carries checked contexts forward instead of rebuilding them:
+indexing supplies canonical Step 09/10 projections, and publication supplies
+the prepared HTML and TSV bytes. Source identities, complete file rosters and
+exact published bytes are still checked before reuse and publication.
+A fresh inspection reconstructs the manifest from current sources, then carries
+those newly checked inputs into report validation. Nothing is cached across
+operations or persisted in another format.
 
 ## Implementation and fault tests
 

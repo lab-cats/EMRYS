@@ -84,17 +84,18 @@ def validate_summary_tsv(path: Path, context: ReportContext) -> None:
 
 def receipt_document(
     context: ReportContext,
-    staged_outputs: Sequence[tuple[str, str, Path, Path]],
+    output_bytes: Sequence[bytes],
 ) -> dict[str, Any]:
     descriptors = []
-    for output_id, kind, staged, final in staged_outputs:
-        snapshot = _snapshot_regular(staged, f"staged {kind} output")
+    for (output_id, kind, _suffix), final, payload in zip(
+        contracts.REPORT_OUTPUTS, context.stable_paths[:3], output_bytes, strict=True
+    ):
         descriptor = {
             "output_id": output_id,
             "kind": kind,
             "path": str(final),
-            "sha256": snapshot.sha256,
-            "size_bytes": snapshot.size_bytes,
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "size_bytes": len(payload),
             "media_type": {
                 "scientific_html": "text/html",
                 "evidence_html": "text/html",
@@ -192,6 +193,17 @@ def receipt_document(
     }
     validate_receipt(document)
     return document
+
+
+def output_bytes(context: ReportContext) -> tuple[bytes, ...]:
+    """Project both reports, their summary table and the receipt together."""
+
+    outputs = (
+        context.scientific_html_bytes,
+        context.evidence_html_bytes,
+        summary_tsv_bytes(context),
+    )
+    return (*outputs, receipt_tsv_bytes(receipt_document(context, outputs)))
 
 
 def receipt_tsv_bytes(document: Mapping[str, Any]) -> bytes:

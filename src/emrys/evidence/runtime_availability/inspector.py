@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from emrys.libraries import validation as report
 from emrys.libraries.validation.tsv import tsv_bytes
 
 from ._probes import run_checks
-from ._profile_contract import load_profile, load_profile_bytes
+from ._profile_contract import CHOICE_IDS, load_runtime_policy
+from ._profile_contract import runtime_profile_checks as _runtime_profile_checks
 from ._runtime_model import (
-    PROFILE_HEADER,
     PreflightError,
     RuntimeCheck,
     RuntimeObservation,
@@ -45,24 +45,12 @@ class RuntimeInspectionError(RuntimeError):
     """The declared runtime profile could not be inspected safely."""
 
 
-def runtime_profile_bytes(checks: Iterable[RuntimeCheck]) -> bytes:
-    """Render normalized checks through the runtime profile's sole TSV owner."""
+def runtime_profile_bytes(choices: Mapping[str, Path]) -> bytes:
+    """Store each selected path once; probe rules belong to the installed policy."""
 
     return tsv_bytes(
-        PROFILE_HEADER,
-        (
-            {
-                "check_id": check.check_id,
-                "check_type": check.check_type,
-                "runtime_context": check.runtime_context,
-                "required": str(check.required).lower(),
-                "target": check.target,
-                "probe_args": json.dumps(check.probe_args, separators=(",", ":")),
-                "expected": check.expected,
-                "description": check.description,
-            }
-            for check in checks
-        ),
+        ("check_id", "target"),
+        ({"check_id": key, "target": str(choices[key])} for key in CHOICE_IDS),
     )
 
 
@@ -71,6 +59,7 @@ def inspect_runtime_profile_bytes(
     profile_path: Path,
     runtime_context: str,
     *,
+    checks: Iterable[RuntimeCheck],
     environment: Mapping[str, str] | None = None,
 ) -> RuntimeInspection:
     """Probe validated candidate bytes without publishing a temporary profile."""
@@ -78,10 +67,9 @@ def inspect_runtime_profile_bytes(
     try:
         if runtime_context not in {"local", "cluster_batch"}:
             _fail(f"Unsupported runtime context: {runtime_context}")
-        profile_data, loaded_checks = load_profile_bytes(profile_data)
         profile_sha256 = hashlib.sha256(profile_data).hexdigest()
         results = run_checks(
-            loaded_checks,
+            checks,
             runtime_context,
             environment=environment,
         )
@@ -96,14 +84,25 @@ def inspect_runtime_profile_bytes(
     )
 
 
+def runtime_profile_checks(data: bytes, source_root: Path) -> tuple[RuntimeCheck, ...]:
+    """Admit runtime choices and derive their complete fixed probe policy."""
+
+    try:
+        return _runtime_profile_checks(data, source_root)
+    except (PreflightError, report.ValidationError, OSError) as exc:
+        raise RuntimeInspectionError(str(exc)) from exc
+
+
 def load_runtime_profile_contract(
     profile: Path,
+    source_root: Path,
 ) -> tuple[bytes, tuple[RuntimeCheck, ...]]:
     """Read and validate one profile without running any declared probes."""
 
     try:
-        data, checks = load_profile(profile)
-    except PreflightError as exc:
+        data = report.read_bytes(profile, "Runtime choices")
+        checks = runtime_profile_checks(data, source_root)
+    except (PreflightError, report.ValidationError, OSError) as exc:
         raise RuntimeInspectionError(str(exc)) from exc
     return data, tuple(checks)
 
@@ -116,4 +115,6 @@ __all__ = (
     "inspect_runtime_profile_bytes",
     "load_runtime_profile_contract",
     "runtime_profile_bytes",
+    "runtime_profile_checks",
+    "load_runtime_policy",
 )

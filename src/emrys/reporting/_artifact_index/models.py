@@ -72,6 +72,7 @@ class Inspection:
     errors: list[dict[str, Any]] = field(default_factory=list)
     first_row: dict[str, str] | None = None
     snapshot: SourceSnapshot | None = None
+    projection: object | None = None
 
 
 @dataclass
@@ -79,6 +80,7 @@ class BuildContext:
     installed_package: InstalledPackage
     artifact_source_root: ArtifactSourceRoot
     run_id: str
+    profile_sha256: str
     run_contract_path: Path
     run_contract: dict[str, Any]
     run_contract_file_sha256: str

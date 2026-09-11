@@ -11,8 +11,8 @@ import stat
 import subprocess
 import sys
 import uuid
-from collections.abc import Callable
 from contextlib import suppress
+from functools import partial
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -26,7 +26,6 @@ from emrys.evidence.runtime_availability.inspector import (
     RuntimeInspectionError,
     inspect_runtime_profile_bytes,
     load_runtime_profile_contract,
-    runtime_profile_bytes,
 )
 from emrys.evidence.storage_inventory import qualification as storage_qualification
 from emrys.libraries.application_logging import (
@@ -55,7 +54,6 @@ from emrys.libraries.source_authority import (
     InstalledPackage,
     InstalledPackageError,
     admit_installed_package,
-    controlled_python_argv,
 )
 from emrys.orchestration.run_coordinator import onboarding
 from emrys.orchestration.run_coordinator.execution_profile import (
@@ -316,113 +314,6 @@ def _module_dependency_checks(
     )
 
 
-def validate_runtime_profile_contract(
-    checks: tuple[RuntimeCheck, ...],
-    source_root: Path,
-    *,
-    expected_additions: tuple[RuntimeCheck, ...] = (),
-    allow_derived_dependencies: bool = False,
-) -> None:
-    """Bind editable runtime paths plus one selected module to fixed policy."""
-
-    try:
-        _bytes, policy = load_runtime_profile_contract(onboarding.runtime_policy_path())
-    except RuntimeInspectionError as exc:
-        raise DoctorInputError(f"Could not load fixed runtime policy: {exc}") from exc
-    fixed_count = len(policy)
-    selected_fixed = checks[:fixed_count]
-    shape = lambda values: tuple(  # noqa: E731 - compact immutable projection
-        (item.check_id, item.check_type) for item in values
-    )
-    if shape(selected_fixed) != shape(policy):
-        raise DoctorInputError(
-            "Runtime inventory must begin with the exact ordered fixed-policy roster"
-        )
-    selected = {item.check_id: item for item in selected_fixed}
-    fixed = {item.check_id: item for item in policy}
-    rscript = selected["rscript"].target
-    immutable = lambda item: (  # noqa: E731 - compact fixed-policy projection
-        item.runtime_context,
-        item.required,
-        item.expected,
-        item.description,
-    )
-    for check in selected_fixed:
-        expected = fixed[check.check_id]
-        dynamic = check.check_id in {"snakemake", "sha256_python", "picard"}
-        wanted_args = (
-            (rscript,) if check.check_type == "r_namespace" else expected.probe_args
-        )
-        target_valid = (
-            check.target == expected.target
-            if check.check_type == "r_namespace"
-            else Path(check.target).is_absolute()
-        )
-        if (
-            immutable(check) != immutable(expected)
-            or not target_valid
-            or (not dynamic and check.probe_args != wanted_args)
-        ):
-            raise DoctorInputError(
-                f"Runtime check changes fixed policy: {check.check_id}"
-            )
-    renv_library = Path(selected["renv_library"].target)
-    if os.path.lexists(renv_library):
-        try:
-            state = renv_library.lstat()
-            canonical_library = renv_library.resolve(strict=True)
-        except OSError as exc:
-            raise DoctorInputError(
-                f"renv library is unavailable: {renv_library}: {exc}"
-            ) from exc
-        if (
-            stat.S_ISLNK(state.st_mode)
-            or not stat.S_ISDIR(state.st_mode)
-            or canonical_library != renv_library
-        ):
-            raise DoctorInputError(
-                f"renv library must be a canonical real directory: {renv_library}"
-            )
-    python = selected["python"].target
-    relations = (
-        selected["snakemake"].target == python
-        and selected["snakemake"].probe_args
-        == controlled_python_argv(python, "-m", "snakemake", "--version")[1:]
-        and selected["sha256_python"].target == python
-        and selected["sha256_python"].probe_args == ("python_hashlib",)
-        and selected["picard"].target == selected["java"].target
-        and selected["picard"].probe_args
-        == ("-jar", selected["picard_jar"].target, "MarkDuplicates", "--version")
-        and Path(selected["renv_project"].target) == source_root
-    )
-    if not relations:
-        raise DoctorInputError("Runtime inventory changes a fixed cross-check binding")
-    additions = checks[fixed_count:]
-    if not allow_derived_dependencies and additions != expected_additions:
-        raise DoctorInputError(
-            "Runtime inventory differs from the selected analysis-module dependencies"
-        )
-    for check in additions:
-        valid = (
-            check.required
-            and check.runtime_context == "local"
-            and (
-                check.check_type == "tool_version"
-                and Path(check.target).is_absolute()
-                and bool(check.probe_args)
-                or check.check_type == "r_namespace"
-                and check.probe_args == (rscript,)
-                or check.check_type == "path_visibility"
-                and Path(check.target).is_absolute()
-                and check.probe_args in {("file_readable",), ("directory_readable",)}
-            )
-        )
-        if not valid:
-            raise DoctorInputError(
-                f"Runtime check is not a supported analysis dependency: {check.check_id}"
-            )
-
-
 def runtime_file_bindings(
     inspection: RuntimeInspection,
     *,
@@ -616,29 +507,15 @@ def diagnose_project(
         )
     else:
         try:
-            profile_bytes, declared_checks = load_runtime_profile_contract(profile_path)
-            _policy_bytes, fixed_policy = load_runtime_profile_contract(
-                onboarding.runtime_policy_path()
+            profile_bytes, fixed_checks = load_runtime_profile_contract(
+                profile_path, root
             )
         except RuntimeInspectionError as exc:
             raise DoctorInputError(str(exc)) from exc
-        fixed_checks = declared_checks[: len(fixed_policy)]
         additions, package_tree_ids, explicit_file_ids = _module_dependency_checks(
             analysis.module.descriptor,
             fixed_checks,
         )
-        selected_checks = (
-            (*fixed_checks, *additions)
-            if len(declared_checks) == len(fixed_policy)
-            else declared_checks
-        )
-        validate_runtime_profile_contract(
-            selected_checks,
-            root,
-            expected_additions=additions,
-        )
-        if selected_checks != declared_checks:
-            profile_bytes = runtime_profile_bytes(selected_checks)
         renv_library = next(
             Path(check.target)
             for check in fixed_checks
@@ -649,6 +526,7 @@ def diagnose_project(
                 profile_bytes,
                 profile_path,
                 "local",
+                checks=(*fixed_checks, *additions),
                 environment=guarded_r_environment(
                     root,
                     renv_library,
@@ -877,7 +755,9 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
                 "the admitted runtime inventory is site- or user-owned and was preserved"
             )
         try:
-            profile_bytes, profile_checks = load_runtime_profile_contract(profile)
+            profile_bytes, profile_checks = load_runtime_profile_contract(
+                profile, _PACKAGE_ROOT
+            )
         except RuntimeInspectionError as exc:
             raise DoctorRepairError(
                 f"could not re-admit the managed runtime inventory: {exc}"
@@ -1258,20 +1138,10 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
             f"could not open repair log before mutation: {exc}"
         ) from exc
     logger = attempt.logger(component="maintenance", phase="repair")
-    degraded = False
-
-    def record(operation: Callable[[], object]) -> None:
-        nonlocal degraded
-        if not degraded:
-            try:
-                degraded = operation() is False
-            except Exception:
-                degraded = True
-            if degraded:
-                print(
-                    "WARNING: repair logging degraded; requalification remains controlling.",
-                    file=sys.stderr,
-                )
+    record = partial(
+        attempt.best_effort,
+        warning="WARNING: repair logging degraded; requalification remains controlling.",
+    )
 
     def emit(name: str, message: str, **values: object) -> None:
         record(

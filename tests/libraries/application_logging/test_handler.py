@@ -436,7 +436,7 @@ def test_failure_and_interrupt_boundaries_are_terminal(tmp_path: Path) -> None:
 
 
 def test_initialization_write_and_sync_failures_remain_visible(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     def storage_failure(*args: object, **kwargs: object) -> None:
         raise ApplicationLogStorageError("injected")
@@ -482,6 +482,14 @@ def test_initialization_write_and_sync_failures_remain_visible(
                     attempt.synchronize("phase")
         assert raised.value.path == attempt.path
         assert attempt.path.exists()
+        assert not attempt.best_effort(
+            lambda: attempt.synchronize("phase"), warning="Logging degraded."
+        )
+        assert not attempt.best_effort(
+            lambda: pytest.fail("A failed log must not evaluate later observations"),
+            warning="Logging degraded.",
+        )
+        assert capsys.readouterr().err == "Logging degraded.\n"
 
     post_receipt = open_log(tmp_path, suffix="post-failure")
     post_receipt.publication_ready()

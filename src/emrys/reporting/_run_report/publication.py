@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import contextlib
-import hashlib
 import os
 import stat
 import sys
@@ -12,27 +11,19 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.libraries.source_authority import admit_installed_package
 from emrys.reporting import _files, _signals
 
-from .context import expected_html_identity
+from .context import recheck_evidence_context
 from .inputs import (
     _assert_input_recheck,
-    _assert_snapshot,
     _fail,
     _reject_symlink_components,
     _snapshot_regular,
 )
 from .models import FileSnapshot, ReportContext, ReportRenderError
-from .receipt import (
-    read_receipt_tsv,
-    receipt_document,
-    receipt_tsv_bytes,
-    summary_tsv_bytes,
-    validate_summary_tsv,
-)
-from .validation import validate_rendered_html
+from .receipt import output_bytes
+from .validation import validate_projected_outputs
 
 
 def _create_directories(path: Path) -> list[Path]:
@@ -104,6 +95,8 @@ def _recheck_inputs(context: ReportContext) -> None:
         _fail("Installed report package changed after admission")
     for recheck in context.input_rechecks:
         _assert_input_recheck(*recheck)
+    if context.evidence_context is not None:
+        recheck_evidence_context(context.evidence_context, context.run_summary_snapshot)
 
 
 def _assert_outputs_absent(context: ReportContext) -> None:
@@ -114,29 +107,6 @@ def _assert_outputs_absent(context: ReportContext) -> None:
     for path in context.stable_paths:
         if os.path.lexists(path):
             _fail(f"Report output appeared after preflight: {path}")
-
-
-def _assert_expected_bytes(path: Path, expected: bytes, label: str) -> FileSnapshot:
-    snapshot = _snapshot_regular(path, label)
-    if (
-        snapshot.size_bytes != len(expected)
-        or snapshot.sha256 != hashlib.sha256(expected).hexdigest()
-    ):
-        _fail(f"{label} differs from its deterministic projection: {path}")
-    _assert_snapshot(snapshot, label)
-    return snapshot
-
-
-def _assert_receipted_outputs(document: dict[str, Any]) -> None:
-    for output in document["outputs"]:
-        path = Path(output["path"])
-        snapshot = _snapshot_regular(path, f"receipted {output['kind']} output")
-        if (
-            snapshot.size_bytes != output["size_bytes"]
-            or snapshot.sha256 != output["sha256"]
-        ):
-            _fail(f"Published report output does not match its receipt: {path}")
-        _assert_snapshot(snapshot, f"receipted {output['kind']} output")
 
 
 def publish_report(context: ReportContext) -> None:
@@ -183,108 +153,30 @@ def publish_report(context: ReportContext) -> None:
         stage_identity = (metadata.st_dev, metadata.st_ino)
         _recheck_inputs(context)
 
-        staged_scientific_html = stage / context.output_scientific_html.name
-        _files.write_bytes_exclusive(
-            staged_scientific_html, context.scientific_html_bytes
-        )
-        _assert_expected_bytes(
-            staged_scientific_html,
-            context.scientific_html_bytes,
-            "staged scientific HTML report",
-        )
-        validate_rendered_html(
-            staged_scientific_html,
-            expected_banner=context.render_metadata["state_banner"],
-            expected_identity=expected_html_identity(context, "scientific"),
-        )
-        staged_evidence_html = stage / context.output_evidence_html.name
-        _files.write_bytes_exclusive(staged_evidence_html, context.evidence_html_bytes)
-        _assert_expected_bytes(
-            staged_evidence_html,
-            context.evidence_html_bytes,
-            "staged evidence HTML report",
-        )
-        validate_rendered_html(
-            staged_evidence_html,
-            expected_banner=context.render_metadata["state_banner"],
-            expected_identity=expected_html_identity(context, "evidence"),
-        )
-        staged_summary = stage / context.output_summary_tsv.name
-        summary_bytes = summary_tsv_bytes(context)
-        _files.write_bytes_exclusive(staged_summary, summary_bytes)
-        _assert_expected_bytes(staged_summary, summary_bytes, "staged run-summary TSV")
-        validate_summary_tsv(staged_summary, context)
-        staged_outputs = tuple(
-            (output_id, kind, staged, final)
-            for (output_id, kind, _suffix), staged, final in zip(
-                artifact_contracts.REPORT_OUTPUTS,
-                (staged_scientific_html, staged_evidence_html, staged_summary),
-                context.stable_paths[:3],
-                strict=True,
-            )
-        )
-        document = receipt_document(context, staged_outputs)
-        staged_receipt = stage / context.output_receipt.name
-        receipt_bytes = receipt_tsv_bytes(document)
-        _files.write_bytes_exclusive(staged_receipt, receipt_bytes)
-        _assert_expected_bytes(staged_receipt, receipt_bytes, "staged report receipt")
-        if read_receipt_tsv(staged_receipt) != document:
-            _fail("Staged report receipt did not round-trip deterministically")
+        projected = output_bytes(context)
+        staged_paths = tuple(stage / path.name for path in context.stable_paths)
+        for path, payload in zip(staged_paths, projected, strict=True):
+            _files.write_bytes_exclusive(path, payload)
+        validate_projected_outputs(context, staged_paths, projected)
         _recheck_inputs(context)
         assert_directory()
         _assert_outputs_absent(context)
         _files.fsync_path(stage)
         _files.fsync_path(context.output_dir)
 
-        for _output_id, kind, staged, final in (
-            *staged_outputs,
-            ("receipt", "receipt", staged_receipt, context.output_receipt),
-        ):
+        for staged, final in zip(staged_paths, context.stable_paths, strict=True):
             if os.path.lexists(final):
                 _fail(f"Final report path appeared during publication: {final}")
-            staged_snapshot = _snapshot_regular(staged, f"staged {kind}")
+            staged_snapshot = _snapshot_regular(staged, "staged report output")
             publication_anchors[final] = staged_snapshot
             assert_directory()
             os.link(staged, final, follow_symlinks=False)
             assert_directory()
-            _capture_moved_snapshot(final, staged_snapshot, f"published {kind}")
+            _capture_moved_snapshot(final, staged_snapshot, "published report output")
             _files.fsync_path(final)
             _files.fsync_path(context.output_dir)
 
-        _assert_expected_bytes(
-            context.output_scientific_html,
-            context.scientific_html_bytes,
-            "published scientific HTML report",
-        )
-        _assert_expected_bytes(
-            context.output_evidence_html,
-            context.evidence_html_bytes,
-            "published evidence HTML report",
-        )
-        _assert_expected_bytes(
-            context.output_summary_tsv,
-            summary_bytes,
-            "published run-summary TSV",
-        )
-        _assert_expected_bytes(
-            context.output_receipt,
-            receipt_bytes,
-            "published report receipt",
-        )
-        if read_receipt_tsv(context.output_receipt) != document:
-            _fail("Published report receipt differs from its staged document")
-        _assert_receipted_outputs(document)
-        validate_rendered_html(
-            context.output_scientific_html,
-            expected_banner=context.render_metadata["state_banner"],
-            expected_identity=expected_html_identity(context, "scientific"),
-        )
-        validate_rendered_html(
-            context.output_evidence_html,
-            expected_banner=context.render_metadata["state_banner"],
-            expected_identity=expected_html_identity(context, "evidence"),
-        )
-        validate_summary_tsv(context.output_summary_tsv, context)
+        validate_projected_outputs(context, context.stable_paths, projected)
         _recheck_inputs(context)
     except BaseException as original:
         rollback_errors: list[str] = []

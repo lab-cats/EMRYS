@@ -1,15 +1,19 @@
 # EMRYS temporary compression backlog
 
-Reviewed **2026-09-10** from `2bde5c42`. The [campaign](compression_campaign.md)
+Reviewed **2026-09-11** from `a8c3a7e3`. The [campaign](compression_campaign.md)
 owns the goals; this file owns CS scope, status, decisions, and proof. The
 [main matrix](backlog_matrix.md) owns broader outcomes and campaign completion.
 
 ## Working queue
 
-**[PR #160](https://github.com/lab-cats/EMRYS/pull/160): CS-29–30 are implemented; hosted CI is running.** The optional standalone
-runtime-report and GTF-conversion commands retire together in one PR with
-separate feature commits. Required runtime probes and conversion through the Run
-remain. Hosted validation is pending.
+**[PR #161](https://github.com/lab-cats/EMRYS/pull/161): CS-31–35 are implemented; hosted verification is pending.** Task bookkeeping,
+runtime choices, equivalent input rules, logging, and reporting now share their
+existing owners' admitted state. Figures and their drawing code are unchanged.
+
+**[PR #160](https://github.com/lab-cats/EMRYS/pull/160): CS-29–30 are complete.**
+The standalone runtime-report and GTF-conversion commands are retired; required
+probes and Run conversion remain. All ordinary [hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34555307165)
+passed at `a8c3a7e3`, including the fresh-install Doctor cases. Integration is pending.
 
 **[PR #159](https://github.com/lab-cats/EMRYS/pull/159): CS-28 is complete; implementation CI passed.**
 The manifest replaces separate workflow configuration and task dispatch files.
@@ -37,8 +41,8 @@ data, provenance, current Run recovery, and retained evidence; dashboard work
 and scientific-validation roster changes remain excluded.
 
 The product baseline for the 20% target is **69,223 physical lines at `cab77a26`**;
-`be06f608` has **61,609**, a reduction of 7,614 (11.0%). The target is at most
-55,378 lines. Count tracked source `.py`, `.R`, `.sh`, `.css`, `.j2` files and
+CS-31–35 bring it to **57,292**, a reduction of 11,931 (17.24%). The target is at most
+55,378 lines, leaving 1,914 to remove. Count tracked source `.py`, `.R`, `.sh`, `.css`, `.j2` files and
 the workflow `Snakefile` (including its new package location). Relocated
 `renv/activate.R` remains generated bootstrap; `restore_r_environment.R`
 remains tooling. Report schemas/configuration, tests, docs, tooling, and evidence
@@ -137,8 +141,14 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-26](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Execute the installed package with its own workflow and R assets. | Done | 5 | 4 | Replace runtime Git reconciliation with exact package bytes and build provenance. | `COMPRESS-01` |
 | [CS-27](#cs-27-retire-storage-inventory-reporting) | Retire optional storage planning and retention-policy reporting. | Done | 3 | 2 | Remove the entire optional command; preserve required filesystem qualification and retained evidence. | `COMPRESS-01` |
 | [CS-28](#cs-28-one-immutable-attempt-manifest) | Persist one immutable Attempt manifest for workflow settings and task plans. | Done | 4 | 4 | Retire configuration/dispatch files across execution, resume, inspection, reporting, and fixtures; preserve original task provenance. | `COMPRESS-01` |
-| [CS-29](#cs-29-retire-standalone-runtime-reports) | Retire optional standalone runtime reports. | In progress | 3 | 2 | Remove command, TSV publisher, example, and feature-only tests; preserve required runtime probes and their callers. | `COMPRESS-01` |
-| [CS-30](#cs-30-retire-standalone-gtf-conversion) | Execute GTF-to-BED12 conversion through the Run. | In progress | 3 | 2 | Retire standalone command and publication lifecycle; preserve conversion, source agreement checks, and runner protections. | `OPS-03` |
+| [CS-29](#cs-29-retire-standalone-runtime-reports) | Retire optional standalone runtime reports. | Done | 3 | 2 | Remove command, TSV publisher, example, and feature-only tests; preserve required runtime probes and their callers. | `COMPRESS-01` |
+| [CS-30](#cs-30-retire-standalone-gtf-conversion) | Execute GTF-to-BED12 conversion through the Run. | Done | 3 | 2 | Retire standalone command and publication lifecycle; preserve conversion, source agreement checks, and runner protections. | `OPS-03` |
+
+| [CS-31](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Consolidate equivalent task/report bookkeeping in the existing runner. | In progress | 4 | 4 | Preserve separate scientific/report completion and active/released-lock admission. | `OPS-03` |
+| [CS-32](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Store runtime choices once and derive fixed probe rules. | In progress | 4 | 4 | Migrate discovery, Doctor, managed ownership and execution; preserve effective checks and identities. | `COMPRESS-01` |
+| [CS-33](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Consolidate equivalent region, graph and resource rules. | In progress | 3 | 3 | Preserve differing accepted inputs and independent scientific checks. | `COMPRESS-01` |
+| [CS-34](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Retire duplicated application-log failure handling. | In progress | 2 | 2 | Keep log failures observational, warning once and preserving partial logs. | `COMPRESS-01` |
+| [CS-35](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Carry admitted inputs through reporting instead of reconstructing them. | In progress | 4 | 4 | Preserve exact source checks at publication/reuse, both reports and every figure. | `REPORT-ROSTER-01` |
 
 ## Acceptance shared by every card
 
@@ -1234,10 +1244,10 @@ No replacement framework or compatibility command is needed. Probe tests use
 the same API as production callers; only retired reporting behavior disappears.
 Local validation passes: 42 runtime probe/profile cases, runtime-file identity,
 and cached executable-permission checks, plus focused Ruff and whitespace.
-Two Doctor diagnostic cases encounter the existing local installation's missing
-build provenance; hosted CI must validate them with a fresh installation.
+Two local Doctor diagnostic cases encountered missing installation build
+provenance; both pass in the fresh-install hosted suite at `a8c3a7e3`.
 Public-command, source-dependency, documentation, and whitespace checks also
-pass. Ordinary hosted validation remains pending. This slice removes 296
+pass. Ordinary hosted validation passes at `a8c3a7e3`. This slice removes 296
 maintained product lines and one product file; its shared integration is
 included in the tranche accounting below.
 
@@ -1276,7 +1286,7 @@ validator cases. The retired `convert` group help case was removed; its two
 surviving routing cases pass on the final test roster. Ruff, source-dependency,
 documentation, and whitespace checks pass. Independent source/test review found
 no loss of required runtime checks, scientific behavior, or Run protections.
-Hosted CI has started on the published PR. This slice removes 305 maintained product
+Ordinary hosted CI passes at `a8c3a7e3`. This slice removes 305 maintained product
 lines with no product-file growth.
 
 Together CS-29–30 remove 601 maintained product lines and one product file.
@@ -1284,3 +1294,58 @@ The stack contains 57,810 maintained product lines, 11,413 below the 69,223
 campaign baseline (16.5%); another 2,432 lines are needed for the 20% target.
 No saved evidence changes. The separate SETUP-02 documentation commit records
 the already-approved benchmark retirement after optimization; the tool stays.
+
+
+### CS-31 through CS-35 Shared operational state and checked inputs
+
+Approved against `a8c3a7e3` after the standalone-command retirements. The selected
+outcome removes repeated bookkeeping and construction across the existing
+runner, runtime, validation, logging and reporting owners. The initial audit
+ranges were investigation estimates, not promised savings; report the actual
+complete migration and replacement costs.
+
+- **Preserved:** scientific computation and independent output checks, exact
+  inputs and provenance, immutable Runs, separate scientific/report completion,
+  current recovery, locks and owned rollback, both reports, every figure and
+  the dashboard. Figure-drawing consolidation and unused artifact-evidence
+  schema retirement were not selected.
+- **Retired where equivalent:** repeated task/report record mechanics, stored
+  copies of fixed runtime rules, repeated region/graph/resource implementations,
+  duplicate logging failure handling, and reconstruction of already-admitted
+  inputs within one reporting operation.
+- **Unresolved differences remain:** file-region readers have different gzip,
+  numeric and bounds behavior. Native R checks cannot disappear merely because
+  the runner hashes inputs. Equivalent acceptance must be demonstrated before
+  either family is consolidated; no compatibility flags may manufacture it.
+- **Environment-deferred:** institutional execution, scientific review and
+  biological validation.
+
+Tasks construct their identity and stable-input declarations once. Reporting
+completion and later inspection share receipt admission, while keeping their
+distinct entry conditions. Runtime inventories now store 12 path choices;
+the installed policy derives all 26 fixed checks. Their full records match the
+previous constructor, including order, arguments, versions and selected paths.
+Analysis dependencies come from the Run-bound policy. The [runbook](../operations/RUNBOOK.md)
+explains preserving and regenerating an old inventory; no historical reader remains.
+
+Reporting retains canonical Step09/10 results, carries admitted file snapshots
+in its existing artifact carrier, and reuses prepared report outputs during
+verification. Fresh operations admit their inputs, and publication/reuse still
+detects changed sources, manifests, output files and directory contents. No
+global cache or persisted evidence layer was added. Equivalent region strings,
+graph checks, resource arithmetic and logging-failure handling share existing
+owners; the distinct scientific check lists remain intact.
+
+The combined change removes **518 product lines** (+741/−1,259): bookkeeping
+112, runtime 246, input rules 70, logging 12, and reporting 78. All 202 product
+files remain; tests shrink by 148 lines. Documentation updates are separate;
+configuration, tooling and retained evidence are unchanged. These measured
+savings are substantially below the preliminary audit ranges.
+
+Focused local checks pass, including 86 runtime/discovery cases, 24 additional
+Doctor/materialization cases, reporting helpers, logging and shared-rule checks.
+Other integration fixtures stop at the local installation's missing
+`emrys-build.json`; no installation or admission bypass was performed. Ruff,
+formatting, dependency boundaries, documentation and whitespace pass.
+Independent source review found no loss of required checks or figures. Hosted
+verification and integration remain pending in the combined PR.

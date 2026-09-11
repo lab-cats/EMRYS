@@ -922,25 +922,11 @@ def _execute_plan(
         raise ControlError(str(exc), reported=True) from exc
 
     logger = attempt.logger(component="orchestration", phase="execute")
-    logging_degraded = False
-
-    def log_best_effort(operation: Callable[[], object]) -> bool:
-        nonlocal logging_degraded
-        if logging_degraded:
-            return False
-        try:
-            result = operation()
-        except Exception:
-            result = False
-        if result is not False:
-            return True
-        logging_degraded = True
-        print(
-            "WARNING: Application logging degraded; the authoritative Attempt "
-            "receipt and lifecycle outcome remain controlling.",
-            file=sys.stderr,
-        )
-        return False
+    log_best_effort = partial(
+        attempt.best_effort,
+        warning="WARNING: Application logging degraded; the authoritative Attempt "
+        "receipt and lifecycle outcome remain controlling.",
+    )
 
     def close_log_best_effort() -> None:
         with suppress(Exception):
@@ -1095,7 +1081,7 @@ def _execute_plan(
                 },
             )
         )
-    elif not logging_degraded:
+    elif not attempt.degraded:
         log_best_effort(
             lambda: attempt.terminal(
                 event_name="execution_completed",

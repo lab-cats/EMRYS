@@ -1,8 +1,9 @@
+import csv
 import json
 import os
 import subprocess
 import sys
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from emrys.evidence.runtime_availability._probes import (
     R_NAMESPACE_ROOT_OUTPUT_MARKER,
     run_checks,
 )
-from emrys.evidence.runtime_availability._profile_contract import load_profile
+from emrys.evidence.runtime_availability._profile_contract import CHOICE_IDS
 from emrys.evidence.runtime_availability._runtime_model import (
     HASH_EXPECTED,
     HASH_PAYLOAD,
@@ -27,7 +28,6 @@ from emrys.evidence.runtime_availability.inspector import (
 )
 from emrys.libraries.source_authority import controlled_python_argv
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
 PROFILE_HEADER = (
     "check_id\tcheck_type\truntime_context\trequired\ttarget\tprobe_args\t"
     "expected\tdescription"
@@ -39,6 +39,22 @@ def write_profile(path: Path, rows: list[list[str]]) -> Path:
     lines.extend("\t".join(row) for row in rows)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return path
+
+
+def fixture_checks(profile: Path) -> tuple[RuntimeCheck, ...]:
+    return tuple(
+        RuntimeCheck(
+            row["check_id"],
+            row["check_type"],
+            row["runtime_context"],
+            row["required"] == "true",
+            row["target"],
+            tuple(json.loads(row["probe_args"])),
+            row["expected"],
+            row["description"],
+        )
+        for row in csv.DictReader(profile.read_text().splitlines(), delimiter="\t")
+    )
 
 
 def tool_row(
@@ -68,7 +84,7 @@ def test_context_mismatch_is_blocked_or_not_checked(tmp_path: Path) -> None:
         ],
     )
     inspection = inspector.inspect_runtime_profile_bytes(
-        profile.read_bytes(), profile, "local"
+        profile.read_bytes(), profile, "local", checks=fixture_checks(profile)
     )
     rows = {item.check.check_id: item for item in inspection.observations}
     assert rows["required_cluster"].status == "blocked"
@@ -83,7 +99,7 @@ def test_missing_tool_and_version_mismatch_are_failures(tmp_path: Path) -> None:
         [tool_row("missing", target="emrys-tool-that-does-not-exist"), mismatch],
     )
     inspection = inspector.inspect_runtime_profile_bytes(
-        profile.read_bytes(), profile, "local"
+        profile.read_bytes(), profile, "local", checks=fixture_checks(profile)
     )
     rows = {item.check.check_id: item for item in inspection.observations}
     assert rows["missing"].status == "fail"
@@ -129,7 +145,7 @@ def test_hash_utility_and_path_visibility(tmp_path: Path) -> None:
         ],
     )
     inspection = inspector.inspect_runtime_profile_bytes(
-        profile.read_bytes(), profile, "local"
+        profile.read_bytes(), profile, "local", checks=fixture_checks(profile)
     )
     rows = {item.check.check_id: item for item in inspection.observations}
     assert rows["sha256"].status == "pass"
@@ -315,9 +331,7 @@ def test_tracked_gatk_policy_handles_official_launcher_prelude(
         encoding="utf-8",
     )
     gatk.chmod(0o755)
-    _, policy_checks = load_profile(
-        REPO_ROOT / "src/emrys/resources/runtime/runtime_policy.tsv"
-    )
+    policy_checks = inspector.load_runtime_policy()
     selected = {
         check.check_id: check
         for check in policy_checks
@@ -634,27 +648,9 @@ def test_executable_visibility_uses_absolute_target_and_matching_expectation(
         ],
     )
     inspection = inspector.inspect_runtime_profile_bytes(
-        profile.read_bytes(), profile, "local"
+        profile.read_bytes(), profile, "local", checks=fixture_checks(profile)
     )
     assert inspection.observations[0].status == "pass"
-
-    relative = write_profile(
-        tmp_path / "relative.tsv",
-        [
-            [
-                "relative",
-                "path_visibility",
-                "any",
-                "true",
-                "relative/path",
-                json.dumps(["file_readable"]),
-                "readable",
-                "Relative path",
-            ]
-        ],
-    )
-    with pytest.raises(inspector.RuntimeInspectionError, match="must be absolute"):
-        inspector.load_runtime_profile_contract(relative)
 
 
 def test_r_namespace_with_fake_rscript(tmp_path: Path) -> None:
@@ -683,7 +679,7 @@ def test_r_namespace_with_fake_rscript(tmp_path: Path) -> None:
         )
     profile = write_profile(tmp_path / "profile.tsv", rows)
     inspection = inspector.inspect_runtime_profile_bytes(
-        profile.read_bytes(), profile, "local"
+        profile.read_bytes(), profile, "local", checks=fixture_checks(profile)
     )
     observed = {item.check.check_id: item.status for item in inspection.observations}
     assert observed == {"good": "pass", "missing": "fail"}
@@ -1052,6 +1048,7 @@ def test_direct_inspection_uses_explicit_probe_environment(tmp_path: Path) -> No
         profile.read_bytes(),
         profile,
         "local",
+        checks=fixture_checks(profile),
         environment={
             "EMRYS_DOCTOR_TEST": "guarded",
             "EMRYS_LOCAL_PILOT_R": "1",
@@ -1077,75 +1074,27 @@ def test_direct_inspection_uses_explicit_probe_environment(tmp_path: Path) -> No
         observation.status = "fail"
 
 
-def test_r_namespace_requires_package_name(tmp_path: Path) -> None:
-    profile = write_profile(
-        tmp_path / "profile.tsv",
-        [
-            [
-                "bad_namespace",
-                "r_namespace",
-                "any",
-                "true",
-                "bad namespace",
-                json.dumps(["Rscript"]),
-                r"^[0-9]+[.]",
-                "Invalid package name",
-            ]
-        ],
-    )
-    with pytest.raises(
-        inspector.RuntimeInspectionError, match="must be an R package name"
-    ):
-        inspector.load_runtime_profile_contract(profile)
-
-
 @pytest.mark.parametrize(
-    ("mutator", "message"),
+    "data",
     [
-        (lambda _rows: [], "at least one check"),
-        (lambda rows: [rows[0], rows[0]], "duplicate check_id"),
-        (
-            lambda rows: [[*rows[0][:-1], ""]],
-            "description must be nonempty",
-        ),
-        (
-            lambda rows: [[*rows[0][:5], "not-json", *rows[0][6:]]],
-            "not valid JSON",
-        ),
-        (
-            lambda rows: [
-                [*rows[0][:1], "tool_version_exit_1", *rows[0][2:5], "[]", *rows[0][6:]]
-            ],
-            "tool_version_exit_1 needs probe_args",
-        ),
-        (
-            lambda rows: [
-                [
-                    *rows[0][:1],
-                    "tool_version_exit_1",
-                    *rows[0][2:6],
-                    "[",
-                    *rows[0][7:],
-                ]
-            ],
-            "expected regex is invalid",
-        ),
+        b"check_id\ttarget\n",  # missing mandatory choices
+        b"check_id\ttarget\n" + b"bash\t/bin/bash\n" * 12,
+        b"check_id\ttarget\n"
+        + b"".join(f"{key}\trelative/path\n".encode() for key in CHOICE_IDS),
+        b"check_id\tcheck_type\n",  # retired editable probe grammar
     ],
 )
-def test_malformed_profiles_are_rejected(
-    tmp_path: Path,
-    mutator: Callable[[list[list[str]]], list[list[str]]],
-    message: str,
-) -> None:
-    rows = mutator([tool_row()])
-    profile = write_profile(tmp_path / "profile.tsv", rows)
-    with pytest.raises(inspector.RuntimeInspectionError, match=message):
-        inspector.load_runtime_profile_contract(profile)
+def test_malformed_runtime_choices_are_rejected(data: bytes, tmp_path: Path) -> None:
+    with pytest.raises(inspector.RuntimeInspectionError):
+        inspector.runtime_profile_checks(data, tmp_path)
 
 
 def test_profile_symlink_is_rejected(tmp_path: Path) -> None:
-    profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
+    profile = tmp_path / "profile.tsv"
+    profile.write_bytes(
+        inspector.runtime_profile_bytes({key: tmp_path / key for key in CHOICE_IDS})
+    )
     link = tmp_path / "profile-link.tsv"
     link.symlink_to(profile)
-    with pytest.raises(inspector.RuntimeInspectionError, match="symbolic link"):
-        inspector.load_runtime_profile_contract(link)
+    with pytest.raises(inspector.RuntimeInspectionError, match="non-symlink"):
+        inspector.load_runtime_profile_contract(link, tmp_path)

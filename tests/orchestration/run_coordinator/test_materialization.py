@@ -35,10 +35,11 @@ from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.contracts.scientific_evidence import step08
 from emrys.evidence.runtime_availability import inspector as runtime_inspector
 from emrys.evidence.runtime_availability.inspector import (
-    RuntimeCheck,
     RuntimeInspection,
     RuntimeObservation,
-    load_runtime_profile_contract,
+    load_runtime_policy,
+    runtime_profile_bytes,
+    runtime_profile_checks,
 )
 from emrys.libraries import source_authority
 from emrys.libraries.source_authority import controlled_python_argv
@@ -88,10 +89,7 @@ from tests.orchestration.run_coordinator.fixture import build
 from tests.orchestration.run_coordinator.fixtures.b5_doubles import with_owner_doubles
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-_POLICY_BYTES, POLICY_CHECKS = load_runtime_profile_contract(
-    onboarding.runtime_policy_path()
-)
-RUNTIME_CHECKS = tuple((check.check_id, check.check_type) for check in POLICY_CHECKS)
+POLICY_CHECKS = load_runtime_policy()
 R_PACKAGES = tuple(
     (check.check_id, check.target)
     for check in POLICY_CHECKS
@@ -194,8 +192,6 @@ def _readiness(
     )
     runtime = workspace / "runtime/runtime.tsv"
     runtime.parent.mkdir(mode=0o700, exist_ok=True)
-    runtime_bytes = b"fixed test runtime profile\n"
-    runtime.write_bytes(runtime_bytes)
     tool = tmp_path / "tool"
     tool.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     tool.chmod(0o755)
@@ -214,65 +210,30 @@ def _readiness(
         (package_root / "DESCRIPTION").write_text(
             f"Package: {package}\nVersion: 1.0.0\n", encoding="utf-8"
         )
-    observations: list[RuntimeObservation] = []
-    rscript = str(tool)
-    for check_id, check_type in RUNTIME_CHECKS:
-        if check_id in {"python", "sha256_python"}:
-            target = sys.executable
-        elif check_id == "snakemake":
-            target = sys.executable
-        elif check_id == "picard_jar":
-            target = str(jar)
-        elif check_id == "renv_project":
-            target = str(source_root)
-        elif check_id == "renv_library":
-            target = str(renv_library)
-        elif check_type == "r_namespace":
-            target = next(package for key, package in R_PACKAGES if key == check_id)
-        else:
-            target = str(tool)
-        if check_id == "picard":
-            probe_args = ("-jar", str(jar), "MarkDuplicates", "--version")
-        elif check_id == "picard_jar":
-            probe_args = ("file_readable",)
-        elif check_id == "renv_project":
-            probe_args = ("directory_readable",)
-        elif check_id == "renv_library":
-            probe_args = ("directory_readable",)
-        elif check_id == "snakemake":
-            probe_args = controlled_python_argv(
-                sys.executable, "-m", "snakemake", "--version"
-            )[1:]
-        elif check_id == "sha256_python":
-            probe_args = ("python_hashlib",)
-        elif check_type == "r_namespace":
-            probe_args = (rscript,)
-        else:
-            probe_args = ("--version",)
-        observations.append(
-            RuntimeObservation(
-                check=RuntimeCheck(
-                    check_id=check_id,
-                    check_type=check_type,
-                    runtime_context="local",
-                    required=True,
-                    target=target,
-                    probe_args=probe_args,
-                    expected="expected",
-                    description=check_id,
-                ),
-                status="pass",
-                observed=(
-                    "9.25.1" if check_id == "snakemake" else f"observed-{check_id}"
-                ),
-                detail="test runtime",
-                resolved_path=(
-                    (renv_library / target).resolve(strict=True)
-                    if check_type == "r_namespace"
-                    else None
-                ),
-            )
+    choices = {
+        check.check_id: tool
+        for check in POLICY_CHECKS
+        if check.check_type != "r_namespace"
+    }
+    choices.update(
+        python=Path(sys.executable), picard_jar=jar, renv_library=renv_library
+    )
+    runtime_bytes = runtime_profile_bytes(choices)
+    runtime.write_bytes(runtime_bytes)
+    observations = tuple(
+        RuntimeObservation(
+            check=check,
+            status="pass",
+            observed="9.25.1"
+            if check.check_id == "snakemake"
+            else f"observed-{check.check_id}",
+            detail="test runtime",
+            resolved_path=(renv_library / check.target).resolve(strict=True)
+            if check.check_type == "r_namespace"
+            else None,
         )
+        for check in runtime_profile_checks(runtime_bytes, source_root)
+    )
     runtime_inspection = RuntimeInspection(
         profile_path=runtime,
         profile_sha256=hashlib.sha256(runtime_bytes).hexdigest(),
@@ -1393,11 +1354,6 @@ def _runtime_admission_fixture(
         source_authority,
         "admit_installed_package",
         lambda **_kwargs: plan.readiness.installed_package,
-    )
-    monkeypatch.setattr(
-        doctor,
-        "validate_runtime_profile_contract",
-        lambda _checks, _source_root, **_kwargs: None,
     )
     return request, next(
         binding

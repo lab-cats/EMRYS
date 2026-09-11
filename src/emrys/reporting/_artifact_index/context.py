@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from emrys import analyses
 from emrys.contracts.artifacts import api as contracts
+from emrys.contracts.orchestration.api import canonical_sha256
 from emrys.libraries.source_authority import admit_installed_package
 
 from .core import (
@@ -194,6 +195,7 @@ def prepare_context(
         installed_package=installed_package,
         artifact_source_root=artifact_source_root,
         run_id=arguments.run_id,
+        profile_sha256=canonical_sha256(profile),
         run_contract_path=run_contract_path,
         run_contract=run_contract,
         run_contract_file_sha256=run_contract_file_sha256,

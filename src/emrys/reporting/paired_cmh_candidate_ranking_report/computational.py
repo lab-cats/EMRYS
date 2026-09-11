@@ -151,62 +151,39 @@ def _inspect_validation(
     record: AnalysisReportArtifactV1,
     *,
     analysis_id: str,
+    step_id: str = "09",
+    check_ids: tuple[str, ...] = _VALIDATION_CHECK_IDS,
 ) -> ComputationalTable:
     table = _source_table(
         record,
-        display_limit=len(_VALIDATION_CHECK_IDS),
+        display_limit=len(check_ids),
         expected_header=owner_validation.HEADER,
     )
-    if record.row_count != len(_VALIDATION_CHECK_IDS) or len(table.display_rows) != len(
-        _VALIDATION_CHECK_IDS
-    ):
+    if record.row_count != len(check_ids) or len(table.display_rows) != len(check_ids):
         _fail(
-            "Primary Step 09 owner-validation report must contain exactly "
-            f"{len(_VALIDATION_CHECK_IDS)} check rows"
+            f"Primary Step {step_id} owner-validation report must contain exactly "
+            f"{len(check_ids)} check rows"
         )
     for row_number, (row, expected_check_id) in enumerate(
-        zip(table.display_rows, _VALIDATION_CHECK_IDS, strict=True),
+        zip(table.display_rows, check_ids, strict=True),
         start=2,
     ):
-        if row["step_id"] != "09" or row["scope_id"] != analysis_id:
+        if row["step_id"] != step_id or row["scope_id"] != analysis_id:
             _fail(
-                "Primary Step 09 owner-validation report row "
+                f"Primary Step {step_id} owner-validation report row "
                 f"{row_number} has the wrong step/scope"
             )
         if row["check_id"] != expected_check_id:
             _fail(
-                "Primary Step 09 owner-validation report has the wrong ordered "
+                f"Primary Step {step_id} owner-validation report has the wrong ordered "
                 f"check roster at row {row_number}"
             )
         if row["status"] != "pass":
             _fail(
-                "Primary Step 09 owner-validation report is not all-pass: "
+                f"Primary Step {step_id} owner-validation report is not all-pass: "
                 f"{expected_check_id}={row['status'] or '<empty>'}"
             )
     return table
-
-
-def _admit_source_identity(
-    record: AnalysisReportArtifactV1,
-) -> FileSnapshot:
-    if record.media_type != "text/tab-separated-values":
-        _fail(f"Computational result {record.artifact_id!r} must be a TSV source")
-    path = record.path
-    snapshot = _snapshot_regular(
-        path,
-        f"computational result {record.artifact_id!r}",
-    )
-    if snapshot.sha256 != record.sha256:
-        _fail(
-            f"Computational result {record.artifact_id!r} SHA-256 mismatch: "
-            f"observed {snapshot.sha256}; expected {record.sha256}"
-        )
-    if snapshot.size_bytes != record.size_bytes:
-        _fail(
-            f"Computational result {record.artifact_id!r} size mismatch: "
-            f"observed {snapshot.size_bytes}; expected {record.size_bytes}"
-        )
-    return snapshot
 
 
 def _source_table(
@@ -214,19 +191,22 @@ def _source_table(
     *,
     display_limit: int,
     expected_header: Sequence[str],
-    snapshot: FileSnapshot | None = None,
 ) -> ComputationalTable:
     table = ComputationalTable(
         artifact_id=record.artifact_id,
         row_count=record.row_count,
         header=tuple(expected_header),
         display_rows=(),
-        snapshot=snapshot or _admit_source_identity(record),
+        snapshot=record.snapshot,
     )
-    displayed = tuple(
-        MappingProxyType(row)
-        for index, row in enumerate(table.iter_rows())
-        if index < display_limit
+    displayed = (
+        tuple(
+            MappingProxyType(row)
+            for index, row in enumerate(table.iter_rows())
+            if index < display_limit
+        )
+        if display_limit
+        else ()
     )
     _assert_snapshot(table.snapshot, f"computational result {record.artifact_id!r}")
     return replace(table, display_rows=displayed)
@@ -326,23 +306,19 @@ def admit_computational_results(
         records["validation"],
         analysis_id=analysis_id,
     )
-    admitted = {
-        role: _admit_source_identity(records[role])
-        for role in (
-            "all_sites",
-            "significant_sites",
-            "summary",
-            "mutation_spectrum",
+    for record in records.values():
+        _assert_snapshot(
+            record.snapshot, f"computational result {record.artifact_id!r}"
         )
-    }
     try:
         all_projection, significant_projection, summary_projection, sample_ids = (
-            step09.validate_step09_projection(
-                admitted["all_sites"].path,
-                admitted["significant_sites"].path,
-                admitted["summary"].path,
+            records["all_sites"].projection
+            or step09.validate_step09_projection(
+                records["all_sites"].snapshot.path,
+                records["significant_sites"].snapshot.path,
+                records["summary"].snapshot.path,
                 analysis_id,
-                mutation_spectrum=admitted["mutation_spectrum"].path,
+                mutation_spectrum=records["mutation_spectrum"].snapshot.path,
             )
         )
     except (step09.ContractError, OSError, UnicodeError, csv.Error) as exc:
@@ -356,7 +332,7 @@ def admit_computational_results(
     ):
         record = records[role]
         row_count = len(rows) if role == "summary" else canonical.row_count
-        if canonical.path != admitted[role].path:
+        if canonical.path != record.snapshot.path:
             _fail(
                 f"Canonical Step 09 projection selected a different source for {record.artifact_id!r}"
             )
@@ -370,13 +346,12 @@ def admit_computational_results(
             row_count=row_count,
             header=tuple(canonical.header),
             display_rows=tuple(MappingProxyType(row) for row in rows),
-            snapshot=admitted[role],
+            snapshot=record.snapshot,
         )
     tables["mutation_spectrum"] = _source_table(
         records["mutation_spectrum"],
         display_limit=len(step09.CANONICAL_MUTATIONS),
         expected_header=step09.STEP09_MUTATION_HEADER,
-        snapshot=admitted["mutation_spectrum"],
     )
     for role, table in tables.items():
         _assert_snapshot(

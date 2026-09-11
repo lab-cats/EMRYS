@@ -59,6 +59,17 @@ check passes. Success prints `Runtime inventory admitted.` and creates
 `runtime/runtime.tsv`. Discovery never replaces an inventory, loads modules,
 or installs software.
 
+The inventory stores 12 selected paths in `check_id` and `target` columns.
+Version requirements and probe arguments come from the installed EMRYS policy;
+analysis-specific dependencies come from the selected analysis module. Doctor
+and execution use those policies to check the same tools and packages.
+
+The previous eight-column inventory format is retired. Before using a Project
+with this version, preserve its old inventory outside `runtime/runtime.tsv`,
+then repeat discovery and admission above. Discovery still refuses to overwrite
+an existing inventory. Old Attempt inventories are retained as records and are
+not accepted for execution by this version.
+
 If Doctor finds the runtime ready but single-host storage unqualified:
 
 ```bash

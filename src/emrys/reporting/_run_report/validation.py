@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from jinja2 import (
     Environment,
@@ -17,7 +17,8 @@ from jinja2 import (
     select_autoescape,
 )
 
-from .inputs import _assert_snapshot, _fail, _snapshot_regular
+from .inputs import _assert_snapshot, _fail, _read_snapshot_bytes, _snapshot_regular
+from .receipt import read_receipt_tsv, validate_summary_tsv
 from .models import (
     ACTIVE_RESOURCE_ATTRIBUTES,
     ACTIVE_URI_RE,
@@ -25,8 +26,58 @@ from .models import (
     COMPUTATIONAL_STATUS_FIELDS,
     EVIDENCE_REPORT_SECTION_IDS,
     REMOTE_URI_RE,
+    ReportContext,
     ReportRenderError,
 )
+
+
+def expected_html_identity(
+    context: ReportContext,
+    report_view: Literal["scientific", "evidence"],
+) -> dict[str, str]:
+    identity = {
+        "data-report-view": report_view,
+        "data-run-id": context.summary["run_id"],
+    }
+    if report_view == "evidence":
+        metadata = context.render_metadata
+        identity.update(
+            {
+                "data-css-sha256": metadata["css_sha256"],
+                "data-jinja-version": metadata["jinja_version"],
+                "data-renderer-version": metadata["renderer_version"],
+                "data-run-summary-sha256": metadata["run_summary_sha256"],
+                "data-template-sha256": metadata["template_sha256"],
+            }
+        )
+    return identity
+
+
+def validate_projected_outputs(
+    context: ReportContext,
+    paths: Sequence[Path],
+    projected: Sequence[bytes],
+) -> dict[str, Any]:
+    """Check exact projected bytes and the independent output contracts."""
+
+    snapshots = []
+    for path, payload in zip(paths, projected, strict=True):
+        snapshot = _snapshot_regular(path, "report output")
+        snapshots.append(snapshot)
+        if _read_snapshot_bytes(snapshot, "report output") != payload:
+            _fail(f"Report output differs from its deterministic projection: {path}")
+    scientific, evidence, summary, receipt = paths
+    for view, path in (("scientific", scientific), ("evidence", evidence)):
+        validate_rendered_html(
+            path,
+            expected_banner=context.render_metadata["state_banner"],
+            expected_identity=expected_html_identity(context, view),
+        )
+    validate_summary_tsv(summary, context)
+    document = read_receipt_tsv(receipt)
+    for snapshot in snapshots:
+        _assert_snapshot(snapshot, "report output")
+    return document
 
 
 def build_environment() -> Environment:

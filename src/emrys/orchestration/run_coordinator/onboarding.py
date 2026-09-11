@@ -18,11 +18,10 @@ from emrys import __version__
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.scientific_evidence import step08
 from emrys.evidence.runtime_availability.inspector import (
-    RuntimeCheck,
     RuntimeInspection,
     RuntimeInspectionError,
     inspect_runtime_profile_bytes,
-    load_runtime_profile_contract,
+    runtime_profile_checks,
     runtime_profile_bytes,
 )
 from emrys.libraries.exclusive_publication import publish_exclusive
@@ -32,7 +31,10 @@ from emrys.libraries.references.contigs import (
     parse_fasta_lines,
 )
 from emrys.libraries.validation.errors import ValidationError
-from emrys.libraries.validation.mpileup import selector_file_semantics
+from emrys.libraries.validation.mpileup import (
+    selector_file_semantics,
+    validate_region_selector,
+)
 from emrys.libraries.validation.inputs import (
     read_bytes_with_identity,
     sha256_with_identity,
@@ -715,41 +717,6 @@ def _require_snapshot(snapshot: Mapping[str, object], label: str) -> Path:
     return path
 
 
-def _region_parts(value: str) -> Sequence[str]:
-    regions = value.split(",")
-    if any(not region for region in regions):
-        raise OnboardingError(f"region selector contains an empty region: {value}")
-    return regions
-
-
-def _validate_region_selector(value: str, lengths: Mapping[str, int]) -> None:
-    for region in _region_parts(value):
-        contig, separator, coordinates = region.partition(":")
-        if contig not in lengths:
-            raise OnboardingError(
-                f"partition region contig is absent from the reference FASTA: {contig}"
-            )
-        if not separator:
-            continue
-        match = re.fullmatch(r"([0-9]+)(?:-([0-9]*))?", coordinates)
-        if match is None:
-            raise OnboardingError(f"partition region has invalid coordinates: {region}")
-        start = int(match.group(1))
-        end_text = match.group(2)
-        end = (
-            start
-            if end_text is None
-            else lengths[contig]
-            if end_text == ""
-            else int(end_text)
-        )
-        if start < 1 or end < start or end > lengths[contig]:
-            raise OnboardingError(
-                f"partition region is outside FASTA bounds: {region} "
-                f"(length {lengths[contig]})"
-            )
-
-
 def _regions_lines(path: Path) -> Iterator[str]:
     try:
         if path.name.endswith(".gz"):
@@ -876,7 +843,10 @@ def validate_project_admission(
         analysis_source = analysis.workflow_inputs
         for partition in analysis_source["partitions"]["rows"]:
             if partition["selector_type"] == "region":
-                _validate_region_selector(str(partition["selector_value"]), lengths)
+                try:
+                    validate_region_selector(str(partition["selector_value"]), lengths)
+                except ValidationError as exc:
+                    raise OnboardingError(str(exc)) from exc
             else:
                 selector_snapshot = partition["selector_file"]
                 if not isinstance(selector_snapshot, Mapping):
@@ -977,12 +947,6 @@ def _admit_existing_path(
     return path if retain_path else resolved
 
 
-def runtime_policy_path() -> Path:
-    """Return the single packaged fixed-workflow runtime policy."""
-
-    return Path(__file__).resolve().parents[2] / "resources/runtime/runtime_policy.tsv"
-
-
 def runtime_profile_path(project: Path) -> Path:
     """Derive the one current runtime profile owned by a Project."""
 
@@ -1070,13 +1034,8 @@ def _selected_environment_path(
 
 def _runtime_profile_bytes(
     environment: Mapping[str, str],
-    package_root: Path,
     python_executable: Path,
 ) -> tuple[bytes, Path]:
-    try:
-        _policy_bytes, policy = load_runtime_profile_contract(runtime_policy_path())
-    except RuntimeInspectionError as exc:
-        raise OnboardingError(f"packaged runtime policy is invalid: {exc}") from exc
     selected = {
         check_id: _selected_tool(check_id, command, environment)
         for check_id, command in PATH_TOOL_COMMANDS.items()
@@ -1104,44 +1063,10 @@ def _runtime_profile_bytes(
         executable=True,
         retain_path=True,
     )
-    checks: list[RuntimeCheck] = []
-    for check in policy:
-        target = check.target
-        probe_args = check.probe_args
-        if check.check_id in selected:
-            target = str(selected[check.check_id])
-        elif check.check_id in {"python", "snakemake", "sha256_python"}:
-            target = str(python)
-        elif check.check_id == "picard":
-            target = str(selected["java"])
-            probe_args = ("-jar", str(picard), "MarkDuplicates", "--version")
-        elif check.check_id == "picard_jar":
-            target = str(picard)
-        elif check.check_id == "rscript":
-            target = str(rscript)
-        elif check.check_id == "renv_project":
-            target = str(package_root)
-        elif check.check_id == "renv_library":
-            target = str(renv_library)
-        elif check.check_type == "r_namespace":
-            probe_args = (str(rscript),)
-        else:
-            raise OnboardingError(
-                f"packaged runtime policy has no discovery rule: {check.check_id}"
-            )
-        checks.append(
-            RuntimeCheck(
-                check.check_id,
-                check.check_type,
-                check.runtime_context,
-                check.required,
-                target,
-                probe_args,
-                check.expected,
-                check.description,
-            )
-        )
-    return runtime_profile_bytes(checks), renv_library
+    selected.update(
+        python=python, rscript=rscript, picard_jar=picard, renv_library=renv_library
+    )
+    return runtime_profile_bytes(selected), renv_library
 
 
 def project_runtime_directory(
@@ -1181,7 +1106,6 @@ def discover_runtime_profile(
     selected_environment = os.environ if environment is None else environment
     profile_bytes, renv_library = _runtime_profile_bytes(
         selected_environment,
-        package_root,
         Path(sys.executable) if python_executable is None else python_executable,
     )
     inspection_environment = guarded_r_environment(
@@ -1193,6 +1117,7 @@ def discover_runtime_profile(
         profile_bytes,
         destination,
         "local",
+        checks=runtime_profile_checks(profile_bytes, package_root),
         environment=inspection_environment,
     )
 
@@ -1276,7 +1201,6 @@ __all__ = (
     "project_definition_path",
     "publish_create_absent_tree",
     "publish_runtime_profile",
-    "runtime_policy_path",
     "runtime_profile_path",
     "validate_from_args",
     "validate_project",
