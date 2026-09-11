@@ -96,7 +96,6 @@ The source-dependency gate rejects additions and stale entries.
 | `CLI-SEAM-004` | `emrys.evidence.canonical_bam_qc.validator` | Owner validation command |
 | `CLI-SEAM-005` | `emrys.evidence.reference_provenance.reconciler` | Reference-provenance reconciliation command |
 | `CLI-SEAM-006` | `emrys.evidence.rseqc_orientation.validator` | Owner validation command |
-| `CLI-SEAM-007` | `emrys.evidence.runtime_availability.inspector` | Technical runtime inspection command under `emrys debug` |
 | `CLI-SEAM-009` | `emrys.evidence.storage_inventory.qualification` | Technical storage qualification command under `emrys debug` |
 | `CLI-SEAM-010` | `emrys.ingestion.sample_manifest_admission.validator` | Input-manifest admission command |
 | `CLI-SEAM-011` | `emrys.libraries.source_authority` | Controlled-runtime admission behind the installed command |

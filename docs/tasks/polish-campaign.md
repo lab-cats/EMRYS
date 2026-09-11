@@ -160,16 +160,11 @@ justify combining this proposed slice with storage publication.
 
 ### 4. Correct runtime-report publication failures
 
-**Finding:** The runtime owner's [known publication limits](../../src/emrys/evidence/runtime_availability/README.md#known-publication-limits)
-describe descriptor leaks, failed restoration, suppressed lock-removal errors,
-and the existing tests.
-
-**Outcome and acceptance:** Give descriptors explicit lifetime ownership,
-preserve unresolved recovery state, and report relevant finalization failures.
-Select descriptor acquisition and publication recovery as separate bounded
-slices if necessary; preserve intentional error precedence. Runtime-model
-consolidation in PR #116, merged through PR #139, does not repair these cases.
-No compression claim is established for the small descriptor fix.
+**Superseded by approved retirement:** [CS-29](compression_backlog_matrix.md#cs-29-retire-standalone-runtime-reports)
+removes the optional runtime-report publisher. Its descriptor leaks, failed
+restoration, and suppressed lock-removal errors retire with the feature; this
+does not claim a repair. Doctor, runtime discovery, and Run admission retain
+the shared runtime checks. Existing reports and recovery files remain untouched.
 
 ### 5. Admit current artifacts through the public validator
 

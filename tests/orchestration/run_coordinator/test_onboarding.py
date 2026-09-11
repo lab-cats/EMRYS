@@ -1158,7 +1158,6 @@ def _no_probe_inspection(
         profile_bytes=profile_bytes,
         runtime_context=runtime_context,
         observations=(),
-        rendered_bytes=b"",
     )
 
 

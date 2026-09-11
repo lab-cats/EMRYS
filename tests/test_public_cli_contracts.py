@@ -61,10 +61,6 @@ EMRYS_COMMANDS = (
         "usage: emrys inspect",
     ),
     (
-        ("debug", "runtime-availability"),
-        "usage: emrys debug runtime-availability",
-    ),
-    (
         ("debug", "storage-qualification"),
         "usage: emrys debug storage-qualification",
     ),

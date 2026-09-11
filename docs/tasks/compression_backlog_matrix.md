@@ -1,10 +1,15 @@
 # EMRYS temporary compression backlog
 
-Reviewed **2026-09-10** from `a4daef25`. The [campaign](compression_campaign.md)
+Reviewed **2026-09-10** from `2bde5c42`. The [campaign](compression_campaign.md)
 owns the goals; this file owns CS scope, status, decisions, and proof. The
 [main matrix](backlog_matrix.md) owns broader outcomes and campaign completion.
 
 ## Working queue
+
+**CS-29 is in progress:** retire the optional standalone runtime report while
+preserving the runtime checks used by Doctor, discovery, and Run admission.
+The user approved this removal together with the standalone GTF conversion
+command, in one PR with separate feature commits. Hosted validation is pending.
 
 **[PR #159](https://github.com/lab-cats/EMRYS/pull/159): CS-28 is complete; implementation CI passed.**
 The manifest replaces separate workflow configuration and task dispatch files.
@@ -132,6 +137,7 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-26](#cs-23-through-cs-26-direct-science-rendering-and-installed-execution) | Execute the installed package with its own workflow and R assets. | Done | 5 | 4 | Replace runtime Git reconciliation with exact package bytes and build provenance. | `COMPRESS-01` |
 | [CS-27](#cs-27-retire-storage-inventory-reporting) | Retire optional storage planning and retention-policy reporting. | Done | 3 | 2 | Remove the entire optional command; preserve required filesystem qualification and retained evidence. | `COMPRESS-01` |
 | [CS-28](#cs-28-one-immutable-attempt-manifest) | Persist one immutable Attempt manifest for workflow settings and task plans. | Done | 4 | 4 | Retire configuration/dispatch files across execution, resume, inspection, reporting, and fixtures; preserve original task provenance. | `COMPRESS-01` |
+| [CS-29](#cs-29-retire-standalone-runtime-reports) | Retire optional standalone runtime reports. | In progress | 3 | 2 | Remove command, TSV publisher, example, and feature-only tests; preserve required runtime probes and their callers. | `COMPRESS-01` |
 
 ## Acceptance shared by every card
 
@@ -1197,3 +1203,37 @@ tooling +2/-15 = 13 fewer; documentation +135/-36 = 99 more.
 Retained evidence is unchanged. The stack contains 58,411
 maintained product lines, 10,812 below the 69,223 baseline (15.6%); 3,033 more
 product lines are needed for the 20% goal. Master integration remains pending.
+
+### CS-29 Retire standalone runtime reports
+
+Approved on 2026-09-10 against `2bde5c42`. Runtime checks remain part of EMRYS
+readiness; the optional standalone reporting command is retired. Doctor,
+runtime discovery, and Run admission consume the existing inspection result
+directly. They do not read the optional report.
+
+- **Retired by approval:** `emrys debug runtime-availability`, standalone
+  profile inspection, TSV rendering and publication, its example profile,
+  public CLI registration, and feature-only tests. Users lose the optional
+  command for checking arbitrary profiles and exporting observations as TSV.
+- **Preserved:** profile parsing, declared execution context, executable and
+  R-package probes, hash-tool checks, path checks, readiness decisions, exact
+  profile identities, and the checks used by every required caller. Existing
+  reports, logs, locks, backups, and retained evidence are untouched.
+- **Defective but retired:** the optional publisher's descriptor and recovery
+  failures in [polish item 4](polish-campaign.md#4-correct-runtime-report-publication-failures).
+  Retirement replaces that repair proposal without claiming those defects
+  were fixed.
+- **Environment-deferred:** institutional execution, scientific review, and
+  biological validation.
+
+The complete owner audit covers CLI wiring, inspection and profile APIs,
+Doctor/discovery/lifecycle callers, result rendering, publication, mixed
+probe/report tests, example configuration, dependency rules, and documentation.
+No replacement framework or compatibility command is needed. Probe tests use
+the same API as production callers; only retired reporting behavior disappears.
+Local validation passes: 42 runtime probe/profile cases, runtime-file identity,
+and cached executable-permission checks, plus focused Ruff and whitespace.
+Two Doctor diagnostic cases encounter the existing local installation's missing
+build provenance; hosted CI must validate them with a fresh installation.
+Public-command, dependency, documentation, and ordinary hosted validation remain
+pending. Final accounting will include the complete shared integration.
