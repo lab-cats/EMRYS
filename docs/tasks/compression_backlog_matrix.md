@@ -6,7 +6,7 @@ owns the goals; this file owns CS scope, status, decisions, and proof. The
 
 ## Working queue
 
-**CS-31–35 are implemented; hosted verification is pending.** Task bookkeeping,
+**[PR #161](https://github.com/lab-cats/EMRYS/pull/161): CS-31–35 are implemented; hosted verification is pending.** Task bookkeeping,
 runtime choices, equivalent input rules, logging, and reporting now share their
 existing owners' admitted state. Figures and their drawing code are unchanged.
 
@@ -1338,7 +1338,7 @@ owners; the distinct scientific check lists remain intact.
 
 The combined change removes **518 product lines** (+741/−1,259): bookkeeping
 112, runtime 246, input rules 70, logging 12, and reporting 78. All 202 product
-files remain; tests shrink by 133 lines. Documentation updates are separate;
+files remain; tests shrink by 148 lines. Documentation updates are separate;
 configuration, tooling and retained evidence are unchanged. These measured
 savings are substantially below the preliminary audit ranges.
 

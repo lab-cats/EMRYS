@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import sys
 from dataclasses import replace
+from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -932,38 +933,6 @@ def test_repair_isolates_and_refuses_pixi_configuration(
     )
 
 
-class _Logger:
-    def __init__(self, records: list[str]) -> None:
-        self.records = records
-
-    def info(self, _message: str, *, extra: object) -> None:
-        assert extra is not None
-        self.records.append("info")
-
-
-class _Attempt:
-    def __init__(self, records: list[str]) -> None:
-        self.records = records
-
-    def logger(self, **_kwargs: object) -> _Logger:
-        return _Logger(self.records)
-
-    def terminal(self, **_kwargs: object) -> bool:
-        self.records.append("terminal")
-        return True
-
-    def fail(self, **_kwargs: object) -> bool:
-        self.records.append("failed")
-        return True
-
-    def interrupt_best_effort(self, **_kwargs: object) -> bool:
-        self.records.append("interrupted")
-        return True
-
-    def close(self) -> None:
-        self.records.append("closed")
-
-
 def _patch_logging(
     monkeypatch: pytest.MonkeyPatch,
     plan: doctor._RepairPlan,
@@ -975,7 +944,13 @@ def _patch_logging(
         lambda _plan, **_kwargs: None,
     )
 
-    def open_log(**_kwargs: object) -> _Attempt:
+    real_open_log = doctor.open_attempt_log
+
+    def observe(method: Any, name: str, **kwargs: object) -> object:
+        records.append(name)
+        return method(**kwargs)
+
+    def open_log(**kwargs: Any) -> Any:
         if plan.runtime is not None:
             assert not plan.runtime.managed_root.exists(), (
                 "repair mutated before opening its log"
@@ -984,8 +959,18 @@ def _patch_logging(
             assert not plan.storage.receipt_path.exists(), (
                 "repair mutated before opening its log"
             )
+        attempt = real_open_log(**kwargs)
         records.append("opened")
-        return _Attempt(records)
+        for method, name in (
+            ("terminal", "terminal"),
+            ("fail", "failed"),
+            ("interrupt_best_effort", "interrupted"),
+            ("close", "closed"),
+        ):
+            monkeypatch.setattr(
+                attempt, method, partial(observe, getattr(attempt, method), name)
+            )
+        return attempt
 
     monkeypatch.setattr(doctor, "open_attempt_log", open_log)
 
