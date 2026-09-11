@@ -6,7 +6,7 @@ owns the goals; this file owns CS scope, status, decisions, and proof. The
 
 ## Working queue
 
-**CS-29–30 are implemented; validation is in progress.** The optional standalone
+**[PR #160](https://github.com/lab-cats/EMRYS/pull/160): CS-29–30 are implemented; hosted CI is running.** The optional standalone
 runtime-report and GTF-conversion commands retire together in one PR with
 separate feature commits. Required runtime probes and conversion through the Run
 remain. Hosted validation is pending.
@@ -1276,7 +1276,7 @@ validator cases. The retired `convert` group help case was removed; its two
 surviving routing cases pass on the final test roster. Ruff, source-dependency,
 documentation, and whitespace checks pass. Independent source/test review found
 no loss of required runtime checks, scientific behavior, or Run protections.
-Ordinary hosted CI remains pending. This slice removes 305 maintained product
+Hosted CI has started on the published PR. This slice removes 305 maintained product
 lines with no product-file growth.
 
 Together CS-29–30 remove 601 maintained product lines and one product file.
