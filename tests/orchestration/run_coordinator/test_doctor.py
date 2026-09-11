@@ -119,7 +119,6 @@ def _inspection(
         profile_bytes=profile_bytes,
         runtime_context="local",
         observations=observations,
-        rendered_bytes=b"rendered\n",
     )
 
 

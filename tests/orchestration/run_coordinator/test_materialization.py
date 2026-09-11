@@ -279,7 +279,6 @@ def _readiness(
         profile_bytes=runtime_bytes,
         runtime_context="local",
         observations=tuple(observations),
-        rendered_bytes=b"test runtime report\n",
     )
     storage_receipt = tmp_path / "storage.qualified.json"
     storage_bytes = b"fixed storage qualification receipt\n"

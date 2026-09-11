@@ -163,7 +163,7 @@ def test_measurement_requires_branches_and_subprocess_owner_coverage() -> None:
     }
     with pytest.raises(
         TOOL.SnapshotError,
-        match="Subprocess coverage is missing for route emrys.convert.gtf_to_bed12",
+        match="Subprocess coverage is missing for route emrys.worker.gtf_to_bed12",
     ):
         TOOL.build_snapshot(raw_document(), raw_document(subprocess_files))
 

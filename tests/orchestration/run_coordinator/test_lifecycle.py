@@ -1588,7 +1588,6 @@ def test_cached_runtime_probe_rechecks_executable_permission(tmp_path: Path) -> 
                 resolved_path=tool,
             ),
         ),
-        rendered_bytes=b"rendered\n",
     )
     lifecycle._admit_runtime_executable_permissions(cached)
     tool.chmod(0o644)

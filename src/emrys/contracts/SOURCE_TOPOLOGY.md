@@ -96,7 +96,6 @@ The source-dependency gate rejects additions and stale entries.
 | `CLI-SEAM-004` | `emrys.evidence.canonical_bam_qc.validator` | Owner validation command |
 | `CLI-SEAM-005` | `emrys.evidence.reference_provenance.reconciler` | Reference-provenance reconciliation command |
 | `CLI-SEAM-006` | `emrys.evidence.rseqc_orientation.validator` | Owner validation command |
-| `CLI-SEAM-007` | `emrys.evidence.runtime_availability.inspector` | Technical runtime inspection command under `emrys debug` |
 | `CLI-SEAM-009` | `emrys.evidence.storage_inventory.qualification` | Technical storage qualification command under `emrys debug` |
 | `CLI-SEAM-010` | `emrys.ingestion.sample_manifest_admission.validator` | Input-manifest admission command |
 | `CLI-SEAM-011` | `emrys.libraries.source_authority` | Controlled-runtime admission behind the installed command |
@@ -109,7 +108,6 @@ The source-dependency gate rejects additions and stale entries.
 | `CLI-SEAM-019` | `emrys.stages.cohort_candidate_preprocessing.validator` | Owner validation command |
 | `CLI-SEAM-020` | `emrys.stages.duplicate_marking.validator` | Owner validation command |
 | `CLI-SEAM-021` | `emrys.stages.fasta_sidecars.validator` | Owner validation command |
-| `CLI-SEAM-022` | `emrys.stages.gtf_to_bed12.converter` | Owner conversion command |
 | `CLI-SEAM-023` | `emrys.stages.gtf_to_bed12.validator` | Owner validation command |
 | `CLI-SEAM-024` | `emrys.stages.mechanical_orientation.validator` | Owner validation command |
 | `CLI-SEAM-025` | `emrys.stages.partitioned_cohort_mpileup.validator` | Owner validation command |

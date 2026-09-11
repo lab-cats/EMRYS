@@ -1,4 +1,4 @@
-"""Shared data and literal contracts for runtime-preflight evidence."""
+"""Checks and observations for Project runtime admission."""
 
 from __future__ import annotations
 
@@ -16,18 +16,6 @@ PROFILE_HEADER = (
     "probe_args",
     "expected",
     "description",
-)
-RESULT_HEADER = (
-    "profile_sha256",
-    "runtime_context",
-    "check_id",
-    "check_type",
-    "target",
-    "required",
-    "status",
-    "observed",
-    "expected",
-    "detail",
 )
 CHECK_TYPES = {
     "tool_version",
@@ -53,7 +41,7 @@ HASH_EXPECTED = hashlib.sha256(HASH_PAYLOAD).hexdigest()
 
 
 class PreflightError(RuntimeError):
-    """Raised for invalid inputs or unsafe publication state."""
+    """Raised when a runtime profile or probe result is invalid."""
 
 
 @dataclass(frozen=True, slots=True)

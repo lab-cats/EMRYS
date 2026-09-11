@@ -1,15 +1,9 @@
-import argparse
 import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 from emrys.stages.gtf_to_bed12.converter import (
-    PublicationOperations,
-    convert_from_args,
     normalize_gtf,
-    publish_bed,
     render_bed,
 )
 
@@ -19,18 +13,13 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 def run_converter(
     *args: str,
     cwd: Path = REPO_ROOT,
-    worker: bool = False,
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [
             sys.executable,
             "-I",
             "-m",
-            *(
-                ("emrys.stages.gtf_to_bed12.converter",)
-                if worker
-                else ("emrys", "convert", "gtf-to-bed12")
-            ),
+            "emrys.stages.gtf_to_bed12.converter",
             *args,
         ],
         cwd=cwd,
@@ -73,60 +62,8 @@ def read_bed(path: Path) -> list[str]:
     return path.read_text().splitlines()
 
 
-def test_help_interface() -> None:
-    result = run_converter("--help")
-
-    assert result.returncode == 0
-    assert "--gtf" in result.stdout
-    assert "--bed" in result.stdout
-    assert "--feature" in result.stdout
-    assert "--name-attribute" in result.stdout
-    assert "--gene-attribute" in result.stdout
-    assert "--run-token" in result.stdout
-    assert "--execute" in result.stdout
-
-
-def test_unsafe_explicit_run_token_is_rejected_before_publication(
-    tmp_path: Path,
-) -> None:
-    gtf = write_gtf(
-        tmp_path / "input.gtf",
-        [gtf_row("chr1", (1, 4), "+", 'gene_id "g1"; transcript_id "tx1";')],
-    )
-    bed = tmp_path / "output" / "models.bed"
-
-    result = run_converter(
-        "--gtf",
-        str(gtf),
-        "--bed",
-        str(bed),
-        "--run-token",
-        "../unsafe-token",
-    )
-
-    assert result.returncode == 1
-    assert result.stdout == ""
-    assert "Unsafe Step 00b publication token" in result.stderr
-    assert not bed.parent.exists()
-
-
-def test_empty_direct_api_run_token_does_not_fall_back(tmp_path: Path) -> None:
-    bed = tmp_path / "output" / "models.bed"
-
-    with pytest.raises(ValueError, match="Unsafe Step 00b publication token"):
-        publish_bed(
-            b"complete payload\n",
-            bed,
-            run_token="",
-            operations=PublicationOperations(token_factory=lambda: "fallback-token"),
-        )
-
-    assert not bed.parent.exists()
-
-
-@pytest.mark.parametrize("worker", (False, True))
 def test_multi_exon_transcript_conversion_and_exon_sorting(
-    tmp_path: Path, worker: bool
+    tmp_path: Path,
 ) -> None:
     gtf = write_gtf(
         tmp_path / "input.gtf",
@@ -138,20 +75,15 @@ def test_multi_exon_transcript_conversion_and_exon_sorting(
     )
     bed = tmp_path / "out" / "models.bed"
 
-    if worker:
-        bed.parent.mkdir()
+    bed.parent.mkdir()
     result = run_converter(
         "--gtf",
         str(gtf),
         "--bed",
         str(bed),
-        *(() if worker else ("--run-token", "explicit-owner-00b", "--execute")),
-        worker=worker,
     )
 
     assert result.returncode == 0, result.stderr
-    if not worker:
-        assert "Run token: explicit-owner-00b" in result.stdout
     assert read_bed(bed) == [
         "chr1\t100\t250\ttxA|geneA\t0\t+\t100\t250\t0\t2\t50,50,\t0,100,"
     ]
@@ -166,7 +98,7 @@ def test_single_exon_transcript_conversion(tmp_path: Path) -> None:
     )
     bed = tmp_path / "single.bed"
 
-    result = run_converter("--gtf", str(gtf), "--bed", str(bed), "--execute")
+    result = run_converter("--gtf", str(gtf), "--bed", str(bed))
 
     assert result.returncode == 0
     assert read_bed(bed) == ["chr2\t9\t20\ttxB|geneB\t0\t-\t9\t20\t0\t1\t11,\t0,"]
@@ -181,7 +113,7 @@ def test_missing_gene_id_uses_transcript_only_name(tmp_path: Path) -> None:
     )
     bed = tmp_path / "missing_gene.bed"
 
-    result = run_converter("--gtf", str(gtf), "--bed", str(bed), "--execute")
+    result = run_converter("--gtf", str(gtf), "--bed", str(bed))
 
     assert result.returncode == 0
     assert read_bed(bed)[0].split("\t")[3] == "txOnly"
@@ -197,7 +129,7 @@ def test_multiple_gene_ids_warns_and_keeps_first(tmp_path: Path) -> None:
     )
     bed = tmp_path / "gene_conflict.bed"
 
-    result = run_converter("--gtf", str(gtf), "--bed", str(bed), "--execute")
+    result = run_converter("--gtf", str(gtf), "--bed", str(bed))
 
     assert result.returncode == 0
     assert "multiple non-empty gene IDs" in result.stderr
@@ -225,7 +157,7 @@ def test_normalization_preserves_admission_accumulation_and_warning_order(
     )
     warnings: list[str] = []
 
-    records = normalize_gtf(gtf, "exon", "transcript_id", "gene_id", warnings.append)
+    records = normalize_gtf(gtf, warnings.append)
 
     assert render_bed(records) == (
         b"chr1\t0\t35\tkeep|geneA\t0\t+\t0\t35\t0\t4\t5,5,5,5,\t0,10,20,30,\n"
@@ -242,17 +174,22 @@ def test_normalization_preserves_admission_accumulation_and_warning_order(
     ]
 
 
-def test_custom_feature_and_attribute_names(tmp_path: Path) -> None:
+def test_nonexon_features_are_skipped_and_names_are_normalized(tmp_path: Path) -> None:
     gtf = write_gtf(
         tmp_path / "custom.gtf",
         [
-            gtf_row("chr3", (1, 5), "+", 'gene_name "ignored"; tx_name "ignored";'),
+            gtf_row(
+                "chr3",
+                (1, 5),
+                "+",
+                'gene_id "ignored"; transcript_id "ignored";',
+                feature="CDS",
+            ),
             gtf_row(
                 "chr3",
                 (11, 20),
                 ".",
-                'gene_name "gene C"; tx_name "tx C";',
-                feature="CDS",
+                'gene_id "gene C"; transcript_id "tx C";',
             ),
         ],
     )
@@ -263,13 +200,6 @@ def test_custom_feature_and_attribute_names(tmp_path: Path) -> None:
         str(gtf),
         "--bed",
         str(bed),
-        "--feature",
-        "CDS",
-        "--name-attribute",
-        "tx_name",
-        "--gene-attribute",
-        "gene_name",
-        "--execute",
     )
 
     assert result.returncode == 0
@@ -300,7 +230,7 @@ def test_malformed_missing_transcript_and_invalid_strand_rows_warn_and_skip(
     )
     bed = tmp_path / "malformed.bed"
 
-    result = run_converter("--gtf", str(gtf), "--bed", str(bed), "--execute")
+    result = run_converter("--gtf", str(gtf), "--bed", str(bed))
 
     assert result.returncode == 0
     assert "expected 9 tab-separated columns" in result.stderr
@@ -341,7 +271,7 @@ def test_invalid_numeric_and_range_coordinates_warn_and_skip(tmp_path: Path) -> 
     )
     bed = tmp_path / "coordinates.bed"
 
-    result = run_converter("--gtf", str(gtf), "--bed", str(bed), "--execute")
+    result = run_converter("--gtf", str(gtf), "--bed", str(bed))
 
     assert result.returncode == 0
     assert "row 1: start and end must be integers; skipping row" in result.stderr
@@ -380,7 +310,7 @@ def test_conflicting_chromosome_or_strand_skips_entire_transcript(
     )
     bed = tmp_path / "conflicts.bed"
 
-    result = run_converter("--gtf", str(gtf), "--bed", str(bed), "--execute")
+    result = run_converter("--gtf", str(gtf), "--bed", str(bed))
 
     assert result.returncode == 0
     assert "conflicting chromosome or strand for transcript 'txBad'" in result.stderr
@@ -406,10 +336,10 @@ def test_no_valid_transcripts_fails_nonzero(tmp_path: Path) -> None:
     )
     bed = tmp_path / "empty.bed"
 
-    result = run_converter("--gtf", str(gtf), "--bed", str(bed), "--execute")
+    result = run_converter("--gtf", str(gtf), "--bed", str(bed))
 
     assert result.returncode != 0
-    assert "no transcripts were written" in result.stderr
+    assert "No valid transcripts were produced" in result.stderr
     assert not bed.exists()
 
 
@@ -425,7 +355,7 @@ def test_output_is_sorted_by_chrom_start_end_and_name(tmp_path: Path) -> None:
     )
     bed = tmp_path / "sorted.bed"
 
-    result = run_converter("--gtf", str(gtf), "--bed", str(bed), "--execute")
+    result = run_converter("--gtf", str(gtf), "--bed", str(bed))
 
     assert result.returncode == 0
     assert [line.split("\t")[3] for line in read_bed(bed)] == [
@@ -434,45 +364,6 @@ def test_output_is_sorted_by_chrom_start_end_and_name(tmp_path: Path) -> None:
         "txB|geneB",
         "tx2|gene2",
     ]
-
-
-def test_dry_run_is_side_effect_free_from_arbitrary_cwd(
-    tmp_path: Path,
-) -> None:
-    inputs = tmp_path / "inputs"
-    inputs.mkdir()
-    gtf = write_gtf(
-        inputs / "input.gtf",
-        [
-            gtf_row(
-                "chr1",
-                (1, 5),
-                "+",
-                'gene_id "gene1"; transcript_id "tx1";',
-            )
-        ],
-    )
-    output = tmp_path / "outputs" / "models.bed"
-    unrelated = tmp_path / "unrelated.tsv"
-    unrelated.write_text("must\tremain\nunchanged\ttrue\n")
-    unrelated_before = unrelated.read_bytes()
-    invocation_cwd = tmp_path / "elsewhere"
-    invocation_cwd.mkdir()
-
-    result = run_converter(
-        "--gtf",
-        str(gtf),
-        "--bed",
-        str(output),
-        cwd=invocation_cwd,
-    )
-
-    assert result.returncode == 0, result.stderr
-    assert result.stderr == ""
-    assert "Mode: dry-run" in result.stdout
-    assert "Dry-run only" in result.stdout
-    assert not output.parent.exists()
-    assert unrelated.read_bytes() == unrelated_before
 
 
 def test_existing_output_is_never_replaced_from_arbitrary_cwd(
@@ -492,7 +383,8 @@ def test_existing_output_is_never_replaced_from_arbitrary_cwd(
     bed = tmp_path / "output" / "models.bed"
     invocation_cwd = tmp_path / "elsewhere"
     invocation_cwd.mkdir()
-    arguments = ("--gtf", str(gtf), "--bed", str(bed), "--execute")
+    bed.parent.mkdir()
+    arguments = ("--gtf", str(gtf), "--bed", str(bed))
 
     first = run_converter(*arguments, cwd=invocation_cwd)
     first_bytes = bed.read_bytes()
@@ -501,226 +393,7 @@ def test_existing_output_is_never_replaced_from_arbitrary_cwd(
     assert first.returncode == 0
     assert second.returncode == 1
     assert second.stdout == ""
-    assert "refusing to replace" in second.stderr
+    assert "File exists" in second.stderr
     assert bed.read_bytes() == first_bytes
     assert first_bytes == b"chr1\t0\t4\ttx1|g1\t0\t+\t0\t4\t0\t1\t4,\t0,\n"
     assert list(invocation_cwd.iterdir()) == []
-
-
-def test_publication_failure_cleans_owned_lock_and_stage(tmp_path: Path) -> None:
-    gtf = write_gtf(
-        tmp_path / "input.gtf",
-        [gtf_row("chr1", (1, 4), "+", 'gene_id "g1"; transcript_id "tx1";')],
-    )
-    bed = tmp_path / "output" / "models.bed"
-    arguments = argparse.Namespace(
-        gtf=gtf,
-        bed=bed,
-        feature="exon",
-        name_attribute="transcript_id",
-        gene_attribute="gene_id",
-        execute=True,
-    )
-
-    def fail_link(_staged: Path, _output: Path) -> None:
-        raise OSError("controlled link failure")
-
-    result = convert_from_args(
-        arguments,
-        publication_operations=PublicationOperations(
-            token_factory=lambda: "controlled-failure",
-            link=fail_link,
-        ),
-    )
-
-    assert result == 1
-    assert not bed.exists()
-    assert list(bed.parent.iterdir()) == []
-
-
-def test_lock_cleanup_failure_retains_lock_and_staging_residue(
-    tmp_path: Path,
-) -> None:
-    gtf = write_gtf(
-        tmp_path / "input.gtf",
-        [gtf_row("chr1", (1, 4), "+", 'gene_id "g1"; transcript_id "tx1";')],
-    )
-    bed = tmp_path / "output" / "models.bed"
-    token = "lock-cleanup-failure"
-    lock = bed.parent / ".models.bed.step00b.lock"
-    staged = bed.parent / f".models.bed.step00b.{token}.tmp"
-    arguments = argparse.Namespace(
-        gtf=gtf,
-        bed=bed,
-        feature="exon",
-        name_attribute="transcript_id",
-        gene_attribute="gene_id",
-        execute=True,
-    )
-
-    def fail_lock_unlink(path: Path) -> None:
-        if path == lock:
-            raise OSError("controlled lock unlink failure")
-        path.unlink()
-
-    result = convert_from_args(
-        arguments,
-        publication_operations=PublicationOperations(
-            token_factory=lambda: token,
-            unlink=fail_lock_unlink,
-        ),
-    )
-
-    assert result == 1
-    assert not bed.exists()
-    assert lock.read_text(encoding="utf-8") == f"run_token={token}\n"
-    assert staged.read_bytes() == b"chr1\t0\t4\ttx1|g1\t0\t+\t0\t4\t0\t1\t4,\t0,\n"
-
-
-def test_stage_cleanup_failure_retains_staging_residue(tmp_path: Path) -> None:
-    gtf = write_gtf(
-        tmp_path / "input.gtf",
-        [gtf_row("chr1", (1, 4), "+", 'gene_id "g1"; transcript_id "tx1";')],
-    )
-    bed = tmp_path / "output" / "models.bed"
-    token = "stage-cleanup-failure"
-    lock = bed.parent / ".models.bed.step00b.lock"
-    staged = bed.parent / f".models.bed.step00b.{token}.tmp"
-    arguments = argparse.Namespace(
-        gtf=gtf,
-        bed=bed,
-        feature="exon",
-        name_attribute="transcript_id",
-        gene_attribute="gene_id",
-        execute=True,
-    )
-
-    def fail_stage_unlink(path: Path) -> None:
-        if path == staged:
-            raise OSError("controlled staging unlink failure")
-        path.unlink()
-
-    result = convert_from_args(
-        arguments,
-        publication_operations=PublicationOperations(
-            token_factory=lambda: token,
-            unlink=fail_stage_unlink,
-        ),
-    )
-
-    assert result == 1
-    assert not bed.exists()
-    assert not lock.exists()
-    assert staged.read_bytes() == b"chr1\t0\t4\ttx1|g1\t0\t+\t0\t4\t0\t1\t4,\t0,\n"
-
-
-def test_foreign_replacement_during_lock_cleanup_is_never_deleted(
-    tmp_path: Path,
-) -> None:
-    gtf = write_gtf(
-        tmp_path / "input.gtf",
-        [gtf_row("chr1", (1, 4), "+", 'gene_id "g1"; transcript_id "tx1";')],
-    )
-    bed = tmp_path / "output" / "models.bed"
-    token = "foreign-replacement"
-    lock = bed.parent / ".models.bed.step00b.lock"
-    staged = bed.parent / f".models.bed.step00b.{token}.tmp"
-    foreign_bytes = b"foreign final must remain\n"
-    arguments = argparse.Namespace(
-        gtf=gtf,
-        bed=bed,
-        feature="exon",
-        name_attribute="transcript_id",
-        gene_attribute="gene_id",
-        execute=True,
-    )
-
-    def replace_final_then_fail_lock(path: Path) -> None:
-        if path == lock:
-            bed.unlink()
-            bed.write_bytes(foreign_bytes)
-            raise OSError("controlled lock unlink failure after foreign replacement")
-        path.unlink()
-
-    result = convert_from_args(
-        arguments,
-        publication_operations=PublicationOperations(
-            token_factory=lambda: token,
-            unlink=replace_final_then_fail_lock,
-        ),
-    )
-
-    assert result == 1
-    assert bed.read_bytes() == foreign_bytes
-    assert lock.read_text(encoding="utf-8") == f"run_token={token}\n"
-    assert staged.is_file()
-    assert not staged.samefile(bed)
-
-
-def test_interruption_residue_is_preserved_and_blocks_retry(tmp_path: Path) -> None:
-    gtf = write_gtf(
-        tmp_path / "input.gtf",
-        [gtf_row("chr1", (1, 4), "+", 'gene_id "g1"; transcript_id "tx1";')],
-    )
-    bed = tmp_path / "output" / "models.bed"
-    arguments = argparse.Namespace(
-        gtf=gtf,
-        bed=bed,
-        feature="exon",
-        name_attribute="transcript_id",
-        gene_attribute="gene_id",
-        run_token="explicit-interrupted",
-        execute=True,
-    )
-
-    def interrupt_after_stage(_staged: Path, _output: Path) -> None:
-        raise KeyboardInterrupt
-
-    with pytest.raises(KeyboardInterrupt):
-        convert_from_args(
-            arguments,
-            publication_operations=PublicationOperations(
-                token_factory=lambda: "factory-token-must-not-win",
-                after_stage_write=interrupt_after_stage,
-            ),
-        )
-
-    lock = bed.parent / ".models.bed.step00b.lock"
-    staged = bed.parent / ".models.bed.step00b.explicit-interrupted.tmp"
-    assert not bed.exists()
-    assert lock.read_text(encoding="utf-8") == "run_token=explicit-interrupted\n"
-    assert staged.is_file()
-
-    retry = run_converter(
-        "--gtf",
-        str(gtf),
-        "--bed",
-        str(bed),
-        "--execute",
-    )
-
-    assert retry.returncode == 1
-    assert "publication lock already exists" in retry.stderr
-    assert lock.is_file()
-    assert staged.is_file()
-
-
-def test_staging_residue_without_lock_is_preserved_and_blocks_plan(
-    tmp_path: Path,
-) -> None:
-    gtf = write_gtf(
-        tmp_path / "input.gtf",
-        [gtf_row("chr1", (1, 4), "+", 'gene_id "g1"; transcript_id "tx1";')],
-    )
-    bed = tmp_path / "output" / "models.bed"
-    bed.parent.mkdir()
-    staged = bed.parent / ".models.bed.step00b.older-attempt.tmp"
-    staged.write_bytes(b"preserve\n")
-
-    result = run_converter("--gtf", str(gtf), "--bed", str(bed))
-
-    assert result.returncode == 1
-    assert result.stdout == ""
-    assert "staging residue requires inspection" in result.stderr
-    assert staged.read_bytes() == b"preserve\n"
-    assert not bed.exists()

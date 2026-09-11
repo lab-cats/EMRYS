@@ -852,13 +852,7 @@ def validate_project_admission(
         raise OnboardingError(f"reference FASTA is invalid: {fasta}: {exc}") from exc
     warnings: list[str] = []
     try:
-        transcripts = gtf_converter.normalize_gtf(
-            gtf,
-            "exon",
-            "transcript_id",
-            "gene_id",
-            warnings.append,
-        )
+        transcripts = gtf_converter.normalize_gtf(gtf, warnings.append)
     except (OSError, UnicodeError, ValueError) as exc:
         raise OnboardingError(f"reference GTF is invalid: {gtf}: {exc}") from exc
     if not transcripts:
