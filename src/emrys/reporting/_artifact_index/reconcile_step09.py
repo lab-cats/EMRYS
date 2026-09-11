@@ -34,18 +34,17 @@ def reconcile_step09(
     )
     analysis_id = all_sites.row["scope_id"]
     try:
-        _all_table, _significant_table, summary_table, sample_ids = (
-            step09.validate_step09_projection(
-                all_sites.resolved_path,
-                significant.resolved_path,
-                summary.resolved_path,
-                analysis_id,
-                mutation_spectrum=mutation.resolved_path,
-            )
+        projection = step09.validate_step09_projection(
+            all_sites.resolved_path,
+            significant.resolved_path,
+            summary.resolved_path,
+            analysis_id,
+            mutation_spectrum=mutation.resolved_path,
         )
     except step09.ContractError as exc:
         raise ArtifactIndexError(str(exc)) from exc
 
+    _all_table, _significant_table, summary_table, sample_ids = projection
     summary_row = summary_table.rows[0]
     all_samples = list(sample_ids)
     for path_field, hash_field, adapter_id in (
@@ -70,3 +69,4 @@ def reconcile_step09(
             raise ArtifactIndexError(
                 "Step 09 result sample order disagrees with Step 08 sites"
             )
+    all_sites.projection = projection

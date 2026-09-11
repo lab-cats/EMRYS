@@ -10,9 +10,9 @@ calls it; it provides no separate command or operator recovery interface.
 | [`models.py`](models.py) | Immutable contract, provider, output, and two-view context values. |
 | [`inputs.py`](inputs.py) | Validate the run summary and installed provider; retain stable snapshots. |
 | [`context.py`](context.py) | Prepare roots, provider, outputs, portable links, and renderer. |
-| [`validation.py`](validation.py) | Render admitted values with strict, autoescaped Jinja; validate CSS, HTML safety, meaning, and accessibility. |
+| [`validation.py`](validation.py) | Render admitted values with strict, autoescaped Jinja; check exact projected bytes and the independent HTML, TSV and receipt contracts. |
 | [`run_report.html.j2`](../templates/run_report.html.j2) | Own both built-in layouts and explanatory text, using summary and scientific values directly. |
-| [`receipt.py`](receipt.py) | Build the deterministic summary TSV and validate current report receipts. |
+| [`receipt.py`](receipt.py) | Project the fixed output bytes and receipt together; validate current receipts. |
 | [`publication.py`](publication.py) | Publish both HTML files and TSV with the receipt last. |
 
 Both reporting publishers use [`_files.py`](../_files.py) for exclusive durable

@@ -48,7 +48,12 @@ def test_default_inspection_reuses_only_current_reporting_predecessor(
     observed: list[Any] = []
     expected = _ReportSemanticResult(Path("/receipt.tsv"), "a" * 64, ())
 
-    def validate(*_arguments: Any, validated_predecessor: Any = None) -> Any:
+    def validate(
+        *_arguments: Any,
+        validated_predecessor: Any = None,
+        prepared_context: Any = None,
+    ) -> Any:
+        assert prepared_context is None
         observed.append(validated_predecessor)
         return expected
 
@@ -138,9 +143,6 @@ def _identity_paths(
     built: workflow_fixture.WorkflowFixture,
 ) -> dict[str, Path]:
     return {
-        "run_root": built.run_root,
-        "execution_path": built.run_root / "contract" / "run.json",
-        "profile_path": built.run_root / "contract" / "profile.json",
         "workflow_attempt_path": built.workflow_attempt_path,
     }
 
@@ -363,21 +365,27 @@ def test_current_boundary_uses_run_authority_and_exact_attempt_reference(
         ops=_ops(lambda *_arguments: _semantic_result(Path("/unused"))),
     )
     start = orchestration_contracts.load_record(
-        reporting_boundary.ledger_paths(identity["run_root"], "run_summary").start,
+        reporting_boundary.ledger_paths(built.run_root, "run_summary").start,
         "reporting-start",
     )
     assert (
         start["execution_contract_sha256"]
-        == hashlib.sha256(identity["execution_path"].read_bytes()).hexdigest()
+        == hashlib.sha256(
+            (built.run_root / "contract/run.json").read_bytes()
+        ).hexdigest()
     )
     assert start["workflow_attempt"] == _reference(
         built.workflow_attempt_path, built.run_root
     )
     admitted = reporting_boundary.validate_start(
         "run_summary",
-        identity["run_root"],
-        orchestration_contracts.load_json_object(identity["execution_path"]),
-        orchestration_contracts.load_json_object(identity["profile_path"]),
+        built.run_root,
+        orchestration_contracts.load_json_object(
+            (built.run_root / "contract/run.json")
+        ),
+        orchestration_contracts.load_json_object(
+            (built.run_root / "contract/profile.json")
+        ),
     )
     assert admitted.origin_workflow_attempt_id == start["origin_workflow_attempt_id"]
 
@@ -410,7 +418,7 @@ def test_current_boundary_rejects_reporting_reference_tamper(
             orchestration_contracts.canonical_json_bytes(attempt)
         )
     else:
-        inventory = identity["run_root"] / config["artifact_inventory_path"]["path"]
+        inventory = built.run_root / config["artifact_inventory_path"]["path"]
         inventory.write_bytes(inventory.read_bytes() + b"tampered\n")
 
     with pytest.raises(reporting_boundary.ReportingBoundaryError, match=message):
@@ -481,21 +489,9 @@ def test_only_html_semantic_results_require_verified_locations() -> None:
         reporting_boundary._semantic_report_locations("html_report", summary)
 
 
-def test_boundary_rejects_wrong_identity_and_nonfixed_paths(tmp_path: Path) -> None:
+def test_boundary_rejects_wrong_attempt_identity(tmp_path: Path) -> None:
     built = _build(tmp_path / "fixture")
     identity = _identity_paths(built)
-    wrong_execution = built.run_root / "contract" / "execution-copy.json"
-    wrong_execution.write_bytes((built.run_root / "contract" / "run.json").read_bytes())
-    with pytest.raises(
-        reporting_boundary.ReportingBoundaryError,
-        match="fixed execution/profile",
-    ):
-        reporting_boundary.publish_start(
-            kind="run_summary",
-            **{**identity, "execution_path": wrong_execution},
-            ops=_ops(lambda *_arguments: _semantic_result(built.run_summary)),
-        )
-
     attempt = orchestration_contracts.load_record(
         built.workflow_attempt_path,
         "workflow-attempt",

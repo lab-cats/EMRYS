@@ -140,6 +140,7 @@ class AttemptLog:
         self.mode = _token("mode", mode)
         self._controls = controls
         self._state = "initializing"
+        self.degraded = False
         self._sequence = 0
         self._last_monotonic: float | None = None
         self._utc_now = utc_now
@@ -203,6 +204,17 @@ class AttemptLog:
     @property
     def durable_only_count(self) -> int:
         return self._durable_only_count
+
+    def best_effort(self, operation: Callable[[], object], *, warning: str) -> bool:
+        """Stop observations after one failure without changing the operation."""
+        if not self.degraded:
+            try:
+                self.degraded = operation() is False
+            except Exception:
+                self.degraded = True
+            if self.degraded:
+                print(warning, file=sys.stderr)
+        return not self.degraded
 
     def synchronize(self, boundary: str) -> None:
         _token("synchronization boundary", boundary)

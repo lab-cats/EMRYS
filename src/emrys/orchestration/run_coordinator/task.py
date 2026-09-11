@@ -1602,41 +1602,6 @@ def _admit_start_origins(
     return expected_attempt, run_lock_reference
 
 
-def _build_task_start(
-    dispatch: TaskPlan,
-    *,
-    execution: Mapping[str, Any],
-    execution_sha256: str,
-    profile_sha256: str,
-    created_at: str,
-    observe_package: PackageObserver,
-) -> tuple[dict[str, Any], bytes]:
-    attempt_reference, run_lock_reference = _admit_start_origins(
-        dispatch,
-        execution=execution,
-        execution_sha256=execution_sha256,
-        profile_sha256=profile_sha256,
-        require_active_attempt=True,
-        observe_package=observe_package,
-    )
-    record = {
-        "schema_version": "emrys.task-start.v2",
-        "run_id": execution["run_id"],
-        "execution_contract_sha256": execution_sha256,
-        "profile_sha256": profile_sha256,
-        "workflow_attempt_id": dispatch.workflow_attempt_id,
-        "task_attempt_id": dispatch.task_attempt_id,
-        "machine_key": dispatch.machine_key,
-        "scope": dict(dispatch.scope),
-        "owner_run_token": dispatch.owner_run_token,
-        "workflow_attempt_record": attempt_reference,
-        "run_lock": run_lock_reference,
-        "created_at": created_at,
-    }
-    orchestration_contracts.validate_record("task-start", record)
-    return record, orchestration_contracts.canonical_json_bytes(record)
-
-
 def _task_admission_context(
     run_root: Path,
     machine_key: str,
@@ -2013,9 +1978,7 @@ def _publish_attempt(
     dispatch: TaskPlan,
     *,
     ops: TaskOps,
-    execution: Mapping[str, Any],
-    execution_sha256: str,
-    profile_sha256: str,
+    identity: Mapping[str, Any],
     started_at: str,
     producer: CommandResult | None,
     validator: CommandResult | None,
@@ -2041,14 +2004,7 @@ def _publish_attempt(
     status = "succeeded" if failure_message is None else "failed"
     attempt = {
         "schema_version": "emrys.task-attempt.v2",
-        "run_id": execution["run_id"],
-        "execution_contract_sha256": execution_sha256,
-        "profile_sha256": profile_sha256,
-        "workflow_attempt_id": dispatch.workflow_attempt_id,
-        "task_attempt_id": dispatch.task_attempt_id,
-        "machine_key": dispatch.machine_key,
-        "scope": dict(dispatch.scope),
-        "owner_run_token": dispatch.owner_run_token,
+        **identity,
         "task_start_record": (
             None if task_start_reference is None else dict(task_start_reference)
         ),
@@ -2087,6 +2043,7 @@ def run_task(
     started_at = _timestamp_from_task_id(dispatch.task_attempt_id)
     profile: dict[str, Any] = {}
     execution: dict[str, Any] = {}
+    identity: dict[str, Any] = {}
     execution_sha256 = "0" * 64
     profile_sha256 = "0" * 64
     step_id = "unknown"
@@ -2147,7 +2104,18 @@ def run_task(
             dispatch,
             path_access=ops.path_access,
         )
-        _admit_start_origins(
+        identity = {
+            "run_id": execution["run_id"],
+            "execution_contract_sha256": execution_sha256,
+            "profile_sha256": profile_sha256,
+            "workflow_attempt_id": dispatch.workflow_attempt_id,
+            "task_attempt_id": dispatch.task_attempt_id,
+            "machine_key": dispatch.machine_key,
+            "scope": dict(dispatch.scope),
+            "owner_run_token": dispatch.owner_run_token,
+        }
+        admit_origins = partial(
+            _admit_start_origins,
             dispatch,
             execution=execution,
             execution_sha256=execution_sha256,
@@ -2155,6 +2123,7 @@ def run_task(
             require_active_attempt=True,
             observe_package=ops.admit_installed_package,
         )
+        admit_origins()
         _materialize_task_scope(dispatch)
         task_scope_materialized = True
         directory_inputs = {
@@ -2170,16 +2139,14 @@ def run_task(
             )
             if path not in existing_input_paths
         )
-        initial_inputs = tuple(
-            _snapshot(item)
-            for item in (
-                FileDeclaration("workflow_attempt", dispatch.path),
-                FileDeclaration("execution_contract", dispatch.execution_path),
-                FileDeclaration("workflow_profile", dispatch.profile_path),
-                *dispatch.inputs,
-                *extra_inputs,
-            )
+        stable_inputs = (
+            FileDeclaration("workflow_attempt", dispatch.path),
+            FileDeclaration("execution_contract", dispatch.execution_path),
+            FileDeclaration("workflow_profile", dispatch.profile_path),
+            *dispatch.inputs,
+            *extra_inputs,
         )
+        initial_inputs = tuple(_snapshot(item) for item in stable_inputs)
         if initial_inputs[0]["sha256"] != dispatch.manifest_sha256:
             raise TaskBoundaryError("Task plan changed before producer execution")
         if len({item["role"] for item in initial_inputs}) != len(initial_inputs):
@@ -2187,16 +2154,7 @@ def run_task(
 
         reused_outputs = _admit_native_destinations(dispatch)
 
-        entry_inputs = tuple(
-            _snapshot(item)
-            for item in (
-                FileDeclaration("workflow_attempt", dispatch.path),
-                FileDeclaration("execution_contract", dispatch.execution_path),
-                FileDeclaration("workflow_profile", dispatch.profile_path),
-                *dispatch.inputs,
-                *extra_inputs,
-            )
-        )
+        entry_inputs = tuple(_snapshot(item) for item in stable_inputs)
         if entry_inputs != initial_inputs:
             raise TaskBoundaryError("A stable task input changed before producer entry")
         if any(
@@ -2212,23 +2170,19 @@ def run_task(
             path_access=ops.path_access,
         )
 
-        _task_start, task_start_bytes = _build_task_start(
-            dispatch,
-            execution=execution,
-            execution_sha256=execution_sha256,
-            profile_sha256=profile_sha256,
-            created_at=_utc_timestamp(ops.now()),
-            observe_package=ops.admit_installed_package,
-        )
-        _attempt_ref, lock_reference_at_entry = _admit_start_origins(
-            dispatch,
-            execution=execution,
-            execution_sha256=execution_sha256,
-            profile_sha256=profile_sha256,
-            require_active_attempt=True,
-            observe_package=ops.admit_installed_package,
-        )
-        if lock_reference_at_entry != _task_start["run_lock"]:
+        created_at = _utc_timestamp(ops.now())
+        attempt_reference, run_lock_reference = admit_origins()
+        task_start = {
+            "schema_version": "emrys.task-start.v2",
+            **identity,
+            "workflow_attempt_record": attempt_reference,
+            "run_lock": run_lock_reference,
+            "created_at": created_at,
+        }
+        orchestration_contracts.validate_record("task-start", task_start)
+        task_start_bytes = orchestration_contracts.canonical_json_bytes(task_start)
+        _attempt_ref, lock_reference_at_entry = admit_origins()
+        if lock_reference_at_entry != task_start["run_lock"]:
             raise TaskBoundaryError("Workflow run lock changed before producer entry")
         ops.publish_bytes(dispatch.task_start_path, task_start_bytes)
         task_start_reference = _record_reference(
@@ -2241,15 +2195,8 @@ def run_task(
             raise TaskBoundaryError(
                 "Published task-start bytes changed before producer"
             )
-        _attempt_ref, lock_reference_before_producer = _admit_start_origins(
-            dispatch,
-            execution=execution,
-            execution_sha256=execution_sha256,
-            profile_sha256=profile_sha256,
-            require_active_attempt=True,
-            observe_package=ops.admit_installed_package,
-        )
-        if lock_reference_before_producer != _task_start["run_lock"]:
+        _attempt_ref, lock_reference_before_producer = admit_origins()
+        if lock_reference_before_producer != task_start["run_lock"]:
             raise TaskBoundaryError("Workflow run lock changed before producer entry")
         _recheck_reused_outputs(reused_outputs, phase="before producer entry")
         command_environment = sanitized_subprocess_environment()
@@ -2298,15 +2245,8 @@ def run_task(
                 != initial_inputs[3:]
             ):
                 raise TaskBoundaryError("A stable task input changed during execution")
-            _attempt_ref, current_lock = _admit_start_origins(
-                dispatch,
-                execution=execution,
-                execution_sha256=execution_sha256,
-                profile_sha256=profile_sha256,
-                require_active_attempt=True,
-                observe_package=ops.admit_installed_package,
-            )
-            if current_lock != _task_start["run_lock"]:
+            _attempt_ref, current_lock = admit_origins()
+            if current_lock != task_start["run_lock"]:
                 raise TaskBoundaryError(
                     "Workflow run lock changed during native publication"
                 )
@@ -2371,16 +2311,7 @@ def run_task(
             phase="during validation or semantic gating",
         )
 
-        final_inputs = tuple(
-            _snapshot(item)
-            for item in (
-                FileDeclaration("workflow_attempt", dispatch.path),
-                FileDeclaration("execution_contract", dispatch.execution_path),
-                FileDeclaration("workflow_profile", dispatch.profile_path),
-                *dispatch.inputs,
-                *extra_inputs,
-            )
-        )
+        final_inputs = tuple(_snapshot(item) for item in stable_inputs)
         if final_inputs != initial_inputs:
             raise TaskBoundaryError("A stable task input changed during execution")
         stable_inputs_rechecked = True
@@ -2441,9 +2372,7 @@ def run_task(
     attempt_bytes = _publish_attempt(
         dispatch,
         ops=ops,
-        execution=execution,
-        execution_sha256=execution_sha256,
-        profile_sha256=profile_sha256,
+        identity=identity,
         started_at=started_at,
         producer=producer,
         validator=validator,

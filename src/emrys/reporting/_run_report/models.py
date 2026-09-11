@@ -14,6 +14,7 @@ from emrys.reporting._files import FileSnapshot
 if TYPE_CHECKING:
     from emrys.analyses import LoadedAnalysisModuleV1
     from emrys.libraries.source_authority import ArtifactSourceRoot, InstalledPackage
+    from emrys.reporting._artifact_index.models import EvidenceContext
 
 PRODUCER = "emrys.reporting.report"
 PRODUCER_VERSION = "5.2.0"
@@ -128,6 +129,7 @@ class ReportContext:
     scientific_renderer: Mapping[str, str]
     report_input_rechecks: tuple[tuple[FileSnapshot, str, bool], ...]
     interpretation_boundary: str
+    evidence_context: EvidenceContext | None = None
 
     @property
     def input_rechecks(self) -> tuple[tuple[FileSnapshot, str, bool], ...]:

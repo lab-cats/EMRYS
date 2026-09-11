@@ -118,41 +118,16 @@ def provider_artifacts(
     """Project admitted analysis records into the public reporter interface."""
 
     module = analyses.load_analysis_module("emrys.paired-cmh")
-    declared = {
-        artifact.adapter: (task.step_id, artifact)
-        for task in module.descriptor.tasks
-        for artifact in task.outputs
-    }
-    selected: dict[str, AnalysisReportArtifactV1] = {}
-    analysis_id = document["run_contract"]["primary_analysis_id"]
-    for record in document["artifacts"]:
-        source = record["source"]
-        declaration = declared.get(record["adapter"])
-        if (
-            declaration is None
-            or source is None
-            or record["availability_status"] != "present"
-            or record["completion_status"] != "complete"
-        ):
-            continue
-        step_id, artifact = declaration
-        if record["scope"] != {
-            "step_id": step_id,
-            "scope_type": "analysis",
-            "scope_id": analysis_id,
-        }:
-            continue
-        selected[record["adapter"]] = AnalysisReportArtifactV1(
-            adapter=record["adapter"],
-            artifact_id=record["artifact_id"],
-            path=Path(source["path"]),
-            sha256=source["sha256"],
-            size_bytes=source["size_bytes"],
-            row_count=source["row_count"],
-            kind=artifact.kind,
-            media_type=analyses.ANALYSIS_ARTIFACT_MEDIA_TYPES[artifact.kind],
+    return {
+        artifact.adapter: artifact
+        for artifact in report_context._admit_analysis_artifacts(
+            document,
+            module,
+            analysis_id=document["run_contract"]["primary_analysis_id"],
+            source_root=Path(document["inventory"]["path"]).parent,
+            evidence_context=None,
         )
-    return selected
+    }
 
 
 def write_summary_copy(
@@ -330,7 +305,9 @@ def test_present_step10_record_mismatch_fails_closed(
         if artifact["adapter"] == "step10_candidate_context_v1"
     )
     record["source"]["sha256"] = "0" * 64
-    with pytest.raises(ReportRenderError, match="SHA-256 mismatch"):
+    with pytest.raises(
+        ReportRenderError, match="differs from the admitted run summary"
+    ):
         report_scientific_context.admit_scientific_context_results(
             document,
             provider_artifacts(document),
@@ -899,17 +876,17 @@ def test_two_html_views_separate_science_from_operational_evidence(
         (
             "Threshold-passing candidates",
             "Ranked Step 09 result table",
-            artifacts["step09_cmh_significant_sites_v1"].path,
+            artifacts["step09_cmh_significant_sites_v1"].snapshot.path,
         ),
         (
             "Complete candidate table",
             "All tested Step 09 candidates",
-            artifacts["step09_cmh_all_sites_v1"].path,
+            artifacts["step09_cmh_all_sites_v1"].snapshot.path,
         ),
         (
             "Candidate context",
             "Step 10 scientific context",
-            artifacts["step10_candidate_context_v1"].path,
+            artifacts["step10_candidate_context_v1"].snapshot.path,
         ),
     )
     for content in (scientific, evidence):
@@ -926,7 +903,9 @@ def test_two_html_views_separate_science_from_operational_evidence(
     for artifact in artifacts.values():
         if artifact.kind == "validation_report":
             continue
-        href = Path(os.path.relpath(artifact.path, start=context.output_dir)).as_posix()
+        href = Path(
+            os.path.relpath(artifact.snapshot.path, start=context.output_dir)
+        ).as_posix()
         assert f'href="{href}"><strong>Analysis artifact: ' in evidence
     assert "emrys inspect" not in scientific
     assert "Inspect this Run: emrys inspect &lt;RUN&gt;" in evidence

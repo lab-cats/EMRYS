@@ -103,3 +103,4 @@ def reconcile_step10(
             table=table,
             member=_member_by_adapter(members, adapter),
         )
+    receipt.projection = transaction

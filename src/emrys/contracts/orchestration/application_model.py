@@ -16,6 +16,7 @@ from .api import (
     canonical_json_bytes,
     canonical_sha256,
     load_json_object_bytes,
+    _validate_direct_edges,
     validate_record,
 )
 
@@ -786,6 +787,47 @@ def _positive_integer(value: Any, label: str) -> int:
     return value
 
 
+def resolve_computational_resources(
+    declaration: Mapping[str, Any], allocation_cores: int, allocation_memory: int
+) -> dict[str, Any]:
+    """Resolve admitted symbolic resources and enforce their allocation limits."""
+    cores = declaration["workflow_cores"]
+    memory = declaration["workflow_memory_mb"]
+    if memory == "allocation":
+        memory = allocation_memory
+    if cores > allocation_cores:
+        raise ContractValidationError(
+            f"Workflow cores exceed observed allocation: {cores} > {allocation_cores}"
+        )
+    if memory > allocation_memory:
+        raise ContractValidationError(
+            "Workflow memory exceeds observed allocation: "
+            f"{memory} > {allocation_memory} MiB"
+        )
+    stage_memory = {
+        step: memory if value == "workflow" else value
+        for step, value in declaration["stage_memory_mb"].items()
+    }
+    for step, stage_mb in stage_memory.items():
+        concurrency = declaration["stage_concurrency"].get(step, 1)
+        threads = declaration["step_threads"].get(step, 1)
+        if concurrency * threads > cores:
+            raise ContractValidationError(
+                f"Stage {step} concurrency x threads exceeds workflow cores: "
+                f"{concurrency} x {threads} > {cores}"
+            )
+        if concurrency * stage_mb > memory:
+            raise ContractValidationError(
+                f"Stage {step} concurrency x memory exceeds workflow memory: "
+                f"{concurrency} x {stage_mb} > {memory} MiB"
+            )
+    return {
+        **declaration,
+        "workflow_memory_mb": memory,
+        "stage_memory_mb": stage_memory,
+    }
+
+
 def _validate_resource_resolution(
     plan: ExecutionPlan,
     resource_policy: Mapping[str, Any],
@@ -893,52 +935,19 @@ def _validate_resource_resolution(
         raise ContractValidationError(
             "Symbolic computational resources differ from the Execution Plan"
         )
-    workflow_cores = _positive_integer(
-        effective["workflow_cores"], "Resolved workflow cores"
+    _positive_integer(effective["workflow_cores"], "Resolved workflow cores")
+    _positive_integer(effective["workflow_memory_mb"], "Resolved workflow memory")
+    expected = resolve_computational_resources(
+        declaration, allocation_cores, allocation_memory
     )
-    workflow_memory = _positive_integer(
-        effective["workflow_memory_mb"], "Resolved workflow memory"
-    )
-    if workflow_cores != declaration["workflow_cores"]:
-        raise ContractValidationError(
-            "Resolved workflow cores differ from the Execution Plan"
-        )
-    declared_memory = declaration["workflow_memory_mb"]
-    expected_memory = (
-        allocation_memory if declared_memory == "allocation" else declared_memory
-    )
-    if workflow_memory != expected_memory:
-        raise ContractValidationError(
-            "Resolved workflow memory differs from the Execution Plan"
-        )
-    if workflow_cores > allocation_cores or workflow_memory > allocation_memory:
-        raise ContractValidationError(
-            "Resolved workflow resources exceed the observed allocation"
-        )
-
-    for field in ("stage_concurrency", "step_threads"):
-        if effective[field] != declaration[field]:
+    for field, value in expected.items():
+        if effective[field] != value:
+            label = {
+                "workflow_cores": "workflow cores",
+                "workflow_memory_mb": "workflow memory",
+            }.get(field, field)
             raise ContractValidationError(
-                f"Resolved {field} differs from the Execution Plan"
-            )
-    expected_stage_memory = {
-        step_id: workflow_memory if value == "workflow" else value
-        for step_id, value in declaration["stage_memory_mb"].items()
-    }
-    if effective["stage_memory_mb"] != expected_stage_memory:
-        raise ContractValidationError(
-            "Resolved stage_memory_mb differs from the Execution Plan"
-        )
-    for step_id, memory in expected_stage_memory.items():
-        concurrency = effective["stage_concurrency"].get(step_id, 1)
-        threads = effective["step_threads"].get(step_id, 1)
-        if concurrency * threads > workflow_cores:
-            raise ContractValidationError(
-                f"Resolved stage {step_id} CPU demand exceeds workflow cores"
-            )
-        if concurrency * memory > workflow_memory:
-            raise ContractValidationError(
-                f"Resolved stage {step_id} memory demand exceeds workflow memory"
+                f"Resolved {label} differs from the Execution Plan"
             )
 
 
@@ -1038,37 +1047,6 @@ def _validate_analysis_semantics(record: Mapping[str, Any]) -> None:
     _require_unique((row["partition_id"] for row in partitions), "partition_id")
 
 
-def _validate_graph(edges: list[Mapping[str, Any]], owners: set[str]) -> None:
-    pairs: set[tuple[str, str]] = set()
-    adjacency = {owner: set() for owner in owners}
-    for edge in edges:
-        pair = str(edge["producer"]), str(edge["consumer"])
-        if not set(pair) <= owners:
-            raise ContractValidationError(
-                "Execution Plan edge references unknown owner"
-            )
-        if pair in pairs:
-            raise ContractValidationError("Execution Plan repeats a direct owner edge")
-        pairs.add(pair)
-        adjacency[pair[0]].add(pair[1])
-    complete: set[str] = set()
-    active: set[str] = set()
-
-    def visit(owner: str) -> None:
-        if owner in active:
-            raise ContractValidationError("Execution Plan owner graph must be acyclic")
-        if owner in complete:
-            return
-        active.add(owner)
-        for consumer in sorted(adjacency[owner]):
-            visit(consumer)
-        active.remove(owner)
-        complete.add(owner)
-
-    for owner in sorted(owners):
-        visit(owner)
-
-
 def _validate_plan_semantics(record: Mapping[str, Any]) -> None:
     identity = record["identity"]
     if canonical_sha256(identity) != record["execution_plan_id"].removeprefix("plan-"):
@@ -1125,7 +1103,7 @@ def _validate_plan_semantics(record: Mapping[str, Any]) -> None:
         functional["required_owner_keys"]
     ):
         raise ContractValidationError("Evidence owners must also be required")
-    _validate_graph(edges, owners)
+    _validate_direct_edges(edges, owners, "Execution Plan")
     stopping = set(identity["scientific_stopping_owner_keys"])
     if not stopping <= set(functional["required_owner_keys"]):
         raise ContractValidationError(

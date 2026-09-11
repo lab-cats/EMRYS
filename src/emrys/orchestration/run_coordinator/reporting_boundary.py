@@ -148,6 +148,7 @@ def validate_semantic_receipt(
     config: Mapping[str, Any],
     *,
     validated_predecessor: SemanticTransaction | None = None,
+    prepared_context: Any = None,
 ) -> SemanticTransaction:
     from emrys.reporting.transaction_validation import validate_receipt  # noqa: PLC0415
 
@@ -160,6 +161,7 @@ def validate_semantic_receipt(
         attempt,
         config,
         validated_predecessor=validated_predecessor,
+        prepared_context=prepared_context,
     )
 
 
@@ -168,10 +170,10 @@ def semantic_validator_session() -> SemanticValidator:
 
     predecessor: SemanticTransaction | None = None
 
-    def validate(*args: Any) -> SemanticTransaction:
+    def validate(*args: Any, prepared_context: Any = None) -> SemanticTransaction:
         nonlocal predecessor
         predecessor = validate_semantic_receipt(
-            *args, validated_predecessor=predecessor
+            *args, validated_predecessor=predecessor, prepared_context=prepared_context
         )
         return predecessor
 
@@ -467,25 +469,16 @@ def _run_lock_reference(
 
 def _admit_identity(
     *,
-    run_root: Path,
-    execution_path: Path,
-    profile_path: Path,
     workflow_attempt_path: Path,
     require_publishable_attempt: bool,
     attest_source: Callable[..., Any] = admit_installed_package,
 ) -> _AdmittedIdentity:
-    root = _canonical_root(run_root)
-    expected_profile = root / "contract" / "profile.json"
-    if (
-        profile_path != expected_profile
-        or execution_path != root / "contract" / "run.json"
-    ):
-        raise ReportingBoundaryError(
-            "Reporting identity must use the fixed execution/profile contract paths"
-        )
-    profile, profile_data = _admit_record(profile_path, root, "profile")
+    root = _canonical_root(workflow_attempt_path.parent.parent.parent)
+    profile, profile_data = _admit_record(
+        root / "contract/profile.json", root, "profile"
+    )
     execution, execution_data, _authority = _admit_execution(
-        execution_path,
+        root / "contract/run.json",
         root,
         profile,
     )
@@ -528,11 +521,7 @@ def _admit_identity(
     _admit_reporting_projection(
         root=root, config=attempt["workflow"], attempt_id=identifier
     )
-    run_lock_reference = _run_lock_reference(
-        root,
-        attempt,
-        require_active=False,
-    )
+    run_lock_reference = _run_lock_reference(root, attempt, require_active=False)
     if require_publishable_attempt:
         receipt_path = workflow_attempt_path.with_name("attempt-receipt.json")
         receipt, _receipt_data = _admit_record(
@@ -595,9 +584,6 @@ def _require_start_not_before_attempt(
 def publish_start(
     *,
     kind: str,
-    run_root: Path,
-    execution_path: Path,
-    profile_path: Path,
     workflow_attempt_path: Path,
     ops: ReportingBoundaryOps = DEFAULT_REPORTING_BOUNDARY_OPS,
 ) -> None:
@@ -605,9 +591,6 @@ def publish_start(
 
     admitted_kind = _kind(kind)
     identity = _admit_identity(
-        run_root=run_root,
-        execution_path=execution_path,
-        profile_path=profile_path,
         workflow_attempt_path=workflow_attempt_path,
         require_publishable_attempt=True,
         attest_source=ops.admit_installed_package,
@@ -639,9 +622,6 @@ def publish_start(
     }
     orchestration_contracts.validate_record("reporting-start", record)
     confirmed = _admit_identity(
-        run_root=run_root,
-        execution_path=execution_path,
-        profile_path=profile_path,
         workflow_attempt_path=workflow_attempt_path,
         require_publishable_attempt=True,
         attest_source=ops.admit_installed_package,
@@ -674,13 +654,44 @@ def _expected_start(
     return record, _reference(paths.start, identity.root, data)
 
 
+def _admit_semantic_receipt(
+    kind: ReportingKind,
+    receipt_path: Path,
+    identity: _AdmittedIdentity,
+    validate: SemanticValidator,
+) -> tuple[dict[str, str], tuple[tuple[str, Path], ...]]:
+    """Check one report's contents, receipt identity, and exact result locations."""
+
+    try:
+        semantic = validate(
+            kind,
+            receipt_path,
+            identity.root,
+            identity.execution,
+            identity.profile,
+            identity.attempt,
+            identity.attempt["workflow"],
+        )
+    except Exception as exc:
+        raise ReportingBoundaryError(
+            f"Could not validate {kind} semantic transaction: {exc}"
+        ) from exc
+    receipt_data = _read_bound(receipt_path, identity.root, "semantic receipt")
+    receipt_reference = _reference(receipt_path, identity.root, receipt_data)
+    if (
+        semantic.receipt_path != receipt_path
+        or semantic.receipt_sha256 != receipt_reference["sha256"]
+    ):
+        raise ReportingBoundaryError(
+            "Semantic validator returned a different reporting receipt identity"
+        )
+    return receipt_reference, _semantic_report_locations(kind, semantic)
+
+
 def publish_verified(
     *,
     kind: str,
     receipt_path: Path,
-    run_root: Path,
-    execution_path: Path,
-    profile_path: Path,
     workflow_attempt_path: Path,
     ops: ReportingBoundaryOps = DEFAULT_REPORTING_BOUNDARY_OPS,
     before_publication: Callable[[], None] | None = None,
@@ -689,9 +700,6 @@ def publish_verified(
 
     admitted_kind = _kind(kind)
     identity = _admit_identity(
-        run_root=run_root,
-        execution_path=execution_path,
-        profile_path=profile_path,
         workflow_attempt_path=workflow_attempt_path,
         require_publishable_attempt=True,
         attest_source=ops.admit_installed_package,
@@ -705,37 +713,10 @@ def publish_verified(
     start, start_reference = _expected_start(identity, admitted_kind)
     if start["schema_version"] != "emrys.reporting-start.v2":
         raise ReportingBoundaryError("Cannot complete historical reporting state")
-    try:
-        semantic = ops.validate_semantic_receipt(
-            admitted_kind,
-            receipt_path,
-            identity.root,
-            identity.execution,
-            identity.profile,
-            identity.attempt,
-            identity.attempt["workflow"],
-        )
-    except Exception as exc:
-        raise ReportingBoundaryError(
-            f"Could not validate completed {admitted_kind} transaction: {exc}"
-        ) from exc
-    receipt_data = _read_bound(receipt_path, identity.root, "semantic receipt")
-    receipt_reference = _reference(receipt_path, identity.root, receipt_data)
-    if (
-        semantic.receipt_path != receipt_path
-        or semantic.receipt_sha256 != receipt_reference["sha256"]
-    ):
-        raise ReportingBoundaryError(
-            "Semantic validator returned a different reporting receipt identity"
-        )
-    verified_report_locations = _semantic_report_locations(
-        admitted_kind,
-        semantic,
+    receipt_reference, verified_report_locations = _admit_semantic_receipt(
+        admitted_kind, receipt_path, identity, ops.validate_semantic_receipt
     )
     confirmed = _admit_identity(
-        run_root=run_root,
-        execution_path=execution_path,
-        profile_path=profile_path,
         workflow_attempt_path=workflow_attempt_path,
         require_publishable_attempt=True,
         attest_source=ops.admit_installed_package,
@@ -797,9 +778,6 @@ def _identity_from_origin(
     origin = str(start["origin_workflow_attempt_id"])
     attempt_path = root / "attempts" / origin / "attempt.json"
     identity = _admit_identity(
-        run_root=root,
-        execution_path=root / "contract" / "run.json",
-        profile_path=root / "contract" / "profile.json",
         workflow_attempt_path=attempt_path,
         require_publishable_attempt=False,
     )
@@ -876,34 +854,13 @@ def validate_verified(
             "Verified reporting timestamp precedes its start marker"
         )
     receipt_path = identity.root / str(verified["semantic_receipt"]["path"])
-    try:
-        semantic = semantic_validator(
-            admitted_kind,
-            receipt_path,
-            identity.root,
-            identity.execution,
-            identity.profile,
-            identity.attempt,
-            identity.attempt["workflow"],
-        )
-    except Exception as exc:
-        raise ReportingBoundaryError(
-            f"Could not revalidate {admitted_kind} semantic transaction: {exc}"
-        ) from exc
-    receipt_data = _read_bound(receipt_path, identity.root, "semantic receipt")
-    receipt_reference = _reference(receipt_path, identity.root, receipt_data)
-    if (
-        semantic.receipt_path != receipt_path
-        or semantic.receipt_sha256 != receipt_reference["sha256"]
-        or verified["semantic_receipt"] != receipt_reference
-    ):
+    receipt_reference, verified_report_locations = _admit_semantic_receipt(
+        admitted_kind, receipt_path, identity, semantic_validator
+    )
+    if verified["semantic_receipt"] != receipt_reference:
         raise ReportingBoundaryError(
             "Verified reporting semantic receipt identity no longer matches"
         )
-    verified_report_locations = _semantic_report_locations(
-        admitted_kind,
-        semantic,
-    )
     confirmed, confirmed_start, confirmed_start_reference = _identity_from_origin(
         admitted_kind,
         identity.root,

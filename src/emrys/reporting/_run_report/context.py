@@ -12,7 +12,7 @@ import stat
 from collections.abc import Mapping
 from importlib.resources import files
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 from emrys import analyses
@@ -59,6 +59,9 @@ from .models import (
 )
 from .receipt import read_receipt_tsv
 from .validation import render_html
+
+if TYPE_CHECKING:
+    from emrys.reporting._artifact_index.models import EvidenceContext
 
 
 def _resource_snapshot(resource: str, label: str) -> FileSnapshot:
@@ -129,42 +132,25 @@ def _inspect_command(source_root: Path, output_root: Path) -> str:
     )
 
 
-def expected_html_identity(
-    context: ReportContext,
-    report_view: Literal["scientific", "evidence"],
-) -> dict[str, str]:
-    identity = {
-        "data-report-view": report_view,
-        "data-run-id": context.summary["run_id"],
-    }
-    if report_view == "evidence":
-        metadata = context.render_metadata
-        identity.update(
-            {
-                "data-css-sha256": metadata["css_sha256"],
-                "data-jinja-version": metadata["jinja_version"],
-                "data-renderer-version": metadata["renderer_version"],
-                "data-run-summary-sha256": metadata["run_summary_sha256"],
-                "data-template-sha256": metadata["template_sha256"],
-            }
-        )
-    return identity
-
-
 def _admit_analysis_artifacts(
     summary: Mapping[str, object],
     module: analyses.LoadedAnalysisModuleV1,
     *,
     analysis_id: str,
     source_root: Path,
-) -> tuple[tuple[AnalysisReportArtifactV1, ...], tuple[FileSnapshot, ...]]:
+    evidence_context: EvidenceContext | None,
+) -> tuple[AnalysisReportArtifactV1, ...]:
+    inspections = (
+        {item.row["artifact_id"]: item for item in evidence_context.index.inspections}
+        if evidence_context is not None
+        else {}
+    )
     declared = {
         artifact.adapter: (task.step_id, artifact)
         for task in module.descriptor.tasks
         for artifact in task.outputs
     }
     report_artifacts = []
-    snapshots = []
     admitted_adapters: set[str] = set()
     for record in summary["artifacts"]:
         adapter = record["adapter"]
@@ -209,20 +195,22 @@ def _admit_analysis_artifacts(
                 f"{record['artifact_id']}"
             )
         admitted_adapters.add(adapter)
-        snapshots.append(snapshot)
         report_artifacts.append(
             AnalysisReportArtifactV1(
                 adapter=adapter,
                 artifact_id=record["artifact_id"],
-                path=snapshot.path,
-                sha256=snapshot.sha256,
-                size_bytes=snapshot.size_bytes,
+                snapshot=snapshot,
                 row_count=source["row_count"],
                 kind=artifact.kind,
                 media_type=expected_media_type,
+                projection=(
+                    copy.deepcopy(inspections[record["artifact_id"]].projection)
+                    if record["artifact_id"] in inspections
+                    else None
+                ),
             )
         )
-    return tuple(report_artifacts), tuple(snapshots)
+    return tuple(report_artifacts)
 
 
 def _render_scientific_report(
@@ -231,6 +219,7 @@ def _render_scientific_report(
     source_root: Path,
     output_dir: Path,
     analysis_policy: Mapping[str, object] | None,
+    evidence_context: EvidenceContext | None,
 ) -> tuple[
     analyses.LoadedAnalysisModuleV1,
     Mapping[str, str],
@@ -245,11 +234,12 @@ def _render_scientific_report(
     except analyses.AnalysisModuleLoadError as exc:
         _fail(str(exc))
     reporter = admit_analysis_reporter(module.descriptor.module_id)
-    report_artifacts, snapshots = _admit_analysis_artifacts(
+    report_artifacts = _admit_analysis_artifacts(
         summary,
         module,
         analysis_id=analysis_id,
         source_root=source_root,
+        evidence_context=evidence_context,
     )
     try:
         rendered = reporter.provider(
@@ -281,6 +271,7 @@ def _render_scientific_report(
         _fail("Analysis reporter returned an invalid scientific report")
     returned_paths: set[Path] = set()
     returned_rechecks = []
+    snapshots = {item.snapshot.path: item.snapshot for item in report_artifacts}
     for item in rendered.inputs:
         if (
             not isinstance(item, AnalysisReportInputV1)
@@ -293,15 +284,15 @@ def _render_scientific_report(
         path = item.path.absolute()
         if path in returned_paths:
             _fail(f"Analysis reporter returned a duplicate input: {path}")
-        snapshot = _snapshot_regular(path, item.label)
+        snapshot = snapshots.get(path) or _snapshot_regular(path, item.label)
+        _assert_snapshot(snapshot, item.label)
         if snapshot.sha256 != item.sha256:
             _fail(f"Analysis reporter input changed while rendering: {path}")
         returned_paths.add(path)
         returned_rechecks.append((snapshot, item.label, item.rehash_content))
-    returned_paths = {item[0].path for item in returned_rechecks}
     preadmitted = tuple(
         (snapshot, f"analysis artifact {snapshot.path.name!r}", True)
-        for snapshot in snapshots
+        for snapshot in snapshots.values()
         if snapshot.path not in returned_paths
     )
     return (
@@ -375,7 +366,9 @@ def _result_links(
             "label": f"Analysis artifact: {artifact.artifact_id}",
             "description": "Admitted analysis artifact",
             "href": quote(
-                Path(os.path.relpath(artifact.path, start=output_dir)).as_posix(),
+                Path(
+                    os.path.relpath(artifact.snapshot.path, start=output_dir)
+                ).as_posix(),
                 safe="/._-",
             ),
         }
@@ -384,7 +377,30 @@ def _result_links(
     )
 
 
-def prepare_context(arguments: argparse.Namespace) -> ReportContext:
+def recheck_evidence_context(
+    evidence: EvidenceContext,
+    manifest_snapshot: FileSnapshot,
+) -> None:
+    from emrys.reporting._artifact_index.context import (
+        recheck_inputs,
+        recheck_source_identity,
+    )
+
+    recheck_inputs(evidence.index)
+    recheck_source_identity(evidence.index)
+    if (
+        manifest_snapshot.path != evidence.summary_paths.summary_json
+        or _read_snapshot_bytes(manifest_snapshot, "run-summary document")
+        != evidence.summary_json_bytes
+    ):
+        _fail("Published Run result differs from the prepared reporting inputs")
+
+
+def prepare_context(
+    arguments: argparse.Namespace,
+    *,
+    evidence_context: EvidenceContext | None = None,
+) -> ReportContext:
     try:
         installed_package = admit_installed_package(
             root=arguments.package_root,
@@ -397,7 +413,18 @@ def prepare_context(arguments: argparse.Namespace) -> ReportContext:
     source_root = artifact_source_root.root
     run_summary_path = _explicit_path(arguments.run_summary, "run-summary path")
     run_summary_snapshot = _snapshot_regular(run_summary_path, "run-summary document")
-    summary = _load_run_summary(run_summary_path, source_root=source_root)
+    if evidence_context is None:
+        summary = _load_run_summary(run_summary_path, source_root=source_root)
+    else:
+        if (
+            evidence_context.index.installed_package.record != installed_package.record
+            or evidence_context.index.artifact_source_root != artifact_source_root
+        ):
+            _fail(
+                "Prepared reporting inputs belong to a different package or source root"
+            )
+        recheck_evidence_context(evidence_context, run_summary_snapshot)
+        summary = copy.deepcopy(evidence_context.summary_document)
     _assert_snapshot(run_summary_snapshot, "run-summary document")
     run_id = summary["run_id"]
     if (
@@ -452,6 +479,7 @@ def prepare_context(arguments: argparse.Namespace) -> ReportContext:
         source_root=source_root,
         output_dir=output_dir,
         analysis_policy=analysis_policy,
+        evidence_context=evidence_context,
     )
     try:
         css = css_snapshot.path.read_text(encoding="utf-8")
@@ -492,7 +520,8 @@ def prepare_context(arguments: argparse.Namespace) -> ReportContext:
                 "content hash" if item.rehash_content else "file identity",
             )
             for item in scientific_report.inputs
-            if item.path not in {artifact.path for artifact in report_artifacts}
+            if item.path
+            not in {artifact.snapshot.path for artifact in report_artifacts}
         ),
     )
     context = ReportContext(
@@ -523,7 +552,10 @@ def prepare_context(arguments: argparse.Namespace) -> ReportContext:
         scientific_renderer=reporter,
         report_input_rechecks=report_input_rechecks,
         interpretation_boundary=COMPUTATIONAL_BOUNDARY_BANNER,
+        evidence_context=evidence_context,
     )
     for recheck in context.input_rechecks:
         _assert_input_recheck(*recheck)
+    if evidence_context is not None:
+        recheck_evidence_context(evidence_context, run_summary_snapshot)
     return context

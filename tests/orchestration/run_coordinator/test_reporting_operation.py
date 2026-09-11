@@ -220,7 +220,7 @@ def test_dry_run_validates_first_producer_without_publishing(
     _install_admission(monkeypatch, state, identity)
     observed: list[str] = []
 
-    def prepare(kind: str, _arguments: Any) -> object:
+    def prepare(kind: str, _arguments: Any, *, evidence_context: Any = None) -> object:
         observed.append(kind)
         return SimpleNamespace(index=object())
 
@@ -253,7 +253,7 @@ def test_processing_source_mismatch_fails_before_reporting_start(
     monkeypatch.setattr(
         reporting_operation,
         "_prepare_transaction",
-        lambda *_args: SimpleNamespace(index=context),
+        lambda *_args, **_kwargs: SimpleNamespace(index=context),
     )
     monkeypatch.setattr(
         reporting_operation.reporting_boundary,
@@ -311,10 +311,14 @@ def test_execute_requires_fresh_final_admission_after_fixed_transactions(
     observed: list[str] = []
     preparations: dict[str, int] = {}
 
-    def prepare(kind: str, _arguments: Any) -> object:
+    def prepare(kind: str, _arguments: Any, *, evidence_context: Any = None) -> object:
         preparations[kind] = preparations.get(kind, 0) + 1
         observed.append(f"prepare:{kind}:{preparations[kind]}")
-        return SimpleNamespace(index=context) if kind == "run_summary" else object()
+        if kind == "run_summary":
+            assert evidence_context is None
+            return SimpleNamespace(index=context)
+        assert evidence_context.index is context
+        return object()
 
     def publish(kind: str, _context: object) -> Path:
         observed.append(f"publish:{kind}")
@@ -392,7 +396,7 @@ def test_generation_observer_runs_only_after_first_published_start(
     observed: list[str] = []
     preparations: dict[str, int] = {}
 
-    def prepare(kind: str, _arguments: Any) -> object:
+    def prepare(kind: str, _arguments: Any, *, evidence_context: Any = None) -> object:
         preparations[kind] = preparations.get(kind, 0) + 1
         observed.append(f"prepare:{kind}:{preparations[kind]}")
         return SimpleNamespace(index=object())
@@ -552,7 +556,7 @@ def test_preflight_failure_publishes_no_ledger(
     monkeypatch.setattr(
         reporting_operation,
         "_prepare_transaction",
-        lambda _kind, _arguments: (_ for _ in ()).throw(
+        lambda _kind, _arguments, **_kwargs: (_ for _ in ()).throw(
             ArtifactIndexError("bounded preflight failure")
         ),
     )

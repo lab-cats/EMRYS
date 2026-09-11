@@ -15,6 +15,8 @@ import pytest
 from emrys import analyses
 from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys import reporting
+from emrys.evidence.runtime_availability import inspector as runtime_inspector
+from emrys.evidence.runtime_availability._profile_contract import CHOICE_IDS
 from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
     RuntimeInspection,
@@ -361,17 +363,6 @@ def test_runtime_package_binding_rechecks_a_symlink_after_hashing(
         )
 
 
-def test_runtime_contract_refuses_a_truncated_fixed_roster(tmp_path: Path) -> None:
-    source = tmp_path / "source"
-    source.mkdir()
-    _data, policy = doctor.load_runtime_profile_contract(
-        doctor.onboarding.runtime_policy_path()
-    )
-
-    with pytest.raises(doctor.DoctorInputError, match="exact ordered fixed-policy"):
-        doctor.validate_runtime_profile_contract(policy[:-1], source)
-
-
 def test_runtime_contract_allows_missing_but_refuses_symlinked_renv_library(
     tmp_path: Path,
 ) -> None:
@@ -381,45 +372,15 @@ def test_runtime_contract_allows_missing_but_refuses_symlinked_renv_library(
     real_library.mkdir()
     linked_library = tmp_path / "linked-library"
     linked_library.symlink_to(real_library, target_is_directory=True)
-    _data, policy = doctor.load_runtime_profile_contract(
-        doctor.onboarding.runtime_policy_path()
-    )
-    targets = {
-        "python": "/python",
-        "snakemake": "/python",
-        "sha256_python": "/python",
-        "java": "/java",
-        "picard": "/java",
-        "picard_jar": "/picard.jar",
-        "rscript": "/Rscript",
-        "renv_project": str(source),
-        "renv_library": str(linked_library),
-    }
-    checks = tuple(
-        replace(
-            check,
-            target=targets.get(check.check_id, check.target),
-            probe_args=(
-                doctor.controlled_python_argv(
-                    "/python", "-m", "snakemake", "--version"
-                )[1:]
-                if check.check_id == "snakemake"
-                else ("python_hashlib",)
-                if check.check_id == "sha256_python"
-                else ("-jar", "/picard.jar", "MarkDuplicates", "--version")
-                if check.check_id == "picard"
-                else ("/Rscript",)
-                if check.check_type == "r_namespace"
-                else check.probe_args
-            ),
-        )
-        for check in policy
-    )
-
-    with pytest.raises(doctor.DoctorInputError, match="canonical real directory"):
-        doctor.validate_runtime_profile_contract(checks, source)
+    choices = {key: tmp_path / key for key in CHOICE_IDS}
+    choices["renv_library"] = linked_library
+    data = runtime_inspector.runtime_profile_bytes(choices)
+    with pytest.raises(
+        runtime_inspector.RuntimeInspectionError, match="canonical real directory"
+    ):
+        runtime_inspector.runtime_profile_checks(data, source)
     linked_library.unlink()
-    doctor.validate_runtime_profile_contract(checks, source)
+    runtime_inspector.runtime_profile_checks(data, source)
 
 
 def test_absent_runtime_diagnosis_is_read_only_and_opens_no_log(
@@ -530,25 +491,10 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
 ) -> None:
     project = _project(tmp_path)
     qualified = _patch_foundations(monkeypatch, project)
-    source = doctor.onboarding.source_root()
     profile = doctor.onboarding.runtime_profile_path(project.source_path)
-    _data, policy = doctor.load_runtime_profile_contract(
-        doctor.onboarding.runtime_policy_path()
-    )
-    checks = tuple(
-        replace(
-            check,
-            target=(
-                sys.executable
-                if check.check_id in {"python", "snakemake", "sha256_python"}
-                else str(source)
-                if check.check_id == "renv_project"
-                else check.target
-            ),
-        )
-        for check in policy
-    )
-    profile.write_bytes(doctor.runtime_profile_bytes(checks))
+    choices = {key: tmp_path / key for key in CHOICE_IDS}
+    choices["python"] = Path(sys.executable)
+    profile.write_bytes(runtime_inspector.runtime_profile_bytes(choices))
     observations = (
         replace(
             _check("bash", "tool_version", "/bin/bash"),
@@ -793,7 +739,7 @@ def test_managed_repair_accepts_missing_library_and_binds_base_profile(
     monkeypatch.setattr(
         doctor,
         "load_runtime_profile_contract",
-        lambda _path: (base_bytes, (python_check.check, renv_check.check)),
+        lambda _path, _root: (base_bytes, (python_check.check, renv_check.check)),
     )
 
     plan = doctor._build_repair_plan(result)

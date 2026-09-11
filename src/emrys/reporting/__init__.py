@@ -26,12 +26,11 @@ class AnalysisReportArtifactV1(NamedTuple):
 
     adapter: str
     artifact_id: str
-    path: Path
-    sha256: str
-    size_bytes: int
+    snapshot: ReportInputSnapshot
     row_count: int | None
     kind: str
     media_type: str
+    projection: object | None = None
 
 
 class AnalysisReportInputV1(NamedTuple):

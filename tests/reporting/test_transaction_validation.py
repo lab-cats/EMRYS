@@ -15,6 +15,7 @@ import pytest
 
 from emrys import analyses
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.scientific_evidence import scientific_context, step09
 from emrys.libraries.source_authority import (
     PACKAGE_ROOT,
     ArtifactSourceRoot,
@@ -81,6 +82,7 @@ def complete_reporting(tmp_path: Path) -> tuple[Any, Path]:
 
 def test_direct_validators_recheck_each_complete_transaction(
     complete_reporting: tuple[Any, Path],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     built, report_root = complete_reporting
     summary = transaction_validation.validate_run_summary_transaction(
@@ -93,13 +95,35 @@ def test_direct_validators_recheck_each_complete_transaction(
         output_root=built.output_root,
         profile=adapter_fixture.analysis_profile_v1(),
     )
-    rendered = transaction_validation.validate_report_transaction(
+    assert summary.evidence_context is not None
+    assert (
+        summary.evidence_context.summary_json_bytes
+        == built.summary_json_path.read_bytes()
+    )
+
+    def already_checked(*_args: Any, **_kwargs: Any) -> Any:
+        pytest.fail("Reporting reconstructed an already checked projection")
+
+    monkeypatch.setattr(step09, "validate_step09_projection", already_checked)
+    monkeypatch.setattr(
+        scientific_context, "validate_scientific_context_transaction", already_checked
+    )
+    arguments = dict(
         package_root=PACKAGE_ROOT,
         artifact_source_root=built.root,
         run_summary=built.summary_json_path,
         analysis_policy=built.adapter_fixture.analysis_policy,
         output_root=report_root,
+    )
+    context = report_context_owner.prepare_context(
+        argparse.Namespace(**arguments), evidence_context=summary.evidence_context
+    )
+    monkeypatch.setattr(report_context_owner, "prepare_context", already_checked)
+    rendered = transaction_validation.validate_report_transaction(
+        **arguments,
         profile=adapter_fixture.analysis_profile_v1(),
+        prepared_context=context,
+        validate_upstream=False,
     )
 
     assert summary.receipt_path == built.summary_json_path

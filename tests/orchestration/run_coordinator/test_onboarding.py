@@ -1193,13 +1193,18 @@ def test_runtime_discovery_builds_project_owned_fixed_policy_without_writing(
     assert by_id["star"]["target"] == str((tool_dir / "STAR").resolve())
     assert by_id["picard_jar"]["target"] == environment["EMRYS_PICARD_JAR"]
     assert by_id["renv_library"]["target"] == environment["EMRYS_RENV_LIBRARY"]
-    assert by_id["renv_project"]["target"] == str(PACKAGE_ROOT)
-    assert (
-        json.loads(by_id["picard"]["probe_args"])[1] == environment["EMRYS_PICARD_JAR"]
-    )
-    assert json.loads(by_id["r_variant_annotation"]["probe_args"]) == [
-        environment["EMRYS_RSCRIPT"]
-    ]
+    assert len(rows) == 12
+    assert set(rows[0]) == {"check_id", "target"}
+    checks = {
+        check.check_id: check
+        for check in onboarding.runtime_profile_checks(
+            inspection.profile_bytes, PACKAGE_ROOT
+        )
+    }
+    assert len(checks) == 26
+    assert checks["renv_project"].target == str(PACKAGE_ROOT)
+    assert checks["picard"].probe_args[1] == environment["EMRYS_PICARD_JAR"]
+    assert checks["r_variant_annotation"].probe_args == (environment["EMRYS_RSCRIPT"],)
     assert not inspection.profile_path.exists()
 
 

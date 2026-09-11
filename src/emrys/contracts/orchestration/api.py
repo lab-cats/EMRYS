@@ -8,6 +8,7 @@ import re
 from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime
 from functools import cache, lru_cache
+from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
 from typing import Any
 
@@ -293,45 +294,35 @@ def _require_attempt_time(identifier: str, timestamp: str, label: str) -> None:
         )
 
 
-def _validate_direct_edges(edges: list[Mapping[str, Any]], owners: set[str]) -> None:
-    pairs: list[tuple[str, str]] = []
-    adjacency = {owner: set() for owner in owners}
+def _validate_direct_edges(
+    edges: list[Mapping[str, Any]], owners: set[str], label: str
+) -> None:
+    """Require distinct edges between declared owners in an acyclic graph."""
+    pairs: set[tuple[str, str]] = set()
+    adjacency = {owner: set() for owner in sorted(owners)}
     for edge in edges:
         producer = str(edge["producer"])
         consumer = str(edge["consumer"])
         if producer not in owners or consumer not in owners:
             raise ContractValidationError(
-                "Profile edges must reference semantic_owner_keys"
+                f"{label} edges must reference declared owners"
             )
         pair = producer, consumer
         if pair in pairs:
             raise ContractValidationError(
-                "Profile direct_edges must not repeat a producer/consumer pair: "
+                f"{label} direct_edges must not repeat a producer/consumer pair: "
                 f"{producer} -> {consumer}"
             )
-        pairs.append(pair)
-        adjacency[producer].add(consumer)
-
-    complete: set[str] = set()
-    active: list[str] = []
-
-    def visit(owner: str) -> None:
-        if owner in active:
-            cycle_start = active.index(owner)
-            cycle = (*active[cycle_start:], owner)
-            raise ContractValidationError(
-                "Profile direct_edges must be acyclic: " + " -> ".join(cycle)
-            )
-        if owner in complete:
-            return
-        active.append(owner)
-        for consumer in sorted(adjacency[owner]):
-            visit(consumer)
-        active.pop()
-        complete.add(owner)
-
-    for owner in sorted(owners):
-        visit(owner)
+        pairs.add(pair)
+        adjacency[consumer].add(producer)
+    try:
+        TopologicalSorter(
+            {owner: sorted(parents) for owner, parents in adjacency.items()}
+        ).prepare()
+    except CycleError as exc:
+        raise ContractValidationError(
+            f"{label} direct_edges must be acyclic: " + " -> ".join(exc.args[1])
+        ) from exc
 
 
 def _validate_artifact_template_groups(
@@ -387,7 +378,7 @@ def _validate_profile(record: Mapping[str, Any]) -> None:
         raise ContractValidationError(
             "Profile owner_task rule_name values must be unique"
         )
-    _validate_direct_edges(record["direct_edges"], owners)
+    _validate_direct_edges(record["direct_edges"], owners, "Profile")
     templates = [item["artifact_id_template"] for item in record["artifact_templates"]]
     if len(templates) != len(set(templates)):
         raise ContractValidationError(

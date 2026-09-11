@@ -3,8 +3,7 @@
 This private package prepares and publishes the Run result manifest and TSV views
 as one operation for the Run reporting coordinator and developer fixtures.
 [`context.py`](context.py) inspects native artifacts and derives the manifest and its projections;
-[`publication.py`](publication.py) owns their combined publication. Sibling reporting packages use private
-[`api.py`](api.py) for parsing, validation, and serialization.
+[`publication.py`](publication.py) owns their combined publication.
 Neither interface is a public command or operator recovery route. Filesystem
 identity helpers remain in [`source_authority.py`](../../libraries/source_authority.py)
 and are not re-exported here.
@@ -45,6 +44,9 @@ receipt-last transaction. Indexing binds the declared Step 09 trio, FASTA/FAI,
 and four output paths, hashes, and row counts to the artifact graph. Reference
 extraction, motif matching, logo/statistic checks, and display selection remain
 with their contract or producer, without a second implementation here.
+Both reconcilers retain their canonical results on the inspected artifacts for
+report rendering in the same operation. Reuse requires unchanged source identities
+and an exact match to the published Run manifest; it does not trust a receipt alone.
 
 ## Validation-report limit
 

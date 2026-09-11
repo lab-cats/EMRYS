@@ -6,6 +6,7 @@ import argparse
 import stat
 from collections.abc import Callable
 from dataclasses import replace
+from functools import partial
 from pathlib import Path
 from typing import Any, Literal, NamedTuple
 
@@ -112,11 +113,13 @@ def _producer_error(kind: str, phase: str, error: Exception) -> ReportingOperati
     return ReportingOperationError(f"{kind} {phase}{': ' + detail if detail else ''}")
 
 
-def _prepare_transaction(kind: str, arguments: argparse.Namespace) -> Any:
+def _prepare_transaction(
+    kind: str, arguments: argparse.Namespace, *, evidence_context: Any = None
+) -> Any:
     if kind == "html_report":
         from emrys.reporting._run_report.context import prepare_context  # noqa: PLC0415
 
-        return prepare_context(arguments)
+        return prepare_context(arguments, evidence_context=evidence_context)
 
     installed_package = admit_installed_package(root=arguments.package_root)
     artifact_source_root = admit_artifact_source_root(
@@ -163,9 +166,6 @@ def _admit_generation(state: inspection.RunInspection) -> Any:
     identifier = str(state.latest_attempt["workflow_attempt_id"])
     attempt_path = state.run_root / "attempts" / identifier / "attempt.json"
     return reporting_boundary._admit_identity(  # noqa: SLF001
-        run_root=state.run_root,
-        execution_path=state.run_root / "contract" / "run.json",
-        profile_path=state.run_root / "contract" / "profile.json",
         workflow_attempt_path=attempt_path,
         require_publishable_attempt=True,
     )
@@ -309,26 +309,23 @@ def run_reporting(
             validate_semantic_receipt=reporting_boundary.semantic_validator_session(),
         )
         identifier = str(identity.attempt["workflow_attempt_id"])
-        identity_paths = {
-            "run_root": identity.root,
-            "execution_path": identity.root / "contract" / "run.json",
-            "profile_path": identity.root / "contract" / "profile.json",
-            "workflow_attempt_path": (
-                identity.root / "attempts" / identifier / "attempt.json"
-            ),
-        }
+        attempt_path = identity.root / "attempts" / identifier / "attempt.json"
+        evidence_context = None
         for kind in reporting_boundary.REPORTING_KINDS:
             try:
-                context = _prepare_transaction(kind, _arguments(identity, kind))
+                context = _prepare_transaction(
+                    kind, _arguments(identity, kind), evidence_context=evidence_context
+                )
                 if kind == "run_summary":
                     _require_prepared_processing_source(state, context.index)
+                    evidence_context = context
             except _PRODUCER_ERRORS as exc:
                 raise _producer_error(
                     kind, "preflight failed before ledger entry", exc
                 ) from exc
             reporting_boundary.publish_start(
                 kind=kind,
-                **identity_paths,
+                workflow_attempt_path=attempt_path,
                 ops=publish_ops,
             )
             if (
@@ -348,8 +345,13 @@ def run_reporting(
             reporting_boundary.publish_verified(
                 kind=kind,
                 receipt_path=receipt_path,
-                **identity_paths,
-                ops=publish_ops,
+                workflow_attempt_path=attempt_path,
+                ops=replace(
+                    publish_ops,
+                    validate_semantic_receipt=partial(
+                        publish_ops.validate_semantic_receipt, prepared_context=context
+                    ),
+                ),
                 before_publication=(
                     (lambda: _recheck_processing_source(state))
                     if kind == "run_summary" and state.processing_source is not None

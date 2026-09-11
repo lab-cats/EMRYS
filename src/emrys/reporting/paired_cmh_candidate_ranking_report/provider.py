@@ -85,7 +85,7 @@ def render_scientific_report(
             "description": link_copy[artifact.adapter][1],
             "href": quote(
                 Path(
-                    os.path.relpath(artifact.path, start=context.output_dir)
+                    os.path.relpath(artifact.snapshot.path, start=context.output_dir)
                 ).as_posix(),
                 safe="/._-",
             ),

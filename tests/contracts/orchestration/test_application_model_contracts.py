@@ -632,7 +632,7 @@ def test_successor_run_proves_authority_and_optional_attempt_observations() -> N
             "effective",
             "workflow memory differs",
         ),
-        (("allocation", "cores"), 1, None, "exceed the observed allocation"),
+        (("allocation", "cores"), 1, None, "Workflow cores exceed observed allocation"),
         (("effective", "stage_concurrency"), {}, "effective", "stage_concurrency"),
     ),
 )

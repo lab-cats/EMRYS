@@ -15,10 +15,10 @@ import os
 import re
 import stat
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import partial
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
@@ -36,6 +36,10 @@ from emrys.libraries.validation.inputs import (
     read_bytes_with_identity,
 )
 
+if TYPE_CHECKING:
+    from emrys.reporting._artifact_index.models import EvidenceContext
+    from emrys.reporting._run_report.models import ReportContext
+
 TransactionKind = Literal["run_summary", "html_report"]
 
 
@@ -51,6 +55,9 @@ class ValidatedTransaction:
     receipt_sha256: str
     verified_report_locations: tuple[tuple[str, Path], ...] = ()
     _recheck: Callable[[], None] | None = field(default=None, repr=False, compare=False)
+    evidence_context: EvidenceContext | None = field(
+        default=None, repr=False, compare=False
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -371,6 +378,7 @@ def _validated_result(
     *,
     identity_only_paths: Iterable[Path] = (),
     verified_report_locations: tuple[tuple[str, Path], ...] = (),
+    evidence_context: EvidenceContext | None = None,
 ) -> ValidatedTransaction:
     if not _receipt_is_in_roster(receipt, roster):
         raise ReportingTransactionError(
@@ -392,6 +400,7 @@ def _validated_result(
         receipt_sha256=receipt.sha256,
         verified_report_locations=verified_report_locations,
         _recheck=recheck,
+        evidence_context=evidence_context,
     )
 
 
@@ -523,6 +532,8 @@ def validate_report_transaction(
     analysis_policy: Path | None = None,
     profile: Mapping[str, Any] | None = None,
     validate_upstream: bool = True,
+    prepared_context: ReportContext | None = None,
+    evidence_context: EvidenceContext | None = None,
 ) -> ValidatedTransaction:
     """Revalidate both HTML views, TSV, receipt, and bound inputs."""
 
@@ -548,8 +559,20 @@ def validate_report_transaction(
     )
     reject_control_residue()
     receipt_snapshot = _snapshot_receipt(output_dir / f"{run_id}.report_outputs.tsv")
+    if validate_upstream:
+        upstream = validate_run_summary_transaction(
+            package_root=package_root,
+            artifact_source_root=artifact_source_root,
+            run_id=run_id,
+            run_contract=Path(summary["run_contract_file"]["path"]),
+            inventory=Path(summary["inventory"]["path"]),
+            output_root=run_summary.parent.parent,
+            analysis_policy=analysis_policy,
+            profile=profile,
+        )
+        evidence_context = upstream.evidence_context
     try:
-        context = report_context.prepare_context(
+        context = prepared_context or report_context.prepare_context(
             argparse.Namespace(
                 package_root=package_root,
                 artifact_source_root=artifact_source_root,
@@ -557,16 +580,26 @@ def validate_report_transaction(
                 analysis_policy=analysis_policy,
                 output_root=output_root,
                 execute=False,
-            )
+            ),
+            evidence_context=evidence_context,
         )
     except report_context.ReportRenderError as exc:
         raise ReportingTransactionError(
             f"Report transaction failed semantic validation: {exc}"
         ) from exc
-    if not context.previous_snapshots:
+    if (
+        context.installed_package.root != package_root
+        or context.artifact_source_root.root != artifact_source_root
+        or context.run_summary_path != run_summary
+        or context.analysis_policy_path != analysis_policy
+        or context.output_dir != output_dir
+    ):
         raise ReportingTransactionError(
-            f"Report transaction is absent: {context.output_receipt}"
+            "Prepared report context does not match this reporting transaction"
         )
+    from emrys.reporting._run_report.publication import _recheck_inputs
+
+    _recheck_inputs(context)
     roster = _report_roster(
         context.summary,
         run_summary_path=context.run_summary_path,
@@ -577,58 +610,12 @@ def validate_report_transaction(
         artifact_source_root=context.artifact_source_root.root,
         input_paths=(snapshot.path for snapshot in context.input_snapshots),
     )
-    if validate_upstream:
-        validate_run_summary_transaction(
-            package_root=package_root,
-            artifact_source_root=artifact_source_root,
-            run_id=run_id,
-            run_contract=Path(context.summary["run_contract_file"]["path"]),
-            inventory=Path(context.summary["inventory"]["path"]),
-            output_root=run_summary.parent.parent,
-            analysis_policy=analysis_policy,
-            profile=profile,
+    try:
+        document = validation.validate_projected_outputs(
+            context, context.stable_paths, receipt.output_bytes(context)
         )
-    admitted_snapshot = context.previous_snapshots.get(context.output_receipt)
-    if admitted_snapshot is None or (
-        admitted_snapshot.path != receipt_snapshot.path
-        or admitted_snapshot.sha256 != receipt_snapshot.sha256
-        or admitted_snapshot.device != receipt_snapshot.device
-        or admitted_snapshot.inode != receipt_snapshot.inode
-        or admitted_snapshot.size_bytes != receipt_snapshot.size_bytes
-        or admitted_snapshot.mtime_ns != receipt_snapshot.mtime_ns
-        or admitted_snapshot.ctime_ns != receipt_snapshot.ctime_ns
-    ):
-        raise ReportingTransactionError(
-            "Report semantic validation admitted a different receipt"
-        )
-    if context.output_scientific_html.read_bytes() != context.scientific_html_bytes:
-        raise ReportingTransactionError(
-            "Published scientific HTML differs from the current deterministic "
-            "projection"
-        )
-    if context.output_evidence_html.read_bytes() != context.evidence_html_bytes:
-        raise ReportingTransactionError(
-            "Published evidence HTML differs from the current deterministic projection"
-        )
-    expected_summary = receipt.summary_tsv_bytes(context)
-    if context.output_summary_tsv.read_bytes() != expected_summary:
-        raise ReportingTransactionError(
-            "Published report summary TSV differs from the current projection"
-        )
-    document = receipt.read_receipt_tsv(context.output_receipt)
-    expected_document = receipt.receipt_document(
-        context,
-        tuple(
-            (output_id, kind, path, path)
-            for (output_id, kind, _suffix), path in zip(
-                artifact_contracts.REPORT_OUTPUTS, context.stable_paths[:3], strict=True
-            )
-        ),
-    )
-    if document != expected_document:
-        raise ReportingTransactionError(
-            "Published report receipt differs from the current projection"
-        )
+    except report_context.ReportRenderError as exc:
+        raise ReportingTransactionError(str(exc)) from exc
     html_ids = tuple(
         output_id for output_id, _kind, _suffix in artifact_contracts.REPORT_OUTPUTS[:2]
     )
@@ -641,20 +628,7 @@ def validate_report_transaction(
         raise ReportingTransactionError(
             "Published report receipt does not identify both verified HTML outputs"
         )
-    validation.validate_rendered_html(
-        context.output_scientific_html,
-        expected_banner=context.render_metadata["state_banner"],
-        expected_identity=report_context.expected_html_identity(
-            context,
-            "scientific",
-        ),
-    )
-    validation.validate_rendered_html(
-        context.output_evidence_html,
-        expected_banner=context.render_metadata["state_banner"],
-        expected_identity=report_context.expected_html_identity(context, "evidence"),
-    )
-    receipt.validate_summary_tsv(context.output_summary_tsv, context)
+    _recheck_inputs(context)
     if context.output_receipt != receipt_snapshot.path:
         raise ReportingTransactionError(
             "Report context selected a different receipt path"
@@ -716,6 +690,7 @@ def validate_run_summary_transaction(
     output_root: Path,
     analysis_policy: Path | None = None,
     profile: Mapping[str, Any] | None = None,
+    prepared_context: EvidenceContext | None = None,
 ) -> ValidatedTransaction:
     """Re-admit the current result manifest, native sources and table projections."""
     from emrys.reporting._artifact_index import context as artifact_context
@@ -737,7 +712,7 @@ def validate_run_summary_transaction(
     installed_package, source_root = _admit_authorities(
         package_root=package_root, artifact_source_root=artifact_source_root
     )
-    evidence = artifact_context.prepare_evidence_context(
+    evidence = prepared_context or artifact_context.prepare_evidence_context(
         argparse.Namespace(
             run_id=run_id,
             run_contract=run_contract,
@@ -751,6 +726,21 @@ def validate_run_summary_transaction(
         artifact_source_root=source_root,
     )
     context = evidence.index
+    if (
+        context.installed_package.record != installed_package.record
+        or context.artifact_source_root != source_root
+        or context.run_id != run_id
+        or context.profile_sha256 != orchestration_contracts.canonical_sha256(profile)
+        or context.run_contract_path != run_contract
+        or context.inventory_path != inventory
+        or context.analysis_policy_path != analysis_policy
+        or context.output_dir != output_dir
+    ):
+        raise ReportingTransactionError(
+            "Prepared result context does not match this reporting transaction"
+        )
+    artifact_context.recheck_inputs(context)
+    artifact_context.recheck_source_identity(context)
     _validate_document(
         document, context.inventory_rows, inventory, source_root=artifact_source_root
     )
@@ -766,10 +756,13 @@ def validate_run_summary_transaction(
         ),
     }
     roster = _snapshot_bound_roster(files, (output_dir,))
-    expected = evidence.summary_document
+    expected = dict(evidence.summary_document)
     # Only the original publication clock and attempt ID survive regeneration.
     expected["generated_at"] = document["generated_at"]
-    expected["provenance"]["created_at"] = document["generated_at"]
+    expected["provenance"] = {
+        **expected["provenance"],
+        "created_at": document["generated_at"],
+    }
     expected["publication"] = document["publication"]
     if snapshot.payload != canonical_json_bytes(expected):
         raise ReportingTransactionError(
@@ -785,7 +778,14 @@ def validate_run_summary_transaction(
             )
     artifact_context.recheck_inputs(context)
     artifact_context.recheck_source_identity(context)
-    return _validated_result(snapshot, roster, reject_control_residue)
+    return _validated_result(
+        snapshot,
+        roster,
+        reject_control_residue,
+        evidence_context=replace(
+            evidence, summary_document=expected, summary_json_bytes=snapshot.payload
+        ),
+    )
 
 
 def validate_receipt(
@@ -798,6 +798,7 @@ def validate_receipt(
     config: Mapping[str, Any],
     *,
     validated_predecessor: ValidatedTransaction | None = None,
+    prepared_context: EvidenceContext | ReportContext | None = None,
 ) -> ValidatedTransaction:
     """Validate the current Run result or its HTML projection transaction."""
     if kind not in {"run_summary", "html_report"}:
@@ -879,6 +880,7 @@ def validate_receipt(
             artifact_source_root=run_root,
             analysis_policy=run_root / config["primary_analysis_policy_path"]["path"],
             profile=profile,
+            prepared_context=prepared_context,
         )
         if kind == "run_summary":
             result = validate_run_summary_transaction(
@@ -894,6 +896,9 @@ def validate_receipt(
                 run_summary=manifest,
                 output_root=html_root,
                 validate_upstream=not reuse,
+                evidence_context=(
+                    validated_predecessor.evidence_context if reuse else None
+                ),
             )
         if attest() != source:
             raise ReportingTransactionError(

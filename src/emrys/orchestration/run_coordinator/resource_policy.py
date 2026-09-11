@@ -10,6 +10,9 @@ from pathlib import Path
 from typing import Any, Literal
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.application_model import (
+    resolve_computational_resources,
+)
 
 SCHEMA_VERSION = "emrys.local-pilot-resources.v1"
 STAGE_IDS = (
@@ -371,46 +374,18 @@ def resolve_resource_policy(
     """Resolve one exact admitted policy against one Attempt allocation."""
 
     declaration = policy.declaration
-    workflow_cores = declaration.workflow_cores
-    workflow_memory = (
-        allocation.memory_mb
-        if declaration.workflow_memory_mb == "allocation"
-        else declaration.workflow_memory_mb
-    )
-    if workflow_cores > allocation.cores:
-        raise ResourceConfigError(
-            "Workflow cores exceed observed allocation: "
-            f"{workflow_cores} > {allocation.cores}"
+    try:
+        effective = resolve_computational_resources(
+            declaration.identity_document(), allocation.cores, allocation.memory_mb
         )
-    if workflow_memory > allocation.memory_mb:
-        raise ResourceConfigError(
-            "Workflow memory exceeds observed allocation: "
-            f"{workflow_memory} > {allocation.memory_mb} MiB"
-        )
-    resolved_stage_memory = {
-        step_id: workflow_memory if value == "workflow" else int(value)
-        for step_id, value in declaration.stage_memory_mb
-    }
-    thread_values = dict(declaration.step_threads)
-    concurrency_values = dict(declaration.stage_concurrency)
-    for step_id in STAGE_IDS:
-        threads = thread_values.get(step_id, 1)
-        memory = resolved_stage_memory[step_id]
-        concurrency = concurrency_values.get(step_id, 1)
-        if concurrency * threads > workflow_cores:
-            raise ResourceConfigError(
-                f"Stage {step_id} concurrency x threads exceeds workflow cores: "
-                f"{concurrency} x {threads} > {workflow_cores}"
-            )
-        if concurrency * memory > workflow_memory:
-            raise ResourceConfigError(
-                f"Stage {step_id} concurrency x memory exceeds workflow memory: "
-                f"{concurrency} x {memory} > {workflow_memory} MiB"
-            )
+    except orchestration_contracts.ContractValidationError as exc:
+        raise ResourceConfigError(str(exc)) from exc
     resolution = AttemptResourceResolution(
         allocation=allocation,
-        workflow_memory_mb=workflow_memory,
-        stage_memory_mb=tuple((key, resolved_stage_memory[key]) for key in STAGE_IDS),
+        workflow_memory_mb=effective["workflow_memory_mb"],
+        stage_memory_mb=tuple(
+            (key, effective["stage_memory_mb"][key]) for key in STAGE_IDS
+        ),
     )
     return ResourcePlan(
         policy=policy,

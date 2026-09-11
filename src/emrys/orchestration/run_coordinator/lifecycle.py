@@ -10,6 +10,7 @@ authority.
 from __future__ import annotations
 
 import hashlib
+import json
 import errno
 import os
 import re
@@ -1213,6 +1214,7 @@ def _admit_runtime_context(
     from emrys.evidence.runtime_availability.inspector import (  # noqa: PLC0415
         RuntimeInspectionError,
         inspect_runtime_profile_bytes,
+        runtime_profile_checks,
     )
     from emrys.orchestration.run_coordinator import doctor  # noqa: PLC0415
 
@@ -1236,26 +1238,44 @@ def _admit_runtime_context(
         base_environment=os.environ,
     )
     try:
+        from emrys import analyses as analysis_modules  # noqa: PLC0415
+
+        fixed_checks = runtime_profile_checks(profile_bytes, observed.root)
+        reference = attempt["workflow"]["primary_analysis_policy_path"]
+        policy_data = _read_stable(
+            request.run_root / reference["path"], request.run_root, "analysis policy"
+        )
+        if hashlib.sha256(policy_data).hexdigest() != reference["sha256"]:
+            raise LifecycleError(
+                "Analysis policy digest differs from the immutable Attempt"
+            )
+        module = analysis_modules.readmit_analysis_module(json.loads(policy_data))
+        additions, package_tree_ids, explicit_file_ids = (
+            doctor._module_dependency_checks(module.descriptor, fixed_checks)
+        )
+        checks = (*fixed_checks, *additions)
         runtime_inspection = initial_inspection or inspect_runtime_profile_bytes(
             profile_bytes,
             profile_path,
             "local",
+            checks=checks,
             environment=environment,
         )
         if (
             runtime_inspection.profile_bytes != profile_bytes
             or runtime_inspection.profile_sha256 != profile_sha256
             or runtime_inspection.runtime_context != "local"
+            or tuple(item.check for item in runtime_inspection.observations) != checks
         ):
             raise RuntimeInspectionError(
                 "Planning runtime inspection differs from the immutable Attempt profile"
             )
-        doctor.validate_runtime_profile_contract(
-            tuple(item.check for item in runtime_inspection.observations),
-            observed.root,
-            allow_derived_dependencies=True,
-        )
-    except (RuntimeInspectionError, doctor.DoctorInputError) as exc:
+    except (
+        RuntimeInspectionError,
+        doctor.DoctorInputError,
+        analysis_modules.AnalysisModuleLoadError,
+        ValueError,
+    ) as exc:
         raise LifecycleError(
             f"Could not re-admit local runtime profile: {exc}"
         ) from exc
@@ -1276,16 +1296,6 @@ def _admit_runtime_context(
             "Local science attempt must bind its storage qualification"
         )
     try:
-        package_tree_ids = frozenset(
-            name
-            for name, identity in tools.items()
-            if identity.get("identity_kind") == "package_tree"
-        )
-        explicit_file_ids = frozenset(
-            name
-            for name, identity in tools.items()
-            if identity.get("identity_kind") == "file"
-        )
         expected_tools = doctor.required_tool_identities(
             runtime_inspection,
             bindings=(

@@ -9,19 +9,19 @@ from typing import Any
 from types import MappingProxyType
 
 from emrys.contracts.scientific_evidence import scientific_context as owner_context
-from emrys.libraries import validation as owner_validation
 
 from emrys.reporting import (
     AnalysisReportArtifactV1,
     ReportInputSnapshot as FileSnapshot,
     admit_report_input as _snapshot_regular,
     fail_report_provider as _fail,
+    recheck_report_input as _assert_snapshot,
 )
 
 from .computational import (
     ComputationalResults,
     ComputationalTable,
-    _admit_source_identity,
+    _inspect_validation,
     _source_table,
 )
 
@@ -58,7 +58,6 @@ class ScientificContextResults:
 
 
 _VALIDATION_ADAPTER = "step10_validation_report_v1"
-_VALIDATION_CHECK_ID = "scientific_context_transaction"
 _ROLE_SPECS = (
     (
         "candidate_context",
@@ -136,71 +135,12 @@ def _select_artifacts(
     return selected, None
 
 
-def _validation_table(
-    record: AnalysisReportArtifactV1,
-    *,
-    analysis_id: str,
-) -> ComputationalTable:
-    table = _source_table(
-        record,
-        display_limit=1,
-        expected_header=owner_validation.HEADER,
-    )
-    if record.row_count != 1 or len(table.display_rows) != 1:
-        _fail("Primary Step 10 owner-validation report must contain exactly one row")
-    row = table.display_rows[0]
-    if row["step_id"] != "10" or row["scope_id"] != analysis_id:
-        _fail("Primary Step 10 owner-validation row has the wrong step or scope")
-    if row["check_id"] != _VALIDATION_CHECK_ID:
-        _fail("Primary Step 10 owner-validation report has the wrong check roster")
-    if row["status"] != "pass":
-        _fail(
-            "Primary Step 10 owner-validation report is not all-pass: "
-            f"{_VALIDATION_CHECK_ID}={row['status'] or '<empty>'}"
-        )
-    return table
-
-
-def _canonical_table(
-    record: AnalysisReportArtifactV1,
-    *,
-    expected_header: tuple[str, ...],
-    display_limit: int,
-    canonical: owner_context.ContextTable,
-) -> ComputationalTable:
-    snapshot = _admit_source_identity(record)
-    if snapshot.path != canonical.path or snapshot.sha256 != canonical.sha256:
-        _fail(
-            f"Primary Step 10 artifact {record.artifact_id!r} differs from "
-            "the canonical receipt transaction"
-        )
-    if record.row_count != canonical.row_count:
-        _fail(
-            f"Primary Step 10 artifact {record.artifact_id!r} row count differs "
-            "from the canonical receipt transaction"
-        )
-    if display_limit:
-        return _source_table(
-            record,
-            display_limit=display_limit,
-            expected_header=expected_header,
-            snapshot=snapshot,
-        )
-    return ComputationalTable(
-        artifact_id=record.artifact_id,
-        row_count=canonical.row_count,
-        header=expected_header,
-        display_rows=(),
-        snapshot=snapshot,
-    )
-
-
 def _receipt_table(
     record: AnalysisReportArtifactV1,
     *,
     transaction: owner_context.ScientificContextTransaction,
 ) -> ComputationalTable:
-    snapshot = _admit_source_identity(record)
+    snapshot = record.snapshot
     header = tuple(transaction.receipt.header)
     if (
         snapshot.path != transaction.receipt.path
@@ -280,12 +220,22 @@ def admit_scientific_context_results(
     if records is None:
         return None, unavailable_reason
     analysis_id = summary["run_contract"]["primary_analysis_id"]
-    validation = _validation_table(records["validation"], analysis_id=analysis_id)
+    validation = _inspect_validation(
+        records["validation"],
+        analysis_id=analysis_id,
+        step_id="10",
+        check_ids=("scientific_context_transaction",),
+    )
     receipt_record = records["receipt"]
-    receipt_path = receipt_record.path
+    for record in records.values():
+        _assert_snapshot(
+            record.snapshot, f"scientific-context result {record.artifact_id!r}"
+        )
+    receipt_path = receipt_record.snapshot.path
     try:
-        transaction = owner_context.validate_scientific_context_transaction(
-            receipt_path
+        transaction = (
+            receipt_record.projection
+            or owner_context.validate_scientific_context_transaction(receipt_path)
         )
     except (owner_context.ContractError, OSError, UnicodeError) as exc:
         _fail(
@@ -299,22 +249,21 @@ def admit_scientific_context_results(
     if receipt_row["analysis_id"] != analysis_id:
         _fail("Primary Step 10 receipt has the wrong analysis_id")
     _reconcile_step09_inputs(receipt_row, computational_results)
-    canonical_outputs = transaction.outputs
-    output_by_role = {
-        "candidate_context": canonical_outputs.candidate_context,
-        "motif_hits": canonical_outputs.motif_hits,
-        "sequence_logo": canonical_outputs.sequence_logo,
-        "motif_statistics": canonical_outputs.motif_statistics,
-    }
-    tables = {
-        role: _canonical_table(
-            records[role],
+    tables = {}
+    for role, _adapter, header, display_limit in _ROLE_SPECS:
+        record = records[role]
+        canonical = getattr(transaction.outputs, role)
+        if (record.snapshot.path, record.snapshot.sha256, record.row_count) != (
+            canonical.path,
+            canonical.sha256,
+            canonical.row_count,
+        ):
+            _fail(f"Primary Step 10 {role} differs from its canonical transaction")
+        tables[role] = _source_table(
+            record,
             expected_header=header,
             display_limit=display_limit,
-            canonical=output_by_role[role],
         )
-        for role, _adapter, header, display_limit in _ROLE_SPECS
-    }
     bound_inputs = _bound_inputs(receipt_row, computational_results)
     return (
         ScientificContextResults(
