@@ -17,7 +17,6 @@ from ._runtime_model import (
     PreflightError,
     RuntimeCheck,
     RuntimeObservation,
-    _fail,
 )
 
 
@@ -28,17 +27,13 @@ class RuntimeInspection:
     profile_path: Path
     profile_sha256: str
     profile_bytes: bytes
-    runtime_context: str
     observations: tuple[RuntimeObservation, ...]
 
     @property
     def required_ready(self) -> bool:
         """Return whether every required check ran and passed."""
 
-        return all(
-            not observation.check.required or observation.status == "pass"
-            for observation in self.observations
-        )
+        return all(observation.status == "pass" for observation in self.observations)
 
 
 class RuntimeInspectionError(RuntimeError):
@@ -57,20 +52,16 @@ def runtime_profile_bytes(choices: Mapping[str, Path]) -> bytes:
 def inspect_runtime_profile_bytes(
     profile_data: bytes,
     profile_path: Path,
-    runtime_context: str,
     *,
     checks: Iterable[RuntimeCheck],
-    environment: Mapping[str, str] | None = None,
+    environment: Mapping[str, str],
 ) -> RuntimeInspection:
     """Probe validated candidate bytes without publishing a temporary profile."""
 
     try:
-        if runtime_context not in {"local", "cluster_batch"}:
-            _fail(f"Unsupported runtime context: {runtime_context}")
         profile_sha256 = hashlib.sha256(profile_data).hexdigest()
         results = run_checks(
             checks,
-            runtime_context,
             environment=environment,
         )
     except PreflightError as exc:
@@ -79,7 +70,6 @@ def inspect_runtime_profile_bytes(
         profile_path=profile_path,
         profile_sha256=profile_sha256,
         profile_bytes=profile_data,
-        runtime_context=runtime_context,
         observations=tuple(results),
     )
 

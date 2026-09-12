@@ -28,9 +28,7 @@ die() {
 hash_input="$test_root/hash-input.txt"
 printf 'bound hashing\n' >"$hash_input"
 unset EMRYS_SHA256_PYTHON
-EMRYS_REQUIRE_BOUND_SHA256=1
 expect_failure "missing SHA-256 Python binding" sha256_file "$hash_input"
-unset EMRYS_REQUIRE_BOUND_SHA256
 EMRYS_SHA256_PYTHON=python3
 expect_failure "relative SHA-256 Python binding" sha256_file "$hash_input"
 EMRYS_TEST_REAL_PYTHON="$(command -v python3)"
@@ -51,3 +49,7 @@ EMRYS_SHA256_PYTHON="$guarded_python"
    "0c009bef8b5cd42114e0daf15a7ded967e9fd9041adaa491055fb90b8573bc4f" ]] ||
     fail "bound Python did not use the controlled prefix and expected SHA-256 digest"
 export EMRYS_SHA256_PYTHON
+require_executable "Python" "$guarded_python"
+for invalid in "" python3 "$test_root" "$test_root/missing" "$hash_input"; do
+    expect_failure "invalid executable path" require_executable "tool" "$invalid"
+done

@@ -33,7 +33,8 @@ The Run coordinator prepares the declared inputs, runtime, and task commands.
 It also owns Slurm submission and recovery; stages do not need separate
 scheduler wrappers.
 
-Standalone shell producers and grouped validators are specialist interfaces.
-Their READMEs show how to inspect arguments, and their contracts distinguish
-preview, execute, existing-output handling, and failed-state recovery. A native
-output or passing structural check does not create an admissible Run.
+Scientific producers are internal workers. The Run supplies their working
+paths and runtime; Bash and Python worker tool arguments require absolute paths.
+Grouped validators remain available for specialist inspection, with their
+arguments and evidence limits documented beside each owner. A native output
+or passing structural check does not create an admissible Run.

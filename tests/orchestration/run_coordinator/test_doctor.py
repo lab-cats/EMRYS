@@ -95,12 +95,9 @@ def _check(
         check=RuntimeCheck(
             check_id=check_id,
             check_type=check_type,
-            runtime_context="local",
-            required=True,
             target=target,
             probe_args=(),
             expected=".*",
-            description=check_id,
         ),
         status="pass",
         observed="1.0",
@@ -120,7 +117,6 @@ def _inspection(
         profile_path=profile or tmp_path / "runtime.tsv",
         profile_sha256=hashlib.sha256(profile_bytes).hexdigest(),
         profile_bytes=profile_bytes,
-        runtime_context="local",
         observations=observations,
     )
 

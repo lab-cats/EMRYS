@@ -51,7 +51,7 @@ mkdir "$tmp_dir/index"
 printf 'index\n' >"$tmp_dir/index/Genome"
 command=(bash "$SCRIPT" --sample-id sample --r1-fastq "$tmp_dir/inputs/R1.fastq"
     --r2-fastq "$tmp_dir/inputs/R2.fastq" --star-index "$tmp_dir/index"
-    --output-dir "$tmp_dir/staged" --threads 2 --star-bin "$fake_bin/STAR")
+    --output-dir "$tmp_dir/staged" --threads 2 --star-bin "$fake_bin/STAR" --gunzip-bin /usr/bin/gunzip)
 "${command[@]}"
 for suffix in Aligned.sortedByCoord.out.bam Log.final.out Log.out Log.progress.out SJ.out.tab; do
     [[ -s "$tmp_dir/staged/sample.$suffix" ]] || fail "missing STAR $suffix"

@@ -14,8 +14,8 @@ Usage: src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh \
   --output-dir OUTPUT_DIR \
   --metrics-dir METRICS_DIR \
   --picard-jar PICARD_JAR \
-  [--java-bin JAVA_BIN] \
-  [--samtools-bin SAMTOOLS_BIN]
+  --java-bin JAVA_BIN \
+  --samtools-bin SAMTOOLS_BIN
 
 Internal worker: requires an existing EMRYS_TASK_WORK_DIR supplied by the runner.
 Output destinations are staging paths supplied by the runner.
@@ -26,14 +26,10 @@ USAGE
 script_dir="$(dirname -- "${BASH_SOURCE[0]}")"
 # shellcheck source=../../libraries/argument_parsing.sh
 source "$script_dir/../../libraries/argument_parsing.sh"
-# shellcheck source=../../libraries/executable_resolution.sh
-source "$script_dir/../../libraries/executable_resolution.sh"
 # shellcheck source=../../libraries/file_checks.sh
 source "$script_dir/../../libraries/file_checks.sh"
 
-declare_required_arguments sample_id input_bam output_dir metrics_dir picard_jar
-java_bin=""
-samtools_bin=""
+declare_required_arguments sample_id input_bam output_dir metrics_dir picard_jar java_bin samtools_bin
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -56,8 +52,8 @@ validate_nonempty_file "Input BAM" "$input_bam"
 validate_nonempty_file "Input BAM index" "$input_bam.bai"
 validate_nonempty_file "Picard jar" "$picard_jar"
 [[ -r "$picard_jar" ]] || die "Picard jar is not readable: $picard_jar"
-java_bin="$(resolve_executable_value "Java" "$java_bin" "java")"
-samtools_bin="$(resolve_executable_value "samtools" "$samtools_bin" "samtools")"
+require_executable "Java" "$java_bin"
+require_executable "samtools" "$samtools_bin"
 output_bam="$output_dir/$sample_id.markdup.bam"
 metrics="$metrics_dir/$sample_id.markdup.metrics.txt"
 "$java_bin" -jar "$picard_jar" MarkDuplicates "INPUT=$input_bam" \

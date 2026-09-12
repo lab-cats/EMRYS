@@ -26,12 +26,9 @@ def _observation(
         check=RuntimeCheck(
             check_id=check_id,
             check_type=check_type,
-            runtime_context="local",
-            required=True,
             target=target,
             probe_args=probe_args,
             expected="expected",
-            description=check_id,
         ),
         status="pass",
         observed="1.0.0",
@@ -75,7 +72,6 @@ def test_r_namespace_binding_uses_exact_package_tree_not_rscript(
         profile_path=tmp_path / "runtime.tsv",
         profile_sha256=hashlib.sha256(b"runtime\n").hexdigest(),
         profile_bytes=b"runtime\n",
-        runtime_context="local",
         observations=observations,
     )
 

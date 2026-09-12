@@ -1564,18 +1564,14 @@ def test_cached_runtime_probe_rechecks_executable_permission(tmp_path: Path) -> 
     check = RuntimeCheck(
         check_id="star",
         check_type="tool_version",
-        runtime_context="local",
-        required=True,
         target=str(tool),
         probe_args=("--version",),
         expected=".*",
-        description="STAR",
     )
     cached = RuntimeInspection(
         profile_path=tmp_path / "runtime.tsv",
         profile_sha256="a" * 64,
         profile_bytes=b"runtime\n",
-        runtime_context="local",
         observations=(
             RuntimeObservation(
                 check=check,

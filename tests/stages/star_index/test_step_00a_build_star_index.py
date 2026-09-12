@@ -122,7 +122,7 @@ def run_producer(
         "--genome-sa-index-nbases",
         "14",
         "--star-bin",
-        "STAR",
+        str(Path(environment["TMPDIR"]).parent / "fake-bin/STAR"),
     ]
     return subprocess.run(
         command,

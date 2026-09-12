@@ -1149,14 +1149,12 @@ def test_runtime_profile_path_derives_from_a_relative_default_project() -> None:
 def _no_probe_inspection(
     profile_bytes: bytes,
     profile_path: Path,
-    runtime_context: str,
     **_kwargs,
 ) -> RuntimeInspection:
     return RuntimeInspection(
         profile_path=profile_path,
         profile_sha256=hashlib.sha256(profile_bytes).hexdigest(),
         profile_bytes=profile_bytes,
-        runtime_context=runtime_context,
         observations=(),
     )
 

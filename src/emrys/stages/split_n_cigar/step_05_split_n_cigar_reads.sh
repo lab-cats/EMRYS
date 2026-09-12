@@ -13,9 +13,9 @@ Usage: src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh \
   --input-bam INPUT_BAM \
   --reference-fasta REFERENCE_FASTA \
   --output-dir OUTPUT_DIR \
-  [--gatk-bin GATK_BIN] \
-  [--samtools-bin SAMTOOLS_BIN] \
-  [--java-bin JAVA_BIN]
+  --gatk-bin GATK_BIN \
+  --samtools-bin SAMTOOLS_BIN \
+  --java-bin JAVA_BIN
 
 Internal worker: requires an existing EMRYS_TASK_WORK_DIR supplied by the runner.
 Output destinations are staging paths supplied by the runner.
@@ -26,17 +26,12 @@ USAGE
 script_dir="$(dirname -- "${BASH_SOURCE[0]}")"
 # shellcheck source=../../libraries/argument_parsing.sh
 source "$script_dir/../../libraries/argument_parsing.sh"
-# shellcheck source=../../libraries/executable_resolution.sh
-source "$script_dir/../../libraries/executable_resolution.sh"
 # shellcheck source=../../libraries/file_checks.sh
 source "$script_dir/../../libraries/file_checks.sh"
 # shellcheck source=../../libraries/gatk_invocation.sh
 source "$script_dir/../../libraries/gatk_invocation.sh"
 
-declare_required_arguments sample_id input_bam reference_fasta output_dir
-gatk_bin=""
-samtools_bin=""
-java_bin=""
+declare_required_arguments sample_id input_bam reference_fasta output_dir java_bin gatk_bin samtools_bin
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -108,11 +103,10 @@ validate_nonempty_file "Reference FASTA" "$reference_fasta"
 validate_reference_sidecar "Reference FAI" "$reference_fasta.fai"
 reference_name="$(basename -- "$reference_fasta")"
 validate_reference_sidecar "Reference DICT" "$(dirname -- "$reference_fasta")/${reference_name%.*}.dict"
-java_bin="$(resolve_overridable_executable "Java" "$java_bin" "JAVA_BIN_OVERRIDE" "java" "/bin/java")"
-gatk_bin="$(resolve_overridable_executable "GATK" "$gatk_bin" "GATK_BIN_OVERRIDE" "gatk")"
-samtools_bin="$(resolve_overridable_executable "samtools" "$samtools_bin" "SAMTOOLS_BIN_OVERRIDE" "samtools")"
-validate_and_print_java "GATK" JAVA_BIN JAVA_VERSION_OUTPUT "Java version:" 17 \
-    "Set JAVA_BIN_OVERRIDE to a Java 17 executable." "$java_bin"
+require_executable "Java" "$java_bin"
+require_executable "GATK" "$gatk_bin"
+require_executable "samtools" "$samtools_bin"
+validate_and_print_java "$java_bin"
 printf 'GATK version:\n'
 invoke_gatk_with_selected_java "$java_bin" "$gatk_bin" --version 2>&1 ||
     die2 "GATK version check failed: $gatk_bin"

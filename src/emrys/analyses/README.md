@@ -15,6 +15,11 @@ bytes, declared inputs/outputs, minimum resources, dependencies, planner,
 producer, and independent validator. A missing, ambiguous, or changed provider
 is rejected; EMRYS does not select substitutes or run a provider's installer.
 
+A module can declare additional executables, R packages, files or package
+directories. Doctor checks these requirements and the runner records their
+content identities. The module's package manager supplies them; managed runtime
+repair does not install custom dependencies.
+
 The v2 execution interface occupies the existing downstream `09` and optional `10` task
 slots and inherits task, publication, recovery, provenance, and logging policy.
 It provides no arbitrary stage graph, installer, failure-policy language,

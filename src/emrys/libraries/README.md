@@ -9,8 +9,9 @@ proven-equivalent implementations across its callers.
 
 ## Shell workers
 
-`argument_parsing.sh`, `file_checks.sh`, `executable_resolution.sh`, and
-`gatk_invocation.sh` support the native scientific workers. Their former
-locking, signal, and publication helpers have retired; the
+`argument_parsing.sh`, `file_checks.sh`, and `gatk_invocation.sh` support the
+Bash scientific workers. They require the runner's absolute executable
+paths and bound Python for hashing. Tool discovery belongs to runtime admission;
+workers do not search PATH, environment overrides, or alternative hash tools. The
 [Run task runner](../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution)
 owns those operations across all scientific owners.

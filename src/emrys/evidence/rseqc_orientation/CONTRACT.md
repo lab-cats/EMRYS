@@ -38,13 +38,11 @@ The producer accepts:
   `<bam-with-.bam-removed>.bai`;
 - one explicit BED12 annotation;
 - one explicit staging output directory; and
-- an executable `infer_experiment.py`, supplied as a path or command name.
+- the runner's admitted absolute path to the executable `infer_experiment.py`.
 
 The current operation validates path presence and tool executability but does not
 validate BAM, index, or BED12 content before invoking RSeQC. It does not bind
-the sample identifier to BAM metadata or a manifest row. By default it selects
-`.venv/bin/infer_experiment.py` relative to the working directory when that
-path exists, otherwise it resolves `infer_experiment.py` through `PATH`.
+the sample identifier to BAM metadata or a manifest row.
 
 ## Outputs
 

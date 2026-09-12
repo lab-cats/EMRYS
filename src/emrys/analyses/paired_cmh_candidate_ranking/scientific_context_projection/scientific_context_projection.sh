@@ -26,7 +26,7 @@ Usage: src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projec
   --motif-statistics-final MOTIF_STATISTICS_FINAL \
   --git-commit GIT_COMMIT \
   [--motif-catalog MOTIF_CATALOG] \
-  [--rscript-bin RSCRIPT_BIN] \
+  --rscript-bin RSCRIPT_BIN \
   [--r-script R_SCRIPT]
 
 Internal worker: requires an existing EMRYS_TASK_WORK_DIR supplied by the runner.
@@ -38,14 +38,11 @@ USAGE
 script_dir="$(dirname -- "${BASH_SOURCE[0]}")"
 # shellcheck source=../../../libraries/argument_parsing.sh
 source "$script_dir/../../../libraries/argument_parsing.sh"
-# shellcheck source=../../../libraries/executable_resolution.sh
-source "$script_dir/../../../libraries/executable_resolution.sh"
 # shellcheck source=../../../libraries/file_checks.sh
 source "$script_dir/../../../libraries/file_checks.sh"
 
-declare_required_arguments analysis_id step09_all_sites step09_significant_sites step09_summary reference_fasta reference_fai candidate_context_output motif_hits_output sequence_logo_output motif_statistics_output context_receipt_output candidate_context_final motif_hits_final sequence_logo_final motif_statistics_final git_commit
+declare_required_arguments analysis_id step09_all_sites step09_significant_sites step09_summary reference_fasta reference_fai candidate_context_output motif_hits_output sequence_logo_output motif_statistics_output context_receipt_output candidate_context_final motif_hits_final sequence_logo_final motif_statistics_final git_commit rscript_bin
 motif_catalog="$script_dir/resources/pum_motifs_v1.tsv"
-rscript_bin=""
 r_script="$script_dir/scientific_context_projection.R"
 
 while [[ $# -gt 0 ]]; do
@@ -143,7 +140,7 @@ validate_receipt_payloads() {
 
 validate_safe_id "--analysis-id" "$analysis_id"
 [[ "$git_commit" == unavailable || "$git_commit" =~ ^([0-9a-f]{40}|[0-9a-f]{64})$ ]] || die "--git-commit must be a full lowercase Git object ID or unavailable."
-rscript_bin="$(resolve_executable_value "Rscript" "$rscript_bin" "Rscript")"
+require_executable "Rscript" "$rscript_bin"
 validate_nonempty_file "R projection script" "$r_script"
 validate_nonempty_file "step09 all sites" "$step09_all_sites"
 step09_all_sites_sha256="$(sha256_file "$step09_all_sites")"

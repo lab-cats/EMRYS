@@ -6,7 +6,7 @@ import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
-RESULT_STATUSES = {"pass", "fail", "blocked", "not_checked"}
+RESULT_STATUSES = {"pass", "fail"}
 VERSION_TEXT_LIMIT = 4096
 TOOL_PROBE_TIMEOUT_SECONDS = 30
 R_NAMESPACE_PROBE_TIMEOUT_SECONDS = 120
@@ -24,12 +24,9 @@ class RuntimeCheck:
 
     check_id: str
     check_type: str
-    runtime_context: str
-    required: bool
     target: str
     probe_args: tuple[str, ...]
     expected: str
-    description: str
 
 
 @dataclass(frozen=True, slots=True)

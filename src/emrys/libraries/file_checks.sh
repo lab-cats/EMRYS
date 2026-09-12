@@ -5,35 +5,15 @@ is_gzip_path() {
     [[ "$1" == *.gz ]]
 }
 
+require_executable() {
+    [[ "$2" == /* && -f "$2" && -x "$2" ]] ||
+        die "$1 must be an absolute executable file: $2"
+}
+
 sha256_file() {
     local path="$1"
     local python_bin="${EMRYS_SHA256_PYTHON:-}"
 
-    if [[ -z "$python_bin" ]]; then
-        if [[ "${EMRYS_REQUIRE_BOUND_SHA256:-0}" == 1 ]]; then
-            die "EMRYS_SHA256_PYTHON must bind the admitted workflow Python launcher."
-            return 1
-        fi
-        if command -v sha256sum >/dev/null 2>&1; then
-            sha256sum "$path" | awk '{print $1}'
-        elif command -v shasum >/dev/null 2>&1; then
-            shasum -a 256 "$path" | awk '{print $1}'
-        elif command -v python3 >/dev/null 2>&1; then
-            python3 -c '
-import hashlib
-import sys
-
-digest = hashlib.sha256()
-with open(sys.argv[1], "rb") as handle:
-    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-        digest.update(chunk)
-print(digest.hexdigest())
-' "$path"
-        else
-            die "No SHA-256 implementation found (sha256sum, shasum, or python3)."
-        fi
-        return
-    fi
     if [[ "$python_bin" != /* ]]; then
         die "EMRYS_SHA256_PYTHON must be an absolute path: $python_bin"
         return 1
