@@ -6,7 +6,7 @@ owns the goals; this file owns CS scope, status, decisions, and proof. The
 
 ## Working queue
 
-**CS-36: unused artifact-record fields are retired; hosted verification is pending.**
+**[PR #163](https://github.com/lab-cats/EMRYS/pull/163), CS-36: unused artifact-record fields are retired; hosted verification is pending.**
 Builders, contracts, report projections and tests now use the reduced records.
 Scientific records, runner recovery, both reports, figures and the dashboard remain.
 
@@ -157,7 +157,7 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-33](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Consolidate equivalent region, graph and resource rules. | Done | 3 | 3 | Preserve differing accepted inputs and independent scientific checks. | `COMPRESS-01` |
 | [CS-34](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Retire duplicated application-log failure handling. | Done | 2 | 2 | Keep log failures observational, warning once and preserving partial logs. | `COMPRESS-01` |
 | [CS-35](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Carry admitted inputs through reporting instead of reconstructing them. | Done | 4 | 4 | Preserve exact source checks at publication/reuse, both reports and every figure. | `REPORT-ROSTER-01` |
-| [CS-36](#cs-36-unused-artifact-record-fields) | Retire artifact fields that production never populates and their dependent machinery. | Verification pending | 4 | 3 | Local contract/golden/static checks pass; hosted reporting/recovery verification is pending. | `REPORT-ROSTER-01` |
+| [CS-36](#cs-36-unused-artifact-record-fields) | Retire artifact fields that production never populates and their dependent machinery. | Verification pending | 4 | 3 | PR #163: local contract/golden/static checks pass; hosted reporting/recovery verification is pending. | `REPORT-ROSTER-01` |
 
 ### CS-36 Unused artifact-record fields
 
