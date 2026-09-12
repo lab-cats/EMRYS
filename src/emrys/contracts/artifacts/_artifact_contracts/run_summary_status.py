@@ -8,7 +8,6 @@ from typing import Any
 from .definitions import ContractValidationError
 
 RUN_SUMMARY_STATUS_FIELDS = (
-    "implementation_status",
     "local_test_status",
     "runtime_validation_status",
     "cluster_dry_run_status",
@@ -52,13 +51,8 @@ def aggregate_artifact_state(artifacts: list[dict[str, Any]]) -> str:
 
 def artifact_status_dimensions(artifact: dict[str, Any]) -> dict[str, str]:
     return {
-        "implementation_status": artifact["implementation"]["status"],
         "local_test_status": artifact["local_testing"]["status"],
         "runtime_validation_status": artifact["runtime_validation"]["status"],
         "cluster_dry_run_status": artifact["cluster_validation"]["dry_run_status"],
         "cluster_proof_status": artifact["cluster_validation"]["proof_status"],
     }
-
-
-def scope_key(scope: dict[str, Any]) -> tuple[str, str, str]:
-    return scope["step_id"], scope["scope_type"], scope["scope_id"]

@@ -17,13 +17,12 @@ if TYPE_CHECKING:
     from emrys.reporting._artifact_index.models import EvidenceContext
 
 PRODUCER = "emrys.reporting.report"
-PRODUCER_VERSION = "5.2.0"
-REPORT_RECEIPT_SCHEMA_VERSION = "5.0.0"
+PRODUCER_VERSION = "6.0.0"
+REPORT_RECEIPT_SCHEMA_VERSION = "6.0.0"
 JINJA_VERSION = "3.1.6"
 TEMPLATE_RESOURCE = "templates/run_report.html.j2"
 CSS_RESOURCE = "styles/run_report.css"
 COMPUTATIONAL_STATUS_FIELDS: tuple[tuple[str, str], ...] = (
-    ("Implementation", "implementation_status"),
     ("Local testing", "local_test_status"),
     ("Runtime validation", "runtime_validation_status"),
     ("Cluster dry-run", "cluster_dry_run_status"),

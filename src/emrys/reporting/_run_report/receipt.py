@@ -120,7 +120,7 @@ def receipt_document(
     core_renderer = {
         "producer": PRODUCER,
         "producer_version": PRODUCER_VERSION,
-        "package": "emrys.reporting",
+        "package": "emrys",
         "content_sha256": context.render_metadata["renderer_package_sha256"],
         "template_engine": "Jinja2",
         "template_engine_version": JINJA_VERSION,
@@ -141,6 +141,17 @@ def receipt_document(
             "schema_name": summary["schema_name"],
             "schema_version": summary["schema_version"],
         },
+        "inputs": [
+            {
+                "path": str(snapshot.path),
+                "sha256": snapshot.sha256,
+                "size_bytes": snapshot.size_bytes,
+                "rehash_content": rehash,
+            }
+            for snapshot, _label, rehash in context.report_input_rechecks
+            if snapshot.path
+            not in {context.template_snapshot.path, context.css_snapshot.path}
+        ],
         "template": {
             "path": f"emrys.reporting/{TEMPLATE_RESOURCE}",
             "sha256": context.template_snapshot.sha256,
@@ -153,7 +164,7 @@ def receipt_document(
         "state_banner": context.render_metadata["state_banner"],
         "truncations": [],
         "schema_versions": {
-            "artifact_entry": "1.0.0",
+            "artifact_entry": "2.0.0",
             "run_summary": summary["schema_version"],
             "report_receipt": version,
         },

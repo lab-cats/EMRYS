@@ -9,8 +9,8 @@ from emrys.contracts.artifacts import api as contracts
 from emrys.reporting._artifact_index.models import RUN_CONTRACT_FIELDS
 
 PRODUCER = "build_run_summary"
-PRODUCER_VERSION = "4.0.0"
-RUN_SUMMARY_SCHEMA_VERSION = "4.0.0"
+PRODUCER_VERSION = "5.0.0"
+RUN_SUMMARY_SCHEMA_VERSION = "5.0.0"
 
 RUN_SUMMARY_HEADER = (
     "run_id",

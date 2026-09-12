@@ -505,10 +505,14 @@ def module_identity_record(module: LoadedAnalysisModuleV1) -> dict[str, object]:
 
 
 def module_admission_record(module: LoadedAnalysisModuleV1) -> dict[str, object]:
-    """Return provider metadata plus the exact installed implementation digest."""
+    """Bind scientific metadata and bytes independently of distribution releases."""
 
     return {
-        "module": module_identity_record(module),
+        "module": {
+            key: value
+            for key, value in module_identity_record(module).items()
+            if key != "distribution_version"
+        },
         "implementation_sha256": module.provider.package.sha256,
     }
 
@@ -524,14 +528,14 @@ def readmit_analysis_module(
     else:
         raise AnalysisModuleLoadError("Persisted analysis policy has no module")
     loaded = load_analysis_module(module_id)
-    if persisted != module_identity_record(loaded):
+    observed = module_identity_record(loaded)
+    observed["distribution_version"] = persisted.get("distribution_version")
+    if (
+        persisted != observed
+        or policy.get("implementation_sha256") != loaded.provider.package.sha256
+    ):
         raise AnalysisModuleLoadError(
-            "Installed analysis module differs from persisted Run policy"
-        )
-    persisted_implementation = policy.get("implementation_sha256")
-    if persisted_implementation != loaded.provider.package.sha256:
-        raise AnalysisModuleLoadError(
-            "Installed analysis module implementation differs from persisted Run policy"
+            "Installed analysis module identity or implementation differs from persisted Run policy"
         )
     return loaded
 

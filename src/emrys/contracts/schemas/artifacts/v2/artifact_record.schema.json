@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:emrys:schema:artifacts:artifact-entry:v1",
+  "$id": "urn:emrys:schema:artifacts:artifact-entry:v2",
   "title": "EMRYS Run artifact entry",
   "description": "One expected artifact; the containing Run manifest owns shared identity and publication provenance.",
   "type": "object",
@@ -16,7 +16,6 @@
     "attempt_provenance_status",
     "attempts",
     "selected_attempt_id",
-    "implementation",
     "local_testing",
     "runtime_validation",
     "cluster_validation",
@@ -100,9 +99,6 @@
         }
       ]
     },
-    "implementation": {
-      "$ref": "#/$defs/implementation_status"
-    },
     "local_testing": {
       "$ref": "#/$defs/local_test_status"
     },
@@ -158,40 +154,6 @@
     }
   },
   "$defs": {
-    "implementation_status": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "status",
-        "git_commit",
-        "evidence"
-      ],
-      "properties": {
-        "status": {
-          "enum": [
-            "not_implemented",
-            "implemented"
-          ]
-        },
-        "git_commit": {
-          "description": "Core source commit, or null when exact external-provider bytes are the implementation authority.",
-          "oneOf": [
-            {
-              "$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/git_commit"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "evidence": {
-          "type": "array",
-          "items": {
-            "$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/evidence_reference"
-          }
-        }
-      }
-    },
     "local_test_status": {
       "type": "object",
       "additionalProperties": false,

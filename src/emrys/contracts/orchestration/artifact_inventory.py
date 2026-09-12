@@ -86,17 +86,6 @@ def validate_processing_graph(profile: Mapping[str, Any], source_root: Path) -> 
         )
 
 
-def report_output_root(run_root: Path, profile: Mapping[str, Any]) -> Path:
-    """Select the report root bound to the admitted profile's artifact layout."""
-
-    if any(
-        str(template["source_path_template"]).startswith("products/native/")
-        for template in profile["artifact_templates"]
-    ):
-        return run_root / "results" / "reports"
-    return run_root / "products" / "report"
-
-
 def _template_contexts(
     selector: str,
     source: Mapping[str, Any],

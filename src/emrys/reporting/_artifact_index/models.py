@@ -79,6 +79,7 @@ class Inspection:
 class BuildContext:
     installed_package: InstalledPackage
     artifact_source_root: ArtifactSourceRoot
+    scientific_origin: dict[str, Any]
     run_id: str
     profile_sha256: str
     run_contract_path: Path

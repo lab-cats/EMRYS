@@ -13,7 +13,6 @@ from emrys.analyses import compose_profile
 from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.libraries.source_authority import PACKAGE_ROOT
 from emrys.orchestration.run_coordinator.normalization import admit_project
@@ -401,22 +400,6 @@ def test_profile_separates_native_products_from_scientist_results(
         else "unexpected"
         for path in relative_paths
     ) == Counter({"native": 56, "editing": 6, "scientific_context": 5})
-
-
-def test_report_root_follows_the_profile_bound_layout(
-    profile: dict[str, object],
-    tmp_path: Path,
-) -> None:
-    assert report_output_root(tmp_path, profile) == tmp_path / "results" / "reports"
-
-    historical = copy.deepcopy(profile)
-    for template in historical["artifact_templates"]:
-        path = template["source_path_template"]
-        if path.startswith("products/native/"):
-            template["source_path_template"] = path.replace(
-                "products/native/", "results/", 1
-            )
-    assert report_output_root(tmp_path, historical) == tmp_path / "products" / "report"
 
 
 def test_step09_keeps_native_diagnostic_pdfs(profile: dict[str, object]) -> None:

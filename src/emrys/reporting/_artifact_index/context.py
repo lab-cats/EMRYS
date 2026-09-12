@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -32,7 +33,6 @@ from .reconciliation import (
 )
 from .records import (
     build_artifact_record,
-    producer_evidence,
     validate_record_in_memory,
 )
 from .registry import build_adapter_registry
@@ -49,6 +49,7 @@ def prepare_context(
 ) -> BuildContext:
     source_identity_observer = admit_installed_package
     source_root = artifact_source_root.root
+    scientific_origin = copy.deepcopy(arguments.scientific_origin)
     if not contracts.SAFE_ID_RE.fullmatch(arguments.run_id):
         raise ArtifactIndexError("run_id must match [A-Za-z0-9][A-Za-z0-9._-]*")
     run_contract_path = arguments.run_contract.expanduser().resolve()
@@ -61,8 +62,22 @@ def prepare_context(
 
     try:
         contract_inputs = tuple(
-            _snapshot_receipt(path) for path in (run_contract_path, inventory_path)
+            _snapshot_receipt(path)
+            for path in (
+                run_contract_path,
+                inventory_path,
+                *(Path(reference["path"]) for reference in scientific_origin.values()),
+            )
         )
+        if any(
+            snapshot.sha256 != reference["sha256"]
+            for snapshot, reference in zip(
+                contract_inputs[2:], scientific_origin.values(), strict=True
+            )
+        ):
+            raise ArtifactIndexError(
+                "Original scientific records differ from their bound hashes"
+            )
     except ReportingTransactionError as exc:
         raise ArtifactIndexError(str(exc)) from exc
 
@@ -155,11 +170,6 @@ def prepare_context(
             "Installed package changed before provenance attribution"
         )
     git_commit = installed_package.git_commit or "unavailable"
-    evidence = producer_evidence(
-        git_commit,
-        source_root=installed_package.root,
-        analysis_module=analysis_module,
-    )
     inspections = [
         inspect_source(
             row,
@@ -178,10 +188,7 @@ def prepare_context(
     validator = contracts.schema_validator("artifact-record")
     records: list[dict[str, Any]] = []
     for inspection, inventory_row in zip(inspections, inventory_rows, strict=True):
-        record = build_artifact_record(
-            inspection=inspection,
-            implementation=evidence[inventory_row["step_id"]],
-        )
+        record = build_artifact_record(inspection=inspection)
         validate_record_in_memory(
             record,
             inventory_row,
@@ -194,6 +201,7 @@ def prepare_context(
     context = BuildContext(
         installed_package=installed_package,
         artifact_source_root=artifact_source_root,
+        scientific_origin=scientific_origin,
         run_id=arguments.run_id,
         profile_sha256=canonical_sha256(profile),
         run_contract_path=run_contract_path,
@@ -276,6 +284,7 @@ def prepare_evidence_context(
     )
     document, summary_json, summary_tsv, qc_summary = build_summary(
         source_root=artifact_source_root.root,
+        output_dir=context.output_dir,
         run_id=context.run_id,
         run_contract=context.run_contract,
         run_contract_path=context.run_contract_path,
@@ -288,6 +297,7 @@ def prepare_evidence_context(
         generated_at=context.finished_at,
         git_commit=context.git_commit,
         installed_package=context.installed_package.record,
+        scientific_origin=context.scientific_origin,
         analysis_policy_binding=context.analysis_policy_binding,
         publication={
             "attempt_id": context.attempt_id,

@@ -36,3 +36,10 @@ The logical producer remains `emrys.reporting.report`. The shared
 [publication/recovery contract](../README.md#publication-and-recovery) apply;
 preparation reads only current outputs. Rendering neither reruns
 analysis nor changes scientific evidence.
+
+Completed reports retain the renderer recorded in their v6 receipt. Reuse checks
+that receipt against the immutable ledger, then checks every recorded data input,
+output and HTML contract without rendering again. The receipt records additional
+provider inputs, including figure sources; template and stylesheet identities
+remain producer provenance. New publication still validates its exact prepared
+bytes and records the actual installed EMRYS package.

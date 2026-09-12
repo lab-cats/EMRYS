@@ -34,18 +34,21 @@ two outputs are HTML Results. The frozen `ReportContext.stable_paths` stores
 scientific HTML, evidence HTML, summary TSV, then receipt; receipt output rows
 use its first three `Path` objects.
 
-Current Runs use run-summary v4/report-receipt v5, attributing the computation
-provider, scientific reporter, and core renderer separately. Reporter identity
-never changes Analysis or Run identity. Complete bundles are reused only after
-current-source semantic revalidation. Old-version Run inspection, resume, and
-report regeneration are unsupported; their data and evidence remain untouched.
+Current Runs use artifact entries v2, Run summaries v5 and report receipts v6.
+The manifest binds the original scientific Run and Attempt by path and hash;
+those records preserve the actual scientific packages, commands and reused task
+origins. The manifest and HTML receipt separately identify their own publishers.
+Reporting source changes and package release numbers do not change scientific
+Run identity. Scientific code, validation, backend and locked-runtime changes
+remain compatibility checks. Old-format inspection, resume and regeneration
+are unsupported; existing data and evidence remain untouched.
 
 ## Code and artifact roots
 
 Production callers observe the installed EMRYS package through
 [`source_authority.py`](../libraries/source_authority.py). Its exact code hash,
-version, and build provenance enter the manifest and report receipt. Native
-producer paths resolve within that package. Admission repeats at the existing
+version, and build provenance enter the manifest and report receipt. Original scientific code remains attributed by the Run and Attempt records.
+Admission repeats at the existing
 input and publication boundaries to detect changes during the operation; it
 does not require Git or a matching checkout.
 
@@ -97,9 +100,11 @@ operation, it carries checked contexts forward instead of rebuilding them:
 indexing supplies canonical Step 09/10 projections, and publication supplies
 the prepared HTML and TSV bytes. Source identities, complete file rosters and
 exact published bytes are still checked before reuse and publication.
-A fresh inspection reconstructs the manifest from current sources, then carries
-those newly checked inputs into report validation. Nothing is cached across
-operations or persisted in another format.
+A fresh inspection validates native scientific sources and the original
+manifest, retaining its publisher provenance and the hashes of both TSV tables. Completed HTML reports are checked
+against their ledger-bound receipt and its complete data-input and output
+rosters. Reuse does not invoke the current renderer. New publication still checks
+exact prepared output bytes, HTML safety and accessibility, and package stability.
 
 ## Implementation and fault tests
 

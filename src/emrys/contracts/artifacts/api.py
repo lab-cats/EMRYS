@@ -14,6 +14,7 @@ from ._artifact_contracts.definitions import (
 )
 from ._artifact_contracts.identity import (
     resolve_contract_path,
+    scope_key,
     validate_resolved_path,
     validate_run_contract,
 )
@@ -32,7 +33,6 @@ from ._artifact_contracts.run_summary_status import (
     aggregate_equal_or_mixed,
     artifact_rollup_state,
     artifact_status_dimensions,
-    scope_key,
 )
 from ._artifact_contracts.run_summary_validation import (
     validate_run_summary_semantics,

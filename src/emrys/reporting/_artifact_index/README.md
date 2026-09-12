@@ -14,10 +14,16 @@ The coordinator admits the installed package and an independent artifact root
 before Run inputs. Both stay on `BuildContext` under the common
 [root rules](../README.md#code-and-artifact-roots). Full installed-package identity
 is reobserved before attribution and publication; build-origin Git metadata is
-recorded when available, without running Git.
+recorded for the manifest publisher when available, without running Git.
+The manifest separately binds the original scientific Run and Attempt by path
+and hash. Those records retain the scientific package, commands, and reused
+Attempt origins; reporting does not reconstruct producer attribution from
+today's installed files. Both original records join the input rechecks. The manifest also binds the two
+existing summary tables by path, hash, and size, so their original bytes remain
+verifiable after the reporting code changes.
 
 The canonical processing profile and task definitions supply artifact ownership
-and producer paths through the orchestration contract owner. Reporting adds each
+through the orchestration contract owner. Reporting adds each
 native reader's file, header, and row-count rules; the selected Analysis descriptor
 supplies its own typed declarations. The immutable Run profile controls its artifact locations and transaction roster. Current processing ownership comes
 from the admitted installed package, so a Run profile cannot authorize an artifact
@@ -67,5 +73,7 @@ removal, with [`_signals.py`](../_signals.py) interruption handling under the co
 and the canonical Run result manifest, retaining inode anchors while linking
 finals exclusively. The manifest is installed last. Source, input and directory
 rechecks cover the full operation; rollback removes only proven owned outputs.
-Current-source revalidation reconstructs the same entries and projections from
-the admitted inputs and compares exact bytes.
+Reuse revalidates native scientific sources and checks the original manifest
+against its verified ledger. The manifest binds both existing TSV table hashes,
+so reporting-only projection changes do not require rebuilding those tables.
+Fresh publication still compares its exact prepared manifest and table bytes.

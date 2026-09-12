@@ -515,8 +515,17 @@ def test_success_publishes_two_html_views_summary_and_current_receipt_last(
         context.output_dir / f"{context.summary['run_id']}.run_report.pdf"
     ).exists()
     document = receipt_document(context.output_receipt)
-    assert document["schema_version"] == "5.0.0"
+    assert document["schema_version"] == "6.0.0"
     assert document["interpretation_boundary"] == COMPUTATIONAL_BOUNDARY_BANNER
+    assert document["evidence_renderer"]["package"] == "emrys"
+    assert (
+        document["evidence_renderer"]["content_sha256"]
+        == context.installed_package.content_sha256
+    )
+    assert {item["path"] for item in document["inputs"]} == {
+        str(snapshot.path)
+        for snapshot, _label, _rehash in context.report_input_rechecks
+    }
     assert document["evidence_renderer"]["template_engine"] == "Jinja2"
     assert document["evidence_renderer"]["template_engine_version"] == JINJA_VERSION
     assert [item["kind"] for item in document["outputs"]] == [
@@ -582,7 +591,7 @@ def test_report_rejects_a_run_summary_without_the_analysis_policy_binding(
 def test_receipt_validation_reports_schema_and_semantic_failures(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    document = {"schema_version": "5.0.0"}
+    document = {"schema_version": "6.0.0"}
     with pytest.raises(ReportRenderError, match="schema validation failed"):
         receipt.validate_receipt(document)
 

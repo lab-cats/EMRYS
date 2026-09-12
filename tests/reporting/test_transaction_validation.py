@@ -22,6 +22,7 @@ from emrys.libraries.source_authority import (
     admit_installed_package,
 )
 from emrys.reporting import transaction_validation
+from emrys.orchestration.run_coordinator.reporting_boundary import _AdmittedIdentity
 from emrys.reporting._artifact_index import context as artifact_context
 from emrys.reporting._run_report import context as report_context_owner
 from emrys.reporting._run_report import publication as report_publication
@@ -59,6 +60,29 @@ def fault_before_validation(
         assert reached, f"Target receipt did not reach final validation: {receipt_path}"
 
 
+def _identity(root: Path, run: Any, profile: Any, attempt: Any) -> _AdmittedIdentity:
+    return _AdmittedIdentity(
+        root=root,
+        execution=run.record,
+        profile=profile,
+        attempt=attempt,
+        execution_sha256=hashlib.sha256(run.canonical_bytes).hexdigest(),
+        profile_sha256=orchestration_contracts.canonical_sha256(profile),
+        attempt_reference={"path": "attempt/workflow-attempt.json", "sha256": "a" * 64},
+        run_lock_reference={"path": "state/run.lock", "sha256": "b" * 64},
+        reporting_package=None,
+    )
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _report_receipt_sha256(built: Any, report_root: Path) -> str:
+    path = report_root / built.run_id / f"{built.run_id}.report_outputs.tsv"
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def _publish_report(arguments: argparse.Namespace) -> None:
     context = report_context_owner.prepare_context(arguments)
     report_publication.publish_report(context)
@@ -85,7 +109,7 @@ def test_direct_validators_recheck_each_complete_transaction(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     built, report_root = complete_reporting
-    summary = transaction_validation.validate_run_summary_transaction(
+    summary_arguments = dict(
         package_root=PACKAGE_ROOT,
         artifact_source_root=built.root,
         run_id=built.run_id,
@@ -95,10 +119,15 @@ def test_direct_validators_recheck_each_complete_transaction(
         output_root=built.output_root,
         profile=adapter_fixture.analysis_profile_v1(),
     )
-    assert summary.evidence_context is not None
-    assert (
-        summary.evidence_context.summary_json_bytes
-        == built.summary_json_path.read_bytes()
+    monkeypatch.setattr(
+        artifact_context,
+        "prepare_evidence_context",
+        lambda *_args, **_kwargs: pytest.fail(
+            "Retained summary rebuilt its projection"
+        ),
+    )
+    summary = transaction_validation.validate_run_summary_transaction(
+        expected_receipt_sha256=_sha256(built.summary_json_path), **summary_arguments
     )
 
     def already_checked(*_args: Any, **_kwargs: Any) -> Any:
@@ -115,14 +144,11 @@ def test_direct_validators_recheck_each_complete_transaction(
         analysis_policy=built.adapter_fixture.analysis_policy,
         output_root=report_root,
     )
-    context = report_context_owner.prepare_context(
-        argparse.Namespace(**arguments), evidence_context=summary.evidence_context
-    )
     monkeypatch.setattr(report_context_owner, "prepare_context", already_checked)
     rendered = transaction_validation.validate_report_transaction(
         **arguments,
         profile=adapter_fixture.analysis_profile_v1(),
-        prepared_context=context,
+        expected_receipt_sha256=_report_receipt_sha256(built, report_root),
         validate_upstream=False,
     )
 
@@ -175,6 +201,7 @@ def test_summary_revalidates_relative_artifacts_from_admitted_root(
     )
 
     validated = transaction_validation.validate_run_summary_transaction(
+        expected_receipt_sha256=_sha256(built.summary_json_path),
         package_root=PACKAGE_ROOT,
         artifact_source_root=root,
         run_id=built.run_id,
@@ -211,6 +238,7 @@ def test_report_validator_rechecks_bound_reference_identity_without_rereading(
         package_root=PACKAGE_ROOT,
         artifact_source_root=built.root,
         run_summary=built.summary_json_path,
+        expected_receipt_sha256=_report_receipt_sha256(built, report_root),
         analysis_policy=built.adapter_fixture.analysis_policy,
         output_root=report_root,
         profile=adapter_fixture.analysis_profile_v1(),
@@ -243,10 +271,7 @@ def test_fixed_dispatcher_accepts_successor_run_authority(
         / run.run_id
         / f"{run.run_id}.run_summary.json"
     )
-    expected = transaction_validation.ValidatedTransaction(
-        receipt_path=receipt_path,
-        receipt_sha256="c" * 64,
-    )
+    receipt_path.parent.mkdir(parents=True)
     reporting_root = f"contract/reporting-inputs/{attempt['workflow_attempt_id']}"
     config = {
         "reporting_run_contract_path": {
@@ -257,6 +282,16 @@ def test_fixed_dispatcher_accepts_successor_run_authority(
             "path": f"{reporting_root}/primary_analysis_policy.json"
         },
     }
+    attempt["workflow"] = config
+    identity = _identity(run_root, run, profile, attempt)
+    receipt_path.write_bytes(
+        orchestration_contracts.canonical_json_bytes(
+            {"scientific_origin": identity.scientific_origin}
+        )
+    )
+    expected = transaction_validation.ValidatedTransaction(
+        receipt_path=receipt_path, receipt_sha256=_sha256(receipt_path)
+    )
     observed: dict[str, Any] = {}
     monkeypatch.setattr(
         transaction_validation,
@@ -268,11 +303,7 @@ def test_fixed_dispatcher_accepts_successor_run_authority(
         transaction_validation.validate_receipt(
             "run_summary",
             receipt_path,
-            run_root,
-            run.record,
-            profile,
-            attempt,
-            config,
+            identity,
         )
         == expected
     )
@@ -324,7 +355,9 @@ def test_fixed_dispatcher_rechecks_cached_predecessor(
         ),
     )
     summary_receipt = (
-        transaction_validation.report_output_root(run_root, profile)
+        run_root
+        / "results"
+        / "reports"
         / run.run_id
         / f"{run.run_id}.report_outputs.tsv"
     )
@@ -342,41 +375,37 @@ def test_fixed_dispatcher_rechecks_cached_predecessor(
         transaction_validation.validate_receipt(
             "html_report",
             summary_receipt,
-            run_root,
-            run.record,
-            profile,
-            attempt,
-            {},
+            _identity(run_root, run, profile, attempt),
             validated_predecessor=predecessor,
         )
 
 
 @pytest.mark.parametrize(
     "mutation",
-    ("native_source", "producer_commit", "inventory_binding", "noncanonical"),
+    ("native_source", "inventory_binding", "noncanonical"),
 )
 def test_manifest_rejects_mutation(
     complete_reporting: tuple[Any, Path], mutation: str
 ) -> None:
     built, _ = complete_reporting
+    original_receipt_sha256 = _sha256(built.summary_json_path)
     if mutation == "native_source":
         built.adapter_fixture.source_for("sample.SYNTH_A.star_log").write_text(
             "mutated after reporting\n"
         )
     else:
         document = orchestration_contracts.load_json_object(built.summary_json_path)
-        if mutation == "producer_commit":
-            document["provenance"]["git_commit"] = "f" * 40
-        elif mutation == "inventory_binding":
+        if mutation == "inventory_binding":
             document["run_contract_file"]["sha256"] = "f" * 64
         payload = fixture.ARTIFACT_CORE.canonical_json_bytes(document)
         built.summary_json_path.write_bytes(
             payload + (b"\n" if mutation == "noncanonical" else b"")
         )
     with pytest.raises(
-        transaction_validation.ReportingTransactionError, match="differs from current"
+        transaction_validation.ReportingTransactionError, match="differs from"
     ):
         transaction_validation.validate_run_summary_transaction(
+            expected_receipt_sha256=original_receipt_sha256,
             package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_id=built.run_id,
@@ -408,6 +437,7 @@ def test_report_validator_rejects_each_receipted_html_mutation(
             package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_summary=built.summary_json_path,
+            expected_receipt_sha256=_report_receipt_sha256(built, report_root),
             analysis_policy=built.adapter_fixture.analysis_policy,
             output_root=report_root,
             profile=adapter_fixture.analysis_profile_v1(),
@@ -434,6 +464,7 @@ def test_receipt_identity_replacement_during_validation_fails_closed(
         ),
     ):
         transaction_validation.validate_run_summary_transaction(
+            expected_receipt_sha256=_sha256(built.summary_json_path),
             package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_id=built.run_id,
@@ -461,6 +492,7 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
 
     def validate_artifact() -> None:
         transaction_validation.validate_run_summary_transaction(
+            expected_receipt_sha256=_sha256(built.summary_json_path),
             package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_id=built.run_id,
@@ -473,6 +505,7 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
 
     def validate_summary() -> None:
         transaction_validation.validate_run_summary_transaction(
+            expected_receipt_sha256=_sha256(built.summary_json_path),
             package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_id=built.run_id,
@@ -488,6 +521,7 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
             package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_summary=built.summary_json_path,
+            expected_receipt_sha256=_report_receipt_sha256(built, report_root),
             analysis_policy=built.adapter_fixture.analysis_policy,
             output_root=report_root,
             profile=adapter_fixture.analysis_profile_v1(),
@@ -547,6 +581,7 @@ def test_artifact_validator_rejects_roster_membership_fault(
         ),
     ):
         transaction_validation.validate_run_summary_transaction(
+            expected_receipt_sha256=_sha256(built.summary_json_path),
             package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_id=built.run_id,
@@ -580,6 +615,7 @@ def test_artifact_validator_binds_nested_missing_source_to_existing_ancestor(
     fixture.publish_adapter_fixture(adapter)
 
     validated = transaction_validation.validate_run_summary_transaction(
+        expected_receipt_sha256=_sha256(adapter.manifest_path),
         package_root=PACKAGE_ROOT,
         artifact_source_root=adapter.root,
         run_id=adapter.run_id,
@@ -603,6 +639,7 @@ def test_artifact_validator_binds_nested_missing_source_to_existing_ancestor(
         ),
     ):
         transaction_validation.validate_run_summary_transaction(
+            expected_receipt_sha256=_sha256(adapter.manifest_path),
             package_root=PACKAGE_ROOT,
             artifact_source_root=adapter.root,
             run_id=adapter.run_id,
@@ -624,6 +661,7 @@ def test_each_validator_rejects_control_residue_injected_before_return(
 
     def validate_artifact() -> None:
         transaction_validation.validate_run_summary_transaction(
+            expected_receipt_sha256=_sha256(built.summary_json_path),
             package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_id=built.run_id,
@@ -636,6 +674,7 @@ def test_each_validator_rejects_control_residue_injected_before_return(
 
     def validate_summary() -> None:
         transaction_validation.validate_run_summary_transaction(
+            expected_receipt_sha256=_sha256(built.summary_json_path),
             package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_id=built.run_id,
@@ -651,6 +690,7 @@ def test_each_validator_rejects_control_residue_injected_before_return(
             package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_summary=built.summary_json_path,
+            expected_receipt_sha256=_report_receipt_sha256(built, report_root),
             analysis_policy=built.adapter_fixture.analysis_policy,
             output_root=report_root,
             profile=adapter_fixture.analysis_profile_v1(),
@@ -710,6 +750,7 @@ def test_preexisting_reporting_control_residue_fails_closed(
         match="owner control residue",
     ):
         transaction_validation.validate_run_summary_transaction(
+            expected_receipt_sha256=_sha256(built.summary_json_path),
             package_root=PACKAGE_ROOT,
             artifact_source_root=built.root,
             run_id=built.run_id,

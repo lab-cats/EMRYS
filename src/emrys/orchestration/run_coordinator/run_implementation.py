@@ -85,7 +85,12 @@ _PROCESSING_ROOTS = (
 )
 _ADMISSION_ROOTS = (
     "analyses/__init__.py",
-    "contracts/artifacts",
+    "contracts/artifacts/__init__.py",
+    "contracts/artifacts/api.py",
+    "contracts/artifacts/_artifact_contracts/__init__.py",
+    "contracts/artifacts/_artifact_contracts/definitions.py",
+    "contracts/artifacts/_artifact_contracts/identity.py",
+    "contracts/artifacts/_artifact_contracts/schema.py",
     "contracts/orchestration/api.py",
     "contracts/orchestration/application_model.py",
     "contracts/orchestration/artifact_inventory.py",
@@ -224,15 +229,6 @@ def processing_implementation_identity(source_root: Path) -> str:
     )
 
 
-def _analysis_module_component(module: LoadedAnalysisModuleV1) -> str:
-    return orchestration_contracts.canonical_sha256(
-        {
-            "identity_domain": "emrys.selected-analysis-module.v1",
-            "admission": module_admission_record(module),
-        }
-    )
-
-
 def implementation_identity(
     source_root: Path,
     module_id: str | None = None,
@@ -255,7 +251,9 @@ def implementation_identity(
             {
                 "role": "scientific_computation",
                 "logical_name": f"selected-analysis-module:{module_id}",
-                "content_sha256": _analysis_module_component(module),
+                "content_sha256": orchestration_contracts.canonical_sha256(
+                    module_admission_record(module)
+                ),
             }
         )
     return implementation_content_sha256(components)

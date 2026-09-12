@@ -17,7 +17,6 @@ from typing import Any
 import pytest
 from emrys.libraries.source_authority import PACKAGE_ROOT
 from jsonschema import Draft202012Validator, FormatChecker
-from emrys import analyses
 from emrys.contracts.artifacts import api as ARTIFACT_CONTRACTS
 from emrys.contracts.scientific_evidence import step08, step09
 from tests.contract_integration.validation_rosters.validation_roster_expectations import (
@@ -25,24 +24,11 @@ from tests.contract_integration.validation_rosters.validation_roster_expectation
 )
 from tests.reporting.fixtures.artifact_adapters_v1 import build_fixture as FIXTURE
 from emrys.reporting import _files
+from emrys.reporting import transaction_validation
 from emrys.reporting._run_summary.models import RunSummaryError
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXED_EPOCH = "1700000000"
-EXPECTED_PRODUCER_PATHS = {
-    "00a": "stages/star_index/step_00a_build_star_index.sh",
-    "00b": "stages/gtf_to_bed12/converter.py",
-    "00c": "stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
-    "01": "stages/star_alignment/step_01_star_align.sh",
-    "02": "stages/canonical_bam/step_02_sort_index_bam.sh",
-    "02b": "evidence/canonical_bam_qc/step_02b_bam_qc.sh",
-    "03": ("evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"),
-    "04": "stages/duplicate_marking/step_04_mark_duplicates.sh",
-    "05": "stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
-    "06": "stages/mechanical_orientation/producer.py",
-    "07": ("stages/partitioned_cohort_mpileup/producer.py"),
-    "08": "stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R",
-}
 VALIDATION_ARTIFACT_STEPS = {
     "ref.star_index.validation": "00a",
     "ref.bed12.validation": "00b",
@@ -73,7 +59,6 @@ ARTIFACT_INSPECTION = importlib.import_module(
 ARTIFACT_PUBLICATION = importlib.import_module(
     "emrys.reporting._artifact_index.publication"
 )
-ARTIFACT_RECORDS = importlib.import_module("emrys.reporting._artifact_index.records")
 ARTIFACT_REGISTRY = importlib.import_module("emrys.reporting._artifact_index.registry")
 ARTIFACT_NATIVE = importlib.import_module(
     "emrys.reporting._artifact_index.reconcile_native"
@@ -100,6 +85,7 @@ def artifact_index_arguments(
         analysis_policy=fixture.analysis_policy,
         output_root=fixture.output_root,
         profile=FIXTURE.analysis_profile_v1(),
+        scientific_origin=fixture.scientific_origin,
         execute=execute,
     )
 
@@ -198,6 +184,7 @@ def context_for(fixture: Any) -> Any:
             analysis_policy=fixture.analysis_policy,
             output_root=fixture.output_root,
             profile=FIXTURE.analysis_profile_v1(),
+            scientific_origin=fixture.scientific_origin,
             execute=True,
         ),
         installed_package=SOURCE_AUTHORITY.admit_installed_package(),
@@ -264,60 +251,6 @@ def test_fixture_covers_exact_tracked_inventory_and_adapter_registry(
     assert not artifact_fixture.output_root.exists()
 
 
-def test_migrated_implementation_evidence_uses_final_paths_and_current_bytes() -> None:
-    git_commit = "a" * 40
-
-    evidence = ARTIFACT_RECORDS.producer_evidence(
-        git_commit,
-        analysis_module=analyses.load_analysis_module(
-            analyses.BUILTIN_PAIRED_CMH_MODULE_ID
-        ),
-    )
-
-    assert tuple(evidence) == (*EXPECTED_PRODUCER_PATHS, "09", "10")
-    for step_id, expected_path in EXPECTED_PRODUCER_PATHS.items():
-        record = evidence[step_id]
-        assert record["status"] == "implemented"
-        assert record["git_commit"] == git_commit
-        implementation_rows = record["evidence"]
-        assert len(implementation_rows) == 1
-        row = implementation_rows[0]
-        assert row["evidence_id"] == f"implementation_{step_id}"
-        assert row["role"] == "implementation"
-        assert row["path"] == expected_path
-        expected_sha256 = hashlib.sha256(
-            (PACKAGE_ROOT / expected_path).read_bytes()
-        ).hexdigest()
-        assert row["sha256"] == expected_sha256
-    assert evidence["09"] == evidence["10"]
-    assert evidence["09"]["evidence"][0]["evidence_id"] == "implementation_module"
-
-
-def test_checkout_local_wheel_does_not_claim_the_core_commit() -> None:
-    module = analyses.load_analysis_module(analyses.BUILTIN_PAIRED_CMH_MODULE_ID)
-    external = dataclasses.replace(
-        module,
-        provider=dataclasses.replace(
-            module.provider,
-            package=dataclasses.replace(
-                module.provider.package,
-                root=(
-                    REPO_ROOT
-                    / ".venv/lib/python/site-packages/emrys/analyses/paired_cmh_candidate_ranking"
-                ),
-            ),
-        ),
-    )
-
-    evidence = ARTIFACT_RECORDS.producer_evidence(
-        "a" * 40,
-        analysis_module=external,
-    )
-
-    assert evidence["09"]["git_commit"] is None
-    assert evidence["09"]["evidence"][0]["sha256"] == (module.provider.package.sha256)
-
-
 def test_prepare_context_keeps_package_and_artifact_roots_distinct(
     artifact_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
@@ -328,7 +261,6 @@ def test_prepare_context_keeps_package_and_artifact_roots_distinct(
     )
     root_calls: Counter[str] = Counter()
     real_admit_package = SOURCE_AUTHORITY.admit_installed_package
-    real_producer_evidence = ARTIFACT_CONTEXT.producer_evidence
     real_declared_contract_path = ARTIFACT_NATIVE.declared_contract_path
     real_validate_artifact_semantics = ARTIFACT_CONTRACTS.validate_artifact_semantics
 
@@ -336,20 +268,6 @@ def test_prepare_context_keeps_package_and_artifact_roots_distinct(
         assert root == PACKAGE_ROOT
         root_calls["package"] += 1
         return real_admit_package(root=root)
-
-    def producer_evidence(
-        git_commit: str,
-        *,
-        source_root: Path,
-        analysis_module: Any,
-    ) -> dict[str, dict[str, Any]]:
-        assert source_root == installed_package.root
-        root_calls["producers"] += 1
-        return real_producer_evidence(
-            git_commit,
-            source_root=source_root,
-            analysis_module=analysis_module,
-        )
 
     def declared_contract_path(value: str, *, source_root: Path) -> Path:
         assert source_root == artifact_source_root.root
@@ -365,7 +283,6 @@ def test_prepare_context_keeps_package_and_artifact_roots_distinct(
         root_calls["record_semantics"] += 1
         real_validate_artifact_semantics(document, source_root=source_root)
 
-    monkeypatch.setattr(ARTIFACT_CONTEXT, "producer_evidence", producer_evidence)
     monkeypatch.setattr(
         ARTIFACT_NATIVE,
         "declared_contract_path",
@@ -390,6 +307,7 @@ def test_prepare_context_keeps_package_and_artifact_roots_distinct(
             analysis_policy=artifact_fixture.analysis_policy,
             output_root=artifact_fixture.output_root,
             profile=FIXTURE.analysis_profile_v1(),
+            scientific_origin=artifact_fixture.scientific_origin,
             execute=False,
         ),
         installed_package=installed_package,
@@ -398,8 +316,12 @@ def test_prepare_context_keeps_package_and_artifact_roots_distinct(
 
     assert context.index.installed_package == installed_package
     assert context.index.artifact_source_root == artifact_source_root
+    assert (
+        context.summary_document["scientific_origin"]
+        == artifact_fixture.scientific_origin
+    )
+    assert all("implementation" not in record for record in context.index.records)
     assert root_calls["package"] == 1
-    assert root_calls["producers"] == 1
     assert root_calls["native_references"] > 0
     assert root_calls["record_semantics"] == len(artifact_fixture.inventory_rows)
 
@@ -427,6 +349,7 @@ def test_prepare_context_rejects_changed_installed_package(
                 analysis_policy=artifact_fixture.analysis_policy,
                 output_root=artifact_fixture.output_root,
                 profile=FIXTURE.analysis_profile_v1(),
+                scientific_origin=artifact_fixture.scientific_origin,
                 execute=False,
             ),
             installed_package=SOURCE_AUTHORITY.admit_installed_package(),
@@ -506,6 +429,27 @@ def test_execute_publishes_inventory_ordered_schema_valid_transaction(
     assert manifest["inventory"]["sha256"] == sha256_file(artifact_fixture.inventory)
     assert_published_records_are_valid(artifact_fixture)
     assert not artifact_fixture.lock_path.exists()
+
+    validation = dict(
+        package_root=PACKAGE_ROOT,
+        artifact_source_root=artifact_fixture.root,
+        run_id=artifact_fixture.run_id,
+        run_contract=artifact_fixture.run_contract,
+        inventory=artifact_fixture.inventory,
+        analysis_policy=artifact_fixture.analysis_policy,
+        output_root=artifact_fixture.output_root,
+        profile=FIXTURE.analysis_profile_v1(),
+        prepared_context=result.context,
+    )
+    transaction_validation.validate_run_summary_transaction(**validation)
+    manifest["provenance"]["git_commit"] = "f" * 40
+    artifact_fixture.manifest_path.write_bytes(
+        ARTIFACT_CORE.canonical_json_bytes(manifest)
+    )
+    with pytest.raises(
+        transaction_validation.ReportingTransactionError, match="prepared projection"
+    ):
+        transaction_validation.validate_run_summary_transaction(**validation)
 
 
 def test_repreparation_is_deterministic_and_preserves_existing_transaction(

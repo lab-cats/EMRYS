@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:emrys:schema:artifacts:report-receipt:v5",
-  "title": "EMRYS modular report receipt v5",
+  "$id": "urn:emrys:schema:artifacts:report-receipt:v6",
+  "title": "EMRYS modular report receipt v6",
   "type": "object",
   "additionalProperties": false,
   "$defs": {
@@ -19,7 +19,7 @@
       "properties": {
         "producer": {"const": "emrys.reporting.report"},
         "producer_version": {"type": "string", "minLength": 1},
-        "package": {"const": "emrys.reporting"},
+        "package": {"const": "emrys"},
         "content_sha256": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/sha256"},
         "template_engine": {"const": "Jinja2"},
         "template_engine_version": {"type": "string", "minLength": 1}
@@ -96,6 +96,7 @@
     "transaction_state",
     "interpretation_boundary",
     "input_run_summary",
+    "inputs",
     "analysis_policy",
     "scientific_renderer",
     "evidence_renderer",
@@ -114,7 +115,7 @@
   ],
   "properties": {
     "schema_name": {"const": "emrys.report_receipt"},
-    "schema_version": {"const": "5.0.0"},
+    "schema_version": {"const": "6.0.0"},
     "record_type": {"const": "report_receipt"},
     "run_id": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"},
     "attempt_id": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"},
@@ -130,9 +131,19 @@
         "path": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path"},
         "sha256": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/sha256"},
         "schema_name": {"const": "emrys.run_summary"},
-        "schema_version": {"const": "4.0.0"}
+        "schema_version": {"const": "5.0.0"}
       }
     },
+    "inputs": {"type": "array", "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "sha256", "size_bytes", "rehash_content"],
+      "properties": {
+        "path": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path"},
+        "sha256": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "rehash_content": {"type": "boolean"}
+      }
+    }},
     "analysis_policy": {
       "type": "object",
       "additionalProperties": false,
@@ -179,9 +190,9 @@
       "additionalProperties": false,
       "required": ["artifact_entry", "run_summary", "report_receipt"],
       "properties": {
-        "artifact_entry": {"const": "1.0.0"},
-        "run_summary": {"const": "4.0.0"},
-        "report_receipt": {"const": "5.0.0"}
+        "artifact_entry": {"const": "2.0.0"},
+        "run_summary": {"const": "5.0.0"},
+        "report_receipt": {"const": "6.0.0"}
       }
     },
     "analysis_execution_performed": {"const": false},

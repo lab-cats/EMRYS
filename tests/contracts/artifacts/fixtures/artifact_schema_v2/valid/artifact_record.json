@@ -28,11 +28,6 @@
     }
   ],
   "selected_attempt_id": "attempt-001",
-  "implementation": {
-    "status": "implemented",
-    "git_commit": "fixturecommit",
-    "evidence": []
-  },
   "local_testing": {
     "status": "passed",
     "evidence": [

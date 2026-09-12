@@ -440,11 +440,8 @@ class Harness:
         self,
         name: str,
         path: Path,
-        _root: Path,
-        _execution: dict[str, Any],
-        _profile: dict[str, Any],
-        _attempt: dict[str, Any],
-        _config: dict[str, Any],
+        _identity: Any,
+        **_keywords: Any,
     ) -> ValidatedFixtureReceipt:
         record = json.loads(path.read_text(encoding="utf-8"))
         if record != {"kind": name, "run_id": self.built.execution["run_id"]}:

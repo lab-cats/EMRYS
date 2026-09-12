@@ -1,7 +1,7 @@
 {
   "artifact_record.schema.json": [
     {
-      "expected": "urn:emrys:schema:artifacts:artifact-entry:v1",
+      "expected": "urn:emrys:schema:artifacts:artifact-entry:v2",
       "pointer": "/$id"
     },
     {
@@ -67,7 +67,7 @@
   ],
   "report_receipt.schema.json": [
     {
-      "expected": "urn:emrys:schema:artifacts:report-receipt:v5",
+      "expected": "urn:emrys:schema:artifacts:report-receipt:v6",
       "pointer": "/$id"
     },
     {
@@ -75,7 +75,7 @@
       "pointer": "/properties/schema_name/const"
     },
     {
-      "expected": "5.0.0",
+      "expected": "6.0.0",
       "pointer": "/properties/schema_version/const"
     },
     {
@@ -119,7 +119,7 @@
   ],
   "run_summary.schema.json": [
     {
-      "expected": "urn:emrys:schema:artifacts:run-summary:v4",
+      "expected": "urn:emrys:schema:artifacts:run-summary:v5",
       "pointer": "/$id"
     },
     {
@@ -127,7 +127,7 @@
       "pointer": "/properties/schema_name/const"
     },
     {
-      "expected": "4.0.0",
+      "expected": "5.0.0",
       "pointer": "/properties/schema_version/const"
     },
     {
