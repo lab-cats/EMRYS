@@ -1256,9 +1256,9 @@ def test_step09_owner_validation_must_be_exact_all_pass_before_rows_open(
             rows[0]["status"] = "fail"
 
     rewrite_tsv(path, corrupt_report)
-    record = replace(
-        validation_record,
+    record = validation_record._replace(
         snapshot=report_context._snapshot_regular(path, "validation report"),
+        row_count=len(path.read_text().splitlines()) - 1,
     )
     with pytest.raises(ReportRenderError, match=message):
         report_computational._inspect_validation(

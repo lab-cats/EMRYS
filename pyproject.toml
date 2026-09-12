@@ -102,7 +102,6 @@ namespaces = false
 ]
 "emrys.libraries" = [
     "argument_parsing.sh",
-    "executable_resolution.sh",
     "file_checks.sh",
     "gatk_invocation.sh",
     "input_contract.R",

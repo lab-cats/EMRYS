@@ -196,7 +196,7 @@ local installation metadata remains unavailable. No retained evidence is deleted
 
 The tranche removes **522 product lines** and one product file; none are added.
 Tests/fixtures remove 792 lines and schemas remove 40. Documentation adds 73 lines.
-Configuration changes the existing policy columns with no line-count change;
+Configuration removes one stale package entry and changes constant policy columns;
 tooling and retained evidence are unchanged.
 Focused runtime/custom-dependency, worker, logging, schema and reporting checks
 pass. The independently reproduced parent scientific HTML fixture is unchanged;

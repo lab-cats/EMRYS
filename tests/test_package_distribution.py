@@ -467,7 +467,7 @@ context = prepare_context(argparse.Namespace(
     run_summary=fixture.summary_json_path,
     output_root=Path(sys.argv[3]),
     analysis_policy=fixture.adapter_fixture.analysis_policy,
-))
+), evidence_context=fixture.evidence_context)
 publish_report(context)
 print(json.dumps({
     "run_id": fixture.run_id,
