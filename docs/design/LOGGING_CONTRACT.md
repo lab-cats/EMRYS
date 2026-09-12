@@ -48,11 +48,11 @@ open or append to the operation log.
 | --- | --- | --- |
 | `normal` | Run identity, work/reporting summary, meaningful phases, verified Results, warnings, errors, log path, and bounded failure summary | complete observed event set |
 | `verbose` | `normal` plus Run root, resources/allocation, profile, scheduler streams, and resolved operational paths | same event semantics |
-| `debug` | `verbose` plus exact safe engine, scheduler, and task commands, classified child diagnostics, allowed environment context, timing, and recovery identities | same event semantics |
+| `debug` | `verbose` plus exact safe engine, scheduler, and task commands, allowed environment context, timing, and recovery identities | same event semantics |
 
-Invalid UTF-8 child diagnostics use sequenced `child_diagnostic_bytes` events
-with unbroken RFC 4648 base64, byte count, SHA-256, stream, and component.
-Never replace diagnostic bytes silently.
+The runner preserves task stdout and stderr as exact bytes in separate task
+logs, including invalid UTF-8. Their paths and SHA-256 hashes belong to the task
+Attempt; the application log does not copy or re-encode them.
 
 ## Attempt boundary and record
 
