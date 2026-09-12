@@ -1116,7 +1116,6 @@ def discover_runtime_profile(
     return inspect_runtime_profile_bytes(
         profile_bytes,
         destination,
-        "local",
         checks=runtime_profile_checks(profile_bytes, package_root),
         environment=inspection_environment,
     )

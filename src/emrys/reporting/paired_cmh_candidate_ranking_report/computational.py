@@ -310,19 +310,10 @@ def admit_computational_results(
         _assert_snapshot(
             record.snapshot, f"computational result {record.artifact_id!r}"
         )
-    try:
-        all_projection, significant_projection, summary_projection, sample_ids = (
-            records["all_sites"].projection
-            or step09.validate_step09_projection(
-                records["all_sites"].snapshot.path,
-                records["significant_sites"].snapshot.path,
-                records["summary"].snapshot.path,
-                analysis_id,
-                mutation_spectrum=records["mutation_spectrum"].snapshot.path,
-            )
-        )
-    except (step09.ContractError, OSError, UnicodeError, csv.Error) as exc:
-        _fail(f"Primary Step 09 projection failed validation: {exc}")
+    projection = records["all_sites"].projection
+    if projection is None:
+        _fail("Primary Step 09 requires its admitted scientific projection")
+    all_projection, significant_projection, summary_projection, sample_ids = projection
 
     tables = {}
     for role, canonical, rows in (

@@ -155,25 +155,6 @@ def _assert_input_recheck(
         _assert_snapshot_identity(snapshot, label)
 
 
-def _load_run_summary(path: Path, *, source_root: Path) -> dict[str, Any]:
-    try:
-        document = contracts.load_json_object(path, "run-summary document")
-        errors = sorted(
-            contracts.schema_validator("run-summary").iter_errors(document),
-            key=lambda error: tuple(str(part) for part in error.absolute_path),
-        )
-        if errors:
-            detail = "\n".join(
-                f"- {contracts.format_json_path(error.absolute_path)}: {error.message}"
-                for error in errors
-            )
-            _fail(f"run-summary document failed validation: {path}\n{detail}")
-        contracts.validate_run_summary_semantics(document, source_root=source_root)
-    except contracts.ContractValidationError as exc:
-        _fail(str(exc))
-    return document
-
-
 def _resolve_contract_file(value: str, label: str, *, source_root: Path) -> Path:
     try:
         contracts.validate_resolved_path(value, label)

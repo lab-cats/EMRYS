@@ -6,7 +6,6 @@ import argparse
 import gzip
 import os
 import re
-import shutil
 import subprocess
 import sys
 from collections.abc import Iterable, Sequence
@@ -53,7 +52,7 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
         "reference-fasta",
     ):
         parser.add_argument(f"--{name}", required=True)
-    parser.add_argument("--bcftools-bin")
+    parser.add_argument("--bcftools-bin", required=True)
     parser.add_argument("--max-depth", default=str(DEFAULT_MAX_DEPTH))
     parser.add_argument("--filter-expression", default=DEFAULT_FILTER)
     for name in (
@@ -97,18 +96,11 @@ def _digest(path: Path) -> str:
         raise ProducerError(f"Could not hash {path}: {exc}") from exc
 
 
-def _executable(requested: str | None) -> str:
-    value = requested or os.environ.get("BCFTOOLS_BIN_OVERRIDE") or "bcftools"
-    if "/" in value:
-        if not Path(value).exists():
-            fail(f"bcftools does not exist: {value}")
-        if not os.access(value, os.X_OK):
-            fail(f"bcftools exists but is not executable: {value}")
-        return value
-    resolved = shutil.which(value)
-    if resolved is None:
-        fail(f"bcftools executable was not found on PATH: {value}")
-    return resolved
+def _executable(requested: str) -> str:
+    path = Path(requested)
+    if not path.is_absolute() or not path.is_file() or not os.access(path, os.X_OK):
+        fail(f"bcftools must be an absolute executable file: {path}")
+    return requested
 
 
 def _selector_lines(path: Path) -> Iterable[str]:

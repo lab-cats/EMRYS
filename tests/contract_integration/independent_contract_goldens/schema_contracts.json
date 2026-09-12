@@ -31,7 +31,7 @@
   ],
   "report_receipt.schema.json": [
     {
-      "expected": "urn:emrys:schema:artifacts:report-receipt:v6",
+      "expected": "urn:emrys:schema:artifacts:report-receipt:v7",
       "pointer": "/$id"
     },
     {
@@ -39,7 +39,7 @@
       "pointer": "/properties/schema_name/const"
     },
     {
-      "expected": "6.0.0",
+      "expected": "7.0.0",
       "pointer": "/properties/schema_version/const"
     },
     {
@@ -83,7 +83,7 @@
   ],
   "run_summary.schema.json": [
     {
-      "expected": "urn:emrys:schema:artifacts:run-summary:v6",
+      "expected": "urn:emrys:schema:artifacts:run-summary:v7",
       "pointer": "/$id"
     },
     {
@@ -91,7 +91,7 @@
       "pointer": "/properties/schema_name/const"
     },
     {
-      "expected": "6.0.0",
+      "expected": "7.0.0",
       "pointer": "/properties/schema_version/const"
     },
     {

@@ -95,8 +95,7 @@ def _recheck_inputs(context: ReportContext) -> None:
         _fail("Installed report package changed after admission")
     for recheck in context.input_rechecks:
         _assert_input_recheck(*recheck)
-    if context.evidence_context is not None:
-        recheck_evidence_context(context.evidence_context, context.run_summary_snapshot)
+    recheck_evidence_context(context.evidence_context, context.run_summary_snapshot)
 
 
 def _assert_outputs_absent(context: ReportContext) -> None:

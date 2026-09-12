@@ -8,8 +8,8 @@ from pathlib import Path
 from emrys.reporting._artifact_index.models import RUN_CONTRACT_FIELDS
 
 PRODUCER = "build_run_summary"
-PRODUCER_VERSION = "6.0.0"
-RUN_SUMMARY_SCHEMA_VERSION = "6.0.0"
+PRODUCER_VERSION = "7.0.0"
+RUN_SUMMARY_SCHEMA_VERSION = "7.0.0"
 
 RUN_SUMMARY_HEADER = (
     "run_id",

@@ -1197,7 +1197,7 @@ def _tasks(
         producer = (
             _runtime_path(runtime, "bash"),
             "-c",
-            'export EMRYS_SHA256_PYTHON="$1" EMRYS_REQUIRE_BOUND_SHA256=1; shift; exec "$@"',
+            'export EMRYS_SHA256_PYTHON="$1"; shift; exec "$@"',
             "emrys-scientific-worker",
             _runtime_path(runtime, "sha256_python"),
             *producer,

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import base64
+import csv
+import io
 import hashlib
 import json
 import sys
@@ -52,7 +54,11 @@ def with_owner_doubles(plan: AttemptPlan) -> AttemptPlan:
         plan.run.analysis.profile,
         plan.run.analysis.revision,
     )
-    rows = tuple(dict(row) for row in reporting.artifact_inventory_rows)
+    rows = tuple(
+        csv.DictReader(
+            io.StringIO(reporting.artifact_inventory_bytes.decode()), delimiter="\t"
+        )
+    )
     raw_payloads = workflow.artifact_payloads(
         rows,
         source,

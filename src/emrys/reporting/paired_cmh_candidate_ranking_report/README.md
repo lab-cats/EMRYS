@@ -14,11 +14,10 @@ Candidate selection and figures still stream the complete populations they need,
 with file-identity rechecks around those reads. Large candidate and motif tables
 are never copied into the display-row collection. The mutation spectrum and
 Step 10's bounded figure tables are read for display after canonical validation.
-The existing artifact carrier supplies its admitted file snapshot and, when
-available, an isolated copy of the canonical projection checked earlier in the
-same operation. A fresh operation without those objects invokes the scientific
-contract validators. Both paths check source identities and the exact Step 09/10
-validation-report check lists; sharing that admission code does not merge the lists.
+The existing artifact carrier supplies its admitted file snapshot and an isolated
+copy of the Step 09/10 projection checked by artifact preparation. The reporter
+requires those projections, then checks source identities and the exact Step 09/10
+validation-report check lists without repeating scientific admission.
 
 The existing [Jinja template](../templates/run_report.html.j2) renders the admitted
 summary, selected candidates, and figures directly. `view.py` retains scientific

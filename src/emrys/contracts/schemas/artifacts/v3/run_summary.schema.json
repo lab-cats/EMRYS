@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:emrys:schema:artifacts:run-summary:v6",
+  "$id": "urn:emrys:schema:artifacts:run-summary:v7",
   "title": "EMRYS Run result manifest",
   "type": "object",
   "additionalProperties": false,
@@ -16,8 +16,6 @@
     "expected_scopes",
     "artifacts",
     "computational_rollup",
-    "parameters",
-    "qc_metrics",
     "limitations",
     "analysis_policy",
     "warnings",
@@ -30,7 +28,7 @@
   ],
   "properties": {
     "schema_name": {"const": "emrys.run_summary"},
-    "schema_version": {"const": "6.0.0"},
+    "schema_version": {"const": "7.0.0"},
     "record_type": {"const": "run_summary"},
     "run_id": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"},
     "run_contract": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/run_contract"},
@@ -40,13 +38,11 @@
     "expected_scopes": {
       "type": "array",
       "minItems": 1,
-      "items": {"$ref": "urn:emrys:schema:artifacts:run-summary:v6#/$defs/expected_scope"}
+      "items": {"$ref": "urn:emrys:schema:artifacts:run-summary:v7#/$defs/expected_scope"}
     },
     "artifacts": {"type": "array", "minItems": 1, "items": {"$ref": "urn:emrys:schema:artifacts:artifact-entry:v3"}},
-    "computational_rollup": {"$ref": "urn:emrys:schema:artifacts:run-summary:v6#/$defs/computational_rollup"},
-    "parameters": {"type": "object"},
-    "qc_metrics": {"type": "array", "items": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/metric"}},
-    "limitations": {"type": "array", "items": {"$ref": "urn:emrys:schema:artifacts:run-summary:v6#/$defs/limitation"}},
+    "computational_rollup": {"$ref": "urn:emrys:schema:artifacts:run-summary:v7#/$defs/computational_rollup"},
+    "limitations": {"type": "array", "items": {"$ref": "urn:emrys:schema:artifacts:run-summary:v7#/$defs/limitation"}},
     "analysis_policy": {
       "type": "object",
       "additionalProperties": false,

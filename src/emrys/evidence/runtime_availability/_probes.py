@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import re
-import shutil
 import stat
 import subprocess
 import time
@@ -32,7 +31,7 @@ from ._runtime_model import (
 )
 
 CommandRunner = Callable[
-    [list[str], bytes | None, Mapping[str, str] | None, int],
+    [list[str], bytes | None, Mapping[str, str], int],
     tuple[int, str, float, bool],
 ]
 R_NAMESPACE_ROOT_OUTPUT_MARKER = "::emrys-root-utf8-hex::"
@@ -63,10 +62,12 @@ def _guarded_namespace_output(output: str) -> tuple[str, Path] | None:
 
 
 def _resolve_executable(target: str) -> str | None:
-    if "/" in target:
-        path = Path(target)
-        return str(path) if path.is_file() and os.access(path, os.X_OK) else None
-    return shutil.which(target)
+    path = Path(target)
+    return (
+        str(path)
+        if path.is_absolute() and path.is_file() and os.access(path, os.X_OK)
+        else None
+    )
 
 
 def _run_command(
@@ -107,7 +108,7 @@ def _run_command(
 
 def _probe_tool(
     check: RuntimeCheck,
-    environment: Mapping[str, str] | None,
+    environment: Mapping[str, str],
     run_command: CommandRunner,
 ) -> RuntimeObservation:
     executable = _resolve_executable(check.target)
@@ -116,15 +117,6 @@ def _probe_tool(
             check, "fail", "unavailable", "Executable was not found"
         )
     command = [executable, *check.probe_args]
-    if (
-        check.check_id == "rscript"
-        and environment is not None
-        and (environment.get("EMRYS_LOCAL_PILOT_R") == "1")
-        # Rscript's standalone information mode rejects startup guards as a
-        # missing script; executable R code remains guarded below.
-        and check.probe_args != ("--version",)
-    ):
-        command = guarded_rscript_argv(executable, check.probe_args)
     code, output, elapsed, timed_out = run_command(
         command,
         None,
@@ -155,7 +147,7 @@ def _probe_tool(
 
 def _probe_r_namespace(
     check: RuntimeCheck,
-    environment: Mapping[str, str] | None,
+    environment: Mapping[str, str],
     run_command: CommandRunner,
 ) -> RuntimeObservation:
     rscript = _resolve_executable(check.probe_args[0])
@@ -163,43 +155,33 @@ def _probe_r_namespace(
         return RuntimeObservation(
             check, "fail", "unavailable", "Rscript executable was not found"
         )
-    guarded = environment is not None and environment.get("EMRYS_LOCAL_PILOT_R") == "1"
-    if guarded:
-        expression = (
-            "a <- commandArgs(TRUE); p <- a[1]; lib <- normalizePath(a[2], "
-            "winslash='/', mustWork=TRUE); "
-            "libs <- normalizePath(.libPaths(), winslash='/', mustWork=TRUE); "
-            "if (length(libs) < 1L || !identical(libs[[1L]], lib)) quit(status=43); "
-            "pkg <- tryCatch(find.package(p, lib.loc=lib, quiet=TRUE), "
-            "error=function(e) ''); if (!nzchar(pkg)) quit(status=42); "
-            "declared <- file.path(lib, p); "
-            "expected <- normalizePath(declared, winslash='/', "
-            "mustWork=TRUE); "
-            "pkg <- normalizePath(pkg, winslash='/', mustWork=TRUE); "
-            "if (!identical(pkg, expected)) quit(status=44); "
-            "ns <- tryCatch(suppressWarnings(loadNamespace(p, lib.loc=lib)), "
-            "error=function(e) NULL); "
-            "if (is.null(ns)) quit(status=42); "
-            "where <- normalizePath(getNamespaceInfo(ns, 'path'), winslash='/', "
-            "mustWork=TRUE); "
-            "if (!identical(where, expected)) quit(status=44); "
-            "root_hex <- paste(sprintf('%02x', as.integer(charToRaw(enc2utf8(where)))), "
-            "collapse=''); "
-            f"cat(as.character(utils::packageVersion(p, lib.loc=lib)), "
-            f"'{R_NAMESPACE_ROOT_OUTPUT_MARKER}', root_hex, sep='')"
-        )
-        arguments = guarded_rscript_argv(
-            rscript,
-            ("-e", expression, check.target, environment["EMRYS_RENV_LIBRARY"]),
-        )
-    else:
-        expression = (
-            "p <- commandArgs(TRUE)[1]; "
-            "if (!suppressWarnings(requireNamespace(p, quietly=TRUE))) "
-            "quit(status=42); "
-            "cat(as.character(utils::packageVersion(p)))"
-        )
-        arguments = [rscript, "-e", expression, check.target]
+    expression = (
+        "a <- commandArgs(TRUE); p <- a[1]; lib <- normalizePath(a[2], "
+        "winslash='/', mustWork=TRUE); "
+        "libs <- normalizePath(.libPaths(), winslash='/', mustWork=TRUE); "
+        "if (length(libs) < 1L || !identical(libs[[1L]], lib)) quit(status=43); "
+        "pkg <- tryCatch(find.package(p, lib.loc=lib, quiet=TRUE), "
+        "error=function(e) ''); if (!nzchar(pkg)) quit(status=42); "
+        "declared <- file.path(lib, p); "
+        "expected <- normalizePath(declared, winslash='/', "
+        "mustWork=TRUE); "
+        "pkg <- normalizePath(pkg, winslash='/', mustWork=TRUE); "
+        "if (!identical(pkg, expected)) quit(status=44); "
+        "ns <- tryCatch(suppressWarnings(loadNamespace(p, lib.loc=lib)), "
+        "error=function(e) NULL); "
+        "if (is.null(ns)) quit(status=42); "
+        "where <- normalizePath(getNamespaceInfo(ns, 'path'), winslash='/', "
+        "mustWork=TRUE); "
+        "if (!identical(where, expected)) quit(status=44); "
+        "root_hex <- paste(sprintf('%02x', as.integer(charToRaw(enc2utf8(where)))), "
+        "collapse=''); "
+        f"cat(as.character(utils::packageVersion(p, lib.loc=lib)), "
+        f"'{R_NAMESPACE_ROOT_OUTPUT_MARKER}', root_hex, sep='')"
+    )
+    arguments = guarded_rscript_argv(
+        rscript,
+        ("-e", expression, check.target, environment["EMRYS_RENV_LIBRARY"]),
+    )
     code, output, elapsed, timed_out = run_command(
         arguments,
         None,
@@ -215,30 +197,23 @@ def _probe_r_namespace(
             f"R namespace probe timed out; {elapsed_detail}",
         )
     if code != 0:
-        details = (
-            {
-                42: "R namespace is unavailable in the selected library",
-                43: "R did not select the admitted library first",
-                44: "R namespace did not resolve to its exact selected package root",
-            }
-            if guarded
-            else {42: "R namespace is unavailable"}
-        )
+        details = {
+            42: "R namespace is unavailable in the selected library",
+            43: "R did not select the admitted library first",
+            44: "R namespace did not resolve to its exact selected package root",
+        }
         detail = f"{details.get(code, 'R namespace probe failed')}; {elapsed_detail}"
         return RuntimeObservation(check, "fail", output or f"exit {code}", detail)
-    version_output = output
-    resolved_root: Path | None = None
-    if guarded:
-        parsed = _guarded_namespace_output(output)
-        if parsed is None:
-            return RuntimeObservation(
-                check,
-                "fail",
-                output,
-                "R namespace probe did not report its exact canonical root; "
-                + elapsed_detail,
-            )
-        version_output, resolved_root = parsed
+    parsed = _guarded_namespace_output(output)
+    if parsed is None:
+        return RuntimeObservation(
+            check,
+            "fail",
+            output,
+            "R namespace probe did not report its exact canonical root; "
+            + elapsed_detail,
+        )
+    version_output, resolved_root = parsed
     if re.fullmatch(check.expected, version_output) is None:
         return RuntimeObservation(
             check,
@@ -246,11 +221,7 @@ def _probe_r_namespace(
             version_output,
             "Namespace version did not match expected regex; " + elapsed_detail,
         )
-    detail = (
-        f"Resolved R package root: {resolved_root}; {elapsed_detail}"
-        if guarded and environment is not None
-        else (f"Resolved Rscript: {rscript}; {elapsed_detail}")
-    )
+    detail = f"Resolved R package root: {resolved_root}; {elapsed_detail}"
     return RuntimeObservation(
         check,
         "pass",
@@ -262,7 +233,7 @@ def _probe_r_namespace(
 
 def _probe_hash_utility(
     check: RuntimeCheck,
-    environment: Mapping[str, str] | None,
+    environment: Mapping[str, str],
     run_command: CommandRunner,
 ) -> RuntimeObservation:
     executable = _resolve_executable(check.target)
@@ -270,19 +241,13 @@ def _probe_hash_utility(
         return RuntimeObservation(
             check, "fail", "unavailable", "Hash executable was not found"
         )
-    adapter = check.probe_args[0]
-    if adapter == "python_hashlib":
-        command = list(
-            controlled_python_argv(
-                executable,
-                "-c",
-                "import hashlib,sys; print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())",
-            )
+    command = list(
+        controlled_python_argv(
+            executable,
+            "-c",
+            "import hashlib,sys; print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())",
         )
-    elif adapter == "sha256sum":
-        command = [executable]
-    else:
-        command = [executable, "-a", "256"]
+    )
     code, output, elapsed, timed_out = run_command(
         command,
         HASH_PAYLOAD,
@@ -313,7 +278,7 @@ def _probe_hash_utility(
 
 def _probe_path_visibility(
     check: RuntimeCheck,
-    _environment: Mapping[str, str] | None,
+    _environment: Mapping[str, str],
     _run_command: CommandRunner,
 ) -> RuntimeObservation:
     path = Path(check.target)
@@ -324,10 +289,8 @@ def _probe_path_visibility(
         return RuntimeObservation(check, "fail", "unavailable", _single_line(str(exc)))
     if mode == "file_readable":
         passed = stat.S_ISREG(metadata.st_mode) and os.access(path, os.R_OK)
-    elif mode == "directory_readable":
-        passed = stat.S_ISDIR(metadata.st_mode) and os.access(path, os.R_OK | os.X_OK)
     else:
-        passed = stat.S_ISREG(metadata.st_mode) and os.access(path, os.X_OK)
+        passed = stat.S_ISDIR(metadata.st_mode) and os.access(path, os.R_OK | os.X_OK)
     observed = f"{mode}:{'yes' if passed else 'no'}"
     detail = f"Resolved path: {path.resolve(strict=False)}"
     return RuntimeObservation(check, "pass" if passed else "fail", observed, detail)
@@ -335,9 +298,7 @@ def _probe_path_visibility(
 
 PROBES: dict[
     str,
-    Callable[
-        [RuntimeCheck, Mapping[str, str] | None, CommandRunner], RuntimeObservation
-    ],
+    Callable[[RuntimeCheck, Mapping[str, str], CommandRunner], RuntimeObservation],
 ] = {
     "tool_version": _probe_tool,
     "tool_version_exit_1": _probe_tool,
@@ -349,24 +310,12 @@ PROBES: dict[
 
 def run_checks(
     checks: Sequence[RuntimeCheck],
-    runtime_context: str,
     *,
-    environment: Mapping[str, str] | None = None,
+    environment: Mapping[str, str],
     command_runner: CommandRunner = _run_command,
 ) -> list[RuntimeObservation]:
     results: list[RuntimeObservation] = []
     for check in checks:
-        if check.runtime_context not in {"any", runtime_context}:
-            status = "blocked" if check.required else "not_checked"
-            results.append(
-                RuntimeObservation(
-                    check,
-                    status,
-                    f"current_context={runtime_context}",
-                    f"Check requires runtime_context={check.runtime_context}",
-                )
-            )
-            continue
         check_environment = environment
         if check.check_id == "gatk":
             java_targets = [item.target for item in checks if item.check_id == "java"]

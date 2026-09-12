@@ -18,9 +18,7 @@ from emrys.reporting._run_summary.models import (
 from emrys.reporting._run_summary.projection import (
     _build_expected_scopes,
     _build_limitations,
-    _build_qc_metrics,
     _build_rollup,
-    _issue_for_duplicate_metrics,
     _build_summary_rows,
     _build_qc_rows,
 )
@@ -51,26 +49,12 @@ def build_summary(
     analysis_policy_binding: dict[str, Any],
 ) -> tuple[dict[str, Any], bytes, bytes, bytes]:
     expected_scopes, artifact_scope_order = _build_expected_scopes(artifacts)
-    qc_metrics, duplicate_metric_ids = _build_qc_metrics(artifacts)
     warnings = _stable_unique(
         issue for artifact in artifacts for issue in artifact["warnings"]
     )
-    duplicate_warning = _issue_for_duplicate_metrics(duplicate_metric_ids, artifacts)
-    if duplicate_warning is not None:
-        warnings.append(duplicate_warning)
     errors = _stable_unique(
         issue for artifact in artifacts for issue in artifact["errors"]
     )
-    parameters = {
-        "artifact_parameters": [
-            {
-                "artifact_id": artifact["artifact_id"],
-                "values": artifact["parameters"],
-            }
-            for artifact in artifacts
-            if artifact["parameters"]
-        ],
-    }
     document = {
         "schema_name": "emrys.run_summary",
         "schema_version": RUN_SUMMARY_SCHEMA_VERSION,
@@ -95,8 +79,6 @@ def build_summary(
         "expected_scopes": expected_scopes,
         "artifacts": artifacts,
         "computational_rollup": _build_rollup(artifacts),
-        "parameters": parameters,
-        "qc_metrics": qc_metrics,
         "limitations": _build_limitations(artifacts=artifacts),
         "warnings": _stable_unique(warnings),
         "errors": errors,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from importlib.resources import files
 from pathlib import Path
 from typing import NamedTuple, NoReturn, TypeAlias
@@ -61,11 +61,6 @@ class AnalysisScientificReportV1(NamedTuple):
     inputs: tuple[AnalysisReportInputV1, ...] = ()
     renderer_details: tuple[tuple[str, str], ...] = ()
     figure_evidence: tuple[tuple[str, ...], ...] = ()
-
-
-ScientificReporterV1: TypeAlias = Callable[
-    [AnalysisReportContextV1], AnalysisScientificReportV1
-]
 
 
 class ReportProviderError(RuntimeError):

@@ -21,10 +21,9 @@ these data edges define required order.
 
 Inputs are sample ID, marked BAM and exact `<bam>.bai`, reference FASTA/FAI/
 DICT, output directory, GATK, samtools, Java 17 or newer, and project-storage
-temporary space. Tool values resolve through explicit arguments, approved
-environment overrides, or PATH/JAVA_HOME. Sample identity is not manifest-
-bound by the worker; the Run supplies the admitted sample and the worker
-requires a path-safe identifier.
+temporary space. The runner supplies admitted absolute executable paths.
+Sample identity is not manifest-bound by the worker; the Run supplies the
+admitted sample and the worker requires a path-safe identifier.
 
 Outputs are:
 

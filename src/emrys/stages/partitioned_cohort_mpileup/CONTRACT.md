@@ -25,8 +25,8 @@ orientation result set regardless of partition completion order.
 
 Inputs are a safe cohort ID, sample manifest, partition manifest, requested
 partition ID, Step `06` orientation root, reference FASTA plus FAI, staged
-output paths and final VCF paths for the receipt, bcftools, positive maximum
-depth, and filter expression. Sample IDs must
+output paths and final VCF paths for the receipt, the runner's admitted absolute
+bcftools path, positive maximum depth, and filter expression. Sample IDs must
 be unique and nonempty. The requested partition must have exactly one manifest
 row with one of these selector types:
 

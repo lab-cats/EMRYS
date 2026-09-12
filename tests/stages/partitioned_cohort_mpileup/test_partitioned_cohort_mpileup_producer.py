@@ -431,31 +431,18 @@ def test_rejects_missing_bam_or_index(step07: Fixture, index: int) -> None:
     assert not step07.log.exists()
 
 
-@pytest.mark.parametrize("state", ("missing", "nonexecutable"))
+@pytest.mark.parametrize("state", ("missing", "nonexecutable", "relative"))
 def test_rejects_unusable_explicit_tool(step07: Fixture, state: str) -> None:
+    arguments = step07.arguments
     if state == "missing":
         step07.bcftools.unlink()
-    else:
+    elif state == "nonexecutable":
         step07.bcftools.chmod(0o644)
-
-    assert producer.main(step07.arguments) == 1
-    assert not any(path.exists() for path in step07.outputs)
-
-
-@pytest.mark.parametrize("source", ("environment", "path"))
-def test_tool_fallback_precedence(
-    step07: Fixture, monkeypatch: pytest.MonkeyPatch, source: str
-) -> None:
-    arguments = step07.arguments[:-2]
-    if source == "environment":
-        monkeypatch.setenv("BCFTOOLS_BIN_OVERRIDE", str(step07.bcftools))
     else:
-        bcftools = step07.bcftools.with_name("bcftools")
-        step07.bcftools.rename(bcftools)
-        monkeypatch.delenv("BCFTOOLS_BIN_OVERRIDE", raising=False)
-        monkeypatch.setenv("PATH", f"{bcftools.parent}:{os.defpath}")
+        arguments = (*arguments[:-1], step07.bcftools.name)
 
-    assert producer.main(arguments) == 0
+    assert producer.main(arguments) == 1
+    assert not any(path.exists() for path in step07.outputs)
 
 
 def test_vcf_sample_order_mismatch_prevents_receipt(

@@ -15,7 +15,7 @@ Usage: src/emrys/stages/star_index/step_00a_build_star_index.sh \
   --threads THREADS \
   --sjdb-overhang SJDB_OVERHANG \
   --genome-sa-index-nbases GENOME_SA_INDEX_NBASES \
-  [--star-bin STAR_BIN]
+  --star-bin STAR_BIN
 
 Internal worker: requires an existing EMRYS_TASK_WORK_DIR supplied by the runner.
 Output destinations are staging paths supplied by the runner.
@@ -26,13 +26,10 @@ USAGE
 script_dir="$(dirname -- "${BASH_SOURCE[0]}")"
 # shellcheck source=../../libraries/argument_parsing.sh
 source "$script_dir/../../libraries/argument_parsing.sh"
-# shellcheck source=../../libraries/executable_resolution.sh
-source "$script_dir/../../libraries/executable_resolution.sh"
 # shellcheck source=../../libraries/file_checks.sh
 source "$script_dir/../../libraries/file_checks.sh"
 
-declare_required_arguments reference_fasta reference_gtf index_dir threads sjdb_overhang genome_sa_index_nbases
-star_bin=""
+declare_required_arguments reference_fasta reference_gtf index_dir threads sjdb_overhang genome_sa_index_nbases star_bin
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -57,7 +54,7 @@ validate_nonempty_file "Reference GTF" "$reference_gtf"
 validate_positive_integer "--threads" "$threads"
 validate_positive_integer "--genome-sa-index-nbases" "$genome_sa_index_nbases"
 validate_nonnegative_integer "--sjdb-overhang" "$sjdb_overhang"
-star_bin="$(resolve_executable_value "STAR" "$star_bin" "STAR")"
+require_executable "STAR" "$star_bin"
 required_index_members=(
     genomeParameters.txt Genome SA SAindex chrLength.txt chrName.txt
     chrNameLength.txt chrStart.txt exonGeTrInfo.tab exonInfo.tab geneInfo.tab

@@ -1,12 +1,16 @@
 # EMRYS temporary compression backlog
 
-Reviewed **2026-09-12** from `893136e3`. The [campaign](compression_campaign.md)
+Reviewed **2026-09-12** from `c7561b3e`. The [campaign](compression_campaign.md)
 owns the goals; this file owns CS scope, status, decisions, and proof. The
 [main matrix](backlog_matrix.md) owns broader outcomes and campaign completion.
 
 ## Working queue
 
-**[PR #163](https://github.com/lab-cats/EMRYS/pull/163), CS-36: unused artifact-record fields are retired; hosted verification is pending.**
+**[PR #164](https://github.com/lab-cats/EMRYS/pull/164), CS-37–40: unused worker, runtime, logging and reporting paths are retired; hosted verification is pending.**
+Custom analysis dependencies remain supported. Each existing owner retains its
+active input checks, scientific outputs, provenance and publication protections.
+
+**[PR #163](https://github.com/lab-cats/EMRYS/pull/163), CS-36: complete; ordinary hosted CI passed at `c7561b3e`.**
 Builders, contracts, report projections and tests now use the reduced records.
 Scientific records, runner recovery, both reports, figures and the dashboard remain.
 
@@ -49,8 +53,8 @@ data, provenance, current Run recovery, and retained evidence; dashboard work
 and scientific-validation roster changes remain excluded.
 
 The product baseline for the 20% target is **69,223 physical lines at `cab77a26`**;
-Through CS-36 it is **56,628**, a reduction of 12,595 (18.19%). The target is at most
-55,378 lines, leaving 1,250 to remove. Count tracked source `.py`, `.R`, `.sh`, `.css`, `.j2` files and
+Through CS-40 it is **56,106**, a reduction of 13,117 (18.95%). The target is at most
+55,378 lines, leaving 728 to remove. Count tracked source `.py`, `.R`, `.sh`, `.css`, `.j2` files and
 the workflow `Snakefile` (including its new package location). Relocated
 `renv/activate.R` remains generated bootstrap; `restore_r_environment.R`
 remains tooling. Report schemas/configuration, tests, docs, tooling, and evidence
@@ -157,7 +161,48 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-33](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Consolidate equivalent region, graph and resource rules. | Done | 3 | 3 | Preserve differing accepted inputs and independent scientific checks. | `COMPRESS-01` |
 | [CS-34](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Retire duplicated application-log failure handling. | Done | 2 | 2 | Keep log failures observational, warning once and preserving partial logs. | `COMPRESS-01` |
 | [CS-35](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Carry admitted inputs through reporting instead of reconstructing them. | Done | 4 | 4 | Preserve exact source checks at publication/reuse, both reports and every figure. | `REPORT-ROSTER-01` |
-| [CS-36](#cs-36-unused-artifact-record-fields) | Retire artifact fields that production never populates and their dependent machinery. | Verification pending | 4 | 3 | PR #163: local contract/golden/static checks pass; hosted reporting/recovery verification is pending. | `REPORT-ROSTER-01` |
+| [CS-36](#cs-36-unused-artifact-record-fields) | Retire artifact fields that production never populates and their dependent machinery. | Done | 4 | 3 | PR #163: ordinary hosted CI passed at c7561b3e, including reporting/recovery checks. | `REPORT-ROSTER-01` |
+| [CS-37](#cs-37-through-cs-40-unused-runtime-and-reporting-paths) | Require runner-selected tool paths throughout scientific workers. | Verification pending | 3 | 2 | Retire environment/default discovery and hash fallbacks across callers. | `COMPRESS-01` |
+| [CS-38](#cs-37-through-cs-40-unused-runtime-and-reporting-paths) | Use the existing required runtime checks without unused probe modes. | Verification pending | 3 | 3 | Preserve custom dependencies, guarded R and exact runtime identities. | `COMPRESS-01` |
+| [CS-39](#cs-37-through-cs-40-unused-runtime-and-reporting-paths) | Retire logging helpers with no production callers. | Verification pending | 2 | 1 | Preserve field redaction and exact task-log capture. | `COMPRESS-01` |
+| [CS-40](#cs-37-through-cs-40-unused-runtime-and-reporting-paths) | Carry prepared reporting inputs and retain each measurement once. | Verification pending | 4 | 3 | Remove the unused HTML admission route, summary copies and unread fields. | `REPORT-ROSTER-01` |
+
+### CS-37 Through CS-40 Unused runtime and reporting paths
+
+Approved from `c7561b3e` after auditing production callers, tests, schemas and
+contracts. Custom analysis dependency declarations remain supported: additional
+tools, R packages and resources still receive checks and content identities.
+
+- **CS-37:** internal workers require the runner's admitted executable paths and
+  Python hash implementation. Environment/default searches and the uncalled
+  execution helper retire; file checks, Java validation and GATK isolation stay.
+- **CS-38:** remove optional/context selection and unused probe alternatives.
+  The existing required checks, guarded R environment, custom dependencies and
+  local/Slurm execution retain their current meaning.
+- **CS-39:** remove the two test-only logging helpers and their obsolete tests.
+  Secret-field redaction and durable task stdout/stderr remain with their actual
+  owners; the logging contract describes those owners.
+- **CS-40:** HTML generation receives the prepared summary context; artifact
+  measurements and parameters stay at their source instead of being copied into
+  additional summary fields. Remove unread report fields and orphan schema
+  definitions. Preserve scientific validation, QC tables, both reports, figures,
+  provenance, publication and recovery. The summary format deliberately narrows.
+
+Missing-tool and scientific failures are preserved behavior. The standalone
+worker fallbacks, unused reporting route and duplicate fields are approved
+retirements. The logging contract's unused event promise is defective wording.
+Long Run/reporting and managed-runtime validation is deferred to hosted CI;
+local installation metadata remains unavailable. No retained evidence is deleted.
+
+The tranche removes **522 product lines** and one product file; none are added.
+Tests/fixtures remove 792 lines and schemas remove 40. Documentation adds 73 lines.
+Configuration changes the existing policy columns with no line-count change;
+tooling and retained evidence are unchanged.
+Focused runtime/custom-dependency, worker, logging, schema and reporting checks
+pass. The independently reproduced parent scientific HTML fixture is unchanged;
+the evidence HTML fixture differs only in its displayed summary version. Native
+validation, published-receipt provenance, input mutation and recovery tests remain.
+Long checks run in CI, and these cards stay pending until that verification passes.
 
 ### CS-36 Unused artifact-record fields
 
@@ -189,9 +234,10 @@ Ruff, formatting, source dependencies and documentation structure also pass.
 The parent HTML digests were reproduced before reviewing the new output: scientific
 HTML differs only in the Operations link; evidence HTML retires the unused fields
 and moves the unchanged original records into Operations. Five full summary fixtures
-need hosted verification because local build metadata is unavailable.
-Hosted verification remains pending after correcting three stale test assumptions:
-the retired report heading, deleted helper file, and removed validator argument.
+could not run locally because build metadata is unavailable. Ordinary
+[hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34704169922) passed at
+`c7561b3e`, including the complete Python suite, reporting/recovery, managed golden
+path, shell contracts and guarded R fixtures. Integration remains pending.
 
 ## Acceptance shared by every card
 

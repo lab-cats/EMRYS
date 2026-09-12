@@ -34,7 +34,6 @@ class AdapterSpec:
     scope_type: str
     kind: str
     media_type: str
-    source_path_template: str | None = None
     suffixes: tuple[str, ...] = ()
     basenames: tuple[str, ...] = ()
     expected_header: tuple[str, ...] | None = None

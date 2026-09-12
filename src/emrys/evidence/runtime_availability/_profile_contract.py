@@ -38,12 +38,9 @@ def load_runtime_policy() -> tuple[RuntimeCheck, ...]:
         RuntimeCheck(
             row["check_id"],
             row["check_type"],
-            row["runtime_context"],
-            row["required"] == "true",
             row["target"],
             tuple(json.loads(row["probe_args"])),
             row["expected"],
-            row["description"],
         )
         for row in csv.DictReader(
             report.read_bytes(path, "Runtime policy").decode().splitlines(),

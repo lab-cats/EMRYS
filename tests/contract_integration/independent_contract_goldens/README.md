@@ -39,3 +39,11 @@ match exactly. The evidence view removes synthetic proof labels and empty
 history/tool tables, moves the unchanged original Run/Attempt references into
 Operations, and retains source, QC, warning, limitation and publisher details.
 The literal receipt serialization oracle remains unchanged.
+
+The unread-summary-copy retirement moves manifests and report receipts to v7.
+The previous scientific and evidence HTML digests were reproduced from commit
+`c7561b3e` before comparison. Scientific HTML remains byte-identical; the evidence
+fixture changes only its displayed manifest version from 6.0.0 to 7.0.0. Both
+views read metrics from their original artifact entries. No figure, QC row,
+scientific value or provenance reference was removed. Receipt serialization
+remains an independent byte oracle and is unchanged.

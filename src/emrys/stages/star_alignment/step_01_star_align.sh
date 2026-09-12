@@ -15,8 +15,8 @@ Usage: src/emrys/stages/star_alignment/step_01_star_align.sh \
   --star-index STAR_INDEX \
   --output-dir OUTPUT_DIR \
   --threads THREADS \
-  [--star-bin STAR_BIN] \
-  [--gunzip-bin GUNZIP_BIN]
+  --star-bin STAR_BIN \
+  --gunzip-bin GUNZIP_BIN
 
 Internal worker: requires an existing EMRYS_TASK_WORK_DIR supplied by the runner.
 Output destinations are staging paths supplied by the runner.
@@ -27,14 +27,10 @@ USAGE
 script_dir="$(dirname -- "${BASH_SOURCE[0]}")"
 # shellcheck source=../../libraries/argument_parsing.sh
 source "$script_dir/../../libraries/argument_parsing.sh"
-# shellcheck source=../../libraries/executable_resolution.sh
-source "$script_dir/../../libraries/executable_resolution.sh"
 # shellcheck source=../../libraries/file_checks.sh
 source "$script_dir/../../libraries/file_checks.sh"
 
-declare_required_arguments sample_id r1_fastq r2_fastq star_index output_dir threads
-star_bin=""
-gunzip_bin=""
+declare_required_arguments sample_id r1_fastq r2_fastq star_index output_dir threads star_bin gunzip_bin
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -58,13 +54,13 @@ validate_positive_integer "--threads" "$threads"
 validate_nonempty_file "R1 FASTQ" "$r1_fastq"
 validate_nonempty_file "R2 FASTQ" "$r2_fastq"
 [[ -d "$star_index" ]] || die "STAR index directory does not exist: $star_index"
-star_bin="$(resolve_executable_value "STAR" "$star_bin" "STAR")"
+require_executable "STAR" "$star_bin"
 command=("$star_bin" --runThreadN "$threads" --genomeDir "$star_index"
     --readFilesIn "$r1_fastq" "$r2_fastq" --outFileNamePrefix "$output_dir/$sample_id."
     --outSAMtype BAM SortedByCoordinate
     --outSAMattrRGline "ID:$sample_id" "SM:$sample_id" "LB:$sample_id" PL:ILLUMINA)
 if is_gzip_path "$r1_fastq" && is_gzip_path "$r2_fastq"; then
-    gunzip_bin="$(resolve_executable_value "gunzip" "$gunzip_bin" "gunzip")"
+    require_executable "gunzip" "$gunzip_bin"
     command+=(--readFilesCommand "$gunzip_bin" -c)
 elif is_gzip_path "$r1_fastq" || is_gzip_path "$r2_fastq"; then
     die "R1 and R2 must both be gzip-compressed or both be uncompressed."

@@ -57,7 +57,6 @@ def _add_analysis_adapters(
                 scope_type="analysis",
                 kind=item.kind,
                 media_type=analyses.ANALYSIS_ARTIFACT_MEDIA_TYPES[item.kind],
-                source_path_template=item.source_path_template,
                 suffixes=(item.source_path_template.rsplit("}", 1)[-1],),
                 expected_header=item.expected_header,
                 exact_data_rows=item.exact_data_rows,

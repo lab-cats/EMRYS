@@ -1002,7 +1002,11 @@ def build(
         projection_path.write_bytes(data)
     fixture_input = run_root / "contract" / "fixture_input.txt"
     fixture_input.write_text("bounded no-science workflow fixture\n", encoding="utf-8")
-    inventory_rows = tuple(dict(row) for row in reporting.artifact_inventory_rows)
+    inventory_rows = tuple(
+        csv.DictReader(
+            io.StringIO(reporting.artifact_inventory_bytes.decode()), delimiter="\t"
+        )
+    )
     payloads = artifact_payloads(
         inventory_rows,
         execution,

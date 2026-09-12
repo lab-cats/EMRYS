@@ -85,7 +85,6 @@ def test_inventory_bytes_preserve_row_and_scope_semantics_without_publication(
     rows = list(reader)
 
     assert tuple(reader.fieldnames or ()) == artifact_contracts.INVENTORY_HEADER
-    assert rows == list(bundle.artifact_inventory_rows)
     closed: set[tuple[str, str, str]] = set()
     active: tuple[str, str, str] | None = None
     for row in rows:
@@ -129,7 +128,12 @@ def test_reference_sidecar_templates_can_bind_stationary_external_paths(
     bundle = build_reporting_bundle(
         source, candidate.analysis.profile, candidate.analysis.revision
     )
-    by_id = {row["artifact_id"]: row for row in bundle.artifact_inventory_rows}
+    by_id = {
+        row["artifact_id"]: row
+        for row in csv.DictReader(
+            io.StringIO(bundle.artifact_inventory_bytes.decode()), delimiter="\t"
+        )
+    }
 
     fasta = request.parent / "reference" / "genome.fa"
     reference_id = candidate.analysis.revision.scope_id("reference")

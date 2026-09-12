@@ -1257,14 +1257,12 @@ def _admit_runtime_context(
         runtime_inspection = initial_inspection or inspect_runtime_profile_bytes(
             profile_bytes,
             profile_path,
-            "local",
             checks=checks,
             environment=environment,
         )
         if (
             runtime_inspection.profile_bytes != profile_bytes
             or runtime_inspection.profile_sha256 != profile_sha256
-            or runtime_inspection.runtime_context != "local"
             or tuple(item.check for item in runtime_inspection.observations) != checks
         ):
             raise RuntimeInspectionError(
@@ -1284,7 +1282,7 @@ def _admit_runtime_context(
         failures = ", ".join(
             item.check.check_id
             for item in runtime_inspection.observations
-            if item.check.required and item.status != "pass"
+            if item.status != "pass"
         )
         raise LifecycleError(f"Required local runtime probes failed: {failures}")
     if (

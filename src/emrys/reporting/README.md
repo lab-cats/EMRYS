@@ -34,7 +34,7 @@ two outputs are HTML Results. The frozen `ReportContext.stable_paths` stores
 scientific HTML, evidence HTML, summary TSV, then receipt; receipt output rows
 use its first three `Path` objects.
 
-Current Runs use artifact entries v3, Run summaries v6 and report receipts v6.
+Current Runs use artifact entries v3, Run summaries v7 and report receipts v7.
 The manifest binds the original scientific Run and Attempt by path and hash;
 those records preserve the actual scientific packages, commands and reused task
 origins. The manifest and HTML receipt separately identify their own publishers.

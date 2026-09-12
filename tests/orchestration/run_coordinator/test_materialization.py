@@ -238,7 +238,6 @@ def _readiness(
         profile_path=runtime,
         profile_sha256=hashlib.sha256(runtime_bytes).hexdigest(),
         profile_bytes=runtime_bytes,
-        runtime_context="local",
         observations=tuple(observations),
     )
     storage_receipt = tmp_path / "storage.qualified.json"
@@ -719,9 +718,7 @@ def test_plan_is_no_write_and_projects_exact_worker_roster(
     assert producer[:4] == [
         str(tmp_path / "tool"),
         "-c",
-        (
-            'export EMRYS_SHA256_PYTHON="$1" EMRYS_REQUIRE_BOUND_SHA256=1; shift; exec "$@"'
-        ),
+        'export EMRYS_SHA256_PYTHON="$1"; shift; exec "$@"',
         "emrys-scientific-worker",
     ]
     assert producer[4] == sys.executable
@@ -1370,7 +1367,7 @@ def test_runtime_admission_reuses_initial_inspection_then_reprobes(
     request, storage = _runtime_admission_fixture(plan, monkeypatch)
     probes: list[Path] = []
 
-    def inspect(_data, path, _context, **_kwargs):
+    def inspect(_data, path, **_kwargs):
         probes.append(path)
         return plan.readiness.inspection
 
@@ -1735,7 +1732,6 @@ def test_implementation_identity_closes_direct_scientific_dependencies(
     dependencies = (
         ".Rprofile",
         "libraries/argument_parsing.sh",
-        "libraries/executable_resolution.sh",
         "libraries/file_checks.sh",
         "libraries/gatk_invocation.sh",
         "libraries/input_contract.R",

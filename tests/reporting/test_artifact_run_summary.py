@@ -135,7 +135,7 @@ def test_execute_publishes_exact_canonical_schema_valid_transaction(
             run_summary_fixture.qc_summary_path,
         )
     ]
-    assert document["schema_version"] == "6.0.0"
+    assert document["schema_version"] == "7.0.0"
     assert document["publication"]["transaction_state"] == "complete"
     assert set(run_summary_fixture.output_dir.iterdir()) == set(
         run_summary_fixture.summary_paths
@@ -146,7 +146,7 @@ def test_execute_publishes_exact_canonical_schema_valid_transaction(
     assert not run_summary_fixture.lock_path.exists()
 
 
-def test_qc_view_keeps_all_repeated_metrics_but_json_ids_are_unique(
+def test_qc_view_keeps_all_artifact_metrics(
     run_summary_fixture: Any,
 ) -> None:
     document = validate_summary_document(run_summary_fixture)
@@ -154,10 +154,8 @@ def test_qc_view_keeps_all_repeated_metrics_but_json_ids_are_unique(
         metric for artifact in document["artifacts"] for metric in artifact["metrics"]
     ]
     qc_rows = read_tsv(run_summary_fixture.qc_summary_path)
-    json_metric_ids = [metric["metric_id"] for metric in document["qc_metrics"]]
     source_counts = Counter(metric["metric_id"] for metric in artifact_metrics)
     assert len(qc_rows) == len(artifact_metrics)
-    assert len(json_metric_ids) == len(set(json_metric_ids))
     assert source_counts["source_row_count"] > 1
     assert (
         sum(row["metric_id"] == "source_row_count" for row in qc_rows)
@@ -187,19 +185,15 @@ def test_qc_projection_preserves_domain_infinity_string() -> None:
         "metrics": [metric],
     }
 
-    promoted, duplicate_ids = RUN_SUMMARY_PROJECTION._build_qc_metrics([artifact])
     rows = RUN_SUMMARY_PROJECTION._build_qc_rows(
         {"run_id": "synthetic_run", "artifacts": [artifact]}
     )
 
-    assert promoted == [metric]
-    assert duplicate_ids == set()
     assert rows[0]["value"] == '"Inf"'
     assert rows[0]["value_type"] == "string"
 
 
-def test_projection_handles_no_duplicate_metrics_and_null_metric_values() -> None:
-    assert RUN_SUMMARY_PROJECTION._issue_for_duplicate_metrics(set(), []) is None
+def test_projection_handles_null_metric_values() -> None:
     assert RUN_SUMMARY_PROJECTION._metric_value_type(None) == "null"
 
 

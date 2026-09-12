@@ -14,15 +14,17 @@ dependencies; execution reconstructs those same checks from the Run-bound
 analysis policy. Probe rules are never copied into the inventory.
 
 Inspection binds the exact inventory bytes and returns immutable observations.
-A required check must pass in the declared execution context. A context mismatch
-remains `blocked` for a required check and `not_checked` for an optional one.
-The caller supplies the context; inspection does not infer that a process is
-running on a compute node.
+Every check is required and runs in the process that requested it. Direct and
+Slurm execution use the same probes; scheduler placement is checked by the
+coordinator. The inventory cannot select optional checks or alternate contexts.
 
 Observed locations remain `Path` or `None`. Tool and hash processes have a
 30-second limit; R namespace loads have a 120-second limit. Timeouts fail without
-retry. When the coordinator supplies the guarded R environment, loaded packages
-must resolve to the selected library's exact package roots.
+retry. The coordinator always supplies the guarded R environment, and loaded
+packages must resolve to the selected library's exact package roots. SHA-256
+probing uses the selected Python interpreter; executable paths are absolute.
+Custom analysis dependencies still support executables, R namespaces, files
+and package trees through these same checks.
 
 Use [Doctor and runtime discovery](../../../../docs/operations/RUNBOOK.md) for
 Project readiness. The standalone runtime-report command and its TSV publisher

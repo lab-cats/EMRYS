@@ -299,12 +299,9 @@ def _module_dependency_checks(
             RuntimeCheck(
                 check_id,
                 check_type,
-                "local",
-                True,
                 target,
                 probe_args,
                 expected,
-                declaration.description,
             )
         )
     return (
@@ -525,7 +522,6 @@ def diagnose_project(
             inspection = inspect_runtime_profile_bytes(
                 profile_bytes,
                 profile_path,
-                "local",
                 checks=(*fixed_checks, *additions),
                 environment=guarded_r_environment(
                     root,
@@ -547,9 +543,7 @@ def diagnose_project(
                 "then rerun Doctor."
             )
         failed = tuple(
-            item
-            for item in inspection.observations
-            if item.check.required and item.status != "pass"
+            item for item in inspection.observations if item.status != "pass"
         )
         blockers.extend(
             f"{item.check.check_id}: {item.status} ({item.observed})" for item in failed

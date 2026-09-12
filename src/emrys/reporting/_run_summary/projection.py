@@ -65,22 +65,6 @@ def _build_rollup(
     }
 
 
-def _build_qc_metrics(
-    artifacts: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], set[str]]:
-    counts = Counter(
-        metric["metric_id"] for artifact in artifacts for metric in artifact["metrics"]
-    )
-    metrics = [
-        dict(metric)
-        for artifact in artifacts
-        for metric in artifact["metrics"]
-        if counts[metric["metric_id"]] == 1
-    ]
-    duplicate_ids = {metric_id for metric_id, count in counts.items() if count > 1}
-    return metrics, duplicate_ids
-
-
 def _build_limitations(
     *,
     artifacts: list[dict[str, Any]],
@@ -121,29 +105,6 @@ def _build_limitations(
             }
         )
     return _stable_unique(limitations)
-
-
-def _issue_for_duplicate_metrics(
-    duplicate_ids: set[str],
-    artifacts: list[dict[str, Any]],
-) -> dict[str, Any] | None:
-    if not duplicate_ids:
-        return None
-    related = [
-        artifact["artifact_id"]
-        for artifact in artifacts
-        if any(metric["metric_id"] in duplicate_ids for metric in artifact["metrics"])
-    ]
-    return {
-        "code": "duplicate_qc_metric_ids_not_promoted",
-        "message": (
-            "Repeated artifact metric IDs remain available inside artifacts "
-            "and the QC TSV but are not copied into the globally unique "
-            "top-level qc_metrics array."
-        ),
-        "related_artifact_ids": related,
-        "evidence": [],
-    }
 
 
 def _metric_value_type(value: Any) -> str:

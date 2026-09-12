@@ -22,7 +22,6 @@ admit_gatk_helper_python() {
         return 2
     }
     export EMRYS_SHA256_PYTHON="$python_bin"
-    export EMRYS_REQUIRE_BOUND_SHA256=1
 }
 
 invoke_gatk_with_selected_java() {
