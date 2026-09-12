@@ -22,6 +22,11 @@ today's installed files. Both original records join the input rechecks. The mani
 existing summary tables by path, hash, and size, so their original bytes remain
 verifiable after the reporting code changes.
 
+Each artifact entry describes its declared source, observed availability and
+completion, metrics, parameters, warnings, and errors. Execution history and
+tool provenance belong to the original Run and Attempt records. Reporting adds
+no per-artifact history or local, runtime, or cluster testing claims.
+
 The canonical processing profile and task definitions supply artifact ownership
 through the orchestration contract owner. Reporting adds each
 native reader's file, header, and row-count rules; the selected Analysis descriptor

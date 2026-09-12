@@ -162,7 +162,7 @@
   <nav class="fact-grid" aria-label="Report purposes">
     <a class="fact-item" href="{{ summary.run_id }}.scientific_report.html"><strong>Scientific report</strong><span class="candidate-status">What did the analysis find?</span></a>
     <a class="fact-item" href="{{ summary.run_id }}.evidence_report.html#analysis-sources-section"><strong>Evidence and provenance</strong><span class="candidate-status">Why should the reader trust this result?</span></a>
-    <a class="fact-item" href="{{ summary.run_id }}.evidence_report.html#attempt-lineage-section"><strong>Operations</strong><span class="candidate-status">How did execution proceed?</span></a>
+    <a class="fact-item" href="{{ summary.run_id }}.evidence_report.html#execution-records-section"><strong>Operations</strong><span class="candidate-status">How did execution proceed?</span></a>
   </nav>
 {% if result_links %}
   <nav class="fact-grid" aria-label="Result files">
@@ -314,7 +314,6 @@
     {% endcall %}
   {% endcall %}
   {% call section('status-section', 'Computational status') %}
-    {% call table('computational-status', 'Computational status dimensions', ('Field', 'Value')) %}{% for label, field in status_fields %}{{ row((label, rollup[field]), true) }}{% endfor %}{% endcall %}
     {%
       set states = (('complete', rollup.complete_artifact_count, '#287a5d'),
       ('missing', rollup.missing_artifact_count, '#64748b'), ('incomplete',
@@ -352,15 +351,12 @@
   {% call section('scope-matrix-section', 'Expected scopes') %}
     {%
       call table('expected-scope-matrix', 'Every expected computational scope',
-      ('Step', 'Scope type', 'Scope ID', 'Evidence state',
-      'Local test', 'Runtime', 'Cluster dry-run', 'Cluster proof', 'Artifact IDs'))
+      ('Step', 'Scope type', 'Scope ID', 'Evidence state', 'Artifact IDs'))
     %}
       {% for item in summary.expected_scopes %}{{
   row((item.scope.step_id, item.scope.scope_type, item.scope.scope_id,
-  item.aggregate_state, item.local_test_status,
-  item.runtime_validation_status, item.cluster_dry_run_status, item.cluster_proof_status,
-  item.artifact_ids | join(', ')))
-}}{% else %}<tr><td colspan="9">No rows are available.</td></tr>{% endfor %}
+  item.aggregate_state, item.artifact_ids | join(', ')))
+}}{% else %}<tr><td colspan="5">No rows are available.</td></tr>{% endfor %}
     {% endcall %}
   {% endcall %}
 {% endcall %}
@@ -413,20 +409,13 @@
 }}{% else %}<tr><td colspan="8">No rows are available.</td></tr>{% endfor %}
     {% endcall %}
   {% endcall %}
-  {% call section('tools-issues-section', 'Tools and issues') %}
-    {% call table('software-provenance', 'Aggregate software provenance', ('Tool', 'Version', 'Role', 'Path', 'SHA-256')) %}
-      {% for tool in summary.tools %}{{ row((tool.name, tool.version, tool.role, tool.path, tool.sha256)) }}{% else %}<tr><td colspan="5">No rows are available.</td></tr>{% endfor %}
-    {% endcall %}
+  {% call section('issues-section', 'Warnings and errors') %}
     {% if summary.warnings or summary.errors %}
       {% call table('run-summary-issues', 'Aggregate warnings and errors', ('Level', 'Code', 'Message')) %}
         {% for level in ('warnings', 'errors') %}{% for item in summary[level] %}{{ row((level[:-1], item.code, item.message)) }}{% endfor %}{% endfor %}
       {% endcall %}
     {% else %}{{ empty('No aggregate run-summary warnings or errors are recorded.') }}{% endif %}
   {% endcall %}
-  {% call table('scientific-origin', 'Original scientific records', ('Record', 'Path', 'SHA-256')) %}
-    {% for label, reference in summary.scientific_origin.items() %}{{ row((label | title, reference.path, reference.sha256)) }}{% endfor %}
-  {% endcall %}
-  {{ note('The original Run and Attempt record the scientific package, commands, and earlier Attempts whose results were reused. Report generation does not change that attribution.') }}
   {% call section('report-provenance-section', 'Report provenance') %}
     {% call table('report-renderer-provenance', 'Core evidence renderer provenance', ('Field', 'Value')) %}
       {%
@@ -442,14 +431,12 @@
   {% endcall %}
 {% endcall %}
 {% call category('operations-category', 'Operations') %}
-  {% call section('attempt-lineage-section', 'Attempt lineage') %}
+  {% call section('execution-records-section', 'Execution records') %}
     {{ note('Inspect this Run: ' ~ inspect_command) }}
-    {%
-      call table('run-attempt-lineage', 'Immutable execution-attempt lineage',
-      ('Attempt', 'State', 'Started', 'Finished', 'Exit code', 'Supersedes'))
-    %}
-      {% for item in summary.attempts %}{{ row((item.attempt_id, item.state, item.started_at, item.finished_at, item.exit_code, item.supersedes_attempt_id)) }}{% else %}<tr><td colspan="6">No rows are available.</td></tr>{% endfor %}
+    {% call table('scientific-origin', 'Original scientific records', ('Record', 'Path', 'SHA-256')) %}
+      {% for label, reference in summary.scientific_origin.items() %}{{ row((label | title, reference.path, reference.sha256)) }}{% endfor %}
     {% endcall %}
+    {{ note('The original Run and Attempt record the scientific package, commands, and earlier Attempts whose results were reused. Report generation does not change that attribution.') }}
   {% endcall %}
 {% endcall %}
 {% endif %}

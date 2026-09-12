@@ -7,8 +7,7 @@ These private modules support [`validator.py`](../validator.py), the
 | --- | --- |
 | [`definitions.py`](definitions.py) | Schema paths, vocabularies, and the shared error type. |
 | [`schema.py`](schema.py) | Load registered JSON/schemas, hash bytes, and order diagnostics. |
-| [`identity.py`](identity.py) | Hash Run contracts and validate paths, identities, and Attempt graphs. |
-| [`evidence.py`](evidence.py) | Validate computational status and evidence references. |
+| [`identity.py`](identity.py) | Hash Run contracts and validate paths and identities. |
 | [`artifact.py`](artifact.py) | Validate artifact-record meaning. |
 | [`report_receipt.py`](report_receipt.py) | Validate report-receipt meaning. |
 | [`inventory.py`](inventory.py) | Check declared inventories and their agreement with records/summaries. |

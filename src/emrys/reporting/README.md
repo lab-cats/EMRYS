@@ -34,7 +34,7 @@ two outputs are HTML Results. The frozen `ReportContext.stable_paths` stores
 scientific HTML, evidence HTML, summary TSV, then receipt; receipt output rows
 use its first three `Path` objects.
 
-Current Runs use artifact entries v2, Run summaries v5 and report receipts v6.
+Current Runs use artifact entries v3, Run summaries v6 and report receipts v6.
 The manifest binds the original scientific Run and Attempt by path and hash;
 those records preserve the actual scientific packages, commands and reused task
 origins. The manifest and HTML receipt separately identify their own publishers.
@@ -89,8 +89,8 @@ requires independent roster and adapter-mutation tests.
 
 The built-in [paired-CMH reporter](paired_cmh_candidate_ranking_report/README.md)
 presents tested candidates, selected records, admitted context/motifs, methods,
-and limitations. The evidence view presents provenance, artifacts, QC, tools,
-issues, and Attempt history. Scientific-context admission reopens bound reference
+and limitations. The evidence view presents provenance, artifacts, QC, issues,
+and references to the original execution records. Scientific-context admission reopens bound reference
 files when required to validate the transaction. View rendering does not reopen
 references, rerun analysis, discover motifs, infer missing data, or hide required
 scientific caveats.

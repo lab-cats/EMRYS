@@ -16,10 +16,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 from emrys import __main__ as emrys_main
 from emrys.contracts.artifacts import api as contracts
-from emrys.contracts.artifacts._artifact_contracts import (
-    identity,
-    run_summary_validation,
-)
+from emrys.contracts.artifacts._artifact_contracts import identity
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_ROOT = (
@@ -98,7 +95,6 @@ def run_summary_with_complete_artifact() -> dict[str, Any]:
     summary = read_json(FIXTURES["run-summary"])
     artifact = read_json(FIXTURES["artifact-record"])
     summary["artifacts"] = [artifact]
-    summary["attempts"] = copy.deepcopy(artifact["attempts"])
     summary["expected_scopes"][0].update(
         {
             "scope": copy.deepcopy(artifact["scope"]),
@@ -252,18 +248,14 @@ def test_artifact_schema_rejects_envelope_extra_property_hash_and_glob() -> None
     assert_schema_invalid("artifact-record", glob_path, "does not match")
 
 
-def test_artifact_schema_supports_explicit_unavailable_attempt_provenance() -> None:
+def test_artifact_schema_supports_missing_source_with_diagnostics() -> None:
     artifact = read_json(FIXTURES["artifact-record"])
     artifact.update(
         {
             "availability_status": "missing",
             "completion_status": "incomplete",
-            "state_reason": "Legacy execution attempt identity is unavailable.",
-            "attempt_provenance_status": "unavailable",
-            "attempts": [],
-            "selected_attempt_id": None,
+            "state_reason": "The expected scientific output is unavailable.",
             "source": None,
-            "members": [],
             "metrics": [],
         }
     )
@@ -272,281 +264,59 @@ def test_artifact_schema_supports_explicit_unavailable_attempt_provenance() -> N
     contracts.validate_document_semantics("artifact-record", artifact)
 
 
-def test_artifact_semantics_reject_duplicate_unknown_and_cyclic_attempts() -> None:
-    artifact = read_json(FIXTURES["artifact-record"])
-
-    duplicate = copy.deepcopy(artifact)
-    duplicate_attempt = copy.deepcopy(duplicate["attempts"][0])
-    duplicate_attempt["state"] = "failed"
-    duplicate_attempt["exit_code"] = 1
-    duplicate["attempts"].append(duplicate_attempt)
-    assert_contract_failure("artifact-record", duplicate, "duplicate attempt_id")
-
-    unknown_selected = copy.deepcopy(artifact)
-    unknown_selected["selected_attempt_id"] = "attempt-999"
-    assert_contract_failure(
-        "artifact-record",
-        unknown_selected,
-        "does not name a recorded attempt",
-    )
-
-    cyclic = copy.deepcopy(artifact)
-    cyclic["attempts"][0]["supersedes_attempt_id"] = "attempt-001"
-    assert_contract_failure("artifact-record", cyclic, "cannot supersede itself")
-
-
 def test_artifact_semantics_require_failure_and_incomplete_diagnostics() -> None:
     artifact = read_json(FIXTURES["artifact-record"])
 
     failed = copy.deepcopy(artifact)
     failed["completion_status"] = "failed"
-    failed["state_reason"] = "Synthetic failed attempt."
-    failed["attempts"][0]["state"] = "failed"
-    failed["attempts"][0]["exit_code"] = 1
-    failed["attempts"][0]["errors"] = [
-        {
-            "code": "attempt_failed",
-            "message": "Synthetic attempt failure.",
-            "related_artifact_ids": [failed["artifact_id"]],
-            "evidence": [],
-        }
-    ]
+    failed["state_reason"] = "Synthetic publication failure."
     assert_schema_valid("artifact-record", failed)
     assert_contract_failure("artifact-record", failed, "at least one error")
 
     incomplete = copy.deepcopy(artifact)
     incomplete["completion_status"] = "incomplete"
     incomplete["state_reason"] = "Synthetic incomplete transaction."
-    incomplete["attempts"][0].update(
-        {
-            "state": "blocked",
-            "exit_code": None,
-        }
-    )
     incomplete["warnings"] = []
     assert_schema_valid("artifact-record", incomplete)
     assert_contract_failure(
-        "artifact-record",
-        incomplete,
-        "at least one warning or error",
+        "artifact-record", incomplete, "at least one warning or error"
     )
 
 
-def test_artifact_rejects_unresolved_paths_and_unproven_status_claims() -> None:
+def test_artifact_rejects_unresolved_and_mismatched_source_paths() -> None:
     artifact = read_json(FIXTURES["artifact-record"])
 
-    template = copy.deepcopy(artifact)
-    template["members"] = [
-        {
-            "member_id": "supplemental",
-            "role": "supplemental",
-            "path": "results/${RUN_ID}/all.tsv",
-            "sha256": "e" * 64,
-            "size_bytes": 1,
-            "row_count": 1,
-            "media_type": "text/tab-separated-values",
-        }
-    ]
-    assert_schema_invalid("artifact-record", template, "does not match")
+    for path in ("results/${RUN_ID}/all.tsv", "results/run/../all.tsv"):
+        unresolved = copy.deepcopy(artifact)
+        unresolved["source"]["path"] = path
+        assert_schema_invalid("artifact-record", unresolved, "does not match")
 
-    traversal = copy.deepcopy(artifact)
-    traversal["members"] = copy.deepcopy(template["members"])
-    traversal["members"][0]["path"] = "results/run/../all.tsv"
-    assert_schema_invalid("artifact-record", traversal, "does not match")
-
-    unproven = copy.deepcopy(artifact)
-    unproven["cluster_validation"].update(
-        {
-            "dry_run_status": "passed",
-            "proof_status": "proven",
-            "evidence": [],
-        }
-    )
-    assert_schema_invalid("artifact-record", unproven, "non-empty")
+    mismatched = copy.deepcopy(artifact)
+    mismatched["source"]["path"] = "results/another.tsv"
+    assert_contract_failure("artifact-record", mismatched, "inventory expectation")
 
 
-def test_artifact_cluster_proof_requires_typed_inspected_evidence() -> None:
-    artifact = read_json(FIXTURES["artifact-record"])
-    artifact["runtime_validation"] = {
-        "status": "passed",
-        "detail": None,
-        "evidence": [
-            {
-                "evidence_id": "runtime_log",
-                "role": "runtime_log",
-                "path": "logs/runtime.log",
-                "sha256": "a" * 64,
-            },
-            {
-                "evidence_id": "runtime_output",
-                "role": "runtime_output",
-                "path": "results/runtime.tsv",
-                "sha256": "b" * 64,
-            },
-        ],
-    }
-    artifact["cluster_validation"] = {
-        "dry_run_status": "passed",
-        "proof_status": "proven",
-        "evidence": [
-            {
-                "evidence_id": "local_test_only",
-                "role": "local_test",
-                "path": "tests/contracts/artifacts/test_artifact_schema_contracts.py",
-                "sha256": "c" * 64,
-            }
-        ],
-    }
-    assert_schema_valid("artifact-record", artifact)
-    assert_contract_failure(
-        "artifact-record",
-        artifact,
-        "cluster dry-run validation requires evidence roles",
-    )
-
-    repeated = copy.deepcopy(artifact)
-    repeated["cluster_validation"]["evidence"] = [
-        {
-            "evidence_id": "same_evidence",
-            "role": role,
-            "path": "logs/same-evidence.txt",
-            "sha256": "d" * 64,
-        }
-        for role in (
-            "cluster_dry_run",
-            "cluster_scheduler",
-            "cluster_log",
-            "cluster_output",
-        )
-    ]
-    assert_schema_valid("artifact-record", repeated)
-    assert_contract_failure(
-        "artifact-record",
-        repeated,
-        "duplicate evidence evidence_id",
-    )
-
-
-def test_artifact_attempt_source_and_failed_rollup_are_consistent() -> None:
-    artifact = read_json(FIXTURES["artifact-record"])
-
-    failed_selected = copy.deepcopy(artifact)
-    failed_selected["attempts"][0]["state"] = "failed"
-    failed_selected["attempts"][0]["exit_code"] = 1
-    assert_schema_invalid("artifact-record", failed_selected, "does not contain")
-
-    conflicting_source = copy.deepcopy(artifact)
-    conflicting_source["members"] = [
-        {
-            "member_id": "source_duplicate",
-            "role": "supplemental",
-            **copy.deepcopy(conflicting_source["source"]),
-        }
-    ]
-    conflicting_source["members"][0]["sha256"] = "f" * 64
-    assert_contract_failure(
-        "artifact-record",
-        conflicting_source,
-        "same-path member disagree",
-    )
-
-    failed_missing = copy.deepcopy(artifact)
+def test_artifact_failed_missing_source_rolls_up_as_failed() -> None:
+    failed_missing = read_json(FIXTURES["artifact-record"])
     failed_missing.update(
         {
             "availability_status": "missing",
             "completion_status": "failed",
             "state_reason": "Synthetic publication failed before the anchor.",
             "source": None,
-        }
-    )
-    failed_missing["attempts"][0].update(
-        {
-            "state": "failed",
-            "exit_code": 1,
             "errors": [
                 {
-                    "code": "attempt_failed",
-                    "message": "Synthetic attempt failure.",
-                    "related_artifact_ids": [failed_missing["artifact_id"]],
+                    "code": "publication_failed",
+                    "message": "Synthetic publication failure.",
+                    "related_artifact_ids": ["analysis.synthetic.cmh_summary"],
                     "evidence": [],
                 }
             ],
         }
     )
-    failed_missing["errors"] = [
-        {
-            "code": "publication_failed",
-            "message": "Synthetic publication failure.",
-            "related_artifact_ids": ["analysis.synthetic.cmh_summary"],
-            "evidence": [],
-        }
-    ]
     assert_schema_valid("artifact-record", failed_missing)
     contracts.validate_document_semantics("artifact-record", failed_missing)
     assert contracts.artifact_rollup_state(failed_missing) == "failed"
-
-
-def test_artifact_rejects_absent_source_claimed_by_member() -> None:
-    artifact = read_json(FIXTURES["artifact-record"])
-    artifact.update(
-        {
-            "availability_status": "missing",
-            "completion_status": "incomplete",
-            "state_reason": "Synthetic incomplete artifact.",
-            "attempt_provenance_status": "unavailable",
-            "attempts": [],
-            "selected_attempt_id": None,
-            "source": None,
-        }
-    )
-    artifact["members"] = [
-        {
-            "member_id": "contradictory_source",
-            "role": "supplemental",
-            "path": artifact["expectation"]["source_path"],
-            "sha256": "f" * 64,
-            "size_bytes": 10,
-            "row_count": 1,
-            "media_type": "text/tab-separated-values",
-        }
-    ]
-    assert_schema_valid("artifact-record", artifact)
-    assert_contract_failure(
-        "artifact-record",
-        artifact,
-        "cannot claim the absent expected source",
-    )
-
-
-def test_attempt_states_are_temporally_and_graph_consistent() -> None:
-    artifact = read_json(FIXTURES["artifact-record"])
-
-    running = copy.deepcopy(artifact)
-    running.update(
-        {
-            "completion_status": "in_progress",
-            "state_reason": "Synthetic active attempt.",
-        }
-    )
-    running["attempts"][0].update(
-        {
-            "state": "running",
-            "finished_at": "2000-01-01T00:00:01Z",
-            "exit_code": 0,
-        }
-    )
-    assert_schema_invalid("artifact-record", running, "null")
-
-    disconnected = copy.deepcopy(artifact)
-    second = copy.deepcopy(disconnected["attempts"][0])
-    second["attempt_id"] = "attempt-002"
-    disconnected["attempts"].append(second)
-    disconnected["selected_attempt_id"] = "attempt-002"
-    assert_contract_failure(
-        "artifact-record",
-        disconnected,
-        "connected retry chain",
-    )
 
 
 def test_run_contract_digest_is_canonical_and_recomputed() -> None:
@@ -594,94 +364,15 @@ def test_run_summary_supports_multiple_physical_artifacts_per_scope() -> None:
     contracts.validate_document_semantics("run-summary", summary)
 
 
-def test_run_summary_reconciles_artifact_and_run_attempt_histories() -> None:
+def test_run_summary_rejects_duplicate_expected_sources() -> None:
     summary = run_summary_with_complete_artifact()
-
-    assert_schema_valid("run-summary", summary)
-    contracts.validate_document_semantics("run-summary", summary)
-
-    disconnected = copy.deepcopy(summary)
-    disconnected["attempts"] = []
-    assert_contract_failure(
-        "run-summary",
-        disconnected,
-        "not represented identically",
-    )
-
-    forest = run_summary_with_complete_artifact()
-    second = copy.deepcopy(forest["artifacts"][0])
+    second = copy.deepcopy(summary["artifacts"][0])
     second["artifact_id"] = "analysis.synthetic.cmh_all_sites"
-    second["adapter"] = "step09_cmh_all_sites_v1"
-    second_path = (
-        "tests/fixtures/artifact_schema_v1/source/results/editing/"
-        "synthetic_analysis/synthetic_analysis.cmh_all_sites.tsv"
-    )
-    second["expectation"]["source_path"] = second_path
-    second["source"].update(
-        {
-            "path": second_path,
-            "sha256": "6" * 64,
-            "size_bytes": 1000,
-            "row_count": 2,
-        }
-    )
-    second["attempts"][0]["attempt_id"] = "attempt-002"
-    second["selected_attempt_id"] = "attempt-002"
-    forest["artifacts"].append(second)
-    forest["attempts"].append(copy.deepcopy(second["attempts"][0]))
-    forest["expected_scopes"][0]["artifact_ids"].append(second["artifact_id"])
-    forest["inventory"]["row_count"] = 2
-    forest["computational_rollup"]["expected_artifact_count"] = 2
-    forest["computational_rollup"]["complete_artifact_count"] = 2
-    contracts.validate_document_semantics("run-summary", forest)
-
-
-def test_run_summary_rejects_cross_artifact_physical_path_conflicts() -> None:
-    summary = run_summary_with_complete_artifact()
-    first = summary["artifacts"][0]
-    second = copy.deepcopy(first)
-    second.update(
-        {
-            "artifact_id": "analysis.synthetic.cmh_all_sites",
-            "adapter": "step09_cmh_all_sites_v1",
-        }
-    )
-    second_path = (
-        "tests/fixtures/artifact_schema_v1/source/results/editing/"
-        "synthetic_analysis/synthetic_analysis.cmh_all_sites.tsv"
-    )
-    second["expectation"]["source_path"] = second_path
-    second["source"].update(
-        {
-            "path": second_path,
-            "sha256": "6" * 64,
-            "size_bytes": 1000,
-            "row_count": 2,
-        }
-    )
-    first["members"] = [
-        {
-            "member_id": "contradictory_all_sites",
-            "role": "supplemental",
-            "path": second_path,
-            "sha256": "f" * 64,
-            "size_bytes": 1000,
-            "row_count": 2,
-            "media_type": "text/tab-separated-values",
-        }
-    ]
+    second["source"]["sha256"] = "6" * 64
     summary["artifacts"].append(second)
-    summary["expected_scopes"][0]["artifact_ids"].append(second["artifact_id"])
-    summary["inventory"]["row_count"] = 2
-    summary["computational_rollup"]["expected_artifact_count"] = 2
-    summary["computational_rollup"]["complete_artifact_count"] = 2
 
     assert_schema_valid("run-summary", summary)
-    assert_contract_failure(
-        "run-summary",
-        summary,
-        "disagree on physical path",
-    )
+    assert_contract_failure("run-summary", summary, "duplicate expected source path")
 
 
 def test_run_summary_rejects_duplicate_artifact_ids() -> None:
@@ -690,29 +381,6 @@ def test_run_summary_rejects_duplicate_artifact_ids() -> None:
     duplicate = copy.deepcopy(summary)
     duplicate["artifacts"].append(copy.deepcopy(duplicate["artifacts"][0]))
     assert_contract_failure("run-summary", duplicate, "duplicate artifact_id")
-
-
-def test_run_summary_rejects_computational_overclaims() -> None:
-    summary = read_json(FIXTURES["run-summary"])
-
-    scope_overclaim = copy.deepcopy(summary)
-    scope_overclaim["expected_scopes"][0]["cluster_dry_run_status"] = "passed"
-    scope_overclaim["expected_scopes"][0]["cluster_proof_status"] = "proven"
-    assert_schema_valid("run-summary", scope_overclaim)
-    assert_contract_failure(
-        "run-summary",
-        scope_overclaim,
-        "cluster_dry_run_status",
-    )
-
-    rollup_overclaim = copy.deepcopy(summary)
-    rollup_overclaim["computational_rollup"]["runtime_validation_status"] = "passed"
-    assert_schema_valid("run-summary", rollup_overclaim)
-    assert_contract_failure(
-        "run-summary",
-        rollup_overclaim,
-        "runtime_validation_status",
-    )
 
 
 def test_run_summary_reconciles_qc_sources() -> None:
@@ -882,8 +550,7 @@ def test_contract_paths_honor_an_explicit_source_root(tmp_path: Path) -> None:
     alias.symlink_to(actual, target_is_directory=True)
 
     explicit_path = contracts.resolve_contract_path(
-        "alias/source.tsv",
-        source_root=tmp_path,
+        "alias/source.tsv", source_root=tmp_path
     )
     assert explicit_path == (actual / "source.tsv").resolve()
     assert explicit_path != contracts.resolve_contract_path("alias/source.tsv")
@@ -900,121 +567,21 @@ def test_contract_paths_honor_an_explicit_source_root(tmp_path: Path) -> None:
     ):
         contracts.validate_inventory(inventory, source_root=tmp_path)
 
-    artifact_record = read_json(FIXTURES["artifact-record"])
-    artifact_record.update(
-        {
-            "availability_status": "missing",
-            "completion_status": "incomplete",
-            "state_reason": "Synthetic incomplete artifact.",
-            "attempt_provenance_status": "unavailable",
-            "attempts": [],
-            "selected_attempt_id": None,
-            "source": None,
-        }
-    )
-    artifact_record["expectation"]["source_path"] = "actual/source.tsv"
-    artifact_record["members"] = [
-        {
-            "member_id": "contradictory_source_alias",
-            "role": "supplemental",
-            "path": "alias/source.tsv",
-            "sha256": "f" * 64,
-            "size_bytes": 10,
-            "row_count": 1,
-            "media_type": "text/tab-separated-values",
-        }
-    ]
-    assert_schema_valid("artifact-record", artifact_record)
+    summary = run_summary_with_complete_artifact()
+    first = summary["artifacts"][0]
+    first["expectation"]["source_path"] = "actual/source.tsv"
+    first["source"]["path"] = "actual/source.tsv"
+    second = copy.deepcopy(first)
+    second["artifact_id"] = "analysis.synthetic.cmh_all_sites"
+    second["expectation"]["source_path"] = "alias/source.tsv"
+    second["source"]["path"] = "alias/source.tsv"
+    summary["artifacts"].append(second)
+
+    assert_schema_valid("run-summary", summary)
     with pytest.raises(
-        contracts.ContractValidationError,
-        match="cannot claim the absent expected source",
+        contracts.ContractValidationError, match="duplicate expected source path"
     ):
-        contracts.validate_artifact_semantics(
-            artifact_record,
-            source_root=tmp_path,
-        )
-
-    run_summary = read_json(FIXTURES["run-summary"])
-    run_summary["artifacts"] = [artifact_record]
-    with pytest.raises(
-        contracts.ContractValidationError,
-        match="cannot claim the absent expected source",
-    ):
-        contracts.validate_run_summary_semantics(
-            run_summary,
-            source_root=tmp_path,
-        )
-
-
-def test_run_summary_semantics_threads_the_explicit_source_root(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> None:
-    """Propagate one explicit root through every run-summary artifact path seam."""
-    summary = read_json(FIXTURES["run-summary"])
-    artifact = read_json(FIXTURES["artifact-record"])
-    artifact["members"] = [
-        {
-            "member_id": "supplemental",
-            "role": "supplemental",
-            "path": "supplemental/member.tsv",
-            "sha256": "d" * 64,
-            "size_bytes": 1,
-            "row_count": 1,
-            "media_type": "text/tab-separated-values",
-        },
-    ]
-    summary["artifacts"] = [artifact]
-    summary["attempts"] = copy.deepcopy(artifact["attempts"])
-    summary["expected_scopes"][0].update(
-        {
-            "scope": copy.deepcopy(artifact["scope"]),
-            "artifact_ids": [artifact["artifact_id"]],
-            "aggregate_state": "complete",
-        }
-    )
-    summary["computational_rollup"].update(
-        {
-            "complete_artifact_count": 1,
-            "missing_artifact_count": 0,
-        },
-    )
-
-    semantic_roots: list[Path] = []
-    resolved_values: list[str] = []
-
-    def record_artifact_semantics(
-        _document: dict[str, Any],
-        *,
-        source_root: Path,
-    ) -> None:
-        semantic_roots.append(source_root)
-
-    def record_contract_path(value: str, *, source_root: Path) -> Path:
-        resolved_values.append(value)
-        assert source_root == tmp_path
-        return (source_root / value).resolve()
-
-    monkeypatch.setattr(
-        run_summary_validation,
-        "validate_artifact_semantics",
-        record_artifact_semantics,
-    )
-    monkeypatch.setattr(
-        run_summary_validation,
-        "resolve_contract_path",
-        record_contract_path,
-    )
-
-    contracts.validate_run_summary_semantics(summary, source_root=tmp_path)
-
-    expected_path = artifact["expectation"]["source_path"]
-    assert semantic_roots == [tmp_path]
-    assert resolved_values == [
-        expected_path,
-        artifact["source"]["path"],
-        "supplemental/member.tsv",
-    ]
+        contracts.validate_run_summary_semantics(summary, source_root=tmp_path)
 
 
 def test_inventory_is_explicit_ordered_unique_and_covers_steps_00a_through_10() -> None:

@@ -262,7 +262,6 @@ def test_prepare_context_keeps_package_and_artifact_roots_distinct(
     root_calls: Counter[str] = Counter()
     real_admit_package = SOURCE_AUTHORITY.admit_installed_package
     real_declared_contract_path = ARTIFACT_NATIVE.declared_contract_path
-    real_validate_artifact_semantics = ARTIFACT_CONTRACTS.validate_artifact_semantics
 
     def observe_package(*, root: Path) -> Any:
         assert root == PACKAGE_ROOT
@@ -274,26 +273,11 @@ def test_prepare_context_keeps_package_and_artifact_roots_distinct(
         root_calls["native_references"] += 1
         return real_declared_contract_path(value, source_root=source_root)
 
-    def validate_artifact_semantics(
-        document: dict[str, Any],
-        *,
-        source_root: Path,
-    ) -> None:
-        assert source_root == artifact_source_root.root
-        root_calls["record_semantics"] += 1
-        real_validate_artifact_semantics(document, source_root=source_root)
-
     monkeypatch.setattr(
         ARTIFACT_NATIVE,
         "declared_contract_path",
         declared_contract_path,
     )
-    monkeypatch.setattr(
-        ARTIFACT_CONTRACTS,
-        "validate_artifact_semantics",
-        validate_artifact_semantics,
-    )
-
     monkeypatch.setattr(
         ARTIFACT_CONTEXT,
         "admit_installed_package",
@@ -323,7 +307,6 @@ def test_prepare_context_keeps_package_and_artifact_roots_distinct(
     assert all("implementation" not in record for record in context.index.records)
     assert root_calls["package"] == 1
     assert root_calls["native_references"] > 0
-    assert root_calls["record_semantics"] == len(artifact_fixture.inventory_rows)
 
 
 def test_prepare_context_rejects_changed_installed_package(
@@ -1144,10 +1127,6 @@ def test_native_metrics_and_artifact_state_are_conservative(
     genome = record_for(artifact_fixture, "ref.star_index.genome")
     assert genome["source"]["media_type"] == "application/octet-stream"
     assert "scientific_state" not in genome
-    assert genome["runtime_validation"]["status"] == "not_run"
-    assert genome["cluster_validation"]["proof_status"] == "not_run"
-    assert genome["attempts"] == []
-    assert genome["selected_attempt_id"] is None
 
 
 def test_star_final_log_preserves_infinite_mapping_speed_as_string(

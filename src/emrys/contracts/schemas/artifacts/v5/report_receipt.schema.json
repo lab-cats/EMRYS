@@ -131,7 +131,7 @@
         "path": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path"},
         "sha256": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/sha256"},
         "schema_name": {"const": "emrys.run_summary"},
-        "schema_version": {"const": "5.0.0"}
+        "schema_version": {"const": "6.0.0"}
       }
     },
     "inputs": {"type": "array", "items": {
@@ -190,8 +190,8 @@
       "additionalProperties": false,
       "required": ["artifact_entry", "run_summary", "report_receipt"],
       "properties": {
-        "artifact_entry": {"const": "2.0.0"},
-        "run_summary": {"const": "5.0.0"},
+        "artifact_entry": {"const": "3.0.0"},
+        "run_summary": {"const": "6.0.0"},
         "report_receipt": {"const": "6.0.0"}
       }
     },

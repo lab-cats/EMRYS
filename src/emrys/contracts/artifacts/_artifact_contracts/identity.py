@@ -1,12 +1,10 @@
-"""Run-contract, explicit-path, uniqueness, and attempt-graph rules."""
+"""Run-contract, explicit-path, and uniqueness rules."""
 
 from __future__ import annotations
 
 import glob
 import hashlib
 import json
-from collections import defaultdict
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -93,96 +91,6 @@ def require_unique_key(
                 f"{label} contains duplicate {key} {value!r} at array index {index}"
             )
         indexed[value] = record
-    return indexed
-
-
-def validate_attempt_graph(
-    attempts: list[dict[str, Any]],
-    *,
-    selected_attempt_id: str | None = None,
-    label: str,
-    require_single_chain: bool = True,
-) -> dict[str, dict[str, Any]]:
-    def parse_utc_timestamp(value: str) -> datetime:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-
-    indexed = require_unique_key(attempts, "attempt_id", label)
-    if selected_attempt_id is not None and selected_attempt_id not in indexed:
-        raise ContractValidationError(
-            f"{label} selected_attempt_id does not name a recorded attempt: "
-            f"{selected_attempt_id}"
-        )
-
-    for attempt_id, attempt in indexed.items():
-        parent = attempt["supersedes_attempt_id"]
-        if parent is None:
-            continue
-        if parent == attempt_id:
-            raise ContractValidationError(
-                f"{label} attempt {attempt_id!r} cannot supersede itself"
-            )
-        if parent not in indexed:
-            raise ContractValidationError(
-                f"{label} attempt {attempt_id!r} supersedes unknown attempt {parent!r}"
-            )
-
-    roots = [
-        attempt_id
-        for attempt_id, attempt in indexed.items()
-        if attempt["supersedes_attempt_id"] is None
-    ]
-    if require_single_chain and indexed and len(roots) != 1:
-        raise ContractValidationError(
-            f"{label} attempt history must be one connected retry chain; "
-            f"found {len(roots)} roots"
-        )
-    child_counts: dict[str, int] = defaultdict(int)
-    for attempt in indexed.values():
-        parent = attempt["supersedes_attempt_id"]
-        if parent is not None:
-            child_counts[parent] += 1
-    branched = sorted(
-        attempt_id
-        for attempt_id, child_count in child_counts.items()
-        if child_count > 1
-    )
-    if branched:
-        raise ContractValidationError(
-            f"{label} attempt history branches at: " + ", ".join(branched)
-        )
-
-    for start in indexed:
-        visited: set[str] = set()
-        current: str | None = start
-        while current is not None:
-            if current in visited:
-                raise ContractValidationError(
-                    f"{label} attempt supersession contains a cycle at {current!r}"
-                )
-            visited.add(current)
-            current = indexed[current]["supersedes_attempt_id"]
-
-    for attempt_id, attempt in indexed.items():
-        started_at = attempt["started_at"]
-        finished_at = attempt["finished_at"]
-        if started_at is not None and finished_at is not None:
-            started = parse_utc_timestamp(started_at)
-            finished = parse_utc_timestamp(finished_at)
-            if finished < started:
-                raise ContractValidationError(
-                    f"{label} attempt {attempt_id!r} finishes before it starts"
-                )
-        parent_id = attempt["supersedes_attempt_id"]
-        if parent_id is not None:
-            parent_finished_at = indexed[parent_id]["finished_at"]
-            if started_at is not None and parent_finished_at is not None:
-                started = parse_utc_timestamp(started_at)
-                parent_finished = parse_utc_timestamp(parent_finished_at)
-                if started < parent_finished:
-                    raise ContractValidationError(
-                        f"{label} attempt {attempt_id!r} starts before "
-                        f"superseded attempt {parent_id!r} finishes"
-                    )
     return indexed
 
 

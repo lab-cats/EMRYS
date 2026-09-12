@@ -40,32 +40,6 @@ RUN_CONTRACT_COMPONENT_FIELDS = (
     "primary_analysis_id",
     "primary_analysis_policy_sha256",
 )
-COMPUTATIONAL_STATUS_ROLE_REQUIREMENTS = {
-    "local testing": {
-        "passed": {"local_test"},
-        "failed": {"local_test"},
-    },
-    "runtime validation": {
-        "passed": {"runtime_log", "runtime_output"},
-        "failed": {"runtime_log"},
-    },
-}
-CLUSTER_VALIDATION_REQUIREMENTS = (
-    (
-        "cluster dry-run validation",
-        "dry_run_status",
-        {"passed", "failed"},
-        {"cluster_dry_run"},
-    ),
-    (
-        "cluster proof",
-        "proof_status",
-        {"proven"},
-        {"cluster_scheduler", "cluster_log", "cluster_output"},
-    ),
-    ("failed cluster proof", "proof_status", {"failed"}, {"cluster_log"}),
-)
-CLUSTER_VALIDATION_TRIGGER_STATUSES = {"passed", "failed", "proven"}
 
 
 class ContractValidationError(RuntimeError):

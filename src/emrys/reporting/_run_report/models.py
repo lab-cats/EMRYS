@@ -17,17 +17,11 @@ if TYPE_CHECKING:
     from emrys.reporting._artifact_index.models import EvidenceContext
 
 PRODUCER = "emrys.reporting.report"
-PRODUCER_VERSION = "6.0.0"
+PRODUCER_VERSION = "7.0.0"
 REPORT_RECEIPT_SCHEMA_VERSION = "6.0.0"
 JINJA_VERSION = "3.1.6"
 TEMPLATE_RESOURCE = "templates/run_report.html.j2"
 CSS_RESOURCE = "styles/run_report.css"
-COMPUTATIONAL_STATUS_FIELDS: tuple[tuple[str, str], ...] = (
-    ("Local testing", "local_test_status"),
-    ("Runtime validation", "runtime_validation_status"),
-    ("Cluster dry-run", "cluster_dry_run_status"),
-    ("Cluster proof", "cluster_proof_status"),
-)
 ACTIVE_RESOURCE_ATTRIBUTES = {
     ("script", "src"),
     ("link", "href"),
@@ -62,9 +56,9 @@ EVIDENCE_REPORT_SECTION_IDS = {
     "scope-matrix-section",
     "analysis-sources-section",
     "qc-metrics-section",
-    "attempt-lineage-section",
+    "execution-records-section",
     "artifact-appendix-section",
-    "tools-issues-section",
+    "issues-section",
     "report-provenance-section",
 }
 RECEIPT_HEADER = (
@@ -90,7 +84,6 @@ SUMMARY_HEADER = (
     "scope_type",
     "scope_id",
     "aggregate_state",
-    *(field for _, field in COMPUTATIONAL_STATUS_FIELDS),
     "warning_count",
     "error_count",
 )

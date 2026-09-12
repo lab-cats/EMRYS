@@ -1662,7 +1662,6 @@ def test_run_identity_excludes_attempt_reporting_and_cli_adapter_code(
         "contracts/orchestration/projection.py",
         "contracts/artifacts/validator.py",
         "contracts/artifacts/_artifact_contracts/artifact.py",
-        "contracts/artifacts/_artifact_contracts/evidence.py",
         "contracts/artifacts/_artifact_contracts/inventory.py",
         "contracts/artifacts/_artifact_contracts/report_receipt.py",
         "contracts/artifacts/_artifact_contracts/run_summary_status.py",

@@ -1,7 +1,7 @@
 {
   "artifact_record.schema.json": [
     {
-      "expected": "urn:emrys:schema:artifacts:artifact-entry:v2",
+      "expected": "urn:emrys:schema:artifacts:artifact-entry:v3",
       "pointer": "/$id"
     },
     {
@@ -12,48 +12,12 @@
         "unknown"
       ],
       "pointer": "/properties/availability_status/enum"
-    },
-    {
-      "expected": [
-        "not_run",
-        "blocked",
-        "passed",
-        "failed"
-      ],
-      "pointer": "/$defs/runtime_validation_status/properties/status/enum"
-    },
-    {
-      "expected": [
-        "not_run",
-        "passed",
-        "failed"
-      ],
-      "pointer": "/$defs/cluster_validation_status/properties/dry_run_status/enum"
-    },
-    {
-      "expected": [
-        "not_run",
-        "proven",
-        "failed"
-      ],
-      "pointer": "/$defs/cluster_validation_status/properties/proof_status/enum"
     }
   ],
   "common.schema.json": [
     {
       "expected": "urn:emrys:schema:artifacts:common:v1",
       "pointer": "/$id"
-    },
-    {
-      "expected": [
-        "planned",
-        "running",
-        "succeeded",
-        "failed",
-        "cancelled",
-        "blocked"
-      ],
-      "pointer": "/$defs/attempt/properties/state/enum"
     },
     {
       "expected": [
@@ -119,7 +83,7 @@
   ],
   "run_summary.schema.json": [
     {
-      "expected": "urn:emrys:schema:artifacts:run-summary:v5",
+      "expected": "urn:emrys:schema:artifacts:run-summary:v6",
       "pointer": "/$id"
     },
     {
@@ -127,7 +91,7 @@
       "pointer": "/properties/schema_name/const"
     },
     {
-      "expected": "5.0.0",
+      "expected": "6.0.0",
       "pointer": "/properties/schema_version/const"
     },
     {

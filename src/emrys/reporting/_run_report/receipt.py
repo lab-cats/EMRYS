@@ -57,7 +57,6 @@ def summary_tsv_bytes(context: ReportContext) -> bytes:
                 scope["scope_type"],
                 scope["scope_id"],
                 item["aggregate_state"],
-                *(item[field] for field in contracts.RUN_SUMMARY_STATUS_FIELDS),
                 str(len(item["warnings"])),
                 str(len(item["errors"])),
             )
@@ -164,7 +163,7 @@ def receipt_document(
         "state_banner": context.render_metadata["state_banner"],
         "truncations": [],
         "schema_versions": {
-            "artifact_entry": "2.0.0",
+            "artifact_entry": "3.0.0",
             "run_summary": summary["schema_version"],
             "report_receipt": version,
         },

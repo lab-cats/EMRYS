@@ -16,12 +16,10 @@ from emrys.reporting._run_summary.models import (
     QC_SUMMARY_HEADER,
 )
 from emrys.reporting._run_summary.projection import (
-    _build_attempts,
     _build_expected_scopes,
     _build_limitations,
     _build_qc_metrics,
     _build_rollup,
-    _build_tools,
     _issue_for_duplicate_metrics,
     _build_summary_rows,
     _build_qc_rows,
@@ -53,7 +51,6 @@ def build_summary(
     analysis_policy_binding: dict[str, Any],
 ) -> tuple[dict[str, Any], bytes, bytes, bytes]:
     expected_scopes, artifact_scope_order = _build_expected_scopes(artifacts)
-    attempts, superseded_attempt_ids = _build_attempts(artifacts)
     qc_metrics, duplicate_metric_ids = _build_qc_metrics(artifacts)
     warnings = _stable_unique(
         issue for artifact in artifacts for issue in artifact["warnings"]
@@ -95,12 +92,9 @@ def build_summary(
         },
         "publication": publication,
         "analysis_policy": analysis_policy_binding,
-        "attempts": attempts,
-        "superseded_attempt_ids": superseded_attempt_ids,
         "expected_scopes": expected_scopes,
         "artifacts": artifacts,
         "computational_rollup": _build_rollup(artifacts),
-        "tools": _build_tools(artifacts),
         "parameters": parameters,
         "qc_metrics": qc_metrics,
         "limitations": _build_limitations(artifacts=artifacts),

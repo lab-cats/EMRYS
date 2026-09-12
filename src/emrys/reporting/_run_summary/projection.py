@@ -9,21 +9,7 @@ from typing import Any
 
 from emrys.contracts.artifacts import api as contracts
 
-from .models import RunSummaryError
 from .transaction import _stable_unique
-
-
-def _artifact_statuses(artifact: Mapping[str, Any]) -> dict[str, str]:
-    return contracts.artifact_status_dimensions(dict(artifact))
-
-
-def _scope_statuses(scope_artifacts: list[dict[str, Any]]) -> dict[str, str]:
-    return {
-        field: contracts.aggregate_equal_or_mixed(
-            _artifact_statuses(artifact)[field] for artifact in scope_artifacts
-        )
-        for field in contracts.RUN_SUMMARY_STATUS_FIELDS
-    }
 
 
 def _build_expected_scopes(
@@ -43,7 +29,6 @@ def _build_expected_scopes(
         errors = _stable_unique(
             issue for artifact in scope_artifacts for issue in artifact["errors"]
         )
-        status_values = _scope_statuses(scope_artifacts)
         expected_scopes.append(
             {
                 "scope": {
@@ -55,7 +40,6 @@ def _build_expected_scopes(
                     artifact["artifact_id"] for artifact in scope_artifacts
                 ],
                 "aggregate_state": contracts.aggregate_artifact_state(scope_artifacts),
-                **status_values,
                 "warnings": warnings,
                 "errors": errors,
             }
@@ -65,38 +49,13 @@ def _build_expected_scopes(
     return expected_scopes, artifact_scope_order
 
 
-def _build_attempts(
-    artifacts: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], list[str]]:
-    attempts: list[dict[str, Any]] = []
-    attempt_index: dict[str, dict[str, Any]] = {}
-    superseded: list[str] = []
-    for artifact in artifacts:
-        for attempt in artifact["attempts"]:
-            attempt_id = attempt["attempt_id"]
-            prior = attempt_index.get(attempt_id)
-            if prior is not None:
-                if prior != attempt:
-                    raise RunSummaryError(
-                        f"Artifact attempt {attempt_id!r} has conflicting definitions"
-                    )
-                continue
-            copy = dict(attempt)
-            attempt_index[attempt_id] = copy
-            attempts.append(copy)
-            parent = attempt["supersedes_attempt_id"]
-            if parent is not None and parent not in superseded:
-                superseded.append(parent)
-    return attempts, superseded
-
-
 def _build_rollup(
     artifacts: list[dict[str, Any]],
 ) -> dict[str, Any]:
     states = Counter(
         contracts.artifact_rollup_state(artifact) for artifact in artifacts
     )
-    result: dict[str, Any] = {
+    return {
         "expected_artifact_count": len(artifacts),
         "complete_artifact_count": states["complete"],
         "missing_artifact_count": states["missing"],
@@ -104,13 +63,6 @@ def _build_rollup(
         "failed_artifact_count": states["failed"],
         "externally_unavailable_artifact_count": states["externally_unavailable"],
     }
-    for field, value in _scope_statuses(artifacts).items():
-        result[field] = value
-    return result
-
-
-def _build_tools(artifacts: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return _stable_unique(tool for artifact in artifacts for tool in artifact["tools"])
 
 
 def _build_qc_metrics(
@@ -213,7 +165,6 @@ def _build_summary_rows(
     rows: list[dict[str, Any]] = []
     for artifact_order, artifact in enumerate(document["artifacts"], 1):
         source = artifact["source"]
-        statuses = _artifact_statuses(artifact)
         rows.append(
             {
                 "run_id": document["run_id"],
@@ -232,7 +183,6 @@ def _build_summary_rows(
                 "availability_status": artifact["availability_status"],
                 "completion_status": artifact["completion_status"],
                 "rollup_state": contracts.artifact_rollup_state(artifact),
-                **statuses,
                 "source_path": "" if source is None else source["path"],
                 "source_sha256": "" if source is None else source["sha256"],
                 "source_row_count": (
@@ -240,7 +190,6 @@ def _build_summary_rows(
                     if source is None or source["row_count"] is None
                     else source["row_count"]
                 ),
-                "selected_attempt_id": artifact["selected_attempt_id"] or "",
                 "warning_count": len(artifact["warnings"]),
                 "error_count": len(artifact["errors"]),
             }

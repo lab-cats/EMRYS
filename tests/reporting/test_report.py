@@ -872,7 +872,7 @@ def test_two_html_views_separate_science_from_operational_evidence(
         (
             "Operations",
             "How did execution proceed?",
-            f"{run_id}.evidence_report.html#attempt-lineage-section",
+            f"{run_id}.evidence_report.html#execution-records-section",
         ),
     )
     for content in (scientific, evidence):
@@ -972,9 +972,9 @@ def test_two_html_views_separate_science_from_operational_evidence(
     assert "Nearby motifs" in scientific
     assert "candidate_1" in scientific
     assert "Selected exact sample QC" not in scientific
-    assert "Attempt lineage" not in scientific
+    assert "Execution records" not in scientific
     assert "Artifact appendix" not in scientific
-    assert "Tools and issues" not in scientific
+    assert 'id="issues-section"' not in scientific
     assert "Report provenance" not in scientific
     assert "<svg" not in scientific
     assert scientific.count("data:image/svg+xml;base64,") >= 1
@@ -1012,7 +1012,7 @@ def test_two_html_views_separate_science_from_operational_evidence(
     assert 'id="computational_significant_sites"' not in evidence
     assert 'id="computational_all_sites"' not in evidence
     assert "candidate_1" not in evidence
-    assert "Attempt lineage" in evidence
+    assert "Execution records" in evidence
     assert "EMRYS evidence and operations report" in evidence
     assert evidence.index('id="evidence-category"') < evidence.index(
         'id="operations-category"'
