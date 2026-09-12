@@ -591,6 +591,7 @@ def test_real_artifact_publisher_failure_stops_reporting_after_start(
     built = build_fixture.build_fixture(root, run_id=root.name)
     state = _state(root)
     identity = _identity(root, state)
+    identity.scientific_origin = built.scientific_origin
     identity.profile = build_fixture.analysis_profile_v1()
     identity.attempt["workflow"]["reporting_run_contract_path"]["path"] = (
         built.run_contract.relative_to(root).as_posix()

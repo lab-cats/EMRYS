@@ -331,7 +331,7 @@ def test_historical_reporting_state_is_rejected_without_mutation(
 ) -> None:
     built = _build(tmp_path / "artifact_index")
     ops = _publish_complete_summary_ledger(
-        built, validator=lambda _kind, path, *_args: _semantic_result(path)
+        built, validator=lambda _kind, path, *_args, **_kwargs: _semantic_result(path)
     )
     summary = reporting_boundary.ledger_paths(built.run_root, "run_summary")
     (built.reporting_root / "artifact_index").mkdir()

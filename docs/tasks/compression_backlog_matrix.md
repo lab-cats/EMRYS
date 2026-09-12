@@ -409,7 +409,7 @@ The completed change removes **55 product lines** (+512/−567), with all 202 pr
 files retained. New reporting receipt fields replace reconstruction and repeated
 scientific implementation claims; the existing admitted boundary object replaces
 parallel arguments and duplicate Run/Attempt admission. Tests and fixtures grow
-by 57 lines; schemas shrink by 9. Documentation is accounted separately; tooling,
+by 58 lines; schemas shrink by 9. Documentation is accounted separately; tooling,
 dependency configuration and retained evidence are unchanged.
 
 Sixty-seven focused module/schema/independent-golden checks and six handoff checks
@@ -417,7 +417,10 @@ pass locally. Ruff, formatting, dependency boundaries and documentation checks
 pass. The scientific HTML golden is byte-identical; reviewed evidence-view
 changes show original records and remove the implementation-status column.
 Full local reporting fixtures remain blocked by missing installed build metadata;
-no installation or admission bypass was performed. Hosted CI is pending.
+no installation or admission bypass was performed. Hosted CI found two stale
+test setups: a callback omitted the new receipt-hash keyword, and a publisher
+fixture retained placeholder scientific-origin paths. Both are corrected;
+the hosted rerun is pending. Production code did not change for these fixes.
 
 ### CS-12 Canonical BAM command printing
 
