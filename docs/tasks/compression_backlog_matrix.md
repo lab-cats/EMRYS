@@ -1,12 +1,16 @@
 # EMRYS temporary compression backlog
 
-Reviewed **2026-09-11** from `a8c3a7e3`. The [campaign](compression_campaign.md)
+Reviewed **2026-09-12** from `de674ae0`. The [campaign](compression_campaign.md)
 owns the goals; this file owns CS scope, status, decisions, and proof. The
 [main matrix](backlog_matrix.md) owns broader outcomes and campaign completion.
 
 ## Working queue
 
-**[PR #161](https://github.com/lab-cats/EMRYS/pull/161): CS-31–35 are implemented; hosted verification is pending.** Task bookkeeping,
+**[PR #162](https://github.com/lab-cats/EMRYS/pull/162): CS-11 is implemented; hosted verification is pending.** Reporting source
+changes preserve scientific compatibility, and reports retain the provenance
+of their original scientific work and actual reporting producer.
+
+**[PR #161](https://github.com/lab-cats/EMRYS/pull/161): CS-31–35 are complete; ordinary hosted CI passed at `de674ae0`.** Task bookkeeping,
 runtime choices, equivalent input rules, logging, and reporting now share their
 existing owners' admitted state. Figures and their drawing code are unchanged.
 
@@ -41,8 +45,8 @@ data, provenance, current Run recovery, and retained evidence; dashboard work
 and scientific-validation roster changes remain excluded.
 
 The product baseline for the 20% target is **69,223 physical lines at `cab77a26`**;
-CS-31–35 bring it to **57,292**, a reduction of 11,931 (17.24%). The target is at most
-55,378 lines, leaving 1,914 to remove. Count tracked source `.py`, `.R`, `.sh`, `.css`, `.j2` files and
+Through CS-11 it is **57,237**, a reduction of 11,986 (17.31%). The target is at most
+55,378 lines, leaving 1,859 to remove. Count tracked source `.py`, `.R`, `.sh`, `.css`, `.j2` files and
 the workflow `Snakefile` (including its new package location). Relocated
 `renv/activate.R` remains generated bootstrap; `restore_r_environment.R`
 remains tooling. Report schemas/configuration, tests, docs, tooling, and evidence
@@ -123,9 +127,9 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-08](#cs-07-through-cs-10-standalone-publication) | BAM QC: retire mode-dependent publication for two outputs. | Done | 2 | 2 | Absorbed into PR #155; focused checks and ordinary hosted CI pass at a0dc7526; integration pending. | `OPS-03` |
 | [CS-09](#cs-07-through-cs-10-standalone-publication) | Duplicate marking: retire direct destinations and mode branches. | Done | 3 | 3 | Absorbed into PR #155; focused checks and ordinary hosted CI pass at a0dc7526; integration pending. | `OPS-03` |
 | [CS-10](#cs-07-through-cs-10-standalone-publication) | Paired CMH: retire six-file predecessor replacement/restoration. | Done | 3 | 4 | Implemented within CS-18: direct calls refuse existing destinations; focused publication checks and ordinary hosted CI pass at cab77a26. | `OPS-03` |
-| [CS-11](#cs-11-reporting-source-identity) | Define a reporting-source boundary that permits reporting-only changes without changing scientific Run identity. | Needs decision | 4 | 4 | Specify new Run binding, producer identity, current Run admission, and resume before a structural migration. | `REPORT-ROSTER-01` |
+| [CS-11](#cs-11-reporting-source-identity) | Define a reporting-source boundary that permits reporting-only changes without changing scientific Run identity. | In progress | 4 | 4 | Implement the approved reporting source boundary and preserve scientific identity, original provenance and current-format reuse. | `REPORT-ROSTER-01` |
 | [CS-12](#cs-12-canonical-bam-command-printing) | Remove canonical BAM's four print-only command arrays. | Done | 2 | 1 | Retired with standalone preview in PR #155; ordinary hosted CI passes at a0dc7526; integration pending. | `COMPRESS-01` |
-| [CS-13](#cs-13-runtime-profile-construction) | Remove the redundant RuntimeCheck field-copy construction in onboarding. | Opportunistic | 1 | 2 | Use standard dataclass replacement only after field/order/admission comparison; approximately 11–20 lines. | `COMPRESS-01` |
+| [CS-13](#cs-13-runtime-profile-construction) | Remove the redundant RuntimeCheck field-copy construction in onboarding. | Done | 1 | 2 | Absorbed by CS-32: fixed runtime checks are derived from path choices. | `COMPRESS-01` |
 | [CS-14](#cs-14-paired-cmh-configuration) | Let the existing module normalizer own equivalent newly admitted paired-CMH configuration. | Done | 2 | 4 | CS-22 uses one module normalizer for both current Project forms; ordinary CI passes at `f8fd5346`; integration pending. | `COMPRESS-01` |
 | [CS-15](#cs-15-reporting-tsv-grammar) | Retire both reporting CSV engines through the existing strict TSV owner. | Done | 2 | 3 | CS-20 retires the duplicate persisted TSV readers with their formats; native TSV grammar is unchanged; ordinary CI passes at `f8fd5346`. | `COMPRESS-01` |
 | [CS-16](#cs-16-operator-and-developer-documentation) | Complete operator/developer guidance with clear ownership and plain language. | Done | 5 | 3 | PR #151 passed ordinary CI at `76acb9c5`; integration pending. | `COMPRESS-01` |
@@ -144,11 +148,11 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-29](#cs-29-retire-standalone-runtime-reports) | Retire optional standalone runtime reports. | Done | 3 | 2 | Remove command, TSV publisher, example, and feature-only tests; preserve required runtime probes and their callers. | `COMPRESS-01` |
 | [CS-30](#cs-30-retire-standalone-gtf-conversion) | Execute GTF-to-BED12 conversion through the Run. | Done | 3 | 2 | Retire standalone command and publication lifecycle; preserve conversion, source agreement checks, and runner protections. | `OPS-03` |
 
-| [CS-31](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Consolidate equivalent task/report bookkeeping in the existing runner. | In progress | 4 | 4 | Preserve separate scientific/report completion and active/released-lock admission. | `OPS-03` |
-| [CS-32](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Store runtime choices once and derive fixed probe rules. | In progress | 4 | 4 | Migrate discovery, Doctor, managed ownership and execution; preserve effective checks and identities. | `COMPRESS-01` |
-| [CS-33](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Consolidate equivalent region, graph and resource rules. | In progress | 3 | 3 | Preserve differing accepted inputs and independent scientific checks. | `COMPRESS-01` |
-| [CS-34](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Retire duplicated application-log failure handling. | In progress | 2 | 2 | Keep log failures observational, warning once and preserving partial logs. | `COMPRESS-01` |
-| [CS-35](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Carry admitted inputs through reporting instead of reconstructing them. | In progress | 4 | 4 | Preserve exact source checks at publication/reuse, both reports and every figure. | `REPORT-ROSTER-01` |
+| [CS-31](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Consolidate equivalent task/report bookkeeping in the existing runner. | Done | 4 | 4 | Preserve separate scientific/report completion and active/released-lock admission. | `OPS-03` |
+| [CS-32](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Store runtime choices once and derive fixed probe rules. | Done | 4 | 4 | Migrate discovery, Doctor, managed ownership and execution; preserve effective checks and identities. | `COMPRESS-01` |
+| [CS-33](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Consolidate equivalent region, graph and resource rules. | Done | 3 | 3 | Preserve differing accepted inputs and independent scientific checks. | `COMPRESS-01` |
+| [CS-34](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Retire duplicated application-log failure handling. | Done | 2 | 2 | Keep log failures observational, warning once and preserving partial logs. | `COMPRESS-01` |
+| [CS-35](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Carry admitted inputs through reporting instead of reconstructing them. | Done | 4 | 4 | Preserve exact source checks at publication/reuse, both reports and every figure. | `REPORT-ROSTER-01` |
 
 ## Acceptance shared by every card
 
@@ -380,21 +384,43 @@ checks replace repeated standalone lifecycle matrices.
 
 ### CS-11 Reporting source identity
 
-The [report-output decision](../design/decisions/execution-evidence-and-reporting.md#fixed-report-output-consolidation)
-owns scientific versus reporting identity. CS-26 replaces checkout matching with
-installed-package observation and preserves the existing separate computation,
-Processing, module, and backend hashes. It does not change the contents of those
-identity scopes beyond relocating their files and binding the packaged lock.
+Approved for implementation against `de674ae0`. The
+[report-output decision](../design/decisions/execution-evidence-and-reporting.md#scientific-compatibility-and-reporting-provenance)
+owns the lasting compatibility and provenance rules.
 
-The remaining investigation concerns unnecessary scientific invalidation from
-shared files that contain several responsibilities. Map the affected adapters,
-materializers, contracts, and producers before changing those scopes. Preserve
-exact code provenance and rechecks, extension ownership, and immutable Runs.
-Current-version report-only changes should permit scientifically compatible
-resume; changed scientific computation must be refused. Historical-version
-inspection, resume, and regeneration are retired by the approved version policy;
-existing data and receipts remain untouched. No translation layer or duplicate
-identity authority is authorized by this card.
+- **Preserved:** scientific computation, validation, immutable Run identity,
+  original Attempt and reused task provenance, locks, owned rollback, both
+  reports, every figure, and the dashboard. Changes to scientific code or its
+  runtime remain incompatible; code cannot change during an active Attempt.
+- **Replaced:** original-package equality for new reporting; repeated current-code
+  implementation claims on artifacts; rendering again during report reuse;
+  reporting ledger logic inside scientific inspection; historical report roots.
+- **Surviving checks:** successful original scientific receipts, matching
+  scientific/backend identities for generation, exact actual reporter provenance,
+  verified ledger hashes, complete input/output rosters, and scientific native
+  validation. Fresh publication still validates deterministic bytes and HTML
+  safety/accessibility. Retained data and evidence are not rewritten or deleted.
+- **Boundary:** current formats only. The full Python lock still participates in
+  scientific identity; narrowing dependency compatibility needs a separate audit.
+  Institutional execution, scientific review and biological validation remain
+  outside hosted fixture evidence.
+
+The completed change removes **55 product lines** (+512/−567), with all 202 product
+files retained. New reporting receipt fields replace reconstruction and repeated
+scientific implementation claims; the existing admitted boundary object replaces
+parallel arguments and duplicate Run/Attempt admission. Tests and fixtures grow
+by 58 lines; schemas shrink by 9. Documentation is accounted separately; tooling,
+dependency configuration and retained evidence are unchanged.
+
+Sixty-seven focused module/schema/independent-golden checks and six handoff checks
+pass locally. Ruff, formatting, dependency boundaries and documentation checks
+pass. The scientific HTML golden is byte-identical; reviewed evidence-view
+changes show original records and remove the implementation-status column.
+Full local reporting fixtures remain blocked by missing installed build metadata;
+no installation or admission bypass was performed. Hosted CI found two stale
+test setups: a callback omitted the new receipt-hash keyword, and a publisher
+fixture retained placeholder scientific-origin paths. Both are corrected;
+the hosted rerun is pending. Production code did not change for these fixes.
 
 ### CS-12 Canonical BAM command printing
 
@@ -405,19 +431,10 @@ included in CS-18's accounting; ordinary hosted CI passed at `a0dc7526`.
 
 ### CS-13 Runtime profile construction
 
-Onboarding's `_runtime_profile_bytes` has one caller, `discover_runtime_profile`.
-It copies six of eight frozen `RuntimeCheck` fields. `dataclasses.replace` could
-change only `target` and `probe_args`, saving about 11 lines. An unexecuted
-sketch also merged tool aliases and removed a private bytes/library-path handoff
-for about 20 net lines. Neither is a substantial standalone tranche.
-
-Before adoption, prove selected-tool/derived-alias noncollision. Compare all
-fields and ordered rows, retaining Project/runtime-directory admission, Python
-default/spelling, policy load, PATH tools, Rscript, Picard, renv, Python checks,
-namespace arguments, and unknown-check diagnostics. Construct the environment
-before probing. Use onboarding, Doctor, and runtime-identity tests; retain the
-helper if clarity or meaningful reduction suffers. No installation or weakened
-checkout admission is authorized.
+Absorbed by CS-32 in PR #161. Runtime inventories retain path choices and derive
+fixed checks once; onboarding no longer reconstructs copies of full check rows.
+The complete migration preserves their order, selected paths and probe behavior.
+Ordinary hosted CI passed at `de674ae0`; no separate cleanup remains.
 
 ### CS-14 Paired-CMH configuration
 
@@ -1347,5 +1364,7 @@ Doctor/materialization cases, reporting helpers, logging and shared-rule checks.
 Other integration fixtures stop at the local installation's missing
 `emrys-build.json`; no installation or admission bypass was performed. Ruff,
 formatting, dependency boundaries, documentation and whitespace pass.
-Independent source review found no loss of required checks or figures. Hosted
-verification and integration remain pending in the combined PR.
+Independent source review found no loss of required checks or figures. Ordinary
+[hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34561972876) passed at
+`de674ae0`, including all Python shards, guarded R, managed golden path and
+managed runtimes. Optional unselected lanes were skipped. Integration is pending.

@@ -125,7 +125,18 @@ def test_execute_publishes_exact_canonical_schema_valid_transaction(
     assert read_tsv_header(run_summary_fixture.qc_summary_path) == tuple(
         RUN_SUMMARY_MODELS.QC_SUMMARY_HEADER
     )
-    assert document["schema_version"] == "4.0.0"
+    assert document["tables"] == [
+        {
+            "path": str(path),
+            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            "size_bytes": path.stat().st_size,
+        }
+        for path in (
+            run_summary_fixture.summary_tsv_path,
+            run_summary_fixture.qc_summary_path,
+        )
+    ]
+    assert document["schema_version"] == "5.0.0"
     assert document["publication"]["transaction_state"] == "complete"
     assert set(run_summary_fixture.output_dir.iterdir()) == set(
         run_summary_fixture.summary_paths
@@ -288,6 +299,9 @@ def test_combined_readmission_keeps_summary_json_and_views_byte_identical(
     before = summary_snapshot(run_summary_fixture)
 
     result = REPORTING_VALIDATION.validate_run_summary_transaction(
+        expected_receipt_sha256=hashlib.sha256(
+            run_summary_fixture.summary_json_path.read_bytes()
+        ).hexdigest(),
         package_root=PACKAGE_ROOT,
         artifact_source_root=run_summary_fixture.root,
         run_id=run_summary_fixture.run_id,

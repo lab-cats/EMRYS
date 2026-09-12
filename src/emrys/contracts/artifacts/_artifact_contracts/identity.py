@@ -17,6 +17,10 @@ from .definitions import (
 )
 
 
+def scope_key(scope: dict[str, Any]) -> tuple[str, str, str]:
+    return scope["step_id"], scope["scope_type"], scope["scope_id"]
+
+
 def canonical_run_contract_sha256(run_contract: dict[str, Any]) -> str:
     components = {field: run_contract[field] for field in RUN_CONTRACT_COMPONENT_FIELDS}
     payload = json.dumps(

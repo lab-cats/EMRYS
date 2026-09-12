@@ -25,3 +25,8 @@ schema, header, and receipt-serialization oracles are otherwise unchanged.
 The installed-runtime migration adds fixed synthetic package identities to the
 current manifest and report-receipt schema fixtures. The existing minimal receipt
 serialization oracle does not validate provenance and remains unchanged.
+
+CS-11 preserves the scientific HTML bytes. The reviewed evidence-view difference
+updates the manifest version, replaces the repeated implementation-status column
+with original Run/Attempt references, and explains their scientific provenance.
+The remaining scientific values, figures, statuses and limitations are unchanged.

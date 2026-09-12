@@ -32,22 +32,25 @@ from .models import (
 
 
 def expected_html_identity(
-    context: ReportContext,
+    receipt: Mapping[str, Any],
     report_view: Literal["scientific", "evidence"],
 ) -> dict[str, str]:
     identity = {
         "data-report-view": report_view,
-        "data-run-id": context.summary["run_id"],
+        "data-run-id": receipt["run_id"],
     }
     if report_view == "evidence":
-        metadata = context.render_metadata
         identity.update(
             {
-                "data-css-sha256": metadata["css_sha256"],
-                "data-jinja-version": metadata["jinja_version"],
-                "data-renderer-version": metadata["renderer_version"],
-                "data-run-summary-sha256": metadata["run_summary_sha256"],
-                "data-template-sha256": metadata["template_sha256"],
+                "data-css-sha256": receipt["stylesheet"]["sha256"],
+                "data-jinja-version": receipt["evidence_renderer"][
+                    "template_engine_version"
+                ],
+                "data-renderer-version": receipt["evidence_renderer"][
+                    "producer_version"
+                ],
+                "data-run-summary-sha256": receipt["input_run_summary"]["sha256"],
+                "data-template-sha256": receipt["template"]["sha256"],
             }
         )
     return identity
@@ -67,14 +70,14 @@ def validate_projected_outputs(
         if _read_snapshot_bytes(snapshot, "report output") != payload:
             _fail(f"Report output differs from its deterministic projection: {path}")
     scientific, evidence, summary, receipt = paths
+    document = read_receipt_tsv(receipt)
     for view, path in (("scientific", scientific), ("evidence", evidence)):
         validate_rendered_html(
             path,
             expected_banner=context.render_metadata["state_banner"],
-            expected_identity=expected_html_identity(context, view),
+            expected_identity=expected_html_identity(document, view),
         )
     validate_summary_tsv(summary, context)
-    document = read_receipt_tsv(receipt)
     for snapshot in snapshots:
         _assert_snapshot(snapshot, "report output")
     return document

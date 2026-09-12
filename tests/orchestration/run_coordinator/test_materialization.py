@@ -1654,12 +1654,26 @@ def test_run_identity_excludes_attempt_reporting_and_cli_adapter_code(
     )
     baseline = _run_candidate(readiness, resources)
     baseline_backend = backend_semantics_identity(checkout)
+    baseline_processing = processing_implementation_identity(checkout)
 
-    report_renderer = checkout / "reporting/_run_report/context.py"
-    report_renderer.write_bytes(
-        report_renderer.read_bytes() + b"\n# reporting-only change\n"
-    )
-    assert _run_candidate(readiness, resources).run_id == baseline.run_id
+    for relative in (
+        "reporting/_run_report/context.py",
+        "orchestration/run_coordinator/reporting_boundary.py",
+        "contracts/orchestration/projection.py",
+        "contracts/artifacts/validator.py",
+        "contracts/artifacts/_artifact_contracts/artifact.py",
+        "contracts/artifacts/_artifact_contracts/evidence.py",
+        "contracts/artifacts/_artifact_contracts/inventory.py",
+        "contracts/artifacts/_artifact_contracts/report_receipt.py",
+        "contracts/artifacts/_artifact_contracts/run_summary_status.py",
+        "contracts/artifacts/_artifact_contracts/run_summary_validation.py",
+    ):
+        report_owner = checkout / relative
+        report_owner.write_bytes(
+            report_owner.read_bytes() + b"\n# reporting-only change\n"
+        )
+        assert _run_candidate(readiness, resources).run_id == baseline.run_id
+        assert processing_implementation_identity(checkout) == baseline_processing
 
     resource_policy = checkout / "orchestration/run_coordinator/resource_policy.py"
     resource_policy.write_bytes(resource_policy.read_bytes() + b"\n# policy change\n")
@@ -1676,20 +1690,6 @@ def test_run_identity_excludes_attempt_reporting_and_cli_adapter_code(
     cli_adapter.write_bytes(cli_adapter.read_bytes() + b"\n# CLI adapter change\n")
     assert _run_candidate(readiness, resources).run_id == baseline.run_id
 
-    reporting_materializer = (
-        checkout / "orchestration/run_coordinator/reporting_boundary.py"
-    )
-    reporting_materializer.write_bytes(
-        reporting_materializer.read_bytes() + b"\n# reporting materialization change\n"
-    )
-    assert _run_candidate(readiness, resources).run_id == baseline.run_id
-
-    reporting_projection = checkout / "contracts/orchestration/projection.py"
-    reporting_projection.write_bytes(
-        reporting_projection.read_bytes() + b"\n# reporting projection change\n"
-    )
-    assert _run_candidate(readiness, resources).run_id == baseline.run_id
-
     materializer = checkout / "orchestration/run_coordinator/materialization.py"
     materializer.write_bytes(materializer.read_bytes() + b"\n# dispatch change\n")
     assert _run_candidate(readiness, resources).run_id != baseline.run_id
@@ -1703,6 +1703,9 @@ def test_run_identity_excludes_attempt_reporting_and_cli_adapter_code(
         "orchestration/run_coordinator/_inspection_evidence.py",
         "orchestration/run_coordinator/all_pass.py",
         "contracts/orchestration/artifact_inventory.py",
+        "contracts/artifacts/_artifact_contracts/definitions.py",
+        "contracts/artifacts/_artifact_contracts/identity.py",
+        "contracts/artifacts/_artifact_contracts/schema.py",
         "contracts/schemas/orchestration/v2/attempt_receipt.schema.json",
     ),
 )

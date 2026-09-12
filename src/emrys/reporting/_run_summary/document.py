@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -33,6 +35,7 @@ from emrys.reporting._artifact_index.records import tsv_bytes
 def build_summary(
     *,
     source_root: Path,
+    output_dir: Path,
     run_id: str,
     run_contract: dict[str, Any],
     inventory_path: Path,
@@ -46,6 +49,7 @@ def build_summary(
     generated_at: str,
     git_commit: str,
     installed_package: dict[str, object],
+    scientific_origin: dict[str, Any],
     analysis_policy_binding: dict[str, Any],
 ) -> tuple[dict[str, Any], bytes, bytes, bytes]:
     expected_scopes, artifact_scope_order = _build_expected_scopes(artifacts)
@@ -102,6 +106,7 @@ def build_summary(
         "limitations": _build_limitations(artifacts=artifacts),
         "warnings": _stable_unique(warnings),
         "errors": errors,
+        "scientific_origin": scientific_origin,
         "provenance": {
             "producer": PRODUCER,
             "producer_version": PRODUCER_VERSION,
@@ -110,17 +115,26 @@ def build_summary(
             "created_at": generated_at,
         },
     }
-    _validate_document(
-        document, inventory_rows, inventory_path, source_root=source_root
-    )
-    return (
-        document,
-        canonical_json_bytes(document),
+    tables = (
         tsv_bytes(
             RUN_SUMMARY_HEADER, _build_summary_rows(document, artifact_scope_order)
         ),
         tsv_bytes(QC_SUMMARY_HEADER, _build_qc_rows(document)),
     )
+    document["tables"] = [
+        {
+            "path": str(output_dir / f"{run_id}.{suffix}"),
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "size_bytes": len(payload),
+        }
+        for suffix, payload in zip(
+            ("run_summary.tsv", "qc_summary.tsv"), tables, strict=True
+        )
+    ]
+    _validate_document(
+        document, inventory_rows, inventory_path, source_root=source_root
+    )
+    return document, canonical_json_bytes(document), *tables
 
 
 def admit_analysis_policy(

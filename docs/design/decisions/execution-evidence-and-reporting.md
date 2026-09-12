@@ -97,88 +97,55 @@ meaning and cannot promote runtime, site, scientific, or biological claims.
 ### Fixed report-output consolidation
 
 Fixed report outputs have one ordered declaration in the receipt-contract owner.
-This removes repeated declarations while preserving existing Run identity,
-resume, and reporting-producer rules. It does not make report-contract edits
-independent of scientific Run identity. The [findings matrix](../../tasks/backlog_matrix.md)
-routes any further identity or compatibility work.
-
-An edit to the receipt-contract Python source changes new Runs' implementation
-identity and can prevent an existing Run from resuming under newer code. That Run
-remains immutable. A retained checkout and environment must satisfy its
-original admission rules; neither resumability of every old Run nor report
-regeneration by current software is guaranteed.
-
-#### What the present identity actually protects
-
+The declarations share one owner. Scientific identity is a separate responsibility:
 [`run_implementation.py`](../../../src/emrys/orchestration/run_coordinator/run_implementation.py)
-hashes paths and whole file bytes in scientific and admission components.
-The admission component includes the artifacts-contract directory, mixed
-inspection owners, and the hasher itself. Materialization binds the digest
-into the Execution Plan and Run. Resume rebuilds that candidate; Attempt and
-lifecycle admission also recheck implementation and backend identities.
-[`application_model.py`](../../../src/emrys/contracts/orchestration/application_model.py)
-rejects a different observed implementation digest.
+hashes whole files used by computation and scientific admission. Materialization
+binds that digest into the Execution Plan and Run; resume reconstructs the same
+binding. Shared headers, safe IDs, path rules, scope grouping, scientific evidence
+and immutable-record admission remain covered. Mixed owners cannot be excluded
+merely because reporting calls them.
 
-A filename or reporting caller does not make a whole owner presentation-only:
+#### Scientific compatibility and reporting provenance
 
-- The report-receipt contract validates renderer relationships, ordered output
-  identities and paths, summary binding, and truncation. It is a report-specific
-  leaf, but remains in the current identity component.
-- The artifact API also supplies headers, safe IDs, paths, and scope grouping
-  to scientific inventory admission. In particular, `run_summary_status.scope_key`
-  serves scientific consumers.
-- [`artifact_inventory.py`](../../../src/emrys/contracts/orchestration/artifact_inventory.py)
-  combines path, uniqueness, contiguous-scope validation, and report-root admission.
-- Artifact, evidence, summary, and schema owners validate provenance, status,
-  strict JSON, and current records even when they do not execute science.
-- Inspection owners combine immutable Run/Attempt chains, locks, task scopes,
-  scientific Results, and reporting observations. Results and recovery use
-  separate calculations. Excluding those whole files would drop substantive coverage.
-- The reporting package, `reporting_boundary.py`, `reporting_operation.py`, and
-  orchestration `projection.py` are already outside the explicit Run source
-  roster. Their source, receipt, and publication checks still apply.
-
-Under the [version policy](platform-direction.md#version-support), reading,
-resuming, and reusing current reports are separate promises:
+Reporting source changes must not invalidate scientific work. The scientific
+fingerprint includes computation, scientific validation and shared admission;
+it excludes reporting-only artifact contracts and reporting ledger inspection. That
+inspection lives in the reporting boundary. A distribution release number is
+provenance, not a scientific module change. Exact module bytes, substantive
+module metadata, backend semantics and the complete Python lock remain bound.
+A dependency update can therefore still require a new Run; narrowing that lock
+requires a separate dependency audit.
 
 | Operation | Required behavior |
 |---|---|
-| Read current Run/Attempt records | Validate the original canonical records, IDs, hashes, profile, tools, and resources. This read does not itself recompute the installed scientific implementation; full inspection can report separate reporting blockers. |
-| Resume a current Run | Rebuild the candidate, require identical binding bytes, and recheck implementation/backend identities. A report-contract source edit can change this comparison. |
-| Resume through Slurm | The child repeats full planning and execution admission. Successful submission alone proves no compatibility. |
-| Reuse current-root reports | Transaction validation attests the executing package against the originating Attempt checkout and commit. New core code can block reuse independently of the Run hash. |
-| Generate missing reports | Require current authority, successful complete Results, terminal Attempt receipt v2, admissible empty output locations, and the originating Attempt's source attestation. Partial or ambiguous state is preserved. |
+| Inspect current records | Admit original immutable Run, Attempt, task and lock evidence. Scientific Results and report status remain separate. |
+| Resume locally or through Slurm | Rebuild the same scientific Run and recheck its data, tools, resources and implementation. Each new Attempt records its actual installed package. Code cannot change during an Attempt. |
+| Generate missing reports | Require a successful complete scientific Attempt, identical scientific implementation and backend, and empty owned outputs. Record the actual reporting package and recheck it through publication. |
+| Reuse completed reports | Bind the original receipt through its verified ledger; recheck its recorded data inputs, outputs, HTML contracts and complete file rosters. Retain the original publisher attribution without invoking the current renderer. |
 
-The bound profile determines the report root; a Run's age or schema directory
-name does not. A complete bundle is not automatically reusable by a newer
-checkout. The [reporting owner](../../../src/emrys/reporting/README.md) defines
-current publication and re-admission behavior.
+The Run result manifest points once to the original scientific Run and Attempt
+by path and hash. Those immutable records retain package identity, commands,
+inputs, reused task origins and the Processing source chain. Reporting no longer
+reconstructs scientific implementation claims from today's installed files or
+repeats an implementation-status column for each artifact. The manifest's own
+provenance identifies its publisher; the HTML receipt identifies its reporter.
+The core reporter digest uses the already admitted full EMRYS package, covering
+the excluded report contract as well as templates and rendering code.
 
-#### The alternative requires a separate compatibility decision
+New publication still compares deterministic output bytes and checks HTML safety
+and accessibility. The manifest binds both TSV table hashes. The HTML receipt also persists the
+reporting provider's complete
+additional data-input roster, including figure references. This replaces the
+need to rerun the renderer to rediscover those inputs during reuse. Template
+and stylesheet hashes remain original producer provenance; they are not data
+inputs checked against a newer installation.
 
-Separating report-contract edits from Run identity requires one coherent
-compatibility design covering:
-
-- **Source coverage.** Identify the exact excluded responsibility, initially
-  the report-receipt leaf. Keep every scientific and admission dependency
-  bound; do not exclude the artifacts directory or mixed inspection owners.
-- **Plan identity.** Define which current code determines scientific execution.
-  Since the hasher is itself hashed, removing a file or changing a digest label
-  changes Run compatibility. Old-version reads are outside support.
-- **Reporting provenance.** The core-renderer digest hashes `emrys.reporting`,
-  not the receipt-contract leaf. A checkout commit is recorded when available;
-  standalone `local_build` attribution is not an independent content digest
-  for an excluded contract.
-- **Reuse and generation.** Decide whether newer software may report on an
-  earlier successful Attempt. Current boundaries require the originating
-  checkout. Any replacement must identify the actual reporting producer while
-  preserving the original scientific Attempt and predecessor evidence.
-
-This crosses implementation hashing, application-model schemas/readers,
-materialization, lifecycle, reporting source admission, and receipt provenance.
-No compatibility redesign is implied by declaration consolidation. An old-hash
-translation table, function-body hashing, generic registry, or automatic record
-rewrite would require its own justified design and approval.
+Current records use artifact entries v2, Run summaries v5 and report receipts v6.
+The [version policy](platform-direction.md#version-support) applies: no old-hash
+translation, record rewriting or historical-format reader is added. Existing
+data and evidence remain intact for ordinary tools or the originating software.
+All current reports use `results/reports/RUN_ID`. Publication still refuses
+existing or ambiguous output state and preserves locks and recovery evidence.
 
 #### Declaration owner and consumers
 

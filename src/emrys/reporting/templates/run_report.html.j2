@@ -352,15 +352,15 @@
   {% call section('scope-matrix-section', 'Expected scopes') %}
     {%
       call table('expected-scope-matrix', 'Every expected computational scope',
-      ('Step', 'Scope type', 'Scope ID', 'Evidence state', 'Implementation',
+      ('Step', 'Scope type', 'Scope ID', 'Evidence state',
       'Local test', 'Runtime', 'Cluster dry-run', 'Cluster proof', 'Artifact IDs'))
     %}
       {% for item in summary.expected_scopes %}{{
   row((item.scope.step_id, item.scope.scope_type, item.scope.scope_id,
-  item.aggregate_state, item.implementation_status, item.local_test_status,
+  item.aggregate_state, item.local_test_status,
   item.runtime_validation_status, item.cluster_dry_run_status, item.cluster_proof_status,
   item.artifact_ids | join(', ')))
-}}{% else %}<tr><td colspan="10">No rows are available.</td></tr>{% endfor %}
+}}{% else %}<tr><td colspan="9">No rows are available.</td></tr>{% endfor %}
     {% endcall %}
   {% endcall %}
 {% endcall %}
@@ -423,6 +423,10 @@
       {% endcall %}
     {% else %}{{ empty('No aggregate run-summary warnings or errors are recorded.') }}{% endif %}
   {% endcall %}
+  {% call table('scientific-origin', 'Original scientific records', ('Record', 'Path', 'SHA-256')) %}
+    {% for label, reference in summary.scientific_origin.items() %}{{ row((label | title, reference.path, reference.sha256)) }}{% endfor %}
+  {% endcall %}
+  {{ note('The original Run and Attempt record the scientific package, commands, and earlier Attempts whose results were reused. Report generation does not change that attribution.') }}
   {% call section('report-provenance-section', 'Report provenance') %}
     {% call table('report-renderer-provenance', 'Core evidence renderer provenance', ('Field', 'Value')) %}
       {%

@@ -162,6 +162,15 @@ def test_module_dependencies_are_canonical_and_readmitted(
     assert "target" not in by_id["z_file"]
     assert by_id["r_collaborator"]["target"] == "Collaborator"
     assert analyses.readmit_analysis_module(persisted) is loaded
+    released = replace(
+        loaded, provider=replace(provider, distribution_version="next-release")
+    )
+    assert analyses.module_admission_record(
+        released
+    ) == analyses.module_admission_record(loaded)
+    monkeypatch.setattr(analyses, "load_analysis_module", lambda _module_id: released)
+    assert analyses.readmit_analysis_module(persisted) is released
+    assert persisted["module"]["distribution_version"] == provider.distribution_version
 
     invalid = replace(
         descriptor,

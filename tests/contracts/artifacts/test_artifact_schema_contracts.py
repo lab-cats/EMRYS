@@ -194,8 +194,8 @@ def test_all_tracked_schemas_are_valid_draft_2020_12_and_local_only() -> None:
                 stack.extend(value)
 
     report_schema = schemas["report-receipt"]
-    assert report_schema["$id"] == "urn:emrys:schema:artifacts:report-receipt:v5"
-    assert report_schema["properties"]["schema_version"]["const"] == "5.0.0"
+    assert report_schema["$id"] == "urn:emrys:schema:artifacts:report-receipt:v6"
+    assert report_schema["properties"]["schema_version"]["const"] == "6.0.0"
 
 
 @pytest.mark.parametrize(("name", "path"), FIXTURES.items())

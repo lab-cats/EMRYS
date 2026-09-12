@@ -11,9 +11,9 @@ from pathlib import Path
 from typing import Any, Literal, NamedTuple
 
 from emrys.contracts.artifacts.api import ContractValidationError
-from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.application_model import PROCESSING_STEP_IDS
 from emrys.libraries.source_authority import (
+    PACKAGE_ROOT,
     ArtifactSourceRootError,
     InstalledPackageError,
     admit_artifact_source_root,
@@ -80,8 +80,7 @@ def _arguments(identity: Any, kind: str) -> argparse.Namespace:
     run_id = str(identity.execution["run_id"])
     artifact_root = root / "products" / "artifact-summary"
     artifact_run_root = artifact_root / run_id
-    package_root = Path(str(identity.attempt["installed_package"]["path"]))
-    authority = {"package_root": package_root, "artifact_source_root": root}
+    authority = {"package_root": PACKAGE_ROOT, "artifact_source_root": root}
     workflow = identity.attempt["workflow"]
     run_contract = root / str(workflow["reporting_run_contract_path"]["path"])
     policy_reference = workflow.get("primary_analysis_policy_path")
@@ -97,11 +96,12 @@ def _arguments(identity: Any, kind: str) -> argparse.Namespace:
             "profile": identity.profile,
             "inventory": inventory,
             "output_root": artifact_root,
+            "scientific_origin": identity.scientific_origin,
         },
         "html_report": {
             "run_summary": artifact_run_root / f"{run_id}.run_summary.json",
             "analysis_policy": analysis_policy,
-            "output_root": report_output_root(root, identity.profile),
+            "output_root": root / "results/reports",
         },
     }
     return argparse.Namespace(**authority, **values[kind])
@@ -287,7 +287,7 @@ def run_reporting(
         run_id = str(identity.execution["run_id"])
         for output in (
             identity.root / "products" / "artifact-summary" / run_id,
-            report_output_root(identity.root, identity.profile) / run_id,
+            identity.root / "results/reports" / run_id,
         ):
             _require_empty_output(output, run_root=identity.root)
 

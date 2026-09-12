@@ -90,6 +90,7 @@ def prepare_adapter_fixture(fixture: Any) -> Any:
                 analysis_policy=fixture.analysis_policy,
                 output_root=fixture.output_root,
                 profile=ADAPTER_FIXTURE.analysis_profile_v1(),
+                scientific_origin=fixture.scientific_origin,
                 execute=True,
             ),
             installed_package=admit_installed_package(),

@@ -16,9 +16,9 @@ from .definitions import (
 )
 from .identity import (
     resolve_contract_path,
+    scope_key,
     validate_resolved_path,
 )
-from .run_summary_status import scope_key
 from .schema import sha256_file
 
 SAFE_ID_COLUMNS = INVENTORY_HEADER[:-2]

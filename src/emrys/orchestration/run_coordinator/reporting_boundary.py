@@ -14,9 +14,9 @@ from typing import Any, Literal, Protocol, cast
 
 from emrys.contracts.artifacts.api import REPORT_OUTPUTS
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.application_model import (
     AnalysisRevision,
+    validate_successor_run,
 )
 from emrys.contracts.orchestration.projection import (
     CONTRACT_PATHS,
@@ -24,6 +24,7 @@ from emrys.contracts.orchestration.projection import (
 )
 from emrys.libraries.exclusive_publication import publish_exclusive
 from emrys.libraries.source_authority import (
+    PACKAGE_ROOT,
     InstalledPackageError,
     admit_installed_package,
 )
@@ -136,32 +137,40 @@ class _AdmittedIdentity:
     profile_sha256: str
     attempt_reference: dict[str, str]
     run_lock_reference: dict[str, str]
+    reporting_package: dict[str, object] | None
+
+    @property
+    def scientific_origin(self) -> dict[str, dict[str, str]]:
+        return {
+            "run": {
+                "path": str(self.root / "contract/run.json"),
+                "sha256": self.execution_sha256,
+            },
+            "attempt": {
+                **self.attempt_reference,
+                "path": str(self.root / self.attempt_reference["path"]),
+            },
+        }
 
 
 def validate_semantic_receipt(
     kind: str,
     receipt_path: Path,
-    run_root: Path,
-    execution: Mapping[str, Any],
-    profile: Mapping[str, Any],
-    attempt: Mapping[str, Any],
-    config: Mapping[str, Any],
+    identity: _AdmittedIdentity,
     *,
     validated_predecessor: SemanticTransaction | None = None,
     prepared_context: Any = None,
+    expected_receipt_sha256: str | None = None,
 ) -> SemanticTransaction:
     from emrys.reporting.transaction_validation import validate_receipt  # noqa: PLC0415
 
     return validate_receipt(
         kind,
         receipt_path,
-        run_root,
-        execution,
-        profile,
-        attempt,
-        config,
+        identity,
         validated_predecessor=validated_predecessor,
         prepared_context=prepared_context,
+        expected_receipt_sha256=expected_receipt_sha256,
     )
 
 
@@ -170,10 +179,10 @@ def semantic_validator_session() -> SemanticValidator:
 
     predecessor: SemanticTransaction | None = None
 
-    def validate(*args: Any, prepared_context: Any = None) -> SemanticTransaction:
+    def validate(*args: Any, **kwargs: Any) -> SemanticTransaction:
         nonlocal predecessor
         predecessor = validate_semantic_receipt(
-            *args, validated_predecessor=predecessor, prepared_context=prepared_context
+            *args, validated_predecessor=predecessor, **kwargs
         )
         return predecessor
 
@@ -222,6 +231,106 @@ def reporting_kinds(run_root: Path) -> tuple[ReportingKind, ...]:
                 "Unknown reporting stages: " + ", ".join(sorted(unexpected))
             )
     return REPORTING_KINDS
+
+
+def inspect_reporting_ledger(
+    root: Path,
+    execution: Mapping[str, Any],
+    profile: Mapping[str, Any],
+    validator: SemanticValidator,
+    *,
+    allow_incomplete_origin: str | None = None,
+) -> tuple[
+    dict[str, dict[str, dict[str, str] | None]],
+    list[str],
+    tuple[tuple[str, Path], ...],
+]:
+    """Admit the reporting ledger and retain verified report output locations."""
+
+    try:
+        kinds = reporting_kinds(root)
+    except ReportingBoundaryError as exc:
+        return {}, [str(exc)], ()
+    state_root = root / "state" / "reporting"
+    result = {kind: {"start": None, "verified": None} for kind in kinds}
+    blockers: list[str] = []
+    verified_report_locations: tuple[tuple[str, Path], ...] = ()
+    if state_root.exists() or state_root.is_symlink():
+        if state_root.is_symlink() or not state_root.is_dir():
+            return (
+                result,
+                [f"Reporting ledger root is not a real directory: {state_root}"],
+                (),
+            )
+        for kind_path in state_root.iterdir():
+            if kind_path.name not in kinds:
+                blockers.append(f"Unexpected reporting ledger kind: {kind_path}")
+                continue
+            if kind_path.is_symlink() or not kind_path.is_dir():
+                blockers.append(
+                    f"Reporting ledger kind is not a real directory: {kind_path}"
+                )
+                continue
+            for child in kind_path.iterdir():
+                if child.name not in {"start.json", "verified.json"}:
+                    blockers.append(f"Unexpected reporting ledger state: {child}")
+
+    run_id = str(execution["run_id"])
+    verified_prefix_origin: str | None = None
+    for kind in kinds:
+        kind_root = state_root / kind
+        start_path = kind_root / "start.json"
+        verified_path = kind_root / "verified.json"
+        output_root = (
+            root / "results" / "reports"
+            if kind == "html_report"
+            else root / "products" / "artifact-summary"
+        )
+        suffix = {
+            "run_summary": "run_summary.json",
+            "html_report": "report_outputs.tsv",
+        }[kind]
+        semantic_path = output_root / run_id / f"{run_id}.{suffix}"
+        start_exists = start_path.exists() or start_path.is_symlink()
+        verified_exists = verified_path.exists() or verified_path.is_symlink()
+        if not start_exists:
+            if verified_prefix_origin not in {None, allow_incomplete_origin}:
+                blockers.append(
+                    f"{kind} reporting is absent after a verified transaction prefix"
+                )
+                verified_prefix_origin = None
+            if verified_exists:
+                blockers.append(f"{kind} verified reporting exists without a start")
+            if semantic_path.exists() or semantic_path.is_symlink():
+                blockers.append(
+                    f"{kind} semantic receipt exists without a start ledger"
+                )
+            continue
+        try:
+            admission = (
+                validate_verified(
+                    kind,
+                    root,
+                    execution,
+                    profile,
+                    semantic_validator=validator,
+                )
+                if verified_exists
+                else validate_start(kind, root, execution, profile)
+            )
+            result[kind]["start"] = admission.start_reference
+            if verified_exists:
+                result[kind]["verified"] = admission.verified_reference
+                verified_prefix_origin = admission.origin_workflow_attempt_id
+                if kind == "html_report":
+                    verified_report_locations = admission.verified_report_locations
+            elif admission.origin_workflow_attempt_id != allow_incomplete_origin:
+                raise InspectionError(
+                    f"{kind} reporting start has no verified completion"
+                )
+        except Exception as exc:
+            blockers.append(f"Could not close {kind} reporting ledger: {exc}")
+    return result, blockers, verified_report_locations
 
 
 def _canonical_root(path: Path) -> Path:
@@ -376,7 +485,7 @@ def _attempt_reporting_materialization(
         config[f"{name}_path"] = reference
     directories = (
         run_root / "products" / "artifact-summary",
-        report_output_root(run_root, profile),
+        run_root / "results" / "reports",
     )
     return tuple(files), config, directories
 
@@ -505,16 +614,38 @@ def _admit_identity(
             raise ReportingBoundaryError(
                 f"Workflow attempt does not bind reporting {field}"
             )
-    installed_package = attempt["installed_package"]
-    package_root = Path(str(installed_package["path"]))
+    reporting_package = None
     if require_publishable_attempt:
+        from .run_implementation import (  # noqa: PLC0415
+            RunImplementationError,
+            backend_semantics_identity,
+            implementation_identity,
+        )
+
         try:
-            observed = attest_source(root=package_root)
-            if observed.record != installed_package:
-                raise InstalledPackageError(
-                    "Installed package differs from the workflow attempt"
-                )
-        except InstalledPackageError as exc:
+            observed = attest_source(root=PACKAGE_ROOT)
+            module_id = _authority.analysis_revision.record["identity"][
+                "analysis_module"
+            ]["module_id"]
+            validate_successor_run(
+                analysis=_authority.analysis_revision,
+                plan=_authority.execution_plan,
+                run=_authority.run_binding,
+                profile=profile,
+                attempt=attempt,
+                observed_implementation_content_sha256=implementation_identity(
+                    observed.root, module_id
+                ),
+                observed_backend_semantics_sha256=backend_semantics_identity(
+                    observed.root
+                ),
+            )
+            reporting_package = observed.record
+        except (
+            InstalledPackageError,
+            RunImplementationError,
+            orchestration_contracts.ContractValidationError,
+        ) as exc:
             raise ReportingBoundaryError(
                 f"Could not admit reporting package: {exc}"
             ) from exc
@@ -545,6 +676,7 @@ def _admit_identity(
         profile_sha256=profile_sha256,
         attempt_reference=_reference(workflow_attempt_path, root, attempt_data),
         run_lock_reference=run_lock_reference,
+        reporting_package=reporting_package,
     )
 
 
@@ -659,6 +791,8 @@ def _admit_semantic_receipt(
     receipt_path: Path,
     identity: _AdmittedIdentity,
     validate: SemanticValidator,
+    *,
+    expected_receipt_sha256: str | None = None,
 ) -> tuple[dict[str, str], tuple[tuple[str, Path], ...]]:
     """Check one report's contents, receipt identity, and exact result locations."""
 
@@ -666,11 +800,8 @@ def _admit_semantic_receipt(
         semantic = validate(
             kind,
             receipt_path,
-            identity.root,
-            identity.execution,
-            identity.profile,
-            identity.attempt,
-            identity.attempt["workflow"],
+            identity,
+            expected_receipt_sha256=expected_receipt_sha256,
         )
     except Exception as exc:
         raise ReportingBoundaryError(
@@ -855,7 +986,11 @@ def validate_verified(
         )
     receipt_path = identity.root / str(verified["semantic_receipt"]["path"])
     receipt_reference, verified_report_locations = _admit_semantic_receipt(
-        admitted_kind, receipt_path, identity, semantic_validator
+        admitted_kind,
+        receipt_path,
+        identity,
+        semantic_validator,
+        expected_receipt_sha256=str(verified["semantic_receipt"]["sha256"]),
     )
     if verified["semantic_receipt"] != receipt_reference:
         raise ReportingBoundaryError(

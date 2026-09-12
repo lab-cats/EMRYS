@@ -46,6 +46,13 @@ def _identity(root: Path, state: SimpleNamespace) -> SimpleNamespace:
     return SimpleNamespace(
         root=root,
         execution={"run_id": root.name},
+        scientific_origin={
+            "run": {"path": str(root / "contract/run.json"), "sha256": "e" * 64},
+            "attempt": {
+                "path": str(root / f"attempts/{identifier}/attempt.json"),
+                "sha256": "f" * 64,
+            },
+        },
         profile={
             "artifact_templates": [
                 {"source_path_template": "products/native/reference/output"}
@@ -517,7 +524,7 @@ def test_generation_rejects_symlinked_output_ancestor_before_builder(
     ancestor = (
         root / "products" / "artifact-summary"
         if output_kind == "artifact"
-        else reporting_operation.report_output_root(root, identity.profile)
+        else root / "results/reports"
     )
     ancestor.parent.mkdir(parents=True)
     foreign = tmp_path / f"foreign-{output_kind}"
@@ -584,6 +591,7 @@ def test_real_artifact_publisher_failure_stops_reporting_after_start(
     built = build_fixture.build_fixture(root, run_id=root.name)
     state = _state(root)
     identity = _identity(root, state)
+    identity.scientific_origin = built.scientific_origin
     identity.profile = build_fixture.analysis_profile_v1()
     identity.attempt["workflow"]["reporting_run_contract_path"]["path"] = (
         built.run_contract.relative_to(root).as_posix()

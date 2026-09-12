@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any, Literal
 
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.orchestration.run_coordinator._inspection_admission import (
     ExpectedTask,
     InspectionError,
@@ -27,6 +26,7 @@ from emrys.orchestration.run_coordinator.reporting_boundary import (
 )
 from emrys.orchestration.run_coordinator.reporting_boundary import (
     SemanticValidator as ReportingReceiptValidator,
+    inspect_reporting_ledger,
 )
 
 TaskState = Literal["pending", "verified", "blocked"]
@@ -58,108 +58,6 @@ class EvidenceInspection:
     integrity_blockers: tuple[str, ...]
     results_blockers: tuple[str, ...]
     reporting_blockers: tuple[str, ...]
-
-
-def _inspect_reporting_ledger_with_locations(
-    root: Path,
-    execution: Mapping[str, Any],
-    profile: Mapping[str, Any],
-    validator: ReportingReceiptValidator,
-    *,
-    allow_incomplete_origin: str | None = None,
-) -> tuple[
-    dict[str, dict[str, dict[str, str] | None]],
-    list[str],
-    tuple[tuple[str, Path], ...],
-]:
-    """Admit the reporting ledger and retain verified report output locations."""
-
-    from emrys.orchestration.run_coordinator import reporting_boundary  # noqa: PLC0415
-
-    try:
-        kinds = reporting_boundary.reporting_kinds(root)
-    except reporting_boundary.ReportingBoundaryError as exc:
-        return {}, [str(exc)], ()
-    state_root = root / "state" / "reporting"
-    result = {kind: {"start": None, "verified": None} for kind in kinds}
-    blockers: list[str] = []
-    verified_report_locations: tuple[tuple[str, Path], ...] = ()
-    if state_root.exists() or state_root.is_symlink():
-        if state_root.is_symlink() or not state_root.is_dir():
-            return (
-                result,
-                [f"Reporting ledger root is not a real directory: {state_root}"],
-                (),
-            )
-        for kind_path in state_root.iterdir():
-            if kind_path.name not in kinds:
-                blockers.append(f"Unexpected reporting ledger kind: {kind_path}")
-                continue
-            if kind_path.is_symlink() or not kind_path.is_dir():
-                blockers.append(
-                    f"Reporting ledger kind is not a real directory: {kind_path}"
-                )
-                continue
-            for child in kind_path.iterdir():
-                if child.name not in {"start.json", "verified.json"}:
-                    blockers.append(f"Unexpected reporting ledger state: {child}")
-
-    run_id = str(execution["run_id"])
-    verified_prefix_origin: str | None = None
-    for kind in kinds:
-        kind_root = state_root / kind
-        start_path = kind_root / "start.json"
-        verified_path = kind_root / "verified.json"
-        output_root = (
-            report_output_root(root, profile)
-            if kind == "html_report"
-            else root / "products" / "artifact-summary"
-        )
-        suffix = {
-            "run_summary": "run_summary.json",
-            "html_report": "report_outputs.tsv",
-        }[kind]
-        semantic_path = output_root / run_id / f"{run_id}.{suffix}"
-        start_exists = start_path.exists() or start_path.is_symlink()
-        verified_exists = verified_path.exists() or verified_path.is_symlink()
-        if not start_exists:
-            if verified_prefix_origin not in {None, allow_incomplete_origin}:
-                blockers.append(
-                    f"{kind} reporting is absent after a verified transaction prefix"
-                )
-                verified_prefix_origin = None
-            if verified_exists:
-                blockers.append(f"{kind} verified reporting exists without a start")
-            if semantic_path.exists() or semantic_path.is_symlink():
-                blockers.append(
-                    f"{kind} semantic receipt exists without a start ledger"
-                )
-            continue
-        try:
-            admission = (
-                reporting_boundary.validate_verified(
-                    kind,
-                    root,
-                    execution,
-                    profile,
-                    semantic_validator=validator,
-                )
-                if verified_exists
-                else reporting_boundary.validate_start(kind, root, execution, profile)
-            )
-            result[kind]["start"] = admission.start_reference
-            if verified_exists:
-                result[kind]["verified"] = admission.verified_reference
-                verified_prefix_origin = admission.origin_workflow_attempt_id
-                if kind == "html_report":
-                    verified_report_locations = admission.verified_report_locations
-            elif admission.origin_workflow_attempt_id != allow_incomplete_origin:
-                raise InspectionError(
-                    f"{kind} reporting start has no verified completion"
-                )
-        except Exception as exc:
-            blockers.append(f"Could not close {kind} reporting ledger: {exc}")
-    return result, blockers, verified_report_locations
 
 
 def _inspect_task_evidence(
@@ -357,7 +255,7 @@ def inspect_evidence(
         allow_incomplete_origin=allow_incomplete_origin,
         authority=authority,
     )
-    reporting, reporting_blockers, locations = _inspect_reporting_ledger_with_locations(
+    reporting, reporting_blockers, locations = inspect_reporting_ledger(
         root,
         execution,
         profile,

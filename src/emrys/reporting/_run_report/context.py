@@ -26,10 +26,6 @@ from emrys.reporting import (
     COMPUTATIONAL_BOUNDARY_BANNER,
     admit_analysis_reporter,
 )
-from emrys.libraries.installed_package_identity import (
-    InstalledPackageIdentityError,
-    installed_python_package_identity,
-)
 from emrys.libraries.source_authority import (
     ArtifactSourceRootError,
     InstalledPackageError,
@@ -69,14 +65,6 @@ def _resource_snapshot(resource: str, label: str) -> FileSnapshot:
         Path(str(files("emrys.reporting").joinpath(resource))),
         label,
     )
-
-
-def _core_renderer_sha256() -> str:
-    try:
-        package = installed_python_package_identity(Path(str(files("emrys.reporting"))))
-    except (InstalledPackageIdentityError, OSError, TypeError) as exc:
-        _fail(f"Could not identify the installed core reporting package: {exc}")
-    return package.sha256
 
 
 def _admit_analysis_policy(
@@ -492,7 +480,7 @@ def prepare_context(
         "producer_git_commit": producer_git_commit,
         "renderer": PRODUCER,
         "renderer_version": PRODUCER_VERSION,
-        "renderer_package_sha256": _core_renderer_sha256(),
+        "renderer_package_sha256": installed_package.content_sha256,
         "run_summary_path": str(run_summary_snapshot.path),
         "run_summary_sha256": run_summary_snapshot.sha256,
         "state_banner": COMPUTATIONAL_BOUNDARY_BANNER,

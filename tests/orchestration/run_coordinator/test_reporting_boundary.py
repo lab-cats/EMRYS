@@ -11,9 +11,10 @@ from typing import Any
 import pytest
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.libraries.source_authority import admit_installed_package
 from emrys.orchestration.run_coordinator import inspection, reporting_boundary
-from emrys.orchestration.run_coordinator._inspection_evidence import (
-    _inspect_reporting_ledger_with_locations,
+from emrys.orchestration.run_coordinator.reporting_boundary import (
+    inspect_reporting_ledger,
 )
 from emrys.reporting import transaction_validation
 from tests.orchestration.run_coordinator.fixtures import workflow as workflow_fixture
@@ -52,6 +53,7 @@ def test_default_inspection_reuses_only_current_reporting_predecessor(
         *_arguments: Any,
         validated_predecessor: Any = None,
         prepared_context: Any = None,
+        **_keywords: Any,
     ) -> Any:
         assert prepared_context is None
         observed.append(validated_predecessor)
@@ -61,10 +63,7 @@ def test_default_inspection_reuses_only_current_reporting_predecessor(
     for _session in range(2):
         validator = inspection.default_inspection_ops().validate_reporting_receipt
         for kind in ("run_summary", "html_report"):
-            assert (
-                validator(kind, Path("/run/receipt.tsv"), tmp_path, {}, {}, {}, {})
-                == expected
-            )
+            assert validator(kind, Path("/run/receipt.tsv"), object()) == expected
     assert observed == [None, expected, None, expected]
 
 
@@ -188,7 +187,9 @@ def test_shared_record_admission_preserves_reporting_error_boundary(
         reporting_boundary.publish_start(
             kind="run_summary",
             **_identity_paths(built),
-            ops=_ops(lambda *_arguments: _semantic_result(built.run_summary)),
+            ops=_ops(
+                lambda *_arguments, **_keywords: _semantic_result(built.run_summary)
+            ),
         )
 
 
@@ -230,18 +231,17 @@ def test_start_and_completion_publish_fixed_closed_records(
     def validate(
         kind: str,
         receipt_path: Path,
-        run_root: Path,
-        execution: dict[str, Any],
-        profile: dict[str, Any],
-        attempt: dict[str, Any],
-        config: dict[str, Any],
+        identity: Any,
+        **_keywords: Any,
     ) -> _SemanticResult:
         assert kind == "run_summary"
-        assert run_root == built.run_root
-        assert execution == built.execution
-        assert profile == built.profile
-        assert attempt["workflow_attempt_id"] in str(built.workflow_attempt_path)
-        assert config == config_document
+        assert identity.root == built.run_root
+        assert identity.execution == built.execution
+        assert identity.profile == built.profile
+        assert identity.attempt["workflow_attempt_id"] in str(
+            built.workflow_attempt_path
+        )
+        assert identity.attempt["workflow"] == config_document
         return _semantic_result(receipt_path)
 
     ops = _publish_complete_summary_ledger(built, validator=validate)
@@ -256,11 +256,11 @@ def test_start_and_completion_publish_fixed_closed_records(
         "verified-reporting",
     )
     assert start["kind"] == verified["kind"] == "run_summary"
-    assert _inspect_reporting_ledger_with_locations(
+    assert inspect_reporting_ledger(
         built.run_root, built.execution, built.profile, validate
     )[1] == ["html_report reporting is absent after a verified transaction prefix"]
     assert (
-        _inspect_reporting_ledger_with_locations(
+        inspect_reporting_ledger(
             built.run_root,
             built.execution,
             built.profile,
@@ -304,7 +304,7 @@ def test_start_and_completion_publish_fixed_closed_records(
         verified_reference=_reference(paths.verified, built.run_root),
     )
 
-    def mutate_start(*_arguments: Any) -> _SemanticResult:
+    def mutate_start(*_arguments: Any, **_keywords: Any) -> _SemanticResult:
         changed = orchestration_contracts.load_record(
             paths.start,
             "reporting-start",
@@ -331,12 +331,12 @@ def test_historical_reporting_state_is_rejected_without_mutation(
 ) -> None:
     built = _build(tmp_path / "artifact_index")
     ops = _publish_complete_summary_ledger(
-        built, validator=lambda _kind, path, *_args: _semantic_result(path)
+        built, validator=lambda _kind, path, *_args, **_kwargs: _semantic_result(path)
     )
     summary = reporting_boundary.ledger_paths(built.run_root, "run_summary")
     (built.reporting_root / "artifact_index").mkdir()
     retained = summary.start.read_bytes(), summary.verified.read_bytes()
-    blockers = _inspect_reporting_ledger_with_locations(
+    blockers = inspect_reporting_ledger(
         built.run_root,
         built.execution,
         built.profile,
@@ -362,7 +362,7 @@ def test_current_boundary_uses_run_authority_and_exact_attempt_reference(
     reporting_boundary.publish_start(
         kind="run_summary",
         **identity,
-        ops=_ops(lambda *_arguments: _semantic_result(Path("/unused"))),
+        ops=_ops(lambda *_arguments, **_keywords: _semantic_result(Path("/unused"))),
     )
     start = orchestration_contracts.load_record(
         reporting_boundary.ledger_paths(built.run_root, "run_summary").start,
@@ -425,7 +425,9 @@ def test_current_boundary_rejects_reporting_reference_tamper(
         reporting_boundary.publish_start(
             kind="run_summary",
             **identity,
-            ops=_ops(lambda *_arguments: _semantic_result(Path("/unused"))),
+            ops=_ops(
+                lambda *_arguments, **_keywords: _semantic_result(Path("/unused"))
+            ),
         )
 
 
@@ -445,7 +447,7 @@ def test_verified_boundary_carries_admitted_report_locations_unchanged(
         ),
     )
 
-    def validate(*_arguments: Any) -> _ReportSemanticResult:
+    def validate(*_arguments: Any, **_keywords: Any) -> _ReportSemanticResult:
         return _ReportSemanticResult(
             receipt_path=built.report_receipt,
             receipt_sha256=hashlib.sha256(
@@ -507,11 +509,30 @@ def test_boundary_rejects_wrong_attempt_identity(tmp_path: Path) -> None:
         reporting_boundary.publish_start(
             kind="run_summary",
             **identity,
-            ops=_ops(lambda *_arguments: _semantic_result(built.run_summary)),
+            ops=_ops(
+                lambda *_arguments, **_keywords: _semantic_result(built.run_summary)
+            ),
         )
 
 
-def test_boundary_attests_attempt_commit_and_projection_bytes(tmp_path: Path) -> None:
+def test_boundary_preserves_scientific_origin_with_a_new_report_package(
+    tmp_path: Path,
+) -> None:
+    compatible = _build(tmp_path / "compatible")
+    original = compatible.workflow_attempt_path.read_bytes()
+    current_package = replace(
+        admit_installed_package(), content_sha256="e" * 64, git_commit="f" * 40
+    )
+    reporting_boundary.publish_start(
+        kind="run_summary",
+        **_identity_paths(compatible),
+        ops=replace(
+            reporting_boundary.DEFAULT_REPORTING_BOUNDARY_OPS,
+            admit_installed_package=lambda **_kwargs: current_package,
+        ),
+    )
+    assert compatible.workflow_attempt_path.read_bytes() == original
+
     wrong_commit = _build(tmp_path / "wrong-commit")
     wrong_attempt = orchestration_contracts.load_record(
         wrong_commit.workflow_attempt_path,
@@ -523,7 +544,7 @@ def test_boundary_attests_attempt_commit_and_projection_bytes(tmp_path: Path) ->
     )
     with pytest.raises(
         reporting_boundary.ReportingBoundaryError,
-        match="Installed package differs from the workflow attempt",
+        match="does not bind the run-lock origin attempt",
     ):
         reporting_boundary.publish_start(
             kind="run_summary",
@@ -546,7 +567,9 @@ def test_boundary_attests_attempt_commit_and_projection_bytes(tmp_path: Path) ->
             kind="run_summary",
             **_identity_paths(changed_projection),
             ops=_ops(
-                lambda *_arguments: _semantic_result(changed_projection.run_summary)
+                lambda *_arguments, **_keywords: _semantic_result(
+                    changed_projection.run_summary
+                )
             ),
         )
 
@@ -559,7 +582,7 @@ def test_completion_rechecks_projection_after_semantic_validation(
     reporting_boundary.publish_start(
         kind="run_summary",
         **identity,
-        ops=_ops(lambda *_arguments: _semantic_result(built.run_summary)),
+        ops=_ops(lambda *_arguments, **_keywords: _semantic_result(built.run_summary)),
     )
     built.run_summary.parent.mkdir(parents=True, exist_ok=True)
     built.run_summary.write_bytes(b"semantic artifact receipt\n")
@@ -570,7 +593,7 @@ def test_completion_rechecks_projection_after_semantic_validation(
         )["workflow"]["artifact_inventory_path"]["path"]
     )
 
-    def mutate_projection(*_arguments: Any) -> _SemanticResult:
+    def mutate_projection(*_arguments: Any, **_keywords: Any) -> _SemanticResult:
         result = _semantic_result(built.run_summary)
         projection_path.write_bytes(projection_path.read_bytes() + b"mutated\n")
         return result
@@ -594,7 +617,7 @@ def test_completion_guard_runs_after_validation_before_verified_publication(
     identity = _identity_paths(built)
     observed: list[str] = []
 
-    def validate(*_arguments: Any) -> _SemanticResult:
+    def validate(*_arguments: Any, **_keywords: Any) -> _SemanticResult:
         observed.append("semantic-validation")
         return _semantic_result(built.run_summary)
 
@@ -628,7 +651,7 @@ def test_new_reporting_ledger_directories_are_durably_linked(
     built = _build(tmp_path / "fixture")
     synchronized: list[Path] = []
     ops = replace(
-        _ops(lambda *_arguments: _semantic_result(built.run_summary)),
+        _ops(lambda *_arguments, **_keywords: _semantic_result(built.run_summary)),
         sync_directory=synchronized.append,
     )
 
@@ -665,7 +688,7 @@ def test_start_rechecks_released_run_lock_immediately_before_publication(
         return FIXED_TIME
 
     ops = replace(
-        _ops(lambda *_arguments: _semantic_result(built.run_summary)),
+        _ops(lambda *_arguments, **_keywords: _semantic_result(built.run_summary)),
         now=mutate_lock,
     )
     paths = reporting_boundary.ledger_paths(built.run_root, "run_summary")
@@ -685,7 +708,7 @@ def test_start_timestamp_cannot_predate_origin_attempt(tmp_path: Path) -> None:
     built = _build(tmp_path / "fixture")
     paths = reporting_boundary.ledger_paths(built.run_root, "run_summary")
     ops = replace(
-        _ops(lambda *_arguments: _semantic_result(built.run_summary)),
+        _ops(lambda *_arguments, **_keywords: _semantic_result(built.run_summary)),
         now=lambda: datetime(2026, 8, 12, 11, 59, tzinfo=UTC),
     )
 
@@ -707,7 +730,7 @@ def test_completion_rejects_start_and_receipt_mutation(tmp_path: Path) -> None:
     reporting_boundary.publish_start(
         kind="run_summary",
         **identity,
-        ops=_ops(lambda *_arguments: _semantic_result(built.run_summary)),
+        ops=_ops(lambda *_arguments, **_keywords: _semantic_result(built.run_summary)),
     )
     built.run_summary.parent.mkdir(parents=True, exist_ok=True)
     built.run_summary.write_bytes(b"semantic artifact receipt\n")
@@ -716,7 +739,7 @@ def test_completion_rejects_start_and_receipt_mutation(tmp_path: Path) -> None:
         "run_summary",
     ).start
 
-    def mutate_start(*_arguments: Any) -> _SemanticResult:
+    def mutate_start(*_arguments: Any, **_keywords: Any) -> _SemanticResult:
         start = orchestration_contracts.load_record(start_path, "reporting-start")
         start["created_at"] = "2026-08-12T14:00:01Z"
         start_path.write_bytes(orchestration_contracts.canonical_json_bytes(start))
@@ -738,12 +761,12 @@ def test_completion_rejects_start_and_receipt_mutation(tmp_path: Path) -> None:
     reporting_boundary.publish_start(
         kind="run_summary",
         **fresh_identity,
-        ops=_ops(lambda *_arguments: _semantic_result(fresh.run_summary)),
+        ops=_ops(lambda *_arguments, **_keywords: _semantic_result(fresh.run_summary)),
     )
     fresh.run_summary.parent.mkdir(parents=True, exist_ok=True)
     fresh.run_summary.write_bytes(b"semantic artifact receipt\n")
 
-    def mutate_receipt(*_arguments: Any) -> _SemanticResult:
+    def mutate_receipt(*_arguments: Any, **_keywords: Any) -> _SemanticResult:
         before = _semantic_result(fresh.run_summary)
         fresh.run_summary.write_bytes(b"mutated receipt\n")
         return before
@@ -768,7 +791,7 @@ def test_incomplete_start_and_concurrent_publication_fail_closed(
     reporting_boundary.publish_start(
         kind="run_summary",
         **identity,
-        ops=_ops(lambda *_arguments: _semantic_result(built.run_summary)),
+        ops=_ops(lambda *_arguments, **_keywords: _semantic_result(built.run_summary)),
     )
     with pytest.raises(
         reporting_boundary.ReportingBoundaryError,
@@ -808,7 +831,9 @@ def test_incomplete_start_and_concurrent_publication_fail_closed(
         reporting_boundary.publish_start(
             kind="run_summary",
             **identity,
-            ops=_ops(lambda *_arguments: _semantic_result(built.run_summary)),
+            ops=_ops(
+                lambda *_arguments, **_keywords: _semantic_result(built.run_summary)
+            ),
         )
 
 

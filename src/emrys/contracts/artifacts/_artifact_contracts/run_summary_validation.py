@@ -15,6 +15,7 @@ from .definitions import (
 from .identity import (
     require_unique_key,
     resolve_contract_path,
+    scope_key,
     validate_attempt_graph,
     validate_document_paths,
     validate_run_contract,
@@ -26,7 +27,6 @@ from .run_summary_status import (
     aggregate_equal_or_mixed,
     artifact_rollup_state,
     artifact_status_dimensions,
-    scope_key,
 )
 
 
@@ -59,6 +59,21 @@ def validate_run_summary_semantics(
     ):
         raise ContractValidationError(
             "modular run summary analysis policy differs from its run contract"
+        )
+
+    table_paths = tuple(Path(table["path"]) for table in document["tables"])
+    if (
+        len(table_paths) != 2
+        or not table_paths[0].is_absolute()
+        or table_paths[0].parent.name != document["run_id"]
+        or table_paths
+        != tuple(
+            table_paths[0].parent / f"{document['run_id']}.{suffix}"
+            for suffix in ("run_summary.tsv", "qc_summary.tsv")
+        )
+    ):
+        raise ContractValidationError(
+            "Run result tables must use their fixed paths and order"
         )
 
     publication = document["publication"]

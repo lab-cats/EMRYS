@@ -7,7 +7,7 @@ validate supplied data; they do not discover artifacts, repair inputs, or promot
 evidence.
 
 The [schema index](../schemas/artifacts/README.md) defines the current formats.
-A Run result manifest stores shared Run identity and publication provenance once;
-its artifact entries retain independent source, computation, validation and
-Attempt evidence. Schema and semantic admission reject old document versions.
+A Run result manifest stores shared Run identity and publication provenance once,
+plus the exact original scientific Run and Attempt references. Artifact entries
+retain independent source, computation, validation and Attempt evidence. Schema and semantic admission reject old document versions.
 The CLI and reporting readers use the same current schema registry.

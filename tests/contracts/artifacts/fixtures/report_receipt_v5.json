@@ -1,6 +1,6 @@
 {
   "schema_name": "emrys.report_receipt",
-  "schema_version": "5.0.0",
+  "schema_version": "6.0.0",
   "record_type": "report_receipt",
   "run_id": "run_fixture",
   "attempt_id": "report-attempt-001",
@@ -12,8 +12,9 @@
     "path": "tests/fixtures/artifact_schema_v1/source/results/artifacts/run_fixture/run_fixture.run_summary.json",
     "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
     "schema_name": "emrys.run_summary",
-    "schema_version": "4.0.0"
+    "schema_version": "5.0.0"
   },
+  "inputs": [],
   "template": {
     "path": "emrys.reporting/templates/run_report.html.j2",
     "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
@@ -62,9 +63,9 @@
     }
   ],
   "schema_versions": {
-    "artifact_entry": "1.0.0",
-    "run_summary": "4.0.0",
-    "report_receipt": "5.0.0"
+    "artifact_entry": "2.0.0",
+    "run_summary": "5.0.0",
+    "report_receipt": "6.0.0"
   },
   "analysis_execution_performed": false,
   "external_network_assets_used": false,
@@ -80,7 +81,7 @@
   "errors": [],
   "provenance": {
     "producer": "emrys.reporting.report",
-    "producer_version": "5.0.0",
+    "producer_version": "6.0.0",
     "git_commit": "fixturecommit",
     "created_at": "2000-01-01T00:00:05Z",
     "installed_package": {
@@ -101,8 +102,8 @@
   },
   "evidence_renderer": {
     "producer": "emrys.reporting.report",
-    "producer_version": "5.0.0",
-    "package": "emrys.reporting",
+    "producer_version": "6.0.0",
+    "package": "emrys",
     "content_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
     "template_engine": "Jinja2",
     "template_engine_version": "3.1.6"
@@ -117,8 +118,8 @@
     "content_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "core_support": {
       "producer": "emrys.reporting.report",
-      "producer_version": "5.0.0",
-      "package": "emrys.reporting",
+      "producer_version": "6.0.0",
+      "package": "emrys",
       "content_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "template_engine": "Jinja2",
       "template_engine_version": "3.1.6"

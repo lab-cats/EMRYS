@@ -99,6 +99,17 @@ class FixturePaths:
     source_paths: Mapping[str, Path]
 
     @property
+    def scientific_origin(self) -> dict[str, dict[str, str]]:
+        return {
+            name: {
+                "path": str(path),
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
+            for name in ("run", "attempt")
+            for path in (self.root / f"fixture_original_{name}.json",)
+        }
+
+    @property
     def output_dir(self) -> Path:
         return self.output_root / self.run_id
 
@@ -226,7 +237,6 @@ def row_value(column: str, sample_manifest_path: Path) -> str:
         "transaction_state": "complete",
         "sample_count": str(len(SAMPLE_IDS)),
         "vcf_record_count": "1",
-        "implementation_status": "implemented",
         "local_test_status": "passed",
         "runtime_validation_status": "blocked",
         "cluster_dry_run_status": "not_run",
@@ -1007,6 +1017,13 @@ def build_fixture(root: Path, *, run_id: str = RUN_ID) -> FixturePaths:
         json.dumps(build_run_contract(), ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+    # Small record stubs for the private manifest fixture; the runner fixtures
+    # separately admit complete immutable Run and Attempt records.
+    for name in ("run", "attempt"):
+        (root / f"fixture_original_{name}.json").write_text(
+            json.dumps({"run_id": run_id, "fixture_record": name}) + "\n",
+            encoding="utf-8",
+        )
     return FixturePaths(
         root=root,
         run_id=run_id,
