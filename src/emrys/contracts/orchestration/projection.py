@@ -32,7 +32,6 @@ class ReportingBundle:
     reference_contract: dict[str, Any]
     primary_analysis_policy: dict[str, Any]
     reporting_run_contract: dict[str, Any]
-    artifact_inventory_rows: tuple[dict[str, str], ...]
     reference_contract_bytes: bytes
     primary_analysis_policy_bytes: bytes
     reporting_run_contract_bytes: bytes
@@ -128,7 +127,6 @@ def build_reporting_bundle(
         reference_contract=reference_contract,
         primary_analysis_policy=primary_analysis_policy,
         reporting_run_contract=reporting_run_contract,
-        artifact_inventory_rows=rows,
         reference_contract_bytes=reference_bytes,
         primary_analysis_policy_bytes=policy_bytes,
         reporting_run_contract_bytes=(

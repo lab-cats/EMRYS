@@ -182,7 +182,6 @@ class ReportHTMLInspector(HTMLParser):
         self.current_table_bad_headers = 0
         self.table_errors: list[str] = []
         self.svg_depth = 0
-        self.svg_count = 0
         self.accessible_svgs = 0
         self.banner_depth = 0
         self.banner_count = 0
@@ -271,7 +270,6 @@ class ReportHTMLInspector(HTMLParser):
 
         if tag == "svg":
             self.svg_depth += 1
-            self.svg_count += 1
             if attributes.get("role") == "img" and (
                 attributes.get("aria-label") or attributes.get("aria-labelledby")
             ):

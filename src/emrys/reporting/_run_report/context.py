@@ -38,7 +38,6 @@ from .inputs import (
     _assert_snapshot,
     _explicit_path,
     _fail,
-    _load_run_summary,
     _read_snapshot_bytes,
     _reject_symlink_components,
     _snapshot_regular,
@@ -70,7 +69,7 @@ def _resource_snapshot(resource: str, label: str) -> FileSnapshot:
 def _admit_analysis_policy(
     arguments: argparse.Namespace,
     summary: Mapping[str, object],
-) -> tuple[Path | None, FileSnapshot | None, dict[str, object] | None]:
+) -> tuple[Path, FileSnapshot, dict[str, object]]:
     value = getattr(arguments, "analysis_policy", None)
     if value is None:
         _fail("Report publication requires an explicit analysis policy")
@@ -126,13 +125,11 @@ def _admit_analysis_artifacts(
     *,
     analysis_id: str,
     source_root: Path,
-    evidence_context: EvidenceContext | None,
+    evidence_context: EvidenceContext,
 ) -> tuple[AnalysisReportArtifactV1, ...]:
-    inspections = (
-        {item.row["artifact_id"]: item for item in evidence_context.index.inspections}
-        if evidence_context is not None
-        else {}
-    )
+    inspections = {
+        item.row["artifact_id"]: item for item in evidence_context.index.inspections
+    }
     declared = {
         artifact.adapter: (task.step_id, artifact)
         for task in module.descriptor.tasks
@@ -191,11 +188,7 @@ def _admit_analysis_artifacts(
                 row_count=source["row_count"],
                 kind=artifact.kind,
                 media_type=expected_media_type,
-                projection=(
-                    copy.deepcopy(inspections[record["artifact_id"]].projection)
-                    if record["artifact_id"] in inspections
-                    else None
-                ),
+                projection=copy.deepcopy(inspections[record["artifact_id"]].projection),
             )
         )
     return tuple(report_artifacts)
@@ -206,8 +199,8 @@ def _render_scientific_report(
     *,
     source_root: Path,
     output_dir: Path,
-    analysis_policy: Mapping[str, object] | None,
-    evidence_context: EvidenceContext | None,
+    analysis_policy: Mapping[str, object],
+    evidence_context: EvidenceContext,
 ) -> tuple[
     analyses.LoadedAnalysisModuleV1,
     Mapping[str, str],
@@ -387,7 +380,7 @@ def recheck_evidence_context(
 def prepare_context(
     arguments: argparse.Namespace,
     *,
-    evidence_context: EvidenceContext | None = None,
+    evidence_context: EvidenceContext,
 ) -> ReportContext:
     try:
         installed_package = admit_installed_package(
@@ -401,25 +394,15 @@ def prepare_context(
     source_root = artifact_source_root.root
     run_summary_path = _explicit_path(arguments.run_summary, "run-summary path")
     run_summary_snapshot = _snapshot_regular(run_summary_path, "run-summary document")
-    if evidence_context is None:
-        summary = _load_run_summary(run_summary_path, source_root=source_root)
-    else:
-        if (
-            evidence_context.index.installed_package.record != installed_package.record
-            or evidence_context.index.artifact_source_root != artifact_source_root
-        ):
-            _fail(
-                "Prepared reporting inputs belong to a different package or source root"
-            )
-        recheck_evidence_context(evidence_context, run_summary_snapshot)
-        summary = copy.deepcopy(evidence_context.summary_document)
+    if (
+        evidence_context.index.installed_package.record != installed_package.record
+        or evidence_context.index.artifact_source_root != artifact_source_root
+    ):
+        _fail("Prepared reporting inputs belong to a different package or source root")
+    recheck_evidence_context(evidence_context, run_summary_snapshot)
+    summary = copy.deepcopy(evidence_context.summary_document)
     _assert_snapshot(run_summary_snapshot, "run-summary document")
     run_id = summary["run_id"]
-    if (
-        run_summary_path.name != f"{run_id}.run_summary.json"
-        or run_summary_path.parent.name != run_id
-    ):
-        _fail("Canonical run-summary input must use <run-id>/<run-id>.run_summary.json")
     analysis_policy_path, analysis_policy_snapshot, analysis_policy = (
         _admit_analysis_policy(arguments, summary)
     )
@@ -443,7 +426,6 @@ def prepare_context(
         output_dir / f"{run_id}.{suffix}"
         for _output_id, _kind, suffix in artifact_contracts.REPORT_OUTPUTS
     )
-    output_scientific_html, output_evidence_html, output_summary_tsv = output_paths
     output_receipt = output_dir / f"{run_id}.report_outputs.tsv"
     stable_paths = (*output_paths, output_receipt)
     lock_path = output_dir / f".{run_id}.report.lock"
@@ -526,9 +508,6 @@ def prepare_context(
         css_snapshot=css_snapshot,
         output_root=output_root,
         output_dir=output_dir,
-        output_scientific_html=output_scientific_html,
-        output_evidence_html=output_evidence_html,
-        output_summary_tsv=output_summary_tsv,
         output_receipt=output_receipt,
         lock_path=lock_path,
         stable_paths=stable_paths,
@@ -544,6 +523,5 @@ def prepare_context(
     )
     for recheck in context.input_rechecks:
         _assert_input_recheck(*recheck)
-    if evidence_context is not None:
-        recheck_evidence_context(evidence_context, run_summary_snapshot)
+    recheck_evidence_context(evidence_context, run_summary_snapshot)
     return context

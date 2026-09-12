@@ -83,11 +83,6 @@ def _report_receipt_sha256(built: Any, report_root: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _publish_report(arguments: argparse.Namespace) -> None:
-    context = report_context_owner.prepare_context(arguments)
-    report_publication.publish_report(context)
-
-
 @pytest.fixture
 def complete_reporting(tmp_path: Path) -> tuple[Any, Path]:
     built = fixture.build_fixture(tmp_path / "run")
@@ -100,7 +95,11 @@ def complete_reporting(tmp_path: Path) -> tuple[Any, Path]:
         output_root=report_root,
         execute=True,
     )
-    _publish_report(arguments)
+    report_publication.publish_report(
+        report_context_owner.prepare_context(
+            arguments, evidence_context=built.evidence_context
+        )
+    )
     return built, report_root
 
 
@@ -192,12 +191,13 @@ def test_summary_revalidates_relative_artifacts_from_admitted_root(
         run_contract=run_contract,
         inventory_rows=rows,
     )
-    fixture.publish_adapter_fixture(relocated)
+    evidence = fixture.publish_adapter_fixture(relocated)
     built = fixture.RunSummaryFixture(
         root,
         relocated.run_id,
         relocated.output_root,
         relocated,
+        evidence,
     )
 
     validated = transaction_validation.validate_run_summary_transaction(

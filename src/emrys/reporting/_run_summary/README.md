@@ -13,8 +13,10 @@ receipt, publisher, or recovery interface remains.
 | [`models.py`](models.py) | Constants, table headers, errors and output paths. |
 | [`transaction.py`](transaction.py) | Stable value projections. |
 
-`RUN_ID.run_summary.json` v6 contains the shared Run contract, immutable input
+`RUN_ID.run_summary.json` v7 contains the shared Run contract, immutable input
 bindings, publication identity, provenance, and ordered artifact entries.
+Parameters and QC metrics belong to those entries; the manifest does not copy
+them into a second top-level collection. The QC TSV includes every artifact metric.
 Installing it last commits the two TSV projections. Reuse checks the manifest
 against its original ledger, table hashes and current scientific sources.
 Fresh publication checks the exact prepared bytes. Original Run and Attempt

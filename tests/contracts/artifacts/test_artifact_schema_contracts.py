@@ -190,8 +190,8 @@ def test_all_tracked_schemas_are_valid_draft_2020_12_and_local_only() -> None:
                 stack.extend(value)
 
     report_schema = schemas["report-receipt"]
-    assert report_schema["$id"] == "urn:emrys:schema:artifacts:report-receipt:v6"
-    assert report_schema["properties"]["schema_version"]["const"] == "6.0.0"
+    assert report_schema["$id"] == "urn:emrys:schema:artifacts:report-receipt:v7"
+    assert report_schema["properties"]["schema_version"]["const"] == "7.0.0"
 
 
 @pytest.mark.parametrize(("name", "path"), FIXTURES.items())
@@ -381,41 +381,6 @@ def test_run_summary_rejects_duplicate_artifact_ids() -> None:
     duplicate = copy.deepcopy(summary)
     duplicate["artifacts"].append(copy.deepcopy(duplicate["artifacts"][0]))
     assert_contract_failure("run-summary", duplicate, "duplicate artifact_id")
-
-
-def test_run_summary_reconciles_qc_sources() -> None:
-    unknown_metric = run_summary_with_complete_artifact()
-    unknown_metric["qc_metrics"] = [
-        {
-            "metric_id": "unknown_source",
-            "name": "Unknown source metric",
-            "value": 1,
-            "unit": "rows",
-            "status": "pass",
-            "source_artifact_id": "missing.artifact",
-        }
-    ]
-    assert_schema_valid("run-summary", unknown_metric)
-    assert_contract_failure("run-summary", unknown_metric, "unknown artifact")
-
-    invented_metric = run_summary_with_complete_artifact()
-    source_artifact_id = invented_metric["artifacts"][0]["artifact_id"]
-    invented_metric["qc_metrics"] = [
-        {
-            "metric_id": "invented_metric",
-            "name": "Invented metric",
-            "value": 999999,
-            "unit": "rows",
-            "status": "pass",
-            "source_artifact_id": source_artifact_id,
-        }
-    ]
-    assert_schema_valid("run-summary", invented_metric)
-    assert_contract_failure(
-        "run-summary",
-        invented_metric,
-        "does not exactly match",
-    )
 
 
 def test_report_receipt_enforces_renderer_safety_outputs_and_banners() -> None:

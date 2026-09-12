@@ -140,7 +140,7 @@ need to rerun the renderer to rediscover those inputs during reuse. Template
 and stylesheet hashes remain original producer provenance; they are not data
 inputs checked against a newer installation.
 
-Current records use artifact entries v3, Run summaries v6 and report receipts v6.
+Current records use artifact entries v3, Run summaries v7 and report receipts v7.
 The [version policy](platform-direction.md#version-support) applies: no old-hash
 translation, record rewriting or historical-format reader is added. Existing
 data and evidence remain intact for ordinary tools or the originating software.
@@ -213,10 +213,15 @@ not establish Slurm, institutional-site, production, or biological behavior.
 Indexing and summary generation now share one publication owner, completion
 marker, and recovery scope. The result manifest contains shared Run and publication provenance once, with
 per-artifact computation and validation facts. It commits the summary and QC
-TSVs without a second receipt or per-artifact record files.
+TSVs without a second receipt or per-artifact record files. The summary owner
+passes its prepared context directly to HTML generation, including the scientific
+projections already checked by their owners. Publication and reuse retain input
+identity checks at their respective boundaries.
 Artifact entries describe one declared source each: identity, availability,
-completion, content hash, measurements, parameters, warnings and errors. They
-do not contain another execution history, supplemental file list, tool list,
+completion, content hash, measurements, parameters, warnings and errors.
+Measurements and parameters stay in those entries; the summary does not copy
+them into top-level fields or warn about metric names repeated across artifacts.
+Artifact entries do not contain another execution history, supplemental file list, tool list,
 or local/runtime/cluster proof labels. Production never populated those lists
 or proof labels. Actual scientific checks remain in the declared validation
 artifacts; original Run and Attempt records own execution history and tool

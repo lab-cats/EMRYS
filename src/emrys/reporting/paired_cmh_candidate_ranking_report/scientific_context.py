@@ -231,16 +231,9 @@ def admit_scientific_context_results(
         _assert_snapshot(
             record.snapshot, f"scientific-context result {record.artifact_id!r}"
         )
-    receipt_path = receipt_record.snapshot.path
-    try:
-        transaction = (
-            receipt_record.projection
-            or owner_context.validate_scientific_context_transaction(receipt_path)
-        )
-    except (owner_context.ContractError, OSError, UnicodeError) as exc:
-        _fail(
-            f"Primary Step 10 scientific-context transaction failed validation: {exc}"
-        )
+    transaction = receipt_record.projection
+    if transaction is None:
+        _fail("Primary Step 10 requires its admitted scientific transaction")
     receipt = _receipt_table(
         receipt_record,
         transaction=transaction,

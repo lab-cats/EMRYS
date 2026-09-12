@@ -65,11 +65,6 @@ def load_json_object(path: Path, label: str) -> dict[str, Any]:
     return load_json_object_bytes(data, f"{label} {path}")
 
 
-def load_schema(name: str) -> dict[str, Any]:
-    schemas, _ = load_schema_registry()
-    return schemas[name]
-
-
 def load_schema_registry() -> tuple[dict[str, dict[str, Any]], Registry]:
     schema_paths = {
         "common": COMMON_SCHEMA_PATH,

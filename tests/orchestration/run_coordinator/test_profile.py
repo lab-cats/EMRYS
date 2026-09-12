@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import csv
+import io
 from collections import Counter
 from pathlib import Path
 
@@ -335,7 +336,11 @@ def test_profile_expands_to_exact_formula_and_contiguous_scopes(
         profile,
         analysis.revision,
     )
-    rows = bundle.artifact_inventory_rows
+    rows = list(
+        csv.DictReader(
+            io.StringIO(bundle.artifact_inventory_bytes.decode()), delimiter="\t"
+        )
+    )
     sample_count = len(source["samples"]["rows"])
     partition_count = len(source["partitions"]["rows"])
     assert len(rows) == 39 + (27 * sample_count) + (4 * partition_count)

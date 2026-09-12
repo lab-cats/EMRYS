@@ -131,42 +131,6 @@
         }
       }
     },
-    "limitation": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "limitation_id",
-        "status",
-        "description",
-        "impact",
-        "evidence_ids"
-      ],
-      "properties": {
-        "limitation_id": {
-          "$ref": "#/$defs/safe_id"
-        },
-        "status": {
-          "enum": [
-            "open",
-            "accepted",
-            "resolved"
-          ]
-        },
-        "description": {
-          "$ref": "#/$defs/non_empty_string"
-        },
-        "impact": {
-          "$ref": "#/$defs/non_empty_string"
-        },
-        "evidence_ids": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/safe_id"
-          },
-          "uniqueItems": true
-        }
-      }
-    },
     "metric": {
       "type": "object",
       "additionalProperties": false,

@@ -40,6 +40,7 @@ class RunSummaryFixture:
     run_id: str
     output_root: Path
     adapter_fixture: Any
+    evidence_context: ARTIFACT_MODELS.EvidenceContext
 
     @property
     def output_dir(self) -> Path:
@@ -100,19 +101,22 @@ def prepare_adapter_fixture(fixture: Any) -> Any:
         restore_epoch(previous)
 
 
-def publish_adapter_fixture(fixture: Any) -> None:
+def publish_adapter_fixture(fixture: Any) -> ARTIFACT_MODELS.EvidenceContext:
     """Publish records, index, and summary through the combined production owner."""
 
-    ARTIFACT_PUBLICATION.publish_context(prepare_adapter_fixture(fixture))
+    context = prepare_adapter_fixture(fixture)
+    ARTIFACT_PUBLICATION.publish_context(context)
+    return context
 
 
 def _fixture_from_adapter(adapter_fixture: Any) -> RunSummaryFixture:
-    publish_adapter_fixture(adapter_fixture)
+    context = publish_adapter_fixture(adapter_fixture)
     return RunSummaryFixture(
         root=adapter_fixture.root,
         run_id=adapter_fixture.run_id,
         output_root=adapter_fixture.output_root,
         adapter_fixture=adapter_fixture,
+        evidence_context=context,
     )
 
 
@@ -192,7 +196,8 @@ def publish_report(
                 run_summary=fixture.summary_json_path,
                 analysis_policy=fixture.adapter_fixture.analysis_policy,
                 output_root=output_root,
-            )
+            ),
+            evidence_context=fixture.evidence_context,
         )
         if execute:
             REPORT_PUBLICATION.publish_report(

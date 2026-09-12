@@ -143,32 +143,6 @@ def validate_run_summary_semantics(
                 f"computational_rollup {field} is {rollup[field]}, expected {observed_counts[state]}"
             )
 
-    qc_metrics = require_unique_key(
-        document["qc_metrics"],
-        "metric_id",
-        "QC metrics",
-    )
-    for metric in qc_metrics.values():
-        source_artifact_id = metric["source_artifact_id"]
-        if source_artifact_id is None:
-            raise ContractValidationError(
-                f"QC metric {metric['metric_id']!r} requires an explicit "
-                "source_artifact_id"
-            )
-        if source_artifact_id not in artifact_index:
-            raise ContractValidationError(
-                f"QC metric {metric['metric_id']!r} references unknown "
-                f"artifact {source_artifact_id!r}"
-            )
-        source_metrics = {
-            source_metric["metric_id"]: source_metric
-            for source_metric in artifact_index[source_artifact_id]["metrics"]
-        }
-        if source_metrics.get(metric["metric_id"]) != metric:
-            raise ContractValidationError(
-                f"QC metric {metric['metric_id']!r} does not exactly match "
-                f"the metric recorded by artifact {source_artifact_id!r}"
-            )
     require_unique_key(
         document["limitations"],
         "limitation_id",

@@ -8,7 +8,7 @@ calls it; it provides no separate command or operator recovery interface.
 | Module | Responsibility |
 | --- | --- |
 | [`models.py`](models.py) | Immutable contract, provider, output, and two-view context values. |
-| [`inputs.py`](inputs.py) | Validate the run summary and installed provider; retain stable snapshots. |
+| [`inputs.py`](inputs.py) | Resolve explicit file paths and retain stable input snapshots. |
 | [`context.py`](context.py) | Prepare roots, provider, outputs, portable links, and renderer. |
 | [`validation.py`](validation.py) | Render admitted values with strict, autoescaped Jinja; check exact projected bytes and the independent HTML, TSV and receipt contracts. |
 | [`run_report.html.j2`](../templates/run_report.html.j2) | Own both built-in layouts and explanatory text, using summary and scientific values directly. |
@@ -37,9 +37,14 @@ The logical producer remains `emrys.reporting.report`. The shared
 preparation reads only current outputs. Rendering neither reruns
 analysis nor changes scientific evidence.
 
-Completed reports retain the renderer recorded in their v6 receipt. Reuse checks
+Completed reports retain the renderer recorded in their v7 receipt. Reuse checks
 that receipt against the immutable ledger, then checks every recorded data input,
 output and HTML contract without rendering again. The receipt records additional
 provider inputs, including figure sources; template and stylesheet identities
 remain producer provenance. New publication still validates its exact prepared
 bytes and records the actual installed EMRYS package.
+
+HTML preparation requires the exact prepared evidence context from the preceding
+manifest operation. It carries the checked Step 09/10 scientific projections into
+the reporter. It cannot independently load a summary and reconstruct admission.
+Retained-report inspection checks original receipt and data hashes separately.

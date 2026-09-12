@@ -180,12 +180,6 @@ def receipt_document(
             "created_at": summary["generated_at"],
         },
     }
-    if (
-        context.analysis_policy_path is None
-        or context.analysis_policy_snapshot is None
-        or context.analysis_policy is None
-    ):
-        _fail("Modular report receipt requires an admitted analysis policy")
     document = {
         **common,
         "analysis_policy": {
