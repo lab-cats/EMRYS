@@ -6,7 +6,7 @@ owns the goals; this file owns CS scope, status, decisions, and proof. The
 
 ## Working queue
 
-**CS-11 is implemented; hosted verification is pending.** Reporting source
+**[PR #162](https://github.com/lab-cats/EMRYS/pull/162): CS-11 is implemented; hosted verification is pending.** Reporting source
 changes preserve scientific compatibility, and reports retain the provenance
 of their original scientific work and actual reporting producer.
 
