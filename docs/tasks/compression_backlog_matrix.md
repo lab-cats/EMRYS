@@ -182,7 +182,7 @@ label adds no actual lineage. Analysis extensions use the same builder.
   run in hosted CI; local installation metadata remains an environment limitation.
 
 The implementation removes **609 product lines** (+26/−635), **770 schema lines**
-and **616 test/fixture lines**. One product file retires; none are added. Documentation
+and **634 test/fixture lines**. One product file retires; none are added. Documentation
 is accounted separately. Configuration, tooling and retained evidence are unchanged.
 Forty-one focused contract/summary tests and thirteen independent golden tests pass;
 Ruff, formatting, source dependencies and documentation structure also pass.
@@ -190,6 +190,8 @@ The parent HTML digests were reproduced before reviewing the new output: scienti
 HTML differs only in the Operations link; evidence HTML retires the unused fields
 and moves the unchanged original records into Operations. Five full summary fixtures
 need hosted verification because local build metadata is unavailable.
+Hosted verification remains pending after correcting three stale test assumptions:
+the retired report heading, deleted helper file, and removed validator argument.
 
 ## Acceptance shared by every card
 
