@@ -12,7 +12,7 @@
     "path": "tests/fixtures/artifact_schema_v1/source/results/artifacts/run_fixture/run_fixture.run_summary.json",
     "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
     "schema_name": "emrys.run_summary",
-    "schema_version": "5.0.0"
+    "schema_version": "6.0.0"
   },
   "inputs": [],
   "template": {
@@ -51,7 +51,7 @@
       "media_type": "text/tab-separated-values"
     }
   ],
-  "state_banner": "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE EMRYS.",
+  "state_banner": "COMPUTATIONAL RESULTS \u2014 BIOLOGICAL VALIDATION IS OUTSIDE EMRYS.",
   "truncations": [
     {
       "table_id": "cmh_ranked_candidates",
@@ -63,8 +63,8 @@
     }
   ],
   "schema_versions": {
-    "artifact_entry": "2.0.0",
-    "run_summary": "5.0.0",
+    "artifact_entry": "3.0.0",
+    "run_summary": "6.0.0",
     "report_receipt": "6.0.0"
   },
   "analysis_execution_performed": false,
@@ -81,7 +81,7 @@
   "errors": [],
   "provenance": {
     "producer": "emrys.reporting.report",
-    "producer_version": "6.0.0",
+    "producer_version": "7.0.0",
     "git_commit": "fixturecommit",
     "created_at": "2000-01-01T00:00:05Z",
     "installed_package": {
@@ -102,7 +102,7 @@
   },
   "evidence_renderer": {
     "producer": "emrys.reporting.report",
-    "producer_version": "6.0.0",
+    "producer_version": "7.0.0",
     "package": "emrys",
     "content_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
     "template_engine": "Jinja2",
@@ -118,7 +118,7 @@
     "content_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "core_support": {
       "producer": "emrys.reporting.report",
-      "producer_version": "6.0.0",
+      "producer_version": "7.0.0",
       "package": "emrys",
       "content_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "template_engine": "Jinja2",

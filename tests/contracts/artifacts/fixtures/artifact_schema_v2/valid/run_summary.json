@@ -1,6 +1,6 @@
 {
   "schema_name": "emrys.run_summary",
-  "schema_version": "5.0.0",
+  "schema_version": "6.0.0",
   "record_type": "run_summary",
   "run_id": "run_fixture",
   "run_contract": {
@@ -20,8 +20,6 @@
     "row_count": 1,
     "media_type": "text/tab-separated-values"
   },
-  "attempts": [],
-  "superseded_attempt_ids": [],
   "expected_scopes": [
     {
       "scope": {
@@ -33,10 +31,6 @@
         "analysis.synthetic.cmh_summary"
       ],
       "aggregate_state": "missing",
-      "local_test_status": "passed",
-      "runtime_validation_status": "blocked",
-      "cluster_dry_run_status": "not_run",
-      "cluster_proof_status": "not_run",
       "warnings": [
         {
           "code": "production_output_missing",
@@ -66,33 +60,7 @@
       "availability_status": "missing",
       "completion_status": "not_attempted",
       "state_reason": "Production Step 09 output is unavailable.",
-      "attempt_provenance_status": "not_attempted",
-      "attempts": [],
-      "selected_attempt_id": null,
-      "local_testing": {
-        "status": "passed",
-        "evidence": [
-          {
-            "evidence_id": "artifact_schema_test",
-            "role": "local_test",
-            "path": "tests/contracts/artifacts/test_artifact_schema_contracts.py",
-            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-          }
-        ]
-      },
-      "runtime_validation": {
-        "status": "blocked",
-        "detail": "Production evidence is unavailable.",
-        "evidence": []
-      },
-      "cluster_validation": {
-        "dry_run_status": "not_run",
-        "proof_status": "not_run",
-        "evidence": []
-      },
       "source": null,
-      "members": [],
-      "tools": [],
       "parameters": {},
       "metrics": [],
       "warnings": [
@@ -114,13 +82,8 @@
     "missing_artifact_count": 1,
     "incomplete_artifact_count": 0,
     "failed_artifact_count": 0,
-    "externally_unavailable_artifact_count": 0,
-    "local_test_status": "passed",
-    "runtime_validation_status": "blocked",
-    "cluster_dry_run_status": "not_run",
-    "cluster_proof_status": "not_run"
+    "externally_unavailable_artifact_count": 0
   },
-  "tools": [],
   "parameters": {
     "fixture_kind": "missing_production_computation"
   },

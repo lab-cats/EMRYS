@@ -13,11 +13,13 @@ receipt, publisher, or recovery interface remains.
 | [`models.py`](models.py) | Constants, table headers, errors and output paths. |
 | [`transaction.py`](transaction.py) | Stable value projections. |
 
-`RUN_ID.run_summary.json` v4 contains the shared Run contract, immutable input
+`RUN_ID.run_summary.json` v6 contains the shared Run contract, immutable input
 bindings, publication identity, provenance, and ordered artifact entries.
-Installing it last commits the two TSV projections. The reader reconstructs
-these values from current sources and checks canonical bytes and bound file
-identities. Old-version Runs are unsupported and never migrated or deleted.
+Installing it last commits the two TSV projections. Reuse checks the manifest
+against its original ledger, table hashes and current scientific sources.
+Fresh publication checks the exact prepared bytes. Original Run and Attempt
+references retain execution history; the summary reports observed artifact
+states. Old-version Runs are unsupported and never migrated or deleted.
 
 The manifest records computational state. Candidate review, adjudication,
 biological interpretation, and scientific completion remain external processes.

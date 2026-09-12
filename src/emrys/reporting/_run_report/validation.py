@@ -23,7 +23,6 @@ from .models import (
     ACTIVE_RESOURCE_ATTRIBUTES,
     ACTIVE_URI_RE,
     CSS_RESOURCE_RE,
-    COMPUTATIONAL_STATUS_FIELDS,
     EVIDENCE_REPORT_SECTION_IDS,
     REMOTE_URI_RE,
     ReportContext,
@@ -156,7 +155,6 @@ def render_html(
         summary=summary,
         css=css,
         report_view=report_view,
-        status_fields=COMPUTATIONAL_STATUS_FIELDS,
         **values,
     )
     return rendered.encode("utf-8")

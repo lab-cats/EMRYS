@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
-from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator
@@ -37,23 +36,7 @@ def build_artifact_record(
         "availability_status": inspection.availability_status,
         "completion_status": inspection.completion_status,
         "state_reason": inspection.state_reason,
-        "attempt_provenance_status": inspection.attempt_provenance_status,
-        "attempts": [],
-        "selected_attempt_id": None,
-        "local_testing": {"status": "not_run", "evidence": []},
-        "runtime_validation": {
-            "status": "not_run",
-            "detail": None,
-            "evidence": [],
-        },
-        "cluster_validation": {
-            "dry_run_status": "not_run",
-            "proof_status": "not_run",
-            "evidence": [],
-        },
         "source": inspection.source,
-        "members": [],
-        "tools": [],
         "parameters": inspection.parameters,
         "metrics": inspection.metrics,
         "warnings": inspection.warnings,
@@ -65,8 +48,6 @@ def validate_record_in_memory(
     record: dict[str, Any],
     inventory_row: dict[str, str],
     validator: Draft202012Validator,
-    *,
-    source_root: Path,
 ) -> None:
     errors = sorted(
         validator.iter_errors(record),
@@ -81,7 +62,7 @@ def validate_record_in_memory(
             f"Generated artifact {record['artifact_id']!r} failed schema:\n{detail}"
         )
     try:
-        contracts.validate_artifact_semantics(record, source_root=source_root)
+        contracts.validate_artifact_semantics(record)
         contracts.reconcile_artifact_inventory_row(record, inventory_row)
     except contracts.ContractValidationError as exc:
         raise ArtifactIndexError(

@@ -872,7 +872,7 @@ def test_two_html_views_separate_science_from_operational_evidence(
         (
             "Operations",
             "How did execution proceed?",
-            f"{run_id}.evidence_report.html#attempt-lineage-section",
+            f"{run_id}.evidence_report.html#execution-records-section",
         ),
     )
     for content in (scientific, evidence):

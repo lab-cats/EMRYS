@@ -13,42 +13,6 @@
   "availability_status": "present",
   "completion_status": "complete",
   "state_reason": null,
-  "attempt_provenance_status": "recorded",
-  "attempts": [
-    {
-      "attempt_id": "attempt-001",
-      "state": "succeeded",
-      "started_at": "2000-01-01T00:00:00Z",
-      "finished_at": "2000-01-01T00:00:01Z",
-      "exit_code": 0,
-      "supersedes_attempt_id": null,
-      "evidence": [],
-      "warnings": [],
-      "errors": []
-    }
-  ],
-  "selected_attempt_id": "attempt-001",
-  "local_testing": {
-    "status": "passed",
-    "evidence": [
-      {
-        "evidence_id": "artifact_schema_test",
-        "role": "local_test",
-        "path": "tests/contracts/artifacts/test_artifact_schema_contracts.py",
-        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-      }
-    ]
-  },
-  "runtime_validation": {
-    "status": "blocked",
-    "detail": "Synthetic fixture only; production runtime evidence is unavailable.",
-    "evidence": []
-  },
-  "cluster_validation": {
-    "dry_run_status": "not_run",
-    "proof_status": "not_run",
-    "evidence": []
-  },
   "source": {
     "path": "tests/fixtures/artifact_schema_v1/source/results/editing/synthetic_analysis/synthetic_analysis.cmh_summary.tsv",
     "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
@@ -56,16 +20,6 @@
     "row_count": 1,
     "media_type": "text/tab-separated-values"
   },
-  "members": [],
-  "tools": [
-    {
-      "name": "R",
-      "version": "4.6.1",
-      "role": "synthetic_fixture",
-      "path": null,
-      "sha256": null
-    }
-  ],
   "parameters": {
     "control_condition": "EV",
     "treatment_condition": "PUM1"

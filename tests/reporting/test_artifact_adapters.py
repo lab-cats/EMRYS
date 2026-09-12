@@ -1144,10 +1144,6 @@ def test_native_metrics_and_artifact_state_are_conservative(
     genome = record_for(artifact_fixture, "ref.star_index.genome")
     assert genome["source"]["media_type"] == "application/octet-stream"
     assert "scientific_state" not in genome
-    assert genome["runtime_validation"]["status"] == "not_run"
-    assert genome["cluster_validation"]["proof_status"] == "not_run"
-    assert genome["attempts"] == []
-    assert genome["selected_attempt_id"] is None
 
 
 def test_star_final_log_preserves_infinite_mapping_speed_as_string(

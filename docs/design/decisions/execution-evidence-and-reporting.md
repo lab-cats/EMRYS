@@ -140,7 +140,7 @@ need to rerun the renderer to rediscover those inputs during reuse. Template
 and stylesheet hashes remain original producer provenance; they are not data
 inputs checked against a newer installation.
 
-Current records use artifact entries v2, Run summaries v5 and report receipts v6.
+Current records use artifact entries v3, Run summaries v6 and report receipts v6.
 The [version policy](platform-direction.md#version-support) applies: no old-hash
 translation, record rewriting or historical-format reader is added. Existing
 data and evidence remain intact for ordinary tools or the originating software.
@@ -214,6 +214,22 @@ Indexing and summary generation now share one publication owner, completion
 marker, and recovery scope. The result manifest contains shared Run and publication provenance once, with
 per-artifact computation and validation facts. It commits the summary and QC
 TSVs without a second receipt or per-artifact record files.
+Artifact entries describe one declared source each: identity, availability,
+completion, content hash, measurements, parameters, warnings and errors. They
+do not contain another execution history, supplemental file list, tool list,
+or local/runtime/cluster proof labels. Production never populated those lists
+or proof labels. Actual scientific checks remain in the declared validation
+artifacts; original Run and Attempt records own execution history and tool
+provenance. The reports point readers to those records and `emrys inspect`.
+The current closed formats reject the retired fields, including hand-authored
+records that supplied them; no existing scientific data or evidence is rewritten.
+
+Retiring these fields also removes reporting-only helpers from shared admission
+files. Because scientific identity hashes whole shared files, this cleanup is
+part of the pending source-boundary transition and changes the scientific
+fingerprint once. It does not introduce an exemption from shared-file hashing
+or make pre-transition Runs compatible with the new installed package.
+
 HTML publication and validation-roster policy retain their separate scope. Reporting-memory policy belongs to the
 [Run contract](../../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning).
 Dashboard replacement and retirement remain separate decisions.

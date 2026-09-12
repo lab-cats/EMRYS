@@ -26,14 +26,9 @@
       "availability_status",
       "completion_status",
       "rollup_state",
-      "local_test_status",
-      "runtime_validation_status",
-      "cluster_dry_run_status",
-      "cluster_proof_status",
       "source_path",
       "source_sha256",
       "source_row_count",
-      "selected_attempt_id",
       "warning_count",
       "error_count"
     ]

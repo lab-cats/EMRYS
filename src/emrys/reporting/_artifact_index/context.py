@@ -193,7 +193,6 @@ def prepare_context(
             record,
             inventory_row,
             validator,
-            source_root=source_root,
         )
         records.append(record)
 

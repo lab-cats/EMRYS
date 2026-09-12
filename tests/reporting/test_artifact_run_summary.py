@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import csv
 import hashlib
 import json
@@ -136,7 +135,7 @@ def test_execute_publishes_exact_canonical_schema_valid_transaction(
             run_summary_fixture.qc_summary_path,
         )
     ]
-    assert document["schema_version"] == "5.0.0"
+    assert document["schema_version"] == "6.0.0"
     assert document["publication"]["transaction_state"] == "complete"
     assert set(run_summary_fixture.output_dir.iterdir()) == set(
         run_summary_fixture.summary_paths
@@ -241,56 +240,6 @@ def test_required_artifact_limitation_is_computational_only(tmp_path: Path) -> N
         "required_artifacts_not_complete",
     ]
     assert "scientific" not in limitations[0]["description"].lower()
-
-
-def test_attempt_aggregation_preserves_independent_chains_and_rejects_conflicts() -> (
-    None
-):
-    first = {
-        "attempt_id": "attempt-a1",
-        "state": "succeeded",
-        "started_at": "2000-01-01T00:00:00Z",
-        "finished_at": "2000-01-01T00:00:01Z",
-        "exit_code": 0,
-        "supersedes_attempt_id": None,
-        "evidence": [],
-        "warnings": [],
-        "errors": [],
-    }
-    retry = {
-        **first,
-        "attempt_id": "attempt-a2",
-        "started_at": "2000-01-01T00:00:02Z",
-        "finished_at": "2000-01-01T00:00:03Z",
-        "supersedes_attempt_id": "attempt-a1",
-    }
-    independent = {
-        **first,
-        "attempt_id": "attempt-b1",
-        "started_at": "2000-01-01T00:00:04Z",
-        "finished_at": "2000-01-01T00:00:05Z",
-    }
-    artifacts = [
-        {"attempts": [first, retry]},
-        {"attempts": [independent, copy.deepcopy(retry)]},
-    ]
-
-    attempts, superseded = RUN_SUMMARY_PROJECTION._build_attempts(artifacts)
-
-    assert [attempt["attempt_id"] for attempt in attempts] == [
-        "attempt-a1",
-        "attempt-a2",
-        "attempt-b1",
-    ]
-    assert superseded == ["attempt-a1"]
-
-    conflicting = copy.deepcopy(artifacts)
-    conflicting[1]["attempts"][1]["finished_at"] = "2000-01-01T00:00:06Z"
-    with pytest.raises(
-        RUN_SUMMARY_MODELS.RunSummaryError,
-        match="conflicting definitions",
-    ):
-        RUN_SUMMARY_PROJECTION._build_attempts(conflicting)
 
 
 def test_combined_readmission_keeps_summary_json_and_views_byte_identical(

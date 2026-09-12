@@ -1,12 +1,16 @@
 # EMRYS temporary compression backlog
 
-Reviewed **2026-09-12** from `de674ae0`. The [campaign](compression_campaign.md)
+Reviewed **2026-09-12** from `893136e3`. The [campaign](compression_campaign.md)
 owns the goals; this file owns CS scope, status, decisions, and proof. The
 [main matrix](backlog_matrix.md) owns broader outcomes and campaign completion.
 
 ## Working queue
 
-**[PR #162](https://github.com/lab-cats/EMRYS/pull/162): CS-11 is implemented; hosted verification is pending.** Reporting source
+**CS-36: unused artifact-record fields are retired; hosted verification is pending.**
+Builders, contracts, report projections and tests now use the reduced records.
+Scientific records, runner recovery, both reports, figures and the dashboard remain.
+
+**[PR #162](https://github.com/lab-cats/EMRYS/pull/162): CS-11 passed ordinary hosted CI at `893136e3`.** Reporting source
 changes preserve scientific compatibility, and reports retain the provenance
 of their original scientific work and actual reporting producer.
 
@@ -45,8 +49,8 @@ data, provenance, current Run recovery, and retained evidence; dashboard work
 and scientific-validation roster changes remain excluded.
 
 The product baseline for the 20% target is **69,223 physical lines at `cab77a26`**;
-Through CS-11 it is **57,237**, a reduction of 11,986 (17.31%). The target is at most
-55,378 lines, leaving 1,859 to remove. Count tracked source `.py`, `.R`, `.sh`, `.css`, `.j2` files and
+Through CS-36 it is **56,628**, a reduction of 12,595 (18.19%). The target is at most
+55,378 lines, leaving 1,250 to remove. Count tracked source `.py`, `.R`, `.sh`, `.css`, `.j2` files and
 the workflow `Snakefile` (including its new package location). Relocated
 `renv/activate.R` remains generated bootstrap; `restore_r_environment.R`
 remains tooling. Report schemas/configuration, tests, docs, tooling, and evidence
@@ -127,7 +131,7 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-08](#cs-07-through-cs-10-standalone-publication) | BAM QC: retire mode-dependent publication for two outputs. | Done | 2 | 2 | Absorbed into PR #155; focused checks and ordinary hosted CI pass at a0dc7526; integration pending. | `OPS-03` |
 | [CS-09](#cs-07-through-cs-10-standalone-publication) | Duplicate marking: retire direct destinations and mode branches. | Done | 3 | 3 | Absorbed into PR #155; focused checks and ordinary hosted CI pass at a0dc7526; integration pending. | `OPS-03` |
 | [CS-10](#cs-07-through-cs-10-standalone-publication) | Paired CMH: retire six-file predecessor replacement/restoration. | Done | 3 | 4 | Implemented within CS-18: direct calls refuse existing destinations; focused publication checks and ordinary hosted CI pass at cab77a26. | `OPS-03` |
-| [CS-11](#cs-11-reporting-source-identity) | Define a reporting-source boundary that permits reporting-only changes without changing scientific Run identity. | In progress | 4 | 4 | Implement the approved reporting source boundary and preserve scientific identity, original provenance and current-format reuse. | `REPORT-ROSTER-01` |
+| [CS-11](#cs-11-reporting-source-identity) | Define a reporting-source boundary that permits reporting-only changes without changing scientific Run identity. | Done | 4 | 4 | PR #162: ordinary hosted CI passed at 893136e3; original scientific provenance and current-format reuse remain. | `REPORT-ROSTER-01` |
 | [CS-12](#cs-12-canonical-bam-command-printing) | Remove canonical BAM's four print-only command arrays. | Done | 2 | 1 | Retired with standalone preview in PR #155; ordinary hosted CI passes at a0dc7526; integration pending. | `COMPRESS-01` |
 | [CS-13](#cs-13-runtime-profile-construction) | Remove the redundant RuntimeCheck field-copy construction in onboarding. | Done | 1 | 2 | Absorbed by CS-32: fixed runtime checks are derived from path choices. | `COMPRESS-01` |
 | [CS-14](#cs-14-paired-cmh-configuration) | Let the existing module normalizer own equivalent newly admitted paired-CMH configuration. | Done | 2 | 4 | CS-22 uses one module normalizer for both current Project forms; ordinary CI passes at `f8fd5346`; integration pending. | `COMPRESS-01` |
@@ -153,6 +157,39 @@ they are rough selection aids, not measured benefit or implementation approval.
 | [CS-33](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Consolidate equivalent region, graph and resource rules. | Done | 3 | 3 | Preserve differing accepted inputs and independent scientific checks. | `COMPRESS-01` |
 | [CS-34](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Retire duplicated application-log failure handling. | Done | 2 | 2 | Keep log failures observational, warning once and preserving partial logs. | `COMPRESS-01` |
 | [CS-35](#cs-31-through-cs-35-shared-operational-state-and-checked-inputs) | Carry admitted inputs through reporting instead of reconstructing them. | Done | 4 | 4 | Preserve exact source checks at publication/reuse, both reports and every figure. | `REPORT-ROSTER-01` |
+| [CS-36](#cs-36-unused-artifact-record-fields) | Retire artifact fields that production never populates and their dependent machinery. | Verification pending | 4 | 3 | Local contract/golden/static checks pass; hosted reporting/recovery verification is pending. | `REPORT-ROSTER-01` |
+
+### CS-36 Unused artifact-record fields
+
+Approved from `893136e3`. The existing artifact builder always emits empty
+attempt histories, selected attempts, supplemental members and tools, plus
+local/runtime/cluster proof labels fixed at `not_run`. Its attempt-provenance
+label adds no actual lineage. Analysis extensions use the same builder.
+
+- **Retired:** those fields, retry-graph and proof-role validation, empty summary
+  history/tool projections, repeated status columns and empty report tables.
+  This narrows the schema and validator's acceptance of hand-authored records.
+- **Preserved:** source identity and inventory order, canonical path uniqueness,
+  availability/completion, scientific validation, QC metrics, parameters and
+  issues; original Run/Attempt provenance, publication receipts, locks and recovery.
+  Figures and the dashboard are unchanged. Real execution history remains with
+  the runner; report navigation uses original records and the inspection command.
+- **Compatibility:** shared-file cleanup changes scientific identity once as part
+  of the pending CS-11 transition. No historical formats, adapters, data migration,
+  new product files or retained-evidence deletion are authorized.
+- **Verification:** retain focused source/inventory/failure protections and review
+  both HTML projections against the parent. Long reporting and recovery checks
+  run in hosted CI; local installation metadata remains an environment limitation.
+
+The implementation removes **609 product lines** (+26/−635), **770 schema lines**
+and **616 test/fixture lines**. One product file retires; none are added. Documentation
+is accounted separately. Configuration, tooling and retained evidence are unchanged.
+Forty-one focused contract/summary tests and thirteen independent golden tests pass;
+Ruff, formatting, source dependencies and documentation structure also pass.
+The parent HTML digests were reproduced before reviewing the new output: scientific
+HTML differs only in the Operations link; evidence HTML retires the unused fields
+and moves the unchanged original records into Operations. Five full summary fixtures
+need hosted verification because local build metadata is unavailable.
 
 ## Acceptance shared by every card
 
@@ -384,7 +421,8 @@ checks replace repeated standalone lifecycle matrices.
 
 ### CS-11 Reporting source identity
 
-Approved for implementation against `de674ae0`. The
+**Done in PR #162:** [ordinary hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34702567593)
+passed at `893136e3`; integration is pending. The
 [report-output decision](../design/decisions/execution-evidence-and-reporting.md#scientific-compatibility-and-reporting-provenance)
 owns the lasting compatibility and provenance rules.
 
@@ -419,8 +457,8 @@ changes show original records and remove the implementation-status column.
 Full local reporting fixtures remain blocked by missing installed build metadata;
 no installation or admission bypass was performed. Hosted CI found two stale
 test setups: a callback omitted the new receipt-hash keyword, and a publisher
-fixture retained placeholder scientific-origin paths. Both are corrected;
-the hosted rerun is pending. Production code did not change for these fixes.
+fixture retained placeholder scientific-origin paths. Both were corrected and
+the hosted rerun passed. Production code did not change for these fixes.
 
 ### CS-12 Canonical BAM command printing
 

@@ -30,3 +30,12 @@ CS-11 preserves the scientific HTML bytes. The reviewed evidence-view difference
 updates the manifest version, replaces the repeated implementation-status column
 with original Run/Attempt references, and explains their scientific provenance.
 The remaining scientific values, figures, statuses and limitations are unchanged.
+
+The artifact-field retirement narrows entries to v3 and manifests to v6. Schema
+and TSV header oracles remove only the retired attempt/proof-status fields.
+Both previous HTML digests were reproduced before comparing the new views.
+Scientific HTML changes only the Operations link target; its remaining bytes
+match exactly. The evidence view removes synthetic proof labels and empty
+history/tool tables, moves the unchanged original Run/Attempt references into
+Operations, and retains source, QC, warning, limitation and publisher details.
+The literal receipt serialization oracle remains unchanged.

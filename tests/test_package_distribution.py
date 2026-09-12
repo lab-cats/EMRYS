@@ -531,7 +531,7 @@ print(json.dumps({
             f'href="{run_id}.evidence_report.html#analysis-sources-section"' in content
         )
         assert (
-            f'href="{run_id}.evidence_report.html#attempt-lineage-section"' in content
+            f'href="{run_id}.evidence_report.html#execution-records-section"' in content
         )
     assert "EMRYS evidence and operations report" in evidence_html
     assert "Matplotlib 3.11.1" in evidence_html

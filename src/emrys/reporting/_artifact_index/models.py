@@ -63,7 +63,6 @@ class Inspection:
     availability_status: str
     completion_status: str
     state_reason: str | None
-    attempt_provenance_status: str
     source: dict[str, Any] | None
     parameters: dict[str, Any] = field(default_factory=dict)
     metrics: list[dict[str, Any]] = field(default_factory=list)
