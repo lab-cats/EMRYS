@@ -6,7 +6,7 @@ owns the goals; this file owns CS scope, status, decisions, and proof. The
 
 ## Working queue
 
-**CS-37–40: unused worker, runtime, logging and reporting paths are retired; hosted verification is pending.**
+**[PR #164](https://github.com/lab-cats/EMRYS/pull/164), CS-37–40: unused worker, runtime, logging and reporting paths are retired; hosted verification is pending.**
 Custom analysis dependencies remain supported. Each existing owner retains its
 active input checks, scientific outputs, provenance and publication protections.
 
