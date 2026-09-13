@@ -140,14 +140,6 @@ def test_missing_input_and_wrong_output_fail_closed(tmp_path: Path) -> None:
     assert run_validator(invalid_evidence, "--execute").returncode == 2
 
 
-def test_foreign_lock_is_preserved(tmp_path: Path) -> None:
-    evidence = build_validation_fixture(tmp_path)
-    lock = evidence.output.parent / f".{evidence.output.name}.lock"
-    lock.write_text("foreign\n", encoding="utf-8")
-    assert run_validator(evidence, "--execute").returncode == 2
-    assert lock.read_text(encoding="utf-8") == "foreign\n"
-
-
 def test_arbitrary_cwd_dry_run_execute_and_repeat_are_byte_identical(
     tmp_path: Path,
 ) -> None:

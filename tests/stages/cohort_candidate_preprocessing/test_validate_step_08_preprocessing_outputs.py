@@ -262,16 +262,6 @@ def test_arbitrary_cwd_dry_execute_repeat_byte_parity_has_no_residue(
     }
 
 
-def test_execute_publishes_five_passes(tmp_path: Path) -> None:
-    evidence = _build_validation_fixture(tmp_path)
-    result = _run_validator(evidence, "--execute")
-
-    assert result.returncode == 0
-    rows = report_rows(evidence.output)
-    assert_exact_check_roster(rows, "08")
-    assert {row["status"] for row in rows} == {"pass"}
-
-
 def test_each_check_id_is_observable_as_exit_zero_failed_evidence(
     tmp_path: Path,
 ) -> None:
@@ -425,15 +415,6 @@ def test_missing_input_and_wrong_output_fail_closed(tmp_path: Path) -> None:
         output=evidence.output.parent / "wrong.tsv",
     )
     assert _run_validator(wrong_output, "--execute").returncode == 2
-
-
-def test_foreign_lock_is_preserved(tmp_path: Path) -> None:
-    evidence = _build_validation_fixture(tmp_path)
-    lock = evidence.output.parent / f".{evidence.output.name}.lock"
-    lock.write_text("foreign\n", encoding="utf-8")
-
-    assert _run_validator(evidence, "--execute").returncode == 2
-    assert lock.read_text(encoding="utf-8") == "foreign\n"
 
 
 @pytest.mark.parametrize("changed", ("receipt", "vcf"))

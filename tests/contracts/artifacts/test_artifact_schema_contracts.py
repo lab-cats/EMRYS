@@ -205,7 +205,7 @@ def test_valid_synthetic_fixtures_pass_public_validator(
     assert f"passed {name}" in result.stdout
 
 
-def test_cli_checks_all_schemas_inventory_and_help() -> None:
+def test_cli_checks_schemas_inventory_reconciliation_and_help(tmp_path: Path) -> None:
     result = run_cli("--check-schemas", "--inventory", str(INVENTORY))
     help_result = run_cli("--help")
 
@@ -215,6 +215,23 @@ def test_cli_checks_all_schemas_inventory_and_help() -> None:
     assert help_result.returncode == 0
     assert "--check-schemas" in help_result.stdout
     assert "--inventory" in help_result.stdout
+
+    inventory = tmp_path / "inventory.tsv"
+    write_inventory(
+        inventory,
+        list(contracts.INVENTORY_HEADER),
+        [inventory_row_for_artifact(read_json(FIXTURES["artifact-record"]))],
+    )
+    reconciled = run_cli(
+        "--schema",
+        "artifact-record",
+        "--document",
+        str(FIXTURES["artifact-record"]),
+        "--inventory",
+        str(inventory),
+    )
+    assert reconciled.returncode == 0, reconciled.stderr
+    assert "Document/inventory reconciliation passed" in reconciled.stdout
 
     unsupported = run_cli(
         "--schema",
@@ -664,12 +681,10 @@ def inventory_row_for_artifact(
     ],
 )
 def test_artifact_record_reconciles_every_inventory_field(
-    tmp_path: Path,
     field: str,
 ) -> None:
     artifact = read_json(FIXTURES["artifact-record"])
     row = inventory_row_for_artifact(artifact)
-    contracts.reconcile_artifact_inventory_row(artifact, row)
 
     changed = row.copy()
     changed[field] = {
@@ -685,21 +700,6 @@ def test_artifact_record_reconciles_every_inventory_field(
         match="explicit inventory row",
     ):
         contracts.reconcile_artifact_inventory_row(artifact, changed)
-
-    inventory = tmp_path / "inventory.tsv"
-    write_inventory(inventory, list(contracts.INVENTORY_HEADER), [row])
-    document = tmp_path / "artifact.json"
-    write_json(document, artifact)
-    result = run_cli(
-        "--schema",
-        "artifact-record",
-        "--document",
-        str(document),
-        "--inventory",
-        str(inventory),
-    )
-    assert result.returncode == 0, result.stderr
-    assert "Document/inventory reconciliation passed" in result.stdout
 
 
 def test_run_summary_reconciles_inventory_hash_order_and_scope(

@@ -477,16 +477,6 @@ def test_symlinked_input_fails_closed(tmp_path: Path) -> None:
     assert not evidence.output.exists()
 
 
-def test_foreign_lock_is_preserved(tmp_path: Path) -> None:
-    evidence = _build_evidence(tmp_path)
-    lock = evidence.output.parent / f".{evidence.output.name}.lock"
-    lock.write_text("foreign\n", encoding="utf-8")
-
-    result = _run(evidence, "--execute")
-    assert result.returncode == RUNTIME_FAILURE
-    assert lock.read_text(encoding="utf-8") == "foreign\n"
-
-
 @pytest.mark.parametrize(
     ("option", "expected"),
     (

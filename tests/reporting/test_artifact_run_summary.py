@@ -6,7 +6,6 @@ import csv
 import hashlib
 import json
 from collections import Counter
-from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -39,33 +38,8 @@ def read_tsv_header(path: Path) -> tuple[str, ...]:
         return tuple(next(reader))
 
 
-def write_tsv(
-    path: Path,
-    header: Sequence[str],
-    rows: Sequence[Mapping[str, str]],
-) -> None:
-    with path.open("w", encoding="utf-8", newline="") as stream:
-        writer = csv.DictWriter(
-            stream,
-            fieldnames=list(header),
-            delimiter="\t",
-            lineterminator="\n",
-            extrasaction="raise",
-        )
-        writer.writeheader()
-        writer.writerows(rows)
-
-
 def read_json(path: Path) -> dict[str, Any]:
     return CONTRACTS.load_json_object(path, f"test JSON {path.name}")
-
-
-def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for block in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
 
 
 def canonical_json_bytes(value: Any) -> bytes:

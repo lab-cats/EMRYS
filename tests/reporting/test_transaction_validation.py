@@ -490,19 +490,6 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
     )
     evidence_html = report_root / built.run_id / f"{built.run_id}.evidence_report.html"
 
-    def validate_artifact() -> None:
-        transaction_validation.validate_run_summary_transaction(
-            expected_receipt_sha256=_sha256(built.summary_json_path),
-            package_root=PACKAGE_ROOT,
-            artifact_source_root=built.root,
-            run_id=built.run_id,
-            run_contract=built.adapter_fixture.run_contract,
-            inventory=built.adapter_fixture.inventory,
-            analysis_policy=built.adapter_fixture.analysis_policy,
-            output_root=built.adapter_fixture.output_root,
-            profile=adapter_fixture.analysis_profile_v1(),
-        )
-
     def validate_summary() -> None:
         transaction_validation.validate_run_summary_transaction(
             expected_receipt_sha256=_sha256(built.summary_json_path),
@@ -658,19 +645,6 @@ def test_each_validator_rejects_control_residue_injected_before_return(
     token = "123-" + "a" * 32
     artifact_dir = built.summary_json_path.parent
     report_dir = report_root / built.run_id
-
-    def validate_artifact() -> None:
-        transaction_validation.validate_run_summary_transaction(
-            expected_receipt_sha256=_sha256(built.summary_json_path),
-            package_root=PACKAGE_ROOT,
-            artifact_source_root=built.root,
-            run_id=built.run_id,
-            run_contract=built.adapter_fixture.run_contract,
-            inventory=built.adapter_fixture.inventory,
-            analysis_policy=built.adapter_fixture.analysis_policy,
-            output_root=built.adapter_fixture.output_root,
-            profile=adapter_fixture.analysis_profile_v1(),
-        )
 
     def validate_summary() -> None:
         transaction_validation.validate_run_summary_transaction(

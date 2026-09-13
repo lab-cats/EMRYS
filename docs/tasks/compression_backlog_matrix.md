@@ -793,7 +793,7 @@ full below so an unresolved finding cannot disappear during conversion.
 | Reader-oriented wording, examples, QoS/resources | CS-16/17 explicitly own the complete reader paths. Explain standard `qos`; do not rename the field. Document review is not a novice/site walkthrough. |
 | Documentation ownership and orientation | CS-16/17 reconcile each subject across guides, contracts, READMEs, and docstrings, retaining useful meaning before retiring duplication. |
 | Code comprehension and module concentration | CS-01/02/18 delivered the owner migrations. The final bounded review retained command planning, task execution and the Step09 threshold tuple for the reasons [below](#final-code-clarity-review). No further net-negative simplification was qualified. |
-| Repeated protection; branch surface; excessive tests | The [final test audit](#redundant-test-coverage-audit) identifies qualified cleanup and surviving checks. Tests remain unchanged pending selection; low branch coverage does not justify adding cases. |
+| Repeated protection; branch surface; excessive tests | The [approved cleanup](#redundant-test-coverage-audit) removes proven duplicates and records surviving checks; hosted verification is pending. Conditional candidates remain unselected. |
 | Schema generations/layout | Historical readers retired with CS-22. Retain packaged layout under the [schema owner](../../src/emrys/contracts/schemas/README.md#version-and-identity-rules); directory numbers span unrelated contracts and are not cleanup targets. |
 | Scripts, inline/generated programs, R bootstrap wrappers, numeric stage names | `OPS-03` owns substantive retain/migrate/retire decisions. Rename surviving programs during real migration; do not add a common bootstrap merely to inline small, semantically different wrappers. Reconcile the site-specific Step 05 script and PR #44/#45 before new work. |
 | Workflow-profile rule/selector fields | `PROFILE-CONTRACT-01`; detailed deferred contract boundary [below](#workflow-profile-fields). `rule_name` is consumed, not unused. |
@@ -824,12 +824,12 @@ that every remaining function is minimal:
 
 ### Redundant test coverage audit
 
-**Qualified proposals at `5ca910e8`; no tests changed.** Static caller and
-assertion review found 16 duplicate cases (100 function lines) and four uncalled
-helpers (45 lines), roughly 180–190 lines with spacing/import cleanup. The
-following eight smoke cases repeat stronger public-CLI tests in the same files:
+**Deletion approved after PR #166.** The audit at `5ca910e8` qualified 16
+duplicate cases and four uncalled helpers. This cleanup removes those cases and
+consolidates repeated executions, preserving the following stronger public-CLI
+checks. Product behavior, fixtures and retained evidence are unchanged.
 
-| Test file under `tests/` | Redundant cases | Surviving independent check |
+| Test file under `tests/` | Removed cases | Surviving independent check |
 |---|---|---|
 | `evidence/rseqc_orientation/test_validate_step_03_rseqc_orientation.py` | `test_dry_run_is_side_effect_free`; `test_execute_publishes_five_passes` | `test_arbitrary_cwd_dry_execute_repeat_is_exact_and_residue_free` |
 | `stages/duplicate_marking/test_validate_step_04_mark_duplicates.py` | `test_dry_run_is_side_effect_free`; `test_execute_publishes_five_passes` | `test_arbitrary_cwd_dry_run_execute_and_repeat_are_byte_exact` |
@@ -837,35 +837,42 @@ following eight smoke cases repeat stronger public-CLI tests in the same files:
 | `stages/cohort_candidate_preprocessing/test_validate_step_08_preprocessing_outputs.py` | `test_execute_publishes_five_passes` | `test_arbitrary_cwd_dry_execute_repeat_byte_parity_has_no_residue` |
 | `stages/star_index/test_validate_step_00a_star_index.py` | `test_dry_run_is_side_effect_free` | `test_full_dry_run_and_execute_repeat_are_cwd_independent`; retain the separate success test's unique roster assertions. |
 
-Eight `test_foreign_lock_is_preserved` copies in the orientation-evidence, BAM
-QC, split-N-cigar, mechanical-orientation, mpileup, preprocessing, STAR-alignment
-and CMH validator tests also repeat the same `run_from_args` → `finish` →
-`publication.publish` path. Retain
+Eight `test_foreign_lock_is_preserved` copies were removed from orientation
+evidence, BAM QC, split-N-cigar, mechanical orientation, mpileup, preprocessing,
+STAR alignment and CMH validators. They used the same `run_from_args` → `finish`
+→ `publication.publish` path. Surviving checks are
 `tests/libraries/test_validation_report.py::test_publish_rejects_an_existing_lock`,
 the duplicate-marking public-CLI lock case, and every owner's scientific golden.
 Custom exception handlers and combined malformed-predecessor cases are excluded.
 
-Other qualified cleanup:
+Other implemented cleanup:
 
-- In `tests/reporting/test_transaction_validation.py`, remove the uncalled nested
+- In `tests/reporting/test_transaction_validation.py`, removed the uncalled nested
   `validate_artifact` from `test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults`
   and `test_each_validator_rejects_control_residue_injected_before_return`.
-  Keep every summary/report mutation and residue case. In
-  `tests/reporting/test_artifact_run_summary.py`, `write_tsv` and `sha256_file`
-  are uncalled; retain `hashlib` for its other callers.
+  Every summary/report mutation and residue case remains. Removed the uncalled
+  `write_tsv` and `sha256_file` from `tests/reporting/test_artifact_run_summary.py`;
+  `hashlib` remains for its other callers.
 - In `tests/contracts/artifacts/test_artifact_schema_contracts.py`,
-  `test_artifact_record_reconciles_every_inventory_field` tests six distinct
-  mutations, then repeats the unchanged positive CLI input six times. Keep all
-  six negative checks and run the positive CLI check once.
-- In `tests/orchestration/run_coordinator/test_task.py`, move assertions from
+  `test_artifact_record_reconciles_every_inventory_field` retains all six distinct
+  negative mutations. Its positive CLI input is checked once in the existing
+  `test_cli_checks_schemas_inventory_reconciliation_and_help` case.
+- In `tests/orchestration/run_coordinator/test_task.py`, moved assertions from
   `test_records_exact_public_commands_and_exit_codes` and the rerun attempt in
   `test_successful_dispatch_rerun_refuses_immutable_predecessor` into
-  `test_success_publishes_schema_valid_content_bound_records`. Preserve command,
-  exit-code and unchanged-predecessor checks while removing two initial task runs.
+  `test_success_publishes_schema_valid_content_bound_records`. Command, exit-code
+  and unchanged-predecessor checks remain; two initial task runs are removed.
 
-The 16 duplicate cases plus the parameterized success cleanup avoid 21 direct
-CLI launches; this is a source-derived count, not measured CI wall time. The
-runner consolidation is additional and requires preserving its distinct assertions.
+The 16 removed cases and consolidated parameterized success avoid 21 direct
+CLI launches, plus two initial runner executions. This is a source-derived
+execution count, not measured CI wall time. Tests are **199 net lines smaller**
+across 14 existing files; no test files were added or deleted. Locally, 13
+surviving CLI/golden/lock cases and 38 schema cases pass; all 1,983 tests collect.
+Ruff, formatting and documentation checks pass. Full reporting and consolidated
+runner execution remain assigned to hosted CI: the local installation lacks
+build provenance, and no admission bypass or installation was used. Hosted
+verification is pending.
+
 Public API fingerprints, monkeypatch-hook tests and stale-field mutations need
 further fact-by-fact proof before deletion. Retain numerical/roster goldens,
 false-pass characterizations, mutation/publication/recovery boundaries, guarded

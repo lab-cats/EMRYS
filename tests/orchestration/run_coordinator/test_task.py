@@ -587,6 +587,38 @@ def test_success_publishes_schema_valid_content_bound_records(tmp_path: Path) ->
         "path": Path(built.plan.stderr_path).relative_to(built.run_root).as_posix(),
         "sha256": hashlib.sha256(Path(built.plan.stderr_path).read_bytes()).hexdigest(),
     }
+    assert verified["producer"] == {
+        "argv": built.definition["producer_argv"],
+        "exit_code": 0,
+    }
+    assert verified["validator"] == {
+        "argv": built.definition["validator_argv"],
+        "exit_code": 0,
+    }
+    semantic = verified["semantic_all_pass"]
+    assert semantic["exit_code"] == 0
+    assert semantic["argv"] == list(
+        controlled_python_argv(
+            sys.executable,
+            "-m",
+            "emrys",
+            "validate",
+            "all-pass",
+            "--report",
+            built.definition["validation_report_path"],
+            "--step-id",
+            "01",
+            "--scope-id",
+            SCOPE_ID,
+        )
+    )
+    verified_path = Path(built.plan.verified_task_path)
+    predecessor = verified_path.read_bytes()
+
+    with pytest.raises(task.TaskBoundaryError, match="task-start record"):
+        _execute_task(built.plan, ops=_fixed_ops())
+
+    assert verified_path.read_bytes() == predecessor
 
 
 def test_stream_capture_preserves_exact_opaque_bytes_and_per_stream_order(
@@ -678,39 +710,6 @@ def test_stream_capture_preserves_exact_opaque_bytes_and_per_stream_order(
     )
     assert Path(built.plan.stdout_path).read_bytes() == expected_stdout
     assert Path(built.plan.stderr_path).read_bytes() == expected_stderr
-
-
-def test_records_exact_public_commands_and_exit_codes(tmp_path: Path) -> None:
-    built = _task_fixture(tmp_path)
-
-    _execute_task(built.plan, ops=_fixed_ops())
-
-    verified = _validate_verified(built)
-    assert verified["producer"] == {
-        "argv": built.definition["producer_argv"],
-        "exit_code": 0,
-    }
-    assert verified["validator"] == {
-        "argv": built.definition["validator_argv"],
-        "exit_code": 0,
-    }
-    semantic = verified["semantic_all_pass"]
-    assert semantic["exit_code"] == 0
-    assert semantic["argv"] == list(
-        controlled_python_argv(
-            sys.executable,
-            "-m",
-            "emrys",
-            "validate",
-            "all-pass",
-            "--report",
-            built.definition["validation_report_path"],
-            "--step-id",
-            "01",
-            "--scope-id",
-            SCOPE_ID,
-        )
-    )
 
 
 def test_zero_exit_validator_fail_row_blocks_verified_publication(
@@ -1087,20 +1086,6 @@ def test_processing_source_binding_is_closed_and_input_only(
         _execute_task(built.plan, ops=_fixed_ops())
     assert not Path(built.plan.task_attempt_path).exists()
     assert not Path(built.plan.task_start_path).exists()
-
-
-def test_successful_dispatch_rerun_refuses_immutable_predecessor(
-    tmp_path: Path,
-) -> None:
-    built = _task_fixture(tmp_path)
-    _execute_task(built.plan, ops=_fixed_ops())
-    verified = Path(built.plan.verified_task_path)
-    predecessor = verified.read_bytes()
-
-    with pytest.raises(task.TaskBoundaryError, match="task-start record"):
-        _execute_task(built.plan, ops=_fixed_ops())
-
-    assert verified.read_bytes() == predecessor
 
 
 def test_dispatch_is_closed_and_binds_exact_owner_scope(tmp_path: Path) -> None:
