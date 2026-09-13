@@ -26,43 +26,6 @@
       "minLength": 1,
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
     },
-    "evidence_reference": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "evidence_id",
-        "role",
-        "path",
-        "sha256"
-      ],
-      "properties": {
-        "evidence_id": {
-          "$ref": "#/$defs/safe_id"
-        },
-        "role": {
-          "enum": [
-            "implementation",
-            "local_test",
-            "runtime_log",
-            "runtime_output",
-            "cluster_dry_run",
-            "cluster_scheduler",
-            "cluster_log",
-            "cluster_output",
-            "scientific_evidence",
-            "validation_record",
-            "receipt",
-            "source_manifest"
-          ]
-        },
-        "path": {
-          "$ref": "#/$defs/path"
-        },
-        "sha256": {
-          "$ref": "#/$defs/sha256"
-        }
-      }
-    },
     "path_hash": {
       "type": "object",
       "additionalProperties": false,
@@ -106,8 +69,7 @@
       "required": [
         "code",
         "message",
-        "related_artifact_ids",
-        "evidence"
+        "related_artifact_ids"
       ],
       "properties": {
         "code": {
@@ -122,12 +84,6 @@
             "$ref": "#/$defs/safe_id"
           },
           "uniqueItems": true
-        },
-        "evidence": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/evidence_reference"
-          }
         }
       }
     },

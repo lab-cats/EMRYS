@@ -135,7 +135,7 @@ def test_execute_publishes_exact_canonical_schema_valid_transaction(
             run_summary_fixture.qc_summary_path,
         )
     ]
-    assert document["schema_version"] == "7.0.0"
+    assert document["schema_version"] == "8.0.0"
     assert document["publication"]["transaction_state"] == "complete"
     assert set(run_summary_fixture.output_dir.iterdir()) == set(
         run_summary_fixture.summary_paths

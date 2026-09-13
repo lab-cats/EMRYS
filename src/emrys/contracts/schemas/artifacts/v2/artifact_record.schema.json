@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:emrys:schema:artifacts:artifact-entry:v3",
+  "$id": "urn:emrys:schema:artifacts:artifact-entry:v4",
   "title": "EMRYS Run artifact entry",
   "description": "One expected artifact; the containing Run manifest owns shared identity and publication provenance.",
   "type": "object",

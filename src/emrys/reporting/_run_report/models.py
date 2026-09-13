@@ -17,8 +17,8 @@ if TYPE_CHECKING:
     from emrys.reporting._artifact_index.models import EvidenceContext
 
 PRODUCER = "emrys.reporting.report"
-PRODUCER_VERSION = "8.0.0"
-REPORT_RECEIPT_SCHEMA_VERSION = "7.0.0"
+PRODUCER_VERSION = "9.0.0"
+REPORT_RECEIPT_SCHEMA_VERSION = "8.0.0"
 JINJA_VERSION = "3.1.6"
 TEMPLATE_RESOURCE = "templates/run_report.html.j2"
 CSS_RESOURCE = "styles/run_report.css"
@@ -65,7 +65,6 @@ RECEIPT_HEADER = (
     "schema_name",
     "schema_version",
     "run_id",
-    "attempt_id",
     "generated_at",
     "interpretation_boundary",
     "output_id",
@@ -76,16 +75,6 @@ RECEIPT_HEADER = (
     "media_type",
     "self_contained",
     "report_receipt_json",
-)
-SUMMARY_HEADER = (
-    "run_id",
-    "interpretation_boundary",
-    "step_id",
-    "scope_type",
-    "scope_id",
-    "aggregate_state",
-    "warning_count",
-    "error_count",
 )
 
 
@@ -130,7 +119,3 @@ class ReportContext:
         ]
         checks.extend(self.report_input_rechecks)
         return tuple(checks)
-
-    @property
-    def input_snapshots(self) -> tuple[FileSnapshot, ...]:
-        return tuple(snapshot for snapshot, _label, _rehash in self.input_rechecks)

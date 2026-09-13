@@ -549,7 +549,7 @@ def validate_report_transaction(
             )
         else:
             for view, path in zip(
-                ("scientific", "evidence"), output_paths[:2], strict=True
+                ("scientific", "evidence"), output_paths, strict=True
             ):
                 validation.validate_rendered_html(
                     path,
@@ -626,7 +626,7 @@ def validate_report_transaction(
         verified_report_locations=tuple(
             (output_id, path)
             for (output_id, _kind, _suffix), path in zip(
-                artifact_contracts.REPORT_OUTPUTS[:2], output_paths[:2], strict=True
+                artifact_contracts.REPORT_OUTPUTS, output_paths, strict=True
             )
         ),
     )

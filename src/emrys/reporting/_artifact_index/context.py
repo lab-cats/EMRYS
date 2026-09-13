@@ -33,7 +33,6 @@ from .reconciliation import (
 )
 from .records import (
     build_artifact_record,
-    validate_record_in_memory,
 )
 from .registry import build_adapter_registry
 
@@ -185,16 +184,7 @@ def prepare_context(
     )
     reconcile_scope_transactions(inspections)
 
-    validator = contracts.schema_validator("artifact-record")
-    records: list[dict[str, Any]] = []
-    for inspection, inventory_row in zip(inspections, inventory_rows, strict=True):
-        record = build_artifact_record(inspection=inspection)
-        validate_record_in_memory(
-            record,
-            inventory_row,
-            validator,
-        )
-        records.append(record)
+    records = [build_artifact_record(inspection=item) for item in inspections]
 
     finished_at = utc_now()
     context = BuildContext(

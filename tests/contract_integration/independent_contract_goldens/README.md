@@ -47,3 +47,11 @@ fixture changes only its displayed manifest version from 6.0.0 to 7.0.0. Both
 views read metrics from their original artifact entries. No figure, QC row,
 scientific value or provenance reference was removed. Receipt serialization
 remains an independent byte oracle and is unchanged.
+
+The unused-report-field retirement moves entries to v4 and manifests and HTML
+receipts to v8. Both parent `bf84d947` HTML hashes were reproduced independently.
+Scientific HTML remains byte-identical; the evidence fixture changes only its
+displayed manifest version from 7.0.0 to 8.0.0. Receipt oracles remove the separate
+report attempt ID and scope-status TSV row, retaining both HTML output hashes.
+The receipt TSV golden was derived from its literal input and header using the
+standard library, independently of the production serializer.

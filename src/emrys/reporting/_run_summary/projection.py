@@ -69,42 +69,24 @@ def _build_limitations(
     *,
     artifacts: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    def generated_id(base: str, existing: set[str]) -> str:
-        candidate = base
-        counter = 1
-        while candidate in existing:
-            candidate = f"{base}.generated{counter}"
-            counter += 1
-        existing.add(candidate)
-        return candidate
-
-    limitations: list[dict[str, Any]] = []
-    used_ids = {limitation["limitation_id"] for limitation in limitations}
-    incomplete_required = [
-        artifact["artifact_id"]
+    if all(
+        not artifact["expectation"]["required"]
+        or contracts.artifact_rollup_state(artifact) == "complete"
         for artifact in artifacts
-        if artifact["expectation"]["required"]
-        and contracts.artifact_rollup_state(artifact) != "complete"
+    ):
+        return []
+    return [
+        {
+            "limitation_id": "required_artifacts_not_complete",
+            "status": "open",
+            "description": "One or more required expected artifacts are not complete.",
+            "impact": (
+                "The run summary is structurally complete, but downstream "
+                "consumers must retain the explicit incomplete states."
+            ),
+            "evidence_ids": [],
+        }
     ]
-    if incomplete_required:
-        limitations.append(
-            {
-                "limitation_id": generated_id(
-                    "required_artifacts_not_complete",
-                    used_ids,
-                ),
-                "status": "open",
-                "description": (
-                    "One or more required expected artifacts are not complete."
-                ),
-                "impact": (
-                    "The run summary is structurally complete, but downstream "
-                    "consumers must retain the explicit incomplete states."
-                ),
-                "evidence_ids": [],
-            }
-        )
-    return _stable_unique(limitations)
 
 
 def _metric_value_type(value: Any) -> str:

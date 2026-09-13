@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:emrys:schema:artifacts:report-receipt:v7",
-  "title": "EMRYS modular report receipt v7",
+  "$id": "urn:emrys:schema:artifacts:report-receipt:v8",
+  "title": "EMRYS modular report receipt v8",
   "type": "object",
   "additionalProperties": false,
   "$defs": {
@@ -37,51 +37,15 @@
     "report_output": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["output_id", "kind", "path", "sha256", "size_bytes", "media_type"],
+      "required": ["output_id", "kind", "path", "sha256", "size_bytes", "media_type", "self_contained"],
       "properties": {
         "output_id": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"},
-        "kind": {"enum": ["scientific_html", "evidence_html", "run_summary_tsv"]},
+        "kind": {"enum": ["scientific_html", "evidence_html"]},
         "path": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path"},
         "sha256": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/sha256"},
         "size_bytes": {"type": "integer", "minimum": 1},
-        "media_type": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/non_empty_string"},
-        "self_contained": {"type": "boolean"}
-      },
-      "allOf": [
-        {
-          "if": {"properties": {"kind": {"enum": ["scientific_html", "evidence_html"]}}, "required": ["kind"]},
-          "then": {
-            "required": ["self_contained"],
-            "properties": {"media_type": {"const": "text/html"}, "self_contained": {"const": true}}
-          }
-        },
-        {
-          "if": {"properties": {"kind": {"const": "run_summary_tsv"}}, "required": ["kind"]},
-          "then": {
-            "properties": {"media_type": {"const": "text/tab-separated-values"}},
-            "not": {"required": ["self_contained"]}
-          }
-        }
-      ]
-    },
-    "truncation": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "table_id",
-        "report_section",
-        "full_table_path",
-        "full_table_sha256",
-        "full_row_count",
-        "displayed_row_count"
-      ],
-      "properties": {
-        "table_id": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"},
-        "report_section": {"const": "computational-results-section"},
-        "full_table_path": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path"},
-        "full_table_sha256": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/sha256"},
-        "full_row_count": {"type": "integer", "minimum": 1},
-        "displayed_row_count": {"type": "integer", "minimum": 0}
+        "media_type": {"const": "text/html"},
+        "self_contained": {"const": true}
       }
     }
   },
@@ -90,7 +54,6 @@
     "schema_version",
     "record_type",
     "run_id",
-    "attempt_id",
     "generated_at",
     "publication_state",
     "transaction_state",
@@ -104,7 +67,6 @@
     "stylesheet",
     "outputs",
     "state_banner",
-    "truncations",
     "schema_versions",
     "analysis_execution_performed",
     "external_network_assets_used",
@@ -115,10 +77,9 @@
   ],
   "properties": {
     "schema_name": {"const": "emrys.report_receipt"},
-    "schema_version": {"const": "7.0.0"},
+    "schema_version": {"const": "8.0.0"},
     "record_type": {"const": "report_receipt"},
     "run_id": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"},
-    "attempt_id": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"},
     "generated_at": {"type": "string", "format": "date-time"},
     "publication_state": {"const": "complete"},
     "transaction_state": {"const": "complete"},
@@ -131,7 +92,7 @@
         "path": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path"},
         "sha256": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/sha256"},
         "schema_name": {"const": "emrys.run_summary"},
-        "schema_version": {"const": "7.0.0"}
+        "schema_version": {"const": "8.0.0"}
       }
     },
     "inputs": {"type": "array", "items": {
@@ -182,17 +143,16 @@
     "evidence_renderer": {"$ref": "#/$defs/core_renderer"},
     "template": {"$ref": "#/$defs/resource"},
     "stylesheet": {"$ref": "#/$defs/resource"},
-    "outputs": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/report_output"}},
+    "outputs": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/report_output"}},
     "state_banner": {"type": "string", "minLength": 1},
-    "truncations": {"type": "array", "items": {"$ref": "#/$defs/truncation"}},
     "schema_versions": {
       "type": "object",
       "additionalProperties": false,
       "required": ["artifact_entry", "run_summary", "report_receipt"],
       "properties": {
-        "artifact_entry": {"const": "3.0.0"},
-        "run_summary": {"const": "7.0.0"},
-        "report_receipt": {"const": "7.0.0"}
+        "artifact_entry": {"const": "4.0.0"},
+        "run_summary": {"const": "8.0.0"},
+        "report_receipt": {"const": "8.0.0"}
       }
     },
     "analysis_execution_performed": {"const": false},

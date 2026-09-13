@@ -503,7 +503,6 @@ print(json.dumps({
     assert {path.name for path in report_directory.iterdir()} == {
         f"{run_id}.scientific_report.html",
         f"{run_id}.evidence_report.html",
-        f"{run_id}.run_summary.tsv",
         f"{run_id}.report_outputs.tsv",
     }
     assert "Jinja2" in (report_directory / f"{run_id}.report_outputs.tsv").read_text(

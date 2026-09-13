@@ -140,7 +140,7 @@ need to rerun the renderer to rediscover those inputs during reuse. Template
 and stylesheet hashes remain original producer provenance; they are not data
 inputs checked against a newer installation.
 
-Current records use artifact entries v3, Run summaries v7 and report receipts v7.
+Current records use artifact entries v4, Run summaries v8 and report receipts v8.
 The [version policy](platform-direction.md#version-support) applies: no old-hash
 translation, record rewriting or historical-format reader is added. Existing
 data and evidence remain intact for ordinary tools or the originating software.
@@ -153,12 +153,21 @@ The receipt contract owns the immutable `REPORT_OUTPUTS` tuple of output ID,
 kind, and suffix, exported through the artifact API. The
 [reporting output contract](../../../src/emrys/reporting/README.md#report-outputs)
 owns the exact roster and path order. The receipt remains outside that roster;
-only the two HTML entries are displayed as HTML Results.
+the two HTML entries are displayed as HTML Results. The former report-level
+scope-status TSV is retired. Artifact-summary and QC TSVs retain their existing
+owners.
+
+Report receipts identify the reporting package and bind its inputs and outputs.
+They do not invent another Attempt identity or reserve empty truncation lists.
+Artifact issues carry their actual message and affected scope without empty
+attachment lists. Original scientific Run and Attempt records retain execution
+identity and provenance. Scientific receipt files remain ordinary declared task
+outputs; there is no separate task-receipt channel.
 
 Shared declarations do not merge validation or publication boundaries. Context
 preparation still owns named paths and snapshots; publication owns staged/final
 paths, input rechecks, and receipt-last order. Transaction validation owns
-historical roots, producer admission, version pairs, diagnostics, and output
+retained roots, producer admission, version pairs, diagnostics, and output
 rechecks. The coordinator re-admits its displayed absolute paths. Retired
 single-HTML paths, upstream summary TSVs, media types, and template navigation
 have different purposes and retain their owners.
@@ -166,9 +175,9 @@ have different purposes and retain their owners.
 #### Acceptance and stopping point
 
 Future changes must retain independent literal expectations for output order,
-IDs, kinds, basenames, current/historical receipts, and error messages. Schema
+IDs, kinds, basenames, current receipts, and error messages. Schema
 and test expectations must not be derived from the production tuple they check.
-Identity, runtime, originating-checkout, historical-read, refusal, and recovery
+Identity, runtime, original-provenance, retained-record admission, refusal, and recovery
 protections remain required at their existing boundaries.
 
 [Rendered goldens](../../../tests/contract_integration/independent_contract_goldens/test_independent_contract_goldens.py)
@@ -182,7 +191,8 @@ identity across revisions. Test policy and evidence levels remain in the
 
 Private reporting publishers create absent outputs because that is the behavior
 selected by public Run reporting. A complete bundle is revalidated and reused;
-a prepared predecessor cannot authorize overwriting its files. Historical reads remain supported. The
+a prepared predecessor cannot authorize overwriting its files. Stored records must
+use the current format. The
 [publication contract](../../../src/emrys/reporting/README.md#publication-and-recovery)
 owns current ordering, file ownership, cleanup, and recovery behavior.
 

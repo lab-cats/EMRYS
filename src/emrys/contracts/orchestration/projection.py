@@ -29,9 +29,6 @@ CONTRACT_PATHS = {
 class ReportingBundle:
     """Exact deterministic documents required by the reporting owners."""
 
-    reference_contract: dict[str, Any]
-    primary_analysis_policy: dict[str, Any]
-    reporting_run_contract: dict[str, Any]
     reference_contract_bytes: bytes
     primary_analysis_policy_bytes: bytes
     reporting_run_contract_bytes: bytes
@@ -124,9 +121,6 @@ def build_reporting_bundle(
         processing_artifact_paths,
     )
     return ReportingBundle(
-        reference_contract=reference_contract,
-        primary_analysis_policy=primary_analysis_policy,
-        reporting_run_contract=reporting_run_contract,
         reference_contract_bytes=reference_bytes,
         primary_analysis_policy_bytes=policy_bytes,
         reporting_run_contract_bytes=(

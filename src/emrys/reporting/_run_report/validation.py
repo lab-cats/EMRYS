@@ -18,7 +18,7 @@ from jinja2 import (
 )
 
 from .inputs import _assert_snapshot, _fail, _read_snapshot_bytes, _snapshot_regular
-from .receipt import read_receipt_tsv, validate_summary_tsv
+from .receipt import read_receipt_tsv
 from .models import (
     ACTIVE_RESOURCE_ATTRIBUTES,
     ACTIVE_URI_RE,
@@ -68,7 +68,7 @@ def validate_projected_outputs(
         snapshots.append(snapshot)
         if _read_snapshot_bytes(snapshot, "report output") != payload:
             _fail(f"Report output differs from its deterministic projection: {path}")
-    scientific, evidence, summary, receipt = paths
+    scientific, evidence, receipt = paths
     document = read_receipt_tsv(receipt)
     for view, path in (("scientific", scientific), ("evidence", evidence)):
         validate_rendered_html(
@@ -76,7 +76,6 @@ def validate_projected_outputs(
             expected_banner=context.render_metadata["state_banner"],
             expected_identity=expected_html_identity(document, view),
         )
-    validate_summary_tsv(summary, context)
     for snapshot in snapshots:
         _assert_snapshot(snapshot, "report output")
     return document

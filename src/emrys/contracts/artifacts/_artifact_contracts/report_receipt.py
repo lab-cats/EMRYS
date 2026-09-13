@@ -12,7 +12,6 @@ from .identity import require_unique_key, validate_document_paths
 REPORT_OUTPUTS: tuple[tuple[str, str, str], ...] = (
     ("scientific-report-html", "scientific_html", "scientific_report.html"),
     ("evidence-report-html", "evidence_html", "evidence_report.html"),
-    ("run-summary-tsv", "run_summary_tsv", "run_summary.tsv"),
 )
 
 
@@ -57,12 +56,12 @@ def validate_report_receipt_semantics(document: dict[str, Any]) -> None:
     if {output["output_id"] for output in outputs} != set(expected_output_ids):
         raise ContractValidationError(
             "report output IDs must be exactly scientific-report-html, "
-            "evidence-report-html, and run-summary-tsv"
+            "and evidence-report-html"
         )
     if tuple(output["output_id"] for output in outputs) != expected_output_ids:
         raise ContractValidationError(
             "report outputs must be ordered scientific-report-html, "
-            "evidence-report-html, then run-summary-tsv"
+            "then evidence-report-html"
         )
     output_parents: set[Path] = set()
     for output in outputs:
@@ -96,10 +95,3 @@ def validate_report_receipt_semantics(document: dict[str, Any]) -> None:
         raise ContractValidationError(
             "report receipt input run-summary directory name must equal run_id"
         )
-    require_unique_key(document["truncations"], "table_id", "report truncations")
-    for truncation in document["truncations"]:
-        if truncation["displayed_row_count"] >= truncation["full_row_count"]:
-            raise ContractValidationError(
-                f"truncation {truncation['table_id']!r} must display fewer "
-                "rows than the full table"
-            )

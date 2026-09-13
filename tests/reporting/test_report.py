@@ -413,7 +413,7 @@ def test_dry_run_is_side_effect_free(
     assert not output_root.exists()
 
 
-def test_success_publishes_two_html_views_summary_and_current_receipt_last(
+def test_success_publishes_two_html_views_and_current_receipt_last(
     computational_evidence: Any,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -434,10 +434,9 @@ def test_success_publishes_two_html_views_summary_and_current_receipt_last(
         publish(context)
     assert output_paths(context) == tuple(path for path in context.stable_paths)
     assert all(path.is_file() for path in output_paths(context))
-    assert [path.name for path in links[-4:]] == [
+    assert [path.name for path in links[-3:]] == [
         context.stable_paths[0].name,
         context.stable_paths[1].name,
-        context.stable_paths[2].name,
         context.output_receipt.name,
     ]
     assert not (
@@ -447,7 +446,7 @@ def test_success_publishes_two_html_views_summary_and_current_receipt_last(
         context.output_dir / f"{context.summary['run_id']}.run_report.pdf"
     ).exists()
     document = receipt_document(context.output_receipt)
-    assert document["schema_version"] == "7.0.0"
+    assert document["schema_version"] == "8.0.0"
     assert (
         document["provenance"]["installed_package"] == context.installed_package.record
     )
@@ -467,7 +466,6 @@ def test_success_publishes_two_html_views_summary_and_current_receipt_last(
     assert [item["kind"] for item in document["outputs"]] == [
         "scientific_html",
         "evidence_html",
-        "run_summary_tsv",
     ]
     assert document["outputs"][0]["self_contained"] is True
     assert document["outputs"][1]["self_contained"] is True
@@ -532,7 +530,7 @@ def test_prepared_handoff_rejects_a_changed_run_summary(
 def test_receipt_validation_reports_schema_and_semantic_failures(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    document = {"schema_version": "7.0.0"}
+    document = {"schema_version": "8.0.0"}
     with pytest.raises(ReportRenderError, match="schema validation failed"):
         receipt.validate_receipt(document)
 
@@ -556,31 +554,6 @@ def test_receipt_validation_reports_schema_and_semantic_failures(
     )
     with pytest.raises(ReportRenderError, match="synthetic semantic failure"):
         receipt.validate_receipt(document)
-
-
-def test_summary_tsv_validation_rejects_shape_defects(
-    computational_evidence: Any,
-    tmp_path: Path,
-) -> None:
-    context = report_context.prepare_context(
-        arguments(computational_evidence, tmp_path / "reports"),
-        evidence_context=computational_evidence,
-    )
-    path = tmp_path / "summary.tsv"
-
-    path.write_text("wrong\n", encoding="utf-8")
-    with pytest.raises(ReportRenderError, match="unexpected header"):
-        receipt.validate_summary_tsv(path, context)
-
-    header = "\t".join(receipt.SUMMARY_HEADER) + "\n"
-    path.write_text(header, encoding="utf-8")
-    with pytest.raises(ReportRenderError, match="row count"):
-        receipt.validate_summary_tsv(path, context)
-
-    malformed_rows = "x\n" * len(context.summary["expected_scopes"])
-    path.write_text(header + malformed_rows, encoding="utf-8")
-    with pytest.raises(ReportRenderError, match="malformed row"):
-        receipt.validate_summary_tsv(path, context)
 
 
 def test_existing_receipt_reader_rejects_shape_and_json_defects(
@@ -682,7 +655,6 @@ def test_jinja_is_strict_autoescaped_and_template_owns_markup(
             "code": "untrusted_text",
             "message": '<script src="https://evil.invalid/x.js">bad</script>',
             "related_artifact_ids": [],
-            "evidence": [],
         }
     )
     content = validation.render_html(
@@ -1460,7 +1432,6 @@ def test_short_lock_and_staged_file_writes_publish_complete_bytes(
     assert short_writes > 5
     assert context.stable_paths[0].read_bytes() == context.scientific_html_bytes
     assert context.stable_paths[1].read_bytes() == context.evidence_html_bytes
-    assert context.stable_paths[2].read_bytes() == receipt.summary_tsv_bytes(context)
     assert (
         receipt_document(context.output_receipt)["run_id"] == context.summary["run_id"]
     )
@@ -1592,9 +1563,9 @@ def test_final_byte_corruption_never_commits_a_false_receipt(
     real_fsync_file = _files.fsync_path
     corrupted = False
 
-    def corrupt_summary(path: Path) -> None:
+    def corrupt_evidence_html(path: Path) -> None:
         nonlocal corrupted
-        if path == context.stable_paths[2] and not corrupted:
+        if path == context.stable_paths[1] and not corrupted:
             payload = path.read_bytes()
             old = context.summary["run_id"].encode("utf-8")
             replacement = (b"X" if old[:1] != b"X" else b"Y") + old[1:]
@@ -1603,7 +1574,7 @@ def test_final_byte_corruption_never_commits_a_false_receipt(
         real_fsync_file(path)
 
     with monkeypatch.context() as faults:
-        faults.setattr(_files, "fsync_path", corrupt_summary)
+        faults.setattr(_files, "fsync_path", corrupt_evidence_html)
         with pytest.raises(ReportRenderError, match="rollback was incomplete"):
             publish(context)
     assert not context.output_receipt.exists()

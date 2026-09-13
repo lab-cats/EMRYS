@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import json
 from pathlib import Path
 
 from emrys.contracts.artifacts import api as artifact_contracts
@@ -20,17 +21,18 @@ def test_reporting_projection_is_exact_and_deterministic(
         source, candidate.analysis.profile, candidate.analysis.revision
     )
 
-    assert tuple(bundle.reporting_run_contract) == (
+    reporting_run_contract = json.loads(bundle.reporting_run_contract_bytes)
+    assert set(reporting_run_contract) == {
         "run_contract_sha256",
         *artifact_contracts.RUN_CONTRACT_COMPONENT_FIELDS,
-    )
+    }
     artifact_contracts.validate_run_contract(
-        bundle.reporting_run_contract, "B2 projection test"
+        reporting_run_contract, "B2 projection test"
     )
-    assert bundle.reporting_run_contract["reference_contract_sha256"] == (
+    assert reporting_run_contract["reference_contract_sha256"] == (
         hashlib.sha256(bundle.reference_contract_bytes).hexdigest()
     )
-    assert bundle.reporting_run_contract["primary_analysis_policy_sha256"] == (
+    assert reporting_run_contract["primary_analysis_policy_sha256"] == (
         hashlib.sha256(bundle.primary_analysis_policy_bytes).hexdigest()
     )
     assert bundle.artifact_inventory_bytes.endswith(b"\n")
@@ -65,7 +67,9 @@ def test_inventory_expansion_keeps_each_logical_scope_contiguous(
     ]
     assert len({row["artifact_id"] for row in rows}) == len(rows)
     assert (
-        orchestration_contracts.canonical_json_bytes(bundle.reporting_run_contract)
+        orchestration_contracts.canonical_json_bytes(
+            json.loads(bundle.reporting_run_contract_bytes)
+        )
         == bundle.reporting_run_contract_bytes
     )
 

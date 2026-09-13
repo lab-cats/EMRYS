@@ -159,7 +159,7 @@ whose prepared state became stale while waiting exits before these writes and
 leaves no new Attempt residue.
 
 `attempts/<workflow-attempt-id>/attempt.json` is the sole immutable execution
-manifest (`emrys.workflow-attempt.v2`). It contains shared runtime and workflow
+manifest (`emrys.workflow-attempt.v3`). It contains shared runtime and workflow
 settings once, plus task definitions keyed by owner and scope. Each definition
 binds exact worker and validator commands, inputs, outputs, publication controls,
 and its validation report. Fixed internal paths are derived from the Run,
@@ -177,8 +177,10 @@ stderr files are create-exclusive, no-follow, drained through EOF, byte- and
 order-preserving within each stream, synchronized, hash-bound, and revalidated.
 No ordering between streams is claimed.
 
-A task publishes one immutable terminal attempt containing its status, commands,
-input/output identities, native receipt, validation report, and log references.
+A task publishes one immutable terminal attempt (`emrys.task-attempt.v3`)
+containing its status, commands, input/output identities, validation report,
+and log references. Scientific receipt files are ordinary declared outputs,
+covered by the same content checks and publication rules as other results.
 After producer success, output admission, validator completion, and semantic
 all-pass, it publishes a small verified marker containing only the terminal
 attempt path and hash. Inspection follows that reference and rechecks the evidence. A pre-entry failure may
@@ -309,7 +311,7 @@ EMRYS Run.
 | `results/` | Sole scientist-facing Results authority; modules declare final paths beneath it. |
 | `results/editing/` | Built-in paired-CMH candidate tables, summary, spectrum, and diagnostics. |
 | `results/scientific_context/` | Built-in context, motif, population, enrichment, and receipt. |
-| `results/reports/<run-id>/` | Self-contained scientific and evidence/operations reports, summary, and receipt published last. |
+| `results/reports/<run-id>/` | Self-contained scientific and evidence/operations reports, and receipt published last. |
 | `products/native/` | Nonfinal native artifacts and QC/validation evidence needed for resume or downstream work. |
 | `products/artifact-summary/<run-id>/<run-id>.run_summary.json` | Authoritative reporting result manifest, published last. |
 | `products/artifact-summary/<run-id>/<run-id>.run_summary.tsv` | Tabular Run-status summary. |

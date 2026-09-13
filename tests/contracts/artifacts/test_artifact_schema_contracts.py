@@ -190,8 +190,8 @@ def test_all_tracked_schemas_are_valid_draft_2020_12_and_local_only() -> None:
                 stack.extend(value)
 
     report_schema = schemas["report-receipt"]
-    assert report_schema["$id"] == "urn:emrys:schema:artifacts:report-receipt:v7"
-    assert report_schema["properties"]["schema_version"]["const"] == "7.0.0"
+    assert report_schema["$id"] == "urn:emrys:schema:artifacts:report-receipt:v8"
+    assert report_schema["properties"]["schema_version"]["const"] == "8.0.0"
 
 
 @pytest.mark.parametrize(("name", "path"), FIXTURES.items())
@@ -309,7 +309,6 @@ def test_artifact_failed_missing_source_rolls_up_as_failed() -> None:
                     "code": "publication_failed",
                     "message": "Synthetic publication failure.",
                     "related_artifact_ids": ["analysis.synthetic.cmh_summary"],
-                    "evidence": [],
                 }
             ],
         }
@@ -412,16 +411,8 @@ def test_report_receipt_enforces_renderer_safety_outputs_and_banners() -> None:
         output["self_contained"] = False
         assert_schema_invalid("report-receipt", unsafe_html, "true")
 
-    wrong_section = copy.deepcopy(receipt)
-    wrong_section["truncations"][0]["report_section"] = "evidence-section"
-    assert_schema_invalid(
-        "report-receipt",
-        wrong_section,
-        "computational-results-section",
-    )
 
-
-def test_report_receipt_rejects_duplicate_outputs_and_bad_truncation() -> None:
+def test_report_receipt_rejects_duplicate_outputs() -> None:
     receipt = read_json(FIXTURES["report-receipt"])
 
     duplicate = copy.deepcopy(receipt)
@@ -450,14 +441,6 @@ def test_report_receipt_rejects_duplicate_outputs_and_bad_truncation() -> None:
     )
     assert_schema_valid("report-receipt", reordered)
     assert_contract_failure("report-receipt", reordered, "must be ordered")
-
-    bad_truncation = copy.deepcopy(receipt)
-    bad_truncation["truncations"][0]["displayed_row_count"] = 100
-    assert_contract_failure(
-        "report-receipt",
-        bad_truncation,
-        "must display fewer",
-    )
 
 
 def test_report_receipt_rejects_cross_run_paths() -> None:

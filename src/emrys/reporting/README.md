@@ -27,14 +27,12 @@ The report receipt defines this exact ordered roster. Filenames begin with `RUN_
 | --- | --- | --- |
 | `scientific-report-html` | `scientific_html` | `scientific_report.html` |
 | `evidence-report-html` | `evidence_html` | `evidence_report.html` |
-| `run-summary-tsv` | `run_summary_tsv` | `run_summary.tsv` |
 
-`RUN_ID.report_outputs.tsv` is the receipt, outside that roster. Only the first
-two outputs are HTML Results. The frozen `ReportContext.stable_paths` stores
-scientific HTML, evidence HTML, summary TSV, then receipt; receipt output rows
-use its first three `Path` objects.
+`RUN_ID.report_outputs.tsv` is the receipt, outside that roster. Publication writes
+both HTML Results, then their receipt. Tabular artifact status and QC belong to
+`products/artifact-summary/RUN_ID`; HTML reporting creates no second status TSV.
 
-Current Runs use artifact entries v3, Run summaries v7 and report receipts v7.
+Current Runs use artifact entries v4, Run summaries v8 and report receipts v8.
 The manifest binds the original scientific Run and Attempt by path and hash;
 those records preserve the actual scientific packages, commands and reused task
 origins. The manifest and HTML receipt separately identify their own publishers.

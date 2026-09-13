@@ -215,7 +215,6 @@ def issue(code: str, message: str, artifact_id: str) -> dict[str, Any]:
         "code": code,
         "message": safe_tsv(message),
         "related_artifact_ids": [artifact_id],
-        "evidence": [],
     }
 
 

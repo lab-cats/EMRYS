@@ -40,8 +40,7 @@
       "message": "This record is a synthetic fixture and is not production evidence.",
       "related_artifact_ids": [
         "analysis.synthetic.cmh_summary"
-      ],
-      "evidence": []
+      ]
     }
   ],
   "errors": []

@@ -1,4 +1,4 @@
-"""Deterministic report-summary and versioned receipt projection."""
+"""Deterministic report output and versioned receipt projection."""
 
 from __future__ import annotations
 
@@ -20,7 +20,6 @@ from .models import (
     PRODUCER_VERSION,
     RECEIPT_HEADER,
     REPORT_RECEIPT_SCHEMA_VERSION,
-    SUMMARY_HEADER,
     TEMPLATE_RESOURCE,
     ReportContext,
 )
@@ -44,50 +43,13 @@ def validate_receipt(document: Mapping[str, Any]) -> None:
         _fail(f"Report receipt semantic validation failed: {exc}")
 
 
-def summary_tsv_bytes(context: ReportContext) -> bytes:
-    rows = []
-    summary = context.summary
-    for item in summary["expected_scopes"]:
-        scope = item["scope"]
-        rows.append(
-            (
-                summary["run_id"],
-                context.interpretation_boundary,
-                scope["step_id"],
-                scope["scope_type"],
-                scope["scope_id"],
-                item["aggregate_state"],
-                str(len(item["warnings"])),
-                str(len(item["errors"])),
-            )
-        )
-    stream = StringIO(newline="")
-    writer = csv.writer(stream, delimiter="\t", lineterminator="\n")
-    writer.writerow(SUMMARY_HEADER)
-    writer.writerows(rows)
-    return stream.getvalue().encode("utf-8")
-
-
-def validate_summary_tsv(path: Path, context: ReportContext) -> None:
-    snapshot = _snapshot_regular(path, "exported run-summary TSV")
-    with path.open("r", encoding="utf-8", newline="") as stream:
-        rows = list(csv.reader(stream, delimiter="\t"))
-    if not rows or tuple(rows[0]) != SUMMARY_HEADER:
-        _fail("Exported run-summary TSV has an unexpected header")
-    if len(rows) - 1 != len(context.summary["expected_scopes"]):
-        _fail("Exported run-summary TSV row count does not match expected scopes")
-    if any(len(row) != len(SUMMARY_HEADER) for row in rows[1:]):
-        _fail("Exported run-summary TSV contains a malformed row")
-    _assert_snapshot(snapshot, "exported run-summary TSV")
-
-
 def receipt_document(
     context: ReportContext,
     output_bytes: Sequence[bytes],
 ) -> dict[str, Any]:
     descriptors = []
     for (output_id, kind, _suffix), final, payload in zip(
-        contracts.REPORT_OUTPUTS, context.stable_paths[:3], output_bytes, strict=True
+        contracts.REPORT_OUTPUTS, context.stable_paths[:-1], output_bytes, strict=True
     ):
         descriptor = {
             "output_id": output_id,
@@ -95,26 +57,11 @@ def receipt_document(
             "path": str(final),
             "sha256": hashlib.sha256(payload).hexdigest(),
             "size_bytes": len(payload),
-            "media_type": {
-                "scientific_html": "text/html",
-                "evidence_html": "text/html",
-                "run_summary_tsv": "text/tab-separated-values",
-            }[kind],
+            "media_type": "text/html",
+            "self_contained": True,
         }
-        if kind in {"scientific_html", "evidence_html"}:
-            descriptor["self_contained"] = True
         descriptors.append(descriptor)
     version = REPORT_RECEIPT_SCHEMA_VERSION
-    identity_payload = "\0".join(
-        (
-            *(snapshot.sha256 for snapshot in context.input_snapshots),
-            context.scientific_renderer["content_sha256"],
-            context.render_metadata["renderer_package_sha256"],
-            JINJA_VERSION,
-            PRODUCER_VERSION,
-        )
-    )
-    identity = hashlib.sha256(identity_payload.encode("utf-8")).hexdigest()[:20]
     summary = context.summary
     core_renderer = {
         "producer": PRODUCER,
@@ -129,7 +76,6 @@ def receipt_document(
         "schema_version": version,
         "record_type": "report_receipt",
         "run_id": summary["run_id"],
-        "attempt_id": f"report-{identity}",
         "generated_at": summary["generated_at"],
         "publication_state": "complete",
         "transaction_state": "complete",
@@ -161,9 +107,8 @@ def receipt_document(
         },
         "outputs": descriptors,
         "state_banner": context.render_metadata["state_banner"],
-        "truncations": [],
         "schema_versions": {
-            "artifact_entry": "3.0.0",
+            "artifact_entry": "4.0.0",
             "run_summary": summary["schema_version"],
             "report_receipt": version,
         },
@@ -200,12 +145,11 @@ def receipt_document(
 
 
 def output_bytes(context: ReportContext) -> tuple[bytes, ...]:
-    """Project both reports, their summary table and the receipt together."""
+    """Project both reports and their receipt together."""
 
     outputs = (
         context.scientific_html_bytes,
         context.evidence_html_bytes,
-        summary_tsv_bytes(context),
     )
     return (*outputs, receipt_tsv_bytes(receipt_document(context, outputs)))
 
@@ -226,7 +170,6 @@ def receipt_tsv_bytes(document: Mapping[str, Any]) -> bytes:
                 document["schema_name"],
                 document["schema_version"],
                 document["run_id"],
-                document["attempt_id"],
                 document["generated_at"],
                 document["interpretation_boundary"],
                 output["output_id"],
