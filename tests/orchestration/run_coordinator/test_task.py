@@ -122,8 +122,8 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
             f"aligned_bam={first_output}",
             "--output",
             f"aligned_bai={second_output}",
-            "--native-receipt",
-            str(receipt),
+            "--output",
+            f"native_receipt={receipt}",
         )
     )
     validator = list(
@@ -160,7 +160,6 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
             "input_directories": [],
         },
         "validation_report_path": str(report),
-        "native_receipt_path": str(receipt),
     }
     for output in definition["outputs"]:
         final = Path(output["path"])
@@ -176,7 +175,7 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
     request_bytes = b"task-fixture: true\n"
     request_snapshot.write_bytes(request_bytes)
     attempt = {
-        "schema_version": "emrys.workflow-attempt.v2",
+        "schema_version": "emrys.workflow-attempt.v3",
         "run_id": execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(execution_bytes).hexdigest(),
         "profile_sha256": hashlib.sha256(profile_path.read_bytes()).hexdigest(),
@@ -571,7 +570,7 @@ def test_success_publishes_schema_valid_content_bound_records(tmp_path: Path) ->
         verified["validation_report"]["sha256"]
         == hashlib.sha256(report.read_bytes()).hexdigest()
     )
-    assert verified["native_receipt"] is not None
+    assert verified["outputs"][-1]["role"] == "native_receipt"
     assert (
         b"producer stdout complete\nvalidator stdout complete\n"
         in Path(built.plan.stdout_path).read_bytes()
@@ -830,7 +829,6 @@ def test_star_publication_and_input_directory_roster_are_content_bound(
     member.write_bytes(b"reference genome\n")
     final_directory = built.run_root / "results" / "index"
     working = final_directory.parent / ".index.owner.work"
-    built.definition["native_receipt_path"] = None
     built.definition["outputs"] = [
         {
             "role": "genome",
@@ -922,7 +920,7 @@ def test_historical_attempt_is_rejected_before_task_mutation(
 ) -> None:
     built = _task_fixture(tmp_path)
     attempt = _record(built.manifest_path)
-    attempt["schema_version"] = "emrys.workflow-attempt.v1"
+    attempt["schema_version"] = "emrys.workflow-attempt.v2"
     _publish_json(built.manifest_path, attempt)
     with pytest.raises(task.TaskBoundaryError, match="schema_version"):
         _execute_task(built.plan, ops=_fixed_ops())
@@ -984,7 +982,7 @@ def test_unexpected_interruption_preserves_and_closes_partial_task_logs(
             os.fstat(descriptor)
 
 
-@pytest.mark.parametrize("destination", ["output", "report", "receipt"])
+@pytest.mark.parametrize("destination", ["output", "report"])
 def test_preexisting_native_or_validation_residue_fails_closed(
     tmp_path: Path,
     destination: str,
@@ -993,7 +991,6 @@ def test_preexisting_native_or_validation_residue_fails_closed(
     paths = {
         "output": Path(built.definition["outputs"][0]["path"]),
         "report": Path(built.definition["validation_report_path"]),
-        "receipt": Path(built.definition["native_receipt_path"]),
     }
     foreign = paths[destination]
     foreign.parent.mkdir(parents=True, exist_ok=True)
@@ -1685,7 +1682,6 @@ def test_task_child_rechecks_source_identity_at_irreversible_entry(
         "verified_task_path",
         "task_attempt_path",
         "validation_report_path",
-        "native_receipt_path",
         "task_start_path",
     ],
 )

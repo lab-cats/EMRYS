@@ -130,7 +130,6 @@ def _processing_source(
                             "path": "validation.tsv",
                             "sha256": "b" * 64,
                         },
-                        "native_receipt": None,
                     }
                 ),
             )

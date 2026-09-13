@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:emrys:schema:orchestration:workflow-attempt:v2",
-  "title": "EMRYS workflow attempt v2",
+  "$id": "urn:emrys:schema:orchestration:workflow-attempt:v3",
+  "title": "EMRYS workflow attempt v3",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -33,7 +33,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "emrys.workflow-attempt.v2"
+      "const": "emrys.workflow-attempt.v3"
     },
     "run_id": {
       "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/run_id"

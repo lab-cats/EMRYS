@@ -60,7 +60,6 @@ _TASK_FIELDS = frozenset(
         "inputs",
         "outputs",
         "validation_report_path",
-        "native_receipt_path",
         "publication",
     }
 )
@@ -141,7 +140,6 @@ class TaskPlan:
     inputs: tuple[FileDeclaration, ...]
     outputs: tuple[FileDeclaration, ...]
     validation_report_path: Path
-    native_receipt_path: Path | None
     task_start_path: Path
     task_attempt_path: Path
     verified_task_path: Path
@@ -407,12 +405,6 @@ def task_from_attempt(
     task_root = (
         run_root / "attempts" / workflow_attempt_id / "tasks" / owner / selected_scope
     )
-    native_value = record["native_receipt_path"]
-    native_receipt = (
-        None
-        if native_value is None
-        else _absolute_path(native_value, "native_receipt_path")
-    )
     declared = _closed_object(
         record["publication"], fields=_PUBLICATION_FIELDS, label="publication"
     )
@@ -456,7 +448,6 @@ def task_from_attempt(
         validation_report_path=_absolute_path(
             record["validation_report_path"], "validation_report_path"
         ),
-        native_receipt_path=native_receipt,
         task_start_path=run_root
         / "state"
         / "task-starts"
@@ -482,12 +473,6 @@ def task_from_attempt(
         result.stdout_path,
         result.stderr_path,
     }
-    if result.native_receipt_path is not None:
-        mutable_paths.add(result.native_receipt_path)
-    if result.native_receipt_path is not None and result.native_receipt_path not in {
-        item.path for item in result.outputs
-    }:
-        raise TaskBoundaryError("Current native receipt must be a declared output")
     if len(mutable_paths) != len(result.outputs) + 6:
         raise TaskBoundaryError("task plan aliases mutable destination paths")
     admitted_inputs = {
@@ -1199,8 +1184,6 @@ def _admit_native_destinations(
         if output.path not in reusable_paths:
             _require_absent(output.path, "native task destination")
     _require_absent(dispatch.validation_report_path, "native task destination")
-    if dispatch.native_receipt_path is not None:
-        _require_absent(dispatch.native_receipt_path, "native task destination")
     return reused
 
 
@@ -1949,14 +1932,6 @@ def validate_verified_task(
     if evidence.report_sha256 != report_reference["sha256"]:
         raise TaskBoundaryError("Semantic all-pass observed a different report")
 
-    native = record["native_receipt"]
-    native_path = (
-        None
-        if native is None
-        else _verify_reference(native, run_root=canonical_root, label="native receipt")
-    )
-    if native_path != dispatch.native_receipt_path:
-        raise TaskBoundaryError("Terminal native receipt differs from dispatch")
     if (
         _record_reference(verified_path, canonical_root)
         != {
@@ -1989,7 +1964,6 @@ def _publish_attempt(
     streams: _TaskStreamCapture,
     inputs: tuple[dict[str, Any], ...],
     outputs: tuple[dict[str, Any], ...],
-    native_receipt: dict[str, str] | None,
 ) -> bytes:
     stdout_reference, stderr_reference = streams.finalize()
     report_reference = None
@@ -2003,7 +1977,7 @@ def _publish_attempt(
                 raise
     status = "succeeded" if failure_message is None else "failed"
     attempt = {
-        "schema_version": "emrys.task-attempt.v2",
+        "schema_version": "emrys.task-attempt.v3",
         **identity,
         "task_start_record": (
             None if task_start_reference is None else dict(task_start_reference)
@@ -2021,7 +1995,6 @@ def _publish_attempt(
         "failure_message": failure_message,
         "inputs": list(inputs),
         "outputs": list(outputs),
-        "native_receipt": native_receipt,
     }
     orchestration_contracts.validate_record("task-attempt", attempt)
     attempt_bytes = orchestration_contracts.canonical_json_bytes(attempt)
@@ -2054,8 +2027,6 @@ def run_task(
     initial_inputs: tuple[dict[str, Any], ...] = ()
     outputs: tuple[dict[str, Any], ...] = ()
     producer_outputs = outputs
-    native_receipt: dict[str, str] | None = None
-    producer_native_receipt = native_receipt
     task_start_reference: dict[str, str] | None = None
     task_scope_materialized = False
     reused_outputs: dict[FileDeclaration, _BoundFileSnapshot] = {}
@@ -2269,7 +2240,6 @@ def run_task(
 
         def publish_native_outputs() -> None:
             nonlocal native_publication, output_declarations, outputs, producer_outputs
-            nonlocal native_receipt, producer_native_receipt
             recheck_native_authority()
             if not reused_outputs:
                 output_declarations = native_publication.publish(prepared_outputs)
@@ -2279,11 +2249,6 @@ def run_task(
             native_publication = None
             outputs = producer_outputs = tuple(
                 _snapshot(output) for output in output_declarations
-            )
-            native_receipt = producer_native_receipt = (
-                None
-                if dispatch.native_receipt_path is None
-                else _record_reference(dispatch.native_receipt_path, dispatch.run_root)
             )
 
         if not validate_before_publication:
@@ -2324,15 +2289,6 @@ def run_task(
         if outputs != producer_outputs:
             raise TaskBoundaryError(
                 "A producer output changed during validation or semantic gating"
-            )
-        native_receipt = (
-            None
-            if dispatch.native_receipt_path is None
-            else _record_reference(dispatch.native_receipt_path, dispatch.run_root)
-        )
-        if native_receipt != producer_native_receipt:
-            raise TaskBoundaryError(
-                "The native receipt changed during validation or semantic gating"
             )
         validation_reference = _record_reference(
             dispatch.validation_report_path, dispatch.run_root
@@ -2383,7 +2339,6 @@ def run_task(
         streams=streams,
         inputs=initial_inputs,
         outputs=outputs,
-        native_receipt=native_receipt,
     )
     if failure is not None:
         raise TaskBoundaryError(message) from failure

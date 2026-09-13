@@ -237,7 +237,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
     scope = {"scope_type": "sample", "scope_id": "EV-1"}
     command = {"argv": ["emrys-owner", "--execute"], "exit_code": 0}
     workflow_attempt = {
-        "schema_version": "emrys.workflow-attempt.v2",
+        "schema_version": "emrys.workflow-attempt.v3",
         "run_id": run_id,
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
@@ -336,7 +336,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         "created_at": "2026-08-12T12:01:30Z",
     }
     task_attempt = {
-        "schema_version": "emrys.task-attempt.v2",
+        "schema_version": "emrys.task-attempt.v3",
         "run_id": run_id,
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
@@ -367,7 +367,6 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
     task_attempt.update(
         inputs=[{"role": "fastq", **snapshot("/data/EV-1.fastq")}],
         outputs=[{"role": "bam", **snapshot("/workspace/results/EV-1.bam", ONE_HASH)}],
-        native_receipt=None,
     )
     verified_task = {
         "schema_version": "emrys.verified-task.v2",

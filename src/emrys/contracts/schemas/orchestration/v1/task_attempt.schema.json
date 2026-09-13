@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:emrys:schema:orchestration:task-attempt:v2",
-  "title": "EMRYS immutable terminal task result v2",
+  "$id": "urn:emrys:schema:orchestration:task-attempt:v3",
+  "title": "EMRYS immutable terminal task result v3",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -27,12 +27,11 @@
     "stderr_log",
     "failure_message",
     "inputs",
-    "outputs",
-    "native_receipt"
+    "outputs"
   ],
   "properties": {
     "schema_version": {
-      "const": "emrys.task-attempt.v2"
+      "const": "emrys.task-attempt.v3"
     },
     "run_id": {
       "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/run_id"
@@ -131,16 +130,6 @@
       "items": {
         "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/bound_file"
       }
-    },
-    "native_receipt": {
-      "oneOf": [
-        {
-          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
-        },
-        {
-          "type": "null"
-        }
-      ]
     }
   },
   "allOf": [

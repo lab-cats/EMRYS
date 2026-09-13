@@ -1096,7 +1096,7 @@ def _materialize_preentry_failure(
     stdout.write_bytes(stdout_data)
     stderr.write_bytes(stderr_data)
     record = {
-        "schema_version": "emrys.task-attempt.v2",
+        "schema_version": "emrys.task-attempt.v3",
         "run_id": built.execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(
             (built.run_root / "contract" / "run.json").read_bytes()
@@ -1123,7 +1123,6 @@ def _materialize_preentry_failure(
         "failure_message": "fixture preentry admission failure",
         "inputs": [],
         "outputs": [],
-        "native_receipt": None,
     }
     orchestration_contracts.validate_record("task-attempt", record)
     task_attempt_path.write_bytes(orchestration_contracts.canonical_json_bytes(record))
@@ -1210,7 +1209,7 @@ def _materialize_verified(
         (task_root / "stderr.log").write_bytes(b"fixture owner stderr\n")
         report_reference = _record_reference(report_path, built.run_root)
         task_attempt = {
-            "schema_version": "emrys.task-attempt.v2",
+            "schema_version": "emrys.task-attempt.v3",
             "run_id": built.execution["run_id"],
             "execution_contract_sha256": execution_hash,
             "profile_sha256": profile_hash,
@@ -1236,7 +1235,6 @@ def _materialize_verified(
             "failure_message": None,
             "inputs": [_bound("fixture_input", input_path)],
             "outputs": [_bound(output.role, output.path) for output in plan.outputs],
-            "native_receipt": None,
         }
         orchestration_contracts.validate_record("task-attempt", task_attempt)
         task_attempt_path.write_bytes(
@@ -1289,7 +1287,7 @@ def _attempt(
         built.root
     )
     return {
-        "schema_version": "emrys.workflow-attempt.v2",
+        "schema_version": "emrys.workflow-attempt.v3",
         "run_id": built.execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(execution_bytes).hexdigest(),
         "profile_sha256": hashlib.sha256(profile_bytes).hexdigest(),

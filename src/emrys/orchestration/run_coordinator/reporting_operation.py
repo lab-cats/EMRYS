@@ -188,8 +188,6 @@ def _require_prepared_processing_source(
             )
         references = [*task.record["inputs"], *task.record["outputs"]]
         references.append(task.record["validation_report"])
-        if task.record["native_receipt"] is not None:
-            references.append(task.record["native_receipt"])
         for reference in references:
             path = Path(str(reference["path"]))
             if not path.is_absolute():

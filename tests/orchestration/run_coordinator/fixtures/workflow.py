@@ -945,7 +945,6 @@ def _task_definition(
             else None,
         },
         "validation_report_path": str(validation_report),
-        "native_receipt_path": None,
     }
 
 
@@ -1022,7 +1021,7 @@ def build(
     storage_receipt = root / "storage.qualified.json"
     storage_receipt.write_bytes(b"bounded no-science storage qualification\n")
     attempt = {
-        "schema_version": "emrys.workflow-attempt.v2",
+        "schema_version": "emrys.workflow-attempt.v3",
         "run_id": execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(execution_bytes).hexdigest(),
         "profile_sha256": hashlib.sha256(profile_snapshot.read_bytes()).hexdigest(),

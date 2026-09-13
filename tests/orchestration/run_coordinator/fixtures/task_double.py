@@ -54,15 +54,6 @@ def _produce(arguments: argparse.Namespace) -> int:
         if arguments.fail_after == index:
             print(f"producer failed after {role}", file=sys.stderr)
             return arguments.failure_exit
-    if arguments.native_receipt is not None:
-        receipt = {
-            "schema_version": "emrys.test-native-receipt.v1",
-            "status": "succeeded",
-        }
-        _publish(
-            arguments.native_receipt,
-            json.dumps(receipt, separators=(",", ":"), sort_keys=True).encode(),
-        )
     if arguments.mutate_input is not None:
         with arguments.mutate_input.open("ab") as stream:
             stream.write(b"mutated-by-test-double\n")
@@ -109,7 +100,6 @@ def _parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
     producer = subparsers.add_parser("producer")
     producer.add_argument("--output", action="append", type=_output, required=True)
-    producer.add_argument("--native-receipt", type=Path)
     producer.add_argument("--fail-after", type=int, default=0)
     producer.add_argument("--failure-exit", type=int, default=23)
     producer.add_argument("--mutate-input", type=Path)

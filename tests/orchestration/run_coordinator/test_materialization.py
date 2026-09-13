@@ -541,7 +541,7 @@ def test_plan_is_no_write_and_projects_exact_worker_roster(
     records = _task_records(plan)
     assert len(records) == 35
     assert len({record["machine_key"] for record in records}) == 14
-    assert plan.attempt_record["schema_version"] == "emrys.workflow-attempt.v2"
+    assert plan.attempt_record["schema_version"] == "emrys.workflow-attempt.v3"
     assert plan.attempt_path not in {item.path for item in plan.attempt_files}
     assert not any(
         "dispatch" in item.path.parts or "workflow-configs" in item.path.parts

@@ -1245,7 +1245,6 @@ def _tasks(
                 step_id, task.scope_id, outputs, source, paths_by_scope, reference_id
             ),
             "validation_report_path": str(validation),
-            "native_receipt_path": None,
         }
         tasks[task.machine_key][task.scope_id] = record
         output_directories = {
@@ -1439,7 +1438,7 @@ def build_attempt_plan(
     )
     authored_paths = analysis.authored_paths
     attempt = {
-        "schema_version": "emrys.workflow-attempt.v2",
+        "schema_version": "emrys.workflow-attempt.v3",
         "run_id": run.run_id,
         "execution_contract_sha256": _sha256(execution_bytes),
         "profile_sha256": _sha256(
