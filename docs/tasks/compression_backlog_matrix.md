@@ -6,7 +6,7 @@ owns the goals; this file owns CS scope, status, decisions, and proof. The
 
 ## Working queue
 
-**CS-41–43 are implemented; hosted verification is pending:** retire the unused special task-receipt
+**[PR #165](https://github.com/lab-cats/EMRYS/pull/165), CS-41–43: implemented; hosted verification is pending.** retire the unused special task-receipt
 channel, report-only scope-status TSV and unused reporting fields, and remaining
 workflow/validation/logging interfaces without production callers.
 
@@ -221,7 +221,7 @@ provenance, and no installation or admission bypass was performed.
 The tranche removes 228 product lines with all 200 product files retained.
 Schemas and test fixtures also shrink; documentation records the changed
 contracts and verification separately. Configuration, tooling and retained
-evidence are unchanged. Hosted verification remains pending.
+evidence are unchanged. Hosted [CI](https://github.com/lab-cats/EMRYS/actions/runs/34763803413) is pending at `4c67b371`.
 
 ### CS-37 Through CS-40 Unused runtime and reporting paths
 
