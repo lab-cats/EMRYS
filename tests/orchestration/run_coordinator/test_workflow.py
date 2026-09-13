@@ -26,10 +26,13 @@ from tests.orchestration.run_coordinator.test_materialization import (
     _run_candidate,
 )
 
-EXECUTABLE_RULES = {
+REFERENCE_RULES = (
     "construct_STAR_index",
     "convert_GTF_to_BED12",
     "construct_FASTA_sidecars",
+)
+EXECUTABLE_RULES = {
+    *REFERENCE_RULES,
     "align_RNA_reads_with_STAR",
     "construct_canonical_BAM",
     "collect_canonical_BAM_QC_evidence",
@@ -41,7 +44,6 @@ EXECUTABLE_RULES = {
     "preprocess_and_annotate_cohort_candidates",
     "analysis_owner",
 }
-SLICE_RULES = {"reference_slice", "cohort_slice"}
 SCIENTIFIC_BINARIES = {
     "STAR",
     "gatk",
@@ -125,9 +127,9 @@ def _publish_attempt(
 
 def _dag(
     built: workflow_fixture.WorkflowFixture,
-    target: str,
+    *targets: str,
 ) -> tuple[dict[int, str], set[tuple[int, int]], str]:
-    completed = _snakemake(built, "--dag", "dot", "--", target)
+    completed = _snakemake(built, "--dag", "dot", "--", *targets)
     nodes = {
         int(node_id): label.split("\\n", 1)[0]
         for node_id, label in re.findall(
@@ -248,15 +250,15 @@ def _leave_real_incomplete_marker(
 
 
 @pytest.mark.parametrize(
-    ("target", "expected_jobs"),
-    (("reference_slice", 3), ("cohort_slice", 35)),
+    ("targets", "expected_jobs"),
+    ((REFERENCE_RULES, 3), (("cohort_slice",), 35)),
 )
 def test_real_snakemake_dry_run_has_exact_owner_job_counts(
     built: workflow_fixture.WorkflowFixture,
-    target: str,
+    targets: tuple[str, ...],
     expected_jobs: int,
 ) -> None:
-    nodes, edges, output = _dag(built, target)
+    nodes, edges, output = _dag(built, *targets)
     owners = {node_id for node_id, label in nodes.items() if label in EXECUTABLE_RULES}
     counts = Counter(nodes[node_id] for node_id in owners)
     owner_edges = {
@@ -267,7 +269,7 @@ def test_real_snakemake_dry_run_has_exact_owner_job_counts(
     assert sum(counts.values()) == expected_jobs, output
     assert "assemble_scientific_review_evidence_package" not in output
     assert "09c" not in output
-    if target != "cohort_slice":
+    if targets != ("cohort_slice",):
         return
 
     sample_count = len(built.execution["samples"]["rows"])
@@ -411,7 +413,7 @@ def test_backend_projection_accepts_successor_resource_policy_record(
     )
     _publish_attempt(built, config)
 
-    nodes, _, output = _dag(built, "reference_slice")
+    nodes, _, output = _dag(built, *REFERENCE_RULES)
 
     assert sum(nodes[node] in EXECUTABLE_RULES for node in nodes) == 3, output
 
@@ -420,7 +422,7 @@ def test_profile_and_rule_rosters_are_exact_and_output_only_verified_state(
     built: workflow_fixture.WorkflowFixture,
 ) -> None:
     listed = _snakemake(built, "--list-rules").stdout.splitlines()
-    expected = EXECUTABLE_RULES | SLICE_RULES
+    expected = EXECUTABLE_RULES | {"cohort_slice"}
     observed = {line.strip() for line in listed if line.strip() in expected}
     assert observed == expected
 
@@ -459,7 +461,7 @@ def test_static_graph_rejects_schema_valid_owner_reassignment(tmp_path: Path) ->
         rebuilt,
         "--dry-run",
         "--",
-        "reference_slice",
+        *REFERENCE_RULES,
         check=False,
     )
 
@@ -546,7 +548,7 @@ def test_resume_reuses_every_completed_file_with_existing_engine_metadata(
 def test_resume_refuses_dispatch_substitution_for_a_valid_completed_task(
     built: workflow_fixture.WorkflowFixture,
 ) -> None:
-    _snakemake(built, "--", "reference_slice")
+    _snakemake(built, "--", *REFERENCE_RULES)
     substituted = workflow_fixture.refresh_attempt(
         built,
         sequence=4,
@@ -568,7 +570,7 @@ def test_resume_refuses_dispatch_substitution_for_a_valid_completed_task(
         "--ignore-incomplete",
         "--dry-run",
         "--",
-        "reference_slice",
+        *REFERENCE_RULES,
         check=False,
     )
     assert failed.returncode != 0
@@ -585,7 +587,7 @@ def test_verified_state_roster_rejects_every_unexpected_entry(
 ) -> None:
     owner = built.verified_root / "emrys.stage.construct_STAR_index.v1"
     if entry_kind == "root_symlink":
-        _snakemake(built, "--", "reference_slice")
+        _snakemake(built, "--", *REFERENCE_RULES)
         (built.verified_root / "unexpected-owner").symlink_to(
             owner, target_is_directory=True
         )
@@ -615,7 +617,7 @@ def test_verified_state_roster_rejects_every_unexpected_entry(
     assert len(blockers) == 1 and expected_message in blockers[0]
 
     if entry_kind == "root_symlink":
-        failed = _snakemake(built, "--dry-run", "--", "reference_slice", check=False)
+        failed = _snakemake(built, "--dry-run", "--", *REFERENCE_RULES, check=False)
         assert failed.returncode != 0
         assert "Unexpected verified task" in failed.stdout
 
@@ -703,7 +705,7 @@ def test_foreign_preexisting_verified_marker_fails_closed(
     # A copied schema-valid record from another run is not reusable.
     donor = workflow_fixture.build(built.root.parent / "donor-fixture")
     workflow_fixture.materialize_active_run_lock(donor)
-    _snakemake(donor, "--", "reference_slice")
+    _snakemake(donor, "--", *REFERENCE_RULES)
     donor_marker = donor.verified_root / machine_key / f"{scope_id}.json"
     marker.write_bytes(donor_marker.read_bytes())
     failed = _snakemake(built, "--dry-run", "--", "cohort_slice", check=False)
@@ -715,8 +717,8 @@ def test_foreign_preexisting_verified_marker_fails_closed(
 def test_content_bound_verified_marker_is_reused_and_mutation_fails_closed(
     built: workflow_fixture.WorkflowFixture,
 ) -> None:
-    _snakemake(built, "--", "reference_slice")
-    reused = _snakemake(built, "--dry-run", "--", "reference_slice")
+    _snakemake(built, "--", *REFERENCE_RULES)
+    reused = _snakemake(built, "--dry-run", "--", *REFERENCE_RULES)
     assert "Nothing to be done" in reused.stdout
 
     machine_key = "emrys.stage.construct_STAR_index.v1"
@@ -729,7 +731,7 @@ def test_content_bound_verified_marker_is_reused_and_mutation_fails_closed(
     native_output = Path(record["outputs"][0]["path"])
     with native_output.open("ab") as stream:
         stream.write(b"mutated after verification\n")
-    failed = _snakemake(built, "--dry-run", "--", "reference_slice", check=False)
+    failed = _snakemake(built, "--dry-run", "--", *REFERENCE_RULES, check=False)
     assert failed.returncode != 0
     assert "Could not admit reusable verified task" in failed.stdout
     assert "content binding no longer matches" in failed.stdout
@@ -757,7 +759,7 @@ def test_task_origin_binding_and_unknown_scope_fail_closed(
         }
     }
     _publish_attempt(built, attempt)
-    failed = _snakemake(built, "--dry-run", "--", "reference_slice", check=False)
+    failed = _snakemake(built, "--dry-run", "--", *REFERENCE_RULES, check=False)
     assert failed.returncode != 0
     assert "Original Attempt manifest bytes differ" in failed.stdout
 
@@ -767,7 +769,7 @@ def test_task_origin_binding_and_unknown_scope_fail_closed(
         hashlib.sha256(origin_path.read_bytes()).hexdigest()
     )
     _publish_attempt(built, attempt)
-    failed = _snakemake(built, "--dry-run", "--", "reference_slice", check=False)
+    failed = _snakemake(built, "--dry-run", "--", *REFERENCE_RULES, check=False)
     assert failed.returncode != 0
     assert "not at its exact Run path" in failed.stdout
 
@@ -778,7 +780,7 @@ def test_task_origin_binding_and_unknown_scope_fail_closed(
         scope_id
     ]
     _publish_attempt(rebuilt, attempt)
-    failed = _snakemake(rebuilt, "--dry-run", "--", "reference_slice", check=False)
+    failed = _snakemake(rebuilt, "--dry-run", "--", *REFERENCE_RULES, check=False)
     assert failed.returncode != 0
     assert "Attempt task scopes do not match" in failed.stdout
 
@@ -805,7 +807,7 @@ def test_pending_task_cannot_execute_from_an_original_attempt(
         }
     }
     _publish_attempt(built, attempt)
-    failed = _snakemake(built, "--dry-run", "--", "reference_slice", check=False)
+    failed = _snakemake(built, "--dry-run", "--", *REFERENCE_RULES, check=False)
     assert failed.returncode != 0
     assert "does not bind the current workflow attempt" in failed.stdout
 
@@ -816,7 +818,7 @@ def test_attempt_and_profile_snapshot_are_closed_and_content_bound(
     config = json.loads(built.workflow_attempt_path.read_text(encoding="utf-8"))
     config["unknown"] = "not-allowed"
     built.workflow_attempt_path.write_text(json.dumps(config), encoding="utf-8")
-    failed = _snakemake(built, "--dry-run", "--", "reference_slice", check=False)
+    failed = _snakemake(built, "--dry-run", "--", *REFERENCE_RULES, check=False)
     assert failed.returncode != 0
     assert "Additional properties" in failed.stdout
 
@@ -825,7 +827,7 @@ def test_attempt_and_profile_snapshot_are_closed_and_content_bound(
     profile_path = rebuilt.run_root / "contract" / "profile.json"
     profile = json.loads(profile_path.read_text(encoding="utf-8"))
     profile_path.write_text(json.dumps(profile, indent=2), encoding="utf-8")
-    failed = _snakemake(rebuilt, "--dry-run", "--", "reference_slice", check=False)
+    failed = _snakemake(rebuilt, "--dry-run", "--", *REFERENCE_RULES, check=False)
     assert failed.returncode != 0
     assert "profile snapshot must use canonical JSON bytes" in failed.stdout
 
@@ -836,7 +838,7 @@ def test_child_python_identity_is_bound_before_graph_admission(
     config = orchestration_contracts.load_json_object(built.workflow_attempt_path)
     config["normalizer"]["path"] = str(workflow_fixture.REPO_ROOT / ".venv/bin/python3")
     _publish_attempt(built, config)
-    failed = _snakemake(built, "--dry-run", "--", "reference_slice", check=False)
+    failed = _snakemake(built, "--dry-run", "--", *REFERENCE_RULES, check=False)
     assert failed.returncode != 0
     assert (
         "Workflow Python, Snakemake, and normalizer paths must be identical"
@@ -853,7 +855,7 @@ def test_child_installed_package_identity_is_attested_before_graph_admission(
     attempt["installed_package"]["content_sha256"] = "0" * 64
     _publish_attempt(built, attempt)
 
-    failed = _snakemake(built, "--dry-run", "--", "reference_slice", check=False)
+    failed = _snakemake(built, "--dry-run", "--", *REFERENCE_RULES, check=False)
 
     assert failed.returncode != 0
     assert "Could not attest workflow child source identity" in failed.stdout

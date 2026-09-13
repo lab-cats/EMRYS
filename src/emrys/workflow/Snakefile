@@ -43,7 +43,6 @@ except InstalledPackageError as exc:
     raise WorkflowError(f"Uncontrolled workflow Python runtime: {exc}") from exc
 
 
-WORKFLOW_ROOT = Path(workflow.basedir).resolve()
 WORKFLOW_ATTEMPT = dict(config)
 orchestration_contracts.validate_record("workflow-attempt", WORKFLOW_ATTEMPT)
 RUN_ROOT = Path(WORKFLOW_ATTEMPT["workspace"]) / "runs" / WORKFLOW_ATTEMPT["run_id"]
@@ -59,10 +58,7 @@ try:
     RESOURCES = admit_resource_policy_record(WORKFLOW_ATTEMPT["workflow"]["resource_policy"])
 except ResourceConfigError as exc:
     raise WorkflowError(f"Attempt resource policy is invalid: {exc}") from exc
-WORKFLOW_CORES = RESOURCES.workflow_cores
-WORKFLOW_MEMORY_MB = RESOURCES.workflow_memory_mb
 STEP_THREADS = dict(RESOURCES.step_threads)
-STAGE_CONCURRENCY = dict(RESOURCES.stage_concurrency)
 STAGE_MEMORY_MB = dict(RESOURCES.stage_memory_mb)
 WORKFLOW_ATTEMPT_ID = WORKFLOW_ATTEMPT["workflow_attempt_id"]
 WORKFLOW_ATTEMPT_PATH = RUN_ROOT / "attempts" / WORKFLOW_ATTEMPT_ID / "attempt.json"
@@ -183,10 +179,6 @@ if base_projection != BASE_RULE_PROJECTION:
     raise WorkflowError("Processing owner tasks do not match the static base graph")
 BASE_OWNER_KEYS = {value.split("|", 1)[0] for value in BASE_RULE_PROJECTION.values()}
 ANALYSIS_OWNER_KEYS = set(OWNER_TASKS_BY_KEY).difference(BASE_OWNER_KEYS)
-
-
-def _owner(rule_name):
-    return BASE_RULE_PROJECTION[rule_name].split("|", 1)[0]
 
 
 EXPECTED_SCOPES_BY_OWNER = {}
@@ -412,13 +404,6 @@ wildcard_constraints:
         or "(?!)"
     )
     + ")"
-
-
-rule reference_slice:
-    input:
-        _verified(_owner("construct_STAR_index"), REFERENCE_ID),
-        _verified(_owner("convert_GTF_to_BED12"), REFERENCE_ID),
-        _verified(_owner("construct_FASTA_sidecars"), REFERENCE_ID)
 
 
 rule cohort_slice:

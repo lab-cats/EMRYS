@@ -84,8 +84,8 @@ def validate_report(
     data: bytes,
     scope_id: str,
     *,
-    step_id: str = "00a",
-    check_ids: set[str] | None = None,
+    step_id: str,
+    check_ids: set[str],
 ) -> None:
     try:
         reader = csv.DictReader(data.decode("utf-8").splitlines(), delimiter="\t")
@@ -93,24 +93,17 @@ def validate_report(
         fail(f"Validation report is not UTF-8: {exc}")
     if tuple(reader.fieldnames or ()) != HEADER:
         fail("Validation report header is invalid")
-    expected_ids = check_ids or {
-        "index_members",
-        "fasta_identity",
-        "gtf_identity",
-        "contig_names_lengths",
-        "sjdb_overhang",
-    }
     rows = list(reader)
-    if len(rows) != len(expected_ids):
+    if len(rows) != len(check_ids):
         fail(
             f"Step {step_id} validation report must contain exactly "
-            f"{len(expected_ids)} checks"
+            f"{len(check_ids)} checks"
         )
     if any(
         None in item or any(value is None for value in item.values()) for item in rows
     ):
         fail("Validation report contains an invalid row")
-    if {item["check_id"] for item in rows} != expected_ids:
+    if {item["check_id"] for item in rows} != check_ids:
         fail("Validation report check IDs are invalid")
     if any(item["step_id"] != step_id or item["scope_id"] != scope_id for item in rows):
         fail("Validation report scope identity is invalid")

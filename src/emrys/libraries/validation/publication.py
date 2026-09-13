@@ -15,8 +15,8 @@ def publish(
     data: bytes,
     scope_id: str,
     *,
-    step_id: str = "00a",
-    check_ids: set[str] | None = None,
+    step_id: str,
+    check_ids: set[str],
 ) -> None:
     parent = path.parent
     if not parent.exists() or parent.is_symlink() or not parent.is_dir():

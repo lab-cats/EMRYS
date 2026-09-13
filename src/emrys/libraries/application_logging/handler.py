@@ -216,15 +216,6 @@ class AttemptLog:
                 print(warning, file=sys.stderr)
         return not self.degraded
 
-    def synchronize(self, boundary: str) -> None:
-        _token("synchronization boundary", boundary)
-        self._handler.acquire()
-        try:
-            self._require_state("synchronize", {"open", "ready", "recovery"})
-            self._sync(boundary)
-        finally:
-            self._handler.release()
-
     def publication_ready(
         self,
         *,

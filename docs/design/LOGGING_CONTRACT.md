@@ -111,10 +111,9 @@ unchanged for its consumer.
 Grouped Run execution records `analysis_started` before workflow execution,
 `publication_ready` at the final pre-receipt boundary, and
 `receipt_committed` only after receipt-last publication succeeds. Each line is
-flushed; the writer synchronizes phase, failure, recovery, and pre-receipt
-boundaries. A post-receipt observation is best-effort and cannot change the
-receipt, rollback, exit, or committed state. Nontransactional success
-synchronizes its terminal event.
+flushed; the writer synchronizes failure, recovery, and pre-receipt boundaries.
+A post-receipt observation is best-effort and cannot change the receipt, rollback,
+exit, or committed state. Nontransactional success synchronizes its terminal event.
 
 Once open, a write, sync, observation, or close failure retains the partial
 log, emits one fixed degradation warning, and disables further writes. Logging
