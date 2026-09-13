@@ -19,7 +19,7 @@ helps locate implementations. Owner contracts and direct tests define behavior.
 | `evidence/` | Operational and mechanical evidence collection that does not become peer computation. |
 | `reporting/` | Public report-provider contract/admission facade, artifact adaptation, canonical run summaries, and static rendering; bespoke scientific views remain with their report provider. |
 | `ingestion/` | External-input admission and diagnostics; no implemented orchestration runner. |
-| `orchestration/` | Run-coordinator request normalization, reporting projection, content-bound task execution/reuse admission, and lifecycle application policy; no scientific implementation. Static scheduling assets live at root `workflow/`. |
+| `orchestration/` | Run-coordinator request normalization, reporting projection, content-bound task execution/reuse admission, and lifecycle application policy; no scientific implementation. Scheduling assets live in `src/emrys/workflow/`. |
 
 Native assets stay with their behavioral owner. Root `configs/` holds explicit
 starter inputs and reference tables; repository tooling under `scripts/` is not
@@ -149,7 +149,7 @@ owner or grouped command imports reporting internals.
 | `SRC-TRANS-011` | `orchestration/run_coordinator/onboarding.py` → `emrys.stages.gtf_to_bed12.converter` | Reference GTF/FASTA compatibility using the current normalization implementation | Reuse the single GTF normalization authority without duplicating scientific semantics. |
 | `SRC-TRANS-012` | `orchestration/run_coordinator/onboarding.py` → `emrys.evidence.runtime_availability.inspector` | Project runtime discovery and admission through the public inspection capability | Let Project orchestration admit the existing runtime-inspection result rather than duplicate its probes. |
 | `SRC-TRANS-013` | `orchestration/run_coordinator/doctor.py` → `emrys.reporting` | Admit the same-ID report provider required by a reporting-enabled run | Admit the selected reporting capability through its public facade without authorizing other orchestration importers. |
-| `SRC-TRANS-014` | `orchestration/run_coordinator/lifecycle.py` → `emrys.reporting.transaction_validation` | Historical receipt validation during Attempt inspection | Keep historical reporting-receipt semantics with the reporting owner. |
+| `SRC-TRANS-014` | `orchestration/run_coordinator/lifecycle.py` → `emrys.reporting.transaction_validation` | Retained receipt validation during Attempt inspection | Keep current-format reporting-receipt admission with the reporting owner. |
 | `SRC-TRANS-015` | `orchestration/run_coordinator/reporting_boundary.py` → `emrys.reporting.transaction_validation` | Semantic validation before immutable reporting completion | Keep reporting completion admission with its existing owner before immutable publication. |
 | `SRC-TRANS-016` | `orchestration/run_coordinator/reporting_operation.py` → `emrys.reporting._artifact_index.context` | Prepare combined index and summary evidence | Keep artifact-index preparation with reporting through the exact coordinator boundary. |
 | `SRC-TRANS-017` | `orchestration/run_coordinator/reporting_operation.py` → `emrys.reporting._artifact_index.publication` | Publish the combined index and summary | Reuse the existing artifact-index publication implementation through the exact coordinator boundary. |
@@ -166,3 +166,8 @@ checks tracked imports, owner separation, library cycles, CLI imports, and exact
 exceptions without loading product code or changing files. It cannot determine
 runtime calls, native-code dependencies, scheduling, artifact flow, or scientific
 meaning; `STAGE_MAP.md`, owner contracts, and direct tests cover those concerns.
+
+Retain this checker until a maintained replacement demonstrates the same rules
+for dynamic imports, private access, repository admission, CLI interfaces and
+logging. Observed imports cannot authorize themselves. Replacing the tool must
+reduce maintained policy code without introducing a parallel permission list.

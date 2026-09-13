@@ -42,7 +42,7 @@ and changes neither Run nor Attempt identity.
 | Operational evidence | `src/emrys/evidence/` | Observes runtime, reference, storage, QC, and orientation facts without promoting their meaning. |
 | Results and reporting | `src/emrys/reporting/` plus selected reporter | Indexes admitted artifacts, builds the canonical summary, and publishes one bespoke scientific view plus the fixed evidence/operations view. It never reruns science. |
 | Neutral records and primitives | `src/emrys/contracts/`, `src/emrys/libraries/` | Provide versioned schemas, identity facts, validation, and narrowly proven shared mechanics. |
-| Scheduling and placement | `workflow/`, Snakemake, and the private whole-Run Slurm transport | Schedule the admitted graph and expose attributable execution facts; they are not scientific, completion, or recovery authority. |
+| Scheduling and placement | [`src/emrys/workflow/`](../../src/emrys/workflow/README.md), Snakemake, and private Slurm transport | Schedule the admitted graph and record execution facts; scientific completion and recovery belong to the runner. |
 
 Source imports, runtime/control invocation, and artifact/evidence flow are
 separate dependency graphs. A permitted relationship in one does not grant a

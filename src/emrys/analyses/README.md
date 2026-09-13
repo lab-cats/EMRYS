@@ -20,21 +20,21 @@ directories. Doctor checks these requirements and the runner records their
 content identities. The module's package manager supplies them; managed runtime
 repair does not install custom dependencies.
 
-The v2 execution interface occupies the existing downstream `09` and optional `10` task
-slots and inherits task, publication, recovery, provenance, and logging policy.
-It provides no arbitrary stage graph, installer, failure-policy language,
-registry service, or second scheduler. A distinct downstream Analysis can reuse
-compatible Steps `00`–`06` artifacts, while keeping its own Run, Results,
-reporting, and evidence identity.
+The v2 interface uses the existing `09` and optional `10` task slots and the
+runner's publication, recovery, provenance, and logging rules. It adds no arbitrary
+task graph, installer, failure-policy language, registry service, or second scheduler.
+A downstream Analysis can reuse compatible Steps `00`–`06` artifacts while
+keeping its own Run, Results, reporting, and evidence identity.
 
 A planner receives `TaskPlanningContextV2`: `working_outputs` gives the exact
 files its worker must create; `outputs` gives canonical final identities for
 provenance and the independent validator. It returns `TaskCommandPlanV2` with
 fixed worker argv, validator argv, and all consumed inputs. Artifact declarations
 specify native publication order; put the terminal native receipt last. The
-runner creates working space and supervises execution. Providers must migrate
-their complete worker path to this interface; there is no legacy execution
-adapter. Persisted v1 provider metadata remains readable for historical Runs.
+runner creates working space and supervises execution. All workers use v2.
+Current record schemas also accept v1 provider metadata; that does not authorize
+v1 execution or reading obsolete Runs. The [version policy](../../../docs/design/decisions/platform-direction.md#version-support)
+defines current-format support.
 
 ## Scientific reports and compatibility
 

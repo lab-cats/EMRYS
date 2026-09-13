@@ -8,11 +8,12 @@ provides no separate validator.
 ## Version and identity rules
 
 EMRYS schema IDs are exact identities, not aliases for earlier NORAD IDs.
-Historical records require their own registered schema. Each registered `$id`
-occupies one packaged file, with local `$defs` where useful. Splitting, replacing,
-or regenerating a schema to satisfy a consumer or test changes a contract and
-requires explicit version and consumer review. Version directories are part of
-packaging and reference resolution, not an arbitrary documentation split.
+Only current formats are registered under the [version policy](../../../../docs/design/decisions/platform-direction.md#version-support).
+Keep the packaged directories: their numbers span unrelated contract families
+and participate in resource paths and references. They are not instructions to
+support obsolete records or rename files for visual consistency. Each `$id`
+occupies one file, with local `$defs` where useful. Change a format only after
+reviewing its writers, readers and references together.
 
-The [artifact index](artifacts/README.md) lists resources across v1–v5; the
-[orchestration index](orchestration/README.md) lists its mixed-version records.
+The [artifact index](artifacts/README.md) and
+[orchestration index](orchestration/README.md) list their current registered formats.

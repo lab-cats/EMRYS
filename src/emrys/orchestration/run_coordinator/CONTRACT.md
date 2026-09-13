@@ -110,12 +110,16 @@ Resume carries only the computational policy into a new Attempt and does not
 rewrite the immutable Run or its predecessor records. Normal implementation
 installed-package identity checks still apply.
 
-Planning composes the fixed common processing profile with the selected
-analysis provider's admitted task tail, declared inputs/outputs, validation
-reports, resources, and reporting projection. One immutable Attempt manifest
-records the complete task plan and invokes the installed Snakemake backend. The
-public surface exposes no raw engine force, unlock, cleanup, retry, plugin, or
-alternate-workflow escape hatch.
+Planning combines the common processing profile and the selected analysis
+provider's tasks, inputs, outputs, validation, resources, and reporting projection.
+In `materialization.py`, `_tasks` resolves scopes and final/working paths;
+`_task_commands` translates one processing owner's admitted facts into ordered
+producer arguments, validator arguments, and inputs. Its caller immediately
+names these three results. STAR directories, shared reference files, sample and
+partition inputs, and guarded R commands retain their distinct construction.
+One immutable Attempt manifest supplies the installed Snakemake backend.
+The public surface exposes no engine force, unlock, cleanup, retry, plugin,
+or alternate-workflow escape hatch.
 
 Before creating a new Run, planning rejects processing dependencies that
 disagree with the graph in the admitted installed package. Existing Runs
@@ -218,41 +222,44 @@ cannot change task, receipt, rollback, recovery, or exit authority.
 
 ## Scientific worker execution
 
-All first-party scientific tasks execute through this runner, including reference
-construction, sample processing, cohort preprocessing, paired CMH, and scientific
-context. Producers compute the scientific outputs, perform their native checks,
-and write provenance. They receive explicit working destinations and scratch
-space; they do not choose final working paths, acquire locks, publish results,
-supervise process groups, or implement operational recovery. There is no separate
-manager per producer. GTF-to-BED12 conversion also runs through a private
-worker; its normalization code is shared with Project and BED12 validation.
+All first-party scientific tasks use the runner: reference construction, sample
+and cohort processing, paired CMH, and scientific context. Producers compute
+outputs, perform native checks, and write provenance into explicit working and
+scratch paths. The runner owns those paths, locks, processes, streams, publication,
+and recovery; no producer manager is needed. GTF-to-BED12's private worker shares
+normalization with Project and BED12 validation.
 
-Task definitions bind working paths, final paths, publication order,
-locks, old recovery locations, and any complete directory input. Working files
-sit beside their final destination's parent, so publication can link large files
-without a second copy. The runner creates these directories, captures streams,
-and stops and reaps the worker's process group before attempting cleanup.
-Only the current manifest and task-start formats are accepted. Existing files
-are never migrated or rewritten; older Runs require their original software.
+`task.run_task` keeps the execution and failure sequence together:
 
-Before publication, the runner rechecks admitted inputs and the producer's
-checked working files. It also rechecks inputs after linking, before native
-commit and release of the rollback anchors. It publishes files exclusively in declared
-order, with any native receipt last. The complete STAR index includes additional
-regular native files, not just its fifteen required members; alignment binds
-that entire input directory's membership and contents. Shared FAI/dictionary
-sidecars retain their cross-Run lock. The Run reuses a complete unchanged pair
-and still runs the independent validator; a partial pair is refused.
+1. Recheck the plan, lock, inputs, and existing destinations; record entry and
+   open the task streams. Task definitions bind final/working paths, publication
+   order, locks, recovery locations, and complete directory inputs.
+2. Create the workspace and run the producer. Stop and reap its process group
+   before cleanup. Working files share the destination filesystem, allowing
+   publication by links without copying large outputs.
+3. Validate and publish. Preprocessing (Step `08`) and paired CMH (Step `09`)
+   validate working files and pass semantic checks before publication. Other
+   owners publish first, then independently validate final files and require
+   semantic all-pass. `_NativePublication` handles exclusive links in declared
+   order, with any native receipt last. Input and working-file checks precede
+   linking; inputs are checked again before commit releases the rollback anchors.
+4. Recheck inputs, outputs, validation evidence, and stream identities; publish
+   the terminal record and then its verified reference. Track phase results
+   separately so failure records describe work actually reached. A native receipt
+   alone never proves task completion.
 
-The independent validator and semantic all-pass gate run against final files
-after native publication. Failure at that point preserves the committed native
-outputs, validation report, and failed task evidence. A native receipt alone is
-not verified task completion. Before native commit, rollback may remove only
-files still proved to belong to this task by their retained working-file anchors.
-An ambiguous identity, failed cleanup, or changed lock preserves remaining files
-and recovery evidence for inspection. Old backup and staging residues are never
-adopted or automatically deleted. These rules apply once here across the workers;
-their contracts retain scientific checks, formats, and provenance requirements.
+Before native commit, rollback removes only outputs still bound to this task's
+working files. After commit, validation failure preserves native outputs and
+failed evidence. Uncertain identity, cleanup, writer state, or lock ownership
+preserves recovery files. Old backups/staging are never adopted or deleted.
+Only current manifest/start formats are accepted; older Runs need their original
+software and existing records are not rewritten.
+
+STAR publication includes additional regular native files beyond the fifteen
+required members; alignment binds the full directory's membership and contents.
+FAI/dictionary sidecars keep their cross-Run lock: reuse requires a complete
+unchanged pair and still runs independent validation; partial pairs are refused.
+Worker contracts own their scientific checks, formats, and provenance rules.
 
 ## Resume, inspection, Results, and reporting
 
@@ -314,7 +321,7 @@ EMRYS Run.
 | `results/reports/<run-id>/` | Self-contained scientific and evidence/operations reports, and receipt published last. |
 | `products/native/` | Nonfinal native artifacts and QC/validation evidence needed for resume or downstream work. |
 | `products/artifact-summary/<run-id>/<run-id>.run_summary.json` | Authoritative reporting result manifest, published last. |
-| `products/artifact-summary/<run-id>/<run-id>.run_summary.tsv` | Tabular Run-status summary. |
+| `products/artifact-summary/<run-id>/<run-id>.run_summary.tsv` | One row per artifact: identity, source, completion, warnings and errors. |
 | `products/artifact-summary/<run-id>/<run-id>.qc_summary.tsv` | Consolidated QC projection. |
 | Beside the declared FASTA | Step `00c` `.fai` and `.dict`, the only owner outputs outside the Run root. |
 

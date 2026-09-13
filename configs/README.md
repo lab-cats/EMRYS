@@ -152,7 +152,7 @@ the declared transaction reconciles.
 
 Execution settings are separate from scientific inputs. The
 [coordinator contract](../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
-owns profile selection, precedence, and historical compatibility.
+owns profile selection and precedence.
 
 An `emrys.execution-profile.v1` document separates resource budgets from
 placement (where to run):
@@ -177,6 +177,5 @@ shows Slurm fields. Retired reporting-memory settings are rejected.
 
 ## Specialist examples
 
-Other examples cover artifact/report inputs, reference provenance, retention,
-runtime/storage inspection, and pairing evidence. Use them only when the named
-component requests that format; example content is not evidence from a real Run.
+Other examples cover artifact/report inputs, reference provenance, and pairing.
+Use them only when their owner requests that format; examples are not Run evidence.

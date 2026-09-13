@@ -10,12 +10,12 @@ scientific analysis or turn observations into biological claims.
 - [`runtime_availability/`](runtime_availability/README.md) and
   [`storage_inventory/`](storage_inventory/README.md) supply readiness evidence
   consumed by Doctor; Slurm requires the stronger two-phase storage receipt.
-- [`reference_provenance/`](reference_provenance/README.md) and standalone runtime
-  inspection are optional diagnostics.
+- [`reference_provenance/`](reference_provenance/README.md) optionally reconciles
+  an explicitly declared reference bundle.
 
-Runtime and storage diagnostics use `emrys debug`; reference reconciliation uses
-`emrys reconcile reference-provenance`. Dry-run may inspect or measure inputs
-but does not publish. An owner can supply both a required Run API and an optional
-diagnostic: success in one does not imply success in the other. A published file
-or zero exit alone does not prove readiness, workflow completion, scientific
-review, or biological validity.
+Use `emrys runtime discover` and `emrys doctor` for runtime readiness,
+`emrys debug storage-qualification` for storage, and
+`emrys reconcile reference-provenance` for reference reconciliation. Dry-run
+may inspect or measure inputs but does not publish. Optional diagnostics do not
+replace required Run checks. A file or zero exit alone does not prove readiness,
+workflow completion, scientific review, or biological validity.

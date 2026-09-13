@@ -9,7 +9,7 @@ commands; these modules are private implementation details.
 Use the [quickstart](../../../../quickstart.md) for a first Run and the
 [Runbook](../../../../docs/operations/RUNBOOK.md) for later operation and Slurm.
 [The contract](CONTRACT.md) defines command confirmation, immutable records,
-inspection, historical compatibility, and recovery. It is the authoritative
+inspection, current-version compatibility, and recovery. It is the authoritative
 home for those rules; this README explains how the implementation fits together.
 
 ## Specialized setup and reuse
@@ -33,9 +33,8 @@ changing it. Synthetic dataset choices belong in the [quickstart](../../../../qu
 | Start reporting after computation or on request | `reporting_operation.py`, `reporting_boundary.py` |
 | Submit the same execution backend to one Slurm allocation | `slurm_submission.py` |
 
-Scientific algorithms, native-output publication, scientific validation,
-report rendering, and package installation remain with their respective owners.
-The coordinator calls them; it does not reproduce their implementation.
+The runner owns native-output publication. Scientific algorithms and validation,
+report rendering, and package installation stay with their existing owners.
 Doctor binds the executing installed package and rechecks its full identity
 before and after repair. Managed repair uses Pixi and renv for Project-owned
 native tools and R libraries; Python installation stays with the environment's
