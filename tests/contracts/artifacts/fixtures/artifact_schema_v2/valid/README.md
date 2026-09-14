@@ -1,6 +1,6 @@
 # Valid current artifact examples
 
-These reviewed synthetic inputs cover a current artifact entry, Run manifest,
+These reviewed synthetic inputs cover a current artifact entry, Run result manifest,
 and [report receipt](../../report_receipt_v5.json). The
 [contract tests](../../../test_artifact_schema_contracts.py) validate schema and
 scientific/status semantics. Preserve their scientific claims when changing
