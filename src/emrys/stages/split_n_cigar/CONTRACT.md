@@ -80,8 +80,8 @@ marked input, or GATK split-n-cigar semantics. It uses the shared validation,
 BAM, and reference-contig helpers. Shared process helpers require execute mode
 to use absolute Python 3.11+ in `EMRYS_SHA256_PYTHON`, canonical
 `<JAVA_HOME>/bin/java`, and a JVM/GATK-selector-scrubbed environment for both
-the GATK probe and work. This stage still owns tool precedence and versions,
-exact SplitNCigarReads arguments, validation, and output policy.
+the GATK probe and work. The runner supplies admitted tool paths; this stage
+owns exact SplitNCigarReads arguments, validation, and output policy.
 
 Content mismatches publish `status=fail`; unsafe inputs, required tool-call
 failures, and report-publication failures exit `2`.

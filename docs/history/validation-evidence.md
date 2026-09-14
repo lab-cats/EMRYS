@@ -1,9 +1,10 @@
 # Dated validation evidence
 
-These are immutable historical observations migrated from the retired project
-handoff. They describe the exact NORAD-era source revisions and retained
-artifacts named below. They are not current-head, CSU full-Run, production,
-scientific-review, or biological evidence unless a row explicitly says so.
+These immutable historical observations describe the exact source revisions and
+artifacts named below. The NORAD-era records came from the retired project
+handoff; later sections name their own sources. They are not current-head, CSU
+full-Run, production, scientific-review, or biological evidence unless a row
+explicitly says so.
 Current state comes from live Git and checks bound to the revision under review.
 
 ## PORT-NC-01 integration replay
@@ -148,3 +149,26 @@ production-data correctness, scientific review, or biological validity.
 | `ARCH-CLOSE-01` | `f85379edef0440266c1e97e97be5324e364812cb`; [ordinary CI 33630887395](https://github.com/lab-cats/EMRYS/actions/runs/33630887395); [selected 130-pair CI 33630899403](https://github.com/lab-cats/EMRYS/actions/runs/33630899403) | Managed real-tool direct journey, Rocky/Ubuntu/Debian lock installation, Python 3.11 shards, and hosted direct/disposable-Slurm success. |
 | `ARCH-CLOSE-02` | `4a165038b3d164d6ace59b9e9bb21add086d07df`; [ordinary CI 33640599154](https://github.com/lab-cats/EMRYS/actions/runs/33640599154); [selected recovery CI 33640622974](https://github.com/lab-cats/EMRYS/actions/runs/33640622974) | Hosted direct/disposable-Slurm controlled failure, resume, provenance, Results, and logging parity at 130 pairs. |
 | `ARCH-CLOSE-03` | `f3622f791e90fd6ed15079abcbcbe9b7003cbb6a`; [ordinary CI 33653717181](https://github.com/lab-cats/EMRYS/actions/runs/33653717181); [CodeQL 33653716112](https://github.com/lab-cats/EMRYS/actions/runs/33653716112) | Role, ownership, baseline, closeout, ordinary CI, and static-security evidence; long lanes were not selected. |
+
+## Immutable Attempt manifest scale probe
+
+Recorded on September 10, 2026 in the
+[compression backlog at `5511a75256c87fccbbd346cf50aab2522cde82b1`](https://github.com/lab-cats/EMRYS/blob/5511a75256c87fccbbd346cf50aab2522cde82b1/docs/tasks/compression_backlog_matrix.md#cs-28-one-immutable-attempt-manifest).
+This local synthetic probe on macOS/Python 3.13.15 compared the split planning
+layout with one manifest, using the same representative task definitions.
+Counts exclude unchanged Run, request, and reporting-input files. Times are
+medians of three cache-warm reads, SHA-256 checks, strict JSON decodes, and
+canonical-byte checks; the split probe reconstructs those operations rather
+than running the complete old worker.
+
+| Tasks | Planning files, before → after | Persisted payload bytes, before → after | One selection, before → after | Process peak RSS, before → after |
+|---:|---:|---:|---:|---:|
+| 35 | 37 → 1 | 130,307 → 59,001 | 0.135 → 0.318 ms | 35.09 → 35.08 MiB |
+| 350 | 352 → 1 | 1,276,176 → 567,342 | 0.446 → 2.990 ms | 35.41 → 37.92 MiB |
+| 3,500 | 3,502 → 1 | 12,782,080 → 5,672,793 | 3.044 → 28.241 ms | 39.95 → 76.36 MiB |
+
+This reduces persisted planning surface but increases per-task read/decode cost
+as the task roster grows. At 3,500 tasks the logical payload read for one
+selection grows from 465,600 to 5,672,793 bytes. Physical I/O, allocated disk
+blocks, isolated process startup, scientific-stage wall time, and cluster
+behavior were not measured. No overall performance improvement is claimed.

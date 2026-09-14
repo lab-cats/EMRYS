@@ -104,7 +104,7 @@ new report.
 Validation publication uses the shared
 [`validation`](../../libraries/validation/README.md) facade. Grouped invocation
 binds the selected installed package independently of caller CWD and ambient
-`PYTHONPATH`, rejecting a different installed checkout from an EMRYS worktree.
+`PYTHONPATH`.
 
 ## Consumers
 

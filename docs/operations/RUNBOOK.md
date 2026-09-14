@@ -154,12 +154,12 @@ content. The new Run owns Steps 07 onward, Results, reports, Attempts, and logs.
 
 ### Advanced owner routes
 
-Specialist scientific commands publish native outputs without creating or
-adopting a Run. Find them under [`src/emrys`](../../src/emrys/) and in the
-[functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md).
-`emrys debug` includes runtime and storage evidence commands;
-`emrys validate all-pass` checks one owner-validation report because validator
-exit zero alone does not establish semantic success.
+Scientific computation runs through `emrys run` and `emrys resume`.
+Specialist commands validate existing outputs, reconcile reference provenance
+(`emrys reconcile reference-provenance`), or qualify workflow storage
+(`emrys debug storage-qualification`). `emrys validate all-pass` checks one
+owner-validation report because validator exit zero alone does not establish
+semantic success.
 
 The CSU dashboard is stale and frozen pending separate replacement work.
 Use `emrys inspect` and exact Slurm accounting/streams for status and completion.

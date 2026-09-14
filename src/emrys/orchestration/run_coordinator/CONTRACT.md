@@ -103,6 +103,12 @@ the selected profile overrides them, and resource CLI values have highest
 precedence. Placement is Attempt-local provenance; the admitted scientific
 computation and task roster remain Run authority.
 
+Admission retains whether computational resources were explicitly authored;
+merged defaults cannot reconstruct that choice when resuming. Slurm resource
+selection in the parent process and Run planning in the compute process check
+the predecessor at different times. A cached parent result cannot replace the
+child's admission.
+
 New profiles reject `resources.reporting_memory_mb`, and the CLI no longer
 accepts `--reporting-memory-mb`. This retired control never constrained report
 execution. Remove it from a selected profile before a new Run or Attempt.
@@ -172,8 +178,17 @@ not produced.
 
 On resume, a verified task refers directly to its original Attempt manifest and
 selects the original owner and scope. References cannot form chains, and reused
-definitions cannot execute as new work. A changed plan requires a new Run;
-resume creates a new Attempt without changing any predecessor.
+definitions cannot execute as new work. Pending definitions belong to the new
+Attempt; retained Step 07 work keeps its original selected-sample manifest and
+content binding. A changed plan requires a new Run; resume creates a new Attempt
+without changing any predecessor.
+
+Graph construction shares decoded original manifests across task definitions.
+Each worker decodes its selected manifest at startup and retains exact-byte
+rechecks. Inspection and reuse reload evidence independently; there is no shared
+mutable cache. The [recorded scale probe](../../../../docs/history/validation-evidence.md#immutable-attempt-manifest-scale-probe)
+shows that fewer planning files can increase per-task decoding cost; it does
+not establish a workflow speedup.
 
 Immediately before producer entry, the task publishes an immutable start record
 binding its original manifest's path and exact hash. Its stdout and
