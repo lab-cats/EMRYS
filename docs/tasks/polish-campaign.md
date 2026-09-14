@@ -311,7 +311,7 @@ quantify any product growth before implementation selection.
 **Completed:** [PR #150](https://github.com/lab-cats/EMRYS/pull/150), merged through
 PR #169, records implementation and verification. The inactive setting was
 removed; the [Run-coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
-defines new-input rejection and retained historical reading. The broader
+defines rejection in new profiles and current-version resume behavior. The broader
 `REPORT-ROSTER-01` outcome remains open.
 
 ### 14. Retire the frozen dashboard when its existing row is selected
