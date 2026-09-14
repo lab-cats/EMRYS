@@ -885,7 +885,8 @@ R timeout/exit distinctions, snapshot counterexamples and dashboard coverage.
 Review corrections follow the verified `6842a478` stack. They preserve current
 scientific results, provenance, recovery and all retained evidence. Existing
 schemas now enforce intended contracts; no format version or execution mode is
-introduced. PR #157's external review was still running at this assessment.
+introduced. All requested external reviews are complete; eight findings are
+classified below.
 
 | Finding | Disposition and surviving owner |
 |---|---|
@@ -893,6 +894,7 @@ introduced. PR #157's external review was still running at this assessment.
 | [#154: empty old reporting ledger](https://github.com/lab-cats/EMRYS/pull/154#discussion_r4005860909) | Already corrected by CS-22: `reporting_kinds` rejects any unexpected stage directory before `publish_start` creates a new ledger. A local probe confirms an empty `artifact_index` directory is rejected and preserved. Obsolete-protocol migration is no longer supported. |
 | [#156: synthetic E2E caller](https://github.com/lab-cats/EMRYS/pull/156#discussion_r4005893710) | Fixed the one remaining `attempt_fields(True)` call. The driver now uses the same zero-argument API as every other caller; the five immutable fields are unchanged. |
 | [#156: computational boundary](https://github.com/lab-cats/EMRYS/pull/156#discussion_r4005893718) | Fixed both current receipt fields to the core computational-only banner already emitted by every reporter. Public validation now rejects either false biological claim; provider scientific content remains independent. |
+| [#157: validation and publication order](https://github.com/lab-cats/EMRYS/pull/157#discussion_r4006069270) | Already corrected in PR #166 (`143b4685`): the runner contract states that Steps 08/09 validate working files before publication, while other owners validate final files. It also distinguishes rollback before commit from output and evidence preservation after commit. |
 | [#159: inline Attempt tasks](https://github.com/lab-cats/EMRYS/pull/159#discussion_r4005894927) | Closed the nine inline task fields in the existing schema and retired duplicate runner shape checks. Current schema/API reject missing, extra and wrongly typed fields; the runner still owns nested declaration/publication, path, filesystem and recovery checks. |
 | [#161: old reporter artifact fields](https://github.com/lab-cats/EMRYS/pull/161#discussion_r4005881574) | Dismiss compatibility restoration: the snapshot carrier was an approved alpha migration with no existing external providers. Old direct-field access and positional unpacking do change; the [reporting owner](../../src/emrys/reporting/README.md) explains the current interface. |
 | [#164: callable alias](https://github.com/lab-cats/EMRYS/pull/164#discussion_r4005873479) | Dismiss restoration of `ScientificReporterV1`: the unused alias was explicitly retired. Callable discovery, context, result validation and custom dependencies remain; the reporting owner gives direct annotation guidance. The persisted-Run version policy is not a blanket Python API compatibility rule. |
