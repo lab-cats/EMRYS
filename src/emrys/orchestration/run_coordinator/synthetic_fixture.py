@@ -19,8 +19,9 @@ from typing import cast
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.orchestration.run_coordinator.execution_profile import (
-    PROJECT_DEFAULT_PROFILE_BYTES,
     PROJECT_PROFILE_DIRECTORY,
+    add_site_argument,
+    project_default_profile_bytes,
 )
 from emrys.orchestration.run_coordinator.onboarding import (
     OnboardingError,
@@ -644,6 +645,8 @@ def fixture_metadata(
 
 def fixture_members(
     profile: DatasetProfile = DEFAULT_PROFILE,
+    *,
+    site: str | None = None,
 ) -> dict[str, tuple[bytes, int]]:
     """Return deterministic fixture members, excluding the completion manifest."""
 
@@ -651,7 +654,7 @@ def fixture_members(
     members: dict[str, tuple[bytes, int]] = {
         "project.yaml": (_project_definition(profile), 0o644),
         (PROJECT_PROFILE_DIRECTORY / "default.yaml").as_posix(): (
-            PROJECT_DEFAULT_PROFILE_BYTES,
+            project_default_profile_bytes(site),
             0o644,
         ),
         "samples.tsv": (_sample_manifest(), 0o644),
@@ -692,6 +695,7 @@ def _completion_bytes(members: dict[str, tuple[bytes, int]]) -> bytes:
 
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:
+    add_site_argument(parser)
     parser.add_argument(
         "--output-dir",
         required=True,
@@ -747,7 +751,7 @@ def init_from_args(arguments: argparse.Namespace) -> int:
             print("Dry-run complete; no files were written.")
             return 0
 
-        members = fixture_members(profile)
+        members = fixture_members(profile, site=getattr(arguments, "site", None))
 
         def validate_before_completion(published: Path) -> None:
             validate_project(published / "project.yaml", root=root)

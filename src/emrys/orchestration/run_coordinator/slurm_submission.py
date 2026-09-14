@@ -5,7 +5,8 @@ from __future__ import annotations
 import os
 import shlex
 import subprocess
-from collections.abc import Mapping, Sequence
+import sys
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
@@ -32,6 +33,44 @@ _DELEGATE_ENV_PREFIX = "EMRYS_PRIVATE_SLURM_"
 
 class SlurmSubmissionError(RuntimeError):
     """One private Slurm submission could not be planned or completed."""
+
+
+def delegate_binding() -> str | None:
+    """Admit the shared private delegate context before loading its profile."""
+
+    values = tuple(
+        os.environ.get(name)
+        for name in (DELEGATE_MARKER_ENV, PROFILE_SHA256_ENV, SUBMIT_UID_ENV)
+    )
+    if all(value is None for value in values):
+        return None
+    if any(value is None for value in values):
+        raise SlurmSubmissionError("Private Slurm delegate context is incomplete")
+    if values[0] != DELEGATE_MARKER:
+        raise SlurmSubmissionError("Private Slurm delegate marker is invalid")
+    if values[2] != str(os.getuid()):
+        raise SlurmSubmissionError(
+            "Private Slurm delegate UID differs from the current process"
+        )
+    return values[1]
+
+
+def delegate_job_id(profile: ExecutionProfile) -> str | None:
+    """Re-admit the profile and allocation shared by every delegated command."""
+
+    expected = delegate_binding()
+    if expected is None:
+        return None
+    if profile.binding_sha256 != expected:
+        raise SlurmSubmissionError("Execution-profile binding SHA-256 differs")
+    if profile.placement.kind != "slurm":
+        raise SlurmSubmissionError("A private Slurm delegate requires Slurm placement")
+    job_id = os.environ.get("SLURM_JOB_ID")
+    try:
+        profile.attempt_placement(job_id)
+    except ValueError as exc:
+        raise SlurmSubmissionError(str(exc)) from exc
+    return job_id
 
 
 @dataclass(frozen=True, slots=True)
@@ -225,24 +264,86 @@ def plan_submission(
     )
 
 
-def submit(submission: SlurmSubmission) -> str:
+def submit(
+    submission: SlurmSubmission,
+    *,
+    wait_record: Path | None = None,
+    on_submitted: Callable[[str], None] | None = None,
+) -> str:
     """Submit one planned script in one subprocess call and return its job ID."""
 
     try:
-        completed = subprocess.run(
-            submission.argv,
-            input=submission.batch_script,
-            env=dict(submission.environment),
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+        if wait_record is None:
+            completed = subprocess.run(
+                submission.argv,
+                input=submission.batch_script,
+                env=dict(submission.environment),
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            stdout = completed.stdout
+        else:
+            error_record = wait_record.with_suffix(".stderr")
+
+            def private_opener(path: str, flags: int) -> int:
+                return os.open(path, flags, 0o600)
+
+            with (
+                open(wait_record, "x+", opener=private_opener) as output,
+                open(error_record, "x", opener=private_opener) as errors,
+            ):
+                print(
+                    f"Slurm submission records: {wait_record}, {error_record}",
+                    file=sys.stderr,
+                )
+                with subprocess.Popen(
+                    (*submission.argv, "--wait"),
+                    env=dict(submission.environment),
+                    text=True,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=errors,
+                ) as process:
+                    try:
+                        process.stdin.write(submission.batch_script)
+                        process.stdin.close()
+                        first = process.stdout.readline()
+                        output.write(first)
+                        output.flush()
+                        os.fsync(output.fileno())
+                        if first:
+                            job_id = _submitted_job_id(first)
+                            print(
+                                f"Slurm job {job_id}; logs: {str(submission.stdout_pattern).replace('%j', job_id)}, {str(submission.stderr_pattern).replace('%j', job_id)}",
+                                file=sys.stderr,
+                                flush=True,
+                            )
+                            if on_submitted is not None:
+                                on_submitted(job_id)
+                        rest = process.stdout.read()
+                        output.write(rest)
+                        stdout = first + rest
+                        completed = process
+                        process.wait()
+                    except BaseException:
+                        process.terminate()
+                        try:
+                            process.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            process.kill()
+                            process.wait()
+                        raise
     except OSError as exc:
         raise SlurmSubmissionError("could not execute sbatch") from exc
     if completed.returncode != 0:
         raise SlurmSubmissionError(f"sbatch failed with exit {completed.returncode}")
+    return _submitted_job_id(stdout)
 
-    lines = completed.stdout.splitlines()
+
+def _submitted_job_id(stdout: str) -> str:
+
+    lines = stdout.splitlines()
     if len(lines) != 1:
         raise SlurmSubmissionError("sbatch did not return one parsable job ID")
     fields = lines[0].split(";")

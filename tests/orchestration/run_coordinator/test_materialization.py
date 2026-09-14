@@ -73,7 +73,10 @@ from emrys.orchestration.run_coordinator.materialization import (
 from emrys.orchestration.run_coordinator.normalization import (
     admit_project,
 )
-from emrys.orchestration.run_coordinator.execution_profile import load_execution_profile
+from emrys.orchestration.run_coordinator.execution_profile import (
+    load_execution_profile,
+    project_default_profile_bytes,
+)
 from emrys.orchestration.run_coordinator.resource_policy import (
     AllocationCapacity,
     ResourceOverrides,
@@ -3521,6 +3524,8 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
 
     normal = projections["normal"]
     assert "Execution placement: Slurm" in normal
+    assert "Analysis: 'sensitivity'" in normal
+    assert "Allocation: 4 CPUs, 01:00:00, site-default memory" in normal
     assert "Dry-run complete; no scheduler or workspace state was written." in normal
     assert "Execution profile:" not in normal
     assert "Scheduler stdout:" not in normal
@@ -3886,6 +3891,10 @@ def test_standalone_report_logging_boundary(
     run_root = workspace / "runs" / ("run-" + "a" * 64)
     run_root.mkdir(parents=True)
     project.write_text("report selection anchor\n", encoding="utf-8")
+    if execute_requested:
+        profile = workspace / "runtime/profiles/default.yaml"
+        profile.parent.mkdir(parents=True)
+        profile.write_bytes(project_default_profile_bytes())
     calls: list[bool] = []
     locations = (
         ("scientific-report-html", run_root / "scientific.html"),
@@ -3947,6 +3956,72 @@ def test_standalone_report_logging_boundary(
         ]
     else:
         assert log_paths == []
+
+
+def test_standalone_report_uses_project_slurm_placement(
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    parser = argparse.ArgumentParser()
+    control.configure_report_parser(parser)
+
+    project = tmp_path / "project.yaml"
+    project.write_text("report selection anchor\n", encoding="utf-8")
+    run_root = tmp_path / "runs" / ("run-" + "a" * 64)
+    run_root.mkdir(parents=True)
+    profile = tmp_path / "runtime/profiles/default.yaml"
+    profile.parent.mkdir(parents=True)
+    profile.write_bytes(project_default_profile_bytes("viking"))
+    calls: list[bool] = []
+    submissions = []
+
+    def report(_root, *, execute, observe_generation_start=None):
+        assert _root == run_root
+        calls.append(execute)
+        return reporting_operation.ReportingOperationOutcome(
+            status="reused" if execute else "planned", verified_report_locations=()
+        )
+
+    scheduler = control.slurm_submission
+    monkeypatch.setattr(reporting_operation, "run_reporting", report)
+    monkeypatch.setattr(
+        scheduler, "submit", lambda plan: submissions.append(plan) or "812345"
+    )
+    argv = [run_root.name, "--project", str(project)]
+    assert control.report_from_args(parser.parse_args(argv)) == 0
+    assert calls == [False] and submissions == []
+    assert not (tmp_path / "logs").exists()
+    capsys.readouterr()
+
+    assert control.report_from_args(parser.parse_args([*argv, "--execute"])) == 0
+    assert calls == [False] and len(submissions) == 1
+    submitted = submissions[0]
+    assert {
+        "--account=viking-users",
+        "--partition=long",
+        "--qos=normal",
+        "--cpus-per-task=4",
+        "--time=08:00:00",
+    } <= set(submitted.argv)
+    assert not any(value.startswith("--mem=") for value in submitted.argv)
+    assert (
+        f" report {run_root.name} --project {project} --profile {profile} "
+        in submitted.batch_script
+    )
+    assert capsys.readouterr().out.startswith("JOB_ID=812345\n")
+
+    admitted = load_execution_profile(config_path=profile)
+    monkeypatch.setenv(scheduler.DELEGATE_MARKER_ENV, scheduler.DELEGATE_MARKER)
+    monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, admitted.binding_sha256)
+    monkeypatch.setenv(scheduler.SUBMIT_UID_ENV, str(os.getuid()))
+    monkeypatch.setenv("SLURM_JOB_ID", "812345")
+    assert (
+        control.report_from_args(
+            parser.parse_args([*argv, "--profile", str(profile), "--execute"])
+        )
+        == 0
+    )
+    assert calls == [False, True] and len(submissions) == 1
+    assert capsys.readouterr().out == ""
 
 
 def test_next_supported_action_uses_separated_status_domains() -> None:

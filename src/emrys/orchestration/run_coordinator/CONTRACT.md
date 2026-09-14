@@ -56,6 +56,8 @@ presentation only; the content-derived Run ID remains authority.
 
 `emrys init PROJECT_NAME` is dry-run-first and publishes only with `--execute`
 into an absent child of the current canonical writable/searchable directory.
+Both Project initialization routes accept `--site viking`; the existing default
+profile then contains the built-in Viking placement rather than direct placement.
 It validates referenced inputs without copying them, creates Project-owned
 `runs/`, `logs/`, `runtime/`, and `runtime/profiles/` with mode `0700`, and
 publishes `project.yaml` last. Failure preserves the partial root and never
@@ -69,7 +71,13 @@ one create-absent `<project-root>/runtime/runtime.tsv`. Doctor diagnosis and
 repair follow the durable boundaries in
 [`execution-evidence-and-reporting.md`](../../../../docs/design/decisions/execution-evidence-and-reporting.md):
 diagnosis is read-only, while confirmed repair mutates only declared
-EMRYS-owned locations through existing package managers and requalifies.
+EMRYS-owned locations through existing package managers and requalifies. Normal
+Doctor runs on the head node. For Slurm placement, repair installs there,
+submits bound compute runtime/storage checks and finalizes storage on the head
+node. `--compute` is the explicit advanced allocation route; it cannot finalize
+head-node evidence. A prior storage receipt alone does not qualify a changed
+runtime. Each automatic repair has one maintenance log; its compute checks
+retain scheduler streams without opening another application attempt.
 
 For direct placement, `run` and `resume` construct and display one frozen plan,
 then ask once before executing that same object. Refusal, EOF, interruption, or
@@ -90,13 +98,18 @@ completion authority.
 
 ## Profiles and immutable planning
 
-`run` and `resume` accept at most one closed
+`run`, `resume`, and `report` accept at most one closed
 `emrys.execution-profile.v1` fragment:
 
 - omission reads `<project-root>/runtime/profiles/default.yaml`;
 - `--profile NAME` reads exactly
   `<project-root>/runtime/profiles/NAME.yaml`; and
 - an absolute `--profile PATH` reads that exact file.
+
+Standalone report execution also reads the default profile and uses the same
+Slurm transport; its preview is local and read-only. Automatic reporting stays
+in the Run's existing allocation. Initial Viking selection changes placement
+only, not the scientific resource policy or Run identity.
 
 There is no site/global registry or profile scan. Packaged defaults apply first,
 the selected profile overrides them, and resource CLI values have highest

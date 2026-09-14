@@ -32,6 +32,7 @@ from emrys.libraries.application_logging import (
     LogControls,
     LogLevel,
     add_log_arguments,
+    console_print,
     event,
     field,
     open_attempt_log,
@@ -600,28 +601,10 @@ def _resolve_execution_profile(
 ) -> tuple[ExecutionProfile, str | None]:
     """Admit one selected profile and any private Slurm delegate binding."""
 
-    values = {
-        name: os.environ.get(name)
-        for name in (
-            slurm_submission.DELEGATE_MARKER_ENV,
-            slurm_submission.PROFILE_SHA256_ENV,
-            slurm_submission.SUBMIT_UID_ENV,
-        )
-    }
-    delegated = any(value is not None for value in values.values())
-    if delegated:
-        if any(value is None for value in values.values()):
-            raise ControlError("Private Slurm delegate context is incomplete")
-        if (
-            values[slurm_submission.DELEGATE_MARKER_ENV]
-            != slurm_submission.DELEGATE_MARKER
-        ):
-            raise ControlError("Private Slurm delegate marker is invalid")
-        if values[slurm_submission.SUBMIT_UID_ENV] != str(os.getuid()):
-            raise ControlError(
-                "Private Slurm delegate UID differs from the current process"
-            )
-    expected_sha256 = values[slurm_submission.PROFILE_SHA256_ENV] if delegated else None
+    try:
+        expected_sha256 = slurm_submission.delegate_binding()
+    except slurm_submission.SlurmSubmissionError as exc:
+        raise ControlError(str(exc)) from exc
     profile = load_execution_profile(
         config_path=project_execution_profile_path(
             project_path,
@@ -651,16 +634,10 @@ def _resolve_execution_profile(
         and profile.binding_sha256 != expected_sha256
     ):
         raise ExecutionProfileError("Execution-profile binding SHA-256 differs")
-    if not delegated:
-        return profile, None
-    if not isinstance(profile.placement, SlurmPlacement):
-        raise ControlError("A private Slurm delegate requires Slurm placement")
-    job_id = os.environ.get("SLURM_JOB_ID")
     try:
-        profile.attempt_placement(job_id)
-    except ExecutionProfileError as exc:
+        return profile, slurm_submission.delegate_job_id(profile)
+    except slurm_submission.SlurmSubmissionError as exc:
         raise ControlError(str(exc)) from exc
-    return profile, job_id
 
 
 def _resolve_controls(arguments: argparse.Namespace, workspace: Path) -> LogControls:
@@ -812,12 +789,12 @@ def _owned_failure_paths(
 def _confirm_execution() -> bool:
     if not sys.stdin.isatty() or not sys.stderr.isatty():
         return False
-    print("Execute this plan? [y/N] ", end="", file=sys.stderr, flush=True)
+    console_print("Execute this plan? [y/N] ", end="", style="bold")
     return sys.stdin.readline().strip().casefold() in {"y", "yes"}
 
 
 def _print_no_write(subject: str) -> None:
-    print(f"Dry-run complete; no {subject} state was written.", file=sys.stderr)
+    console_print(f"Dry-run complete; no {subject} state was written.")
 
 
 def _schedule(
@@ -852,13 +829,36 @@ def _schedule(
         )
     except slurm_submission.SlurmSubmissionError as exc:
         raise ControlError(str(exc)) from exc
-    print("Execution placement: Slurm", file=sys.stderr)
+    console_print(f"Project: {workspace.name!a}", style="bold")
+    if command == "run":
+        analysis = getattr(arguments, "analysis", None)
+        console_print(
+            f"Analysis: {analysis!a}"
+            if analysis is not None
+            else "Analysis: selected from the Project on the compute node"
+        )
+    else:
+        console_print(f"Run: {inspection.human_run_name(arguments.run)}")
+    console_print("Execution placement: Slurm", style="blue")
+    console_print(
+        f"Allocation: {placement.cpus_per_task} CPUs, {placement.time}, "
+        + (
+            "site-default memory"
+            if placement.memory_mb is None
+            else f"{placement.memory_mb} MiB"
+        )
+    )
+    console_print(
+        f"Account: {placement.account or 'site default'}; "
+        f"partition: {placement.partition or 'site default'}; "
+        f"QoS: {placement.qos or 'site default'}"
+    )
     if controls.level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
-        print(f"Execution profile: {profile.source_path}", file=sys.stderr)
-        print(f"Scheduler stdout: {submission.stdout_pattern}", file=sys.stderr)
-        print(f"Scheduler stderr: {submission.stderr_pattern}", file=sys.stderr)
+        console_print(f"Execution profile: {profile.source_path}")
+        console_print(f"Scheduler stdout: {submission.stdout_pattern}")
+        console_print(f"Scheduler stderr: {submission.stderr_pattern}")
     if controls.level is LogLevel.DEBUG:
-        print("Scheduler command: " + shlex.join(submission.argv), file=sys.stderr)
+        console_print("Scheduler command: " + shlex.join(submission.argv))
     if not arguments.execute and not _confirm_execution():
         _print_no_write("scheduler or workspace")
         return 0
@@ -904,7 +904,7 @@ def _execute_plan(
             scheduler_environment=os.environ,
         )
     except (ApplicationLogError, ValueError) as exc:
-        print(
+        console_print(
             render_failure_summary(
                 entrypoint=entrypoint,
                 phase="logging",
@@ -917,7 +917,6 @@ def _execute_plan(
                 ),
             ),
             end="",
-            file=sys.stderr,
         )
         raise ControlError(str(exc), reported=True) from exc
 
@@ -940,7 +939,7 @@ def _execute_plan(
         owned_paths: Mapping[str, Path] | None = None,
         run_scope: str = scope_id,
     ) -> None:
-        print(
+        console_print(
             render_failure_summary(
                 entrypoint=entrypoint,
                 phase=phase,
@@ -954,7 +953,6 @@ def _execute_plan(
                 next_action=next_action,
             ),
             end="",
-            file=sys.stderr,
         )
 
     try:
@@ -978,7 +976,7 @@ def _execute_plan(
                 message="Analysis preflight failed.",
             )
         )
-        print(f"emrys: error: {exc}", file=sys.stderr)
+        console_print(f"emrys: error: {exc}")
         print_failure(
             phase="preflight",
             status="failed",
@@ -1055,7 +1053,7 @@ def _execute_plan(
                     phase="execute", message="Analysis execution failed."
                 )
             )
-        print(f"emrys: error: {exc}", file=sys.stderr)
+        console_print(f"emrys: error: {exc}")
         print_failure(
             phase="execute",
             status="failed",
@@ -1105,21 +1103,21 @@ def _execute_plan(
             )
 
     if status == "succeeded":
-        print(f"Evidence: {outcome.receipt_path}", file=sys.stderr)
+        console_print(f"Evidence: {outcome.receipt_path}")
         if not _reporting_applicable(plan):
             observe_reporting(
                 "reporting_not_applicable",
                 "Reporting is not applicable to this partial scientific Run.",
             )
             close_log_best_effort()
-            print("Reporting: not applicable (partial scientific Run)", file=sys.stderr)
+            console_print("Reporting: not applicable (partial scientific Run)")
             return 0
         if not report_enabled:
             observe_reporting(
                 "reporting_skipped", "Reporting was disabled for this execution."
             )
             close_log_best_effort()
-            print("Reporting: skipped (--no-report)", file=sys.stderr)
+            console_print("Reporting: skipped (--no-report)")
             return 0
         observe_reporting("reporting_started", "Generating downstream reports.")
         try:
@@ -1131,9 +1129,8 @@ def _execute_plan(
                 {"error": field(str(exc))},
             )
             close_log_best_effort()
-            print(
+            console_print(
                 f"emrys: error: Reporting failed after scientific Results completed: {exc}",
-                file=sys.stderr,
             )
             print_failure(
                 phase="reporting",
@@ -1155,7 +1152,7 @@ def _execute_plan(
             reported.verified_report_locations
         )
         for line in result_lines:
-            print(line, file=sys.stderr)
+            console_print(line)
         return 0
     close_log_best_effort()
     print_failure(
@@ -1183,9 +1180,9 @@ def _print_plan(
     reused = plan.task_count - plan.new_task_count
     resources = plan.resources
     project_label = plan.run.analysis.source_path.parent.name
-    print(f"Project: {project_label!a}", file=sys.stderr)
-    print(f"Analysis: {plan.run.analysis.name!a}", file=sys.stderr)
-    print(f"Run: {inspection.human_run_name(plan.run.run_id)}", file=sys.stderr)
+    console_print(f"Project: {project_label!a}", style="bold")
+    console_print(f"Analysis: {plan.run.analysis.name!a}", style="blue")
+    console_print(f"Run: {inspection.human_run_name(plan.run.run_id)}")
     full_analysis = _reporting_applicable(plan)
     if full_analysis:
         boundary = "complete analysis"
@@ -1199,64 +1196,56 @@ def _print_plan(
         reporting = "automatic after scientific work"
     else:
         reporting = "disabled for this execution"
-    print(f"Scientific boundary: {boundary}", file=sys.stderr)
+    console_print(f"Scientific boundary: {boundary}")
     if (
         processing_source := plan.run.execution_plan.record["identity"].get(
             "processing_source"
         )
     ) is not None:
-        print(
+        console_print(
             f"Processing source: {inspection.human_run_name(processing_source['source_run_id'])}",
-            file=sys.stderr,
         )
-    print(f"Work: {plan.new_task_count} pending, {reused} reusable", file=sys.stderr)
-    print(f"Reporting: {reporting}", file=sys.stderr)
+    console_print(f"Work: {plan.new_task_count} pending, {reused} reusable")
+    console_print(f"Reporting: {reporting}")
     if level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
-        print(f"Run ID: {plan.run.run_id}", file=sys.stderr)
+        console_print(f"Run ID: {plan.run.run_id}")
         if processing_source is not None:
-            print(
+            console_print(
                 f"Processing source Run ID: {processing_source['source_run_id']}",
-                file=sys.stderr,
             )
-        print(
+        console_print(
             f"Analysis revision: {plan.run.analysis.revision.analysis_revision_id}",
-            file=sys.stderr,
         )
-        print(
+        console_print(
             f"Execution Plan ID: {plan.run.execution_plan.execution_plan_id}",
-            file=sys.stderr,
         )
-        print(f"Run root: {plan.run_root}", file=sys.stderr)
-        print(
+        console_print(f"Run root: {plan.run_root}")
+        console_print(
             f"Resources: {resources.workflow_cores} cores, {resources.workflow_memory_mb} MiB",
-            file=sys.stderr,
         )
-        print("Step thread allocations:", file=sys.stderr)
+        console_print("Step thread allocations:")
         for step_id, threads in resources.step_threads:
-            print(f"  Step {step_id}: {threads}", file=sys.stderr)
-        print("Stage concurrency:", file=sys.stderr)
+            console_print(f"  Step {step_id}: {threads}")
+        console_print("Stage concurrency:")
         for step_id, concurrency in resources.stage_concurrency:
-            print(f"  Step {step_id}: {concurrency}", file=sys.stderr)
+            console_print(f"  Step {step_id}: {concurrency}")
     if level is LogLevel.DEBUG:
-        print(
+        console_print(
             "Snakemake command: " + shlex.join(plan.attempt_record["snakemake_argv"]),
-            file=sys.stderr,
         )
         for machine_key, by_scope in plan.attempt_record["tasks"].items():
             for scope_id, record in by_scope.items():
                 if "workflow_attempt_record" in record:
                     continue
                 for command in ("producer", "validator"):
-                    print(
+                    console_print(
                         f"TASK {machine_key}/{scope_id} {command}: "
                         + shlex.join(record[f"{command}_argv"]),
-                        file=sys.stderr,
                     )
-    print(
+    console_print(
         "Evidence boundary: this plan or execution proves only the admitted local "
         "workflow layer; it is not cluster, production, scientific-review, or "
         "biological proof.",
-        file=sys.stderr,
     )
 
 
@@ -1307,12 +1296,16 @@ def _finish_control(
     )
 
 
-def _add_execution_arguments(parser: argparse.ArgumentParser) -> None:
+def _add_profile_argument(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--profile",
         metavar="NAME_OR_ABSOLUTE_PATH",
         help="Project-local profile name or exact absolute profile path.",
     )
+
+
+def _add_execution_arguments(parser: argparse.ArgumentParser) -> None:
+    _add_profile_argument(parser)
     add_resource_override_arguments(parser)
     add_log_arguments(parser)
     parser.add_argument(
@@ -1360,6 +1353,7 @@ def configure_resume_parser(parser: argparse.ArgumentParser) -> None:
 
 def configure_report_parser(parser: argparse.ArgumentParser) -> None:
     _add_run_selector(parser)
+    _add_profile_argument(parser)
     add_log_arguments(parser)
     parser.add_argument(
         "--execute",
@@ -1454,7 +1448,10 @@ def _print_safe(value: object, *, file: TextIO | None = None) -> None:
         character if character.isprintable() else ascii(character)[1:-1]
         for character in str(value)
     )
-    print(rendered, file=file)
+    if file is sys.stderr:
+        console_print(rendered, style="red")
+    else:
+        print(rendered, file=file)
 
 
 def _run_or_resume_from_args(
@@ -1537,9 +1534,12 @@ def resume_from_args(arguments: argparse.Namespace) -> int:
 def _print_reporting_outcome(
     outcome: reporting_operation.ReportingOperationOutcome,
 ) -> None:
-    print(f"Reporting: {outcome.status}", file=sys.stderr)
+    console_print(
+        f"Reporting: {outcome.status}",
+        style="green" if outcome.status != "planned" else "blue",
+    )
     for line in _verified_report_location_lines(outcome.verified_report_locations):
-        print(line, file=sys.stderr)
+        console_print(line)
 
 
 def report_from_args(
@@ -1558,12 +1558,30 @@ def report_from_args(
         try:
             planned = reporting_operation.run_reporting(root, execute=False)
         except (reporting_operation.ReportingOperationError, OSError) as exc:
-            print(f"emrys: error: {exc}", file=sys.stderr)
+            console_print(f"emrys: error: {exc}")
             return 2
         _print_reporting_outcome(planned)
         if planned.status == "planned":
-            print("Dry-run complete; no reporting state was written.", file=sys.stderr)
+            console_print("Dry-run complete; no reporting state was written.")
         return 0
+
+    try:
+        overrides = ResourceOverrides()
+        profile, scheduler_job_id = _resolve_execution_profile(
+            arguments, project_path, overrides
+        )
+        if isinstance(profile.placement, SlurmPlacement) and scheduler_job_id is None:
+            return _schedule(
+                "report",
+                arguments,
+                profile,
+                profile.resource_policy.declaration.workflow_cores,
+                _resolve_controls(arguments, workspace),
+                overrides,
+                workspace,
+            )
+    except (ControlError, ExecutionProfileError, ResourceConfigError) as exc:
+        return _control_failure(exc)
 
     execution_attempt_id = f"application-{uuid.uuid4().hex}"
     attempt = None
@@ -1596,10 +1614,9 @@ def report_from_args(
         except Exception as exc:
             close_log_best_effort()
             attempt = None
-            print(
+            console_print(
                 "WARNING: Application logging unavailable for reporting; "
                 f"publication remains controlled by reporting receipts: {exc}",
-                file=sys.stderr,
             )
 
     try:
@@ -1617,10 +1634,9 @@ def report_from_args(
                     fields={"error": field(str(exc))},
                 )
         close_log_best_effort()
-        print(f"emrys: error: {exc}", file=sys.stderr)
-        print(
+        console_print(f"emrys: error: {exc}")
+        console_print(
             "Scientific Results remain complete; reporting state was preserved for inspection.",
-            file=sys.stderr,
         )
         return 1
     if attempt is not None:
@@ -1631,9 +1647,8 @@ def report_from_args(
                 fields={"reporting_status": field(completed.status)},
             )
         except Exception:
-            print(
+            console_print(
                 "WARNING: Reporting completed, but application logging degraded.",
-                file=sys.stderr,
             )
     close_log_best_effort()
     _print_reporting_outcome(completed)

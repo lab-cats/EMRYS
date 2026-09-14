@@ -47,8 +47,9 @@ from emrys.orchestration.run_coordinator.normalization import (
     validate_authored_path,
 )
 from emrys.orchestration.run_coordinator.execution_profile import (
-    PROJECT_DEFAULT_PROFILE_BYTES,
     PROJECT_PROFILE_DIRECTORY,
+    add_site_argument,
+    project_default_profile_bytes,
 )
 from emrys.stages.gtf_to_bed12 import converter as gtf_converter
 
@@ -356,6 +357,7 @@ _PROJECT_SUGGESTIONS = dict(
 
 
 def configure_project_init_parser(parser: argparse.ArgumentParser) -> None:
+    add_site_argument(parser)
     parser.add_argument(
         "project_name",
         metavar="PROJECT_NAME",
@@ -476,6 +478,9 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
 
     try:
         answers = _collect_project_answers(arguments)
+        execution_profile_bytes = project_default_profile_bytes(
+            getattr(arguments, "site", None)
+        )
         output = _require_external_absent_output(
             Path.cwd() / arguments.project_name, source_root()
         )
@@ -500,7 +505,7 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
             output,
             {
                 (PROJECT_PROFILE_DIRECTORY / "default.yaml").as_posix(): (
-                    PROJECT_DEFAULT_PROFILE_BYTES,
+                    execution_profile_bytes,
                     0o644,
                 )
             },

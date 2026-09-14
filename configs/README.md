@@ -171,9 +171,11 @@ time, exclusivity, node selection, scratch, and exact module setup. See the
 [stage map](../src/emrys/contracts/STAGE_MAP.md) for numeric stage identities.
 
 Values are literal; unknown fields, interpolation, shell commands, impossible
-totals, and resources larger than the allocation are rejected. The generated
-default uses direct placement; [execution_profile.example.yaml](execution_profile.example.yaml)
-shows Slurm fields. Retired reporting-memory settings are rejected.
+totals, and resources larger than the allocation are rejected. Project creation with `--site viking` writes the built-in Viking placement to
+`runtime/profiles/default.yaml`; users do not supply scheduler settings. Without
+a site selection, creation retains direct placement.
+[execution_profile.example.yaml](execution_profile.example.yaml) shows the fields
+for administrators configuring another placement. Retired reporting-memory settings are rejected.
 
 ## Specialist examples
 

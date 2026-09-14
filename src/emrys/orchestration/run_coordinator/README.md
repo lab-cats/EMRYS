@@ -39,7 +39,11 @@ Doctor binds the executing installed package and rechecks its full identity
 before and after repair. Managed repair uses Pixi and renv for Project-owned
 native tools and R libraries; Python installation stays with the environment's
 package manager. Existing site runtimes and operator execution profiles remain
-outside managed repair.
+outside managed repair. On a Slurm Project, normal repair stays on the head node
+and submits the required runtime/storage checks. `--compute` is the explicit
+advanced allocation route. Both Project-creation commands accept `--site viking`
+and use the same built-in placement; Run, resume and standalone report execution
+follow the selected Project profile.
 [Workflow composition](../../workflow/README.md) explains the graph;
 [the profile contract](CONTRACT.md#profiles-and-immutable-planning) defines resource selection.
 

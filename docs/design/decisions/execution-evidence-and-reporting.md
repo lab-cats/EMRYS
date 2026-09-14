@@ -45,7 +45,12 @@ Doctor diagnosis is read-only. Confirmed repair may mutate only its declared
 EMRYS-owned environment and storage-evidence locations, delegates dependency
 solving and installation to `uv`, Pixi, and `renv`, preserves scientific inputs
 and site/user environments, records one maintenance log, and requalifies.
-Compute, validation, and reporting never install dependencies.
+On a Slurm Project, the ordinary repair starts on the head node, installs there,
+submits checks of the same admitted runtime and storage in the declared allocation,
+and finalizes storage on the head node. Explicit advanced compute execution is
+separate from this default. Existing storage evidence is retained on retry;
+storage receipts do not prove runtime compatibility. Compute, validation, and
+reporting never install dependencies.
 
 Repository R activation remains opt-in through `EMRYS_USE_RENV=1`. Report
 rendering uses only the locked packaged Jinja2, Matplotlib, and Logomaker

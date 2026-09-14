@@ -8,8 +8,9 @@ operator responsibilities.
 
 Doctor repair can create the single-host direct receipt after checking hard
 links, `flock`, atomic rename, fsync, permissions, and identity at the exact
-Project/reference roots. Slurm instead needs the
-[compute and head-node finalize procedure](../../../../docs/operations/RUNBOOK.md#2-qualify-the-exact-storage-roots).
+Project/reference roots. For Slurm, head-node Doctor repair automatically
+submits the compute check and
+completes [head-node finalization](../../../../docs/operations/RUNBOOK.md#slurm-setup-and-submission).
 The compute phase creates private probes in the allocation; finalize checks
 them again, publishes the bound receipt, and removes only those probe directories.
 
@@ -27,3 +28,26 @@ Failure never authorizes staging around an unqualified shared filesystem.
 
 Qualification evidence alone does not establish site approval, production
 suitability, scientific review, or biological validity.
+
+## Advanced manual checks
+
+Normal setup uses head-node `emrys doctor --repair`. To investigate storage
+separately, use the exact Project and reference FASTA paths printed by Doctor.
+Run the compute phase as work in a real Slurm allocation:
+
+```bash
+emrys debug storage-qualification --workspace /absolute/path/to/project --reference-fasta /absolute/path/to/reference.fa --phase compute --execute
+```
+
+After that job completes, finalize from the head node outside an allocation:
+
+```bash
+emrys debug storage-qualification --workspace /absolute/path/to/project --reference-fasta /absolute/path/to/reference.fa --phase finalize --execute
+```
+
+Omit `--execute` to preview either phase. The workspace argument names the
+Project, but the two-phase check probes its parent and the FASTA's parent.
+Evidence remains under `.emrys-storage-qualification/` in the Project's parent.
+Preserve receipts and probes on failure; repeating these manual writes is not
+a recovery procedure. Doctor reuses admitted evidence and separately rechecks
+the current runtime.
