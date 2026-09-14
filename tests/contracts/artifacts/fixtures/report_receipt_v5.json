@@ -6,7 +6,7 @@
   "generated_at": "2000-01-01T00:00:05Z",
   "publication_state": "complete",
   "transaction_state": "complete",
-  "interpretation_boundary": "computational_candidates_only_biological_validation_outside_emrys",
+  "interpretation_boundary": "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE EMRYS.",
   "input_run_summary": {
     "path": "tests/fixtures/artifact_schema_v1/source/results/artifacts/run_fixture/run_fixture.run_summary.json",
     "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",

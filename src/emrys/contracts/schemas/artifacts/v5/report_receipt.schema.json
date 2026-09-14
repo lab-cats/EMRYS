@@ -83,7 +83,7 @@
     "generated_at": {"type": "string", "format": "date-time"},
     "publication_state": {"const": "complete"},
     "transaction_state": {"const": "complete"},
-    "interpretation_boundary": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/non_empty_string"},
+    "interpretation_boundary": {"const": "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE EMRYS."},
     "input_run_summary": {
       "type": "object",
       "additionalProperties": false,
@@ -144,7 +144,7 @@
     "template": {"$ref": "#/$defs/resource"},
     "stylesheet": {"$ref": "#/$defs/resource"},
     "outputs": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/report_output"}},
-    "state_banner": {"type": "string", "minLength": 1},
+    "state_banner": {"const": "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE EMRYS."},
     "schema_versions": {
       "type": "object",
       "additionalProperties": false,

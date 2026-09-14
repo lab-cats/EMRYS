@@ -399,7 +399,9 @@ def test_run_summary_rejects_duplicate_artifact_ids() -> None:
     assert_contract_failure("run-summary", duplicate, "duplicate artifact_id")
 
 
-def test_report_receipt_enforces_renderer_safety_outputs_and_banners() -> None:
+def test_report_receipt_enforces_renderer_safety_outputs_and_banners(
+    tmp_path: Path,
+) -> None:
     receipt = read_json(FIXTURES["report-receipt"])
 
     wrong_engine = copy.deepcopy(receipt)
@@ -410,9 +412,14 @@ def test_report_receipt_enforces_renderer_safety_outputs_and_banners() -> None:
     networked["external_network_assets_used"] = True
     assert_schema_invalid("report-receipt", networked, "false")
 
-    missing_banner = copy.deepcopy(receipt)
-    missing_banner["state_banner"] = ""
-    assert_schema_invalid("report-receipt", missing_banner, "non-empty")
+    for field in ("state_banner", "interpretation_boundary"):
+        false_claim = copy.deepcopy(receipt)
+        false_claim[field] = "BIOLOGICALLY VALIDATED RESULTS."
+        document = tmp_path / f"{field}.json"
+        write_json(document, false_claim)
+        result = run_cli("--schema", "report-receipt", "--document", str(document))
+        assert result.returncode != 0
+        assert field in result.stderr
 
     missing_scientific = copy.deepcopy(receipt)
     missing_scientific["outputs"] = [

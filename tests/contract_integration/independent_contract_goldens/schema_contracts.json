@@ -62,8 +62,8 @@
       "pointer": "/$defs/core_renderer/properties/template_engine/const"
     },
     {
-      "expected": "urn:emrys:schema:artifacts:common:v1#/$defs/non_empty_string",
-      "pointer": "/properties/interpretation_boundary/$ref"
+      "expected": "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE EMRYS.",
+      "pointer": "/properties/interpretation_boundary/const"
     },
     {
       "expected": false,
