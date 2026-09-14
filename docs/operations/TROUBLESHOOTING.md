@@ -46,6 +46,15 @@ before reuse; do not bypass it with raw Snakemake. A `blocked` state has no publ
 reconciliation or cleanup command; keep the evidence and consult the named
 component's owner.
 
+**Snakemake fails with `No username set in the environment`.** A compute node
+may have no passwd entry for the job's numeric UID. Older EMRYS submissions
+also dropped the login-name variables, so Snakemake failed while preparing its
+startup header. Update EMRYS to the submission fix that preserves `LOGNAME`,
+`USER`, `LNAME`, and `USERNAME`; exporting them only on the head node cannot fix
+an older wrapper's explicit export list. Inspect the failed Run and use the
+offered resume plan. Preserve its evidence; reinstalling native/R packages
+does not address this failure.
+
 **Scientific Results complete, reporting skipped.** From the Project,
 preview `emrys report RUN`. A Slurm default profile submits generation from the
 head node; direct placement requires a permitted compute host. Only when generation is admitted, execute
