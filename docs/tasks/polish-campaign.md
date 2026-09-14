@@ -170,16 +170,19 @@ the shared runtime checks. Existing reports and recovery files remain untouched.
 [artifact validator](../../src/emrys/contracts/artifacts/README.md) and reporting
 share one current schema registry, removing the former current/default mismatch.
 Current artifact entries, Run result manifests and report receipts pass the public validation
-path; unsupported versions and malformed content reject. Focused schema/CLI
-checks and ordinary hosted CI pass at `f8fd5346`; the compression backlog owns the evidence.
+path; unsupported versions and malformed content reject.
+[PR #156](https://github.com/lab-cats/EMRYS/pull/156) records the focused schema/CLI
+checks; [ordinary hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34434390174)
+passed at `f8fd5346`.
 
 ### 6. Make timestamp admission deterministic
 
 **Finding:** Orchestration schemas declare `format: date-time`, but the
 [validator](../../src/emrys/contracts/orchestration/api.py) uses a format checker
 whose optional timestamp dependency is absent from the declared lock closure.
-The stack's follow-up intake records a previous local observation that
-`finished_at: "not-a-time"` passes in that environment.
+An [earlier local observation](https://github.com/lab-cats/EMRYS/blob/5c99c8159f87341287e2cacf733a58f12186550f/docs/tasks/compression_backlog_matrix.md#L929-L936)
+found that historical v1 and then-current v2 Attempt receipts accepted
+`finished_at: "not-a-time"` without that checker.
 
 **Outcome and acceptance:** Choose the intended timestamp policy and provide
 its checker reproducibly through the established dependency. Test valid
@@ -234,8 +237,8 @@ that documented route and verify it through the existing plan and admission
 paths before selecting a repair change. Any selected correction must make
 repair intent and qualification requirements agree without duplicating setup
 machinery. Preserve profile ownership and the preview/execute boundary. Local
-plan proof and institutional execution are separate. This is the existing
-compression-intake discussion 6, still a proposed bounded defect investigation.
+plan proof and institutional execution are separate. This remains a proposed
+bounded defect investigation owned by this item.
 
 ### 10. Complete a novice institutional walkthrough
 
@@ -517,9 +520,9 @@ and bespoke reporter using the existing entry points. Explain installation,
 configuration, input/output ownership, resource/dependency declarations,
 independent validation, execution, and reporting. Exercise the documented
 example through public production interfaces without a generic workflow DSL
-or test-only production behavior. Consolidate existing extension guidance;
-this is the compression intake's existing documentation candidate, still
-requiring bounded selection and footprint accounting.
+or test-only production behavior. Consolidate existing extension guidance.
+This item owns the proposal, which still requires bounded selection and
+footprint accounting.
 
 Make the example separately installable and exercise actual discovery,
 configuration admission, planning, production, independent validation, and
