@@ -1127,7 +1127,9 @@ def _admitted_completion(
         operation="resume" if failure is not None else "execute",
     )
     if (
-        len(tuple((run_root.parent.parent / "logs/application").rglob("*.jsonl")))
+        len(
+            tuple((run_root.parent.parent / "logs/application").glob("run-*/*/*.jsonl"))
+        )
         != expected_count
     ):
         raise DriverError(
@@ -1625,7 +1627,7 @@ def run_driver(
         },
         "parity": parity,
         "commands": transcripts.records,
-        "retention": "complete operator root retained; no cleanup or repair performed",
+        "retention": "complete operator root retained; no post-run cleanup or repair",
         "evidence_boundary": (
             "real-tool hosted direct and disposable single-node Slurm parity "
             if parity_journey
@@ -1652,7 +1654,7 @@ def _summary(
         "commands": transcripts.records,
         "retention": (
             "all partials, logs, streams, and receipts retained; "
-            "no cleanup or repair performed"
+            "no post-failure cleanup or repair performed"
         ),
         "evidence_boundary": (
             "failed synthetic E2E attempt; no completion or biological claim"

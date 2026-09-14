@@ -443,6 +443,14 @@ def test_application_log_snapshot_binds_run_attempt_and_scheduler(
         )
     path.write_text("".join(json.dumps(record) + "\n" for record in records))
 
+    maintenance = (
+        tmp_path / "logs/application/maintenance-project/repair-1/emrys-doctor.jsonl"
+    )
+    maintenance.parent.mkdir(parents=True)
+    maintenance.write_text(
+        '{"scope_kind":"maintenance","event":"repair_requalified"}\n'
+    )
+
     observed = driver._application_log_snapshot(
         tmp_path,
         run_id="run-1",
