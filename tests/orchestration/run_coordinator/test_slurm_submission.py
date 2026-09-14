@@ -368,3 +368,63 @@ def test_batch_script_rejects_submitter_uid_drift_before_running(
     assert "batch UID does not match the submitter" in completed.stderr
     assert not capture.exists()
     assert list(profile.placement.scratch_parent.iterdir()) == []
+
+
+@pytest.mark.parametrize("outcome", ("success", "failed", "interrupted"))
+def test_waited_submission_announces_job_before_wait_and_retains_diagnostics(
+    tmp_path: Path,
+    outcome: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    release = tmp_path / "release"
+    scheduler = tmp_path / "sbatch"
+    scheduler.write_text(
+        f"#!{sys.executable}\n"
+        "import pathlib, sys, time\n"
+        "assert '--wait' in sys.argv\n"
+        "assert sys.stdin.read().startswith('#!/bin/bash')\n"
+        "print('scheduler diagnostics', file=sys.stderr, flush=True)\n"
+        "print('614999;fixture', flush=True)\n"
+        f"while not pathlib.Path({str(release)!r}).exists(): time.sleep(0.01)\n"
+        f"raise SystemExit({1 if outcome == 'failed' else 0})\n",
+    )
+    scheduler.chmod(0o700)
+    submission = slurm_submission.plan_submission(
+        _profile(tmp_path),
+        emrys_argv=("emrys", "doctor"),
+        log_dir=tmp_path,
+        sbatch=str(scheduler),
+    )
+    transcript = tmp_path / "submission.stdout"
+    received: list[str] = []
+
+    def announce(job_id: str) -> None:
+        received.append(job_id)
+        assert transcript.read_text() == "614999;fixture\n"
+        assert "Slurm job 614999" in capsys.readouterr().err
+        if outcome == "interrupted":
+            raise KeyboardInterrupt
+        release.touch()
+
+    if outcome == "success":
+        assert (
+            slurm_submission.submit(
+                submission, wait_record=transcript, on_submitted=announce
+            )
+            == "614999"
+        )
+    else:
+        error = (
+            KeyboardInterrupt
+            if outcome == "interrupted"
+            else slurm_submission.SlurmSubmissionError
+        )
+        with pytest.raises(error):
+            slurm_submission.submit(
+                submission, wait_record=transcript, on_submitted=announce
+            )
+    assert received == ["614999"]
+    assert transcript.read_text() == "614999;fixture\n"
+    assert transcript.with_suffix(".stderr").read_text() == "scheduler diagnostics\n"
+    assert transcript.stat().st_mode & 0o777 == 0o600
+    assert transcript.with_suffix(".stderr").stat().st_mode & 0o777 == 0o600

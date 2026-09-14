@@ -548,6 +548,37 @@ def _run_compute(workspace: Path, reference_fasta: Path) -> Path:
     return compute
 
 
+def qualify_compute(workspace: Path, reference_fasta: Path) -> Path:
+    """Reuse admitted site evidence or perform the missing compute phase."""
+
+    roots = _storage_roots(workspace, reference_fasta)
+    identity, _evidence, compute, final, staged = _evidence_paths(roots)
+    if os.path.lexists(final) or os.path.lexists(staged):
+        return admit_final_qualification(workspace, reference_fasta).receipt_path
+    if os.path.lexists(compute):
+        _validate_compute(
+            _json_object(
+                _read_regular(compute, "Compute qualification receipt"),
+                "Compute receipt",
+            ),
+            identity,
+            roots,
+        )
+        return compute
+    return _run_compute(workspace, reference_fasta)
+
+
+def qualify_head(workspace: Path, reference_fasta: Path) -> QualifiedStorage:
+    """Admit completed site evidence or finalize its retained compute phase."""
+
+    _identity, _evidence, _compute, final, staged = _evidence_paths(
+        _storage_roots(workspace, reference_fasta)
+    )
+    if not os.path.lexists(final) and not os.path.lexists(staged):
+        _run_finalize(workspace, reference_fasta)
+    return admit_final_qualification(workspace, reference_fasta)
+
+
 def _probe_roster(probe: Path) -> dict[str, Path]:
     try:
         state = probe.lstat()

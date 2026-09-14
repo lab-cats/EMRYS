@@ -24,6 +24,7 @@ from emrys.libraries.source_authority import PACKAGE_ROOT
 from emrys.orchestration.run_coordinator import (
     control,
     doctor,
+    execution_profile,
     onboarding,
     synthetic_fixture,
 )
@@ -116,6 +117,7 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     output = tmp_path / "project"
     monkeypatch.chdir(tmp_path)
     arguments = _project_arguments(tmp_path, output, execute=False)
+    arguments.site = "viking"
     assert onboarding.init_project_from_args(arguments) == 0
     assert not output.exists()
     assert "Dry-run complete" in capsys.readouterr().out
@@ -126,6 +128,9 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
         "project.yaml",
         "runtime/profiles/default.yaml",
     }
+    assert (output / "runtime/profiles/default.yaml").read_bytes() == (
+        execution_profile.project_default_profile_bytes("viking")
+    )
     directories = {path.name for path in output.iterdir() if path.is_dir()}
     assert directories == {"logs", "runs", "runtime"}
     assert all(
@@ -996,6 +1001,8 @@ def test_public_cli_routes_synthetic_init_and_project_validation(
                 "synthetic",
                 "--output-dir",
                 str(output),
+                "--site",
+                "viking",
                 "--execute",
             ]
         )
@@ -1010,6 +1017,9 @@ def test_public_cli_routes_synthetic_init_and_project_validation(
             ]
         )
         == 0
+    )
+    assert (output / "runtime/profiles/default.yaml").read_bytes() == (
+        execution_profile.project_default_profile_bytes("viking")
     )
     stdout = capsys.readouterr().out
     assert "Published deterministic synthetic Project" in stdout

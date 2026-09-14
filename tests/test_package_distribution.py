@@ -24,6 +24,7 @@ RUNTIME_DEPENDENCIES = {
     "matplotlib",
     "pyyaml",
     "referencing",
+    "rich",
     "simple-term-menu",
     "snakemake",
 }
@@ -36,6 +37,7 @@ RUNTIME_REQUIREMENT_SPECIFIERS = {
     "matplotlib": "==3.11.1",
     "pyyaml": "==6.0.3",
     "referencing": ">=0.28.4",
+    "rich": "==15.0.0",
     "simple-term-menu": "==1.6.6",
     "snakemake": "==9.25.1",
 }

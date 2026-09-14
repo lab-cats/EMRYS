@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import os
 import re
@@ -40,6 +41,40 @@ _RETIRED_ADJACENT_FILES = (
 
 class ExecutionProfileError(ValueError):
     """One execution-profile source or resolved value is inadmissible."""
+
+
+def add_site_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--site",
+        choices=("viking",),
+        help="Use Viking's built-in Slurm placement for this Project.",
+    )
+
+
+def project_default_profile_bytes(site: str | None = None) -> bytes:
+    """Select initial placement without changing scientific resource defaults."""
+
+    if site is None:
+        return PROJECT_DEFAULT_PROFILE_BYTES
+    if site != "viking":
+        raise ExecutionProfileError(f"Unsupported Project site: {site!r}")
+    return f"""schema_version: {SCHEMA_VERSION}
+placement:
+  kind: slurm
+  account: viking-users
+  partition: long
+  qos: normal
+  cpus_per_task: 4
+  memory_mb: null
+  time: "08:00:00"
+  exclusive: false
+  nodelist: null
+  scratch_parent: /tmp
+  modules:
+    mode: none
+    init: ""
+    load: []
+""".encode()
 
 
 def project_execution_profile_path(
@@ -334,6 +369,8 @@ __all__ = (
     "Placement",
     "SCHEMA_VERSION",
     "SlurmPlacement",
+    "add_site_argument",
     "load_execution_profile",
+    "project_default_profile_bytes",
     "project_execution_profile_path",
 )

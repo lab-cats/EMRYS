@@ -10,10 +10,11 @@ import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 import uuid
 from contextlib import suppress
 from functools import partial
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal
 
@@ -30,14 +31,17 @@ from emrys.evidence.runtime_availability.inspector import (
 from emrys.evidence.storage_inventory import qualification as storage_qualification
 from emrys.libraries.application_logging import (
     ApplicationLogError,
+    AttemptLog,
     AttemptIdentity,
     LogControlError,
     LogControls,
     LogLevel,
     add_log_arguments,
+    console_print,
     event,
     field,
     open_attempt_log,
+    phase_progress,
     resolve_log_controls,
 )
 from emrys.libraries.installed_package_identity import (
@@ -55,9 +59,12 @@ from emrys.libraries.source_authority import (
     InstalledPackageError,
     admit_installed_package,
 )
-from emrys.orchestration.run_coordinator import onboarding
+from emrys.orchestration.run_coordinator import onboarding, slurm_submission
+from emrys.orchestration.run_coordinator.capacity import observe_allocation
 from emrys.orchestration.run_coordinator.execution_profile import (
     ExecutionProfileError,
+    ExecutionProfile,
+    SlurmPlacement,
     load_execution_profile,
     project_execution_profile_path,
 )
@@ -65,11 +72,16 @@ from emrys.orchestration.run_coordinator.normalization import (
     AnalysisAdmission,
     ProjectAdmission,
 )
+from emrys.orchestration.run_coordinator.resource_policy import (
+    ResourceConfigError,
+    is_canonical_slurm_job_id,
+    resolve_resource_policy,
+)
 
 DESCRIPTION = (
     "Diagnose one Project across inputs, storage, runtime, and execution. "
     "Diagnosis and repair preview are read-only; an explicitly confirmed "
-    "repair may qualify direct storage and restore only EMRYS-owned runtime "
+    "repair may qualify storage and restore only EMRYS-owned runtime "
     "native and R state through Pixi and renv."
 )
 
@@ -111,6 +123,7 @@ class DoctorResult:
     storage_ready: bool = True
     runtime_ready: bool = True
     execution_ready: bool = True
+    execution_profile: ExecutionProfile | None = None
 
     @property
     def ready(self) -> bool:
@@ -418,6 +431,7 @@ def diagnose_project(
     """Diagnose Project execution, storage, and runtime readiness without writes."""
 
     project = _absolute_path(project_path)
+    execution = None
     execution_error: str | None = None
     if storage_requirement is None:
         execution_path = project_execution_profile_path(project, None)
@@ -474,10 +488,7 @@ def diagnose_project(
     elif storage_requirement == "slurm":
         admit_storage = storage_qualification.admit_final_qualification
         storage_label = "storage is not site-qualified"
-        storage_remediation = (
-            f"Run `emrys debug storage-qualification` for Project {workspace_path} "
-            f"and reference FASTA {fasta}."
-        )
+        storage_remediation = "Run `emrys doctor --repair` on the head node."
     else:
         raise DoctorInputError(
             f"unsupported storage requirement: {storage_requirement}"
@@ -519,15 +530,16 @@ def diagnose_project(
             if check.check_id == "renv_library"
         )
         try:
-            inspection = inspect_runtime_profile_bytes(
-                profile_bytes,
-                profile_path,
-                checks=(*fixed_checks, *additions),
-                environment=guarded_r_environment(
-                    root,
-                    renv_library,
-                ),
-            )
+            with tempfile.TemporaryDirectory(prefix="emrys-doctor-") as temporary:
+                inspection = inspect_runtime_profile_bytes(
+                    profile_bytes,
+                    profile_path,
+                    checks=(*fixed_checks, *additions),
+                    environment={
+                        **guarded_r_environment(root, renv_library),
+                        "TMPDIR": temporary,
+                    },
+                )
         except RuntimeInspectionError as exc:
             raise DoctorInputError(str(exc)) from exc
         python = next(
@@ -596,6 +608,7 @@ def diagnose_project(
         storage_ready=storage_ready,
         runtime_ready=runtime_ready,
         execution_ready=execution_error is None,
+        execution_profile=execution,
     )
 
 
@@ -618,6 +631,9 @@ class _RepairPlan:
     installed_package: InstalledPackage
     storage: storage_qualification.DirectQualificationPlan | None
     runtime: _ManagedRuntimePlan | None
+    execution: ExecutionProfile | None = None
+    compute: bool = False
+    qualification_binding: str | None = None
 
 
 def _profile_is_managed(
@@ -683,6 +699,10 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
         storage = (
             None
             if result.storage_ready
+            or (
+                result.execution_profile is not None
+                and result.execution_profile.placement.kind == "slurm"
+            )
             else storage_qualification.plan_direct_qualification(
                 project.source_path.parent,
                 fasta,
@@ -697,6 +717,7 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
             installed_package=result.installed_package,
             storage=storage,
             runtime=None,
+            execution=result.execution_profile,
         )
     if result.inspection is not None and any(
         item.check.check_id in PYTHON_CHECK_IDS and item.status != "pass"
@@ -779,6 +800,7 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
         installed_package=result.installed_package,
         storage=storage,
         runtime=managed_plan,
+        execution=result.execution_profile,
     )
 
 
@@ -793,6 +815,11 @@ def _readmit_repair_plan(
             plan.project.source_path, root=plan.installed_package.root
         ).project
         runtime_root = onboarding.project_runtime_directory(project)
+        if plan.execution is not None:
+            load_execution_profile(
+                config_path=plan.execution.source_path,
+                expected_binding_sha256=plan.execution.binding_sha256,
+            )
         if before_storage and plan.storage is not None:
             observed_storage = storage_qualification.plan_direct_qualification(
                 plan.storage.workspace,
@@ -804,6 +831,7 @@ def _readmit_repair_plan(
         OSError,
         RuntimeError,
         storage_qualification.StorageQualificationError,
+        ExecutionProfileError,
     ) as exc:
         raise DoctorRepairError(f"repair plan changed before execution: {exc}") from exc
     if (
@@ -1039,21 +1067,24 @@ def _managed_discovery_environment(plan: _RepairPlan) -> dict[str, str]:
     return environment
 
 
-def _stderr(message: str) -> None:
-    print(message, file=sys.stderr)
+def _stderr(message: str, *, style: str | None = None) -> None:
+    console_print(message, style=style)
 
 
 def _print_result(result: DoctorResult, detail: LogLevel) -> None:
-    _stderr("EMRYS Doctor")
-    _stderr(f"  Project    PASS  {result.project.source_path.parent}")
-    _stderr(f"  Analysis   PASS  {result.analysis.name}")
-    _stderr("  Inputs     PASS")
+    _stderr("EMRYS Doctor", style="bold blue")
+    _stderr(f"  Project    PASS  {result.project.source_path.parent}", style="green")
+    _stderr(f"  Analysis   PASS  {result.analysis.name}", style="green")
+    _stderr("  Inputs     PASS", style="green")
     for label, ready in (
         ("Storage", result.storage_ready),
         ("Runtime", result.runtime_ready),
         ("Execution", result.execution_ready),
     ):
-        _stderr(f"  {label:<10} {'PASS' if ready else 'FAIL'}")
+        _stderr(
+            f"  {label:<10} {'PASS' if ready else 'FAIL'}",
+            style="green" if ready else "red",
+        )
     if detail in {LogLevel.VERBOSE, LogLevel.DEBUG}:
         package = result.installed_package
         if package is not None:
@@ -1072,17 +1103,28 @@ def _print_result(result: DoctorResult, detail: LogLevel) -> None:
             _stderr(
                 f"Binding {binding.check_id}: {binding.path} -> {binding.resolved_path} sha256:{binding.sha256}"
             )
-    _stderr("EMRYS is ready." if result.ready else "EMRYS is not ready.")
+    _stderr(
+        "EMRYS is ready." if result.ready else "EMRYS is not ready.",
+        style="green" if result.ready else "yellow",
+    )
     for blocker in result.blockers:
-        _stderr(f"BLOCKER: {blocker}")
+        _stderr(f"BLOCKER: {blocker}", style="red")
     for remediation in result.remediations:
-        _stderr(f"REMEDIATION: {remediation}")
+        _stderr(f"REMEDIATION: {remediation}", style="yellow")
 
 
 def _print_repair_plan(plan: _RepairPlan) -> None:
-    _stderr("EMRYS Doctor repair plan")
+    _stderr("EMRYS Doctor repair plan", style="bold blue")
     _stderr(f"  Project: {plan.project.source_path}")
     actions = []
+    if plan.execution is not None and isinstance(
+        plan.execution.placement, SlurmPlacement
+    ):
+        actions.append(
+            "compute runtime/storage checks (head finalization follows)"
+            if plan.compute
+            else "Slurm runtime/storage checks, then head finalization"
+        )
     if plan.storage is not None:
         _stderr(f"  Direct storage receipt: {plan.storage.receipt_path}")
         for role, root in zip(
@@ -1103,7 +1145,7 @@ def _print_repair_plan(plan: _RepairPlan) -> None:
                 "runtime qualification",
             )
         )
-    _stderr("  Actions: " + "; ".join(actions))
+    _stderr("  Actions: " + "; ".join(actions), style="blue")
     _stderr("Declared input files and site/user environments will not be modified.")
 
 
@@ -1112,6 +1154,122 @@ def _confirm_repair() -> bool:
         return False
     print("Apply this repair? [y/N] ", end="", file=sys.stderr, flush=True)
     return sys.stdin.readline().strip().casefold() in {"y", "yes"}
+
+
+def _qualification_binding(result: DoctorResult) -> str:
+    if (
+        not result.runtime_ready
+        or not result.execution_ready
+        or result.inspection is None
+        or result.installed_package is None
+    ):
+        raise DoctorRepairError(
+            "Runtime must pass inspection before compute qualification"
+        )
+    return orchestration_contracts.canonical_sha256(
+        {
+            "project": result.project.source_sha256,
+            "analysis": result.analysis.revision.canonical_bytes.decode(),
+            "package": result.installed_package.content_sha256,
+            "inventory": result.inspection.profile_sha256,
+            "runtime": [
+                [item.check_id, str(item.path), str(item.resolved_path), item.sha256]
+                for item in result.bindings
+                if item.check_id != "storage_qualification"
+            ],
+        }
+    )
+
+
+def _qualify_slurm(
+    plan: _RepairPlan,
+    result: DoctorResult,
+    attempt: AttemptLog | None,
+    controls: LogControls,
+) -> DoctorResult:
+    execution = plan.execution
+    assert execution is not None
+    binding = _qualification_binding(result)
+    workspace = plan.project.source_path.parent
+    fasta = Path(str(result.analysis.workflow_inputs["reference"]["fasta"]["path"]))
+    if plan.compute:
+        execution.attempt_placement(os.environ.get("SLURM_JOB_ID"))
+        if (
+            plan.qualification_binding is not None
+            and binding != plan.qualification_binding
+        ):
+            raise DoctorRepairError(
+                "Project, package, or runtime changed before compute qualification"
+            )
+        resolve_resource_policy(execution.resource_policy, observe_allocation())
+        with phase_progress("Checking storage from the compute node"):
+            receipt = storage_qualification.qualify_compute(workspace, fasta)
+        _stderr(
+            f"Compute checks passed; storage evidence: {receipt}. Head finalization is required."
+        )
+        return result
+    assert attempt is not None
+    submission = slurm_submission.plan_submission(
+        execution,
+        emrys_argv=(
+            sys.executable,
+            "-X",
+            "pycache_prefix=/dev/null",
+            "-I",
+            "-m",
+            "emrys",
+            "doctor",
+            "--project",
+            str(plan.project.source_path),
+            "--analysis",
+            plan.analysis_name,
+            "--repair",
+            "--execute",
+            "--compute",
+            "--qualification-binding",
+            binding,
+            "--log-level",
+            controls.level.value,
+            "--log-root",
+            str(controls.root),
+        ),
+        log_dir=attempt.path.parent,
+    )
+    with phase_progress("Waiting for Slurm runtime and storage checks"):
+        slurm_submission.submit(
+            submission,
+            wait_record=attempt.path.parent / "slurm-submit.stdout",
+            on_submitted=lambda job_id: attempt.best_effort(
+                lambda: attempt.logger(component="maintenance", phase="repair").info(
+                    "Compute qualification submitted.",
+                    extra=event(
+                        "repair_compute_submitted",
+                        fields={
+                            "scheduler_job_id": field(job_id),
+                            "binding": field(binding),
+                            "stdout": field(submission.stdout_pattern),
+                            "stderr": field(submission.stderr_pattern),
+                        },
+                    ),
+                ),
+                warning="WARNING: scheduler logging degraded; submission records are retained.",
+            ),
+        )
+    with phase_progress("Verifying the checked runtime and Project"):
+        _readmit_repair_plan(replace(plan, runtime=None), before_storage=False)
+        observed = diagnose_project(
+            plan.project.source_path, analysis_name=plan.analysis_name
+        )
+    if _qualification_binding(observed) != binding:
+        raise DoctorRepairError(
+            "Project, package, or runtime changed during compute qualification"
+        )
+    with phase_progress("Checking shared storage from the head node"):
+        storage_qualification.qualify_head(workspace, fasta)
+    with phase_progress("Verifying final Project readiness"):
+        return diagnose_project(
+            plan.project.source_path, analysis_name=plan.analysis_name
+        )
 
 
 def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult:
@@ -1142,7 +1300,11 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
             lambda: logger.info(
                 message,
                 extra=event(
-                    name, fields={key: field(value) for key, value in values.items()}
+                    name,
+                    fields={key: field(value) for key, value in values.items()},
+                    detail="durable_only"
+                    if name.startswith("package_manager_")
+                    else "normal",
                 ),
             )
         )
@@ -1165,7 +1327,8 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
         )
     emit("repair_started", "Project repair started.", **started)
     try:
-        _readmit_repair_plan(plan, before_storage=True)
+        with phase_progress("Verifying the approved repair inputs"):
+            _readmit_repair_plan(plan, before_storage=True)
         if plan.storage is not None:
             emit(
                 "storage_qualification_started",
@@ -1182,50 +1345,67 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
         runtime = plan.runtime
         if runtime is not None:
             _admit_managed_root(runtime)
-            for argv, environment in _repair_actions(plan):
-                manager = Path(argv[0]).name
-                if manager == "pixi" and os.path.lexists(
-                    runtime.managed_root / ".pixi/config.toml"
-                ):
-                    raise DoctorRepairError(
-                        "Project-local Pixi configuration appeared during repair"
-                    )
-                emit(
-                    "package_manager_started",
-                    "Package-manager action started.",
-                    manager=manager,
-                    argv=argv,
+            if runtime.profile_bytes is None:
+                _stderr(
+                    "Allow roughly 5–15 minutes for first setup; it may take longer."
                 )
-                try:
-                    completed = subprocess.run(
-                        argv,
-                        cwd=plan.installed_package.root,
-                        env=environment,
-                        stdout=sys.stderr,
-                        stderr=sys.stderr,
-                        check=False,
+            with (
+                attempt.package_output() as output,
+                tempfile.TemporaryDirectory(
+                    prefix="repair-", dir=runtime.managed_root / "cache"
+                ) as temporary,
+            ):
+                for argv, environment in _repair_actions(plan):
+                    manager = Path(argv[0]).name
+                    if manager == "pixi" and os.path.lexists(
+                        runtime.managed_root / ".pixi/config.toml"
+                    ):
+                        raise DoctorRepairError(
+                            "Project-local Pixi configuration appeared during repair"
+                        )
+                    emit(
+                        "package_manager_started",
+                        "Package-manager action started.",
+                        manager=manager,
+                        argv=argv,
                     )
-                except OSError as exc:
-                    raise DoctorRepairError(
-                        f"could not start {manager}: {exc}"
-                    ) from exc
-                emit(
-                    "package_manager_completed",
-                    "Package-manager action completed.",
-                    manager=manager,
-                    exit_status=completed.returncode,
+                    with phase_progress(
+                        "Restoring R packages"
+                        if "run" in argv
+                        else "Installing native tools and R"
+                    ):
+                        completed = subprocess.run(
+                            argv,
+                            cwd=plan.installed_package.root,
+                            env={**environment, "TMPDIR": temporary, "NO_COLOR": "1"},
+                            stdout=output,
+                            stderr=subprocess.STDOUT,
+                            check=False,
+                        )
+                        emit(
+                            "package_manager_completed",
+                            "Package-manager action completed.",
+                            manager=manager,
+                            exit_status=completed.returncode,
+                        )
+                        if completed.returncode != 0:
+                            raise DoctorRepairError(
+                                f"{manager} exited with status {completed.returncode}; see {attempt.path.parent / 'package-output.log'}"
+                            )
+            with (
+                tempfile.TemporaryDirectory(prefix="emrys-doctor-") as temporary,
+                phase_progress("Discovering and verifying the installed runtime"),
+            ):
+                _readmit_repair_plan(plan, before_storage=False)
+                candidate = onboarding.discover_runtime_profile(
+                    project=plan.project.source_path,
+                    environment={
+                        **_managed_discovery_environment(plan),
+                        "TMPDIR": temporary,
+                    },
+                    root=plan.installed_package.root,
+                    python_executable=Path(sys.executable),
                 )
-                if completed.returncode != 0:
-                    raise DoctorRepairError(
-                        f"{manager} exited with status {completed.returncode}"
-                    )
-            _readmit_repair_plan(plan, before_storage=False)
-            candidate = onboarding.discover_runtime_profile(
-                project=plan.project.source_path,
-                environment=_managed_discovery_environment(plan),
-                root=plan.installed_package.root,
-                python_executable=Path(sys.executable),
-            )
             if not _profile_is_managed(
                 tuple(item.check for item in candidate.observations),
                 runtime,
@@ -1260,10 +1440,22 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                     raise DoctorRepairError(
                         "existing managed profile differs and was preserved"
                     )
-        final = diagnose_project(
-            plan.project.source_path,
-            analysis_name=plan.analysis_name,
-        )
+        with phase_progress("Checking Project readiness"):
+            final = diagnose_project(
+                plan.project.source_path, analysis_name=plan.analysis_name
+            )
+        if plan.execution is not None and isinstance(
+            plan.execution.placement, SlurmPlacement
+        ):
+            final = _qualify_slurm(plan, final, attempt, controls)
+            if plan.compute:
+                record(
+                    lambda: attempt.terminal(
+                        event_name="repair_compute_checked",
+                        message="Compute runtime and storage checks passed; head finalization follows.",
+                    )
+                )
+                return final
         if not final.ready:
             raise DoctorRepairError(
                 "Project remained not ready after repair requalification"
@@ -1292,6 +1484,11 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
         storage_qualification.StorageQualificationError,
         onboarding.OnboardingError,
         orchestration_contracts.ContractValidationError,
+        slurm_submission.SlurmSubmissionError,
+        ExecutionProfileError,
+        ResourceConfigError,
+        OSError,
+        ApplicationLogError,
     ) as exc:
         error = str(exc)
         record(
@@ -1324,6 +1521,12 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Apply --repair noninteractively; invalid without --repair.",
     )
+    parser.add_argument(
+        "--compute",
+        action="store_true",
+        help="Advanced: diagnose or repair inside an existing Slurm allocation; site finalization remains on the head node.",
+    )
+    parser.add_argument("--qualification-binding", help=argparse.SUPPRESS)
     parser.set_defaults(_command_parser=parser)
 
 
@@ -1332,10 +1535,35 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
         print("emrys: error: --execute requires --repair", file=sys.stderr)
         return 2
     try:
-        result = diagnose_project(
-            onboarding.project_definition_path(arguments.project),
-            analysis_name=arguments.analysis,
-        )
+        compute = getattr(arguments, "compute", False)
+        expected = getattr(arguments, "qualification_binding", None)
+        job_id = os.environ.get("SLURM_JOB_ID", "").strip()
+        if compute and not is_canonical_slurm_job_id(job_id):
+            raise DoctorInputError("--compute requires an existing Slurm allocation")
+        if job_id and not compute:
+            raise DoctorInputError(
+                "Run Doctor on the head node, or select the advanced --compute option"
+            )
+        with phase_progress("Inspecting the Project and runtime"):
+            result = diagnose_project(
+                onboarding.project_definition_path(arguments.project),
+                analysis_name=arguments.analysis,
+            )
+        delegated = slurm_submission.delegate_binding() is not None
+        if delegated:
+            if not compute or not expected or result.execution_profile is None:
+                raise DoctorInputError(
+                    "Private Doctor delegation requires compute input bindings"
+                )
+            slurm_submission.delegate_job_id(result.execution_profile)
+            if _qualification_binding(result) != expected:
+                raise DoctorInputError(
+                    "Project, package, or runtime changed before compute qualification"
+                )
+        elif expected is not None:
+            raise DoctorInputError(
+                "Compute input bindings require private Slurm delegation"
+            )
         if result.installed_package is None:
             _print_result(result, LogLevel.NORMAL)
             return 1
@@ -1344,16 +1572,37 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
             cli_root=arguments.log_root,
             default_root=result.project.source_path.parent / "logs/application",
         )
-    except (DoctorInputError, LogControlError, onboarding.OnboardingError) as exc:
+    except (
+        DoctorInputError,
+        DoctorRepairError,
+        LogControlError,
+        onboarding.OnboardingError,
+        slurm_submission.SlurmSubmissionError,
+    ) as exc:
         print(f"emrys: error: {exc}", file=sys.stderr)
         return 2
     detail = controls.level
     _print_result(result, detail)
-    if not arguments.repair or result.ready:
+    slurm = result.execution_profile is not None and isinstance(
+        result.execution_profile.placement, SlurmPlacement
+    )
+    if not arguments.repair or (result.ready and not slurm):
         return 0 if result.ready else 1
     try:
         plan = _build_repair_plan(result)
-    except DoctorRepairError as exc:
+        plan = replace(plan, compute=compute, qualification_binding=expected)
+        if delegated:
+            if not arguments.execute:
+                raise DoctorRepairError("Private Doctor delegation requires --execute")
+            _readmit_repair_plan(plan, before_storage=True)
+            _qualify_slurm(plan, result, None, controls)
+            return 0
+    except (
+        DoctorRepairError,
+        ResourceConfigError,
+        ExecutionProfileError,
+        storage_qualification.StorageQualificationError,
+    ) as exc:
         print(f"REPAIR BLOCKED: {exc}", file=sys.stderr)
         return 1
     _print_repair_plan(plan)
@@ -1369,12 +1618,15 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
         final = _execute_repair(plan, controls=controls)
     except KeyboardInterrupt:
         print(
-            "Repair interrupted; partial repair state was preserved.", file=sys.stderr
+            "Repair interrupted; partial state and submission records were preserved. A submitted Slurm job may still be running.",
+            file=sys.stderr,
         )
         return 130
     except DoctorRepairError as exc:
         print(f"REPAIR FAILED: {exc}", file=sys.stderr)
         return 1
+    if compute and slurm:
+        return 0
     _print_result(final, detail)
     return 0 if final.ready else 1
 

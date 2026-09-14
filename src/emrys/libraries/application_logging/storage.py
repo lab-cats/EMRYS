@@ -5,9 +5,12 @@ from __future__ import annotations
 import errno
 import os
 import stat
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from operator import attrgetter
 from pathlib import Path
+from typing import BinaryIO
 
 DIRECTORY_MODE = 0o700
 FILE_MODE = 0o600
@@ -31,6 +34,31 @@ class ApplicationLogFile:
     path: Path
     _pins: tuple[_Pin, ...]
     _closed: bool = False
+
+    @contextmanager
+    def package_output(self) -> Iterator[BinaryIO]:
+        """Keep complete package-manager output beside this attempt's events."""
+        self._require_open()
+        self._verify()
+        parent = self._pins[-2]
+        path = parent.path / "package-output.log"
+        descriptor = os.open(
+            "package-output.log",
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC | os.O_NOFOLLOW,
+            FILE_MODE,
+            dir_fd=parent.fd,
+        )
+        with os.fdopen(descriptor, "wb", buffering=0) as output:
+            os.fsync(parent.fd)
+            try:
+                yield output
+            finally:
+                os.fsync(output.fileno())
+                self._verify()
+                if _identity(os.fstat(output.fileno())) != _identity(path.lstat()):
+                    raise ApplicationLogStorageError(
+                        "Pinned package output path changed"
+                    )
 
     def write_bytes(self, payload: bytes) -> None:
         self._require_open()

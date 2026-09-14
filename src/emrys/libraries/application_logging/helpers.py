@@ -3,14 +3,86 @@
 from __future__ import annotations
 
 import json
+import os
+import sys
+import time
 import unicodedata
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+
 _MAX_FIELD_BYTES = 16 * 1024
 _UNSAFE_TEXT_CATEGORIES = frozenset({"Cc", "Cf", "Cs", "Zl", "Zp"})
+
+
+def _console(file: Any = None) -> Console:
+    stream = sys.stderr if file is None else file
+    terminal = (
+        bool(getattr(stream, "isatty", lambda: False)())
+        and "NO_COLOR" not in os.environ
+        and os.environ.get("TERM") != "dumb"
+    )
+    return Console(
+        file=stream,
+        force_terminal=terminal,
+        no_color=not terminal,
+        markup=False,
+        highlight=False,
+        soft_wrap=True,
+    )
+
+
+def console_print(
+    message: str, *, style: str | None = None, file: Any = None, end: str = "\n"
+) -> None:
+    """Print literal human text, styling only an eligible terminal."""
+    _console(file).print(message, style=style, end=end)
+
+
+@contextmanager
+def phase_progress(message: str, *, file: Any = None) -> Iterator[None]:
+    """Show the current phase and elapsed time without estimating completion."""
+    started = time.monotonic()
+    progress = None
+    with suppress(Exception):
+        console = _console(file)
+        live = console.is_terminal and not console.no_color
+        progress = Progress(
+            SpinnerColumn(),
+            TextColumn("{task.description}", markup=False),
+            TimeElapsedColumn(),
+            console=console,
+            transient=True,
+            disable=not live,
+            redirect_stdout=False,
+            redirect_stderr=False,
+        )
+        if not live:
+            console.print(f"{message}...")
+        progress.add_task(message, total=None)
+        progress.start()
+    outcome = "complete"
+    try:
+        yield
+    except BaseException:
+        outcome = "interrupted or failed"
+        raise
+    finally:
+        with suppress(Exception):
+            if progress is not None:
+                progress.stop()
+        with suppress(Exception):
+            elapsed = int(time.monotonic() - started)
+            console_print(
+                f"{message}: {outcome} ({elapsed // 60}m {elapsed % 60:02d}s)",
+                style="green" if outcome == "complete" else "red",
+                file=file,
+            )
 
 
 class LogValueError(ValueError):

@@ -8,15 +8,23 @@ import re
 import sys
 import time
 from collections import deque
-from collections.abc import Callable, Mapping, MutableMapping
+from collections.abc import Callable, Iterator, Mapping, MutableMapping
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from itertools import count
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 from .controls import LogControls
-from .helpers import LogValueError, _text, field, split_fields, slurm_correlation
+from .helpers import (
+    LogValueError,
+    _text,
+    console_print,
+    field,
+    split_fields,
+    slurm_correlation,
+)
 from .storage import ApplicationLogStorageError, create_application_log_file
 
 APPLICATION_LOG_SCHEMA_VERSION = "1.0.0"
@@ -196,6 +204,25 @@ class AttemptLog:
         return _AttemptAdapter(
             self._logger, {"emrys_component": component, "emrys_phase": phase}
         )
+
+    @contextmanager
+    def package_output(self) -> Iterator[BinaryIO]:
+        """Open the retained package log once; use it for every repair child."""
+        self._require_state("package_output", {"open"})
+        try:
+            with self._file.package_output() as output:
+                with suppress(Exception):
+                    console_print(
+                        f"Package output: {self.path.parent / 'package-output.log'}",
+                        file=self._stderr,
+                    )
+                yield output
+        except ApplicationLogStorageError as exc:
+            raise ApplicationLogError(
+                "Could not retain package output",
+                stage="package_output",
+                path=self.path.parent / "package-output.log",
+            ) from exc
 
     @property
     def recent_console_events(self) -> tuple[str, ...]:
@@ -507,8 +534,13 @@ class AttemptLog:
             line += " " + rendered_fields
         self._recent.append(line)
         try:
-            self._stderr.write(line + "\n")
-            self._stderr.flush()
+            console_print(
+                line,
+                style={"info": "cyan", "warning": "yellow", "error": "red"}.get(
+                    str(document["severity"])
+                ),
+                file=self._stderr,
+            )
         except Exception:
             pass
 

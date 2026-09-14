@@ -66,6 +66,24 @@ def test_project_profile_selection_is_default_named_or_absolute(tmp_path: Path) 
     assert not profile.computational_resources_explicit
     assert profile.document()["placement"] == {"kind": "direct"}
 
+    default.write_bytes(execution_profile.project_default_profile_bytes("viking"))
+    viking = load_execution_profile(config_path=default)
+    assert viking.document()["placement"] == {
+        "kind": "slurm",
+        "account": "viking-users",
+        "partition": "long",
+        "qos": "normal",
+        "cpus_per_task": 4,
+        "memory_mb": None,
+        "time": "08:00:00",
+        "exclusive": False,
+        "nodelist": None,
+        "scratch_parent": "/tmp",
+        "modules": {"mode": "none", "init": "", "load": []},
+    }
+    assert viking.resource_policy == profile.resource_policy
+    assert not viking.computational_resources_explicit
+
 
 def test_default_project_profile_rejects_retired_adjacent_configuration(
     tmp_path: Path,

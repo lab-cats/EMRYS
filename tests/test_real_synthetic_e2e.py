@@ -27,8 +27,6 @@ def _argv(root: Path, *, execute: bool = False) -> list[str]:
         str(root / "Rscript"),
         "--renv-library",
         str(root / "renv"),
-        "--storage-compute-launcher-json",
-        json.dumps(["/usr/bin/true"]),
         "--slurm-partition",
         "emrys-ci",
         "--slurm-memory",
@@ -131,14 +129,7 @@ def test_step09_oracle_rejects_unknown_significant_status(tmp_path: Path) -> Non
         )
 
 
-def test_launcher_adapters_and_default_resource_projection(tmp_path: Path) -> None:
-    launcher = tmp_path / "srun"
-    launcher.write_text("#!/bin/sh\n", encoding="utf-8")
-    launcher.chmod(0o755)
-    assert driver.parse_launcher(json.dumps([str(launcher), "--nodes=1"])) == (
-        str(launcher),
-        "--nodes=1",
-    )
+def test_adapters_and_default_resource_projection(tmp_path: Path) -> None:
     python = Path("/runtime/bin/python")
     java = Path("/runtime/bin/java")
     assert b"importlib.metadata" in driver.rseqc_adapter_bytes(
@@ -451,6 +442,14 @@ def test_application_log_snapshot_binds_run_attempt_and_scheduler(
             }
         )
     path.write_text("".join(json.dumps(record) + "\n" for record in records))
+
+    maintenance = (
+        tmp_path / "logs/application/maintenance-project/repair-1/emrys-doctor.jsonl"
+    )
+    maintenance.parent.mkdir(parents=True)
+    maintenance.write_text(
+        '{"scope_kind":"maintenance","event":"repair_requalified"}\n'
+    )
 
     observed = driver._application_log_snapshot(
         tmp_path,

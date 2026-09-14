@@ -70,6 +70,7 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
         "PyYAML==6.0.3",
         "jsonschema>=4.18.0",
         "referencing>=0.28.4",
+        "rich==15.0.0",
         "simple-term-menu==1.6.6",
         "snakemake==9.25.1",
     }

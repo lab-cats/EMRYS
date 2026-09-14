@@ -1069,6 +1069,11 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
         if Path(argv[0]) == Path(sys.executable):
             return real_subprocess_run(argv, **_kwargs)
         commands.append(tuple(argv))
+        environment = _kwargs["env"]
+        temporary = Path(environment["TMPDIR"])
+        assert temporary.parent == runtime.managed_root / "cache" and temporary.is_dir()
+        assert environment["NO_COLOR"] == "1"
+        _kwargs["stdout"].write(b"package-manager output\n")
         if Path(argv[0]).name == "pixi" and "install" in argv:
             jar = (
                 runtime.managed_root
@@ -1132,6 +1137,13 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     assert records[0] == "opened"
     assert "terminal" in records
     assert records[-1] == "closed"
+    assert not list((runtime.managed_root / "cache").glob("repair-*"))
+    assert (
+        next(
+            project.source_path.parent.glob("logs/application/**/package-output.log")
+        ).read_bytes()
+        == b"package-manager output\n" * 2
+    )
 
 
 def test_repair_refuses_a_discovered_executable_symlink_outside_managed_root(
@@ -1161,7 +1173,11 @@ def test_repair_refuses_a_discovered_executable_symlink_outside_managed_root(
         return candidate
 
     monkeypatch.setattr(doctor, "_readmit_repair_plan", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(doctor, "_admit_managed_root", lambda _plan: None)
+    monkeypatch.setattr(
+        doctor,
+        "_admit_managed_root",
+        lambda plan: (plan.managed_root / "cache").mkdir(parents=True),
+    )
     monkeypatch.setattr(doctor, "_repair_actions", lambda _plan: ())
     monkeypatch.setattr(doctor, "_managed_discovery_environment", lambda _plan: {})
     monkeypatch.setattr(
@@ -1226,7 +1242,11 @@ def test_repair_records_failed_final_requalification(
     runtime.profile.write_bytes(candidate_bytes)
     records: list[str] = []
     _patch_logging(monkeypatch, plan, records)
-    monkeypatch.setattr(doctor, "_admit_managed_root", lambda _plan: None)
+    monkeypatch.setattr(
+        doctor,
+        "_admit_managed_root",
+        lambda plan: (plan.managed_root / "cache").mkdir(parents=True),
+    )
     monkeypatch.setattr(doctor, "_repair_actions", lambda _plan: ())
     monkeypatch.setattr(doctor, "_managed_discovery_environment", lambda _plan: {})
     monkeypatch.setattr(
@@ -1271,6 +1291,137 @@ def test_log_open_failure_prevents_the_first_repair_write(
         doctor._execute_repair(plan, controls=_controls(project))
 
     assert not runtime.managed_root.exists()
+
+
+@pytest.mark.parametrize(
+    "failure", (None, "scheduler", "runtime", "profile", "finalize")
+)
+def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str | None,
+) -> None:
+    from emrys.orchestration.run_coordinator import execution_profile, slurm_submission
+    from tests.evidence.storage_inventory.test_storage_inventory import (
+        synthetic_mount_identity,
+    )
+
+    project = _project(tmp_path)
+    profile_path = execution_profile.project_execution_profile_path(
+        project.source_path, None
+    )
+    profile_path.parent.mkdir(parents=True, exist_ok=True)
+    profile_path.write_bytes(execution_profile.project_default_profile_bytes("viking"))
+    execution = execution_profile.load_execution_profile(profile_path)
+    inspection = _inspection(tmp_path)
+    ready = replace(
+        _result(project, ready=True, inspection=inspection), execution_profile=execution
+    )
+    fasta = Path(str(ready.analysis.workflow_inputs["reference"]["fasta"]["path"]))
+    qualification = doctor.storage_qualification
+    monkeypatch.setattr(qualification, "_mount_identity", synthetic_mount_identity)
+    from emrys.orchestration.run_coordinator.resource_policy import AllocationCapacity
+
+    monkeypatch.setattr(
+        doctor, "observe_allocation", lambda: AllocationCapacity(4, 8192, "slurm")
+    )
+    state = {"compute": False, "probes": 0, "jobs": 0}
+    run_compute = qualification._run_compute
+    qualify_head = qualification.qualify_head
+
+    def finalize(*args: Path) -> QualifiedStorage:
+        if failure == "finalize" and state["jobs"] == 1:
+            raise KeyboardInterrupt
+        return qualify_head(*args)
+
+    def probe(*args: Path) -> Path:
+        state["probes"] += 1
+        return run_compute(*args)
+
+    def diagnose(*_args: object, **_kwargs: object) -> doctor.DoctorResult:
+        try:
+            qualification.admit_final_qualification(project.source_path.parent, fasta)
+        except qualification.StorageQualificationError:
+            result = replace(
+                ready, storage_ready=False, blockers=("storage is not site-qualified",)
+            )
+        else:
+            result = ready
+        if state["compute"] and failure == "runtime":
+            result = replace(result, runtime_ready=False)
+        if state["compute"] and failure == "profile":
+            result = replace(
+                result, inspection=replace(inspection, profile_sha256="f" * 64)
+            )
+        return result
+
+    monkeypatch.setattr(qualification, "_run_compute", probe)
+    monkeypatch.setattr(qualification, "qualify_head", finalize)
+    monkeypatch.setattr(doctor, "diagnose_project", diagnose)
+    parser = argparse.ArgumentParser()
+    doctor.configure_parser(parser)
+    arguments = parser.parse_args(
+        ["--project", str(project.source_path), "--repair", "--execute"]
+    )
+    records: list[str] = []
+    _patch_logging(monkeypatch, doctor._build_repair_plan(diagnose()), records)
+
+    def submit(submission: object, **kwargs: Any) -> str:
+        state["jobs"] += 1
+        kwargs["on_submitted"]("614999")
+        assert "--compute" in submission.batch_script
+        if failure == "scheduler":
+            raise slurm_submission.SlurmSubmissionError("sbatch failed with exit 1")
+        with monkeypatch.context() as compute:
+            compute.setenv("SLURM_JOB_ID", "614999")
+            compute.setenv(
+                slurm_submission.DELEGATE_MARKER_ENV, slurm_submission.DELEGATE_MARKER
+            )
+            compute.setenv(
+                slurm_submission.PROFILE_SHA256_ENV, execution.binding_sha256
+            )
+            compute.setenv(slurm_submission.SUBMIT_UID_ENV, str(doctor.os.getuid()))
+            compute_args = parser.parse_args(
+                [
+                    "--project",
+                    str(project.source_path),
+                    "--repair",
+                    "--execute",
+                    "--compute",
+                    "--qualification-binding",
+                    doctor._qualification_binding(ready),
+                ]
+            )
+            state["compute"] = True
+            try:
+                status = doctor.doctor_from_args(compute_args)
+            finally:
+                state["compute"] = False
+        if status:
+            raise slurm_submission.SlurmSubmissionError("compute qualification failed")
+        return "614999"
+
+    monkeypatch.setattr(slurm_submission, "submit", submit)
+    expected_status = 0 if failure is None else 130 if failure == "finalize" else 1
+    assert doctor.doctor_from_args(arguments) == expected_status
+    assert records.count("opened") == 1
+    if failure in {None, "finalize"}:
+        compute = next(
+            (project.source_path.parent.parent / qualification.EVIDENCE_DIRECTORY).glob(
+                "*.compute.json"
+            )
+        )
+        original = compute.read_bytes()
+        if failure == "finalize":
+            assert "interrupted" in records
+        assert doctor.doctor_from_args(arguments) == 0
+        assert state["jobs"] == 2 and state["probes"] == 1
+        assert compute.read_bytes() == original
+        qualification.admit_final_qualification(project.source_path.parent, fasta)
+    else:
+        assert state["probes"] == 0 and "failed" in records
+        with pytest.raises(qualification.StorageQualificationError):
+            qualification.admit_final_qualification(project.source_path.parent, fasta)
 
 
 def test_malformed_project_is_a_usage_error(

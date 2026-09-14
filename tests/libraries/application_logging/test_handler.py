@@ -3,6 +3,9 @@ from __future__ import annotations
 import io
 import json
 import logging
+import stat
+import subprocess
+import sys
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
@@ -122,6 +125,38 @@ def test_attempt_writes_exact_schema_to_protected_path_before_stderr(
     }
     assert records[1]["event"] == "alignment_completed"
     assert records[1]["fields"] == {"samples": 2}
+
+
+def test_package_output_retains_both_child_streams_after_failure(
+    tmp_path: Path,
+) -> None:
+    stderr = io.StringIO()
+    attempt = open_log(tmp_path, stderr=stderr)
+    path = attempt.path.parent / "package-output.log"
+    with pytest.raises(RuntimeError, match="package failed"):
+        with attempt.package_output() as output:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    "import os; os.write(1, b'output\\xff\\n'); "
+                    "os.write(2, b'failure\\n'); raise SystemExit(3)",
+                ],
+                stdout=output,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+            assert result.returncode == 3
+            raise RuntimeError("package failed")
+    assert path.read_bytes() == b"output\xff\nfailure\n"
+    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    assert f"Package output: {path}" in stderr.getvalue()
+    with pytest.raises(FileExistsError):
+        with attempt.package_output():
+            pytest.fail("existing package output was replaced")
+    assert path.read_bytes() == b"output\xff\nfailure\n"
+    attempt.close()
+    assert len(read_records(attempt.path)) == 1
 
 
 def test_console_levels_are_nested_while_durable_semantics_are_invariant(
