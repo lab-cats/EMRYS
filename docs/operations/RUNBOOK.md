@@ -1,7 +1,8 @@
 # Runbook
 
-Use the [quickstart](../../quickstart.md) for installation and a first synthetic
-Project. This guide covers institutional runtimes, routine operation, and Slurm.
+Use the [quickstart](../../quickstart.md) for installation, a first synthetic
+Project and your own study. This guide covers institutional runtimes, advanced
+operation, and Slurm.
 The [configuration guide](../../configs/README.md) explains Project inputs and
 execution settings; [Troubleshooting](TROUBLESHOOTING.md) covers recovery.
 
@@ -25,99 +26,28 @@ Version flags cannot accompany a command.
 
 ## Create a Project for your own data
 
-Use a **new Project**, leaving the completed synthetic exercise intact. Obtain
-the following from the study's scientist/analyst before setup:
+Follow the [quickstart's own-data continuation](../../quickstart.md#7-create-a-project-for-your-own-data)
+for the complete Viking sequence: prepare study inputs, create the Project,
+run Doctor, submit the study, inspect it and open the reports.
 
-- Paired-end FASTQs and their source checksums; explicit sample IDs, conditions,
-  library strandedness, and matched replicate strata. The built-in Analysis
-  needs at least two strata with one control and one treatment sample each.
-  Technical lanes are not automatically independent biological replicates.
-- An uncompressed reference FASTA and matching GTF, with their source/release
-  identities. EMRYS needs permission to create/check `.fai` and `.dict` sidecars
-  beside the FASTA; arrange a writable study copy rather than modifying a
-  shared reference owned by another team.
-- Nonoverlapping regions to analyze, with contig names matching the reference;
-  STAR index parameters appropriate to the reads/reference; and the Analysis
-  thresholds and target substitution approved for the study. The example
-  numbers in the configuration guide are not universal scientific defaults.
-- A resource/allocation choice appropriate to the actual reads and reference.
-  A successful tiny synthetic run is not a full-dataset capacity estimate.
+For studies with additional input requirements:
 
-EMRYS does not acquire public reads/references or decide experimental pairing.
-Keep input files at their declared locations for the life of their Runs.
+- For arbitrary FASTQ names, write the [sample manifest](../../configs/README.md#sample-manifest)
+  and [partition manifest](../../configs/README.md#partition-manifest) directly.
+  `samples.example.tsv` demonstrates ingestion fields; it is not a complete
+  paired-CMH Project manifest.
+- For a background cohort, include its samples in the manifest and pass
+  `--background-condition CONDITION` when creating the Project. The condition
+  must match those sample rows; the [Analysis field guide](../../configs/README.md#built-in-analysis-fields)
+  explains the background filter and other scientific settings.
+- For noninteractive setup, use the explicit field flags shown by
+  `emrys init --help`. Supply every required answer when no terminal is available.
 
-### Prepare the manifests
-
-Write [tab-separated manifests](../../configs/README.md#sample-manifest) directly
-for arbitrary FASTQ names, or use the helper below. `samples.example.tsv` is
-a generic ingestion example, not a complete paired-CMH Project manifest.
-
-Replace the four example library names, paths, and assignments with your study
-values. The helper expects `_R1.fastq.gz`/`_R2.fastq.gz` suffixes; plain FASTQ and
-`.fq` also work. Use known library strandedness instead of `unknown` when
-available. The regions file must exist: tab-separated BED uses zero-based,
-half-open coordinates; the plain region table uses one-based, inclusive
-coordinates. See [partition format](../../configs/README.md#partition-manifest).
-
-```bash
-EMRYS_READS=/absolute/path/to/reads
-EMRYS_REGIONS=/absolute/path/to/regions.bed
-EMRYS_MANIFEST_ROOT=/absolute/durable/path/study-manifests
-emrys init manifests --output-dir "$EMRYS_MANIFEST_ROOT" \
-  --fastq "$EMRYS_READS/control_1_R1.fastq.gz" "$EMRYS_READS/control_1_R2.fastq.gz" \
-          "$EMRYS_READS/treatment_1_R1.fastq.gz" "$EMRYS_READS/treatment_1_R2.fastq.gz" \
-          "$EMRYS_READS/control_2_R1.fastq.gz" "$EMRYS_READS/control_2_R2.fastq.gz" \
-          "$EMRYS_READS/treatment_2_R1.fastq.gz" "$EMRYS_READS/treatment_2_R2.fastq.gz" \
-  --sample control_1 control pair_1 unknown \
-  --sample treatment_1 treatment pair_1 unknown \
-  --sample control_2 control pair_2 unknown \
-  --sample treatment_2 treatment pair_2 unknown \
-  --regions-file study "$EMRYS_REGIONS" --execute
-```
-
-The destination must be absent under an existing writable parent. This command
-publishes `samples.tsv` and `partitions.tsv`; omit `--execute` for a preview
-first. Review the resulting rows and assignments before creating the Project.
-
-### Create and validate the Project
-
-From the existing durable parent where the new `my-study` child should live:
-
-```bash
-cd /absolute/durable/path
-emrys init my-study --site viking
-```
-
-Supply absolute manifest/FASTA/GTF paths, STAR parameters, exact condition
-labels, target change (such as `A>G`), and study thresholds. Consult the
-[field guide](../../configs/README.md#built-in-analysis-fields); Enter accepts a
-suggestion that still needs scientific review. This command checks the plan
-without writing. Repeat with the same answers to create it:
-
-```bash
-emrys init my-study --site viking --execute
-export EMRYS_PROJECT_ROOT="$(pwd -P)/my-study"
-cd "$EMRYS_PROJECT_ROOT"
-export EMRYS_REFERENCE_FASTA=/absolute/path/to/reference.fa
-emrys validate
-```
-
-Use the same FASTA path you supplied during initialization. For an optional
-background cohort, supply `--background-condition CONDITION` to both init
-invocations and include its samples in the manifest. If scripting setup, use
-`emrys init --help` for the explicit field flags; all required answers must be
-supplied outside a terminal.
-
-After `Project validation: PASS`, run `emrys doctor --repair`, then `emrys run`
-and inspect the completed Run from the head node. Each Project has its
-own runtime inventory and qualification records. Compare the real-data outputs
-with the study design, not the synthetic fixture's expected counts.
-
-For named Analyses, processing reuse, alternate profiles, and larger synthetic
-exercises, use the sections below. The optional
-`production-like-v1` fixture has 100,000 pairs **per library** across four
-libraries and a 5-Mb reference; select it with `--dataset-profile production-like-v1` on both
-synthetic initialization commands in a new Project.
+For a larger software exercise, `production-like-v1` contains 100,000 pairs
+per library across four libraries and a 5-Mb reference. Create a new synthetic
+Project with `--dataset-profile production-like-v1`; retain `--site viking`
+for Viking placement. A successful synthetic exercise does not establish
+capacity for a full study.
 
 ## Institution-provided runtime
 
