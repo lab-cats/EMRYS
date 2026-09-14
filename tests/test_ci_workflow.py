@@ -231,7 +231,7 @@ def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
         assert selector in _expression(step["if"])
         assert profile_argument in step["run"]
         assert "tests/tools/real_synthetic_e2e.py" in step["run"]
-        assert '"/usr/bin/srun"' in step["run"]
+        assert "--slurm-partition emrys-ci" in step["run"]
         assert "--slurm-cpus" not in step["run"]
         assert "--execute" in step["run"]
 
