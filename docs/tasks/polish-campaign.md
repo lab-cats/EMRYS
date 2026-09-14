@@ -13,9 +13,8 @@ measurement boundaries.
 The user requested this document and its integration with the optimization
 campaign and revised quickstart. Selected implementation is identified below;
 other proposals still require separate selection and authority. The
-[backlog matrix](backlog_matrix.md) owns current accepted outcomes. The
-[closed compression backlog](compression_backlog_matrix.md) retains historical
-CS decisions and evidence. Existing row references below identify coverage,
+[backlog matrix](backlog_matrix.md) owns current accepted outcomes and campaign
+closure results. Existing row references below identify coverage,
 not duplicate tasks. Numbered headings are
 navigation references, not new backlog IDs. Proposed acceptance below becomes
 authoritative only when selected through the existing workflow.
@@ -69,9 +68,8 @@ institutional, production, scientific-review, or biological acceptance.
 Pinned source references below retain the original audit evidence; relative
 links point to the current owner.
 Before selecting a candidate, reconcile its current source, backlog coverage,
-and overlapping PRs. The [closed compression backlog](compression_backlog_matrix.md) contains
-related observations; preserve its useful decisions without copying its entire
-history or reviving discarded task IDs.
+and overlapping PRs. Lasting decisions belong with their subject owners;
+Git retains superseded planning and implementation history.
 
 For each selected slice:
 
@@ -136,8 +134,9 @@ change to Steps 07–09 and storage qualification. Product reduction is unproven
 ### 2. Make storage-inventory replacement recoverable
 
 **Superseded by approved feature retirement:** Storage capacity planning and
-retention-policy reporting are outside EMRYS's responsibility. [CS-27](compression_backlog_matrix.md#cs-27-retire-storage-inventory-reporting)
-owns removal of the command, its implementation, examples, and tests. Storage
+retention-policy reporting are outside EMRYS's responsibility.
+[PR #158](https://github.com/lab-cats/EMRYS/pull/158), merged through PR #169,
+removed the command, its implementation, examples, and tests. Storage
 qualification and retained reports and recovery files remain.
 
 The retired publisher could leave a partial predecessor after a backup failure,
@@ -159,8 +158,8 @@ justify combining this proposed slice with storage publication.
 
 ### 4. Correct runtime-report publication failures
 
-**Superseded by approved retirement:** [CS-29](compression_backlog_matrix.md#cs-29-retire-standalone-runtime-reports)
-removes the optional runtime-report publisher. Its descriptor leaks, failed
+**Superseded by approved retirement:** [PR #160](https://github.com/lab-cats/EMRYS/pull/160),
+merged through PR #169, removed the optional runtime-report publisher. Its descriptor leaks, failed
 restoration, and suppressed lock-removal errors retire with the feature; this
 does not claim a repair. Doctor, runtime discovery, and Run admission retain
 the shared runtime checks. Existing reports and recovery files remain untouched.
@@ -309,8 +308,8 @@ quantify any product growth before implementation selection.
 
 ### 13. Retire the ineffective reporting-memory control
 
-**Completed:** [CS-04](compression_backlog_matrix.md#cs-04-reporting-memory-control)
-records implementation and verification in PR #150. The inactive setting was
+**Completed:** [PR #150](https://github.com/lab-cats/EMRYS/pull/150), merged through
+PR #169, records implementation and verification. The inactive setting was
 removed; the [Run-coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
 defines new-input rejection and retained historical reading. The broader
 `REPORT-ROSTER-01` outcome remains open.
@@ -540,8 +539,8 @@ version is `0.1.0.dev0`. No claim was made that Git tags are absent.
 The [isolated wheel test][release-wheel] covers installation, packaged resources,
 public help, manifest validation, and report publication. At discovery it relied
 on the original checkout for workflow assets and source admission. Approved
-[CS-26](compression_backlog_matrix.md#cs-23-through-cs-26-direct-science-rendering-and-installed-execution)
-replaces that requirement with installed workflow/R assets and exact package
+[PR #157](https://github.com/lab-cats/EMRYS/pull/157)
+replaced that requirement with installed workflow/R assets and exact package
 identity. Its hosted integration checks passed in PR #169; neither packaging
 nor synthetic reports establish institutional scientific operation. This card
 still owns release selection and the independently installed Project-to-Results
@@ -658,9 +657,7 @@ binding. [Lifecycle admission][snakemake-admission]
 requires that equality, and the
 [Doctor test][snakemake-test] asserts
 equal Python and Snakemake file hashes. This establishes the representation,
-not that a package change escapes every other defense. The existing
-[compression discovery disposition](compression_backlog_matrix.md#original-discovery-disposition)
-records discovery 9 as transferred to this item. This Snakemake decision
+not that a package change escapes every other defense. This Snakemake decision
 remains separate from the R closure in item 34.
 
 **Outcome and acceptance:** Trace installed Snakemake and execution-relevant

@@ -29,7 +29,10 @@ keeping its own Run, Results, reporting, and evidence identity.
 A planner receives `TaskPlanningContextV2`: `working_outputs` gives the exact
 files its worker must create; `outputs` gives canonical final identities for
 provenance and the independent validator. It returns `TaskCommandPlanV2` with
-fixed worker argv, validator argv, and all consumed inputs. Artifact declarations
+fixed worker argv, validator argv, and all consumed inputs. Planning configuration
+is strict admitted JSON recursively frozen into read-only mappings and tuples.
+The record decoder instead returns fresh mutable dictionaries and lists; it
+cannot replace freezing without changing the provider boundary. Artifact declarations
 specify native publication order; put the terminal native receipt last. The
 runner creates working space and supervises execution. All workers use v2.
 Current record schemas also accept v1 provider metadata; that does not authorize

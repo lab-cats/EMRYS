@@ -43,6 +43,22 @@ outside managed repair.
 [Workflow composition](../../workflow/README.md) explains the graph;
 [the profile contract](CONTRACT.md#profiles-and-immutable-planning) defines resource selection.
 
-The old CSU-oriented `dashboard.py` preview is frozen. It remains until a
-replacement is implemented and validated under `DASHBOARD-RETIRE-01`;
-`emrys inspect` is the authority for Run status and recovery.
+## Frozen dashboard and replacement
+
+The old CSU-oriented `dashboard.py` preview remains until a replacement is
+implemented and validated under `DASHBOARD-RETIRE-01`. `emrys inspect` stays the
+authority for Run status and recovery; expert commands alone do not replace the
+dashboard. The replacement must preserve scheduler discovery and historical
+accounting fallback, exact job identity, stream ownership, regular-file and
+symlink checks, and sanitized display of raw streams.
+
+The current stream cache resets after truncation but does not protect against
+inode rotation. `tail -F` does not remove terminal-control sequences from logs.
+Validate missing and replaced streams as well as the normal display before
+retiring the owner, tests, Make target, and documented callers together.
+
+Changing `emrys-local-pilot` names for new submissions is a separate caller-wide
+part of that outcome. Preserve historical names, stream paths and accounting
+records; never rename or delete them as a side effect. Include replacement code
+when accounting for savings. Institutional scheduler behavior still needs site
+qualification.
