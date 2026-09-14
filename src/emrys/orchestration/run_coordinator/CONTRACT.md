@@ -98,6 +98,14 @@ completion authority.
 
 ## Profiles and immutable planning
 
+Allocation observation preserves CPU affinity and declared Slurm CPU limits.
+Memory uses host physical RAM constrained by the observed cgroup limits and
+any declared Slurm memory limit. When Slurm omits memory metadata, the same
+process-visible ceiling applies to partial-node and whole-node allocations;
+no extra workflow budget or exclusive allocation is required. The recorded
+source identifies the unspecified Slurm limit. This ceiling is not a memory
+reservation or a measurement of currently free RAM on a shared node.
+
 `run`, `resume`, and `report` accept at most one closed
 `emrys.execution-profile.v1` fragment:
 

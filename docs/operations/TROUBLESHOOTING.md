@@ -160,6 +160,16 @@ and create a new Run when its immutable resource envelope changes; do not lower
 owner requirements silently. `scratch_parent` must be an existing approved
 writable compute path with enough capacity; there is no silent `/tmp` fallback.
 
+**Viking memory request rejected or missing memory metadata.** Retained Viking
+submissions reject explicit memory requests with `Memory specification can not
+be satisfied`; use the site's `memory_mb: null` placement. EMRYS uses host RAM
+constrained by observed process memory limits when Slurm reports no memory
+limit, including for four-CPU jobs. It retains the CPU allocation and records
+that memory was process-visible, not reserved. A `complete node CPU visibility`
+refusal identifies the older capacity policy; update the installation to a
+revision containing the process-memory fallback rather than inventing Slurm
+variables, requesting an exclusive node, or imposing an arbitrary memory request.
+
 **Missing scheduler stream.** Check the exact job with the Runbook's
 [`squeue`/`sacct` commands](RUNBOOK.md#inspecting-a-slurm-run). Slurm may not have
 opened its stream yet; scheduler success does not establish Run completion.
