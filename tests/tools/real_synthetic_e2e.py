@@ -1017,9 +1017,7 @@ def _attempt_snapshot(
     attempt_id = str(attempt["workflow_attempt_id"])
     return {
         "id": attempt_id,
-        "common_fields": {
-            name: attempt[name] for name in inspection.attempt_fields(True)
-        },
+        "common_fields": {name: attempt[name] for name in inspection.attempt_fields()},
         "placement": placement,
         "receipt": _artifact(
             run_root / "attempts" / attempt_id / "attempt-receipt.json"
