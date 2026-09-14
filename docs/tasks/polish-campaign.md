@@ -171,7 +171,7 @@ the shared runtime checks. Existing reports and recovery files remain untouched.
 **Done through compression CS-20/22 in PR #156.** The
 [artifact validator](../../src/emrys/contracts/artifacts/README.md) and reporting
 share one current schema registry, removing the former current/default mismatch.
-Current artifact entries, manifest 4, and receipt 5 pass the public validation
+Current artifact entries, Run manifests and report receipts pass the public validation
 path; unsupported versions and malformed content reject. Focused schema/CLI
 checks and ordinary hosted CI pass at `f8fd5346`; the compression backlog owns the evidence.
 
