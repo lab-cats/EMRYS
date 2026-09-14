@@ -1,53 +1,48 @@
-# Compression campaign
+# Compression campaign — closed
 
-Started **2026-09-02**. This campaign makes EMRYS smaller and easier to
-understand: less duplicated code, fewer competing explanations, and ordinary
-language and programming patterns that a new contributor can follow.
-Documentation reduction and readability are primary outcomes. Formatting
-alone does not make complicated code idiomatic.
+Started **2026-09-02**; closed by the user on **2026-09-14** after
+[PR #169](https://github.com/lab-cats/EMRYS/pull/169) merged at `2ecf7d44`.
+The campaign reduced duplicated code and competing documentation, clarified
+ownership, and made retained explanations and implementations easier to follow.
+Formatting alone was not treated as simplification.
 
-## Working authority
+## Recorded authority
 
-The [temporary backlog](compression_backlog_matrix.md) owns the CS cards,
-their scope, status, decisions, and evidence. The main matrix's
-[`COMPRESS-01`](backlog_matrix.md#repository-maintenance) owns campaign completion.
-The temporary format follows the architecture campaign and backlog at
+[`COMPRESS-01`](backlog_matrix.md#repository-maintenance) records closure.
+The [closed compression backlog](compression_backlog_matrix.md) retains the
+CS cards, decisions, counterexamples and evidence; it is no longer a work queue.
+Accepted unfinished work stays with its existing owners in the main matrix,
+polish campaign and optimization campaign, as linked in the
+[disposition record](compression_backlog_matrix.md#original-discovery-disposition).
+The temporary format followed the architecture campaign and backlog at
 `b9cf4767e6ebdf686070410f06b9cc9298582979`, before their retirement in `fe9f99a5`.
 
-## Scope and next tranche
+## Scope and results
 
-- **Documentation:** give each owner a clear responsibility and each subject
-  one authoritative explanation. Move misplaced information to its proper owner
-  and verify the transfer before removing it. Make all documentation readable
-  for its intended audience: explain purpose and unfamiliar terms before
-  details, and keep complete procedures, useful examples, and necessary limits.
-- **Code:** simplify complete responsibilities using the existing owner,
-  standard library, and established language patterns. Retire equivalent
-  implementations across every applicable caller. A new wrapper or a split
-  into more files is not an outcome by itself.
-- **Tests and supporting files:** remove redundancy with the implementation
-  it protects, while retaining independent scientific checks and recovery proof.
+- **Documentation:** give each subject one owner, move useful information
+  before retiring duplication, and explain purpose and unfamiliar terms before
+  detail. Preserve complete procedures, examples, decisions and evidence limits.
+- **Code:** simplify complete responsibilities through existing owners and
+  established language patterns; migrate equivalent callers together. Wrappers
+  and file splits do not themselves count as compression.
+- **Tests and supporting files:** remove demonstrated redundancy while
+  preserving independent scientific checks and recovery protections.
 
-The [working queue](compression_backlog_matrix.md#working-queue) records the
-approved documentation work and larger code targets. Small cleanups accompany
-relevant work; they do not lead another substantial tranche. The dashboard
-stays until its replacement is implemented and validated.
-
-Follow the [workflow](../operations/WORKFLOW.md) and
-[architecture guardrails](../design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails).
-Report product, test, documentation, configuration, tooling, and evidence
-changes separately. Documentation-only work must reduce and improve the
-documentation; it cannot offset product growth. Preserve scientific meaning,
-immutable Runs, scientific behavior, provenance, and current-version recovery.
-The approved [version policy](../design/decisions/platform-direction.md#version-support)
-retires historical-format readers. Retained evidence stays untouched.
+Product fell from **69,223 to 55,862 lines** against the agreed `cab77a26`
+baseline: **13,361 fewer lines (19.30%)**. The 20% target was not reached;
+484 more lines would have been required. The user closed this campaign at
+that result. Separate integration accounting and exact validation evidence are
+in the [closed backlog](compression_backlog_matrix.md#working-queue).
 
 ## Completion and retirement
 
-Each card needs a verified result or a reasoned retain/reject/transfer decision.
-One repaired example does not close a whole family. Preserve useful decisions,
-counterexamples, and evidence limits in the existing subject owner, and place
-unfinished accepted work in the main matrix before retiring either temporary
-document. Verify those transfers and live links, then obtain the user's final
-disposition. The campaign remains open until both code and documentation
-obligations are accounted for.
+All 43 cards have a completed or transferred disposition. CS-05 remains with
+`REPORT-ROSTER-01`; dashboard retirement still requires a validated replacement.
+Scientific meaning, provenance, immutable Runs and current recovery remain
+required. Hosted software and disposable-Slurm checks do not establish
+institutional-site, scientific-review or biological validation.
+
+The campaign and backlog remain as closed records. No retained evidence or
+unresolved decision was deleted. Further work requires its own selection and
+authority under the [workflow](../operations/WORKFLOW.md) and permanent
+[architecture guardrails](../design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails).

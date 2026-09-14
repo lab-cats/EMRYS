@@ -1,14 +1,23 @@
-# EMRYS temporary compression backlog
+# EMRYS compression backlog — closed
 
-Reviewed **2026-09-14** from `6842a478`. The [campaign](compression_campaign.md)
-owns the goals; this file owns CS scope, status, decisions, and proof. The
-[main matrix](backlog_matrix.md) owns broader outcomes and campaign completion.
+Closed by the user **2026-09-14** after [PR #169](https://github.com/lab-cats/EMRYS/pull/169)
+merged at `2ecf7d44`. The [campaign](compression_campaign.md) records its scope;
+this file retains CS dispositions, decisions and proof. The [main matrix](backlog_matrix.md)
+owns current accepted work. These historical cards authorize no further tranche.
 
 ## Working queue
 
-The completed implementation stack remains unmerged. Each card records its
-scope and validation; these are hosted software checks, not scientific or site
-validation. The current-format policy in [platform direction](../design/decisions/platform-direction.md#version-support)
+This queue is closed. All 93 commits from PR #140 and PRs #148–168 merged
+through PR #169. All 43 CS cards are Done except CS-05, which was transferred
+to `REPORT-ROSTER-01`. Earlier per-slice counts and tests below describe their
+named revisions, not the final state.
+
+[Ordinary hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34857271894)
+and the [130-pair synthetic E2E](https://github.com/lab-cats/EMRYS/actions/runs/34857300341)
+passed at `fdc7cc79`; the merge has the identical source tree. Codex completed
+all source reviews and the integration review. GitHub artifact-transfer failures
+were retried without changing code or relaxing checks. These are hosted software
+and disposable-Slurm results, not institutional-site or scientific validation. The current-format policy in [platform direction](../design/decisions/platform-direction.md#version-support)
 supersedes earlier compatibility requirements.
 
 | PR / cards | Completed outcome | Ordinary hosted CI |
@@ -29,20 +38,25 @@ figures and the dashboard remain. CS-05's scientific roster decision is separate
 
 The product baseline for the 20% target is **69,223 physical lines at `cab77a26`**.
 After CS-43 and the review corrections it is **55,862**, a reduction of 13,361
-(19.30%). The target is at most 55,378 lines, leaving 484 to remove. Count tracked source `.py`, `.R`, `.sh`, `.css`, `.j2` files and
+(19.30%). The campaign closed below its 20% target of 55,378 lines, by 484 lines.
+Count tracked source `.py`, `.R`, `.sh`, `.css`, `.j2` files and
 the workflow `Snakefile` (including its new package location). Relocated
 `renv/activate.R` remains generated bootstrap; `restore_r_environment.R`
 remains tooling. Report schemas/configuration, tests, docs, tooling, and evidence
-separately. This tranche is not presumed to reach the target.
+separately. Against pre-integration master (`446802c0`), PR #169 changes product
+by −13,480 lines, tests/fixtures by −12,699, documentation by +802,
+schemas/configuration by −2,243, tooling by +284, generated dependency files
+by +106, and retained evidence by zero: −27,230 lines overall. This different
+baseline gives 19.44% product reduction; it does not replace the campaign baseline.
 
-**[PR #155](https://github.com/lab-cats/EMRYS/pull/155), CS-18 runner-owned scientific execution, passed ordinary hosted CI at `5499658a` ([run 34383760078](https://github.com/lab-cats/EMRYS/actions/runs/34383760078)); integration is pending.**
+**[PR #155](https://github.com/lab-cats/EMRYS/pull/155), CS-18 runner-owned scientific execution, passed ordinary hosted CI at `5499658a` ([run 34383760078](https://github.com/lab-cats/EMRYS/actions/runs/34383760078)).**
 The user approved moving working paths, locks, process supervision, logging,
 publication, and recovery into the existing runner. Producers retain scientific
 computation, outputs, and provenance; there is no separate manager hierarchy.
 
 [PR #154](https://github.com/lab-cats/EMRYS/pull/154) combines artifact indexing and
 summary generation (CS-03). Focused checks and [ordinary hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34372748153)
-pass at `88522d0a`; integration remains pending.
+pass at `88522d0a`.
 
 [PR #153](https://github.com/lab-cats/EMRYS/pull/153) delivers shared processing definitions and standalone publication.
 The implemented tranche covers CS-01/02 and CS-18, including CS-10's CMH
@@ -69,56 +83,44 @@ run passed the R fixtures and managed golden path but failed one assertion
 expecting the old dispatch diagnostic. The invalid log path remained rejected.
 Commit `72fdf806` corrects that assertion; both focused dispatch checks pass.
 [Final-commit CI](https://github.com/lab-cats/EMRYS/actions/runs/34361428680)
-passed all ordinary checks at `72fdf806`; master integration remains pending.
+passed all ordinary checks at `72fdf806`.
 
 CS-16/17 are Done in PR #151 at `76acb9c5`, with all ordinary checks passing in
 [run 34314490868](https://github.com/lab-cats/EMRYS/actions/runs/34314490868).
-Master integration remains pending.
 
 CS-04/06/07 passed ordinary hosted CI in [PR #150](https://github.com/lab-cats/EMRYS/pull/150)
 at `f3a3966f`: [run 34310143034](https://github.com/lab-cats/EMRYS/actions/runs/34310143034).
-CS-03 subsequently passed CI in PR #154. PR #150 awaits integration; hosted software checks do not
+CS-03 subsequently passed CI in PR #154. Hosted software checks do not
 establish institutional operation, scientific review, or biological validity.
 
-### Status and scoring
+### Recorded status and scoring
 
-- **Needs qualification:** identify equivalent production behavior and a
-  caller-complete negative draft; close as Retained if none exists.
-- **Needs decision:** the exact unresolved policy is stated in the card;
-  dependent implementation stops until it is resolved.
-- **Blocked:** a named predecessor or replacement must satisfy its gate.
-- **Opportunistic:** bounded but too small to lead a substantial tranche.
-- **Deferred:** a stated trigger must occur before reopening the work.
-- After approval use **Ready**, **In progress**, **Verification pending**, then
-  **Done**, or close as **Retained**, **Rejected**, or **Transferred** with a
-  reason and destination. Code written is not verification complete. Record
-  the PR, tested commit, and evidence level when changing implementation status.
-
-Importance and Complexity run from 1 (low) to 5 (high), independently. They
-estimate remaining value and effort/risk, including compatibility and proof;
-they are rough selection aids, not measured benefit or implementation approval.
+The final cards below are Done or Transferred. Historical Importance and
+Complexity scores run independently from 1 (low) to 5 (high); they recorded
+estimated value and effort/risk, not measured benefit or implementation approval.
+Current selection and validation follow the [workflow](../operations/WORKFLOW.md).
 
 | ID | Finite outcome / production owner | Status | Importance | Complexity | Next action / dependency | Parent |
 |---|---|---|---:|---:|---|---|
 | [CS-01](#cs-01-processing-materialization) | Derive one processing owner's command and dispatch from existing admitted facts. | Done | 4 | 4 | PR #153: shared profile facts drive planning, named rules, and reporting; focused/differential checks and ordinary hosted CI pass at cab77a26. | `COMPRESS-01` |
 | [CS-02](#cs-02-processing-report-adapters) | Remove equivalent processing-adapter declarations from artifact-index reporting. | Done | 4 | 4 | PR #153: all 42 processing adapters and 12 producer paths migrated; reader parity and ordinary hosted CI pass at cab77a26. | `REPORT-ROSTER-01` |
-| [CS-03](#cs-03-reporting-transaction-layout) | Publish artifact indexing and summary generation as one operation. | Done | 4 | 4 | PR #154 implemented generation, readers, and inspection; focused/static and ordinary hosted CI pass at 88522d0a. HTML stays separate; integration is pending. | `REPORT-ROSTER-01` |
+| [CS-03](#cs-03-reporting-transaction-layout) | Publish artifact indexing and summary generation as one operation. | Done | 4 | 4 | PR #154 implemented generation, readers, and inspection; focused/static and ordinary hosted CI pass at 88522d0a. HTML stays separate. | `REPORT-ROSTER-01` |
 | [CS-04](#cs-04-reporting-memory-control) | Remove the ineffective active reporting-memory control and its transport. | Done | 3 | 4 | PR #150: new inputs rejected, historical records/hashes preserved; focused and ordinary hosted checks passed. | `REPORT-ROSTER-01` |
 | [CS-05](#cs-05-validation-check-rosters) | Give one scientific validation roster one neutral authority used by its producer and reporting. | Transferred | 4 | 4 | No net-negative migration qualified; preserve current behavior. The main reporting row owns the membership/order and provider decision. | `REPORT-ROSTER-01` |
 | [CS-06](#cs-06-publication-handoff) | Characterize the helper-to-caller publication gap in RSeQC, BAM QC, and duplicate marking. | Done | 4 | 3 | PR #150: three equivalent owners migrated; six corrected probes, shell suites, and ordinary CI passed. | `OPS-03` |
 | [CS-07](#cs-07-through-cs-10-standalone-publication) | RSeQC: retire direct-to-final report capture. | Done | 2 | 2 | PR #150: one publication path; legacy flag, errors, and recovery preserved; ordinary CI passed. | `OPS-03` |
-| [CS-08](#cs-07-through-cs-10-standalone-publication) | BAM QC: retire mode-dependent publication for two outputs. | Done | 2 | 2 | Absorbed into PR #155; focused checks and ordinary hosted CI pass at a0dc7526; integration pending. | `OPS-03` |
-| [CS-09](#cs-07-through-cs-10-standalone-publication) | Duplicate marking: retire direct destinations and mode branches. | Done | 3 | 3 | Absorbed into PR #155; focused checks and ordinary hosted CI pass at a0dc7526; integration pending. | `OPS-03` |
+| [CS-08](#cs-07-through-cs-10-standalone-publication) | BAM QC: retire mode-dependent publication for two outputs. | Done | 2 | 2 | Absorbed into PR #155; focused checks and ordinary hosted CI pass at a0dc7526. | `OPS-03` |
+| [CS-09](#cs-07-through-cs-10-standalone-publication) | Duplicate marking: retire direct destinations and mode branches. | Done | 3 | 3 | Absorbed into PR #155; focused checks and ordinary hosted CI pass at a0dc7526. | `OPS-03` |
 | [CS-10](#cs-07-through-cs-10-standalone-publication) | Paired CMH: retire six-file predecessor replacement/restoration. | Done | 3 | 4 | Implemented within CS-18: direct calls refuse existing destinations; focused publication checks and ordinary hosted CI pass at cab77a26. | `OPS-03` |
 | [CS-11](#cs-11-reporting-source-identity) | Define a reporting-source boundary that permits reporting-only changes without changing scientific Run identity. | Done | 4 | 4 | PR #162: ordinary hosted CI passed at 893136e3; original scientific provenance and current-format reuse remain. | `REPORT-ROSTER-01` |
-| [CS-12](#cs-12-canonical-bam-command-printing) | Remove canonical BAM's four print-only command arrays. | Done | 2 | 1 | Retired with standalone preview in PR #155; ordinary hosted CI passes at a0dc7526; integration pending. | `COMPRESS-01` |
+| [CS-12](#cs-12-canonical-bam-command-printing) | Remove canonical BAM's four print-only command arrays. | Done | 2 | 1 | Retired with standalone preview in PR #155; ordinary hosted CI passes at a0dc7526. | `COMPRESS-01` |
 | [CS-13](#cs-13-runtime-profile-construction) | Remove the redundant RuntimeCheck field-copy construction in onboarding. | Done | 1 | 2 | Absorbed by CS-32: fixed runtime checks are derived from path choices. | `COMPRESS-01` |
-| [CS-14](#cs-14-paired-cmh-configuration) | Let the existing module normalizer own equivalent newly admitted paired-CMH configuration. | Done | 2 | 4 | CS-22 uses one module normalizer for both current Project forms; ordinary CI passes at `f8fd5346`; integration pending. | `COMPRESS-01` |
+| [CS-14](#cs-14-paired-cmh-configuration) | Let the existing module normalizer own equivalent newly admitted paired-CMH configuration. | Done | 2 | 4 | CS-22 uses one module normalizer for both current Project forms; ordinary CI passes at `f8fd5346`. | `COMPRESS-01` |
 | [CS-15](#cs-15-reporting-tsv-grammar) | Retire both reporting CSV engines through the existing strict TSV owner. | Done | 2 | 3 | CS-20 retires the duplicate persisted TSV readers with their formats; native TSV grammar is unchanged; ordinary CI passes at `f8fd5346`. | `COMPRESS-01` |
-| [CS-16](#cs-16-operator-and-developer-documentation) | Complete operator/developer guidance with clear ownership and plain language. | Done | 5 | 3 | PR #151 passed ordinary CI at `76acb9c5`; integration pending. | `COMPRESS-01` |
+| [CS-16](#cs-16-operator-and-developer-documentation) | Complete operator/developer guidance with clear ownership and plain language. | Done | 5 | 3 | PR #151 passed ordinary CI at `76acb9c5`. | `COMPRESS-01` |
 | [CS-17](#cs-17-scientific-and-owner-documentation) | Consolidate and explain remaining scientific/owner documentation. | Done | 5 | 4 | All 169 Markdown files reviewed; PR #151 passed ordinary CI at `76acb9c5`. | `COMPRESS-01` |
-| [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | Done | 4 | 4 | All fourteen first-party tasks use runner-owned execution; ordinary hosted CI passes at a0dc7526; integration pending. | `OPS-03` |
-| [CS-19](#cs-19-scientific-report-table-handling) | Use one admitted table representation across scientific report consumers. | Done | 4 | 3 | PR #152 at `72fdf806`: focused checks and all ordinary hosted CI passed; integration pending. | `COMPRESS-01` |
+| [CS-18](#cs-18-idiomatic-scientific-producer-implementation) | Simplify complete scientific-producer lifecycles across equivalent callers. | Done | 4 | 4 | All fourteen first-party tasks use runner-owned execution; ordinary hosted CI passes at a0dc7526. | `OPS-03` |
+| [CS-19](#cs-19-scientific-report-table-handling) | Use one admitted table representation across scientific report consumers. | Done | 4 | 3 | PR #152 at `72fdf806`: focused checks and all ordinary hosted CI passed. | `COMPRESS-01` |
 | [CS-20](#cs-20-through-cs-22-current-result-contracts) | Persist one reporting result manifest, with shared identity/provenance once. | Done | 5 | 4 | Retire per-artifact files and duplicate receipts; preserve both HTML reports and useful TSVs. | `REPORT-ROSTER-01` |
 | [CS-21](#cs-20-through-cs-22-current-result-contracts) | Store terminal task completion details once. | Done | 4 | 4 | Verified marker references the terminal attempt; current admission and recovery follow that reference. | `COMPRESS-01` |
 | [CS-22](#cs-20-through-cs-22-current-result-contracts) | Accept only current persisted contracts. | Done | 5 | 4 | Remove old Run/request, policy, resource, dispatch, Attempt, and reporting readers across callers. | `COMPRESS-01` |
@@ -192,7 +194,7 @@ provenance, and no installation or admission bypass was performed.
 The tranche removes 228 product lines with all 200 product files retained.
 Schemas and test fixtures also shrink; documentation records the changed
 contracts and verification separately. Configuration, tooling and retained
-evidence are unchanged. Ordinary [hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34763854001) passed at `5ca910e8`: Python shards/coverage, wheel/static/docs, shell, guarded R, managed runtimes and managed golden path. Optional unselected lanes were skipped; integration remains pending.
+evidence are unchanged. Ordinary [hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34763854001) passed at `5ca910e8`: Python shards/coverage, wheel/static/docs, shell, guarded R, managed runtimes and managed golden path. Optional unselected lanes were skipped.
 
 ### CS-37 Through CS-40 Unused runtime and reporting paths
 
@@ -233,7 +235,7 @@ Ordinary [hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34718329851)
 passed at `bf84d947`: all Python shards and coverage, installed-wheel validation,
 Python 3.11 smoke, shell contracts, guarded R fixtures, three managed-runtime
 platforms and the managed golden path. Optional unselected lanes were skipped.
-Integration remains pending; institutional or biological validation is not claimed.
+Institutional or biological validation is not claimed.
 
 ### CS-36 Unused artifact-record fields
 
@@ -268,11 +270,11 @@ and moves the unchanged original records into Operations. Five full summary fixt
 could not run locally because build metadata is unavailable. Ordinary
 [hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34704169922) passed at
 `c7561b3e`, including the complete Python suite, reporting/recovery, managed golden
-path, shell contracts and guarded R fixtures. Integration remains pending.
+path, shell contracts and guarded R fixtures.
 
 ## Acceptance shared by every card
 
-Use the [workflow](../operations/WORKFLOW.md) and [campaign rules](compression_campaign.md#scope-and-next-tranche).
+Use the [workflow](../operations/WORKFLOW.md) and [campaign rules](compression_campaign.md#scope-and-results).
 Before editing, inspect the complete responsibility and its callers, classify
 behavior as preserved, defective, undecided, or environment-deferred, and
 identify what will disappear and where its useful meaning survives.
@@ -373,7 +375,7 @@ and retained evidence are unchanged.
 
 ### CS-03 Reporting transaction layout
 
-**Done in [PR #154](https://github.com/lab-cats/EMRYS/pull/154); ordinary hosted CI passes at `88522d0a`, integration pending.**
+**Done in [PR #154](https://github.com/lab-cats/EMRYS/pull/154); ordinary hosted CI passes at `88522d0a`.**
 The earlier shared-path sketch at `0c909f12` was retained because roughly 16
 helper lines merely replaced 16 caller lines. The new scope changes the
 responsibility itself: one existing index publisher owns the index and summary.
@@ -494,7 +496,7 @@ checks replace repeated standalone lifecycle matrices.
 ### CS-11 Reporting source identity
 
 **Done in PR #162:** [ordinary hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34702567593)
-passed at `893136e3`; integration is pending. The
+passed at `893136e3`. The
 [report-output decision](../design/decisions/execution-evidence-and-reporting.md#scientific-compatibility-and-reporting-provenance)
 owns the lasting compatibility and provenance rules.
 
@@ -567,7 +569,7 @@ storage, all-pass, or scientific evidence readers.
 
 ### CS-16 Operator and developer documentation
 
-**Done in PR #151; integration pending.** The quickstart, Runbook,
+**Done in PR #151.** The quickstart, Runbook,
 troubleshooting, configuration guide, engineering guide, and Run-coordinator
 contract now separate procedures, fields/examples, and exact selection rules.
 General recovery lives in troubleshooting. Resource groups and QoS are explained;
@@ -604,7 +606,7 @@ under CS-16 above; this does not complete the larger code campaign.
 
 ### CS-18 Idiomatic scientific-producer implementation
 
-**Done in [PR #155](https://github.com/lab-cats/EMRYS/pull/155); ordinary hosted CI passed at `a0dc7526`, integration pending.** Scientific producers own scientific outputs and
+**Done in [PR #155](https://github.com/lab-cats/EMRYS/pull/155); ordinary hosted CI passed at `a0dc7526`.** Scientific producers own scientific outputs and
 provenance; the existing runner owns working paths, locks, process supervision,
 logs, publication and recovery across every applicable producer. Independent
 validation and its all-checks-pass gate remain. The implementation covers reusable external reference sidecars, complete STAR
@@ -731,12 +733,11 @@ lock acquisition to verify the preserved second refusal boundary. Ordinary
 hosted verification passed at `cab77a26`; these checks do not establish
 scientific or site validation.
 
-Independent review found no publication regression. Scientific-context retains
-its existing interruption gap between the publication helper returning and the
-shell recording the published-file count; its owner contract now states the
-cleanup limitation. It also retains its existing narrower post-lock temporary-
-file check. These are not repaired or promoted to stronger guarantees by
-replacement retirement; remaining owner maintenance stays under `OPS-03`.
+At this earlier standalone stage, review found no publication regression but
+retained the scientific-context interruption gap between helper return and
+recording publication, plus its narrower post-lock temporary-file check.
+Replacement retirement did not repair those limits. CS-18 later retired the
+publisher entirely; see the [final disposition](#separate-scientific-context-publication-finding).
 
 ### CS-19 Scientific report table handling
 
@@ -800,7 +801,7 @@ full below so an unresolved finding cannot disappear during conversion.
 | Dashboard and old submission names | `DASHBOARD-RETIRE-01`; replacement dashboard first, then caller-complete retirement. Detailed obligations [below](#dashboard-retirement-prerequisites). A frozen renderer's 35–40 repeated lines do not authorize incidental cleanup. |
 | Extension tutorial | Deferred in [polish item 29](polish-campaign.md#29-document-a-minimal-external-analysis-and-reporter): one independently packaged computation provider and bespoke reporter, without a workflow/report DSL. |
 | Project workspace creation | Existing Project/setup obligation: EMRYS creates owned directories, references scientific inputs in place, and requires explicit biological metadata. Checkout-level `data/raw`/`data/full` auto-discovery remains rejected. |
-| CI control, qualification tests, tooling | `CI-01`, `QUAL-01`, and `DEV-01` own these outcomes. PR #148's fixture/tool/version changes passed ordinary hosted CI 34306975901 at `b491aac5`; master integration remains pending. Neither test scheduling nor mechanical formatting is product compression. |
+| CI control, qualification tests, tooling | `CI-01`, `QUAL-01`, and `DEV-01` own these outcomes. PR #148's fixture/tool/version changes passed ordinary hosted CI 34306975901 at `b491aac5`. Neither test scheduling nor mechanical formatting is product compression. |
 | Scientific and site evidence | `SCI-AUDIT-01`, `SCI-ORACLE-01`, and `SITE-PARITY-01`; do not substitute compression checks for independent science, rendered user review, or institutional execution. |
 
 ### Final code clarity review
@@ -890,7 +891,7 @@ classified below.
 
 | Finding | Disposition and surviving owner |
 |---|---|
-| [#149: CS backlog authority](https://github.com/lab-cats/EMRYS/pull/149#discussion_r4005828452) | Dismiss the requested relocation: the user explicitly requested a temporary working backlog, and `COMPRESS-01` plus WORKFLOW already delegate the CS cards. AGENTS now states that delegation plainly; no second status registry is added. |
+| [#149: CS backlog authority](https://github.com/lab-cats/EMRYS/pull/149#discussion_r4005828452) | Dismiss the requested relocation: the user explicitly requested a temporary working backlog, and `COMPRESS-01` plus WORKFLOW delegated the CS cards during the campaign. AGENTS permits explicit delegation; the campaign is now closed. |
 | [#154: empty old reporting ledger](https://github.com/lab-cats/EMRYS/pull/154#discussion_r4005860909) | Already corrected by CS-22: `reporting_kinds` rejects any unexpected stage directory before `publish_start` creates a new ledger. A local probe confirms an empty `artifact_index` directory is rejected and preserved. Obsolete-protocol migration is no longer supported. |
 | [#156: synthetic E2E caller](https://github.com/lab-cats/EMRYS/pull/156#discussion_r4005893710) | Fixed the one remaining `attempt_fields(True)` call. The driver now uses the same zero-argument API as every other caller; the five immutable fields are unchanged. |
 | [#156: computational boundary](https://github.com/lab-cats/EMRYS/pull/156#discussion_r4005893718) | Fixed both current receipt fields to the core computational-only banner already emitted by every reporter. Public validation now rejects either false biological claim; provider scientific content remains independent. |
@@ -902,8 +903,8 @@ classified below.
 Local checks: 17 E2E-driver tests, 51 artifact/independent-contract tests and 54
 orchestration-contract tests pass. Direct probes cover the corrected E2E call,
 public receipt admission, real task loading and the retained ledger rejection.
-Full hosted CI and the selected 130-pair synthetic lane are pending for the fixes;
-local checks do not establish Slurm, institutional or biological validation.
+The final hosted results for these fixes are linked in the closed queue above.
+Local checks alone do not establish Slurm, institutional or biological validation.
 
 ### Historical sizing context
 
@@ -1160,7 +1161,7 @@ family, and no unfinished concern disappears without a recorded disposition.
 
 ### CS-20 through CS-22 Current result contracts
 
-**Done in PR #156; integration pending.** Existing
+**Done in PR #156.** Existing
 reporting, task, and Run-admission owners absorb the changes; no manager,
 compatibility adapter, or new product file is needed.
 
@@ -1408,7 +1409,7 @@ no product-file growth; tests +693/-1,000 = 307 fewer; schemas +102/-34 = 68 mor
 tooling +2/-15 = 13 fewer; documentation +135/-36 = 99 more.
 Retained evidence is unchanged. The stack contains 58,411
 maintained product lines, 10,812 below the 69,223 baseline (15.6%); 3,033 more
-product lines are needed for the 20% goal. Master integration remains pending.
+product lines are needed for the 20% goal.
 
 ### CS-29 Retire standalone runtime reports
 
@@ -1545,4 +1546,4 @@ formatting, dependency boundaries, documentation and whitespace pass.
 Independent source review found no loss of required checks or figures. Ordinary
 [hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34561972876) passed at
 `de674ae0`, including all Python shards, guarded R, managed golden path and
-managed runtimes. Optional unselected lanes were skipped. Integration is pending.
+managed runtimes. Optional unselected lanes were skipped.
