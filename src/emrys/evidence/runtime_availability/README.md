@@ -1,24 +1,36 @@
-# Runtime-availability inspection owner
+# Runtime availability
 
-[`inspector.py`](inspector.py) owns `inspect_runtime_availability(...)` and
-`emrys debug runtime-availability`. It admits an explicit profile, performs
-read-only tool-version, R-namespace, hash, and path-visibility probes, and
-returns deterministic observations without publication. Doctor consumes this
-API directly.
+This owner checks the tools and files needed by a Project. Runtime discovery,
+Doctor, and execution use the same probes for tool versions, R packages,
+SHA-256 support, and path visibility. The coordinator owns readiness decisions
+and the Project runtime inventory; this owner returns observations.
 
-Profile loading, probes, and inspection share immutable `RuntimeCheck` and
-`RuntimeObservation` values, defined in `_runtime_model.py` and exposed through
-`inspector.py`. An observation's resolved location stays a `Path` or `None`;
-profile targets and serialized evidence retain their declared text.
+[`inspector.py`](inspector.py) reads the Project inventory as two TSV columns,
+`check_id` and `target`, with one absolute path for each of 12 runtime choices.
+The installed policy derives all 26 fixed checks, including Python and Java
+aliases, Picard arguments, and the selected R launcher. The installed package
+supplies the R project path. Doctor adds the selected analysis module's declared
+dependencies; execution reconstructs those same checks from the Run-bound
+analysis policy. Probe rules are never copied into the inventory.
 
-Dry-run probes but writes nothing; `--execute` publishes the requested TSV.
-Exit zero means probing/publication completed, not that required checks passed.
-Tool/hash processes have a 30-second bound and R namespace loads a 120-second
-bound; timeouts fail and are not retried. Installed R packages must resolve to
-the admitted canonical package tree, whose internal symlinks and special files
-are rejected.
+Inspection binds the exact inventory bytes and returns immutable observations.
+Every check is required and runs in the process that requested it. Direct and
+Slurm execution use the same probes; scheduler placement is checked by the
+coordinator. The inventory cannot select optional checks or alternate contexts.
 
-This owner does not infer context, install or repair dependencies, load modules,
-or execute the workflow. Preserve report, lock, temporary, and predecessor
-paths after publication failure; known cleanup/restoration gaps remain defects,
-not proof of readiness or cluster execution.
+Observed locations remain `Path` or `None`. Tool and hash processes have a
+30-second limit; R namespace loads have a 120-second limit. Timeouts fail without
+retry. The coordinator always supplies the guarded R environment, and loaded
+packages must resolve to the selected library's exact package roots. SHA-256
+probing uses the selected Python interpreter; executable paths are absolute.
+Custom analysis dependencies still support executables, R namespaces, files
+and package trees through these same checks.
+
+Use [Doctor and runtime discovery](../../../../docs/operations/RUNBOOK.md) for
+Project readiness. The standalone runtime-report command and its TSV publisher
+are retired. Existing reports, locks, temporary files, and predecessor files
+remain operator evidence; retirement does not authorize their cleanup.
+
+The [owner tests](../../../../tests/evidence/runtime_availability/test_runtime_availability.py)
+cover path-choice admission and probe behavior. These observations establish the
+checks performed, not successful workflow execution or scientific validity.

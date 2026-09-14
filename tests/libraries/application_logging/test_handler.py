@@ -347,9 +347,8 @@ def test_declared_boundaries_synchronize(
         original(file)
 
     monkeypatch.setattr(ApplicationLogFile, "synchronize", record_sync)
-    phase = open_log(tmp_path, suffix="phase")
-    phase.synchronize("phase")
-    phase.terminal(event_name="complete", message="Complete.")
+    terminal = open_log(tmp_path, suffix="terminal-sync")
+    terminal.terminal(event_name="complete", message="Complete.")
     failure = open_log(tmp_path, suffix="failure-sync")
     failure.fail(phase="execute", message="Failed.")
     interrupted = open_log(tmp_path, suffix="interrupt-sync")
@@ -357,15 +356,12 @@ def test_declared_boundaries_synchronize(
     recovery = open_log(tmp_path, suffix="recovery-sync")
     recovery.publication_ready()
     recovery.receipt_failed(message="Receipt failed.")
-    recovery.synchronize("recovery")
     recovery.terminal(event_name="recovered", message="Recovered.")
 
     assert [path.parent.name for path in synchronized] == [
-        "attempt-phase",
-        "attempt-phase",
+        "attempt-terminal-sync",
         "attempt-failure-sync",
         "attempt-interrupt-sync",
-        "attempt-recovery-sync",
         "attempt-recovery-sync",
         "attempt-recovery-sync",
         "attempt-recovery-sync",
@@ -436,7 +432,7 @@ def test_failure_and_interrupt_boundaries_are_terminal(tmp_path: Path) -> None:
 
 
 def test_initialization_write_and_sync_failures_remain_visible(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     def storage_failure(*args: object, **kwargs: object) -> None:
         raise ApplicationLogStorageError("injected")
@@ -479,9 +475,17 @@ def test_initialization_write_and_sync_failures_remain_visible(
                 if operation == "write":
                     attempt.logger(component="work", phase="execute").info("Event.")
                 else:
-                    attempt.synchronize("phase")
+                    attempt.publication_ready()
         assert raised.value.path == attempt.path
         assert attempt.path.exists()
+        assert not attempt.best_effort(
+            attempt.publication_ready, warning="Logging degraded."
+        )
+        assert not attempt.best_effort(
+            lambda: pytest.fail("A failed log must not evaluate later observations"),
+            warning="Logging degraded.",
+        )
+        assert capsys.readouterr().err == "Logging degraded.\n"
 
     post_receipt = open_log(tmp_path, suffix="post-failure")
     post_receipt.publication_ready()

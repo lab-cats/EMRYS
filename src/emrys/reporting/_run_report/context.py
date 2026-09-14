@@ -9,14 +9,14 @@ import os
 import re
 import shlex
 import stat
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from collections.abc import Mapping
 from importlib.resources import files
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 from emrys import analyses
+from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.reporting import (
     AnalysisReportArtifactV1,
@@ -26,15 +26,11 @@ from emrys.reporting import (
     COMPUTATIONAL_BOUNDARY_BANNER,
     admit_analysis_reporter,
 )
-from emrys.libraries.installed_package_identity import (
-    InstalledPackageIdentityError,
-    installed_python_package_identity,
-)
 from emrys.libraries.source_authority import (
-    ArtifactSourceRoot,
-    SourceCheckout,
-    SourceCheckoutError,
-    matching_checkout_head_commit,
+    ArtifactSourceRootError,
+    InstalledPackageError,
+    admit_artifact_source_root,
+    admit_installed_package,
 )
 
 from .inputs import (
@@ -42,39 +38,25 @@ from .inputs import (
     _assert_snapshot,
     _explicit_path,
     _fail,
-    _load_run_summary,
     _read_snapshot_bytes,
     _reject_symlink_components,
     _snapshot_regular,
 )
 from .models import (
     CSS_RESOURCE,
-    HISTORICAL_REPORT_RECEIPT_SCHEMA_VERSION,
-    HISTORICAL_RUN_SUMMARY_SCHEMA_VERSION,
     JINJA_VERSION,
     PRODUCER,
     PRODUCER_VERSION,
-    REPORT_RECEIPT_SCHEMA_VERSION,
-    RUN_SUMMARY_SCHEMA_VERSION,
     TEMPLATE_RESOURCE,
     FileSnapshot,
     ReportContext,
+    ReportRenderError,
 )
 from .receipt import read_receipt_tsv
 from .validation import render_html
-from .view import build_evidence_view
 
-
-@dataclass(frozen=True, slots=True)
-class ReportIdentityOps:
-    """Explicit source-provenance observation for focused tests."""
-
-    matching_checkout_head_commit: Callable[..., str | None]
-
-
-DEFAULT_REPORT_IDENTITY_OPS = ReportIdentityOps(
-    matching_checkout_head_commit=matching_checkout_head_commit,
-)
+if TYPE_CHECKING:
+    from emrys.reporting._artifact_index.models import EvidenceContext
 
 
 def _resource_snapshot(resource: str, label: str) -> FileSnapshot:
@@ -84,24 +66,13 @@ def _resource_snapshot(resource: str, label: str) -> FileSnapshot:
     )
 
 
-def _core_renderer_sha256() -> str:
-    try:
-        package = installed_python_package_identity(Path(str(files("emrys.reporting"))))
-    except (InstalledPackageIdentityError, OSError, TypeError) as exc:
-        _fail(f"Could not identify the installed core reporting package: {exc}")
-    return package.sha256
-
-
 def _admit_analysis_policy(
     arguments: argparse.Namespace,
     summary: Mapping[str, object],
-) -> tuple[Path | None, FileSnapshot | None, dict[str, object] | None]:
+) -> tuple[Path, FileSnapshot, dict[str, object]]:
     value = getattr(arguments, "analysis_policy", None)
-    version = str(summary["schema_version"])
     if value is None:
-        if version == RUN_SUMMARY_SCHEMA_VERSION:
-            _fail("Modular report publication requires an explicit analysis policy")
-        return None, None, None
+        _fail("Report publication requires an explicit analysis policy")
     path = _explicit_path(Path(value), "primary analysis policy")
     snapshot = _snapshot_regular(path, "primary analysis policy")
     payload = _read_snapshot_bytes(snapshot, "primary analysis policy")
@@ -120,20 +91,14 @@ def _admit_analysis_policy(
         or policy["analysis_id"] != contract["primary_analysis_id"]
     ):
         _fail("Primary analysis policy differs from the immutable run contract")
-    modular = policy["schema_version"] == "emrys.analysis-module-policy.v1"
-    if version == RUN_SUMMARY_SCHEMA_VERSION:
-        binding = summary["analysis_policy"]
-        if (
-            not modular
-            or binding != {
-                "path": str(snapshot.path),
-                "sha256": snapshot.sha256,
-                "size_bytes": snapshot.size_bytes,
-            }
-        ):
-            _fail("Modular run summary does not bind its exact analysis policy")
-    elif modular:
-        _fail("Run-summary v2 requires the built-in paired-CMH analysis policy")
+    if policy["schema_version"] != "emrys.analysis-module-policy.v1" or summary[
+        "analysis_policy"
+    ] != {
+        "path": str(snapshot.path),
+        "sha256": snapshot.sha256,
+        "size_bytes": snapshot.size_bytes,
+    }:
+        _fail("Run summary does not bind its exact current analysis policy")
     return snapshot.path, snapshot, policy
 
 
@@ -144,30 +109,14 @@ def _inspect_command(source_root: Path, output_root: Path) -> str:
     }:
         return "emrys inspect <RUN>"
     return shlex.join(
-        ("emrys", "inspect", source_root.name, "--project", str(source_root.parent.parent / "project.yaml"))
-    )
-
-
-def expected_html_identity(
-    context: ReportContext,
-    report_view: Literal["scientific", "evidence"],
-) -> dict[str, str]:
-    identity = {
-        "data-report-view": report_view,
-        "data-run-id": context.summary["run_id"],
-    }
-    if report_view == "evidence":
-        metadata = context.render_metadata
-        identity.update(
-            {
-                "data-css-sha256": metadata["css_sha256"],
-                "data-jinja-version": metadata["jinja_version"],
-                "data-renderer-version": metadata["renderer_version"],
-                "data-run-summary-sha256": metadata["run_summary_sha256"],
-                "data-template-sha256": metadata["template_sha256"],
-            }
+        (
+            "emrys",
+            "inspect",
+            source_root.name,
+            "--project",
+            str(source_root.parent.parent / "project.yaml"),
         )
-    return identity
+    )
 
 
 def _admit_analysis_artifacts(
@@ -176,14 +125,17 @@ def _admit_analysis_artifacts(
     *,
     analysis_id: str,
     source_root: Path,
-) -> tuple[tuple[AnalysisReportArtifactV1, ...], tuple[FileSnapshot, ...]]:
+    evidence_context: EvidenceContext,
+) -> tuple[AnalysisReportArtifactV1, ...]:
+    inspections = {
+        item.row["artifact_id"]: item for item in evidence_context.index.inspections
+    }
     declared = {
         artifact.adapter: (task.step_id, artifact)
         for task in module.descriptor.tasks
         for artifact in task.outputs
     }
     report_artifacts = []
-    snapshots = []
     admitted_adapters: set[str] = set()
     for record in summary["artifacts"]:
         adapter = record["adapter"]
@@ -228,20 +180,18 @@ def _admit_analysis_artifacts(
                 f"{record['artifact_id']}"
             )
         admitted_adapters.add(adapter)
-        snapshots.append(snapshot)
         report_artifacts.append(
             AnalysisReportArtifactV1(
                 adapter=adapter,
                 artifact_id=record["artifact_id"],
-                path=snapshot.path,
-                sha256=snapshot.sha256,
-                size_bytes=snapshot.size_bytes,
+                snapshot=snapshot,
                 row_count=source["row_count"],
                 kind=artifact.kind,
                 media_type=expected_media_type,
+                projection=copy.deepcopy(inspections[record["artifact_id"]].projection),
             )
         )
-    return tuple(report_artifacts), tuple(snapshots)
+    return tuple(report_artifacts)
 
 
 def _render_scientific_report(
@@ -249,7 +199,8 @@ def _render_scientific_report(
     *,
     source_root: Path,
     output_dir: Path,
-    analysis_policy: Mapping[str, object] | None,
+    analysis_policy: Mapping[str, object],
+    evidence_context: EvidenceContext,
 ) -> tuple[
     analyses.LoadedAnalysisModuleV1,
     Mapping[str, str],
@@ -257,18 +208,19 @@ def _render_scientific_report(
     tuple[AnalysisReportArtifactV1, ...],
     tuple[tuple[FileSnapshot, str, bool], ...],
 ]:
-    policy = analysis_policy or {"schema_version": "emrys.analysis-policy.v1"}
+    policy = analysis_policy
     analysis_id = str(summary["run_contract"]["primary_analysis_id"])
     try:
         module = analyses.readmit_analysis_module(policy)
     except analyses.AnalysisModuleLoadError as exc:
         _fail(str(exc))
     reporter = admit_analysis_reporter(module.descriptor.module_id)
-    report_artifacts, snapshots = _admit_analysis_artifacts(
+    report_artifacts = _admit_analysis_artifacts(
         summary,
         module,
         analysis_id=analysis_id,
         source_root=source_root,
+        evidence_context=evidence_context,
     )
     try:
         rendered = reporter.provider(
@@ -300,6 +252,7 @@ def _render_scientific_report(
         _fail("Analysis reporter returned an invalid scientific report")
     returned_paths: set[Path] = set()
     returned_rechecks = []
+    snapshots = {item.snapshot.path: item.snapshot for item in report_artifacts}
     for item in rendered.inputs:
         if (
             not isinstance(item, AnalysisReportInputV1)
@@ -312,15 +265,15 @@ def _render_scientific_report(
         path = item.path.absolute()
         if path in returned_paths:
             _fail(f"Analysis reporter returned a duplicate input: {path}")
-        snapshot = _snapshot_regular(path, item.label)
+        snapshot = snapshots.get(path) or _snapshot_regular(path, item.label)
+        _assert_snapshot(snapshot, item.label)
         if snapshot.sha256 != item.sha256:
             _fail(f"Analysis reporter input changed while rendering: {path}")
         returned_paths.add(path)
         returned_rechecks.append((snapshot, item.label, item.rehash_content))
-    returned_paths = {item[0].path for item in returned_rechecks}
     preadmitted = tuple(
         (snapshot, f"analysis artifact {snapshot.path.name!r}", True)
-        for snapshot in snapshots
+        for snapshot in snapshots.values()
         if snapshot.path not in returned_paths
     )
     return (
@@ -353,28 +306,17 @@ def _validate_output_root(output_root: Path, output_dir: Path) -> None:
 def _existing_outputs(
     output_dir: Path,
     stable_paths: tuple[Path, ...],
-    retired_paths: tuple[Path, ...],
-    expected_receipt_version: str,
 ) -> dict[Path, FileSnapshot]:
-    present = [
-        path for path in (*stable_paths, *retired_paths) if os.path.lexists(path)
-    ]
+    present = [path for path in stable_paths if os.path.lexists(path)]
     if not present:
         return {}
     receipt_path = stable_paths[-1]
-    if any(path in present for path in retired_paths) or not os.path.lexists(
-        receipt_path
-    ):
+    if not os.path.lexists(receipt_path):
         _fail(
-            "Existing report outputs are incomplete or retired; preserve them "
+            "Existing report outputs are incomplete; preserve them "
             "and use a fresh output root"
         )
     document = read_receipt_tsv(receipt_path)
-    if document["schema_version"] != expected_receipt_version:
-        _fail(
-            "Existing report evidence uses another schema version and cannot "
-            "be rewritten by this publisher"
-        )
     snapshots: dict[Path, FileSnapshot] = {}
     for output in document["outputs"]:
         path = Path(output["path"])
@@ -405,7 +347,9 @@ def _result_links(
             "label": f"Analysis artifact: {artifact.artifact_id}",
             "description": "Admitted analysis artifact",
             "href": quote(
-                Path(os.path.relpath(artifact.path, start=output_dir)).as_posix(),
+                Path(
+                    os.path.relpath(artifact.snapshot.path, start=output_dir)
+                ).as_posix(),
                 safe="/._-",
             ),
         }
@@ -414,42 +358,63 @@ def _result_links(
     )
 
 
+def recheck_evidence_context(
+    evidence: EvidenceContext,
+    manifest_snapshot: FileSnapshot,
+) -> None:
+    from emrys.reporting._artifact_index.context import (
+        recheck_inputs,
+        recheck_source_identity,
+    )
+
+    recheck_inputs(evidence.index)
+    recheck_source_identity(evidence.index)
+    if (
+        manifest_snapshot.path != evidence.summary_paths.summary_json
+        or _read_snapshot_bytes(manifest_snapshot, "run-summary document")
+        != evidence.summary_json_bytes
+    ):
+        _fail("Published Run result differs from the prepared reporting inputs")
+
+
 def prepare_context(
     arguments: argparse.Namespace,
     *,
-    source_checkout: SourceCheckout,
-    artifact_source_root: ArtifactSourceRoot,
-    identity_ops: ReportIdentityOps = DEFAULT_REPORT_IDENTITY_OPS,
+    evidence_context: EvidenceContext,
 ) -> ReportContext:
+    try:
+        installed_package = admit_installed_package(
+            root=arguments.package_root,
+        )
+        artifact_source_root = admit_artifact_source_root(
+            root=arguments.artifact_source_root,
+        )
+    except (ArtifactSourceRootError, InstalledPackageError) as exc:
+        raise ReportRenderError(str(exc)) from exc
     source_root = artifact_source_root.root
     run_summary_path = _explicit_path(arguments.run_summary, "run-summary path")
     run_summary_snapshot = _snapshot_regular(run_summary_path, "run-summary document")
-    summary = _load_run_summary(run_summary_path, source_root=source_root)
+    if (
+        evidence_context.index.installed_package.record != installed_package.record
+        or evidence_context.index.artifact_source_root != artifact_source_root
+    ):
+        _fail("Prepared reporting inputs belong to a different package or source root")
+    recheck_evidence_context(evidence_context, run_summary_snapshot)
+    summary = copy.deepcopy(evidence_context.summary_document)
     _assert_snapshot(run_summary_snapshot, "run-summary document")
     run_id = summary["run_id"]
-    if (
-        run_summary_path.name != f"{run_id}.run_summary.json"
-        or run_summary_path.parent.name != run_id
-    ):
-        _fail("Canonical run-summary input must use <run-id>/<run-id>.run_summary.json")
     analysis_policy_path, analysis_policy_snapshot, analysis_policy = (
         _admit_analysis_policy(arguments, summary)
     )
-    receipt_version = (
-        REPORT_RECEIPT_SCHEMA_VERSION
-        if summary["schema_version"] == RUN_SUMMARY_SCHEMA_VERSION
-        else HISTORICAL_REPORT_RECEIPT_SCHEMA_VERSION
-    )
     try:
-        producer_git_commit = (
-            identity_ops.matching_checkout_head_commit(
-                source_checkout=source_checkout,
-                package_root=Path(__file__).resolve().parents[2],
-            )
-            or "local_build"
-        )
-    except SourceCheckoutError as exc:
+        if (
+            admit_installed_package(root=installed_package.root).record
+            != installed_package.record
+        ):
+            _fail("Installed report package changed after admission")
+    except InstalledPackageError as exc:
         _fail(str(exc))
+    producer_git_commit = installed_package.git_commit or "unavailable"
     if importlib.metadata.version("Jinja2") != JINJA_VERSION:
         _fail(f"Installed Jinja2 version must match {JINJA_VERSION}")
     template_snapshot = _resource_snapshot(TEMPLATE_RESOURCE, "report Jinja template")
@@ -457,22 +422,14 @@ def prepare_context(
     output_root = _explicit_path(arguments.output_root, "report output root")
     _reject_symlink_components(output_root, "report output root")
     output_dir = output_root / run_id
-    output_scientific_html = output_dir / f"{run_id}.scientific_report.html"
-    output_evidence_html = output_dir / f"{run_id}.evidence_report.html"
-    output_summary_tsv = output_dir / f"{run_id}.run_summary.tsv"
+    output_paths = tuple(
+        output_dir / f"{run_id}.{suffix}"
+        for _output_id, _kind, suffix in artifact_contracts.REPORT_OUTPUTS
+    )
     output_receipt = output_dir / f"{run_id}.report_outputs.tsv"
-    stable_paths = (
-        output_scientific_html,
-        output_evidence_html,
-        output_summary_tsv,
-        output_receipt,
-    )
-    retired_paths = (
-        output_dir / f"{run_id}.run_report.html",
-        output_dir / f"{run_id}.run_report.pdf",
-    )
+    stable_paths = (*output_paths, output_receipt)
     lock_path = output_dir / f".{run_id}.report.lock"
-    for path in (output_dir, *stable_paths, *retired_paths, lock_path):
+    for path in (output_dir, *stable_paths, lock_path):
         _reject_symlink_components(path, "report publication path")
     _validate_output_root(output_root, output_dir)
     if os.path.lexists(lock_path):
@@ -480,8 +437,6 @@ def prepare_context(
     previous = _existing_outputs(
         output_dir,
         stable_paths,
-        retired_paths,
-        receipt_version,
     )
     (
         admitted_module,
@@ -494,6 +449,7 @@ def prepare_context(
         source_root=source_root,
         output_dir=output_dir,
         analysis_policy=analysis_policy,
+        evidence_context=evidence_context,
     )
     try:
         css = css_snapshot.path.read_text(encoding="utf-8")
@@ -506,55 +462,40 @@ def prepare_context(
         "producer_git_commit": producer_git_commit,
         "renderer": PRODUCER,
         "renderer_version": PRODUCER_VERSION,
-        "renderer_package_sha256": _core_renderer_sha256(),
+        "renderer_package_sha256": installed_package.content_sha256,
         "run_summary_path": str(run_summary_snapshot.path),
         "run_summary_sha256": run_summary_snapshot.sha256,
         "state_banner": COMPUTATIONAL_BOUNDARY_BANNER,
-        "source_checkout": str(source_checkout.root),
+        "package_root": str(installed_package.root),
         "artifact_source_root": str(artifact_source_root.root),
         "template_path": f"emrys.reporting/{TEMPLATE_RESOURCE}",
         "template_sha256": template_snapshot.sha256,
     }
-    if summary["schema_version"] == HISTORICAL_RUN_SUMMARY_SCHEMA_VERSION:
-        renderer_details = dict(scientific_report.renderer_details)
-        metadata.update(
-            {
-                "figure_renderer_version": renderer_details[
-                    "Figure renderer"
-                ].removeprefix("Matplotlib "),
-                "logo_renderer_version": renderer_details[
-                    "Logo renderer"
-                ].removeprefix("Logomaker "),
-                "figure_policy_version": renderer_details[
-                    "Figure policy version"
-                ],
-            }
-        )
     evidence_html_bytes = render_html(
-        build_evidence_view(
-            summary,
-            metadata,
-            banner=COMPUTATIONAL_BOUNDARY_BANNER,
-            result_links=_result_links(report_artifacts, output_dir),
-            inspect_command=_inspect_command(source_root, output_root),
-            analysis_policy=analysis_policy,
-            renderer_details=scientific_report.renderer_details,
-            figure_evidence=scientific_report.figure_evidence,
-            report_inputs=tuple(
-                (
-                    item.label,
-                    str(item.path),
-                    item.sha256,
-                    "content hash" if item.rehash_content else "file identity",
-                )
-                for item in scientific_report.inputs
-                if item.path not in {artifact.path for artifact in report_artifacts}
-            ),
-        ),
+        summary,
         css,
+        report_view="evidence",
+        metadata=metadata,
+        banner=COMPUTATIONAL_BOUNDARY_BANNER,
+        result_links=_result_links(report_artifacts, output_dir),
+        inspect_command=_inspect_command(source_root, output_root),
+        analysis_policy=analysis_policy,
+        renderer_details=scientific_report.renderer_details,
+        figure_evidence=scientific_report.figure_evidence,
+        report_inputs=tuple(
+            (
+                item.label,
+                str(item.path),
+                item.sha256,
+                "content hash" if item.rehash_content else "file identity",
+            )
+            for item in scientific_report.inputs
+            if item.path
+            not in {artifact.snapshot.path for artifact in report_artifacts}
+        ),
     )
     context = ReportContext(
-        source_checkout=source_checkout,
+        installed_package=installed_package,
         artifact_source_root=artifact_source_root,
         producer_git_commit=producer_git_commit,
         run_summary_path=run_summary_path,
@@ -567,9 +508,6 @@ def prepare_context(
         css_snapshot=css_snapshot,
         output_root=output_root,
         output_dir=output_dir,
-        output_scientific_html=output_scientific_html,
-        output_evidence_html=output_evidence_html,
-        output_summary_tsv=output_summary_tsv,
         output_receipt=output_receipt,
         lock_path=lock_path,
         stable_paths=stable_paths,
@@ -579,14 +517,11 @@ def prepare_context(
         evidence_html_bytes=evidence_html_bytes,
         analysis_module=admitted_module,
         scientific_renderer=reporter,
-        report_receipt_schema_version=receipt_version,
         report_input_rechecks=report_input_rechecks,
-        interpretation_boundary=(
-            str(summary["interpretation_boundary"])
-            if summary["schema_version"] == HISTORICAL_RUN_SUMMARY_SCHEMA_VERSION
-            else COMPUTATIONAL_BOUNDARY_BANNER
-        ),
+        interpretation_boundary=COMPUTATIONAL_BOUNDARY_BANNER,
+        evidence_context=evidence_context,
     )
     for recheck in context.input_rechecks:
         _assert_input_recheck(*recheck)
+    recheck_evidence_context(evidence_context, run_summary_snapshot)
     return context

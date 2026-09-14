@@ -1,28 +1,29 @@
-# Storage-inventory evidence owner
+# Storage qualification
 
-`emrys debug storage-inventory` measures declared roots without following
-symlinks and records declared `retain`, `archive`, or `review_then_delete`
-policy; it performs no retention action. Dry-run measures without publication;
-execute publishes inventory, policy, and summary TSVs, with the summary last.
+This owner checks whether the exact Project and reference filesystems support
+safe execution. Storage capacity planning and retention policy are external
+operator responsibilities.
 
-The same owner supplies storage qualification. Doctor repair may create the
-single-host direct receipt after probing hard links, `flock`, atomic rename,
-fsync, permissions, and identity at the exact Project/reference roots. Slurm
-requires `emrys debug storage-qualification`: compute creates private probes in
-the allocation and head-node finalize re-admits them, publishes the content-
-bound receipt, and removes only those probe directories. Both qualification
-paths make the final receipt durable before removing the staged receipt and
-probe evidence. Final-link or initial directory-fsync failure preserves the
-staged receipt and probes; any surviving staged marker still blocks admission
-and re-execution. After the final receipt is durable and the staged name is
-removed, a cleanup failure leaves final authority intact, even if probe cleanup
-is partial. Preserve remaining evidence for inspection; an error does not
-authorize deleting, replacing, or adopting qualification artifacts.
+## Qualification and recovery
+
+Doctor repair can create the single-host direct receipt after checking hard
+links, `flock`, atomic rename, fsync, permissions, and identity at the exact
+Project/reference roots. Slurm instead needs the
+[compute and head-node finalize procedure](../../../../docs/operations/RUNBOOK.md#2-qualify-the-exact-storage-roots).
+The compute phase creates private probes in the allocation; finalize checks
+them again, publishes the bound receipt, and removes only those probe directories.
+
+Both routes make the final receipt durable before removing its staged name and
+probes. A final-link or first directory-fsync failure preserves the staged
+receipt and probes. Any staged marker still blocks admission and re-execution.
+Once the final receipt is durable and the staged name is removed, probe-cleanup
+failure leaves final authority intact, even if cleanup is partial. Keep any
+remaining evidence; an error does not authorize deletion, replacement, or adoption.
 
 The two-phase receipt binds canonical paths, inode and UID/GID observations,
-mount source/type, capacity, locking, rename visibility, and post-allocation
-durability; device numbers are diagnostic and may differ by node. Failure or
-interruption leaves evidence for inspection and never authorizes staging around
-an unqualified shared filesystem. Publication/restoration gaps remain defects;
-receipt presence alone is not site, production, retention, scientific, or
-biological approval.
+mount source/type, capacity, locking, rename visibility, and durability after
+the allocation ends. Device numbers are diagnostic and may differ by node.
+Failure never authorizes staging around an unqualified shared filesystem.
+
+Qualification evidence alone does not establish site approval, production
+suitability, scientific review, or biological validity.

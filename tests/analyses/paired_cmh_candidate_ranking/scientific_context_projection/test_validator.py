@@ -15,13 +15,16 @@ from tests import scientific_context_test_support as CONTEXT_FIXTURE
 from tests import scientific_evidence_test_support as STEP_FIXTURE
 
 
-def _transaction(tmp_path: Path) -> CONTEXT_FIXTURE.ContextFixture:
+def _transaction(
+    tmp_path: Path, git_commit: str = "0" * 40
+) -> CONTEXT_FIXTURE.ContextFixture:
     built = STEP_FIXTURE.build_fixture(tmp_path / "step09")
     analysis_id = STEP_FIXTURE.PRIMARY_ANALYSIS_ID
     analysis_dir = built.step09_analysis_dir
     return CONTEXT_FIXTURE.build_transaction(
         tmp_path / "context",
         analysis_id=analysis_id,
+        git_commit=git_commit,
         step09_all_sites=analysis_dir / f"{analysis_id}.cmh_all_sites.tsv",
         step09_significant_sites=(
             analysis_dir / f"{analysis_id}.cmh_significant_sites.tsv"
@@ -34,11 +37,13 @@ def _rows(data: bytes) -> list[dict[str, str]]:
     return list(csv.DictReader(data.decode().splitlines(), delimiter="\t"))
 
 
+@pytest.mark.parametrize("git_commit", ("0" * 40, "unavailable"))
 def test_validator_calls_one_transaction_admission_and_emits_one_check(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    git_commit: str,
 ) -> None:
-    transaction = _transaction(tmp_path)
+    transaction = _transaction(tmp_path, git_commit)
     arguments = argparse.Namespace(
         receipt=transaction.receipt,
         output=tmp_path / "validation.tsv",

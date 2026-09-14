@@ -26,43 +26,6 @@
       "minLength": 1,
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
     },
-    "evidence_reference": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "evidence_id",
-        "role",
-        "path",
-        "sha256"
-      ],
-      "properties": {
-        "evidence_id": {
-          "$ref": "#/$defs/safe_id"
-        },
-        "role": {
-          "enum": [
-            "implementation",
-            "local_test",
-            "runtime_log",
-            "runtime_output",
-            "cluster_dry_run",
-            "cluster_scheduler",
-            "cluster_log",
-            "cluster_output",
-            "scientific_evidence",
-            "validation_record",
-            "receipt",
-            "source_manifest"
-          ]
-        },
-        "path": {
-          "$ref": "#/$defs/path"
-        },
-        "sha256": {
-          "$ref": "#/$defs/sha256"
-        }
-      }
-    },
     "path_hash": {
       "type": "object",
       "additionalProperties": false,
@@ -106,8 +69,7 @@
       "required": [
         "code",
         "message",
-        "related_artifact_ids",
-        "evidence"
+        "related_artifact_ids"
       ],
       "properties": {
         "code": {
@@ -122,90 +84,6 @@
             "$ref": "#/$defs/safe_id"
           },
           "uniqueItems": true
-        },
-        "evidence": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/evidence_reference"
-          }
-        }
-      }
-    },
-    "limitation": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "limitation_id",
-        "status",
-        "description",
-        "impact",
-        "evidence_ids"
-      ],
-      "properties": {
-        "limitation_id": {
-          "$ref": "#/$defs/safe_id"
-        },
-        "status": {
-          "enum": [
-            "open",
-            "accepted",
-            "resolved"
-          ]
-        },
-        "description": {
-          "$ref": "#/$defs/non_empty_string"
-        },
-        "impact": {
-          "$ref": "#/$defs/non_empty_string"
-        },
-        "evidence_ids": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/safe_id"
-          },
-          "uniqueItems": true
-        }
-      }
-    },
-    "tool": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "name",
-        "version",
-        "role",
-        "path",
-        "sha256"
-      ],
-      "properties": {
-        "name": {
-          "$ref": "#/$defs/safe_id"
-        },
-        "version": {
-          "$ref": "#/$defs/non_empty_string"
-        },
-        "role": {
-          "$ref": "#/$defs/non_empty_string"
-        },
-        "path": {
-          "oneOf": [
-            {
-              "$ref": "#/$defs/path"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "sha256": {
-          "oneOf": [
-            {
-              "$ref": "#/$defs/sha256"
-            },
-            {
-              "type": "null"
-            }
-          ]
         }
       }
     },
@@ -281,6 +159,9 @@
         "git_commit": {
           "$ref": "#/$defs/git_commit"
         },
+        "installed_package": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/installed_package"
+        },
         "created_at": {
           "type": "string",
           "format": "date-time"
@@ -338,229 +219,6 @@
           "$ref": "#/$defs/safe_id"
         }
       }
-    },
-    "attempt": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "attempt_id",
-        "state",
-        "started_at",
-        "finished_at",
-        "exit_code",
-        "supersedes_attempt_id",
-        "evidence",
-        "warnings",
-        "errors"
-      ],
-      "properties": {
-        "attempt_id": {
-          "$ref": "#/$defs/safe_id"
-        },
-        "state": {
-          "enum": [
-            "planned",
-            "running",
-            "succeeded",
-            "failed",
-            "cancelled",
-            "blocked"
-          ]
-        },
-        "started_at": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "format": "date-time"
-        },
-        "finished_at": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "format": "date-time"
-        },
-        "exit_code": {
-          "type": [
-            "integer",
-            "null"
-          ]
-        },
-        "supersedes_attempt_id": {
-          "oneOf": [
-            {
-              "$ref": "#/$defs/safe_id"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "evidence": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/evidence_reference"
-          }
-        },
-        "warnings": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/issue"
-          }
-        },
-        "errors": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/issue"
-          }
-        }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "state": {
-                "const": "planned"
-              }
-            },
-            "required": [
-              "state"
-            ]
-          },
-          "then": {
-            "properties": {
-              "started_at": {
-                "type": "null"
-              },
-              "finished_at": {
-                "type": "null"
-              },
-              "exit_code": {
-                "type": "null"
-              },
-              "errors": {
-                "maxItems": 0
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "state": {
-                "const": "running"
-              }
-            },
-            "required": [
-              "state"
-            ]
-          },
-          "then": {
-            "properties": {
-              "started_at": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "finished_at": {
-                "type": "null"
-              },
-              "exit_code": {
-                "type": "null"
-              },
-              "errors": {
-                "maxItems": 0
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "state": {
-                "const": "succeeded"
-              }
-            },
-            "required": [
-              "state"
-            ]
-          },
-          "then": {
-            "properties": {
-              "started_at": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "finished_at": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "exit_code": {
-                "const": 0
-              },
-              "errors": {
-                "maxItems": 0
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "state": {
-                "const": "failed"
-              }
-            },
-            "required": [
-              "state"
-            ]
-          },
-          "then": {
-            "properties": {
-              "started_at": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "finished_at": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "exit_code": {
-                "type": "integer",
-                "not": {
-                  "const": 0
-                }
-              },
-              "errors": {
-                "minItems": 1
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "state": {
-                "enum": [
-                  "cancelled",
-                  "blocked"
-                ]
-              }
-            },
-            "required": [
-              "state"
-            ]
-          },
-          "then": {
-            "properties": {
-              "finished_at": {
-                "type": "string",
-                "format": "date-time"
-              }
-            }
-          }
-        }
-      ]
     }
   }
 }

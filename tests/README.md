@@ -1,24 +1,34 @@
 # Tests
 
-Tests mirror product owners and protect public behavior, contracts, failures,
-and recovery. Exact owner semantics remain in the adjacent source
-`CONTRACT.md`; cross-cutting policy and supported commands remain in the
-[test baseline](../docs/design/TEST_BASELINE.md) and
-[runbook](../docs/operations/RUNBOOK.md).
+Tests mirror product owners and check public behavior, data contracts, failures,
+and recovery. Each source owner's contract defines the behavior under test.
+The [test baseline](../docs/design/TEST_BASELINE.md) defines repository test
+policy; [development validation](../docs/operations/ENGINEERING_CONVENTIONS.md#development-validation)
+explains how to run checks.
+Files directly in this directory cover CLI, packaging, scheduler, and policy
+behavior. [`tools/`](tools/README.md) contains test runners and checking tools.
 
-Keep independent expectations independent: statistical oracles, literal
-validation rosters, and
+## Fixtures and independent expectations
+
+Statistical oracles, literal validation rosters, and
 [contract goldens](contract_integration/independent_contract_goldens/README.md)
-must not derive expected values from the production implementation under test.
-Tracked fixtures are reviewed literal inputs; do not regenerate them merely to
-make a failure pass. The public-Make fixture has its own
-[normalization contract](fixtures/public_cli_contracts/README.md). A skipped
-guarded real-runtime test supplies no real-runtime evidence, and a coverage
-baseline must never be updated to conceal lost protection.
+must calculate or store their expectations independently of the production code
+under test. Tracked fixtures are reviewed inputs: do not regenerate them to
+make a failure pass, or update coverage baselines to conceal lost protection.
+The public-Make fixture has its own
+[normalization rules](fixtures/public_cli_contracts/README.md).
 
-`tools/` contains test-only validation, sharding, dependency, coverage, and
-synthetic-E2E support. The files directly under this directory protect
-cross-cutting CLI, packaging, scheduler, and policy behavior. Passing tests are
-local engineering evidence unless a named higher evidence lane says otherwise;
-they do not establish production, cluster, scientific-review, or biological
-validity.
+## Evidence limits
+
+These limits apply throughout the test tree. Fixtures, mocked tools, and injected
+failures establish behavior for their stated inputs. They do not prove real-tool
+execution, scheduler or institutional-cluster operation, production readiness,
+scientific review, or biological validity. Schema validity, file presence, and
+rendered reports do not establish those claims either.
+
+Real-runtime evidence requires a test that actually ran the named tool. A skipped
+guarded R test supplies no real-R evidence. Local execution, hosted CI, Slurm,
+and institutional-site checks are separate claims and must name their actual
+scope. Individual suites document narrower scientific or recovery limits beside
+their fixtures; none of these tests turns candidate review or adjudication into
+a pipeline completion state.

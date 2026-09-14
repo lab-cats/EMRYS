@@ -41,7 +41,6 @@ SCIENTIFIC_REPORT_VIEW = importlib.import_module(
     "emrys.reporting.paired_cmh_candidate_ranking_report.view"
 )
 REPORT_VALIDATION = importlib.import_module("emrys.reporting._run_report.validation")
-REPORT_VIEW = importlib.import_module("emrys.reporting._run_report.view")
 
 
 HEADER_MODULES: Mapping[str, ModuleType] = {
@@ -85,8 +84,8 @@ def schema_documents() -> dict[str, Any]:
     schema_versions = {
         "artifact_record.schema.json": "v2",
         "common.schema.json": "v1",
-        "report_receipt.schema.json": "v4",
-        "run_summary.schema.json": "v2",
+        "report_receipt.schema.json": "v5",
+        "run_summary.schema.json": "v3",
     }
     return {
         name: load_json(SCHEMAS / schema_versions[name] / name) for name in contracts
@@ -143,21 +142,17 @@ def report_html_bytes(document: Mapping[str, Any]) -> dict[str, bytes]:
     )
     scientific_figures = REPORT_FIGURES.build_scientific_figures(None, None)
     return {
-        "scientific": REPORT_VALIDATION.render_html(
-            SCIENTIFIC_REPORT_VIEW.build_scientific_view(
-                summary,
-                document["metadata"],
-                scientific_figures=scientific_figures,
-            ),
+        "scientific": SCIENTIFIC_REPORT_VIEW.render_scientific_html(
+            summary,
             document["css"],
+            scientific_figures=scientific_figures,
         ),
         "evidence": REPORT_VALIDATION.render_html(
-            REPORT_VIEW.build_evidence_view(
-                summary,
-                document["metadata"],
-                banner=REPORT_CONSTANTS.BOUNDARY_BANNER,
-            ),
+            summary,
             document["css"],
+            report_view="evidence",
+            metadata=document["metadata"],
+            banner=REPORT_CONSTANTS.BOUNDARY_BANNER,
         ),
     }
 
@@ -203,7 +198,7 @@ def test_representative_public_headers_match_literal_ordered_oracles() -> None:
 @pytest.mark.parametrize(
     ("module_name", "constant_name"),
     (
-        ("build_artifact_index", "ARTIFACT_INDEX_HEADER"),
+        ("build_artifact_index", "VALIDATION_REPORT_HEADER"),
         ("build_run_summary", "RUN_SUMMARY_HEADER"),
         ("build_report", "RECEIPT_HEADER"),
     ),

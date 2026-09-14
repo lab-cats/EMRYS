@@ -293,8 +293,7 @@ def test_rejects_bad_local_links_and_mermaid_but_ignores_external_links(
     assert "guide(1)" not in result.stderr
     assert "missing local link target: README.md: missing(1).md" in result.stderr
     assert (
-        "missing local link anchor: README.md: "
-        "docs/operations/RUNBOOK.md#missing"
+        "missing local link anchor: README.md: docs/operations/RUNBOOK.md#missing"
     ) in result.stderr
 
     readme.write_text(

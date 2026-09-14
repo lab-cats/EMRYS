@@ -91,21 +91,6 @@ def run_validator(
     )
 
 
-def test_dry_run_is_side_effect_free(tmp_path: Path) -> None:
-    alignment = build_validation_fixture(tmp_path)
-    assert run_validator(alignment).returncode == 0
-    assert not alignment.output.exists()
-
-
-def test_execute_publishes_five_passes(tmp_path: Path) -> None:
-    alignment = build_validation_fixture(tmp_path)
-    result = run_validator(alignment, "--execute")
-    assert result.returncode == 0, result.stderr
-    rows = report_rows(alignment.output)
-    assert_exact_check_roster(rows, "01")
-    assert {row["status"] for row in rows} == {"pass"}
-
-
 def test_malformed_final_log_and_sj_are_failed_evidence(tmp_path: Path) -> None:
     alignment = build_validation_fixture(tmp_path)
     alignment.final_log.write_text(
@@ -148,14 +133,6 @@ def test_missing_input_and_wrong_output_fail_closed(tmp_path: Path) -> None:
         output=valid_alignment.output.parent / "wrong.tsv",
     )
     assert run_validator(invalid_alignment, "--execute").returncode == 2
-
-
-def test_foreign_lock_is_preserved(tmp_path: Path) -> None:
-    alignment = build_validation_fixture(tmp_path)
-    lock = alignment.output.parent / f".{alignment.output.name}.lock"
-    lock.write_text("foreign\n", encoding="utf-8")
-    assert run_validator(alignment, "--execute").returncode == 2
-    assert lock.read_text(encoding="utf-8") == "foreign\n"
 
 
 def test_non_repo_cwd_dry_run_execute_repeat_is_deterministic(

@@ -1,4 +1,4 @@
-"""Deterministic report-summary and versioned receipt projection."""
+"""Deterministic report output and versioned receipt projection."""
 
 from __future__ import annotations
 
@@ -15,13 +15,11 @@ from emrys.contracts.artifacts import api as contracts
 from .inputs import _assert_snapshot, _fail, _snapshot_regular
 from .models import (
     CSS_RESOURCE,
-    HISTORICAL_REPORT_RECEIPT_SCHEMA_VERSION,
     JINJA_VERSION,
     PRODUCER,
     PRODUCER_VERSION,
     RECEIPT_HEADER,
     REPORT_RECEIPT_SCHEMA_VERSION,
-    SUMMARY_HEADER,
     TEMPLATE_RESOURCE,
     ReportContext,
 )
@@ -30,11 +28,10 @@ from .models import (
 def validate_receipt(document: Mapping[str, Any]) -> None:
     version = str(document.get("schema_version", ""))
     if version not in {
-        HISTORICAL_REPORT_RECEIPT_SCHEMA_VERSION,
         REPORT_RECEIPT_SCHEMA_VERSION,
     }:
         _fail(f"Unsupported report receipt schema version: {version!r}")
-    validator = contracts.schema_validator("report-receipt", version)
+    validator = contracts.schema_validator("report-receipt")
     errors = sorted(validator.iter_errors(document), key=lambda error: list(error.path))
     if errors:
         first = errors[0]
@@ -46,99 +43,30 @@ def validate_receipt(document: Mapping[str, Any]) -> None:
         _fail(f"Report receipt semantic validation failed: {exc}")
 
 
-def summary_tsv_bytes(context: ReportContext) -> bytes:
-    rows = []
-    summary = context.summary
-    for item in summary["expected_scopes"]:
-        scope = item["scope"]
-        rows.append(
-            (
-                summary["run_id"],
-                context.interpretation_boundary,
-                scope["step_id"],
-                scope["scope_type"],
-                scope["scope_id"],
-                item["aggregate_state"],
-                *(item[field] for field in contracts.RUN_SUMMARY_STATUS_FIELDS),
-                str(len(item["warnings"])),
-                str(len(item["errors"])),
-            )
-        )
-    stream = StringIO(newline="")
-    writer = csv.writer(stream, delimiter="\t", lineterminator="\n")
-    writer.writerow(SUMMARY_HEADER)
-    writer.writerows(rows)
-    return stream.getvalue().encode("utf-8")
-
-
-def validate_summary_tsv(path: Path, context: ReportContext) -> None:
-    snapshot = _snapshot_regular(path, "exported run-summary TSV")
-    with path.open("r", encoding="utf-8", newline="") as stream:
-        rows = list(csv.reader(stream, delimiter="\t"))
-    if not rows or tuple(rows[0]) != SUMMARY_HEADER:
-        _fail("Exported run-summary TSV has an unexpected header")
-    if len(rows) - 1 != len(context.summary["expected_scopes"]):
-        _fail("Exported run-summary TSV row count does not match expected scopes")
-    if any(len(row) != len(SUMMARY_HEADER) for row in rows[1:]):
-        _fail("Exported run-summary TSV contains a malformed row")
-    _assert_snapshot(snapshot, "exported run-summary TSV")
-
-
 def receipt_document(
     context: ReportContext,
-    staged_outputs: Sequence[tuple[str, str, Path, Path]],
+    output_bytes: Sequence[bytes],
 ) -> dict[str, Any]:
     descriptors = []
-    for output_id, kind, staged, final in staged_outputs:
-        snapshot = _snapshot_regular(staged, f"staged {kind} output")
+    for (output_id, kind, _suffix), final, payload in zip(
+        contracts.REPORT_OUTPUTS, context.stable_paths[:-1], output_bytes, strict=True
+    ):
         descriptor = {
             "output_id": output_id,
             "kind": kind,
             "path": str(final),
-            "sha256": snapshot.sha256,
-            "size_bytes": snapshot.size_bytes,
-            "media_type": {
-                "scientific_html": "text/html",
-                "evidence_html": "text/html",
-                "run_summary_tsv": "text/tab-separated-values",
-            }[kind],
+            "sha256": hashlib.sha256(payload).hexdigest(),
+            "size_bytes": len(payload),
+            "media_type": "text/html",
+            "self_contained": True,
         }
-        if kind in {"scientific_html", "evidence_html"}:
-            descriptor["self_contained"] = True
         descriptors.append(descriptor)
-    version = context.report_receipt_schema_version
-    identity_snapshots = tuple(
-        snapshot
-        for snapshot in context.input_snapshots
-        if snapshot != context.analysis_policy_snapshot
-    )
-    if version == HISTORICAL_REPORT_RECEIPT_SCHEMA_VERSION:
-        identity_payload = "\0".join(
-            (
-                *(snapshot.sha256 for snapshot in identity_snapshots),
-                JINJA_VERSION,
-                context.render_metadata["figure_renderer_version"],
-                context.render_metadata["logo_renderer_version"],
-                context.render_metadata["figure_policy_version"],
-                PRODUCER_VERSION,
-            )
-        )
-    else:
-        identity_payload = "\0".join(
-            (
-                *(snapshot.sha256 for snapshot in context.input_snapshots),
-                context.scientific_renderer["content_sha256"],
-                context.render_metadata["renderer_package_sha256"],
-                JINJA_VERSION,
-                PRODUCER_VERSION,
-            )
-        )
-    identity = hashlib.sha256(identity_payload.encode("utf-8")).hexdigest()[:20]
+    version = REPORT_RECEIPT_SCHEMA_VERSION
     summary = context.summary
     core_renderer = {
         "producer": PRODUCER,
         "producer_version": PRODUCER_VERSION,
-        "package": "emrys.reporting",
+        "package": "emrys",
         "content_sha256": context.render_metadata["renderer_package_sha256"],
         "template_engine": "Jinja2",
         "template_engine_version": JINJA_VERSION,
@@ -148,7 +76,6 @@ def receipt_document(
         "schema_version": version,
         "record_type": "report_receipt",
         "run_id": summary["run_id"],
-        "attempt_id": f"report-{identity}",
         "generated_at": summary["generated_at"],
         "publication_state": "complete",
         "transaction_state": "complete",
@@ -159,6 +86,17 @@ def receipt_document(
             "schema_name": summary["schema_name"],
             "schema_version": summary["schema_version"],
         },
+        "inputs": [
+            {
+                "path": str(snapshot.path),
+                "sha256": snapshot.sha256,
+                "size_bytes": snapshot.size_bytes,
+                "rehash_content": rehash,
+            }
+            for snapshot, _label, rehash in context.report_input_rechecks
+            if snapshot.path
+            not in {context.template_snapshot.path, context.css_snapshot.path}
+        ],
         "template": {
             "path": f"emrys.reporting/{TEMPLATE_RESOURCE}",
             "sha256": context.template_snapshot.sha256,
@@ -169,9 +107,8 @@ def receipt_document(
         },
         "outputs": descriptors,
         "state_banner": context.render_metadata["state_banner"],
-        "truncations": [],
         "schema_versions": {
-            "artifact_record": "2.0.0",
+            "artifact_entry": "4.0.0",
             "run_summary": summary["schema_version"],
             "report_receipt": version,
         },
@@ -184,38 +121,37 @@ def receipt_document(
             "producer": PRODUCER,
             "producer_version": PRODUCER_VERSION,
             "git_commit": context.producer_git_commit,
+            "installed_package": context.installed_package.record,
             "created_at": summary["generated_at"],
         },
     }
-    if version == HISTORICAL_REPORT_RECEIPT_SCHEMA_VERSION:
-        document = {
-            **common,
-            "renderer": {"name": "Jinja2", "version": JINJA_VERSION},
-        }
-    else:
-        if (
-            context.analysis_policy_path is None
-            or context.analysis_policy_snapshot is None
-            or context.analysis_policy is None
-        ):
-            _fail("Modular report receipt requires an admitted analysis policy")
-        document = {
-            **common,
-            "analysis_policy": {
-                "path": str(context.analysis_policy_path),
-                "sha256": context.analysis_policy_snapshot.sha256,
-                "size_bytes": context.analysis_policy_snapshot.size_bytes,
-                "schema_version": context.analysis_policy["schema_version"],
-            },
-            "scientific_renderer": {
-                **context.scientific_renderer,
-                "module_version": context.analysis_module.descriptor.module_version,
-                "core_support": core_renderer,
-            },
-            "evidence_renderer": core_renderer,
-        }
+    document = {
+        **common,
+        "analysis_policy": {
+            "path": str(context.analysis_policy_path),
+            "sha256": context.analysis_policy_snapshot.sha256,
+            "size_bytes": context.analysis_policy_snapshot.size_bytes,
+            "schema_version": context.analysis_policy["schema_version"],
+        },
+        "scientific_renderer": {
+            **context.scientific_renderer,
+            "module_version": context.analysis_module.descriptor.module_version,
+            "core_support": core_renderer,
+        },
+        "evidence_renderer": core_renderer,
+    }
     validate_receipt(document)
     return document
+
+
+def output_bytes(context: ReportContext) -> tuple[bytes, ...]:
+    """Project both reports and their receipt together."""
+
+    outputs = (
+        context.scientific_html_bytes,
+        context.evidence_html_bytes,
+    )
+    return (*outputs, receipt_tsv_bytes(receipt_document(context, outputs)))
 
 
 def receipt_tsv_bytes(document: Mapping[str, Any]) -> bytes:
@@ -234,7 +170,6 @@ def receipt_tsv_bytes(document: Mapping[str, Any]) -> bytes:
                 document["schema_name"],
                 document["schema_version"],
                 document["run_id"],
-                document["attempt_id"],
                 document["generated_at"],
                 document["interpretation_boundary"],
                 output["output_id"],

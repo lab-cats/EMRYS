@@ -23,6 +23,7 @@ from pathlib import Path
 from emrys.contracts.scientific_evidence import step09
 from emrys.contracts.scientific_evidence import scientific_context
 from emrys import analyses
+from emrys.libraries.source_authority import PACKAGE_ROOT
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys.reporting._artifact_index.registry import build_adapter_registry
@@ -31,7 +32,9 @@ from tests.scientific_context_test_support import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-ADAPTER_REGISTRY = build_adapter_registry(analysis_module_v1())
+ADAPTER_REGISTRY = build_adapter_registry(
+    analysis_module_v1(), source_root=PACKAGE_ROOT
+)
 INVENTORY_TEMPLATE = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
 INVENTORY_HEADER = (
     "artifact_id",
@@ -66,20 +69,18 @@ CANONICAL_BGZF_EOF_BLOCK = bytes.fromhex(
 
 def analysis_profile_v1() -> dict[str, object]:
     base = orchestration_contracts.load_json_object(
-        REPO_ROOT / "workflow/contracts/local_cmh_v2.json"
+        PACKAGE_ROOT / "workflow/contracts/local_cmh_v2.json"
     )
     descriptor = analysis_module_v1()
     profile = analyses.compose_profile(base, descriptor)
     for template in profile["artifact_templates"]:
-        template["source_path_template"] = (
-            "source/" + template["source_path_template"]
-        )
+        template["source_path_template"] = "source/" + template["source_path_template"]
         if template["adapter"].endswith("_validation_report_v1") and template[
             "step_id"
         ] in {"09", "10"}:
-            template["source_path_template"] = template[
-                "source_path_template"
-            ].replace("products/native/qc", "results/qc")
+            template["source_path_template"] = template["source_path_template"].replace(
+                "products/native/qc", "results/qc"
+            )
     orchestration_contracts.validate_record("profile", profile)
     return profile
 
@@ -98,43 +99,42 @@ class FixturePaths:
     source_paths: Mapping[str, Path]
 
     @property
+    def scientific_origin(self) -> dict[str, dict[str, str]]:
+        return {
+            name: {
+                "path": str(path),
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
+            for name in ("run", "attempt")
+            for path in (self.root / f"fixture_original_{name}.json",)
+        }
+
+    @property
     def output_dir(self) -> Path:
         return self.output_root / self.run_id
 
     @property
-    def records_dir(self) -> Path:
-        return self.output_dir / "records"
+    def manifest_path(self) -> Path:
+        return self.output_dir / f"{self.run_id}.run_summary.json"
 
     @property
-    def artifacts_path(self) -> Path:
-        return self.output_dir / f"{self.run_id}.artifacts.tsv"
+    def analysis_policy(self) -> Path:
+        return self.root / "analysis_policy.json"
 
     @property
-    def receipt_path(self) -> Path:
-        return self.output_dir / f"{self.run_id}.artifact_receipt.tsv"
+    def summary_paths(self) -> tuple[Path, ...]:
+        return tuple(
+            self.output_dir / f"{self.run_id}.{suffix}"
+            for suffix in (
+                "run_summary.json",
+                "run_summary.tsv",
+                "qc_summary.tsv",
+            )
+        )
 
     @property
     def lock_path(self) -> Path:
         return self.output_dir / f".{self.run_id}.artifact-index.lock"
-
-    def command_args(self, *, execute: bool = False) -> list[str]:
-        arguments = [
-            "--source-checkout",
-            str(REPO_ROOT),
-            "--artifact-source-root",
-            str(self.root),
-            "--run-id",
-            self.run_id,
-            "--run-contract",
-            str(self.run_contract),
-            "--inventory",
-            str(self.inventory),
-            "--output-root",
-            str(self.output_root),
-        ]
-        if execute:
-            arguments.append("--execute")
-        return arguments
 
     def source_for(self, artifact_id: str) -> Path:
         return self.source_paths[artifact_id]
@@ -150,13 +150,38 @@ def canonical_run_contract_sha256(components: Mapping[str, str]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def build_analysis_policy() -> dict[str, object]:
+    module = analyses.load_analysis_module(analyses.BUILTIN_PAIRED_CMH_MODULE_ID)
+    return {
+        "schema_version": "emrys.analysis-module-policy.v1",
+        "analysis_id": PRIMARY_ANALYSIS_ID,
+        "module": analyses.module_identity_record(module),
+        "implementation_sha256": module.provider.package.sha256,
+        "configuration": {
+            "control_condition": "control",
+            "treatment_condition": "treatment",
+            "background_condition": None,
+            "rna_ref": "A",
+            "rna_alt": "G",
+            "min_sample_dp": 1,
+            "mean_dp_threshold": 0,
+            "fdr_threshold": 0.05,
+            "common_or_threshold": 1.2,
+            "absolute_difference_threshold": 0.005,
+            "background_max_fraction": 0.01,
+        },
+    }
+
+
 def build_run_contract() -> dict[str, str]:
     components = {
         "sample_manifest_sha256": SAMPLE_MANIFEST_SHA256,
         "reference_contract_sha256": REFERENCE_CONTRACT_SHA256,
         "partition_manifest_sha256": PARTITION_MANIFEST_SHA256,
         "primary_analysis_id": PRIMARY_ANALYSIS_ID,
-        "primary_analysis_policy_sha256": PRIMARY_ANALYSIS_POLICY_SHA256,
+        "primary_analysis_policy_sha256": orchestration_contracts.canonical_sha256(
+            build_analysis_policy()
+        ),
     }
     return {
         "run_contract_sha256": canonical_run_contract_sha256(components),
@@ -212,11 +237,6 @@ def row_value(column: str, sample_manifest_path: Path) -> str:
         "transaction_state": "complete",
         "sample_count": str(len(SAMPLE_IDS)),
         "vcf_record_count": "1",
-        "implementation_status": "implemented",
-        "local_test_status": "passed",
-        "runtime_validation_status": "blocked",
-        "cluster_dry_run_status": "not_run",
-        "cluster_proof_status": "not_run",
         "sample_manifest_path": str(sample_manifest_path),
         "sample_manifest_row_count": str(len(SAMPLE_IDS)),
         "partition_manifest_path": "/synthetic/partition_manifest.tsv",
@@ -953,6 +973,9 @@ def write_scientific_context_transaction(
 def build_fixture(root: Path, *, run_id: str = RUN_ID) -> FixturePaths:
     root = root.resolve()
     root.mkdir(parents=True, exist_ok=True)
+    (root / "analysis_policy.json").write_bytes(
+        orchestration_contracts.canonical_json_bytes(build_analysis_policy())
+    )
     source_root = root / "source"
     inventory_path = root / "artifact_inventory.tsv"
     run_contract_path = root / "run_contract.json"
@@ -990,6 +1013,13 @@ def build_fixture(root: Path, *, run_id: str = RUN_ID) -> FixturePaths:
         json.dumps(build_run_contract(), ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+    # Small record stubs for the private manifest fixture; the runner fixtures
+    # separately admit complete immutable Run and Attempt records.
+    for name in ("run", "attempt"):
+        (root / f"fixture_original_{name}.json").write_text(
+            json.dumps({"run_id": run_id, "fixture_record": name}) + "\n",
+            encoding="utf-8",
+        )
     return FixturePaths(
         root=root,
         run_id=run_id,

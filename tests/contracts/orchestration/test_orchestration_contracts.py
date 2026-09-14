@@ -11,9 +11,9 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from emrys.contracts import orchestration
+from emrys.analyses import load_analysis_module, module_identity_record
 from emrys.contracts.orchestration import application_model
 from emrys.contracts.orchestration import artifact_inventory
-from emrys.contracts.orchestration import projection as reporting_projection
 
 ZERO_HASH = "0" * 64
 ONE_HASH = "1" * 64
@@ -30,44 +30,25 @@ def record_reference(path: str, digest: str = ZERO_HASH) -> dict[str, str]:
 
 
 def policy() -> dict[str, Any]:
+    loaded = load_analysis_module("emrys.paired-cmh")
     return {
-        "schema_version": "emrys.analysis-policy.v1",
+        "schema_version": "emrys.analysis-module-policy.v1",
         "analysis_id": "analysis-1",
-        "control_condition": "EV",
-        "treatment_condition": "PUM1",
-        "rna_ref": "A",
-        "rna_alt": "G",
-        "min_sample_dp": 1,
-        "mean_dp_threshold": 50,
-        "fdr_threshold": 0.05,
-        "common_or_threshold": 1.2,
-        "absolute_difference_threshold": 0.005,
-        "background_condition": None,
-        "background_max_fraction": 0.01,
-    }
-
-
-def request() -> dict[str, Any]:
-    result = copy.deepcopy(policy())
-    result["id"] = result.pop("analysis_id")
-    result.pop("schema_version")
-    return {
-        "schema_version": "emrys.request.v3",
-        "label": "tiny local run",
-        "profile": "emrys.profile.local_cmh.v2",
-        "sample_manifest": "samples.tsv",
-        "partition_manifest": "partitions.tsv",
-        "reference": {
-            "id": "ref-1",
-            "fasta": "reference/genome.fa",
-            "gtf": "reference/genome.gtf",
-            "star_index": {
-                "sjdb_overhang": 149,
-                "genome_sa_index_nbases": 14,
-            },
+        "module": module_identity_record(loaded),
+        "implementation_sha256": loaded.provider.package.sha256,
+        "configuration": {
+            "control_condition": "EV",
+            "treatment_condition": "PUM1",
+            "rna_ref": "A",
+            "rna_alt": "G",
+            "min_sample_dp": 1,
+            "mean_dp_threshold": 50,
+            "fdr_threshold": 0.05,
+            "common_or_threshold": 1.2,
+            "absolute_difference_threshold": 0.005,
+            "background_condition": None,
+            "background_max_fraction": 0.01,
         },
-        "cohort_id": "cohort-1",
-        "analysis": result,
     }
 
 
@@ -109,14 +90,14 @@ def resource_config() -> dict[str, Any]:
         "stage_concurrency": {"01": 2, "06": 4},
         "step_threads": {"00a": 4, "01": 2},
         "stage_memory_mb": {"00a": "workflow", "01": 2048},
-        "reporting_memory_mb": {"html_report": 1024},
     }
 
 
 def execution_profile() -> dict[str, Any]:
+    resources = resource_config()
     return {
         "schema_version": "emrys.execution-profile.v1",
-        "resources": resource_config(),
+        "resources": resources,
         "placement": {"kind": "direct"},
     }
 
@@ -241,30 +222,14 @@ def execution() -> dict[str, Any]:
         "policy": analysis_policy,
         "policy_sha256": orchestration.canonical_sha256(analysis_policy),
     }
-    envelope = {
-        "schema_version": "emrys.identity-envelope.v1",
+    return {
         "profile": profile_identity,
         "samples": samples,
         "partitions": partitions,
         "reference": reference(),
         "analysis": analysis,
+        "run_id": f"run-{ZERO_HASH}",
     }
-    digest = orchestration.canonical_sha256(envelope)
-    record = {
-        "schema_version": "emrys.execution.v1",
-        "profile": profile_identity,
-        "samples": samples,
-        "partitions": partitions,
-        "reference": reference(),
-        "analysis": analysis,
-        "identity_envelope": envelope,
-        "identity_envelope_sha256": digest,
-        "run_id": f"run-{digest}",
-        "reporting_projection": {},
-    }
-    bundle = reporting_projection.build_reporting_bundle(record, profile())
-    record["reporting_projection"] = bundle.projection_references
-    return record
 
 
 def lifecycle_records() -> dict[str, dict[str, Any]]:
@@ -272,7 +237,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
     scope = {"scope_type": "sample", "scope_id": "EV-1"}
     command = {"argv": ["emrys-owner", "--execute"], "exit_code": 0}
     workflow_attempt = {
-        "schema_version": "emrys.workflow-attempt.v1",
+        "schema_version": "emrys.workflow-attempt.v3",
         "run_id": run_id,
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
@@ -299,10 +264,14 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         },
         "workspace": "/workspace",
         "scratch": None,
-        "source_checkout": {
-            "path": "/checkout",
-            "commit": "a" * 40,
-            "clean": True,
+        "installed_package": {
+            "path": "/installed/emrys",
+            "distribution": "emrys-rna-workflow",
+            "version": "0.1.0.dev0",
+            "content_sha256": ZERO_HASH,
+            "git_commit": "a" * 40,
+            "git_dirty": False,
+            "python_lock_sha256": ZERO_HASH,
         },
         "executor": "local",
         "execution_mode": "test-double",
@@ -316,7 +285,14 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
             "--",
             "cohort_slice",
         ],
-        "workflow_config": record_reference("contract/workflow-config.json"),
+        "workflow": {
+            "reference_contract_path": record_reference("contract/reference.json"),
+            "primary_analysis_policy_path": record_reference("contract/policy.json"),
+            "reporting_run_contract_path": record_reference("contract/reporting.json"),
+            "artifact_inventory_path": record_reference("contract/inventory.tsv"),
+            "resource_policy": {},
+        },
+        "tasks": {},
         "host": "localhost",
         "process_id": 42,
         "owner_token": "owner-token-1",
@@ -342,7 +318,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         "state/task-starts/star_alignment/EV-1.json"
     )
     task_start = {
-        "schema_version": "emrys.task-start.v1",
+        "schema_version": "emrys.task-start.v2",
         "run_id": run_id,
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
@@ -354,17 +330,13 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         "workflow_attempt_record": record_reference(
             f"attempts/{WORKFLOW_ATTEMPT_ID}/attempt.json"
         ),
-        "workflow_config": record_reference("contract/workflow-config.json"),
         "run_lock": record_reference(
             f"attempts/{WORKFLOW_ATTEMPT_ID}/released-run-lock.json"
-        ),
-        "task_dispatch_record": record_reference(
-            f"contract/dispatch/{WORKFLOW_ATTEMPT_ID}/star_alignment/EV-1.json"
         ),
         "created_at": "2026-08-12T12:01:30Z",
     }
     task_attempt = {
-        "schema_version": "emrys.task-attempt.v1",
+        "schema_version": "emrys.task-attempt.v3",
         "run_id": run_id,
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
@@ -392,53 +364,18 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         ),
         "failure_message": None,
     }
+    task_attempt.update(
+        inputs=[{"role": "fastq", **snapshot("/data/EV-1.fastq")}],
+        outputs=[{"role": "bam", **snapshot("/workspace/results/EV-1.bam", ONE_HASH)}],
+    )
     verified_task = {
-        "schema_version": "emrys.verified-task.v1",
-        "run_id": run_id,
-        "execution_contract_sha256": ZERO_HASH,
-        "profile_sha256": ONE_HASH,
-        "workflow_attempt_id": WORKFLOW_ATTEMPT_ID,
-        "task_attempt_id": TASK_ATTEMPT_ID,
+        "schema_version": "emrys.verified-task.v2",
         "task_attempt_record": record_reference(
             f"attempts/{WORKFLOW_ATTEMPT_ID}/tasks/star_alignment/EV-1/task-attempt.json"
         ),
-        "task_start_record": task_start_reference,
-        "machine_key": "star_alignment",
-        "scope": scope,
-        "owner_run_token": "owner-run-1",
-        "commands": {
-            "producer": command,
-            "validator": command,
-            "semantic_all_pass": command,
-        },
-        "inputs": [
-            {
-                "role": "fastq",
-                "path": "/data/EV-1.fastq",
-                "size_bytes": 4,
-                "sha256": ZERO_HASH,
-            }
-        ],
-        "outputs": [
-            {
-                "role": "bam",
-                "path": "/workspace/results/EV-1.bam",
-                "size_bytes": 4,
-                "sha256": ONE_HASH,
-            }
-        ],
-        "native_receipt": None,
-        "validation_report": {
-            "path": "results/qc/EV-1.validation.tsv",
-            "sha256": ZERO_HASH,
-            "all_pass": True,
-        },
-        "stable_inputs_rechecked": True,
-        "all_pass": True,
-        "created_at": "2026-08-12T12:02:00Z",
     }
     attempt_receipt = {
-        "schema_version": "emrys.attempt-receipt.v1",
+        "schema_version": "emrys.attempt-receipt.v2",
         "run_id": run_id,
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
@@ -470,29 +407,8 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
                 "record": record_reference("state/verified/star_alignment/EV-1.json"),
             }
         ],
-        "reporting_completion_records": {
-            "artifact_index": {
-                "start": record_reference("state/reporting/artifact_index/start.json"),
-                "verified": record_reference(
-                    "state/reporting/artifact_index/verified.json"
-                ),
-            },
-            "run_summary": {
-                "start": record_reference("state/reporting/run_summary/start.json"),
-                "verified": record_reference(
-                    "state/reporting/run_summary/verified.json"
-                ),
-            },
-            "html_report": {
-                "start": record_reference("state/reporting/html_report/start.json"),
-                "verified": record_reference(
-                    "state/reporting/html_report/verified.json"
-                ),
-            },
-        },
         "blockers": [],
         "message": None,
-        "local_pipeline_complete": True,
     }
     return {
         "workflow-attempt": workflow_attempt,
@@ -506,7 +422,10 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
 def test_registry_is_closed_and_every_schema_is_draft_2020_12() -> None:
     schemas, _ = orchestration.load_schema_registry()
 
-    assert tuple(schemas) == ("common", *orchestration.SCHEMA_NAMES, "attempt-receipt-v2")
+    assert tuple(schemas) == (
+        "common",
+        *orchestration.SCHEMA_NAMES,
+    )
     assert set(schemas) == set(orchestration.SCHEMA_IDS)
     for name, schema in schemas.items():
         assert schema["$id"] == orchestration.SCHEMA_IDS[name]
@@ -529,7 +448,6 @@ def test_registry_is_closed_and_every_schema_is_draft_2020_12() -> None:
     (
         ("execution-profile", "v3", "v1"),
         ("project", "v1", "v1"),
-        ("request", "v3", "v3"),
     ),
 )
 def test_versioned_schema_registration_is_exact(
@@ -537,7 +455,9 @@ def test_versioned_schema_registration_is_exact(
     directory: str,
     identifier_version: str,
 ) -> None:
-    assert orchestration.SCHEMA_PATHS[name].name == f"{name.replace('-', '_')}.schema.json"
+    assert (
+        orchestration.SCHEMA_PATHS[name].name == f"{name.replace('-', '_')}.schema.json"
+    )
     assert orchestration.SCHEMA_PATHS[name].parent.name == directory
     assert orchestration.SCHEMA_IDS[name] == (
         f"urn:emrys:schema:orchestration:{name}:{identifier_version}"
@@ -571,13 +491,11 @@ def test_project_resource_execution_profile_and_run_records_pass() -> None:
         "profile": profile(),
         "reference": reference(),
         "policy": policy(),
-        "execution": execution(),
     }
     for name, record in records.items():
         orchestration.validate_record(
             name,
             record,
-            profile=profile() if name == "execution" else None,
         )
 
     project_without_background = project()
@@ -602,14 +520,6 @@ def test_project_rejects_invalid_analysis_sample_ids(
 
     with pytest.raises(orchestration.ContractValidationError):
         orchestration.validate_record("project", record)
-
-
-def test_request_v3_remains_valid_only_as_an_exact_historical_contract() -> None:
-    historical = request()
-    orchestration.validate_record("request", historical)
-
-    historical["analysis"].pop("background_condition")
-    orchestration.validate_record("request", historical)
 
 
 def test_lifecycle_and_verified_records_pass() -> None:
@@ -713,16 +623,6 @@ def test_workflow_attempt_rejects_noncanonical_scheduler_job_ids(
             lambda record: record["required_owner_keys"].append("not-an-owner"),
             "semantic_owner_keys",
         ),
-        (
-            "attempt-receipt",
-            lambda record: record.__setitem__("local_pipeline_complete", False),
-            "True was expected",
-        ),
-        (
-            "verified-task",
-            lambda record: record.__setitem__("all_pass", False),
-            "True was expected",
-        ),
     ],
 )
 def test_closed_and_semantic_record_mutations_fail(
@@ -734,18 +634,6 @@ def test_closed_and_semantic_record_mutations_fail(
     mutate(base)
     with pytest.raises(orchestration.ContractValidationError, match=message):
         orchestration.validate_record(name, base)
-
-
-def test_execution_policy_digest_mutation_fails() -> None:
-    record = execution()
-    record["analysis"]["policy_sha256"] = ZERO_HASH
-    record["identity_envelope"]["analysis"]["policy_sha256"] = ZERO_HASH
-    envelope_hash = orchestration.canonical_sha256(record["identity_envelope"])
-    record["identity_envelope_sha256"] = envelope_hash
-    record["run_id"] = f"run-{envelope_hash}"
-
-    with pytest.raises(orchestration.ContractValidationError, match="policy_sha256"):
-        orchestration.validate_record("execution", record, profile=profile())
 
 
 @pytest.mark.parametrize(
@@ -761,9 +649,9 @@ def test_step09_threshold_boundaries_match_owner_semantics(
     field: str,
     value: int,
 ) -> None:
-    records = {"project": project(), "policy": policy()}
+    records = {"project": project()}
     for name, record in records.items():
-        target = record["analyses"]["primary"] if name == "project" else record
+        target = record["analyses"]["primary"]
         target[field] = value
         with pytest.raises(orchestration.ContractValidationError, match=field):
             orchestration.validate_record(name, record)
@@ -847,7 +735,7 @@ def test_successful_task_records_bind_all_three_commands() -> None:
         orchestration.validate_record("task-attempt", task_attempt)
 
     verified = records["verified-task"]
-    verified["commands"].pop("semantic_all_pass")
+    verified.pop("task_attempt_record")
     with pytest.raises(orchestration.ContractValidationError, match="required"):
         orchestration.validate_record("verified-task", verified)
 
@@ -862,6 +750,8 @@ def test_task_attempt_distinguishes_preentry_failure_from_started_work() -> None
     preentry.update(
         status="failed",
         task_start_record=None,
+        inputs=[],
+        outputs=[],
         producer=None,
         validator=None,
         semantic_all_pass=None,
@@ -917,26 +807,8 @@ def test_attempt_receipt_terminal_semantics_and_unique_scope_references() -> Non
         status="failed",
         snakemake_exit_code=0,
         message="zero exit with incomplete task state",
-        local_pipeline_complete=False,
     )
     with pytest.raises(orchestration.ContractValidationError, match="every task start"):
-        orchestration.validate_record("attempt-receipt", receipt)
-
-    receipt = lifecycle_records()["attempt-receipt"]
-    receipt["reporting_completion_records"]["html_report"]["verified"] = None
-    assert not orchestration.schema_validator("attempt-receipt").is_valid(receipt)
-    assert orchestration.schema_errors("attempt-receipt", receipt) == (
-        "$.reporting_completion_records.html_report.verified: None is not of type 'object'",
-    )
-    receipt.update(
-        status="failed",
-        snakemake_exit_code=0,
-        message="zero exit without complete state",
-        local_pipeline_complete=False,
-    )
-    with pytest.raises(
-        orchestration.ContractValidationError, match="incomplete html_report"
-    ):
         orchestration.validate_record("attempt-receipt", receipt)
 
     receipt = lifecycle_records()["attempt-receipt"]
@@ -945,7 +817,6 @@ def test_attempt_receipt_terminal_semantics_and_unique_scope_references() -> Non
         snakemake_exit_code=None,
         blockers=[],
         message="blocked without declared facts",
-        local_pipeline_complete=False,
     )
     with pytest.raises(orchestration.ContractValidationError, match="at least one"):
         orchestration.validate_record("attempt-receipt", receipt)
@@ -956,7 +827,6 @@ def test_attempt_receipt_terminal_semantics_and_unique_scope_references() -> Non
         snakemake_exit_code=0,
         blockers=["ambiguous residue"],
         message="not clean",
-        local_pipeline_complete=False,
     )
     with pytest.raises(orchestration.ContractValidationError, match="Only blocked"):
         orchestration.validate_record("attempt-receipt", receipt)
@@ -964,9 +834,6 @@ def test_attempt_receipt_terminal_semantics_and_unique_scope_references() -> Non
 
 def test_attempt_receipt_v2_closes_science_without_reporting_fields() -> None:
     receipt = lifecycle_records()["attempt-receipt"]
-    receipt["schema_version"] = "emrys.attempt-receipt.v2"
-    receipt.pop("reporting_completion_records")
-    receipt.pop("local_pipeline_complete")
 
     validator = orchestration.schema_validator("attempt-receipt")
     assert validator.is_valid(receipt)
@@ -983,30 +850,38 @@ def test_attempt_receipt_v2_closes_science_without_reporting_fields() -> None:
             orchestration.validate_record("attempt-receipt", incompatible)
 
 
-@pytest.mark.parametrize("version", ("v1", "v2"))
 @pytest.mark.parametrize(
     ("field", "value", "diagnostic"),
     (
         ("status", "unknown", "$.status: 'unknown' is not one of"),
         ("finished_at", 0, "$.finished_at: 0 is not of type 'string'"),
-        ("attempt_record", {"path": "attempt.json", "sha256": "bad"}, "$.attempt_record.sha256:"),
-        ("schema_version", "emrys.attempt-receipt.v99", "$.schema_version: 'emrys.attempt-receipt.v1' was expected"),
+        (
+            "attempt_record",
+            {"path": "attempt.json", "sha256": "bad"},
+            "$.attempt_record.sha256:",
+        ),
+        (
+            "schema_version",
+            "emrys.attempt-receipt.v99",
+            "$.schema_version: 'emrys.attempt-receipt.v2' was expected",
+        ),
     ),
 )
 def test_attempt_receipt_public_validator_preserves_field_diagnostics(
-    version: str, field: str, value: Any, diagnostic: str,
+    field: str,
+    value: Any,
+    diagnostic: str,
 ) -> None:
     receipt = lifecycle_records()["attempt-receipt"]
-    receipt["schema_version"] = f"emrys.attempt-receipt.{version}"
-    if version == "v2":
-        receipt.pop("reporting_completion_records")
-        receipt.pop("local_pipeline_complete")
     validator = orchestration.schema_validator("attempt-receipt")
     assert validator.is_valid(receipt)
     receipt[field] = value
 
     assert not validator.is_valid(receipt)
-    assert any(error.startswith(diagnostic) for error in orchestration.schema_errors("attempt-receipt", receipt))
+    assert any(
+        error.startswith(diagnostic)
+        for error in orchestration.schema_errors("attempt-receipt", receipt)
+    )
     with pytest.raises(orchestration.ContractValidationError):
         orchestration.validate_record("attempt-receipt", receipt)
 
@@ -1019,12 +894,55 @@ def test_attempt_receipt_public_validator_rejects_missing_version_and_nonobjects
     assert orchestration.schema_errors("attempt-receipt", record)
 
 
-def test_workflow_attempt_requires_clean_checkout_and_named_tools() -> None:
+def test_workflow_attempt_closes_inline_task_definitions() -> None:
     attempt = lifecycle_records()["workflow-attempt"]
-    attempt["source_checkout"]["clean"] = False
-    with pytest.raises(
-        orchestration.ContractValidationError, match="True was expected"
+    definition = {
+        "scope_type": "sample",
+        "task_attempt_id": TASK_ATTEMPT_ID,
+        "owner_run_token": "owner-task-1",
+        "producer_argv": ["scientific-worker", "--label", "label with spaces"],
+        "validator_argv": ["scientific-validator"],
+        "inputs": [{"role": "reads", "path": "/data/reads.fastq"}],
+        "outputs": [
+            {
+                "role": "bam",
+                "path": "/results/sample.bam",
+                "working_path": "/results/.work/sample.bam",
+            }
+        ],
+        "validation_report_path": "/results/validation.json",
+        "publication": {
+            "locks": ["/results/.sample.lock"],
+            "forbidden_paths": ["/results/.sample.*"],
+            "output_directory": None,
+            "input_directories": [],
+        },
+    }
+    attempt["tasks"] = {"star_alignment": {"EV-1": definition}}
+    assert not orchestration.schema_errors("workflow-attempt", attempt)
+    orchestration.validate_record("workflow-attempt", attempt)
+    for invalid in (
+        {},
+        {"bogus": 1},
+        {**definition, "bogus": 1},
+        {key: value for key, value in definition.items() if key != "inputs"},
+        {**definition, "producer_argv": []},
+        {**definition, "publication": []},
     ):
+        attempt["tasks"]["star_alignment"]["EV-1"] = invalid
+        assert orchestration.schema_errors("workflow-attempt", attempt)
+        with pytest.raises(orchestration.ContractValidationError):
+            orchestration.validate_record("workflow-attempt", attempt)
+    attempt["tasks"]["star_alignment"]["EV-1"] = {
+        "workflow_attempt_record": record_reference("attempts/original/attempt.json")
+    }
+    orchestration.validate_record("workflow-attempt", attempt)
+
+
+def test_workflow_attempt_requires_package_identity_and_named_tools() -> None:
+    attempt = lifecycle_records()["workflow-attempt"]
+    attempt["installed_package"]["content_sha256"] = "not-a-sha256"
+    with pytest.raises(orchestration.ContractValidationError, match="does not match"):
         orchestration.validate_record("workflow-attempt", attempt)
 
     attempt = lifecycle_records()["workflow-attempt"]
@@ -1171,50 +1089,6 @@ def test_attempt_ids_bind_utc_context_and_128_random_bits() -> None:
         orchestration.validate_record("task-attempt", task)
 
 
-def test_execution_identity_digest_run_id_and_envelope_are_enforced() -> None:
-    record = execution()
-    record["identity_envelope_sha256"] = ZERO_HASH
-    with pytest.raises(
-        orchestration.ContractValidationError, match="canonical content"
-    ):
-        orchestration.validate_record("execution", record, profile=profile())
-
-    record = execution()
-    record["run_id"] = f"run-{ZERO_HASH}"
-    with pytest.raises(orchestration.ContractValidationError, match="run_id"):
-        orchestration.validate_record("execution", record, profile=profile())
-
-    record = execution()
-    record["samples"]["rows"].reverse()
-    with pytest.raises(
-        orchestration.ContractValidationError, match="identity_envelope"
-    ):
-        orchestration.validate_record("execution", record, profile=profile())
-
-
-def test_reporting_projection_is_contract_relative_and_workspace_independent() -> None:
-    record = execution()
-    record["reporting_projection"]["reference_contract"]["path"] = (
-        "/workspace/contract/reference_contract.json"
-    )
-    with pytest.raises(
-        orchestration.ContractValidationError,
-        match="reference_contract.json",
-    ):
-        orchestration.validate_record("execution", record, profile=profile())
-
-
-def test_execution_requires_profile_and_complete_projection_match() -> None:
-    record = execution()
-    with pytest.raises(orchestration.ContractValidationError, match="exact profile"):
-        orchestration.validate_record("execution", record)
-
-    record = execution()
-    record["reporting_projection"]["reporting_run_contract"]["sha256"] = ZERO_HASH
-    with pytest.raises(orchestration.ContractValidationError, match="projection"):
-        orchestration.validate_record("execution", record, profile=profile())
-
-
 @pytest.mark.parametrize(
     ("case", "message"),
     (
@@ -1246,7 +1120,12 @@ def test_artifact_inventory_rejects_invalid_projection(
         template["scope_type"] = "analysis"
 
     with pytest.raises(orchestration.ContractValidationError, match=message):
-        artifact_inventory.project_rows(execution(), candidate)
+        source = execution()
+        artifact_inventory.project_rows(
+            source,
+            candidate,
+            application_model.analysis_revision_from_execution_fields(source),
+        )
 
 
 def test_strict_json_loader_rejects_duplicate_keys_and_non_object(

@@ -7,12 +7,8 @@ surface.
 
 ## Responsibility
 
-Construct a STAR genome index from one reference FASTA and its matching GTF
-annotation, then allow that index to be checked without modifying the native
-reference or STAR outputs.
-
-The producer consumes already materialized references. Reference materialization
-is outside this owner.
+The [README](README.md) explains index construction and use. References must
+already exist; this owner does not materialize or select them.
 
 ## Execution dependencies
 
@@ -21,10 +17,6 @@ stage does not consume BED12, FASTA sidecars, reads, or outputs from another
 computational stage. BED12 and FASTA-sidecar construction may run in parallel
 from the same materialized references. STAR alignment may run after the STAR
 index is complete and receives the index through its explicit input.
-
-STAR-index, BED12, and FASTA-sidecar construction can branch from their shared
-materialized references. Historical numeric order records provenance; data
-dependencies define execution.
 
 ## Inputs
 
@@ -63,23 +55,16 @@ transcriptInfo.tab
 STAR may produce additional files. This list is the currently protected
 minimum, not a declaration that unrelated files are invalid.
 
-## Current execution surfaces
+## Scientific worker
 
-[`step_00a_build_star_index.sh`](step_00a_build_star_index.sh) is the public
-producer. It:
+[`step_00a_build_star_index.sh`](step_00a_build_star_index.sh) is an internal worker of the
+[Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
-- accepts explicit materialized FASTA, GTF, index, thread, overhang, suffix-array length, and STAR
-  executable inputs;
-- is dry-run by default and requires `--execute` to mutate;
-- writes the complete index into an owner-token sibling staging directory;
-- holds a create-exclusive owner lock across generation and publication;
-- requires all 15 declared members, publishes every staged regular member, and
-  requires exact final/staged membership plus inode ownership before commit;
-- reserves the absent final directory create-exclusively and refuses every
-  existing or late-arriving final rather than replacing or merging it; and
-- removes only pre-publication owned staging after controlled failure or a
-  trapped signal. Once final publication starts, failure preserves the final,
-  lock, and staging residue as a blocker rather than risking foreign bytes.
+The worker receives explicit FASTA, GTF, STAR, thread, overhang, and
+suffix-array parameters. `--index-dir` names the runner-created staging
+directory. It runs STAR genome generation, requires the 15 declared members,
+and rejects non-regular generated members. The runner carries the complete
+index directory, including additional native STAR files, to the final location.
 
 ## Validation interface
 

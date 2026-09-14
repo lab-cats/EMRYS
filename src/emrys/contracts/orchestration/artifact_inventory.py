@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 from emrys.contracts.artifacts import api as artifact_contracts
@@ -14,40 +15,88 @@ from emrys.contracts.orchestration.application_model import (
 )
 
 
-def report_output_root(run_root: Path, profile: Mapping[str, Any]) -> Path:
-    """Select the report root bound to the admitted profile's artifact layout."""
+_PROCESSING_PRODUCERS = {
+    "00a": Path("stages/star_index/step_00a_build_star_index.sh"),
+    "00b": Path("stages/gtf_to_bed12/converter.py"),
+    "00c": Path("stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"),
+    "01": Path("stages/star_alignment/step_01_star_align.sh"),
+    "02": Path("stages/canonical_bam/step_02_sort_index_bam.sh"),
+    "02b": Path("evidence/canonical_bam_qc/step_02b_bam_qc.sh"),
+    "03": Path(
+        "evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"
+    ),
+    "04": Path("stages/duplicate_marking/step_04_mark_duplicates.sh"),
+    "05": Path("stages/split_n_cigar/step_05_split_n_cigar_reads.sh"),
+    "06": Path("stages/mechanical_orientation/producer.py"),
+    "07": Path("stages/partitioned_cohort_mpileup/producer.py"),
+    "08": Path("stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"),
+}
 
-    if any(
-        str(template["source_path_template"]).startswith("products/native/")
-        for template in profile["artifact_templates"]
-    ):
-        return run_root / "results" / "reports"
-    return run_root / "products" / "report"
+
+def _processing_profile(source_root: Path) -> Mapping[str, Any]:
+    return orchestration_contracts.load_record(
+        source_root / "workflow/contracts/local_cmh_v2.json", "profile"
+    )
+
+
+def processing_tasks(source_root: Path) -> tuple[Mapping[str, Any], ...]:
+    """Read fixed processing tasks from the admitted installed package."""
+    profile = _processing_profile(source_root)
+    return tuple(
+        MappingProxyType(
+            {
+                **task,
+                "producer_path": _PROCESSING_PRODUCERS[task["step_id"]],
+                "predecessors": tuple(
+                    edge["producer"]
+                    for edge in profile["direct_edges"]
+                    if edge["consumer"] == task["machine_key"]
+                ),
+            }
+        )
+        for task in profile["owner_tasks"]
+    )
+
+
+def processing_artifact_templates(source_root: Path) -> tuple[Mapping[str, Any], ...]:
+    """Read base artifact ownership independently of a supplied Run profile."""
+    return tuple(
+        MappingProxyType(template)
+        for template in _processing_profile(source_root)["artifact_templates"]
+    )
+
+
+def validate_processing_graph(profile: Mapping[str, Any], source_root: Path) -> None:
+    """New Runs must describe the processing dependencies the backend executes."""
+    tasks = processing_tasks(source_root)
+    owners = {task["machine_key"] for task in tasks}
+    expected = {
+        (producer, task["machine_key"])
+        for task in tasks
+        for producer in task["predecessors"]
+    }
+    observed = {
+        (edge["producer"], edge["consumer"])
+        for edge in profile["direct_edges"]
+        if edge["consumer"] in owners
+    }
+    if observed != expected:
+        raise orchestration_contracts.ContractValidationError(
+            "Processing dependencies do not match the supported processing graph"
+        )
 
 
 def _template_contexts(
     selector: str,
     source: Mapping[str, Any],
-    analysis: AnalysisRevision | None,
+    analysis: AnalysisRevision,
 ) -> tuple[dict[str, str], ...]:
-    reference_id = (
-        analysis.scope_id("reference")
-        if analysis is not None
-        else str(source["reference"]["reference_id"])
-    )
+    reference_id = analysis.scope_id("reference")
     reference_fasta_path = str(source["reference"]["fasta"]["path"])
     reference_path = Path(reference_fasta_path)
     reference_dict_path = str(reference_path.with_name(f"{reference_path.stem}.dict"))
-    cohort_id = (
-        analysis.scope_id("cohort")
-        if analysis is not None
-        else str(source["analysis"]["cohort_id"])
-    )
-    analysis_id = (
-        analysis.scope_id("analysis")
-        if analysis is not None
-        else str(source["analysis"]["primary_analysis_id"])
-    )
+    cohort_id = analysis.scope_id("cohort")
+    analysis_id = analysis.scope_id("analysis")
     shared = {
         "run_id": str(source["run_id"]),
         "reference_id": reference_id,
@@ -72,10 +121,8 @@ def _template_contexts(
             {
                 **shared,
                 "partition_id": str(row["partition_id"]),
-                "scope_id": (
-                    analysis.scope_id("cohort_partition", str(row["partition_id"]))
-                    if analysis is not None
-                    else f"{cohort_id}__{row['partition_id']}"
+                "scope_id": analysis.scope_id(
+                    "cohort_partition", str(row["partition_id"])
                 ),
             }
             for row in source["partitions"]["rows"]
@@ -145,7 +192,7 @@ def _validate_rows(rows: Sequence[Mapping[str, str]]) -> None:
 def project_rows(
     source: Mapping[str, Any],
     profile: Mapping[str, Any],
-    analysis: AnalysisRevision | None = None,
+    analysis: AnalysisRevision,
     processing_source_root: Path | None = None,
     processing_artifact_paths: Mapping[tuple[str, str, str], Path] | None = None,
 ) -> tuple[dict[str, str], ...]:

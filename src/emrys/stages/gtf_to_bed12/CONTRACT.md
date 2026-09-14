@@ -2,41 +2,31 @@
 
 This directory owns historical Step `00b`; the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
-identity and alias. The grouped routes below are its public Python surfaces.
+identity and alias.
 
 ## Responsibility
 
-Convert transcript exon models from one GTF annotation into deterministic
-BED12 records suitable for RSeQC strandedness and orientation inference, then
-allow the final BED12 to be checked against its source GTF without modifying
-either input.
+The [README](README.md) explains conversion and use. The converter produces
+BED12; validation compares it with the GTF without modifying either file.
 
 ## Execution dependencies
 
-The hard data prerequisite is one materialized GTF. Reference materialization
-is outside this owner; this stage does not consume the STAR index produced by
-historical Step `00a`.
+The GTF must already exist. This owner neither materializes references nor
+consumes the Step `00a` STAR index.
 
-If the GTF is already materialized, BED12 conversion can run independently of
-STAR-index construction and FASTA-sidecar construction. Its final BED12 must
+With the GTF available, conversion can run independently of STAR-index and
+FASTA-sidecar construction. Its final BED12 must
 exist before historical Step `03` runs RSeQC `infer_experiment.py`. It is not a
 prerequisite for STAR alignment or the canonical-BAM stages.
 
-Historical numeric order records the current workflow narrative. The data
-dependencies above, not the numeric identifier, define required execution.
-
 ## Inputs
 
-The converter accepts:
-
-- one GTF annotation path;
-- the selected GTF feature type, defaulting to `exon`;
-- the transcript-name attribute, defaulting to `transcript_id`; and
-- the gene-name attribute, defaulting to `gene_id`.
+The converter reads one GTF annotation. It uses `exon` rows, groups them by
+`transcript_id`, and reads the optional `gene_id` attribute for output names.
 
 Relevant rows must have nine tab-delimited GTF fields, valid one-based closed
-coordinates, a strand in `+`, `-`, or `.`, and the selected transcript
-attribute. Malformed or incomplete rows are warned about and skipped. A
+coordinates, a strand in `+`, `-`, or `.`, and a `transcript_id` attribute.
+Malformed or incomplete rows are warned about and skipped. A
 transcript with conflicting chromosome or strand observations is skipped as a
 whole. Conversion fails when no valid transcript records remain.
 
@@ -52,25 +42,14 @@ The converter writes one BED12 row per valid transcript. It:
   protected fixed values; and
 - orders records by chromosome, start, end, and name.
 
-Deterministic ordering is owned by the converter.
+## Execution
 
-## Current execution surfaces
-
-`emrys convert gtf-to-bed12` is the public conversion route,
-implemented by [`converter.py`](converter.py). It accepts explicit input/output
-and GTF-selection arguments. It renders complete deterministic BED12 bytes in
-memory and is dry-run by default. `--execute` acquires a create-exclusive lock,
-writes and fsyncs one owner-token staging file, publishes to an absent final
-path through an atomic hard link, retains that staged inode as the final's
-ownership anchor while removing the lock, and removes the anchor only after no
-fallible cleanup remains. Rollback deletes a final only when it is still the
-same regular-file inode as that anchor. A cleanup failure or foreign replacement
-fails closed with the remaining lock and/or staging residue. An existing
-output, lock, or staging residue blocks the operation and is never overwritten
-automatically. `--run-token` lets an orchestrator supply the safe identifier
-used by the lock and staging paths; without it, the producer generates a
-private random token. An unhandled interruption can leave both lock and staging
-evidence; a subsequent invocation preserves and reports that ambiguous state.
+A Run invokes the converter's private worker entry point with one exact working
+BED12 path. The worker normalizes the GTF, renders deterministic BED12 bytes,
+and writes them to that absent working file. Validation and Project reference
+admission reuse the same normalization function.
+The [runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution)
+owns this task's working space, publication, logs, and recovery.
 
 ## Validation interface
 

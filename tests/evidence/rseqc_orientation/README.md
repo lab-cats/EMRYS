@@ -1,14 +1,9 @@
-# RSeQC orientation-evidence tests
+# RSeQC orientation tests
 
-This directory protects the Step 03 producer and validator through shell cases
-and Python report checks. The
-[production owner](../../../src/emrys/evidence/rseqc_orientation/README.md)
-defines supported commands, publication hazards, and the mechanical-evidence
-boundary.
+Native RSeQC arguments, empty or failed output, and grouped fraction validation are covered. Fixture fractions do not establish transcript strand, sense/antisense assignment, or an approved manifest policy.
 
-Python tests invoke the grouped `python -I -m emrys validate rseqc-orientation`
-route; the owner's `validator.py` is private.
-
-Mocked or fixture fractions do not establish real RSeQC execution, transcript
-strand, sense/antisense assignment, approved manifest policy, scheduler
-behavior, or cluster evidence.
+Shell cases invoke the internal worker with runner-style scratch and staging.
+The [common runner suite](../../orchestration/run_coordinator/test_task.py) owns
+publication, input stability, interruption, and recovery checks. Python
+validator cases retain the public grouped command. The
+[shared evidence limits](../../README.md#evidence-limits) apply.

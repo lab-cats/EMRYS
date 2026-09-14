@@ -58,39 +58,10 @@ main <- function() {
         minimum_inclusive = FALSE, maximum_inclusive = FALSE
     )
 
-    sample_hash <- validate_hash(
-        "sample_manifest_sha256", arguments[["sample-manifest-sha256"]]
-    )
-    partition_hash <- validate_hash(
-        "partition_manifest_sha256",
-        arguments[["partition-manifest-sha256"]]
-    )
-    sites_hash <- validate_hash(
-        "step08_sites_sha256", arguments[["step08-sites-sha256"]]
-    )
-    inputs_hash <- validate_hash(
-        "step08_inputs_sha256", arguments[["step08-inputs-sha256"]]
-    )
-    input_paths <- c(
-        arguments[["sample-manifest"]], arguments[["partition-manifest"]],
-        arguments[["step08-sites"]], arguments[["step08-inputs"]]
-    )
-    invisible(lapply(seq_along(input_paths), function(index) {
-        validate_nonempty_file("Step 09 input", input_paths[[index]])
-    }))
-    require_matching_hash(
-        "Sample manifest", arguments[["sample-manifest"]], sample_hash
-    )
-    require_matching_hash(
-        "Partition manifest", arguments[["partition-manifest"]],
-        partition_hash
-    )
-    require_matching_hash(
-        "Step 08 sites", arguments[["step08-sites"]], sites_hash
-    )
-    require_matching_hash(
-        "Step 08 inputs", arguments[["step08-inputs"]], inputs_hash
-    )
+    sample_hash <- sha256_file(arguments[["sample-manifest"]])
+    partition_hash <- sha256_file(arguments[["partition-manifest"]])
+    sites_hash <- sha256_file(arguments[["step08-sites"]])
+    inputs_hash <- sha256_file(arguments[["step08-inputs"]])
 
     manifest_contract <- read_sample_manifest(
         arguments[["sample-manifest"]],

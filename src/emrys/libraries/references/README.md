@@ -1,12 +1,10 @@
-# Reference-format libraries
+# Reference parsers
 
-This package contains neutral reference-format parsers. Its current
-[`contigs.py`](contigs.py) module reads ordered FASTA, FAI, and sequence-dictionary
-contig/length identities without selecting a reference, repairing files, or
-publishing evidence.
+[`contigs.py`](contigs.py) reads ordered contig names and lengths from FASTA,
+FAI, and sequence dictionaries. It selects or repairs no reference and publishes
+no evidence. Reference provenance and stage validators decide whether the
+parsed references agree.
 
-Reference provenance and the applicable stage validators retain agreement and
-evidence policy. Direct protection lives in
-[`test_reference_contigs.py`](../../../../tests/libraries/test_reference_contigs.py);
-approved consumers are bounded by
-[`SOURCE_TOPOLOGY.md`](../../contracts/SOURCE_TOPOLOGY.md#approved-shared-seams).
+[Tests](../../../../tests/libraries/test_reference_contigs.py) check parsing;
+[SOURCE_TOPOLOGY](../../contracts/SOURCE_TOPOLOGY.md#approved-shared-seams) lists
+permitted consumers.

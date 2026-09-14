@@ -186,32 +186,6 @@ def run_validator(
     )
 
 
-def test_dry_run_is_side_effect_free(tmp_path: Path) -> None:
-    evidence = build_validation_fixture(tmp_path)
-
-    result = run_validator(evidence)
-
-    assert result.returncode == 0
-    assert result.stdout == EXPECTED_DRY_STDOUT
-    assert result.stderr == b""
-    assert not evidence.output.exists()
-
-
-def test_execute_publishes_five_passes(tmp_path: Path) -> None:
-    evidence = build_validation_fixture(tmp_path)
-    result = run_validator(evidence, "--execute")
-
-    assert result.returncode == 0, result.stderr
-    assert result.stdout == EXPECTED_PASS_REPORT + (
-        f"Published Step 07 validation report: {evidence.output}\n".encode()
-    )
-    assert result.stderr == b""
-    assert evidence.output.read_bytes() == EXPECTED_PASS_REPORT
-    rows = report_rows(evidence.output)
-    assert_exact_check_roster(rows, "07")
-    assert {row["status"] for row in rows} == {"pass"}
-
-
 def test_explicit_report_scope_preserves_scientific_validation(tmp_path: Path) -> None:
     evidence = build_validation_fixture(tmp_path)
     scope_id = "scope-cohort-partition-content-bound"
@@ -258,9 +232,10 @@ def test_different_vcf_file_fails_physical_identity(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     rows = report_rows(evidence.output)
-    assert next(
-        row["status"] for row in rows if row["check_id"] == "vcf_record_counts"
-    ) == "fail"
+    assert (
+        next(row["status"] for row in rows if row["check_id"] == "vcf_record_counts")
+        == "fail"
+    )
 
 
 def test_arbitrary_cwd_dry_run_execute_and_repeat_are_byte_identical(
@@ -517,12 +492,3 @@ def test_missing_input_and_wrong_output_fail_closed(tmp_path: Path) -> None:
         output=evidence.output.parent / "wrong.tsv",
     )
     assert run_validator(wrong_output, "--execute").returncode == 2
-
-
-def test_foreign_lock_is_preserved(tmp_path: Path) -> None:
-    evidence = build_validation_fixture(tmp_path)
-    lock = evidence.output.parent / f".{evidence.output.name}.lock"
-    lock.write_text("foreign\n", encoding="utf-8")
-
-    assert run_validator(evidence, "--execute").returncode == 2
-    assert lock.read_text(encoding="utf-8") == "foreign\n"

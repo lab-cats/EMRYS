@@ -177,7 +177,7 @@
       "line_rate": "0.900000"
     },
     "required_subprocess_coverage": {
-      "emrys.convert.gtf_to_bed12": [
+      "emrys.worker.gtf_to_bed12": [
         "src/emrys/stages/gtf_to_bed12/converter.py"
       ],
       "emrys.validate.sample_manifest": [
@@ -189,7 +189,7 @@
   "subprocess_routes": [
     {
       "covered_lines": 268,
-      "name": "emrys.convert.gtf_to_bed12",
+      "name": "emrys.worker.gtf_to_bed12",
       "paths": [
         "src/emrys/stages/gtf_to_bed12/converter.py"
       ]

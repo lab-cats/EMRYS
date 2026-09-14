@@ -14,8 +14,6 @@ import zipfile
 from email.parser import Parser
 from pathlib import Path
 
-from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_DEPENDENCIES = {
     "coolname",
@@ -27,6 +25,7 @@ RUNTIME_DEPENDENCIES = {
     "pyyaml",
     "referencing",
     "simple-term-menu",
+    "snakemake",
 }
 RUNTIME_REQUIREMENT_SPECIFIERS = {
     "coolname": "==4.1.0",
@@ -38,30 +37,34 @@ RUNTIME_REQUIREMENT_SPECIFIERS = {
     "pyyaml": "==6.0.3",
     "referencing": ">=0.28.4",
     "simple-term-menu": "==1.6.6",
+    "snakemake": "==9.25.1",
 }
 RESOURCE_PATHS = (
+    "emrys/.Rprofile",
+    "emrys/renv.lock",
+    "emrys/renv/activate.R",
+    "emrys/renv/settings.json",
+    "emrys/workflow/Snakefile",
+    "emrys/workflow/contracts/local_cmh_v2.json",
+    "emrys/workflow/profiles/local/profile.v9+.yaml",
+    "emrys/resources/runtime/restore_r_environment.R",
+    "emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R",
+    "emrys/stages/star_alignment/step_01_star_align.sh",
     "emrys/contracts/schemas/artifacts/v2/artifact_record.schema.json",
     "emrys/contracts/schemas/artifacts/v1/common.schema.json",
-    "emrys/contracts/schemas/artifacts/v2/run_summary.schema.json",
-    "emrys/contracts/schemas/artifacts/v3/report_receipt.schema.json",
     "emrys/contracts/schemas/artifacts/v3/run_summary.schema.json",
-    "emrys/contracts/schemas/artifacts/v4/report_receipt.schema.json",
     "emrys/contracts/schemas/artifacts/v5/report_receipt.schema.json",
     "emrys/contracts/schemas/orchestration/v1/project.schema.json",
     "emrys/contracts/schemas/orchestration/v2/profile.schema.json",
-    "emrys/contracts/schemas/orchestration/v2/request.schema.json",
-    "emrys/contracts/schemas/orchestration/v3/request.schema.json",
     "emrys/contracts/schemas/orchestration/v3/resource_config.schema.json",
     "emrys/contracts/schemas/orchestration/v3/execution_profile.schema.json",
     "emrys/orchestration/run_coordinator/resources/default_execution.yaml",
     "emrys/resources/runtime/runtime_policy.tsv",
     "emrys/resources/runtime/pixi.toml",
     "emrys/resources/runtime/pixi.lock",
-    "emrys/contracts/schemas/orchestration/v1/execution.schema.json",
     "emrys/contracts/schemas/orchestration/v1/reference.schema.json",
     "emrys/contracts/schemas/orchestration/v1/policy.schema.json",
     "emrys/contracts/schemas/orchestration/v1/workflow_attempt.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/attempt_receipt.schema.json",
     "emrys/contracts/schemas/orchestration/v2/attempt_receipt.schema.json",
     "emrys/contracts/schemas/orchestration/v1/run_lock.schema.json",
     "emrys/contracts/schemas/orchestration/v1/task_start.schema.json",
@@ -131,7 +134,14 @@ def uv_executable() -> str:
 def build_wheel(tmp_path: Path) -> Path:
     project = tmp_path / "project"
     project.mkdir()
-    for name in ("pyproject.toml", "README.md", "LICENSE", "NOTICE"):
+    for name in (
+        "pyproject.toml",
+        "setup.py",
+        "uv.lock",
+        "README.md",
+        "LICENSE",
+        "NOTICE",
+    ):
         shutil.copy2(REPO_ROOT / name, project / name)
     shutil.copytree(REPO_ROOT / "LICENSES", project / "LICENSES")
     shutil.copytree(
@@ -145,7 +155,6 @@ def build_wheel(tmp_path: Path) -> Path:
         [
             uv_executable(),
             "build",
-            "--wheel",
             "--force-pep517",
             "--offline",
             "--no-python-downloads",
@@ -156,6 +165,8 @@ def build_wheel(tmp_path: Path) -> Path:
         cwd=tmp_path,
     )
     require_success(result)
+    # The default uv build produces an sdist, then a wheel from that sdist.
+    assert len(list(wheel_directory.glob("*.tar.gz"))) == 1
     wheels = list(wheel_directory.glob("*.whl"))
     assert len(wheels) == 1
     return wheels[0]
@@ -324,15 +335,6 @@ def installed_probe(environment_python: Path, cwd: Path) -> dict[str, object]:
 
 
 def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -> None:
-    fixture = FIXTURE.build_fixture(tmp_path / "report-fixture")
-    FIXTURE.publish_run_summary(fixture)
-    artifact_source_root = fixture.root
-    summary = json.loads(fixture.summary_json_path.read_text(encoding="utf-8"))
-    summary["provenance"]["git_commit"] = "upstream-summary-commit"
-    fixture.summary_json_path.write_text(
-        json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
     wheel = build_wheel(tmp_path)
     inspect_wheel(wheel)
     environment_python, console = install_locked_wheel(wheel, tmp_path)
@@ -371,7 +373,9 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         hostile_pythonpath=True,
     )
     require_success(producer_help)
-    assert "Produce one create-absent Step 06" in producer_help.stdout
+    assert "--input-bam" in producer_help.stdout
+    assert "--output-dir" in producer_help.stdout
+    assert "--execute" not in producer_help.stdout
     for command, usage in (
         (("init", "--help"), "usage: emrys init"),
         (("init", "manifests", "--help"), "usage: emrys init manifests"),
@@ -435,20 +439,42 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     report_output_root = arbitrary_cwd / "reports"
     render_program = """
 import argparse
+import json
 import sys
 from pathlib import Path
+from emrys.libraries.source_authority import PACKAGE_ROOT, admit_installed_package
 
-from emrys.reporting import report
+from emrys.reporting._run_report.context import prepare_context
 from emrys.reporting._run_report.publication import publish_report
+from emrys.orchestration.run_coordinator import onboarding, run_implementation
+from emrys.contracts.orchestration.artifact_inventory import processing_tasks
 
-context = report.prepare_report(argparse.Namespace(
-    source_checkout=Path(sys.argv[1]),
-    artifact_source_root=Path(sys.argv[2]),
-    run_summary=Path(sys.argv[3]),
-    output_root=Path(sys.argv[4]),
-))
-publish_report(context, report.default_publication_ops())
-print(context.output_receipt)
+assert onboarding.source_root() == PACKAGE_ROOT
+assert run_implementation.implementation_identity(PACKAGE_ROOT)
+assert run_implementation.backend_semantics_identity(PACKAGE_ROOT)
+assert all((PACKAGE_ROOT / task["producer_path"]).is_file() for task in processing_tasks(PACKAGE_ROOT))
+
+# Load shared fixture helpers without exposing the checkout's src directory.
+sys.path.insert(0, sys.argv[1])
+from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
+sys.path.pop(0)
+assert Path(FIXTURE.ARTIFACT_CONTEXT.__file__).is_relative_to(Path(sys.prefix))
+fixture = FIXTURE.build_fixture(Path(sys.argv[2]))
+
+context = prepare_context(argparse.Namespace(
+    package_root=PACKAGE_ROOT,
+    artifact_source_root=fixture.root,
+    run_summary=fixture.summary_json_path,
+    output_root=Path(sys.argv[3]),
+    analysis_policy=fixture.adapter_fixture.analysis_policy,
+), evidence_context=fixture.evidence_context)
+publish_report(context)
+print(json.dumps({
+    "run_id": fixture.run_id,
+    "artifact_source_root": str(fixture.root),
+    "receipt": str(context.output_receipt),
+    "installed_package": admit_installed_package().record,
+}))
 """
     rendered = run_command(
         [
@@ -459,21 +485,24 @@ print(context.output_receipt)
             "-c",
             render_program,
             str(REPO_ROOT),
-            str(artifact_source_root),
-            str(fixture.summary_json_path),
+            str(tmp_path / "report-fixture"),
             str(report_output_root),
         ],
         cwd=arbitrary_cwd,
         hostile_pythonpath=True,
     )
     require_success(rendered)
-    run_id = fixture.run_id
+    rendered_paths = json.loads(rendered.stdout.splitlines()[-1])
+    run_id = rendered_paths["run_id"]
+    artifact_source_root = Path(rendered_paths["artifact_source_root"])
     report_directory = report_output_root / run_id
-    assert str(report_directory / f"{run_id}.report_outputs.tsv") in rendered.stdout
+    assert (
+        str(report_directory / f"{run_id}.report_outputs.tsv")
+        == rendered_paths["receipt"]
+    )
     assert {path.name for path in report_directory.iterdir()} == {
         f"{run_id}.scientific_report.html",
         f"{run_id}.evidence_report.html",
-        f"{run_id}.run_summary.tsv",
         f"{run_id}.report_outputs.tsv",
     }
     assert "Jinja2" in (report_directory / f"{run_id}.report_outputs.tsv").read_text(
@@ -497,8 +526,12 @@ print(context.output_receipt)
     assert scientific_html.count("data:image/svg+xml;base64,") == 7
     for content in (scientific_html, evidence_html):
         assert f'href="{run_id}.scientific_report.html"' in content
-        assert f'href="{run_id}.evidence_report.html#analysis-sources-section"' in content
-        assert f'href="{run_id}.evidence_report.html#attempt-lineage-section"' in content
+        assert (
+            f'href="{run_id}.evidence_report.html#analysis-sources-section"' in content
+        )
+        assert (
+            f'href="{run_id}.evidence_report.html#execution-records-section"' in content
+        )
     assert "EMRYS evidence and operations report" in evidence_html
     assert "Matplotlib 3.11.1" in evidence_html
     assert "Logomaker 0.8.7" in evidence_html
@@ -510,24 +543,21 @@ print(context.output_receipt)
     receipt_values = {row["report_receipt_json"] for row in receipt_rows}
     assert len(receipt_values) == 1
     receipt = json.loads(receipt_values.pop())
-    checkout_commit = run_command(
-        ["git", "rev-parse", "--verify", "HEAD"],
-        cwd=REPO_ROOT,
-    )
-    require_success(checkout_commit)
     assert Path(receipt["input_run_summary"]["path"]).is_relative_to(
         artifact_source_root
     )
     assert not Path(receipt["input_run_summary"]["path"]).is_relative_to(REPO_ROOT)
-    assert receipt["provenance"]["git_commit"] in {
-        "local_build",
-        checkout_commit.stdout.strip(),
-    }
-    assert receipt["provenance"]["git_commit"] != "upstream-summary-commit"
-    wrong_checkout = run_command(
+    assert receipt["provenance"]["git_commit"] == "unavailable"
+    assert (
+        receipt["provenance"]["installed_package"]
+        == rendered_paths["installed_package"]
+    )
+    assert not Path(rendered_paths["installed_package"]["path"]).is_relative_to(
+        REPO_ROOT
+    )
+    from_checkout = run_command(
         [str(environment_python), "-I", "-m", "emrys", "--help"],
         cwd=REPO_ROOT,
         hostile_pythonpath=True,
     )
-    assert wrong_checkout.returncode == 2
-    assert "not the current checkout" in wrong_checkout.stderr
+    require_success(from_checkout)

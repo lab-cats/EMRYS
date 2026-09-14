@@ -1,12 +1,30 @@
 # Shared-library tests
 
-This directory owns direct tests for neutral helpers shared by multiple
-workflow owners, including validation reports and inputs, BAM and reference
-checks, executable resolution, shell file checks, and the neutral application
-logging foundation. The corresponding
-implementation domains are routed by the
-[library README](../../src/emrys/libraries/README.md).
+These tests cover validation reports and inputs, BAM and reference parsers,
+executable selection, shell file operations, and application logging. The
+[library index](../../src/emrys/libraries/README.md) points to their production
+implementations. Each worker tests its native computation; the Run task-runner suite tests
+shared publication and recovery.
 
-Consumer transaction and recovery suites remain responsible for their own
-end-to-end semantics. Passing a neutral-helper test does not extend the helper
-beyond its documented contract or promote scientific evidence.
+## Shell publication regression
+
+Earlier RSeQC, BAM QC, and duplicate-marking producers recorded each published
+file only after the link helper returned. Local production-script probes showed
+that TERM after linking, or replacement before the helper's inode check, could
+leave a final file while deleting its staging file and lock. Their shared
+shell cleanup has now retired with the standalone writers. The common
+[runner suite](../orchestration/run_coordinator/test_task.py) retains coverage
+for interruption after linking, a competing output, ownership loss, old
+residue, input mutation, and worker-group termination. The original shell
+characterization remains in
+[revision 88522d0a](https://github.com/lab-cats/EMRYS/tree/88522d0a/tests/libraries).
+
+## Validation recovery characterization
+
+`test_validation_report.py` demonstrates the
+[validation library's known limits](../../src/emrys/libraries/validation/README.md#known-limits)
+with local snapshots and injected filesystem failures. Its cases record changed
+bytes hidden by restored metadata, deletion of another process's newly created
+output, and predecessor bytes surviving failed restoration without a lock or
+recovery marker. These tests preserve observed defects; they do not approve
+that recovery behavior or establish cluster results.

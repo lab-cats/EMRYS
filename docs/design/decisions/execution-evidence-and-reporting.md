@@ -14,26 +14,17 @@ log nothing. Dry-run and execution use the same admitted values.
 
 ### Publish validated transactions
 
-Multi-file owners use declared destinations, owned locks, staging, stable-input
-rechecks, validation before publication, no-clobber behavior, bounded rollback,
-and a receipt or summary published last. Transaction completion says only that
-the declared transaction was admitted; it does not promote scientific meaning
-or unrelated evidence.
+Scientific producers own computation, output checks and provenance. The existing
+runner owns their execution and publication across reference, sample, cohort,
+and analysis tasks. Requiring the runner removes duplicated standalone lifecycles
+without introducing a manager hierarchy. The
+[scientific-worker contract](../../../src/emrys/orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution)
+owns staging, locks, publication order, rollback, retained evidence, and the
+independent validation gate.
 
-Preserve locks, backups, partials, and recovery markers whenever ownership or
-cleanup cannot be proved. Characterize unsafe states before correcting them.
-An observed defect is neither an approved contract nor evidence that unlike
-transaction implementations should share one abstraction.
-
-#### No-clobber rollback
-
-Steps 07–09 follow this rule when `--no-clobber` is selected. An output path
-that is already absent needs no cleanup. Remove a present output only if it
-still identifies the same file as this attempt's staging entry, proven by
-matching device and inode. A complete, unambiguous rollback removes owned
-staging and releases the lock so an ordinary rerun can proceed. If an output's
-ownership cannot be proved or removal fails, preserve the lock and remaining
-files for inspection.
+A new Run plan creates a new Run. Existing immutable plans retain their original
+interpretation and require their bound implementation for execution. A completed
+native publication does not imply task completion or promote scientific meaning.
 
 ### Separate placement from authority
 
@@ -103,6 +94,161 @@ availability are disclosed. Native scientific PDFs remain analysis artifacts,
 not alternate report formats. Published validation rows preserve their exact
 meaning and cannot promote runtime, site, scientific, or biological claims.
 
+### Fixed report-output consolidation
+
+Fixed report outputs have one ordered declaration in the receipt-contract owner.
+The declarations share one owner. Scientific identity is a separate responsibility:
+[`run_implementation.py`](../../../src/emrys/orchestration/run_coordinator/run_implementation.py)
+hashes whole files used by computation and scientific admission. Materialization
+binds that digest into the Execution Plan and Run; resume reconstructs the same
+binding. Shared headers, safe IDs, path rules, scope grouping, scientific evidence
+and immutable-record admission remain covered. Mixed owners cannot be excluded
+merely because reporting calls them.
+
+#### Scientific compatibility and reporting provenance
+
+Reporting source changes must not invalidate scientific work. The scientific
+fingerprint includes computation, scientific validation and shared admission;
+it excludes reporting-only artifact contracts and reporting ledger inspection. That
+inspection lives in the reporting boundary. A distribution release number is
+provenance, not a scientific module change. Exact module bytes, substantive
+module metadata, backend semantics and the complete Python lock remain bound.
+A dependency update can therefore still require a new Run; narrowing that lock
+requires a separate dependency audit.
+
+| Operation | Required behavior |
+|---|---|
+| Inspect current records | Admit original immutable Run, Attempt, task and lock evidence. Scientific Results and report status remain separate. |
+| Resume locally or through Slurm | Rebuild the same scientific Run and recheck its data, tools, resources and implementation. Each new Attempt records its actual installed package. Code cannot change during an Attempt. |
+| Generate missing reports | Require a successful complete scientific Attempt, identical scientific implementation and backend, and empty owned outputs. Record the actual reporting package and recheck it through publication. |
+| Reuse completed reports | Bind the original receipt through its verified ledger; recheck its recorded data inputs, outputs, HTML contracts and complete file rosters. Retain the original publisher attribution without invoking the current renderer. |
+
+The Run result manifest points once to the original scientific Run and Attempt
+by path and hash. Those immutable records retain package identity, commands,
+inputs, reused task origins and the Processing source chain. Reporting no longer
+reconstructs scientific implementation claims from today's installed files or
+repeats an implementation-status column for each artifact. The manifest's own
+provenance identifies its publisher; the HTML receipt identifies its reporter.
+The core reporter digest uses the already admitted full EMRYS package, covering
+the excluded report contract as well as templates and rendering code.
+
+New publication still compares deterministic output bytes and checks HTML safety
+and accessibility. The manifest binds both TSV table hashes. The HTML receipt also persists the
+reporting provider's complete
+additional data-input roster, including figure references. This replaces the
+need to rerun the renderer to rediscover those inputs during reuse. Template
+and stylesheet hashes remain original producer provenance; they are not data
+inputs checked against a newer installation.
+
+Current records use artifact entries v4, Run summaries v8 and report receipts v8.
+The [version policy](platform-direction.md#version-support) applies: no old-hash
+translation, record rewriting or historical-format reader is added. Existing
+data and evidence remain intact for ordinary tools or the originating software.
+All current reports use `results/reports/RUN_ID`. Publication still refuses
+existing or ambiguous output state and preserves locks and recovery evidence.
+
+#### Declaration owner and consumers
+
+The receipt contract owns the immutable `REPORT_OUTPUTS` tuple of output ID,
+kind, and suffix, exported through the artifact API. The
+[reporting output contract](../../../src/emrys/reporting/README.md#report-outputs)
+owns the exact roster and path order. The receipt remains outside that roster;
+the two HTML entries are displayed as HTML Results. The former report-level
+scope-status TSV is retired. Artifact-summary and QC TSVs retain their existing
+owners.
+
+Report receipts identify the reporting package and bind its inputs and outputs.
+They do not invent another Attempt identity or reserve empty truncation lists.
+Artifact issues carry their actual message and affected scope without empty
+attachment lists. Original scientific Run and Attempt records retain execution
+identity and provenance. Scientific receipt files remain ordinary declared task
+outputs; there is no separate task-receipt channel.
+
+Shared declarations do not merge validation or publication boundaries. Context
+preparation still owns named paths and snapshots; publication owns staged/final
+paths, input rechecks, and receipt-last order. Transaction validation owns
+retained roots, producer admission, version pairs, diagnostics, and output
+rechecks. The coordinator re-admits its displayed absolute paths. Retired
+single-HTML paths, upstream summary TSVs, media types, and template navigation
+have different purposes and retain their owners.
+
+#### Acceptance and stopping point
+
+Future changes must retain independent literal expectations for output order,
+IDs, kinds, basenames, current receipts, and error messages. Schema
+and test expectations must not be derived from the production tuple they check.
+Identity, runtime, original-provenance, retained-record admission, refusal, and recovery
+protections remain required at their existing boundaries.
+
+[Rendered goldens](../../../tests/contract_integration/independent_contract_goldens/test_independent_contract_goldens.py)
+can compare exact HTML bytes with fixed provenance inputs. Actual source commits
+and covered package hashes must still reflect the producing code. Preserve
+standalone `local_build` attribution; never falsify provenance to claim byte
+identity across revisions. Test policy and evidence levels remain in the
+[test baseline](../TEST_BASELINE.md).
+
+### Reporting lifecycle compression
+
+Private reporting publishers create absent outputs because that is the behavior
+selected by public Run reporting. A complete bundle is revalidated and reused;
+a prepared predecessor cannot authorize overwriting its files. Stored records must
+use the current format. The
+[publication contract](../../../src/emrys/reporting/README.md#publication-and-recovery)
+owns current ordering, file ownership, cleanup, and recovery behavior.
+
+The predecessor implementation and its replacement-failure characterization
+remain inspectable at `0ece377ca2b285d6ec2a46f7d2441c78f16409e1`, the head of
+[PR #146](https://github.com/lab-cats/EMRYS/pull/146). The retirement intentionally
+removed private overwrite, predecessor backup/restoration, and repeated private
+publication. It did not authorize deletion or repair of existing residue.
+
+The same change retired three publication operation records, two identity
+operation records, `ReceiptValidationOps` and its public testing arguments,
+and the `report.py` facade. Production calls now use existing owners directly;
+source admission belongs to HTML context preparation. The receipt's logical
+producer identifier remains `emrys.reporting.report`. Fault tests patch real
+operations rather than requiring a parallel production callback API. The
+captured artifact source observer and transaction recheck callbacks remain
+because later publication and reuse depend on them. The later combined
+index/summary operation also retires `RunSummaryBuildDeps` and the separate
+summary builder and publisher; readers use admitted records and pure projections.
+
+The surviving publication path records ownership before linking, verifies
+successful links, and stops path-based cleanup when the output directory is
+replaced. Current contracts, output order, Attempt lineage,
+source attribution, input rechecks, independent goldens, scientific oracles,
+and retained evidence remain protected. Local filesystem and signal tests do
+not establish Slurm, institutional-site, production, or biological behavior.
+
+Indexing and summary generation now share one publication owner, completion
+marker, and recovery scope. The result manifest contains shared Run and publication provenance once, with
+per-artifact computation and validation facts. It commits the summary and QC
+TSVs without a second receipt or per-artifact record files. The summary owner
+passes its prepared context directly to HTML generation, including the scientific
+projections already checked by their owners. Publication and reuse retain input
+identity checks at their respective boundaries.
+Artifact entries describe one declared source each: identity, availability,
+completion, content hash, measurements, parameters, warnings and errors.
+Measurements and parameters stay in those entries; the summary does not copy
+them into top-level fields or warn about metric names repeated across artifacts.
+Artifact entries do not contain another execution history, supplemental file list, tool list,
+or local/runtime/cluster proof labels. Production never populated those lists
+or proof labels. Actual scientific checks remain in the declared validation
+artifacts; original Run and Attempt records own execution history and tool
+provenance. The reports point readers to those records and `emrys inspect`.
+The current closed formats reject the retired fields, including hand-authored
+records that supplied them; no existing scientific data or evidence is rewritten.
+
+Retiring these fields also removes reporting-only helpers from shared admission
+files. Because scientific identity hashes whole shared files, this cleanup is
+part of the pending source-boundary transition and changes the scientific
+fingerprint once. It does not introduce an exemption from shared-file hashing
+or make pre-transition Runs compatible with the new installed package.
+
+HTML publication and validation-roster policy retain their separate scope. Reporting-memory policy belongs to the
+[Run contract](../../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning).
+Dashboard replacement and retirement remain separate decisions.
+
 ## Console, logs, and status
 
 Normal output presents Run identity, scientific milestones, actionable failure,
@@ -120,4 +266,5 @@ Status is derived from immutable Run, Attempt, task, reporting, receipt, and
 lock records. No mutable status cache competes with them. Elapsed time belongs
 to one current or latest Attempt; resumes are not silently summed and no ETA is
 invented. The stale dashboard is not a status or Results authority and remains
-frozen under `DASHBOARD-RETIRE-01` pending separately approved retirement.
+frozen under `DASHBOARD-RETIRE-01` until a replacement dashboard is implemented
+and validated; retirement then requires its own approved scope.

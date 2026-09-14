@@ -131,10 +131,30 @@ NON_TARGET_SITE = {
     "rna_change": "C>T",
 }
 SAMPLES = (
-    {"sample_id": "control_pair_01", "condition": "control", "replicate": "pair_01", "positive_ad": 4},
-    {"sample_id": "treatment_pair_01", "condition": "treatment", "replicate": "pair_01", "positive_ad": 32},
-    {"sample_id": "control_pair_02", "condition": "control", "replicate": "pair_02", "positive_ad": 4},
-    {"sample_id": "treatment_pair_02", "condition": "treatment", "replicate": "pair_02", "positive_ad": 32},
+    {
+        "sample_id": "control_pair_01",
+        "condition": "control",
+        "replicate": "pair_01",
+        "positive_ad": 4,
+    },
+    {
+        "sample_id": "treatment_pair_01",
+        "condition": "treatment",
+        "replicate": "pair_01",
+        "positive_ad": 32,
+    },
+    {
+        "sample_id": "control_pair_02",
+        "condition": "control",
+        "replicate": "pair_02",
+        "positive_ad": 4,
+    },
+    {
+        "sample_id": "treatment_pair_02",
+        "condition": "treatment",
+        "replicate": "pair_02",
+        "positive_ad": 32,
+    },
 )
 
 
@@ -211,7 +231,7 @@ def _wrapped_fasta(sequence: str) -> bytes:
 
 
 def _gtf_bytes() -> bytes:
-    return f'''{CONTIG}\temrys-poc\tgene\t29001\t31900\t.\t+\t.\tgene_id "GENE_PLUS"; gene_name "GENE_PLUS";
+    return f"""{CONTIG}\temrys-poc\tgene\t29001\t31900\t.\t+\t.\tgene_id "GENE_PLUS"; gene_name "GENE_PLUS";
 {CONTIG}\temrys-poc\ttranscript\t29001\t31900\t.\t+\t.\tgene_id "GENE_PLUS"; transcript_id "TX_PLUS"; gene_name "GENE_PLUS";
 {CONTIG}\temrys-poc\texon\t{PLUS_EXONS[0][0]}\t{PLUS_EXONS[0][1]}\t.\t+\t.\tgene_id "GENE_PLUS"; transcript_id "TX_PLUS"; exon_number "1";
 {CONTIG}\temrys-poc\texon\t{PLUS_EXONS[1][0]}\t{PLUS_EXONS[1][1]}\t.\t+\t.\tgene_id "GENE_PLUS"; transcript_id "TX_PLUS"; exon_number "2";
@@ -219,7 +239,7 @@ def _gtf_bytes() -> bytes:
 {CONTIG}\temrys-poc\ttranscript\t49001\t51900\t.\t-\t.\tgene_id "GENE_MINUS"; transcript_id "TX_MINUS"; gene_name "GENE_MINUS";
 {CONTIG}\temrys-poc\texon\t{MINUS_EXONS[0][0]}\t{MINUS_EXONS[0][1]}\t.\t-\t.\tgene_id "GENE_MINUS"; transcript_id "TX_MINUS"; exon_number "2";
 {CONTIG}\temrys-poc\texon\t{MINUS_EXONS[1][0]}\t{MINUS_EXONS[1][1]}\t.\t-\t.\tgene_id "GENE_MINUS"; transcript_id "TX_MINUS"; exon_number "1";
-'''.encode("utf-8")
+""".encode("utf-8")
 
 
 def _covering_starts(

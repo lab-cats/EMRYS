@@ -1,15 +1,16 @@
 # Operations documentation
 
-This directory routes repository development, operator commands, common
-diagnosis, and engineering conventions. Functional commands, faults, and
-recovery detail remain beside the owner when they are not genuinely
-cross-cutting. Current validation observations come from exact checks and
-retained artifacts bound to a commit, not from a rolling handoff document.
+Choose the guide for the job:
 
-- [`WORKFLOW.md`](WORKFLOW.md) defines context selection, approval, delivery,
-  validation, and publication boundaries.
-- [`RUNBOOK.md`](RUNBOOK.md) owns supported cross-cutting commands.
-- [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) routes symptoms, diagnosis, and
-  common recovery without authorizing destructive cleanup.
-- [`ENGINEERING_CONVENTIONS.md`](ENGINEERING_CONVENTIONS.md) maps repository
-  tooling and stable implementation conventions.
+- [Runbook](RUNBOOK.md): prepare a runtime, execute a Project, submit to Slurm,
+  inspect results, or maintain dependencies.
+- [Troubleshooting](TROUBLESHOOTING.md): diagnose a failed or blocked operation
+  and choose a supported recovery action.
+- [Engineering conventions](ENGINEERING_CONVENTIONS.md): development tools,
+  checks, dependencies, and implementation conventions.
+- [Development workflow](WORKFLOW.md): select approved work, verify it, and
+  publish the result.
+
+Each implementation's contract explains its specific behavior and recovery.
+Current validation comes from checks and retained artifacts tied to an exact
+commit, rather than a rolling handoff document.

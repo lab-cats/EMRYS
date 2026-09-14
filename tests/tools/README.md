@@ -1,15 +1,13 @@
 # Test tools
 
-These are test-only support, never public workflow commands:
+These scripts run repository checks and produce test results; they are not
+public workflow commands.
 
-- `run_validation.py` runs the static preflight and non-overlapping test lanes.
-- `python_test_shards.py` produces deterministic duration-balanced CI shards
-  and verifies receipt coverage of the exact test inventory.
-- `source_dependencies.py` checks the ratified static import directions and
-  exact exception rosters in `src/emrys/contracts/SOURCE_TOPOLOGY.md`.
-- `real_synthetic_e2e.py` drives the retained managed-runtime synthetic Run and
-  direct/Slurm checks without installing or cleaning dependencies.
-- coverage tools compare current results with reviewed baselines.
-
-Their outputs are local or hosted-CI engineering evidence, not production,
-institutional-cluster, scientific-review, or biological proof.
+- `run_validation.py` runs static checks and non-overlapping test groups.
+- `python_test_shards.py` balances CI groups using recorded durations and checks
+  that their receipts cover the exact test inventory.
+- `source_dependencies.py` checks the import rules and exact exceptions in
+  `src/emrys/contracts/SOURCE_TOPOLOGY.md`.
+- `real_synthetic_e2e.py` runs the managed synthetic workflow and direct/Slurm
+  checks without installing or cleaning dependencies.
+- The coverage tools compare results with reviewed baselines.

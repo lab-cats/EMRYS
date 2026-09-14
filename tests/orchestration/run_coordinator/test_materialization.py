@@ -28,17 +28,18 @@ from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration import artifact_inventory
 from emrys.contracts.orchestration.application_model import (
     PROCESSING_STEP_IDS,
-    build_analysis_revision,
+    build_module_analysis_revision,
     execution_plan_boundary,
 )
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.contracts.scientific_evidence import step08
 from emrys.evidence.runtime_availability import inspector as runtime_inspector
 from emrys.evidence.runtime_availability.inspector import (
-    RuntimeCheck,
     RuntimeInspection,
     RuntimeObservation,
-    load_runtime_profile_contract,
+    load_runtime_policy,
+    runtime_profile_bytes,
+    runtime_profile_checks,
 )
 from emrys.libraries import source_authority
 from emrys.libraries.source_authority import controlled_python_argv
@@ -70,13 +71,13 @@ from emrys.orchestration.run_coordinator.materialization import (
     publish_attempt,
 )
 from emrys.orchestration.run_coordinator.normalization import (
-    _historical_execution_v1,
     admit_project,
 )
 from emrys.orchestration.run_coordinator.execution_profile import load_execution_profile
 from emrys.orchestration.run_coordinator.resource_policy import (
     AllocationCapacity,
     ResourceOverrides,
+    admit_resource_policy_record,
     resolve_resource_policy,
 )
 from emrys.orchestration.run_coordinator.run_implementation import (
@@ -84,14 +85,11 @@ from emrys.orchestration.run_coordinator.run_implementation import (
     implementation_identity,
     processing_implementation_identity,
 )
-from tests.orchestration.run_coordinator.fixture import build, build_legacy
+from tests.orchestration.run_coordinator.fixture import build
 from tests.orchestration.run_coordinator.fixtures.b5_doubles import with_owner_doubles
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-_POLICY_BYTES, POLICY_CHECKS = load_runtime_profile_contract(
-    onboarding.runtime_policy_path()
-)
-RUNTIME_CHECKS = tuple((check.check_id, check.check_type) for check in POLICY_CHECKS)
+POLICY_CHECKS = load_runtime_policy()
 R_PACKAGES = tuple(
     (check.check_id, check.target)
     for check in POLICY_CHECKS
@@ -132,12 +130,10 @@ class _TerminalOutput:
 def _readiness(
     tmp_path: Path,
     *,
-    source_root: Path = REPO_ROOT,
-    source_commit: str = "a" * 40,
+    source_root: Path = source_authority.PACKAGE_ROOT,
     workflow_cores: int = 1,
     stage_concurrency: dict[str, int] | None = None,
     step_threads: dict[str, int] | None = None,
-    legacy: bool = False,
     replicate_count: int = 2,
     sample_ids: list[str] | None = None,
     regions_file: bool = False,
@@ -145,15 +141,9 @@ def _readiness(
     tmp_path.mkdir(parents=True, exist_ok=True)
     workspace = tmp_path / "project"
     workspace.mkdir()
-    request = (
-        build_legacy(workspace)
-        if legacy
-        else build(workspace, replicate_count=replicate_count)
-    )
+    request = build(workspace, replicate_count=replicate_count)
     if regions_file:
-        (workspace / "target.bed").write_text(
-            "chrSynthetic\t0\t12\n", encoding="utf-8"
-        )
+        (workspace / "target.bed").write_text("chrSynthetic\t0\t12\n", encoding="utf-8")
         (workspace / "partitions.tsv").write_text(
             "partition_id\tselector_type\tselector_value\n"
             "p1\tregions_file\ttarget.bed\n",
@@ -190,7 +180,6 @@ def _readiness(
     project = admit_project(
         request,
         source_root / "workflow/contracts/local_cmh_v2.json",
-        allow_legacy=legacy,
     )
     analysis = project.select_analysis()
     resources = resolve_resource_policy(
@@ -203,8 +192,6 @@ def _readiness(
     )
     runtime = workspace / "runtime/runtime.tsv"
     runtime.parent.mkdir(mode=0o700, exist_ok=True)
-    runtime_bytes = b"fixed test runtime profile\n"
-    runtime.write_bytes(runtime_bytes)
     tool = tmp_path / "tool"
     tool.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     tool.chmod(0o755)
@@ -223,72 +210,35 @@ def _readiness(
         (package_root / "DESCRIPTION").write_text(
             f"Package: {package}\nVersion: 1.0.0\n", encoding="utf-8"
         )
-    observations: list[RuntimeObservation] = []
-    rscript = str(tool)
-    for check_id, check_type in RUNTIME_CHECKS:
-        if check_id in {"python", "sha256_python"}:
-            target = sys.executable
-        elif check_id == "snakemake":
-            target = sys.executable
-        elif check_id == "picard_jar":
-            target = str(jar)
-        elif check_id == "renv_project":
-            target = str(source_root)
-        elif check_id == "renv_library":
-            target = str(renv_library)
-        elif check_type == "r_namespace":
-            target = next(package for key, package in R_PACKAGES if key == check_id)
-        else:
-            target = str(tool)
-        if check_id == "picard":
-            probe_args = ("-jar", str(jar), "MarkDuplicates", "--version")
-        elif check_id == "picard_jar":
-            probe_args = ("file_readable",)
-        elif check_id == "renv_project":
-            probe_args = ("directory_readable",)
-        elif check_id == "renv_library":
-            probe_args = ("directory_readable",)
-        elif check_id == "snakemake":
-            probe_args = controlled_python_argv(
-                sys.executable, "-m", "snakemake", "--version"
-            )[1:]
-        elif check_id == "sha256_python":
-            probe_args = ("python_hashlib",)
-        elif check_type == "r_namespace":
-            probe_args = (rscript,)
-        else:
-            probe_args = ("--version",)
-        observations.append(
-            RuntimeObservation(
-                check=RuntimeCheck(
-                    check_id=check_id,
-                    check_type=check_type,
-                    runtime_context="local",
-                    required=True,
-                    target=target,
-                    probe_args=probe_args,
-                    expected="expected",
-                    description=check_id,
-                ),
-                status="pass",
-                observed=(
-                    "9.25.1" if check_id == "snakemake" else f"observed-{check_id}"
-                ),
-                detail="test runtime",
-                resolved_path=(
-                    (renv_library / target).resolve(strict=True)
-                    if check_type == "r_namespace"
-                    else None
-                ),
-            )
+    choices = {
+        check.check_id: tool
+        for check in POLICY_CHECKS
+        if check.check_type != "r_namespace"
+    }
+    choices.update(
+        python=Path(sys.executable), picard_jar=jar, renv_library=renv_library
+    )
+    runtime_bytes = runtime_profile_bytes(choices)
+    runtime.write_bytes(runtime_bytes)
+    observations = tuple(
+        RuntimeObservation(
+            check=check,
+            status="pass",
+            observed="9.25.1"
+            if check.check_id == "snakemake"
+            else f"observed-{check.check_id}",
+            detail="test runtime",
+            resolved_path=(renv_library / check.target).resolve(strict=True)
+            if check.check_type == "r_namespace"
+            else None,
         )
+        for check in runtime_profile_checks(runtime_bytes, source_root)
+    )
     runtime_inspection = RuntimeInspection(
         profile_path=runtime,
         profile_sha256=hashlib.sha256(runtime_bytes).hexdigest(),
         profile_bytes=runtime_bytes,
-        runtime_context="local",
         observations=tuple(observations),
-        rendered_bytes=b"test runtime report\n",
     )
     storage_receipt = tmp_path / "storage.qualified.json"
     storage_bytes = b"fixed storage qualification receipt\n"
@@ -304,8 +254,9 @@ def _readiness(
     readiness = doctor.DoctorResult(
         project=project,
         analysis=analysis,
-        source_root=source_root,
-        source_commit=source_commit,
+        installed_package=replace(
+            source_authority.admit_installed_package(), root=source_root
+        ),
         inspection=runtime_inspection,
         bindings=bindings,
         blockers=(),
@@ -334,7 +285,6 @@ def _plan(
     step_threads: dict[str, int] | None = None,
     workflow_cores: int = 1,
     stage_concurrency: dict[str, int] | None = None,
-    legacy: bool = False,
     through: str = "analysis",
     regions_file: bool = False,
 ):
@@ -343,7 +293,6 @@ def _plan(
         workflow_cores=workflow_cores,
         stage_concurrency=stage_concurrency,
         step_threads=step_threads,
-        legacy=legacy,
         regions_file=regions_file,
     )
     return build_attempt_plan(
@@ -407,8 +356,7 @@ def _patch_run_control(
         assert kwargs == {
             "storage_requirement": "direct",
             "analysis_name": None,
-            "require_reporter": getattr(arguments, "through", "analysis")
-            == "analysis"
+            "require_reporter": getattr(arguments, "through", "analysis") == "analysis"
             and not getattr(arguments, "no_report", False),
         }
         return readiness
@@ -452,17 +400,24 @@ def _patch_lifecycle_execution(
     monkeypatch.setattr(control.lifecycle, "run_materialized_attempt", run)
 
 
-def _dispatch_records(plan) -> list[dict[str, object]]:
-    return [json.loads(item.data) for item in plan.new_dispatch_files]
+def _task_records(plan) -> list[dict[str, object]]:
+    return [
+        {
+            **record,
+            "machine_key": owner,
+            "scope": {"scope_type": record["scope_type"], "scope_id": scope},
+        }
+        for owner, scopes in plan.attempt_record["tasks"].items()
+        for scope, record in scopes.items()
+        if "workflow_attempt_record" not in record
+    ]
 
 
-def _workflow_config(plan) -> dict[str, object]:
-    return json.loads(
-        next(item.data for item in plan.attempt_files if item.path == plan.config_path)
-    )
+def _workflow(plan) -> dict[str, object]:
+    return plan.attempt_record["workflow"]
 
 
-def test_dispatches_bind_every_admitted_project_input(
+def test_task_definitions_bind_every_admitted_project_input(
     tmp_path: Path,
 ) -> None:
     plan = _plan(tmp_path, regions_file=True)
@@ -482,7 +437,7 @@ def test_dispatches_bind_every_admitted_project_input(
     expected = {Path(str(item["path"])): item for item in expected_snapshots}
     declarations = [
         item
-        for dispatch in _dispatch_records(plan)
+        for dispatch in _task_records(plan)
         for item in dispatch["inputs"]
         if Path(str(item["path"])) in expected
     ]
@@ -517,53 +472,19 @@ def test_owner_doubles_preserve_immutable_run_toolchain(tmp_path: Path) -> None:
 
     doubled = with_owner_doubles(plan)
 
-    assert (
-        replace(
-            doubled,
-            attempt_record_bytes=plan.attempt_record_bytes,
-            attempt_files=plan.attempt_files,
-            new_dispatch_files=plan.new_dispatch_files,
-        )
-        == plan
-    )
+    assert replace(doubled, attempt_record_bytes=plan.attempt_record_bytes) == plan
     attempt = doubled.attempt_record
-    assert attempt["execution_mode"] == "local-science-tools"
     original_attempt = plan.attempt_record
-    assert doubled.config_path == plan.config_path
-    attempt["workflow_config"] = original_attempt["workflow_config"]
+    for owner, scopes in attempt["tasks"].items():
+        for scope, replacement in scopes.items():
+            original = original_attempt["tasks"][owner][scope]
+            replacement["producer_argv"] = original["producer_argv"]
+            replacement["validator_argv"] = original["validator_argv"]
     assert attempt == original_attempt
-
-    original_files = {item.path: item.data for item in plan.attempt_files}
-    doubled_files = {item.path: item.data for item in doubled.attempt_files}
-    dispatch_paths = {item.path for item in plan.new_dispatch_files}
-    assert doubled_files.keys() == original_files.keys()
-    assert {item.path for item in doubled.new_dispatch_files} == dispatch_paths
-    for path in dispatch_paths:
-        original = json.loads(original_files[path])
-        replacement = json.loads(doubled_files[path])
-        replacement["producer_argv"] = original["producer_argv"]
-        replacement["validator_argv"] = original["validator_argv"]
-        assert replacement == original
-
-    original_config = json.loads(original_files[plan.config_path])
-    doubled_config = json.loads(doubled_files[plan.config_path])
-    for machine_key, scopes in doubled_config["dispatch_paths"].items():
-        for scope_id, doubled_reference in scopes.items():
-            original_reference = original_config["dispatch_paths"][machine_key][
-                scope_id
-            ]
-            assert doubled_reference["path"] == original_reference["path"]
-            doubled_reference["sha256"] = original_reference["sha256"]
-    assert doubled_config == original_config
-    assert all(
-        doubled_files[path] == data
-        for path, data in original_files.items()
-        if path not in dispatch_paths and path != plan.config_path
-    )
 
     assert all(
         "--payload-base64" in record[field]
-        for record in _dispatch_records(doubled)
+        for record in _task_records(doubled)
         for field in ("producer_argv", "validator_argv")
     )
 
@@ -574,7 +495,7 @@ def test_owner_doubles_use_successor_scopes_inside_reporting_payloads(
     plan = _plan(tmp_path)
     doubled = with_owner_doubles(plan)
     payloads: dict[Path, bytes] = {}
-    for record in _dispatch_records(doubled):
+    for record in _task_records(doubled):
         argv = record["producer_argv"]
         encoded = argv[argv.index("--payload-base64") + 1]
         manifest = json.loads(zlib.decompress(base64.b64decode(encoded, validate=True)))
@@ -601,7 +522,7 @@ def test_owner_doubles_use_successor_scopes_inside_reporting_payloads(
     assert analysis_id in one(".context_receipt.tsv")
 
 
-def test_plan_is_no_write_and_projects_exact_public_owner_roster(
+def test_plan_is_no_write_and_projects_exact_worker_roster(
     tmp_path: Path,
 ) -> None:
     plan = _plan(tmp_path)
@@ -616,11 +537,20 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
         plan.attempt_record["executor"]
         == plan.run.execution_plan.record["identity"]["backend"]["backend"]
     )
-    assert plan.dispatch_count == 35
-    records = _dispatch_records(plan)
+    assert plan.task_count == 35
+    records = _task_records(plan)
     assert len(records) == 35
     assert len({record["machine_key"] for record in records}) == 14
-    assert all("--execute" in record["producer_argv"] for record in records)
+    assert plan.attempt_record["schema_version"] == "emrys.workflow-attempt.v3"
+    assert plan.attempt_path not in {item.path for item in plan.attempt_files}
+    assert not any(
+        "dispatch" in item.path.parts or "workflow-configs" in item.path.parts
+        for item in plan.attempt_files
+    )
+    for record in records:
+        assert "--execute" not in record["producer_argv"]
+        for output in record["outputs"]:
+            assert output["working_path"] != output["path"]
     assert all("--execute" in record["validator_argv"] for record in records)
     owners = {
         str(item["machine_key"]): str(item["step_id"])
@@ -702,8 +632,14 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert "step_06_split_bam_by_read_orientation.sh" not in " ".join(
         step06["producer_argv"]
     )
-    assert_root(step06, "--output-dir", ".FWD_like.bam", 0)
-    assert_root(step06, "--qc-dir", ".orientation_counts.tsv", 0)
+    for flag, suffix in (
+        ("--output-dir", ".FWD_like.bam"),
+        ("--qc-dir", ".orientation_counts.tsv"),
+    ):
+        output = next(
+            item for item in step06["outputs"] if item["path"].endswith(suffix)
+        )
+        assert producer_argument(step06, flag) == Path(output["working_path"]).parent
 
     step07 = next(
         record
@@ -732,7 +668,15 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
         step07["producer_argv"]
     )
     assert_root(step07, "--orientation-root", ".FWD_like.bam", 1)
-    assert_root(step07, "--output-root", ".FWD_like.mpileup.vcf", 2)
+    fwd_output = next(
+        item
+        for item in step07["outputs"]
+        if item["path"].endswith(".FWD_like.mpileup.vcf")
+    )
+    assert producer_argument(step07, "--fwd-vcf-output") == Path(
+        fwd_output["working_path"]
+    )
+    assert producer_argument(step07, "--fwd-vcf-final") == Path(fwd_output["path"])
     assert not any("--unlock" in record["producer_argv"] for record in records)
     assert not {
         "--unlock",
@@ -752,9 +696,8 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
         for record in records
         if record["machine_key"] == "emrys.stage.convert_GTF_to_BED12.v1"
     )
-    assert (
-        step00b["producer_argv"][step00b["producer_argv"].index("--run-token") + 1]
-        == step00b["owner_run_token"]
+    assert producer_argument(step00b, "--bed") == Path(
+        step00b["outputs"][0]["working_path"]
     )
     step01 = next(
         record
@@ -775,38 +718,36 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert producer[:4] == [
         str(tmp_path / "tool"),
         "-c",
-        (
-            'export EMRYS_RUN_TOKEN="$1" EMRYS_SHA256_PYTHON="$2" EMRYS_REQUIRE_BOUND_SHA256=1; shift 2; exec "$@"'
-        ),
-        "emrys-owner",
+        'export EMRYS_SHA256_PYTHON="$1"; shift; exec "$@"',
+        "emrys-scientific-worker",
     ]
-    assert producer[4] == step08["owner_run_token"]
-    assert producer[5] == sys.executable
+    assert producer[4] == sys.executable
     r_bootstrap = next(item for item in producer if "EMRYS_LOCAL_PILOT_R" in item)
     assert "R_LIBS*|R_PROFILE*|R_ENVIRON*|RENV_*|R_DEFAULT_PACKAGES" in r_bootstrap
     assert "EMRYS_USE_RENV" in r_bootstrap
     assert "RENV_PATHS_LIBRARY" in r_bootstrap
     assert "R_DEFAULT_PACKAGES" in r_bootstrap
-    assert "--no-environ" not in producer
+    assert "--no-environ" in producer
+    assert any(item.endswith("step_08_vcf_preprocessing.R") for item in producer)
     assert str(tmp_path / "renv-library") in producer
     assert_root(step08, "--step07-root", ".FWD_like.mpileup.vcf", 2)
-    assert_root(step08, "--output-root", ".step08_sites.tsv", 1)
-    assert_root(step08, "--qc-root", ".step08_summary.tsv", 0)
+    for flag, suffix in (
+        ("--sites-output", ".step08_sites.tsv"),
+        ("--summary-output", ".step08_summary.tsv"),
+    ):
+        output = next(
+            item for item in step08["outputs"] if item["path"].endswith(suffix)
+        )
+        assert producer_argument(step08, flag) == Path(output["working_path"])
     step09 = next(
         record
         for record in records
         if record["machine_key"]
         == "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1"
     )
-    step09_prefix = controlled_python_argv(
-        sys.executable,
-        "-m",
-        "emrys.analyses.paired_cmh_candidate_ranking.producer",
-    )
     producer_argv = tuple(step09["producer_argv"])
     assert any(
-        producer_argv[index : index + len(step09_prefix)] == step09_prefix
-        for index in range(len(producer_argv) - len(step09_prefix) + 1)
+        item.endswith("step_09_cmh_editing_site_calling.R") for item in producer_argv
     )
     assert (
         next(item for item in producer_argv if "EMRYS_LOCAL_PILOT_R" in item)
@@ -815,8 +756,15 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert "step_09_cmh_editing_site_calling.sh" not in " ".join(
         step09["producer_argv"]
     )
-    assert_root(step09, "--step08-root", ".step08_sites.tsv", 1)
-    assert_root(step09, "--output-root", ".cmh_all_sites.tsv", 1)
+    assert producer_argument(step09, "--step08-sites") == next(
+        Path(item["path"])
+        for item in step09["inputs"]
+        if item["path"].endswith(".step08_sites.tsv")
+    )
+    assert "--expected-mean-dp-threshold" in step09["validator_argv"]
+    assert producer_argument(step09, "--all-sites-output") == Path(
+        step09["outputs"][0]["working_path"]
+    )
     step10 = next(
         record
         for record in records
@@ -826,7 +774,12 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert "scientific_context_projection.sh" in " ".join(step10["producer_argv"])
     assert "--motif-catalog" in step10["producer_argv"]
     assert "scientific-context-projection" in step10["validator_argv"]
-    assert_root(step10, "--output-root", ".candidate_context.tsv", 1)
+    assert producer_argument(step10, "--candidate-context-output") == Path(
+        step10["outputs"][0]["working_path"]
+    )
+    assert producer_argument(step10, "--candidate-context-final") == Path(
+        step10["outputs"][0]["path"]
+    )
     assert len(step10["inputs"]) == 6
     assert len(step10["outputs"]) == 5
     assert plan.attempt_record["execution_mode"] == "local-science-tools"
@@ -870,9 +823,9 @@ def test_distinct_installed_module_materializes_one_typed_task(
     def plan_task(context):
         observed_threads.append(context.threads)
         (summary,) = context.inputs["step08_summary_v1"]
-        result = context.outputs["collaborator_result_v1"]
+        result = context.working_outputs["collaborator_result_v1"]
         validation = context.outputs["collaborator_validation_v1"]
-        return analysis_modules.TaskCommandPlanV1(
+        return analysis_modules.TaskCommandPlanV2(
             context.python_command(("collaborator-produce", str(result))),
             context.python_command(("collaborator-validate", str(validation))),
             (analysis_modules.TaskInputV1("cohort_summary", summary),),
@@ -997,7 +950,7 @@ def test_distinct_installed_module_materializes_one_typed_task(
     assert not (workspace / "runs").exists()
     (dispatch,) = (
         record
-        for record in _dispatch_records(plan)
+        for record in _task_records(plan)
         if record["machine_key"] == "collaborator.analysis.echo.v1"
     )
     assert {item["role"] for item in dispatch["inputs"]} == {"cohort_summary"}
@@ -1021,7 +974,7 @@ def test_processing_plan_is_a_distinct_closed_31_task_run(tmp_path: Path) -> Non
         str(item["machine_key"]): str(item["step_id"])
         for item in readiness.analysis.profile["owner_tasks"]
     }
-    records = _dispatch_records(plan)
+    records = _task_records(plan)
 
     assert processing.run_id != full.run_id
     assert (
@@ -1033,7 +986,7 @@ def test_processing_plan_is_a_distinct_closed_31_task_run(tmp_path: Path) -> Non
     ] == list(
         materialization.processing_stopping_owner_keys(readiness.analysis.profile)
     )
-    assert plan.dispatch_count == len(records) == 31
+    assert plan.task_count == len(records) == 31
     assert {owners[str(record["machine_key"])] for record in records} == set(
         PROCESSING_STEP_IDS
     )
@@ -1082,7 +1035,7 @@ def test_subset_plan_materializes_one_bound_analysis_sample_manifest(
         str(item["machine_key"]): str(item["step_id"])
         for item in readiness.analysis.profile["owner_tasks"]
     }
-    records = _dispatch_records(plan)
+    records = _task_records(plan)
     downstream = [
         record
         for record in records
@@ -1154,11 +1107,11 @@ def test_processing_source_rejects_every_incompatible_target_dimension(
     for condition in ("EV", "PUM1"):
         row = next(item for item in source_samples if item["condition"] == condition)
         source_samples.append({**row, "sample_id": f"{condition}_3", "replicate": "3"})
-    source_analysis = build_analysis_revision(
+    source_analysis = build_module_analysis_revision(
         samples=source_samples,
         partitions=identity["partitions"],
         reference=identity["reference"],
-        scientific_policy=identity["scientific_policy"],
+        **identity["analysis_module"],
     )
     source = inspection.ProcessingSourceAdmission(
         root=workspace / "runs" / source_run.run_id,
@@ -1179,17 +1132,17 @@ def test_processing_source_rejects_every_incompatible_target_dimension(
 
     samples = [dict(row) for row in identity["samples"]]
     samples[0]["r1_fastq_sha256"] = "3" * 64
-    sample_changed = build_analysis_revision(
+    sample_changed = build_module_analysis_revision(
         samples=samples,
         partitions=identity["partitions"],
         reference=identity["reference"],
-        scientific_policy=identity["scientific_policy"],
+        **identity["analysis_module"],
     )
-    reference_changed = build_analysis_revision(
+    reference_changed = build_module_analysis_revision(
         samples=identity["samples"],
         partitions=identity["partitions"],
         reference={**identity["reference"], "fasta_sha256": "4" * 64},
-        scientific_policy=identity["scientific_policy"],
+        **identity["analysis_module"],
     )
     different_binding = {**binding, "attempt_receipt_sha256": "5" * 64}
     binding_changed = build_run_candidate(
@@ -1368,19 +1321,15 @@ def test_downstream_plan_preserves_admitted_sidecars_for_relocated_reference(
     old_paths = {
         snapshot["path"]
         for snapshot in snapshots
-        if snapshot["role"]
-        in {"step00c_reference_fai_v1", "step00c_reference_dict_v1"}
+        if snapshot["role"] in {"step00c_reference_fai_v1", "step00c_reference_dict_v1"}
     }
-    dispatch_inputs = {
+    task_inputs = {
         item["path"]: item
-        for planned in plan.attempt_files
-        if "dispatch" in planned.path.parts
-        for item in orchestration_contracts.load_json_object_bytes(
-            planned.data, "test dispatch"
-        )["inputs"]
+        for record in _task_records(plan)
+        for item in record["inputs"]
     }
     old_fai = next(path for path in old_paths if path.endswith(".fai"))
-    assert dispatch_inputs[old_fai]["sha256"] == "a" * 64
+    assert task_inputs[old_fai]["sha256"] == "a" * 64
     inventory = next(
         planned.data
         for planned in plan.attempt_files
@@ -1400,17 +1349,8 @@ def _runtime_admission_fixture(
     publish_attempt(plan, ops=ops)
     monkeypatch.setattr(
         source_authority,
-        "inspect_source_checkout",
-        lambda **_kwargs: SimpleNamespace(
-            root=plan.readiness.source_root,
-            commit=plan.readiness.source_commit,
-            clean=True,
-        ),
-    )
-    monkeypatch.setattr(
-        doctor,
-        "validate_runtime_profile_contract",
-        lambda _checks, _source_root, **_kwargs: None,
+        "admit_installed_package",
+        lambda **_kwargs: plan.readiness.installed_package,
     )
     return request, next(
         binding
@@ -1427,7 +1367,7 @@ def test_runtime_admission_reuses_initial_inspection_then_reprobes(
     request, storage = _runtime_admission_fixture(plan, monkeypatch)
     probes: list[Path] = []
 
-    def inspect(_data, path, _context, **_kwargs):
+    def inspect(_data, path, **_kwargs):
         probes.append(path)
         return plan.readiness.inspection
 
@@ -1482,7 +1422,7 @@ def test_attempt_plan_preserves_reporting_materialization(tmp_path: Path) -> Non
     planned_files = {
         item.path: item.data for item in (*plan.fixed_files, *plan.attempt_files)
     }
-    config = _workflow_config(plan)
+    config = _workflow(plan)
 
     for name in reporting.projection_references:
         reference = config[f"{name}_path"]
@@ -1572,18 +1512,10 @@ def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
 
     assert direct_plan.fixed_files == scheduled_plan.fixed_files
     assert direct_plan.directories == scheduled_plan.directories
-    assert tuple(
-        item
-        for item in direct_plan.attempt_files
-        if item.path != direct_plan.config_path
-    ) == tuple(
-        item
-        for item in scheduled_plan.attempt_files
-        if item.path != scheduled_plan.config_path
-    )
+    assert direct_plan.attempt_files == scheduled_plan.attempt_files
 
-    direct_config = _workflow_config(direct_plan)
-    scheduled_config = _workflow_config(scheduled_plan)
+    direct_config = _workflow(direct_plan)
+    scheduled_config = _workflow(scheduled_plan)
     direct_allocation = direct_config["resource_policy"].pop("allocation")
     scheduled_allocation = scheduled_config["resource_policy"].pop("allocation")
     assert direct_config == scheduled_config
@@ -1602,28 +1534,10 @@ def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
 
     direct_attempt = direct_plan.attempt_record
     scheduled_attempt = scheduled_plan.attempt_record
-    assert (
-        direct_attempt["workflow_config"]["sha256"]
-        != scheduled_attempt["workflow_config"]["sha256"]
-    )
-    direct_attempt["workflow_config"].pop("sha256")
-    scheduled_attempt["workflow_config"].pop("sha256")
+    assert direct_plan.attempt_record_bytes != scheduled_plan.attempt_record_bytes
+    direct_attempt["workflow"]["resource_policy"].pop("allocation")
+    scheduled_attempt["workflow"]["resource_policy"].pop("allocation")
     assert direct_attempt == scheduled_attempt
-
-    reporting_policy = replace(
-        resources.policy,
-        reporting_memory_mb=tuple(
-            (kind, 512) for kind, _memory in resources.policy.reporting_memory_mb
-        ),
-    )
-    reporting_changed = resolve_resource_policy(
-        reporting_policy,
-        resources.allocation,
-    )
-    assert (
-        _run_candidate(readiness, reporting_changed, through=through).run_id
-        == direct_run.run_id
-    )
 
     computational_change = replace(resources.declaration, workflow_cores=2)
     stopping = (
@@ -1701,7 +1615,7 @@ def test_attempt_plan_records_placement_without_making_it_run_compatibility(
         "scheduler_job_id": "700123",
     }
 
-    historical = build_attempt_plan(run, readiness, workspace, **context)
+    unplaced = build_attempt_plan(run, readiness, workspace, **context)
     direct = build_attempt_plan(
         run,
         readiness,
@@ -1717,16 +1631,11 @@ def test_attempt_plan_records_placement_without_making_it_run_compatibility(
         **context,
     )
 
-    assert "placement" not in historical.attempt_record
+    assert "placement" not in unplaced.attempt_record
     assert direct.attempt_record["placement"] == direct_placement
     assert scheduled.attempt_record["placement"] == slurm_placement
-    compatibility = inspection.attempt_fields(True)
+    compatibility = inspection.attempt_fields()
     assert "placement" not in compatibility
-    assert set(inspection.attempt_fields(False)) == {
-        *compatibility,
-        "source_checkout",
-        "required_tools",
-    }
     assert {field: direct.attempt_record[field] for field in compatibility} == {
         field: scheduled.attempt_record[field] for field in compatibility
     }
@@ -1735,24 +1644,34 @@ def test_attempt_plan_records_placement_without_making_it_run_compatibility(
 def test_run_identity_excludes_attempt_reporting_and_cli_adapter_code(
     tmp_path: Path,
 ) -> None:
-    checkout, commit = _clean_checkout(tmp_path)
+    checkout = _package_copy(tmp_path)
     readiness, resources, _request, _workspace = _readiness(
         tmp_path / "case",
         source_root=checkout,
-        source_commit=commit,
     )
     baseline = _run_candidate(readiness, resources)
     baseline_backend = backend_semantics_identity(checkout)
+    baseline_processing = processing_implementation_identity(checkout)
 
-    report_renderer = checkout / "src/emrys/reporting/report.py"
-    report_renderer.write_bytes(
-        report_renderer.read_bytes() + b"\n# reporting-only change\n"
-    )
-    assert _run_candidate(readiness, resources).run_id == baseline.run_id
+    for relative in (
+        "reporting/_run_report/context.py",
+        "orchestration/run_coordinator/reporting_boundary.py",
+        "contracts/orchestration/projection.py",
+        "contracts/artifacts/validator.py",
+        "contracts/artifacts/_artifact_contracts/artifact.py",
+        "contracts/artifacts/_artifact_contracts/inventory.py",
+        "contracts/artifacts/_artifact_contracts/report_receipt.py",
+        "contracts/artifacts/_artifact_contracts/run_summary_status.py",
+        "contracts/artifacts/_artifact_contracts/run_summary_validation.py",
+    ):
+        report_owner = checkout / relative
+        report_owner.write_bytes(
+            report_owner.read_bytes() + b"\n# reporting-only change\n"
+        )
+        assert _run_candidate(readiness, resources).run_id == baseline.run_id
+        assert processing_implementation_identity(checkout) == baseline_processing
 
-    resource_policy = (
-        checkout / "src/emrys/orchestration/run_coordinator/resource_policy.py"
-    )
+    resource_policy = checkout / "orchestration/run_coordinator/resource_policy.py"
     resource_policy.write_bytes(resource_policy.read_bytes() + b"\n# policy change\n")
     assert _run_candidate(readiness, resources).run_id == baseline.run_id
 
@@ -1763,25 +1682,11 @@ def test_run_identity_excludes_attempt_reporting_and_cli_adapter_code(
     assert _run_candidate(readiness, resources).run_id != baseline.run_id
     snakefile.write_bytes(snakefile_bytes)
 
-    cli_adapter = checkout / "src/emrys/__main__.py"
+    cli_adapter = checkout / "__main__.py"
     cli_adapter.write_bytes(cli_adapter.read_bytes() + b"\n# CLI adapter change\n")
     assert _run_candidate(readiness, resources).run_id == baseline.run_id
 
-    reporting_materializer = (
-        checkout / "src/emrys/orchestration/run_coordinator/reporting_boundary.py"
-    )
-    reporting_materializer.write_bytes(
-        reporting_materializer.read_bytes() + b"\n# reporting materialization change\n"
-    )
-    assert _run_candidate(readiness, resources).run_id == baseline.run_id
-
-    reporting_projection = checkout / "src/emrys/contracts/orchestration/projection.py"
-    reporting_projection.write_bytes(
-        reporting_projection.read_bytes() + b"\n# reporting projection change\n"
-    )
-    assert _run_candidate(readiness, resources).run_id == baseline.run_id
-
-    materializer = checkout / "src/emrys/orchestration/run_coordinator/materialization.py"
+    materializer = checkout / "orchestration/run_coordinator/materialization.py"
     materializer.write_bytes(materializer.read_bytes() + b"\n# dispatch change\n")
     assert _run_candidate(readiness, resources).run_id != baseline.run_id
 
@@ -1789,23 +1694,25 @@ def test_run_identity_excludes_attempt_reporting_and_cli_adapter_code(
 @pytest.mark.parametrize(
     "relative",
     (
-        "src/emrys/orchestration/run_coordinator/_inspection_admission.py",
-        "src/emrys/orchestration/run_coordinator/_inspection_attempts.py",
-        "src/emrys/orchestration/run_coordinator/_inspection_evidence.py",
-        "src/emrys/orchestration/run_coordinator/all_pass.py",
-        "src/emrys/contracts/orchestration/artifact_inventory.py",
-        "src/emrys/contracts/schemas/orchestration/v2/attempt_receipt.schema.json",
+        "orchestration/run_coordinator/_inspection_admission.py",
+        "orchestration/run_coordinator/_inspection_attempts.py",
+        "orchestration/run_coordinator/_inspection_evidence.py",
+        "orchestration/run_coordinator/all_pass.py",
+        "contracts/orchestration/artifact_inventory.py",
+        "contracts/artifacts/_artifact_contracts/definitions.py",
+        "contracts/artifacts/_artifact_contracts/identity.py",
+        "contracts/artifacts/_artifact_contracts/schema.py",
+        "contracts/schemas/orchestration/v2/attempt_receipt.schema.json",
     ),
 )
 def test_run_identity_binds_semantic_admission_code(
     tmp_path: Path,
     relative: str,
 ) -> None:
-    checkout, commit = _clean_checkout(tmp_path)
+    checkout = _package_copy(tmp_path)
     readiness, resources, _request, _workspace = _readiness(
         tmp_path / "case",
         source_root=checkout,
-        source_commit=commit,
     )
     baseline_implementation = implementation_identity(checkout)
     baseline = _run_candidate(readiness, resources)
@@ -1820,23 +1727,26 @@ def test_run_identity_binds_semantic_admission_code(
 def test_implementation_identity_closes_direct_scientific_dependencies(
     tmp_path: Path,
 ) -> None:
-    checkout, _ = _clean_checkout(tmp_path)
+    checkout = _package_copy(tmp_path)
     baseline = implementation_identity(checkout)
     dependencies = (
         ".Rprofile",
-        "src/emrys/libraries/argument_parsing.sh",
-        "src/emrys/libraries/executable_resolution.sh",
-        "src/emrys/libraries/file_checks.sh",
-        "src/emrys/libraries/gatk_invocation.sh",
-        "src/emrys/libraries/input_contract.R",
-        "src/emrys/libraries/signal_traps.sh",
+        "libraries/argument_parsing.sh",
+        "libraries/file_checks.sh",
+        "libraries/gatk_invocation.sh",
+        "libraries/input_contract.R",
+        "contracts/orchestration/artifact_inventory.py",
+        "workflow/contracts/local_cmh_v2.json",
     )
+    processing_baseline = processing_implementation_identity(checkout)
 
     for relative in dependencies:
         path = checkout / relative
         original = path.read_bytes()
-        path.write_bytes(original + b"\n# identity sensitivity\n")
+        path.write_bytes(original + b"\n")
         assert implementation_identity(checkout) != baseline, relative
+        if relative.endswith(("artifact_inventory.py", "local_cmh_v2.json")):
+            assert processing_implementation_identity(checkout) != processing_baseline
         path.write_bytes(original)
 
     assert implementation_identity(checkout) == baseline
@@ -1845,16 +1755,17 @@ def test_implementation_identity_closes_direct_scientific_dependencies(
 def test_processing_compatibility_binds_only_processing_semantics(
     tmp_path: Path,
 ) -> None:
-    checkout, commit = _clean_checkout(tmp_path)
+    checkout = _package_copy(tmp_path)
     readiness, resources, _request, _workspace = _readiness(
         tmp_path / "case",
         source_root=checkout,
-        source_commit=commit,
     )
     baseline = _run_candidate(readiness, resources)
 
     def compatibility(run) -> str:
-        return str(run.execution_plan.record["identity"]["processing_compatibility_sha256"])
+        return str(
+            run.execution_plan.record["identity"]["processing_compatibility_sha256"]
+        )
 
     def with_tool(name: str, digest: str):
         return replace(
@@ -1867,8 +1778,8 @@ def test_processing_compatibility_binds_only_processing_semantics(
 
     baseline_compatibility = compatibility(baseline)
     for relative in (
-        "src/emrys/analyses/__init__.py",
-        "src/emrys/stages/cohort_candidate_preprocessing/producer.py",
+        "analyses/__init__.py",
+        "stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R",
     ):
         path = checkout / relative
         original = path.read_bytes()
@@ -1879,15 +1790,16 @@ def test_processing_compatibility_binds_only_processing_semantics(
         path.write_bytes(original)
 
     for relative in (
-        "src/emrys/orchestration/run_coordinator/materialization.py",
+        "orchestration/run_coordinator/materialization.py",
         "workflow/Snakefile",
+        "workflow/contracts/local_cmh_v2.json",
     ):
         path = checkout / relative
         original = path.read_bytes()
-        path.write_bytes(original + b"\n# processing dispatch change\n")
-        assert compatibility(_run_candidate(readiness, resources)) != (
-            baseline_compatibility
-        )
+        path.write_bytes(original + b"\n")
+        changed = _run_candidate(readiness, resources)
+        assert changed.analysis.profile == baseline.analysis.profile
+        assert compatibility(changed) != baseline_compatibility
         path.write_bytes(original)
 
     downstream_tool = build_run_candidate(
@@ -1898,7 +1810,7 @@ def test_processing_compatibility_binds_only_processing_semantics(
     assert downstream_tool.run_id != baseline.run_id
     assert compatibility(downstream_tool) == baseline_compatibility
 
-    processing_owner = checkout / "src/emrys/stages/mechanical_orientation/producer.py"
+    processing_owner = checkout / "stages/mechanical_orientation/producer.py"
     processing_owner_bytes = processing_owner.read_bytes()
     processing_owner.write_bytes(processing_owner_bytes + b"\n# processing change\n")
     owner_changed = _run_candidate(readiness, resources)
@@ -1916,12 +1828,15 @@ def test_processing_compatibility_binds_only_processing_semantics(
     ("relative", "error"),
     (
         (
-            "src/emrys/orchestration/run_coordinator/materialization.py",
+            "orchestration/run_coordinator/materialization.py",
             "implementation content",
         ),
-        ("src/emrys/orchestration/run_coordinator/all_pass.py", "implementation content"),
         (
-            "src/emrys/contracts/orchestration/artifact_inventory.py",
+            "orchestration/run_coordinator/all_pass.py",
+            "implementation content",
+        ),
+        (
+            "contracts/orchestration/artifact_inventory.py",
             "implementation content",
         ),
         ("workflow/Snakefile", "backend semantics"),
@@ -1932,11 +1847,10 @@ def test_lifecycle_refuses_run_bound_implementation_drift_before_attempt(
     relative: str,
     error: str,
 ) -> None:
-    checkout, commit = _clean_checkout(tmp_path)
+    checkout = _package_copy(tmp_path)
     readiness, resources, _request, workspace = _readiness(
         tmp_path / "case",
         source_root=checkout,
-        source_commit=commit,
     )
     plan = build_attempt_plan(
         _run_candidate(readiness, resources),
@@ -1972,7 +1886,7 @@ def test_lifecycle_refuses_run_bound_implementation_drift_before_attempt(
 def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> None:
     allocation = {"00a": 1, "01": 2, "02": 3, "06": 4, "08": 2}
     plan = _plan(tmp_path, workflow_cores=4, step_threads=allocation)
-    records = _dispatch_records(plan)
+    records = _task_records(plan)
     threaded_owners = {
         "emrys.stage.construct_STAR_index.v1",
         "emrys.stage.align_RNA_reads_with_STAR.v1",
@@ -2006,7 +1920,7 @@ def test_plan_records_stage_specific_concurrency(tmp_path: Path) -> None:
         step_threads={"00a": 4, "01": 2, "02": 2, "06": 2, "08": 4},
     )
     argv = plan.attempt_record["snakemake_argv"]
-    config = _workflow_config(plan)
+    config = _workflow(plan)
 
     assert plan.resources.workflow_cores == 4
     assert dict(plan.resources.stage_concurrency)["01"] == 2
@@ -2050,7 +1964,7 @@ def test_r_owner_bootstrap_clears_hostile_selectors_and_exports_exact_library(
     )
     command = materialization._r_owner_command(
         "/bin/bash",
-        REPO_ROOT,
+        source_authority.PACKAGE_ROOT,
         library,
         ("/bin/bash", str(probe)),
     )
@@ -2080,7 +1994,9 @@ def test_r_owner_bootstrap_clears_hostile_selectors_and_exports_exact_library(
     assert observed["RENV_PATHS_LIBRARY"] == str(library)
     assert observed["R_LIBS"] == str(library)
     assert observed["R_DEFAULT_PACKAGES"] == "NULL"
-    assert observed["R_PROFILE_USER"] == str(REPO_ROOT / ".Rprofile")
+    assert observed["R_PROFILE_USER"] == str(
+        source_authority.PACKAGE_ROOT / ".Rprofile"
+    )
 
 
 def test_every_projected_owner_command_is_accepted_by_public_help(
@@ -2089,7 +2005,7 @@ def test_every_projected_owner_command_is_accepted_by_public_help(
     plan = _plan(tmp_path)
     commands = {
         tuple(command)
-        for record in _dispatch_records(plan)
+        for record in _task_records(plan)
         for command in (record["producer_argv"], record["validator_argv"])
     }
 
@@ -2184,27 +2100,16 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     assert "Attempt receipt:" not in debug
     assert "Engine command:" not in debug
 
-    historical = replace(
+    escaped = replace(
         observed,
-        run_root=Path("/tmp/café\\historical\n\x1b[31m-run"),
-        authority=None,
+        run_root=Path("/tmp/café\\display\n\x1b[31m-run"),
     )
-    monkeypatch.setattr(control.inspection, "inspect_run", lambda _root: historical)
+    monkeypatch.setattr(control.inspection, "inspect_run", lambda _root: escaped)
     arguments.detail = "verbose"
     assert control.inspect_from_args(arguments) == 0
-    historical_output = capsys.readouterr().out
-    assert "Identity model: historical execution.v1" in historical_output
-    assert "Analysis ID:" not in historical_output
-    assert "Execution Plan ID:" not in historical_output
-    assert "\x1b" not in historical_output
-    assert "Run root: /tmp/café\\historical\\n\\x1b[31m-run" in historical_output
-
-    arguments.detail = "debug"
-    assert control.inspect_from_args(arguments) == 0
-    historical_debug = capsys.readouterr().out
-    assert "Historical authority record:" in historical_debug
-    assert "Run authority records:" not in historical_debug
-    assert "contract/execution-plan.json" not in historical_debug
+    escaped_output = capsys.readouterr().out
+    assert "\x1b" not in escaped_output
+    assert "Run root: /tmp/café\\display\\n\\x1b[31m-run" in escaped_output
 
     monkeypatch.setattr(
         control.inspection,
@@ -2236,7 +2141,7 @@ def test_attempt_refuses_incomplete_run_authority_before_mutex_or_materializatio
     def unexpected_materialization() -> None:
         raise AssertionError("materialization must remain unreachable")
 
-    with pytest.raises(lifecycle.LifecycleError, match="successor Run"):
+    with pytest.raises(lifecycle.LifecycleError, match="Could not admit Run"):
         lifecycle.run_materialized_attempt(
             plan.lifecycle_request,
             unexpected_materialization,
@@ -2315,7 +2220,9 @@ def test_post_binding_interruption_completes_the_exact_pristine_run(
     replanned = control._plan_run(
         plan.run.analysis.source_path,
         execution_profile=load_execution_profile(
-            config_path=(plan.run.analysis.source_path.parent / "runtime/profiles/default.yaml"),
+            config_path=(
+                plan.run.analysis.source_path.parent / "runtime/profiles/default.yaml"
+            ),
         ),
     )
     assert (
@@ -2374,7 +2281,9 @@ def test_locked_publication_terminalizes_failure_and_refuses_repeat(
     assert outcome.receipt["snakemake_exit_code"] == 9
     assert outcome.released_lock_path.is_file()
     assert not (plan.run_root / "locks/run.lock").exists()
-    assert len(list((plan.run_root / "contract/dispatch").rglob("*.json"))) == 35
+    assert len(_task_records(plan)) == 35
+    assert not (plan.run_root / "contract/dispatch").exists()
+    assert not (plan.run_root / "contract/workflow-configs").exists()
     with pytest.raises(MaterializationError, match="inspect or resume"):
         admit_run(plan, ops=ops)
 
@@ -2390,14 +2299,7 @@ def _failed_run(plan):
         admit_storage_context=lambda _attempt, _execution: None,
         admit_runtime_context=lambda _attempt, _request, _storage, _inspection: None,
     )
-    if isinstance(plan.run, materialization.HistoricalRun):
-        for item in plan.fixed_files:
-            item.path.parent.mkdir(parents=True, exist_ok=True)
-            item.path.write_bytes(item.data)
-        for name in ("attempts", "locks", "state"):
-            (plan.run_root / name).mkdir()
-    else:
-        admit_run(plan, ops=ops)
+    admit_run(plan, ops=ops)
     outcome = lifecycle.run_materialized_attempt(
         plan.lifecycle_request,
         lambda: publish_attempt(plan, ops=ops),
@@ -2422,22 +2324,16 @@ def _patch_resume_control(
         runtime_profile: Path,
         **_kwargs: object,
     ) -> doctor.DoctorResult:
-        legacy = (
-            yaml.safe_load(readiness.analysis.source_bytes)["schema_version"]
-            == "emrys.request.v3"
-        )
         assert _kwargs == {
             "storage_requirement": "direct",
-            "analysis_name": None if legacy else readiness.analysis.evidence_label,
+            "analysis_name": readiness.analysis.evidence_label,
             "expected_analysis_revision": (
                 None
                 if observed.authority is None
                 else observed.authority.analysis_revision
             ),
-            "allow_legacy": legacy,
             "require_reporter": observed.authority is None
-            or execution_plan_boundary(observed.authority.execution_plan)
-            == "analysis",
+            or execution_plan_boundary(observed.authority.execution_plan) == "analysis",
         }
         selected.append(runtime_profile)
         return readiness
@@ -2455,104 +2351,52 @@ def _patch_resume_control(
     )
 
 
-def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
+def test_new_run_rejects_processing_edge_drift_but_existing_run_resumes(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    readiness, resources, request, workspace = _readiness(
-        tmp_path,
-        legacy=True,
-    )
-    analysis = readiness.analysis
-    symbolic_policy = replace(
-        resources.policy,
-        declaration=replace(
-            resources.declaration,
-            workflow_memory_mb="allocation",
+    readiness, resources, request, workspace = _readiness(tmp_path)
+    profile = readiness.analysis.profile
+    profile["direct_edges"].pop(0)
+    orchestration_contracts.validate_record("profile", profile)
+    readiness = replace(
+        readiness,
+        analysis=replace(
+            readiness.analysis,
+            _profile_bytes=orchestration_contracts.canonical_json_bytes(profile),
         ),
     )
-    resources = resolve_resource_policy(
-        symbolic_policy,
-        AllocationCapacity(cores=1, memory_mb=16_384, source="first allocation"),
+    monkeypatch.setattr(
+        control.doctor, "diagnose_project", lambda *_args, **_kwargs: readiness
     )
-    legacy, legacy_bytes = _historical_execution_v1(analysis)
+    with pytest.raises(control.ControlError, match="Processing dependencies"):
+        control._plan_run(request, execution_profile=load_execution_profile())
+    assert not (workspace / "runs").exists()
+
+    # This older accepted profile remains an immutable resumable Run.
     first = build_attempt_plan(
-        materialization.HistoricalRun(
-            analysis=analysis,
-            run_id=str(legacy["run_id"]),
-            execution_projection_bytes=legacy_bytes,
-        ),
+        _run_candidate(readiness, resources),
         readiness,
         workspace,
         resources=resources,
         operation="execute",
     )
     observed = _failed_run(first)
-    assert observed.authority is None
-    retained = next(
-        Path(str(item["path"]))
-        for item in first.attempt_record["required_tools"]
-        if item["name"] == "runtime_profile"
-    )
-    request.write_text(
-        request.read_text(encoding="utf-8").replace(
-            "label: first label",
-            "label: renamed label",
-        ),
-        encoding="utf-8",
-    )
-    renamed_project = admit_project(
-        request,
-        REPO_ROOT / "workflow/contracts/local_cmh_v2.json",
-        allow_legacy=True,
-    )
-    onboarding.runtime_profile_path(analysis.source_path).unlink()
-    fallback_readiness = replace(
-        readiness,
-        project=renamed_project,
-        analysis=renamed_project.select_analysis(),
-        inspection=replace(readiness.inspection, profile_path=retained),
-    )
-    selected: list[Path] = []
-    _patch_resume_control(
-        monkeypatch,
-        observed,
-        fallback_readiness,
-        resolve_resource_policy(
-            symbolic_policy,
-            AllocationCapacity(cores=1, memory_mb=8_192, source="resume allocation"),
-        ),
-        selected,
-    )
+    _patch_resume_control(monkeypatch, observed, readiness, resources, [])
     second = control._plan_resume(
-        first.run_root,
-        execution_profile=load_execution_profile(),
+        first.run_root, execution_profile=load_execution_profile()
     )
-
-    assert selected == [retained]
-    assert second.attempt_record["request_label"] == "renamed label"
-    assert second.resources.workflow_memory_mb == 8_192
-    assert (
-        second.attempt_record["required_tools"]
-        == first.attempt_record["required_tools"]
-    )
-    assert not {
-        retained,
-        second.run_root
-        / "contract/runtime-profiles"
-        / f"{second.workflow_attempt_id}.tsv",
-    } & {item.path for item in second.attempt_files}
+    assert second.run.run_id == first.run.run_id
+    assert second.run.analysis.profile == profile
 
 
-@pytest.mark.parametrize("legacy", (False, True))
 @pytest.mark.parametrize("through", ("analysis", "processing"))
 def test_successor_resume_snapshots_current_runtime_profile(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    legacy: bool,
     through: str,
 ) -> None:
-    first = _plan(tmp_path, legacy=legacy, through=through)
+    first = _plan(tmp_path, through=through)
     observed = _failed_run(first)
     assert observed.authority is not None
     retained = next(
@@ -2599,20 +2443,16 @@ def test_successor_resume_snapshots_current_runtime_profile(
     )
 
 
-def test_reporting_profile_inherits_computation_and_cli_reporting_wins(
+def test_placement_profile_inherits_computation_without_reporting_resources(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     first = _plan(tmp_path, workflow_cores=2)
     observed = _failed_run(first)
     _patch_resume_control(monkeypatch, observed, first.readiness, first.resources, [])
-    selected = tmp_path / "reporting.yaml"
+    selected = tmp_path / "direct.yaml"
     selected.write_text(
-        "schema_version: emrys.execution-profile.v1\n"
-        "resources:\n"
-        "  schema_version: emrys.local-pilot-resources.v1\n"
-        "  reporting_memory_mb:\n"
-        "    html_report: 512\n",
+        "schema_version: emrys.execution-profile.v1\nplacement: {kind: direct}\n",
         encoding="utf-8",
     )
     profile = load_execution_profile(config_path=selected)
@@ -2620,35 +2460,13 @@ def test_reporting_profile_inherits_computation_and_cli_reporting_wins(
     second = control._plan_resume(
         first.run_root,
         execution_profile=profile,
-        resource_overrides=ResourceOverrides(
-            reporting_memory_mb=(("html_report", 768),)
-        ),
     )
 
-    expected_reporting = dict(first.resources.reporting_memory_mb)
-    expected_reporting["html_report"] = 768
     assert not profile.computational_resources_explicit
     assert second.resources.declaration == first.resources.declaration
-    assert dict(second.resources.reporting_memory_mb) == expected_reporting
+    assert "reporting_memory_mb" not in second.resources.policy.document()
+    assert "reporting_memory_mb" not in second.resources.effective_document()
     assert second.attempt_record["placement"]["source"]["path"] == str(selected)
-
-
-def test_project_v1_predecessor_does_not_enable_request_v3_resume(
-    tmp_path: Path,
-) -> None:
-    first = _plan(tmp_path / "current")
-    _failed_run(first)
-    legacy = build_legacy(tmp_path / "legacy")
-    first.run.analysis.source_path.write_bytes(legacy.read_bytes())
-
-    with pytest.raises(
-        control.ControlError,
-        match="emrys.request.v3 is historical",
-    ):
-        control._plan_resume(
-            first.run_root,
-            execution_profile=load_execution_profile(),
-        )
 
 
 def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
@@ -2659,17 +2477,15 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     second_source = tmp_path / "second-source"
     first_source.mkdir()
     second_source.mkdir()
-    checkout_one, commit_one = _clean_checkout(first_source)
-    checkout_two, commit_two = _clean_checkout(second_source)
+    checkout_one = _package_copy(first_source)
+    checkout_two = _package_copy(second_source)
     readiness_one, resources, _request, workspace = _readiness(
         tmp_path / "first-case",
         source_root=checkout_one,
-        source_commit=commit_one,
     )
     readiness_two, _unused_resources, _request_two, _workspace_two = _readiness(
         tmp_path / "second-case",
         source_root=checkout_two,
-        source_commit=commit_two,
     )
     runtime_bytes = b"different admitted runtime profile\n"
     readiness_two.inspection.profile_path.write_bytes(runtime_bytes)
@@ -2689,9 +2505,6 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         declaration=replace(
             resources.declaration,
             workflow_memory_mb="allocation",
-        ),
-        reporting_memory_mb=tuple(
-            (kind, "workflow") for kind, _memory in resources.policy.reporting_memory_mb
         ),
     )
     first_resources = resolve_resource_policy(
@@ -2745,7 +2558,6 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
             "storage_requirement": "slurm",
             "analysis_name": "primary",
             "expected_analysis_revision": first.run.analysis.revision,
-            "allow_legacy": False,
             "require_reporter": True,
         }
         selected_runtime_profiles.append(runtime_profile)
@@ -2819,7 +2631,6 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
 
     assert second_outcome.receipt["status"] == "failed"
     assert second.resources.workflow_memory_mb == 16_384
-    assert set(dict(second.resources.reporting_memory_mb).values()) == {16_384}
     first_runtime = next(
         item
         for item in first.attempt_record["required_tools"]
@@ -2831,8 +2642,8 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         if item["name"] == "runtime_profile"
     )
     assert (
-        first.attempt_record["source_checkout"]
-        != second.attempt_record["source_checkout"]
+        first.attempt_record["installed_package"]
+        != second.attempt_record["installed_package"]
     )
     assert first_runtime["path"] != second_runtime["path"]
     assert first_runtime["sha256"] != second_runtime["sha256"]
@@ -2847,7 +2658,7 @@ def test_attempt_publication_leaves_star_index_directory_for_owner(
     plan = _plan(tmp_path)
     step00a = next(
         record
-        for record in _dispatch_records(plan)
+        for record in _task_records(plan)
         if record["machine_key"] == "emrys.stage.construct_STAR_index.v1"
     )
     outputs = tuple(Path(item["path"]) for item in step00a["outputs"])
@@ -2895,14 +2706,14 @@ def test_lock_precedes_attempt_publication_failure_and_retains_evidence(
     plan = _plan(tmp_path)
     base = lifecycle.default_lifecycle_ops()
 
-    def fail_on_config(path: Path, data: bytes) -> None:
-        if path == plan.config_path:
-            raise OSError("injected config publication failure")
+    def fail_on_profile(path: Path, data: bytes) -> None:
+        if path == plan.attempt_files[-1].path:
+            raise OSError("injected runtime profile publication failure")
         base.publish_bytes(path, data)
 
     ops = replace(
         base,
-        publish_bytes=fail_on_config,
+        publish_bytes=fail_on_profile,
         admit_storage_context=lambda _attempt, _execution: None,
         admit_runtime_context=lambda _attempt, _request, _storage, _inspection: None,
     )
@@ -2920,7 +2731,7 @@ def test_lock_precedes_attempt_publication_failure_and_retains_evidence(
         plan.run_root / "locks" / f"released-{plan.workflow_attempt_id}-run-lock.json"
     ).is_file()
     assert not (plan.run_root / "attempts" / plan.workflow_attempt_id).exists()
-    assert list((plan.run_root / "contract/dispatch").rglob("*.json"))
+    assert (plan.run_root / "contract/profile.json").is_file()
     assert inspection.inspect_run(plan.run_root).integrity == "blocked"
 
 
@@ -2967,7 +2778,7 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
             resources=resources,
             operation="resume",
             supersedes_workflow_attempt_id=initial.workflow_attempt_id,
-            retained_dispatches={},
+            retained_tasks={},
         )
 
     winner = resume_plan()
@@ -3801,7 +3612,9 @@ def test_private_slurm_delegate_rejects_profile_drift_before_readiness(
     scheduler = control.slurm_submission
     admitted = load_execution_profile(config_path=Path(arguments.profile))
     selected_profile = Path(arguments.profile)
-    selected_profile.write_bytes(selected_profile.read_bytes() + b"# equivalent rewrite\n")
+    selected_profile.write_bytes(
+        selected_profile.read_bytes() + b"# equivalent rewrite\n"
+    )
     monkeypatch.setenv(scheduler.DELEGATE_MARKER_ENV, scheduler.DELEGATE_MARKER)
     monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, admitted.binding_sha256)
     monkeypatch.setenv(scheduler.SUBMIT_UID_ENV, str(os.getuid()))
@@ -4153,7 +3966,7 @@ def test_next_supported_action_uses_separated_status_domains() -> None:
                 reporting_status=reporting,
                 recovery_available=recovery,
                 latest_receipt={
-                    "schema_version": "emrys.attempt-receipt.v1",
+                    "schema_version": "emrys.attempt-receipt.v2",
                     "status": receipt,
                 },
                 run_root=Path.cwd() / "runs" / ("run-" + "a" * 64),
@@ -4343,38 +4156,14 @@ def test_public_help_routes() -> None:
             assert "--profile NAME_OR_ABSOLUTE_PATH" in result.stdout
 
 
-def _clean_checkout(tmp_path: Path) -> tuple[Path, str]:
-    checkout = tmp_path / "clean-checkout"
-    checkout.mkdir()
-    for name in (".Rprofile", "pyproject.toml", "uv.lock", "renv.lock"):
-        shutil.copy2(REPO_ROOT / name, checkout)
-    shutil.copytree(REPO_ROOT / "src", checkout / "src")
-    shutil.copytree(REPO_ROOT / "workflow", checkout / "workflow")
-    subprocess.run(["git", "init", "--quiet"], cwd=checkout, check=True)
-    subprocess.run(["git", "add", "."], cwd=checkout, check=True)
-    subprocess.run(
-        [
-            "git",
-            "-c",
-            "user.name=EMRYS Fixture",
-            "-c",
-            "user.email=emrys-fixture@example.invalid",
-            "commit",
-            "--quiet",
-            "-m",
-            "B5 no-science source",
-        ],
-        cwd=checkout,
-        check=True,
+def _package_copy(tmp_path: Path) -> Path:
+    package = tmp_path / "installed-package"
+    shutil.copytree(
+        source_authority.PACKAGE_ROOT,
+        package,
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
     )
-    commit = subprocess.run(
-        ["git", "rev-parse", "--verify", "HEAD"],
-        cwd=checkout,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-    return checkout, commit
+    return package
 
 
 def _doubled_lifecycle_ops(
@@ -4448,11 +4237,10 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     capsys,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    checkout, commit = _clean_checkout(tmp_path)
+    checkout = source_authority.PACKAGE_ROOT
     readiness, resources, request, workspace = _readiness(
         tmp_path / "case",
         source_root=checkout,
-        source_commit=commit,
     )
     real_build = control.build_attempt_plan
     real_ops = control.lifecycle.default_lifecycle_ops
@@ -4620,11 +4408,10 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     capsys,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    checkout, commit = _clean_checkout(tmp_path)
+    checkout = source_authority.PACKAGE_ROOT
     readiness, resources, project, workspace = _readiness(
         tmp_path / "case",
         source_root=checkout,
-        source_commit=commit,
         replicate_count=3,
     )
     authored = yaml.safe_load(project.read_text(encoding="utf-8"))
@@ -4769,9 +4556,7 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     header, *rows = samples_path.read_text(encoding="utf-8").splitlines()
     samples_path.write_text(
         f"{header}\tnotes\n"
-        + "".join(
-            f"{row}\tidentity-neutral resume edit\n" for row in reversed(rows)
-        ),
+        + "".join(f"{row}\tidentity-neutral resume edit\n" for row in reversed(rows)),
         encoding="utf-8",
     )
     resumed_project = admit_project(
@@ -4815,9 +4600,7 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         target_root.glob("contract/workflow-inputs/*/samples.tsv")
     )
     assert len(selected_manifests) == 2
-    assert {path.read_bytes() for path in selected_manifests} == {
-        predecessor_manifest
-    }
+    assert {path.read_bytes() for path in selected_manifests} == {predecessor_manifest}
     assert all(
         step08.validate_sample_manifest(path)[1] == selected_ids
         for path in selected_manifests
@@ -4825,8 +4608,12 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     orientation_root = source_root / "products" / "native" / "orientation"
     consumed_orientation_samples = {
         Path(str(item["path"])).relative_to(orientation_root).parts[0]
-        for dispatch_path in target_root.glob("contract/dispatch/*/*/*.json")
-        for item in orchestration_contracts.load_json_object(dispatch_path)["inputs"]
+        for manifest_path in target_root.glob("attempts/*/attempt.json")
+        for scopes in orchestration_contracts.load_json_object(manifest_path)[
+            "tasks"
+        ].values()
+        for record in scopes.values()
+        for item in record.get("inputs", ())
         if Path(str(item["path"])).is_relative_to(orientation_root)
     }
     assert consumed_orientation_samples == set(selected_ids)
@@ -4842,8 +4629,12 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     assert any(
         item.get("size_bytes") == source_snapshots[item["path"]]["size_bytes"]
         and item.get("sha256") == source_snapshots[item["path"]]["sha256"]
-        for dispatch_path in target_root.glob("contract/dispatch/*/*/*.json")
-        for item in orchestration_contracts.load_json_object(dispatch_path)["inputs"]
+        for manifest_path in target_root.glob("attempts/*/attempt.json")
+        for scopes in orchestration_contracts.load_json_object(manifest_path)[
+            "tasks"
+        ].values()
+        for record in scopes.values()
+        for item in record.get("inputs", ())
         if item["path"] in source_snapshots
     )
 
@@ -4879,10 +4670,12 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         )
         consumed = {
             Path(str(item["path"]))
-            for dispatch_path in drift_root.glob("contract/dispatch/*/*/*.json")
-            for item in orchestration_contracts.load_json_object(dispatch_path)[
-                "inputs"
-            ]
+            for manifest_path in drift_root.glob("attempts/*/attempt.json")
+            for scopes in orchestration_contracts.load_json_object(manifest_path)[
+                "tasks"
+            ].values()
+            for record in scopes.values()
+            for item in record.get("inputs", ())
         }
         path = next(
             candidate

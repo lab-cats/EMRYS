@@ -59,7 +59,7 @@ def test_module_rejects_cross_field_scientific_invalidity(
 
 def test_module_task_planner_includes_an_admitted_background(tmp_path: Path) -> None:
     task = analysis_module_v1().tasks[0]
-    context = analyses.TaskPlanningContextV1(
+    context = analyses.TaskPlanningContextV2(
         reference_id="reference",
         cohort_id="cohort",
         analysis_id="analysis",
@@ -84,6 +84,11 @@ def test_module_task_planner_includes_an_admitted_background(tmp_path: Path) -> 
         },
         outputs={
             output.adapter: tmp_path / output.artifact_name for output in task.outputs
+        },
+        working_outputs={
+            output.adapter: tmp_path / "work" / output.artifact_name
+            for output in task.outputs
+            if output.kind != "validation_report"
         },
         runtime_paths={"rscript": "Rscript"},
         python_command=lambda command: command,
@@ -157,6 +162,15 @@ def test_module_dependencies_are_canonical_and_readmitted(
     assert "target" not in by_id["z_file"]
     assert by_id["r_collaborator"]["target"] == "Collaborator"
     assert analyses.readmit_analysis_module(persisted) is loaded
+    released = replace(
+        loaded, provider=replace(provider, distribution_version="next-release")
+    )
+    assert analyses.module_admission_record(
+        released
+    ) == analyses.module_admission_record(loaded)
+    monkeypatch.setattr(analyses, "load_analysis_module", lambda _module_id: released)
+    assert analyses.readmit_analysis_module(persisted) is released
+    assert persisted["module"]["distribution_version"] == provider.distribution_version
 
     invalid = replace(
         descriptor,
@@ -170,9 +184,7 @@ def test_module_dependencies_are_canonical_and_readmitted(
     reserved = replace(
         descriptor,
         dependencies=(
-            analyses.AnalysisDependencyV1(
-                "runtime_profile", "file", str(file)
-            ),
+            analyses.AnalysisDependencyV1("runtime_profile", "file", str(file)),
         ),
     )
     with pytest.raises(analyses.AnalysisModuleLoadError, match="reserved"):
@@ -195,5 +207,8 @@ def test_module_validation_report_must_stay_outside_results() -> None:
 
     with pytest.raises(analyses.AnalysisModuleLoadError, match="Invalid.*task"):
         analyses._validate_descriptor(
-            replace(descriptor, tasks=(task._replace(outputs=outputs), *descriptor.tasks[1:]))
+            replace(
+                descriptor,
+                tasks=(task._replace(outputs=outputs), *descriptor.tasks[1:]),
+            )
         )

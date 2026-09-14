@@ -49,12 +49,7 @@ def build_validation_report(
     _, gtf_snapshot = stable_text(gtf_path, "Source GTF")
     structural, sorted_rows, blocks_valid, unique_names = inspect_bed12_rows(rows)
     try:
-        expected_records = converter.normalize_gtf(
-            gtf_path,
-            "exon",
-            "transcript_id",
-            "gene_id",
-        )
+        expected_records = converter.normalize_gtf(gtf_path)
     except (OSError, ValueError) as exc:
         fail(f"Source GTF cannot be normalized: {exc}")
 

@@ -1,17 +1,18 @@
 # Semantic workflow identity and DAG
 
-This file owns the built-in paired-CMH workflow's semantic identities,
-historical aliases, typed inputs, and direct artifact edges. Owner contracts
-define local behavior. An admitted collaborator descriptor owns its Run-specific
-Step `09` and optional Step `10` tail; this map is not a provider registry,
-universal Stage hierarchy, orchestration contract, or archival policy.
+This map defines the built-in paired-CMH steps, their stable identities, and
+the files passed between them. The DAG is the dependency graph: a consumer
+waits for the producers of its required inputs. Owner contracts define behavior.
+For a collaborator module, its validated descriptor defines Run-specific Step
+`09` and optional Step `10`; this map is not a module registry or a general
+rule for orchestration, Stage hierarchy, or archiving.
 
 ## Identity rules
 
-Each owner has one `stage`, `analysis`, or `evidence` kind, one public slug, and
-one frozen `emrys.<kind>.<slug>.v1` key. Display titles may change without
-changing identity. Paths, implementations, DAG position, and numeric historical
-aliases define neither identity nor order.
+Each owner has a `stage`, `analysis`, or `evidence` kind, a public slug, and a
+fixed `emrys.<kind>.<slug>.v1` key. Display titles may change without changing
+identity. File paths, implementations, graph position, and historical step
+numbers define neither identity nor execution order.
 
 ## Identity map
 
@@ -34,12 +35,12 @@ aliases define neither identity nor order.
 
 ## Edge semantics
 
-A direct edge exists only when one owner produces an artifact required by
-another; validators are not nodes. `fan-in` names distinct upstream artifacts,
-`barrier` requires the consumer's complete declared set, and `evidence branch`
-is non-gating. External inputs create no producer node. Operational coupling,
-aliases, filenames, prose order, directories, and imports create no semantic
-edge.
+An edge connects a producer to a consumer that requires its artifact. Validators
+are checks, not graph nodes. `fan-in` means several upstream artifacts come
+together; a `barrier` waits for the complete declared set. An `evidence branch`
+does not gate downstream computation. External inputs have no producer node.
+Shared operations, step numbers, filenames, document order, directories, and
+Python imports do not create artifact dependencies.
 
 ## Typed external inputs
 
@@ -51,8 +52,8 @@ edge.
 | `sample_manifest` | Explicit sample identities and canonical sample order. | `generate_partitioned_cohort_mpileup_VCFs`, `preprocess_and_annotate_cohort_candidates`, `rank_cohort_candidates_with_paired_CMH` |
 | `partition_manifest` | Explicit partition identities and selectors. | `generate_partitioned_cohort_mpileup_VCFs`, `preprocess_and_annotate_cohort_candidates`, `rank_cohort_candidates_with_paired_CMH` |
 
-Runtime tools and scalar parameters are stage-local contract inputs, not DAG
-nodes.
+Runtime tools and scalar parameters belong to each stage's contract, not the
+dependency graph.
 
 ## Direct DAG edges
 
@@ -79,7 +80,7 @@ supported default workflow.
 
 ## Current operational coupling that is not a semantic edge
 
-The retired Step `00a` scheduler wrapper materialized shared FASTA/GTF inputs for
-historical Steps `00b` and `00c`; it created no `00a -> 00b` or `00a -> 00c`
-edge because neither consumer used the STAR index. The current workflow admits
-those references as typed external inputs, not outputs of another stage.
+The retired Step `00a` scheduler wrapper prepared shared FASTA/GTF inputs for
+Steps `00b` and `00c`. Neither used the STAR index, so there was no `00a -> 00b`
+or `00a -> 00c` dependency. The current workflow takes those references as
+external inputs rather than outputs from another stage.

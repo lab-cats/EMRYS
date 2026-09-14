@@ -1,11 +1,9 @@
-# Sample-manifest admission tests
+# Sample-manifest tests
 
-This directory protects manifest structure and value rejection, optional path
-existence checks, arbitrary-working-directory behavior, and paired-FASTQ count
-and leading-ID diagnostics.
+These tests check malformed manifests and values, optional file-existence
+checks, execution from other working directories, and paired-FASTQ counts and
+leading read IDs. The [input owner](../../../src/emrys/ingestion/sample_manifest_admission/README.md)
+defines accepted inputs and commands.
 
-The
-[production owner](../../../src/emrys/ingestion/sample_manifest_admission/README.md)
-owns exact interfaces, accepted values, commands, and evidence limits. Tiny
-generated FASTQ cases do not prove complete pairing, sample identity,
-provenance, production admission, workflow execution, or scientific validity.
+Tiny generated FASTQs do not prove complete pairing, sample identity, or
+provenance. The [shared evidence limits](../../README.md#evidence-limits) also apply.

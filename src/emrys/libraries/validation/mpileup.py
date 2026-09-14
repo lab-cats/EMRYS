@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from pathlib import Path
 
 from emrys.libraries import validation as report
@@ -94,6 +95,38 @@ def read_fai(path: Path) -> dict[str, int]:
         raise report.ValidationError(str(exc))
 
 
+def validate_region_selector(value: str, contigs: Mapping[str, int]) -> None:
+    """Admit comma-separated one-based regions against the reference bounds."""
+    regions = value.split(",")
+    if any(not region for region in regions):
+        _invalid(f"region selector contains an empty region: {value}")
+    for region in regions:
+        contig, separator, coordinates = region.partition(":")
+        if contig not in contigs:
+            _invalid(
+                f"partition region contig is absent from the reference FASTA: {contig}"
+            )
+        if not separator:
+            continue
+        match = re.fullmatch(r"([0-9]+)(?:-([0-9]*))?", coordinates)
+        if match is None:
+            _invalid(f"partition region has invalid coordinates: {region}")
+        start = int(match.group(1))
+        end_text = match.group(2)
+        end = (
+            start
+            if end_text is None
+            else contigs[contig]
+            if end_text == ""
+            else int(end_text)
+        )
+        if start < 1 or end < start or end > contigs[contig]:
+            _invalid(
+                f"partition region is outside FASTA bounds: {region} "
+                f"(length {contigs[contig]})"
+            )
+
+
 def selector_ok(
     selector_type: str,
     selector_value: str,
@@ -101,28 +134,10 @@ def selector_ok(
     contigs: dict[str, int],
 ) -> bool:
     if selector_type == "region":
-        for region in selector_value.split(","):
-            if not region:
-                return False
-            contig, separator, coordinates = region.partition(":")
-            if contig not in contigs:
-                return False
-            if not separator:
-                continue
-            match = re.fullmatch(r"([0-9]+)(?:-([0-9]*))?", coordinates)
-            if match is None:
-                return False
-            start = int(match.group(1))
-            end_text = match.group(2)
-            end = (
-                start
-                if end_text is None
-                else contigs[contig]
-                if end_text == ""
-                else int(end_text)
-            )
-            if start < 1 or end < start or end > contigs[contig]:
-                return False
+        try:
+            validate_region_selector(selector_value, contigs)
+        except report.ValidationError:
+            return False
         return True
     selector_path = report.resolve_from_base(partition_manifest.parent, selector_value)
     try:

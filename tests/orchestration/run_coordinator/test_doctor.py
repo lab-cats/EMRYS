@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import sys
 from dataclasses import replace
+from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -15,6 +16,8 @@ import pytest
 from emrys import analyses
 from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys import reporting
+from emrys.evidence.runtime_availability import inspector as runtime_inspector
+from emrys.evidence.runtime_availability._profile_contract import CHOICE_IDS
 from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
     RuntimeInspection,
@@ -48,13 +51,10 @@ def _result(
     ready: bool,
     inspection: RuntimeInspection | None = None,
 ) -> doctor.DoctorResult:
-    source_root = project.source_path.parent / "source"
-    source_root.mkdir(exist_ok=True)
     return doctor.DoctorResult(
         project=project,
         analysis=project.select_analysis(),
-        source_root=source_root,
-        source_commit="a" * 40,
+        installed_package=doctor.admit_installed_package(),
         inspection=inspection,
         bindings=(),
         blockers=() if ready else ("runtime inventory is not admitted",),
@@ -71,11 +71,6 @@ def _patch_foundations(
     receipt = project.source_path.parent / "storage.tsv"
     receipt.write_bytes(b"qualified\n")
     qualified = QualifiedStorage(receipt, "b" * 64, "site-1")
-    monkeypatch.setattr(
-        doctor,
-        "inspect_source_checkout",
-        lambda **_kwargs: SimpleNamespace(commit="a" * 40),
-    )
     monkeypatch.setattr(
         doctor.onboarding,
         "validate_project",
@@ -100,12 +95,9 @@ def _check(
         check=RuntimeCheck(
             check_id=check_id,
             check_type=check_type,
-            runtime_context="local",
-            required=True,
             target=target,
             probe_args=(),
             expected=".*",
-            description=check_id,
         ),
         status="pass",
         observed="1.0",
@@ -125,9 +117,7 @@ def _inspection(
         profile_path=profile or tmp_path / "runtime.tsv",
         profile_sha256=hashlib.sha256(profile_bytes).hexdigest(),
         profile_bytes=profile_bytes,
-        runtime_context="local",
         observations=observations,
-        rendered_bytes=b"rendered\n",
     )
 
 
@@ -136,20 +126,17 @@ def _plan(project: ProjectAdmission) -> doctor._RepairPlan:
     return doctor._RepairPlan(
         project=project,
         analysis_name=project.select_analysis().name,
-        source_root=project.source_path.parent / "source",
-        source_commit="a" * 40,
+        installed_package=doctor.admit_installed_package(),
         storage=None,
         runtime=doctor._ManagedRuntimePlan(
-            source_root=project.source_path.parent / "source",
             managed_root=managed,
             profile=project.source_path.parent / "runtime/runtime.tsv",
-            uv=Path("/managers/uv"),
             pixi=Path("/managers/pixi"),
-            uv_sha256="b" * 64,
             pixi_sha256="c" * 64,
             profile_bytes=None,
             manifest_bytes=b'[workspace]\nname = "emrys"\n',
             lock_bytes=b"locked\n",
+            r_settings_bytes=b"{}\n",
         ),
     )
 
@@ -248,9 +235,7 @@ def test_selected_package_tree_dependency_is_composed_and_content_bound(
             analyses.AnalysisDependencyV1(
                 "collaborator_r", "r_namespace", "Collaborator", ".*"
             ),
-            analyses.AnalysisDependencyV1(
-                "collaborator_file", "file", str(resource)
-            ),
+            analyses.AnalysisDependencyV1("collaborator_file", "file", str(resource)),
             analyses.AnalysisDependencyV1(
                 "collaborator_assets",
                 "package_tree",
@@ -260,14 +245,12 @@ def test_selected_package_tree_dependency_is_composed_and_content_bound(
         ),
     )
     rscript = tmp_path / "Rscript"
-    additions, package_tree_ids, explicit_file_ids = (
-        doctor._module_dependency_checks(
-            descriptor,
-            (
-                _check("python", "tool_version", sys.executable).check,
-                _check("rscript", "tool_version", str(rscript)).check,
-            ),
-        )
+    additions, package_tree_ids, explicit_file_ids = doctor._module_dependency_checks(
+        descriptor,
+        (
+            _check("python", "tool_version", sys.executable).check,
+            _check("rscript", "tool_version", str(rscript)).check,
+        ),
     )
     by_name = {check.check_id: check for check in additions}
     inspection = _inspection(
@@ -376,16 +359,6 @@ def test_runtime_package_binding_rechecks_a_symlink_after_hashing(
             )
         )
 
-def test_runtime_contract_refuses_a_truncated_fixed_roster(tmp_path: Path) -> None:
-    source = tmp_path / "source"
-    source.mkdir()
-    _data, policy = doctor.load_runtime_profile_contract(
-        doctor.onboarding.runtime_policy_path()
-    )
-
-    with pytest.raises(doctor.DoctorInputError, match="exact ordered fixed-policy"):
-        doctor.validate_runtime_profile_contract(policy[:-1], source)
-
 
 def test_runtime_contract_allows_missing_but_refuses_symlinked_renv_library(
     tmp_path: Path,
@@ -396,45 +369,15 @@ def test_runtime_contract_allows_missing_but_refuses_symlinked_renv_library(
     real_library.mkdir()
     linked_library = tmp_path / "linked-library"
     linked_library.symlink_to(real_library, target_is_directory=True)
-    _data, policy = doctor.load_runtime_profile_contract(
-        doctor.onboarding.runtime_policy_path()
-    )
-    targets = {
-        "python": "/python",
-        "snakemake": "/python",
-        "sha256_python": "/python",
-        "java": "/java",
-        "picard": "/java",
-        "picard_jar": "/picard.jar",
-        "rscript": "/Rscript",
-        "renv_project": str(source),
-        "renv_library": str(linked_library),
-    }
-    checks = tuple(
-        replace(
-            check,
-            target=targets.get(check.check_id, check.target),
-            probe_args=(
-                doctor.controlled_python_argv(
-                    "/python", "-m", "snakemake", "--version"
-                )[1:]
-                if check.check_id == "snakemake"
-                else ("python_hashlib",)
-                if check.check_id == "sha256_python"
-                else ("-jar", "/picard.jar", "MarkDuplicates", "--version")
-                if check.check_id == "picard"
-                else ("/Rscript",)
-                if check.check_type == "r_namespace"
-                else check.probe_args
-            ),
-        )
-        for check in policy
-    )
-
-    with pytest.raises(doctor.DoctorInputError, match="canonical real directory"):
-        doctor.validate_runtime_profile_contract(checks, source)
+    choices = {key: tmp_path / key for key in CHOICE_IDS}
+    choices["renv_library"] = linked_library
+    data = runtime_inspector.runtime_profile_bytes(choices)
+    with pytest.raises(
+        runtime_inspector.RuntimeInspectionError, match="canonical real directory"
+    ):
+        runtime_inspector.runtime_profile_checks(data, source)
     linked_library.unlink()
-    doctor.validate_runtime_profile_contract(checks, source)
+    runtime_inspector.runtime_profile_checks(data, source)
 
 
 def test_absent_runtime_diagnosis_is_read_only_and_opens_no_log(
@@ -545,25 +488,16 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
 ) -> None:
     project = _project(tmp_path)
     qualified = _patch_foundations(monkeypatch, project)
-    source = doctor.onboarding.source_root()
     profile = doctor.onboarding.runtime_profile_path(project.source_path)
-    _data, policy = doctor.load_runtime_profile_contract(
-        doctor.onboarding.runtime_policy_path()
-    )
-    checks = tuple(
-        replace(
-            check,
-            target=(
-                sys.executable
-                if check.check_id in {"python", "snakemake", "sha256_python"}
-                else str(source) if check.check_id == "renv_project" else check.target
-            ),
-        )
-        for check in policy
-    )
-    profile.write_bytes(doctor.runtime_profile_bytes(checks))
+    choices = {key: tmp_path / key for key in CHOICE_IDS}
+    choices["python"] = Path(sys.executable)
+    profile.write_bytes(runtime_inspector.runtime_profile_bytes(choices))
     observations = (
-        replace(_check("bash", "tool_version", "/bin/bash"), status="fail", observed="unavailable"),
+        replace(
+            _check("bash", "tool_version", "/bin/bash"),
+            status="fail",
+            observed="unavailable",
+        ),
         _check("python", "tool_version", sys.executable),
         _check("renv_library", "path_visibility", str(tmp_path / "library")),
     )
@@ -576,15 +510,22 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
         "and re-admit the selected site environment without editing runtime.tsv."
     )
     monkeypatch.setattr(
-        doctor, "workspace_location_blockers",
-        lambda *_args: (["workspace diagnosis"], [runtime_remediation, runtime_remediation]),
+        doctor,
+        "workspace_location_blockers",
+        lambda *_args: (
+            ["workspace diagnosis"],
+            [runtime_remediation, runtime_remediation],
+        ),
     )
     if not storage_ready:
+
         def unavailable_storage(*_args: object) -> None:
             raise doctor.storage_qualification.StorageQualificationError("unavailable")
 
         monkeypatch.setattr(
-            doctor.storage_qualification, "admit_direct_requirement", unavailable_storage
+            doctor.storage_qualification,
+            "admit_direct_requirement",
+            unavailable_storage,
         )
 
     def unavailable_execution(**_kwargs: object) -> None:
@@ -596,23 +537,40 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
     result = doctor.diagnose_project(project.source_path, require_reporter=False)
 
     assert result.inspection is inspection
-    assert (result.ready, result.storage_ready, result.runtime_ready, result.execution_ready) == (
-        False, storage_ready, False, False,
+    assert (
+        result.ready,
+        result.storage_ready,
+        result.runtime_ready,
+        result.execution_ready,
+    ) == (
+        False,
+        storage_ready,
+        False,
+        False,
     )
     assert result.blockers == (
         "workspace diagnosis",
-        *(("single-host storage is not qualified: unavailable",) if not storage_ready else ()),
+        *(
+            ("single-host storage is not qualified: unavailable",)
+            if not storage_ready
+            else ()
+        ),
         "bash: fail (unavailable)",
         "default execution profile is not admitted: unavailable",
     )
     assert result.remediations == (
         runtime_remediation,
-        *(("Run `emrys doctor --repair` in the intended direct execution context.",) if not storage_ready else ()),
+        *(
+            ("Run `emrys doctor --repair` in the intended direct execution context.",)
+            if not storage_ready
+            else ()
+        ),
         "Restore a valid Project-owned runtime/profiles/default.yaml; "
         "Doctor preserves operator execution policy.",
     )
     assert tuple(binding.check_id for binding in result.bindings) == (
-        "python", *(("storage_qualification",) if storage_ready else ()),
+        "python",
+        *(("storage_qualification",) if storage_ready else ()),
     )
     assert result.bindings[0].path == Path(sys.executable)
     if storage_ready:
@@ -718,8 +676,6 @@ def test_repair_refuses_a_site_owned_runtime_without_mutation(
     )
     monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
     monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
-    (result.source_root / ".venv").mkdir()
-    monkeypatch.setattr(doctor.sys, "prefix", str(result.source_root / ".venv"))
     monkeypatch.setattr(doctor, "_manager", lambda name: Path(f"/manager/{name}"))
     monkeypatch.setattr(doctor, "_file_sha256", lambda _path: "d" * 64)
     before = _snapshot(tmp_path)
@@ -742,12 +698,8 @@ def test_managed_repair_accepts_missing_library_and_binds_base_profile(
     tool.write_bytes(b"tool\n")
     python_check = _check("python", "tool_version", sys.executable)
     missing_library = project.source_path.parent / "runtime/managed/renv/library"
-    renv_check = _check(
-        "renv_library", "path_visibility", str(missing_library)
-    )
-    dependency_check = _check(
-        "collaborator_tool", "tool_version", str(tool)
-    )
+    renv_check = _check("renv_library", "path_visibility", str(missing_library))
+    dependency_check = _check("collaborator_tool", "tool_version", str(tool))
     result = _result(
         project,
         ready=False,
@@ -779,14 +731,12 @@ def test_managed_repair_accepts_missing_library_and_binds_base_profile(
     )
     monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
     monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
-    (result.source_root / ".venv").mkdir()
-    monkeypatch.setattr(doctor.sys, "prefix", str(result.source_root / ".venv"))
     monkeypatch.setattr(doctor, "_manager", lambda name: Path(f"/manager/{name}"))
     monkeypatch.setattr(doctor, "_file_sha256", lambda _path: "d" * 64)
     monkeypatch.setattr(
         doctor,
         "load_runtime_profile_contract",
-        lambda _path: (base_bytes, (python_check.check, renv_check.check)),
+        lambda _path, _root: (base_bytes, (python_check.check, renv_check.check)),
     )
 
     plan = doctor._build_repair_plan(result)
@@ -796,13 +746,15 @@ def test_managed_repair_accepts_missing_library_and_binds_base_profile(
     assert not missing_library.exists()
 
 
-def test_managed_repair_refuses_module_specific_dependency_installation(
+@pytest.mark.parametrize("check_id", ("collaborator_tool", "snakemake"))
+def test_managed_repair_refuses_external_dependency_installation(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    check_id: str,
 ) -> None:
     project = _project(tmp_path)
     missing = replace(
-        _check("collaborator_tool", "tool_version", str(tmp_path / "tool")),
+        _check(check_id, "tool_version", str(tmp_path / "tool")),
         status="fail",
         observed="missing",
     )
@@ -836,8 +788,6 @@ def test_managed_repair_refuses_module_specific_dependency_installation(
 
     monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
     monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
-    (result.source_root / ".venv").mkdir()
-    monkeypatch.setattr(doctor.sys, "prefix", str(result.source_root / ".venv"))
     monkeypatch.setattr(doctor, "_manager", lambda name: Path(f"/manager/{name}"))
     monkeypatch.setattr(doctor, "_file_sha256", lambda _path: "d" * 64)
 
@@ -862,8 +812,7 @@ def test_storage_only_repair_preserves_ready_site_runtime_and_skips_managers(
     blocked = doctor.DoctorResult(
         project=project,
         analysis=project.select_analysis(),
-        source_root=project.source_path.parent / "source",
-        source_commit="a" * 40,
+        installed_package=doctor.admit_installed_package(),
         inspection=inspection,
         bindings=(),
         blockers=("single-host storage is not qualified",),
@@ -974,38 +923,10 @@ def test_repair_isolates_and_refuses_pixi_configuration(
         "PIXI_CACHE_DETACHED_ENVIRONMENTS_DIR" not in environment
         for environment in pixi_environments
     )
-
-
-class _Logger:
-    def __init__(self, records: list[str]) -> None:
-        self.records = records
-
-    def info(self, _message: str, *, extra: object) -> None:
-        assert extra is not None
-        self.records.append("info")
-
-
-class _Attempt:
-    def __init__(self, records: list[str]) -> None:
-        self.records = records
-
-    def logger(self, **_kwargs: object) -> _Logger:
-        return _Logger(self.records)
-
-    def terminal(self, **_kwargs: object) -> bool:
-        self.records.append("terminal")
-        return True
-
-    def fail(self, **_kwargs: object) -> bool:
-        self.records.append("failed")
-        return True
-
-    def interrupt_best_effort(self, **_kwargs: object) -> bool:
-        self.records.append("interrupted")
-        return True
-
-    def close(self) -> None:
-        self.records.append("closed")
+    assert pixi_environments[-1]["RENV_PROJECT"] == str(runtime.managed_root)
+    assert pixi_environments[-1]["R_PROFILE_USER"] == str(
+        plan.installed_package.root / ".Rprofile"
+    )
 
 
 def _patch_logging(
@@ -1019,7 +940,13 @@ def _patch_logging(
         lambda _plan, **_kwargs: None,
     )
 
-    def open_log(**_kwargs: object) -> _Attempt:
+    real_open_log = doctor.open_attempt_log
+
+    def observe(method: Any, name: str, **kwargs: object) -> object:
+        records.append(name)
+        return method(**kwargs)
+
+    def open_log(**kwargs: Any) -> Any:
         if plan.runtime is not None:
             assert not plan.runtime.managed_root.exists(), (
                 "repair mutated before opening its log"
@@ -1028,22 +955,28 @@ def _patch_logging(
             assert not plan.storage.receipt_path.exists(), (
                 "repair mutated before opening its log"
             )
+        attempt = real_open_log(**kwargs)
         records.append("opened")
-        return _Attempt(records)
+        for method, name in (
+            ("terminal", "terminal"),
+            ("fail", "failed"),
+            ("interrupt_best_effort", "interrupted"),
+            ("close", "closed"),
+        ):
+            monkeypatch.setattr(
+                attempt, method, partial(observe, getattr(attempt, method), name)
+            )
+        return attempt
 
     monkeypatch.setattr(doctor, "open_attempt_log", open_log)
 
 
-def test_repair_readmission_rejects_a_profile_that_appeared(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("changed", ("profile", "package", "settings"))
+def test_repair_readmission_rejects_changed_package_or_appeared_profile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, changed: str
 ) -> None:
     plan = _plan(_project(tmp_path))
     runtime = _runtime(plan)
-    monkeypatch.setattr(
-        doctor,
-        "inspect_source_checkout",
-        lambda **_kwargs: SimpleNamespace(commit=plan.source_commit),
-    )
     monkeypatch.setattr(
         doctor.onboarding,
         "validate_project",
@@ -1052,14 +985,25 @@ def test_repair_readmission_rejects_a_profile_that_appeared(
     monkeypatch.setattr(
         doctor,
         "_file_sha256",
-        lambda path: runtime.uv_sha256 if path == runtime.uv else runtime.pixi_sha256,
+        lambda _path: runtime.pixi_sha256,
     )
-    runtime.profile.write_bytes(b"unapproved\n")
+    if changed == "profile":
+        runtime.profile.write_bytes(b"unapproved\n")
+    elif changed == "package":
+        plan = replace(
+            plan,
+            installed_package=replace(plan.installed_package, content_sha256="0" * 64),
+        )
+    else:
+        settings = runtime.managed_root / "renv/settings.json"
+        settings.parent.mkdir(parents=True)
+        settings.write_bytes(b"changed\n")
 
     with pytest.raises(
-        doctor.DoctorRepairError, match="appeared after repair confirmation"
+        doctor.DoctorRepairError,
+        match="appeared after repair confirmation|changed before execution|settings changed",
     ):
-        doctor._readmit_repair_plan(plan, before_storage=True)
+        doctor._readmit_repair_plan(plan, before_storage=changed != "settings")
 
 
 def test_repair_readmission_rejects_a_redirected_runtime_before_writing(
@@ -1074,11 +1018,6 @@ def test_repair_readmission_rejects_a_redirected_runtime_before_writing(
     default_profile.parent.rmdir()
     runtime.managed_root.parent.rmdir()
     runtime.managed_root.parent.symlink_to(external, target_is_directory=True)
-    monkeypatch.setattr(
-        doctor,
-        "inspect_source_checkout",
-        lambda **_kwargs: SimpleNamespace(commit=plan.source_commit),
-    )
     monkeypatch.setattr(
         doctor.onboarding,
         "validate_project",
@@ -1175,10 +1114,10 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     observed = doctor._execute_repair(plan, controls=_controls(project))
 
     assert observed is final
-    assert [Path(argv[0]).name for argv in commands] == ["uv", "pixi", "pixi"]
-    assert "sync" in commands[0] and "install" in commands[1]
-    assert "run" in commands[2] and "--environment" in commands[2]
-    assert commands[2][-1].endswith("scripts/restore_r_environment.R")
+    assert [Path(argv[0]).name for argv in commands] == ["pixi", "pixi"]
+    assert "install" in commands[0]
+    assert "run" in commands[1] and "--environment" in commands[1]
+    assert commands[1][-1].endswith("resources/runtime/restore_r_environment.R")
     assert discovery_calls[0]["environment"]["EMRYS_RENV_LIBRARY"].endswith(
         "R-4.6/x86_64-pc-linux-gnu"
     )

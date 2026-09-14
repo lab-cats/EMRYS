@@ -1,15 +1,16 @@
-# Artifact-contract owner
+# Artifact contracts
 
-`emrys validate artifact-contracts` validates the closed artifact-record,
-run-summary, and report-receipt schemas through private [`validator.py`](validator.py).
-Reporting imports the curated [`api.py`](api.py) surface. Neither interface
-discovers artifacts, builds indexes, renders reports, repairs inputs, or
-promotes evidence.
+`emrys validate artifact-contracts` checks current artifact entries, Run result
+manifests, report receipts and explicit inventories through private
+[`validator.py`](validator.py). Reporting uses [`api.py`](api.py). These interfaces
+validate supplied data; they do not discover artifacts, repair inputs, or promote
+evidence.
 
-The packaged registry spans shared definitions in v1, artifact-record and flat
-paired-CMH run-summary v2, module-neutral run-summary plus frozen historical
-receipt v3, flat paired-CMH report-receipt v4, and explicit-module
-report-receipt v5. Historical versions are validated exactly; they are not
-aliases or migration routes. Each registered `$id` remains one packaged file,
-with local `$defs` where useful; splitting one is a versioned contract change,
-not documentation cleanup.
+The [schema index](../schemas/artifacts/README.md) defines the current formats.
+A Run result manifest stores shared Run identity and publication provenance once,
+plus the exact original scientific Run and Attempt references. Artifact entries
+describe the expected source, its observed completion, parameters, metrics and
+diagnostics. Actual execution history belongs to the referenced Attempt; artifact
+entries do not duplicate it or carry unused test and cluster-proof claims.
+Schema and semantic admission reject old document versions.
+The CLI and reporting readers use the same current schema registry.

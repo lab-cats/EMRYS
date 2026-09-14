@@ -1,9 +1,9 @@
 # External scientific-evaluation checklist
 
-This optional checklist is a non-normative research aid outside EMRYS. It does
-not define a pipeline step, schema, approver role, gate, status, or completion
-condition. EMRYS's output remains CMH-ranked computational candidates and
-provenance whether or not a research team performs or records these activities.
+This optional checklist helps research teams evaluate candidates outside EMRYS.
+It defines no pipeline step, schema, approver role, gate, status, or completion
+condition. EMRYS produces CMH-ranked candidates and provenance regardless of
+whether a team performs these activities.
 
 If a team evaluates candidates, keep its records in the team's scientific work
 process and reference immutable EMRYS run, artifact, path, and hash identities

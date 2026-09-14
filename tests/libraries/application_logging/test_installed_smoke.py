@@ -16,16 +16,13 @@ def test_clean_installed_scheduler_delegate_owns_one_attempt_and_separates_strea
     script = textwrap.dedent(
         """
         import os
-        import sys
         from pathlib import Path
         from emrys.libraries.application_logging import (
             AttemptIdentity, event, open_attempt_log, resolve_log_controls
         )
-        from emrys.libraries.source_authority import SourceCheckout
 
         controls = resolve_log_controls(
-            source_checkout=SourceCheckout(Path(sys.argv[1])),
-            environment=os.environ,
+            environment=os.environ, default_root=Path.cwd() / "default-logs"
         )
         attempt = open_attempt_log(
             controls=controls,
@@ -59,7 +56,7 @@ def test_clean_installed_scheduler_delegate_owns_one_attempt_and_separates_strea
         scheduler_err.open("w", encoding="utf-8") as stderr,
     ):
         result = subprocess.run(
-            [sys.executable, "-I", "-c", script, str(tmp_path / "checkout")],
+            [sys.executable, "-I", "-c", script],
             stdout=stdout,
             stderr=stderr,
             text=True,
@@ -69,7 +66,7 @@ def test_clean_installed_scheduler_delegate_owns_one_attempt_and_separates_strea
     stderr_text = scheduler_err.read_text(encoding="utf-8")
     if "No module named 'emrys'" in stderr_text:
         pytest.skip("the borrowed local interpreter has no installed EMRYS package")
-    assert result.returncode == 0
+    assert result.returncode == 0, stderr_text
     assert scheduler_out.read_text(encoding="utf-8") == "machine\n"
     assert "Subprocess event." in stderr_text
     path = log_root / "run-run-1/attempt-1/smoke.jsonl"

@@ -7,6 +7,8 @@ from pathlib import Path
 
 from emrys.contracts.scientific_evidence import step08
 from emrys.libraries.alignments.orientation import validate_legacy_orientation_policy
+from emrys.libraries.alignments.orientation import ORIENTATIONS
+from emrys.libraries.validation.mpileup import RECEIPT_HEADER
 from emrys.libraries.validation import (
     Snapshot,
     add_output_arguments,
@@ -33,10 +35,61 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--sample-manifest", required=True, type=Path)
     parser.add_argument("--partition-manifest", required=True, type=Path)
     parser.add_argument("--annotation-gtf", required=True, type=Path)
+    parser.add_argument("--step07-root", type=Path)
     parser.add_argument("--sites", required=True, type=Path)
     parser.add_argument("--inputs", required=True, type=Path)
     parser.add_argument("--summary", required=True, type=Path)
     add_output_arguments(parser)
+
+
+def _reconcile_step07(
+    arguments: argparse.Namespace,
+    inputs: step08.Table,
+    sample_ids: tuple[str, ...],
+    partitions: list[dict[str, str]],
+    sample_hash: str,
+    partition_hash: str,
+) -> None:
+    for partition in partitions:
+        partition_id = partition["partition_id"]
+        prefix = f"{arguments.cohort_id}.{partition_id}"
+        root = arguments.step07_root / arguments.cohort_id / partition_id
+        receipt_path = root / f"{prefix}.step07_outputs.tsv"
+        receipt = step08.read_tsv("Step 07 receipt", receipt_path, RECEIPT_HEADER)
+        receipt_hash = step08.sha256_file(receipt_path)
+        if len(receipt.rows) != 2:
+            step08.fail("Step 07 receipt must contain exactly two orientation rows.")
+        for upstream, orientation in zip(receipt.rows, ORIENTATIONS, strict=True):
+            vcf = root / f"{prefix}.{orientation}.mpileup.vcf"
+            row = next(
+                item
+                for item in inputs.rows
+                if item["partition_id"] == partition_id
+                and item["orientation"] == orientation
+            )
+            expected = {
+                "cohort_id": arguments.cohort_id,
+                **partition,
+                "orientation": orientation,
+                "sample_manifest_sha256": sample_hash,
+                "partition_manifest_sha256": partition_hash,
+                "sample_count": str(len(sample_ids)),
+            }
+            if (
+                any(upstream[key] != value for key, value in expected.items())
+                or not Path(upstream["vcf_path"]).samefile(vcf)
+                or row["step07_receipt_path"] != str(receipt_path)
+                or row["step07_receipt_sha256"] != receipt_hash
+                or row["vcf_path"] != str(vcf)
+                or row["vcf_sha256"] != step08.sha256_file(vcf)
+                or step08.parse_nonnegative_int(
+                    "Step 07 record count", upstream["vcf_record_count"]
+                )
+                != int(row["declared_vcf_record_count"])
+            ):
+                step08.fail(
+                    "Step 08 input receipt differs from its admitted Step 07 inputs."
+                )
 
 
 def _build_checks(
@@ -91,6 +144,20 @@ def _build_checks(
             ),
         )
 
+    if inputs_table is not None and getattr(arguments, "step07_root", None) is not None:
+        _, inputs_detail = step08.attempt(
+            lambda: _reconcile_step07(
+                arguments,
+                inputs_table,
+                sample_result[1],
+                partition_table.rows,
+                sample_hash,
+                partition_hash,
+            )
+        )
+        if inputs_detail != "validated":
+            inputs_table = None
+
     identity_valid = False
     if inputs_table is not None:
         identity_valid = all(
@@ -118,6 +185,14 @@ def _build_checks(
                 inputs_table.rows,
             ),
         )
+
+    if (
+        sites_table is not None
+        and getattr(arguments, "step07_root", None) is not None
+        and any(int(row["position"]) < 1 for row in sites_table.rows)
+    ):
+        sites_table = None
+        sites_detail = "Step 08 sites positions must be positive."
 
     summary_table = None
     summary_detail = "prerequisite sites validation failed"

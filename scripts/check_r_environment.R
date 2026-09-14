@@ -42,7 +42,7 @@ options(
 
 project_request <- Sys.getenv("RENV_PROJECT", unset = "")
 if (!nzchar(project_request)) {
-    stop("RENV_PROJECT must identify the EMRYS repository root.")
+    stop("RENV_PROJECT must identify the installed EMRYS package root.")
 }
 
 required_packages <- c(

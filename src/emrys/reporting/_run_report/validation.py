@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from jinja2 import (
     Environment,
@@ -17,20 +17,74 @@ from jinja2 import (
     select_autoescape,
 )
 
-from .inputs import _assert_snapshot, _fail, _snapshot_regular
+from .inputs import _assert_snapshot, _fail, _read_snapshot_bytes, _snapshot_regular
+from .receipt import read_receipt_tsv
 from .models import (
     ACTIVE_RESOURCE_ATTRIBUTES,
     ACTIVE_URI_RE,
     CSS_RESOURCE_RE,
     EVIDENCE_REPORT_SECTION_IDS,
     REMOTE_URI_RE,
+    ReportContext,
     ReportRenderError,
 )
+
+
+def expected_html_identity(
+    receipt: Mapping[str, Any],
+    report_view: Literal["scientific", "evidence"],
+) -> dict[str, str]:
+    identity = {
+        "data-report-view": report_view,
+        "data-run-id": receipt["run_id"],
+    }
+    if report_view == "evidence":
+        identity.update(
+            {
+                "data-css-sha256": receipt["stylesheet"]["sha256"],
+                "data-jinja-version": receipt["evidence_renderer"][
+                    "template_engine_version"
+                ],
+                "data-renderer-version": receipt["evidence_renderer"][
+                    "producer_version"
+                ],
+                "data-run-summary-sha256": receipt["input_run_summary"]["sha256"],
+                "data-template-sha256": receipt["template"]["sha256"],
+            }
+        )
+    return identity
+
+
+def validate_projected_outputs(
+    context: ReportContext,
+    paths: Sequence[Path],
+    projected: Sequence[bytes],
+) -> dict[str, Any]:
+    """Check exact projected bytes and the independent output contracts."""
+
+    snapshots = []
+    for path, payload in zip(paths, projected, strict=True):
+        snapshot = _snapshot_regular(path, "report output")
+        snapshots.append(snapshot)
+        if _read_snapshot_bytes(snapshot, "report output") != payload:
+            _fail(f"Report output differs from its deterministic projection: {path}")
+    scientific, evidence, receipt = paths
+    document = read_receipt_tsv(receipt)
+    for view, path in (("scientific", scientific), ("evidence", evidence)):
+        validate_rendered_html(
+            path,
+            expected_banner=context.render_metadata["state_banner"],
+            expected_identity=expected_html_identity(document, view),
+        )
+    for snapshot in snapshots:
+        _assert_snapshot(snapshot, "report output")
+    return document
+
 
 def build_environment() -> Environment:
     """Return the closed deterministic environment used by installed reports."""
 
-    return Environment(
+    environment = Environment(
         loader=PackageLoader("emrys.reporting", "templates"),
         autoescape=select_autoescape(enabled_extensions=("html", "j2"), default=True),
         undefined=StrictUndefined,
@@ -39,6 +93,13 @@ def build_environment() -> Environment:
         keep_trailing_newline=True,
         newline_sequence="\n",
     )
+
+    environment.filters["display"] = lambda value: (
+        "Not available"
+        if value is None
+        else (str(value).lower() if isinstance(value, bool) else str(value))
+    )
+    return environment
 
 
 def validate_template_source(source: str) -> None:
@@ -72,14 +133,28 @@ def _validate_css_resources(css: str, label: str) -> None:
         _fail(f"{label} contains an unsafe raw HTML boundary")
 
 
-def render_html(view: Mapping[str, Any], css: str) -> bytes:
+def render_html(
+    summary: Mapping[str, Any], css: str, *, report_view: str, **content: Any
+) -> bytes:
     environment = build_environment()
     source, _, _ = environment.loader.get_source(environment, "run_report.html.j2")
     validate_template_source(source)
     _validate_css_resources(css, "Report CSS resource")
+    values = dict(
+        metadata={},
+        result_links=(),
+        inspect_command="emrys inspect <RUN>",
+        renderer_details=(),
+        figure_evidence=(),
+        report_inputs=(),
+        analysis_policy=None,
+    )
+    values.update(content)
     rendered = environment.get_template("run_report.html.j2").render(
-        view=view,
+        summary=summary,
         css=css,
+        report_view=report_view,
+        **values,
     )
     return rendered.encode("utf-8")
 
@@ -106,7 +181,6 @@ class ReportHTMLInspector(HTMLParser):
         self.current_table_bad_headers = 0
         self.table_errors: list[str] = []
         self.svg_depth = 0
-        self.svg_count = 0
         self.accessible_svgs = 0
         self.banner_depth = 0
         self.banner_count = 0
@@ -195,7 +269,6 @@ class ReportHTMLInspector(HTMLParser):
 
         if tag == "svg":
             self.svg_depth += 1
-            self.svg_count += 1
             if attributes.get("role") == "img" and (
                 attributes.get("aria-label") or attributes.get("aria-labelledby")
             ):

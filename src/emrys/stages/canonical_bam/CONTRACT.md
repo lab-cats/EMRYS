@@ -3,24 +3,19 @@
 This directory owns historical Step `02`; the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map) owns its public
 identity and alias. The private validator is grouped under `emrys validate`;
-the producer remains an explicit repository-path command.
+the shell producer is an internal Run worker.
 
 ## Responsibility
 
-Transform one explicit SAM or BAM alignment into the canonical per-sample,
-coordinate-sorted, read-group-tagged BAM/BAI pair, validating the replacement
-before publication and preserving a complete prior pair when publication can
-be rolled back.
-
-The separate validator observes a declared canonical pair and records its
-container, sort-order, read-group, and alignment-tag contract without changing
-the BAM or BAI.
+The [README](README.md) explains BAM preparation and use. The worker validates
+the staged pair before the runner publishes it. The separate
+validator reads a declared pair without changing it.
 
 ## Execution dependencies
 
-The hard data prerequisite is one samtools-readable alignment. Historical Step
-`01` is the current default producer, but this stage accepts an explicit SAM or
-BAM and does not consume STAR logs or require a STAR-specific filename.
+The input must be one samtools-readable alignment. Step `01` normally supplies
+it, but any explicit SAM or BAM can be used; STAR logs and filenames are not
+required.
 
 After the canonical pair is published, historical Step `02b` BAM QC, Step `03`
 strandedness/orientation inference, and Step `04` duplicate marking can consume
@@ -29,24 +24,19 @@ Step `00b`. The current Step `04` implementation does not consume Step `02b`
 or Step `03` outputs, so those three direct consumers are data-parallel once
 their own additional prerequisites are satisfied.
 
-Historical numeric order records provenance. The explicit alignment input and
-canonical BAM/BAI handoff, not the numeric identifier, define required
-execution.
-
 ## Inputs
 
 The producer accepts:
 
-- a nonempty sample identifier used for output names and read-group fields;
+- a sample identifier matching `[A-Za-z0-9][A-Za-z0-9._-]*`, used for output
+  names and read-group fields;
 - one explicit input SAM or BAM file;
-- one explicit output directory;
+- one explicit staging output directory;
 - a positive thread count; and
 - an available samtools executable.
 
-The current producer checks that the input path is a file but relies on
-samtools to establish its content contract. The orchestration-safe
-`--no-clobber` route validates sample-identifier path safety and binds input
-stability; the legacy replaceable route does neither.
+The worker requires a nonempty alignment and a safe sample identifier;
+samtools establishes the alignment content contract.
 
 ## Outputs
 
@@ -63,62 +53,59 @@ identifier and `PL:ILLUMINA`, declares coordinate sort order, contains at least
 one alignment, and tags every alignment with that read-group identifier. The
 BAI must be nonempty.
 
-The two files are published through backup and rollback attempts, but no
-receipt or summary marks transaction completion.
+The two files are published create-exclusively, but no receipt or summary
+marks transaction completion. They are not an atomic two-file filesystem write.
 
-## Orchestration-safe producer boundary
+## Scientific worker
 
-`--no-clobber` is the required local-profile mode. It refuses either existing
-final before tool work and immediately before publication, pins the explicit
-samtools path, hashes and rechecks the input alignment, and uses the existing
-per-sample lock and staged pair validation. Because replacement is forbidden,
-this path never creates or consumes backups and a failed attempt cannot damage
-a predecessor. It publishes create-exclusively with staging inode anchors and
-proves that both final paths still resolve to the already validated staging
-inodes. When the canonical input itself supplied the staging inode, the
-producer additionally hashes the published BAM after both links exist and
-requires it to match the admitted input digest. The inode proof plus this
-post-publication content binding carries the staged semantic validation across
-publication without another `quickcheck`, header read, or two whole-BAM count
-scans at the final pathname. The historical replaceable execute route retains
-final-path semantic revalidation and its characterized restoration defect.
+[`step_02_sort_index_bam.sh`](step_02_sort_index_bam.sh) is an internal worker of the
+[Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
-## Current execution surfaces
+The worker skips sorting when the input header declares `SO:coordinate`;
+otherwise it sorts with samtools in runner scratch. It reuses the input inode
+only when the single read group and every alignment tag already satisfy the
+canonical contract and a hard link is available. Otherwise it replaces all
+read groups with the declared sample group. It indexes and validates the
+staged BAM/BAI pair. The runner preserves that checked byte identity through
+publication, including the source binding when a canonical input is reused.
 
-[`step_02_sort_index_bam.sh`](step_02_sort_index_bam.sh) is
-the public producer entrypoint. It:
+### Historical producer cleanup limits
 
-- is dry-run by default and keeps its own dry-run side-effect-free;
-- inspects input sort order, skips a redundant sort when the admitted header
-  already declares `SO:coordinate`, otherwise sorts with samtools;
-- reuses a coordinate-sorted input inode when its single read group and every
-  record tag already satisfy the canonical contract, otherwise replaces all
-  read groups with one declared sample group;
-- indexes the staged canonical BAM;
-- validates the staged BAM/BAI before touching canonical paths;
-- acquires an owned per-sample lock;
-- requires an existing canonical state to contain both BAM and BAI or neither;
-- on the orchestration-safe no-clobber path, create-exclusively publishes the
-  pair, proves final/staging inode identity, and rechecks the admitted digest
-  after publication when the input inode was reused, instead of semantically
-  scanning the same bytes a second time;
-- on the legacy replaceable path, backs up a prior pair, publishes the
-  replacement files, and revalidates the final pair; and
-- attempts to restore the prior pair, or remove a newly introduced partial
-  pair, when a protected execution or publication step fails.
+At [revision 88522d0a](https://github.com/lab-cats/EMRYS/tree/88522d0a/tests/stages/canonical_bam),
+producer-local fault tests characterized these additional cleanup limits:
 
-Existing complete outputs are intentionally replaceable after the replacement
-passes validation. Temporary, backup, and lock paths carry the run token and
-live with the canonical outputs.
 
-Rollback restoration commands are best-effort and their failures are ignored;
-cleanup can subsequently remove backup paths without publishing a recovery
-marker. The characterized persistent-restore-failure oracle fails final BAI
-publication and then prior-BAM restoration. It returns nonzero with both
+- If removing both publication anchors persistently fails before either is
+  removed, rollback removes both owned finals. EXIT cleanup fails to remove the
+  anchors again but releases the owned lock. Both anchors remain, and the
+  residue check refuses retry. Lock retention is not guaranteed for every
+  cleanup failure.
+- If the BAM anchor is removed before anchor cleanup fails, the final BAM is
+  no longer provably owned. Rollback preserves that BAM, the remaining BAI
+  anchor, and the lock, and removes the still-provably-owned final BAI.
+- If unlinking lock metadata persistently fails after publication completes,
+  the validated pair and owned lock remain and the command exits nonzero.
+
+These states require operator inspection; a missing lock, present pair, or
+nonzero exit alone does not authorize deletion, adoption, replacement, or retry.
+No action here repairs residue from an earlier invocation.
+
+## Historical replacement defect
+
+The retired replacement path had a characterized data-loss defect. At
+`f9c22c9a558702db62782a03be5f694fb2d04768`, the
+[producer](https://github.com/lab-cats/EMRYS/blob/f9c22c9a558702db62782a03be5f694fb2d04768/src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh)
+and its
+[persistent-restore-failure oracle](https://github.com/lab-cats/EMRYS/blob/f9c22c9a558702db62782a03be5f694fb2d04768/tests/stages/canonical_bam/test_step_02_sort_index_bam.sh#L684)
+record this exact sequence: final BAI publication fails, then restoring the
+prior BAM fails persistently. Best-effort restoration ignores that second
+failure, and cleanup deletes the backup. The command returns nonzero with both
 diagnostics but leaves only the prior BAI at its canonical path: the canonical
-BAM, both backups, owned lock, and run-token scratch are absent. This lockless
-partial pair and lost prior BAM are an unresolved ambiguous/data-loss defect,
-not failure-atomicity, successful rollback, or authority to clean or retry.
+BAM, both backups, owned lock, and run-token scratch are absent. This was a
+lockless partial pair with a lost prior BAM, not successful rollback or
+failure-atomicity. Current refusal of existing outputs prevents entering that
+replacement path; it cannot recover the lost bytes or authorize cleanup of old
+backups. The historical source, oracle, and this failure record are retained.
 
 ## Validation interface
 
@@ -166,8 +153,9 @@ Step `04` and Step `05` share the latter rather than importing this stage.
 - Historical Step `04` consumes the exact `<bam>.bai` pair for duplicate
   marking.
 - Read-only validation and the three direct consumer branches do not acquire
-  the producer lock or pin one immutable input snapshot; same-sample
-  replacement must therefore not overlap them under current orchestration.
+  a shared producer lock. Run tasks bind their own input snapshots;
+  stand-alone validation still requires stable inputs. External mutation is
+  not made safe by refusing producer replacement.
 - The artifact inventory registers the canonical pair and validation report
   through `step02_canonical_bam_v1`, `step02_canonical_bai_v1`, and
   `step02_validation_report_v1`.
@@ -176,8 +164,10 @@ Step `04` and Step `05` share the latter rather than importing this stage.
 
 ## Protection, evidence ceiling, and retained decisions
 
-Repository tests protect this contract, including the exact legacy restore
-failure, under the shared [evidence ceiling](../../../../tests/README.md).
+Repository tests protect current refusal, staging, publication, and recovery
+behavior under the shared [evidence ceiling](../../../../tests/README.md).
+The historical replacement characterization above preserves the retired
+failure evidence separately from current expected behavior.
 
 Two decisions remain open: whether this stays a distinct stage now that STAR
 normally emits canonical bytes, and whether one contract should replace the

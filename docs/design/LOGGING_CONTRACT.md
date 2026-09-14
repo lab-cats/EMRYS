@@ -1,12 +1,11 @@
 # Application logging contract
 
-The neutral
-[application-logging owner](../../src/emrys/libraries/application_logging/README.md)
-provides concise operator output and a protected durable record without
-becoming computation, publication, recovery, or completion authority. The
-current source-import boundary is recorded in
-[`SOURCE_TOPOLOGY.md`](../../src/emrys/contracts/SOURCE_TOPOLOGY.md); accepted
-future changes live only in the [findings matrix](../tasks/backlog_matrix.md).
+Application logging gives operators concise progress messages and a protected
+record to inspect later. Logs do not decide computation, publication, recovery,
+or completion. This document defines shared behavior; the
+[logging library](../../src/emrys/libraries/application_logging/README.md)
+explains its API and [source topology](../../src/emrys/contracts/SOURCE_TOPOLOGY.md)
+defines which owners may import it.
 
 ## Ownership and adoption
 
@@ -41,7 +40,7 @@ open or append to the operation log.
   a Project root, it is `<repository-root>/logs/application`, derived from
   source/package identity rather than caller CWD. An explicit root is
   absolute.
-- A valid dry-run creates no log. Levels change projection only, never probes,
+- A valid dry-run creates no log. Levels change console output only, never probes,
   child flags, computation, artifacts, validation, locking, publication,
   rollback, cleanup, or exits.
 
@@ -49,11 +48,11 @@ open or append to the operation log.
 | --- | --- | --- |
 | `normal` | Run identity, work/reporting summary, meaningful phases, verified Results, warnings, errors, log path, and bounded failure summary | complete observed event set |
 | `verbose` | `normal` plus Run root, resources/allocation, profile, scheduler streams, and resolved operational paths | same event semantics |
-| `debug` | `verbose` plus exact safe engine, scheduler, and task commands, classified child diagnostics, allowed environment context, timing, and recovery identities | same event semantics |
+| `debug` | `verbose` plus exact safe engine, scheduler, and task commands, allowed environment context, timing, and recovery identities | same event semantics |
 
-Invalid UTF-8 child diagnostics use sequenced `child_diagnostic_bytes` events
-with unbroken RFC 4648 base64, byte count, SHA-256, stream, and component.
-Never replace diagnostic bytes silently.
+The runner preserves task stdout and stderr as exact bytes in separate task
+logs, including invalid UTF-8. Their paths and SHA-256 hashes belong to the task
+Attempt; the application log does not copy or re-encode them.
 
 ## Attempt boundary and record
 
@@ -112,10 +111,9 @@ unchanged for its consumer.
 Grouped Run execution records `analysis_started` before workflow execution,
 `publication_ready` at the final pre-receipt boundary, and
 `receipt_committed` only after receipt-last publication succeeds. Each line is
-flushed; the writer synchronizes phase, failure, recovery, and pre-receipt
-boundaries. A post-receipt observation is best-effort and cannot change the
-receipt, rollback, exit, or committed state. Nontransactional success
-synchronizes its terminal event.
+flushed; the writer synchronizes failure, recovery, and pre-receipt boundaries.
+A post-receipt observation is best-effort and cannot change the receipt, rollback,
+exit, or committed state. Nontransactional success synchronizes its terminal event.
 
 Once open, a write, sync, observation, or close failure retains the partial
 log, emits one fixed degradation warning, and disables further writes. Logging

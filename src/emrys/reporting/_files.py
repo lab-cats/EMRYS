@@ -1,8 +1,9 @@
-"""Shared immutable file identity and lexical path guards for reporting."""
+"""Shared file identity, path guards, and owned publication operations."""
 
 from __future__ import annotations
 
 import os
+import shutil
 import stat
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -79,3 +80,112 @@ def reject_symlink_components(
             fail(f"Could not inspect {label} component {current}: {exc}")
         if stat.S_ISLNK(metadata.st_mode):
             fail(f"{label} must not traverse a symbolic link: {current}")
+
+
+def _write_durable(descriptor: int, payload: bytes) -> None:
+    while payload:
+        written = os.write(descriptor, payload)
+        if written <= 0:
+            raise OSError("Publication write made no progress")
+        payload = payload[written:]
+    os.fsync(descriptor)
+
+
+def write_bytes_exclusive(path: Path, payload: bytes, *, mode: int = 0o600) -> None:
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
+    try:
+        _write_durable(descriptor, payload)
+    finally:
+        os.close(descriptor)
+
+
+def fsync_path(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def acquire_lock(
+    path: Path, payload: bytes, error_type: type[Exception]
+) -> os.stat_result:
+    try:
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError as exc:
+        raise error_type(f"Publication lock already exists: {path}") from exc
+    except OSError as exc:
+        raise error_type(f"Could not acquire publication lock {path}: {exc}") from exc
+    owned: os.stat_result | None = None
+    try:
+        owned = os.fstat(descriptor)
+        _write_durable(descriptor, payload)
+        return os.fstat(descriptor)
+    except BaseException as original:
+        try:
+            if owned is None:
+                owned = os.fstat(descriptor)
+            current = path.lstat()
+            if (current.st_dev, current.st_ino) != (owned.st_dev, owned.st_ino):
+                raise error_type(f"Publication lock changed identity: {path}")
+            path.unlink()
+        except (OSError, error_type) as cleanup:
+            raise error_type(
+                "Publication lock acquisition was interrupted and owned cleanup "
+                f"could not be proved: {cleanup}"
+            ) from original
+        if isinstance(original, OSError):
+            raise error_type(
+                f"Could not write publication lock {path}: {original}"
+            ) from original
+        raise
+    finally:
+        os.close(descriptor)
+
+
+def release_lock(
+    path: Path, owned: os.stat_result, payload: bytes, error_type: type[Exception]
+) -> None:
+    try:
+        if path.resolve(strict=True) != path:
+            raise error_type(f"Owned publication lock path changed: {path}")
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            with os.fdopen(descriptor, "rb", closefd=False) as stream:
+                before = os.fstat(descriptor)
+                content = stream.read()
+                after = os.fstat(descriptor)
+            current = path.lstat()
+            if (
+                not stat.S_ISREG(before.st_mode)
+                or (before.st_dev, before.st_ino) != (owned.st_dev, owned.st_ino)
+                or stat_identity(before) != stat_identity(after)
+                or stat_identity(before) != stat_identity(current)
+                or content != payload
+            ):
+                raise error_type(f"Owned lock identity or content changed: {path}")
+            path.unlink()
+        finally:
+            os.close(descriptor)
+    except OSError as exc:
+        raise error_type(
+            f"Could not release owned publication lock {path}: {exc}"
+        ) from exc
+
+
+def remove_owned_stage(
+    path: Path,
+    token: str,
+    identity: tuple[int, int] | None,
+    error_type: type[Exception],
+) -> None:
+    if not os.path.lexists(path):
+        return
+    metadata = path.lstat()
+    if (
+        token not in path.name
+        or identity != (metadata.st_dev, metadata.st_ino)
+        or not stat.S_ISDIR(metadata.st_mode)
+    ):
+        raise error_type(f"Refusing to remove unverified staging path: {path}")
+    shutil.rmtree(path)

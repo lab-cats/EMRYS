@@ -7,6 +7,7 @@ import csv
 import hashlib
 import json
 import os
+import signal
 from importlib.resources import files
 from dataclasses import replace
 from pathlib import Path
@@ -17,17 +18,21 @@ from jinja2 import StrictUndefined, UndefinedError
 
 from emrys import analyses
 from emrys.libraries.source_authority import (
-    ArtifactSourceRoot,
-    SourceCheckout,
+    PACKAGE_ROOT,
+    InstalledPackage,
+    admit_installed_package,
 )
-from emrys.reporting import AnalysisReportArtifactV1
+from emrys.reporting import AnalysisReportArtifactV1, AnalysisReportContextV1
 from emrys.reporting import COMPUTATIONAL_BOUNDARY_BANNER
-from emrys.reporting import report as REPORT
+from emrys.reporting import _files, _signals
 from emrys.reporting.paired_cmh_candidate_ranking_report import (
     computational as report_computational,
 )
 from emrys.reporting._run_report import context as report_context
 from emrys.reporting._run_report import publication, receipt, validation
+from emrys.reporting.paired_cmh_candidate_ranking_report.provider import (
+    render_scientific_report,
+)
 from emrys.reporting.paired_cmh_candidate_ranking_report import (
     scientific_context as report_scientific_context,
 )
@@ -53,54 +58,60 @@ from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FI
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-def publish_run_summary(fixture: Any) -> Path:
-    FIXTURE.publish_run_summary(fixture)
-    return fixture.summary_json_path
+@pytest.fixture(scope="module")
+def computational_evidence(tmp_path_factory: pytest.TempPathFactory) -> Any:
+    return FIXTURE.build_fixture(
+        tmp_path_factory.mktemp("report") / "fixture"
+    ).evidence_context
 
 
 @pytest.fixture(scope="module")
-def computational_summary(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    return publish_run_summary(
-        FIXTURE.build_fixture(tmp_path_factory.mktemp("report-v4") / "fixture")
-    )
+def computational_summary(computational_evidence: Any) -> Path:
+    return computational_evidence.summary_paths.summary_json
 
 
 @pytest.fixture(scope="module")
-def failed_summary(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    return publish_run_summary(
-        FIXTURE.build_failed_fixture(
-            tmp_path_factory.mktemp("report-v4-failed") / "fixture"
-        )
-    )
+def failed_evidence(tmp_path_factory: pytest.TempPathFactory) -> Any:
+    return FIXTURE.build_failed_fixture(
+        tmp_path_factory.mktemp("report-failed") / "fixture"
+    ).evidence_context
+
+
+@pytest.fixture(scope="module")
+def failed_summary(failed_evidence: Any) -> Path:
+    return failed_evidence.summary_paths.summary_json
 
 
 def arguments(
-    summary: Path,
+    evidence_context: Any,
     output_root: Path,
     *,
+    run_summary: Path | None = None,
     execute: bool = False,
     artifact_source_root: Path | None = None,
 ) -> argparse.Namespace:
+    summary = run_summary or evidence_context.summary_paths.summary_json
     return argparse.Namespace(
-        source_checkout=REPO_ROOT,
+        package_root=PACKAGE_ROOT,
         artifact_source_root=(
-            summary.parent.parent
+            evidence_context.index.artifact_source_root.root
             if artifact_source_root is None
             else artifact_source_root
         ),
         run_summary=summary,
+        analysis_policy=(
+            Path(json.loads(summary.read_text())["analysis_policy"]["path"])
+            if summary.is_file()
+            and "analysis_policy" in json.loads(summary.read_text())
+            else None
+        ),
         output_root=output_root,
         execute=execute,
     )
 
 
 def output_paths(context: Any) -> tuple[Path, Path, Path, Path]:
-    return (
-        context.output_scientific_html,
-        context.output_evidence_html,
-        context.output_summary_tsv,
-        context.output_receipt,
-    )
+    return context.stable_paths
 
 
 def receipt_document(path: Path) -> dict[str, Any]:
@@ -113,45 +124,21 @@ def receipt_document(path: Path) -> dict[str, Any]:
 
 def provider_artifacts(
     document: dict[str, Any],
+    evidence_context: Any,
 ) -> dict[str, AnalysisReportArtifactV1]:
     """Project admitted analysis records into the public reporter interface."""
 
     module = analyses.load_analysis_module("emrys.paired-cmh")
-    declared = {
-        artifact.adapter: (task.step_id, artifact)
-        for task in module.descriptor.tasks
-        for artifact in task.outputs
-    }
-    selected: dict[str, AnalysisReportArtifactV1] = {}
-    analysis_id = document["run_contract"]["primary_analysis_id"]
-    for record in document["artifacts"]:
-        source = record["source"]
-        declaration = declared.get(record["adapter"])
-        if (
-            declaration is None
-            or source is None
-            or record["availability_status"] != "present"
-            or record["completion_status"] != "complete"
-        ):
-            continue
-        step_id, artifact = declaration
-        if record["scope"] != {
-            "step_id": step_id,
-            "scope_type": "analysis",
-            "scope_id": analysis_id,
-        }:
-            continue
-        selected[record["adapter"]] = AnalysisReportArtifactV1(
-            adapter=record["adapter"],
-            artifact_id=record["artifact_id"],
-            path=Path(source["path"]),
-            sha256=source["sha256"],
-            size_bytes=source["size_bytes"],
-            row_count=source["row_count"],
-            kind=artifact.kind,
-            media_type=analyses.ANALYSIS_ARTIFACT_MEDIA_TYPES[artifact.kind],
+    return {
+        artifact.adapter: artifact
+        for artifact in report_context._admit_analysis_artifacts(
+            document,
+            module,
+            analysis_id=document["run_contract"]["primary_analysis_id"],
+            source_root=Path(document["inventory"]["path"]).parent,
+            evidence_context=evidence_context,
         )
-    return selected
+    }
 
 
 def write_summary_copy(
@@ -173,95 +160,6 @@ def write_summary_copy(
     return path
 
 
-STEP09_REPORT_ADAPTERS = (
-    "step09_validation_report_v1",
-    "step09_cmh_all_sites_v1",
-    "step09_cmh_significant_sites_v1",
-    "step09_cmh_summary_v1",
-    "step09_mutation_spectrum_tsv_v1",
-)
-
-
-def copied_step09_summary(
-    source: Path,
-    root: Path,
-    *,
-    mutate_sources: Any | None = None,
-    mutate_document: Any | None = None,
-) -> tuple[Path, dict[str, Path]]:
-    document = json.loads(source.read_text(encoding="utf-8"))
-    records = {
-        artifact["adapter"]: artifact
-        for artifact in document["artifacts"]
-        if artifact["adapter"] in STEP09_REPORT_ADAPTERS
-        and artifact["scope"]["scope_id"]
-        == document["run_contract"]["primary_analysis_id"]
-    }
-    assert set(records) == set(STEP09_REPORT_ADAPTERS)
-    source_dir = root / "step09"
-    source_dir.mkdir(parents=True)
-    paths: dict[str, Path] = {}
-    for adapter, record in records.items():
-        original = Path(record["source"]["path"])
-        copied = source_dir / original.name
-        copied.write_bytes(original.read_bytes())
-        record["expectation"]["source_path"] = str(copied)
-        record["source"]["path"] = str(copied)
-        paths[adapter] = copied
-    if mutate_sources is not None:
-        mutate_sources(paths)
-    for adapter, record in records.items():
-        path = paths[adapter]
-        payload = path.read_bytes()
-        with path.open(encoding="utf-8", newline="") as stream:
-            row_count = sum(1 for _row in csv.reader(stream, delimiter="\t")) - 1
-        record["source"].update(
-            {
-                "sha256": hashlib.sha256(payload).hexdigest(),
-                "size_bytes": len(payload),
-                "row_count": row_count,
-            }
-        )
-        for metric in record["metrics"]:
-            if metric["metric_id"] == "source_row_count":
-                metric["value"] = row_count
-    if mutate_document is not None:
-        mutate_document(document, records)
-    step10_artifact_ids = {
-        artifact["artifact_id"]
-        for artifact in document["artifacts"]
-        if artifact["adapter"].startswith("step10_")
-    }
-    document["artifacts"] = [
-        artifact
-        for artifact in document["artifacts"]
-        if artifact["artifact_id"] not in step10_artifact_ids
-    ]
-    document["expected_scopes"] = [
-        scope
-        for scope in document["expected_scopes"]
-        if scope["scope"]["step_id"] != "10"
-    ]
-    document["qc_metrics"] = [
-        metric
-        for metric in document["qc_metrics"]
-        if metric["source_artifact_id"] not in step10_artifact_ids
-    ]
-    removed_count = len(step10_artifact_ids)
-    document["inventory"]["row_count"] -= removed_count
-    document["computational_rollup"]["expected_artifact_count"] -= removed_count
-    document["computational_rollup"]["complete_artifact_count"] -= removed_count
-    run_id = document["run_id"]
-    summary_dir = root / "summary" / run_id
-    summary_dir.mkdir(parents=True)
-    summary = summary_dir / f"{run_id}.run_summary.json"
-    summary.write_text(
-        json.dumps(document, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-    return summary, paths
-
-
 def rewrite_tsv(path: Path, mutate: Any) -> None:
     with path.open(encoding="utf-8", newline="") as stream:
         reader = csv.DictReader(stream, delimiter="\t")
@@ -280,6 +178,7 @@ def rewrite_tsv(path: Path, mutate: Any) -> None:
 
 
 def test_step10_absence_and_partial_declaration_are_context_local_unavailability(
+    computational_evidence: Any,
     computational_summary: Path,
 ) -> None:
     document = json.loads(computational_summary.read_text(encoding="utf-8"))
@@ -293,7 +192,7 @@ def test_step10_absence_and_partial_declaration_are_context_local_unavailability
     }
     results, reason = report_scientific_context.admit_scientific_context_results(
         without_step10,
-        provider_artifacts(without_step10),
+        provider_artifacts(without_step10, evidence_context=computational_evidence),
         computational_results=None,
     )
     assert results is None
@@ -312,7 +211,7 @@ def test_step10_absence_and_partial_declaration_are_context_local_unavailability
     }
     results, reason = report_scientific_context.admit_scientific_context_results(
         partially_declared,
-        provider_artifacts(partially_declared),
+        provider_artifacts(partially_declared, evidence_context=computational_evidence),
         computational_results=None,
     )
     assert results is None
@@ -320,6 +219,7 @@ def test_step10_absence_and_partial_declaration_are_context_local_unavailability
 
 
 def test_present_step10_record_mismatch_fails_closed(
+    computational_evidence: Any,
     computational_summary: Path,
 ) -> None:
     document = json.loads(computational_summary.read_text(encoding="utf-8"))
@@ -329,25 +229,40 @@ def test_present_step10_record_mismatch_fails_closed(
         if artifact["adapter"] == "step10_candidate_context_v1"
     )
     record["source"]["sha256"] = "0" * 64
-    with pytest.raises(ReportRenderError, match="SHA-256 mismatch"):
+    with pytest.raises(
+        ReportRenderError, match="differs from the admitted run summary"
+    ):
         report_scientific_context.admit_scientific_context_results(
             document,
-            provider_artifacts(document),
+            provider_artifacts(document, evidence_context=computational_evidence),
             computational_results=None,
         )
 
 
-def test_historical_summary_discloses_step10_unavailability_in_candidate_evidence(
+def test_missing_step10_discloses_unavailability_in_candidate_evidence(
+    computational_evidence: Any,
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
-    copied, _paths = copied_step09_summary(
-        computational_summary, tmp_path / "historical"
+    summary = json.loads(computational_summary.read_text())
+    artifacts = tuple(
+        item
+        for item in provider_artifacts(summary, computational_evidence).values()
+        if not item.adapter.startswith("step10_")
     )
-
-    context = REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
-    assert all(rehash for _snapshot, _label, rehash in context.input_rechecks)
-    html = context.scientific_html_bytes.decode("utf-8")
+    rendered = render_scientific_report(
+        AnalysisReportContextV1(
+            summary["run_id"],
+            summary["run_contract"]["primary_analysis_id"],
+            "emrys.paired-cmh",
+            tmp_path / "reports",
+            computational_evidence.index.artifact_source_root.root,
+            summary,
+            artifacts,
+        )
+    )
+    assert all(item.rehash_content for item in rendered.inputs)
+    html = rendered.html_bytes.decode("utf-8")
     assert "sequence-context and motif-enrichment figures are unavailable" in html
     assert "Selected-candidate editing-rate and location evidence remains" in html
     assert "step10_unavailable" in html
@@ -358,13 +273,14 @@ def test_historical_summary_discloses_step10_unavailability_in_candidate_evidenc
 
 
 @pytest.mark.parametrize("reuse_computational", (False, True))
-def test_step10_report_admission_calls_the_canonical_transaction_once(
+def test_step10_report_admission_reuses_the_admitted_transaction(
+    computational_evidence: Any,
     computational_summary: Path,
     monkeypatch: pytest.MonkeyPatch,
     reuse_computational: bool,
 ) -> None:
     document = json.loads(computational_summary.read_text(encoding="utf-8"))
-    artifacts = provider_artifacts(document)
+    artifacts = provider_artifacts(document, evidence_context=computational_evidence)
     computational = None
     if reuse_computational:
         computational, computational_unavailable = (
@@ -376,19 +292,10 @@ def test_step10_report_admission_calls_the_canonical_transaction_once(
         )
         assert computational is not None
         assert computational_unavailable is None
-    original = (
-        report_scientific_context.owner_context.validate_scientific_context_transaction
-    )
-    observed: list[Path] = []
-
-    def validate_once(path: Path) -> Any:
-        observed.append(path)
-        return original(path)
-
     monkeypatch.setattr(
         report_scientific_context.owner_context,
         "validate_scientific_context_transaction",
-        validate_once,
+        lambda *_args: pytest.fail("Report repeated scientific transaction admission"),
     )
     results, unavailable = report_scientific_context.admit_scientific_context_results(
         document,
@@ -398,8 +305,7 @@ def test_step10_report_admission_calls_the_canonical_transaction_once(
 
     assert results is not None
     assert unavailable is None
-    assert observed == [results.receipt.path]
-    with results.receipt.path.open(encoding="utf-8", newline="") as stream:
+    with results.receipt.snapshot.path.open(encoding="utf-8", newline="") as stream:
         receipt_row = next(csv.DictReader(stream, delimiter="\t"))
     expected_roles = (
         "step09_all_sites",
@@ -438,90 +344,99 @@ def test_step10_report_admission_calls_the_canonical_transaction_once(
             assert snapshot is table.snapshot
 
 
-def publish(context: Any, ops: REPORT.ReportPublicationOps | None = None) -> None:
-    publication.publish_report(context, ops or REPORT.default_publication_ops())
+def publish(context: Any) -> None:
+    publication.publish_report(context)
 
 
-def test_source_checkout_is_admitted_before_report_inputs(
+def test_installed_package_is_admitted_before_report_inputs(
     tmp_path: Path,
 ) -> None:
     invalid_checkout = tmp_path / "not-emrys"
     invalid_checkout.mkdir()
     with pytest.raises(ReportRenderError) as captured:
-        REPORT.prepare_report(
+        report_context.prepare_context(
             argparse.Namespace(
-                source_checkout=invalid_checkout,
+                package_root=invalid_checkout,
                 artifact_source_root=tmp_path,
                 run_summary=tmp_path / "missing.json",
                 output_root=tmp_path / "reports",
                 execute=False,
-            )
+            ),
+            evidence_context=None,
         )
-    assert "Source checkout project metadata is unavailable" in str(captured.value)
+    assert "Requested package root differs from the executing package" in str(
+        captured.value
+    )
     assert "missing.json" not in str(captured.value)
 
 
-def test_renderer_git_identity_uses_checkout_not_artifact_root(
-    computational_summary: Path,
+def test_renderer_identity_uses_installed_package_not_artifact_root(
+    computational_evidence: Any,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    artifact_root = computational_summary.parent.parent.resolve(strict=True)
+    artifact_root = computational_evidence.index.artifact_source_root.root
     assert artifact_root != REPO_ROOT
-    observed: list[SourceCheckout] = []
+    observed: list[InstalledPackage] = []
+    installed = admit_installed_package()
 
-    def matching_commit(**kwargs: Any) -> str:
-        assert kwargs["source_checkout"] == SourceCheckout(root=REPO_ROOT)
-        observed.append(kwargs["source_checkout"])
-        return "a" * 40
+    def observe_package(**kwargs: Any) -> InstalledPackage:
+        assert kwargs["root"] == PACKAGE_ROOT
+        observed.append(installed)
+        return installed
 
+    monkeypatch.setattr(report_context, "admit_installed_package", observe_package)
     context = report_context.prepare_context(
         arguments(
-            computational_summary,
+            computational_evidence,
             tmp_path / "reports",
             artifact_source_root=artifact_root,
         ),
-        source_checkout=SourceCheckout(root=REPO_ROOT),
-        artifact_source_root=ArtifactSourceRoot(root=artifact_root),
-        identity_ops=report_context.ReportIdentityOps(
-            matching_checkout_head_commit=matching_commit,
-        ),
+        evidence_context=computational_evidence,
     )
 
-    assert context.producer_git_commit == "a" * 40
-    assert observed == [SourceCheckout(root=REPO_ROOT)]
+    assert context.producer_git_commit == (installed.git_commit or "unavailable")
+    assert observed == [installed, installed]
+    assert context.installed_package.record == installed.record
 
 
 def test_dry_run_is_side_effect_free(
-    computational_summary: Path,
+    computational_evidence: Any,
     tmp_path: Path,
 ) -> None:
     output_root = tmp_path / "reports"
-    context = REPORT.prepare_report(arguments(computational_summary, output_root))
+    context = report_context.prepare_context(
+        arguments(computational_evidence, output_root),
+        evidence_context=computational_evidence,
+    )
     assert context.output_dir == output_root / context.summary["run_id"]
     assert not output_root.exists()
 
 
-def test_success_publishes_two_html_views_summary_and_v4_receipt_last(
-    computational_summary: Path,
+def test_success_publishes_two_html_views_and_current_receipt_last(
+    computational_evidence: Any,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    context = REPORT.prepare_report(
-        arguments(computational_summary, tmp_path / "reports", execute=True)
+    context = report_context.prepare_context(
+        arguments(computational_evidence, tmp_path / "reports", execute=True),
+        evidence_context=computational_evidence,
     )
     links: list[Path] = []
-    base = REPORT.default_publication_ops()
+    real_link = os.link
 
-    def record_link(source: Path, target: Path) -> None:
+    def record_link(source: Path, target: Path, **kwargs: Any) -> None:
         links.append(target)
-        base.link(source, target)
+        real_link(source, target, **kwargs)
 
-    publish(context, replace(base, link=record_link))
+    with monkeypatch.context() as faults:
+        faults.setattr(os, "link", record_link)
+        publish(context)
     assert output_paths(context) == tuple(path for path in context.stable_paths)
     assert all(path.is_file() for path in output_paths(context))
-    assert [path.name for path in links[-4:]] == [
-        context.output_scientific_html.name,
-        context.output_evidence_html.name,
-        context.output_summary_tsv.name,
+    assert [path.name for path in links[-3:]] == [
+        context.stable_paths[0].name,
+        context.stable_paths[1].name,
         context.output_receipt.name,
     ]
     assert not (
@@ -531,19 +446,30 @@ def test_success_publishes_two_html_views_summary_and_v4_receipt_last(
         context.output_dir / f"{context.summary['run_id']}.run_report.pdf"
     ).exists()
     document = receipt_document(context.output_receipt)
-    assert document["schema_version"] == "4.0.0"
-    assert document["interpretation_boundary"] == (
-        "computational_candidates_only_biological_validation_outside_emrys"
+    assert document["schema_version"] == "8.0.0"
+    assert (
+        document["provenance"]["installed_package"] == context.installed_package.record
     )
-    assert document["renderer"] == {"name": "Jinja2", "version": JINJA_VERSION}
+    assert document["provenance"]["git_commit"] == context.producer_git_commit
+    assert document["interpretation_boundary"] == COMPUTATIONAL_BOUNDARY_BANNER
+    assert document["evidence_renderer"]["package"] == "emrys"
+    assert (
+        document["evidence_renderer"]["content_sha256"]
+        == context.installed_package.content_sha256
+    )
+    assert {item["path"] for item in document["inputs"]} == {
+        str(snapshot.path)
+        for snapshot, _label, _rehash in context.report_input_rechecks
+    }
+    assert document["evidence_renderer"]["template_engine"] == "Jinja2"
+    assert document["evidence_renderer"]["template_engine_version"] == JINJA_VERSION
     assert [item["kind"] for item in document["outputs"]] == [
         "scientific_html",
         "evidence_html",
-        "run_summary_tsv",
     ]
     assert document["outputs"][0]["self_contained"] is True
     assert document["outputs"][1]["self_contained"] is True
-    html_paths = (context.output_scientific_html, context.output_evidence_html)
+    html_paths = (context.stable_paths[0], context.stable_paths[1])
     for descriptor, path in zip(document["outputs"][:2], html_paths, strict=True):
         assert descriptor["sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
     assert document["outputs"][0]["sha256"] != document["outputs"][1]["sha256"]
@@ -556,12 +482,13 @@ def test_success_publishes_two_html_views_summary_and_v4_receipt_last(
     (' onclick="alert(1)"', '><a href="javascript:alert(1)">bad</a><div'),
 )
 def test_report_validation_rejects_provider_active_markup(
-    computational_summary: Path,
+    computational_evidence: Any,
     tmp_path: Path,
     active_markup: str,
 ) -> None:
-    context = REPORT.prepare_report(
-        arguments(computational_summary, tmp_path / "reports")
+    context = report_context.prepare_context(
+        arguments(computational_evidence, tmp_path / "reports"),
+        evidence_context=computational_evidence,
     )
     path = tmp_path / "active.html"
     path.write_bytes(
@@ -582,24 +509,28 @@ def test_report_validation_rejects_provider_active_markup(
         )
 
 
-def test_report_rejects_a_run_summary_without_the_computational_boundary(
+def test_prepared_handoff_rejects_a_changed_run_summary(
+    computational_evidence: Any,
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     copied = write_summary_copy(
         computational_summary,
         tmp_path / "input",
-        lambda document: document.pop("interpretation_boundary"),
+        lambda document: document.pop("analysis_policy"),
     )
 
-    with pytest.raises(ReportRenderError, match="failed validation"):
-        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+    with pytest.raises(ReportRenderError, match="Published Run result differs"):
+        report_context.prepare_context(
+            arguments(computational_evidence, tmp_path / "reports", run_summary=copied),
+            evidence_context=computational_evidence,
+        )
 
 
 def test_receipt_validation_reports_schema_and_semantic_failures(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    document = {"schema_version": "4.0.0"}
+    document = {"schema_version": "8.0.0"}
     with pytest.raises(ReportRenderError, match="schema validation failed"):
         receipt.validate_receipt(document)
 
@@ -610,7 +541,7 @@ def test_receipt_validation_reports_schema_and_semantic_failures(
     monkeypatch.setattr(
         receipt.contracts,
         "schema_validator",
-        lambda _name, _version: NoSchemaErrors(),
+        lambda _name: NoSchemaErrors(),
     )
 
     def reject_semantics(_document: dict[str, Any]) -> None:
@@ -623,30 +554,6 @@ def test_receipt_validation_reports_schema_and_semantic_failures(
     )
     with pytest.raises(ReportRenderError, match="synthetic semantic failure"):
         receipt.validate_receipt(document)
-
-
-def test_summary_tsv_validation_rejects_shape_defects(
-    computational_summary: Path,
-    tmp_path: Path,
-) -> None:
-    context = REPORT.prepare_report(
-        arguments(computational_summary, tmp_path / "reports")
-    )
-    path = tmp_path / "summary.tsv"
-
-    path.write_text("wrong\n", encoding="utf-8")
-    with pytest.raises(ReportRenderError, match="unexpected header"):
-        receipt.validate_summary_tsv(path, context)
-
-    header = "\t".join(receipt.SUMMARY_HEADER) + "\n"
-    path.write_text(header, encoding="utf-8")
-    with pytest.raises(ReportRenderError, match="row count"):
-        receipt.validate_summary_tsv(path, context)
-
-    malformed_rows = "x\n" * len(context.summary["expected_scopes"])
-    path.write_text(header + malformed_rows, encoding="utf-8")
-    with pytest.raises(ReportRenderError, match="malformed row"):
-        receipt.validate_summary_tsv(path, context)
 
 
 def test_existing_receipt_reader_rejects_shape_and_json_defects(
@@ -687,41 +594,13 @@ def test_existing_receipt_reader_rejects_shape_and_json_defects(
         receipt.read_receipt_tsv(path)
 
 
-def test_receipt_attributes_provenance_to_renderer_checkout(
-    computational_summary: Path,
-    tmp_path: Path,
-) -> None:
-    upstream_commit = "upstream-summary-commit"
-
-    def replace_upstream_commit(document: dict[str, Any]) -> None:
-        document["provenance"]["git_commit"] = upstream_commit
-
-    copied = write_summary_copy(
-        computational_summary,
-        tmp_path / "input",
-        replace_upstream_commit,
-    )
-    context = REPORT.prepare_report(
-        arguments(copied, tmp_path / "reports", execute=True)
-    )
-    publish(context)
-    document = receipt_document(context.output_receipt)
-    assert context.summary["provenance"]["git_commit"] == upstream_commit
-    assert context.producer_git_commit != upstream_commit
-    assert document["provenance"] == {
-        "producer": "emrys.reporting.report",
-        "producer_version": PRODUCER_VERSION,
-        "git_commit": context.producer_git_commit,
-        "created_at": context.summary["generated_at"],
-    }
-
-
 def test_failed_expected_scope_renders_from_valid_pipeline_summary(
-    failed_summary: Path,
+    failed_evidence: Any,
     tmp_path: Path,
 ) -> None:
-    context = REPORT.prepare_report(
-        arguments(failed_summary, tmp_path / "reports", execute=True)
+    context = report_context.prepare_context(
+        arguments(failed_evidence, tmp_path / "reports", execute=True),
+        evidence_context=failed_evidence,
     )
     failed_scopes = [
         item
@@ -732,54 +611,66 @@ def test_failed_expected_scope_renders_from_valid_pipeline_summary(
         {"step_id": "01", "scope_type": "sample", "scope_id": "SYNTH_A"}
     ]
     publish(context)
-    content = context.output_evidence_html.read_text(encoding="utf-8")
+    content = context.stable_paths[1].read_text(encoding="utf-8")
     assert "Failed expected scopes" in content
     assert "01 sample SYNTH_A failed" in content
 
 
-def test_identical_republication_is_byte_deterministic(
-    computational_summary: Path,
+def test_existing_transaction_is_readable_and_republication_preserves_exact_bytes(
+    computational_evidence: Any,
     tmp_path: Path,
 ) -> None:
     arguments_value = arguments(
-        computational_summary, tmp_path / "reports", execute=True
+        computational_evidence, tmp_path / "reports", execute=True
     )
-    first_context = REPORT.prepare_report(arguments_value)
+    first_context = report_context.prepare_context(
+        arguments_value, evidence_context=computational_evidence
+    )
     publish(first_context)
     first = tuple(path.read_bytes() for path in output_paths(first_context))
-    second_context = REPORT.prepare_report(arguments_value)
-    publish(second_context)
+    second_context = report_context.prepare_context(
+        arguments_value, evidence_context=computational_evidence
+    )
+    assert second_context.scientific_html_bytes == first_context.scientific_html_bytes
+    assert second_context.evidence_html_bytes == first_context.evidence_html_bytes
+    with pytest.raises(ReportRenderError, match="requires absent outputs"):
+        publish(second_context)
     second = tuple(path.read_bytes() for path in output_paths(second_context))
     assert second == first
+    assert not second_context.lock_path.exists()
 
 
 def test_jinja_is_strict_autoescaped_and_template_owns_markup(
+    computational_evidence: Any,
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
-    def add_untrusted(document: dict[str, Any]) -> None:
-        document["warnings"].append(
-            {
-                "code": "untrusted_text",
-                "message": '<script src="https://evil.invalid/x.js">bad</script>',
-                "related_artifact_ids": [],
-                "evidence": [],
-            }
-        )
-
-    copied = write_summary_copy(
-        computational_summary, tmp_path / "input", add_untrusted
+    context = report_context.prepare_context(
+        arguments(computational_evidence, tmp_path / "reports"),
+        evidence_context=computational_evidence,
     )
-    context = REPORT.prepare_report(
-        arguments(copied, tmp_path / "reports", execute=True)
+    summary = json.loads(computational_summary.read_text())
+    summary["warnings"].append(
+        {
+            "code": "untrusted_text",
+            "message": '<script src="https://evil.invalid/x.js">bad</script>',
+            "related_artifact_ids": [],
+        }
     )
-    publish(context)
-    content = context.output_evidence_html.read_text(encoding="utf-8")
+    content = validation.render_html(
+        summary,
+        context.css_snapshot.path.read_text(),
+        report_view="evidence",
+        metadata=context.render_metadata,
+        banner=COMPUTATIONAL_BOUNDARY_BANNER,
+    ).decode()
     environment = validation.build_environment()
     assert environment.undefined is StrictUndefined
     assert environment.autoescape("run_report.html.j2") is True
     with pytest.raises(UndefinedError):
-        environment.get_template("run_report.html.j2").render(view={}, css="")
+        environment.get_template("run_report.html.j2").render(
+            summary={}, css="", report_view="evidence"
+        )
     assert "&lt;script src=&#34;https://evil.invalid/x.js&#34;&gt;" in content
     assert "<script" not in content.lower()
     assert 'src="https://evil.invalid' not in content
@@ -794,7 +685,7 @@ def test_template_rejects_additional_or_untrusted_safe_boundaries() -> None:
     )
     validation.validate_template_source(source)
     with pytest.raises(ReportRenderError, match="may use \\|safe exactly once"):
-        validation.validate_template_source(source + "\n{{ view.run_id|safe }}\n")
+        validation.validate_template_source(source + "\n{{ summary.run_id|safe }}\n")
     with pytest.raises(ReportRenderError, match="may use \\|safe exactly once"):
         validation.validate_template_source(
             source.replace("{{ css | safe }}", "{{ view | safe }}")
@@ -844,15 +735,16 @@ def test_scientific_print_styles_pin_static_nonoverflow_layout() -> None:
 
 
 def test_two_html_views_separate_science_from_operational_evidence(
-    computational_summary: Path,
+    computational_evidence: Any,
     tmp_path: Path,
 ) -> None:
-    context = REPORT.prepare_report(
-        arguments(computational_summary, tmp_path / "reports", execute=True)
+    context = report_context.prepare_context(
+        arguments(computational_evidence, tmp_path / "reports", execute=True),
+        evidence_context=computational_evidence,
     )
     publish(context)
-    scientific = context.output_scientific_html.read_text(encoding="utf-8")
-    evidence = context.output_evidence_html.read_text(encoding="utf-8")
+    scientific = context.stable_paths[0].read_text(encoding="utf-8")
+    evidence = context.stable_paths[1].read_text(encoding="utf-8")
     banner = "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE EMRYS."
 
     assert banner in scientific and banner in evidence
@@ -873,7 +765,7 @@ def test_two_html_views_separate_science_from_operational_evidence(
         (
             "Operations",
             "How did execution proceed?",
-            f"{run_id}.evidence_report.html#attempt-lineage-section",
+            f"{run_id}.evidence_report.html#execution-records-section",
         ),
     )
     for content in (scientific, evidence):
@@ -881,22 +773,24 @@ def test_two_html_views_separate_science_from_operational_evidence(
         for label, question, href in destinations:
             assert f'href="{href}"><strong>{label}</strong>' in content
             assert f'<span class="candidate-status">{question}</span>' in content
-    artifacts = provider_artifacts(context.summary)
+    artifacts = provider_artifacts(
+        context.summary, evidence_context=computational_evidence
+    )
     result_destinations = (
         (
             "Threshold-passing candidates",
             "Ranked Step 09 result table",
-            artifacts["step09_cmh_significant_sites_v1"].path,
+            artifacts["step09_cmh_significant_sites_v1"].snapshot.path,
         ),
         (
             "Complete candidate table",
             "All tested Step 09 candidates",
-            artifacts["step09_cmh_all_sites_v1"].path,
+            artifacts["step09_cmh_all_sites_v1"].snapshot.path,
         ),
         (
             "Candidate context",
             "Step 10 scientific context",
-            artifacts["step10_candidate_context_v1"].path,
+            artifacts["step10_candidate_context_v1"].snapshot.path,
         ),
     )
     for content in (scientific, evidence):
@@ -913,7 +807,9 @@ def test_two_html_views_separate_science_from_operational_evidence(
     for artifact in artifacts.values():
         if artifact.kind == "validation_report":
             continue
-        href = Path(os.path.relpath(artifact.path, start=context.output_dir)).as_posix()
+        href = Path(
+            os.path.relpath(artifact.snapshot.path, start=context.output_dir)
+        ).as_posix()
         assert f'href="{href}"><strong>Analysis artifact: ' in evidence
     assert "emrys inspect" not in scientific
     assert "Inspect this Run: emrys inspect &lt;RUN&gt;" in evidence
@@ -971,9 +867,9 @@ def test_two_html_views_separate_science_from_operational_evidence(
     assert "Nearby motifs" in scientific
     assert "candidate_1" in scientific
     assert "Selected exact sample QC" not in scientific
-    assert "Attempt lineage" not in scientific
+    assert "Execution records" not in scientific
     assert "Artifact appendix" not in scientific
-    assert "Tools and issues" not in scientific
+    assert 'id="issues-section"' not in scientific
     assert "Report provenance" not in scientific
     assert "<svg" not in scientific
     assert scientific.count("data:image/svg+xml;base64,") >= 1
@@ -1011,7 +907,7 @@ def test_two_html_views_separate_science_from_operational_evidence(
     assert 'id="computational_significant_sites"' not in evidence
     assert 'id="computational_all_sites"' not in evidence
     assert "candidate_1" not in evidence
-    assert "Attempt lineage" in evidence
+    assert "Execution records" in evidence
     assert "EMRYS evidence and operations report" in evidence
     assert evidence.index('id="evidence-category"') < evidence.index(
         'id="operations-category"'
@@ -1045,7 +941,7 @@ def test_two_html_views_separate_science_from_operational_evidence(
         assert "http://" not in content and "https://" not in content
 
     validation.validate_rendered_html(
-        context.output_scientific_html,
+        context.stable_paths[0],
         expected_banner=context.render_metadata["state_banner"],
         expected_identity={
             "data-report-view": "scientific",
@@ -1054,7 +950,7 @@ def test_two_html_views_separate_science_from_operational_evidence(
         },
     )
     validation.validate_rendered_html(
-        context.output_evidence_html,
+        context.stable_paths[1],
         expected_banner=context.render_metadata["state_banner"],
         expected_identity={
             "data-css-sha256": context.render_metadata["css_sha256"],
@@ -1104,11 +1000,12 @@ def test_two_html_views_separate_science_from_operational_evidence(
 
 
 def test_report_displays_print_first_selected_candidate_evidence(
-    computational_summary: Path,
+    computational_evidence: Any,
     tmp_path: Path,
 ) -> None:
-    context = REPORT.prepare_report(
-        arguments(computational_summary, tmp_path / "reports", execute=True)
+    context = report_context.prepare_context(
+        arguments(computational_evidence, tmp_path / "reports", execute=True),
+        evidence_context=computational_evidence,
     )
     assert sum(not rehash for _snapshot, _label, rehash in context.input_rechecks) == 1
     reference_fasta = Path(
@@ -1119,10 +1016,12 @@ def test_report_displays_print_first_selected_candidate_evidence(
         )
     )
     assert [
-        snapshot.path for snapshot, _label, rehash in context.input_rechecks if not rehash
+        snapshot.path
+        for snapshot, _label, rehash in context.input_rechecks
+        if not rehash
     ] == [reference_fasta]
     publish(context)
-    content = context.output_scientific_html.read_text(encoding="utf-8")
+    content = context.stable_paths[0].read_text(encoding="utf-8")
     assert '<div id="scientific-category" ' in content
     assert "<details" not in content
     assert "COMPUTATIONAL RESULTS — NOT SCIENTIFICALLY ADJUDICATED." in content
@@ -1166,6 +1065,7 @@ def test_report_displays_print_first_selected_candidate_evidence(
     ),
 )
 def test_sample_manifest_admission_fails_closed(
+    computational_evidence: Any,
     computational_summary: Path,
     tmp_path: Path,
     case: str,
@@ -1174,11 +1074,11 @@ def test_sample_manifest_admission_fails_closed(
     document = json.loads(computational_summary.read_text(encoding="utf-8"))
     results, unavailable = report_computational.admit_computational_results(
         document,
-        provider_artifacts(document),
+        provider_artifacts(document, evidence_context=computational_evidence),
         source_root=computational_summary.parent.parent,
     )
     assert results is not None and unavailable is None
-    source = results.sample_manifest.path
+    source = results.sample_manifest.snapshot.path
     with source.open(encoding="utf-8", newline="") as stream:
         reader = csv.DictReader(stream, delimiter="\t")
         header = tuple(reader.fieldnames or ())
@@ -1200,10 +1100,10 @@ def test_sample_manifest_admission_fails_closed(
     digest = hashlib.sha256(manifest.read_bytes()).hexdigest()
     recorded_hash = "0" * 64 if case == "stale_bytes" else digest
     run_contract_hash = "f" * 64 if case == "run_contract" else recorded_hash
-    summary_row = list(results.summary.display_rows[0])
-    summary_row[results.summary.header.index("sample_manifest_path")] = str(manifest)
-    summary_row[results.summary.header.index("sample_manifest_sha256")] = recorded_hash
-    summary_table = replace(results.summary, display_rows=(tuple(summary_row),))
+    summary_row = dict(results.summary.display_rows[0])
+    summary_row["sample_manifest_path"] = str(manifest)
+    summary_row["sample_manifest_sha256"] = recorded_hash
+    summary_table = replace(results.summary, display_rows=(summary_row,))
     summary_document = {
         **document,
         "run_contract": {
@@ -1236,13 +1136,14 @@ def test_incomplete_step09_trio_is_disclosed_without_opening_candidate_rows(
         tmp_path / "fixture",
         artifact_id=artifact_id,
     )
-    summary = publish_run_summary(fixture)
-    context = REPORT.prepare_report(
-        arguments(summary, tmp_path / "reports", execute=True)
+    summary = fixture.summary_json_path
+    context = report_context.prepare_context(
+        arguments(fixture.evidence_context, tmp_path / "reports", execute=True),
+        evidence_context=fixture.evidence_context,
     )
     publish(context)
-    scientific = context.output_scientific_html.read_text(encoding="utf-8")
-    evidence = context.output_evidence_html.read_text(encoding="utf-8")
+    scientific = context.stable_paths[0].read_text(encoding="utf-8")
+    evidence = context.stable_paths[1].read_text(encoding="utf-8")
     assert "no computational candidate rows were opened or displayed" in scientific
     assert 'id="computational_all_sites"' not in scientific
     assert "no computational candidate rows were opened or displayed" in evidence
@@ -1259,28 +1160,6 @@ def test_incomplete_step09_trio_is_disclosed_without_opening_candidate_rows(
         assert "<strong>Analysis artifact:" in evidence
 
 
-def test_report_delegates_mutation_spectrum_reconciliation_to_step09(
-    computational_summary: Path,
-    tmp_path: Path,
-) -> None:
-    def mutate_sources(paths: dict[str, Path]) -> None:
-        def corrupt(_header: tuple[str, ...], rows: list[dict[str, str]]) -> None:
-            rows[0]["candidate_count"] = "999"
-
-        rewrite_tsv(paths["step09_mutation_spectrum_tsv_v1"], corrupt)
-
-    copied, _paths = copied_step09_summary(
-        computational_summary,
-        tmp_path / "input",
-        mutate_sources=mutate_sources,
-    )
-    with pytest.raises(
-        ReportRenderError,
-        match="Primary Step 09 projection failed validation",
-    ):
-        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
-
-
 @pytest.mark.parametrize(
     ("field", "replacement", "message"),
     (
@@ -1290,52 +1169,25 @@ def test_report_delegates_mutation_spectrum_reconciliation_to_step09(
     ),
 )
 def test_step09_source_identity_mismatches_fail_closed(
+    computational_evidence: Any,
     computational_summary: Path,
-    tmp_path: Path,
     field: str,
     replacement: Any,
     message: str,
 ) -> None:
-    def mutate_document(
-        _document: dict[str, Any],
-        records: dict[str, dict[str, Any]],
-    ) -> None:
-        record = records["step09_cmh_all_sites_v1"]
-        record["source"][field] = replacement
-        if field == "row_count":
-            for metric in record["metrics"]:
-                if metric["metric_id"] == "source_row_count":
-                    metric["value"] = replacement
-
-    copied, _paths = copied_step09_summary(
-        computational_summary,
-        tmp_path / "input",
-        mutate_document=mutate_document,
+    document = json.loads(computational_summary.read_text())
+    record = next(
+        item
+        for item in document["artifacts"]
+        if item["adapter"] == "step09_cmh_all_sites_v1"
     )
+    record["source"][field] = replacement
     with pytest.raises(ReportRenderError, match=message):
-        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
-
-
-def test_report_translates_canonical_step09_projection_rejection(
-    computational_summary: Path,
-    tmp_path: Path,
-) -> None:
-    def mutate_sources(paths: dict[str, Path]) -> None:
-        def duplicate(_header: tuple[str, ...], rows: list[dict[str, str]]) -> None:
-            rows[1]["candidate_id"] = rows[0]["candidate_id"]
-
-        rewrite_tsv(paths["step09_cmh_all_sites_v1"], duplicate)
-
-    copied, _paths = copied_step09_summary(
-        computational_summary,
-        tmp_path / "input",
-        mutate_sources=mutate_sources,
-    )
-    with pytest.raises(
-        ReportRenderError,
-        match="Primary Step 09 projection failed validation",
-    ):
-        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+        report_computational.admit_computational_results(
+            document,
+            provider_artifacts(document, computational_evidence),
+            source_root=computational_evidence.index.artifact_source_root.root,
+        )
 
 
 @pytest.mark.parametrize(
@@ -1348,37 +1200,43 @@ def test_report_translates_canonical_step09_projection_rejection(
     ),
 )
 def test_step09_owner_validation_must_be_exact_all_pass_before_rows_open(
+    computational_evidence: Any,
     computational_summary: Path,
     tmp_path: Path,
     corruption: str,
     message: str,
 ) -> None:
-    def mutate_sources(paths: dict[str, Path]) -> None:
-        def corrupt_report(
-            _header: tuple[str, ...], rows: list[dict[str, str]]
-        ) -> None:
-            if corruption == "missing_row":
-                rows.pop()
-            elif corruption == "wrong_step_scope":
-                rows[0]["step_id"] = "08"
-                rows[0]["scope_id"] = "wrong-analysis"
-            elif corruption == "ordered_check_swap":
-                rows[0]["check_id"], rows[1]["check_id"] = (
-                    rows[1]["check_id"],
-                    rows[0]["check_id"],
-                )
-            else:
-                rows[0]["status"] = "fail"
+    document = json.loads(computational_summary.read_text())
+    validation_record = provider_artifacts(document, computational_evidence)[
+        "step09_validation_report_v1"
+    ]
+    path = tmp_path / "validation.tsv"
+    path.write_bytes(validation_record.snapshot.path.read_bytes())
 
-        rewrite_tsv(paths["step09_validation_report_v1"], corrupt_report)
+    def corrupt_report(_header: tuple[str, ...], rows: list[dict[str, str]]) -> None:
+        if corruption == "missing_row":
+            rows.pop()
+        elif corruption == "wrong_step_scope":
+            rows[0]["step_id"] = "08"
+            rows[0]["scope_id"] = "wrong-analysis"
+        elif corruption == "ordered_check_swap":
+            rows[0]["check_id"], rows[1]["check_id"] = (
+                rows[1]["check_id"],
+                rows[0]["check_id"],
+            )
+        else:
+            rows[0]["status"] = "fail"
 
-    copied, _paths = copied_step09_summary(
-        computational_summary,
-        tmp_path / "input",
-        mutate_sources=mutate_sources,
+    rewrite_tsv(path, corrupt_report)
+    record = validation_record._replace(
+        snapshot=report_context._snapshot_regular(path, "validation report"),
+        row_count=len(path.read_text().splitlines()) - 1,
     )
     with pytest.raises(ReportRenderError, match=message):
-        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+        report_computational._inspect_validation(
+            record,
+            analysis_id=document["run_contract"]["primary_analysis_id"],
+        )
 
 
 @pytest.mark.parametrize(
@@ -1386,15 +1244,20 @@ def test_step09_owner_validation_must_be_exact_all_pass_before_rows_open(
     ("step09_cmh_all_sites_v1", "step09_mutation_spectrum_tsv_v1"),
 )
 def test_step09_input_mutation_aborts_before_publication(
-    computational_summary: Path,
     tmp_path: Path,
     adapter: str,
 ) -> None:
-    copied, paths = copied_step09_summary(computational_summary, tmp_path / "input")
-    context = REPORT.prepare_report(
-        arguments(copied, tmp_path / "reports", execute=True)
+    fixture = FIXTURE.build_fixture(tmp_path / "fixture")
+    context = report_context.prepare_context(
+        arguments(fixture.evidence_context, tmp_path / "reports"),
+        evidence_context=fixture.evidence_context,
     )
-    paths[adapter].write_bytes(paths[adapter].read_bytes() + b" ")
+    path = next(
+        item.resolved_path
+        for item in fixture.evidence_context.index.inspections
+        if item.row["adapter"] == adapter
+    )
+    path.write_bytes(path.read_bytes() + b" ")
     with pytest.raises(ReportRenderError, match="changed during report"):
         publish(context)
     assert not any(path.exists() for path in output_paths(context))
@@ -1404,9 +1267,11 @@ def test_step09_input_mutation_aborts_before_publication(
 def test_step10_reference_identity_mutation_aborts_before_publication(
     tmp_path: Path,
 ) -> None:
-    summary = publish_run_summary(FIXTURE.build_fixture(tmp_path / "fixture"))
-    context = REPORT.prepare_report(
-        arguments(summary, tmp_path / "reports", execute=True)
+    fixture = FIXTURE.build_fixture(tmp_path / "fixture")
+    summary = fixture.summary_json_path
+    context = report_context.prepare_context(
+        arguments(fixture.evidence_context, tmp_path / "reports", execute=True),
+        evidence_context=fixture.evidence_context,
     )
     reference = Path(
         next(
@@ -1426,113 +1291,45 @@ def test_step10_reference_identity_mutation_aborts_before_publication(
     assert not context.lock_path.exists()
 
 
-def test_native_candidate_tables_are_not_rendered_as_truncated_wide_tables(
-    computational_summary: Path,
-    tmp_path: Path,
-) -> None:
-    def expand_sources(paths: dict[str, Path]) -> None:
-        def expand_all(_header: tuple[str, ...], rows: list[dict[str, str]]) -> None:
-            significant = dict(rows[0])
-            nonsignificant = dict(rows[1])
-            rows[:] = [significant]
-            for index in range(1, 251):
-                row = dict(nonsignificant)
-                row["candidate_id"] = f"expanded_candidate_{index:03d}"
-                rows.append(row)
-
-        def update_summary(
-            _header: tuple[str, ...], rows: list[dict[str, str]]
-        ) -> None:
-            rows[0].update(
-                {
-                    "candidate_count": "251",
-                    "target_candidate_count": "251",
-                    "successfully_tested_count": "251",
-                    "effect_not_met_count": "250",
-                }
-            )
-
-        def update_mutation_spectrum(
-            _header: tuple[str, ...], rows: list[dict[str, str]]
-        ) -> None:
-            target = next(row for row in rows if row["mutation_type"] == "A>G")
-            target.update(
-                {
-                    "candidate_count": "251",
-                    "candidate_fraction": "1",
-                    "successfully_tested_count": "251",
-                    "significant_up_count": "1",
-                    "significant_down_count": "0",
-                }
-            )
-
-        rewrite_tsv(paths["step09_cmh_all_sites_v1"], expand_all)
-        rewrite_tsv(paths["step09_cmh_summary_v1"], update_summary)
-        rewrite_tsv(
-            paths["step09_mutation_spectrum_tsv_v1"],
-            update_mutation_spectrum,
-        )
-
-    copied, _paths = copied_step09_summary(
-        computational_summary,
-        tmp_path / "input",
-        mutate_sources=expand_sources,
-    )
-    context = REPORT.prepare_report(
-        arguments(copied, tmp_path / "reports", execute=True)
-    )
-    publish(context)
-    document = receipt_document(context.output_receipt)
-    assert document["truncations"] == []
-    scientific = context.output_scientific_html.read_text(encoding="utf-8")
-    assert "Displayed the first 250 of 251 rows" not in scientific
-    assert 'id="computational_all_sites"' not in scientific
-    assert 'id="computational_significant_sites"' not in scientific
-    assert "Successfully tested" in scientific
-    assert "251" in scientific
-
-
 def test_explicit_input_and_canonical_name_are_required(
+    computational_evidence: Any,
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     wrong = tmp_path / "wrong.json"
     wrong.write_bytes(computational_summary.read_bytes())
-    with pytest.raises(ReportRenderError, match="Canonical run-summary"):
-        REPORT.prepare_report(arguments(wrong, tmp_path / "reports"))
+    with pytest.raises(ReportRenderError, match="Published Run result differs"):
+        report_context.prepare_context(
+            arguments(computational_evidence, tmp_path / "reports", run_summary=wrong),
+            evidence_context=computational_evidence,
+        )
     with pytest.raises(ReportRenderError, match="Could not inspect"):
-        REPORT.prepare_report(
-            arguments(tmp_path / "missing.json", tmp_path / "reports")
+        report_context.prepare_context(
+            arguments(
+                computational_evidence,
+                tmp_path / "reports",
+                run_summary=tmp_path / "missing.json",
+            ),
+            evidence_context=computational_evidence,
         )
 
 
 def test_report_rejects_a_non_directory_output_root(
-    computational_summary: Path,
+    computational_evidence: Any,
     tmp_path: Path,
 ) -> None:
     output_root = tmp_path / "not-a-directory"
     output_root.write_text("occupied\n", encoding="utf-8")
 
     with pytest.raises(ReportRenderError, match="non-symlink directory"):
-        REPORT.prepare_report(arguments(computational_summary, output_root))
+        report_context.prepare_context(
+            arguments(computational_evidence, output_root),
+            evidence_context=computational_evidence,
+        )
 
 
-@pytest.mark.parametrize("suffix", ("run_report.html", "run_report.pdf"))
-def test_retired_single_report_predecessors_require_fresh_output_root(
-    computational_summary: Path,
-    tmp_path: Path,
-    suffix: str,
-) -> None:
-    run_id = json.loads(computational_summary.read_text(encoding="utf-8"))["run_id"]
-    output_root = tmp_path / "reports"
-    output_dir = output_root / run_id
-    output_dir.mkdir(parents=True)
-    (output_dir / f"{run_id}.{suffix}").write_text("retired", encoding="utf-8")
-    with pytest.raises(ReportRenderError, match="fresh output root"):
-        REPORT.prepare_report(arguments(computational_summary, output_root))
-
-
-def test_bare_v4_output_requires_fresh_output_root(
+def test_partial_current_output_requires_fresh_output_root(
+    computational_evidence: Any,
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
@@ -1545,30 +1342,14 @@ def test_bare_v4_output_requires_fresh_output_root(
         encoding="utf-8",
     )
     with pytest.raises(ReportRenderError, match="fresh output root"):
-        REPORT.prepare_report(arguments(computational_summary, output_root))
-
-
-def test_v3_receipt_requires_fresh_output_root(
-    computational_summary: Path,
-    tmp_path: Path,
-) -> None:
-    run_id = json.loads(computational_summary.read_text(encoding="utf-8"))["run_id"]
-    output_root = tmp_path / "reports"
-    output_dir = output_root / run_id
-    output_dir.mkdir(parents=True)
-    v3 = json.loads(
-        (
-            REPO_ROOT / "tests/contracts/artifacts/fixtures/report_receipt_v3.json"
-        ).read_text(encoding="utf-8")
-    )
-    (output_dir / f"{run_id}.report_outputs.tsv").write_bytes(
-        receipt.receipt_tsv_bytes(v3)
-    )
-    with pytest.raises(ReportRenderError, match="Unsupported report receipt"):
-        REPORT.prepare_report(arguments(computational_summary, output_root))
+        report_context.prepare_context(
+            arguments(computational_evidence, output_root),
+            evidence_context=computational_evidence,
+        )
 
 
 def test_lock_collision_is_rejected_without_mutation(
+    computational_evidence: Any,
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
@@ -1579,216 +1360,261 @@ def test_lock_collision_is_rejected_without_mutation(
     lock = output_dir / f".{run_id}.report.lock"
     lock.write_text("foreign\n", encoding="utf-8")
     with pytest.raises(ReportRenderError, match="lock already exists"):
-        REPORT.prepare_report(arguments(computational_summary, output_root))
+        report_context.prepare_context(
+            arguments(computational_evidence, output_root),
+            evidence_context=computational_evidence,
+        )
     assert lock.read_text(encoding="utf-8") == "foreign\n"
 
 
-def test_input_mutation_aborts_and_removes_owned_state(
-    computational_summary: Path,
-    tmp_path: Path,
-) -> None:
-    copied = write_summary_copy(computational_summary, tmp_path / "input")
-    context = REPORT.prepare_report(
-        arguments(copied, tmp_path / "reports", execute=True)
+def test_input_mutation_aborts_and_removes_owned_state(tmp_path: Path) -> None:
+    fixture = FIXTURE.build_fixture(tmp_path / "fixture")
+    context = report_context.prepare_context(
+        arguments(fixture.evidence_context, tmp_path / "reports"),
+        evidence_context=fixture.evidence_context,
     )
-    copied.write_bytes(copied.read_bytes() + b" ")
+    fixture.summary_json_path.write_bytes(fixture.summary_json_path.read_bytes() + b" ")
     with pytest.raises(ReportRenderError, match="changed during report"):
         publish(context)
     assert not any(path.exists() for path in output_paths(context))
     assert not context.lock_path.exists()
 
 
-def test_interrupted_lock_acquisition_cleans_owned_lock(
-    computational_summary: Path,
+@pytest.mark.parametrize("replaced", (False, True))
+def test_interrupted_lock_acquisition_cleans_only_owned_lock(
+    computational_evidence: Any,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    replaced: bool,
 ) -> None:
-    context = REPORT.prepare_report(
-        arguments(computational_summary, tmp_path / "reports", execute=True)
+    context = report_context.prepare_context(
+        arguments(computational_evidence, tmp_path / "reports", execute=True),
+        evidence_context=computational_evidence,
     )
-    base = REPORT.default_publication_ops()
 
     def interrupt(_descriptor: int, _payload: bytes) -> int:
+        if replaced:
+            context.lock_path.unlink()
+            context.lock_path.write_bytes(b"foreign lock\n")
         raise KeyboardInterrupt
 
-    with pytest.raises(KeyboardInterrupt):
-        publish(context, replace(base, lock_write=interrupt))
-    assert not context.lock_path.exists()
+    with monkeypatch.context() as faults:
+        faults.setattr(os, "write", interrupt)
+        with pytest.raises(ReportRenderError if replaced else KeyboardInterrupt):
+            publish(context)
+    if replaced:
+        assert context.lock_path.read_bytes() == b"foreign lock\n"
+    else:
+        assert not context.lock_path.exists()
     assert not any(path.exists() for path in output_paths(context))
 
 
-def test_post_backup_failure_rolls_back_exact_predecessor(
-    computational_summary: Path,
+def test_short_lock_and_staged_file_writes_publish_complete_bytes(
+    computational_evidence: Any,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    args = arguments(computational_summary, tmp_path / "reports", execute=True)
-    first = REPORT.prepare_report(args)
-    publish(first)
-    before = {path: path.read_bytes() for path in output_paths(first)}
-    context = REPORT.prepare_report(args)
-    base = REPORT.default_publication_ops()
+    context = report_context.prepare_context(
+        arguments(computational_evidence, tmp_path / "reports", execute=True),
+        evidence_context=computational_evidence,
+    )
+    real_write = os.write
+    short_writes = 0
 
-    def fail_summary_link(source: Path, target: Path) -> None:
-        if (
-            target == context.output_summary_tsv
-            and ".run-report." in source.parent.name
-        ):
-            raise OSError("synthetic post-backup failure")
-        base.link(source, target)
+    def short_write(descriptor: int, payload: bytes) -> int:
+        nonlocal short_writes
+        short_writes += 1
+        return real_write(descriptor, payload[: max(1, len(payload) // 2)])
 
-    with pytest.raises(ReportRenderError, match="synthetic post-backup failure"):
-        publish(context, replace(base, link=fail_summary_link))
-    assert {path: path.read_bytes() for path in output_paths(context)} == before
+    with monkeypatch.context() as faults:
+        faults.setattr(os, "write", short_write)
+        publish(context)
+    assert short_writes > 5
+    assert context.stable_paths[0].read_bytes() == context.scientific_html_bytes
+    assert context.stable_paths[1].read_bytes() == context.evidence_html_bytes
+    assert (
+        receipt_document(context.output_receipt)["run_id"] == context.summary["run_id"]
+    )
     assert not context.lock_path.exists()
-    assert not list(context.output_dir.glob("*.previous"))
 
 
-def test_foreign_final_and_backup_are_preserved(
-    computational_summary: Path,
+def test_foreign_final_is_preserved_after_context_preparation(
+    computational_evidence: Any,
     tmp_path: Path,
 ) -> None:
-    empty_context = REPORT.prepare_report(
-        arguments(computational_summary, tmp_path / "foreign-final", execute=True)
+    empty_context = report_context.prepare_context(
+        arguments(computational_evidence, tmp_path / "foreign-final", execute=True),
+        evidence_context=computational_evidence,
     )
     empty_context.output_dir.mkdir(parents=True)
-    empty_context.output_scientific_html.write_text(
-        "foreign final\n",
-        encoding="utf-8",
-    )
+    empty_context.stable_paths[0].write_text("foreign final\n", encoding="utf-8")
     with pytest.raises(ReportRenderError, match="appeared after preflight"):
         publish(empty_context)
     assert (
-        empty_context.output_scientific_html.read_text(encoding="utf-8")
-        == "foreign final\n"
+        empty_context.stable_paths[0].read_text(encoding="utf-8") == "foreign final\n"
     )
 
-    args = arguments(computational_summary, tmp_path / "foreign-backup", execute=True)
-    initial = REPORT.prepare_report(args)
-    publish(initial)
-    context = REPORT.prepare_report(args)
-    token = "fixed-foreign-token"
-    backup = (
-        context.output_dir / f".{context.output_scientific_html.name}.{token}.previous"
-    )
-    backup.write_text("foreign backup\n", encoding="utf-8")
-    ops = replace(REPORT.default_publication_ops(), make_token=lambda: token)
-    with pytest.raises(ReportRenderError, match="backup path unexpectedly exists"):
-        publish(context, ops)
-    assert backup.read_text(encoding="utf-8") == "foreign backup\n"
-    assert all(path.is_file() for path in output_paths(context))
 
-
-def test_incomplete_rollback_preserves_lock_stage_and_recovery(
-    computational_summary: Path,
+@pytest.mark.parametrize("failure", ("before_link", "signal_after_link"))
+def test_link_handoff_failure_removes_only_owned_outputs(
+    computational_evidence: Any,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
 ) -> None:
-    args = arguments(computational_summary, tmp_path / "reports", execute=True)
-    initial = REPORT.prepare_report(args)
-    publish(initial)
-    context = REPORT.prepare_report(args)
-    base = REPORT.default_publication_ops()
+    context = report_context.prepare_context(
+        arguments(computational_evidence, tmp_path / "reports", execute=True),
+        evidence_context=computational_evidence,
+    )
+    target = context.output_receipt
+    real_link = os.link
 
-    def fail_publication_and_restore(source: Path, target: Path) -> None:
-        if (
-            ".run-report." in source.parent.name
-            and target == context.output_scientific_html
+    def fail_link(source: Path, destination: Path, **kwargs: Any) -> None:
+        if destination != target:
+            real_link(source, destination, **kwargs)
+            return
+        if failure == "signal_after_link":
+            real_link(source, destination, **kwargs)
+            signal.raise_signal(signal.SIGTERM)
+        raise OSError("synthetic link handoff failure")
+
+    with monkeypatch.context() as faults:
+        faults.setattr(os, "link", fail_link)
+        with pytest.raises(
+            ReportRenderError, match="link handoff failure|interrupted by signal"
         ):
-            raise OSError("synthetic publication failure")
-        if source.name.endswith(".previous"):
-            raise OSError("synthetic rollback failure")
-        base.link(source, target)
+            publish(context)
+    assert not any(path.exists() for path in output_paths(context))
+    assert not context.lock_path.exists()
+    assert not list(context.output_dir.glob("*.RECOVERY.txt"))
+    assert not list(context.output_dir.glob(".run-report.*.tmp"))
 
-    with pytest.raises(ReportRenderError, match="rollback was incomplete"):
-        publish(context, replace(base, link=fail_publication_and_restore))
+
+def test_incomplete_rollback_preserves_owned_output_lock_stage_and_recovery(
+    computational_evidence: Any,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    context = report_context.prepare_context(
+        arguments(computational_evidence, tmp_path / "reports", execute=True),
+        evidence_context=computational_evidence,
+    )
+    real_link = os.link
+    real_unlink = Path.unlink
+
+    def fail_receipt_link(source: Path, destination: Path, **kwargs: Any) -> None:
+        if destination == context.output_receipt:
+            raise OSError("synthetic receipt publication failure")
+        real_link(source, destination, **kwargs)
+
+    def fail_unlink(path: Path, **kwargs: Any) -> None:
+        if path == context.stable_paths[0]:
+            raise OSError("synthetic rollback unlink failure")
+        real_unlink(path, **kwargs)
+
+    with monkeypatch.context() as faults:
+        faults.setattr(os, "link", fail_receipt_link)
+        faults.setattr(Path, "unlink", fail_unlink)
+        with pytest.raises(ReportRenderError, match="rollback was incomplete"):
+            publish(context)
+    assert context.stable_paths[0].read_bytes() == context.scientific_html_bytes
+    assert not context.output_receipt.exists()
     assert context.lock_path.exists()
     assert list(context.output_dir.glob("*.RECOVERY.txt"))
     assert list(context.output_dir.glob(".run-report.*.tmp"))
 
 
 def test_post_commit_cleanup_failure_keeps_committed_outputs_and_evidence(
-    computational_summary: Path,
+    computational_evidence: Any,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    context = REPORT.prepare_report(
-        arguments(computational_summary, tmp_path / "reports", execute=True)
+    context = report_context.prepare_context(
+        arguments(computational_evidence, tmp_path / "reports", execute=True),
+        evidence_context=computational_evidence,
     )
-    base = REPORT.default_publication_ops()
 
     def fail_cleanup(
-        _path: Path, _token: str, _identity: tuple[int, int] | None
+        _path: Path,
+        _token: str,
+        _identity: tuple[int, int] | None,
+        _error: type[Exception],
     ) -> None:
         raise OSError("synthetic cleanup failure")
 
-    with pytest.raises(ReportRenderError, match="cleanup failed"):
-        publish(context, replace(base, remove_owned_stage=fail_cleanup))
+    with monkeypatch.context() as faults:
+        faults.setattr(_files, "remove_owned_stage", fail_cleanup)
+        with pytest.raises(ReportRenderError, match="cleanup failed"):
+            publish(context)
     assert all(path.is_file() for path in output_paths(context))
     assert context.lock_path.exists()
     assert list(context.output_dir.glob("*.RECOVERY.txt"))
 
 
 def test_final_byte_corruption_never_commits_a_false_receipt(
-    computational_summary: Path,
+    computational_evidence: Any,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    context = REPORT.prepare_report(
-        arguments(computational_summary, tmp_path / "reports", execute=True)
+    context = report_context.prepare_context(
+        arguments(computational_evidence, tmp_path / "reports", execute=True),
+        evidence_context=computational_evidence,
     )
-    base = REPORT.default_publication_ops()
+    real_fsync_file = _files.fsync_path
     corrupted = False
 
-    def corrupt_summary(path: Path) -> None:
+    def corrupt_evidence_html(path: Path) -> None:
         nonlocal corrupted
-        if path == context.output_summary_tsv and not corrupted:
+        if path == context.stable_paths[1] and not corrupted:
             payload = path.read_bytes()
             old = context.summary["run_id"].encode("utf-8")
             replacement = (b"X" if old[:1] != b"X" else b"Y") + old[1:]
             path.write_bytes(payload.replace(old, replacement, 1))
             corrupted = True
-        base.fsync_file(path)
+        real_fsync_file(path)
 
-    with pytest.raises(ReportRenderError, match="rollback was incomplete"):
-        publish(context, replace(base, fsync_file=corrupt_summary))
+    with monkeypatch.context() as faults:
+        faults.setattr(_files, "fsync_path", corrupt_evidence_html)
+        with pytest.raises(ReportRenderError, match="rollback was incomplete"):
+            publish(context)
     assert not context.output_receipt.exists()
     assert context.lock_path.exists()
     assert list(context.output_dir.glob("*.RECOVERY.txt"))
 
 
 def test_signal_restoration_failure_is_controlled_recovery(
-    computational_summary: Path,
+    computational_evidence: Any,
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    context = REPORT.prepare_report(
-        arguments(computational_summary, tmp_path / "reports", execute=True)
+    context = report_context.prepare_context(
+        arguments(computational_evidence, tmp_path / "reports", execute=True),
+        evidence_context=computational_evidence,
     )
-    base = REPORT.default_publication_ops()
+    real_restore = _signals.restore
 
     def fail_restore(handlers: dict[int, Any]) -> None:
-        base.restore_signal_handlers(handlers)
+        real_restore(handlers)
         raise OSError("synthetic signal restore failure")
 
-    with pytest.raises(ReportRenderError, match="signal-handler restoration failed"):
-        publish(context, replace(base, restore_signal_handlers=fail_restore))
+    with monkeypatch.context() as faults:
+        faults.setattr(_signals, "restore", fail_restore)
+        with pytest.raises(
+            ReportRenderError, match="signal-handler restoration failed"
+        ):
+            publish(context)
     assert all(path.is_file() for path in output_paths(context))
     assert not context.lock_path.exists()
     assert list(context.output_dir.glob("*.RECOVERY.txt"))
 
 
-@pytest.mark.parametrize(
-    ("column", "replacement"),
-    (
-        ("run_id", "different-run"),
-        ("kind", "bogus"),
-        ("sha256", "0" * 64),
-        ("self_contained", "false"),
-    ),
-)
 def test_receipt_rows_must_match_canonical_json(
-    computational_summary: Path,
+    computational_evidence: Any,
     tmp_path: Path,
-    column: str,
-    replacement: str,
 ) -> None:
-    context = REPORT.prepare_report(
-        arguments(computational_summary, tmp_path / column, execute=True)
+    context = report_context.prepare_context(
+        arguments(computational_evidence, tmp_path / "reports", execute=True),
+        evidence_context=computational_evidence,
     )
     publish(context)
     with context.output_receipt.open(encoding="utf-8", newline="") as stream:
@@ -1796,7 +1622,7 @@ def test_receipt_rows_must_match_canonical_json(
         fieldnames = reader.fieldnames
         rows = list(reader)
     assert fieldnames is not None
-    rows[0][column] = replacement
+    rows[0]["sha256"] = "0" * 64
     with context.output_receipt.open("w", encoding="utf-8", newline="") as stream:
         writer = csv.DictWriter(
             stream,
@@ -1808,42 +1634,3 @@ def test_receipt_rows_must_match_canonical_json(
         writer.writerows(rows)
     with pytest.raises(ReportRenderError, match="TSV columns differ"):
         receipt.read_receipt_tsv(context.output_receipt)
-
-
-def test_summary_and_receipt_serializers_are_deterministic(
-    computational_summary: Path,
-    tmp_path: Path,
-) -> None:
-    context = REPORT.prepare_report(
-        arguments(computational_summary, tmp_path / "reports")
-    )
-    assert receipt.summary_tsv_bytes(context) == receipt.summary_tsv_bytes(context)
-    stage = tmp_path / "stage"
-    stage.mkdir()
-    scientific_html = stage / context.output_scientific_html.name
-    evidence_html = stage / context.output_evidence_html.name
-    summary = stage / context.output_summary_tsv.name
-    scientific_html.write_bytes(context.scientific_html_bytes)
-    evidence_html.write_bytes(context.evidence_html_bytes)
-    summary.write_bytes(receipt.summary_tsv_bytes(context))
-    document = receipt.receipt_document(
-        context,
-        (
-            (
-                "scientific-report-html",
-                "scientific_html",
-                scientific_html,
-                context.output_scientific_html,
-            ),
-            (
-                "evidence-report-html",
-                "evidence_html",
-                evidence_html,
-                context.output_evidence_html,
-            ),
-            ("run-summary-tsv", "run_summary_tsv", summary, context.output_summary_tsv),
-        ),
-    )
-    assert receipt.receipt_tsv_bytes(document) == receipt.receipt_tsv_bytes(
-        json.loads(json.dumps(document))
-    )

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import csv
+import io
 from collections import Counter
 from pathlib import Path
 
@@ -13,13 +14,13 @@ from emrys.analyses import compose_profile
 from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.projection import build_reporting_bundle
+from emrys.libraries.source_authority import PACKAGE_ROOT
 from emrys.orchestration.run_coordinator.normalization import admit_project
 from tests.orchestration.run_coordinator.fixture import build
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-PROFILE_PATH = REPO_ROOT / "workflow" / "contracts" / "local_cmh_v2.json"
+PROFILE_PATH = PACKAGE_ROOT / "workflow" / "contracts" / "local_cmh_v2.json"
 STAGE_MAP_PATH = REPO_ROOT / "src" / "emrys" / "contracts" / "STAGE_MAP.md"
 PUBLIC_INVENTORY_PATH = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
 
@@ -186,10 +187,10 @@ cohort.{cohort_id}.step08_summary|08|cohort|cohort|step08_summary_v1|products/na
 cohort.{cohort_id}.step08_validation|08|cohort|cohort|step08_validation_report_v1|products/native/qc/validation/08/{cohort_id}.validation.tsv|true
 analysis.{analysis_id}.cmh_all_sites|09|analysis|analysis|step09_cmh_all_sites_v1|results/editing/{analysis_id}/{analysis_id}.cmh_all_sites.tsv|true
 analysis.{analysis_id}.cmh_significant_sites|09|analysis|analysis|step09_cmh_significant_sites_v1|results/editing/{analysis_id}/{analysis_id}.cmh_significant_sites.tsv|true
-analysis.{analysis_id}.cmh_summary|09|analysis|analysis|step09_cmh_summary_v1|results/editing/{analysis_id}/{analysis_id}.cmh_summary.tsv|true
 analysis.{analysis_id}.mutation_spectrum_tsv|09|analysis|analysis|step09_mutation_spectrum_tsv_v1|results/editing/{analysis_id}/{analysis_id}.mutation_spectrum.tsv|true
 analysis.{analysis_id}.mutation_spectrum_pdf|09|analysis|analysis|step09_mutation_spectrum_pdf_v1|results/editing/{analysis_id}/{analysis_id}.mutation_spectrum.pdf|true
 analysis.{analysis_id}.depth_delta_pdf|09|analysis|analysis|step09_depth_delta_pdf_v1|results/editing/{analysis_id}/{analysis_id}.depth_delta.pdf|true
+analysis.{analysis_id}.cmh_summary|09|analysis|analysis|step09_cmh_summary_v1|results/editing/{analysis_id}/{analysis_id}.cmh_summary.tsv|true
 analysis.{analysis_id}.cmh_validation|09|analysis|analysis|step09_validation_report_v1|products/native/qc/validation/09/{analysis_id}.validation.tsv|true
 analysis.{analysis_id}.candidate_context|10|analysis|analysis|step10_candidate_context_v1|results/scientific_context/{analysis_id}/{analysis_id}.candidate_context.tsv|true
 analysis.{analysis_id}.motif_hits|10|analysis|analysis|step10_motif_hits_v1|results/scientific_context/{analysis_id}/{analysis_id}.motif_hits.tsv|true
@@ -287,12 +288,8 @@ def test_profile_is_schema_valid_and_exactly_matches_stage_map(
     expected_keys = {key for key, *_rest in expected_tasks}
     assert observed_tasks == list(expected_tasks)
     assert [
-        (key, slug, alias)
-        for key, slug, alias in identities
-        if key in expected_keys
-    ] == [
-        (key, rule, step) for key, rule, step, _, _ in expected_tasks
-    ]
+        (key, slug, alias) for key, slug, alias in identities if key in expected_keys
+    ] == [(key, rule, step) for key, rule, step, _, _ in expected_tasks]
     assert processing_profile["semantic_owner_keys"] == [
         key for key, _, _ in identities if key in expected_keys
     ]
@@ -339,7 +336,11 @@ def test_profile_expands_to_exact_formula_and_contiguous_scopes(
         profile,
         analysis.revision,
     )
-    rows = bundle.artifact_inventory_rows
+    rows = list(
+        csv.DictReader(
+            io.StringIO(bundle.artifact_inventory_bytes.decode()), delimiter="\t"
+        )
+    )
     sample_count = len(source["samples"]["rows"])
     partition_count = len(source["partitions"]["rows"])
     assert len(rows) == 39 + (27 * sample_count) + (4 * partition_count)
@@ -404,22 +405,6 @@ def test_profile_separates_native_products_from_scientist_results(
         else "unexpected"
         for path in relative_paths
     ) == Counter({"native": 56, "editing": 6, "scientific_context": 5})
-
-
-def test_report_root_follows_the_profile_bound_layout(
-    profile: dict[str, object],
-    tmp_path: Path,
-) -> None:
-    assert report_output_root(tmp_path, profile) == tmp_path / "results" / "reports"
-
-    historical = copy.deepcopy(profile)
-    for template in historical["artifact_templates"]:
-        path = template["source_path_template"]
-        if path.startswith("products/native/"):
-            template["source_path_template"] = path.replace(
-                "products/native/", "results/", 1
-            )
-    assert report_output_root(tmp_path, historical) == tmp_path / "products" / "report"
 
 
 def test_step09_keeps_native_diagnostic_pdfs(profile: dict[str, object]) -> None:

@@ -1,11 +1,9 @@
-# Canonical-BAM stage tests
+# Canonical-BAM tests
 
-This directory protects Step 02 shell staging, BAM/BAI publication and
-rollback states, plus structural validator behavior. The
-[stage owner](../../../src/emrys/stages/canonical_bam/README.md) owns supported
-commands, recovery hazards, and exact evidence limits. The Python tests invoke
-the grouped `python -I -m emrys validate canonical-bam` route; `validator.py`
-is a private implementation module.
+Native samtools sorting and read-group construction, canonical-input hard-link reuse, malformed headers, incomplete tagging, and grouped validation are covered. The [historical replacement defect](../../../src/emrys/stages/canonical_bam/CONTRACT.md#historical-replacement-defect) retains the restore-loss sequence and exact source/test revision.
 
-Fixtures and fake tools do not prove real samtools, scheduler, cluster,
-production, scientific-review, or biological behavior.
+Shell cases invoke the internal worker with runner-style scratch and staging.
+The [common runner suite](../../orchestration/run_coordinator/test_task.py) owns
+publication, input stability, interruption, and recovery checks. Python
+validator cases retain the public grouped command. The
+[shared evidence limits](../../README.md#evidence-limits) apply.

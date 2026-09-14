@@ -1,35 +1,25 @@
 # Documentation history
 
-This tree is reserved for frozen, dated evidence views whose durable value is
-not already carried by current subject owners and Git history. Historical
-records never own current checkout state, roadmap order, executable commands,
-contracts, or evidence promotion.
+This directory keeps frozen, dated evidence that remains useful beyond current
+guides and Git history. It does not describe the current checkout, roadmap,
+commands, or contracts.
 
 ## Current index
 
-- [`validation-evidence.md`](validation-evidence.md) retains bounded, dated
-  validation observations and their explicit evidence ceilings.
+- [Validation evidence](validation-evidence.md): dated observations, exact
+  revisions and artifacts, and the limits of what each result establishes.
 
-Testing transcripts, obsolete matrices, superseded baselines, and completed
-gate narratives otherwise remain available through Git history rather than the
-live documentation tree.
-
-Create a topic child only when a dated record has repository-backed provenance,
-unique ongoing value, and no adequate current subject owner or Git record.
+Old transcripts, matrices, baselines, and completed progress reports otherwise
+stay in Git. Add a topic here only when its evidence has verifiable repository
+origins, lasting value, and no adequate existing home.
 
 ## Record rules
 
-- Name a record `YYYY-MM-DD-<topic>.md`, using the date established by its
-  source evidence rather than filesystem modification time.
-- State the originating document and immutable source commit near the top of
-  every record. Retain any more specific run date, command, commit, or artifact
-  provenance carried by the source.
-- Freeze a record after migration. A later result gets a new dated record; it
-  does not rewrite the earlier observation into current truth.
-- Keep each record under one topic and link it from that topic's index. Other
-  documents link the record instead of copying its historical narrative.
-- Route checkout state to live Git, validation observations to exact checks and
-  retained artifacts, accepted work to the
-  [findings matrix](../tasks/backlog_matrix.md), exact commands to the
-  [`RUNBOOK.md`](../operations/RUNBOOK.md), and functional meaning to the
-  applicable colocated contract.
+- Use `YYYY-MM-DD-topic.md`, dated from the source evidence, not file metadata.
+- Name the originating document and immutable commit; retain exact run dates,
+  commands, commits, and artifact identities supplied by that source.
+- Keep the migrated record unchanged. Later results receive a new dated record.
+- Link each record from one topic index; other guides link rather than copy it.
+- Use live Git for checkout state, checks and artifacts for verification, the
+  [backlog](../tasks/backlog_matrix.md) for accepted work, the
+  [Runbook](../operations/RUNBOOK.md) for commands, and owner contracts for behavior.

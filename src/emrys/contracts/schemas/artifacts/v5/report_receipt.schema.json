@@ -1,46 +1,113 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:emrys:schema:artifacts:report-receipt:v5",
-  "title": "EMRYS modular report receipt v5",
+  "$id": "urn:emrys:schema:artifacts:report-receipt:v8",
+  "title": "EMRYS modular report receipt v8",
   "type": "object",
   "additionalProperties": false,
   "$defs": {
     "core_renderer": {
-      "type": "object", "additionalProperties": false,
-      "required": ["producer", "producer_version", "package", "content_sha256", "template_engine", "template_engine_version"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "producer",
+        "producer_version",
+        "package",
+        "content_sha256",
+        "template_engine",
+        "template_engine_version"
+      ],
       "properties": {
         "producer": {"const": "emrys.reporting.report"},
         "producer_version": {"type": "string", "minLength": 1},
-        "package": {"const": "emrys.reporting"},
+        "package": {"const": "emrys"},
         "content_sha256": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/sha256"},
         "template_engine": {"const": "Jinja2"},
         "template_engine_version": {"type": "string", "minLength": 1}
       }
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path"},
+        "sha256": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/sha256"}
+      }
+    },
+    "report_output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["output_id", "kind", "path", "sha256", "size_bytes", "media_type", "self_contained"],
+      "properties": {
+        "output_id": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"},
+        "kind": {"enum": ["scientific_html", "evidence_html"]},
+        "path": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path"},
+        "sha256": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "media_type": {"const": "text/html"},
+        "self_contained": {"const": true}
+      }
     }
   },
-  "required": ["schema_name", "schema_version", "record_type", "run_id", "attempt_id", "generated_at", "publication_state", "transaction_state", "interpretation_boundary", "input_run_summary", "analysis_policy", "scientific_renderer", "evidence_renderer", "template", "stylesheet", "outputs", "state_banner", "truncations", "schema_versions", "analysis_execution_performed", "external_network_assets_used", "validation_claimed", "warnings", "errors", "provenance"],
+  "required": [
+    "schema_name",
+    "schema_version",
+    "record_type",
+    "run_id",
+    "generated_at",
+    "publication_state",
+    "transaction_state",
+    "interpretation_boundary",
+    "input_run_summary",
+    "inputs",
+    "analysis_policy",
+    "scientific_renderer",
+    "evidence_renderer",
+    "template",
+    "stylesheet",
+    "outputs",
+    "state_banner",
+    "schema_versions",
+    "analysis_execution_performed",
+    "external_network_assets_used",
+    "validation_claimed",
+    "warnings",
+    "errors",
+    "provenance"
+  ],
   "properties": {
     "schema_name": {"const": "emrys.report_receipt"},
-    "schema_version": {"const": "5.0.0"},
+    "schema_version": {"const": "8.0.0"},
     "record_type": {"const": "report_receipt"},
     "run_id": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"},
-    "attempt_id": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"},
     "generated_at": {"type": "string", "format": "date-time"},
     "publication_state": {"const": "complete"},
     "transaction_state": {"const": "complete"},
-    "interpretation_boundary": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/non_empty_string"},
+    "interpretation_boundary": {"const": "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE EMRYS."},
     "input_run_summary": {
-      "type": "object", "additionalProperties": false,
+      "type": "object",
+      "additionalProperties": false,
       "required": ["path", "sha256", "schema_name", "schema_version"],
       "properties": {
         "path": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path"},
         "sha256": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/sha256"},
         "schema_name": {"const": "emrys.run_summary"},
-        "schema_version": {"const": "3.0.0"}
+        "schema_version": {"const": "8.0.0"}
       }
     },
-    "analysis_policy": {
+    "inputs": {"type": "array", "items": {
       "type": "object", "additionalProperties": false,
+      "required": ["path", "sha256", "size_bytes", "rehash_content"],
+      "properties": {
+        "path": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path"},
+        "sha256": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "rehash_content": {"type": "boolean"}
+      }
+    }},
+    "analysis_policy": {
+      "type": "object",
+      "additionalProperties": false,
       "required": ["path", "sha256", "size_bytes", "schema_version"],
       "properties": {
         "path": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/path"},
@@ -50,8 +117,18 @@
       }
     },
     "scientific_renderer": {
-      "type": "object", "additionalProperties": false,
-      "required": ["module_id", "module_version", "distribution_name", "distribution_version", "package", "entry_point", "content_sha256", "core_support"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "module_id",
+        "module_version",
+        "distribution_name",
+        "distribution_version",
+        "package",
+        "entry_point",
+        "content_sha256",
+        "core_support"
+      ],
       "properties": {
         "module_id": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/safe_id"},
         "module_version": {"type": "string", "minLength": 1},
@@ -64,21 +141,28 @@
       }
     },
     "evidence_renderer": {"$ref": "#/$defs/core_renderer"},
-    "template": {"$ref": "urn:emrys:schema:artifacts:report-receipt:v4#/$defs/resource"},
-    "stylesheet": {"$ref": "urn:emrys:schema:artifacts:report-receipt:v4#/$defs/resource"},
-    "outputs": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "urn:emrys:schema:artifacts:report-receipt:v4#/$defs/report_output"}},
-    "state_banner": {"type": "string", "minLength": 1},
-    "truncations": {"type": "array", "items": {"$ref": "urn:emrys:schema:artifacts:report-receipt:v4#/$defs/truncation"}},
+    "template": {"$ref": "#/$defs/resource"},
+    "stylesheet": {"$ref": "#/$defs/resource"},
+    "outputs": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/report_output"}},
+    "state_banner": {"const": "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE EMRYS."},
     "schema_versions": {
-      "type": "object", "additionalProperties": false,
-      "required": ["artifact_record", "run_summary", "report_receipt"],
-      "properties": {"artifact_record": {"const": "2.0.0"}, "run_summary": {"const": "3.0.0"}, "report_receipt": {"const": "5.0.0"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_entry", "run_summary", "report_receipt"],
+      "properties": {
+        "artifact_entry": {"const": "4.0.0"},
+        "run_summary": {"const": "8.0.0"},
+        "report_receipt": {"const": "8.0.0"}
+      }
     },
     "analysis_execution_performed": {"const": false},
     "external_network_assets_used": {"const": false},
     "validation_claimed": {"const": false},
     "warnings": {"type": "array", "items": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/issue"}},
     "errors": {"type": "array", "maxItems": 0, "items": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/issue"}},
-    "provenance": {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/provenance"}
+    "provenance": {"allOf": [
+      {"$ref": "urn:emrys:schema:artifacts:common:v1#/$defs/provenance"},
+      {"required": ["installed_package"]}
+    ]}
   }
 }

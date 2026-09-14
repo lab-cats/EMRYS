@@ -1,18 +1,14 @@
 # Paired-CMH analysis tests
 
-This directory protects the Step 09 paired-CMH analysis through focused Python
-producer transaction cases, Python validator cases, an independent count-derived
-oracle, and a committed guarded real-R corpus. The
-[analysis owner](../../../src/emrys/analyses/paired_cmh_candidate_ranking/README.md)
-owns supported commands, while its
-[contract](../../../src/emrys/analyses/paired_cmh_candidate_ranking/CONTRACT.md)
-owns method, inputs, outputs, publication, and evidence meaning.
+These tests cover direct R outputs and planned arguments, requested-policy
+validation, an oracle calculated from counts, and a committed guarded real-R
+corpus. Shared runner tests cover publication and recovery. The
+[analysis contract](../../../src/emrys/analyses/paired_cmh_candidate_ranking/CONTRACT.md)
+defines the method, inputs, and outputs; its
+[README](../../../src/emrys/analyses/paired_cmh_candidate_ranking/README.md)
+explains the supported commands.
 
-Validator cases exercise the grouped
-`python -I -m emrys validate paired-cmh-candidate-ranking` route; the owner's
-`validator.py` is private package implementation rather than a direct command.
-
-`step_09_cmh_oracle.py` must remain independent of production statistical
-implementation. The guarded-R runner may skip when no acceptable R runtime is
-available; a skip supplies no real-R evidence. These tests do not establish
-cluster execution, completed scientific review, or biological interpretation.
+Validator cases use `python -I -m emrys validate paired-cmh-candidate-ranking`;
+`validator.py` is private implementation. `step_09_cmh_oracle.py` must remain
+independent of production statistical code. A skipped guarded-R case supplies
+no real-R evidence, as explained in the [test evidence limits](../../README.md#evidence-limits).

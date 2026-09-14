@@ -33,7 +33,9 @@ class AllPassEvidence:
 def _report_rows(data: bytes, path: Path) -> list[dict[str, str]]:
     try:
         text = data.decode("utf-8")
-        raw_rows = list(csv.reader(StringIO(text, newline=""), delimiter="\t", strict=True))
+        raw_rows = list(
+            csv.reader(StringIO(text, newline=""), delimiter="\t", strict=True)
+        )
     except (UnicodeError, csv.Error) as exc:
         validation.fail(f"Validation report is not strict UTF-8 TSV: {path}: {exc}")
 
@@ -88,9 +90,7 @@ def require_all_pass(
             )
         check_id = row["check_id"]
         if not check_id:
-            validation.fail(
-                f"Validation report row {row_number} has an empty check_id"
-            )
+            validation.fail(f"Validation report row {row_number} has an empty check_id")
         if check_id in seen:
             validation.fail(f"Validation report repeats check_id: {check_id}")
         seen.add(check_id)
@@ -99,9 +99,7 @@ def require_all_pass(
             nonpassing.append(f"{check_id}={row['status'] or '<empty>'}")
 
     if nonpassing:
-        validation.fail(
-            "Validation report is not all-pass: " + ", ".join(nonpassing)
-        )
+        validation.fail("Validation report is not all-pass: " + ", ".join(nonpassing))
 
     return AllPassEvidence(
         report_path=path,

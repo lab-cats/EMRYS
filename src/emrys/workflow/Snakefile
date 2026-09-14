@@ -1,0 +1,461 @@
+"""Static processing and selected-analysis projection of EMRYS's owner graph."""
+
+from __future__ import annotations
+
+import hashlib
+import re
+import sys
+from pathlib import Path
+
+from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.artifact_inventory import processing_tasks
+from emrys.contracts.orchestration.application_model import (
+    functional_specification_from_profile,
+    processing_stopping_owner_keys,
+)
+from emrys.libraries.source_authority import (
+    InstalledPackageError,
+    admit_installed_package,
+    require_controlled_python_runtime,
+)
+from emrys.orchestration.run_coordinator.task import (
+    TaskBoundaryError,
+    task_from_attempt,
+    validate_verified_task,
+)
+from emrys.orchestration.run_coordinator.resource_policy import (
+    ResourceConfigError,
+    admit_resource_policy_record,
+)
+from emrys.orchestration.run_coordinator.inspection import (
+    InspectionError,
+    admit_attempt_run_lock,
+    admit_execution_path,
+    expected_tasks,
+    state_tree_blockers,
+    task_start_tree_blockers,
+    verified_tree_blockers,
+)
+
+try:
+    require_controlled_python_runtime()
+except InstalledPackageError as exc:
+    raise WorkflowError(f"Uncontrolled workflow Python runtime: {exc}") from exc
+
+
+WORKFLOW_ATTEMPT = dict(config)
+orchestration_contracts.validate_record("workflow-attempt", WORKFLOW_ATTEMPT)
+RUN_ROOT = Path(WORKFLOW_ATTEMPT["workspace"]) / "runs" / WORKFLOW_ATTEMPT["run_id"]
+try:
+    admit_attempt_run_lock(RUN_ROOT, WORKFLOW_ATTEMPT, require_active=True)
+except InspectionError as exc:
+    raise WorkflowError(f"Could not admit Attempt from run-lock evidence: {exc}") from exc
+CONFIGURED_PYTHON = Path(WORKFLOW_ATTEMPT["normalizer"]["path"])
+EXECUTION_PATH = RUN_ROOT / "contract" / "run.json"
+PROFILE_SNAPSHOT_PATH = RUN_ROOT / "contract" / "profile.json"
+PACKAGE_ROOT = Path(WORKFLOW_ATTEMPT["installed_package"]["path"])
+try:
+    RESOURCES = admit_resource_policy_record(WORKFLOW_ATTEMPT["workflow"]["resource_policy"])
+except ResourceConfigError as exc:
+    raise WorkflowError(f"Attempt resource policy is invalid: {exc}") from exc
+STEP_THREADS = dict(RESOURCES.step_threads)
+STAGE_MEMORY_MB = dict(RESOURCES.stage_memory_mb)
+WORKFLOW_ATTEMPT_ID = WORKFLOW_ATTEMPT["workflow_attempt_id"]
+WORKFLOW_ATTEMPT_PATH = RUN_ROOT / "attempts" / WORKFLOW_ATTEMPT_ID / "attempt.json"
+PROFILE = orchestration_contracts.load_json_object(PROFILE_SNAPSHOT_PATH)
+orchestration_contracts.validate_record("profile", PROFILE)
+if PROFILE_SNAPSHOT_PATH.read_bytes() != orchestration_contracts.canonical_json_bytes(
+    PROFILE
+):
+    raise WorkflowError("Run profile snapshot must use canonical JSON bytes")
+if not PACKAGE_ROOT.is_dir() or PACKAGE_ROOT.is_symlink():
+    raise WorkflowError(f"package_root must be a real directory: {PACKAGE_ROOT}")
+EXECUTION, _EXECUTION_DATA, SUCCESSOR_AUTHORITY = admit_execution_path(
+    EXECUTION_PATH, RUN_ROOT, PROFILE
+)
+
+
+def _require_run_file(path, label):
+    try:
+        path.relative_to(RUN_ROOT)
+    except ValueError as exc:
+        raise WorkflowError(f"{label} must be beneath run_root: {path}") from exc
+    if path.is_symlink() or not path.is_file() or path.resolve(strict=True) != path:
+        raise WorkflowError(f"{label} must be an absolute canonical file: {path}")
+
+
+_require_run_file(EXECUTION_PATH, "execution_path")
+_require_run_file(PROFILE_SNAPSHOT_PATH, "profile_path")
+_require_run_file(WORKFLOW_ATTEMPT_PATH, "workflow_attempt_path")
+
+WORKFLOW_ATTEMPT_BYTES = WORKFLOW_ATTEMPT_PATH.read_bytes()
+if WORKFLOW_ATTEMPT_BYTES != orchestration_contracts.canonical_json_bytes(WORKFLOW_ATTEMPT):
+    raise WorkflowError("Attempt manifest must use exact canonical JSON bytes")
+WORKFLOW_ATTEMPT_SHA256 = hashlib.sha256(WORKFLOW_ATTEMPT_BYTES).hexdigest()
+EXECUTION_SHA256 = hashlib.sha256(
+    orchestration_contracts.canonical_json_bytes(EXECUTION)
+).hexdigest()
+PROFILE_SHA256 = hashlib.sha256(
+    orchestration_contracts.canonical_json_bytes(PROFILE)
+).hexdigest()
+for attempt_field, expected_value in (
+    ("run_id", EXECUTION["run_id"]),
+    ("execution_contract_sha256", EXECUTION_SHA256),
+    ("profile_sha256", PROFILE_SHA256),
+):
+    if WORKFLOW_ATTEMPT[attempt_field] != expected_value:
+        raise WorkflowError(
+            f"workflow_attempt_path does not bind Run {attempt_field}"
+        )
+try:
+    if admit_installed_package(root=PACKAGE_ROOT).record != WORKFLOW_ATTEMPT["installed_package"]:
+        raise InstalledPackageError("Installed package differs from workflow attempt")
+except InstalledPackageError as exc:
+    raise WorkflowError(f"Could not attest workflow child source identity: {exc}") from exc
+PYTHON = sys.executable
+if Path(sys.executable) != CONFIGURED_PYTHON:
+    raise WorkflowError("Snakemake child Python differs from configured executable")
+if not CONFIGURED_PYTHON.is_file():
+    raise WorkflowError("python_executable must resolve to a regular file")
+REQUIRED_TOOLS = {
+    tool["name"]: Path(tool["path"]) for tool in WORKFLOW_ATTEMPT["required_tools"]
+}
+if (
+    REQUIRED_TOOLS.get("python") != CONFIGURED_PYTHON
+    or REQUIRED_TOOLS.get("snakemake") != CONFIGURED_PYTHON
+):
+    raise WorkflowError("workflow attempt required tools do not bind python_executable")
+
+EXPECTED_TASKS = expected_tasks(SUCCESSOR_AUTHORITY, PROFILE)
+PROCESSING_SOURCE_ROOT = None
+PROCESSING_OWNER_KEYS = set()
+plan_identity = SUCCESSOR_AUTHORITY.execution_plan.record["identity"]
+processing_source = plan_identity.get("processing_source")
+if processing_source is not None:
+    PROCESSING_SOURCE_ROOT = RUN_ROOT.parent / processing_source["source_run_id"]
+    PROCESSING_OWNER_KEYS = set(
+        processing_stopping_owner_keys(plan_identity["functional_specification"])
+    )
+ANALYSIS_REVISION = SUCCESSOR_AUTHORITY.analysis_revision
+ANALYSIS_IDENTITY = ANALYSIS_REVISION.record["identity"]
+REFERENCE_ID = ANALYSIS_REVISION.scope_id("reference")
+SAMPLE_IDS = tuple(str(row["sample_id"]) for row in ANALYSIS_IDENTITY["samples"])
+PARTITION_SCOPES = tuple(
+    ANALYSIS_REVISION.scope_id("cohort_partition", str(row["partition_id"]))
+    for row in ANALYSIS_IDENTITY["partitions"]
+)
+COHORT_ID = ANALYSIS_REVISION.scope_id("cohort")
+ANALYSIS_ID = ANALYSIS_REVISION.scope_id("analysis")
+
+# Independent support fence: even a schema-valid profile cannot reassign the
+# backend's fixed producer names or scopes. This is not derived from that profile.
+BASE_RULE_PROJECTION = dict(
+    row.split()
+    for row in """construct_STAR_index emrys.stage.construct_STAR_index.v1|reference|reference
+convert_GTF_to_BED12 emrys.stage.convert_GTF_to_BED12.v1|reference|reference
+construct_FASTA_sidecars emrys.stage.construct_FASTA_sidecars.v1|reference|reference
+align_RNA_reads_with_STAR emrys.stage.align_RNA_reads_with_STAR.v1|sample|samples
+construct_canonical_BAM emrys.stage.construct_canonical_BAM.v1|sample|samples
+collect_canonical_BAM_QC_evidence emrys.evidence.collect_canonical_BAM_QC_evidence.v1|sample|samples
+collect_RSeQC_paired_orientation_evidence emrys.evidence.collect_RSeQC_paired_orientation_evidence.v1|sample|samples
+mark_BAM_duplicates_with_Picard emrys.stage.mark_BAM_duplicates_with_Picard.v1|sample|samples
+split_N_cigar_reads_with_GATK emrys.stage.split_N_cigar_reads_with_GATK.v1|sample|samples
+partition_BAM_by_mechanical_read_orientation emrys.stage.partition_BAM_by_mechanical_read_orientation.v1|sample|samples
+generate_partitioned_cohort_mpileup_VCFs emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1|cohort_partition|partitions
+preprocess_and_annotate_cohort_candidates emrys.stage.preprocess_and_annotate_cohort_candidates.v1|cohort|cohort""".splitlines()
+)
+FUNCTIONAL_SPECIFICATION = functional_specification_from_profile(PROFILE)
+OWNER_TASKS_BY_KEY = {
+    str(task["machine_key"]): task for task in PROFILE["owner_tasks"]
+}
+base_projection = {
+    str(task["rule_name"]): "|".join(
+        str(task[field]) for field in ("machine_key", "scope_type", "scope_selector")
+    )
+    for task in PROFILE["owner_tasks"]
+    if task["rule_name"] in BASE_RULE_PROJECTION
+}
+if base_projection != BASE_RULE_PROJECTION:
+    raise WorkflowError("Processing owner tasks do not match the static base graph")
+BASE_OWNER_KEYS = {value.split("|", 1)[0] for value in BASE_RULE_PROJECTION.values()}
+ANALYSIS_OWNER_KEYS = set(OWNER_TASKS_BY_KEY).difference(BASE_OWNER_KEYS)
+
+
+EXPECTED_SCOPES_BY_OWNER = {}
+for item in EXPECTED_TASKS:
+    EXPECTED_SCOPES_BY_OWNER.setdefault(item.machine_key, set()).add(item.scope_id)
+
+SCOPES_BY_TYPE = {
+    "reference": (REFERENCE_ID,),
+    "sample": SAMPLE_IDS,
+    "cohort_partition": PARTITION_SCOPES,
+    "cohort": (COHORT_ID,),
+    "analysis": (ANALYSIS_ID,),
+}
+TASK_ENTRIES = WORKFLOW_ATTEMPT["tasks"]
+if set(TASK_ENTRIES) != set(EXPECTED_SCOPES_BY_OWNER):
+    raise WorkflowError("Attempt task owners do not exactly match the current plan")
+for machine_key, expected_scopes in EXPECTED_SCOPES_BY_OWNER.items():
+    if set(TASK_ENTRIES[machine_key]) != expected_scopes:
+        raise WorkflowError(f"Attempt task scopes do not match the current plan for {machine_key}")
+
+
+def _verified(machine_key, scope_id):
+    root = (
+        PROCESSING_SOURCE_ROOT
+        if machine_key in PROCESSING_OWNER_KEYS
+        else RUN_ROOT
+    )
+    return str(root / "state" / "verified" / machine_key / f"{scope_id}.json")
+
+
+def _produced_verified(machine_key, scope_id):
+    return str(
+        RUN_ROOT / "state" / "verified" / machine_key / f"{scope_id}.json"
+    )
+
+
+# Each original manifest is admitted once here, even when it supplies many tasks.
+ORIGIN_ATTEMPTS = {
+    (str(WORKFLOW_ATTEMPT_PATH), WORKFLOW_ATTEMPT_SHA256): WORKFLOW_ATTEMPT
+}
+for by_scope in TASK_ENTRIES.values():
+    for entry in by_scope.values():
+        if "workflow_attempt_record" not in entry:
+            continue
+        reference = entry["workflow_attempt_record"]
+        path = RUN_ROOT / reference["path"]
+        key = str(path), reference["sha256"]
+        if key in ORIGIN_ATTEMPTS:
+            continue
+        _require_run_file(path, "original Attempt manifest")
+        data = path.read_bytes()
+        original = orchestration_contracts.load_json_object_bytes(data, path)
+        orchestration_contracts.validate_record("workflow-attempt", original)
+        if hashlib.sha256(data).hexdigest() != key[1] or orchestration_contracts.canonical_json_bytes(original) != data:
+            raise WorkflowError("Original Attempt manifest bytes differ from their reference")
+        ORIGIN_ATTEMPTS[key] = original
+
+
+def _planned_task(machine_key, scope_id):
+    entry = TASK_ENTRIES[machine_key][scope_id]
+    reference = entry.get("workflow_attempt_record")
+    path, digest = (
+        (WORKFLOW_ATTEMPT_PATH, WORKFLOW_ATTEMPT_SHA256)
+        if reference is None
+        else (RUN_ROOT / reference["path"], reference["sha256"])
+    )
+    try:
+        plan = task_from_attempt(
+            path, ORIGIN_ATTEMPTS[str(path), digest], expected_sha256=digest,
+            machine_key=machine_key, scope_id=scope_id,
+        )
+    except TaskBoundaryError as exc:
+        raise WorkflowError(f"Invalid task plan for {machine_key}/{scope_id}: {exc}") from exc
+    expected = {
+        "run_root": RUN_ROOT,
+        "execution_path": EXECUTION_PATH,
+        "profile_path": PROFILE_SNAPSHOT_PATH,
+        "scope": {"scope_type": str(OWNER_TASKS_BY_KEY[machine_key]["scope_type"]), "scope_id": scope_id},
+        "verified_task_path": Path(_verified(machine_key, scope_id)),
+    }
+    for key, expected_value in expected.items():
+        if getattr(plan, key) != expected_value:
+            raise WorkflowError(f"Task plan for {machine_key}/{scope_id} does not bind expected {key}")
+    return plan
+
+
+TASK_PLANS = {
+    (machine_key, scope_id): _planned_task(machine_key, scope_id)
+    for machine_key, by_scope in TASK_ENTRIES.items()
+    for scope_id in by_scope
+}
+
+
+TASK_ARGV_PREFIX = (
+    PYTHON,
+    "-X",
+    "pycache_prefix=/dev/null",
+    "-I",
+    "-m",
+    "emrys.orchestration.run_coordinator.task",
+)
+TASK_SHELL = "{params.task_argv:q}"
+
+
+def _task_argv(machine_key, scope_id=None, *, wildcard=None):
+    def resolve(wildcards):
+        admitted_machine_key = (
+            machine_key(wildcards) if callable(machine_key) else machine_key
+        )
+        admitted_scope = getattr(wildcards, wildcard) if wildcard else scope_id
+        plan = TASK_PLANS[admitted_machine_key, admitted_scope]
+        return (
+            *TASK_ARGV_PREFIX, "--attempt", str(plan.path),
+            "--attempt-sha256", plan.manifest_sha256,
+            "--owner", admitted_machine_key, "--scope", admitted_scope,
+        )
+
+    return resolve
+
+
+def _analysis_inputs(wildcards):
+    paths = []
+    seen = set()
+    for edge in FUNCTIONAL_SPECIFICATION["direct_edges"]:
+        if str(edge["consumer"]) != str(wildcards.analysis_owner):
+            continue
+        producer = str(edge["producer"])
+        scope_type = str(OWNER_TASKS_BY_KEY[producer]["scope_type"])
+        for scope_id in SCOPES_BY_TYPE[scope_type]:
+            key = producer, scope_id
+            if key not in seen:
+                seen.add(key)
+                paths.append(_verified(*key))
+    return tuple(paths)
+
+
+def _admit_reusable_markers():
+    blockers = verified_tree_blockers(RUN_ROOT, EXPECTED_TASKS)
+    if blockers:
+        raise WorkflowError(
+            "Could not close verified-task state: " + "; ".join(blockers)
+        )
+    for item in EXPECTED_TASKS:
+        machine_key, scope_id = item.machine_key, item.scope_id
+        path = Path(_verified(machine_key, scope_id))
+        if path.exists() or path.is_symlink():
+            try:
+                record = validate_verified_task(
+                    path,
+                    run_root=RUN_ROOT,
+                    execution=EXECUTION,
+                    profile=PROFILE,
+                    machine_key=machine_key,
+                    scope=item.scope,
+                )
+                expected_plan = TASK_PLANS[machine_key, scope_id]
+                bound_manifests = [
+                    value
+                    for value in record["inputs"]
+                    if value["role"] == "workflow_attempt"
+                ]
+                if len(bound_manifests) != 1 or bound_manifests[0] != {
+                    "role": "workflow_attempt",
+                    "path": str(expected_plan.path),
+                    "size_bytes": Path(str(expected_plan.path)).stat().st_size,
+                    "sha256": expected_plan.manifest_sha256,
+                }:
+                    raise TaskBoundaryError(
+                        "Verified task origin does not match the Attempt manifest"
+                    )
+            except (
+                OSError,
+                orchestration_contracts.ContractValidationError,
+                TaskBoundaryError,
+            ) as exc:
+                raise WorkflowError(
+                    f"Could not admit reusable verified task {path}: {exc}"
+                ) from exc
+        elif TASK_PLANS[machine_key, scope_id].workflow_attempt_id != WORKFLOW_ATTEMPT_ID:
+            raise WorkflowError(
+                f"Pending task for {machine_key}/{scope_id} does not bind "
+                "the current workflow attempt"
+            )
+
+
+def _admit_state_namespace():
+    blockers = [
+        *state_tree_blockers(RUN_ROOT),
+        *task_start_tree_blockers(RUN_ROOT, EXPECTED_TASKS),
+    ]
+    if blockers:
+        raise WorkflowError("Could not close EMRYS state namespace: " + "; ".join(blockers))
+    for item in EXPECTED_TASKS:
+        start_path = (
+            RUN_ROOT
+            / "state"
+            / "task-starts"
+            / item.machine_key
+            / f"{item.scope_id}.json"
+        )
+        if not start_path.exists() and not start_path.is_symlink():
+            continue
+        verified_path = Path(_verified(item.machine_key, item.scope_id))
+        if not verified_path.exists() and not verified_path.is_symlink():
+            raise WorkflowError(
+                f"Task-start state is entered but incomplete: {start_path}"
+            )
+
+
+_admit_state_namespace()
+_admit_reusable_markers()
+
+
+wildcard_constraints:
+    sample_id="(?:" + "|".join(re.escape(value) for value in SAMPLE_IDS) + ")",
+    partition_scope="(?:" + "|".join(re.escape(value) for value in PARTITION_SCOPES) + ")",
+    analysis_owner="(?:"
+    + (
+        "|".join(
+            re.escape(value)
+            for value in sorted(ANALYSIS_OWNER_KEYS & set(EXPECTED_SCOPES_BY_OWNER))
+        )
+        or "(?!)"
+    )
+    + ")"
+
+
+rule cohort_slice:
+    input:
+        tuple(_verified(item.machine_key, item.scope_id) for item in EXPECTED_TASKS)
+    default_target: True
+
+
+# The profile in the admitted checkout defines processing; retained Run profiles
+# continue to supply only analysis-tail edges, including on historical resumes.
+for processing_task in processing_tasks(PACKAGE_ROOT):
+    machine_key = str(processing_task["machine_key"])
+    step_id = str(processing_task["step_id"])
+    scope_type = str(processing_task["scope_type"])
+    wildcard = {"sample": "sample_id", "cohort_partition": "partition_scope"}.get(scope_type)
+    scope = "{" + wildcard + "}" if wildcard else SCOPES_BY_TYPE[scope_type][0]
+    predecessors = []
+    for producer in processing_task["predecessors"]:
+        producer_scope = str(OWNER_TASKS_BY_KEY[producer]["scope_type"])
+        producer_scopes = (scope,) if producer_scope == scope_type else SCOPES_BY_TYPE[producer_scope]
+        predecessors.extend(_verified(producer, value) for value in producer_scopes)
+    stage_resources = {"mem_mb": STAGE_MEMORY_MB[step_id]}
+    if wildcard:
+        stage_resources[f"stage_{step_id}_slots"] = 1
+
+    rule:
+        name: processing_task["rule_name"]
+        input: predecessors
+        output: _produced_verified(machine_key, scope)
+        params: task_argv=_task_argv(machine_key, scope, wildcard=wildcard)
+        threads: STEP_THREADS.get(step_id, 1)
+        resources: **stage_resources
+        shell: TASK_SHELL
+
+
+rule analysis_owner:
+    input:
+        _analysis_inputs
+    output:
+        _produced_verified("{analysis_owner}", ANALYSIS_ID)
+    params:
+        task_argv=_task_argv(
+            lambda wildcards: str(wildcards.analysis_owner), ANALYSIS_ID
+        )
+    threads:
+        lambda wildcards: STEP_THREADS.get(
+            str(OWNER_TASKS_BY_KEY[str(wildcards.analysis_owner)]["step_id"]),
+            1,
+        )
+    resources:
+        mem_mb=lambda wildcards: STAGE_MEMORY_MB[
+            str(OWNER_TASKS_BY_KEY[str(wildcards.analysis_owner)]["step_id"])
+        ]
+    shell:
+        TASK_SHELL

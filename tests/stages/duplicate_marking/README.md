@@ -1,9 +1,9 @@
-# Picard duplicate-marking stage tests
+# Picard duplicate-marking tests
 
-This directory protects Step 04 shell behavior, mixed-final states, and BAM,
-BAI, and metrics validator reporting. The
-[stage owner](../../../src/emrys/stages/duplicate_marking/README.md)
-owns commands, recovery hazards, and exact evidence limits.
+Native Picard arguments, complete BAM/BAI/metrics output, failed quickcheck, empty metrics, and grouped validation are covered. Fixtures do not establish duplicate-marking accuracy.
 
-Fixtures and fake tools do not prove real Picard, Java, samtools, scheduler,
-cluster, production, scientific-review, or biological behavior.
+Shell cases invoke the internal worker with runner-style scratch and staging.
+The [common runner suite](../../orchestration/run_coordinator/test_task.py) owns
+publication, input stability, interruption, and recovery checks. Python
+validator cases retain the public grouped command. The
+[shared evidence limits](../../README.md#evidence-limits) apply.

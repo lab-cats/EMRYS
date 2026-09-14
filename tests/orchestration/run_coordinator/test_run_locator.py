@@ -49,7 +49,10 @@ def test_project_run_locator_handles_absence_and_rejects_invalid_layout(
 def test_run_locator_resolves_name_id_and_unique_id_prefix(tmp_path: Path) -> None:
     run_roots = (tmp_path / ZERO_RUN_ID, tmp_path / ALPHA_RUN_ID)
 
-    assert inspection.resolve_run_root(run_roots, "international-jackrabbit") == run_roots[0]
+    assert (
+        inspection.resolve_run_root(run_roots, "international-jackrabbit")
+        == run_roots[0]
+    )
     assert inspection.resolve_run_root(run_roots, ALPHA_RUN_ID) == run_roots[1]
     assert inspection.resolve_run_root(run_roots, "run-a") == run_roots[1]
 
@@ -101,7 +104,10 @@ def test_control_selects_zero_one_and_multiple_project_runs(
 
     runs = tmp_path / "runs"
     (runs / ZERO_RUN_ID).mkdir(parents=True)
-    assert control._select_project_run(project, None, interactive=False).name == ZERO_RUN_ID
+    assert (
+        control._select_project_run(project, None, interactive=False).name
+        == ZERO_RUN_ID
+    )
 
     (runs / ALPHA_RUN_ID).mkdir()
     with pytest.raises(control.ControlError, match="select one explicitly") as failure:
@@ -138,7 +144,10 @@ def test_control_terminal_selection_and_cancel_are_read_only(
             return self.selection
 
     monkeypatch.setattr(control, "TerminalMenu", Menu)
-    assert control._select_project_run(project, None, interactive=True).name == ALPHA_RUN_ID
+    assert (
+        control._select_project_run(project, None, interactive=True).name
+        == ALPHA_RUN_ID
+    )
     assert Menu.choices == tuple(
         inspection.human_run_name(run_id) for run_id in (ZERO_RUN_ID, ALPHA_RUN_ID)
     )
@@ -167,8 +176,7 @@ def test_noninteractive_multiple_runs_prints_readable_human_names(
     assert lines == [
         "emrys: error: Multiple Runs exist; select one explicitly: "
         + ", ".join(
-            inspection.human_run_name(run_id)
-            for run_id in (ZERO_RUN_ID, ALPHA_RUN_ID)
+            inspection.human_run_name(run_id) for run_id in (ZERO_RUN_ID, ALPHA_RUN_ID)
         )
     ]
     assert not (tmp_path / "logs").exists()

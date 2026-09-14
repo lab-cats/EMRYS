@@ -60,30 +60,6 @@ def run(
     )
 
 
-def test_dry_run_is_side_effect_free(tmp_path):
-    bed, gtf, output = fixture(tmp_path)
-    result = run(bed, gtf, output)
-    assert result.returncode == 0, result.stderr
-    assert "Dry-run complete" in result.stdout
-    assert not output.exists()
-
-
-def test_execute_publishes_passing_report(tmp_path):
-    bed, gtf, output = fixture(tmp_path)
-    result = run(bed, gtf, output, "--execute")
-    assert result.returncode == 0, result.stderr
-    report_rows = rows(output)
-    assert_exact_check_roster(report_rows, "00b")
-    assert {row["step_id"] for row in report_rows} == {"00b"}
-    assert {row["status"] for row in report_rows} == {"pass"}
-    agreement = next(
-        row for row in report_rows if row["check_id"] == "gtf_transcript_agreement"
-    )
-    assert agreement["detail"] == (
-        "BED12 bytes equal deterministic normalization of explicit GTF"
-    )
-
-
 def test_normalization_value_error_fails_closed(
     tmp_path: Path,
     monkeypatch,
@@ -167,13 +143,22 @@ def test_nonrepository_cwd_dry_run_execute_and_repeat_are_identical(tmp_path):
     assert first.stderr == second.stderr == ""
     assert first.stdout == second.stdout
     assert output.read_bytes() == first_bytes
-    assert [row["check_id"] for row in rows(output)] == [
+    report_rows = rows(output)
+    assert_exact_check_roster(report_rows, "00b")
+    assert {row["step_id"] for row in report_rows} == {"00b"}
+    agreement = next(
+        row for row in report_rows if row["check_id"] == "gtf_transcript_agreement"
+    )
+    assert agreement["detail"] == (
+        "BED12 bytes equal deterministic normalization of explicit GTF"
+    )
+    assert [row["check_id"] for row in report_rows] == [
         "bed12_structure",
         "coordinate_sorting",
         "block_structure",
         "unique_transcript_names",
         "gtf_transcript_agreement",
     ]
-    assert {row["status"] for row in rows(output)} == {"pass"}
+    assert {row["status"] for row in report_rows} == {"pass"}
     assert list(invocation_cwd.iterdir()) == []
     assert sorted(path.name for path in output.parent.iterdir()) == [output.name]

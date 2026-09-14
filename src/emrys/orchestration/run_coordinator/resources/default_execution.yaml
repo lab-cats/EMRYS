@@ -35,9 +35,5 @@ resources:
     "08": workflow
     "09": workflow
     "10": workflow
-  reporting_memory_mb:
-    artifact_index: workflow
-    run_summary: workflow
-    html_report: workflow
 placement:
   kind: direct

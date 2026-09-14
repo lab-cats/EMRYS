@@ -1,14 +1,9 @@
 # Scientific-evidence contract tests
 
-This directory protects neutral contracts for cohort-candidate preprocessing
-inputs/outputs, paired-CMH candidate results, and post-Step09 scientific-context
-tables. It covers public identities, literal headers and vocabularies, parsing,
-reconciliation behavior, and rejection paths. The
-[scientific-evidence owner](../../../src/emrys/contracts/scientific_evidence/README.md)
-defines the corresponding production boundaries.
+These cases check shared Step 08, Step 09, and scientific-context identities,
+literal headers and values, parsing, cross-file agreement, and rejection of
+invalid inputs. The [contract owner](../../../src/emrys/contracts/scientific_evidence/README.md)
+defines those data rules.
 
-These tests protect shared data semantics, not preprocessing or CMH algorithms,
-report presentation, external review or adjudication, artifact publication, or
-independent statistical oracles. Their
-synthetic evidence does not establish runtime completion, scientific review,
-or biological interpretation.
+They test shared data meaning, not preprocessing or CMH algorithms, report
+presentation, publication, or independent statistical oracles.

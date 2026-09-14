@@ -1,26 +1,5 @@
 # Owner-private Step 08 annotation model and overlap mechanics.
 
-empty_feature_ranges <- function() {
-    ranges <- GenomicRanges::GRanges()
-    S4Vectors::mcols(ranges)$gene_id <- character()
-    S4Vectors::mcols(ranges)$transcript_id <- character()
-    ranges
-}
-
-feature_ranges <- function(table) {
-    if (nrow(table) == 0L) {
-        return(empty_feature_ranges())
-    }
-    ranges <- GenomicRanges::GRanges(
-        seqnames = table$seqnames,
-        ranges = IRanges::IRanges(start = table$start, end = table$end),
-        strand = table$strand
-    )
-    S4Vectors::mcols(ranges)$gene_id <- table$gene_id
-    S4Vectors::mcols(ranges)$transcript_id <- table$transcript_id
-    ranges
-}
-
 has_shared_seqlevel <- function(query, subject) {
     length(intersect(
         as.character(GenomeInfoDb::seqlevels(query)),
@@ -35,88 +14,6 @@ normalize_feature_type <- function(value) {
     )
 }
 
-merge_simple_intervals <- function(start, end) {
-    if (length(start) == 0L) {
-        return(data.frame(start = integer(), end = integer()))
-    }
-    ordered <- order(start, end, method = "radix")
-    start <- as.integer(start[ordered])
-    end <- as.integer(end[ordered])
-    output_start <- integer(length(start))
-    output_end <- integer(length(start))
-    count <- 1L
-    output_start[[count]] <- start[[1L]]
-    output_end[[count]] <- end[[1L]]
-    if (length(start) > 1L) {
-        for (index in 2L:length(start)) {
-            adjacent <- output_end[[count]] < (.Machine$integer.max - 1L) &&
-                start[[index]] == output_end[[count]] + 1L
-            if (start[[index]] <= output_end[[count]] || adjacent) {
-                output_end[[count]] <- max(output_end[[count]], end[[index]])
-            } else {
-                count <- count + 1L
-                output_start[[count]] <- start[[index]]
-                output_end[[count]] <- end[[index]]
-            }
-        }
-    }
-    data.frame(
-        start = output_start[seq_len(count)],
-        end = output_end[seq_len(count)]
-    )
-}
-
-classify_utr_rows <- function(rows, cds_min, cds_max, strand) {
-    if (nrow(rows) == 0L || is.na(cds_min) || is.na(cds_max)) {
-        return(list(five = rows[FALSE, , drop = FALSE],
-                    three = rows[FALSE, , drop = FALSE]))
-    }
-    low <- rows$end < cds_min
-    high <- rows$start > cds_max
-    if (strand == "+") {
-        list(
-            five = rows[low, , drop = FALSE],
-            three = rows[high, , drop = FALSE]
-        )
-    } else {
-        list(
-            five = rows[high, , drop = FALSE],
-            three = rows[low, , drop = FALSE]
-        )
-    }
-}
-
-derive_outer_utr_rows <- function(exons, cds_min, cds_max) {
-    result <- list()
-    count <- 0L
-    for (index in seq_len(nrow(exons))) {
-        if (exons$start[[index]] < cds_min) {
-            count <- count + 1L
-            row <- exons[index, , drop = FALSE]
-            row$end <- min(row$end, cds_min - 1L)
-            if (row$start <= row$end) {
-                result[[count]] <- row
-            } else {
-                count <- count - 1L
-            }
-        }
-        if (exons$end[[index]] > cds_max) {
-            count <- count + 1L
-            row <- exons[index, , drop = FALSE]
-            row$start <- max(row$start, cds_max + 1L)
-            if (row$start <= row$end) {
-                result[[count]] <- row
-            } else {
-                count <- count - 1L
-            }
-        }
-    }
-    if (count == 0L) {
-        return(exons[FALSE, , drop = FALSE])
-    }
-    do.call(rbind, result[seq_len(count)])
-}
-
 read_annotation_model <- function(path) {
     imported <- tryCatch(
         rtracklayer::import(path, format = "gtf"),
@@ -127,46 +24,46 @@ read_annotation_model <- function(path) {
     if (length(imported) == 0L) {
         abort("Annotation GTF contains no features: ", path)
     }
-    table <- as.data.frame(imported)
-    required <- c(
-        "seqnames", "start", "end", "strand", "type", "gene_id",
-        "transcript_id"
-    )
-    missing <- setdiff(required, names(table))
+    required <- c("type", "gene_id", "transcript_id")
+    missing <- setdiff(required, names(S4Vectors::mcols(imported)))
     if (length(missing) > 0L) {
         abort(
             "Annotation GTF is missing required field(s): ",
             paste(missing, collapse = ", ")
         )
     }
-    table$type_normalized <- normalize_feature_type(table$type)
+    S4Vectors::mcols(imported) <- S4Vectors::DataFrame(
+        gene_id = as.character(imported$gene_id),
+        transcript_id = as.character(imported$transcript_id),
+        type_normalized = normalize_feature_type(imported$type)
+    )
     relevant_types <- c(
         "exon", "cds", "utr", "five_prime_utr", "5utr", "5_utr",
         "three_prime_utr", "3utr", "3_utr"
     )
-    relevant <- table$type_normalized %in% relevant_types
+    relevant <- imported$type_normalized %in% relevant_types
     if (any(
         relevant &
-        (is.na(table$gene_id) | !nzchar(table$gene_id) |
-         is.na(table$transcript_id) | !nzchar(table$transcript_id))
+        (is.na(imported$gene_id) | !nzchar(imported$gene_id) |
+         is.na(imported$transcript_id) | !nzchar(imported$transcript_id))
     )) {
         abort(
             "Every exon, CDS, and UTR annotation must have gene_id and ",
             "transcript_id."
         )
     }
-    if (any(relevant & !(table$strand %in% c("+", "-")))) {
+    if (any(relevant & !(as.character(BiocGenerics::strand(imported)) %in% c("+", "-")))) {
         abort("Every exon, CDS, and UTR annotation must use strand + or -.")
     }
 
-    exons <- table[table$type_normalized == "exon", , drop = FALSE]
-    if (nrow(exons) == 0L) {
+    exons <- imported[imported$type_normalized == "exon"]
+    if (length(exons) == 0L) {
         abort("Annotation GTF contains no exon features: ", path)
     }
-    relevant_table <- table[relevant, , drop = FALSE]
+    relevant_features <- imported[relevant]
     transcript_ids <- sort(unique(exons$transcript_id), method = "radix")
     orphan_feature_transcripts <- setdiff(
-        unique(relevant_table$transcript_id),
+        unique(relevant_features$transcript_id),
         transcript_ids
     )
     if (length(orphan_feature_transcripts) > 0L) {
@@ -176,29 +73,17 @@ read_annotation_model <- function(path) {
         )
     }
     exon_rows_by_transcript <- split(
-        seq_len(nrow(exons)), exons$transcript_id, drop = TRUE
+        seq_len(length(exons)), exons$transcript_id, drop = TRUE
     )
     feature_rows_by_transcript <- split(
-        seq_len(nrow(relevant_table)),
-        relevant_table$transcript_id,
+        seq_len(length(relevant_features)),
+        relevant_features$transcript_id,
         drop = TRUE
     )
-    transcript_rows <- vector("list", length(transcript_ids))
-    transcript_count <- 0L
-    exon_rows <- list()
-    intron_rows <- list()
-    cds_rows <- list()
-    five_rows <- list()
-    three_rows <- list()
-    exon_count <- intron_count <- cds_count <- five_count <- three_count <- 0L
-
-    for (index in seq_along(transcript_ids)) {
-        transcript_id <- transcript_ids[[index]]
-        tx_exons_raw <- exons[
-            exon_rows_by_transcript[[transcript_id]], , drop = FALSE
-        ]
-        chromosome <- unique(as.character(tx_exons_raw$seqnames))
-        strand <- unique(as.character(tx_exons_raw$strand))
+    transcript_rows <- lapply(transcript_ids, function(transcript_id) {
+        tx_exons_raw <- exons[exon_rows_by_transcript[[transcript_id]]]
+        chromosome <- unique(as.character(GenomeInfoDb::seqnames(tx_exons_raw)))
+        strand <- unique(as.character(BiocGenerics::strand(tx_exons_raw)))
         gene_id <- unique(as.character(tx_exons_raw$gene_id))
         if (length(chromosome) != 1L || length(strand) != 1L ||
             length(gene_id) != 1L) {
@@ -208,13 +93,11 @@ read_annotation_model <- function(path) {
                 "strand, and gene.",
                 call. = FALSE
             )
-            next
+            return(NULL)
         }
-        tx_features <- relevant_table[
-            feature_rows_by_transcript[[transcript_id]], , drop = FALSE
-        ]
-        if (any(as.character(tx_features$seqnames) != chromosome) ||
-            any(as.character(tx_features$strand) != strand) ||
+        tx_features <- relevant_features[feature_rows_by_transcript[[transcript_id]]]
+        if (any(as.character(GenomeInfoDb::seqnames(tx_features)) != chromosome) ||
+            any(as.character(BiocGenerics::strand(tx_features)) != strand) ||
             any(as.character(tx_features$gene_id) != gene_id)) {
             warning(
                 "Skipping transcript ", transcript_id,
@@ -222,163 +105,77 @@ read_annotation_model <- function(path) {
                 "annotations.",
                 call. = FALSE
             )
-            next
+            return(NULL)
         }
-        merged <- merge_simple_intervals(tx_exons_raw$start, tx_exons_raw$end)
-        tx_exons <- data.frame(
-            seqnames = chromosome,
-            start = merged$start,
-            end = merged$end,
-            strand = strand,
-            gene_id = gene_id,
-            transcript_id = transcript_id,
-            stringsAsFactors = FALSE
+        make_ranges <- function(intervals) {
+            GenomicRanges::GRanges(
+                seqnames = rep(chromosome, length(intervals)),
+                ranges = intervals,
+                seqinfo = GenomeInfoDb::seqinfo(imported),
+                strand = rep(strand, length(intervals)),
+                gene_id = rep(gene_id, length(intervals)),
+                transcript_id = rep(transcript_id, length(intervals))
+            )
+        }
+        exonic <- IRanges::reduce(IRanges::ranges(tx_exons_raw))
+        span <- base::range(exonic)
+        empty <- make_ranges(IRanges::IRanges())
+        rows <- list(
+            transcripts = make_ranges(span),
+            exon = make_ranges(exonic),
+            intron = make_ranges(IRanges::gaps(
+                exonic, start = BiocGenerics::start(span), end = BiocGenerics::end(span)
+            )),
+            cds = empty,
+            five_prime_utr = empty,
+            three_prime_utr = empty
         )
-        transcript_count <- transcript_count + 1L
-        transcript_rows[[transcript_count]] <- data.frame(
-            seqnames = chromosome,
-            start = min(merged$start),
-            end = max(merged$end),
-            strand = strand,
-            gene_id = gene_id,
-            transcript_id = transcript_id,
-            stringsAsFactors = FALSE
-        )
-        for (row_index in seq_len(nrow(tx_exons))) {
-            exon_count <- exon_count + 1L
-            exon_rows[[exon_count]] <- tx_exons[row_index, , drop = FALSE]
-        }
-        if (nrow(tx_exons) > 1L) {
-            for (row_index in seq_len(nrow(tx_exons) - 1L)) {
-                intron_count <- intron_count + 1L
-                intron_rows[[intron_count]] <- data.frame(
-                    seqnames = chromosome,
-                    start = tx_exons$end[[row_index]] + 1L,
-                    end = tx_exons$start[[row_index + 1L]] - 1L,
-                    strand = strand,
-                    gene_id = gene_id,
-                    transcript_id = transcript_id,
-                    stringsAsFactors = FALSE
-                )
-            }
-        }
-
-        tx_cds_raw <- tx_features[
-            tx_features$type_normalized == "cds", , drop = FALSE
-        ]
-        if (nrow(tx_cds_raw) > 0L) {
-            merged_cds <- merge_simple_intervals(
-                tx_cds_raw$start, tx_cds_raw$end
-            )
-            tx_cds <- data.frame(
-                seqnames = chromosome,
-                start = merged_cds$start,
-                end = merged_cds$end,
-                strand = strand,
-                gene_id = gene_id,
-                transcript_id = transcript_id,
-                stringsAsFactors = FALSE
-            )
-            for (row_index in seq_len(nrow(tx_cds))) {
-                cds_count <- cds_count + 1L
-                cds_rows[[cds_count]] <- tx_cds[row_index, , drop = FALSE]
-            }
-            cds_min <- min(tx_cds$start)
-            cds_max <- max(tx_cds$end)
-
-            explicit_five_types <- c("five_prime_utr", "5utr", "5_utr")
-            explicit_three_types <- c("three_prime_utr", "3utr", "3_utr")
-            explicit_five <- tx_features[
-                tx_features$type_normalized %in% explicit_five_types,
-                , drop = FALSE
-            ]
-            explicit_three <- tx_features[
-                tx_features$type_normalized %in% explicit_three_types,
-                , drop = FALSE
-            ]
-            generic_utr <- tx_features[
-                tx_features$type_normalized == "utr", , drop = FALSE
-            ]
-            make_explicit <- function(rows) {
-                data.frame(
-                    seqnames = chromosome,
-                    start = rows$start,
-                    end = rows$end,
-                    strand = strand,
-                    gene_id = gene_id,
-                    transcript_id = transcript_id,
-                    stringsAsFactors = FALSE
-                )
-            }
-            source <- if (nrow(generic_utr) > 0L) {
-                make_explicit(generic_utr)
+        cds <- IRanges::reduce(IRanges::ranges(
+            tx_features[tx_features$type_normalized == "cds"]
+        ))
+        if (length(cds) > 0L) {
+            rows$cds <- make_ranges(cds)
+            cds_span <- base::range(cds)
+            generic_utr <- IRanges::ranges(tx_features[tx_features$type_normalized == "utr"])
+            source <- if (length(generic_utr) > 0L) {
+                generic_utr
             } else {
-                derive_outer_utr_rows(tx_exons, cds_min, cds_max)
+                BiocGenerics::setdiff(exonic, cds_span)
             }
-            classified <- classify_utr_rows(
-                source, cds_min, cds_max, strand
-            )
-            if (nrow(explicit_five) > 0L) {
-                tx_five <- make_explicit(explicit_five)
-            } else {
-                tx_five <- classified$five
-            }
-            if (nrow(explicit_three) > 0L) {
-                tx_three <- make_explicit(explicit_three)
-            } else {
-                tx_three <- classified$three
-            }
-            if (nrow(tx_five) > 0L) {
-                for (row_index in seq_len(nrow(tx_five))) {
-                    five_count <- five_count + 1L
-                    five_rows[[five_count]] <- tx_five[
-                        row_index, , drop = FALSE
-                    ]
+            low <- BiocGenerics::end(source) < BiocGenerics::start(cds_span)
+            high <- BiocGenerics::start(source) > BiocGenerics::end(cds_span)
+            for (feature in c("five_prime_utr", "three_prime_utr")) {
+                aliases <- if (feature == "five_prime_utr") {
+                    c(feature, "5utr", "5_utr")
+                } else {
+                    c(feature, "3utr", "3_utr")
                 }
-            }
-            if (nrow(tx_three) > 0L) {
-                for (row_index in seq_len(nrow(tx_three))) {
-                    three_count <- three_count + 1L
-                    three_rows[[three_count]] <- tx_three[
-                        row_index, , drop = FALSE
-                    ]
-                }
+                explicit <- IRanges::ranges(tx_features[tx_features$type_normalized %in% aliases])
+                use_low <- (feature == "five_prime_utr") == (strand == "+")
+                rows[[feature]] <- make_ranges(if (length(explicit) > 0L) {
+                    explicit
+                } else {
+                    source[if (use_low) low else high]
+                })
             }
         }
-    }
-
-    if (transcript_count == 0L) {
+        rows
+    })
+    transcript_rows <- Filter(Negate(is.null), transcript_rows)
+    if (length(transcript_rows) == 0L) {
         abort(
             "Annotation GTF contains no internally consistent transcripts: ",
             path
         )
     }
-
-    bind_or_empty <- function(rows, count) {
-        if (count == 0L) {
-            return(data.frame(
-                seqnames = character(), start = integer(), end = integer(),
-                strand = character(), gene_id = character(),
-                transcript_id = character(), stringsAsFactors = FALSE
-            ))
-        }
-        do.call(rbind, rows[seq_len(count)])
-    }
-
-    list(
-        transcripts = feature_ranges(do.call(
-            rbind, transcript_rows[seq_len(transcript_count)]
-        )),
-        exon = feature_ranges(bind_or_empty(exon_rows, exon_count)),
-        intron = feature_ranges(bind_or_empty(intron_rows, intron_count)),
-        cds = feature_ranges(bind_or_empty(cds_rows, cds_count)),
-        five_prime_utr = feature_ranges(
-            bind_or_empty(five_rows, five_count)
-        ),
-        three_prime_utr = feature_ranges(
-            bind_or_empty(three_rows, three_count)
+    feature_names <- names(transcript_rows[[1L]])
+    stats::setNames(lapply(feature_names, function(feature) {
+        ranges <- do.call(c, unname(lapply(transcript_rows, `[[`, feature)))
+        GenomeInfoDb::keepSeqlevels(
+            ranges, unique(as.character(GenomeInfoDb::seqnames(ranges))),
+            pruning.mode = "coarse"
         )
-    )
+    }), feature_names)
 }
 
 annotation_flag <- function(query, subject) {

@@ -1,3 +1,5 @@
 # Orchestration
 
-This domain contains the private [run coordinator](run_coordinator/README.md), which connects Project admission to immutable planning, execution, Attempts, inspection, recovery, Results, and reporting. Operators use the grouped `emrys` commands documented in the [runbook](../../../docs/operations/RUNBOOK.md), not modules in this directory directly.
+The [Run coordinator](run_coordinator/README.md) connects Project setup,
+execution, status, recovery, and reporting. Use grouped `emrys` commands from
+the [Runbook](../../../docs/operations/RUNBOOK.md); modules here are private.

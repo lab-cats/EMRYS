@@ -13,7 +13,7 @@ import re
 import sys
 import tempfile
 import xml.etree.ElementTree as ET
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -239,21 +239,10 @@ def _data_uri(svg: bytes) -> str:
     return _SVG_DATA_URI_PREFIX + base64.b64encode(svg).decode("ascii")
 
 
-def _table_row(table: ComputationalTable) -> dict[str, str]:
+def _table_row(table: ComputationalTable) -> Mapping[str, str]:
     if len(table.display_rows) != 1:
         _fail(f"Scientific figure input {table.artifact_id!r} must have one row")
-    return dict(zip(table.header, table.display_rows[0], strict=True))
-
-
-def _candidate_rows(table: ComputationalTable) -> Iterator[Mapping[str, str]]:
-    with table.path.open(encoding="utf-8", newline="") as stream:
-        reader = csv.DictReader(stream, delimiter="\t")
-        if tuple(reader.fieldnames or ()) != table.header:
-            _fail(
-                f"Scientific figure input {table.artifact_id!r} header changed "
-                "after canonical admission"
-            )
-        yield from reader
+    return table.display_rows[0]
 
 
 def _tested_candidate(row: Mapping[str, str]) -> tuple[float, float, str] | None:
@@ -298,7 +287,7 @@ def _exact_significant_points(
         "significant_down": [],
         "significant_up": [],
     }
-    for row in _candidate_rows(table):
+    for row in table.iter_rows():
         status = row["call_status"]
         if row["test_status"] != "tested" or status not in points:
             continue
@@ -327,7 +316,7 @@ def _candidate_grid(
     observed_count = 0
     minimum_depth = math.inf
     maximum_depth = 0.0
-    for row in _candidate_rows(table):
+    for row in table.iter_rows():
         candidate = _tested_candidate(row)
         if candidate is None:
             continue
@@ -351,7 +340,7 @@ def _candidate_grid(
         log_max += 0.25
     grid = {status: {} for status in _STATUS_ORDER}
     second_count = 0
-    for row in _candidate_rows(table):
+    for row in table.iter_rows():
         candidate = _tested_candidate(row)
         if candidate is None:
             continue
@@ -584,7 +573,7 @@ def _mutation_figure(results: ComputationalResults) -> ScientificFigure:
     summary = _table_row(results.summary)
     table = results.mutation_spectrum
     _assert_snapshot(table.snapshot, f"scientific figure input {table.artifact_id!r}")
-    rows = [dict(zip(table.header, row, strict=True)) for row in table.display_rows]
+    rows = table.display_rows
     mutations = tuple(row["mutation_type"] for row in rows)
     counts = tuple(int(row["candidate_count"]) for row in rows)
     target_change = summary["target_rna_change"]
@@ -669,7 +658,7 @@ def _condition_grid(
     _assert_snapshot(table.snapshot, f"scientific figure input {table.artifact_id!r}")
     grid = {status: {} for status in _STATUS_ORDER}
     observed_count = 0
-    for row in _candidate_rows(table):
+    for row in table.iter_rows():
         if row["test_status"] != "tested":
             continue
         try:
@@ -1028,7 +1017,7 @@ def _location_memberships(
     _assert_snapshot(table.snapshot, f"scientific figure input {table.artifact_id!r}")
     counts = [0] * (len(_LOCATION_FIELDS) + 1)
     population_count = 0
-    for row in _candidate_rows(table):
+    for row in table.iter_rows():
         population_count += 1
         recorded_overlap = False
         for index, (field, _label) in enumerate(_LOCATION_FIELDS):

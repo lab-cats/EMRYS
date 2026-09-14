@@ -2,57 +2,38 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
 from .artifact import validate_artifact_semantics
 from .definitions import (
-    REPO_ROOT,
+    PACKAGE_ROOT,
     ContractValidationError,
 )
 from .identity import (
     require_unique_key,
     resolve_contract_path,
-    validate_attempt_graph,
+    scope_key,
     validate_document_paths,
     validate_run_contract,
 )
 from .run_summary_status import (
     AGGREGATE_ARTIFACT_STATES,
-    RUN_SUMMARY_STATUS_FIELDS,
     aggregate_artifact_state,
-    aggregate_equal_or_mixed,
     artifact_rollup_state,
-    artifact_status_dimensions,
-    scope_key,
 )
-
-
-def _validate_scope_statuses(
-    record: dict[str, Any],
-    artifacts: list[dict[str, Any]],
-    prefix: str,
-) -> None:
-    for status_field in RUN_SUMMARY_STATUS_FIELDS:
-        expected_status = aggregate_equal_or_mixed(
-            artifact_status_dimensions(artifact)[status_field] for artifact in artifacts
-        )
-        if record[status_field] != expected_status:
-            raise ContractValidationError(
-                f"{prefix} {status_field} is "
-                f"{record[status_field]!r}, expected {expected_status!r}"
-            )
 
 
 def validate_run_summary_semantics(
     document: dict[str, Any],
     *,
-    source_root: Path = REPO_ROOT,
+    source_root: Path = PACKAGE_ROOT,
 ) -> None:
     validate_run_contract(document["run_contract"], "run summary")
     validate_document_paths(document)
-    if document.get("schema_version") == "3.0.0" and (
+    if (
         document["analysis_policy"]["sha256"]
         != document["run_contract"]["primary_analysis_policy_sha256"]
     ):
@@ -60,115 +41,45 @@ def validate_run_summary_semantics(
             "modular run summary analysis policy differs from its run contract"
         )
 
-    attempts = validate_attempt_graph(
-        document["attempts"],
-        label="run summary",
-        require_single_chain=False,
-    )
-    superseded = document["superseded_attempt_ids"]
-    if unknown_superseded := sorted(set(superseded) - set(attempts)):
-        raise ContractValidationError(
-            "run summary superseded_attempt_ids contain unknown attempts: "
-            + ", ".join(unknown_superseded)
+    table_paths = tuple(Path(table["path"]) for table in document["tables"])
+    if (
+        len(table_paths) != 2
+        or not table_paths[0].is_absolute()
+        or table_paths[0].parent.name != document["run_id"]
+        or table_paths
+        != tuple(
+            table_paths[0].parent / f"{document['run_id']}.{suffix}"
+            for suffix in ("run_summary.tsv", "qc_summary.tsv")
         )
-    actual_superseded = {
-        attempt["supersedes_attempt_id"]
-        for attempt in document["attempts"]
-        if attempt["supersedes_attempt_id"] is not None
-    }
-    if set(superseded) != actual_superseded:
+    ):
         raise ContractValidationError(
-            "run summary superseded_attempt_ids must exactly name attempts "
-            "superseded by another recorded attempt"
+            "Run result tables must use their fixed paths and order"
         )
+
+    publication = document["publication"]
+    if (
+        publication["finished_at"] != document["generated_at"]
+        or document["generated_at"] != document["provenance"]["created_at"]
+        or datetime.fromisoformat(publication["started_at"].replace("Z", "+00:00"))
+        > datetime.fromisoformat(publication["finished_at"].replace("Z", "+00:00"))
+    ):
+        raise ContractValidationError("Run result publication timestamps disagree")
 
     artifacts = document["artifacts"]
     artifact_index = require_unique_key(artifacts, "artifact_id", "run artifacts")
-    artifact_attempts: dict[str, dict[str, Any]] = {}
-    expected_source_artifacts: dict[Path, dict[str, Any]] = {}
-    physical_path_records: dict[Path, tuple[Any, ...]] = {}
+    expected_source_paths: set[Path] = set()
     for artifact in artifacts:
-        validate_artifact_semantics(artifact, source_root=source_root)
-        if artifact["run_id"] != document["run_id"]:
-            raise ContractValidationError(
-                f"artifact {artifact['artifact_id']!r} has a different run_id"
-            )
-        if artifact["run_contract"] != document["run_contract"]:
-            raise ContractValidationError(
-                f"artifact {artifact['artifact_id']!r} has a different "
-                "immutable run contract"
-            )
-        for attempt in artifact["attempts"]:
-            attempt_id = attempt["attempt_id"]
-            if (
-                attempt_id in artifact_attempts
-                and artifact_attempts[attempt_id] != attempt
-            ):
-                raise ContractValidationError(
-                    f"artifact attempt {attempt_id!r} has conflicting "
-                    "definitions across artifact records"
-                )
-            artifact_attempts[attempt_id] = attempt
-            if attempt_id not in attempts or attempts[attempt_id] != attempt:
-                raise ContractValidationError(
-                    f"artifact attempt {attempt_id!r} is not represented "
-                    "identically in the run attempt history"
-                )
-        if artifact["selected_attempt_id"] in superseded:
-            raise ContractValidationError(
-                f"artifact {artifact['artifact_id']!r} selects a superseded run attempt"
-            )
+        validate_artifact_semantics(artifact)
         expected_path = resolve_contract_path(
             artifact["expectation"]["source_path"],
             source_root=source_root,
         )
-        if expected_path in expected_source_artifacts:
+        if expected_path in expected_source_paths:
             raise ContractValidationError(
                 f"run artifacts contain duplicate expected source path "
                 f"{expected_path!r}"
             )
-        expected_source_artifacts[expected_path] = artifact
-        physical_records = (
-            [artifact["source"]] if artifact["source"] is not None else []
-        ) + artifact["members"]
-        for record in physical_records:
-            fingerprint = (
-                record["sha256"],
-                record.get("size_bytes"),
-                record.get("row_count"),
-                record.get("media_type"),
-            )
-            physical_path = resolve_contract_path(
-                record["path"],
-                source_root=source_root,
-            )
-            prior = physical_path_records.get(physical_path)
-            if prior is not None and prior != fingerprint:
-                raise ContractValidationError(
-                    f"run artifacts disagree on physical path {str(physical_path)!r}"
-                )
-            physical_path_records[physical_path] = fingerprint
-
-    for expected_path, expected_artifact in expected_source_artifacts.items():
-        if expected_path not in physical_path_records:
-            continue
-        source = expected_artifact["source"]
-        if source is None:
-            raise ContractValidationError(
-                f"run member records claim missing expected source "
-                f"{str(expected_path)!r}"
-            )
-        expected_fingerprint = (
-            source["sha256"],
-            source.get("size_bytes"),
-            source.get("row_count"),
-            source.get("media_type"),
-        )
-        if physical_path_records[expected_path] != expected_fingerprint:
-            raise ContractValidationError(
-                f"run member/source metadata disagree for expected path "
-                f"{str(expected_path)!r}"
-            )
+        expected_source_paths.add(expected_path)
 
     scope_keys: set[tuple[str, str, str]] = set()
     ordered_expected_artifact_ids: list[str] = []
@@ -202,9 +113,6 @@ def validate_run_summary_semantics(
                 f"{scope_record['aggregate_state']!r}, expected "
                 f"{expected_aggregate!r}"
             )
-        _validate_scope_statuses(
-            scope_record, scope_artifacts, f"expected scope {scope_key_}"
-        )
         ordered_expected_artifact_ids.extend(scope_record["artifact_ids"])
 
     if len(ordered_expected_artifact_ids) != len(set(ordered_expected_artifact_ids)):
@@ -234,34 +142,7 @@ def validate_run_summary_semantics(
             raise ContractValidationError(
                 f"computational_rollup {field} is {rollup[field]}, expected {observed_counts[state]}"
             )
-    _validate_scope_statuses(rollup, artifacts, "computational_rollup")
 
-    qc_metrics = require_unique_key(
-        document["qc_metrics"],
-        "metric_id",
-        "QC metrics",
-    )
-    for metric in qc_metrics.values():
-        source_artifact_id = metric["source_artifact_id"]
-        if source_artifact_id is None:
-            raise ContractValidationError(
-                f"QC metric {metric['metric_id']!r} requires an explicit "
-                "source_artifact_id"
-            )
-        if source_artifact_id not in artifact_index:
-            raise ContractValidationError(
-                f"QC metric {metric['metric_id']!r} references unknown "
-                f"artifact {source_artifact_id!r}"
-            )
-        source_metrics = {
-            source_metric["metric_id"]: source_metric
-            for source_metric in artifact_index[source_artifact_id]["metrics"]
-        }
-        if source_metrics.get(metric["metric_id"]) != metric:
-            raise ContractValidationError(
-                f"QC metric {metric['metric_id']!r} does not exactly match "
-                f"the metric recorded by artifact {source_artifact_id!r}"
-            )
     require_unique_key(
         document["limitations"],
         "limitation_id",

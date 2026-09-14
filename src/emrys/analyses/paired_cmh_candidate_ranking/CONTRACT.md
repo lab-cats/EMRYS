@@ -7,17 +7,11 @@ stage.
 
 ## Responsibility and execution dependencies
 
-Consume the committed
-[`preprocess_and_annotate_cohort_candidates`](../../stages/cohort_candidate_preprocessing/CONTRACT.md)
-cohort candidates, construct explicit paired
-control/treatment replicate strata, run cohort-wide paired Cochran–Mantel–
-Haenszel analysis for a requested RNA substitution, apply one Benjamini–
-Hochberg correction, classify results under explicit thresholds, and publish
-tables and diagnostic plots. Its outputs are CMH-ranked candidates, not
-validated RNA-editing sites.
+See the [README](README.md) for purpose, inputs, outputs, and normal use.
 
-Step `09` requires that final owner's sites table and input receipt, the sample and
-partition manifests, and explicit analysis policy. It does not consume the
+Step `09` requires the committed [Step `08`](../../stages/cohort_candidate_preprocessing/CONTRACT.md)
+sites table and input receipt, sample/partition manifests, and explicit analysis
+policy. It does not consume the
 Step `08` QC summary or standalone validation report. Artifact indexing and
 reporting consume the validated six-output transaction without changing its
 computational meaning. External review or adjudication may reference these
@@ -30,7 +24,7 @@ have exactly one sample for each identical replicate label and at least two
 paired strata; pairing is never inferred from filenames. An optional background
 condition must be distinct and present. Step `08` candidate order, sample
 columns, counts, manifest identities, and `legacy_provisional_v1` are
-independently reconciled and stability-checked.
+independently reconciled; the runner checks input stability.
 
 Defaults are:
 
@@ -57,10 +51,9 @@ filename's “calling” does not elevate the scientific evidence state.
 
 ## Inputs and six-output transaction
 
-Inputs are safe analysis/cohort IDs, manifests, Step `08` root, output root,
+Inputs are safe analysis/cohort IDs, manifests, explicit Step `08` sites/input paths, staged output paths,
 control/treatment and optional background conditions, target RNA alleles,
-coverage/FDR/effect/background thresholds, and explicit Rscript/R-program
-resolution. The six outputs under `<output-root>/<analysis-id>/` are:
+coverage/FDR/effect/background thresholds, and the selected R runtime. The six outputs under `<output-root>/<analysis-id>/` are:
 
 ```text
 <analysis>.cmh_all_sites.tsv
@@ -79,26 +72,16 @@ hashes, analysis conditions, thresholds, method, provisional policy, and
 reconciled counts. Mutation-spectrum TSV/PDF and depth/delta PDF are derived
 diagnostics. Header-only candidate tables are valid when all counts reconcile.
 
-Private [`producer.py`](producer.py) is side-effect-free in dry-run. Execute
-mode hashes and repeatedly rechecks
-manifests plus both Step `08` inputs, uses an analysis-owned lock and run-token
-scratch/backups, requires all six previous outputs or none, validates all
-temporaries, publishes the summary last as native commit marker, then
-revalidates contents and hashes. If rollback cannot restore a predecessor, it
-retains the owned lock and recovery evidence for operator intervention.
-`--no-clobber` is the orchestration-safe policy: while holding the owner lock,
-it rejects a complete predecessor set without invoking R or changing stable
-outputs. Direct invocations retain complete-set replacement unless the flag is
-supplied.
-First publication in that mode is create-exclusive and retains all six staging
-inode anchors through validation; ambiguous replacement preserves the owner
-lock and residue.
-Rollback follows the shared
-[no-clobber rule](../../../../docs/design/decisions/execution-evidence-and-reporting.md#no-clobber-rollback).
+The runner invokes R directly with six staged paths, then runs the existing
+validator and semantic all-pass gate before publication. The validator compares
+the summary's conditions, target change, and thresholds with the requested
+policy supplied as `--expected-*` arguments. The runner binds the validated
+bytes and publishes the five result files before the summary. Execution,
+input stability, publication, and recovery belong to the [runner contract](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
-The summary becomes visible before final post-publication checks and does not
-hash its five sibling outputs, so presence alone is not independent proof that
-the producer returned success or that the current set is immutable.
+The summary does not hash its five sibling outputs; its presence alone is not
+proof of a verified task. The immutable task record supplies that wider
+execution evidence.
 
 ## Validation interface
 
@@ -144,11 +127,9 @@ Repository tests protect this contract under the shared
 [evidence ceiling](../../../../tests/README.md), including an independent
 Python oracle and guarded real-R corpus.
 
-Three retained boundaries remain. Producer-recorded relative paths are later
+Two retained boundaries remain. Producer-recorded relative paths are later
 interpreted from the consumer's working directory. The analysis requires the
 shared sample manifest's FASTQ and strandedness columns although this method
-does not use them. Finally, the legacy replacement path admits a predecessor
-by six-file presence rather than semantic validity; the orchestration-safe
-no-clobber path does not replace it. The summary's narrower native provenance
+does not use them. The summary's narrower native provenance
 is supplemented by immutable Run task records rather than a second owner-local
 receipt.

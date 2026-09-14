@@ -46,7 +46,7 @@ CRITICAL_OWNER_GROUPS: Mapping[str, tuple[str, ...]] = {
     ),
 }
 REQUIRED_SUBPROCESS_ROUTES: Mapping[str, tuple[str, ...]] = {
-    "emrys.convert.gtf_to_bed12": ("src/emrys/stages/gtf_to_bed12/converter.py",),
+    "emrys.worker.gtf_to_bed12": ("src/emrys/stages/gtf_to_bed12/converter.py",),
     "emrys.validate.sample_manifest": (
         "src/emrys/ingestion/sample_manifest_admission/validator.py",
     ),

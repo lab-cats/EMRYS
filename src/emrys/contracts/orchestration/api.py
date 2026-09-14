@@ -8,6 +8,7 @@ import re
 from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime
 from functools import cache, lru_cache
+from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
 from typing import Any
 
@@ -21,11 +22,9 @@ from emrys.libraries.source_authority import controlled_python_argv
 SCHEMA_ROOT = Path(__file__).resolve().parents[1] / "schemas" / "orchestration" / "v1"
 SCHEMA_NAMES = (
     "project",
-    "request",
     "resource-config",
     "execution-profile",
     "profile",
-    "execution",
     "application-model",
     "reference",
     "policy",
@@ -46,24 +45,30 @@ SCHEMA_PATHS = {
     },
 }
 SCHEMA_PATHS["profile"] = SCHEMA_ROOT.parent / "v2" / "profile.schema.json"
-SCHEMA_PATHS["request"] = SCHEMA_ROOT.parent / "v3" / "request.schema.json"
 SCHEMA_PATHS["resource-config"] = (
     SCHEMA_ROOT.parent / "v3" / "resource_config.schema.json"
 )
 SCHEMA_PATHS["execution-profile"] = (
     SCHEMA_ROOT.parent / "v3" / "execution_profile.schema.json"
 )
-SCHEMA_PATHS["attempt-receipt-v2"] = SCHEMA_ROOT.parent / "v2" / "attempt_receipt.schema.json"
+SCHEMA_PATHS["attempt-receipt"] = (
+    SCHEMA_ROOT.parent / "v2" / "attempt_receipt.schema.json"
+)
 SCHEMA_IDS = {
     name: f"urn:emrys:schema:orchestration:{name}:v1" for name in SCHEMA_PATHS
 }
 SCHEMA_IDS.update(
     {
-        "request": "urn:emrys:schema:orchestration:request:v3",
+        "run-lock": "urn:emrys:schema:orchestration:run-lock:v2",
         "resource-config": "urn:emrys:schema:orchestration:resource-config:v1",
         "execution-profile": "urn:emrys:schema:orchestration:execution-profile:v1",
         "profile": "urn:emrys:schema:orchestration:profile:v2",
-        "attempt-receipt-v2": "urn:emrys:schema:orchestration:attempt-receipt:v2",
+        "attempt-receipt": "urn:emrys:schema:orchestration:attempt-receipt:v2",
+        "workflow-attempt": "urn:emrys:schema:orchestration:workflow-attempt:v3",
+        "task-start": "urn:emrys:schema:orchestration:task-start:v2",
+        "reporting-start": "urn:emrys:schema:orchestration:reporting-start:v2",
+        "task-attempt": "urn:emrys:schema:orchestration:task-attempt:v3",
+        "verified-task": "urn:emrys:schema:orchestration:verified-task:v2",
     }
 )
 
@@ -188,10 +193,11 @@ def run_lock_record(attempt: Mapping[str, Any]) -> dict[str, Any]:
 
     identifier = str(attempt["workflow_attempt_id"])
     return {
-        "schema_version": "emrys.run-lock.v1",
+        "schema_version": "emrys.run-lock.v2",
         "run_id": attempt["run_id"],
         "workflow_attempt_id": identifier,
         "attempt_record_path": f"attempts/{identifier}/attempt.json",
+        "attempt_record_sha256": canonical_sha256(attempt),
         "owner_token": attempt["owner_token"],
         "process_id": attempt["process_id"],
         "host": attempt["host"],
@@ -236,15 +242,6 @@ def schema_validator(name: str) -> Draft202012Validator:
         raise ContractValidationError(f"Unknown orchestration schema: {name}")
     schemas, registry = load_schema_registry()
     schema = schemas[name]
-    if name == "attempt-receipt":
-        schema = {
-            "if": {
-                "properties": {"schema_version": {"const": "emrys.attempt-receipt.v2"}},
-                "required": ["schema_version"],
-            },
-            "then": {"$ref": SCHEMA_IDS["attempt-receipt-v2"]},
-            "else": {"$ref": SCHEMA_IDS[name]},
-        }
     return Draft202012Validator(
         schema,
         registry=registry,
@@ -297,45 +294,35 @@ def _require_attempt_time(identifier: str, timestamp: str, label: str) -> None:
         )
 
 
-def _validate_direct_edges(edges: list[Mapping[str, Any]], owners: set[str]) -> None:
-    pairs: list[tuple[str, str]] = []
-    adjacency = {owner: set() for owner in owners}
+def _validate_direct_edges(
+    edges: list[Mapping[str, Any]], owners: set[str], label: str
+) -> None:
+    """Require distinct edges between declared owners in an acyclic graph."""
+    pairs: set[tuple[str, str]] = set()
+    adjacency = {owner: set() for owner in sorted(owners)}
     for edge in edges:
         producer = str(edge["producer"])
         consumer = str(edge["consumer"])
         if producer not in owners or consumer not in owners:
             raise ContractValidationError(
-                "Profile edges must reference semantic_owner_keys"
+                f"{label} edges must reference declared owners"
             )
         pair = producer, consumer
         if pair in pairs:
             raise ContractValidationError(
-                "Profile direct_edges must not repeat a producer/consumer pair: "
+                f"{label} direct_edges must not repeat a producer/consumer pair: "
                 f"{producer} -> {consumer}"
             )
-        pairs.append(pair)
-        adjacency[producer].add(consumer)
-
-    complete: set[str] = set()
-    active: list[str] = []
-
-    def visit(owner: str) -> None:
-        if owner in active:
-            cycle_start = active.index(owner)
-            cycle = (*active[cycle_start:], owner)
-            raise ContractValidationError(
-                "Profile direct_edges must be acyclic: " + " -> ".join(cycle)
-            )
-        if owner in complete:
-            return
-        active.append(owner)
-        for consumer in sorted(adjacency[owner]):
-            visit(consumer)
-        active.pop()
-        complete.add(owner)
-
-    for owner in sorted(owners):
-        visit(owner)
+        pairs.add(pair)
+        adjacency[consumer].add(producer)
+    try:
+        TopologicalSorter(
+            {owner: sorted(parents) for owner, parents in adjacency.items()}
+        ).prepare()
+    except CycleError as exc:
+        raise ContractValidationError(
+            f"{label} direct_edges must be acyclic: " + " -> ".join(exc.args[1])
+        ) from exc
 
 
 def _validate_artifact_template_groups(
@@ -391,7 +378,7 @@ def _validate_profile(record: Mapping[str, Any]) -> None:
         raise ContractValidationError(
             "Profile owner_task rule_name values must be unique"
         )
-    _validate_direct_edges(record["direct_edges"], owners)
+    _validate_direct_edges(record["direct_edges"], owners, "Profile")
     templates = [item["artifact_id_template"] for item in record["artifact_templates"]]
     if len(templates) != len(set(templates)):
         raise ContractValidationError(
@@ -430,79 +417,6 @@ def _validate_policy(record: Mapping[str, Any]) -> None:
     )
     if ref == alt:
         raise ContractValidationError("Analysis rna_ref and rna_alt must differ")
-
-
-def _validate_execution(record: Mapping[str, Any]) -> None:
-    sample_ids = [row["sample_id"] for row in record["samples"]["rows"]]
-    if len(sample_ids) != len(set(sample_ids)):
-        raise ContractValidationError("Execution sample_id values must be unique")
-    partition_ids = [row["partition_id"] for row in record["partitions"]["rows"]]
-    if len(partition_ids) != len(set(partition_ids)):
-        raise ContractValidationError("Execution partition_id values must be unique")
-
-    analysis = record["analysis"]
-    policy = analysis["policy"]
-    if analysis["primary_analysis_id"] != policy["analysis_id"]:
-        raise ContractValidationError(
-            "Execution primary_analysis_id must equal policy.analysis_id"
-        )
-    if analysis["policy_sha256"] != canonical_sha256(policy):
-        raise ContractValidationError(
-            "Execution policy_sha256 does not match canonical policy content"
-        )
-    if policy["schema_version"] == "emrys.analysis-policy.v1":
-        _validate_policy(policy)
-        controls: dict[str, int] = {}
-        treatments: dict[str, int] = {}
-        for sample in record["samples"]["rows"]:
-            replicate = sample["replicate"]
-            if sample["condition"] == policy["control_condition"]:
-                controls[replicate] = controls.get(replicate, 0) + 1
-            if sample["condition"] == policy["treatment_condition"]:
-                treatments[replicate] = treatments.get(replicate, 0) + 1
-        if (
-            set(controls) != set(treatments)
-            or len(controls) < 2
-            or any(count != 1 for count in (*controls.values(), *treatments.values()))
-        ):
-            raise ContractValidationError(
-                "Execution samples must define exactly one control and treatment "
-                "for each of at least two complete replicate strata"
-            )
-
-    envelope = record["identity_envelope"]
-    expected_envelope = {
-        "schema_version": "emrys.identity-envelope.v1",
-        "profile": record["profile"],
-        "samples": record["samples"],
-        "partitions": record["partitions"],
-        "reference": record["reference"],
-        "analysis": record["analysis"],
-    }
-    if envelope != expected_envelope:
-        raise ContractValidationError(
-            "Execution identity_envelope must exactly match normalized identity fields"
-        )
-    digest = canonical_sha256(envelope)
-    if record["identity_envelope_sha256"] != digest:
-        raise ContractValidationError(
-            "Execution identity_envelope_sha256 does not match canonical content"
-        )
-    if record["run_id"] != f"run-{digest}":
-        raise ContractValidationError(
-            "Execution run_id must be run- plus identity_envelope_sha256"
-        )
-    projection = record["reporting_projection"]
-    if projection["reference_contract"]["sha256"] != canonical_sha256(
-        record["reference"]
-    ):
-        raise ContractValidationError(
-            "Execution reference_contract hash does not match normalized reference"
-        )
-    if projection["primary_analysis_policy"]["sha256"] != analysis["policy_sha256"]:
-        raise ContractValidationError(
-            "Execution primary_analysis_policy hash does not match normalized policy"
-        )
 
 
 def _validate_identity_record(name: str, record: Mapping[str, Any]) -> None:
@@ -698,22 +612,6 @@ def _validate_identity_record(name: str, record: Mapping[str, Any]) -> None:
             raise ContractValidationError(
                 "Non-blocked attempt receipts require every task start to be verified"
             )
-        if record["schema_version"] == "emrys.attempt-receipt.v1":
-            for kind, reporting_state in record["reporting_completion_records"].items():
-                if (
-                    reporting_state["verified"] is not None
-                    and reporting_state["start"] is None
-                ):
-                    raise ContractValidationError(
-                        f"Attempt receipt {kind} verified reporting requires a start"
-                    )
-                if status != "blocked" and (
-                    (reporting_state["start"] is None)
-                    != (reporting_state["verified"] is None)
-                ):
-                    raise ContractValidationError(
-                        f"Non-blocked attempt receipt has incomplete {kind} reporting"
-                    )
         if status == "succeeded" and (exit_code != 0 or signal_number is not None):
             raise ContractValidationError(
                 "Successful attempt receipt requires exit 0 and no signal"
@@ -743,7 +641,7 @@ def _validate_identity_record(name: str, record: Mapping[str, Any]) -> None:
             raise ContractValidationError(
                 "Every non-success attempt receipt requires a message"
             )
-    elif name in {"task-start", "task-attempt", "verified-task"}:
+    elif name in {"task-start", "task-attempt"}:
         _require_distinct_ids(
             record,
             "run_id",
@@ -788,27 +686,10 @@ def _validate_record_uncached(
     assert isinstance(record, Mapping)
     if name == "profile":
         _validate_profile(record)
-    elif name in {"project", "request"}:
-        analyses = (
-            record["analyses"].values() if name == "project" else (record["analysis"],)
-        )
-        for analysis in analyses:
+    elif name == "project":
+        for analysis in record["analyses"].values():
             if "module" not in analysis:
                 _validate_policy(analysis)
-    elif name == "policy" and record["schema_version"] == "emrys.analysis-policy.v1":
-        _validate_policy(record)
-    elif name == "execution":
-        _validate_execution(record)
-        if profile is None:
-            raise ContractValidationError(
-                "Execution validation requires its exact profile record"
-            )
-        validate_record("profile", profile)
-        from emrys.contracts.orchestration.projection import (  # noqa: PLC0415
-            validate_reporting_projection,
-        )
-
-        validate_reporting_projection(record, profile)
     elif name == "application-model":
         from emrys.contracts.orchestration.application_model import (  # noqa: PLC0415
             _validate_application_model_semantics,

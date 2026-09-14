@@ -97,15 +97,6 @@ def run_validator(
     )
 
 
-def test_dry_run_is_side_effect_free(tmp_path: Path) -> None:
-    index, fasta, gtf, output = build_validation_fixture(tmp_path)
-    result = run_validator(index, fasta, gtf, output)
-    assert result.returncode == 0, result.stderr
-    assert "Dry-run complete" in result.stdout
-    assert not output.exists()
-    assert not list(output.parent.glob(".*validation*"))
-
-
 def test_execute_publishes_five_passing_checks(tmp_path: Path) -> None:
     index, fasta, gtf, output = build_validation_fixture(tmp_path)
     result = run_validator(index, fasta, gtf, output, "--execute")

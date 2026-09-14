@@ -10,6 +10,7 @@ authority.
 from __future__ import annotations
 
 import hashlib
+import json
 import errno
 import os
 import re
@@ -77,7 +78,9 @@ from emrys.orchestration.run_coordinator.run_implementation import (
 
 Operation = Literal["execute", "resume"]
 _SAFE_RULE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
-_RESOURCE_LIMIT_NAMES = frozenset({"mem_mb", *(stage_slot_name(step_id) for step_id in REPEATABLE_STAGE_IDS)})
+_RESOURCE_LIMIT_NAMES = frozenset(
+    {"mem_mb", *(stage_slot_name(step_id) for step_id in REPEATABLE_STAGE_IDS)}
+)
 _FORBIDDEN_SNAKEMAKE_FLAGS = frozenset(
     {
         "--unlock",
@@ -114,7 +117,12 @@ StorageContextAdmission = Callable[
     "RuntimeBinding | None",
 ]
 RuntimeContextAdmission = Callable[
-    [Mapping[str, Any], "LifecycleRequest", "RuntimeBinding | None", "RuntimeInspection | None"],
+    [
+        Mapping[str, Any],
+        "LifecycleRequest",
+        "RuntimeBinding | None",
+        "RuntimeInspection | None",
+    ],
     None,
 ]
 DirectorySynchronizer = Callable[[Path, str], None]
@@ -124,7 +132,9 @@ MutexObserver = Callable[[str, Path], None]
 LifecyclePhaseObserver = Callable[[str], None]
 ApplicationEventObserver = Callable[[str], None]
 SignalHandler = Callable[[int, FrameType | None], None]
-SignalHandlerInstaller = Callable[[SignalHandler], tuple[Mapping[int, Any], set[signal.Signals]]]
+SignalHandlerInstaller = Callable[
+    [SignalHandler], tuple[Mapping[int, Any], set[signal.Signals]]
+]
 SignalHandlerRestorer = Callable[[Mapping[int, Any], set[signal.Signals]], None]
 ProcessSpawner = Callable[[tuple[str, ...], Path, Mapping[str, str]], Any]
 ProcessPoller = Callable[[Any], int | None]
@@ -148,15 +158,21 @@ def _install_transaction_signal_handlers(
     handler: SignalHandler,
 ) -> tuple[Mapping[int, Any], set[signal.Signals]]:
     if not hasattr(signal, "pthread_sigmask") or not hasattr(signal, "SIG_BLOCK"):
-        raise LifecycleError("This platform lacks required POSIX lifecycle signal masking")
+        raise LifecycleError(
+            "This platform lacks required POSIX lifecycle signal masking"
+        )
     watched = {signal.SIGINT, signal.SIGTERM}
     try:
         previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, watched)
     except (OSError, ValueError) as exc:
-        raise LifecycleError(f"Could not block lifecycle signals during handler installation: {exc}") from exc
+        raise LifecycleError(
+            f"Could not block lifecycle signals during handler installation: {exc}"
+        ) from exc
     if watched.intersection(previous_mask):
         signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
-        raise LifecycleError("Lifecycle refuses an ambient mask that already blocks SIGINT or SIGTERM")
+        raise LifecycleError(
+            "Lifecycle refuses an ambient mask that already blocks SIGINT or SIGTERM"
+        )
     previous: dict[int, Any] = {}
     try:
         for signum in watched:
@@ -177,14 +193,20 @@ def _install_transaction_signal_handlers(
                 rollback_failures.append(f"mask: {mask_exc}")
         raise LifecycleError(
             f"Could not install lifecycle signal handlers: {exc}"
-            + ("; rollback failures: " + "; ".join(rollback_failures) if rollback_failures else "")
+            + (
+                "; rollback failures: " + "; ".join(rollback_failures)
+                if rollback_failures
+                else ""
+            )
         ) from exc
     try:
         signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
     except (OSError, ValueError) as exc:
         for signum, prior in previous.items():
             signal.signal(signum, prior)
-        raise LifecycleError(f"Could not restore signal mask after handler installation: {exc}") from exc
+        raise LifecycleError(
+            f"Could not restore signal mask after handler installation: {exc}"
+        ) from exc
     return previous, set(previous_mask)
 
 
@@ -196,7 +218,9 @@ def _restore_transaction_signal_handlers(
     try:
         signal.pthread_sigmask(signal.SIG_BLOCK, watched)
     except (OSError, ValueError) as exc:
-        raise LifecycleError(f"Could not block lifecycle signals during handler restoration: {exc}") from exc
+        raise LifecycleError(
+            f"Could not block lifecycle signals during handler restoration: {exc}"
+        ) from exc
     failures: list[str] = []
     for signum, handler in previous.items():
         try:
@@ -208,10 +232,14 @@ def _restore_transaction_signal_handlers(
     except (OSError, ValueError) as exc:
         failures.append(f"mask: {exc}")
     if failures:
-        raise LifecycleError("Could not restore lifecycle signal handlers: " + "; ".join(failures))
+        raise LifecycleError(
+            "Could not restore lifecycle signal handlers: " + "; ".join(failures)
+        )
 
 
-def _spawn_process_group(argv: tuple[str, ...], cwd: Path, environment: Mapping[str, str]) -> subprocess.Popen[bytes]:
+def _spawn_process_group(
+    argv: tuple[str, ...], cwd: Path, environment: Mapping[str, str]
+) -> subprocess.Popen[bytes]:
     return subprocess.Popen(
         argv,
         cwd=cwd,
@@ -288,7 +316,9 @@ class TransactionSignalController:
         self.first_signal: int | None = None
 
     def __enter__(self) -> "TransactionSignalController":
-        self._previous, self._previous_mask = self._signal_ops.install_handlers(self.record)
+        self._previous, self._previous_mask = self._signal_ops.install_handlers(
+            self.record
+        )
         return self
 
     def __exit__(
@@ -299,7 +329,11 @@ class TransactionSignalController:
     ) -> None:
         previous = self._previous
         previous_mask = self._previous_mask
-        if self._receipt_commit_blocked and not self._receipt_committed and previous_mask is not None:
+        if (
+            self._receipt_commit_blocked
+            and not self._receipt_committed
+            and previous_mask is not None
+        ):
             # No receipt committed. After mutex cleanup, first deliver any
             # pending signal to this controller so publication failure remains
             # a controlled lifecycle error rather than ambient termination.
@@ -313,13 +347,17 @@ class TransactionSignalController:
             signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
             self._previous_mask = None
         elif previous is not None:
-            raise LifecycleError("Lifecycle signal-handler state lost its prior signal mask")
+            raise LifecycleError(
+                "Lifecycle signal-handler state lost its prior signal mask"
+            )
 
     def block_for_receipt_commit(self) -> None:
         """Linearize receipt publication before restoring ambient handlers."""
 
         if not hasattr(signal, "pthread_sigmask"):
-            raise LifecycleError("This platform lacks required POSIX receipt signal masking")
+            raise LifecycleError(
+                "This platform lacks required POSIX receipt signal masking"
+            )
         signal.pthread_sigmask(
             signal.SIG_BLOCK,
             {signal.SIGINT, signal.SIGTERM},
@@ -358,11 +396,17 @@ class TransactionSignalController:
         self._process_group_id = None
 
     def _forward_if_possible(self) -> None:
-        if self.first_signal is None or self._process_group_id is None or self._forwarded:
+        if (
+            self.first_signal is None
+            or self._process_group_id is None
+            or self._forwarded
+        ):
             return
         try:
             self._forwarded = True
-            self._process_group_ops.signal_group(self._process_group_id, self.first_signal)
+            self._process_group_ops.signal_group(
+                self._process_group_id, self.first_signal
+            )
         except BaseException as exc:  # signal handlers must never unwind transactions
             self._forwarding_error = exc
 
@@ -398,7 +442,6 @@ class LifecycleRequest:
     run_root: Path
     execution_path: Path
     profile_path: Path
-    workflow_config_path: Path
     snakefile: Path
     python_executable: Path
     workflow_profile: Path
@@ -448,7 +491,9 @@ def _admit_python_launcher(path: Path) -> PythonLauncherIdentity:
     """Admit the lexical venv launcher and its stable executable target."""
 
     if not path.is_absolute() or str(path) != sys.executable:
-        raise LifecycleError("Workflow Python launcher must equal lexical sys.executable")
+        raise LifecycleError(
+            "Workflow Python launcher must equal lexical sys.executable"
+        )
     try:
         before = path.lstat()
         link_before = os.readlink(path) if stat.S_ISLNK(before.st_mode) else ""
@@ -459,7 +504,9 @@ def _admit_python_launcher(path: Path) -> PythonLauncherIdentity:
         confirmed_target = path.resolve(strict=True)
         target_after = confirmed_target.stat(follow_symlinks=False)
     except OSError as exc:
-        raise LifecycleError(f"Could not admit workflow Python launcher: {path}") from exc
+        raise LifecycleError(
+            f"Could not admit workflow Python launcher: {path}"
+        ) from exc
     if (
         (before.st_dev, before.st_ino, before.st_mode, before.st_mtime_ns)
         != (after.st_dev, after.st_ino, after.st_mode, after.st_mtime_ns)
@@ -470,7 +517,9 @@ def _admit_python_launcher(path: Path) -> PythonLauncherIdentity:
         or not stat.S_ISREG(target_after.st_mode)
         or not os.access(target, os.X_OK)
     ):
-        raise LifecycleError("Workflow Python launcher identity changed during admission")
+        raise LifecycleError(
+            "Workflow Python launcher identity changed during admission"
+        )
     return (
         str(target),
         link_before,
@@ -486,11 +535,17 @@ def _within(path: Path, root: Path, label: str) -> None:
         raise LifecycleError(f"{label} must be beneath run_root: {path}") from exc
 
 
-def _require_disjoint_roots(run_root: Path, source_checkout: Path) -> None:
+def _require_disjoint_roots(run_root: Path, package_root: Path) -> None:
     """Keep orchestration mutations wholly outside the reviewed source tree."""
 
-    if run_root == source_checkout or run_root in source_checkout.parents or source_checkout in run_root.parents:
-        raise LifecycleError("run_root and source_checkout must be disjoint canonical directories")
+    if (
+        run_root == package_root
+        or run_root in package_root.parents
+        or package_root in run_root.parents
+    ):
+        raise LifecycleError(
+            "run_root and package_root must be disjoint canonical directories"
+        )
 
 
 def build_snakemake_argv(
@@ -515,7 +570,9 @@ def build_snakemake_argv(
         or not workflow_profile.is_file()
         or workflow_profile.resolve(strict=True) != workflow_profile
     ):
-        raise LifecycleError(f"Workflow profile must be an absolute canonical file: {workflow_profile}")
+        raise LifecycleError(
+            f"Workflow profile must be an absolute canonical file: {workflow_profile}"
+        )
     if operation not in {"execute", "resume"}:
         raise LifecycleError(f"Unsupported lifecycle operation: {operation}")
     if isinstance(cores, bool) or not isinstance(cores, int) or cores < 1:
@@ -523,11 +580,14 @@ def build_snakemake_argv(
     limits = dict(resource_limits)
     if len(limits) != len(resource_limits) or set(limits) != _RESOURCE_LIMIT_NAMES:
         raise LifecycleError(
-            "Snakemake resource limits must contain exactly: " + ", ".join(sorted(_RESOURCE_LIMIT_NAMES))
+            "Snakemake resource limits must contain exactly: "
+            + ", ".join(sorted(_RESOURCE_LIMIT_NAMES))
         )
     for name, value in limits.items():
         if isinstance(value, bool) or not isinstance(value, int) or value < 1:
-            raise LifecycleError(f"Snakemake resource limit {name} must be a positive integer")
+            raise LifecycleError(
+                f"Snakemake resource limit {name} must be a positive integer"
+            )
     argv = [
         *controlled_python_argv(python_executable),
         "-m",
@@ -550,25 +610,26 @@ def build_snakemake_argv(
     argv.extend(("--", target))
     observed = _FORBIDDEN_SNAKEMAKE_FLAGS.intersection(argv)
     if observed:
-        raise LifecycleError("Forbidden Snakemake recovery controls: " + ", ".join(sorted(observed)))
+        raise LifecycleError(
+            "Forbidden Snakemake recovery controls: " + ", ".join(sorted(observed))
+        )
     return tuple(argv)
 
 
-def _resource_plan_from_workflow_config(
-    config_document: Mapping[str, Any],
-    *,
-    require_symbolic: bool = False,
+def _resource_plan_from_workflow(
+    workflow: Mapping[str, Any],
 ) -> ResourcePlan:
-    policy = config_document.get("resource_policy")
+    policy = workflow.get("resource_policy")
     if not isinstance(policy, dict):
-        raise LifecycleError("Workflow config resource policy is malformed")
+        raise LifecycleError("Workflow Attempt resource policy is malformed")
     try:
         return admit_resource_policy_record(
             policy,
-            require_symbolic=require_symbolic,
         )
     except ResourceConfigError as exc:
-        raise LifecycleError(f"Workflow config resource policy is invalid: {exc}") from exc
+        raise LifecycleError(
+            f"Workflow Attempt resource policy is invalid: {exc}"
+        ) from exc
 
 
 def _publish_exclusive(path: Path, data: bytes) -> None:
@@ -612,9 +673,12 @@ def _admit_mutex_descriptor(path: Path, descriptor: int) -> None:
         or not stat.S_ISREG(path_state.st_mode)
         or descriptor_state.st_size != 0
         or path_state.st_size != 0
-        or (descriptor_state.st_dev, descriptor_state.st_ino) != (path_state.st_dev, path_state.st_ino)
+        or (descriptor_state.st_dev, descriptor_state.st_ino)
+        != (path_state.st_dev, path_state.st_ino)
     ):
-        raise LifecycleError(f"Lifecycle mutex must be one canonical zero-byte regular file: {path}")
+        raise LifecycleError(
+            f"Lifecycle mutex must be one canonical zero-byte regular file: {path}"
+        )
 
 
 @contextmanager
@@ -637,8 +701,14 @@ def _acquire_attempt_mutex(
     if not hasattr(os, "O_NOFOLLOW"):
         raise LifecycleError("This platform lacks required O_NOFOLLOW mutex admission")
     locks_root = root / "locks"
-    if locks_root.is_symlink() or not locks_root.is_dir() or locks_root.resolve(strict=True) != locks_root:
-        raise LifecycleError(f"Aggregate lock directory must be canonical and real: {locks_root}")
+    if (
+        locks_root.is_symlink()
+        or not locks_root.is_dir()
+        or locks_root.resolve(strict=True) != locks_root
+    ):
+        raise LifecycleError(
+            f"Aggregate lock directory must be canonical and real: {locks_root}"
+        )
     path = locks_root / "acquire.mutex"
     flags = os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW
     flags |= getattr(os, "O_CLOEXEC", 0)
@@ -651,12 +721,16 @@ def _acquire_attempt_mutex(
         observe("before_wait", path)
         while True:
             if interrupted():
-                raise LifecycleError("Lifecycle interrupted while waiting for the acquisition mutex")
+                raise LifecycleError(
+                    "Lifecycle interrupted while waiting for the acquisition mutex"
+                )
             try:
                 _fcntl.flock(descriptor, _fcntl.LOCK_EX | _fcntl.LOCK_NB)
             except OSError as exc:
                 if exc.errno not in {errno.EACCES, errno.EAGAIN}:
-                    raise LifecycleError(f"Could not acquire required lifecycle mutex: {path}: {exc}") from exc
+                    raise LifecycleError(
+                        f"Could not acquire required lifecycle mutex: {path}: {exc}"
+                    ) from exc
                 time.sleep(0.02)
                 continue
             break
@@ -667,7 +741,9 @@ def _acquire_attempt_mutex(
             os.fsync(descriptor)
             _sync_real_directory(locks_root, "aggregate lock directory")
         except OSError as exc:
-            raise LifecycleError(f"Could not synchronize lifecycle mutex: {path}: {exc}") from exc
+            raise LifecycleError(
+                f"Could not synchronize lifecycle mutex: {path}: {exc}"
+            ) from exc
         _admit_mutex_descriptor(path, descriptor)
         yield path
     finally:
@@ -716,7 +792,11 @@ def _release_owned_lock(
             (path.parent, "aggregate lock directory"),
             (evidence_path.parent, "released-lock evidence directory"),
         ):
-            if directory.is_symlink() or not directory.is_dir() or directory.resolve(strict=True) != directory:
+            if (
+                directory.is_symlink()
+                or not directory.is_dir()
+                or directory.resolve(strict=True) != directory
+            ):
                 raise LifecycleError(f"{label} must be a canonical real directory")
         descriptor = os.open(
             path,
@@ -752,10 +832,14 @@ def _release_owned_lock(
         try:
             evidence_publisher(path, evidence_path)
         except FileExistsError as exc:
-            raise LifecycleError(f"Refusing to replace released-lock evidence: {evidence_path}") from exc
+            raise LifecycleError(
+                f"Refusing to replace released-lock evidence: {evidence_path}"
+            ) from exc
         evidence_state = evidence_path.stat(follow_symlinks=False)
         if (evidence_state.st_dev, evidence_state.st_ino) != expected_inode:
-            raise LifecycleError(f"Released run-lock evidence did not retain the owned inode: {evidence_path}")
+            raise LifecycleError(
+                f"Released run-lock evidence did not retain the owned inode: {evidence_path}"
+            )
         os.lseek(descriptor, 0, os.SEEK_SET)
         retained_chunks: list[bytes] = []
         while chunk := os.read(descriptor, 1024 * 1024):
@@ -773,8 +857,13 @@ def _release_owned_lock(
             evidence_state.st_mode,
             evidence_state.st_size,
         )
-        if retained_identity != evidence_identity or b"".join(retained_chunks) != expected_bytes:
-            raise LifecycleError(f"Released run-lock evidence changed at publication: {evidence_path}")
+        if (
+            retained_identity != evidence_identity
+            or b"".join(retained_chunks) != expected_bytes
+        ):
+            raise LifecycleError(
+                f"Released run-lock evidence changed at publication: {evidence_path}"
+            )
         os.fsync(descriptor)
         _sync_real_directory(evidence_path.parent, "released-lock evidence directory")
         public_state = path.stat(follow_symlinks=False)
@@ -784,13 +873,19 @@ def _release_owned_lock(
             )
         path.unlink()
         if path.exists() or path.is_symlink():
-            raise LifecycleError(f"Owned run lock remained after evidence publication: {path}")
+            raise LifecycleError(
+                f"Owned run lock remained after evidence publication: {path}"
+            )
         evidence_after = evidence_path.stat(follow_symlinks=False)
         if (evidence_after.st_dev, evidence_after.st_ino) != expected_inode:
-            raise LifecycleError(f"Released run-lock evidence changed after unlink: {evidence_path}")
+            raise LifecycleError(
+                f"Released run-lock evidence changed after unlink: {evidence_path}"
+            )
         _sync_real_directory(path.parent, "aggregate lock directory")
         if evidence_path.parent != path.parent:
-            _sync_real_directory(evidence_path.parent, "released-lock evidence directory")
+            _sync_real_directory(
+                evidence_path.parent, "released-lock evidence directory"
+            )
     except OSError as exc:
         raise LifecycleError(f"Could not release owned run lock {path}: {exc}") from exc
     finally:
@@ -814,7 +909,7 @@ def _wait_for_group_absence(
         ops.sleep(ops.poll_interval_seconds)
 
 
-def _quiesce_process_group(
+def quiesce_process_group(
     process_group_id: int,
     process: Any,
     ops: ProcessGroupOps,
@@ -845,8 +940,10 @@ def _quiesce_process_group(
     except ProcessGroupAmbiguity:
         raise
     except BaseException as exc:
-        raise ProcessGroupAmbiguity("Delegated workflow process-group quiescence proof failed") from exc
-    raise ProcessGroupAmbiguity("Delegated workflow process group could not be proved quiescent")
+        raise ProcessGroupAmbiguity(
+            "Delegated process-group quiescence proof failed"
+        ) from exc
+    raise ProcessGroupAmbiguity("Delegated process group could not be proved quiescent")
 
 
 def _run_process_group(
@@ -887,10 +984,12 @@ def _run_process_group(
                     kill_sent = True
                     kill_deadline = now + ops.kill_grace_seconds
                 elif kill_sent and kill_deadline is not None and now >= kill_deadline:
-                    raise ProcessGroupAmbiguity("Delegated workflow leader survived bounded signal escalation")
+                    raise ProcessGroupAmbiguity(
+                        "Delegated workflow leader survived bounded signal escalation"
+                    )
             ops.sleep(ops.poll_interval_seconds)
         quiescence_attempted = True
-        _quiesce_process_group(process_group_id, process, ops)
+        quiesce_process_group(process_group_id, process, ops)
         signals.raise_forwarding_error()
         signals.clear_process_group(process_group_id)
         registered = False
@@ -898,10 +997,10 @@ def _run_process_group(
         if quiescence_attempted:
             raise
         try:
-            _quiesce_process_group(process_group_id, process, ops)
+            quiesce_process_group(process_group_id, process, ops)
         except BaseException as cleanup_error:
             raise ProcessGroupAmbiguity(
-                "Delegated workflow process group could not be proved quiescent after an execution-boundary failure"
+                "Delegated process group could not be proved quiescent after an execution-boundary failure"
             ) from cleanup_error
         if registered:
             signals.clear_process_group(process_group_id)
@@ -929,9 +1028,16 @@ def _admit_required_tool_identity(identity: Mapping[str, Any]) -> None:
         observed_resolved = path.resolve(strict=True)
         resolved_state = resolved_path.lstat()
     except OSError as exc:
-        raise LifecycleError(f"Required tool path is unavailable: {name}: {path}") from exc
-    if observed_resolved != resolved_path or resolved_path.resolve(strict=True) != resolved_path:
-        raise LifecycleError(f"Required tool canonical path differs from its binding: {name}")
+        raise LifecycleError(
+            f"Required tool path is unavailable: {name}: {path}"
+        ) from exc
+    if (
+        observed_resolved != resolved_path
+        or resolved_path.resolve(strict=True) != resolved_path
+    ):
+        raise LifecycleError(
+            f"Required tool canonical path differs from its binding: {name}"
+        )
     digest = identity["sha256"]
     identity_kind = identity.get("identity_kind")
     if digest is None:
@@ -941,7 +1047,9 @@ def _admit_required_tool_identity(identity: Mapping[str, Any]) -> None:
             or not stat.S_ISDIR(resolved_state.st_mode)
             or not os.access(resolved_path, os.R_OK | os.X_OK)
         ):
-            raise LifecycleError(f"Required runtime directory is not admissible: {name}: {resolved_path}")
+            raise LifecycleError(
+                f"Required runtime directory is not admissible: {name}: {resolved_path}"
+            )
         return
     if identity_kind == "package_tree" or (
         identity_kind is None and name.startswith("r_")
@@ -960,14 +1068,18 @@ def _admit_required_tool_identity(identity: Mapping[str, Any]) -> None:
             raise LifecycleError(f"Required package tree digest differs: {name}")
         return
     if stat.S_ISLNK(resolved_state.st_mode) or not stat.S_ISREG(resolved_state.st_mode):
-        raise LifecycleError(f"Required tool canonical target is not a real file: {name}: {resolved_path}")
+        raise LifecycleError(
+            f"Required tool canonical target is not a real file: {name}: {resolved_path}"
+        )
     try:
         data, after = _read_bound_file(
             resolved_path,
             f"required tool canonical target {name}",
         )
     except LifecycleError as exc:
-        raise LifecycleError(f"Could not hash required tool canonical target: {name}: {resolved_path}") from exc
+        raise LifecycleError(
+            f"Could not hash required tool canonical target: {name}: {resolved_path}"
+        ) from exc
     if (
         resolved_state.st_dev,
         resolved_state.st_ino,
@@ -1035,7 +1147,9 @@ def _readmit_storage_runtime_binding(
             if isinstance(item, Mapping) and item.get("name") == "storage_qualification"
         )
         if len(bound_storage) != 1:
-            raise LifecycleError("Direct workflow Attempt must bind one storage qualification")
+            raise LifecycleError(
+                "Direct workflow Attempt must bind one storage qualification"
+            )
         bound_path = Path(str(bound_storage[0].get("path", "")))
         if re.search(
             r"\.direct-qualified(?:\.[1-9][0-9]*)?\.json\Z",
@@ -1050,7 +1164,9 @@ def _readmit_storage_runtime_binding(
         qualified = inspector(workspace, reference_fasta)
         return doctor.storage_runtime_binding(qualified)
     except (qualification.StorageQualificationError, OSError) as exc:
-        raise LifecycleError(f"Could not re-admit storage qualification: {exc}") from exc
+        raise LifecycleError(
+            f"Could not re-admit storage qualification: {exc}"
+        ) from exc
 
 
 def _admit_runtime_context(
@@ -1059,27 +1175,23 @@ def _admit_runtime_context(
     storage_binding: "RuntimeBinding | None",
     initial_inspection: "RuntimeInspection | None",
 ) -> None:
-    """Observe clean source/package and exact required executor identity."""
+    """Observe installed package and exact required executor identity."""
 
     from emrys.libraries import source_authority  # noqa: PLC0415
 
-    declared = attempt["source_checkout"]
+    declared = attempt["installed_package"]
     _admit_python_launcher(request.python_executable)
-    observed = source_authority.inspect_source_checkout(
-        root=Path(str(declared["path"])),
-        package_root=Path(__file__).resolve().parents[2],
-        require_clean=True,
+    observed = source_authority.admit_installed_package(
+        root=Path(str(declared["path"]))
     )
-    if (
-        observed.root != Path(str(declared["path"]))
-        or observed.commit != declared["commit"]
-        or observed.clean is not True
-    ):
-        raise LifecycleError("Declared source checkout differs from observed identity")
+    if observed.record != declared:
+        raise LifecycleError(
+            "Declared package differs from observed installed identity"
+        )
     try:
         request.snakefile.relative_to(observed.root)
     except ValueError as exc:
-        raise LifecycleError("Snakefile is outside declared source checkout") from exc
+        raise LifecycleError("Snakefile is outside declared installed package") from exc
     tools = {str(item["name"]): item for item in attempt["required_tools"]}
     for identity in tools.values():
         _admit_required_tool_identity(identity)
@@ -1087,7 +1199,9 @@ def _admit_runtime_context(
     python = tools.get("python")
     snakemake = tools.get("snakemake")
     if python is None or snakemake is None:
-        raise LifecycleError("Workflow attempt must declare required Python and Snakemake identities")
+        raise LifecycleError(
+            "Workflow attempt must declare required Python and Snakemake identities"
+        )
     if Path(str(attempt["normalizer"]["path"])) != request.python_executable:
         raise LifecycleError("Normalizer does not bind the workflow Python runtime")
     if (
@@ -1100,12 +1214,15 @@ def _admit_runtime_context(
     from emrys.evidence.runtime_availability.inspector import (  # noqa: PLC0415
         RuntimeInspectionError,
         inspect_runtime_profile_bytes,
+        runtime_profile_checks,
     )
     from emrys.orchestration.run_coordinator import doctor  # noqa: PLC0415
 
     runtime_profile = tools.get("runtime_profile")
     if runtime_profile is None:
-        raise LifecycleError("Local science attempt must bind its exact runtime profile")
+        raise LifecycleError(
+            "Local science attempt must bind its exact runtime profile"
+        )
     profile_path = Path(str(runtime_profile["path"]))
     profile_bytes, _profile_identity = _read_bound_file(
         profile_path,
@@ -1121,33 +1238,51 @@ def _admit_runtime_context(
         base_environment=os.environ,
     )
     try:
+        from emrys import analyses as analysis_modules  # noqa: PLC0415
+
+        fixed_checks = runtime_profile_checks(profile_bytes, observed.root)
+        reference = attempt["workflow"]["primary_analysis_policy_path"]
+        policy_data = _read_stable(
+            request.run_root / reference["path"], request.run_root, "analysis policy"
+        )
+        if hashlib.sha256(policy_data).hexdigest() != reference["sha256"]:
+            raise LifecycleError(
+                "Analysis policy digest differs from the immutable Attempt"
+            )
+        module = analysis_modules.readmit_analysis_module(json.loads(policy_data))
+        additions, package_tree_ids, explicit_file_ids = (
+            doctor._module_dependency_checks(module.descriptor, fixed_checks)
+        )
+        checks = (*fixed_checks, *additions)
         runtime_inspection = initial_inspection or inspect_runtime_profile_bytes(
             profile_bytes,
             profile_path,
-            "local",
+            checks=checks,
             environment=environment,
         )
         if (
             runtime_inspection.profile_bytes != profile_bytes
             or runtime_inspection.profile_sha256 != profile_sha256
-            or runtime_inspection.runtime_context != "local"
+            or tuple(item.check for item in runtime_inspection.observations) != checks
         ):
             raise RuntimeInspectionError(
                 "Planning runtime inspection differs from the immutable Attempt profile"
             )
-        doctor.validate_runtime_profile_contract(
-            tuple(item.check for item in runtime_inspection.observations),
-            observed.root,
-            allow_derived_dependencies=True,
-        )
-    except (RuntimeInspectionError, doctor.DoctorInputError) as exc:
-        raise LifecycleError(f"Could not re-admit local runtime profile: {exc}") from exc
+    except (
+        RuntimeInspectionError,
+        doctor.DoctorInputError,
+        analysis_modules.AnalysisModuleLoadError,
+        ValueError,
+    ) as exc:
+        raise LifecycleError(
+            f"Could not re-admit local runtime profile: {exc}"
+        ) from exc
     _admit_runtime_executable_permissions(runtime_inspection)
     if not runtime_inspection.required_ready:
         failures = ", ".join(
             item.check.check_id
             for item in runtime_inspection.observations
-            if item.check.required and item.status != "pass"
+            if item.status != "pass"
         )
         raise LifecycleError(f"Required local runtime probes failed: {failures}")
     if (
@@ -1155,18 +1290,10 @@ def _admit_runtime_context(
         or storage_binding is None
         or storage_binding.check_id != "storage_qualification"
     ):
-        raise LifecycleError("Local science attempt must bind its storage qualification")
+        raise LifecycleError(
+            "Local science attempt must bind its storage qualification"
+        )
     try:
-        package_tree_ids = frozenset(
-            name
-            for name, identity in tools.items()
-            if identity.get("identity_kind") == "package_tree"
-        )
-        explicit_file_ids = frozenset(
-            name
-            for name, identity in tools.items()
-            if identity.get("identity_kind") == "file"
-        )
         expected_tools = doctor.required_tool_identities(
             runtime_inspection,
             bindings=(
@@ -1181,9 +1308,13 @@ def _admit_runtime_context(
             runtime_profile_path=profile_path,
         )
     except doctor.DoctorInputError as exc:
-        raise LifecycleError(f"Could not project re-observed runtime identities: {exc}") from exc
+        raise LifecycleError(
+            f"Could not project re-observed runtime identities: {exc}"
+        ) from exc
     if tuple(attempt["required_tools"]) != expected_tools:
-        raise LifecycleError("Workflow attempt required tools differ from the re-observed runtime profile")
+        raise LifecycleError(
+            "Workflow attempt required tools differ from the re-observed runtime profile"
+        )
 
 
 def default_lifecycle_ops() -> LifecycleOps:
@@ -1224,7 +1355,9 @@ def _read_bound_file(path: Path, label: str) -> tuple[bytes, os.stat_result]:
         raise LifecycleError(str(exc)) from exc
 
 
-def _read_stable_with_identity(path: Path, root: Path, label: str) -> tuple[bytes, tuple[int, int]]:
+def _read_stable_with_identity(
+    path: Path, root: Path, label: str
+) -> tuple[bytes, tuple[int, int]]:
     _within(path, root, label)
     try:
         if path.resolve(strict=True) != path:
@@ -1264,27 +1397,14 @@ def _reference(path: Path, root: Path, label: str) -> dict[str, str]:
 
 
 def _admit_run_before_attempt(root: Path, expected_run_id: str) -> None:
-    """Require one committed historical or successor Run before any mutex."""
+    """Require a committed current Run before acquiring its mutex."""
 
     try:
-        successor = inspection.admit_successor_run(root)
+        authority = inspection.admit_successor_run(root)
     except inspection.InspectionError as exc:
-        raise LifecycleError(f"Could not admit successor Run: {exc}") from exc
-    if successor is not None:
-        if successor.run_binding.run_id != expected_run_id:
-            raise LifecycleError("Prepared Attempt does not bind admitted Run ID")
-        return
-    profile_path = _canonical_file(root / "contract" / "profile.json", "profile snapshot")
-    execution_path = _canonical_file(root / "contract" / "normalized.json", "historical execution contract")
-    profile, _profile_data = _admit_record(profile_path, root, "profile")
-    execution, _execution_data = _admit_record(
-        execution_path,
-        root,
-        "execution",
-        profile=profile,
-    )
-    if execution["run_id"] != expected_run_id:
-        raise LifecycleError("Prepared Attempt does not bind historical Run ID")
+        raise LifecycleError(f"Could not admit Run: {exc}") from exc
+    if authority.run_binding.run_id != expected_run_id:
+        raise LifecycleError("Prepared Attempt does not bind admitted Run ID")
 
 
 _admit_execution = partial(
@@ -1303,10 +1423,9 @@ def _admit_request(
     Path,
     dict[str, Any],
     dict[str, Any],
-    inspection.SuccessorRunAuthority | None,
+    inspection.SuccessorRunAuthority,
     dict[str, Any],
     tuple[str, ...],
-    dict[str, str],
     bytes,
 ]:
     root = _canonical_root(request.run_root)
@@ -1314,9 +1433,9 @@ def _admit_request(
     _within(request.profile_path, root, "profile snapshot")
     execution_path = _canonical_file(request.execution_path, "execution contract")
     profile_path = _canonical_file(request.profile_path, "profile snapshot")
-    config_path = _canonical_file(request.workflow_config_path, "workflow config")
-    request_source_path = _canonical_file(request.request_source_path, "authored source")
-    _within(config_path, root, "workflow config")
+    request_source_path = _canonical_file(
+        request.request_source_path, "authored source"
+    )
     snakefile = _canonical_file(request.snakefile, "Snakefile")
     workflow_profile = _canonical_file(request.workflow_profile, "workflow profile")
     python_executable = request.python_executable
@@ -1327,33 +1446,22 @@ def _admit_request(
         root,
         profile,
     )
-    expected_execution_path = root / "contract" / ("run.json" if successor is not None else "normalized.json")
+    expected_execution_path = root / "contract" / "run.json"
     if execution_path != expected_execution_path:
         raise LifecycleError("Lifecycle execution path differs from Run authority")
-    config_data = _read_stable(config_path, root, "workflow config")
     request_source_data = _read_external_stable(request_source_path, "authored source")
-    try:
-        config_document = orchestration_contracts.load_json_object_bytes(config_data, f"workflow config {config_path}")
-    except orchestration_contracts.ContractValidationError as exc:
-        raise LifecycleError(f"Could not admit immutable run contracts: {exc}") from exc
-    canonical_config = orchestration_contracts.canonical_json_bytes(config_document)
-    if config_data != canonical_config:
-        raise LifecycleError("Workflow config must use canonical JSON bytes")
-    config_reference = {
-        "path": config_path.relative_to(root).as_posix(),
-        "sha256": hashlib.sha256(config_data).hexdigest(),
-    }
-    resources = _resource_plan_from_workflow_config(
-        config_document,
-        require_symbolic=successor is not None,
-    )
+    resources = _resource_plan_from_workflow(attempt["workflow"])
+    identifier = str(attempt["workflow_attempt_id"])
+    attempt_path = root / "attempts" / identifier / "attempt.json"
     if resources.workflow_cores != attempt["cores"]:
-        raise LifecycleError("Workflow config resource cores differ from the attempt record")
+        raise LifecycleError(
+            "Workflow Attempt resource cores differ from the attempt record"
+        )
     argv = build_snakemake_argv(
         python_executable=python_executable,
         snakefile=snakefile,
         workflow_profile=request.workflow_profile,
-        configfile=config_path,
+        configfile=attempt_path,
         run_root=root,
         target=request.target,
         operation=request.operation,
@@ -1361,7 +1469,7 @@ def _admit_request(
         resource_limits=resources.scheduler_limits(),
     )
     identifier = str(attempt["workflow_attempt_id"])
-    source_root = Path(str(attempt["source_checkout"]["path"]))
+    source_root = Path(str(attempt["installed_package"]["path"]))
     _require_disjoint_roots(root, source_root)
     expected_snakefile = source_root / SNAKEFILE_RELATIVE
     expected_workflow_profile = source_root / WORKFLOW_PROFILE_RELATIVE
@@ -1371,21 +1479,8 @@ def _admit_request(
         raise LifecycleError("Lifecycle requires the reviewed local workflow profile")
     if request.target != BACKEND_TARGET:
         raise LifecycleError("Lifecycle requires the Run-bound backend target")
-    expected_config_relative = (Path("contract") / "workflow-configs" / f"{identifier}.json").as_posix()
-    if config_reference["path"] != expected_config_relative:
-        raise LifecycleError("Workflow config must use its attempt-specific immutable path")
-    config_identity = {
-        "run_root": str(root),
-        "execution_path": str(execution_path),
-        "profile_path": str(profile_path),
-        "workflow_attempt_id": identifier,
-        "python_executable": str(python_executable),
-    }
-    for field, value in config_identity.items():
-        if config_document.get(field) != value:
-            raise LifecycleError(f"Workflow config does not bind {field}")
-    expected_executor = (
-        "local" if successor is None else str(successor.execution_plan.record["identity"]["backend"]["backend"])
+    expected_executor = str(
+        successor.execution_plan.record["identity"]["backend"]["backend"]
     )
     expected = {
         "run_id": execution["run_id"],
@@ -1394,7 +1489,6 @@ def _admit_request(
         "operation": request.operation,
         "executor": expected_executor,
         "snakemake_argv": list(argv),
-        "workflow_config": config_reference,
         "host": ops.host_name(),
         "process_id": ops.process_id(),
     }
@@ -1402,7 +1496,9 @@ def _admit_request(
         if attempt[field] != value:
             raise LifecycleError(f"Workflow attempt does not bind {field}")
     if str(python_executable) != sys.executable:
-        raise LifecycleError("Workflow Python runtime must equal lexical sys.executable")
+        raise LifecycleError(
+            "Workflow Python runtime must equal lexical sys.executable"
+        )
     if Path(str(attempt["authored_paths"]["request"])) != request_source_path:
         raise LifecycleError("Workflow attempt does not name its authored source")
     request_snapshot_path = root / "attempts" / identifier / "request.yaml"
@@ -1413,40 +1509,38 @@ def _admit_request(
     }:
         raise LifecycleError("Workflow attempt does not bind its authored source")
     storage_binding = ops.admit_storage_context(attempt, execution)
-    ops.admit_runtime_context(attempt, request, storage_binding, initial_runtime_inspection)
-    if successor is not None:
-        try:
-            validate_successor_run(
-                analysis=successor.analysis_revision,
-                plan=successor.execution_plan,
-                run=successor.run_binding,
-                profile=profile,
-                attempt=attempt,
-                resource_policy=config_document["resource_policy"],
-                observed_implementation_content_sha256=implementation_identity(
-                    source_root,
-                    execution_module_id(
-                        successor.analysis_revision,
-                        successor.execution_plan,
-                    ),
-                ),
-                observed_backend_semantics_sha256=backend_semantics_identity(source_root),
-            )
-            inspection.admit_bound_processing_source(root, successor)
-        except (
-            KeyError,
-            inspection.InspectionError,
-            RunImplementationError,
-            orchestration_contracts.ContractValidationError,
-        ) as exc:
-            raise LifecycleError(f"Successor Attempt differs from immutable Run: {exc}") from exc
-    workspace = Path(str(attempt["workspace"]))
-    if not workspace.is_absolute():
-        raise LifecycleError("Workflow attempt workspace must be absolute")
+    ops.admit_runtime_context(
+        attempt, request, storage_binding, initial_runtime_inspection
+    )
     try:
-        root.relative_to(workspace)
-    except ValueError as exc:
-        raise LifecycleError("Workflow attempt workspace does not contain run_root") from exc
+        validate_successor_run(
+            analysis=successor.analysis_revision,
+            plan=successor.execution_plan,
+            run=successor.run_binding,
+            profile=profile,
+            attempt=attempt,
+            resource_policy=attempt["workflow"]["resource_policy"],
+            observed_implementation_content_sha256=implementation_identity(
+                source_root,
+                execution_module_id(
+                    successor.analysis_revision,
+                    successor.execution_plan,
+                ),
+            ),
+            observed_backend_semantics_sha256=backend_semantics_identity(source_root),
+        )
+        inspection.admit_bound_processing_source(root, successor)
+    except (
+        KeyError,
+        inspection.InspectionError,
+        RunImplementationError,
+        orchestration_contracts.ContractValidationError,
+    ) as exc:
+        raise LifecycleError(
+            f"Successor Attempt differs from immutable Run: {exc}"
+        ) from exc
+    if root != Path(attempt["workspace"]) / "runs" / attempt["run_id"]:
+        raise LifecycleError("Workflow Attempt does not bind its canonical Run root")
     return (
         root,
         profile,
@@ -1454,7 +1548,6 @@ def _admit_request(
         successor,
         attempt,
         argv,
-        config_reference,
         request_source_data,
     )
 
@@ -1470,10 +1563,15 @@ def _operation_preflight(
         *inspection.lock_tree_blockers(root, expected_run_lock=False),
     ]
     if namespace_blockers:
-        raise LifecycleError("Aggregate run namespace is not admissible: " + "; ".join(namespace_blockers))
+        raise LifecycleError(
+            "Aggregate run namespace is not admissible: "
+            + "; ".join(namespace_blockers)
+        )
     attempt_entries, attempt_blockers = inspection.inspect_attempt_tree(root)
     if attempt_blockers:
-        raise LifecycleError("Aggregate attempt state is not admissible: " + "; ".join(attempt_blockers))
+        raise LifecycleError(
+            "Aggregate attempt state is not admissible: " + "; ".join(attempt_blockers)
+        )
     if operation == "execute":
         if attempt_entries:
             raise LifecycleError("Initial execution refuses a run with prior attempts")
@@ -1507,7 +1605,7 @@ def _operation_preflight(
         raise LifecycleError("Only a failed or interrupted attempt may be resumed")
     if attempt["supersedes_workflow_attempt_id"] != latest["workflow_attempt_id"]:
         raise LifecycleError("Resume must supersede the exact latest workflow attempt")
-    for field in inspection.attempt_fields(observed.authority is not None):
+    for field in inspection.attempt_fields():
         if attempt[field] != latest[field]:
             raise LifecycleError(f"Resume attempt is incompatible on {field}")
 
@@ -1525,12 +1623,16 @@ def _under_lock_attempt_preflight(
         *inspection.lock_tree_blockers(root, expected_run_lock=True),
     ]
     if namespace_blockers:
-        raise LifecycleError("Aggregate run namespace changed at lock boundary: " + "; ".join(namespace_blockers))
+        raise LifecycleError(
+            "Aggregate run namespace changed at lock boundary: "
+            + "; ".join(namespace_blockers)
+        )
 
     attempt_entries, attempt_blockers = inspection.inspect_attempt_tree(root)
     if attempt_blockers:
         raise LifecycleError(
-            "Aggregate attempt state changed before attempt publication: " + "; ".join(attempt_blockers)
+            "Aggregate attempt state changed before attempt publication: "
+            + "; ".join(attempt_blockers)
         )
     if request.operation == "execute":
         if attempt_entries:
@@ -1545,7 +1647,11 @@ def _under_lock_attempt_preflight(
         ),
         allowed_next_attempt=attempt,
     )
-    if not observed.recovery_available or observed.latest_attempt is None or observed.latest_receipt is None:
+    if (
+        not observed.recovery_available
+        or observed.latest_attempt is None
+        or observed.latest_receipt is None
+    ):
         raise LifecycleError(
             "Resume lost its revalidated between-task boundary under lock: "
             + "; ".join(
@@ -1560,7 +1666,7 @@ def _under_lock_attempt_preflight(
         "workflow_attempt_id"
     ] or observed.latest_receipt["status"] not in {"failed", "interrupted"}:
         raise LifecycleError("Resume lost its admissible terminal predecessor")
-    for field in inspection.attempt_fields(observed.authority is not None):
+    for field in inspection.attempt_fields():
         if attempt[field] != observed.latest_attempt[field]:
             raise LifecycleError(f"Resume became incompatible on {field}")
 
@@ -1649,7 +1755,6 @@ def _run_attempt_locked(
         authority,
         attempt,
         argv,
-        config_reference,
         request_source_data,
     ) = _admit_request(
         request,
@@ -1662,7 +1767,9 @@ def _run_attempt_locked(
     locks_root = root / "locks"
     for directory in (root / "attempts", locks_root):
         if directory.is_symlink() or not directory.is_dir():
-            raise LifecycleError(f"Lifecycle parent must be pre-materialized and real: {directory}")
+            raise LifecycleError(
+                f"Lifecycle parent must be pre-materialized and real: {directory}"
+            )
     attempt_path = attempt_root / "attempt.json"
     receipt_path = attempt_root / "attempt-receipt.json"
     lock_path = locks_root / "run.lock"
@@ -1672,17 +1779,19 @@ def _run_attempt_locked(
     orchestration_contracts.validate_record("run-lock", lock_record)
     lock_bytes = orchestration_contracts.canonical_json_bytes(lock_record)
     if owned_lock.path != lock_path or owned_lock.data != lock_bytes:
-        raise LifecycleError("Pre-materialization run lock does not bind the lifecycle request")
+        raise LifecycleError(
+            "Pre-materialization run lock does not bind the lifecycle request"
+        )
     lock_state = lock_path.stat(follow_symlinks=False)
     lock_inode = (lock_state.st_dev, lock_state.st_ino)
     if lock_inode != owned_lock.inode:
-        raise LifecycleError("Pre-materialization run lock identity changed before admission")
+        raise LifecycleError(
+            "Pre-materialization run lock identity changed before admission"
+        )
     try:
         _observe_phase(active_ops, "after_run_lock")
         _refuse_pre_attempt_signal(signals, "after run-lock publication")
         _under_lock_attempt_preflight(request, root, attempt, active_ops)
-        if _reference(request.workflow_config_path, root, "workflow config") != config_reference:
-            raise LifecycleError("Workflow config changed before attempt publication")
         pre_spawn_bindings = (
             (
                 request.execution_path,
@@ -1694,7 +1803,9 @@ def _run_attempt_locked(
         for binding_path, label, expected_sha256 in pre_spawn_bindings:
             if _reference(binding_path, root, label)["sha256"] != expected_sha256:
                 raise LifecycleError(f"{label} changed before attempt publication")
-        request_source_after = _read_external_stable(request.request_source_path, "authored source")
+        request_source_after = _read_external_stable(
+            request.request_source_path, "authored source"
+        )
         if request_source_after != request_source_data:
             raise LifecycleError("Authored source changed before attempt publication")
         _admit_python_launcher(request.python_executable)
@@ -1714,8 +1825,12 @@ def _run_attempt_locked(
             if attempt_path.exists() and not attempt_path.is_symlink()
             else locks_root / f"released-{identifier}-run-lock.json"
         )
-        active_ops.release_lock(lock_path, failure_evidence_path, lock_bytes, lock_inode)
-        raise LifecycleError(f"Could not establish immutable workflow attempt: {exc}") from exc
+        active_ops.release_lock(
+            lock_path, failure_evidence_path, lock_bytes, lock_inode
+        )
+        raise LifecycleError(
+            f"Could not establish immutable workflow attempt: {exc}"
+        ) from exc
 
     result: WorkflowResult | None = None
     attempts, receipts, chain_blockers = inspection.inspect_attempt_chain(root)
@@ -1780,32 +1895,38 @@ def _run_attempt_locked(
             ) from exc
         runtime_blockers: list[str] = []
         if not isinstance(candidate, WorkflowResult):
-            runtime_blockers.append("Workflow runner returned no typed terminal observation")
+            runtime_blockers.append(
+                "Workflow runner returned no typed terminal observation"
+            )
         elif (
             (candidate.exit_code is None) == (candidate.termination_signal is None)
             or (
                 candidate.exit_code is not None
-                and (type(candidate.exit_code) is not int or not 0 <= candidate.exit_code <= 255)
+                and (
+                    type(candidate.exit_code) is not int
+                    or not 0 <= candidate.exit_code <= 255
+                )
             )
             or (
                 candidate.termination_signal is not None
-                and (type(candidate.termination_signal) is not int or candidate.termination_signal < 1)
+                and (
+                    type(candidate.termination_signal) is not int
+                    or candidate.termination_signal < 1
+                )
             )
         ):
-            runtime_blockers.append("Workflow runner returned an invalid terminal observation")
+            runtime_blockers.append(
+                "Workflow runner returned an invalid terminal observation"
+            )
         else:
             result = candidate
         try:
             storage_binding = active_ops.admit_storage_context(attempt, execution)
             active_ops.admit_runtime_context(attempt, request, storage_binding, None)
         except Exception as exc:
-            runtime_blockers.append(f"Runtime identity changed during workflow execution: {exc}")
-        try:
-            config_after = _reference(request.workflow_config_path, root, "workflow config")
-            if config_after != config_reference:
-                raise LifecycleError("Workflow config changed during execution")
-        except Exception as exc:
-            runtime_blockers.append(str(exc))
+            runtime_blockers.append(
+                f"Runtime identity changed during workflow execution: {exc}"
+            )
         for binding_path, label, expected_sha256 in (
             (
                 request.execution_path,
@@ -1830,18 +1951,21 @@ def _run_attempt_locked(
         except Exception as exc:
             runtime_blockers.append(str(exc))
         try:
-            request_snapshot = _read_stable(attempt_root / "request.yaml", root, "attempt request snapshot")
+            request_snapshot = _read_stable(
+                attempt_root / "request.yaml", root, "attempt request snapshot"
+            )
             if request_snapshot != request_source_data:
-                raise LifecycleError("Attempt request snapshot changed during execution")
+                raise LifecycleError(
+                    "Attempt request snapshot changed during execution"
+                )
         except Exception as exc:
             runtime_blockers.append(str(exc))
-        if authority is not None:
-            try:
-                inspection.admit_bound_processing_source(root, authority)
-            except (OSError, inspection.InspectionError) as exc:
-                runtime_blockers.append(
-                    f"Processing source changed during workflow execution: {exc}"
-                )
+        try:
+            inspection.admit_bound_processing_source(root, authority)
+        except (OSError, inspection.InspectionError) as exc:
+            runtime_blockers.append(
+                f"Processing source changed during workflow execution: {exc}"
+            )
         attempts, receipts, chain_blockers = inspection.inspect_attempt_chain(root)
         evidence = inspection.inspect_evidence(
             root,
@@ -1910,7 +2034,9 @@ def _run_attempt_locked(
         "released run-lock evidence",
     )
     if released_bytes != lock_bytes or released_inode != lock_inode:
-        raise LifecycleError("Released run-lock evidence does not retain the owned descriptor identity")
+        raise LifecycleError(
+            "Released run-lock evidence does not retain the owned descriptor identity"
+        )
     released_namespace_blockers = [
         *inspection.state_tree_blockers(root),
         *inspection.lock_tree_blockers(root, expected_run_lock=False),
@@ -1999,12 +2125,19 @@ def _admit_lifecycle_request(request: LifecycleRequest) -> dict[str, Any]:
         orchestration_contracts.validate_record("workflow-attempt", attempt)
     except orchestration_contracts.ContractValidationError as exc:
         raise LifecycleError(f"Invalid prepared workflow attempt: {exc}") from exc
-    if orchestration_contracts.canonical_json_bytes(attempt) != request.attempt_record_bytes:
+    if (
+        orchestration_contracts.canonical_json_bytes(attempt)
+        != request.attempt_record_bytes
+    ):
         raise LifecycleError("Prepared workflow attempt must use canonical JSON bytes")
     if request.operation not in {"execute", "resume"}:
-        raise LifecycleError(f"Unsupported prepared lifecycle operation: {request.operation}")
+        raise LifecycleError(
+            f"Unsupported prepared lifecycle operation: {request.operation}"
+        )
     if attempt["operation"] != request.operation:
-        raise LifecycleError("Prepared workflow attempt does not bind lifecycle operation")
+        raise LifecycleError(
+            "Prepared workflow attempt does not bind lifecycle operation"
+        )
     return attempt
 
 
@@ -2027,7 +2160,9 @@ def run_materialized_attempt(
         attempts_root = root / "attempts"
         for directory in (locks_root, attempts_root):
             if directory.is_symlink() or not directory.is_dir():
-                raise LifecycleError(f"Lifecycle parent must be pre-materialized and real: {directory}")
+                raise LifecycleError(
+                    f"Lifecycle parent must be pre-materialized and real: {directory}"
+                )
         prepared_attempt = _admit_lifecycle_request(request)
         run_id = str(prepared_attempt["run_id"])
         identifier = str(prepared_attempt["workflow_attempt_id"])
@@ -2089,7 +2224,9 @@ def run_materialized_attempt(
                         )
                 if isinstance(exc, LifecycleError):
                     raise
-                raise LifecycleError(f"Could not materialize immutable workflow attempt: {exc}") from exc
+                raise LifecycleError(
+                    f"Could not materialize immutable workflow attempt: {exc}"
+                ) from exc
 
 
 __all__ = (

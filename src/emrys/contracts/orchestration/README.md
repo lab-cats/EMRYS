@@ -1,27 +1,33 @@
 # Orchestration contracts
 
-`emrys.contracts.orchestration` owns the closed schemas, canonical JSON, hashes,
-and cross-record invariants for Project, Analysis, immutable Execution Plan and
-Run, Attempt, task, lock, receipt, and reporting-ledger records. It does not
-load YAML, choose an Analysis or profile, execute work, infer state, publish
-records, or implement a CLI.
+`emrys.contracts.orchestration` defines registered schemas, canonical JSON,
+hashes, and consistency rules for Project, Analysis, immutable Execution Plan
+and Run, Attempt, task, lock, receipt, and reporting records. It validates
+records and parses closed JSON and YAML; it does not choose an Analysis, run work, infer state,
+publish records, or provide a CLI. The artifact-inventory owner reads fixed
+processing tasks and artifact ownership from the admitted installed package's
+shipped profile. A retained Run profile cannot redefine those implementation
+facts. The [Run-coordinator contract](../../orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
+owns new-Run and resume admission.
 
-`emrys.project.v1` is the scientist-authored contract: one Dataset and Reference
-plus named Analyses. An Analysis may use the flat paired-CMH compatibility form
-or an installed module with closed module-owned configuration. The historical
-request-v3 schema remains registered only for exact old-Run admission.
+Scientists author `emrys.project.v1`: one Dataset and Reference, with named
+Analyses. An Analysis uses either the flat paired-CMH form or an installed
+module's validated configuration. Both forms normalize into one module policy
+and Analysis revision. Planning combines the validated module descriptor with
+the fixed processing profile before freezing Run identity. Steps `00`–`06`
+have a separate compatibility identity so their unchanged artifacts can be
+reused without sharing downstream identity. That identity binds the shipped
+processing profile's complete bytes because they now define executable tasks;
+changing that file requires new Processing results. Execution profiles separate
+Run-bound resources from Attempt-local placement.
 
-The admitted module descriptor is composed onto the fixed processing profile
-before Run identity is frozen. Processing compatibility through Steps `00`–`06`
-is calculated separately so stationary artifacts can be reused without sharing
-downstream identity. The authored execution profile separates Run-bound
-resources from Attempt-local placement.
-
-Attempts bind exact tool/runtime identities, immutable configuration, logs,
-task-start records, task attempts, and verified tasks. Reporting has separate
-start/verified ledgers for artifact index, run summary, and HTML report. Current
-scientific receipts exclude reporting; existing historical records retain their
-registered semantics. The public `attempt-receipt` validator admits both
-historical v1 and current v2 through the same closed registry used by high-level
-record validation. File-backed and installed-package identities are
-rechecked at the execution and reuse boundaries and fail closed on drift.
+Each Attempt manifest contains exact tools/runtime, workflow settings, and task
+definitions. Task starts bind that manifest once; logs, terminal task results,
+and verified markers remain separate execution evidence. Reporting records its own starts and verified
+results for the run manifest and HTML. Scientific receipts exclude reporting.
+Each task has one terminal result and a verified marker that binds that result.
+The registry admits the current forms only; current releases have no obligation
+to inspect, resume, or regenerate Runs from older versions under the
+[version-support policy](../../../../docs/design/decisions/platform-direction.md#version-support).
+Execution and reuse recheck file-backed and installed-package identities and
+reject drift.

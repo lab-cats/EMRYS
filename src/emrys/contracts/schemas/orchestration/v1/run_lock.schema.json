@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:emrys:schema:orchestration:run-lock:v1",
-  "title": "EMRYS owned local run lock v1",
+  "$id": "urn:emrys:schema:orchestration:run-lock:v2",
+  "title": "EMRYS owned local run lock v2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -9,6 +9,7 @@
     "run_id",
     "workflow_attempt_id",
     "attempt_record_path",
+    "attempt_record_sha256",
     "owner_token",
     "process_id",
     "host",
@@ -16,7 +17,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "emrys.run-lock.v1"
+      "const": "emrys.run-lock.v2"
     },
     "run_id": {
       "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/run_id"
@@ -26,6 +27,9 @@
     },
     "attempt_record_path": {
       "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/relative_contract_path"
+    },
+    "attempt_record_sha256": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256"
     },
     "owner_token": {
       "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"

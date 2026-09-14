@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import base64
+import csv
+import io
 import hashlib
 import json
 import sys
@@ -37,9 +39,7 @@ def with_owner_doubles(plan: AttemptPlan) -> AttemptPlan:
             selected.data,
             selected.path,
         )
-        rows_by_id = {
-            str(row["sample_id"]): row for row in source["samples"]["rows"]
-        }
+        rows_by_id = {str(row["sample_id"]): row for row in source["samples"]["rows"]}
         source["samples"] = {
             **source["samples"],
             "rows": [rows_by_id[str(row["sample_id"])] for row in selected_rows],
@@ -54,7 +54,11 @@ def with_owner_doubles(plan: AttemptPlan) -> AttemptPlan:
         plan.run.analysis.profile,
         plan.run.analysis.revision,
     )
-    rows = tuple(dict(row) for row in reporting.artifact_inventory_rows)
+    rows = tuple(
+        csv.DictReader(
+            io.StringIO(reporting.artifact_inventory_bytes.decode()), delimiter="\t"
+        )
+    )
     raw_payloads = workflow.artifact_payloads(
         rows,
         source,
@@ -65,18 +69,18 @@ def with_owner_doubles(plan: AttemptPlan) -> AttemptPlan:
         path = Path(raw)
         payloads[path if path.is_absolute() else plan.run_root / path] = data
 
-    replacement_files = []
-    dispatch_sha: dict[Path, str] = {}
-    dispatch_paths = {item.path for item in plan.new_dispatch_files}
-    for item in plan.attempt_files:
-        if item.path not in dispatch_paths:
-            replacement_files.append(item)
-            continue
-        record = json.loads(item.data)
+    attempt = json.loads(plan.attempt_record_bytes)
+    records = (
+        record
+        for by_scope in attempt["tasks"].values()
+        for record in by_scope.values()
+        if "workflow_attempt_record" not in record
+    )
+    for record in records:
         payload_record = {
             "producer": [
                 {
-                    "path": output["path"],
+                    "path": output["working_path"],
                     "data_base64": base64.b64encode(
                         payloads[Path(output["path"])]
                     ).decode(),
@@ -112,35 +116,8 @@ def with_owner_doubles(plan: AttemptPlan) -> AttemptPlan:
                 payload_argument,
             )
         )
-        data = orchestration_contracts.canonical_json_bytes(record)
-        replacement_files.append(replace(item, data=data))
-        dispatch_sha[item.path] = hashlib.sha256(data).hexdigest()
-
-    config_index = next(
-        index
-        for index, item in enumerate(replacement_files)
-        if "/contract/workflow-configs/" in str(item.path)
-    )
-    config_file = replacement_files[config_index]
-    config = json.loads(config_file.data)
-    for by_scope in config["dispatch_paths"].values():
-        for reference in by_scope.values():
-            path = Path(reference["path"])
-            if path in dispatch_sha:
-                reference["sha256"] = dispatch_sha[path]
-    config_data = orchestration_contracts.canonical_json_bytes(config)
-    replacement_files[config_index] = replace(config_file, data=config_data)
-    attempt = dict(plan.attempt_record)
-    attempt["workflow_config"] = {
-        **attempt["workflow_config"],
-        "sha256": hashlib.sha256(config_data).hexdigest(),
-    }
     orchestration_contracts.validate_record("workflow-attempt", attempt)
     return replace(
         plan,
         attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
-        attempt_files=tuple(replacement_files),
-        new_dispatch_files=tuple(
-            item for item in replacement_files if item.path in dispatch_paths
-        ),
     )

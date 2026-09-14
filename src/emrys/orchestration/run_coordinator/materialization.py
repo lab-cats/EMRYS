@@ -56,9 +56,11 @@ from emrys.orchestration.run_coordinator.run_implementation import (
     processing_implementation_identity,
 )
 from emrys.libraries.process_environment import (
+    guarded_rscript_argv,
     R_SELECTOR_PREFIXES,
     R_STARTUP_VARIABLES,
     guarded_r_environment,
+    command_flags,
 )
 
 Operation = Literal["execute", "resume"]
@@ -91,29 +93,10 @@ class RunCandidate:
 
 
 @dataclass(frozen=True, slots=True)
-class HistoricalRun:
-    """Exact existing execution.v1 authority retained only for resume."""
-
-    analysis: AnalysisAdmission
-    run_id: str
-    execution_projection_bytes: bytes
-
-    @property
-    def execution_projection(self) -> dict[str, Any]:
-        return orchestration_contracts.load_json_object_bytes(
-            self.execution_projection_bytes,
-            "historical execution.v1",
-        )
-
-
-MaterializedRun = RunCandidate | HistoricalRun
-
-
-@dataclass(frozen=True, slots=True)
 class AttemptPlan:
     """Pure, complete publication and command plan for one workflow attempt."""
 
-    run: MaterializedRun
+    run: RunCandidate
     readiness: doctor.DoctorResult
     resources: ResourcePlan
     operation: Operation
@@ -123,9 +106,9 @@ class AttemptPlan:
     attempt_record_bytes: bytes
     fixed_files: tuple[PlannedFile, ...]
     attempt_files: tuple[PlannedFile, ...]
-    new_dispatch_files: tuple[PlannedFile, ...]
+    new_task_count: int
     directories: tuple[Path, ...]
-    dispatch_count: int
+    task_count: int
 
     @property
     def attempt_record(self) -> dict[str, Any]:
@@ -137,8 +120,8 @@ class AttemptPlan:
         )
 
     @property
-    def config_path(self) -> Path:
-        return self.run_root / str(self.attempt_record["workflow_config"]["path"])
+    def attempt_path(self) -> Path:
+        return self.run_root / "attempts" / self.workflow_attempt_id / "attempt.json"
 
     @property
     def lifecycle_request(self) -> lifecycle.LifecycleRequest:
@@ -148,10 +131,10 @@ class AttemptPlan:
             run_root=self.run_root,
             execution_path=self.execution_path,
             profile_path=self.profile_path,
-            workflow_config_path=self.config_path,
-            snakefile=self.readiness.source_root / SNAKEFILE_RELATIVE,
+            snakefile=self.readiness.installed_package.root / SNAKEFILE_RELATIVE,
             python_executable=Path(sys.executable),
-            workflow_profile=self.readiness.source_root / WORKFLOW_PROFILE_RELATIVE,
+            workflow_profile=self.readiness.installed_package.root
+            / WORKFLOW_PROFILE_RELATIVE,
             target=BACKEND_TARGET,
             operation=self.operation,
             attempt_record_bytes=self.attempt_record_bytes,
@@ -160,7 +143,7 @@ class AttemptPlan:
 
     @property
     def execution_path(self) -> Path:
-        return _execution_path(self.run, self.run_root)
+        return self.run_root / "contract" / "run.json"
 
     @property
     def profile_path(self) -> Path:
@@ -195,6 +178,10 @@ def build_run_candidate(
 ) -> RunCandidate:
     """Construct the complete Run before allocation or Attempt identity exists."""
 
+    if readiness.installed_package is None:
+        raise MaterializationError(
+            "Run planning requires an admitted installed package"
+        )
     required_tools = doctor.required_tool_identities(
         readiness.inspection,
         bindings=readiness.bindings,
@@ -211,14 +198,14 @@ def build_run_candidate(
     executes_module = bool(module_owner_keys & set(stopping_owner_keys))
     try:
         implementation_sha256 = implementation_identity(
-            readiness.source_root,
+            readiness.installed_package.root,
             analysis.module.descriptor.module_id if executes_module else None,
             loaded_module=analysis.module if executes_module else None,
         )
         processing_implementation_sha256 = processing_implementation_identity(
-            readiness.source_root
+            readiness.installed_package.root
         )
-        backend_sha256 = backend_semantics_identity(readiness.source_root)
+        backend_sha256 = backend_semantics_identity(readiness.installed_package.root)
     except RunImplementationError as exc:
         raise MaterializationError(str(exc)) from exc
     toolchain = toolchain_from_required_tools(required_tools)
@@ -248,11 +235,6 @@ def build_run_candidate(
     return RunCandidate(analysis, plan, bind_run(analysis.revision, plan))
 
 
-def _execution_path(run: MaterializedRun, root: Path) -> Path:
-    name = "run.json" if isinstance(run, RunCandidate) else "normalized.json"
-    return root / "contract" / name
-
-
 def _within(path: Path, root: Path, label: str) -> None:
     try:
         path.relative_to(root)
@@ -273,45 +255,24 @@ def _one(paths: Mapping[str, list[Path]], adapter: str) -> Path:
     return values[0]
 
 
-def _scope_ids(
-    source: Mapping[str, Any], analysis: AnalysisRevision | None
-) -> tuple[str, str, str]:
-    if analysis is not None:
-        return tuple(
-            analysis.scope_id(scope)
-            for scope in ("reference", "cohort", "analysis")
-        )
-    return (
-        str(source["reference"]["reference_id"]),
-        str(source["analysis"]["cohort_id"]),
-        str(source["analysis"]["primary_analysis_id"]),
-    )
-
-
 def _readmit_execution_module(
-    run: MaterializedRun,
+    run: RunCandidate,
     source: Mapping[str, Any],
 ) -> analysis_modules.LoadedAnalysisModuleV1:
     try:
         policy = source["analysis"]["policy"]
         loaded = analysis_modules.readmit_analysis_module(policy)
-        if (
-            isinstance(run, RunCandidate)
-            and policy.get("schema_version") == "emrys.analysis-module-policy.v1"
-        ):
-            module = policy["module"]
-            revision_module = run.analysis.revision.record["identity"][
-                "analysis_module"
-            ]
-            expected = {
-                key: module[key]
-                for key in ("module_id", "interface_version", "module_version")
-            }
-            expected["configuration"] = policy["configuration"]
-            if revision_module != expected:
-                raise analysis_modules.AnalysisModuleLoadError(
-                    "Analysis revision differs from persisted module policy"
-                )
+        module = policy["module"]
+        revision_module = run.analysis.revision.record["identity"]["analysis_module"]
+        expected = {
+            key: module[key]
+            for key in ("module_id", "interface_version", "module_version")
+        }
+        expected["configuration"] = policy["configuration"]
+        if revision_module != expected:
+            raise analysis_modules.AnalysisModuleLoadError(
+                "Analysis revision differs from persisted module policy"
+            )
         return loaded
     except (analysis_modules.AnalysisModuleLoadError, KeyError, TypeError) as exc:
         raise MaterializationError(str(exc)) from exc
@@ -363,10 +324,13 @@ def _r_owner_command(
 def _task_commands(
     *,
     step_id: str,
+    producer_path: Path,
     scope_id: str,
     paths: Mapping[str, list[Path]],
+    validation: Path,
+    working_paths: Mapping[Path, Path],
     source: Mapping[str, Any],
-    analysis_revision: AnalysisRevision | None,
+    analysis_revision: AnalysisRevision,
     run_root: Path,
     source_root: Path,
     runtime: Mapping[str, Any],
@@ -378,27 +342,14 @@ def _task_commands(
         str(row["partition_id"]): row for row in source["partitions"]["rows"]
     }
     reference = source["reference"]
-    analysis = source["analysis"]
     sample_manifest = Path(str(source["samples"]["manifest"]["path"]))
     partition_manifest = Path(str(source["partitions"]["manifest"]["path"]))
     fasta = Path(str(reference["fasta"]["path"]))
     gtf = Path(str(reference["gtf"]["path"]))
-    reference_id = (
-        analysis_revision.scope_id("reference")
-        if analysis_revision is not None
-        else str(reference["reference_id"])
-    )
-    cohort_id = (
-        analysis_revision.scope_id("cohort")
-        if analysis_revision is not None
-        else str(analysis["cohort_id"])
-    )
+    reference_id = analysis_revision.scope_id("reference")
+    cohort_id = analysis_revision.scope_id("cohort")
     partition_scopes = {
-        partition_id: (
-            analysis_revision.scope_id("cohort_partition", partition_id)
-            if analysis_revision is not None
-            else f"{cohort_id}__{partition_id}"
-        )
+        partition_id: analysis_revision.scope_id("cohort_partition", partition_id)
         for partition_id in partition_rows
     }
     bash = _runtime_path(runtime, "bash")
@@ -412,19 +363,6 @@ def _task_commands(
     gunzip = _runtime_path(runtime, "gunzip")
     rscript = _runtime_path(runtime, "rscript")
     renv_library = Path(_runtime_path(runtime, "renv_library"))
-    validation = next(
-        (
-            path
-            for adapter, values in paths.items()
-            if adapter.endswith("_validation_report_v1")
-            for path in values
-        ),
-        None,
-    )
-    if validation is None:
-        raise MaterializationError(
-            f"No validation report for Step {step_id}/{scope_id}"
-        )
 
     def declared_threads() -> int:
         if threads is None:
@@ -445,43 +383,38 @@ def _task_commands(
         index_dir = index_members[0].parent
         producer = (
             bash,
-            str(
-                source_root / "src/emrys/stages/star_index/step_00a_build_star_index.sh"
+            str(source_root / producer_path),
+            *command_flags(
+                ("reference-fasta", fasta),
+                ("reference-gtf", gtf),
+                ("index-dir", working_paths[index_members[0]].parent),
+                ("threads", declared_threads()),
+                ("sjdb-overhang", reference["star_index"]["sjdb_overhang"]),
+                (
+                    "genome-sa-index-nbases",
+                    reference["star_index"]["genome_sa_index_nbases"],
+                ),
+                ("star-bin", star),
             ),
-            "--reference-fasta",
-            str(fasta),
-            "--reference-gtf",
-            str(gtf),
-            "--index-dir",
-            str(index_dir),
-            "--threads",
-            str(declared_threads()),
-            "--sjdb-overhang",
-            str(reference["star_index"]["sjdb_overhang"]),
-            "--genome-sa-index-nbases",
-            str(reference["star_index"]["genome_sa_index_nbases"]),
-            "--star-bin",
-            star,
-            "--execute",
         )
         validator = _validator(
             "star-index",
-            "--scope-id",
-            reference_id,
-            "--index-dir",
-            str(index_dir),
-            "--reference-fasta",
-            str(fasta),
-            "--reference-gtf",
-            str(gtf),
-            "--parameter-path-base",
-            str(run_root),
-            "--expected-sjdb-overhang",
-            str(reference["star_index"]["sjdb_overhang"]),
-            "--expected-genome-sa-index-nbases",
-            str(reference["star_index"]["genome_sa_index_nbases"]),
-            "--output",
-            str(validation),
+            *command_flags(
+                ("scope-id", reference_id),
+                ("index-dir", index_dir),
+                ("reference-fasta", fasta),
+                ("reference-gtf", gtf),
+                ("parameter-path-base", run_root),
+                (
+                    "expected-sjdb-overhang",
+                    reference["star_index"]["sjdb_overhang"],
+                ),
+                (
+                    "expected-genome-sa-index-nbases",
+                    reference["star_index"]["genome_sa_index_nbases"],
+                ),
+                ("output", validation),
+            ),
         )
         return producer, validator, (fasta, gtf)
 
@@ -490,25 +423,20 @@ def _task_commands(
         producer = controlled_python_argv(
             sys.executable,
             "-m",
-            "emrys",
-            "convert",
-            "gtf-to-bed12",
-            "--gtf",
-            str(gtf),
-            "--bed",
-            str(bed),
-            "--execute",
+            "emrys.stages.gtf_to_bed12.converter",
+            *command_flags(
+                ("gtf", gtf),
+                ("bed", working_paths[bed]),
+            ),
         )
         validator = _validator(
             "bed12",
-            "--scope-id",
-            reference_id,
-            "--bed12",
-            str(bed),
-            "--source-gtf",
-            str(gtf),
-            "--output",
-            str(validation),
+            *command_flags(
+                ("scope-id", reference_id),
+                ("bed12", bed),
+                ("source-gtf", gtf),
+                ("output", validation),
+            ),
         )
         return producer, validator, (gtf,)
 
@@ -517,32 +445,25 @@ def _task_commands(
         dictionary = _one(paths, "step00c_reference_dict_v1")
         producer = (
             bash,
-            str(
-                source_root
-                / "src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"
+            str(source_root / producer_path),
+            *command_flags(
+                ("reference-fasta", fasta),
+                ("reference-fai-output", working_paths[fai]),
+                ("reference-dict-output", working_paths[dictionary]),
+                ("samtools-bin", samtools),
+                ("gatk-bin", gatk),
+                ("java-bin", java),
             ),
-            "--reference-fasta",
-            str(fasta),
-            "--samtools-bin",
-            samtools,
-            "--gatk-bin",
-            gatk,
-            "--java-bin",
-            java,
-            "--execute",
         )
         validator = _validator(
             "fasta-sidecars",
-            "--scope-id",
-            reference_id,
-            "--reference-fasta",
-            str(fasta),
-            "--reference-fai",
-            str(fai),
-            "--reference-dict",
-            str(dictionary),
-            "--output",
-            str(validation),
+            *command_flags(
+                ("scope-id", reference_id),
+                ("reference-fasta", fasta),
+                ("reference-fai", fai),
+                ("reference-dict", dictionary),
+                ("output", validation),
+            ),
         )
         return producer, validator, (fasta,)
 
@@ -562,38 +483,27 @@ def _task_commands(
             producer = controlled_python_argv(
                 sys.executable,
                 "-m",
-                "emrys.stages.mechanical_orientation.producer",
-                "--sample-id",
-                scope_id,
-                "--input-bam",
-                str(split_bam),
-                "--output-dir",
-                str(fwd.parent),
-                "--qc-dir",
-                str(counts.parent),
-                "--threads",
-                str(declared_threads()),
-                "--samtools-bin",
-                samtools,
-                "--no-clobber",
-                "--execute",
+                ".".join(("emrys", *producer_path.with_suffix("").parts)),
+                *command_flags(
+                    ("sample-id", scope_id),
+                    ("input-bam", split_bam),
+                    ("output-dir", working_paths[fwd].parent),
+                    ("qc-dir", working_paths[counts].parent),
+                    ("threads", declared_threads()),
+                    ("samtools-bin", samtools),
+                ),
             )
             validator = _validator(
                 "mechanical-orientation",
-                "--scope-id",
-                scope_id,
-                "--fwd-bam",
-                str(fwd),
-                "--fwd-bai",
-                str(fwd_bai),
-                "--rev-bam",
-                str(rev),
-                "--rev-bai",
-                str(rev_bai),
-                "--counts",
-                str(counts),
-                "--output",
-                str(validation),
+                *command_flags(
+                    ("scope-id", scope_id),
+                    ("fwd-bam", fwd),
+                    ("fwd-bai", fwd_bai),
+                    ("rev-bam", rev),
+                    ("rev-bai", rev_bai),
+                    ("counts", counts),
+                    ("output", validation),
+                ),
             )
             return producer, validator, (split_bam, split_bai)
 
@@ -605,35 +515,26 @@ def _task_commands(
             log_out = _one(paths, "step01_star_log_v1")
             log_progress = _one(paths, "step01_star_log_progress_v1")
             sj_out = _one(paths, "step01_star_sj_v1")
-            script = "src/emrys/stages/star_alignment/step_01_star_align.sh"
             producer_arguments = (
-                "--r1-fastq",
-                str(sample["r1_fastq"]["path"]),
-                "--r2-fastq",
-                str(sample["r2_fastq"]["path"]),
-                "--star-index",
-                str(index_dir),
-                "--output-dir",
-                str(bam.parent),
-                "--threads",
-                str(declared_threads()),
-                "--star-bin",
-                star,
-                "--gunzip-bin",
-                gunzip,
+                *command_flags(
+                    ("r1-fastq", sample["r1_fastq"]["path"]),
+                    ("r2-fastq", sample["r2_fastq"]["path"]),
+                    ("star-index", index_dir),
+                    ("output-dir", working_paths[bam].parent),
+                    ("threads", declared_threads()),
+                    ("star-bin", star),
+                    ("gunzip-bin", gunzip),
+                ),
             )
             validator_name = "star-alignment"
             validator_arguments = (
-                "--bam",
-                str(bam),
-                "--log-final",
-                str(log_final),
-                "--log-out",
-                str(log_out),
-                "--log-progress",
-                str(log_progress),
-                "--sj-out",
-                str(sj_out),
+                *command_flags(
+                    ("bam", bam),
+                    ("log-final", log_final),
+                    ("log-out", log_out),
+                    ("log-progress", log_progress),
+                    ("sj-out", sj_out),
+                ),
             )
             input_paths = (
                 Path(str(sample["r1_fastq"]["path"])),
@@ -643,62 +544,51 @@ def _task_commands(
         elif step_id == "02":
             bam = _one(paths, "step02_canonical_bam_v1")
             bai = _one(paths, "step02_canonical_bai_v1")
-            script = "src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh"
             producer_arguments = (
-                "--input-alignment",
-                str(star_bam),
-                "--output-dir",
-                str(bam.parent),
-                "--threads",
-                str(declared_threads()),
-                "--samtools-bin",
-                samtools,
+                *command_flags(
+                    ("input-alignment", star_bam),
+                    ("output-dir", working_paths[bam].parent),
+                    ("threads", declared_threads()),
+                    ("samtools-bin", samtools),
+                ),
             )
             validator_name = "canonical-bam"
             validator_arguments = (
-                "--bam",
-                str(bam),
-                "--bai",
-                str(bai),
-                "--samtools-bin",
-                samtools,
+                *command_flags(
+                    ("bam", bam),
+                    ("bai", bai),
+                    ("samtools-bin", samtools),
+                ),
             )
             input_paths = (star_bam,)
         elif step_id == "02b":
             quickcheck = _one(paths, "step02b_quickcheck_v1")
             flagstat = _one(paths, "step02b_flagstat_v1")
-            script = "src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh"
             producer_arguments = (
-                "--bam",
-                str(canonical_bam),
-                "--output-dir",
-                str(quickcheck.parent),
-                "--samtools-bin",
-                samtools,
+                *command_flags(
+                    ("bam", canonical_bam),
+                    ("output-dir", working_paths[quickcheck].parent),
+                    ("samtools-bin", samtools),
+                ),
             )
             validator_name = "canonical-bam-qc"
             validator_arguments = (
-                "--quickcheck",
-                str(quickcheck),
-                "--flagstat",
-                str(flagstat),
+                *command_flags(
+                    ("quickcheck", quickcheck),
+                    ("flagstat", flagstat),
+                ),
             )
             input_paths = (canonical_bam, canonical_bai)
         elif step_id == "03":
             infer = _one(paths, "step03_rseqc_infer_v1")
             bed = _one(all_paths["00b", reference_id], "step00b_bed12_v1")
-            script = (
-                "src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"
-            )
             producer_arguments = (
-                "--input-bam",
-                str(canonical_bam),
-                "--bed12",
-                str(bed),
-                "--output-dir",
-                str(infer.parent),
-                "--infer-experiment-bin",
-                infer_experiment,
+                *command_flags(
+                    ("input-bam", canonical_bam),
+                    ("bed12", bed),
+                    ("output-dir", working_paths[infer].parent),
+                    ("infer-experiment-bin", infer_experiment),
+                ),
             )
             validator_name = "rseqc-orientation"
             validator_arguments = ("--infer-report", str(infer))
@@ -707,31 +597,24 @@ def _task_commands(
             bam = _one(paths, "step04_markdup_bam_v1")
             bai = _one(paths, "step04_markdup_bai_v1")
             metrics = _one(paths, "step04_markdup_metrics_v1")
-            script = "src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh"
             producer_arguments = (
-                "--input-bam",
-                str(canonical_bam),
-                "--output-dir",
-                str(bam.parent),
-                "--metrics-dir",
-                str(metrics.parent),
-                "--picard-jar",
-                picard_jar,
-                "--java-bin",
-                java,
-                "--samtools-bin",
-                samtools,
+                *command_flags(
+                    ("input-bam", canonical_bam),
+                    ("output-dir", working_paths[bam].parent),
+                    ("metrics-dir", working_paths[metrics].parent),
+                    ("picard-jar", picard_jar),
+                    ("java-bin", java),
+                    ("samtools-bin", samtools),
+                ),
             )
             validator_name = "duplicate-marking"
             validator_arguments = (
-                "--bam",
-                str(bam),
-                "--bai",
-                str(bai),
-                "--metrics",
-                str(metrics),
-                "--samtools-bin",
-                samtools,
+                *command_flags(
+                    ("bam", bam),
+                    ("bai", bai),
+                    ("metrics", metrics),
+                    ("samtools-bin", samtools),
+                ),
             )
             input_paths = (canonical_bam, canonical_bai, Path(picard_jar))
         elif step_id == "05":
@@ -743,45 +626,34 @@ def _task_commands(
             dictionary = _one(
                 all_paths["00c", reference_id], "step00c_reference_dict_v1"
             )
-            script = "src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
             producer_arguments = (
-                "--input-bam",
-                str(markdup_bam),
-                "--reference-fasta",
-                str(fasta),
-                "--output-dir",
-                str(bam.parent),
-                "--gatk-bin",
-                gatk,
-                "--samtools-bin",
-                samtools,
-                "--java-bin",
-                java,
+                *command_flags(
+                    ("input-bam", markdup_bam),
+                    ("reference-fasta", fasta),
+                    ("output-dir", working_paths[bam].parent),
+                    ("gatk-bin", gatk),
+                    ("samtools-bin", samtools),
+                    ("java-bin", java),
+                ),
             )
             validator_name = "split-n-cigar"
             validator_arguments = (
-                "--bam",
-                str(bam),
-                "--bai",
-                str(bai),
-                "--reference-fasta",
-                str(fasta),
-                "--reference-fai",
-                str(fai),
-                "--reference-dict",
-                str(dictionary),
-                "--samtools-bin",
-                samtools,
+                *command_flags(
+                    ("bam", bam),
+                    ("bai", bai),
+                    ("reference-fasta", fasta),
+                    ("reference-fai", fai),
+                    ("reference-dict", dictionary),
+                    ("samtools-bin", samtools),
+                ),
             )
             input_paths = (markdup_bam, markdup_bai, fasta, fai, dictionary)
         producer = (
             bash,
-            str(source_root / script),
+            str(source_root / producer_path),
             "--sample-id",
             scope_id,
             *producer_arguments,
-            "--no-clobber",
-            "--execute",
         )
         validator = _validator(
             validator_name,
@@ -822,53 +694,40 @@ def _task_commands(
                 )
             )
         orientation_root = orientation_inputs[0].parents[1]
-        mpileup_root = fwd.parents[2]
         fai = _one(all_paths["00c", reference_id], "step00c_reference_fai_v1")
         producer = controlled_python_argv(
             sys.executable,
             "-m",
-            "emrys.stages.partitioned_cohort_mpileup.producer",
-            "--cohort-id",
-            cohort_id,
-            "--sample-manifest",
-            str(sample_manifest),
-            "--partition-manifest",
-            str(partition_manifest),
-            "--partition-id",
-            partition_id,
-            "--orientation-root",
-            str(orientation_root),
-            "--reference-fasta",
-            str(fasta),
-            "--output-root",
-            str(mpileup_root),
-            "--bcftools-bin",
-            bcftools,
-            "--no-clobber",
-            "--execute",
+            ".".join(("emrys", *producer_path.with_suffix("").parts)),
+            *command_flags(
+                ("cohort-id", cohort_id),
+                ("sample-manifest", sample_manifest),
+                ("partition-manifest", partition_manifest),
+                ("partition-id", partition_id),
+                ("orientation-root", orientation_root),
+                ("reference-fasta", fasta),
+                ("fwd-vcf-output", working_paths[fwd]),
+                ("rev-vcf-output", working_paths[rev]),
+                ("receipt-output", working_paths[receipt]),
+                ("fwd-vcf-final", fwd),
+                ("rev-vcf-final", rev),
+                ("bcftools-bin", bcftools),
+            ),
         )
         validator = _validator(
             "partitioned-cohort-mpileup",
-            "--scope-id",
-            scope_id,
-            "--cohort-id",
-            cohort_id,
-            "--partition-id",
-            partition_id,
-            "--sample-manifest",
-            str(sample_manifest),
-            "--partition-manifest",
-            str(partition_manifest),
-            "--reference-fai",
-            str(fai),
-            "--fwd-vcf",
-            str(fwd),
-            "--rev-vcf",
-            str(rev),
-            "--receipt",
-            str(receipt),
-            "--output",
-            str(validation),
+            *command_flags(
+                ("scope-id", scope_id),
+                ("cohort-id", cohort_id),
+                ("partition-id", partition_id),
+                ("sample-manifest", sample_manifest),
+                ("partition-manifest", partition_manifest),
+                ("reference-fai", fai),
+                ("fwd-vcf", fwd),
+                ("rev-vcf", rev),
+                ("receipt", receipt),
+                ("output", validation),
+            ),
         )
         selector = partition.get("selector_file")
         selector_inputs = () if selector is None else (Path(str(selector["path"])),)
@@ -897,61 +756,48 @@ def _task_commands(
         )
         step07_root = step07_inputs[0].parents[2]
         arguments = (
-            "--cohort-id",
-            cohort_id,
-            "--sample-manifest",
-            str(sample_manifest),
-            "--partition-manifest",
-            str(partition_manifest),
-            "--step07-root",
-            str(step07_root),
-            "--annotation-gtf",
-            str(gtf),
-            "--output-root",
-            str(sites.parents[1]),
-            "--qc-root",
-            str(summary.parent),
-            "--threads",
-            str(declared_threads()),
-            "--rscript-bin",
-            rscript,
-            "--r-script",
-            str(
-                source_root
-                / "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"
+            *command_flags(
+                ("cohort-id", cohort_id),
+                ("sample-manifest", sample_manifest),
+                ("partition-manifest", partition_manifest),
+                ("step07-root", step07_root),
+                ("annotation-gtf", gtf),
+                ("sites-output", working_paths[sites]),
+                ("inputs-output", working_paths[inputs]),
+                ("summary-output", working_paths[summary]),
+                ("threads", declared_threads()),
             ),
-            "--no-clobber",
-            "--execute",
         )
         producer = _r_owner_command(
             bash,
             source_root,
             renv_library,
-            controlled_python_argv(
-                sys.executable,
-                "-m",
-                "emrys.stages.cohort_candidate_preprocessing.producer",
-                *arguments,
+            tuple(
+                guarded_rscript_argv(
+                    rscript,
+                    (
+                        str(
+                            source_root
+                            / "stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"
+                        ),
+                        *arguments,
+                    ),
+                )
             ),
         )
         validator = _validator(
             "cohort-candidate-preprocessing",
-            "--cohort-id",
-            cohort_id,
-            "--sample-manifest",
-            str(sample_manifest),
-            "--partition-manifest",
-            str(partition_manifest),
-            "--annotation-gtf",
-            str(gtf),
-            "--sites",
-            str(sites),
-            "--inputs",
-            str(inputs),
-            "--summary",
-            str(summary),
-            "--output",
-            str(validation),
+            *command_flags(
+                ("cohort-id", cohort_id),
+                ("sample-manifest", sample_manifest),
+                ("partition-manifest", partition_manifest),
+                ("annotation-gtf", gtf),
+                ("step07-root", step07_root),
+                ("sites", sites),
+                ("inputs", inputs),
+                ("summary", summary),
+                ("output", validation),
+            ),
         )
         return (
             producer,
@@ -962,25 +808,92 @@ def _task_commands(
     raise MaterializationError(f"Unsupported core processing Step: {step_id}")
 
 
-def _dispatches(
-    run: MaterializedRun,
+def _publication_plan(
+    step_id: str,
+    scope_id: str,
+    outputs: Sequence[Path],
+    source: Mapping[str, Any],
+    all_paths: Mapping[tuple[str, str], Mapping[str, list[Path]]],
+    reference_id: str,
+) -> dict[str, Any]:
+    """Bind native publication and retained recovery locations to this plan."""
+    parents = tuple(dict.fromkeys(path.parent for path in outputs))
+    directory = outputs[0].parent if step_id == "00a" else None
+    input_directories = (
+        [all_paths["00a", reference_id]["step00a_star_index_v1"][0].parent]
+        if step_id == "01"
+        else []
+    )
+    if step_id == "00a":
+        assert directory is not None
+        lock = directory.parent / f".{directory.name}.step00a.lock"
+        forbidden = [directory.parent / f".{directory.name}.step00a.*"]
+    elif step_id == "00b":
+        bed = outputs[0]
+        lock = bed.parent / f".{bed.name}.step00b.lock"
+        forbidden = [bed.parent / f".{bed.name}.step00b.*"]
+    elif step_id == "00c":
+        fasta = Path(str(source["reference"]["fasta"]["path"]))
+        dictionary = next(path for path in outputs if path.suffix == ".dict")
+        lock = fasta.parent / ".step_00c_prepare_gatk_reference.lock"
+        forbidden = [
+            lock,
+            *(
+                fasta.parent / pattern
+                for pattern in (
+                    f"{fasta.name}.fai.tmp.*",
+                    f"{dictionary.name}.tmp.*",
+                    f"{fasta.name}.tmp.*.faidx_input",
+                    f"{fasta.name}.tmp.*.faidx_input.fai",
+                )
+            ),
+        ]
+    else:
+        stem = scope_id
+        if step_id == "07":
+            receipt = next(
+                path for path in outputs if path.name.endswith(".step07_outputs.tsv")
+            )
+            stem = receipt.name.removesuffix(".step07_outputs.tsv")
+        elif step_id == "08":
+            stem = next(
+                path for path in outputs if path.name.endswith(".step08_sites.tsv")
+            ).name.removesuffix(".step08_sites.tsv")
+        label = "scientific-context" if step_id == "10" else f"step{step_id}"
+        lock_parent = next(
+            (path.parent for path in outputs if path.suffix == ".bam"), parents[0]
+        )
+        lock = lock_parent / f".{stem}.{label}.lock"
+        pattern = f".{stem}.*" if step_id == "09" else f".{stem}.{label}.*"
+        forbidden = [parent / pattern for parent in parents]
+        if step_id == "05":
+            forbidden.append(lock_parent / ".step_05_split_n_cigar_reads.lock")
+        if step_id == "10":
+            forbidden.extend(parent / f".{stem}.*.previous" for parent in parents)
+    return {
+        "locks": [str(lock)],
+        "forbidden_paths": [str(path) for path in forbidden],
+        "output_directory": None if directory is None else str(directory),
+        "input_directories": [str(path) for path in input_directories],
+    }
+
+
+def _tasks(
+    run: RunCandidate,
     source: Mapping[str, Any],
     readiness: doctor.DoctorResult,
     run_root: Path,
     attempt_id: str,
     compact_time: str,
-    retained: Mapping[tuple[str, str], dict[str, str]],
+    retained: Mapping[tuple[str, str], dict[str, Any]],
     resources: ResourcePlan,
     processing_source_root: Path | None,
     processing_artifact_paths: Mapping[tuple[str, str, str], Path],
     bound_input_snapshots: Mapping[Path, Mapping[str, Any]],
-) -> tuple[
-    tuple[PlannedFile, ...], dict[str, dict[str, dict[str, str]]], tuple[Path, ...]
-]:
-    successor = isinstance(run, RunCandidate)
-    analysis_revision = run.analysis.revision if successor else None
+) -> tuple[dict[str, dict[str, dict[str, Any]]], tuple[Path, ...]]:
+    analysis_revision = run.analysis.revision
     profile = run.analysis.profile
-    inventory: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    paths_by_scope: dict[tuple[str, str], dict[str, list[Path]]] = {}
     for row in artifact_inventory.project_rows(
         source,
         profile,
@@ -988,33 +901,29 @@ def _dispatches(
         processing_source_root,
         processing_artifact_paths,
     ):
-        item = dict(row)
+        key = str(row["step_id"]), str(row["scope_id"])
         path = Path(str(row["source_path"]))
-        item["path"] = path if path.is_absolute() else run_root / path
-        inventory.setdefault((str(row["step_id"]), str(row["scope_id"])), []).append(item)
-    paths_by_scope: dict[tuple[str, str], dict[str, list[Path]]] = {}
-    for key, rows in inventory.items():
-        adapters: dict[str, list[Path]] = {}
-        for row in rows:
-            adapters.setdefault(str(row["adapter"]), []).append(row["path"])
-        paths_by_scope[key] = adapters
-    runtime = {
-        item.check.check_id: item for item in readiness.inspection.observations
-    }
-    planned: list[PlannedFile] = []
-    references: dict[str, dict[str, dict[str, str]]] = {}
-    directories: set[Path] = set()
-    authority = (
-        run.execution_projection
-        if isinstance(run, HistoricalRun)
-        else inspection.SuccessorRunAuthority(
-            run.analysis.revision, run.execution_plan, run.run_binding
+        paths_by_scope.setdefault(key, {}).setdefault(str(row["adapter"]), []).append(
+            path if path.is_absolute() else run_root / path
         )
+    runtime = {item.check.check_id: item for item in readiness.inspection.observations}
+    tasks: dict[str, dict[str, dict[str, Any]]] = {}
+    directories: set[Path] = set()
+    authority = inspection.SuccessorRunAuthority(
+        run.analysis.revision, run.execution_plan, run.run_binding
     )
     expected = inspection.expected_tasks(authority, profile)
     owners = {str(item["machine_key"]): item for item in profile["owner_tasks"]}
-    if readiness.source_commit is None:
-        raise MaterializationError("Task planning requires an admitted source commit")
+    if readiness.installed_package is None:
+        raise MaterializationError(
+            "Task planning requires an admitted installed package"
+        )
+    processing = {
+        task["machine_key"]: task
+        for task in artifact_inventory.processing_tasks(
+            readiness.installed_package.root
+        )
+    }
     module = run.analysis.module.descriptor
     module_tasks = {task.owner_key: task for task in module.tasks}
     scheduled_module_owners = {
@@ -1040,48 +949,29 @@ def _dispatches(
                     f"Analysis module Step {requirement.step_id} requires at least "
                     f"{requirement.minimum_threads} threads"
                 )
-    reference_id, cohort_id, analysis_id = _scope_ids(source, analysis_revision)
-    analysis_identity = (
-        None if analysis_revision is None else analysis_revision.record["identity"]
+    reference_id, cohort_id, analysis_id = (
+        analysis_revision.scope_id(scope)
+        for scope in ("reference", "cohort", "analysis")
     )
     scope_ids = {
-        "reference": (reference_id,),
+        "reference": (analysis_revision.scope_id("reference"),),
         "sample": tuple(
             str(row["sample_id"])
-            for row in (
-                source["samples"]["rows"]
-                if analysis_identity is None
-                else analysis_identity["samples"]
-            )
+            for row in analysis_revision.record["identity"]["samples"]
         ),
         "cohort_partition": tuple(
-            (
-                f"{cohort_id}__{row['partition_id']}"
-                if analysis_revision is None
-                else analysis_revision.scope_id(
-                    "cohort_partition", str(row["partition_id"])
-                )
-            )
+            analysis_revision.scope_id("cohort_partition", str(row["partition_id"]))
             for row in source["partitions"]["rows"]
         ),
-        "cohort": (cohort_id,),
-        "analysis": (analysis_id,),
+        "cohort": (analysis_revision.scope_id("cohort"),),
+        "analysis": (analysis_revision.scope_id("analysis"),),
     }
-    policy = source["analysis"]["policy"]
-    configuration = (
-        dict(policy["configuration"])
-        if policy["schema_version"] == "emrys.analysis-module-policy.v1"
-        else {
-            key: value
-            for key, value in policy.items()
-            if key not in {"schema_version", "analysis_id"}
-        }
-    )
+    configuration = dict(source["analysis"]["policy"]["configuration"])
     for index, task in enumerate(expected, start=1):
         identity = (task.machine_key, task.scope_id)
-        references.setdefault(task.machine_key, {})
+        tasks.setdefault(task.machine_key, {})
         if identity in retained:
-            references[task.machine_key][task.scope_id] = dict(retained[identity])
+            tasks[task.machine_key][task.scope_id] = dict(retained[identity])
             continue
         owner = owners[task.machine_key]
         step_id = str(owner["step_id"])
@@ -1107,15 +997,44 @@ def _dispatches(
             if adapter != validation_adapter and adapter != "step00c_reference_fasta_v1"
             for path in values
         )
+        if step_id == "08":
+            outputs = tuple(
+                _one(adapters, adapter)
+                for adapter in (
+                    "step08_sites_v1",
+                    "step08_summary_v1",
+                    "step08_inputs_v1",
+                )
+            )
+        elif step_id == "07":
+            outputs = tuple(sorted(adapters["step07_mpileup_vcf_v1"])) + (
+                _one(adapters, "step07_mpileup_receipt_v1"),
+            )
+        suffix = hashlib.sha256(
+            f"{attempt_id}:{task.machine_key}:{task.scope_id}".encode()
+        ).hexdigest()[:32]
+        owner_run_token = f"owner-{suffix}"
+        working_paths = {
+            path: (
+                path.parent.parent / f".{path.parent.name}.{owner_run_token}.work"
+                if step_id == "00a"
+                else path.parent / f".emrys-{owner_run_token}.work"
+            )
+            / path.name
+            for path in outputs
+        }
         if module_task is None:
             producer, validator, input_paths = _task_commands(
                 step_id=step_id,
+                producer_path=processing[task.machine_key]["producer_path"],
                 scope_id=task.scope_id,
                 paths=adapters,
+                validation=validation,
+                working_paths=working_paths,
                 source=source,
                 analysis_revision=analysis_revision,
                 run_root=run_root,
-                source_root=readiness.source_root,
+                source_root=readiness.installed_package.root,
                 runtime=runtime,
                 all_paths=paths_by_scope,
                 threads=(
@@ -1151,9 +1070,7 @@ def _dispatches(
                         declared_inputs[adapter] = tuple(
                             path
                             for scope in predecessor_scopes
-                            for path in paths_by_scope[
-                                predecessor_step, scope
-                            ][adapter]
+                            for path in paths_by_scope[predecessor_step, scope][adapter]
                         )
                     except KeyError as exc:
                         raise MaterializationError(
@@ -1168,20 +1085,25 @@ def _dispatches(
                 orchestration_contracts.canonical_json_bytes(configuration),
                 "analysis-module planning configuration",
             )
-            context = analysis_modules.TaskPlanningContextV1(
+            context = analysis_modules.TaskPlanningContextV2(
                 reference_id=reference_id,
                 cohort_id=cohort_id,
                 analysis_id=analysis_id,
                 sample_manifest=Path(str(source["samples"]["manifest"]["path"])),
-                partition_manifest=Path(
-                    str(source["partitions"]["manifest"]["path"])
-                ),
+                partition_manifest=Path(str(source["partitions"]["manifest"]["path"])),
                 reference_fasta=Path(str(source["reference"]["fasta"]["path"])),
                 reference_gtf=Path(str(source["reference"]["gtf"]["path"])),
-                source_commit=str(readiness.source_commit),
+                source_commit=readiness.installed_package.git_commit or "unavailable",
                 configuration=_frozen_json(planning_configuration),
                 inputs=MappingProxyType(declared_inputs),
                 outputs=MappingProxyType(declared_outputs),
+                working_outputs=MappingProxyType(
+                    {
+                        adapter: working_paths[path]
+                        for adapter, path in declared_outputs.items()
+                        if adapter != validation_adapter
+                    }
+                ),
                 runtime_paths=MappingProxyType(
                     {
                         check_id: _runtime_path(runtime, check_id)
@@ -1193,7 +1115,7 @@ def _dispatches(
                 ),
                 r_owner_command=lambda command: _r_owner_command(
                     _runtime_path(runtime, "bash"),
-                    readiness.source_root,
+                    readiness.installed_package.root,
                     Path(_runtime_path(runtime, "renv_library")),
                     command,
                 ),
@@ -1206,7 +1128,7 @@ def _dispatches(
                 raise MaterializationError(
                     f"Analysis module task planning failed for {task.machine_key}: {exc}"
                 ) from exc
-            if not isinstance(commands, analysis_modules.TaskCommandPlanV1):
+            if not isinstance(commands, analysis_modules.TaskCommandPlanV2):
                 raise MaterializationError(
                     f"Analysis module returned no task plan for {task.machine_key}"
                 )
@@ -1235,7 +1157,9 @@ def _dispatches(
                     )
                     for dependency in sorted(
                         module.dependencies,
-                        key=lambda item: item if isinstance(item, str) else item.dependency_id,
+                        key=lambda item: (
+                            item if isinstance(item, str) else item.dependency_id
+                        ),
                     )
                     if isinstance(dependency, analysis_modules.AnalysisDependencyV1)
                     and dependency.kind in {"executable", "file"}
@@ -1270,38 +1194,15 @@ def _dispatches(
                 for output in module_task.outputs
                 if output.adapter != validation_adapter
             )
-        suffix = hashlib.sha256(
-            f"{attempt_id}:{task.machine_key}:{task.scope_id}".encode()
-        ).hexdigest()[:32]
-        owner_run_token = f"owner-{suffix}"
-        if step_id == "00b":
-            producer = (*producer, "--run-token", owner_run_token)
         producer = (
-            _runtime_path(runtime, "bash"), "-c",
-            'export EMRYS_RUN_TOKEN="$1" EMRYS_SHA256_PYTHON="$2" '
-            'EMRYS_REQUIRE_BOUND_SHA256=1; shift 2; exec "$@"',
-            "emrys-owner",
-            owner_run_token,
+            _runtime_path(runtime, "bash"),
+            "-c",
+            'export EMRYS_SHA256_PYTHON="$1"; shift; exec "$@"',
+            "emrys-scientific-worker",
             _runtime_path(runtime, "sha256_python"),
             *producer,
         )
         task_id = f"task-{compact_time}-{suffix}"
-        task_root = (
-            run_root
-            / "attempts"
-            / attempt_id
-            / "tasks"
-            / task.machine_key
-            / task.scope_id
-        )
-        dispatch_path = (
-            run_root
-            / "contract"
-            / "dispatch"
-            / attempt_id
-            / task.machine_key
-            / f"{task.scope_id}.json"
-        )
         input_declarations = []
         for role, path in planned_inputs:
             declaration = {
@@ -1326,48 +1227,26 @@ def _dispatches(
                 )
             input_declarations.append(declaration)
         record = {
-            "schema_version": "emrys.local-task-dispatch.v1",
-            "run_root": str(run_root),
-            "execution_path": str(_execution_path(run, run_root)),
-            "profile_path": str(run_root / "contract/profile.json"),
-            "workflow_attempt_id": attempt_id,
             "task_attempt_id": task_id,
             "owner_run_token": owner_run_token,
-            "machine_key": task.machine_key,
-            "scope": task.scope,
+            "scope_type": task.scope["scope_type"],
             "producer_argv": list(producer),
             "validator_argv": list(validator),
             "inputs": input_declarations,
             "outputs": [
-                {"role": role, "path": str(path)}
+                {
+                    "role": role,
+                    "path": str(path),
+                    "working_path": str(working_paths[path]),
+                }
                 for role, path in planned_outputs
             ],
+            "publication": _publication_plan(
+                step_id, task.scope_id, outputs, source, paths_by_scope, reference_id
+            ),
             "validation_report_path": str(validation),
-            "native_receipt_path": None,
-            "task_start_path": str(
-                run_root
-                / "state"
-                / "task-starts"
-                / task.machine_key
-                / f"{task.scope_id}.json"
-            ),
-            "task_attempt_path": str(task_root / "task-attempt.json"),
-            "verified_task_path": str(
-                run_root
-                / "state"
-                / "verified"
-                / task.machine_key
-                / f"{task.scope_id}.json"
-            ),
-            "stdout_path": str(task_root / "stdout.log"),
-            "stderr_path": str(task_root / "stderr.log"),
         }
-        data = orchestration_contracts.canonical_json_bytes(record)
-        planned.append(PlannedFile(dispatch_path, data))
-        references[task.machine_key][task.scope_id] = {
-            "path": str(dispatch_path),
-            "sha256": _sha256(data),
-        }
+        tasks[task.machine_key][task.scope_id] = record
         output_directories = {
             path.parent for path in outputs if run_root in path.parents
         }
@@ -1379,14 +1258,13 @@ def _dispatches(
             output_directories = {next(iter(output_directories)).parent}
         directories.update(
             {
-                dispatch_path.parent,
                 validation.parent,
                 *output_directories,
                 run_root / "state" / "task-starts" / task.machine_key,
                 run_root / "state" / "verified" / task.machine_key,
             }
         )
-    return tuple(planned), references, tuple(sorted(directories))
+    return tasks, tuple(sorted(directories))
 
 
 def _admitted_input_snapshots(
@@ -1414,7 +1292,7 @@ def _admitted_input_snapshots(
 
 
 def build_attempt_plan(
-    run: MaterializedRun,
+    run: RunCandidate,
     readiness: doctor.DoctorResult,
     workspace: Path,
     *,
@@ -1422,22 +1300,14 @@ def build_attempt_plan(
     operation: Operation,
     placement: Mapping[str, Any] | None = None,
     supersedes_workflow_attempt_id: str | None = None,
-    retained_dispatches: Mapping[tuple[str, str], dict[str, str]] | None = None,
-    retained_runtime_profile_path: Path | None = None,
+    retained_tasks: Mapping[tuple[str, str], dict[str, Any]] | None = None,
     processing_source: inspection.ProcessingSourceAdmission | None = None,
 ) -> AttemptPlan:
     """Build one complete attempt without touching the filesystem."""
 
     analysis = run.analysis
-    successor = isinstance(run, RunCandidate)
-    executor = (
-        str(run.execution_plan.record["identity"]["backend"]["backend"])
-        if successor
-        else "local"
-    )
-    execution_bytes = (
-        run.run_binding.canonical_bytes if successor else run.execution_projection_bytes
-    )
+    executor = str(run.execution_plan.record["identity"]["backend"]["backend"])
+    execution_bytes = run.run_binding.canonical_bytes
     resource_policy_record = resources.policy_record()
     workflow_cores = resources.workflow_cores
     now = datetime.now(UTC).replace(microsecond=0)
@@ -1448,24 +1318,15 @@ def build_attempt_plan(
     owner_token = f"workflow-owner-{suffix}"
     workspace_path = _absolute(workspace)
     run_root = workspace_path / "runs" / run.run_id
-    source = (
-        run.execution_projection
-        if isinstance(run, HistoricalRun)
-        else {**run.analysis.workflow_inputs, "run_id": run.run_id}
-    )
+    source = {**run.analysis.workflow_inputs, "run_id": run.run_id}
     selected_sample_manifest = analysis.selected_sample_manifest_bytes
     selected_sample_file = None
     if (
-        successor
-        and selected_sample_manifest is not None
+        selected_sample_manifest is not None
         and execution_plan_boundary(run.execution_plan) == "analysis"
     ):
         selected_sample_path = (
-            run_root
-            / "contract"
-            / "workflow-inputs"
-            / attempt_id
-            / "samples.tsv"
+            run_root / "contract" / "workflow-inputs" / attempt_id / "samples.tsv"
         )
         source = {
             **source,
@@ -1482,11 +1343,7 @@ def build_attempt_plan(
             selected_sample_path,
             selected_sample_manifest,
         )
-    plan_source = (
-        run.execution_plan.record["identity"].get("processing_source")
-        if isinstance(run, RunCandidate)
-        else None
-    )
+    plan_source = run.execution_plan.record["identity"].get("processing_source")
     if (plan_source is None) != (processing_source is None) or (
         processing_source is not None and processing_source.binding != plan_source
     ):
@@ -1519,17 +1376,10 @@ def build_attempt_plan(
         if snapshot.get("role")
         in {"step00c_reference_fai_v1", "step00c_reference_dict_v1"}
     }
-    source_root = readiness.source_root
-    if retained_runtime_profile_path is not None:
-        if successor or operation != "resume":
-            raise MaterializationError(
-                "Only a historical resume may retain its predecessor runtime profile"
-            )
-        runtime_profile_path = _absolute(retained_runtime_profile_path)
-    else:
-        runtime_profile_path = (
-            run_root / "contract" / "runtime-profiles" / f"{attempt_id}.tsv"
-        )
+    source_root = readiness.installed_package.root
+    runtime_profile_path = (
+        run_root / "contract" / "runtime-profiles" / f"{attempt_id}.tsv"
+    )
     required_tools = doctor.required_tool_identities(
         readiness.inspection,
         bindings=readiness.bindings,
@@ -1542,8 +1392,8 @@ def build_attempt_plan(
         "name": "emrys",
         "version": __version__,
     }
-    retained = {} if retained_dispatches is None else dict(retained_dispatches)
-    dispatch_files, dispatch_references, dispatch_directories = _dispatches(
+    retained = {} if retained_tasks is None else dict(retained_tasks)
+    tasks, task_directories = _tasks(
         run,
         source,
         readiness,
@@ -1561,8 +1411,8 @@ def build_attempt_plan(
             source,
             analysis.profile,
             run_root,
-            analysis=(analysis.revision if successor else None),
-            attempt_id=(attempt_id if successor else None),
+            analysis=analysis.revision,
+            attempt_id=attempt_id,
             processing_source_root=processing_source_root,
             processing_artifact_paths=processing_artifact_paths,
         )
@@ -1573,34 +1423,13 @@ def build_attempt_plan(
             orchestration_contracts.canonical_json_bytes(analysis.profile),
         ),
     ]
-    if not successor:
-        fixed_files.extend(
-            (
-                PlannedFile(
-                    run_root / "contract/normalized.json",
-                    run.execution_projection_bytes,
-                ),
-                *(PlannedFile(path, data) for path, data in reporting_files),
-            )
-        )
-    config = {
-        "run_root": str(run_root),
-        "python_executable": sys.executable,
-        "execution_path": str(_execution_path(run, run_root)),
-        "profile_path": str(run_root / "contract/profile.json"),
-        "workflow_attempt_id": attempt_id,
-        "source_checkout": str(source_root),
-        **reporting_config,
-        "resource_policy": resource_policy_record,
-        "dispatch_paths": dispatch_references,
-    }
-    config_data = orchestration_contracts.canonical_json_bytes(config)
-    config_path = run_root / "contract" / "workflow-configs" / f"{attempt_id}.json"
+    workflow = {**reporting_config, "resource_policy": resource_policy_record}
+    attempt_path = run_root / "attempts" / attempt_id / "attempt.json"
     attempt_argv = lifecycle.build_snakemake_argv(
         python_executable=Path(sys.executable),
         snakefile=source_root / SNAKEFILE_RELATIVE,
         workflow_profile=source_root / WORKFLOW_PROFILE_RELATIVE,
-        configfile=config_path,
+        configfile=attempt_path,
         run_root=run_root,
         target=BACKEND_TARGET,
         operation=operation,
@@ -1609,7 +1438,7 @@ def build_attempt_plan(
     )
     authored_paths = analysis.authored_paths
     attempt = {
-        "schema_version": "emrys.workflow-attempt.v1",
+        "schema_version": "emrys.workflow-attempt.v3",
         "run_id": run.run_id,
         "execution_contract_sha256": _sha256(execution_bytes),
         "profile_sha256": _sha256(
@@ -1632,18 +1461,12 @@ def build_attempt_plan(
         "normalizer": normalizer_identity,
         "workspace": str(workspace_path),
         "scratch": None,
-        "source_checkout": {
-            "path": str(source_root),
-            "commit": readiness.source_commit,
-            "clean": True,
-        },
+        "installed_package": readiness.installed_package.record,
         "executor": executor,
         "execution_mode": "local-science-tools",
         "snakemake_argv": list(attempt_argv),
-        "workflow_config": {
-            "path": config_path.relative_to(run_root).as_posix(),
-            "sha256": _sha256(config_data),
-        },
+        "workflow": workflow,
+        "tasks": tasks,
         "host": socket.gethostname(),
         "process_id": os.getpid(),
         "owner_token": owner_token,
@@ -1652,55 +1475,41 @@ def build_attempt_plan(
     }
     if placement is not None:
         attempt["placement"] = dict(placement)
-    if successor:
-        selected_module_id = execution_module_id(
-            run.analysis.revision, run.execution_plan
+    selected_module_id = execution_module_id(run.analysis.revision, run.execution_plan)
+    try:
+        validate_successor_run(
+            analysis=analysis.revision,
+            plan=run.execution_plan,
+            run=run.run_binding,
+            profile=analysis.profile,
+            attempt=attempt,
+            resource_policy=resource_policy_record,
+            observed_implementation_content_sha256=implementation_identity(
+                source_root,
+                selected_module_id,
+                loaded_module=(
+                    analysis.module if selected_module_id is not None else None
+                ),
+            ),
+            observed_backend_semantics_sha256=backend_semantics_identity(source_root),
         )
-        try:
-            validate_successor_run(
-                analysis=analysis.revision,
-                plan=run.execution_plan,
-                run=run.run_binding,
-                profile=analysis.profile,
-                attempt=attempt,
-                resource_policy=resource_policy_record,
-                observed_implementation_content_sha256=implementation_identity(
-                    source_root,
-                    selected_module_id,
-                    loaded_module=(
-                        analysis.module if selected_module_id is not None else None
-                    ),
-                ),
-                observed_backend_semantics_sha256=backend_semantics_identity(
-                    source_root
-                ),
-            )
-        except (
-            orchestration_contracts.ContractValidationError,
-            RunImplementationError,
-        ) as exc:
-            raise MaterializationError(
-                f"Attempt differs from immutable Run: {exc}"
-            ) from exc
+    except (
+        orchestration_contracts.ContractValidationError,
+        RunImplementationError,
+    ) as exc:
+        raise MaterializationError(
+            f"Attempt differs from immutable Run: {exc}"
+        ) from exc
     orchestration_contracts.validate_record("workflow-attempt", attempt)
-    runtime_profile_files = (
-        ()
-        if retained_runtime_profile_path is not None
-        else (PlannedFile(runtime_profile_path, readiness.inspection.profile_bytes),)
-    )
     attempt_files = (
-        *dispatch_files,
-        *(PlannedFile(path, data) for path, data in reporting_files if successor),
+        *(PlannedFile(path, data) for path, data in reporting_files),
         *((selected_sample_file,) if selected_sample_file is not None else ()),
-        PlannedFile(config_path, config_data),
-        *runtime_profile_files,
+        PlannedFile(runtime_profile_path, readiness.inspection.profile_bytes),
     )
     directories = {
         run_root / "contract",
-        run_root / "contract" / "workflow-configs",
-        run_root / "contract" / "dispatch" / attempt_id,
         *reporting_directories,
-        *dispatch_directories,
+        *task_directories,
         *(item.path.parent for item in fixed_files),
         *(item.path.parent for item in attempt_files),
     }
@@ -1715,9 +1524,9 @@ def build_attempt_plan(
         attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
         fixed_files=tuple(fixed_files),
         attempt_files=tuple(attempt_files),
-        new_dispatch_files=tuple(dispatch_files),
+        new_task_count=sum(len(scopes) for scopes in tasks.values()) - len(retained),
         directories=tuple(sorted(directories)),
-        dispatch_count=sum(len(scopes) for scopes in dispatch_references.values()),
+        task_count=sum(len(scopes) for scopes in tasks.values()),
     )
 
 
@@ -1948,7 +1757,6 @@ def publish_attempt(
 __all__ = (
     "AttemptPlan",
     "MaterializationError",
-    "HistoricalRun",
     "PlannedFile",
     "RunCandidate",
     "admit_run",

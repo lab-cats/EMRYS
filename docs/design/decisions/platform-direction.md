@@ -1,8 +1,8 @@
 # Architecture rationale
 
-The scientific core is considerably simpler than the software surrounding it.
-EMRYS therefore compresses its operational surface while preserving scientific
-reviewability, provenance, recovery, and honest evidence claims.
+Operational code should make the scientific workflow easier to run and review.
+Keep that code small and understandable while preserving provenance, recovery,
+and accurate evidence claims.
 
 ## Protect behavior before structural change
 
@@ -10,6 +10,22 @@ Before changing structure, classify affected behavior as a preserved contract,
 a characterized defect, an unresolved decision, or environment-deferred. Add
 or identify protection for preserved behavior before mutation. A refactor does
 not silently change science or a public contract.
+
+## Version support
+
+**Approved 2026-09-09:** a Run's lasting result is its scientific data. Current
+EMRYS supports its current record formats; it does not inspect, resume, migrate,
+or regenerate reporting for Runs made under obsolete contracts. An unsupported
+record is rejected. Existing scientific files, provenance, logs, reports, and
+recovery evidence remain untouched and can be read with ordinary tools or the
+original software. Keeping those records does not require maintaining their
+readers in new releases.
+
+Current-version recovery and reuse remain supported: earlier Attempts of the
+same immutable Run must still pass the complete identity and evidence checks.
+This decision replaces historical-format compatibility obligations elsewhere
+in older campaign and design records; it does not permit deleting retained
+evidence or weakening scientific validation.
 
 ## Ratified architectural invariant constitution
 
@@ -207,4 +223,5 @@ latest Run, second Results root, or Run Bundle.
 
 Current package ownership and public routes are summarized in the
 [`architecture index`](../../architecture/README.md). The
-[`findings matrix`](../../tasks/backlog_matrix.md) is the only work backlog.
+[`findings matrix`](../../tasks/backlog_matrix.md) routes accepted work to its
+authoritative backlog.

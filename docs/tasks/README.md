@@ -1,22 +1,20 @@
 # Task planning
 
-[`backlog_matrix.md`](backlog_matrix.md) is the repository's only backlog. It
-owns accepted IDs, status, Importance, Complexity, required outcomes,
-and acceptance. It has no blocker graph and grants no
-implementation, publication, cluster, destructive, scientific-review, or
-evidence-promotion authority.
+Use the [backlog](backlog_matrix.md) for accepted outcomes, priorities, status,
+and completion criteria. Its `COMPRESS-01` entry delegates individual CS cards
+to the [compression backlog](compression_backlog_matrix.md); other parent
+outcomes stay in the main backlog.
 
-Select one accepted row or state one explicitly bounded objective, then follow
-the [`workflow kernel`](../operations/WORKFLOW.md). Remove a finished item only
-after its outcome, evidence at the correct level, and affected contracts and
-documentation agree. Git history—not a parallel card registry, campaign
-ledger, or handoff document—retains completed work, superseded planning, and
-chronology.
+The [polish campaign](polish-campaign.md) holds audit findings and proposed
+follow-ups. The [optimization campaign](optimization_campaign.md) holds resource
+costs, tradeoffs, and measurement proposals. They support selection without
+creating another task-status list or permission to implement a proposal.
 
-The [polish campaign](polish-campaign.md) collects the September 2026 audit's
-candidate scope, evidence, and proposed acceptance. It is a selection aid;
-accepted work and execution status remain in the backlog matrix.
-
-The [optimization campaign](optimization_campaign.md) records the pipeline
-resource audit, candidate tradeoffs, and proposed measurement approach. It
-supplies evidence for selection; accepted work and status remain in the backlog.
+Select an accepted item or explicitly approved objective and follow the
+[development workflow](../operations/WORKFLOW.md). Before closing work, reconcile
+its result, evidence, contracts, and affected documentation. Keep useful
+constraints with their subject owner; Git keeps superseded planning and progress.
+The temporary compression documents have explicit
+[transfer and retirement conditions](compression_campaign.md#completion-and-retirement).
+Listing work here does not authorize publication, cluster work, destructive
+actions, scientific review, or stronger evidence claims.

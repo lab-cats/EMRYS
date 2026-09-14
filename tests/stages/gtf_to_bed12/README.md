@@ -1,12 +1,7 @@
-# GTF-to-BED12 stage tests
+# GTF-to-BED12 tests
 
-This directory protects the Step 00b Python conversion rules, validator, and
-mocked scheduler behavior. Producer coverage includes side-effect-free dry-run,
-arbitrary-CWD execution, create-exclusive publication, controlled rollback,
-no-clobber behavior, and interruption-residue blocking. Scheduler coverage
-retains its later bedtools partial-publication characterization. The
-[stage owner](../../../src/emrys/stages/gtf_to_bed12/README.md) owns
-commands, recovery guidance, and exact evidence limits.
-
-Synthetic GTF/BED inputs and mocked jobs do not establish scheduler, cluster,
-production, scientific-review, or biological evidence.
+These cases check the Run worker's Step 00b conversion and the BED12 validator
+using synthetic GTF/BED files. They cover coordinates, exon grouping, names,
+ordering, rejected rows and transcripts, and source-GTF agreement. The
+[stage contract](../../../src/emrys/stages/gtf_to_bed12/CONTRACT.md)
+defines scientific behavior; runner tests cover publication and recovery.

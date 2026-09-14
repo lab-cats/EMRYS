@@ -7,9 +7,7 @@ grouped under `emrys validate`.
 
 ## Responsibility and execution dependencies
 
-Partition one split-N-cigar BAM into the protected legacy `FWD_like` and
-`REV_like` mechanical flag groups, index both BAMs, reconcile counts, and
-publish the five outputs as one rollback-protected set.
+See the [README](README.md) for purpose, inputs, outputs, and normal use.
 
 Step `05` normally supplies the required BAM plus exact `<bam>.bai`. Step `06`
 does not consume Step `03` RSeQC evidence, a manifest, or biological-
@@ -33,7 +31,7 @@ transcript strand, library strandedness, sense, or antisense. Unassigned reads
 are allowed; exhaustive partitioning is not claimed.
 
 Inputs are sample ID, nonempty split BAM and exact adjacent BAI, output/QC
-directories, positive threads, an admitted owner token, and the absolute
+directories supplied by the runner, positive threads, and the absolute
 samtools path selected by the Run runtime. Outputs are:
 
 ```text
@@ -48,26 +46,15 @@ The exact one-row TSV records input, four flag-group, two merged-group,
 assigned, and unassigned counts plus a six-decimal assigned fraction. Input and
 both merged groups must be nonzero; assigned may not exceed input.
 
-## Orchestration-safe producer boundary
+## Scientific worker
 
-The private producer has one create-absent mode. It refuses any member of an
-existing five-file final set before tool work, hashes and rechecks the input
-BAM/BAI, and retains the per-sample owned lock, temporary-set validation,
-ordered publication, and final-path validation. It never creates predecessor
-backups. Finals are hard-link create-exclusive and staging inode anchors remain
-through complete-set validation. The counts TSV remains native evidence rather
-than a receipt; tool-version and final-set hashes belong in the workflow
-verified record.
-
-## Current execution surfaces
-
-[`producer.py`](producer.py) is invoked only by the fixed workflow task. It
-uses one per-sample owned lock and run-token temporary paths, rejects stale
-owned-path candidates, validates both temporary pairs and arithmetic, publishes
-the counts TSV last, and revalidates final paths. Failure removes only partial
-finals still proven to share their staging inode; ambiguous mutation preserves
-the final, staging anchor, and lock for operator inspection. The counts TSV is
-a final native output, not a cryptographic transaction receipt.
+Only the fixed workflow task invokes [`producer.py`](producer.py). It writes
+four flag-selected intermediate BAMs in the runner's working directory, merges
+and indexes the two orientation groups, and checks count arithmetic and both
+BAM/BAI pairs before returning. It uses only the supplied output paths.
+Execution, publication, and recovery belong to the [runner contract](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
+The counts TSV is native evidence, not a receipt; tool versions and final
+hashes belong in the workflow verified record.
 
 ## Validation interface
 

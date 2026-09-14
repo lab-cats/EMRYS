@@ -333,6 +333,8 @@ build_case <- function(root, mode = "positive") {
         )
     } else if (mode == "missing_format_definition") {
         omit_ad_definition <- TRUE
+    } else if (mode == "blank_vcf_row") {
+        p1_fwd <- c(p1_fwd, "")
     } else if (mode == "duplicate_candidate") {
         p1_fwd <- c(p1_fwd, p1_fwd[[1L]])
     }
@@ -447,9 +449,6 @@ engine_arguments <- function(case, output_dir, threads = "1") {
             "--partition-manifest", case$partition_manifest,
             "--step07-root", case$step07_root,
             "--annotation-gtf", case$annotation_gtf,
-            "--sample-manifest-sha256", case$sample_hash,
-            "--partition-manifest-sha256", case$partition_hash,
-            "--annotation-gtf-sha256", case$annotation_hash,
             "--threads", threads,
             "--sites-output", paths$sites,
             "--inputs-output", paths$inputs,
@@ -504,12 +503,6 @@ run_engine <- function(
                 )
             )
         }
-        assert_true(
-            !file.exists(invocation$paths$sites) &&
-                !file.exists(invocation$paths$inputs) &&
-                !file.exists(invocation$paths$summary),
-            "failed engine run must remove all owned output paths"
-        )
     }
     invocation$paths
 }
@@ -827,6 +820,34 @@ assert_true(
     "an internally inconsistent transcript must be warned about and skipped"
 )
 assert_positive_outputs(first_paths)
+
+# Exercise the fallback interval calculation without another full VCF run.
+annotation_owner <- new.env(parent = globalenv())
+annotation_owner$abort <- abort_test
+sys.source(file.path(dirname(engine), "_step_08_annotation.R"), annotation_owner)
+fallback_gtf <- file.path(test_root, "fallback.gtf")
+fallback <- annotation_lines()
+fallback <- fallback[!grepl("UTR|tx_conflict", fallback)]
+# Adjacent and overlapping pieces must reduce to the original first exon.
+fallback <- c(
+    sub("\t10\t30\t", "\t10\t19\t", fallback[[1L]], fixed = TRUE),
+    sub("\t10\t30\t", "\t20\t30\t", fallback[[1L]], fixed = TRUE),
+    fallback
+)
+write_lines(fallback, fallback_gtf)
+fallback_model <- annotation_owner$read_annotation_model(fallback_gtf)
+for (feature in c("exon", "intron", "cds", "five_prime_utr", "three_prime_utr")) {
+    expected <- switch(feature,
+        exon = c("200-230", "250-280", "10-30", "50-80"),
+        intron = c("231-249", "31-49"),
+        cds = c("220-230", "250-260", "20-30", "50-60"),
+        five_prime_utr = c("261-280", "10-19"),
+        three_prime_utr = c("200-219", "61-80")
+    )
+    ranges <- fallback_model[[feature]]
+    observed <- paste(BiocGenerics::start(ranges), BiocGenerics::end(ranges), sep = "-")
+    assert_identical(observed, expected, paste("Fallback", feature, "ranges changed"))
+}
 for (threads in c("2", "4")) {
     output_dir <- file.path(test_root, paste0("positive-output-", threads))
     compared_paths <- run_engine(
@@ -905,6 +926,7 @@ negative_modes <- c(
     "malformed_dp_count",
     "malformed_info_count",
     "missing_format_definition",
+    "blank_vcf_row",
     "duplicate_candidate",
     "receipt_path_mismatch",
     "declared_count_mismatch"
@@ -919,15 +941,42 @@ expected_negative_errors <- list(
     malformed_dp_count = "FORMAT/DP must contain",
     malformed_info_count = "INFO/AD must contain"
 )
-for (mode in negative_modes) {
-    case <- build_case(file.path(test_root, paste0("negative-", mode)), mode)
-    run_engine(
-        engine,
-        case,
-        file.path(test_root, paste0("negative-output-", mode)),
-        expect_success = FALSE,
-        expected_error = expected_negative_errors[[mode]]
-    )
+negative_results <- parallel::mclapply(
+    negative_modes,
+    function(mode) {
+        tryCatch(
+            {
+                case <- build_case(
+                    file.path(test_root, paste0("negative-", mode)), mode
+                )
+                run_engine(
+                    engine,
+                    case,
+                    file.path(test_root, paste0("negative-output-", mode)),
+                    expect_success = FALSE,
+                    expected_error = expected_negative_errors[[mode]]
+                )
+                TRUE
+            },
+            error = function(error) conditionMessage(error)
+        )
+    },
+    mc.cores = if (.Platform$OS.type == "windows") 1L else 2L,
+    mc.preschedule = FALSE,
+    mc.set.seed = FALSE
+)
+for (index in seq_along(negative_modes)) {
+    if (index > length(negative_results) ||
+        !identical(negative_results[[index]], TRUE)) {
+        abort_test(
+            "Negative Step 08 fixture failed: ", negative_modes[[index]],
+            "\n", if (index > length(negative_results)) {
+                "No worker result."
+            } else {
+                paste(negative_results[[index]], collapse = "\n")
+            }
+        )
+    }
 }
 
 vcf_mutation_case <- build_case(file.path(test_root, "negative-vcf-mutation"))

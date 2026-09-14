@@ -31,21 +31,23 @@ is mapped to a current suite or explicitly discarded.
 
 ## Reviewable delivery
 
-A bounded change normally has one semantic commit containing implementation,
-direct protection, contracts, and affected documentation. Committing,
-publishing, running cluster work, deleting evidence, and merging are distinct
-authorities unless the user explicitly combines them.
+Keep implementation, direct tests, contracts, and affected documentation in
+one reviewable change so a reviewer can assess the complete behavior. The
+[workflow](../../operations/WORKFLOW.md) defines approval, verification, and
+delivery steps. Approval of a code change does not by itself authorize cluster
+work, evidence deletion, or merging.
 
-Focused checks provide fast feedback. Run the complete applicable gate against
-the final affected state; do not repeatedly run long lanes locally or claim
-unselected CI work. Report exactly what ran and preserve distinctions among
-static, fixture, real-runtime, scheduler, site, production, scientific-review,
-and biological evidence.
+Focused local checks provide fast feedback; applicable final checks establish
+what was verified. Long checks belong in CI. Report the actual revision and
+evidence level, and retain useful failure diagnostics.
 
-Start from live Git, the bounded objective, its owner, and direct consumers.
-Broaden context when behavior crosses public, scientific, persistence,
-concurrency, recovery, security, provenance, or evidence boundaries. Routine
-success output stays concise; failures retain attributable diagnostics.
+### Validation tools
+
+`uv` owns the Python environment. Nox was considered and rejected: preserving
+the existing process-group cancellation and retained failure diagnostics would
+require a larger custom supervisor. The [test baseline](../TEST_BASELINE.md)
+owns validation policy; [Engineering](../../operations/ENGINEERING_CONVENTIONS.md#development-validation)
+owns the commands.
 
 ## Maintainability
 
@@ -61,7 +63,8 @@ success output stays concise; failures retain attributable diagnostics.
 - Automate a repository workflow only after repeated use stabilizes its inputs,
   decisions, and safety boundary. Automation never encodes unsettled policy.
 - Live Git owns source state. Checks and retained artifacts bound to an exact
-  revision own validation observations. The findings matrix owns accepted work.
+  revision own validation observations. The findings matrix routes accepted work
+  to its authoritative backlog.
 
 ## Documentation authority and compression
 

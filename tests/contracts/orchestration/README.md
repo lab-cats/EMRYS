@@ -1,16 +1,13 @@
 # Orchestration contract tests
 
-This directory directly protects the neutral
-[`contracts/orchestration`](../../../src/emrys/contracts/orchestration/README.md)
-owner. It tests shared record and projection semantics, not lifecycle execution
-or recovery.
+These cases test shared records from the
+[orchestration contract](../../../src/emrys/contracts/orchestration/README.md):
 
-- `test_orchestration_contracts.py` covers the closed schema registry,
-  canonical bytes and digests, cross-record invariants, paired-strata admission,
-  terminal attempt/task semantics, and workspace-independent projection.
-- `test_reporting_ledger_contracts.py` covers reporting start and verified
-  record identity and admission.
+- `test_orchestration_contracts.py`: the registered schemas, canonical bytes and
+  digests, cross-record consistency, paired strata, terminal Attempt/task rules,
+  and results that remain stable across workspaces.
+- `test_reporting_ledger_contracts.py`: identity and validation of reporting
+  start and verified records.
 
-Run-coordinator execution, resume, inspection, and recovery remain protected under
-`tests/orchestration/run_coordinator/`. These fixtures establish local contract
-behavior only.
+[Run-coordinator tests](../../orchestration/run_coordinator/README.md) separately
+cover execution, resume, inspection, and recovery.

@@ -104,21 +104,6 @@ def run_validator(
     )
 
 
-def test_dry_run_is_side_effect_free(tmp_path: Path) -> None:
-    canonical_bam = build_validation_fixture(tmp_path)
-    assert run_validator(canonical_bam).returncode == 0
-    assert not canonical_bam.output.exists()
-
-
-def test_execute_publishes_five_passes(tmp_path: Path) -> None:
-    canonical_bam = build_validation_fixture(tmp_path)
-    result = run_validator(canonical_bam, "--execute")
-    assert result.returncode == 0, result.stderr
-    rows = report_rows(canonical_bam.output)
-    assert_exact_check_roster(rows, "02")
-    assert {row["status"] for row in rows} == {"pass"}
-
-
 def test_sort_rg_and_tag_failures_are_evidence(tmp_path: Path) -> None:
     canonical_bam = build_validation_fixture(tmp_path)
     env = build_test_environment(
@@ -185,6 +170,7 @@ def test_arbitrary_cwd_dry_run_execute_and_repeat_are_exact(
         "0007c190b23071286fea72670f72d9cf98666c5c11fd76f1657715aa2d76a7c8"
     )
     assert_exact_check_roster(report_rows(canonical_bam.output), "02")
+    assert {row["status"] for row in report_rows(canonical_bam.output)} == {"pass"}
 
     second = run_validator(canonical_bam, "--execute", cwd=invocation)
     assert second.returncode == 0

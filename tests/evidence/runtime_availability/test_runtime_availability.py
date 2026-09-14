@@ -1,30 +1,26 @@
 import csv
-import hashlib
 import json
 import os
 import subprocess
 import sys
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 
 import pytest
 
-from emrys import __main__ as emrys_main
 from emrys.evidence.runtime_availability import inspector
 from emrys.evidence.runtime_availability import _probes as runtime_probes
 from emrys.evidence.runtime_availability._probes import (
     R_NAMESPACE_ROOT_OUTPUT_MARKER,
     run_checks,
 )
-from emrys.evidence.runtime_availability._profile_contract import load_profile
-from emrys.evidence.runtime_availability._result_contract import result_bytes
+from emrys.evidence.runtime_availability._profile_contract import CHOICE_IDS
 from emrys.evidence.runtime_availability._runtime_model import (
     HASH_EXPECTED,
     HASH_PAYLOAD,
     R_NAMESPACE_PROBE_TIMEOUT_SECONDS,
     TOOL_PROBE_TIMEOUT_SECONDS,
-    PreflightError,
 )
 from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
@@ -32,13 +28,7 @@ from emrys.evidence.runtime_availability.inspector import (
 )
 from emrys.libraries.source_authority import controlled_python_argv
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-COMMAND = (sys.executable, "-I", "-m", "emrys", "debug", "runtime-availability")
-EXAMPLE_PROFILE = REPO_ROOT / "configs" / "runtime_preflight.example.tsv"
-PROFILE_HEADER = (
-    "check_id\tcheck_type\truntime_context\trequired\ttarget\tprobe_args\t"
-    "expected\tdescription"
-)
+PROFILE_HEADER = "check_id\tcheck_type\ttarget\tprobe_args\texpected\tdescription"
 
 
 def write_profile(path: Path, rows: list[list[str]]) -> Path:
@@ -48,17 +38,26 @@ def write_profile(path: Path, rows: list[list[str]]) -> Path:
     return path
 
 
+def fixture_checks(profile: Path) -> tuple[RuntimeCheck, ...]:
+    return tuple(
+        RuntimeCheck(
+            row["check_id"],
+            row["check_type"],
+            row["target"],
+            tuple(json.loads(row["probe_args"])),
+            row["expected"],
+        )
+        for row in csv.DictReader(profile.read_text().splitlines(), delimiter="\t")
+    )
+
+
 def tool_row(
     check_id: str = "python",
-    context: str = "any",
-    required: str = "true",
     target: str = sys.executable,
 ) -> list[str]:
     return [
         check_id,
         "tool_version",
-        context,
-        required,
         target,
         json.dumps(["--version"]),
         r"^Python 3[.]",
@@ -66,221 +65,24 @@ def tool_row(
     ]
 
 
-def run_cli(
-    profile: Path,
-    output: Path,
-    *extra: str,
-    context: str = "local",
-) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [
-            *COMMAND,
-            "--profile",
-            str(profile),
-            "--output",
-            str(output),
-            "--runtime-context",
-            context,
-            *extra,
-        ],
-        cwd=REPO_ROOT,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-
-def read_rows(path: Path) -> list[dict[str, str]]:
-    with path.open(newline="", encoding="utf-8") as handle:
-        return list(csv.DictReader(handle, delimiter="\t"))
-
-
-def publication_values(
-    tmp_path: Path,
-) -> tuple[str, list[RuntimeCheck], bytes]:
-    profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
-    profile_data, checks = load_profile(profile)
-    digest = hashlib.sha256(profile_data).hexdigest()
-    results = run_checks(checks, "local")
-    return digest, checks, result_bytes(digest, "local", results)
-
-
-def test_help_and_dry_run_are_side_effect_free(tmp_path: Path) -> None:
-    help_result = subprocess.run(
-        [*COMMAND, "--help"],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    assert help_result.returncode == 0
-    assert "--runtime-context" in help_result.stdout
-    assert "--execute" in help_result.stdout
-
-    profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
-    output = tmp_path / "missing-parent" / "preflight.tsv"
-    result = run_cli(profile, output)
-    assert result.returncode == 0
-    assert "python: pass" in result.stdout
-    assert "not runtime validation or cluster proof" in result.stdout
-    assert "Dry-run complete" in result.stdout
-    assert not output.parent.exists()
-
-
-def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path: Path) -> None:
-    profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
-    output_parent = tmp_path / "output"
-    output_parent.mkdir()
-    output = output_parent / "preflight.tsv"
-    invocation = tmp_path / "invocation"
-    invocation.mkdir()
-    command = [
-        *COMMAND,
-        "--profile",
-        str(profile),
-        "--output",
-        str(output),
-        "--runtime-context",
-        "local",
-    ]
-
-    dry_run = subprocess.run(
-        command,
-        cwd=invocation,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    assert dry_run.returncode == 0, dry_run.stderr
-    assert "Dry-run complete" in dry_run.stdout
-    assert not output.exists()
-
-    first = subprocess.run(
-        [*command, "--execute"],
-        cwd=invocation,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    assert first.returncode == 0, first.stderr
-    report = output.read_bytes()
-    repeated = subprocess.run(
-        [*command, "--execute"],
-        cwd=invocation,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    assert repeated.returncode == 0, repeated.stderr
-    assert first.stdout == repeated.stdout
-    assert first.stderr == repeated.stderr == ""
-    assert output.read_bytes() == report
-    assert not any(invocation.iterdir())
-    assert sorted(path.name for path in output_parent.iterdir()) == ["preflight.tsv"]
-
-
-def test_tracked_example_profile_is_valid_and_locally_honest() -> None:
-    _, checks = load_profile(EXAMPLE_PROFILE)
-    results = run_checks(checks, "local")
-    statuses = {result.check.check_id: result.status for result in results}
-    assert statuses["python_version"] == "pass"
-    assert statuses["sha256_python"] == "pass"
-    assert statuses["rscript_version"] == "blocked"
-    assert statuses["variant_annotation"] == "blocked"
-    assert statuses["results_visibility"] == "blocked"
-
-
-def test_execute_publishes_deterministic_result_and_replaces_valid_prior(
-    tmp_path: Path,
-) -> None:
-    profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
-    output = tmp_path / "preflight.tsv"
-    first = run_cli(profile, output, "--execute")
-    assert first.returncode == 0, first.stderr
-    original = output.read_bytes()
-    rows = read_rows(output)
-    assert len(rows) == 1
-    assert rows[0]["status"] == "pass"
-    assert rows[0]["profile_sha256"] == hashlib.sha256(profile.read_bytes()).hexdigest()
-
-    second = run_cli(profile, output, "--execute")
-    assert second.returncode == 0, second.stderr
-    assert output.read_bytes() == original
-    assert not list(tmp_path.glob(".*.lock"))
-    assert not list(tmp_path.glob(".*.tmp"))
-    assert not list(tmp_path.glob(".*.previous"))
-
-
-def test_context_mismatch_is_blocked_or_not_checked(tmp_path: Path) -> None:
-    profile = write_profile(
-        tmp_path / "profile.tsv",
-        [
-            tool_row("required_cluster", "cluster_batch", "true"),
-            tool_row("optional_cluster", "cluster_batch", "false"),
-        ],
-    )
-    output = tmp_path / "preflight.tsv"
-    result = run_cli(profile, output, "--execute")
-    assert result.returncode == 0, result.stderr
-    rows = {row["check_id"]: row for row in read_rows(output)}
-    assert rows["required_cluster"]["status"] == "blocked"
-    assert rows["optional_cluster"]["status"] == "not_checked"
-
-
 def test_missing_tool_and_version_mismatch_are_failures(tmp_path: Path) -> None:
     mismatch = tool_row("mismatch")
-    mismatch[6] = "^definitely-not-python$"
-    profile = write_profile(
-        tmp_path / "profile.tsv",
-        [tool_row("missing", target="emrys-tool-that-does-not-exist"), mismatch],
-    )
-    output = tmp_path / "preflight.tsv"
-    result = run_cli(profile, output, "--execute")
-    assert result.returncode == 0, result.stderr
-    rows = {row["check_id"]: row for row in read_rows(output)}
-    assert rows["missing"]["status"] == "fail"
-    assert rows["mismatch"]["status"] == "fail"
-
-
-def test_loaded_observations_preserve_exact_ordered_tsv_bytes(tmp_path: Path) -> None:
-    tool = tmp_path / "version-tool"
-    tool.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    tool.chmod(0o755)
+    mismatch[4] = "^definitely-not-python$"
     profile = write_profile(
         tmp_path / "profile.tsv",
         [
-            tool_row("passed", target=str(tool)),
-            tool_row("failed", target=str(tool)),
-            tool_row("blocked", "cluster_batch", target=str(tool)),
-            tool_row("skipped", "cluster_batch", "false", target=str(tool)),
+            tool_row(
+                "missing", target=str(tmp_path / "emrys-tool-that-does-not-exist")
+            ),
+            mismatch,
         ],
     )
-    data, checks = load_profile(profile)
-    outputs = iter(("Python 3.11.0", "wrong version"))
-    observations = run_checks(
-        checks,
-        "local",
-        command_runner=lambda _argv, _stdin, _environment, _timeout: (
-            0, next(outputs), 0.0, False
-        ),
+    inspection = inspector.inspect_runtime_profile_bytes(
+        profile.read_bytes(), profile, checks=fixture_checks(profile), environment={}
     )
-    assert all(type(check) is RuntimeCheck for check in checks)
-    assert all(type(item) is RuntimeObservation for item in observations)
-    assert all(item.check is check for item, check in zip(observations, checks, strict=True))
-    assert all(item.resolved_path is None for item in observations)
-    digest = hashlib.sha256(data).hexdigest()
-    expected = (
-        "profile_sha256\truntime_context\tcheck_id\tcheck_type\ttarget\trequired\t"
-        "status\tobserved\texpected\tdetail\n"
-        f"{digest}\tlocal\tpassed\ttool_version\t{tool}\ttrue\tpass\tPython 3.11.0\t"
-        f"^Python 3[.]\tResolved executable: {tool}\n"
-        f"{digest}\tlocal\tfailed\ttool_version\t{tool}\ttrue\tfail\twrong version\t"
-        "^Python 3[.]\tVersion output did not match expected regex\n"
-        f"{digest}\tlocal\tblocked\ttool_version\t{tool}\ttrue\tblocked\tcurrent_context=local\t"
-        "^Python 3[.]\tCheck requires runtime_context=cluster_batch\n"
-        f"{digest}\tlocal\tskipped\ttool_version\t{tool}\tfalse\tnot_checked\tcurrent_context=local\t"
-        "^Python 3[.]\tCheck requires runtime_context=cluster_batch\n"
-    ).encode("utf-8")
-    assert result_bytes(digest, "local", observations) == expected
+    rows = {item.check.check_id: item for item in inspection.observations}
+    assert rows["missing"].status == "fail"
+    assert rows["mismatch"].status == "fail"
 
 
 def test_hash_utility_and_path_visibility(tmp_path: Path) -> None:
@@ -292,8 +94,6 @@ def test_hash_utility_and_path_visibility(tmp_path: Path) -> None:
             [
                 "sha256",
                 "hash_utility",
-                "any",
-                "true",
                 sys.executable,
                 json.dumps(["python_hashlib"]),
                 "sha256",
@@ -302,8 +102,6 @@ def test_hash_utility_and_path_visibility(tmp_path: Path) -> None:
             [
                 "visible",
                 "path_visibility",
-                "any",
-                "true",
                 str(visible),
                 json.dumps(["directory_readable"]),
                 "readable",
@@ -312,8 +110,6 @@ def test_hash_utility_and_path_visibility(tmp_path: Path) -> None:
             [
                 "missing",
                 "path_visibility",
-                "any",
-                "true",
                 str(tmp_path / "missing"),
                 json.dumps(["file_readable"]),
                 "readable",
@@ -321,29 +117,24 @@ def test_hash_utility_and_path_visibility(tmp_path: Path) -> None:
             ],
         ],
     )
-    output = tmp_path / "preflight.tsv"
-    result = run_cli(profile, output, "--execute")
-    assert result.returncode == 0, result.stderr
-    rows = {row["check_id"]: row for row in read_rows(output)}
-    assert rows["sha256"]["status"] == "pass"
-    assert rows["visible"]["status"] == "pass"
-    assert rows["missing"]["status"] == "fail"
+    inspection = inspector.inspect_runtime_profile_bytes(
+        profile.read_bytes(), profile, checks=fixture_checks(profile), environment={}
+    )
+    rows = {item.check.check_id: item for item in inspection.observations}
+    assert rows["sha256"].status == "pass"
+    assert rows["visible"].status == "pass"
+    assert rows["missing"].status == "fail"
 
 
 def test_python_hash_probe_uses_the_controlled_python_prefix() -> None:
     check = RuntimeCheck(
         check_id="sha256_python",
         check_type="hash_utility",
-        runtime_context="local",
-        required=True,
         target=sys.executable,
         probe_args=("python_hashlib",),
         expected="sha256",
-        description="controlled Python hashlib",
     )
-    calls: list[
-        tuple[list[str], bytes | None, dict[str, str] | None, int]
-    ] = []
+    calls: list[tuple[list[str], bytes | None, dict[str, str] | None, int]] = []
 
     def capture(
         argv: list[str],
@@ -356,7 +147,6 @@ def test_python_hash_probe_uses_the_controlled_python_prefix() -> None:
 
     results = run_checks(
         [check],
-        "local",
         environment={"PATH": os.environ["PATH"]},
         command_runner=capture,
     )
@@ -380,15 +170,12 @@ def test_gatk_probe_requires_exactly_one_declared_java_launcher() -> None:
     gatk = RuntimeCheck(
         check_id="gatk",
         check_type="tool_version",
-        runtime_context="local",
-        required=True,
         target=sys.executable,
         probe_args=("--version",),
         expected=r"^GATK ",
-        description="GATK runtime",
     )
 
-    result = run_checks([gatk], "local")[0]
+    result = run_checks([gatk], environment={})[0]
 
     assert result.status == "fail"
     assert result.observed == "unavailable"
@@ -412,17 +199,13 @@ def test_guarded_rscript_version_probe_uses_its_standalone_information_mode(
     check = RuntimeCheck(
         check_id="rscript",
         check_type="tool_version",
-        runtime_context="local",
-        required=True,
         target=str(rscript),
         probe_args=("--version",),
         expected=r"^Rscript [(]R[)] version 4[.]6[.]1(\s|$)",
-        description="Rscript runtime",
     )
 
     result = run_checks(
         [check],
-        "local",
         environment={"EMRYS_LOCAL_PILOT_R": "1"},
     )[0]
 
@@ -439,33 +222,27 @@ def test_gatk_probe_reports_an_invalid_declared_java_environment(
     java = RuntimeCheck(
         check_id="java",
         check_type="tool_version",
-        runtime_context="local",
-        required=True,
         target=str(java_path),
         probe_args=("-version",),
         expected=r"^openjdk version",
-        description="Java runtime",
     )
     gatk = RuntimeCheck(
         check_id="gatk",
         check_type="tool_version",
-        runtime_context="local",
-        required=True,
         target=sys.executable,
         probe_args=("--version",),
         expected=r"^GATK ",
-        description="GATK runtime",
     )
 
     results = run_checks(
         [java, gatk],
-        "local",
         command_runner=lambda _argv, _stdin, _environment, _timeout: (
             0,
             "openjdk version 17",
             0.0,
             False,
         ),
+        environment={},
     )
 
     assert results[0].status == "pass"
@@ -510,9 +287,7 @@ def test_tracked_gatk_policy_handles_official_launcher_prelude(
         encoding="utf-8",
     )
     gatk.chmod(0o755)
-    _, policy_checks = load_profile(
-        REPO_ROOT / "src/emrys/resources/runtime/runtime_policy.tsv"
-    )
+    policy_checks = inspector.load_runtime_policy()
     selected = {
         check.check_id: check
         for check in policy_checks
@@ -525,7 +300,6 @@ def test_tracked_gatk_policy_handles_official_launcher_prelude(
 
     results = run_checks(
         checks,
-        "local",
         environment={"PATH": "/usr/bin:/bin"},
     )
 
@@ -541,32 +315,29 @@ def test_tool_probe_normalizes_launch_and_version_failures(
     check = RuntimeCheck(
         check_id="tool",
         check_type="tool_version",
-        runtime_context="local",
-        required=True,
         target=sys.executable,
         probe_args=("--version",),
         expected=r"^Python 3[.]",
-        description="tool runtime",
     )
 
     def fail_launch(*_args: object, **_kwargs: object) -> None:
         raise OSError("injected launch failure")
 
     monkeypatch.setattr(subprocess, "run", fail_launch)
-    launch_failure = run_checks([check], "local")[0]
+    launch_failure = run_checks([check], environment={})[0]
     assert launch_failure.status == "fail"
     assert launch_failure.observed == "injected launch failure"
     assert launch_failure.detail == "Version probe failed"
 
     mismatch = run_checks(
         [check],
-        "local",
         command_runner=lambda _argv, _stdin, _environment, _timeout: (
             0,
             "unexpected",
             0.0,
             False,
         ),
+        environment={},
     )[0]
     assert mismatch.status == "fail"
     assert mismatch.observed == "unexpected"
@@ -606,8 +377,6 @@ def test_default_runner_forwards_distinct_timeout_and_records_elapsed(
     check = RuntimeCheck(
         check_id="bounded",
         check_type=check_type,
-        runtime_context="local",
-        required=True,
         target="FixturePackage" if check_type == "r_namespace" else str(executable),
         probe_args=(
             (str(executable),)
@@ -617,7 +386,6 @@ def test_default_runner_forwards_distinct_timeout_and_records_elapsed(
             else ("--version",)
         ),
         expected=r"^1[.]2[.]3$",
-        description="bounded probe",
     )
     observed_timeouts: list[int] = []
     clock = iter((10.0, 10.0 + expected_timeout + 0.5))
@@ -634,7 +402,13 @@ def test_default_runner_forwards_distinct_timeout_and_records_elapsed(
     monkeypatch.setattr(runtime_probes.time, "monotonic", lambda: next(clock))
     monkeypatch.setattr(runtime_probes.subprocess, "run", expire)
 
-    result = run_checks([check], "local")[0]
+    result = run_checks(
+        [check],
+        environment={
+            "EMRYS_LOCAL_PILOT_R": "1",
+            "EMRYS_RENV_LIBRARY": str(tmp_path / "library"),
+        },
+    )[0]
 
     assert observed_timeouts == [expected_timeout]
     assert result.status == "fail"
@@ -656,12 +430,9 @@ def test_picard_version_probe_accepts_only_its_exact_exit_one_contract(
     picard = RuntimeCheck(
         check_id="picard",
         check_type="tool_version_exit_1",
-        runtime_context="local",
-        required=True,
         target=str(java),
         probe_args=("-jar", str(jar), "MarkDuplicates", "--version"),
         expected=r"^Version:3[.]1[.]1$",
-        description="Picard runtime",
     )
 
     observed_argv: list[tuple[str, ...]] = []
@@ -676,11 +447,7 @@ def test_picard_version_probe_accepts_only_its_exact_exit_one_contract(
         assert timeout_seconds == TOOL_PROBE_TIMEOUT_SECONDS
         return 1, "Version:3.1.1", 0.25, False
 
-    passed = run_checks(
-        [picard],
-        "local",
-        command_runner=exact_picard_probe,
-    )[0]
+    passed = run_checks([picard], command_runner=exact_picard_probe, environment={})[0]
 
     assert passed.status == "pass"
     assert passed.observed == "Version:3.1.1"
@@ -696,26 +463,26 @@ def test_picard_version_probe_accepts_only_its_exact_exit_one_contract(
     ):
         rejected = run_checks(
             [changed],
-            "local",
             command_runner=lambda _argv, _stdin, _environment, _timeout, c=code: (
                 c,
                 "Version:3.1.1",
                 0.0,
                 False,
             ),
+            environment={},
         )[0]
         assert rejected.status == "fail"
         assert rejected.detail == "Version probe failed"
 
     wrong_output = run_checks(
         [picard],
-        "local",
         command_runner=lambda _argv, _stdin, _environment, _timeout: (
             1,
             "Version:3.1.1 extra",
             0.0,
             False,
         ),
+        environment={},
     )[0]
     assert wrong_output.status == "fail"
     assert wrong_output.detail == "Version output did not match expected regex"
@@ -724,8 +491,8 @@ def test_picard_version_probe_accepts_only_its_exact_exit_one_contract(
 @pytest.mark.parametrize(
     ("check_type", "probe_args", "expected_detail"),
     [
-        ("r_namespace", ("missing-rscript",), "Rscript executable was not found"),
-        ("hash_utility", ("sha256sum",), "Hash executable was not found"),
+        ("r_namespace", ("/missing/Rscript",), "Rscript executable was not found"),
+        ("hash_utility", ("python_hashlib",), "Hash executable was not found"),
     ],
 )
 def test_namespace_and_hash_probes_reject_missing_executables_without_running(
@@ -736,20 +503,17 @@ def test_namespace_and_hash_probes_reject_missing_executables_without_running(
     check = RuntimeCheck(
         check_id="missing",
         check_type=check_type,
-        runtime_context="local",
-        required=True,
-        target="emrys-runtime-tool-that-does-not-exist",
+        target="/missing/emrys-runtime-tool-that-does-not-exist",
         probe_args=probe_args,
         expected=r".*",
-        description="missing runtime",
     )
 
     result = run_checks(
         [check],
-        "local",
         command_runner=lambda _argv, _stdin, _environment, _timeout: pytest.fail(
             "missing executable must stop before command execution"
         ),
+        environment={},
     )[0]
 
     assert result.status == "fail"
@@ -757,21 +521,18 @@ def test_namespace_and_hash_probes_reject_missing_executables_without_running(
     assert result.detail == expected_detail
 
 
-def test_hash_probe_binds_declared_adapter_and_reports_command_failure(
+def test_python_hash_probe_reports_command_and_digest_failures(
     tmp_path: Path,
 ) -> None:
-    executable = tmp_path / "sha256sum"
+    executable = tmp_path / "python"
     executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     executable.chmod(0o755)
     check = RuntimeCheck(
         check_id="sha256",
         check_type="hash_utility",
-        runtime_context="local",
-        required=True,
         target=str(executable),
-        probe_args=("sha256sum",),
+        probe_args=("python_hashlib",),
         expected="sha256",
-        description="SHA-256 utility",
     )
     calls: list[tuple[list[str], bytes | None]] = []
 
@@ -785,103 +546,26 @@ def test_hash_probe_binds_declared_adapter_and_reports_command_failure(
         assert timeout_seconds == TOOL_PROBE_TIMEOUT_SECONDS
         return 23, "", 0.5, False
 
-    result = run_checks([check], "local", command_runner=fail)[0]
+    result = run_checks([check], command_runner=fail, environment={})[0]
 
-    assert calls == [([str(executable)], HASH_PAYLOAD)]
+    assert calls[0][1] == HASH_PAYLOAD
     assert result.status == "fail"
     assert result.observed == "exit 23"
     assert result.detail == "SHA-256 probe failed"
 
     mismatch = run_checks(
         [check],
-        "local",
         command_runner=lambda _argv, _stdin, _environment, _timeout: (
             0,
             "not-a-digest",
             0.0,
             False,
         ),
+        environment={},
     )[0]
     assert mismatch.status == "fail"
     assert mismatch.observed == "not-a-digest"
     assert mismatch.detail == "SHA-256 digest mismatch"
-
-
-def test_executable_visibility_uses_absolute_target_and_matching_expectation(
-    tmp_path: Path,
-) -> None:
-    executable = tmp_path / "tool"
-    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    executable.chmod(0o755)
-    profile = write_profile(
-        tmp_path / "profile.tsv",
-        [
-            [
-                "executable",
-                "path_visibility",
-                "any",
-                "true",
-                str(executable),
-                json.dumps(["executable"]),
-                "executable",
-                "Executable path",
-            ]
-        ],
-    )
-    output = tmp_path / "preflight.tsv"
-    assert run_cli(profile, output, "--execute").returncode == 0
-    assert read_rows(output)[0]["status"] == "pass"
-
-    relative = write_profile(
-        tmp_path / "relative.tsv",
-        [
-            [
-                "relative",
-                "path_visibility",
-                "any",
-                "true",
-                "relative/path",
-                json.dumps(["file_readable"]),
-                "readable",
-                "Relative path",
-            ]
-        ],
-    )
-    rejected = run_cli(relative, tmp_path / "relative-output.tsv", "--execute")
-    assert rejected.returncode == 2
-    assert "must be absolute" in rejected.stderr
-
-
-def test_r_namespace_with_fake_rscript(tmp_path: Path) -> None:
-    fake = tmp_path / "Rscript"
-    fake.write_text(
-        "#!/usr/bin/env bash\n"
-        "set -euo pipefail\n"
-        'if [[ "${*: -1}" == "GoodPackage" ]]; then printf \'1.2.3\'; exit 0; fi\n'
-        "exit 42\n",
-        encoding="utf-8",
-    )
-    fake.chmod(0o755)
-    rows = []
-    for check_id, package in (("good", "GoodPackage"), ("missing", "MissingPackage")):
-        rows.append(
-            [
-                check_id,
-                "r_namespace",
-                "any",
-                "true",
-                package,
-                json.dumps([str(fake)]),
-                r"^[0-9]+[.][0-9]+[.][0-9]+$",
-                "R namespace",
-            ]
-        )
-    profile = write_profile(tmp_path / "profile.tsv", rows)
-    output = tmp_path / "preflight.tsv"
-    result = run_cli(profile, output, "--execute")
-    assert result.returncode == 0, result.stderr
-    observed = {row["check_id"]: row["status"] for row in read_rows(output)}
-    assert observed == {"good": "pass", "missing": "fail"}
 
 
 def test_guarded_r_namespace_probe_binds_startup_and_selected_library(
@@ -895,16 +579,11 @@ def test_guarded_r_namespace_probe_binds_startup_and_selected_library(
     check = RuntimeCheck(
         check_id="r_guarded",
         check_type="r_namespace",
-        runtime_context="local",
-        required=True,
         target="GuardedPackage",
         probe_args=(str(fake),),
         expected=r"^1[.]2[.]3$",
-        description="guarded namespace",
     )
-    calls: list[
-        tuple[list[str], bytes | None, dict[str, str] | None, int]
-    ] = []
+    calls: list[tuple[list[str], bytes | None, dict[str, str] | None, int]] = []
     environment = {
         "EMRYS_LOCAL_PILOT_R": "1",
         "EMRYS_RENV_LIBRARY": str(library),
@@ -928,7 +607,6 @@ def test_guarded_r_namespace_probe_binds_startup_and_selected_library(
 
     result = run_checks(
         [check],
-        "local",
         environment=environment,
         command_runner=capture,
     )[0]
@@ -983,17 +661,13 @@ def test_guarded_r_namespace_rejects_missing_or_malformed_root_identity(
     check = RuntimeCheck(
         check_id="r_guarded",
         check_type="r_namespace",
-        runtime_context="local",
-        required=True,
         target="GuardedPackage",
         probe_args=(str(fake),),
         expected=r"^1[.]2[.]3$",
-        description="guarded namespace",
     )
 
     result = run_checks(
         [check],
-        "local",
         environment={
             "EMRYS_LOCAL_PILOT_R": "1",
             "EMRYS_RENV_LIBRARY": str(tmp_path / "library"),
@@ -1024,12 +698,9 @@ def test_r_namespace_timeout_is_distinct_bounded_and_fail_closed(
     check = RuntimeCheck(
         check_id="r_timeout",
         check_type="r_namespace",
-        runtime_context="local",
-        required=True,
         target="SlowPackage",
         probe_args=(str(fake),),
         expected=r"^1[.]2[.]3$",
-        description="bounded namespace",
     )
     observed_timeouts: list[int] = []
 
@@ -1042,7 +713,14 @@ def test_r_namespace_timeout_is_distinct_bounded_and_fail_closed(
         observed_timeouts.append(timeout_seconds)
         return 124, "fixture timeout", 120.25, True
 
-    result = run_checks([check], "local", command_runner=time_out)[0]
+    result = run_checks(
+        [check],
+        command_runner=time_out,
+        environment={
+            "EMRYS_LOCAL_PILOT_R": "1",
+            "EMRYS_RENV_LIBRARY": str(tmp_path / "library"),
+        },
+    )[0]
 
     assert observed_timeouts == [R_NAMESPACE_PROBE_TIMEOUT_SECONDS]
     assert R_NAMESPACE_PROBE_TIMEOUT_SECONDS > TOOL_PROBE_TIMEOUT_SECONDS
@@ -1062,23 +740,23 @@ def test_r_namespace_real_exit_124_is_not_misclassified_as_timeout(
     check = RuntimeCheck(
         check_id="r_exit_124",
         check_type="r_namespace",
-        runtime_context="local",
-        required=True,
         target="FixturePackage",
         probe_args=(str(fake),),
         expected=r"^1[.]2[.]3$",
-        description="real exit 124",
     )
 
     result = run_checks(
         [check],
-        "local",
         command_runner=lambda _argv, _stdin, _environment, _timeout: (
             124,
             "real child exit",
             0.25,
             False,
         ),
+        environment={
+            "EMRYS_LOCAL_PILOT_R": "1",
+            "EMRYS_RENV_LIBRARY": str(tmp_path / "library"),
+        },
     )[0]
 
     assert result.status == "fail"
@@ -1088,41 +766,6 @@ def test_r_namespace_real_exit_124_is_not_misclassified_as_timeout(
     )
 
 
-def test_unguarded_r_namespace_probe_suppresses_only_load_warnings(
-    tmp_path: Path,
-) -> None:
-    fake = tmp_path / "Rscript"
-    fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
-    fake.chmod(0o755)
-    check = RuntimeCheck(
-        check_id="r_unguarded",
-        check_type="r_namespace",
-        runtime_context="local",
-        required=True,
-        target="FixturePackage",
-        probe_args=(str(fake),),
-        expected=r"^1[.]2[.]3$",
-        description="unguarded namespace",
-    )
-    calls: list[list[str]] = []
-
-    def capture(
-        argv: list[str],
-        _stdin: bytes | None,
-        _environment: dict[str, str] | None,
-        timeout_seconds: int,
-    ) -> tuple[int, str, float, bool]:
-        calls.append(argv)
-        assert timeout_seconds == R_NAMESPACE_PROBE_TIMEOUT_SECONDS
-        return 0, "1.2.3", 0.75, False
-
-    result = run_checks([check], "local", command_runner=capture)[0]
-
-    assert result.status == "pass"
-    assert calls[0][-1] == "FixturePackage"
-    assert "suppressWarnings(requireNamespace(p, quietly=TRUE))" in calls[0][2]
-
-
 def test_r_namespace_keeps_strict_version_output_matching(tmp_path: Path) -> None:
     fake = tmp_path / "Rscript"
     fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
@@ -1130,24 +773,26 @@ def test_r_namespace_keeps_strict_version_output_matching(tmp_path: Path) -> Non
     check = RuntimeCheck(
         check_id="r_warning",
         check_type="r_namespace",
-        runtime_context="local",
-        required=True,
         target="FixturePackage",
         probe_args=(str(fake),),
         expected=r"^1[.]2[.]3$",
-        description="strict namespace",
     )
     contaminated = "Warning message: replacing previous import 1.2.3"
 
     result = run_checks(
         [check],
-        "local",
         command_runner=lambda _argv, _stdin, _environment, _timeout: (
             0,
-            contaminated,
+            contaminated
+            + R_NAMESPACE_ROOT_OUTPUT_MARKER
+            + str(tmp_path / "library/FixturePackage").encode().hex(),
             0.0,
             False,
         ),
+        environment={
+            "EMRYS_LOCAL_PILOT_R": "1",
+            "EMRYS_RENV_LIBRARY": str(tmp_path / "library"),
+        },
     )[0]
 
     assert result.status == "fail"
@@ -1160,17 +805,15 @@ def test_r_namespace_keeps_strict_version_output_matching(tmp_path: Path) -> Non
 
 
 @pytest.mark.parametrize(
-    ("guarded", "code", "expected_detail"),
+    ("code", "expected_detail"),
     [
-        (True, 42, "R namespace is unavailable in the selected library"),
-        (True, 43, "R did not select the admitted library first"),
-        (True, 44, "R namespace did not resolve to its exact selected package root"),
-        (False, 42, "R namespace is unavailable"),
+        (42, "R namespace is unavailable in the selected library"),
+        (43, "R did not select the admitted library first"),
+        (44, "R namespace did not resolve to its exact selected package root"),
     ],
 )
-def test_r_namespace_failure_detail_distinguishes_guarded_selection(
+def test_r_namespace_failure_detail_distinguishes_library_selection(
     tmp_path: Path,
-    guarded: bool,
     code: int,
     expected_detail: str,
 ) -> None:
@@ -1180,25 +823,17 @@ def test_r_namespace_failure_detail_distinguishes_guarded_selection(
     check = RuntimeCheck(
         check_id="r_fixture",
         check_type="r_namespace",
-        runtime_context="local",
-        required=True,
         target="Fixture",
         probe_args=(str(fake),),
         expected=r"^1[.]0[.]0$",
-        description="fixture namespace",
     )
-    environment = (
-        {
-            "EMRYS_LOCAL_PILOT_R": "1",
-            "EMRYS_RENV_LIBRARY": str(tmp_path / "library"),
-        }
-        if guarded
-        else None
-    )
+    environment = {
+        "EMRYS_LOCAL_PILOT_R": "1",
+        "EMRYS_RENV_LIBRARY": str(tmp_path / "library"),
+    }
 
     result = run_checks(
         [check],
-        "local",
         environment=environment,
         command_runner=lambda _argv, _stdin, _environment, _timeout: (
             code,
@@ -1235,8 +870,6 @@ def test_direct_inspection_uses_explicit_probe_environment(tmp_path: Path) -> No
             [
                 "guarded_namespace",
                 "r_namespace",
-                "local",
-                "true",
                 "GuardedPackage",
                 json.dumps([str(fake)]),
                 r"^1[.]2[.]3$",
@@ -1245,9 +878,10 @@ def test_direct_inspection_uses_explicit_probe_environment(tmp_path: Path) -> No
         ],
     )
 
-    inspection = inspector.inspect_runtime_availability(
+    inspection = inspector.inspect_runtime_profile_bytes(
+        profile.read_bytes(),
         profile,
-        "local",
+        checks=fixture_checks(profile),
         environment={
             "EMRYS_DOCTOR_TEST": "guarded",
             "EMRYS_LOCAL_PILOT_R": "1",
@@ -1273,347 +907,27 @@ def test_direct_inspection_uses_explicit_probe_environment(tmp_path: Path) -> No
         observation.status = "fail"
 
 
-def test_r_namespace_requires_package_name(tmp_path: Path) -> None:
-    profile = write_profile(
-        tmp_path / "profile.tsv",
-        [
-            [
-                "bad_namespace",
-                "r_namespace",
-                "any",
-                "true",
-                "bad namespace",
-                json.dumps(["Rscript"]),
-                r"^[0-9]+[.]",
-                "Invalid package name",
-            ]
-        ],
-    )
-    result = run_cli(profile, tmp_path / "preflight.tsv", "--execute")
-    assert result.returncode == 2
-    assert "must be an R package name" in result.stderr
-
-
 @pytest.mark.parametrize(
-    ("mutator", "message"),
+    "data",
     [
-        (lambda _rows: [], "at least one check"),
-        (lambda rows: [rows[0], rows[0]], "duplicate check_id"),
-        (
-            lambda rows: [[*rows[0][:-1], ""]],
-            "description must be nonempty",
-        ),
-        (
-            lambda rows: [[*rows[0][:5], "not-json", *rows[0][6:]]],
-            "not valid JSON",
-        ),
-        (
-            lambda rows: [
-                [*rows[0][:1], "tool_version_exit_1", *rows[0][2:5], "[]", *rows[0][6:]]
-            ],
-            "tool_version_exit_1 needs probe_args",
-        ),
-        (
-            lambda rows: [
-                [
-                    *rows[0][:1],
-                    "tool_version_exit_1",
-                    *rows[0][2:6],
-                    "[",
-                    *rows[0][7:],
-                ]
-            ],
-            "expected regex is invalid",
-        ),
+        b"check_id\ttarget\n",  # missing mandatory choices
+        b"check_id\ttarget\n" + b"bash\t/bin/bash\n" * 12,
+        b"check_id\ttarget\n"
+        + b"".join(f"{key}\trelative/path\n".encode() for key in CHOICE_IDS),
+        b"check_id\tcheck_type\n",  # retired editable probe grammar
     ],
 )
-def test_malformed_profiles_fail_without_output(
-    tmp_path: Path,
-    mutator: Callable[[list[list[str]]], list[list[str]]],
-    message: str,
-) -> None:
-    rows = mutator([tool_row()])
-    profile = write_profile(tmp_path / "profile.tsv", rows)
-    output = tmp_path / "preflight.tsv"
-    result = run_cli(profile, output, "--execute")
-    assert result.returncode == 2
-    assert message in result.stderr
-    assert not output.exists()
+def test_malformed_runtime_choices_are_rejected(data: bytes, tmp_path: Path) -> None:
+    with pytest.raises(inspector.RuntimeInspectionError):
+        inspector.runtime_profile_checks(data, tmp_path)
 
 
-def test_profile_symlink_and_changed_profile_fail_closed(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
+def test_profile_symlink_is_rejected(tmp_path: Path) -> None:
+    profile = tmp_path / "profile.tsv"
+    profile.write_bytes(
+        inspector.runtime_profile_bytes({key: tmp_path / key for key in CHOICE_IDS})
+    )
     link = tmp_path / "profile-link.tsv"
     link.symlink_to(profile)
-    output = tmp_path / "preflight.tsv"
-    linked = run_cli(link, output, "--execute")
-    assert linked.returncode == 2
-    assert "symbolic link" in linked.stderr
-
-    original_run_checks = inspector.run_checks
-
-    def mutate(
-        checks: Sequence[RuntimeCheck],
-        runtime_context: str,
-        *,
-        environment: Mapping[str, str] | None = None,
-    ) -> list[RuntimeObservation]:
-        results = original_run_checks(
-            checks,
-            runtime_context,
-            environment=environment,
-        )
-        profile.write_text(profile.read_text() + "\n", encoding="utf-8")
-        return results
-
-    monkeypatch.setattr(inspector, "run_checks", mutate)
-    assert (
-        emrys_main.main(
-            [
-                "debug",
-                "runtime-availability",
-                "--profile",
-                str(profile),
-                "--output",
-                str(output),
-                "--runtime-context",
-                "local",
-                "--execute",
-            ]
-        )
-        == 2
-    )
-    assert not output.exists()
-
-
-def test_foreign_lock_and_invalid_prior_are_preserved(tmp_path: Path) -> None:
-    profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
-    output = tmp_path / "preflight.tsv"
-    lock = tmp_path / ".preflight.tsv.lock"
-    lock.write_text("foreign\n")
-    locked = run_cli(profile, output, "--execute")
-    assert locked.returncode == 2
-    assert "lock already exists" in locked.stderr
-    assert lock.read_text() == "foreign\n"
-    lock.unlink()
-
-    output.write_text("foreign\n")
-    invalid = run_cli(profile, output, "--execute")
-    assert invalid.returncode == 2
-    assert "invalid header" in invalid.stderr
-    assert output.read_text() == "foreign\n"
-
-
-def test_prior_report_rows_must_reconcile_to_profile(tmp_path: Path) -> None:
-    profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
-    output = tmp_path / "preflight.tsv"
-    assert run_cli(profile, output, "--execute").returncode == 0
-    original = output.read_text(encoding="utf-8")
-    output.write_text(
-        original.replace("\tpython\ttool_version\t", "\ttampered\ttool_version\t")
-    )
-
-    result = run_cli(profile, output, "--execute")
-    assert result.returncode == 2
-    assert "check_id does not match the profile" in result.stderr
-    assert "\ttampered\ttool_version\t" in output.read_text(encoding="utf-8")
-
-
-def test_execute_requires_existing_real_parent_and_tsv_suffix(tmp_path: Path) -> None:
-    profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
-    missing_parent = run_cli(
-        profile,
-        tmp_path / "missing" / "preflight.tsv",
-        "--execute",
-    )
-    assert missing_parent.returncode == 2
-    assert "Output parent must already exist" in missing_parent.stderr
-
-    wrong_suffix = run_cli(profile, tmp_path / "preflight.txt", "--execute")
-    assert wrong_suffix.returncode == 2
-    assert "must use the .tsv suffix" in wrong_suffix.stderr
-
-    parent_link = tmp_path / "parent-link"
-    parent_link.symlink_to(tmp_path, target_is_directory=True)
-    linked_parent = run_cli(
-        profile,
-        parent_link / "preflight.tsv",
-        "--execute",
-    )
-    assert linked_parent.returncode == 2
-    assert "real directory" in linked_parent.stderr
-
-
-def test_publish_failure_rolls_back_valid_prior(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
-    profile_data, checks = load_profile(profile)
-    digest = hashlib.sha256(profile_data).hexdigest()
-    results = run_checks(checks, "local")
-    previous = result_bytes(digest, "local", results)
-    output = tmp_path / "preflight.tsv"
-    output.write_bytes(previous)
-
-    real_validate = inspector.validate_result_bytes
-    calls = 0
-
-    def fail_after_publish(
-        data: bytes,
-        profile_sha256: str,
-        runtime_context: str,
-        expected_checks: Sequence[RuntimeCheck],
-    ) -> None:
-        nonlocal calls
-        calls += 1
-        if calls == 3:
-            raise PreflightError("injected validation failure")
-        real_validate(data, profile_sha256, runtime_context, expected_checks)
-
-    monkeypatch.setattr(inspector, "validate_result_bytes", fail_after_publish)
-    with pytest.raises(PreflightError, match="injected"):
-        inspector.publish(output, previous, digest, "local", checks)
-    assert output.read_bytes() == previous
-    assert not list(tmp_path.glob(".*.lock"))
-    assert not list(tmp_path.glob(".*.tmp"))
-    assert not list(tmp_path.glob(".*.previous"))
-
-
-def test_stage_fsync_failure_cleans_preflight_attempt(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    digest, checks, data = publication_values(tmp_path)
-    output = tmp_path / "preflight.tsv"
-    real_fsync = inspector.os.fsync
-    calls = 0
-
-    def fail_second_fsync(descriptor: int) -> None:
-        nonlocal calls
-        calls += 1
-        if calls == 2:
-            raise OSError("injected staged preflight fsync failure")
-        real_fsync(descriptor)
-
-    # The first fsync commits lock ownership; the second belongs to the stage.
-    monkeypatch.setattr(inspector.os, "fsync", fail_second_fsync)
-    with pytest.raises(OSError, match="staged preflight fsync"):
-        inspector.publish(output, data, digest, "local", checks)
-
-    assert calls == 2
-    assert not output.exists()
-    assert not list(tmp_path.glob(".*.lock"))
-    assert not list(tmp_path.glob(".*.tmp"))
-
-
-def test_characterizes_preflight_lock_fsync_failure_gap(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    digest, checks, data = publication_values(tmp_path)
-    output = tmp_path / "preflight.tsv"
-    lock = tmp_path / ".preflight.tsv.lock"
-    real_open = inspector.os.open
-    real_close = inspector.os.close
-    real_unlink = Path.unlink
-    opened: list[int] = []
-
-    def track_open(*args: object, **kwargs: object) -> int:
-        descriptor = real_open(*args, **kwargs)
-        opened.append(descriptor)
-        return descriptor
-
-    def fail_lock_fsync(_descriptor: int) -> None:
-        raise OSError("injected preflight lock fsync failure")
-
-    monkeypatch.setattr(inspector.os, "open", track_open)
-    monkeypatch.setattr(inspector.os, "fsync", fail_lock_fsync)
-    with pytest.raises(OSError, match="lock fsync"):
-        inspector.publish(output, data, digest, "local", checks)
-
-    # Known TG-02 gap: failure occurs before publish owns a descriptor in its
-    # try/finally, so the lock and descriptor are left behind.
-    assert lock.is_file()
-    assert not output.exists()
-    for descriptor in opened:
-        real_close(descriptor)
-    real_unlink(lock)
-
-
-def test_characterizes_preflight_incomplete_rollback_gap(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    digest, checks, prior = publication_values(tmp_path)
-    output = tmp_path / "preflight.tsv"
-    output.write_bytes(prior)
-    real_replace = inspector.os.replace
-    publication_failed = False
-    restoration_failed = False
-
-    def fail_publication_and_restoration(source: Path, destination: Path) -> None:
-        nonlocal publication_failed, restoration_failed
-        source_path = Path(source)
-        destination_path = Path(destination)
-        if (
-            not publication_failed
-            and destination_path == output
-            and source_path.name.endswith(".tmp")
-        ):
-            publication_failed = True
-            raise OSError("injected preflight publication failure")
-        if (
-            publication_failed
-            and not restoration_failed
-            and destination_path == output
-            and source_path.name.endswith(".previous")
-        ):
-            restoration_failed = True
-            raise OSError("injected preflight restoration failure")
-        real_replace(source, destination)
-
-    monkeypatch.setattr(
-        inspector.os,
-        "replace",
-        fail_publication_and_restoration,
-    )
-    with pytest.raises(OSError, match="preflight restoration"):
-        inspector.publish(output, prior, digest, "local", checks)
-
-    assert publication_failed and restoration_failed
-    assert not output.exists()
-    assert len(list(tmp_path.glob(".*.previous"))) == 1
-    # Known TG-02 gap: the only predecessor bytes survive without the lock or
-    # an explicit recovery marker.
-    assert not list(tmp_path.glob(".*.lock"))
-    assert not list(tmp_path.glob("*.RECOVERY.txt"))
-
-
-def test_characterizes_preflight_lock_cleanup_failure(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    digest, checks, data = publication_values(tmp_path)
-    output = tmp_path / "preflight.tsv"
-    lock = tmp_path / ".preflight.tsv.lock"
-    real_unlink = Path.unlink
-
-    def fail_lock_cleanup(
-        path_value: Path,
-        *args: object,
-        **kwargs: object,
-    ) -> None:
-        if path_value == lock:
-            raise OSError("injected preflight lock cleanup failure")
-        real_unlink(path_value, *args, **kwargs)
-
-    monkeypatch.setattr(Path, "unlink", fail_lock_cleanup)
-    inspector.publish(output, data, digest, "local", checks)
-
-    assert output.read_bytes() == data
-    # Known TG-02 gap: lock cleanup errors are swallowed, so the caller sees
-    # success while the owned lock continues to block future attempts.
-    assert lock.is_file()
-    real_unlink(lock)
+    with pytest.raises(inspector.RuntimeInspectionError, match="non-symlink"):
+        inspector.load_runtime_profile_contract(link, tmp_path)

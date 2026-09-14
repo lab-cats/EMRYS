@@ -65,8 +65,7 @@ MUTATION_COLUMNS <- c(
 
 ARGUMENT_NAMES <- c(
     "analysis-id", "cohort-id", "sample-manifest", "partition-manifest",
-    "sample-manifest-sha256", "partition-manifest-sha256", "step08-sites",
-    "step08-inputs", "step08-sites-sha256", "step08-inputs-sha256",
+    "step08-sites", "step08-inputs",
     "control-condition", "treatment-condition", "rna-ref", "rna-alt",
     "min-sample-dp", "mean-dp-threshold", "fdr-threshold",
     "common-or-threshold", "absolute-difference-threshold",
@@ -84,10 +83,7 @@ usage <- function() {
         "  Rscript src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R \\\n",
         "    --analysis-id ID --cohort-id ID \\\n",
         "    --sample-manifest PATH --partition-manifest PATH \\\n",
-        "    --sample-manifest-sha256 SHA256 \\\n",
-        "    --partition-manifest-sha256 SHA256 \\\n",
         "    --step08-sites PATH --step08-inputs PATH \\\n",
-        "    --step08-sites-sha256 SHA256 --step08-inputs-sha256 SHA256 \\\n",
         "    --control-condition NAME --treatment-condition NAME \\\n",
         "    --rna-ref A --rna-alt G --min-sample-dp 1 \\\n",
         "    --mean-dp-threshold 50 --fdr-threshold 0.05 \\\n",
@@ -153,16 +149,6 @@ parse_positive_integer <- function(label, value) {
 
 sha256_file <- function(path) {
     sha256_file_with_fallback(path, "Step 09 requires sha256sum or shasum.")
-}
-
-require_matching_hash <- function(label, path, expected) {
-    actual <- sha256_file(path)
-    if (!identical(actual, expected)) {
-        abort(
-            label, " SHA-256 mismatch for ", path, "; expected ", expected,
-            ", observed ", actual
-        )
-    }
 }
 
 read_tsv <- function(label, path, expected_columns = NULL) {

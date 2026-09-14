@@ -78,15 +78,6 @@
         "09": { "$ref": "#/$defs/job_memory_value" },
         "10": { "$ref": "#/$defs/job_memory_value" }
       }
-    },
-    "reporting_memory": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "artifact_index": { "$ref": "#/$defs/job_memory_value" },
-        "run_summary": { "$ref": "#/$defs/job_memory_value" },
-        "html_report": { "$ref": "#/$defs/job_memory_value" }
-      }
     }
   },
   "properties": {
@@ -107,9 +98,6 @@
     },
     "stage_memory_mb": {
       "$ref": "#/$defs/stage_memory"
-    },
-    "reporting_memory_mb": {
-      "$ref": "#/$defs/reporting_memory"
     }
   }
 }

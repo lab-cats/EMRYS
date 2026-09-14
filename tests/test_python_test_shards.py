@@ -24,7 +24,9 @@ def test_plan_is_deterministic_complete_disjoint_and_duration_aware() -> None:
     second = TOOL.plan_shards(tuple(reversed(nodeids)), 3, durations)
 
     assert first == second
-    assert sorted(nodeid for plan in first for nodeid in plan.nodeids) == sorted(nodeids)
+    assert sorted(nodeid for plan in first for nodeid in plan.nodeids) == sorted(
+        nodeids
+    )
     assert sum(slow in plan.nodeids for plan in first) == 1
     assert len({nodeid for plan in first for nodeid in plan.nodeids}) == len(nodeids)
     non_slow_loads = [

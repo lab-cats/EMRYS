@@ -1,16 +1,39 @@
 # Reference-provenance evidence owner
 
-`emrys reconcile reference-provenance` inventories one explicitly declared
-FASTA/FAI/dictionary/GTF/BED12/STAR bundle and reconciles artifact and contig
-identity. Private [`reconciler.py`](reconciler.py) owns the dry-run-first
-command. It never discovers, selects, repairs, or regenerates a reference.
+This command checks one explicitly listed FASTA/FAI/dictionary/GTF/BED12/STAR
+bundle for file and contig agreement. It never discovers, selects, repairs,
+or regenerates a reference.
 
-Execute mode publishes deterministic artifact, contig, and summary TSVs under
+## Use and outputs
+
+Start with the [inventory format](../../../../configs/reference_provenance.example.tsv),
+replacing its structural example with your declared files. Relative inventory
+paths use the explicit `--base-dir`. Preview without writing:
+
+```bash
+emrys reconcile reference-provenance \
+  --inventory /absolute/path/to/reference_inventory.tsv \
+  --base-dir /absolute/reference/base \
+  --output-root /absolute/existing/output-directory
+```
+
+Add `--execute` to publish artifact, contig, and summary TSVs under
 `<output-root>/<reference-id>/`, with the summary last. Exit zero means the
 requested reconciliation/publication completed, not that every row passed.
-The committed inventory is only a structural starter.
+[`reconciler.py`](reconciler.py) owns the command and publication behavior.
 
-A failed restoration can leave predecessor `.previous` files without a lock or
-recovery marker. Preserve finals, staging, backups, and locks together; their
-absence or presence alone is not committed-publication or production-reference
-evidence.
+## Known publication limits
+
+Replacement moves all predecessors to `.previous` paths before entering the
+handler that rolls back final publication. Failure during those backup moves
+can therefore leave an incomplete final set without restoring earlier moves.
+If publication fails and restoring a predecessor also fails, cleanup can release
+the lock while backups remain, without a recovery marker. A restoration error
+can become the reported exception instead of the original publication error;
+later cleanup failures may interrupt the remaining cleanup steps.
+
+These are retained implementation defects, not an approved recovery procedure.
+The [owner tests](../../../../tests/evidence/reference_provenance/test_reference_provenance.py)
+characterize failed restoration. Preserve finals, staging, backups, and locks
+together. Their presence or absence alone proves neither completed publication
+nor a production-ready reference.

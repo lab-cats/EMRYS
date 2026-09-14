@@ -53,7 +53,6 @@ def inspect_source(
         row=row,
         spec=spec,
         resolved_path=resolved,
-        attempt_provenance_status="unavailable",
         snapshot=snapshot,
     )
     if snapshot.status == "missing":
@@ -75,7 +74,6 @@ def inspect_source(
             availability_status="missing",
             completion_status="not_attempted",
             state_reason="Optional source is absent.",
-            attempt_provenance_status="not_attempted",
             source=None,
         )
     if snapshot.status == "externally_unavailable":

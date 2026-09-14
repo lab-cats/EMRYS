@@ -22,7 +22,6 @@ from emrys.orchestration.run_coordinator.normalization import admit_project
 from tests.orchestration.run_coordinator import fixture
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-LOCAL_PROFILE = REPO_ROOT / "workflow/contracts/local_cmh_v2.json"
 
 
 def test_analysis_revision_is_path_and_name_neutral(
@@ -74,7 +73,6 @@ def test_explicit_module_normalizes_once_without_provider_facts_in_identity(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     project_path = fixture.build(tmp_path / "project-root")
-    flat_revision = admit_project(project_path, fixture.profile()).select_analysis().revision
     (project_path.parent / "target.bed").write_text(
         "chrSynthetic\t0\t10\n", encoding="utf-8"
     )
@@ -82,6 +80,9 @@ def test_explicit_module_normalizes_once_without_provider_facts_in_identity(
         "partition_id\tselector_type\tselector_value\n"
         "primary\tregions_file\ttarget.bed\n",
         encoding="utf-8",
+    )
+    flat_revision = (
+        admit_project(project_path, fixture.profile()).select_analysis().revision
     )
     definition = yaml.safe_load(project_path.read_text(encoding="utf-8"))
     authored = definition["analyses"]["primary"]
@@ -125,20 +126,25 @@ def test_explicit_module_normalizes_once_without_provider_facts_in_identity(
             ),
         )
 
-    monkeypatch.setattr(normalization, "load_analysis_module", lambda _name: loaded("A"))
+    monkeypatch.setattr(
+        normalization, "load_analysis_module", lambda _name: loaded("A")
+    )
     first = admit_project(project_path, fixture.profile()).select_analysis()
-    monkeypatch.setattr(normalization, "load_analysis_module", lambda _name: loaded("B"))
+    monkeypatch.setattr(
+        normalization, "load_analysis_module", lambda _name: loaded("B")
+    )
     second = admit_project(project_path, fixture.profile()).select_analysis()
 
     assert calls == 2
     assert contexts[0].partitions[0]["selector_format"] == "bed"
     assert contexts[0].partitions[0]["selector_compression"] == "plain"
-    assert flat_revision.record["schema_version"] == "emrys.analysis-revision.v1"
+    assert flat_revision == first.revision
     assert first.revision.record["schema_version"] == "emrys.analysis-revision.v2"
     assert first.revision == second.revision
-    assert first.workflow_inputs["analysis"]["policy"] != second.workflow_inputs[
-        "analysis"
-    ]["policy"]
+    assert (
+        first.workflow_inputs["analysis"]["policy"]
+        != second.workflow_inputs["analysis"]["policy"]
+    )
     policy = first.workflow_inputs["analysis"]["policy"]
     assert policy["implementation_sha256"] == "0" * 64
     monkeypatch.setattr(
@@ -171,9 +177,11 @@ def test_explicit_module_normalizes_once_without_provider_facts_in_identity(
 def test_named_analysis_selection_is_closed_and_content_bound(tmp_path: Path) -> None:
     project_path = fixture.build(tmp_path / "project-root")
     definition = project_path.read_text(encoding="utf-8")
-    second = definition.split("analyses:\n", 1)[1].replace(
-        "  primary:\n", "  sensitivity:\n", 1
-    ).replace("    min_sample_dp: 1\n", "    min_sample_dp: 2\n", 1)
+    second = (
+        definition.split("analyses:\n", 1)[1]
+        .replace("  primary:\n", "  sensitivity:\n", 1)
+        .replace("    min_sample_dp: 1\n", "    min_sample_dp: 2\n", 1)
+    )
     project_path.write_text(definition + second, encoding="utf-8")
 
     project = admit_project(project_path, fixture.profile())
@@ -220,9 +228,12 @@ def test_named_analysis_sample_selection_is_explicit_and_order_neutral(
     explicit_all = project.select_analysis("explicit-all")
 
     assert project.dataset_sample_count == 6
-    assert [
-        row["sample_id"] for row in subset.workflow_inputs["samples"]["rows"]
-    ] == ["EV_2", "PUM1_2", "EV_3", "PUM1_3"]
+    assert [row["sample_id"] for row in subset.workflow_inputs["samples"]["rows"]] == [
+        "EV_2",
+        "PUM1_2",
+        "EV_3",
+        "PUM1_3",
+    ]
     assert [
         row["sample_id"] for row in subset.revision.record["identity"]["samples"]
     ] == ["EV_2", "EV_3", "PUM1_2", "PUM1_3"]
@@ -274,7 +285,7 @@ def test_named_analysis_sample_selection_rejects_unknown_or_incomplete_cohorts(
     )
     with pytest.raises(
         contracts.ContractValidationError,
-        match="exactly one control and treatment",
+        match="exactly one control and one treatment",
     ):
         admit_project(project_path, fixture.profile())
 
@@ -301,9 +312,11 @@ def test_regions_file_resolves_from_nested_partition_manifest(
         encoding="utf-8",
     )
 
-    row = admit_project(request, fixture.profile()).select_analysis().workflow_inputs[
-        "partitions"
-    ]["rows"][0]
+    row = (
+        admit_project(request, fixture.profile())
+        .select_analysis()
+        .workflow_inputs["partitions"]["rows"][0]
+    )
 
     assert row["selector_value"] == str(selector)
     assert row["selector_file"] == {
@@ -499,8 +512,8 @@ def test_absent_optional_background_normalizes_to_explicit_null(
     assert omitted.select_analysis().revision == explicit.select_analysis().revision
     assert (
         omitted.select_analysis().workflow_inputs["analysis"]["policy"][
-            "background_condition"
-        ]
+            "configuration"
+        ]["background_condition"]
         is None
     )
 
@@ -682,6 +695,6 @@ def test_incomplete_paired_strata_are_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(
         contracts.ContractValidationError,
-        match="exactly one control and treatment",
+        match="exactly one control and one treatment",
     ):
         admit_project(request, fixture.profile())

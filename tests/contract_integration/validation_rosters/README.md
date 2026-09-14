@@ -1,13 +1,11 @@
-# Validation-roster expectations
+# Expected validation checks
 
-This directory owns independent ordered expectations for the check IDs emitted
-by every live validation producer. `validation_roster_expectations.py` contains
-the literal rosters; `test_validation_check_rosters.py` protects inventory,
-membership, ordering, and the shared report validator's characterized
-reordering behavior.
+`validation_roster_expectations.py` stores the independently reviewed, ordered
+check IDs for every current validation producer. `test_validation_check_rosters.py`
+checks the producer inventory, membership, ordering, and the shared report
+validator's known behavior when checks are reordered.
 
-Do not derive these expectations from producer constants. The canonical risk
-route is the [test baseline](../../../docs/design/TEST_BASELINE.md); individual
-validators retain ownership of each check's semantics. Roster agreement is
-local contract evidence, not proof that a check is scientifically sufficient
-or that a real workflow run passed.
+Never derive expected rosters from producer constants. Each validator defines
+what its checks mean; matching the list does not show that the checks are
+scientifically sufficient or that a real workflow passed. See the
+[test baseline](../../../docs/design/TEST_BASELINE.md) for the covered risk.

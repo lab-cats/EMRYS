@@ -1,5 +1,4 @@
 {
-  "attempt_id": "attempt-02",
   "generated_at": "2026-01-02T03:04:05Z",
   "interpretation_boundary": "computational_candidates_only_biological_validation_outside_emrys",
   "outputs": [
@@ -20,17 +19,9 @@
       "self_contained": true,
       "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "size_bytes": 222
-    },
-    {
-      "kind": "run_summary_tsv",
-      "media_type": "text/tab-separated-values",
-      "output_id": "run-summary-tsv",
-      "path": "reports/run-01/run-01.run_summary.tsv",
-      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-      "size_bytes": 123
     }
   ],
   "run_id": "run-01",
   "schema_name": "emrys.report_receipt",
-  "schema_version": "4.0.0"
+  "schema_version": "8.0.0"
 }

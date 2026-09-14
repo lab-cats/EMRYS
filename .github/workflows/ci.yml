@@ -2,8 +2,6 @@ name: Phase 1 CI
 
 on:
   pull_request:
-    branches:
-      - master
   push:
     branches:
       - master
@@ -119,6 +117,22 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up primary Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
+
+      - name: Set up locked uv version
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Restore locked development tools
+        shell: bash
+        run: uv sync --locked --only-group dev --no-install-project --python python
+
       - name: Install checksum-verified actionlint
         shell: bash
         run: |
@@ -138,7 +152,7 @@ jobs:
         shell: bash
         run: >-
           "${RUNNER_TEMP}/actionlint"
-          -shellcheck=
+          -shellcheck="${GITHUB_WORKSPACE}/.venv/bin/shellcheck"
           -pyflakes=
           -color
 
@@ -177,7 +191,6 @@ jobs:
         run: |
           set -euo pipefail
           make -s validation-static
-          .venv/bin/python -m pytest -q tests/test_python_test_shards.py
           make -s validation-wheel-smoke
 
   shell-contracts:
@@ -229,10 +242,12 @@ jobs:
       - name: Select isolated R cache and library paths
         shell: bash
         run: |
-          printf 'RENV_PATHS_CACHE=%s/emrys-renv/cache\n' \
-            "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
-          printf 'RENV_PATHS_LIBRARY=%s/emrys-renv/library\n' \
-            "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
+          mkdir -p "${RUNNER_TEMP}/emrys-renv"
+          {
+            printf 'RENV_PROJECT=%s/emrys-renv\n' "${RUNNER_TEMP}"
+            printf 'RENV_PATHS_CACHE=%s/emrys-renv/cache\n' "${RUNNER_TEMP}"
+            printf 'RENV_PATHS_LIBRARY=%s/emrys-renv/library\n' "${RUNNER_TEMP}"
+          } >> "${GITHUB_ENV}"
 
       - name: Set up primary Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
@@ -274,7 +289,7 @@ jobs:
             ${{ runner.temp }}/emrys-renv/cache
             ${{ runner.temp }}/emrys-renv/library
           key: >-
-            emrys-renv-${{ runner.os }}-${{ runner.arch }}-R-${{ env.R_VERSION }}-${{ hashFiles('renv.lock') }}
+            emrys-renv-${{ runner.os }}-${{ runner.arch }}-R-${{ env.R_VERSION }}-${{ hashFiles('src/emrys/renv.lock') }}
 
       - name: Restore locked Python environment
         shell: bash
@@ -291,8 +306,7 @@ jobs:
             EMRYS_LOCAL_PILOT_R=0 \
             RENV_CONFIG_SANDBOX_ENABLED=FALSE \
             RENV_CONFIG_AUTO_SNAPSHOT=FALSE \
-            RENV_PROJECT="${GITHUB_WORKSPACE}" \
-            R_PROFILE_USER="${GITHUB_WORKSPACE}/.Rprofile" \
+            R_PROFILE_USER="${GITHUB_WORKSPACE}/src/emrys/.Rprofile" \
               "${rscript_bin}" -e \
                 'cat(normalizePath(.libPaths()[[1L]], winslash = "/", mustWork = TRUE))'
           })"
@@ -493,7 +507,7 @@ jobs:
         with:
           path: ${{ runner.temp }}/emrys-managed-golden/project/runtime/managed/renv/cache
           key: >-
-            emrys-managed-golden-renv-v1-${{ runner.os }}-${{ runner.arch }}-R-${{ env.R_VERSION }}-${{ hashFiles('renv.lock', 'src/emrys/resources/runtime/pixi.lock') }}
+            emrys-managed-golden-renv-v1-${{ runner.os }}-${{ runner.arch }}-R-${{ env.R_VERSION }}-${{ hashFiles('src/emrys/renv.lock', 'src/emrys/resources/runtime/pixi.lock') }}
 
       - name: Repair and exercise the supported managed golden path
         shell: bash
@@ -856,9 +870,13 @@ jobs:
               "${GITHUB_EVENT_NAME}" "${GITHUB_SHA}" \
               > "${evidence_root}/100000/selection.tsv"
           fi
-          printf 'E2E_EVIDENCE_ROOT=%s\n' "${evidence_root}" >> "${GITHUB_ENV}"
-          printf 'RENV_PATHS_CACHE=%s/emrys-renv/cache\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
-          printf 'RENV_PATHS_LIBRARY=%s/emrys-renv/library\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
+          mkdir -p "${RUNNER_TEMP}/emrys-renv"
+          {
+            printf 'E2E_EVIDENCE_ROOT=%s\n' "${evidence_root}"
+            printf 'RENV_PROJECT=%s/emrys-renv\n' "${RUNNER_TEMP}"
+            printf 'RENV_PATHS_CACHE=%s/emrys-renv/cache\n' "${RUNNER_TEMP}"
+            printf 'RENV_PATHS_LIBRARY=%s/emrys-renv/library\n' "${RUNNER_TEMP}"
+          } >> "${GITHUB_ENV}"
 
       - name: Check out the triggering commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -919,7 +937,7 @@ jobs:
             ${{ runner.temp }}/emrys-renv/cache
             ${{ runner.temp }}/emrys-renv/library
           key: >-
-            emrys-real-e2e-pixi-renv-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('renv.lock', 'src/emrys/resources/runtime/pixi.lock') }}
+            emrys-real-e2e-pixi-renv-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('src/emrys/renv.lock', 'src/emrys/resources/runtime/pixi.lock') }}
 
       - name: Restore locked Python environment
         shell: bash
@@ -936,8 +954,7 @@ jobs:
             EMRYS_LOCAL_PILOT_R=0 \
             RENV_CONFIG_SANDBOX_ENABLED=FALSE \
             RENV_CONFIG_AUTO_SNAPSHOT=FALSE \
-            RENV_PROJECT="${GITHUB_WORKSPACE}" \
-            R_PROFILE_USER="${GITHUB_WORKSPACE}/.Rprofile" \
+            R_PROFILE_USER="${GITHUB_WORKSPACE}/src/emrys/.Rprofile" \
               "${rscript_bin}" -e \
                 'cat(normalizePath(.libPaths()[[1L]], winslash = "/", mustWork = TRUE))'
           })"
@@ -970,7 +987,7 @@ jobs:
           cp -- \
             src/emrys/resources/runtime/pixi.toml \
             src/emrys/resources/runtime/pixi.lock \
-            renv.lock \
+            src/emrys/renv.lock \
             uv.lock \
             "${runtime_evidence}/"
           cp -a -- \
@@ -1095,6 +1112,7 @@ jobs:
           scontrol show nodes -o > "${E2E_EVIDENCE_ROOT}/slurm/final-nodes.txt" 2>&1
           systemctl --no-pager --full status munge slurmctld slurmd \
             > "${E2E_EVIDENCE_ROOT}/slurm/final-systemd-status.txt" 2>&1
+          # shellcheck disable=SC2024 # Privileged read; the runner owns the destination.
           sudo journalctl --no-pager -u munge -u slurmctld -u slurmd \
             > "${E2E_EVIDENCE_ROOT}/slurm/final-journal.txt" 2>&1
           exit 0

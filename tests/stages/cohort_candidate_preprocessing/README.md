@@ -1,11 +1,11 @@
 # Cohort-candidate preprocessing tests
 
-This directory protects Step 08 repository shell/R input policy, candidate
-processing, three-output publication and recovery, and the behavior of the
-grouped private validator. The
-[stage owner](../../../src/emrys/stages/cohort_candidate_preprocessing/README.md)
-owns commands, provisional orientation policy, and exact evidence limits.
+These cases check direct R computation, exact upstream receipt/VCF bindings,
+serialized output checks, and validation through the grouped command. Shared runner tests
+cover publication and recovery. The
+[stage contract](../../../src/emrys/stages/cohort_candidate_preprocessing/CONTRACT.md)
+defines the provisional orientation policy. The guarded R fixture also checks
+interval reduction and derived UTR ranges against explicit expected coordinates.
 
-The guarded-R runner may skip without an acceptable R runtime; a skip supplies
-no real-R evidence. Local results are not validated variants or editing sites,
-scientific review, scheduler or cluster proof, or biological readiness.
+The guarded-R runner may skip without a suitable runtime; a skip proves no R
+execution. Local candidates are not validated variants or editing sites.

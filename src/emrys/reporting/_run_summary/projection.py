@@ -9,21 +9,7 @@ from typing import Any
 
 from emrys.contracts.artifacts import api as contracts
 
-from .inputs import _fail
 from .transaction import _stable_unique
-
-
-def _artifact_statuses(artifact: Mapping[str, Any]) -> dict[str, str]:
-    return contracts.artifact_status_dimensions(dict(artifact))
-
-
-def _scope_statuses(scope_artifacts: list[dict[str, Any]]) -> dict[str, str]:
-    return {
-        field: contracts.aggregate_equal_or_mixed(
-            _artifact_statuses(artifact)[field] for artifact in scope_artifacts
-        )
-        for field in contracts.RUN_SUMMARY_STATUS_FIELDS
-    }
 
 
 def _build_expected_scopes(
@@ -43,7 +29,6 @@ def _build_expected_scopes(
         errors = _stable_unique(
             issue for artifact in scope_artifacts for issue in artifact["errors"]
         )
-        status_values = _scope_statuses(scope_artifacts)
         expected_scopes.append(
             {
                 "scope": {
@@ -55,7 +40,6 @@ def _build_expected_scopes(
                     artifact["artifact_id"] for artifact in scope_artifacts
                 ],
                 "aggregate_state": contracts.aggregate_artifact_state(scope_artifacts),
-                **status_values,
                 "warnings": warnings,
                 "errors": errors,
             }
@@ -65,38 +49,13 @@ def _build_expected_scopes(
     return expected_scopes, artifact_scope_order
 
 
-def _build_attempts(
-    artifacts: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], list[str]]:
-    attempts: list[dict[str, Any]] = []
-    attempt_index: dict[str, dict[str, Any]] = {}
-    superseded: list[str] = []
-    for artifact in artifacts:
-        for attempt in artifact["attempts"]:
-            attempt_id = attempt["attempt_id"]
-            prior = attempt_index.get(attempt_id)
-            if prior is not None:
-                if prior != attempt:
-                    _fail(
-                        f"Artifact attempt {attempt_id!r} has conflicting definitions"
-                    )
-                continue
-            copy = dict(attempt)
-            attempt_index[attempt_id] = copy
-            attempts.append(copy)
-            parent = attempt["supersedes_attempt_id"]
-            if parent is not None and parent not in superseded:
-                superseded.append(parent)
-    return attempts, superseded
-
-
 def _build_rollup(
     artifacts: list[dict[str, Any]],
 ) -> dict[str, Any]:
     states = Counter(
         contracts.artifact_rollup_state(artifact) for artifact in artifacts
     )
-    result: dict[str, Any] = {
+    return {
         "expected_artifact_count": len(artifacts),
         "complete_artifact_count": states["complete"],
         "missing_artifact_count": states["missing"],
@@ -104,94 +63,30 @@ def _build_rollup(
         "failed_artifact_count": states["failed"],
         "externally_unavailable_artifact_count": states["externally_unavailable"],
     }
-    for field, value in _scope_statuses(artifacts).items():
-        result[field] = value
-    return result
-
-
-def _build_tools(artifacts: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return _stable_unique(tool for artifact in artifacts for tool in artifact["tools"])
-
-
-def _build_qc_metrics(
-    artifacts: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], set[str]]:
-    counts = Counter(
-        metric["metric_id"] for artifact in artifacts for metric in artifact["metrics"]
-    )
-    metrics = [
-        dict(metric)
-        for artifact in artifacts
-        for metric in artifact["metrics"]
-        if counts[metric["metric_id"]] == 1
-    ]
-    duplicate_ids = {metric_id for metric_id, count in counts.items() if count > 1}
-    return metrics, duplicate_ids
 
 
 def _build_limitations(
     *,
     artifacts: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    def generated_id(base: str, existing: set[str]) -> str:
-        candidate = base
-        counter = 1
-        while candidate in existing:
-            candidate = f"{base}.generated{counter}"
-            counter += 1
-        existing.add(candidate)
-        return candidate
-
-    limitations: list[dict[str, Any]] = []
-    used_ids = {limitation["limitation_id"] for limitation in limitations}
-    incomplete_required = [
-        artifact["artifact_id"]
+    if all(
+        not artifact["expectation"]["required"]
+        or contracts.artifact_rollup_state(artifact) == "complete"
         for artifact in artifacts
-        if artifact["expectation"]["required"]
-        and contracts.artifact_rollup_state(artifact) != "complete"
+    ):
+        return []
+    return [
+        {
+            "limitation_id": "required_artifacts_not_complete",
+            "status": "open",
+            "description": "One or more required expected artifacts are not complete.",
+            "impact": (
+                "The run summary is structurally complete, but downstream "
+                "consumers must retain the explicit incomplete states."
+            ),
+            "evidence_ids": [],
+        }
     ]
-    if incomplete_required:
-        limitations.append(
-            {
-                "limitation_id": generated_id(
-                    "required_artifacts_not_complete",
-                    used_ids,
-                ),
-                "status": "open",
-                "description": (
-                    "One or more required expected artifacts are not complete."
-                ),
-                "impact": (
-                    "The run summary is structurally complete, but downstream "
-                    "consumers must retain the explicit incomplete states."
-                ),
-                "evidence_ids": [],
-            }
-        )
-    return _stable_unique(limitations)
-
-
-def _issue_for_duplicate_metrics(
-    duplicate_ids: set[str],
-    artifacts: list[dict[str, Any]],
-) -> dict[str, Any] | None:
-    if not duplicate_ids:
-        return None
-    related = [
-        artifact["artifact_id"]
-        for artifact in artifacts
-        if any(metric["metric_id"] in duplicate_ids for metric in artifact["metrics"])
-    ]
-    return {
-        "code": "duplicate_qc_metric_ids_not_promoted",
-        "message": (
-            "Repeated artifact metric IDs remain available inside artifacts "
-            "and the QC TSV but are not copied into the globally unique "
-            "top-level qc_metrics array."
-        ),
-        "related_artifact_ids": related,
-        "evidence": [],
-    }
 
 
 def _metric_value_type(value: Any) -> str:
@@ -213,7 +108,6 @@ def _build_summary_rows(
     rows: list[dict[str, Any]] = []
     for artifact_order, artifact in enumerate(document["artifacts"], 1):
         source = artifact["source"]
-        statuses = _artifact_statuses(artifact)
         rows.append(
             {
                 "run_id": document["run_id"],
@@ -232,7 +126,6 @@ def _build_summary_rows(
                 "availability_status": artifact["availability_status"],
                 "completion_status": artifact["completion_status"],
                 "rollup_state": contracts.artifact_rollup_state(artifact),
-                **statuses,
                 "source_path": "" if source is None else source["path"],
                 "source_sha256": "" if source is None else source["sha256"],
                 "source_row_count": (
@@ -240,7 +133,6 @@ def _build_summary_rows(
                     if source is None or source["row_count"] is None
                     else source["row_count"]
                 ),
-                "selected_attempt_id": artifact["selected_attempt_id"] or "",
                 "warning_count": len(artifact["warnings"]),
                 "error_count": len(artifact["errors"]),
             }

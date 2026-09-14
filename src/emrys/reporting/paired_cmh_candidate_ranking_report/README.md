@@ -1,5 +1,27 @@
-# Paired-CMH scientific report provider
+# Paired-CMH scientific report
 
-This package implements the bespoke scientific report for EMRYS's built-in paired-CMH candidate-ranking Analysis. It admits the module's computational and scientific-context Results, selects candidate displays, builds figures, and supplies the scientific view to the fixed core report transaction.
+This provider reads validated paired-CMH Results and scientific context, selects
+candidate displays, builds figures, and supplies the scientific view to the
+[core report transaction](../_run_report/README.md). It does not recalculate
+statistics or publish evidence separately. The view describes computational
+candidates; it cannot establish scientific adjudication or biological validity.
 
-It does not recalculate candidate statistics, define a generic reporting language, publish evidence independently, or establish scientific adjudication or biological validity. The core receipt-last transaction remains in [`_run_report/`](../_run_report/README.md).
+`computational.py` owns the report's table representation and streamed TSV reader.
+Tables keep one file snapshot and named, read-only display rows. Step 09 result
+counts, headers, and summary rows come from the scientific contract validator;
+report admission does not parse the two candidate tables or summary again.
+Candidate selection and figures still stream the complete populations they need,
+with file-identity rechecks around those reads. Large candidate and motif tables
+are never copied into the display-row collection. The mutation spectrum and
+Step 10's bounded figure tables are read for display after canonical validation.
+The existing artifact carrier supplies its admitted file snapshot and an isolated
+copy of the Step 09/10 projection checked by artifact preparation. The reporter
+requires those projections, then checks source identities and the exact Step 09/10
+validation-report check lists without repeating scientific admission.
+
+The existing [Jinja template](../templates/run_report.html.j2) renders the admitted
+summary, selected candidates, and figures directly. `view.py` retains scientific
+number formatting and the fixed figure-roster checks; it does not create another
+candidate or layout representation. Both report layouts share the template's
+markup, while the provider extension still returns scientific HTML bytes.
+The former alpha `render_report_view` dictionary-layout interface is retired.

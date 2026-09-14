@@ -61,11 +61,9 @@ _PAIR_LEGEND_LIMIT = 4
 _TRACK_RADIUS = 25
 
 
-def _table_rows(table: ComputationalTable) -> tuple[dict[str, str], ...]:
+def _table_rows(table: ComputationalTable) -> tuple[Mapping[str, str], ...]:
     _assert_snapshot(table.snapshot, f"scientific figure input {table.artifact_id!r}")
-    rows = tuple(
-        dict(zip(table.header, values, strict=True)) for values in table.display_rows
-    )
+    rows = table.display_rows
     _assert_snapshot(table.snapshot, f"scientific figure input {table.artifact_id!r}")
     return rows
 
@@ -74,7 +72,7 @@ def _logo_matrices(
     table: ComputationalTable,
 ) -> dict[str, tuple[str, int, dict[int, dict[str, float]]]]:
     matrices: dict[str, tuple[str, int, dict[int, dict[str, float]]]] = {}
-    by_population: dict[str, list[dict[str, str]]] = {}
+    by_population: dict[str, list[Mapping[str, str]]] = {}
     for row in _table_rows(table):
         by_population.setdefault(row["population"], []).append(row)
     for population in ("significant_up", "background", "significant_down"):

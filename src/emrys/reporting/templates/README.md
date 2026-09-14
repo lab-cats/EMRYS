@@ -1,27 +1,23 @@
-# Reporting template
+# Report template
 
-[`run_report.html.j2`](run_report.html.j2) is the single packaged report
-template shared by the scientific and evidence-and-operations HTML views. The
-Python view builders select each document's title, banner context, introduction,
-sections, and end note; this template owns their fixed relative role destinations
-and common accessible structure,
-tables, figure cards, the ranked selected-candidate card index, detailed
-candidate records, and block rendering. The scientific hierarchy is static and
-print-oriented, with no `details` elements;
-the evidence and operations categories retain their bounded disclosure controls.
-Scientific SVG figures, including multi-panel candidate views, are validated
-and supplied as base64 data URIs; the artifact-availability SVG is emitted only
-when the evidence view supplies that block. A bounded macro section avoids
-template fragments. Manifest-paired candidate evidence is emitted in bounded
-four-pair batches with the candidate-specific heading inside each batch so print
-page breaks never remove the record identity or split a replicate card.
+[`run_report.html.j2`](run_report.html.j2) is the packaged template for both
+scientific and evidence-and-operations HTML. Python view builders supply each
+view's title, banner context, introduction, sections, and end note. The template
+lays out accessible navigation, tables, figures, ranked candidate cards, detailed
+records, and other blocks using one bounded set of macros rather than fragments.
+Scientific content stays expanded for reading and printing, with no `details`
+elements; evidence categories keep their limited disclosure controls.
 
-The Jinja environment uses HTML autoescaping and `StrictUndefined`. Run-summary
-content, identifiers, paths, computational text, issues, limitations, and table
-data never cross a `safe` boundary. The only trusted raw value is the tracked,
-validated packaged CSS; SVG data URIs remain autoescaped attribute values. The
-template has no scripts, includes, remote assets, sidecars, or executable
-analysis.
+Validated scientific SVGs, including multi-panel candidate figures, arrive as
+base64 data URIs. The artifact-availability SVG appears only when the evidence
+view requests it. Manifest-paired candidate evidence is grouped in four-pair
+batches, each with its candidate heading, so printing retains record identity
+and does not split a replicate card. The [stylesheet](../styles/README.md)
+defines the remaining print layout.
 
-Protection lives in [`test_report.py`](../../../../tests/reporting/test_report.py)
-and the isolated-wheel render smoke.
+Jinja uses HTML autoescaping and `StrictUndefined`. Only validated packaged CSS
+is trusted raw content: summaries, identifiers, paths, computational text, issues,
+limitations, and table data never use `safe`. SVG URI attributes remain escaped.
+There are no scripts, includes, remote assets, sidecars, or executable analysis.
+[Report tests](../../../../tests/reporting/test_report.py) and isolated-wheel
+render smoke check these guarantees.

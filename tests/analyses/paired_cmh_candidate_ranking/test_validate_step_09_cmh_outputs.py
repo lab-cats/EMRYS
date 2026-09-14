@@ -477,11 +477,18 @@ def test_symlinked_input_fails_closed(tmp_path: Path) -> None:
     assert not evidence.output.exists()
 
 
-def test_foreign_lock_is_preserved(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("option", "expected"),
+    (
+        ("--expected-mean-dp-threshold", "900"),
+        ("--expected-control-condition", "absent"),
+    ),
+)
+def test_prepublication_rejects_different_requested_policy(
+    tmp_path: Path, option: str, expected: str
+) -> None:
     evidence = _build_evidence(tmp_path)
-    lock = evidence.output.parent / f".{evidence.output.name}.lock"
-    lock.write_text("foreign\n", encoding="utf-8")
-
-    result = _run(evidence, "--execute")
-    assert result.returncode == RUNTIME_FAILURE
-    assert lock.read_text(encoding="utf-8") == "foreign\n"
+    result = _run(evidence, option, expected, "--execute")
+    assert result.returncode == 0, result.stderr
+    rows = {row["check_id"]: row for row in report_rows(evidence.output)}
+    assert rows["summary_count_reconciliation"]["status"] == "fail"

@@ -6,23 +6,21 @@ identity and alias.
 
 ## Responsibility and execution dependencies
 
-Mark PCR/optical duplicates in one canonical BAM without removing reads,
-produce its index and Picard metrics, and permit independent structural
-validation.
+See the [README](README.md) for purpose, inputs, outputs, and normal use.
 
-The hard input is the explicit `<bam>.bai` canonical pair normally produced by
+The input is the explicit `<bam>.bai` canonical pair normally produced by
 Step `02`. Step `04` does not consume Step `02b` or Step `03` evidence and may
 run alongside them once the pair is stable. Step `05` consumes the marked
 BAM/BAI, so successful Step `04` publication is its data prerequisite. Current
-readers do not share a lock or a pinned snapshot; replacement must
-not overlap downstream reads.
+Run tasks bind their own input snapshots; external mutation must not overlap
+downstream reads.
 
 ## Inputs and outputs
 
 Inputs are a nonempty sample identifier, canonical BAM, exact `<bam>.bai`,
 output and metrics directories, readable Picard jar, Java and samtools
-executables, and an existing writable `TMPDIR`. The producer does not bind
-sample identity to a manifest or validate path safety.
+executables, and runner scratch. The worker requires a path-safe sample ID;
+the Run supplies its admitted manifest identity.
 
 Outputs are:
 
@@ -37,28 +35,18 @@ files and samtools quickcheck success for the BAM, but does not parse metrics,
 verify duplicate flags, publish a receipt, or bind outputs to one input/tool
 attempt.
 
-## Orchestration-safe producer boundary
+## Scientific worker
 
-`--no-clobber` is the required local-profile mode. It hashes the input BAM/BAI
-and Picard jar, refuses any existing final, holds a per-sample owned lock,
-directs Picard and samtools to run-token BAM/BAI/metrics paths, validates the
-complete triplet, rechecks the admitted hashes, and publishes only the new set.
-Publication is create-exclusive and keeps staging inode anchors through
-complete-set validation. Failure removes only still-owned new finals;
-ambiguous replacement preserves lock and residue. Java
-and samtools paths are explicit; observed tool versions and final hashes belong
-in the workflow verified record. Execute without this option retains the
-historical direct-final contract below.
+[`step_04_mark_duplicates.sh`](step_04_mark_duplicates.sh) is an internal worker of the
+[Run task runner](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
-## Current execution surfaces
+The worker receives separate staging directories for BAM and metrics. It
+runs Picard with `REMOVE_DUPLICATES=false` and runner scratch as `TMP_DIR`,
+quickchecks the BAM, creates its index with samtools, and requires the complete
+three-file set to be nonempty. Metrics interpretation stays with the validator.
 
-[`step_04_mark_duplicates.sh`](step_04_mark_duplicates.sh)
-is dry-run by default and creates no output directories in dry-run. Execute
-without `--no-clobber` writes Picard BAM and metrics directly to final paths,
-quickchecks the BAM, indexes it at the final path, then checks all three files
-for nonemptiness. That historical route has no lock, staging, stable-input
-recheck, rollback, or all-or-none transaction; failure may leave a partial or
-cross-attempt set.
+The retired direct-write route could leave partial or mixed output after a
+Picard or samtools failure. It is no longer an execution option.
 
 ## Validation interface
 
@@ -102,6 +90,5 @@ operations use the shared BAM helper.
 Repository tests protect this contract under the shared
 [evidence ceiling](../../../../tests/README.md).
 
-The unsafe legacy direct route remains exactly as described above. Run
-materialization supplies the sample argument, but library and platform remain
+Run materialization supplies the sample argument, but library and platform remain
 scope-derived or hardcoded rather than separately admitted manifest metadata.

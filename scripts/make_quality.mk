@@ -1,10 +1,10 @@
 PYTHON_COVERAGE_VERSION := 7.15.2
-SHELLCHECK_BIN ?= shellcheck
+SHELLCHECK_BIN ?= $$(dirname -- "$(REPORT_PYTHON_BIN)")/shellcheck
 SHFMT_BIN ?= shfmt
 RUFF_BIN ?= ruff
 VULTURE_BIN ?= vulture
 DEAD_CODE_PATHS ?= scripts src/emrys
-PYTHON_LINT_PATHS ?= scripts src/emrys tests
+PYTHON_LINT_PATHS ?= scripts src/emrys tests setup.py
 VULTURE_MIN_CONFIDENCE ?= 95
 EMRYS_RENV_VERSION := 1.2.3
 PYTHON_COVERAGE_NEW_SHARED_MODULES ?= \
@@ -64,11 +64,13 @@ real-r-test:
 	bash tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh
 
 r-restore:
+	test -n "$(RENV_PROJECT)"
+	test -d "$(RENV_PROJECT)"
 	EMRYS_USE_RENV=1 EMRYS_LOCAL_PILOT_R=0 \
 		RENV_CONFIG_SANDBOX_ENABLED=FALSE \
-		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)" \
-		R_PROFILE_USER="$(CURDIR)/.Rprofile" \
-		"$(RSCRIPT_BIN)" scripts/restore_r_environment.R
+		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(RENV_PROJECT)" \
+		R_PROFILE_USER="$(CURDIR)/src/emrys/.Rprofile" \
+		"$(RSCRIPT_BIN)" src/emrys/resources/runtime/restore_r_environment.R
 
 r-check:
 	test -n "$(RENV_LIBRARY)"
@@ -77,8 +79,8 @@ r-check:
 		EMRYS_RENV_LIBRARY="$(RENV_LIBRARY)" \
 		EMRYS_RENV_VERSION="$(EMRYS_RENV_VERSION)" \
 		RENV_CONFIG_SANDBOX_ENABLED=FALSE \
-		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)" \
-		R_PROFILE_USER="$(CURDIR)/.Rprofile" \
+		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)/src/emrys" \
+		R_PROFILE_USER="$(CURDIR)/src/emrys/.Rprofile" \
 		"$(RSCRIPT_BIN)" scripts/check_r_environment.R
 
 local-real-r-test:
@@ -88,8 +90,8 @@ local-real-r-test:
 		EMRYS_RENV_LIBRARY="$(RENV_LIBRARY)" \
 		EMRYS_RENV_VERSION="$(EMRYS_RENV_VERSION)" \
 		RENV_CONFIG_SANDBOX_ENABLED=FALSE \
-		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)" \
-		R_PROFILE_USER="$(CURDIR)/.Rprofile" \
+		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)/src/emrys" \
+		R_PROFILE_USER="$(CURDIR)/src/emrys/.Rprofile" \
 		STEP08_TEST_RSCRIPT_BIN= STEP09_TEST_RSCRIPT_BIN= \
 		SCIENTIFIC_CONTEXT_TEST_RSCRIPT_BIN= \
 		RSCRIPT_BIN_OVERRIDE="$(RSCRIPT_BIN)" \
@@ -177,7 +179,7 @@ report-test:
 		tests/reporting/test_transaction_validation.py
 
 define STATIC_SHELL_CHECKS
-bash -n $(SHELL_SYNTAX_PATHS)
+for script in $(SHELL_SYNTAX_PATHS); do bash -n "$$script" || exit $$?; done
 endef
 
 validation-static: lint documentation-check
@@ -188,6 +190,7 @@ validation-static: lint documentation-check
 		"$(REPORT_PYTHON_BIN)" -m compileall -q scripts src/emrys tests
 	"$(REPORT_PYTHON_BIN)" -I -m emrys validate manifest \
 		--manifest configs/samples.example.tsv
+	"$(REPORT_PYTHON_BIN)" -m pytest -q tests/test_python_test_shards.py
 
 validate:
 	"$(REPORT_PYTHON_BIN)" -I -m emrys validate manifest \
@@ -198,6 +201,8 @@ smoke:
 
 lint:
 	"$(REPORT_PYTHON_BIN)" -m "$(RUFF_BIN)" check --no-cache $(PYTHON_LINT_PATHS)
+	"$(REPORT_PYTHON_BIN)" -m "$(RUFF_BIN)" format --check --no-cache $(PYTHON_LINT_PATHS)
+	bash -o pipefail -c 'git ls-files -z -- "*.sh" | xargs -0 "$$1"' -- "$(SHELLCHECK_BIN)"
 	"$(REPORT_PYTHON_BIN)" -m "$(VULTURE_BIN)" \
 		--min-confidence $(VULTURE_MIN_CONFIDENCE) \
 		$(DEAD_CODE_PATHS)

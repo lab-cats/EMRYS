@@ -17,7 +17,9 @@ SCRIPT_PATH = REPO_ROOT / "scripts" / "benchmark_stage_resources.py"
 
 
 def _load_script() -> ModuleType:
-    spec = importlib.util.spec_from_file_location("emrys_benchmark_stage_resources", SCRIPT_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "emrys_benchmark_stage_resources", SCRIPT_PATH
+    )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
@@ -70,7 +72,10 @@ def _read_tsv(path: Path) -> list[dict[str, str]]:
             "cases must be a nonempty array",
         ),
         (
-            {"schema_version": BENCHMARK.SCHEMA_VERSION, "cases": [_case(name="bad name")]},
+            {
+                "schema_version": BENCHMARK.SCHEMA_VERSION,
+                "cases": [_case(name="bad name")],
+            },
             "safe identifier",
         ),
         (
@@ -81,11 +86,17 @@ def _read_tsv(path: Path) -> list[dict[str, str]]:
             "Duplicate benchmark case name",
         ),
         (
-            {"schema_version": BENCHMARK.SCHEMA_VERSION, "cases": [_case(values=[1, 1])]},
+            {
+                "schema_version": BENCHMARK.SCHEMA_VERSION,
+                "cases": [_case(values=[1, 1])],
+            },
             "distinct positive integers",
         ),
         (
-            {"schema_version": BENCHMARK.SCHEMA_VERSION, "cases": [_case(repetitions=0)]},
+            {
+                "schema_version": BENCHMARK.SCHEMA_VERSION,
+                "cases": [_case(repetitions=0)],
+            },
             "positive integer",
         ),
         (
@@ -197,8 +208,10 @@ def test_execute_records_successful_trial_and_summary(tmp_path: Path) -> None:
     assert trial_rows[0]["artifact_match_baseline"] == "yes"
     trial = Path(trial_rows[0]["trial_dir"])
     assert (trial / "product.txt").read_text(encoding="utf-8") == "2"
-    assert (trial / "producer.time.txt").read_text(encoding="utf-8").startswith(
-        "wall_seconds\t"
+    assert (
+        (trial / "producer.time.txt")
+        .read_text(encoding="utf-8")
+        .startswith("wall_seconds\t")
     )
     artifact_rows = _read_tsv(trial / "producer.artifacts.tsv")
     assert len(artifact_rows) == 1
@@ -341,10 +354,15 @@ def test_run_rejects_existing_output_and_nonreal_parent(tmp_path: Path) -> None:
         BENCHMARK.run(manifest, parent_link / "results", execute=False)
 
 
-def test_main_reports_operator_errors(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_main_reports_operator_errors(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     output = tmp_path / "results"
 
-    assert BENCHMARK.main(
-        ["--manifest", str(tmp_path / "missing.yaml"), "--output", str(output)]
-    ) == 2
+    assert (
+        BENCHMARK.main(
+            ["--manifest", str(tmp_path / "missing.yaml"), "--output", str(output)]
+        )
+        == 2
+    )
     assert "benchmark-stage-resources: error:" in capsys.readouterr().err

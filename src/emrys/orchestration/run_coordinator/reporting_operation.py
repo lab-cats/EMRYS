@@ -6,17 +6,18 @@ import argparse
 import stat
 from collections.abc import Callable
 from dataclasses import replace
+from functools import partial
 from pathlib import Path
 from typing import Any, Literal, NamedTuple
 
 from emrys.contracts.artifacts.api import ContractValidationError
-from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.application_model import PROCESSING_STEP_IDS
 from emrys.libraries.source_authority import (
+    PACKAGE_ROOT,
     ArtifactSourceRootError,
-    SourceCheckoutError,
+    InstalledPackageError,
     admit_artifact_source_root,
-    admit_source_checkout,
+    admit_installed_package,
 )
 from emrys.orchestration.run_coordinator import inspection, reporting_boundary
 from emrys.reporting._artifact_index.models import ArtifactIndexError
@@ -28,7 +29,7 @@ _PRODUCER_ERRORS = (
     RunSummaryError,
     ReportRenderError,
     ArtifactSourceRootError,
-    SourceCheckoutError,
+    InstalledPackageError,
     ContractValidationError,
     OSError,
     ValueError,
@@ -79,37 +80,28 @@ def _arguments(identity: Any, kind: str) -> argparse.Namespace:
     run_id = str(identity.execution["run_id"])
     artifact_root = root / "products" / "artifact-summary"
     artifact_run_root = artifact_root / run_id
-    source_checkout = Path(str(identity.attempt["source_checkout"]["path"]))
-    authority = {"source_checkout": source_checkout, "artifact_source_root": root}
-    run_contract = root / str(identity.config["reporting_run_contract_path"]["path"])
-    policy_reference = identity.config.get("primary_analysis_policy_path")
+    authority = {"package_root": PACKAGE_ROOT, "artifact_source_root": root}
+    workflow = identity.attempt["workflow"]
+    run_contract = root / str(workflow["reporting_run_contract_path"]["path"])
+    policy_reference = workflow.get("primary_analysis_policy_path")
     analysis_policy = (
-        None
-        if policy_reference is None
-        else root / str(policy_reference["path"])
+        None if policy_reference is None else root / str(policy_reference["path"])
     )
-    inventory = root / str(identity.config["artifact_inventory_path"]["path"])
+    inventory = root / str(workflow["artifact_inventory_path"]["path"])
     values = {
-        "artifact_index": {
+        "run_summary": {
             "run_id": run_id,
             "run_contract": run_contract,
             "analysis_policy": analysis_policy,
             "profile": identity.profile,
             "inventory": inventory,
             "output_root": artifact_root,
-        },
-        "run_summary": {
-            "run_id": run_id,
-            "artifact_receipt": artifact_run_root / f"{run_id}.artifact_receipt.tsv",
-            "analysis_policy": analysis_policy,
-            "output_root": artifact_root,
-            "expected_run_contract_path": run_contract,
-            "expected_inventory_path": inventory,
+            "scientific_origin": identity.scientific_origin,
         },
         "html_report": {
             "run_summary": artifact_run_root / f"{run_id}.run_summary.json",
             "analysis_policy": analysis_policy,
-            "output_root": report_output_root(root, identity.profile),
+            "output_root": root / "results/reports",
         },
     }
     return argparse.Namespace(**authority, **values[kind])
@@ -121,53 +113,36 @@ def _producer_error(kind: str, phase: str, error: Exception) -> ReportingOperati
     return ReportingOperationError(f"{kind} {phase}{': ' + detail if detail else ''}")
 
 
-def _prepare_transaction(kind: str, arguments: argparse.Namespace) -> Any:
+def _prepare_transaction(
+    kind: str, arguments: argparse.Namespace, *, evidence_context: Any = None
+) -> Any:
     if kind == "html_report":
-        from emrys.reporting import report  # noqa: PLC0415
+        from emrys.reporting._run_report.context import prepare_context  # noqa: PLC0415
 
-        return report.prepare_report(arguments)
+        return prepare_context(arguments, evidence_context=evidence_context)
 
-    source_checkout = admit_source_checkout(
-        root=arguments.source_checkout,
-        package_root=Path(__file__).resolve().parents[2],
-    )
+    installed_package = admit_installed_package(root=arguments.package_root)
     artifact_source_root = admit_artifact_source_root(
         root=arguments.artifact_source_root,
     )
-    if kind == "artifact_index":
-        from emrys.reporting._artifact_index.context import prepare_context  # noqa: PLC0415
+    from emrys.reporting._artifact_index.context import prepare_evidence_context  # noqa: PLC0415
 
-        return prepare_context(
-            arguments,
-            source_checkout=source_checkout,
-            artifact_source_root=artifact_source_root,
-        )
-    from emrys.reporting._run_summary.builder import prepare_context  # noqa: PLC0415
-
-    return prepare_context(
+    return prepare_evidence_context(
         arguments,
-        source_checkout=source_checkout,
+        installed_package=installed_package,
         artifact_source_root=artifact_source_root,
     )
 
 
 def _publish_prepared(kind: str, context: Any) -> Path:
-    if kind == "artifact_index":
+    if kind == "run_summary":
         from emrys.reporting._artifact_index.publication import publish_context  # noqa: PLC0415
 
         publish_context(context)
-        return context.receipt_path
-    if kind == "run_summary":
-        from emrys.reporting._run_summary.publication import (  # noqa: PLC0415
-            publish_context,
-        )
-
-        publish_context(context)
-        return context.paths.receipt
-    from emrys.reporting import report  # noqa: PLC0415
+        return context.summary_paths.summary_json
     from emrys.reporting._run_report.publication import publish_report  # noqa: PLC0415
 
-    publish_report(context, report.default_publication_ops())
+    publish_report(context)
     return context.output_receipt
 
 
@@ -184,10 +159,6 @@ def _require_successful_results(state: inspection.RunInspection) -> None:
 
 
 def _admit_generation(state: inspection.RunInspection) -> Any:
-    if state.authority is None:
-        raise ReportingOperationError(
-            "New reporting generation requires a successor Run authority"
-        )
     assert state.latest_attempt is not None
     if state.reporting_status == "blocked":
         raise ReportingOperationError("Reporting state is blocked")
@@ -195,12 +166,7 @@ def _admit_generation(state: inspection.RunInspection) -> Any:
     identifier = str(state.latest_attempt["workflow_attempt_id"])
     attempt_path = state.run_root / "attempts" / identifier / "attempt.json"
     return reporting_boundary._admit_identity(  # noqa: SLF001
-        run_root=state.run_root,
-        execution_path=state.run_root / "contract" / "run.json",
-        profile_path=state.run_root / "contract" / "profile.json",
         workflow_attempt_path=attempt_path,
-        workflow_config_path=state.run_root
-        / str(state.latest_attempt["workflow_config"]["path"]),
         require_publishable_attempt=True,
     )
 
@@ -217,11 +183,11 @@ def _require_prepared_processing_source(
     expected: dict[Path, tuple[int | None, str]] = {}
     for task in source.state.tasks:
         if task.record is None:
-            raise ReportingOperationError("Processing source task evidence is incomplete")
+            raise ReportingOperationError(
+                "Processing source task evidence is incomplete"
+            )
         references = [*task.record["inputs"], *task.record["outputs"]]
         references.append(task.record["validation_report"])
-        if task.record["native_receipt"] is not None:
-            references.append(task.record["native_receipt"])
         for reference in references:
             path = Path(str(reference["path"]))
             if not path.is_absolute():
@@ -233,7 +199,9 @@ def _require_prepared_processing_source(
                 )
             expected[path] = binding
     external = tuple(
-        binding for path, binding in expected.items() if not path.is_relative_to(source.root)
+        binding
+        for path, binding in expected.items()
+        if not path.is_relative_to(source.root)
     )
 
     def matches(
@@ -252,7 +220,9 @@ def _require_prepared_processing_source(
             continue
         path = Path(item.resolved_path)
         snapshot = item.snapshot
-        binding = (snapshot.size_bytes, snapshot.sha256) if snapshot is not None else None
+        binding = (
+            (snapshot.size_bytes, snapshot.sha256) if snapshot is not None else None
+        )
         required = expected.get(path)
         if (
             snapshot is None
@@ -271,7 +241,7 @@ def _require_prepared_processing_source(
 
 
 def _recheck_processing_source(state: inspection.RunInspection) -> None:
-    """Re-admit one source immediately before artifact-index verification."""
+    """Re-admit one source immediately before combined evidence verification."""
 
     if state.processing_source is None:
         return
@@ -283,11 +253,11 @@ def _recheck_processing_source(state: inspection.RunInspection) -> None:
         )
     except (OSError, inspection.InspectionError) as exc:
         raise ReportingOperationError(
-            f"Processing source changed during artifact-index publication: {exc}"
+            f"Processing source changed during combined evidence publication: {exc}"
         ) from exc
     if confirmed is None:
         raise ReportingOperationError(
-            "Processing source changed during artifact-index publication"
+            "Processing source changed during combined evidence publication"
         )
 
 
@@ -315,18 +285,18 @@ def run_reporting(
         run_id = str(identity.execution["run_id"])
         for output in (
             identity.root / "products" / "artifact-summary" / run_id,
-            report_output_root(identity.root, identity.profile) / run_id,
+            identity.root / "results/reports" / run_id,
         ):
             _require_empty_output(output, run_root=identity.root)
 
         if not execute:
             try:
                 context = _prepare_transaction(
-                    "artifact_index", _arguments(identity, "artifact_index")
+                    "run_summary", _arguments(identity, "run_summary")
                 )
-                _require_prepared_processing_source(state, context)
+                _require_prepared_processing_source(state, context.index)
             except _PRODUCER_ERRORS as exc:
-                raise _producer_error("artifact_index", "dry-run failed", exc) from exc
+                raise _producer_error("run_summary", "dry-run failed", exc) from exc
             return ReportingOperationOutcome(
                 status="planned",
                 verified_report_locations=(),
@@ -334,36 +304,32 @@ def run_reporting(
 
         publish_ops = replace(
             reporting_boundary.DEFAULT_REPORTING_BOUNDARY_OPS,
-            validate_semantic_receipt=reporting_boundary.semantic_validator_session(
-                read=False
-            ),
+            validate_semantic_receipt=reporting_boundary.semantic_validator_session(),
         )
         identifier = str(identity.attempt["workflow_attempt_id"])
-        identity_paths = {
-            "run_root": identity.root,
-            "execution_path": identity.root / "contract" / "run.json",
-            "profile_path": identity.root / "contract" / "profile.json",
-            "workflow_attempt_path": (
-                identity.root / "attempts" / identifier / "attempt.json"
-            ),
-            "workflow_config_path": identity.root
-            / str(identity.attempt["workflow_config"]["path"]),
-        }
+        attempt_path = identity.root / "attempts" / identifier / "attempt.json"
+        evidence_context = None
         for kind in reporting_boundary.REPORTING_KINDS:
             try:
-                context = _prepare_transaction(kind, _arguments(identity, kind))
-                if kind == "artifact_index":
-                    _require_prepared_processing_source(state, context)
+                context = _prepare_transaction(
+                    kind, _arguments(identity, kind), evidence_context=evidence_context
+                )
+                if kind == "run_summary":
+                    _require_prepared_processing_source(state, context.index)
+                    evidence_context = context
             except _PRODUCER_ERRORS as exc:
                 raise _producer_error(
                     kind, "preflight failed before ledger entry", exc
                 ) from exc
             reporting_boundary.publish_start(
                 kind=kind,
-                **identity_paths,
+                workflow_attempt_path=attempt_path,
                 ops=publish_ops,
             )
-            if kind == reporting_boundary.REPORTING_KINDS[0] and observe_generation_start:
+            if (
+                kind == reporting_boundary.REPORTING_KINDS[0]
+                and observe_generation_start
+            ):
                 try:
                     observe_generation_start()
                 except Exception:
@@ -377,11 +343,16 @@ def run_reporting(
             reporting_boundary.publish_verified(
                 kind=kind,
                 receipt_path=receipt_path,
-                **identity_paths,
-                ops=publish_ops,
+                workflow_attempt_path=attempt_path,
+                ops=replace(
+                    publish_ops,
+                    validate_semantic_receipt=partial(
+                        publish_ops.validate_semantic_receipt, prepared_context=context
+                    ),
+                ),
                 before_publication=(
                     (lambda: _recheck_processing_source(state))
-                    if kind == "artifact_index" and state.processing_source is not None
+                    if kind == "run_summary" and state.processing_source is not None
                     else None
                 ),
             )

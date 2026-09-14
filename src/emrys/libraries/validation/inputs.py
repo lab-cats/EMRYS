@@ -157,9 +157,7 @@ def _read_file(
         remaining = limit
         while remaining is None or remaining > 0:
             read_size = (
-                1024 * 1024
-                if remaining is None
-                else min(remaining, 1024 * 1024)
+                1024 * 1024 if remaining is None else min(remaining, 1024 * 1024)
             )
             chunk = os.read(descriptor, read_size)
             if not chunk:

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from importlib.resources import files
 from pathlib import Path
-from typing import Any, NamedTuple, NoReturn, TypeAlias
+from typing import NamedTuple, NoReturn, TypeAlias
 
 from emrys.libraries.installed_package_identity import (
     InstalledPackageIdentityError,
@@ -26,12 +26,11 @@ class AnalysisReportArtifactV1(NamedTuple):
 
     adapter: str
     artifact_id: str
-    path: Path
-    sha256: str
-    size_bytes: int
+    snapshot: ReportInputSnapshot
     row_count: int | None
     kind: str
     media_type: str
+    projection: object | None = None
 
 
 class AnalysisReportInputV1(NamedTuple):
@@ -62,11 +61,6 @@ class AnalysisScientificReportV1(NamedTuple):
     inputs: tuple[AnalysisReportInputV1, ...] = ()
     renderer_details: tuple[tuple[str, str], ...] = ()
     figure_evidence: tuple[tuple[str, ...], ...] = ()
-
-
-ScientificReporterV1: TypeAlias = Callable[
-    [AnalysisReportContextV1], AnalysisScientificReportV1
-]
 
 
 class ReportProviderError(RuntimeError):
@@ -118,11 +112,3 @@ def reporting_resource_path(resource: str) -> Path:
     """Return one installed core reporting resource for report-time support."""
 
     return Path(str(files("emrys.reporting").joinpath(resource)))
-
-
-def render_report_view(view: Mapping[str, Any], css: str) -> bytes:
-    """Render one provider-owned view through the installed core template."""
-
-    from emrys.reporting._run_report.validation import render_html
-
-    return render_html(view, css)

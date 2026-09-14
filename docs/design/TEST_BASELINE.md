@@ -1,8 +1,8 @@
 # Test baseline and contract-risk index
 
-This document owns test policy and cross-cutting risk routes. Current test
-inventory, thresholds, durations, and exact counts live in tracked machine
-baselines and executable tooling, not duplicated prose.
+This document explains what the tests must protect and what their results can
+establish. Tracked baselines and test tooling own the current inventory,
+thresholds, durations, and counts.
 
 ## Evidence boundary
 
@@ -38,15 +38,8 @@ The gate measures branches over `scripts` and `src/emrys`, includes configured
 subprocess coverage, rejects exact-ratio regression globally and for every
 critical-owner aggregate, and requires newly declared shared modules to meet
 the configured introduction floors. Private modules may move or disappear when
-their aggregate owner remains protected. Baseline changes are explicit reviewed
-mutations:
-
-```bash
-make python-coverage-check
-make python-coverage-baseline-update
-git diff -- tests/baselines/python_coverage.json
-make python-coverage-check
-```
+their aggregate owner remains protected. A baseline change requires explicit
+review; use the [developer update procedure](../operations/ENGINEERING_CONVENTIONS.md#development-validation).
 
 CI shards the complete Python inventory using the executable plan and duration
 data under `tests/tools/` and `tests/baselines/`. Merge requires complete,
@@ -76,19 +69,24 @@ side effects.
 ## Validation lanes
 
 `make all-checks` is the assembled local gate. It checks the selected locked
-environment without repairing it, runs static preflight first, then the
-independent Python coverage, installed-wheel, shell-owner, and guarded-real-R
+environment without repairing it, runs shared static preflight including the
+test sharder's self-tests first, then the independent Python coverage,
+installed-wheel, shell-owner, and guarded-real-R
 lanes. CI may run the same inventory in verified shards and supplies selected
 long real-synthetic lanes.
+
+Ordinary CI runs for pull requests against any base branch, including stacked
+development branches, and for merge groups. Push-triggered CI remains limited
+to `master`. Scheduled and manually selected long lanes retain their existing
+selection rules; a stacked PR does not opt into them.
 
 Use focused owner tests during implementation and the complete applicable gate
 once on the final affected state. Exact development commands live in the
 [`engineering conventions`](../operations/ENGINEERING_CONVENTIONS.md#development-validation).
 Long checks run in CI. Quiet successful logs may be ephemeral; failed,
-interrupted, and peer-cancelled lanes retain bounded diagnostics. Nox remains
-rejected because matching the current process-group cancellation and retained-
-failure behavior would require a larger custom supervisor; `uv` remains the
-environment authority.
+interrupted, and peer-cancelled lanes retain bounded diagnostics. The
+[delivery decision](decisions/repository-and-delivery.md#validation-tools)
+explains the choice of validation tools.
 
 ## Contract-risk checklist
 
@@ -97,8 +95,8 @@ coverage alone:
 
 - public help, dry-run, execute, malformed input, overwrite, exit, and
   no-write/no-log refusal behavior;
-- producer-specific locks, staging, validation, publication, rollback,
-  interruption, recovery, and unrelated-file behavior;
+- shared runner locks, staging, publication, rollback, interruption, recovery,
+  and unrelated-file behavior, alongside worker scientific validation;
 - literal validation schemas and ordered check rosters;
 - deterministic schemas, headers, bytes, identities, and statuses;
 - same-size mutations, restored mtimes, symlinks/hardlinks, descriptor/path

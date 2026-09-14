@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+import emrys
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_ROOT = REPO_ROOT / "scripts"
 DOCUMENTATION_TOOLS_ROOT = SCRIPTS_ROOT / "documentation"
@@ -28,10 +30,8 @@ PYTHON_ENTRYPOINT_PATHS: dict[str, Path] = {
     "benchmark_stage_resources.py": Path("scripts/benchmark_stage_resources.py"),
 }
 PYTHON_ENTRYPOINTS = frozenset(PYTHON_ENTRYPOINT_PATHS)
-REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset()
 PRIVATE_PYTHON_MODULES = frozenset()
 DIRECT_PYTHON_ENTRYPOINTS = frozenset({"benchmark_stage_resources.py"})
-INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
 EMRYS_COMMANDS = (
     (("init",), "usage: emrys init"),
     (
@@ -61,18 +61,9 @@ EMRYS_COMMANDS = (
         "usage: emrys inspect",
     ),
     (
-        ("debug", "runtime-availability"),
-        "usage: emrys debug runtime-availability",
-    ),
-    (
-        ("debug", "storage-inventory"),
-        "usage: emrys debug storage-inventory",
-    ),
-    (
         ("debug", "storage-qualification"),
         "usage: emrys debug storage-qualification",
     ),
-    (("convert", "gtf-to-bed12"), "usage: emrys convert gtf-to-bed12"),
     (("validate", "bed12"), "usage: emrys validate bed12"),
     (("validate", "canonical-bam"), "usage: emrys validate canonical-bam"),
     (
@@ -159,7 +150,9 @@ DIRECT_SHELL_ENTRYPOINTS = SHELL_ENTRYPOINTS - INTERPRETER_ONLY_SHELL_DEFECTS
 
 R_ENTRYPOINT_PATHS = {
     "check_r_environment.R": Path("scripts/check_r_environment.R"),
-    "restore_r_environment.R": Path("scripts/restore_r_environment.R"),
+    "restore_r_environment.R": Path(
+        "src/emrys/resources/runtime/restore_r_environment.R"
+    ),
     "step_08_vcf_preprocessing.R": Path(
         "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"
     ),
@@ -180,7 +173,6 @@ DOCUMENTATION_PYTHON_ENTRYPOINTS = frozenset(
         "validate_structure.py",
     }
 )
-DOCUMENTATION_SHELL_ENTRYPOINTS = frozenset()
 
 MAKE_TARGET_DECISIONS = {
     "test": "local_gate",
@@ -435,9 +427,7 @@ def test_inventory_classifies_every_live_public_script() -> None:
     assert live_r == flat_r_entrypoints
     assert all(r_entrypoint_path(name).is_file() for name in R_ENTRYPOINTS)
     assert len(set(R_ENTRYPOINT_PATHS.values())) == len(R_ENTRYPOINTS)
-    assert DIRECT_PYTHON_ENTRYPOINTS | INTERPRETER_ONLY_PYTHON_ENTRYPOINTS == (
-        PYTHON_ENTRYPOINTS
-    )
+    assert DIRECT_PYTHON_ENTRYPOINTS == PYTHON_ENTRYPOINTS
     assert DIRECT_SHELL_ENTRYPOINTS | INTERPRETER_ONLY_SHELL_DEFECTS == (
         SHELL_ENTRYPOINTS
     )
@@ -448,11 +438,7 @@ def test_documentation_tool_inventory_is_explicit() -> None:
     live_files = {
         item.name for item in DOCUMENTATION_TOOLS_ROOT.iterdir() if item.is_file()
     }
-    assert live_files == (
-        DOCUMENTATION_PYTHON_ENTRYPOINTS
-        | DOCUMENTATION_SHELL_ENTRYPOINTS
-        | {"README.md"}
-    )
+    assert live_files == DOCUMENTATION_PYTHON_ENTRYPOINTS | {"README.md"}
 
 
 @pytest.mark.parametrize(
@@ -466,24 +452,6 @@ def test_documentation_python_help_is_cwd_independent(
     script = DOCUMENTATION_TOOLS_ROOT / entrypoint
     before = relative_snapshot(tmp_path)
     result = run_command([sys.executable, str(script), "--help"], cwd=tmp_path)
-
-    assert mode_is_executable(script)
-    assert result.returncode == 0, result.stderr
-    assert "usage:" in result.stdout.lower()
-    assert relative_snapshot(tmp_path) == before
-
-
-@pytest.mark.parametrize(
-    "entrypoint",
-    sorted(DOCUMENTATION_SHELL_ENTRYPOINTS),
-)
-def test_documentation_shell_help_is_cwd_independent(
-    entrypoint: str,
-    tmp_path: Path,
-) -> None:
-    script = DOCUMENTATION_TOOLS_ROOT / entrypoint
-    before = relative_snapshot(tmp_path)
-    result = run_command([str(script), "--help"], cwd=tmp_path)
 
     assert mode_is_executable(script)
     assert result.returncode == 0, result.stderr
@@ -554,6 +522,24 @@ def test_installed_emrys_commands_are_isolated_and_cwd_independent(
 
     assert help_result.returncode == 0, help_result.stderr
     assert expected_usage in help_result.stdout
+    if command in (("runtime", "discover"), ("validate",), ("doctor",), ("run",)):
+        assert "--project" in help_result.stdout
+        assert "--request" not in help_result.stdout
+        assert "--workspace" not in help_result.stdout
+    if command in (
+        ("doctor",),
+        ("run",),
+        ("runtime", "discover"),
+        ("validate",),
+        ("resume",),
+        ("inspect",),
+        ("report",),
+    ):
+        assert ("--analysis" in help_result.stdout) is (
+            command in (("doctor",), ("run",))
+        )
+    if command in (("doctor",), ("run",), ("resume",)):
+        assert "--runtime-profile" not in help_result.stdout
     assert parse_failure.returncode != 0
     assert expected_usage in parse_failure.stderr
     assert "foreign emrys package imported" not in help_result.stderr
@@ -561,105 +547,44 @@ def test_installed_emrys_commands_are_isolated_and_cwd_independent(
 
 
 @pytest.mark.parametrize(
-    "command",
-    (
-        ("runtime", "discover"),
-        ("validate",),
-        ("doctor",),
-        ("run",),
-    ),
+    "arguments", (("--version",), ("--version", "-v"), ("-v", "--version"))
 )
-def test_project_is_the_only_active_intake_spelling(
-    command: tuple[str, ...],
+def test_installed_emrys_version_is_cwd_independent(
+    arguments: tuple[str, ...],
     tmp_path: Path,
 ) -> None:
     result = run_command(
-        [sys.executable, "-I", "-m", "emrys", *command, "--help"],
+        [sys.executable, "-I", "-m", "emrys", *arguments],
         cwd=tmp_path,
     )
-
+    expected = [f"emrys {emrys.__version__}"]
+    if "-v" in arguments:
+        expected += [
+            f"Package: {Path(emrys.__file__).resolve().parent}",
+            f"Python: {sys.version.split()[0]}",
+            f"Executable: {sys.executable}",
+        ]
     assert result.returncode == 0, result.stderr
-    assert "--project" in result.stdout
-    assert "--request" not in result.stdout
-    assert "--workspace" not in result.stdout
+    assert result.stdout.splitlines() == expected
+    assert not result.stderr
+    assert relative_snapshot(tmp_path) == ()
 
 
 @pytest.mark.parametrize(
-    ("command", "selects_analysis"),
-    (
-        (("doctor",), True),
-        (("run",), True),
-        (("runtime", "discover"), False),
-        (("validate",), False),
-        (("resume",), False),
-        (("inspect",), False),
-        (("report",), False),
-    ),
+    "arguments", (("-v",), ("--version", "run"), ("--version", "--unknown"))
 )
-def test_analysis_selection_exists_only_where_readiness_or_run_is_selected(
-    command: tuple[str, ...],
-    selects_analysis: bool,
+def test_installed_emrys_rejects_invalid_version_arguments(
+    arguments: tuple[str, ...],
     tmp_path: Path,
 ) -> None:
     result = run_command(
-        [sys.executable, "-I", "-m", "emrys", *command, "--help"],
+        [sys.executable, "-I", "-m", "emrys", *arguments],
         cwd=tmp_path,
     )
-
-    assert result.returncode == 0, result.stderr
-    assert ("--analysis" in result.stdout) is selects_analysis
-
-
-@pytest.mark.parametrize(
-    "command",
-    (("doctor",), ("run",), ("resume",)),
-)
-def test_runtime_profile_is_project_owned_not_public_path_glue(
-    command: tuple[str, ...],
-    tmp_path: Path,
-) -> None:
-    result = run_command(
-        [sys.executable, "-I", "-m", "emrys", *command, "--help"],
-        cwd=tmp_path,
-    )
-
-    assert result.returncode == 0, result.stderr
-    assert "--runtime-profile" not in result.stdout
-
-
-@pytest.mark.parametrize(
-    ("configuration", "expected_status"),
-    (
-        ("[project\n", 0),
-        ('[project]\nname = "another-project"\n', 0),
-        ('[project]\nname = "emrys-rna-workflow"\n', CLI_USAGE_ERROR),
-    ),
-)
-def test_checkout_authority_ignores_nonowners_and_rejects_another_owner(
-    tmp_path: Path,
-    configuration: str,
-    expected_status: int,
-) -> None:
-    checkout = tmp_path / "checkout"
-    invocation_cwd = checkout / "nested"
-    package = checkout / "src" / "emrys"
-    invocation_cwd.mkdir(parents=True)
-    package.mkdir(parents=True)
-    (package / "__init__.py").write_text("", encoding="utf-8")
-    (checkout / "pyproject.toml").write_text(configuration, encoding="utf-8")
-    before = relative_snapshot(tmp_path)
-
-    result = run_command(
-        [sys.executable, "-I", "-m", "emrys", "--help"],
-        cwd=invocation_cwd,
-    )
-
-    assert result.returncode == expected_status
-    if expected_status == 0:
-        assert "usage: emrys" in result.stdout
-    else:
-        assert "not the current checkout" in result.stderr
-    assert relative_snapshot(tmp_path) == before
+    assert result.returncode == CLI_USAGE_ERROR
+    assert "emrys: error:" in result.stderr
+    assert not result.stdout
+    assert relative_snapshot(tmp_path) == ()
 
 
 def test_retired_build_group_is_rejected_without_side_effects(
@@ -694,11 +619,7 @@ print(json.dumps({
     "arguments",
     (
         ("--help",),
-        ("init", "--help"),
         ("runtime", "--help"),
-        ("report", "--help"),
-        ("convert", "--help"),
-        ("validate", "--help"),
     ),
 )
 def test_installed_emrys_command_routing_help(
@@ -713,41 +634,6 @@ def test_installed_emrys_command_routing_help(
     assert result.returncode == 0, result.stderr
     assert "usage: emrys" in result.stdout
     assert relative_snapshot(tmp_path) == ()
-
-
-@pytest.mark.parametrize(
-    "entrypoint",
-    sorted(REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS),
-)
-def test_repository_package_bootstrap_precedes_ambient_pythonpath(
-    entrypoint: str,
-    tmp_path: Path,
-) -> None:
-    foreign_root = tmp_path / "foreign"
-    foreign_package = foreign_root / "emrys"
-    foreign_package.mkdir(parents=True)
-    (foreign_package / "__init__.py").write_text(
-        "raise RuntimeError('foreign emrys package imported')\n",
-        encoding="utf-8",
-    )
-    invocation_cwd = tmp_path / "invocation"
-    invocation_cwd.mkdir()
-    environment = os.environ.copy()
-    environment["PYTHONDONTWRITEBYTECODE"] = "1"
-    environment["PYTHONPATH"] = os.pathsep.join(
-        (str(foreign_root), str(REPO_ROOT / "src"))
-    )
-    before = relative_snapshot(tmp_path)
-
-    result = run_command(
-        [sys.executable, str(python_entrypoint_path(entrypoint)), "--help"],
-        cwd=invocation_cwd,
-        env=environment,
-    )
-
-    assert result.returncode == 0, result.stderr
-    assert "foreign emrys package imported" not in result.stderr
-    assert relative_snapshot(tmp_path) == before
 
 
 @pytest.mark.parametrize("entrypoint", sorted(DIRECT_PYTHON_ENTRYPOINTS))
@@ -774,16 +660,6 @@ def test_executable_python_help_uses_a_prepared_path_from_arbitrary_cwd(
     assert result.returncode == 0, result.stderr
     assert "usage:" in result.stdout.lower()
     assert relative_snapshot(tmp_path) == before
-
-
-@pytest.mark.parametrize(
-    "entrypoint",
-    sorted(INTERPRETER_ONLY_PYTHON_ENTRYPOINTS),
-)
-def test_interpreter_only_python_file_modes_are_characterized(
-    entrypoint: str,
-) -> None:
-    assert not mode_is_executable(python_entrypoint_path(entrypoint))
 
 
 @pytest.mark.parametrize("entrypoint", sorted(SHELL_ENTRYPOINTS))
@@ -901,6 +777,13 @@ def test_make_targets_have_side_effect_free_command_expansion(
 def test_make_validation_targets_honor_report_python_bin(
     tmp_path: Path,
 ) -> None:
+    tools = tmp_path / "sentinel tools" / "bin"
+    tools.mkdir(parents=True)
+    for name in ("python", "shellcheck"):
+        executable = tools / name
+        executable.write_text('#!/bin/sh\nprintf "%s\\n" "$0"\n', encoding="utf-8")
+        executable.chmod(0o755)
+    python = tools / "python"
     result = run_command(
         [
             "make",
@@ -908,7 +791,7 @@ def test_make_validation_targets_honor_report_python_bin(
             "--no-print-directory",
             "-C",
             str(REPO_ROOT),
-            "REPORT_PYTHON_BIN=/sentinel/python",
+            f"REPORT_PYTHON_BIN={python}",
             "test",
             "validate",
             "lint",
@@ -920,8 +803,18 @@ def test_make_validation_targets_honor_report_python_bin(
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stderr == ""
     lines = result.stdout.splitlines()
-    assert sum("/sentinel/python" in line for line in lines) == 4
+    assert sum(str(python) in line for line in lines) == 6
+    assert f'-- "$(dirname -- "{python}")/shellcheck"' in result.stdout
     assert not any(".venv/bin/python" in line for line in lines)
+
+    executed = run_command(
+        ["make", "-s", "-C", str(REPO_ROOT), f"REPORT_PYTHON_BIN={python}", "lint"],
+        cwd=tmp_path,
+        env=canonical_make_environment(),
+    )
+    assert executed.returncode == 0, executed.stdout + executed.stderr
+    assert str(python) in executed.stdout.splitlines()
+    assert str(tools / "shellcheck") in executed.stdout.splitlines()
 
 
 def test_make_expansion_oracle_rejects_recipe_mutation(

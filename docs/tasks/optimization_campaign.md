@@ -7,8 +7,8 @@ Prefer eliminating repeated work and unnecessary allocations over adding
 machinery or changing computational methods.
 
 This document owns the optimization audit and proposed measurement approach.
-The [backlog matrix](backlog_matrix.md) remains the only authority for accepted
-work, status, and acceptance. Candidate numbers below are discussion references,
+The [backlog](backlog_matrix.md) records accepted work, its status, and
+completion criteria; its compression cards are delegated explicitly. Candidate numbers below are discussion references,
 not backlog IDs or an execution sequence. Documenting a candidate does not
 authorize implementation, benchmarking, cluster execution, runtime changes,
 artifact deletion, or adoption of an existing PR. Select each bounded outcome
@@ -161,11 +161,10 @@ approximately `3 * P * B` logical bytes: 75 complete shared-input traversals for
 Cache hits mean this is not a claim of 75 physical disk reads.
 
 First determine whether adjacent pre-entry observations can be consolidated
-without opening their mutation window. Broader reuse across tasks requires an
-equal-or-stronger demonstrated content-stability guarantee or a separately
-approved guarantee change. A cached digest, read-only pathname, or size/mtime
+without opening their mutation window. Reusing one observation across tasks requires proof that it detects
+content changes at least as reliably, or an approved change to that guarantee. A cached digest, read-only pathname, or size/mtime
 comparison does not by itself enforce immutable bytes. Avoid introducing a
-generic cache or Artifact Store to bypass this decision. Preserve input changes
+generic cache or artifact store to bypass this decision. Preserve input changes
 detected before entry and during execution, and measure cold/warm behavior on
 the actual storage class. Existing Step 07 aggregate input-identity reuse does
 not eliminate these wrapper observations.
@@ -267,10 +266,10 @@ repeated package-tree traversal and byte reads. These are source-derived call
 counts, not measured startup time or evidence that the checks are redundant.
 
 Measure task-start latency, Git invocations, and filesystem work on the selected
-local or institutional storage. Map each observation to its exact trust and
-publication boundary before proposing consolidation. The
+local or institutional storage. Identify what can change between each check and the file publication it
+protects before combining checks. The
 [package comparison][source-package-check] also reads both sides when their
-canonical roots are the same; determine whether that case can be simplified
+resolved roots are the same; determine whether that case can be simplified
 without losing a currently detected change. Retire only equivalent work inside
 the existing source-authority owner. Preserve executing-package bytes, exact
 commit binding, changed HEAD/package detection, and task-start publication
@@ -320,10 +319,13 @@ candidate must preserve that outcome rather than redefine its acceptance.
   proposal as a demonstrated optimization or confuse it with the fragment
   prototype in candidate 5.
 - The standalone FASTQ helper's repeated scans are outside the normal DAG.
-  Existing `OPS-03` first decides whether that helper remains useful. Its
-  optimization cannot be counted as pipeline savings unless the measured
-  operator journey actually includes it.
-- `SETUP-02` owns portable advisory benchmarking; `FUT-INDEX-01` owns explicit
+  `OPS-03` retains that independently useful diagnostic. Its single-pass
+  optimization is deferred until the [byte and diagnostic contract][compression]
+  is preserved; the draft changed zero-byte header handling. Its optimization
+  cannot count as pipeline savings unless the measured operator journey
+  actually includes it.
+- `SETUP-02` owns retirement of the benchmark helper after this campaign;
+  `FUT-INDEX-01` owns explicit
   prebuilt STAR-index admission; `PERF-01` retains the separate cross-node
   experiment. Refer to their current [backlog outcomes](backlog_matrix.md),
   rather than creating duplicate acceptance or status here.
@@ -384,7 +386,7 @@ evidence.
 Select one owner outcome at a time. Before implementation, recheck current
 source, competing PRs, callers, consumers, contracts, tests, and duplicated
 mechanics. Replace or retire superseded loops, allocations, scans, and paths
-across the complete touched vertical. Reuse existing owners and mature tools.
+across all affected callers and outputs. Reuse existing owners and mature tools.
 Report product, tests/protections, configuration, documentation, and retained
 evidence changes separately; unrelated deletion does not offset growth.
 
@@ -401,7 +403,7 @@ adding a progress ledger or duplicating backlog statuses.
 [reference-observation]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/evidence/reference_provenance/_reference_contigs.py#L20-L48
 [fasta-parser]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/libraries/references/contigs.py#L18-L47
 [reference-rechecks]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/evidence/reference_provenance/reconciler.py#L133-L163
-[compression]: compression_campaign.md#discovery-findings-for-selection
+[compression]: compression_backlog_matrix.md#original-discovery-disposition
 [default-profile]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/orchestration/run_coordinator/resources/default_execution.yaml#L4-L41
 [viking-profile]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/configs/execution_profile.csu_viking_ev_pum1.yaml
 [step04-index]: https://github.com/lab-cats/EMRYS/blob/fdf76760311e6c8076320a289ef3956d754c190d/src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh#L237-L259

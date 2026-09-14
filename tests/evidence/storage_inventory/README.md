@@ -1,14 +1,9 @@
-# Storage inventory and qualification tests
+# Storage qualification tests
 
-This directory protects both optional storage inventory and required
-two-phase storage qualification for the
-[storage-inventory owner](../../../src/emrys/evidence/storage_inventory/README.md)
-and its grouped routes. Inventory records caller-declared roots, measurements,
-and retention-policy state for operator diagnosis. Qualification performs the
-compute/finalize site checks whose final receipt is consumed by run-coordinator
-doctor.
+These tests cover [filesystem qualification](../../../src/emrys/evidence/storage_inventory/README.md)
+for direct local execution and the compute/finalize workflow whose receipt
+Doctor reads. They check input rejection, filesystem identity, publication,
+recovery, and evidence admission.
 
-The suite covers admission, deterministic outputs, publication, rollback, and
-CLI failures for both roles. Synthetic filesystem cases do not authorize
-retention action, verify a production inventory, qualify a production storage
-path, or establish an approved production retention policy.
+Synthetic filesystem cases do not qualify a production path or establish site
+approval.

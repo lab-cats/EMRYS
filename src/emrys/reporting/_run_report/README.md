@@ -1,46 +1,50 @@
-# Run-report core owners
+# HTML-report implementation
 
-This private package implements the fixed HTML-report transaction used by the
-Run-level reporting coordinator through [`report.py`](../report.py). It has no
-installed public command, generic report DSL, or operator recovery route.
+This private package publishes the fixed report bundle through
+[`context.prepare_context`](context.py) and
+[`publication.publish_report`](publication.py). The Run reporting coordinator
+calls it; it provides no separate command or operator recovery interface.
 
-| Module | Core responsibility |
+| Module | Responsibility |
 | --- | --- |
-| [`models.py`](models.py) | Immutable report-contract, provider, output, and two-view context values. |
-| [`inputs.py`](inputs.py) | Explicit run-summary and installed-provider admission with stable snapshots. |
-| [`context.py`](context.py) | Source/artifact roots, provider selection, outputs, predecessor state, portable result links, and cleaned renderer initialization. |
-| [`view.py`](view.py) | Fixed evidence-and-operations projection and composition with the provider-owned scientific view. |
-| [`validation.py`](validation.py) | Autoescaped strict Jinja environment plus CSS, security, semantic HTML, and accessibility validation. |
-| [`receipt.py`](receipt.py) | Deterministic summary TSV and v4/v5 report-receipt projection/validation. |
-| [`publication.py`](publication.py) | One receipt-last two-HTML transaction using immutable injected fault operations. |
-| [`transaction.py`](transaction.py) | Lock, snapshot, durability, staging, rollback, and recovery primitives. |
+| [`models.py`](models.py) | Immutable contract, provider, output, and two-view context values. |
+| [`inputs.py`](inputs.py) | Resolve explicit file paths and retain stable input snapshots. |
+| [`context.py`](context.py) | Prepare roots, provider, outputs, portable links, and renderer. |
+| [`validation.py`](validation.py) | Render admitted values with strict, autoescaped Jinja; check exact projected bytes and the independent HTML and receipt contracts. |
+| [`run_report.html.j2`](../templates/run_report.html.j2) | Own both built-in layouts and explanatory text, using summary and scientific values directly. |
+| [`receipt.py`](receipt.py) | Project the fixed output bytes and receipt together; validate current receipts. |
+| [`publication.py`](publication.py) | Publish both HTML files with the receipt last. |
 
-The selected `emrys.analysis_reporters` provider owns bespoke scientific HTML
-and its interpretation boundary. The built-in paired-CMH implementation lives
-in
-[`paired_cmh_candidate_ranking_report/`](../paired_cmh_candidate_ranking_report/)
-and retains its computational/context admission, candidate display, figures,
-and scientific projection. Those details are deliberately not duplicated in
-this core package.
+Both reporting publishers use [`_files.py`](../_files.py) for exclusive durable
+writes, lock ownership, and verified stage removal, and [`_signals.py`](../_signals.py)
+for interruption handling. Report publication retains its own receipt order,
+directory lifecycle, content-aware file snapshots, input and output rechecks,
+rollback, and recovery decisions.
 
-The core owns the Evidence and operations view, role navigation, HTML safety,
-fixed output names, default/disabled/independent reporting semantics, stable
-input rechecks, and receipt-last publication. Reporter/provider package
-identity is bound to report-receipt v5 for explicit modules but never enters
-Analysis or Run identity. Existing flat paired-CMH Runs retain run-summary v2
-and report-receipt v4; explicit modules use run-summary v3 and report-receipt
-v5.
+The selected `emrys.analysis_reporters` provider interprets scientific inputs
+and returns the scientific HTML bytes. The [built-in paired-CMH provider](../paired_cmh_candidate_ranking_report/README.md)
+owns candidate display, context, and figures. Core reporting owns evidence and
+operations, navigation, HTML safety, fixed output names, and publication.
+[Report-output rules](../README.md#report-outputs) define schema versions and
+provider provenance separately from Analysis/Run identity.
 
-The Run-level coordinator supplies the admitted absolute source checkout,
-independent artifact source root, completed Run, and selected provider before
-inputs are read. The artifact root governs contract-relative paths; admitted
-checkout/provider identities govern implementation evidence. Neither root is
-inferred from the working directory or run-summary location.
+`context.prepare_context` admits the installed package and artifact root before
+report inputs. The exact package record accompanies report provenance and is
+rechecked at publication boundaries.
+The logical producer remains `emrys.reporting.report`. The shared
+[root rules](../README.md#code-and-artifact-roots) and
+[publication/recovery contract](../README.md#publication-and-recovery) apply;
+preparation reads only current outputs. Rendering neither reruns
+analysis nor changes scientific evidence.
 
-The transaction retains input rechecks, lock ownership, predecessor identity,
-backup/rollback, recovery markers, foreign-state preservation, staged
-validation, receipt-last publication, and characterized interruption behavior.
-Complete state is revalidated and reused; generation requires empty owned
-state; ambiguous state is preserved and fails closed. Rendering does not rerun
-analysis, discover native outputs, change scientific evidence, or establish
-scientific review or biological validity.
+Completed reports retain the renderer recorded in their v8 receipt. Reuse checks
+that receipt against the immutable ledger, then checks every recorded data input,
+output and HTML contract without rendering again. The receipt records additional
+provider inputs, including figure sources; template and stylesheet identities
+remain producer provenance. New publication still validates its exact prepared
+bytes and records the actual installed EMRYS package.
+
+HTML preparation requires the exact prepared evidence context from the preceding
+manifest operation. It carries the checked Step 09/10 scientific projections into
+the reporter. It cannot independently load a summary and reconstruct admission.
+Retained-report inspection checks original receipt and data hashes separately.

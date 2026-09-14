@@ -137,7 +137,6 @@ class ExecutionProfile:
     source_path: Path
     source_raw_sha256: str
     computational_resources_explicit: bool
-    selected_reporting_memory: tuple[tuple[str, int | Literal["workflow"]], ...]
 
     def document(self) -> dict[str, Any]:
         """Return the complete effective profile without source locators."""
@@ -158,7 +157,9 @@ class ExecutionProfile:
     def binding_sha256(self) -> str:
         """Bind effective semantics to the exact selected source bytes."""
 
-        return hashlib.sha256(f"{self.sha256}\0{self.source_raw_sha256}".encode()).hexdigest()
+        return hashlib.sha256(
+            f"{self.sha256}\0{self.source_raw_sha256}".encode()
+        ).hexdigest()
 
     def attempt_placement(self, slurm_job_id: str | None = None) -> dict[str, Any]:
         """Project closed Attempt-local placement provenance."""
@@ -264,9 +265,10 @@ def load_execution_profile(
 ) -> ExecutionProfile:
     """Load packaged defaults, one selected profile fragment, and resource overrides."""
 
-    if expected_binding_sha256 is not None and _SHA256.fullmatch(
-        expected_binding_sha256
-    ) is None:
+    if (
+        expected_binding_sha256 is not None
+        and _SHA256.fullmatch(expected_binding_sha256) is None
+    ):
         raise ExecutionProfileError("expected_binding_sha256 must be 64 lowercase hex")
     source_path, source_data, default = _read_profile(
         DEFAULT_PROFILE_PATH,
@@ -312,12 +314,7 @@ def load_execution_profile(
         placement=_admit_placement(document["placement"]),
         source_path=source_path,
         source_raw_sha256=source_sha256,
-        computational_resources_explicit=bool(
-            explicit_resource_fields - {"reporting_memory_mb"}
-        ),
-        selected_reporting_memory=tuple(
-            selected_resources.get("reporting_memory_mb", {}).items()
-        ),
+        computational_resources_explicit=bool(explicit_resource_fields),
     )
     if (
         expected_binding_sha256 is not None

@@ -320,7 +320,9 @@ def _provider_distribution_identity(
             ".." in relative.parts
             or "__pycache__" in relative.parts
             or relative.suffix in {".pyc", ".pyo"}
-            or any(part.endswith((".dist-info", ".egg-info")) for part in relative.parts)
+            or any(
+                part.endswith((".dist-info", ".egg-info")) for part in relative.parts
+            )
         ):
             continue
         entries[relative] = Path(item.locate()).resolve(strict=True)
@@ -355,7 +357,9 @@ def admit_installed_provider(
     """Load one unambiguous package-level entry point with exact provenance."""
 
     matches = tuple(
-        item for item in importlib.metadata.entry_points(group=group) if item.name == name
+        item
+        for item in importlib.metadata.entry_points(group=group)
+        if item.name == name
     )
     if len(matches) != 1:
         detail = "not installed" if not matches else "selection is ambiguous"
@@ -373,9 +377,10 @@ def admit_installed_provider(
         raise InstalledPackageIdentityError(
             f"{label} entry point has no distribution provenance"
         )
-    collaborator_distribution = re.sub(
-        r"[-_.]+", "-", str(distribution_name).lower()
-    ) != _CORE_DISTRIBUTION_NAME
+    collaborator_distribution = (
+        re.sub(r"[-_.]+", "-", str(distribution_name).lower())
+        != _CORE_DISTRIBUTION_NAME
+    )
     try:
         package_name = matched["package"]
         spec = importlib.util.find_spec(package_name)

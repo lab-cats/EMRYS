@@ -51,23 +51,4 @@ step08_help="$(
     exit 1
 }
 
-if ! "$rscript_bin" -e '
-required <- c(
-    "VariantAnnotation", "GenomicRanges", "IRanges", "S4Vectors",
-    "SummarizedExperiment", "GenomeInfoDb", "BiocGenerics", "rtracklayer"
-)
-missing <- required[
-    !vapply(required, requireNamespace, logical(1), quietly = TRUE)
-]
-if (length(missing) > 0L) {
-    message(
-        "ERROR: Step 08 real-R fixtures are blocked by missing R package(s): ",
-        paste(missing, collapse = ", ")
-    )
-    quit(status = 1L)
-}
-'; then
-    exit 1
-fi
-
 "$rscript_bin" tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.R "$rscript_bin"

@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from emrys.libraries.source_authority import admit_installed_package
 
 from emrys.orchestration.run_coordinator import reporting_operation
 
@@ -20,10 +21,6 @@ def _state(
 ) -> SimpleNamespace:
     attempt = {
         "workflow_attempt_id": "workflow-20260812T120000Z-" + "a" * 32,
-        "workflow_config": {
-            "path": "contract/workflow-configs/attempt.json",
-            "sha256": "a" * 64,
-        },
     }
     return SimpleNamespace(
         run_root=root,
@@ -37,7 +34,7 @@ def _state(
         reporting_completion_records=records
         or {
             kind: {"start": None, "verified": None}
-            for kind in ("artifact_index", "run_summary", "html_report")
+            for kind in ("run_summary", "html_report")
         },
         verified_report_locations=(),
         processing_source=None,
@@ -49,6 +46,13 @@ def _identity(root: Path, state: SimpleNamespace) -> SimpleNamespace:
     return SimpleNamespace(
         root=root,
         execution={"run_id": root.name},
+        scientific_origin={
+            "run": {"path": str(root / "contract/run.json"), "sha256": "e" * 64},
+            "attempt": {
+                "path": str(root / f"attempts/{identifier}/attempt.json"),
+                "sha256": "f" * 64,
+            },
+        },
         profile={
             "artifact_templates": [
                 {"source_path_template": "products/native/reference/output"}
@@ -56,16 +60,16 @@ def _identity(root: Path, state: SimpleNamespace) -> SimpleNamespace:
         },
         attempt={
             **state.latest_attempt,
-            "source_checkout": {"path": str(root.parent), "commit": "b" * 40},
-        },
-        config={
-            "reporting_run_contract_path": {
-                "path": f"contract/reporting-inputs/{identifier}/run.json",
-                "sha256": "c" * 64,
-            },
-            "artifact_inventory_path": {
-                "path": f"contract/reporting-inputs/{identifier}/inventory.tsv",
-                "sha256": "d" * 64,
+            "installed_package": admit_installed_package().record,
+            "workflow": {
+                "reporting_run_contract_path": {
+                    "path": f"contract/reporting-inputs/{identifier}/run.json",
+                    "sha256": "c" * 64,
+                },
+                "artifact_inventory_path": {
+                    "path": f"contract/reporting-inputs/{identifier}/inventory.tsv",
+                    "sha256": "d" * 64,
+                },
             },
         },
     )
@@ -126,7 +130,6 @@ def _processing_source(
                             "path": "validation.tsv",
                             "sha256": "b" * 64,
                         },
-                        "native_receipt": None,
                     }
                 ),
             )
@@ -154,7 +157,7 @@ def _processing_source(
     return source, context
 
 
-def test_complete_historical_reporting_is_reused_read_only(
+def test_complete_current_reporting_is_reused_read_only(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -163,7 +166,6 @@ def test_complete_historical_reporting_is_reused_read_only(
     locations = (("scientific-report-html", root / "scientific.html"),)
     state = _state(
         root,
-        receipt_version="emrys.attempt-receipt.v1",
         reporting_status="complete",
     )
     state.verified_report_locations = locations
@@ -224,9 +226,9 @@ def test_dry_run_validates_first_producer_without_publishing(
     _install_admission(monkeypatch, state, identity)
     observed: list[str] = []
 
-    def prepare(kind: str, _arguments: Any) -> object:
+    def prepare(kind: str, _arguments: Any, *, evidence_context: Any = None) -> object:
         observed.append(kind)
-        return object()
+        return SimpleNamespace(index=object())
 
     monkeypatch.setattr(reporting_operation, "_prepare_transaction", prepare)
     monkeypatch.setattr(
@@ -239,7 +241,7 @@ def test_dry_run_validates_first_producer_without_publishing(
 
     assert outcome.status == "planned"
     assert outcome.verified_report_locations == ()
-    assert observed == ["artifact_index"]
+    assert observed == ["run_summary"]
     assert capsys.readouterr() == ("", "")
 
 
@@ -257,7 +259,7 @@ def test_processing_source_mismatch_fails_before_reporting_start(
     monkeypatch.setattr(
         reporting_operation,
         "_prepare_transaction",
-        lambda *_args: context,
+        lambda *_args, **_kwargs: SimpleNamespace(index=context),
     )
     monkeypatch.setattr(
         reporting_operation.reporting_boundary,
@@ -315,10 +317,14 @@ def test_execute_requires_fresh_final_admission_after_fixed_transactions(
     observed: list[str] = []
     preparations: dict[str, int] = {}
 
-    def prepare(kind: str, _arguments: Any) -> object:
+    def prepare(kind: str, _arguments: Any, *, evidence_context: Any = None) -> object:
         preparations[kind] = preparations.get(kind, 0) + 1
         observed.append(f"prepare:{kind}:{preparations[kind]}")
-        return context if kind == "artifact_index" else object()
+        if kind == "run_summary":
+            assert evidence_context is None
+            return SimpleNamespace(index=context)
+        assert evidence_context.index is context
+        return object()
 
     def publish(kind: str, _context: object) -> Path:
         observed.append(f"publish:{kind}")
@@ -336,7 +342,7 @@ def test_execute_requires_fresh_final_admission_after_fixed_transactions(
         return locations if kind == "html_report" else ()
 
     def admit_source(*_args: Any) -> SimpleNamespace:
-        observed.append("recheck:artifact_index")
+        observed.append("recheck:run_summary")
         return source
 
     monkeypatch.setattr(reporting_operation, "_prepare_transaction", prepare)
@@ -362,14 +368,10 @@ def test_execute_requires_fresh_final_admission_after_fixed_transactions(
             reporting_operation.run_reporting(root, execute=True)
 
     assert observed == [
-        "prepare:artifact_index:1",
-        "start:artifact_index",
-        "publish:artifact_index",
-        "recheck:artifact_index",
-        "verified:artifact_index",
         "prepare:run_summary:1",
         "start:run_summary",
         "publish:run_summary",
+        "recheck:run_summary",
         "verified:run_summary",
         "prepare:html_report:1",
         "start:html_report",
@@ -400,10 +402,10 @@ def test_generation_observer_runs_only_after_first_published_start(
     observed: list[str] = []
     preparations: dict[str, int] = {}
 
-    def prepare(kind: str, _arguments: Any) -> object:
+    def prepare(kind: str, _arguments: Any, *, evidence_context: Any = None) -> object:
         preparations[kind] = preparations.get(kind, 0) + 1
         observed.append(f"prepare:{kind}:{preparations[kind]}")
-        return object()
+        return SimpleNamespace(index=object())
 
     def publish(kind: str, _context: object) -> Path:
         observed.append(f"publish:{kind}")
@@ -430,8 +432,8 @@ def test_generation_observer_runs_only_after_first_published_start(
 
     assert outcome.status == "generated"
     assert observed.count("observed") == 1
-    assert observed.index("start:artifact_index") < observed.index("observed")
-    assert observed.index("observed") < observed.index("publish:artifact_index")
+    assert observed.index("start:run_summary") < observed.index("observed")
+    assert observed.index("observed") < observed.index("publish:run_summary")
 
 
 @pytest.mark.parametrize(
@@ -463,52 +465,25 @@ def test_generation_rejects_blocked_scientific_state_before_publication(
         reporting_operation.run_reporting(root, execute=True)
 
 
-@pytest.mark.parametrize(
-    ("version", "records", "message"),
-    (
-        (
-            "emrys.attempt-receipt.v1",
-            None,
-            "supported only for v2 Attempt receipts",
-        ),
-        (
-            "emrys.attempt-receipt.v2",
-            {
-                "artifact_index": {"start": {"path": "start"}, "verified": None},
-                "run_summary": {"start": None, "verified": None},
-                "html_report": {"start": None, "verified": None},
-            },
-            "Reporting state is blocked",
-        ),
-    ),
-)
-def test_generation_rejects_historical_or_partial_state(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    version: str,
-    records: dict[str, dict[str, object | None]] | None,
-    message: str,
+def test_generation_rejects_partial_reporting_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    root = (tmp_path / version).resolve()
+    root = (tmp_path / "partial-reporting").resolve()
     root.mkdir()
-    state = _state(root, receipt_version=version, records=records)
-    if records is not None:
-        state.reporting_status = "blocked"
+    state = _state(
+        root,
+        reporting_status="blocked",
+        records={
+            "run_summary": {"start": {"path": "start"}, "verified": None},
+            "html_report": {"start": None, "verified": None},
+        },
+    )
     monkeypatch.setattr(
         reporting_operation.inspection, "inspect_run", lambda _root: state
     )
-    if version == "emrys.attempt-receipt.v1":
-        monkeypatch.setattr(
-            reporting_operation.reporting_boundary,
-            "_admit_identity",
-            lambda **_kwargs: (_ for _ in ()).throw(
-                reporting_operation.reporting_boundary.ReportingBoundaryError(
-                    "New reporting generation is supported only for v2 Attempt receipts"
-                )
-            ),
-        )
-
-    with pytest.raises(reporting_operation.ReportingOperationError, match=message):
+    with pytest.raises(
+        reporting_operation.ReportingOperationError, match="Reporting state is blocked"
+    ):
         reporting_operation.run_reporting(root, execute=False)
 
 
@@ -548,7 +523,7 @@ def test_generation_rejects_symlinked_output_ancestor_before_builder(
     ancestor = (
         root / "products" / "artifact-summary"
         if output_kind == "artifact"
-        else reporting_operation.report_output_root(root, identity.profile)
+        else root / "results/reports"
     )
     ancestor.parent.mkdir(parents=True)
     foreign = tmp_path / f"foreign-{output_kind}"
@@ -573,50 +548,6 @@ def test_generation_rejects_symlinked_output_ancestor_before_builder(
     assert list(foreign.iterdir()) == []
 
 
-def test_producer_failure_stops_after_immutable_start(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    root = (tmp_path / "run-failure").resolve()
-    root.mkdir()
-    state = _state(root)
-    identity = _identity(root, state)
-    _install_admission(monkeypatch, state, identity)
-    observed: list[str] = []
-    monkeypatch.setattr(
-        reporting_operation.reporting_boundary,
-        "publish_start",
-        lambda *, kind, **_kwargs: observed.append(f"start:{kind}"),
-    )
-    monkeypatch.setattr(
-        reporting_operation.reporting_boundary,
-        "publish_verified",
-        lambda **_kwargs: pytest.fail("failed producer cannot publish completion"),
-    )
-
-    from emrys.reporting._artifact_index.models import ArtifactIndexError
-
-    monkeypatch.setattr(
-        reporting_operation,
-        "_prepare_transaction",
-        lambda _kind, _arguments: object(),
-    )
-    monkeypatch.setattr(
-        reporting_operation,
-        "_publish_prepared",
-        lambda _kind, _context: (_ for _ in ()).throw(
-            ArtifactIndexError("bounded private failure")
-        ),
-    )
-
-    with pytest.raises(
-        reporting_operation.ReportingOperationError,
-        match="producer failed after ledger entry: bounded private failure",
-    ):
-        reporting_operation.run_reporting(root, execute=True)
-    assert observed == ["start:artifact_index"]
-
-
 def test_preflight_failure_publishes_no_ledger(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -631,7 +562,7 @@ def test_preflight_failure_publishes_no_ledger(
     monkeypatch.setattr(
         reporting_operation,
         "_prepare_transaction",
-        lambda _kind, _arguments: (_ for _ in ()).throw(
+        lambda _kind, _arguments, **_kwargs: (_ for _ in ()).throw(
             ArtifactIndexError("bounded preflight failure")
         ),
     )
@@ -646,3 +577,68 @@ def test_preflight_failure_publishes_no_ledger(
         match="preflight failed before ledger entry",
     ):
         reporting_operation.run_reporting(root, execute=True)
+
+
+def test_real_artifact_publisher_failure_stops_reporting_after_start(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from emrys.reporting._artifact_index import publication
+    from tests.reporting.fixtures.artifact_adapters_v1 import build_fixture
+
+    root = (tmp_path / "run-real-producer-failure").resolve()
+    built = build_fixture.build_fixture(root, run_id=root.name)
+    state = _state(root)
+    identity = _identity(root, state)
+    identity.scientific_origin = built.scientific_origin
+    identity.profile = build_fixture.analysis_profile_v1()
+    identity.attempt["workflow"]["reporting_run_contract_path"]["path"] = (
+        built.run_contract.relative_to(root).as_posix()
+    )
+    identity.attempt["workflow"]["artifact_inventory_path"]["path"] = (
+        built.inventory.relative_to(root).as_posix()
+    )
+    identity.attempt["workflow"]["primary_analysis_policy_path"] = {
+        "path": built.analysis_policy.relative_to(root).as_posix()
+    }
+    _install_admission(monkeypatch, state, identity)
+    events: list[str] = []
+    monkeypatch.setattr(
+        reporting_operation.reporting_boundary,
+        "publish_start",
+        lambda *, kind, **_kwargs: events.append(f"start:{kind}"),
+    )
+    monkeypatch.setattr(
+        reporting_operation.reporting_boundary,
+        "publish_verified",
+        lambda **_kwargs: pytest.fail("failed producer cannot publish completion"),
+    )
+    real_write = publication._files.write_bytes_exclusive
+    failed = False
+
+    def fail_after_staged_projection(path: Path, payload: bytes, *, mode: int) -> None:
+        nonlocal failed
+        real_write(path, payload, mode=mode)
+        if (
+            path.name == f"{root.name}.run_summary.tsv"
+            and path.parent.name.startswith(".artifact-index.")
+            and path.parent.name.endswith(".tmp.records")
+        ):
+            failed = True
+            raise OSError("injected staged artifact-index failure")
+
+    monkeypatch.setattr(
+        publication._files, "write_bytes_exclusive", fail_after_staged_projection
+    )
+
+    with pytest.raises(
+        reporting_operation.ReportingOperationError,
+        match="run_summary producer failed after ledger entry: injected staged",
+    ):
+        reporting_operation.run_reporting(root, execute=True)
+
+    assert failed
+    assert events == ["start:run_summary"]
+    output = root / "products" / "artifact-summary" / root.name
+    assert output.is_dir()
+    assert list(output.iterdir()) == []

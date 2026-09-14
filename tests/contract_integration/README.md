@@ -1,13 +1,12 @@
 # Contract-integration tests
 
-This directory owns cross-owner checks whose expectations must remain
-independent of the production constants and serializers under test.
+These tests compare multiple owners against expectations stored independently
+of production constants and serializers:
 
-- [`independent_contract_goldens/`](independent_contract_goldens/README.md)
-  owns literal schema, header, byte, and computational-contract fixtures.
-- [`validation_rosters/`](validation_rosters/README.md) owns literal ordered
-  check rosters for every live validator.
+- [Contract goldens](independent_contract_goldens/README.md): literal schemas,
+  headers, bytes, and computational examples.
+- [Validation rosters](validation_rosters/README.md): ordered check IDs for
+  every current validator.
 
-The [test baseline](../../docs/design/TEST_BASELINE.md) owns the broader
-contract-risk policy and evidence limits. These synthetic checks do not prove
-runtime, cluster, scientific-review, or biological state.
+The [test baseline](../../docs/design/TEST_BASELINE.md) defines which contract
+risks these checks must cover.

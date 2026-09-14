@@ -16,7 +16,9 @@
     "\"<REPO_ROOT>/.venv/bin/python\" ./scripts/documentation/validate_structure.py --repo \"<REPO_ROOT>\""
   ],
   "lint": [
-    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/emrys tests",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/emrys tests setup.py",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" format --check --no-cache scripts src/emrys tests setup.py",
+    "bash -o pipefail -c 'git ls-files -z -- \"*.sh\" | xargs -0 \"$1\"' -- \"$(dirname -- \"<REPO_ROOT>/.venv/bin/python\")/shellcheck\"",
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"vulture\" \\",
     "\t\t--min-confidence 95 \\",
     "\t\tscripts src/emrys"
@@ -28,8 +30,8 @@
     "\t\tEMRYS_RENV_LIBRARY=\"\" \\",
     "\t\tEMRYS_RENV_VERSION=\"1.2.3\" \\",
     "\t\tRENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
-    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>\" \\",
-    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/.Rprofile\" \\",
+    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>/src/emrys\" \\",
+    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/src/emrys/.Rprofile\" \\",
     "\t\tSTEP08_TEST_RSCRIPT_BIN= STEP09_TEST_RSCRIPT_BIN= \\",
     "\t\tSCIENTIFIC_CONTEXT_TEST_RSCRIPT_BIN= \\",
     "\t\tRSCRIPT_BIN_OVERRIDE=\"Rscript\" \\",
@@ -257,16 +259,18 @@
     "\t\tEMRYS_RENV_LIBRARY=\"\" \\",
     "\t\tEMRYS_RENV_VERSION=\"1.2.3\" \\",
     "\t\tRENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
-    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>\" \\",
-    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/.Rprofile\" \\",
+    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>/src/emrys\" \\",
+    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/src/emrys/.Rprofile\" \\",
     "\t\t\"Rscript\" scripts/check_r_environment.R"
   ],
   "r-restore": [
+    "test -n \"\"",
+    "test -d \"\"",
     "EMRYS_USE_RENV=1 EMRYS_LOCAL_PILOT_R=0 \\",
     "\t\tRENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
-    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>\" \\",
-    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/.Rprofile\" \\",
-    "\t\t\"Rscript\" scripts/restore_r_environment.R"
+    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"\" \\",
+    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/src/emrys/.Rprofile\" \\",
+    "\t\t\"Rscript\" src/emrys/resources/runtime/restore_r_environment.R"
   ],
   "real-r-test": [
     "bash tests/stages/cohort_candidate_preprocessing/run_step_08_vcf_preprocessing_tests.sh",
@@ -294,7 +298,7 @@
     "bash tests/shell/test_local_r_environment.sh"
   ],
   "smoke": [
-    "bash -n src/emrys/libraries/gatk_invocation.sh src/emrys/ingestion/sample_manifest_admission/check_fastq_pairs.sh src/emrys/stages/star_index/step_00a_build_star_index.sh src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh src/emrys/stages/star_alignment/step_01_star_align.sh src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh"
+    "for script in src/emrys/libraries/gatk_invocation.sh src/emrys/ingestion/sample_manifest_admission/check_fastq_pairs.sh src/emrys/stages/star_index/step_00a_build_star_index.sh src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh src/emrys/stages/star_alignment/step_01_star_align.sh src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh; do bash -n \"$script\" || exit $?; done"
   ],
   "test": [
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest"
@@ -311,8 +315,8 @@
     "\t\tEMRYS_RENV_LIBRARY=\"\" \\",
     "\t\tEMRYS_RENV_VERSION=\"1.2.3\" \\",
     "\t\tRENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
-    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>\" \\",
-    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/.Rprofile\" \\",
+    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>/src/emrys\" \\",
+    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/src/emrys/.Rprofile\" \\",
     "\t\t\"Rscript\" scripts/check_r_environment.R",
     "<MAKE> -s local-real-r-test",
     "test -n \"\"",
@@ -321,8 +325,8 @@
     "\t\tEMRYS_RENV_LIBRARY=\"\" \\",
     "\t\tEMRYS_RENV_VERSION=\"1.2.3\" \\",
     "\t\tRENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
-    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>\" \\",
-    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/.Rprofile\" \\",
+    "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>/src/emrys\" \\",
+    "\t\tR_PROFILE_USER=\"<REPO_ROOT>/src/emrys/.Rprofile\" \\",
     "\t\tSTEP08_TEST_RSCRIPT_BIN= STEP09_TEST_RSCRIPT_BIN= \\",
     "\t\tSCIENTIFIC_CONTEXT_TEST_RSCRIPT_BIN= \\",
     "\t\tRSCRIPT_BIN_OVERRIDE=\"Rscript\" \\",
@@ -344,18 +348,21 @@
     "bash tests/shell/test_local_r_environment.sh"
   ],
   "validation-static": [
-    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/emrys tests",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/emrys tests setup.py",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" format --check --no-cache scripts src/emrys tests setup.py",
+    "bash -o pipefail -c 'git ls-files -z -- \"*.sh\" | xargs -0 \"$1\"' -- \"$(dirname -- \"<REPO_ROOT>/.venv/bin/python\")/shellcheck\"",
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"vulture\" \\",
     "\t\t--min-confidence 95 \\",
     "\t\tscripts src/emrys",
     "\"<REPO_ROOT>/.venv/bin/python\" ./scripts/documentation/validate_structure.py --repo \"<REPO_ROOT>\"",
     "\"<REPO_ROOT>/.venv/bin/python\" tests/tools/source_dependencies.py --repo \"<REPO_ROOT>\"",
     "git diff --check",
-    "bash -n src/emrys/libraries/gatk_invocation.sh src/emrys/ingestion/sample_manifest_admission/check_fastq_pairs.sh src/emrys/stages/star_index/step_00a_build_star_index.sh src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh src/emrys/stages/star_alignment/step_01_star_align.sh src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh",
+    "for script in src/emrys/libraries/gatk_invocation.sh src/emrys/ingestion/sample_manifest_admission/check_fastq_pairs.sh src/emrys/stages/star_index/step_00a_build_star_index.sh src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh src/emrys/stages/star_alignment/step_01_star_align.sh src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh src/emrys/analyses/paired_cmh_candidate_ranking/scientific_context_projection/scientific_context_projection.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/run_scientific_context_projection_tests.sh tests/analyses/paired_cmh_candidate_ranking/scientific_context_projection/test_scientific_context_projection.sh; do bash -n \"$script\" || exit $?; done",
     "PYTHONDONTWRITEBYTECODE=1 \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m compileall -q scripts src/emrys tests",
     "\"<REPO_ROOT>/.venv/bin/python\" -I -m emrys validate manifest \\",
-    "\t\t--manifest configs/samples.example.tsv"
+    "\t\t--manifest configs/samples.example.tsv",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m pytest -q tests/test_python_test_shards.py"
   ],
   "validation-wheel-smoke": [
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest -q --tb=short \\",

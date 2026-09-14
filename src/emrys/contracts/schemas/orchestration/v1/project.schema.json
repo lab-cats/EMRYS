@@ -91,37 +91,19 @@
         "partitions": {
           "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/authored_path"
         },
-        "control_condition": {
-          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/control_condition"
-        },
-        "treatment_condition": {
-          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/treatment_condition"
-        },
+        "control_condition": {"$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"},
+        "treatment_condition": {"$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"},
         "target_change": {
           "type": "string",
           "pattern": "^[ACGT]>[ACGT]$"
         },
-        "min_sample_dp": {
-          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/min_sample_dp"
-        },
-        "mean_dp_threshold": {
-          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/mean_dp_threshold"
-        },
-        "fdr_threshold": {
-          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/fdr_threshold"
-        },
-        "common_or_threshold": {
-          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/common_or_threshold"
-        },
-        "absolute_difference_threshold": {
-          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/absolute_difference_threshold"
-        },
-        "background_condition": {
-          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/background_condition"
-        },
-        "background_max_fraction": {
-          "$ref": "urn:emrys:schema:orchestration:policy:v1#/$defs/paired_cmh_policy/properties/background_max_fraction"
-        }
+        "min_sample_dp": {"type": "integer", "minimum": 1},
+        "mean_dp_threshold": {"type": "number", "minimum": 0},
+        "fdr_threshold": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "common_or_threshold": {"type": "number", "exclusiveMinimum": 1},
+        "absolute_difference_threshold": {"type": "number", "minimum": 0, "maximum": 1},
+        "background_condition": {"oneOf": [{"$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"}, {"type": "null"}]},
+        "background_max_fraction": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1}
       }
     },
     "module_analysis": {

@@ -1,3 +1,7 @@
 # Run-coordinator resource defaults
 
-[`default_execution.yaml`](default_execution.yaml) is the packaged conservative direct-placement baseline used when a Project does not override execution resources. Project-local execution profiles and explicit CLI resource values apply through the coordinator's documented precedence; this file is internal authority, not a scientist-authored Project definition.
+[`default_execution.yaml`](default_execution.yaml) supplies conservative
+resources and direct execution when the Project provides no overrides.
+[Profile precedence](../CONTRACT.md#profiles-and-immutable-planning) determines
+how Project settings and CLI values replace those defaults. Edit a Project's
+profile to choose its resources; this packaged file is not a Project definition.

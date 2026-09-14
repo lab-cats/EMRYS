@@ -1,12 +1,9 @@
-# STAR-index stage tests
+# STAR-index tests
 
-This directory protects the Step 00a direct producer and explicit validator.
-Producer tests cover dry-run,
-arbitrary-CWD execution, declared-member publication, no-clobber behavior,
-controlled rollback, and late-final/foreign-lock preservation.
-The [stage owner](../../../src/emrys/stages/star_index/README.md) owns
-the exact direct command, materialized inputs, recovery boundary, and evidence
-limit. Whole-Run Slurm placement is protected with orchestration, not here.
+Native STAR arguments, complete staged index membership, incomplete native output, and grouped validation are covered. Mocked tools do not prove real STAR indexing or reference readiness.
 
-Mocked producer and fixture validation do not establish real STAR indexing,
-Slurm execution, cluster execution, or production reference readiness.
+Shell cases invoke the internal worker with runner-style scratch and staging.
+The [common runner suite](../../orchestration/run_coordinator/test_task.py) owns
+publication, input stability, interruption, and recovery checks. Python
+validator cases retain the public grouped command. The
+[shared evidence limits](../../README.md#evidence-limits) apply.

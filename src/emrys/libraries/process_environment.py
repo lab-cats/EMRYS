@@ -46,6 +46,12 @@ class ProcessEnvironmentError(RuntimeError):
     """A selected child-process launcher or environment is inadmissible."""
 
 
+def command_flags(*values: tuple[str, object]) -> tuple[str, ...]:
+    """Serialize ordered option/value pairs without shell interpretation."""
+
+    return tuple(str(item) for name, value in values for item in (f"--{name}", value))
+
+
 def process_is_alive(process_id: int) -> bool:
     """Return whether the host can still observe one process identifier."""
 

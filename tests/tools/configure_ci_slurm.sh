@@ -33,12 +33,14 @@ collect_diagnostics() {
     dpkg-query -W -f='${binary:Package}\t${Version}\n' \
         munge slurm-client slurmctld slurmd slurm-wlm-basic-plugins \
         > "$evidence_dir/debian-packages.tsv" 2>&1
+    # shellcheck disable=SC2024 # Privileged read; the runner owns the destination.
     sudo cat /etc/slurm/slurm.conf > "$evidence_dir/slurm.conf" 2>&1
     scontrol ping > "$evidence_dir/scontrol-ping.txt" 2>&1
     scontrol show nodes -o > "$evidence_dir/scontrol-nodes.txt" 2>&1
     sinfo --all --long > "$evidence_dir/sinfo.txt" 2>&1
     systemctl --no-pager --full status munge slurmctld slurmd \
         > "$evidence_dir/systemd-status.txt" 2>&1
+    # shellcheck disable=SC2024 # Privileged read; the runner owns the destination.
     sudo journalctl --no-pager -u munge -u slurmctld -u slurmd \
         > "$evidence_dir/journal.txt" 2>&1
     exit "$status"

@@ -7,11 +7,7 @@ grouped under `emrys validate`.
 
 ## Responsibility and execution dependencies
 
-For one declared cohort partition, generate separate `FWD_like` and
-`REV_like` multi-sample VCFs from every sample's Step `06` BAM in canonical
-manifest order, then publish the two VCFs and receipt as one transaction.
-This is pileup generation and filtering, not a `bcftools call` operation or a
-claim that variants or RNA-editing sites have been identified.
+See the [README](README.md) for purpose, inputs, outputs, and normal use.
 
 Step `07` requires the complete BAM/BAI pair for both mechanical orientation
 groups of every declared sample from the final
@@ -28,8 +24,9 @@ orientation result set regardless of partition completion order.
 ## Inputs and selector contract
 
 Inputs are a safe cohort ID, sample manifest, partition manifest, requested
-partition ID, Step `06` orientation root, reference FASTA plus FAI, output
-root, bcftools, positive maximum depth, and filter expression. Sample IDs must
+partition ID, Step `06` orientation root, reference FASTA plus FAI, staged
+output paths and final VCF paths for the receipt, the runner's admitted absolute
+bcftools path, positive maximum depth, and filter expression. Sample IDs must
 be unique and nonempty. The requested partition must have exactly one manifest
 row with one of these selector types:
 
@@ -60,44 +57,19 @@ For `<cohort>` and `<partition>`, the output directory contains:
 Header-only VCFs are valid. The receipt has exactly two rows, ordered
 `FWD_like` then `REV_like`, and records cohort, partition, selector type/value,
 orientation, VCF path, both manifest SHA-256 values, sample count, and VCF
-record count. It is renamed last among the three outputs and is the native
-completion marker. Both published VCFs are structurally revalidated and
-record-count checked before the receipt becomes visible. The receipt itself is
-then checked inside the owned rollback boundary; its mere presence is not
-independent proof of a successfully completed immutable computation.
+record count. The worker checks both staged VCFs for structure, sample order,
+and record counts, then writes and checks the receipt using the supplied final
+VCF paths. The runner publishes both VCFs before the receipt and verifies that
+publication preserves the checked bytes. The independent validator then checks
+the visible set. Receipt presence alone is not proof of a verified task.
 
-[`producer.py`](producer.py) is side-effect-free in dry-run. Execute mode hashes
-and later rechecks both
-manifests, uses a cohort/partition lock and run-token temporary/backup paths,
-rejects stale owned paths and partial prior sets, validates temporary VCF
-sample order and counts, then replaces all three outputs with the receipt last.
-Final outputs are revalidated before backups are removed.
-`--no-clobber` is the orchestration-safe policy: while holding the owner lock,
-it rejects a complete predecessor set without invoking bcftools or changing
-stable outputs. A direct invocation hashes the exact sample and partition
-manifests, reference FASTA/FAI pair, selected regions file when applicable,
-and both BAM/BAI pairs for every admitted sample before bcftools, then rechecks
-that roster after tool execution and again before publication. An admitted
-run-coordinator task has already hashed the same declared roster twice at producer
-entry. It supplies a process-lifetime aggregate only to this producer, which
-reconstructs the roster without another initial full pass and rehashes the
-complete roster immediately before publication. The task boundary performs
-its unchanged final declared-input recheck after validation. The aggregate is
-not persisted or added to the native receipt. Direct invocations retain
-complete-set replacement and the legacy manifests-only stability boundary
-unless `--no-clobber` is supplied.
-First publication in that mode is create-exclusive; VCF and receipt staging
-inode anchors remain through final validation, and ambiguous replacement
-preserves the owner lock and residue.
-Rollback follows the shared
-[no-clobber rule](../../../../docs/design/decisions/execution-evidence-and-reporting.md#no-clobber-rollback).
+[`producer.py`](producer.py) runs only through the existing runner. Its
+scientific work is the two bcftools pipelines and their output checks;
+input stability, publication, and recovery belong to the [runner contract](../../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution).
 
-Ordinary rollback restores the prior three-file set. If restoration itself
-fails, backup paths and the owned lock are preserved for operator recovery;
-there is no automated recovery interface. The receipt hash-binds the two
-manifests only: BAMs, reference, FAI, regions file, tool identity, depth, and
-filter are not durable receipt provenance. The receipt also does not hash
-either output VCF.
+The receipt hashes only the two manifests. BAMs, reference, FAI, regions file,
+tool identity, depth, filter, and output VCF hashes are not durable receipt
+provenance.
 
 ## Validation interface
 

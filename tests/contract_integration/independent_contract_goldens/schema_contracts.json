@@ -1,16 +1,8 @@
 {
   "artifact_record.schema.json": [
     {
-      "expected": "urn:emrys:schema:artifacts:artifact-record:v2",
+      "expected": "urn:emrys:schema:artifacts:artifact-entry:v4",
       "pointer": "/$id"
-    },
-    {
-      "expected": "emrys.artifact_record",
-      "pointer": "/properties/schema_name/const"
-    },
-    {
-      "expected": "2.0.0",
-      "pointer": "/properties/schema_version/const"
     },
     {
       "expected": [
@@ -20,48 +12,12 @@
         "unknown"
       ],
       "pointer": "/properties/availability_status/enum"
-    },
-    {
-      "expected": [
-        "not_run",
-        "blocked",
-        "passed",
-        "failed"
-      ],
-      "pointer": "/$defs/runtime_validation_status/properties/status/enum"
-    },
-    {
-      "expected": [
-        "not_run",
-        "passed",
-        "failed"
-      ],
-      "pointer": "/$defs/cluster_validation_status/properties/dry_run_status/enum"
-    },
-    {
-      "expected": [
-        "not_run",
-        "proven",
-        "failed"
-      ],
-      "pointer": "/$defs/cluster_validation_status/properties/proof_status/enum"
     }
   ],
   "common.schema.json": [
     {
       "expected": "urn:emrys:schema:artifacts:common:v1",
       "pointer": "/$id"
-    },
-    {
-      "expected": [
-        "planned",
-        "running",
-        "succeeded",
-        "failed",
-        "cancelled",
-        "blocked"
-      ],
-      "pointer": "/$defs/attempt/properties/state/enum"
     },
     {
       "expected": [
@@ -75,7 +31,7 @@
   ],
   "report_receipt.schema.json": [
     {
-      "expected": "urn:emrys:schema:artifacts:report-receipt:v4",
+      "expected": "urn:emrys:schema:artifacts:report-receipt:v8",
       "pointer": "/$id"
     },
     {
@@ -83,40 +39,31 @@
       "pointer": "/properties/schema_name/const"
     },
     {
-      "expected": "4.0.0",
+      "expected": "8.0.0",
       "pointer": "/properties/schema_version/const"
     },
     {
-      "expected": 3,
+      "expected": 2,
       "pointer": "/properties/outputs/minItems"
     },
     {
-      "expected": 3,
+      "expected": 2,
       "pointer": "/properties/outputs/maxItems"
     },
     {
       "expected": [
         "scientific_html",
-        "evidence_html",
-        "run_summary_tsv"
+        "evidence_html"
       ],
       "pointer": "/$defs/report_output/properties/kind/enum"
     },
     {
       "expected": "Jinja2",
-      "pointer": "/properties/renderer/properties/name/const"
-    },
-    {
-      "expected": "3.1.6",
-      "pointer": "/properties/renderer/properties/version/const"
-    },
-    {
-      "expected": "computational_candidates_only_biological_validation_outside_emrys",
-      "pointer": "/properties/interpretation_boundary/const"
+      "pointer": "/$defs/core_renderer/properties/template_engine/const"
     },
     {
       "expected": "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE EMRYS.",
-      "pointer": "/properties/state_banner/const"
+      "pointer": "/properties/interpretation_boundary/const"
     },
     {
       "expected": false,
@@ -125,11 +72,17 @@
     {
       "expected": false,
       "pointer": "/properties/validation_claimed/const"
+    },
+    {
+      "expected": [
+        "installed_package"
+      ],
+      "pointer": "/properties/provenance/allOf/1/required"
     }
   ],
   "run_summary.schema.json": [
     {
-      "expected": "urn:emrys:schema:artifacts:run-summary:v2",
+      "expected": "urn:emrys:schema:artifacts:run-summary:v8",
       "pointer": "/$id"
     },
     {
@@ -137,7 +90,7 @@
       "pointer": "/properties/schema_name/const"
     },
     {
-      "expected": "2.0.0",
+      "expected": "8.0.0",
       "pointer": "/properties/schema_version/const"
     },
     {
@@ -149,12 +102,10 @@
       "pointer": "/properties/summary_state/enum"
     },
     {
-      "expected": "CMH-ranked candidates",
-      "pointer": "/properties/candidate_terminology/const"
-    },
-    {
-      "expected": "computational_candidates_only_biological_validation_outside_emrys",
-      "pointer": "/properties/interpretation_boundary/const"
+      "expected": [
+        "installed_package"
+      ],
+      "pointer": "/properties/provenance/allOf/1/required"
     }
   ]
 }

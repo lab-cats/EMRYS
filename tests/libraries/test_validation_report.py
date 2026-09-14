@@ -143,7 +143,7 @@ def test_stable_text_rejects_a_snapshot_change(
 
 def test_report_validator_rejects_non_utf8_bytes() -> None:
     with pytest.raises(REPORT.ValidationError, match="not UTF-8"):
-        REPORT.validate_report(b"\xff", SCOPE_ID)
+        REPORT.validate_report(b"\xff", SCOPE_ID, step_id=STEP_ID, check_ids=CHECK_IDS)
 
 
 def test_report_validator_rejects_an_extra_column() -> None:

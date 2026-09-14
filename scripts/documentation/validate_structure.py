@@ -156,7 +156,10 @@ def markdown_destinations(value: str) -> list[str]:
     for token in MarkdownIt("commonmark").parse(value):
         for child in token.children or ():
             attribute = {"link_open": "href", "image": "src"}.get(child.type)
-            if attribute is not None and (target := child.attrGet(attribute)) is not None:
+            if (
+                attribute is not None
+                and (target := child.attrGet(attribute)) is not None
+            ):
                 destinations.append(target)
     return destinations
 
@@ -184,8 +187,14 @@ def validate_local_links(
             if not destination.exists():
                 problems.append(f"missing local link target: {relative}: {target}")
                 continue
-            if fragment and destination.is_file() and destination.suffix.lower() == ".md":
-                anchors = anchor_cache.setdefault(destination, markdown_anchors(destination))
+            if (
+                fragment
+                and destination.is_file()
+                and destination.suffix.lower() == ".md"
+            ):
+                anchors = anchor_cache.setdefault(
+                    destination, markdown_anchors(destination)
+                )
                 if unquote(fragment).lower() not in anchors:
                     problems.append(f"missing local link anchor: {relative}: {target}")
 

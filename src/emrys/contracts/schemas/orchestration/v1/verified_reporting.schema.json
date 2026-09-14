@@ -33,7 +33,6 @@
     },
     "kind": {
       "enum": [
-        "artifact_index",
         "run_summary",
         "html_report"
       ]

@@ -9,31 +9,36 @@ from .definitions import ContractValidationError
 from .identity import require_unique_key, validate_document_paths
 
 
+REPORT_OUTPUTS: tuple[tuple[str, str, str], ...] = (
+    ("scientific-report-html", "scientific_html", "scientific_report.html"),
+    ("evidence-report-html", "evidence_html", "evidence_report.html"),
+)
+
+
 def validate_report_receipt_semantics(document: dict[str, Any]) -> None:
     validate_document_paths(document)
-    if document["schema_version"] == "5.0.0":
-        scientific = document["scientific_renderer"]
-        package, separator, callable_name = scientific["entry_point"].partition(":")
-        if (
-            package != scientific["package"]
-            or separator != ":"
-            or not callable_name
-            or ":" in callable_name
-        ):
-            raise ContractValidationError(
-                "scientific renderer entry point must name its admitted package callable"
-            )
-        evidence = document["evidence_renderer"]
-        provenance = document["provenance"]
-        if (
-            scientific["core_support"] != evidence
-            or evidence["producer"] != provenance["producer"]
-            or evidence["producer_version"] != provenance["producer_version"]
-            or evidence["template_engine"] != "Jinja2"
-        ):
-            raise ContractValidationError(
-                "core scientific support, evidence renderer, and provenance must match"
-            )
+    scientific = document["scientific_renderer"]
+    package, separator, callable_name = scientific["entry_point"].partition(":")
+    if (
+        package != scientific["package"]
+        or separator != ":"
+        or not callable_name
+        or ":" in callable_name
+    ):
+        raise ContractValidationError(
+            "scientific renderer entry point must name its admitted package callable"
+        )
+    evidence = document["evidence_renderer"]
+    provenance = document["provenance"]
+    if (
+        scientific["core_support"] != evidence
+        or evidence["producer"] != provenance["producer"]
+        or evidence["producer_version"] != provenance["producer_version"]
+        or evidence["template_engine"] != "Jinja2"
+    ):
+        raise ContractValidationError(
+            "core scientific support, evidence renderer, and provenance must match"
+        )
     outputs = document["outputs"]
     require_unique_key(outputs, "output_id", "report outputs")
     output_kinds = {output["kind"] for output in outputs}
@@ -43,31 +48,20 @@ def validate_report_receipt_semantics(document: dict[str, Any]) -> None:
     if len(output_paths) != len(outputs):
         raise ContractValidationError("report outputs contain duplicate paths")
     run_id = document["run_id"]
-    expected_output_ids = (
-        "scientific-report-html",
-        "evidence-report-html",
-        "run-summary-tsv",
-    )
+    expected_output_ids = tuple(output_id for output_id, _, _ in REPORT_OUTPUTS)
     expected_outputs = {
-        "scientific-report-html": (
-            "scientific_html",
-            f"{run_id}.scientific_report.html",
-        ),
-        "evidence-report-html": (
-            "evidence_html",
-            f"{run_id}.evidence_report.html",
-        ),
-        "run-summary-tsv": ("run_summary_tsv", f"{run_id}.run_summary.tsv"),
+        output_id: (kind, f"{run_id}.{suffix}")
+        for output_id, kind, suffix in REPORT_OUTPUTS
     }
     if {output["output_id"] for output in outputs} != set(expected_output_ids):
         raise ContractValidationError(
             "report output IDs must be exactly scientific-report-html, "
-            "evidence-report-html, and run-summary-tsv"
+            "and evidence-report-html"
         )
     if tuple(output["output_id"] for output in outputs) != expected_output_ids:
         raise ContractValidationError(
             "report outputs must be ordered scientific-report-html, "
-            "evidence-report-html, then run-summary-tsv"
+            "then evidence-report-html"
         )
     output_parents: set[Path] = set()
     for output in outputs:
@@ -101,10 +95,3 @@ def validate_report_receipt_semantics(document: dict[str, Any]) -> None:
         raise ContractValidationError(
             "report receipt input run-summary directory name must equal run_id"
         )
-    require_unique_key(document["truncations"], "table_id", "report truncations")
-    for truncation in document["truncations"]:
-        if truncation["displayed_row_count"] >= truncation["full_row_count"]:
-            raise ContractValidationError(
-                f"truncation {truncation['table_id']!r} must display fewer "
-                "rows than the full table"
-            )

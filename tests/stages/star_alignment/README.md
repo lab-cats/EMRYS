@@ -1,9 +1,9 @@
-# STAR-alignment stage tests
+# STAR-alignment tests
 
-This directory protects the Step 01 shell producer's argument, dry-run,
-failure, and direct-output behavior plus structural validator reporting. The
-[stage owner](../../../src/emrys/stages/star_alignment/README.md)
-owns supported commands, partial-output hazards, and exact evidence limits.
+Native STAR arguments, both compression modes, child failure, output presence, and grouped structural validation are covered. Mocked STAR results do not establish alignment correctness.
 
-Fixtures and mocked STAR behavior do not establish alignment correctness, real
-STAR execution, scheduler behavior, cluster execution, or production evidence.
+Shell cases invoke the internal worker with runner-style scratch and staging.
+The [common runner suite](../../orchestration/run_coordinator/test_task.py) owns
+publication, input stability, interruption, and recovery checks. Python
+validator cases retain the public grouped command. The
+[shared evidence limits](../../README.md#evidence-limits) apply.

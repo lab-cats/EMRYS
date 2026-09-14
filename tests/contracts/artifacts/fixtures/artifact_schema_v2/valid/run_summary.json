@@ -1,6 +1,6 @@
 {
   "schema_name": "emrys.run_summary",
-  "schema_version": "2.0.0",
+  "schema_version": "8.0.0",
   "record_type": "run_summary",
   "run_id": "run_fixture",
   "run_contract": {
@@ -20,15 +20,6 @@
     "row_count": 1,
     "media_type": "text/tab-separated-values"
   },
-  "artifact_receipt": {
-    "path": "tests/fixtures/artifact_schema_v1/source/results/artifacts/run_fixture/run_fixture.artifact_receipt.tsv",
-    "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-    "size_bytes": 128,
-    "row_count": 1,
-    "media_type": "text/tab-separated-values"
-  },
-  "attempts": [],
-  "superseded_attempt_ids": [],
   "expected_scopes": [
     {
       "scope": {
@@ -40,19 +31,13 @@
         "analysis.synthetic.cmh_summary"
       ],
       "aggregate_state": "missing",
-      "implementation_status": "implemented",
-      "local_test_status": "passed",
-      "runtime_validation_status": "blocked",
-      "cluster_dry_run_status": "not_run",
-      "cluster_proof_status": "not_run",
       "warnings": [
         {
           "code": "production_output_missing",
           "message": "No production Step 09 output is available.",
           "related_artifact_ids": [
             "analysis.synthetic.cmh_summary"
-          ],
-          "evidence": []
+          ]
         }
       ],
       "errors": []
@@ -60,18 +45,6 @@
   ],
   "artifacts": [
     {
-      "schema_name": "emrys.artifact_record",
-      "schema_version": "2.0.0",
-      "record_type": "artifact_record",
-      "run_id": "run_fixture",
-      "run_contract": {
-      "run_contract_sha256": "284446856367c83d6a7ff61008230d979c33238f77aae087fb87405d9c216245",
-        "sample_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
-        "reference_contract_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
-        "partition_manifest_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
-        "primary_analysis_id": "synthetic_analysis",
-        "primary_analysis_policy_sha256": "4444444444444444444444444444444444444444444444444444444444444444"
-      },
       "artifact_id": "analysis.synthetic.cmh_summary",
       "scope": {
         "step_id": "09",
@@ -86,38 +59,7 @@
       "availability_status": "missing",
       "completion_status": "not_attempted",
       "state_reason": "Production Step 09 output is unavailable.",
-      "attempt_provenance_status": "not_attempted",
-      "attempts": [],
-      "selected_attempt_id": null,
-      "implementation": {
-        "status": "implemented",
-        "git_commit": "fixturecommit",
-        "evidence": []
-      },
-    "local_testing": {
-      "status": "passed",
-      "evidence": [
-        {
-          "evidence_id": "artifact_schema_test",
-          "role": "local_test",
-          "path": "tests/contracts/artifacts/test_artifact_schema_contracts.py",
-          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
-        }
-      ]
-      },
-      "runtime_validation": {
-        "status": "blocked",
-        "detail": "Production evidence is unavailable.",
-        "evidence": []
-      },
-      "cluster_validation": {
-        "dry_run_status": "not_run",
-        "proof_status": "not_run",
-        "evidence": []
-      },
       "source": null,
-      "members": [],
-      "tools": [],
       "parameters": {},
       "metrics": [],
       "warnings": [
@@ -126,17 +68,10 @@
           "message": "The expected production Step 09 artifact is missing.",
           "related_artifact_ids": [
             "analysis.synthetic.cmh_summary"
-          ],
-          "evidence": []
+          ]
         }
       ],
-      "errors": [],
-      "provenance": {
-        "producer": "artifact_schema_fixture",
-        "producer_version": "1.0.0",
-        "git_commit": "fixturecommit",
-        "created_at": "2000-01-01T00:00:04Z"
-      }
+      "errors": []
     }
   ],
   "computational_rollup": {
@@ -145,18 +80,8 @@
     "missing_artifact_count": 1,
     "incomplete_artifact_count": 0,
     "failed_artifact_count": 0,
-    "externally_unavailable_artifact_count": 0,
-    "implementation_status": "implemented",
-    "local_test_status": "passed",
-    "runtime_validation_status": "blocked",
-    "cluster_dry_run_status": "not_run",
-    "cluster_proof_status": "not_run"
+    "externally_unavailable_artifact_count": 0
   },
-  "tools": [],
-  "parameters": {
-    "fixture_kind": "missing_production_computation"
-  },
-  "qc_metrics": [],
   "limitations": [
     {
       "limitation_id": "production_output_missing",
@@ -166,16 +91,13 @@
       "evidence_ids": []
     }
   ],
-  "candidate_terminology": "CMH-ranked candidates",
-  "interpretation_boundary": "computational_candidates_only_biological_validation_outside_emrys",
   "warnings": [
     {
       "code": "production_output_missing",
       "message": "The run summary is structurally complete but its expected Step 09 output is missing.",
       "related_artifact_ids": [
         "analysis.synthetic.cmh_summary"
-      ],
-      "evidence": []
+      ]
     }
   ],
   "errors": [],
@@ -183,6 +105,52 @@
     "producer": "artifact_schema_fixture",
     "producer_version": "1.0.0",
     "git_commit": "fixturecommit",
-    "created_at": "2000-01-01T00:00:04Z"
-  }
+    "created_at": "2000-01-01T00:00:04Z",
+    "installed_package": {
+      "path": "/fixtures/installed/emrys",
+      "distribution": "emrys-rna-workflow",
+      "version": "0.0.0+fixture",
+      "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "git_commit": null,
+      "git_dirty": null,
+      "python_lock_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  },
+  "analysis_policy": {
+    "path": "contract/primary_analysis_policy.json",
+    "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+    "size_bytes": 512
+  },
+  "run_contract_file": {
+    "path": "contract/reporting_run_contract.json",
+    "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  },
+  "publication": {
+    "attempt_id": "summary-attempt-001",
+    "started_at": "2000-01-01T00:00:03Z",
+    "finished_at": "2000-01-01T00:00:04Z",
+    "transaction_state": "complete"
+  },
+  "scientific_origin": {
+    "run": {
+      "path": "/synthetic/original_run.json",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "attempt": {
+      "path": "/synthetic/original_attempt.json",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  },
+  "tables": [
+    {
+      "path": "/synthetic/run_fixture/run_fixture.run_summary.tsv",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "size_bytes": 1
+    },
+    {
+      "path": "/synthetic/run_fixture/run_fixture.qc_summary.tsv",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "size_bytes": 1
+    }
+  ]
 }

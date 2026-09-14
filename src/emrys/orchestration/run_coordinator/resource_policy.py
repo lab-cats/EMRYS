@@ -10,6 +10,9 @@ from pathlib import Path
 from typing import Any, Literal
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.application_model import (
+    resolve_computational_resources,
+)
 
 SCHEMA_VERSION = "emrys.local-pilot-resources.v1"
 STAGE_IDS = (
@@ -29,15 +32,12 @@ STAGE_IDS = (
     "10",
 )
 REPEATABLE_STAGE_IDS = ("01", "02", "02b", "03", "04", "05", "06", "07")
-_HISTORICAL_THREAD_CAPABLE_STAGE_IDS = ("00a", "01", "02", "06", "08")
-THREAD_CAPABLE_STAGE_IDS = (*_HISTORICAL_THREAD_CAPABLE_STAGE_IDS, "09", "10")
-REPORTING_KINDS = ("artifact_index", "run_summary", "html_report")
+THREAD_CAPABLE_STAGE_IDS = ("00a", "01", "02", "06", "08", "09", "10")
 _SCALAR_RESOURCE_CONTROLS = ("workflow_cores", "workflow_memory_mb")
 _KEYED_RESOURCE_CONTROLS = (
     ("stage_concurrency", REPEATABLE_STAGE_IDS, "STEP=COUNT"),
     ("step_threads", THREAD_CAPABLE_STAGE_IDS, "STEP=THREADS"),
     ("stage_memory_mb", STAGE_IDS, "STEP=MIB"),
-    ("reporting_memory_mb", REPORTING_KINDS, "KIND=MIB"),
 )
 
 
@@ -49,7 +49,9 @@ def is_canonical_slurm_job_id(value: object) -> bool:
     """Return whether a value is one canonical positive Slurm job ID."""
 
     return (
-        isinstance(value, str) and value.isascii() and value.isdecimal()
+        isinstance(value, str)
+        and value.isascii()
+        and value.isdecimal()
         and not value.startswith("0")
     )
 
@@ -95,7 +97,6 @@ class ResourceOverrides:
     stage_concurrency: tuple[tuple[str, int], ...] = ()
     step_threads: tuple[tuple[str, int], ...] = ()
     stage_memory_mb: tuple[tuple[str, int], ...] = ()
-    reporting_memory_mb: tuple[tuple[str, int], ...] = ()
 
     def __post_init__(self) -> None:
         for field, allowed, _metavar in _KEYED_RESOURCE_CONTROLS:
@@ -104,8 +105,7 @@ class ResourceOverrides:
             duplicates = sorted({key for key in keys if keys.count(key) > 1})
             if duplicates:
                 raise ResourceConfigError(
-                    f"Duplicate command-line {field} override: "
-                    + ", ".join(duplicates)
+                    f"Duplicate command-line {field} override: " + ", ".join(duplicates)
                 )
             unknown = sorted(set(keys).difference(allowed))
             if unknown:
@@ -159,14 +159,12 @@ class ComputationalResourceDeclaration:
             "stage_memory_mb": dict(self.stage_memory_mb),
         }
 
+
 @dataclass(frozen=True, slots=True)
 class ResourcePolicy:
-    """One admitted symbolic policy plus non-Run reporting and source context."""
+    """One admitted symbolic computational policy plus source context."""
 
     declaration: ComputationalResourceDeclaration
-    reporting_memory_mb: tuple[
-        tuple[str, int | Literal["workflow"]], ...
-    ]
     default_sha256: str
     config_path: Path | None
     config_sha256: str | None
@@ -178,7 +176,6 @@ class ResourcePolicy:
         return {
             "schema_version": SCHEMA_VERSION,
             **self.declaration.identity_document(),
-            "reporting_memory_mb": dict(self.reporting_memory_mb),
         }
 
 
@@ -197,7 +194,6 @@ class ResourcePlan:
 
     policy: ResourcePolicy
     resolution: AttemptResourceResolution
-    reporting_memory_mb: tuple[tuple[str, int], ...]
 
     @property
     def declaration(self) -> ComputationalResourceDeclaration:
@@ -242,7 +238,6 @@ class ResourcePlan:
             "stage_concurrency": dict(self.stage_concurrency),
             "step_threads": dict(self.step_threads),
             "stage_memory_mb": dict(self.stage_memory_mb),
-            "reporting_memory_mb": dict(self.reporting_memory_mb),
         }
 
     def policy_record(self) -> dict[str, Any]:
@@ -333,28 +328,9 @@ def admit_resource_policy(
         orchestration_contracts.validate_record("resource-config", value)
     except orchestration_contracts.ContractValidationError as exc:
         raise ResourceConfigError(str(exc)) from exc
-    stage_concurrency = _closed_map(
-        value, "stage_concurrency", REPEATABLE_STAGE_IDS
-    )
-    step_threads = value.get("step_threads")
-    observed_thread_steps = (
-        set(step_threads) if isinstance(step_threads, dict) else set()
-    )
-    if not (
-        isinstance(step_threads, dict)
-        and set(_HISTORICAL_THREAD_CAPABLE_STAGE_IDS)
-        <= observed_thread_steps
-        <= set(THREAD_CAPABLE_STAGE_IDS)
-    ):
-        raise ResourceConfigError(
-            "Resolved step_threads keys must include: "
-            + ", ".join(_HISTORICAL_THREAD_CAPABLE_STAGE_IDS)
-            + "; optional keys: 09, 10"
-        )
+    stage_concurrency = _closed_map(value, "stage_concurrency", REPEATABLE_STAGE_IDS)
+    step_threads = _closed_map(value, "step_threads", THREAD_CAPABLE_STAGE_IDS)
     stage_memory = _closed_map(value, "stage_memory_mb", STAGE_IDS)
-    reporting_memory = _closed_map(
-        value, "reporting_memory_mb", REPORTING_KINDS
-    )
     try:
         workflow_cores = int(value["workflow_cores"])
         configured_workflow_memory = value["workflow_memory_mb"]
@@ -378,23 +354,12 @@ def admit_resource_policy(
             (key, int(stage_concurrency[key])) for key in REPEATABLE_STAGE_IDS
         ),
         step_threads=tuple(
-            (key, int(step_threads[key]))
-            for key in THREAD_CAPABLE_STAGE_IDS
-            if key in step_threads
+            (key, int(step_threads[key])) for key in THREAD_CAPABLE_STAGE_IDS
         ),
         stage_memory_mb=tuple((key, declared_stage_memory[key]) for key in STAGE_IDS),
     )
     return ResourcePolicy(
         declaration=declaration,
-        reporting_memory_mb=tuple(
-            (
-                key,
-                "workflow"
-                if reporting_memory[key] == "workflow"
-                else int(reporting_memory[key]),
-            )
-            for key in REPORTING_KINDS
-        ),
         default_sha256=default_sha256,
         config_path=config_path,
         config_sha256=config_sha256,
@@ -409,63 +374,22 @@ def resolve_resource_policy(
     """Resolve one exact admitted policy against one Attempt allocation."""
 
     declaration = policy.declaration
-    workflow_cores = declaration.workflow_cores
-    workflow_memory = (
-        allocation.memory_mb
-        if declaration.workflow_memory_mb == "allocation"
-        else declaration.workflow_memory_mb
-    )
-    if workflow_cores > allocation.cores:
-        raise ResourceConfigError(
-            "Workflow cores exceed observed allocation: "
-            f"{workflow_cores} > {allocation.cores}"
+    try:
+        effective = resolve_computational_resources(
+            declaration.identity_document(), allocation.cores, allocation.memory_mb
         )
-    if workflow_memory > allocation.memory_mb:
-        raise ResourceConfigError(
-            "Workflow memory exceeds observed allocation: "
-            f"{workflow_memory} > {allocation.memory_mb} MiB"
-        )
-    resolved_stage_memory = {
-        step_id: workflow_memory if value == "workflow" else int(value)
-        for step_id, value in declaration.stage_memory_mb
-    }
-    resolved_reporting_memory = {
-        kind: workflow_memory if value == "workflow" else int(value)
-        for kind, value in policy.reporting_memory_mb
-    }
-    thread_values = dict(declaration.step_threads)
-    concurrency_values = dict(declaration.stage_concurrency)
-    for step_id in STAGE_IDS:
-        threads = thread_values.get(step_id, 1)
-        memory = resolved_stage_memory[step_id]
-        concurrency = concurrency_values.get(step_id, 1)
-        if concurrency * threads > workflow_cores:
-            raise ResourceConfigError(
-                f"Stage {step_id} concurrency x threads exceeds workflow cores: "
-                f"{concurrency} x {threads} > {workflow_cores}"
-            )
-        if concurrency * memory > workflow_memory:
-            raise ResourceConfigError(
-                f"Stage {step_id} concurrency x memory exceeds workflow memory: "
-                f"{concurrency} x {memory} > {workflow_memory} MiB"
-            )
-    for kind, memory in resolved_reporting_memory.items():
-        if memory > workflow_memory:
-            raise ResourceConfigError(
-                f"Reporting {kind} memory exceeds workflow memory: "
-                f"{memory} > {workflow_memory} MiB"
-            )
+    except orchestration_contracts.ContractValidationError as exc:
+        raise ResourceConfigError(str(exc)) from exc
     resolution = AttemptResourceResolution(
         allocation=allocation,
-        workflow_memory_mb=workflow_memory,
-        stage_memory_mb=tuple((key, resolved_stage_memory[key]) for key in STAGE_IDS),
+        workflow_memory_mb=effective["workflow_memory_mb"],
+        stage_memory_mb=tuple(
+            (key, effective["stage_memory_mb"][key]) for key in STAGE_IDS
+        ),
     )
     return ResourcePlan(
         policy=policy,
         resolution=resolution,
-        reporting_memory_mb=tuple(
-            (key, resolved_reporting_memory[key]) for key in REPORTING_KINDS
-        ),
     )
 
 
@@ -504,33 +428,17 @@ def _admit_policy_sources(
 
 
 def resume_resource_policy(
-    predecessor_policy: ResourcePolicy | Mapping[str, Any],
+    predecessor_policy: ResourcePolicy,
     *,
-    reporting_overlay: tuple[tuple[str, int | Literal["workflow"]], ...] = (),
     overrides: ResourceOverrides = ResourceOverrides(),
 ) -> ResourcePolicy:
     """Re-admit a predecessor policy and explicit overrides without allocation."""
 
-    if isinstance(predecessor_policy, ResourcePolicy):
-        document = predecessor_policy.document()
-        default_sha256 = predecessor_policy.default_sha256
-        config_path = predecessor_policy.config_path
-        config_sha256 = predecessor_policy.config_sha256
-        prior_labels = predecessor_policy.override_labels
-    else:
-        effective = predecessor_policy.get("effective")
-        sources = predecessor_policy.get("sources")
-        if not isinstance(effective, dict):
-            raise ResourceConfigError("Predecessor resource policy is malformed")
-        if orchestration_contracts.canonical_sha256(
-            effective
-        ) != predecessor_policy.get("effective_sha256"):
-            raise ResourceConfigError("Predecessor effective resource digest differs")
-        document = copy.deepcopy(effective)
-        default_sha256, config_path, config_sha256, prior_labels = (
-            _admit_policy_sources(sources, label="Predecessor")
-        )
-    document["reporting_memory_mb"].update(dict(reporting_overlay))
+    document = predecessor_policy.document()
+    default_sha256 = predecessor_policy.default_sha256
+    config_path = predecessor_policy.config_path
+    config_sha256 = predecessor_policy.config_sha256
+    prior_labels = predecessor_policy.override_labels
     _apply_overrides(document, overrides)
     combined_labels = tuple(dict.fromkeys((*prior_labels, *overrides.labels())))
     return admit_resource_policy(
@@ -542,52 +450,21 @@ def resume_resource_policy(
     )
 
 
-def resume_resource_plan(
-    predecessor_policy: ResourcePolicy | Mapping[str, Any],
-    allocation: AllocationCapacity,
-    *,
-    overrides: ResourceOverrides = ResourceOverrides(),
-) -> ResourcePlan:
-    """Compatibility wrapper that re-admits then resolves a predecessor policy."""
+def admit_resource_policy_record(record: Mapping[str, Any]) -> ResourcePlan:
+    """Re-admit one closed current symbolic policy and its allocation resolution."""
 
-    if not isinstance(predecessor_policy, ResourcePolicy) and (
-        "symbolic" in predecessor_policy or "symbolic_sha256" in predecessor_policy
-    ):
-        predecessor_policy = admit_resource_policy_record(
-            predecessor_policy,
-            require_symbolic=True,
-        ).policy
-    return resolve_resource_policy(
-        resume_resource_policy(predecessor_policy, overrides=overrides),
-        allocation,
-    )
-
-
-def admit_resource_policy_record(
-    record: Mapping[str, Any],
-    *,
-    require_symbolic: bool = False,
-) -> ResourcePlan:
-    """Re-admit one closed persisted policy record.
-
-    Historical records contain only the allocation-resolved policy. Successor
-    records additionally retain the symbolic policy so a later Attempt can
-    resolve the same Run declaration against a different allocation.
-    """
-
-    legacy_keys = {"effective", "effective_sha256", "allocation", "sources"}
-    successor_keys = legacy_keys | {"symbolic", "symbolic_sha256"}
-    observed_keys = set(record)
-    if observed_keys == successor_keys:
-        successor = True
-    elif observed_keys == legacy_keys and not require_symbolic:
-        successor = False
-    else:
-        expected = successor_keys if require_symbolic else legacy_keys
+    expected = {
+        "effective",
+        "effective_sha256",
+        "allocation",
+        "sources",
+        "symbolic",
+        "symbolic_sha256",
+    }
+    if set(record) != expected:
         raise ResourceConfigError(
             "Persisted resource policy keys are malformed; expected "
             + ", ".join(sorted(expected))
-            + (" plus optional symbolic fields" if not require_symbolic else "")
         )
 
     allocation = record.get("allocation")
@@ -603,11 +480,8 @@ def admit_resource_policy_record(
         slurm_job_id=allocation.get("slurm_job_id"),
     )
 
-    if not successor:
-        return resume_resource_plan(record, capacity)
-
-    symbolic = record.get("symbolic")
     effective = record.get("effective")
+    symbolic = record.get("symbolic")
     sources = record.get("sources")
     if (
         not isinstance(symbolic, dict)
@@ -624,8 +498,8 @@ def admit_resource_policy_record(
     ):
         raise ResourceConfigError("Persisted effective resource digest differs")
 
-    default_sha256, config_path, config_sha256, override_labels = (
-        _admit_policy_sources(sources, label="Persisted")
+    default_sha256, config_path, config_sha256, override_labels = _admit_policy_sources(
+        sources, label="Persisted"
     )
 
     policy = admit_resource_policy(
@@ -636,7 +510,8 @@ def admit_resource_policy_record(
         override_labels=override_labels,
     )
     resolved = resolve_resource_policy(policy, capacity)
-    if resolved.effective_document() != effective:
+    projected = resolved.effective_document()
+    if projected != effective:
         raise ResourceConfigError(
             "Persisted symbolic resource policy does not reproduce its resolution"
         )
@@ -711,7 +586,6 @@ __all__ = (
     "AllocationCapacity",
     "AttemptResourceResolution",
     "ComputationalResourceDeclaration",
-    "REPORTING_KINDS",
     "REPEATABLE_STAGE_IDS",
     "ResourceConfigError",
     "ResourceOverrides",
@@ -726,6 +600,5 @@ __all__ = (
     "resource_override_argv",
     "resolve_resource_policy",
     "resume_resource_policy",
-    "resume_resource_plan",
     "stage_slot_name",
 )

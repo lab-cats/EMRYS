@@ -21,7 +21,7 @@ from emrys.libraries.installed_package_identity import (
 from emrys.libraries.validation import HEADER as VALIDATION_REPORT_HEADER
 
 ANALYSIS_MODULE_ENTRY_POINT_GROUP = "emrys.analysis_modules"
-ANALYSIS_MODULE_INTERFACE_V1 = "emrys.analysis-module.v1"
+ANALYSIS_MODULE_INTERFACE_V2 = "emrys.analysis-module.v2"
 BUILTIN_PAIRED_CMH_MODULE_ID = "emrys.paired-cmh"
 ANALYSIS_ARTIFACT_MEDIA_TYPES = MappingProxyType(
     {
@@ -83,7 +83,7 @@ class TaskInputV1(NamedTuple):
     path: Path
 
 
-class TaskCommandPlanV1(NamedTuple):
+class TaskCommandPlanV2(NamedTuple):
     """Producer, validator, and complete provenance inputs for one task."""
 
     producer_argv: tuple[str, ...]
@@ -91,7 +91,7 @@ class TaskCommandPlanV1(NamedTuple):
     inputs: tuple[TaskInputV1, ...]
 
 
-class TaskPlanningContextV1(NamedTuple):
+class TaskPlanningContextV2(NamedTuple):
     """Closed core projection; modules do not receive workflow layout internals."""
 
     reference_id: str
@@ -105,6 +105,7 @@ class TaskPlanningContextV1(NamedTuple):
     configuration: JsonObject
     inputs: Mapping[str, tuple[Path, ...]]
     outputs: Mapping[str, Path]
+    working_outputs: Mapping[str, Path]
     runtime_paths: Mapping[str, str]
     python_command: Callable[[tuple[str, ...]], tuple[str, ...]]
     r_owner_command: Callable[[tuple[str, ...]], tuple[str, ...]]
@@ -115,7 +116,7 @@ class TaskPlanningContextV1(NamedTuple):
 ConfigNormalizerV1: TypeAlias = Callable[
     [JsonObject, AnalysisInputContextV1], JsonObject
 ]
-TaskPlannerV1: TypeAlias = Callable[[TaskPlanningContextV1], TaskCommandPlanV1]
+TaskPlannerV1: TypeAlias = Callable[[TaskPlanningContextV2], TaskCommandPlanV2]
 
 
 class AnalysisTaskV1(NamedTuple):
@@ -228,9 +229,7 @@ def compose_profile(
     composed: dict[str, object] = {
         key: base[key] for key in ("schema_version", "profile_id", "profile_version")
     }
-    composed.update(
-        {key: [*base[key], *values] for key, values in fragment.items()}
-    )
+    composed.update({key: [*base[key], *values] for key, values in fragment.items()})
     try:
         orchestration_contracts.validate_record("profile", composed)
     except orchestration_contracts.ContractValidationError as exc:
@@ -493,7 +492,7 @@ def module_identity_record(module: LoadedAnalysisModuleV1) -> dict[str, object]:
     provider = module.provider
     return {
         "module_id": descriptor.module_id,
-        "interface_version": ANALYSIS_MODULE_INTERFACE_V1,
+        "interface_version": ANALYSIS_MODULE_INTERFACE_V2,
         "module_version": descriptor.module_version,
         "distribution_name": provider.distribution_name,
         "distribution_version": provider.distribution_version,
@@ -506,10 +505,14 @@ def module_identity_record(module: LoadedAnalysisModuleV1) -> dict[str, object]:
 
 
 def module_admission_record(module: LoadedAnalysisModuleV1) -> dict[str, object]:
-    """Return provider metadata plus the exact installed implementation digest."""
+    """Bind scientific metadata and bytes independently of distribution releases."""
 
     return {
-        "module": module_identity_record(module),
+        "module": {
+            key: value
+            for key, value in module_identity_record(module).items()
+            if key != "distribution_version"
+        },
         "implementation_sha256": module.provider.package.sha256,
     }
 
@@ -520,24 +523,19 @@ def readmit_analysis_module(
     """Reload the provider bound by persisted policy without renormalizing config."""
 
     persisted = policy.get("module")
-    if policy.get("schema_version") == "emrys.analysis-policy.v1":
-        module_id = BUILTIN_PAIRED_CMH_MODULE_ID
-    elif isinstance(persisted, Mapping) and isinstance(persisted.get("module_id"), str):
+    if isinstance(persisted, Mapping) and isinstance(persisted.get("module_id"), str):
         module_id = str(persisted["module_id"])
     else:
         raise AnalysisModuleLoadError("Persisted analysis policy has no module")
     loaded = load_analysis_module(module_id)
-    if persisted is not None and persisted != module_identity_record(loaded):
-        raise AnalysisModuleLoadError(
-            "Installed analysis module differs from persisted Run policy"
-        )
-    persisted_implementation = policy.get("implementation_sha256")
+    observed = module_identity_record(loaded)
+    observed["distribution_version"] = persisted.get("distribution_version")
     if (
-        policy.get("schema_version") == "emrys.analysis-module-policy.v1"
-        and persisted_implementation != loaded.provider.package.sha256
+        persisted != observed
+        or policy.get("implementation_sha256") != loaded.provider.package.sha256
     ):
         raise AnalysisModuleLoadError(
-            "Installed analysis module implementation differs from persisted Run policy"
+            "Installed analysis module identity or implementation differs from persisted Run policy"
         )
     return loaded
 
@@ -546,7 +544,7 @@ __all__ = (
     "ANALYSIS_ARTIFACT_KINDS",
     "ANALYSIS_ARTIFACT_MEDIA_TYPES",
     "ANALYSIS_MODULE_ENTRY_POINT_GROUP",
-    "ANALYSIS_MODULE_INTERFACE_V1",
+    "ANALYSIS_MODULE_INTERFACE_V2",
     "BUILTIN_PAIRED_CMH_MODULE_ID",
     "VALIDATION_REPORT_HEADER",
     "AnalysisArtifactV1",
@@ -558,9 +556,9 @@ __all__ = (
     "AnalysisTaskPlanningError",
     "AnalysisTaskV1",
     "LoadedAnalysisModuleV1",
-    "TaskCommandPlanV1",
+    "TaskCommandPlanV2",
     "TaskInputV1",
-    "TaskPlanningContextV1",
+    "TaskPlanningContextV2",
     "admit_configuration",
     "compose_profile",
     "dependency_records",

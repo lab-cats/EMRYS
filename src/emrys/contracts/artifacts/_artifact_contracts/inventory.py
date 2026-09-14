@@ -9,16 +9,16 @@ from typing import Any
 from .definitions import (
     BOOLEAN_VALUES,
     INVENTORY_HEADER,
-    REPO_ROOT,
+    PACKAGE_ROOT,
     SAFE_ID_RE,
     SCOPE_TYPES,
     ContractValidationError,
 )
 from .identity import (
     resolve_contract_path,
+    scope_key,
     validate_resolved_path,
 )
-from .run_summary_status import scope_key
 from .schema import sha256_file
 
 SAFE_ID_COLUMNS = INVENTORY_HEADER[:-2]
@@ -57,7 +57,7 @@ def _reject_duplicate_inventory_value(
 def validate_inventory(
     path: Path,
     *,
-    source_root: Path = REPO_ROOT,
+    source_root: Path = PACKAGE_ROOT,
 ) -> list[dict[str, str]]:
     if not path.exists():
         raise ContractValidationError(f"Inventory does not exist: {path}")
@@ -201,7 +201,7 @@ def reconcile_document_inventory(
     rows: list[dict[str, str]],
     inventory_path: Path,
     *,
-    source_root: Path = REPO_ROOT,
+    source_root: Path = PACKAGE_ROOT,
 ) -> None:
     row_index = {row["artifact_id"]: row for row in rows}
     if name == "artifact-record":

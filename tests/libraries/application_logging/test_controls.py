@@ -14,7 +14,6 @@ from emrys.libraries.application_logging.controls import (
     add_log_arguments,
     resolve_log_controls,
 )
-from emrys.libraries.source_authority import SourceCheckout
 
 
 def parser() -> argparse.ArgumentParser:
@@ -56,25 +55,24 @@ def test_parser_rejects_invalid_or_repeated_controls(arguments: list[str]) -> No
 def test_resolution_precedence_default_and_scheduler_transport(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    checkout = SourceCheckout(tmp_path / "repository")
+    default_root = tmp_path / "repository/logs/application"
     environment = {
         EMRYS_LOG_LEVEL: "verbose",
         EMRYS_LOG_ROOT: str(tmp_path / "environment"),
         "SECRET": "ignored",
     }
     cli = resolve_log_controls(
-        source_checkout=checkout,
+        default_root=default_root,
         cli_level="debug",
         cli_root=tmp_path / "cli",
         environment=environment,
     )
-    env = resolve_log_controls(source_checkout=checkout, environment=environment)
+    env = resolve_log_controls(default_root=default_root, environment=environment)
     unrelated = tmp_path / "cwd"
     unrelated.mkdir()
     monkeypatch.chdir(unrelated)
-    default = resolve_log_controls(source_checkout=checkout, environment={})
+    default = resolve_log_controls(default_root=default_root, environment={})
     scoped_default = resolve_log_controls(
-        source_checkout=checkout,
         environment={},
         default_root=tmp_path / "workspace" / "logs" / "application",
     )
@@ -85,7 +83,7 @@ def test_resolution_precedence_default_and_scheduler_transport(
     assert env == LogControls(
         LogLevel.VERBOSE, tmp_path / "environment", "environment", "environment"
     )
-    assert default.root == checkout.root / "logs" / "application"
+    assert default.root == default_root
     assert default.level is LogLevel.NORMAL
     assert scoped_default.root == tmp_path / "workspace" / "logs" / "application"
     assert scoped_default.root_source == "default"
@@ -95,7 +93,7 @@ def test_resolution_precedence_default_and_scheduler_transport(
     }
     assert list(unrelated.iterdir()) == []
     with pytest.raises(LogControlError):
-        resolve_log_controls(source_checkout=object(), environment={})  # type: ignore[arg-type]
+        resolve_log_controls(default_root=object(), environment={})  # type: ignore[arg-type]
     for invalid in (
         (LogLevel.NORMAL, tmp_path / "logs", "invalid", "default"),
         (LogLevel.NORMAL, tmp_path / "logs", "default", "invalid"),
@@ -122,7 +120,7 @@ def test_resolution_rejects_invalid_controls_without_writes(
 ) -> None:
     with pytest.raises(LogControlError):
         resolve_log_controls(
-            source_checkout=SourceCheckout(tmp_path / "repository"),
+            default_root=tmp_path / "logs",
             cli_level=level,
             cli_root=root,
             environment={},

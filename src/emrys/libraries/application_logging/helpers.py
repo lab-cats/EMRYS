@@ -1,18 +1,15 @@
-"""Small helpers for sensitive fields, diagnostics, and failure output."""
+"""Sensitive fields, Slurm context, and failure output."""
 
 from __future__ import annotations
 
-import base64
-import hashlib
 import json
 import unicodedata
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 _MAX_FIELD_BYTES = 16 * 1024
-_DIAGNOSTIC_CHUNK_BYTES = 12_000
 _UNSAFE_TEXT_CATEGORIES = frozenset({"Cc", "Cf", "Cs", "Zl", "Zp"})
 
 
@@ -74,91 +71,6 @@ def split_fields(
         if selected.console:
             console[name] = selected.value
     return durable, console
-
-
-def classify_invocation(
-    argv: Sequence[str],
-    *,
-    secret_arguments: Iterable[int] = (),
-    environment: Mapping[str, str] | None = None,
-    selected_environment: Iterable[str] = (),
-    secret_environment: Iterable[str] = (),
-) -> dict[str, object]:
-    """Classify a command and an explicit environment allow-list for logging."""
-
-    secret_indexes = frozenset(secret_arguments)
-    if any(
-        not isinstance(index, int)
-        or isinstance(index, bool)
-        or index < 0
-        or index >= len(argv)
-        for index in secret_indexes
-    ):
-        raise LogValueError("secret argument indexes must select command arguments")
-    command = [
-        "<redacted>" if index in secret_indexes else _text(value)
-        for index, value in enumerate(argv)
-    ]
-    source = environment or {}
-    selected_names = tuple(selected_environment)
-    secret_names = frozenset(secret_environment)
-    if not secret_names.issubset(selected_names):
-        raise LogValueError("secret environment names must be explicitly selected")
-    selected: dict[str, str] = {}
-    for name in selected_names:
-        _token("environment name", name)
-        if name in source:
-            selected[name] = (
-                "<redacted>" if name in secret_names else _text(source[name])
-            )
-    return {"argv": command, "environment": selected}
-
-
-def child_diagnostic_events(
-    data: bytes,
-    *,
-    stream: str,
-    component: str,
-) -> tuple[tuple[dict[str, object], ...], dict[str, object]]:
-    """Preserve binary child diagnostics and pair them with a safe warning."""
-
-    if stream not in {"stdout", "stderr"}:
-        raise LogValueError("diagnostic stream must be stdout or stderr")
-    if not isinstance(data, bytes) or not data:
-        raise LogValueError("diagnostic data must be nonempty bytes")
-    _token("component", component)
-    chunks = tuple(
-        data[offset : offset + _DIAGNOSTIC_CHUNK_BYTES]
-        for offset in range(0, len(data), _DIAGNOSTIC_CHUNK_BYTES)
-    )
-    durable = tuple(
-        {
-            "event": "child_diagnostic_bytes",
-            "detail": "durable_only",
-            "message": "Child diagnostic bytes were preserved.",
-            "fields": {
-                "base64": field(base64.b64encode(chunk).decode("ascii")),
-                "byte_count": field(len(chunk)),
-                "sha256": field(hashlib.sha256(chunk).hexdigest()),
-                "stream": field(stream),
-                "component": field(component),
-                "chunk_index": field(index),
-                "chunk_count": field(len(chunks)),
-            },
-        }
-        for index, chunk in enumerate(chunks, start=1)
-    )
-    warning = {
-        "event": "child_diagnostic_warning",
-        "detail": "normal",
-        "message": "A child emitted non-text diagnostics; inspect the application log.",
-        "fields": {
-            "byte_count": field(len(data), console=True),
-            "stream": field(stream, console=True),
-            "component": field(component, console=True),
-        },
-    }
-    return durable, warning
 
 
 def slurm_correlation(environment: Mapping[str, str]) -> dict[str, str]:

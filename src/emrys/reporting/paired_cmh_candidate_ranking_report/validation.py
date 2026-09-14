@@ -72,10 +72,7 @@ class _Inspector(HTMLParser):
             }
             self.candidates.append(candidate)
             self.current_candidate = candidate
-        if (
-            self.current_candidate is not None
-            and "candidate-evidence-group" in classes
-        ):
+        if self.current_candidate is not None and "candidate-evidence-group" in classes:
             group = attributes.get("data-evidence-group")
             if group:
                 self.current_candidate["groups"].add(group)

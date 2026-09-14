@@ -1,15 +1,17 @@
 # Internal libraries
 
-Libraries contain neutral mechanics proven across named consumers; owner
-arguments, check rosters, transactions, scientific policy, and evidence meaning
-remain local. Approved consumers and dependency direction are fixed in
-[`SOURCE_TOPOLOGY.md`](../contracts/SOURCE_TOPOLOGY.md).
+Libraries provide shared parsing, validation, filesystem, runtime, and logging
+mechanics. Their callers keep scientific policy, check lists, commands, and
+interpretation of evidence. [SOURCE_TOPOLOGY](../contracts/SOURCE_TOPOLOGY.md)
+defines each library's permitted consumers and import direction; a helper's
+presence does not make it a general utility. New shared code must replace
+proven-equivalent implementations across its callers.
 
-The package includes validation publication, BAM/BED/STAR/orientation parsers,
-evidence and quality parsers, reference-contig admission, source/artifact-root
-authority, controlled child environments and GATK invocation, installed-package
-identity, application logging, and shared R input mechanics. A helper's
-presence does not authorize a new consumer or turn it into a generic utility.
+## Shell workers
 
-Keep the first use local. Extract a shared seam only after equivalent behavior
-is demonstrated across consumers and protected by its own API and tests.
+`argument_parsing.sh`, `file_checks.sh`, and `gatk_invocation.sh` support the
+Bash scientific workers. They require the runner's absolute executable
+paths and bound Python for hashing. Tool discovery belongs to runtime admission;
+workers do not search PATH, environment overrides, or alternative hash tools. The
+[Run task runner](../orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution)
+owns those operations across all scientific owners.
