@@ -1,16 +1,68 @@
 from __future__ import annotations
 
+import io
 from pathlib import Path
 
 import pytest
 
 from emrys.libraries.application_logging.helpers import (
     LogValueError,
+    console_print,
     field,
+    phase_progress,
     render_failure_summary,
     slurm_correlation,
     split_fields,
 )
+
+
+def test_terminal_output_preserves_literal_text_and_plain_redirects(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Terminal(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    monkeypatch.setenv("TERM", "xterm-256color")
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    label = "PASS: sample[red] " + "x" * 100
+    terminal = Terminal()
+    console_print(label, style="bold green", file=terminal)
+    assert "\x1b[" in terminal.getvalue()
+    assert label in terminal.getvalue()
+    plain = io.StringIO()
+    console_print(label, style="bold green", file=plain)
+    assert plain.getvalue() == label + "\n"
+    monkeypatch.setenv("NO_COLOR", "")
+    disabled = Terminal()
+    console_print(label, style="bold green", file=disabled)
+    assert disabled.getvalue() == plain.getvalue()
+
+
+def test_phase_progress_reports_actual_completion_and_failure_without_percent() -> None:
+    output = io.StringIO()
+    with phase_progress("Installing native tools", file=output):
+        pass
+    with pytest.raises(RuntimeError, match="package failure"):
+        with phase_progress("Restoring R packages", file=output):
+            raise RuntimeError("package failure")
+    rendered = output.getvalue()
+    assert "Installing native tools: complete (" in rendered
+    assert "Restoring R packages: interrupted or failed (" in rendered
+    assert "Restoring R packages: complete" not in rendered
+    assert "\x1b" not in rendered and "%" not in rendered
+
+
+def test_unavailable_progress_display_preserves_interrupted_body() -> None:
+    output = io.StringIO()
+    interrupted = KeyboardInterrupt("setup interrupted")
+    with pytest.raises(KeyboardInterrupt) as failure:
+        with phase_progress("Restoring R packages", file=output):
+            output.close()
+            raise interrupted
+    assert failure.value is interrupted
+    with phase_progress("Checking retained setup", file=output):
+        pass
 
 
 def test_field_classification_redacts_before_inspection_and_bounds_metadata() -> None:

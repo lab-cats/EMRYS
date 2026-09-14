@@ -13,7 +13,8 @@ One executing `run` or `resume`, independently generated report, or confirmed
 `doctor --repair` operation owns one application attempt. Automatic reporting
 continues in its Run attempt rather than opening another log. The Slurm
 submission transport and delegated tasks own none; the compute-side Run owns
-the attempt.
+the attempt. Automatic Doctor compute checks write scheduler streams under the
+parent repair's single maintenance attempt; they do not open another application log.
 
 Initialization, validation, discovery, diagnosis, inspection, help, parse
 failure, valid dry-run, report reuse, and any refusal before execution own no
@@ -49,6 +50,17 @@ open or append to the operation log.
 | `normal` | Run identity, work/reporting summary, meaningful phases, verified Results, warnings, errors, log path, and bounded failure summary | complete observed event set |
 | `verbose` | `normal` plus Run root, resources/allocation, profile, scheduler streams, and resolved operational paths | same event semantics |
 | `debug` | `verbose` plus exact safe engine, scheduler, and task commands, allowed environment context, timing, and recovery identities | same event semantics |
+
+Rich styles human terminal output only. Status remains understandable from its
+text labels. Redirected output, `NO_COLOR`, and dumb terminals have no color or
+animation. Doctor progress names the active phase and elapsed time; it does not
+invent a completion percentage or a guaranteed remaining duration.
+
+A repair that invokes package managers creates one exclusive, mode-0600
+`package-output.log` beside its maintenance JSONL. It retains both child streams
+as bytes. Normal terminal output shows stages and the log path; the printed file remains available
+for detailed diagnostics at every output level. Package output is not copied into
+structured events. A failed or interrupted repair preserves this log.
 
 The runner preserves task stdout and stderr as exact bytes in separate task
 logs, including invalid UTF-8. Their paths and SHA-256 hashes belong to the task
