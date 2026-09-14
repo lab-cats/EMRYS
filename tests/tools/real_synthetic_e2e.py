@@ -160,7 +160,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--runtime-prefix", required=True, type=Path)
     parser.add_argument("--rscript", required=True, type=Path)
     parser.add_argument("--renv-library", required=True, type=Path)
-    parser.add_argument("--storage-compute-launcher-json", required=True)
     parser.add_argument("--slurm-partition", required=True)
     parser.add_argument("--slurm-account")
     parser.add_argument("--slurm-qos")
@@ -389,25 +388,6 @@ def runtime_environment(paths: Paths, runtime: Runtime) -> dict[str, str]:
         "EMRYS_RSCRIPT": str(runtime.rscript),
         "EMRYS_RENV_LIBRARY": str(runtime.renv),
     }
-
-
-def parse_launcher(value: str) -> tuple[str, ...]:
-    try:
-        parsed = json.loads(value)
-    except json.JSONDecodeError as exc:
-        raise DriverError("preflight", f"invalid storage launcher JSON: {exc}") from exc
-    if (
-        not isinstance(parsed, list)
-        or not parsed
-        or any(not isinstance(item, str) or not item for item in parsed)
-    ):
-        raise DriverError(
-            "preflight", "storage launcher must be a nonempty string array"
-        )
-    return (
-        str(_real(Path(parsed[0]), "storage launcher", executable=True)),
-        *parsed[1:],
-    )
 
 
 def slurm_execution_profile_bytes(
@@ -780,6 +760,16 @@ def _tree_artifacts(root: Path) -> dict[str, dict[str, Any]]:
         path.relative_to(root).as_posix(): _artifact(path)
         for path in sorted(root.rglob("*"))
         if path.is_file() or path.is_symlink()
+    }
+
+
+def _execution_state(workspace: Path) -> dict[str, Any]:
+    return {
+        name: (
+            tuple(sorted((workspace / name).rglob("*"))),
+            _tree_artifacts(workspace / name),
+        )
+        for name in ("runs", "logs")
     }
 
 
@@ -1248,7 +1238,6 @@ def run_driver(
     runtime = resolve_runtime(
         arguments.runtime_prefix, arguments.rscript, arguments.renv_library
     )
-    launcher = parse_launcher(arguments.storage_compute_launcher_json)
     scontrol = _command(arguments.scontrol, "scontrol")
     scancel = _command(arguments.scancel, "scancel")
     for directory in (paths.scratch, paths.adapters, paths.transcripts):
@@ -1295,19 +1284,27 @@ def run_driver(
         transcripts.run(f"{label}-init", [*init, "--execute"], cwd=repo)
         projects[label] = workspace / "project.yaml"
 
+    slurm_settings = dict(
+        account=arguments.slurm_account,
+        partition=arguments.slurm_partition,
+        qos=arguments.slurm_qos,
+        cpus_per_task=arguments.slurm_cpus,
+        memory_mb=arguments.slurm_memory,
+        time_limit=arguments.slurm_time,
+        nodelist=arguments.slurm_nodelist,
+        scratch_parent=paths.scratch,
+    )
     _write(
         paths.execution_profile,
         slurm_execution_profile_bytes(
-            account=arguments.slurm_account,
-            partition=arguments.slurm_partition,
-            qos=arguments.slurm_qos,
-            cpus_per_task=arguments.slurm_cpus,
-            memory_mb=arguments.slurm_memory,
-            time_limit=arguments.slurm_time,
-            nodelist=arguments.slurm_nodelist,
-            scratch_parent=paths.scratch,
+            **slurm_settings,
             module_init=failure_module_init if recovery_journey else None,
         ),
+    )
+    # This disposable Project selects its site before any Run exists. Doctor's
+    # qualification must not consume the separate deliberate engine failure.
+    (paths.slurm_workspace / "runtime/profiles/default.yaml").write_bytes(
+        slurm_execution_profile_bytes(**slurm_settings)
     )
     from emrys.evidence.storage_inventory import qualification
 
@@ -1340,28 +1337,19 @@ def run_driver(
         )
 
         fasta = workspace / "inputs/reference/reference.fa"
-        storage = _emrys(
-            python,
-            "debug",
-            "storage-qualification",
-            "--workspace",
-            str(workspace),
-            "--reference-fasta",
-            str(fasta),
+        transcripts.run(
+            f"{label}-doctor-repair",
+            _emrys(
+                python, "doctor", "--project", str(project), "--repair", "--execute"
+            ),
+            cwd=repo,
         )
-        for phase in ("compute", "finalize"):
-            command = [*storage, "--phase", phase]
-            transcripts.run(f"{label}-storage-{phase}-plan", command, cwd=repo)
-            prefix = launcher if phase == "compute" else ()
-            transcripts.run(
-                f"{label}-storage-{phase}",
-                [*prefix, *command, "--execute"],
-                cwd=repo,
-            )
-        qualifications[label] = qualification.admit_final_qualification(
-            workspace,
-            fasta,
+        admit_storage = (
+            qualification.admit_direct_qualification
+            if label == "direct"
+            else qualification.admit_final_qualification
         )
+        qualifications[label] = admit_storage(workspace, fasta)
         transcripts.run(
             f"{label}-doctor",
             _emrys(python, "doctor", "--project", str(project)),
@@ -1379,15 +1367,14 @@ def run_driver(
             "--log-level",
             "verbose",
         )
+        before_plan = _execution_state(paths.direct_workspace)
         planned = transcripts.run("run-plan", direct, cwd=repo)
         direct_run_root = parse_run_plan(
             planned.stderr,
             paths.direct_workspace,
             no_write=True,
         )
-        if planned.stdout or any(
-            any((paths.direct_workspace / name).iterdir()) for name in ("runs", "logs")
-        ):
+        if planned.stdout or before_plan != _execution_state(paths.direct_workspace):
             raise DriverError("run-plan", "direct dry-run wrote state")
     scheduled = _emrys(
         python,
@@ -1399,14 +1386,13 @@ def run_driver(
         "--log-level",
         "verbose",
     )
+    before_plan = _execution_state(paths.slurm_workspace)
     scheduler_plan = transcripts.run("slurm-plan", scheduled, cwd=repo)
     if (
         scheduler_plan.stdout
         or "Dry-run complete; no scheduler or workspace state was written."
         not in scheduler_plan.stderr
-        or any(
-            any((paths.slurm_workspace / name).iterdir()) for name in ("runs", "logs")
-        )
+        or before_plan != _execution_state(paths.slurm_workspace)
     ):
         raise DriverError("slurm-plan", "scheduler dry-run wrote or submitted")
 
@@ -1607,7 +1593,6 @@ def run_driver(
             if recovery_journey
             else None
         ),
-        "storage_compute_launcher": list(launcher),
         "storage_qualifications": {
             label: {
                 "qualification_id": qualified.qualification_id,
