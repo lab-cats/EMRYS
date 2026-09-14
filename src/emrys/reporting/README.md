@@ -19,6 +19,13 @@ EMRYS supplies the evidence-and-operations view, safe rendering, portable links,
 and publication. Both views use the same validated input bytes. There is no
 generic scientific-report schema or section language.
 
+The approved alpha cleanup changed `AnalysisReportArtifactV1`: use
+`artifact.snapshot.path`, `artifact.snapshot.sha256`, and
+`artifact.snapshot.size_bytes` instead of direct fields; positional unpacking
+must follow the [current carrier](__init__.py). It also retired the unused
+`ScientificReporterV1` alias. Annotate the callable's input as
+`AnalysisReportContextV1` and its return as `AnalysisScientificReportV1`.
+
 ## Report outputs
 
 The report receipt defines this exact ordered roster. Filenames begin with `RUN_ID.`.

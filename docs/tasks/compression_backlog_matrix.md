@@ -1,6 +1,6 @@
 # EMRYS temporary compression backlog
 
-Reviewed **2026-09-13** from `5ca910e8`. The [campaign](compression_campaign.md)
+Reviewed **2026-09-14** from `6842a478`. The [campaign](compression_campaign.md)
 owns the goals; this file owns CS scope, status, decisions, and proof. The
 [main matrix](backlog_matrix.md) owns broader outcomes and campaign completion.
 
@@ -28,8 +28,8 @@ Scientific computation, data, provenance, current Run recovery, both reports,
 figures and the dashboard remain. CS-05's scientific roster decision is separate.
 
 The product baseline for the 20% target is **69,223 physical lines at `cab77a26`**.
-Through CS-43 it is **55,878**, a reduction of 13,345 (19.28%). The target is at most
-55,378 lines, leaving 500 to remove. Count tracked source `.py`, `.R`, `.sh`, `.css`, `.j2` files and
+After CS-43 and the review corrections it is **55,862**, a reduction of 13,361
+(19.30%). The target is at most 55,378 lines, leaving 484 to remove. Count tracked source `.py`, `.R`, `.sh`, `.css`, `.j2` files and
 the workflow `Snakefile` (including its new package location). Relocated
 `renv/activate.R` remains generated bootstrap; `restore_r_environment.R`
 remains tooling. Report schemas/configuration, tests, docs, tooling, and evidence
@@ -793,7 +793,7 @@ full below so an unresolved finding cannot disappear during conversion.
 | Reader-oriented wording, examples, QoS/resources | CS-16/17 explicitly own the complete reader paths. Explain standard `qos`; do not rename the field. Document review is not a novice/site walkthrough. |
 | Documentation ownership and orientation | CS-16/17 reconcile each subject across guides, contracts, READMEs, and docstrings, retaining useful meaning before retiring duplication. |
 | Code comprehension and module concentration | CS-01/02/18 delivered the owner migrations. The final bounded review retained command planning, task execution and the Step09 threshold tuple for the reasons [below](#final-code-clarity-review). No further net-negative simplification was qualified. |
-| Repeated protection; branch surface; excessive tests | The [approved cleanup](#redundant-test-coverage-audit) removes proven duplicates and records surviving checks; hosted verification is pending. Conditional candidates remain unselected. |
+| Repeated protection; branch surface; excessive tests | The [approved cleanup](#redundant-test-coverage-audit) removes proven duplicates and records surviving checks; ordinary hosted CI passed at `6842a478`. Conditional candidates remain unselected. |
 | Schema generations/layout | Historical readers retired with CS-22. Retain packaged layout under the [schema owner](../../src/emrys/contracts/schemas/README.md#version-and-identity-rules); directory numbers span unrelated contracts and are not cleanup targets. |
 | Scripts, inline/generated programs, R bootstrap wrappers, numeric stage names | `OPS-03` owns substantive retain/migrate/retire decisions. Rename surviving programs during real migration; do not add a common bootstrap merely to inline small, semantically different wrappers. Reconcile the site-specific Step 05 script and PR #44/#45 before new work. |
 | Workflow-profile rule/selector fields | `PROFILE-CONTRACT-01`; detailed deferred contract boundary [below](#workflow-profile-fields). `rule_name` is consumed, not unused. |
@@ -870,13 +870,38 @@ across 14 existing files; no test files were added or deleted. Locally, 13
 surviving CLI/golden/lock cases and 38 schema cases pass; all 1,983 tests collect.
 Ruff, formatting and documentation checks pass. Full reporting and consolidated
 runner execution remain assigned to hosted CI: the local installation lacks
-build provenance, and no admission bypass or installation was used. Hosted
-verification is pending.
+build provenance, and no admission bypass or installation was used. Ordinary
+[hosted CI](https://github.com/lab-cats/EMRYS/actions/runs/34790032010) subsequently
+passed at `6842a478`, including full Python coverage, managed golden path and
+guarded R. Optional selected synthetic and nightly lanes were not run.
 
 Public API fingerprints, monkeypatch-hook tests and stale-field mutations need
 further fact-by-fact proof before deletion. Retain numerical/roster goldens,
 false-pass characterizations, mutation/publication/recovery boundaries, guarded
 R timeout/exit distinctions, snapshot counterexamples and dashboard coverage.
+
+### Codex review dispositions
+
+Review corrections follow the verified `6842a478` stack. They preserve current
+scientific results, provenance, recovery and all retained evidence. Existing
+schemas now enforce intended contracts; no format version or execution mode is
+introduced. PR #157's external review was still running at this assessment.
+
+| Finding | Disposition and surviving owner |
+|---|---|
+| [#149: CS backlog authority](https://github.com/lab-cats/EMRYS/pull/149#discussion_r4005828452) | Dismiss the requested relocation: the user explicitly requested a temporary working backlog, and `COMPRESS-01` plus WORKFLOW already delegate the CS cards. AGENTS now states that delegation plainly; no second status registry is added. |
+| [#154: empty old reporting ledger](https://github.com/lab-cats/EMRYS/pull/154#discussion_r4005860909) | Already corrected by CS-22: `reporting_kinds` rejects any unexpected stage directory before `publish_start` creates a new ledger. A local probe confirms an empty `artifact_index` directory is rejected and preserved. Obsolete-protocol migration is no longer supported. |
+| [#156: synthetic E2E caller](https://github.com/lab-cats/EMRYS/pull/156#discussion_r4005893710) | Fixed the one remaining `attempt_fields(True)` call. The driver now uses the same zero-argument API as every other caller; the five immutable fields are unchanged. |
+| [#156: computational boundary](https://github.com/lab-cats/EMRYS/pull/156#discussion_r4005893718) | Fixed both current receipt fields to the core computational-only banner already emitted by every reporter. Public validation now rejects either false biological claim; provider scientific content remains independent. |
+| [#159: inline Attempt tasks](https://github.com/lab-cats/EMRYS/pull/159#discussion_r4005894927) | Closed the nine inline task fields in the existing schema and retired duplicate runner shape checks. Current schema/API reject missing, extra and wrongly typed fields; the runner still owns nested declaration/publication, path, filesystem and recovery checks. |
+| [#161: old reporter artifact fields](https://github.com/lab-cats/EMRYS/pull/161#discussion_r4005881574) | Dismiss compatibility restoration: the snapshot carrier was an approved alpha migration with no existing external providers. Old direct-field access and positional unpacking do change; the [reporting owner](../../src/emrys/reporting/README.md) explains the current interface. |
+| [#164: callable alias](https://github.com/lab-cats/EMRYS/pull/164#discussion_r4005873479) | Dismiss restoration of `ScientificReporterV1`: the unused alias was explicitly retired. Callable discovery, context, result validation and custom dependencies remain; the reporting owner gives direct annotation guidance. The persisted-Run version policy is not a blanket Python API compatibility rule. |
+
+Local checks: 17 E2E-driver tests, 51 artifact/independent-contract tests and 54
+orchestration-contract tests pass. Direct probes cover the corrected E2E call,
+public receipt admission, real task loading and the retained ledger rejection.
+Full hosted CI and the selected 130-pair synthetic lane are pending for the fixes;
+local checks do not establish Slurm, institutional or biological validation.
 
 ### Historical sizing context
 

@@ -93,6 +93,7 @@ recovery detail beside its implementation. Cross-owner identity and dependency
 direction are organized by the [architecture index](docs/architecture/README.md).
 Use live Git for checkout state, and exact checks and retained artifacts tied
 to a commit for validation results. Accepted work and completion criteria live in the
-[findings matrix](docs/tasks/backlog_matrix.md), cross-cutting commands in the
-[RUNBOOK](docs/operations/RUNBOOK.md), and common recovery in
+[findings matrix](docs/tasks/backlog_matrix.md), which may explicitly delegate
+finite campaign cards to one temporary backlog. Cross-cutting commands live in
+the [RUNBOOK](docs/operations/RUNBOOK.md), and common recovery in
 [TROUBLESHOOTING](docs/operations/TROUBLESHOOTING.md).
