@@ -67,13 +67,6 @@ def _affinity_cores() -> int:
     return count
 
 
-def _host_cores() -> int:
-    count = os.cpu_count() or 0
-    if count < 1:
-        raise ResourceConfigError("Could not observe any host CPU capacity")
-    return count
-
-
 def _host_memory_mb() -> int:
     try:
         page_size = int(os.sysconf("SC_PAGE_SIZE"))
@@ -143,14 +136,8 @@ def observe_allocation(
         slurm_memory_mb = per_cpu * slurm_cores
         memory_source = "SLURM_MEM_PER_CPU x SLURM_CPUS_PER_TASK"
     else:
-        host_cores = _host_cores()
-        if slurm_cores != affinity_cores or affinity_cores != host_cores:
-            raise ResourceConfigError(
-                "Slurm did not expose SLURM_MEM_PER_NODE or SLURM_MEM_PER_CPU "
-                "and the job does not have complete node CPU visibility"
-            )
         slurm_memory_mb = process_memory_mb
-        memory_source = "complete-node CPU allocation with process-visible memory"
+        memory_source = "process-visible memory; Slurm memory limit unspecified"
     return AllocationCapacity(
         cores=min(slurm_cores, affinity_cores),
         memory_mb=min(slurm_memory_mb, process_memory_mb),

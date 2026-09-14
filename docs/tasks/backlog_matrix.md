@@ -115,10 +115,20 @@ evidence accounting remain separate.
   accounting reported `ReqMem=1M` but no allocated memory entry. Scheduler
   output reported `select/cons_tres`, `CR_CORE`, unlimited default/maximum
   per-node memory and `task/cgroup`. These observations do not establish a
-  process memory limit. The current capacity observer rejects missing Slurm
+  process memory limit. At `c52178d2`, the capacity observer rejected missing Slurm
   memory metadata for partial-node CPU allocations; no scheduler variables
   are forged and the allocation is not enlarged to bypass admission. Retain
   the first actual Run diagnostic before choosing a correction.
+  The subsequent automated repair job `618134` passed runtime inspection and
+  stopped at that capacity check. Diagnostic job `618190` on `node009` exposed
+  four CPUs, neither Slurm memory variable, and effectively unlimited cgroup-v1
+  memory limits through the visible hierarchy. The user explicitly approved
+  using the node's process-visible RAM without a separate workflow budget or
+  complete-node CPU requirement. The shared capacity observer now applies that
+  fallback while preserving observed cgroup limits, declared scheduler limits,
+  CPU constraints, and source attribution. Post-change Viking qualification and
+  the first scientific Run remain pending; the earlier generic runtime failures
+  are not explained by this memory-policy correction.
 
 The existing real-Slurm CI journey now uses head-node Doctor preparation in
 place of its manual storage-phase commands, preserving the scientific parity

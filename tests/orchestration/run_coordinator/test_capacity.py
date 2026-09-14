@@ -145,7 +145,6 @@ def test_slurm_full_node_without_memory_declaration_uses_process_visibility(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(capacity, "_affinity_cores", lambda: 256)
-    monkeypatch.setattr(capacity, "_host_cores", lambda: 256)
     monkeypatch.setattr(capacity, "_memory_limit_mb", lambda: 1_547_848)
 
     observed = capacity.observe_allocation(
@@ -154,18 +153,27 @@ def test_slurm_full_node_without_memory_declaration_uses_process_visibility(
 
     assert observed.cores == 256
     assert observed.memory_mb == 1_547_848
-    assert "complete-node CPU allocation" in observed.source
+    assert "process-visible memory; Slurm memory limit unspecified" in observed.source
 
 
-def test_slurm_partial_node_without_memory_declaration_is_rejected(
+@pytest.mark.parametrize("affinity_cores", (3, 4, 256))
+@pytest.mark.parametrize("memory_mb", (7000, 1_547_848))
+def test_slurm_partial_node_without_memory_declaration_uses_process_visibility(
     monkeypatch: pytest.MonkeyPatch,
+    affinity_cores: int,
+    memory_mb: int,
 ) -> None:
-    monkeypatch.setattr(capacity, "_affinity_cores", lambda: 4)
-    monkeypatch.setattr(capacity, "_host_cores", lambda: 256)
-    monkeypatch.setattr(capacity, "_memory_limit_mb", lambda: 1_547_848)
+    monkeypatch.setattr(capacity, "_affinity_cores", lambda: affinity_cores)
+    monkeypatch.setattr(capacity, "_memory_limit_mb", lambda: memory_mb)
 
-    with pytest.raises(ResourceConfigError, match="complete node CPU visibility"):
-        capacity.observe_allocation({"SLURM_JOB_ID": "789", "SLURM_CPUS_PER_TASK": "4"})
+    observed = capacity.observe_allocation(
+        {"SLURM_JOB_ID": "789", "SLURM_CPUS_PER_TASK": "4"}
+    )
+
+    assert observed.cores == min(4, affinity_cores)
+    assert observed.memory_mb == memory_mb
+    assert observed.slurm_job_id == "789"
+    assert "Slurm memory limit unspecified" in observed.source
 
 
 def test_affinity_cores_honors_cgroup_v2_quota(
@@ -226,10 +234,6 @@ def test_affinity_cores_uses_host_fallback_and_rejects_zero(
 def test_host_capacity_observation_rejects_unavailable_values(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(capacity.os, "cpu_count", lambda: None)
-    with pytest.raises(ResourceConfigError, match="host CPU capacity"):
-        capacity._host_cores()
-
     monkeypatch.setattr(capacity.os, "sysconf", lambda _name: 0)
     with pytest.raises(ResourceConfigError, match="positive host memory"):
         capacity._host_memory_mb()
