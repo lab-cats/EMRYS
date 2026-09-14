@@ -87,7 +87,11 @@ opens no application log. `--execute` is the explicit automation path.
 For Slurm placement, the terminal instead confirms one frozen submission plan
 before its single `sbatch` call. Submission owns no Run attempt or application
 log. Ambient `SBATCH_*` and private transport variables are removed; omitted
-site fields remain site policy rather than being fabricated. The private
+site fields remain site policy rather than being fabricated. The explicit
+batch export list preserves the submitter's `LOGNAME`, `USER`, `LNAME`, and
+`USERNAME` by name for Python/Snakemake's display-name lookup, including on
+compute nodes without a passwd entry. These values are not identity authority;
+the numeric UID checks remain authoritative. The private
 compute delegate validates its exact profile binding,
 submitter identity, and positive scheduler job ID inside the allocation before
 module, scratch, Doctor, or workflow work. It uses one owned scratch directory,

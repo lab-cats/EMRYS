@@ -70,12 +70,15 @@ def _batch_environment(
     *,
     job_id: str = "700123",
 ) -> dict[str, str]:
-    return {
-        "SLURM_JOB_ID": job_id,
-        slurm_submission.DELEGATE_MARKER_ENV: slurm_submission.DELEGATE_MARKER,
-        slurm_submission.PROFILE_SHA256_ENV: "a" * 64,
-        slurm_submission.SUBMIT_UID_ENV: str(os.getuid()),
-    }
+    environment = {"SLURM_JOB_ID": job_id}
+    exports = next(arg for arg in plan.argv if arg.startswith("--export="))
+    for entry in exports.removeprefix("--export=").split(","):
+        name, separator, value = entry.partition("=")
+        if separator:
+            environment[name] = value
+        elif name in plan.environment:
+            environment[name] = plan.environment[name]
+    return environment
 
 
 def test_plan_is_no_write_and_builds_exact_sbatch_argv(tmp_path: Path) -> None:
@@ -129,7 +132,7 @@ def test_plan_is_no_write_and_builds_exact_sbatch_argv(tmp_path: Path) -> None:
         f"{slurm_submission.DELEGATE_MARKER_ENV}="
         f"{slurm_submission.DELEGATE_MARKER},"
         f"{slurm_submission.PROFILE_SHA256_ENV}={'a' * 64},"
-        f"{slurm_submission.SUBMIT_UID_ENV}=1234",
+        f"{slurm_submission.SUBMIT_UID_ENV}=1234,LOGNAME,USER,LNAME,USERNAME",
     )
     assert dict(plan.environment) == {"KEEP": "yes"}
     assert plan.stdout_pattern == log_dir / "emrys-local-pilot-%j.out"
@@ -277,8 +280,10 @@ def test_submit_rejects_failed_or_ambiguous_scheduler_results(
     assert call_count == 1
 
 
+@pytest.mark.parametrize("username_variable", ("LOGNAME", "USER", "LNAME", "USERNAME"))
 def test_batch_script_checks_identity_loads_modules_and_cleans_private_scratch(
     tmp_path: Path,
+    username_variable: str,
 ) -> None:
     module_capture = tmp_path / "module calls.jsonl"
     module_init = tmp_path / "module init.sh"
@@ -294,9 +299,13 @@ def test_batch_script_checks_identity_loads_modules_and_cleans_private_scratch(
     )
     command_capture = tmp_path / "command.json"
     command_code = (
-        "import json, os, pathlib, stat, sys; "
+        "import getpass, json, os, pathlib, stat, sys; "
+        "from unittest.mock import patch; "
+        "patch('pwd.getpwuid', side_effect=KeyError('uid not found')).start(); "
         "pathlib.Path(sys.argv[1]).write_text(json.dumps({"
         "'arguments': sys.argv[2:], "
+        "'username': getpass.getuser(), "
+        "'ambient': os.environ.get('UNRELATED'), "
         "'delegate': os.environ['EMRYS_PRIVATE_SLURM_DELEGATE'], "
         "'profile': os.environ['EMRYS_PRIVATE_SLURM_PROFILE_SHA256'], "
         "'scratch': os.environ['TMPDIR'], "
@@ -315,6 +324,10 @@ def test_batch_script_checks_identity_loads_modules_and_cleans_private_scratch(
             "$(must-not-expand)",
         ),
         log_dir=tmp_path / "logs",
+        environment={
+            username_variable: "login,name=$(must-not-expand)",
+            "UNRELATED": "no",
+        },
     )
 
     completed = subprocess.run(
@@ -334,6 +347,8 @@ def test_batch_script_checks_identity_loads_modules_and_cleans_private_scratch(
     ]
     observed = json.loads(command_capture.read_text(encoding="utf-8"))
     assert observed["arguments"] == ["argument with spaces", "$(must-not-expand)"]
+    assert observed["username"] == "login,name=$(must-not-expand)"
+    assert observed["ambient"] is None
     assert observed["delegate"] == slurm_submission.DELEGATE_MARKER
     assert observed["profile"] == "a" * 64
     assert observed["scratch"].startswith(str(profile.placement.scratch_parent) + "/")

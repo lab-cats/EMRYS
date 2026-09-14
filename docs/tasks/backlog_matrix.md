@@ -126,9 +126,22 @@ evidence accounting remain separate.
   using the node's process-visible RAM without a separate workflow budget or
   complete-node CPU requirement. The shared capacity observer now applies that
   fallback while preserving observed cgroup limits, declared scheduler limits,
-  CPU constraints, and source attribution. Post-change Viking qualification and
-  the first scientific Run remain pending; the earlier generic runtime failures
-  are not explained by this memory-policy correction.
+  CPU constraints, and source attribution. After the published correction the
+  operator reported Doctor `READY`; complete scientific execution remains
+  pending. The earlier generic runtime failures are not explained by this
+  memory-policy correction.
+- **Batch username missing before science.** A submitted Run failed while
+  Snakemake built its startup header: no login-name environment variable
+  survived the explicit submission export list, and the compute node could not
+  resolve the job's numeric UID. Inspection subsequently reported valid
+  integrity, a failed Attempt, and recovery available, with all scientific
+  milestones incomplete. The shared Doctor/run/resume/report submission owner
+  now preserves Python's four login-name variables by name while retaining its
+  numeric UID checks and restricted environment. The existing batch execution
+  fixture exercises each variable with passwd lookup unavailable. The export
+  list is rendered directly instead of through an intermediate tuple; no new
+  product owner, file, dependency, or identity authority is introduced.
+  CI and a resumed Viking Run must establish their respective evidence levels.
 
 The existing real-Slurm CI journey now uses head-node Doctor preparation in
 place of its manual storage-phase commands, preserving the scientific parity

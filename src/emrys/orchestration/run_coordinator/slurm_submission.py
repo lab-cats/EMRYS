@@ -199,11 +199,6 @@ def plan_submission(
         raise SlurmSubmissionError("scheduler log directory must not contain '%'")
     stdout_pattern = scheduler_log_dir / "emrys-local-pilot-%j.out"
     stderr_pattern = scheduler_log_dir / "emrys-local-pilot-%j.err"
-    exports = (
-        f"{DELEGATE_MARKER_ENV}={DELEGATE_MARKER}",
-        f"{PROFILE_SHA256_ENV}={profile_sha256}",
-        f"{SUBMIT_UID_ENV}={uid}",
-    )
     argv = [sbatch, "--parsable"]
     if slurm_placement.account is not None:
         argv.append(f"--account={slurm_placement.account}")
@@ -230,7 +225,9 @@ def plan_submission(
             "--job-name=emrys-local-pilot",
             f"--output={stdout_pattern}",
             f"--error={stderr_pattern}",
-            "--export=" + ",".join(exports),
+            f"--export={DELEGATE_MARKER_ENV}={DELEGATE_MARKER},"
+            f"{PROFILE_SHA256_ENV}={profile_sha256},"
+            f"{SUBMIT_UID_ENV}={uid},LOGNAME,USER,LNAME,USERNAME",
         )
     )
 
