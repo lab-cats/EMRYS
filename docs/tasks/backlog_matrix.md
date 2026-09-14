@@ -65,7 +65,7 @@ authority or impose ordering.
 
 | ID | Kind | Status | Importance | Complexity | Required outcome | Acceptance |
 |---|---|---|---:|---:|---|---|
-| `SITE-PARITY-01` | Site qualification | Open | `4` | `5` | Qualify the current whole-Run path on CSU Viking or another named institutional site. | A novice operator without repository-development context follows only the maintained quickstart from a fresh Viking clone through Project creation, runtime admission, Doctor, validation, Slurm execution, inspection or resume when warranted, and completed Results and reports; every undocumented prerequisite or confusing step becomes a finding. Exact site modules/tools, Project storage semantics, locking/rename/durability, failure/recovery, resource and scheduler provenance, one-log ownership, and direct/Slurm scientific parity are evidenced at one exact revision. Hosted single-node proof is not promoted to institutional, multi-node, production, scientific-review, or biological proof. |
+| `SITE-PARITY-01` | Site qualification | Open | `4` | `5` | Qualify the current whole-Run path on CSU Viking or another named institutional site. | A novice operator without repository-development context follows only the maintained quickstart from a fresh Viking clone through one head-node path: Project creation with built-in Viking placement, Doctor-managed setup and automatic Slurm qualification, validation, submitted execution, inspection, and completed Results and reports. Normal output is concise and Doctor exposes its phases and elapsed time; every undocumented prerequisite or confusing step becomes a finding. Retain and resolve the [Viking walkthrough findings](#viking-walkthrough-findings) at their stated evidence level. Exact site modules/tools, Project storage semantics, locking/rename/durability, failure/recovery, resource and scheduler provenance, one-log ownership, and direct/Slurm scientific parity are evidenced at one exact revision. Hosted single-node proof is not promoted to institutional, multi-node, production, scientific-review, or biological proof. |
 | `SCHED-01` | Scheduler preflight | Open | `3` | `2` | Reject an explicitly undersized Slurm memory request before submission. | When both placement memory and the applicable workflow or stage minimum are explicit, admission rejects insufficient capacity before `sbatch`; unknown capacity remains unknown, the existing CPU check remains authoritative, and no generalized resource solver or duplicate scheduler policy is introduced. |
 | `CONTAINER-01` | Managed platform | Open | `3` | `5` | Evaluate and, if justified, provide a supported broadly compatible Linux container without coupling it to project setup. | Compare against the existing Pixi-managed path; cover architecture/ABI support, Slurm and storage integration, security, reproducibility, licenses, tool and R identities, updates, provenance, site coexistence, and escape hatches. Any implementation has explicit local and site evidence and replaces rather than duplicates setup/runtime authority. |
 | `OPS-03` | Maintenance | Open | `3` | `4` | Settle the remaining responsibilities of retained diagnostics and execution helpers. | The [runner migration](../../src/emrys/orchestration/run_coordinator/CONTRACT.md#scientific-worker-execution) is delivered through PR #169: producers retain science; the runner owns execution and recovery. Remaining work concerns the [FASTQ byte and diagnostic contract](../../src/emrys/ingestion/sample_manifest_admission/README.md) and surviving scripts, inline programs, and R bootstraps. R argument parsing is already shared; wrappers differ in script location, package admission, diagnostics, and error precedence. Prove equivalent behavior and caller-complete savings before sharing more. These concerns require separate selection; no compression tranche remains active. Preserve independent scientific checks and retained evidence. `INLINE-OWNERS-01` remains absorbed here. |
@@ -75,6 +75,57 @@ authority or impose ordering.
 | `PERF-01` | Performance research | Deferred | `2` | `4` | Test whether cross-node execution materially improves independent-work wall time. | A bounded representative experiment uses explicit per-job resources and never treats scheduler success as production or scientific proof. |
 | `PROFILE-CONTRACT-01` | Contract reduction | Deferred | `3` | `4` | Remove derivable backend adapter fields during an independently justified workflow-profile contract transition. | Audit every current reader and generated profile, then determine whether the consumed `owner_tasks[].rule_name` projection and redundant scope selectors can be derived from one semantic authority; retain graph, uniqueness, scope, artifact admission and inventory/group ordering, Execution-Plan identity, and direct/Slurm parity; remove duplicate validators/tests rather than adding an adapter or compatibility writer. Do not create a version bump solely for cleanup, and dismiss the row if the fields prove independently semantic or the migration is not meaningfully net-negative. |
 | `DASHBOARD-RETIRE-01` | Major retirement | Deferred | `3` | `4` | Retire the stale dashboard only after a replacement dashboard is implemented and validated. | Replacement is required before retirement; expert command access alone does not satisfy this gate. Preserve the [dashboard replacement requirements](../../src/emrys/orchestration/run_coordinator/README.md#frozen-dashboard-and-replacement). Confirm no supported caller or unique retained evidence depends on it; remove dashboard product code, text parsers, dedicated tests, targets, and stale docs together. Complete the caller-wide retirement of `emrys-local-pilot` from newly generated Slurm job/stream names under the current version-support policy. Preserve Project-local `inspect` as status authority and retain scheduler accounting and sanitized raw-stream access through existing expert surfaces or the smallest justified replacement. Evidence deletion remains separately approval-gated. |
+
+### Viking walkthrough findings
+
+The September 14, 2026 walkthrough selected `7c427f0c`. The user reported
+successful fresh installation and synthetic Project validation. Batch job
+`614786` reported 71 R packages restored in 600 seconds and the managed runtime
+inventory admitted. The user then reported the job finished and supplied the
+successful head-node storage finalization for qualification
+`cfcf7f788fd9d949f1a23f17793ecf22ba1e05f1023bc3b49065eebc0280186f`.
+Its final receipt remains in `.emrys-storage-qualification/` beneath the parent
+of the `emrys-smoke` Project. This was the former manually submitted setup;
+it is not evidence for the new automated Doctor path.
+
+The walkthrough stopped before the first scientific Run to address these
+operator findings together. The approved implementation permits up to 750 net
+additional product lines, no new product files or receipt formats, and Rich as
+the shared terminal library. Product, tests, documentation, configuration and
+evidence accounting remain separate.
+
+- **One head-node journey.** Both Project-creation commands accept `--site viking`
+  and write the existing default profile with the known site settings. Run,
+  resume and standalone report execution use that placement. The quickstart
+  has one complete synthetic path; advanced configuration, recovery and
+  real-data guidance retain their existing documentation owners.
+- **Automatic qualification.** Head-node Doctor repair installs the managed
+  runtime, submits checks of the admitted runtime and storage, and completes
+  head-node finalization. Existing receipts, exact bindings and failure
+  protections remain authoritative. `--compute` is an explicit advanced route.
+- **Readable progress and diagnostics.** Normal output omits debug commands.
+  Doctor names phases, reports elapsed time and gives a rough first-setup
+  allowance of 5–15 minutes, with longer download or queue waits possible.
+  Terminal color supplements text labels; redirected output remains plain.
+  Complete package output is retained beside the maintenance log. Repair uses
+  its own temporary directory, avoiding the observed unwritable `/local/tmp`.
+- **Viking memory accounting still needs site execution.** Completed job
+  `605171` used `viking-users`, `long`, `normal`, four CPUs and eight hours;
+  accounting reported `ReqMem=1M` but no allocated memory entry. Scheduler
+  output reported `select/cons_tres`, `CR_CORE`, unlimited default/maximum
+  per-node memory and `task/cgroup`. These observations do not establish a
+  process memory limit. The current capacity observer rejects missing Slurm
+  memory metadata for partial-node CPU allocations; no scheduler variables
+  are forged and the allocation is not enlarged to bypass admission. Retain
+  the first actual Run diagnostic before choosing a correction.
+
+The existing real-Slurm CI journey now uses head-node Doctor preparation in
+place of its manual storage-phase commands, preserving the scientific parity
+and controlled recovery checks. Local checks and hosted disposable Slurm do not
+establish Viking qualification. Resume the fresh-clone walkthrough on the
+published revision to validate automated setup and the whole Run with reports.
+The retained six-library Viking profile has a different resource policy and is
+not a capacity requirement for this tiny fixture.
 
 ### Scientific review and independent validation
 

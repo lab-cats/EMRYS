@@ -23,6 +23,102 @@ It writes no logs and identifies the executing installation independently of
 the working directory and Git checkout.
 Version flags cannot accompany a command.
 
+## Create a Project for your own data
+
+Use a **new Project**, leaving the completed synthetic exercise intact. Obtain
+the following from the study's scientist/analyst before setup:
+
+- Paired-end FASTQs and their source checksums; explicit sample IDs, conditions,
+  library strandedness, and matched replicate strata. The built-in Analysis
+  needs at least two strata with one control and one treatment sample each.
+  Technical lanes are not automatically independent biological replicates.
+- An uncompressed reference FASTA and matching GTF, with their source/release
+  identities. EMRYS needs permission to create/check `.fai` and `.dict` sidecars
+  beside the FASTA; arrange a writable study copy rather than modifying a
+  shared reference owned by another team.
+- Nonoverlapping regions to analyze, with contig names matching the reference;
+  STAR index parameters appropriate to the reads/reference; and the Analysis
+  thresholds and target substitution approved for the study. The example
+  numbers in the configuration guide are not universal scientific defaults.
+- A resource/allocation choice appropriate to the actual reads and reference.
+  A successful tiny synthetic run is not a full-dataset capacity estimate.
+
+EMRYS does not acquire public reads/references or decide experimental pairing.
+Keep input files at their declared locations for the life of their Runs.
+
+### Prepare the manifests
+
+Write [tab-separated manifests](../../configs/README.md#sample-manifest) directly
+for arbitrary FASTQ names, or use the helper below. `samples.example.tsv` is
+a generic ingestion example, not a complete paired-CMH Project manifest.
+
+Replace the four example library names, paths, and assignments with your study
+values. The helper expects `_R1.fastq.gz`/`_R2.fastq.gz` suffixes; plain FASTQ and
+`.fq` also work. Use known library strandedness instead of `unknown` when
+available. The regions file must exist: tab-separated BED uses zero-based,
+half-open coordinates; the plain region table uses one-based, inclusive
+coordinates. See [partition format](../../configs/README.md#partition-manifest).
+
+```bash
+EMRYS_READS=/absolute/path/to/reads
+EMRYS_REGIONS=/absolute/path/to/regions.bed
+EMRYS_MANIFEST_ROOT=/absolute/durable/path/study-manifests
+emrys init manifests --output-dir "$EMRYS_MANIFEST_ROOT" \
+  --fastq "$EMRYS_READS/control_1_R1.fastq.gz" "$EMRYS_READS/control_1_R2.fastq.gz" \
+          "$EMRYS_READS/treatment_1_R1.fastq.gz" "$EMRYS_READS/treatment_1_R2.fastq.gz" \
+          "$EMRYS_READS/control_2_R1.fastq.gz" "$EMRYS_READS/control_2_R2.fastq.gz" \
+          "$EMRYS_READS/treatment_2_R1.fastq.gz" "$EMRYS_READS/treatment_2_R2.fastq.gz" \
+  --sample control_1 control pair_1 unknown \
+  --sample treatment_1 treatment pair_1 unknown \
+  --sample control_2 control pair_2 unknown \
+  --sample treatment_2 treatment pair_2 unknown \
+  --regions-file study "$EMRYS_REGIONS" --execute
+```
+
+The destination must be absent under an existing writable parent. This command
+publishes `samples.tsv` and `partitions.tsv`; omit `--execute` for a preview
+first. Review the resulting rows and assignments before creating the Project.
+
+### Create and validate the Project
+
+From the existing durable parent where the new `my-study` child should live:
+
+```bash
+cd /absolute/durable/path
+emrys init my-study --site viking
+```
+
+Supply absolute manifest/FASTA/GTF paths, STAR parameters, exact condition
+labels, target change (such as `A>G`), and study thresholds. Consult the
+[field guide](../../configs/README.md#built-in-analysis-fields); Enter accepts a
+suggestion that still needs scientific review. This command checks the plan
+without writing. Repeat with the same answers to create it:
+
+```bash
+emrys init my-study --site viking --execute
+export EMRYS_PROJECT_ROOT="$(pwd -P)/my-study"
+cd "$EMRYS_PROJECT_ROOT"
+export EMRYS_REFERENCE_FASTA=/absolute/path/to/reference.fa
+emrys validate
+```
+
+Use the same FASTA path you supplied during initialization. For an optional
+background cohort, supply `--background-condition CONDITION` to both init
+invocations and include its samples in the manifest. If scripting setup, use
+`emrys init --help` for the explicit field flags; all required answers must be
+supplied outside a terminal.
+
+After `Project validation: PASS`, run `emrys doctor --repair`, then `emrys run`
+and inspect the completed Run from the head node. Each Project has its
+own runtime inventory and qualification records. Compare the real-data outputs
+with the study design, not the synthetic fixture's expected counts.
+
+For named Analyses, processing reuse, alternate profiles, and larger synthetic
+exercises, use the sections below. The optional
+`production-like-v1` fixture has 100,000 pairs **per library** across four
+libraries and a 5-Mb reference; select it with `--dataset-profile production-like-v1` on both
+synthetic initialization commands in a new Project.
+
 ## Institution-provided runtime
 
 Use this route when the institution supplies the exact versions in
@@ -54,6 +150,9 @@ emrys runtime discover --execute
 emrys doctor
 ```
 
+Inside a real Slurm allocation, use `emrys doctor --compute` for that diagnosis.
+Ordinary head-node or non-Slurm diagnosis uses `emrys doctor` without the flag.
+
 The first discovery previews without writing; execute only after every required
 check passes. Success prints `Runtime inventory admitted.` and creates
 `runtime/runtime.tsv`. Discovery never replaces an inventory, loads modules,
@@ -79,8 +178,10 @@ emrys doctor --repair
 Review the plan and answer `y` for the intended storage qualification. With a
 ready runtime, this writes storage evidence and a maintenance log without
 package installation or inventory changes. Continue after `EMRYS is ready.`
-A failing institutional runtime needs institutional repair. Slurm also needs
-the two storage phases below.
+A failing institutional runtime needs institutional repair. For Slurm, return
+to the head node and run the ordinary `emrys doctor --repair`; it coordinates
+both storage phases. Advanced repair inside an allocation needs `--compute`
+and subsequent head-node finalization, as described below.
 
 ## Project and Run operations
 
@@ -126,7 +227,7 @@ the complete canonical Run at its original location for provenance and recovery.
 A collaborator Analysis may have different transfer requirements.
 
 When scientific Results are complete but reporting was skipped, inspect first,
-then preview on a permitted compute host:
+then preview from the Project. This read-only preview can run on the head node:
 
 ```bash
 emrys report
@@ -136,8 +237,10 @@ The command never prompts to write. Only when generation is admitted, run
 `emrys report --execute`, then inspect again. Complete bundles are verified and
 reused; partial or blocked bundles need [recovery](TROUBLESHOOTING.md#run-and-reporting-state).
 Reporting does not overwrite arbitrary bundles, change scientific Results, or
-create another scientific Attempt. Standalone `report` has no Slurm profile
-option: obtain an approved compute allocation if the site requires one.
+create another scientific Attempt. Generation follows the Project's default
+execution profile: Slurm placement submits it to a compute node, while direct
+placement executes on the current host. Use `--profile NAME` to select another
+existing profile; direct execution requires a permitted compute host.
 
 ### Reusable processing
 
@@ -166,132 +269,58 @@ Use `emrys inspect` and exact Slurm accounting/streams for status and completion
 
 ## Slurm setup and submission
 
-Slurm submits one whole Run, including default reports, to one compute node
-using the same Snakemake executor. First create the Project as in the quickstart.
-Do not execute its generated direct profile on a login node.
+Viking users select `--site viking` when creating either a synthetic or a
+real-data Project. EMRYS writes the Project's default execution profile with
+account `viking-users`, partition `long`, QoS `normal`, four CPUs, eight hours,
+site-default memory and private temporary files beneath `/tmp`. These placement
+settings come from the September 2026 site walkthrough; they are not a
+full-dataset resource estimate. The retained EV/PUM1 profile describes a
+separate six-library computational policy.
 
-### 1. Prepare the compute environment
-
-Obtain the site's account, partition, QoS, CPU, memory, time, scratch, and module
-settings. Viking users should start with the institution's
-[access and transfer instructions](https://academic.csuohio.edu/adam/how-to-access-the-viking-cluster/).
-
-Use the site's interactive-compute procedure. Where direct interactive
-[`srun`](https://slurm.schedmd.com/srun.html) is supported, replace every
-`REPLACE_...` value below. Memory is integer MiB and time is `HH:MM:SS`;
-add `--qos` or another option only when supplied by the site:
+From the head node, prepare the Project and submit its Analysis:
 
 ```bash
-srun --nodes=1 --ntasks=1 --cpus-per-task=4 \
-  --account=REPLACE_WITH_ACCOUNT --partition=REPLACE_WITH_PARTITION \
-  --mem=REPLACE_WITH_MEMORY_MIB --time=REPLACE_WITH_TIME --pty bash -l
+emrys doctor --repair
+emrys run
 ```
 
-Wait for the compute shell: `hostname` must name the compute node and
-`printenv SLURM_JOB_ID` must show its job ID. Reserving an allocation alone is
-insufficient; never set the variable by hand. Defaults need at least four CPUs;
-choose memory and time for the dataset/reference, not from the example profile.
-The checkout, `.venv`, Project, inputs, and runtime must be visible at the same
-physical paths on head and compute nodes.
+Doctor installs the managed tools on the head node, then submits compute-side
+runtime and storage checks through Slurm and finishes the storage check on the
+head node. It retains the existing qualification evidence. A successful repair
+means these checks passed; it does not establish scientific completion.
 
-In the compute shell, restore the path variables, activate the checkout's
-`.venv`, and enter the Project. For the quickstart fixture:
+Slurm runs the complete Analysis and its reports on one compute node. Normal
+Run, resume and report execution use the Project's default profile. Inspecting
+results and previewing reports remain local read-only operations. Keep the
+checkout, Python environment, Project, runtime and inputs accessible at the same
+physical paths on the head and compute nodes.
 
-```bash
-export EMRYS_REFERENCE_FASTA="$EMRYS_PROJECT_ROOT/inputs/reference/reference.fa"
-emrys validate
-```
+### Other placements and advanced setup
 
-For real data, use the exact FASTA printed by validation. Prepare one runtime
-here: managed `emrys doctor --repair` with approved package/download access, or
-[the institutional route](#institution-provided-runtime). Keep the default
-profile direct during preparation. Doctor's single-host readiness is not Slurm
-qualification.
+For another cluster, the site administrator supplies a Project-local profile
+using [the example](../../configs/execution_profile.example.yaml). Account,
+partition, QoS, CPU, memory, wall time, module setup and scratch must reflect the
+actual site. Existing profile selection remains available through
+`emrys run --profile NAME` and `emrys resume RUN --profile NAME`; omission uses
+`runtime/profiles/default.yaml`. Profiles contain literal absolute paths, without
+shell expansion, and must remain unchanged while a job is queued or running.
 
-### 2. Qualify the exact storage roots
+The batch wrapper starts with `PATH=/usr/bin:/bin`, loads only the declared
+module roster and uses the admitted runtime's absolute paths. It creates and
+removes its own temporary directory. Runtime repair is an explicit Doctor
+operation; scientific execution does not install packages.
 
-Inside that allocation, preview and execute the compute phase:
+Advanced operators may run `emrys doctor --repair --compute` inside an actual
+allocation. Return to the head node to complete preparation with
+`emrys doctor --repair`. The separate compute and finalization commands remain
+available for investigating storage failures; their exact contract lives with
+[storage qualification](../../src/emrys/evidence/storage_inventory/README.md).
+Do not alter scheduler variables to imitate an allocation or erase existing
+qualification evidence to retry.
 
-```bash
-emrys debug storage-qualification \
-  --workspace "$EMRYS_PROJECT_ROOT" \
-  --reference-fasta "$EMRYS_REFERENCE_FASTA" --phase compute
-emrys debug storage-qualification \
-  --workspace "$EMRYS_PROJECT_ROOT" \
-  --reference-fasta "$EMRYS_REFERENCE_FASTA" --phase compute --execute
-```
-
-Continue after `Published compute qualification receipt:` and keep its receipt
-and probes. Although `--workspace` names the Project, this route tests the
-**Project's parent directory** and the FASTA's parent; preview prints both.
-
-Exit and release the allocation, return to the head node, reactivate the same
-checkout, and restore the same paths. `printf '%s\n' "${SLURM_JOB_ID:-}"` must
-print an empty line; do not unset it to imitate leaving an allocation. Then run:
-
-```bash
-emrys debug storage-qualification \
-  --workspace "$EMRYS_PROJECT_ROOT" \
-  --reference-fasta "$EMRYS_REFERENCE_FASTA" --phase finalize
-emrys debug storage-qualification \
-  --workspace "$EMRYS_PROJECT_ROOT" \
-  --reference-fasta "$EMRYS_REFERENCE_FASTA" --phase finalize --execute
-```
-
-Continue after `Published final storage qualification receipt:`. Without
-`--execute`, both phases preview without writing. They test compute-to-head
-storage behavior, not the workflow, and retain evidence under
-`.emrys-storage-qualification/` in the **Project's parent**. Doctor's direct
-receipt lives under the Project's `runtime/` and cannot replace this requirement.
-For failed or existing qualification state, follow [storage recovery](TROUBLESHOOTING.md#storage-and-slurm).
-
-### 3. Create the Slurm profile
-
-From the Project, copy the example to an absent profile name:
-
-```bash
-cp -n "$EMRYS_SOURCE_ROOT/configs/execution_profile.example.yaml" \
-  runtime/profiles/slurm.yaml
-```
-
-Edit `runtime/profiles/slurm.yaml` with the approved site settings:
-
-| Field under `placement` | Value |
-| --- | --- |
-| `account`, `partition`, `qos` | Exact site values; `qos` is the site's Quality of Service class. Use `null` only for an authorized default. |
-| `cpus_per_task` | At least the requested CPUs; the unchanged default is four. |
-| `memory_mb`, `time` | Integer MiB and wall-time limit. Establish adequate site memory before using `memory_mb: null`. |
-| `exclusive`, `nodelist` | Keep `false` and `null` unless the site requires otherwise. |
-| `scratch_parent` | A literal absolute, existing, writable compute directory with enough capacity. |
-| `modules` | `mode: none`, `init: ""`, `load: []` if no module setup is needed; otherwise `mode: exact`, an absolute init file, and exact module names under `load`. |
-
-The batch wrapper starts with `PATH=/usr/bin:/bin`. Exact module setup sources
-the declared init file, purges modules, and loads only the listed names; it
-neither inherits interactive modules nor installs dependencies. Record the
-setup used to admit the runtime. Values are literal: no `$VARIABLE`, `~`, or
-shell expansion. Keep the profile unchanged while jobs are queued or running.
-
-### 4. Preview and submit
-
-On the submission node, check that `command -v sbatch` and `command -v sinfo`
-refer to the intended cluster, then preview without writing:
-
-```bash
-emrys run --profile slurm --log-level debug </dev/null
-```
-
-Check the profile, account/partition, resources, scheduler command, and stream
-paths. `verbose` also shows profile and streams; `debug` adds the command.
-This checks submission only: runtime, storage, allocation, and scientific
-planning are checked again on the compute node. When the preview matches:
-
-```bash
-emrys run --profile slurm --execute
-```
-
-Add `--analysis NAME` to both commands for several Analyses. Save the printed
-`JOB_ID=`, `OUT=`, and `ERR=` values. Keep supplying `--profile slurm` for cluster
-Runs; the generated default profile remains direct.
+For detailed submission diagnostics, use `--log-level debug`. Normal operator
+instructions use the default output level. Scheduler job success alone does
+not establish valid Results; use `emrys inspect` and the retained reports.
 
 ## Inspecting a Slurm Run
 

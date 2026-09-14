@@ -39,14 +39,16 @@ emrys resume RUN </dev/null
 emrys resume RUN
 ```
 
-For Slurm, explicitly select the intended profile: `emrys resume RUN --profile slurm`.
+Viking Projects created with `--site viking` already select Slurm. Use
+`emrys resume RUN --profile NAME` only to select another existing profile.
 Resume creates a new Attempt for the same immutable Run and checks prior work
 before reuse; do not bypass it with raw Snakemake. A `blocked` state has no public
 reconciliation or cleanup command; keep the evidence and consult the named
 component's owner.
 
-**Scientific Results complete, reporting skipped.** On a permitted compute host,
-preview `emrys report RUN`. Only when generation is admitted, execute
+**Scientific Results complete, reporting skipped.** From the Project,
+preview `emrys report RUN`. A Slurm default profile submits generation from the
+head node; direct placement requires a permitted compute host. Only when generation is admitted, execute
 `emrys report RUN --execute` and inspect again. The scientific receipt stays
 unchanged. Incomplete or blocked reporting needs owner review: preserve its
 start/verified records, logs, outputs, and partials. Do not rerun science or
@@ -81,7 +83,8 @@ traversal. Pairing needs at least two explicit matching control/treatment
 replicate strata; names and row order do not establish pairing. See
 [configuration](../../configs/README.md).
 
-**Managed setup rejected.** Follow the quickstart's x86-64 Linux/Pixi prerequisites
+**Managed setup rejected.** The managed runtime requires x86-64 Linux, kernel 4.18 or newer, glibc 2.28 or newer,
+and Pixi >=0.75.0,<0.76. Follow the quickstart
 and activate the Python environment where EMRYS is installed. Doctor repairs
 Project-owned native and R state; use the package manager for Python dependencies.
 Use an exact institutional runtime if managed
@@ -98,7 +101,7 @@ allocation and record batch modules in the profile; interactive modules are not 
 **R packages missing or repair stalled.** Managed inventories use a reviewed
 `emrys doctor --repair` plan; institutional runtimes need their administrator or
 [explicit restore/check](RUNBOOK.md#dependency-maintenance). Download and R
-compilation can take time. Read the maintenance log and package-manager error,
+compilation can take time. Read the maintenance JSONL and its sibling `package-output.log`,
 keep partial state, and resolve the cause before reviewing another repair plan.
 Do not clear caches/libraries wholesale, modify a shared library, or relock
 during diagnosis. A stale lock requires manifest/lock review; workflow execution
@@ -115,9 +118,10 @@ receipt. A ready runtime with unqualified local storage can use
 `emrys doctor --repair` on the intended host: this qualifies storage without
 installing packages or changing the inventory.
 
-Slurm needs [both storage phases](RUNBOOK.md#2-qualify-the-exact-storage-roots)
-for the exact Project and reference-sidecar roots. Compute qualification requires
-a real allocated shell; finalize after releasing it and returning to the head
+Slurm needs [both storage phases](RUNBOOK.md#slurm-setup-and-submission)
+for the exact Project and reference-sidecar roots. Head-node `emrys doctor --repair`
+submits the compute phase and finalizes its evidence. Advanced manual compute
+qualification requires a real Slurm job; finalize outside that job on the head
 node. Never set or unset scheduler variables to imitate either context.
 Scheduler availability does not prove locking, hard-link, rename, visibility,
 or durability behavior. An unqualified network/distributed root has no implicit
