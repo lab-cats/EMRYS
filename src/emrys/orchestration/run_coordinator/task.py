@@ -50,19 +50,6 @@ from emrys.orchestration.run_coordinator._inspection_admission import (
     expected_tasks,
 )
 
-_TASK_FIELDS = frozenset(
-    {
-        "scope_type",
-        "task_attempt_id",
-        "owner_run_token",
-        "producer_argv",
-        "validator_argv",
-        "inputs",
-        "outputs",
-        "validation_report_path",
-        "publication",
-    }
-)
 _DECLARATION_FIELDS = frozenset({"role", "path"})
 _BOUND_DECLARATION_FIELDS = frozenset({"role", "path", "size_bytes", "sha256"})
 _WORKING_DECLARATION_FIELDS = _DECLARATION_FIELDS | {"working_path"}
@@ -231,12 +218,6 @@ def _absolute_path(value: Any, label: str) -> Path:
 
 
 def _command(value: Any, label: str) -> tuple[str, ...]:
-    if (
-        not isinstance(value, list)
-        or not value
-        or any(not isinstance(part, str) or not part.strip() for part in value)
-    ):
-        raise TaskBoundaryError(f"{label} must be a nonempty string argv array")
     command = tuple(value)
     if command[0] == sys.executable and not is_controlled_python_argv(
         command,
@@ -392,12 +373,15 @@ def task_from_attempt(
     owner = _safe_id(machine_key, "machine_key")
     selected_scope = _safe_id(scope_id, "scope.scope_id")
     try:
-        raw = attempt["tasks"][owner][selected_scope]
+        record = attempt["tasks"][owner][selected_scope]
     except (KeyError, TypeError) as exc:
         raise TaskBoundaryError(
             "Attempt manifest does not define the selected task"
         ) from exc
-    record = _closed_object(raw, fields=_TASK_FIELDS, label="task plan")
+    if "workflow_attempt_record" in record:
+        raise TaskBoundaryError(
+            "Reused tasks must be loaded from their original Attempt"
+        )
     scope = {
         "scope_type": _safe_id(record["scope_type"], "scope.scope_type"),
         "scope_id": selected_scope,

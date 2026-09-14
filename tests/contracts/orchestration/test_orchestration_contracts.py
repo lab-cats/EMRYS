@@ -894,6 +894,51 @@ def test_attempt_receipt_public_validator_rejects_missing_version_and_nonobjects
     assert orchestration.schema_errors("attempt-receipt", record)
 
 
+def test_workflow_attempt_closes_inline_task_definitions() -> None:
+    attempt = lifecycle_records()["workflow-attempt"]
+    definition = {
+        "scope_type": "sample",
+        "task_attempt_id": TASK_ATTEMPT_ID,
+        "owner_run_token": "owner-task-1",
+        "producer_argv": ["scientific-worker", "--label", "label with spaces"],
+        "validator_argv": ["scientific-validator"],
+        "inputs": [{"role": "reads", "path": "/data/reads.fastq"}],
+        "outputs": [
+            {
+                "role": "bam",
+                "path": "/results/sample.bam",
+                "working_path": "/results/.work/sample.bam",
+            }
+        ],
+        "validation_report_path": "/results/validation.json",
+        "publication": {
+            "locks": ["/results/.sample.lock"],
+            "forbidden_paths": ["/results/.sample.*"],
+            "output_directory": None,
+            "input_directories": [],
+        },
+    }
+    attempt["tasks"] = {"star_alignment": {"EV-1": definition}}
+    assert not orchestration.schema_errors("workflow-attempt", attempt)
+    orchestration.validate_record("workflow-attempt", attempt)
+    for invalid in (
+        {},
+        {"bogus": 1},
+        {**definition, "bogus": 1},
+        {key: value for key, value in definition.items() if key != "inputs"},
+        {**definition, "producer_argv": []},
+        {**definition, "publication": []},
+    ):
+        attempt["tasks"]["star_alignment"]["EV-1"] = invalid
+        assert orchestration.schema_errors("workflow-attempt", attempt)
+        with pytest.raises(orchestration.ContractValidationError):
+            orchestration.validate_record("workflow-attempt", attempt)
+    attempt["tasks"]["star_alignment"]["EV-1"] = {
+        "workflow_attempt_record": record_reference("attempts/original/attempt.json")
+    }
+    orchestration.validate_record("workflow-attempt", attempt)
+
+
 def test_workflow_attempt_requires_package_identity_and_named_tools() -> None:
     attempt = lifecycle_records()["workflow-attempt"]
     attempt["installed_package"]["content_sha256"] = "not-a-sha256"

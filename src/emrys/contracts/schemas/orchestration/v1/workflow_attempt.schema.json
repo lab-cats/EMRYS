@@ -327,10 +327,55 @@
             },
             {
               "type": "object",
-              "not": {
-                "required": [
-                  "workflow_attempt_record"
-                ]
+              "additionalProperties": false,
+              "required": [
+                "scope_type",
+                "task_attempt_id",
+                "owner_run_token",
+                "producer_argv",
+                "validator_argv",
+                "inputs",
+                "outputs",
+                "validation_report_path",
+                "publication"
+              ],
+              "properties": {
+                "scope_type": {
+                  "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+                },
+                "task_attempt_id": {
+                  "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+                },
+                "owner_run_token": {
+                  "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+                },
+                "producer_argv": {
+                  "$ref": "#/$defs/task_argv"
+                },
+                "validator_argv": {
+                  "$ref": "#/$defs/task_argv"
+                },
+                "inputs": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "outputs": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "validation_report_path": {
+                  "type": "string",
+                  "pattern": "^/"
+                },
+                "publication": {
+                  "type": "object"
+                }
               }
             }
           ]
@@ -365,5 +410,15 @@
         }
       }
     }
-  ]
+  ],
+  "$defs": {
+    "task_argv": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "\\S"
+      }
+    }
+  }
 }
