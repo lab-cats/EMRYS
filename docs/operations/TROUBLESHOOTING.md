@@ -101,7 +101,8 @@ allocation and record batch modules in the profile; interactive modules are not 
 **R packages missing or repair stalled.** Managed inventories use a reviewed
 `emrys doctor --repair` plan; institutional runtimes need their administrator or
 [explicit restore/check](RUNBOOK.md#dependency-maintenance). Download and R
-compilation can take time. Read the maintenance JSONL and its sibling `package-output.log`,
+compilation can take time. Read the maintenance JSONL and its sibling
+[`package-output.log`](#watching-doctors-installation-log),
 keep partial state, and resolve the cause before reviewing another repair plan.
 Do not clear caches/libraries wholesale, modify a shared library, or relock
 during diagnosis. A stale lock requires manifest/lock review; workflow execution
@@ -110,6 +111,27 @@ never installs dependencies.
 **Runtime inventory already exists.** Discovery preserves even identical-looking
 inventories. Use Doctor to inspect the admitted runtime; replacing it requires
 an explicit migration/recovery decision, not deletion followed by rediscovery.
+
+### Watching Doctor's installation log
+
+Doctor shows installation stages and elapsed time. Package-manager output is
+saved in `package-output.log`, beside the maintenance JSONL; it does not stream
+to Doctor's terminal, even with `--log-level verbose` or `debug`.
+
+To watch those details while installation continues, leave Doctor running and
+open a second terminal on the same host: the Viking head node for the
+quickstart, or your standalone compute host. Replace the example path below
+with the full path printed after **Package output:**, keeping the quotation marks:
+
+```bash
+tail -f "/full/path/from/Package output/package-output.log"
+```
+
+This shows the last ten lines, then follows new output as it is written. Press
+**Ctrl+C in this second terminal** to stop watching; Doctor keeps running in
+the first terminal. Package managers may buffer output, so a pause in this log
+alone does not mean setup is stuck. Read Doctor's final readiness result in the
+first terminal; package installation alone does not finish all checks.
 
 ## Storage and Slurm
 

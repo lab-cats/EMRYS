@@ -33,6 +33,8 @@ Paste each block in order. Stop at an error and retain its output and any
 printed log path. Do not delete partial setup or results to retry.
 Keep quotation marks when pasting commands. `$HOME` means your Viking home
 directory; the `EMRYS_...` variables below remember locations for later commands.
+A backslash (`\`) at the end of a line continues the same command on the next
+line. Paste the whole block, keeping each backslash as the final character.
 
 ## 1. Install EMRYS
 
@@ -102,6 +104,8 @@ Doctor explains the setup it will perform. Answer `y` to begin. **Allow roughly
 5–15 minutes for first setup; downloads, compilation and queue waits can make
 it longer.** The progress display names the current stage and shows elapsed
 time. Complete installation output is retained at the printed log location.
+For optional detail while setup runs, see
+[watching the installation log](docs/operations/TROUBLESHOOTING.md#watching-doctors-installation-log).
 
 Doctor installs the tools on the head node, submits the required compute-node
 checks, and confirms that the study's storage works across both nodes. Keep
@@ -397,3 +401,11 @@ For your own study, replace the entire `cd "$HOME/emrys-smoke"` line with
 `cd "/full/path/to/my-study"`, using the actual Project location chosen in
 step 7. Reconnecting does not require reinstalling EMRYS, recreating the
 Project or resubmitting work.
+
+## Further help
+
+This guide contains the complete Viking setup and study workflow. If a step
+fails, [troubleshooting](docs/operations/TROUBLESHOOTING.md) explains common
+errors and supported recovery. The [advanced runbook](docs/operations/RUNBOOK.md)
+covers other installation environments, administrator setup and advanced
+execution options; it is not required for this walkthrough.

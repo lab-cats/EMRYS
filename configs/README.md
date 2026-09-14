@@ -171,11 +171,27 @@ time, exclusivity, node selection, scratch, and exact module setup. See the
 [stage map](../src/emrys/contracts/STAGE_MAP.md) for numeric stage identities.
 
 Values are literal; unknown fields, interpolation, shell commands, impossible
-totals, and resources larger than the allocation are rejected. Project creation with `--site viking` writes the built-in Viking placement to
+totals, and resources larger than the allocation are rejected. Project creation
+with `--site viking` writes the built-in Viking placement to
 `runtime/profiles/default.yaml`; users do not supply scheduler settings. Without
 a site selection, creation retains direct placement.
 [execution_profile.example.yaml](execution_profile.example.yaml) shows the fields
-for administrators configuring another placement. Retired reporting-memory settings are rejected.
+for administrators configuring another placement. Retired reporting-memory
+settings are rejected.
+
+For a site administrator configuring Slurm, these fields are under `placement`:
+
+| Field | Value |
+| --- | --- |
+| `memory_mb` | A positive integer in MiB. `null` omits the memory request and leaves it to site policy; establish adequate site memory before using it. |
+| `time` | The wall-time limit; use a quoted `"HH:MM:SS"` value, such as `"08:00:00"`. |
+| `modules` without module setup | `mode: none`, `init: ""`, and `load: []`. |
+| `modules` with module setup | `mode: exact`, an absolute path to the real, nonsymlink initialization file in `init`, and a nonempty list of exact module names in `load`. |
+
+The batch wrapper starts with `PATH=/usr/bin:/bin`. For exact module setup it
+sources the initialization file, purges modules, then loads the declared names
+in order. The interactive module roster is not inherited. Record the setup
+used to admit the runtime; the wrapper does not install dependencies.
 
 ## Specialist examples
 

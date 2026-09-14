@@ -1,14 +1,16 @@
 # Runbook
 
-Use the [quickstart](../../quickstart.md) for installation, a first synthetic
-Project and your own study. This guide covers institutional runtimes, advanced
-operation, and Slurm.
+Use the [quickstart](../../quickstart.md) for Viking installation, a first
+synthetic Project and your own study. For other setup needs, start with
+[a chosen release or commit](#install-a-chosen-release-or-commit) or
+[a standalone compute host](#standalone-compute-host-with-a-managed-runtime).
+This guide also covers institutional runtimes, advanced operation, and Slurm.
 The [configuration guide](../../configs/README.md) explains Project inputs and
 execution settings; [Troubleshooting](TROUBLESHOOTING.md) covers recovery.
 
-Commands use Bash and the quickstart's `EMRYS_SOURCE_ROOT` and
-`EMRYS_PROJECT_ROOT`. In a new terminal, set them to the same full physical paths,
-then activate the checkout's command and enter the Project:
+Commands use Bash. If you already have an installation and Project, set
+`EMRYS_SOURCE_ROOT` and `EMRYS_PROJECT_ROOT` to their full physical paths in a
+new terminal, then activate the installed command and enter the Project:
 
 ```bash
 source "$EMRYS_SOURCE_ROOT/.venv/bin/activate"
@@ -23,6 +25,101 @@ runtime. Add `-v` to see the loaded package path and Python version/executable.
 It writes no logs and identifies the executing installation independently of
 the working directory and Git checkout.
 Version flags cannot accompany a command.
+
+## Install a chosen release or commit
+
+Use this procedure when a study or team requires a specific EMRYS revision.
+On the intended host, first install uv and Pixi using the installer block in
+[quickstart step 1](../../quickstart.md#1-install-emrys), or use your institution's
+supported installations. Keep the required versions and dependency locks;
+managed repair requires Pixi `>=0.75.0,<0.76`. Then use the commands below in
+place of the quickstart's clone/install block.
+
+Replace `EMRYS_REVISION` with the chosen release tag or full commit ID and
+replace the source-parent path. The parent must exist and its `EMRYS` child
+must be absent. Use a fresh checkout rather than change one used by an
+existing Project.
+
+```bash
+cd "/absolute/path/to/source-parent"
+EMRYS_REVISION='REPLACE_WITH_FULL_COMMIT_ID_OR_TAG'
+git clone https://github.com/lab-cats/EMRYS.git
+cd EMRYS
+git checkout --detach "$EMRYS_REVISION"
+export EMRYS_SOURCE_ROOT="$(pwd -P)"
+git rev-parse HEAD
+uv sync --locked --no-default-groups --group workflow --python 3.14
+source "$EMRYS_SOURCE_ROOT/.venv/bin/activate"
+emrys --version
+```
+
+Record the printed full commit ID, including when you selected a tag. Leave
+the checkout and installed environment unchanged for the Project's Runs.
+Choosing a revision identifies the installation; it does not establish that
+it is qualified for your institution or scientific study. Viking users can
+continue at [quickstart step 2](../../quickstart.md#2-create-the-supplied-study).
+
+## Standalone compute host with a managed runtime
+
+Use this route on an approved non-Slurm compute host, never on a cluster login
+node. Managed setup requires x86-64 Linux, kernel 4.18 or newer and glibc 2.28
+or newer. The default profile needs at least four visible CPUs. Confirm that
+the host's memory, disk space and permitted running time suit the study;
+the tiny synthetic exercise is not a full-study capacity estimate.
+
+Use Bash with Git and curl available, permission and network access for package
+downloads, and separate writable source and durable Project locations. Install
+the tools and locked command with [the procedure above](#install-a-chosen-release-or-commit).
+Keep that environment active. Choose an absent Project directory beneath an
+existing writable parent outside the checkout, using its full physical path:
+
+```bash
+export EMRYS_PROJECT_ROOT="/absolute/durable/path/emrys-smoke"
+emrys init synthetic --output-dir "$EMRYS_PROJECT_ROOT" --execute
+cd "$EMRYS_PROJECT_ROOT"
+emrys validate
+```
+
+Without `--site`, initialization writes a direct execution profile: computation
+runs on this host. Continue after `Project validation: PASS`; the supplied
+inputs and configuration need no edits. Preserve a partial directory if
+creation fails and use a new absent destination.
+
+Prepare the Project's scientific runtime and storage:
+
+```bash
+emrys doctor --repair
+```
+
+Review the repair plan and answer `y` to approve installation and storage checks.
+Doctor manages Project-owned native tools and R packages and retains a maintenance
+log; Python dependencies remain the package manager's responsibility. The
+ordinary command is correct on this non-Slurm host; `--compute` is for advanced
+diagnosis inside a real Slurm allocation. Continue only after `EMRYS is ready.`
+For a failure, retain the printed log and follow
+[Project and runtime checks](TROUBLESHOOTING.md#project-and-runtime-checks).
+
+Run the supplied Analysis and inspect it when the command finishes:
+
+```bash
+emrys run
+emrys inspect
+```
+
+Review Analysis `primary`, its paths and resources, then answer `y` at
+`Execute this plan? [y/N]`. Keep the terminal alive until execution finishes;
+successful computation generates both reports automatically. Follow
+[Inspect and open reports](#inspect-and-open-reports) to check completion,
+view the outputs or finish reporting without repeating completed computation.
+
+For your own study, use the quickstart's
+[input and manifest guidance](../../quickstart.md#gather-the-study-inputs-and-scientific-choices).
+Create a new Project on this host using its Project-creation commands with
+`--site viking` omitted, then return to Doctor and Run above after validation.
+Confirm resources for the actual data using the
+[execution settings](../../configs/README.md#execution-profile), and retain the
+synthetic Project separately. Use [recovery guidance](TROUBLESHOOTING.md#run-and-reporting-state)
+for incomplete Runs rather than deleting their files.
 
 ## Create a Project for your own data
 
@@ -55,7 +152,8 @@ Use this route when the institution supplies the exact versions in
 [`runtime_policy.tsv`](../../src/emrys/resources/runtime/runtime_policy.tsv):
 STAR 2.7.11b, Samtools 1.19.2, GATK 4.6.1.0, Picard 3.1.1, Bcftools 1.21,
 RSeQC 5.0.4, Java 17+, and R 4.6.1 with the locked R packages. For managed
-installation, use [Doctor repair in the quickstart](../../quickstart.md).
+installation, use [Viking's Doctor procedure](../../quickstart.md#3-prepare-the-scientific-tools)
+or the [standalone procedure](#standalone-compute-host-with-a-managed-runtime).
 
 On the intended execution host, load the approved modules and reactivate the
 checkout's `.venv`. Each `PATH` directory must be absolute and nonempty, with
@@ -228,7 +326,7 @@ physical paths on the head and compute nodes.
 ### Other placements and advanced setup
 
 For another cluster, the site administrator supplies a Project-local profile
-using [the example](../../configs/execution_profile.example.yaml). Account,
+using [the example and field guidance](../../configs/README.md#execution-profile). Account,
 partition, QoS, CPU, memory, wall time, module setup and scratch must reflect the
 actual site. Existing profile selection remains available through
 `emrys run --profile NAME` and `emrys resume RUN --profile NAME`; omission uses
