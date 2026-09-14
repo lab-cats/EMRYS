@@ -143,9 +143,8 @@ qualification and retained reports and recovery files remain.
 The retired publisher could leave a partial predecessor after a backup failure,
 release its lock after failed restoration, or obscure the original error during
 cleanup. PR #115 did not repair it; PR #128's measurement consolidation and
-PR #134's test correction also left those defects unresolved. The feature is
-being removed, not repaired; there is no remaining publication work for this
-owner once CS-27 is complete.
+PR #134's test correction also left those defects unresolved. CS-27 retired the
+publisher; its removal closes this repair proposal without claiming a repair.
 
 ### 3. Make reference-provenance replacement recoverable
 
@@ -337,7 +336,7 @@ boundaries; potential size reduction does not override the replacement condition
 ### 15. Check every script in the Bash syntax gate
 
 **Disposition:** Implemented and validated in [PR #141](https://github.com/lab-cats/EMRYS/pull/141),
-included in PR #140 pending master integration. [Make's shared syntax gate](../../scripts/make_quality.mk)
+included in PR #140 and merged through PR #169. [Make's shared syntax gate](../../scripts/make_quality.mk)
 parses each declared script separately and stops on failure. Both `smoke` and
 `validation-static` use that gate; a malformed second or third script is a
 regression case. The thirteen-path roster is preserved. ShellCheck, formatting,
@@ -356,7 +355,7 @@ actionlint, and shell-owner contracts pass. Bash syntax checks remain active.
 ### 17. Broaden Ruff correctness checks
 
 **Disposition:** Implemented and validated in [PR #142](https://github.com/lab-cats/EMRYS/pull/142),
-included in PR #140 pending master integration. The [Ruff configuration](../../pyproject.toml) selects
+included in PR #140 and merged through PR #169. The [Ruff configuration](../../pyproject.toml) selects
 `E9`, `F63`, `F7`, and `F82` through the existing lint command. This subset passes
 unchanged product source using the locked Ruff version. Broader lint groups
 still need owner-specific review: unused-import diagnostics include live
@@ -371,8 +370,8 @@ The existing Ruff configuration and locked version own formatting for `scripts`,
 --check`. The separate mechanical baseline reformatted 78 files; every changed
 file retained identical parsed Python code. Its 2,101 additional physical lines
 are formatting expansion, reported separately from functional changes and never
-counted as compression. The formatter check passes across all 292 tracked Python files; explicit
-Python-only inclusion keeps its scope aligned with the staged-file hook.
+counted as compression. At that revision, formatting passed all 292 tracked
+Python files. Python-only inclusion keeps the gate aligned with the staged-file hook.
 
 ### 19. Adopt one Python type checker
 
@@ -401,7 +400,7 @@ complete validation path.
 ### 21. Share local and CI validation inventory
 
 **Disposition:** Implemented and validated in [PR #143](https://github.com/lab-cats/EMRYS/pull/143),
-included in PR #140 pending master integration. The correction moves the CI-only self-test invocation
+included in PR #140 and merged through PR #169. The correction moves the CI-only self-test invocation
 into [shared static preflight](../design/TEST_BASELINE.md#validation-lanes), so
 local `all-checks` and CI run it once through the same Make target. The
 [sharder](../../tests/tools/python_test_shards.py) still excludes its own tests
@@ -411,21 +410,21 @@ Make/CI wiring are protected without adding a test registry or validation lane.
 
 ### 22. Run ordinary CI automatically on supported stacked PRs
 
-**Disposition:** Implemented and validated in PR #140, pending master integration.
+**Disposition:** Implemented and validated in PR #140, merged through PR #169.
 The `CI-01` correction removes the `master`-only PR
 base filter. The [validation policy](../design/TEST_BASELINE.md#validation-lanes)
 now covers all PR bases while retaining master-only push runs and the existing
 merge-group, scheduled, and manual behavior. Actual stacked pull-request events
 started ordinary hosted CI, and the final integrated head passed the full
 ordinary run linked above. This closes the automatic-dispatch implementation
-outcome, not the remaining `CI-01` performance work or the master merge gate.
-Item 33 separately addresses required merge checks.
+outcome. Item 23 records the completed `CI-01` performance work; item 33
+separately addresses required merge checks.
 
 ### 23. Reduce the measured CI critical path
 
 **Disposition:** Implemented under **`CI-01`**; ordinary hosted CI passed at `b491aac5` (run 34306975901). PR #124's duration
-estimate refresh is already merged through PR #139; it does not close the
-remaining wall-time outcome. Hosted timing review now separates queue time,
+estimate refresh merged through PR #139 and preceded the fixture changes
+below. Hosted timing review separates queue time,
 setup, R restoration, runtime readiness, and test execution rather than treating
 all elapsed time as test cost.
 
@@ -661,8 +660,8 @@ requires that equality, and the
 equal Python and Snakemake file hashes. This establishes the representation,
 not that a package change escapes every other defense. The existing
 [compression discovery disposition](compression_backlog_matrix.md#original-discovery-disposition)
-already records this as undecided discovery 9 under `COMPRESS-01`; it is
-separate from the R closure in item 34.
+records discovery 9 as transferred to this item. This Snakemake decision
+remains separate from the R closure in item 34.
 
 **Outcome and acceptance:** Trace installed Snakemake and execution-relevant
 Python dependencies through setup, Doctor, Run creation, resume, and child
@@ -816,7 +815,8 @@ required a command and exposed no conventional version display.
 **Disposition:** Implemented under `CLI-VERSION-01`; ordinary hosted CI passed at
 `b491aac5` (run 34306975901). `emrys --version` reports the package version; `-v` adds its loaded
 path and Python version/executable. Focused production-path tests pass,
-including foreign-directory display and preserved ordinary checkout admission.
+including foreign-directory display. CS-26 later replaced checkout admission
+with installed-package identity for ordinary execution.
 The existing parser and package version remain the only owners.
 
 **Outcome and acceptance:** The installed command reports its actual package
@@ -825,9 +825,9 @@ scientific tools, or writing state. If source identity is included, reuse
 existing source authority, distinguish known from unavailable information, and
 never infer the installed package's commit from an unrelated current directory.
 The implemented display is allowed from another checkout so it can identify
-the installation in use; ordinary commands and positional `--version` text
-still undergo the existing checkout check. Existing command dispatch remains. A version response does not
-prove runtime readiness, cleanliness, or reproducibility. This small public-CLI
+the installation in use. Controlled commands still require their runtime
+admission; positional `--version` is not the global display option. A version
+response does not prove runtime readiness or reproducibility. This small public-CLI
 slice supports item 30; it does not close the broader release outcome.
 
 ### 44. Provide a concise contributor and problem-reporting route

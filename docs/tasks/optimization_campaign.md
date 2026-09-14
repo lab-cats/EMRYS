@@ -8,7 +8,7 @@ machinery or changing computational methods.
 
 This document owns the optimization audit and proposed measurement approach.
 The [backlog](backlog_matrix.md) records accepted work, its status, and
-completion criteria; its compression cards are delegated explicitly. Candidate numbers below are discussion references,
+completion criteria. Candidate numbers below are discussion references,
 not backlog IDs or an execution sequence. Documenting a candidate does not
 authorize implementation, benchmarking, cluster execution, runtime changes,
 artifact deletion, or adoption of an existing PR. Select each bounded outcome

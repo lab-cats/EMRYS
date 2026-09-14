@@ -95,8 +95,8 @@ the selected installed `emrys` package independently of caller CWD and ambient
 `PYTHONPATH`. Shared process helpers require absolute
 Python 3.11+ in `EMRYS_SHA256_PYTHON`, canonical `<JAVA_HOME>/bin/java`, and a
 JVM/GATK-selector-scrubbed environment for both the GATK probe and work. This
-stage still owns tool precedence and versions, exact arguments,
-validation, and sidecar policy.
+stage owns exact arguments, validation, and sidecar policy; the runner supplies
+the admitted tool paths.
 
 ## Consumers
 

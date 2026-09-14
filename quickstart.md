@@ -64,14 +64,12 @@ git rev-parse HEAD
 uv sync --locked --no-default-groups --group workflow --python 3.14
 source "$EMRYS_SOURCE_ROOT/.venv/bin/activate"
 emrys --help
-git status --porcelain=v1 --untracked-files=all
 ```
 
 uv can download Python 3.14; EMRYS requires Python 3.11 or newer. Record the
-printed commit ID and keep this checkout at that revision. Help must work,
-and the final Git command must print **nothing**. Both tracked changes and
-nonignored untracked files prevent execution; resolve unexpected files without
-deleting them just to pass the check.
+printed commit ID and keep this checkout at that revision while following the
+guide. Help must work. Execution admission checks the installed package bytes
+and build provenance.
 
 In a later terminal, restore the environment before using EMRYS:
 

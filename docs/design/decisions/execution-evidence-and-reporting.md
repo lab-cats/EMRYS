@@ -239,11 +239,11 @@ provenance. The reports point readers to those records and `emrys inspect`.
 The current closed formats reject the retired fields, including hand-authored
 records that supplied them; no existing scientific data or evidence is rewritten.
 
-Retiring these fields also removes reporting-only helpers from shared admission
-files. Because scientific identity hashes whole shared files, this cleanup is
-part of the pending source-boundary transition and changes the scientific
-fingerprint once. It does not introduce an exemption from shared-file hashing
-or make pre-transition Runs compatible with the new installed package.
+Retiring these fields removed reporting-only helpers from shared admission
+files and changed the scientific fingerprint once. The scientific/reporting
+source boundary is now implemented; scientific identity still hashes shared
+files in full. The transition did not make earlier Runs compatible with the
+new installed package.
 
 HTML publication and validation-roster policy retain their separate scope. Reporting-memory policy belongs to the
 [Run contract](../../../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning).
