@@ -97,8 +97,9 @@ evidence accounting remain separate.
 - **One head-node journey.** Both Project-creation commands accept `--site viking`
   and write the existing default profile with the known site settings. Run,
   resume and standalone report execution use that placement. The quickstart
-  has one complete synthetic path; advanced configuration, recovery and
-  real-data guidance retain their existing documentation owners.
+  includes the complete synthetic and own-data walkthroughs, reconnecting,
+  and routine recovery. The runbook retains advanced configuration and input
+  options, with links to the standard guide.
 - **Automatic qualification.** Head-node Doctor repair installs the managed
   runtime, submits checks of the admitted runtime and storage, and completes
   head-node finalization. Existing receipts, exact bindings and failure
@@ -121,8 +122,9 @@ evidence accounting remain separate.
 
 The existing real-Slurm CI journey now uses head-node Doctor preparation in
 place of its manual storage-phase commands, preserving the scientific parity
-and controlled recovery checks. Local checks and hosted disposable Slurm do not
-establish Viking qualification. Resume the fresh-clone walkthrough on the
+and controlled recovery checks. That [hosted journey passed on `e25b10c6`](https://github.com/lab-cats/EMRYS/actions/runs/34885186045).
+Local checks and hosted disposable Slurm do not establish Viking qualification.
+Resume the fresh-clone walkthrough on the
 published revision to validate automated setup and the whole Run with reports.
 The retained six-library Viking profile has a different resource policy and is
 not a capacity requirement for this tiny fixture.
