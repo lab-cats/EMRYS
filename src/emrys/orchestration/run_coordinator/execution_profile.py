@@ -197,6 +197,9 @@ class ExecutionProfile:
                     f"Account: {placement.account or 'site default'}; "
                     f"partition: {placement.partition or 'site default'}; "
                     f"QoS: {placement.qos or 'site default'}",
+                    f"Scratch parent: {str(placement.scratch_parent)!r}; modules: {placement.module_mode}; "
+                    f"initialization: {str(placement.module_init) if placement.module_init else 'none'!r}; "
+                    f"load in order: {', '.join(placement.modules) or 'none'}",
                 )
             )
         lines.extend(
@@ -294,16 +297,13 @@ def _validate_profile(document: Mapping[str, Any]) -> None:
         raise ExecutionProfileError(f"Invalid execution profile: {exc}") from exc
 
 
-def _read_profile(path: Path, label: str) -> tuple[Path, bytes, dict[str, Any]]:
-    resolved, data = _read_admitted_regular_file(path, label)
+def _parse_profile(data: bytes, path: Path, label: str) -> dict[str, Any]:
     try:
         value = orchestration_contracts.load_yaml_object_bytes(data, label)
     except orchestration_contracts.ContractValidationError as exc:
-        raise ExecutionProfileError(
-            f"Could not parse {label} {resolved}: {exc}"
-        ) from exc
+        raise ExecutionProfileError(f"Could not parse {label} {path}: {exc}") from exc
     _validate_profile(value)
-    return resolved, data, value
+    return value
 
 
 def _merge_profile(target: dict[str, Any], fragment: Mapping[str, Any]) -> None:
@@ -348,33 +348,33 @@ def _admit_placement(document: Any) -> Placement:
     )
 
 
-def load_execution_profile(
-    config_path: Path | None = None,
+def admit_execution_profile_bytes(
+    default_data: bytes,
+    source_path: Path | None = None,
+    source_data: bytes | None = None,
     resource_overrides: ResourceOverrides = ResourceOverrides(),
-    expected_binding_sha256: str | None = None,
 ) -> ExecutionProfile:
-    """Load packaged defaults, one selected profile fragment, and resource overrides."""
+    """Admit supplied default and selected bytes without reading files or capacity."""
 
-    if (
-        expected_binding_sha256 is not None
-        and _SHA256.fullmatch(expected_binding_sha256) is None
-    ):
-        raise ExecutionProfileError("expected_binding_sha256 must be 64 lowercase hex")
-    source_path, source_data, default = _read_profile(
-        DEFAULT_PROFILE_PATH,
-        "built-in execution profile",
+    if (source_path is None) != (source_data is None):
+        raise ExecutionProfileError(
+            "Selected profile path and bytes must be supplied together"
+        )
+    default = _parse_profile(
+        default_data, DEFAULT_PROFILE_PATH, "built-in execution profile"
     )
     default_resource_sha256 = orchestration_contracts.canonical_sha256(
         default["resources"]
     )
     document = default
     selected_fragment: dict[str, Any] = {}
-    if config_path is not None:
-        source_path, source_data, selected_fragment = _read_profile(
-            Path(config_path),
-            "execution profile",
+    if source_data is not None and source_path is not None:
+        selected_fragment = _parse_profile(
+            source_data, source_path, "execution profile"
         )
         _merge_profile(document, selected_fragment)
+    else:
+        source_path, source_data = DEFAULT_PROFILE_PATH, default_data
 
     _validate_profile(document)
     source_sha256 = hashlib.sha256(source_data).hexdigest()
@@ -399,12 +399,37 @@ def load_execution_profile(
     except ResourceConfigError as exc:
         raise ExecutionProfileError(str(exc)) from exc
 
-    profile = ExecutionProfile(
+    return ExecutionProfile(
         resource_policy=policy,
         placement=_admit_placement(document["placement"]),
         source_path=source_path,
         source_raw_sha256=source_sha256,
         computational_resources_explicit=bool(explicit_resource_fields),
+    )
+
+
+def load_execution_profile(
+    config_path: Path | None = None,
+    resource_overrides: ResourceOverrides = ResourceOverrides(),
+    expected_binding_sha256: str | None = None,
+) -> ExecutionProfile:
+    """Load packaged defaults, one selected profile fragment, and resource overrides."""
+
+    if (
+        expected_binding_sha256 is not None
+        and _SHA256.fullmatch(expected_binding_sha256) is None
+    ):
+        raise ExecutionProfileError("expected_binding_sha256 must be 64 lowercase hex")
+    _, default_data = _read_admitted_regular_file(
+        DEFAULT_PROFILE_PATH, "built-in execution profile"
+    )
+    source_path, source_data = (
+        (None, None)
+        if config_path is None
+        else _read_admitted_regular_file(Path(config_path), "execution profile")
+    )
+    profile = admit_execution_profile_bytes(
+        default_data, source_path, source_data, resource_overrides
     )
     if (
         expected_binding_sha256 is not None
@@ -425,6 +450,7 @@ __all__ = (
     "SCHEMA_VERSION",
     "SlurmPlacement",
     "add_site_argument",
+    "admit_execution_profile_bytes",
     "load_execution_profile",
     "project_default_profile_bytes",
     "project_execution_profile_path",

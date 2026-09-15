@@ -1380,6 +1380,256 @@ def _project_with_owned_runtime(tmp_path: Path) -> Path:
     return authored
 
 
+@pytest.mark.parametrize("mode", ("direct", "viking", "slurm"))
+@pytest.mark.parametrize("resources", (False, True))
+def test_profile_creation_previews_exact_settings_without_scientific_reads(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    mode: str,
+    resources: bool,
+) -> None:
+    project = build(tmp_path / "Project's space")
+    for path in (project.parent / "reads").iterdir():
+        path.unlink()
+    for path in (project.parent / "reference").iterdir():
+        path.unlink()
+    before = _tree_bytes(project.parent)
+    monkeypatch.setattr(
+        onboarding,
+        "validate_project",
+        lambda *_a, **_k: pytest.fail("Project validation is not profile authoring"),
+    )
+    monkeypatch.setattr(
+        onboarding,
+        "sha256_with_identity",
+        lambda *_a, **_k: pytest.fail("scientific input hashing"),
+    )
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *_a, **_k: pytest.fail("profile authoring executed a subprocess"),
+    )
+    arguments = ["profile", "create", "reviewed", "--project", str(project)]
+    arguments += ["--site", "viking"] if mode == "viking" else ["--placement", mode]
+    if mode != "direct":
+        arguments += [
+            "--cpus-per-task",
+            "8",
+            "--memory-mb",
+            "32768",
+            "--time",
+            "02:03:04",
+            "--scratch-parent",
+            str(tmp_path / "scratch's space"),
+            "--account",
+            "other-account",
+            "--partition",
+            "compute",
+            "--qos",
+            "normal",
+            "--nodelist",
+            "node[01-02]",
+            "--exclusive",
+            "--module-init",
+            str(tmp_path / "modules.sh"),
+            "--module",
+            "compiler/1.2",
+            "--module",
+            "MPI/4.1",
+        ]
+    if resources:
+        arguments += [
+            "--workflow-cores",
+            "6",
+            "--workflow-memory-mb",
+            "8192",
+            "--step-threads",
+            "00a=2",
+            "--stage-memory-mb",
+            "00a=1024",
+            "--stage-concurrency",
+            "01=1",
+        ]
+    assert cli.main(arguments) == 0
+    preview = capsys.readouterr().out
+    assert "Dry-run complete; no files were written" in preview
+    assert _tree_bytes(project.parent) == before
+    assert cli.main([*arguments, "--execute"]) == 0
+    executed = capsys.readouterr().out
+    assert preview.split("Dry-run complete")[0] == executed.split("Profile created.")[0]
+    selected = execution_profile.project_execution_profile_path(project, "reviewed")
+    profile = execution_profile.load_execution_profile(selected)
+    defaults = execution_profile.load_execution_profile()
+    assert (
+        profile.resource_policy.default_sha256
+        == defaults.resource_policy.default_sha256
+    )
+    assert profile.computational_resources_explicit is resources
+    assert profile.resource_policy.declaration.workflow_cores == (6 if resources else 4)
+    assert profile.resource_policy.config_sha256 == (
+        hashlib.sha256(selected.read_bytes()).hexdigest() if resources else None
+    )
+    if mode == "direct":
+        assert profile.placement.document() == {"kind": "direct"}
+    else:
+        assert profile.placement.document() == {
+            "kind": "slurm",
+            "account": "other-account",
+            "partition": "compute",
+            "qos": "normal",
+            "cpus_per_task": 8,
+            "memory_mb": 32768,
+            "time": "02:03:04",
+            "exclusive": True,
+            "nodelist": "node[01-02]",
+            "scratch_parent": str(tmp_path / "scratch's space"),
+            "modules": {
+                "mode": "exact",
+                "init": str(tmp_path / "modules.sh"),
+                "load": ["compiler/1.2", "MPI/4.1"],
+            },
+        }
+        assert "compiler/1.2, MPI/4.1" in preview
+        assert repr(str(tmp_path / "scratch's space")) in preview
+    assert _tree_bytes(project.parent) == {
+        **before,
+        "runtime/profiles/reviewed.yaml": selected.read_bytes(),
+    }
+    saved = selected.stat(), selected.read_bytes()
+    assert cli.main([*arguments, "--execute"]) == 2
+    assert (selected.stat(), selected.read_bytes()) == saved
+
+
+@pytest.mark.parametrize(
+    "extra",
+    (
+        ["--placement", "direct", "--exclusive"],
+        ["--placement", "direct", "--module-init", ""],
+        ["--placement", "slurm"],
+        ["--site", "viking", "--cpus-per-task", "0"],
+        ["--site", "viking", "--module", "compiler/1.2"],
+        ["--site", "viking", "--nodelist", "node;false"],
+        ["--site", "viking", "--workflow-cores", "1", "--step-threads", "unknown=1"],
+        ["--site", "viking", "--step-threads", "01=1", "--step-threads", "01=2"],
+    ),
+)
+def test_profile_creation_rejects_invalid_choices_without_writes(
+    tmp_path: Path, extra: list[str]
+) -> None:
+    project = build(tmp_path)
+    before = _tree_bytes(tmp_path)
+    assert (
+        cli.main(
+            ["profile", "create", "new", "--project", str(project), *extra, "--execute"]
+        )
+        == 2
+    )
+    assert _tree_bytes(tmp_path) == before
+
+
+@pytest.mark.parametrize(
+    "boundary", ("absolute", "nested", "symlink", "dangling", "directory", "parent")
+)
+def test_profile_creation_preserves_unsafe_or_occupied_destinations(
+    tmp_path: Path, boundary: str
+) -> None:
+    project = build(tmp_path / "project")
+    parent = project.parent / "runtime/profiles"
+    destination = parent / "new.yaml"
+    name = "new"
+    if boundary == "absolute":
+        name = str(tmp_path / "outside.yaml")
+    elif boundary == "nested":
+        name = "nested/new"
+    elif boundary in {"symlink", "dangling"}:
+        destination.symlink_to(
+            parent / ("default.yaml" if boundary == "symlink" else "absent.yaml")
+        )
+    elif boundary == "directory":
+        destination.mkdir()
+    else:
+        displaced = parent.with_name("preserved-profiles")
+        parent.rename(displaced)
+        parent.symlink_to(displaced, target_is_directory=True)
+    before = _tree_bytes(tmp_path)
+    assert (
+        cli.main(
+            [
+                "profile",
+                "create",
+                name,
+                "--project",
+                str(project),
+                "--placement",
+                "direct",
+                "--execute",
+            ]
+        )
+        == 2
+    )
+    assert _tree_bytes(tmp_path) == before
+    if boundary in {"symlink", "dangling"}:
+        assert destination.is_symlink()
+    elif boundary == "directory":
+        assert destination.is_dir()
+
+
+@pytest.mark.parametrize("change", ("parent", "destination", "default", "published"))
+def test_profile_creation_detects_publication_changes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    change: str,
+) -> None:
+    project = build(tmp_path / "project")
+    destination = project.parent / "runtime/profiles/new.yaml"
+    defaults = tmp_path / "packaged-default.yaml"
+    defaults.write_bytes(execution_profile.DEFAULT_PROFILE_PATH.read_bytes())
+    monkeypatch.setattr(execution_profile, "DEFAULT_PROFILE_PATH", defaults)
+    original_link = exclusive_publication.os.link
+    displaced = destination.parent.with_name("preserved-profiles")
+    redirected = tmp_path / "redirected"
+    redirected.mkdir()
+
+    def change_before_link(source: str, target: str, **kwargs) -> None:
+        if change == "parent":
+            destination.parent.rename(displaced)
+            destination.parent.symlink_to(redirected, target_is_directory=True)
+        elif change == "destination":
+            destination.write_bytes(b"concurrent operator content\n")
+        elif change == "default":
+            document = yaml.safe_load(defaults.read_bytes())
+            document["resources"]["workflow_cores"] = 8
+            defaults.write_text(yaml.safe_dump(document))
+        original_link(source, target, **kwargs)
+        if change == "published":
+            destination.write_bytes(destination.read_bytes() + b"# concurrent change\n")
+
+    monkeypatch.setattr(exclusive_publication.os, "link", change_before_link)
+    assert (
+        cli.main(
+            [
+                "profile",
+                "create",
+                "new",
+                "--project",
+                str(project),
+                "--placement",
+                "direct",
+                "--execute",
+            ]
+        )
+        == 2
+    )
+    assert "Profile created." not in capsys.readouterr().out
+    if change == "parent":
+        assert not (redirected / "new.yaml").exists()
+        assert (displaced / "new.yaml").exists()
+    elif change == "destination":
+        assert destination.read_bytes() == b"concurrent operator content\n"
+
+
 def test_runtime_profile_path_derives_from_a_relative_default_project() -> None:
     assert onboarding.runtime_profile_path(Path("project.yaml")) == (
         Path.cwd() / "runtime/runtime.tsv"

@@ -39,6 +39,7 @@ EMRYS_COMMANDS = (
         "usage: emrys init synthetic",
     ),
     (("runtime", "discover"), "usage: emrys runtime discover"),
+    (("profile", "create"), "usage: emrys profile create"),
     (("doctor",), "usage: emrys doctor"),
     (("run",), "usage: emrys run"),
     (("resume",), "usage: emrys resume"),

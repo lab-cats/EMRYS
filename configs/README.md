@@ -169,6 +169,52 @@ Execution settings are separate from scientific inputs. The
 [coordinator contract](../src/emrys/orchestration/run_coordinator/CONTRACT.md#profiles-and-immutable-planning)
 owns profile selection and precedence.
 
+### Create a named profile without writing YAML
+
+From an existing Project, preview placement and resource choices with
+`emrys profile create NAME`. Choose `--site viking`, `--placement direct`, or
+`--placement slurm`; add `--project /absolute/path/project.yaml` when outside
+the Project. A name identifies `runtime/profiles/NAME.yaml`. Existing files,
+including `default.yaml`, are preserved.
+
+For example, these are explicit illustrative budgets, not a measured cohort
+preset. Adjust them to your study and site limits before creation:
+
+```bash
+emrys profile create cohort --site viking \
+  --cpus-per-task 8 --memory-mb 32768 --time 08:00:00 \
+  --workflow-cores 8 --workflow-memory-mb 24576
+```
+
+Review the complete placement, workflow, and stage settings. Repeat the same
+command with `--execute` to create the absent profile, then select it with
+`emrys doctor --profile cohort --repair` and `emrys run --profile cohort`.
+Preview and creation do not read FASTQs, probe tools, or request an allocation;
+Doctor and execution still perform their independent admission checks.
+
+Custom Slurm placement requires `--cpus-per-task`, `--time`, and an absolute
+`--scratch-parent`. Optional fields are `--account`, `--partition`, `--qos`,
+`--memory-mb`, `--nodelist`, and `--exclusive`/`--no-exclusive`. Exact module
+setup requires both an absolute `--module-init` and one or more ordered
+`--module` values. Direct placement rejects Slurm-only options.
+
+Set workflow budgets with `--workflow-cores` and `--workflow-memory-mb`.
+The repeatable `--step-threads STAGE=COUNT`, `--stage-memory-mb STAGE=MIB`, and
+`--stage-concurrency STAGE=COUNT` options use the existing stage identifiers
+and resource validation. Any resource override saves the complete reviewed
+computational policy. With placement options alone, the profile leaves
+computational policy unspecified: a new Run uses packaged defaults and a
+resumed Run retains its immutable policy. To change computation, create a new
+Run. A larger reservation does not itself increase workflow or stage limits.
+
+The four-CPU initial Viking placement serves a bounded fixture, not a promise
+that a full cohort will fit or run efficiently. Qualification uses the selected
+allocation request, so choosing a large request can also increase queue time.
+Capacity and scientific-tool memory requirements must be checked for the
+actual workload; this command neither estimates demand nor tunes resources.
+
+### Profile document
+
 An `emrys.execution-profile.v1` document separates resource budgets from
 placement (where to run):
 

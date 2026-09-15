@@ -22,7 +22,7 @@ cluster action, evidence promotion, or product-growth exception.
 | [CV-04](#cv-04-workflow-startup-readiness) | P0 | Verification pending | Readiness exercises minimal actual Snakemake startup. |
 | [CV-05](#cv-05-reuse-versus-repeated-repair-work) | P0 | Open | Explain reused state, repeated checks, and new repair work. |
 | [CV-06](#cv-06-actual-data-onboarding) | P0 | Verification pending | Provide a novice actual-data setup path. |
-| [CV-07](#cv-07-site-and-workload-profile-selection) | P0 | Open | Replace manual Viking resource-profile construction. |
+| [CV-07](#cv-07-site-and-workload-profile-selection) | P0 | Verification pending | Replace manual Viking resource-profile construction. |
 | [CV-08](#cv-08-compatible-runtime-reuse) | P0 | Open | Reuse an existing compatible managed runtime across Projects. |
 | [CV-09](#cv-09-qualification-scope-and-placement) | P0 | Open | Explain and enforce the qualified execution environment. |
 | [CV-10](#cv-10-external-cancellation-and-recovery) | P0 | Open | Recover safely from externally cancelled jobs when possible. |
@@ -215,14 +215,29 @@ absolute profile selection as Run/resume/report. Repair, private compute
 qualification, and head finalization carry the admitted source and reject
 binding drift through the final readiness observation. Invalid explicit
 selections retain their diagnostic and never fall back. This does not change
-runtime inventory selection, queue policy, or scientific settings. Profile
-authoring without YAML remains a separate slice, so CV-07 remains Open.
+runtime inventory selection, queue policy, or scientific settings.
+
+**Implemented authoring slice:** `emrys profile create NAME` requires explicit
+site or direct/Slurm placement, accepts existing workflow/stage resource flags,
+and previews exact admitted settings before create-absent `--execute`.
+Existing profile/default files are preserved. Placement-only profiles retain
+resume policy; resource overrides save the complete reviewed policy. The
+shared admission owner accepts bytes as well as stable files, so authoring
+does not write a temporary profile or repeat scientific input reads. Guides
+distinguish fixture defaults from unbenchmarked cohort choices and explain
+that qualification uses the same allocation request and its queue cost.
 
 **Verification:** Existing Doctor fixtures cover all selection forms, invalid
 selection without mutation, exact private compute arguments, and selected
 profile changes before submission, after the job, and during finalization.
 Static checks pass; application cases require hosted CI. No actual cluster
 qualification or workload tuning is claimed.
+
+Profile admission passes 32 local tests. Public authoring fixtures cover direct,
+Viking, and custom placement, exact settings, no scientific reads/subprocesses,
+no-write previews, invalid choices, no-clobber destinations, parent replacement,
+and default/published-byte drift. Application cases and institutional novice
+walkthrough remain pending; no performance optimum or actual capacity is claimed.
 
 ### CV-08 Compatible runtime reuse
 

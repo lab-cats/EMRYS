@@ -50,9 +50,19 @@ from emrys.orchestration.run_coordinator.normalization import (
     validate_authored_path,
 )
 from emrys.orchestration.run_coordinator.execution_profile import (
+    ExecutionProfileError,
     PROJECT_PROFILE_DIRECTORY,
     add_site_argument,
+    admit_execution_profile_bytes,
+    load_execution_profile,
     project_default_profile_bytes,
+    project_execution_profile_path,
+)
+from emrys.orchestration.run_coordinator.resource_policy import (
+    ResourceConfigError,
+    add_resource_override_arguments,
+    overrides_from_args,
+    resume_resource_policy,
 )
 from emrys.stages.gtf_to_bed12 import converter as gtf_converter
 
@@ -138,6 +148,165 @@ def add_project_argument(parser: argparse.ArgumentParser) -> None:
         "--project",
         help="Named Project directory or exact project.yaml path; default: current Project.",
     )
+
+
+_PLACEMENT_FIELDS = (
+    "account",
+    "partition",
+    "qos",
+    "cpus_per_task",
+    "memory_mb",
+    "time",
+    "exclusive",
+    "nodelist",
+    "scratch_parent",
+)
+
+
+def configure_profile_create_parser(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("name", help="Absent Project profile name, without .yaml.")
+    add_project_argument(parser)
+    placement = parser.add_mutually_exclusive_group(required=True)
+    add_site_argument(placement)
+    placement.add_argument("--placement", choices=("direct", "slurm"))
+    for field in _PLACEMENT_FIELDS:
+        if field == "exclusive":
+            parser.add_argument("--exclusive", action=argparse.BooleanOptionalAction)
+        else:
+            parser.add_argument(
+                "--" + field.replace("_", "-"),
+                type=int if field in {"cpus_per_task", "memory_mb"} else str,
+                help="Explicit Slurm placement value; omission retains the selected site setting.",
+            )
+    parser.add_argument(
+        "--module-init", help="Absolute initialization file for exact modules."
+    )
+    parser.add_argument(
+        "--module",
+        action="append",
+        default=[],
+        help="Exact module to load, in order; repeatable.",
+    )
+    add_resource_override_arguments(parser)
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Create the absent profile after displaying its settings.",
+    )
+    parser.set_defaults(_command_parser=parser)
+
+
+def profile_create_from_args(arguments: argparse.Namespace) -> int:
+    """Preview or create execution settings without reading scientific inputs."""
+
+    try:
+        project = project_definition_path(arguments.project)
+        project_data, _ = read_bytes_with_identity(project, "Project definition")
+        orchestration_contracts.validate_record(
+            "project", orchestration_contracts.load_yaml_object_bytes(project_data)
+        )
+        if Path(arguments.name).is_absolute():
+            raise OnboardingError(
+                "Profile creation requires a Project profile name, not a path"
+            )
+        destination = project_execution_profile_path(project, arguments.name)
+        if (
+            destination.parent.resolve(strict=True) != destination.parent
+            or not destination.parent.is_dir()
+        ):
+            raise OnboardingError(
+                "Profile parent must be an existing canonical directory"
+            )
+        if os.path.lexists(destination):
+            raise OnboardingError(f"Existing profile was preserved: {destination}")
+        document = orchestration_contracts.load_yaml_object_bytes(
+            project_default_profile_bytes(arguments.site)
+        )
+        if arguments.placement == "slurm":
+            document["placement"] = {
+                "kind": "slurm",
+                **dict.fromkeys(_PLACEMENT_FIELDS),
+                "exclusive": False,
+                "modules": {"mode": "none", "init": "", "load": []},
+            }
+        placement = document["placement"]
+        supplied = {
+            field: getattr(arguments, field)
+            for field in _PLACEMENT_FIELDS
+            if getattr(arguments, field) is not None
+        }
+        if placement["kind"] == "direct" and (
+            supplied or arguments.module_init is not None or arguments.module
+        ):
+            raise OnboardingError(
+                "Slurm placement options require --site or --placement slurm"
+            )
+        placement.update(supplied)
+        if placement["kind"] == "slurm":
+            missing = [
+                field
+                for field in ("cpus_per_task", "time", "scratch_parent")
+                if placement[field] is None
+            ]
+            if missing:
+                raise OnboardingError(
+                    "Custom Slurm placement requires: "
+                    + ", ".join("--" + field.replace("_", "-") for field in missing)
+                )
+        if arguments.module_init is not None or arguments.module:
+            if not arguments.module_init or not arguments.module:
+                raise OnboardingError(
+                    "Exact modules require both --module-init and --module"
+                )
+            placement["modules"] = {
+                "mode": "exact",
+                "init": arguments.module_init,
+                "load": arguments.module,
+            }
+        defaults = load_execution_profile()
+        overrides = overrides_from_args(arguments)
+        if overrides.labels():
+            document["resources"] = resume_resource_policy(
+                defaults.resource_policy, overrides=overrides
+            ).document()
+        data = yaml.safe_dump(document, sort_keys=False).encode("utf-8")
+        profile = admit_execution_profile_bytes(
+            orchestration_contracts.canonical_json_bytes(defaults.document()),
+            destination,
+            data,
+        )
+        print(f"Execution profile: {str(destination)!r}")
+        for line in profile.submission_summary():
+            print(line)
+        print(
+            "Computational settings: complete reviewed policy will be saved in this profile."
+            if profile.computational_resources_explicit
+            else "Computational settings: packaged defaults; a resumed Run retains its existing policy."
+        )
+        print(
+            "This preview does not verify runtime readiness or observed allocation capacity."
+        )
+        if not arguments.execute:
+            print(
+                "Dry-run complete; no files were written. Repeat with --execute to create this profile."
+            )
+            return 0
+        publish_exclusive(destination, data, OnboardingError)
+        load_execution_profile(
+            destination, expected_binding_sha256=profile.binding_sha256
+        )
+        print(f"Profile created. Select it with --profile {arguments.name}.")
+        return 0
+    except (
+        OSError,
+        OnboardingError,
+        ExecutionProfileError,
+        ResourceConfigError,
+        ValidationError,
+        orchestration_contracts.ContractValidationError,
+    ) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
 
 
 def _require_external_absent_output(value: str | Path, root: Path) -> Path:
@@ -1275,6 +1444,7 @@ __all__ = (
     "ProjectValidation",
     "RuntimeDiscoveryError",
     "add_project_argument",
+    "configure_profile_create_parser",
     "configure_runtime_discovery_parser",
     "configure_manifest_init_parser",
     "configure_project_init_parser",
@@ -1284,6 +1454,7 @@ __all__ = (
     "init_manifests_from_args",
     "init_project_from_args",
     "project_runtime_directory",
+    "profile_create_from_args",
     "project_definition_path",
     "publish_create_absent_tree",
     "publish_runtime_profile",
