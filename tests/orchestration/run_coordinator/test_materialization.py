@@ -3889,7 +3889,9 @@ def test_oversized_submission_context_prevents_scheduler_invocation(
     } == before
 
 
-@pytest.mark.parametrize("state", ("pending", "completed", "unavailable", "legacy"))
+@pytest.mark.parametrize(
+    "state", ("pending", "completed", "failed", "cancelled", "unavailable", "legacy")
+)
 @pytest.mark.parametrize("selector_kind", ("name", "absolute"))
 def test_public_submission_selection_queries_only_the_exact_request(
     tmp_path: Path,
@@ -3915,6 +3917,8 @@ def test_public_submission_selection_queries_only_the_exact_request(
             orchestration_contracts.canonical_json_bytes(context)
         )
     calls = []
+    terminal = state in {"completed", "failed", "cancelled"}
+    scheduler_exit = {"failed": "7:0", "cancelled": "0:15"}.get(state, "0:0")
 
     def query(argv, **_kwargs):
         calls.append(argv)
@@ -3922,17 +3926,17 @@ def test_public_submission_selection_queries_only_the_exact_request(
         assert "--clusters=cluster-a" in argv
         if state == "unavailable":
             return None
-        if state == "completed" and argv[0] == "squeue":
+        if terminal and argv[0] == "squeue":
             return b""
         assert state != "legacy", "legacy diagnostic records cannot query a job"
         fields = (
             "700123",
             str(os.getuid()),
-            "PENDING" if state == "pending" else "COMPLETED",
+            f"CANCELLED by {os.getuid()}" if state == "cancelled" else state.upper(),
             "cluster-a",
             context["scheduler_stdout_pattern"].replace("%j", "700123"),
             context["scheduler_stderr_pattern"].replace("%j", "700123"),
-            "Resources\x1b[31m" if state == "pending" else "0:0",
+            "Resources\x1b[31m" if state == "pending" else scheduler_exit,
         )
         return ("|".join(fields) + "\n").encode()
 
@@ -3963,23 +3967,22 @@ def test_public_submission_selection_queries_only_the_exact_request(
     )
     output = capsys.readouterr().out
     assert str(selected) in output and str(other) not in output
-    expected = {"pending": "PENDING", "completed": "COMPLETED"}.get(state, "UNKNOWN")
+    expected = state.upper() if state == "pending" or terminal else "UNKNOWN"
     assert f"Scheduler observation: {expected}" in output
+    assert "Recorded response job ID: 700123; cluster: cluster-a" in output
     assert "Recorded scheduler stdout:" in output
     assert "Recorded scheduler stderr:" in output
     assert (
         "do not establish workflow entry, Run completion or recovery eligibility"
         in output
     )
-    assert (
-        len(calls)
-        == {"pending": 1, "completed": 2, "unavailable": 1, "legacy": 0}[state]
-    )
+    assert len(calls) == (2 if terminal else 0 if state == "legacy" else 1)
     if state == "pending":
         assert r"Queue reason: Resources\x1b[31m" in output
         assert "\x1b" not in output
-    if state == "completed":
-        assert "Scheduler exit status: 0:0" in output
+    if terminal:
+        assert "source: sacct" in output
+        assert f"Scheduler exit status: {scheduler_exit}" in output
     assert {
         path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
     } == before

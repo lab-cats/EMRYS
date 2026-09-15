@@ -1081,7 +1081,17 @@ def test_invocation_timing_includes_confirmation_and_preserves_read_only_preview
 
 
 @pytest.mark.parametrize(
-    "outcome", ("available", "unknown", "raises", "invalid", "no_identity", "interrupt")
+    "outcome",
+    (
+        "available",
+        "failed",
+        "cancelled",
+        "unknown",
+        "raises",
+        "invalid",
+        "no_identity",
+        "interrupt",
+    ),
 )
 def test_scheduler_timing_observation_is_optional_buffered_and_escaped(
     tmp_path: Path,
@@ -1103,6 +1113,10 @@ def test_scheduler_timing_observation_is_optional_buffered_and_escaped(
     queries = []
     interruption = KeyboardInterrupt("accounting interrupted")
     diagnostic = 'accounting "unavailable"\n\x1b[31m'
+    state, exit_code = {
+        "failed": ("FAILED", "7:0"),
+        "cancelled": ("CANCELLED", "0:15"),
+    }.get(outcome, ("COMPLETED", "0:0"))
 
     def observe(*args, **kwargs):
         nonlocal elapsed
@@ -1117,7 +1131,8 @@ def test_scheduler_timing_observation_is_optional_buffered_and_escaped(
         if outcome == "unknown":
             return doctor.scheduler_observation.unknown_observation(diagnostic)
         return {
-            "state": "COMPLETED",
+            "state": state,
+            "exit_code": exit_code,
             "terminal": True,
             "source": "sacct",
             "cluster": "fixture",
@@ -1154,7 +1169,7 @@ def test_scheduler_timing_observation_is_optional_buffered_and_escaped(
             )
         ]
     )
-    assert "Slurm accounting timing" not in capsys.readouterr().err
+    assert "Slurm accounting" not in capsys.readouterr().err
     records = []
 
     def record(name, message, **fields):
@@ -1170,12 +1185,22 @@ def test_scheduler_timing_observation_is_optional_buffered_and_escaped(
     timing.finish(16.0, 1)
     output = capsys.readouterr().err
     assert "elapsed 16.000000s; exit status 1" in output
-    if outcome == "available":
+    if outcome in {"available", "failed", "cancelled"}:
+        assert (
+            f"Slurm accounting observation: {state}; source: sacct; scheduler exit status: {exit_code}"
+            in output
+        )
         assert "eligible queue wait: 90s" in output
         assert "allocation wall time: 60s" in output
     elif outcome != "interrupt":
+        assert (
+            "Slurm accounting observation: UNKNOWN; source: unavailable; scheduler exit status: unavailable"
+            in output
+        )
         assert "eligible queue wait: unavailable" in output
         assert "allocation wall time: unavailable" in output
+    else:
+        assert "Slurm accounting" not in output
     if outcome in {"unknown", "raises"}:
         assert packet[0]["diagnostic"] == diagnostic
         assert r'accounting "unavailable"\n\x1b[31m' in output and "\x1b" not in output
@@ -2439,6 +2464,9 @@ def test_failed_maintenance_claim_acquisition_retains_partial_before_repair(
         (None, None, "unknown"),
         (None, None, "raises"),
         ("scheduler", None, "available"),
+        ("scheduler", None, "failed"),
+        ("scheduler", None, "cancelled"),
+        ("scheduler", None, "unknown"),
         ("scheduler", None, "raises"),
         ("scheduler_unconfirmed", None, "available"),
         ("scheduler_interrupt", None, "available"),
@@ -2691,6 +2719,41 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
             profile_path.write_bytes(profile_path.read_bytes() + b"\n")
         return "614999"
 
+    observe_job = doctor.scheduler_observation.observe_job
+    scheduler_state, scheduler_exit = {
+        "failed": ("FAILED", "7:0"),
+        "cancelled": ("CANCELLED", "0:15"),
+    }.get(timing_outcome, ("COMPLETED", "0:0"))
+    accounting_queries = []
+
+    def accounting_query(argv, **kwargs):
+        accounting_queries.append(argv)
+        submission = submissions[-1]
+        assert argv[0] == "sacct" and "--clusters=fixture" in argv
+        assert kwargs["environment"]["TZ"] == "UTC0"
+        values = (
+            "614999",
+            str(doctor.os.getuid()),
+            f"CANCELLED by {doctor.os.getuid()}"
+            if scheduler_state == "CANCELLED"
+            else scheduler_state,
+            "fixture",
+            str(submission.stdout_pattern).replace("%j", "614999"),
+            str(submission.stderr_pattern).replace("%j", "614999"),
+            scheduler_exit,
+            submission.job_name,
+            "2026-09-15T12:00:00Z",
+            "2026-09-15T12:00:30Z",
+            "2026-09-15T12:02:00Z",
+            "2026-09-15T12:03:00Z",
+            "60",
+            "0",
+            "00:00:00",
+        )
+        return ("|".join(values) + "\n").encode()
+
+    monkeypatch.setattr(doctor.scheduler_observation, "command_bytes", accounting_query)
+
     def observe_timing(job_id, stdout, stderr, cluster, **kwargs):
         nonlocal elapsed
         assert not state["compute"]
@@ -2711,19 +2774,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
             return doctor.scheduler_observation.unknown_observation(
                 'accounting "unavailable"\n\x1b[31m'
             )
-        return {
-            "state": "COMPLETED",
-            "terminal": True,
-            "source": "sacct",
-            "cluster": "fixture",
-            "diagnostic": None,
-            "timing_observed_at": "2026-09-15T12:00:00Z",
-            "timing": {
-                "submission_to_start_seconds": 120,
-                "eligible_to_start_seconds": 90,
-                "allocation_wall_seconds": 60,
-            },
-        }
+        return observe_job(job_id, stdout, stderr, cluster, **kwargs)
 
     monkeypatch.setattr(slurm_submission, "submit", submit)
     monkeypatch.setattr(doctor.scheduler_observation, "observe_job", observe_timing)
@@ -2760,6 +2811,9 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         "scheduler_interrupt",
     }
     assert timing_queries == (["614999"] if queried else [])
+    assert len(accounting_queries) == (
+        1 if queried and timing_outcome in {"available", "failed", "cancelled"} else 0
+    )
     timing_reads = [
         item
         for item in timing_events
@@ -2781,10 +2835,20 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         assert observation["fields"]["scheduler_job_id"] == (
             None if failure == "scheduler_unconfirmed" else "614999"
         )
-        if queried and timing_outcome == "available":
+        if queried and timing_outcome in {"available", "failed", "cancelled"}:
             assert observation["fields"]["timing"]["eligible_to_start_seconds"] == 90
+            assert observation["fields"]["state"] == scheduler_state
+            assert observation["fields"]["exit_code"] == scheduler_exit
+            assert (
+                f"Slurm accounting observation: {scheduler_state}; source: sacct; scheduler exit status: {scheduler_exit}"
+                in output
+            )
             assert "eligible queue wait: 90s" in output
         else:
+            assert (
+                "Slurm accounting observation: UNKNOWN; source: unavailable; scheduler exit status: unavailable"
+                in output
+            )
             assert "eligible queue wait: unavailable" in output
         if queried and timing_outcome in {"unknown", "raises"}:
             assert (
@@ -2798,6 +2862,11 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         assert waits[0]["outcome"] == "interrupted or failed"
         assert not state["finalized"]
         assert "repair_requalified" not in {item["event"] for item in events}
+        if failure == "scheduler":
+            assert "sbatch failed with exit 1" in output
+            assert str(log_path) in output and state["jobs"] == 1
+        elif failure == "scheduler_interrupt":
+            assert "Slurm accounting observation" not in output
     if failure is None:
         assert waits[0]["outcome"] == "complete"
         assert "Doctor invocation timing (delegated compute," in output

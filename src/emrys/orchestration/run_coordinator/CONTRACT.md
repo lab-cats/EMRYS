@@ -146,6 +146,10 @@ and allocation wall time. Admitted dates/counters remain separate from those
 derived intervals. Wall time includes launch overhead, not just computation.
 The collector buffers `doctor_scheduler_timing` in the same maintenance log at
 the outcome boundary above, and its normal console summary escapes limitations.
+The summary also exposes the admitted accounting state, source and scheduler
+exit status, so cancellation and compute failure remain distinguishable even
+when waited `sbatch` exits nonzero. These are observations: an accounting
+`COMPLETED` record cannot replace a submission/client failure or qualify storage.
 Accounting lookup has its own phase outside submission-to-return waiting; no
 polling, runtime probe, new log, receipt or admission authority is introduced.
 Process-control exceptions during submission skip the lookup entirely.

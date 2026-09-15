@@ -726,7 +726,11 @@ launch/verification overhead and does not measure scientific compute time.
 Missing, delayed, inconsistent, requeued or suspended accounting leaves derived
 intervals unavailable. The existing maintenance log retains admitted UTC dates,
 accounting counters and limitations as `doctor_scheduler_timing`, after the
-maintenance outcome. Lookup duration is a separate phase, outside the waited
+maintenance outcome. Normal output also shows the accounting state, source and
+scheduler exit status. This separates observed `CANCELLED` from `FAILED`; missing
+accounting stays `UNKNOWN`. A `COMPLETED` accounting observation does not erase
+a client/submission failure or establish completed qualification.
+Lookup duration is a separate phase, outside the waited
 submission timer. Timing never establishes qualification or permits recovery.
 Keep complete diagnostics when investigating slow verification; these timings
 do not justify removing input reads or changing resource requests.

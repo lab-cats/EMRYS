@@ -237,6 +237,27 @@ Existing Doctor fixtures cover retained-probe corruption, cleanup failure after
 receipt publication, and final input drift with one submission and no success
 event. Static checks pass; behavioral execution requires hosted CI.
 
+**Six-phase acceptance audit:** Existing transport, selected-request inspection,
+stop and Doctor owners cover the required phases through their public flows:
+
+| Required phase | Existing path and direct protection |
+| --- | --- |
+| Scheduler invocation | Shared submission I/O diagnostics and tiny subprocess fixtures; public Run/resume/report failure boundaries. |
+| Rejected submission | Nonzero response without confirmed job identity retains stderr and stream paths; one-submission tests. |
+| Pending queue | Exact-request inspection/watch shows admitted state and escaped queue reason; no unselected scheduler query. |
+| Compute failure | Accepted waited-job errors retain job/log context; public Doctor runtime/startup failures preserve qualification refusal. |
+| Cancellation | Exact root accounting admits numeric cancellation states; public request inspection and stop retain their evidence limits. |
+| Head finalization | Doctor reports accepted job identity and storage/OS cause; corruption, cleanup and final-input-drift cases retain receipts and failure. |
+
+The audit found one presentation gap: Doctor retained terminal accounting state
+and exit status in its existing optional timing observation but hid both from
+normal output. The same summary now displays state, source and scheduler exit
+status. No additional query, parser, formatter owner, command, schema or recovery
+authority is needed. Public fixtures distinguish `FAILED`, `CANCELLED` and
+`UNKNOWN`, and retain the original transport failure even if accounting says
+`COMPLETED`. Full hosted execution remains required for this change; actual
+queued/cancelled site acceptance remains separate.
+
 ### CV-04 Workflow startup readiness
 
 **Finding:** Tool probes passed before Snakemake's username lookup failed (E03).
