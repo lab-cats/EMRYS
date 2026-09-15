@@ -844,6 +844,27 @@ do not justify weaker checks. Do not invent an unmeasured time target.
 **Owners/dependencies:** Doctor, normalization/runtime inspection, existing
 validation helpers; coordinate optimization discussions 11–13 and CV-05/17.
 
+**Selected phase-measurement slice:** Doctor keeps an invocation-local timing
+collector and uses an optional observation callback on the existing progress
+owner. It reports complete invocation elapsed time, explicitly including
+operator confirmation time, and the actual exit outcome. Verbose/debug output
+adds precise phase seconds. Approved maintenance writes `doctor_phase_timing`
+events to its existing log at the operation outcome, including initial inspection; read-only
+diagnosis and delegated compute create no additional log. Head/local and
+compute contexts remain distinct. Slurm waiting is labelled submission-to-return
+wait, which includes launch/transport and compute work as well as queue time.
+
+Every input read, content hash, probe and admission boundary remains in place.
+Ordinary clock/callback/log observation failures cannot change the work or
+replace its failure; process-control exceptions keep their cancellation meaning.
+Timing writes occur after controlling work and the claim-release decision, so
+a degraded diagnostic log cannot interrupt package-output handling.
+Focused fixtures cover precise clocks, failed phases, observation failures,
+no-write diagnosis, existing-log buffering and delegated context. Public fixture
+execution requires hosted CI. Read/hash bytes, probe attribution, process memory,
+actual scheduler timing and comparable before/after measurements remain open;
+this slice establishes timing observations, not a measured speedup.
+
 ## P3 outcome
 
 ### CV-27 Terminal-only report access

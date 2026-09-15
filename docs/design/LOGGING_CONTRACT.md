@@ -151,6 +151,18 @@ after argument classification. Logs are protected operational data and are not
 automatically rotated, truncated, compressed, uploaded, or deleted. A log
 cannot promote runtime, scheduler, scientific, or biological evidence.
 
+## Doctor phase measurements
+
+Doctor's existing maintenance log may include durable-only `doctor_phase_timing`
+events with `execution_context`, `phase_name`, `elapsed_seconds` (or null when
+unavailable) and `outcome`. Initial no-write inspection and later phases are
+buffered until controlling work and the claim-release decision finish. A single
+flush before the existing terminal event follows the log's degradation boundary;
+it stops after a failed sink and creates no second log.
+Complete invocation time is printed after return/exception, including operator
+confirmation time, and is not appended to an already closed terminal log.
+These measurements cannot substitute for readiness or change receipt authority.
+
 ## Scheduler distinction
 
 Slurm compatibility streams live under `<project-root>/logs` as
