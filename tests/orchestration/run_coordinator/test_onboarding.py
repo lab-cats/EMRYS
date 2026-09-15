@@ -114,16 +114,25 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    output = tmp_path / "project"
-    monkeypatch.chdir(tmp_path)
+    projects = tmp_path / "projects"
+    projects.mkdir()
+    output = projects / "my-study"
+    monkeypatch.chdir(projects)
     arguments = _project_arguments(tmp_path, output, execute=False)
     arguments.site = "viking"
-    assert onboarding.init_project_from_args(arguments) == 0
+    input_files = _tree_bytes(tmp_path / "source")
+    manifest_bytes = arguments.sample_manifest.read_bytes()
+    command = ["init", arguments.project_name]
+    for name, value in vars(arguments).items():
+        if name not in {"project_name", "execute"} and value is not None:
+            command.extend((f"--{name.replace('_', '-')}", str(value)))
+
+    assert cli.main(command) == 0
     assert not output.exists()
+    assert list(projects.iterdir()) == []
     assert "Dry-run complete" in capsys.readouterr().out
 
-    arguments.execute = True
-    assert onboarding.init_project_from_args(arguments) == 0
+    assert cli.main([*command, "--execute"]) == 0
     assert set(_tree_bytes(output)) == {
         "project.yaml",
         "runtime/profiles/default.yaml",
@@ -142,10 +151,13 @@ def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     assert definition["analyses"][arguments.analysis_name]["partitions"] == str(
         arguments.partition_manifest.resolve()
     )
-    assert Path(definition["reference"]["fasta"]).is_absolute()
+    assert definition["reference"]["fasta"] == str(arguments.reference_fasta)
+    assert definition["reference"]["gtf"] == str(arguments.reference_gtf)
     assert definition["analyses"][arguments.analysis_name]["target_change"] == "A>G"
     assert not list(output.rglob("*.fastq"))
     assert onboarding.validate_project(output / "project.yaml").sample_count == 4
+    assert _tree_bytes(tmp_path / "source") == input_files
+    assert arguments.sample_manifest.read_bytes() == manifest_bytes
 
 
 def test_init_project_refuses_predecessor_without_changing_it(
@@ -989,25 +1001,26 @@ def test_project_validation_reports_invalid_project(
     assert "ERROR:" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize("invocation_directory", ("checkout", "projects_parent"))
 def test_public_cli_routes_synthetic_init_and_project_validation(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    invocation_directory: str,
 ) -> None:
-    output = tmp_path / "public-fixture"
-    assert (
-        cli.main(
-            [
-                "init",
-                "synthetic",
-                "--output-dir",
-                str(output),
-                "--site",
-                "viking",
-                "--execute",
-            ]
-        )
-        == 0
+    projects = tmp_path / "projects"
+    projects.mkdir()
+    output = projects / "public-fixture"
+    monkeypatch.chdir(
+        Path(__file__).resolve().parents[3]
+        if invocation_directory == "checkout"
+        else projects
     )
+    command = ["init", "synthetic", "--output-dir", str(output), "--site", "viking"]
+    assert cli.main(command) == 0
+    assert not output.exists()
+    assert list(projects.iterdir()) == []
+    assert cli.main([*command, "--execute"]) == 0
     assert (
         cli.main(
             [

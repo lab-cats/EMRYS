@@ -24,10 +24,12 @@ and the standard Bash, Git and curl commands. If an installation command says
 one is unavailable or access is denied, keep the error and ask CSU computing
 support to resolve that prerequisite.
 
-This guide creates separate `EMRYS` and `emrys-smoke` folders in your Viking
-home. Both names must be unused; do not create the folders yourself. `EMRYS`
-holds the installed software and `emrys-smoke` holds the study. Keep study data
-outside the software checkout and on storage that will remain available.
+This guide keeps software in `$HOME/EMRYS` and studies beneath
+`$HOME/emrys-projects`. The software directory and each new Project child
+(`emrys-smoke` or `my-study`) must be absent; do not create them yourself.
+The Projects parent may already exist. Use durable storage outside the software
+checkout. Existing Projects keep their original locations and references;
+these instructions do not require moving them.
 
 Paste each block in order. Stop at an error and retain its output and any
 printed log path. Do not delete partial setup or results to retry.
@@ -75,11 +77,30 @@ instructions below restore this environment after reconnecting.
 
 ## 2. Create the supplied study
 
+### Choose a Projects home
+
+Create or enter a durable parent for your Projects. This example uses your
+home directory; substitute your institution's durable study storage if needed:
+
+```bash
+mkdir -p "$HOME/emrys-projects" &&
+cd "$HOME/emrys-projects" &&
+export EMRYS_PROJECTS_ROOT="$(pwd -P)"
+```
+
+The variable records the physical path from `pwd -P`; choose a location outside
+the software checkout, writable and accessible from the compute nodes. It
+remembers this choice; EMRYS has no global Projects registry. Initialization
+requires a real existing parent and an absent Project child, and refuses
+symlink aliases supplied as destination paths. Stop if entering the parent
+fails; do not continue from the previous directory.
+
+### Create the synthetic Project
+
 Create the supplied Project with the built-in Viking settings:
 
 ```bash
-cd "$HOME"
-export EMRYS_PROJECT_ROOT="$(pwd -P)/emrys-smoke"
+export EMRYS_PROJECT_ROOT="${EMRYS_PROJECTS_ROOT:?Choose a Projects home first}/emrys-smoke"
 emrys init synthetic --site viking --output-dir "$EMRYS_PROJECT_ROOT" --execute
 cd "$EMRYS_PROJECT_ROOT"
 emrys validate
@@ -315,12 +336,14 @@ the pairing or biological labels are correct.
 
 Set the actual reference paths, then enter the existing durable directory
 where your new `my-study` Project should be created. Its `my-study` child must
-not exist. This directory must be outside the EMRYS source checkout.
+not exist. Use the [Projects home](#choose-a-projects-home) selected above.
+The ordinary `init NAME` command creates beneath the current directory;
+the synthetic route's `--output-dir` selects an absolute destination instead.
 
 ```bash
 EMRYS_REFERENCE_FASTA=/absolute/path/to/reference.fa
 EMRYS_REFERENCE_GTF=/absolute/path/to/genes.gtf
-cd /absolute/durable/path
+cd "${EMRYS_PROJECTS_ROOT:?Choose a Projects home first}" &&
 emrys init my-study --site viking \
   --sample-manifest "$EMRYS_MANIFEST_ROOT/samples.tsv" \
   --partition-manifest "$EMRYS_MANIFEST_ROOT/partitions.tsv" \
@@ -402,18 +425,23 @@ the existing synthetic Project:
 
 ```bash
 export PATH="$HOME/.local/bin:$HOME/.pixi/bin:$PATH"
-cd "$HOME/EMRYS"
-export EMRYS_SOURCE_ROOT="$(pwd -P)"
-source "$EMRYS_SOURCE_ROOT/.venv/bin/activate"
-cd "$HOME/emrys-smoke"
-export EMRYS_PROJECT_ROOT="$(pwd -P)"
+cd "$HOME/EMRYS" &&
+export EMRYS_SOURCE_ROOT="$(pwd -P)" &&
+source "$EMRYS_SOURCE_ROOT/.venv/bin/activate" &&
+cd "$HOME/emrys-projects" &&
+export EMRYS_PROJECTS_ROOT="$(pwd -P)" &&
+cd "$EMRYS_PROJECTS_ROOT/emrys-smoke" &&
+export EMRYS_PROJECT_ROOT="$(pwd -P)" &&
 emrys inspect
 ```
 
-For your own study, replace the entire `cd "$HOME/emrys-smoke"` line with
-`cd "/full/path/to/my-study"`, using the actual Project location chosen in
-step 7. Reconnecting does not require reinstalling EMRYS, recreating the
-Project or resubmitting work.
+If you chose a different Projects parent, replace `$HOME/emrys-projects` with
+its actual path. For your own study, replace the final Project `cd` line with
+`cd "$EMRYS_PROJECTS_ROOT/my-study"`. For an existing Project elsewhere, use
+`cd "/full/path/to/existing-project"` instead; keep it at its original location.
+Reconnecting does not require reinstalling EMRYS, recreating the Project or
+resubmitting work. From another directory, select it explicitly with
+`emrys inspect --project "/full/path/to/existing-project/project.yaml"`.
 
 ## Further help
 
