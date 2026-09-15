@@ -1933,6 +1933,17 @@ def _relative(path: Path, root: Path) -> str:
     return path.relative_to(root).as_posix()
 
 
+_TASK_SIGNALS = frozenset((signal.SIGHUP, signal.SIGINT, signal.SIGTERM))
+
+
+def _publish_terminal_record(ops: TaskOps, path: Path, data: bytes) -> None:
+    previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, _TASK_SIGNALS)
+    try:
+        ops.publish_bytes(path, data)
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+
+
 def _publish_attempt(
     dispatch: TaskPlan,
     *,
@@ -1982,12 +1993,12 @@ def _publish_attempt(
     }
     orchestration_contracts.validate_record("task-attempt", attempt)
     attempt_bytes = orchestration_contracts.canonical_json_bytes(attempt)
-    ops.publish_bytes(dispatch.task_attempt_path, attempt_bytes)
+    _publish_terminal_record(ops, dispatch.task_attempt_path, attempt_bytes)
     streams.revalidate_after_attempt_publication()
     return attempt_bytes
 
 
-def run_task(
+def _run_task(
     dispatch: TaskPlan,
     *,
     backend: TaskBackend,
@@ -2024,11 +2035,6 @@ def run_task(
         dispatch.run_root,
     )
     failure: TaskBoundaryError | None = None
-    previous_handlers: dict[int, Any] = {}
-
-    def interrupted(signum: int, _frame: Any) -> None:
-        raise TaskBoundaryError(f"Task interrupted by signal {signum}")
-
     protected = (
         dispatch.task_start_path,
         dispatch.task_attempt_path,
@@ -2050,8 +2056,6 @@ def run_task(
         _require_absent(path, label)
 
     try:
-        for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
-            previous_handlers[signum] = signal.signal(signum, interrupted)
         profile, execution, execution_sha256, profile_sha256, step_id = _admit_identity(
             dispatch
         )
@@ -2301,8 +2305,6 @@ def run_task(
                 if sys.exc_info()[1] is not None and failure is None:
                     streams.preserve_incomplete()
                 failure = TaskBoundaryError(f"{failure or 'Task interrupted'}; {exc}")
-        for signum, handler in previous_handlers.items():
-            signal.signal(signum, handler)
 
     message = (
         None if failure is None else str(failure).strip() or type(failure).__name__
@@ -2357,7 +2359,8 @@ def run_task(
         raise TaskBoundaryError(
             "Terminal task result changed before verified publication"
         )
-    ops.publish_bytes(
+    _publish_terminal_record(
+        ops,
         dispatch.verified_task_path,
         orchestration_contracts.canonical_json_bytes(verified),
     )
@@ -2365,6 +2368,40 @@ def run_task(
         task_attempt_path=dispatch.task_attempt_path,
         verified_task_path=dispatch.verified_task_path,
     )
+
+
+def run_task(
+    dispatch: TaskPlan,
+    *,
+    backend: TaskBackend,
+    ops: TaskOps,
+) -> TaskOutcome:
+    """Keep catchable task signals controlled through final evidence publication."""
+
+    if not hasattr(signal, "pthread_sigmask"):
+        raise TaskBoundaryError("Task finalization requires POSIX signal masking")
+    previous_handlers: dict[int, Any] = {}
+    previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, _TASK_SIGNALS)
+
+    def interrupted(signum: int, _frame: Any) -> None:
+        raise TaskBoundaryError(f"Task interrupted by signal {signum}")
+
+    try:
+        if _TASK_SIGNALS.intersection(previous_mask):
+            raise TaskBoundaryError(
+                "Task refuses an ambient mask that blocks task signals"
+            )
+        for signum in _TASK_SIGNALS:
+            previous_handlers[signum] = signal.signal(signum, interrupted)
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        return _run_task(dispatch, backend=backend, ops=ops)
+    finally:
+        signal.pthread_sigmask(signal.SIG_BLOCK, _TASK_SIGNALS)
+        try:
+            for signum, handler in previous_handlers.items():
+                signal.signal(signum, handler)
+        finally:
+            signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
 
 
 def execute_task(

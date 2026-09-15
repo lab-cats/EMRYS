@@ -203,6 +203,13 @@ If a job ID was confirmed, the job was accepted: inspect that exact ID and its
 printed stdout/stderr paths before another action. A nonzero
 [`sbatch --wait` exit](https://slurm.schedmd.com/sbatch.html#OPT_wait) can reflect
 job failure or signal termination; exit 1 alone does not establish cancellation.
+During task finalization, a catchable termination signal can arrive after one
+terminal record is written but before the next reference is published. Keep
+both present and absent-record diagnostics: a retained successful task-attempt
+record alone does not prove a complete verified task or a recoverable Run.
+Use inspection's supported recovery decision; preserve incomplete chains,
+logs, native partials, and locks. SIGKILL and lost native-worker ownership can
+still leave ambiguity that requires maintainer investigation.
 If the response leaves the job ID unconfirmed, keep the command, submission
 time, and response, and resolve acceptance with the scheduler/operator before
 retrying. EMRYS does not automatically resubmit an uncertain request. Scheduler
