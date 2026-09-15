@@ -1529,7 +1529,7 @@ def run_driver(
             for value in (
                 "Attempt outcome: succeeded",
                 "Scientific Results: complete",
-                "Reporting: complete",
+                "Reporting admission: complete",
             )
         ):
             raise DriverError(

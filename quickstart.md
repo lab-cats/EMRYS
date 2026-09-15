@@ -192,7 +192,7 @@ does not start or change work. Completion is confirmed by all four lines:
 Run admission: valid
 Attempt outcome: succeeded
 Scientific Results: complete
-Reporting: complete
+Reporting admission: complete
 ```
 
 Keep the original Project, inputs, runtime, logs and complete Run so
