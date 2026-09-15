@@ -547,6 +547,15 @@ records as proof of current remote liveness. Remote/ambiguous/dead ownership
 continues to block Run admission and recovery. Inspection does not contact a
 remote host, remove locks, or infer scientific success from scheduler state.
 
+Scientific task observations reuse the same admitted inspection snapshot at
+every display level. Counts distinguish verified completion, verification not
+admitted, an admitted start with completion unverified, and no admitted start.
+Debug rows use those labels and include retained start references. An admitted
+start is evidence of entry, not proof that a worker is still running. No
+admitted start can reflect missing or invalid evidence, so it never establishes
+that work did not run. These observations add no file reads and change no
+Run/Results blockers, recovery decisions or verified-content checks.
+
 Recovery availability is a separate fact. A successful processing-only Run has complete Results for its
 plan and reporting is not applicable.
 

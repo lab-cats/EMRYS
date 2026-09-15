@@ -1614,6 +1614,9 @@ def test_success_publishes_receipt_last_and_inspection_ignores_engine_metadata(
     assert observed.attempt_outcome == "succeeded"
     assert observed.results_status == "complete"
     assert observed.reporting_status == "incomplete"
+    assert {control._task_observation(item) for item in observed.tasks} == {
+        "Verified complete"
+    }
 
 
 def test_application_event_observer_exceptions_cannot_alter_receipt(
@@ -1970,6 +1973,16 @@ def test_verified_mutation_blocks(tmp_path: Path) -> None:
     outcome = _run_attempt(mutation.request, ops=mutation.ops())
     assert outcome.receipt["status"] == "blocked"
     assert any("content binding" in item for item in outcome.receipt["blockers"])
+    observed = inspection.inspect_run(
+        mutation.built.run_root,
+        ops=inspection.InspectionOps(
+            lambda: "fixture-host", lambda _pid: True, mutation.validate_reporting
+        ),
+    )
+    assert "Verification not admitted" in {
+        control._task_observation(item) for item in observed.tasks
+    }
+    assert observed.results_status == "blocked" and not observed.recovery_available
 
 
 @pytest.mark.parametrize("shape", ["unexpected_owner", "deep_path", "symlink_marker"])
@@ -2583,12 +2596,78 @@ def test_completed_run_refuses_rerun_and_resume(tmp_path: Path) -> None:
 
 def test_live_owned_incomplete_start_is_running_then_terminally_blocked(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     built = _build_harness(
         tmp_path, result=lifecycle.WorkflowResult(9, None, "fixture stop")
     )
     built.inspect_live_transient = True
-    outcome = _run_attempt(built.request, ops=built.ops())
+    root = built.built.run_root
+    remote_states: list[inspection.RunInspection] = []
+
+    def display(state: inspection.RunInspection) -> None:
+        before = {path: path.read_bytes() for path in root.rglob("*") if path.is_file()}
+        calls = []
+
+        def snapshot(selected: Path) -> inspection.RunInspection:
+            assert selected == root
+            calls.append(selected)
+            return state
+
+        with monkeypatch.context() as public:
+            public.setattr(inspection, "inspect_run", snapshot)
+            public.setattr(
+                control,
+                "_resolve_run_argument",
+                lambda _args: (built.request.request_source_path, root),
+            )
+            for detail in ("normal", "verbose", "debug"):
+                capsys.readouterr()
+                assert (
+                    control.inspect_from_args(
+                        argparse.Namespace(run=root.name, detail=detail)
+                    )
+                    == 0
+                )
+                output = capsys.readouterr().out
+                assert output.count("Scientific task observations:") == 1
+                assert "  Started; completion unverified: 1" in output
+                assert f"Scientific Results: {state.results_status}" in output
+                assert f"Run lock: {state.lock_observation}" in output
+                assert "Recovery available: no" in output
+                if state.attempt_outcome == "blocked":
+                    assert "Do not resume." in output
+                    assert "RESULTS BLOCKER:" in output
+                if detail == "debug":
+                    started = next(
+                        item for item in state.tasks if item.start_reference is not None
+                    )
+                    assert f"; start={root / started.start_reference['path']}" in output
+        assert calls == [root] * 3
+        assert {
+            path: path.read_bytes() for path in root.rglob("*") if path.is_file()
+        } == before
+
+    def run_workflow(argv: tuple[str, ...], cwd: Path) -> lifecycle.WorkflowResult:
+        result = built.run_workflow(argv, cwd)
+        assert built.live_observation is not None
+        display(built.live_observation)
+        remote = inspection.inspect_run(
+            root,
+            ops=inspection.InspectionOps(
+                lambda: "head-node",
+                lambda _pid: pytest.fail("remote PID was probed"),
+                built.validate_reporting,
+            ),
+        )
+        remote_states.append(remote)
+        display(remote)
+        return result
+
+    outcome = _run_attempt(
+        built.request, ops=replace(built.ops(), run_workflow=run_workflow)
+    )
 
     assert built.live_observation is not None
     assert built.live_observation.attempt_outcome == "running"
@@ -2608,6 +2687,15 @@ def test_live_owned_incomplete_start_is_running_then_terminally_blocked(
     assert observed.integrity == "valid"
     assert observed.attempt_outcome == "blocked"
     assert observed.results_status == "blocked"
+    display(observed)
+    remote = remote_states[0]
+    assert remote.lock_observation == "remote ownership unverified"
+    assert remote.integrity == remote.results_status == "blocked"
+    assert (
+        [item.start_reference for item in observed.tasks]
+        == [item.start_reference for item in remote.tasks]
+        == [item.start_reference for item in built.live_observation.tasks]
+    )
 
 
 @pytest.mark.parametrize(
@@ -2727,7 +2815,10 @@ def test_live_lock_observation_preserves_admission_and_files(
         )
 
 
-def test_task_start_crash_and_deletion_remain_blocked(tmp_path: Path) -> None:
+@pytest.mark.parametrize("damage", ("missing", "malformed"))
+def test_task_start_crash_and_damage_remain_blocked(
+    tmp_path: Path, damage: str
+) -> None:
     built = _build_harness(
         tmp_path, result=lifecycle.WorkflowResult(17, None, "fixture crash")
     )
@@ -2738,7 +2829,10 @@ def test_task_start_crash_and_deletion_remain_blocked(tmp_path: Path) -> None:
         built.built.run_root
         / outcome.receipt["task_start_records"][0]["record"]["path"]
     )
-    start.unlink()
+    if damage == "missing":
+        start.unlink()
+    else:
+        start.write_bytes(b"malformed task-start fixture\n")
 
     observed = inspection.inspect_run(
         built.built.run_root,
@@ -2750,6 +2844,9 @@ def test_task_start_crash_and_deletion_remain_blocked(tmp_path: Path) -> None:
     )
     assert observed.results_status == "blocked"
     assert any("task-start" in blocker for blocker in observed.blockers)
+    assert {control._task_observation(item) for item in observed.tasks} == {
+        "No admitted start"
+    }
 
 
 @pytest.mark.parametrize("tamper", ["extra", "deep", "symlink"])
