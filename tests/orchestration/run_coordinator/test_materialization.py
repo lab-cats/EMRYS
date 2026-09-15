@@ -3406,26 +3406,47 @@ def _scheduled_run_arguments(tmp_path: Path, *, execute: bool) -> argparse.Names
     )
 
 
-def test_public_slurm_rejects_cpu_shortfall_before_submission(
+@pytest.mark.parametrize(
+    ("placement", "overrides", "message"),
+    (
+        ({"cpus_per_task": 3}, {}, "Workflow cores exceed Slurm reservation: 4 > 3"),
+        (
+            {"memory_mb": 4096},
+            {"workflow_memory_mb": 8192},
+            "Workflow memory exceeds Slurm reservation: 8192 > 4096 MiB",
+        ),
+        (
+            {"memory_mb": 4096},
+            {"stage_memory_mb": [("00a", 8192)]},
+            "workflow memory within Slurm reservation: 1 x 8192 > 4096 MiB",
+        ),
+    ),
+)
+def test_public_slurm_rejects_known_reservation_shortfall_before_submission(
     tmp_path: Path,
     capsys,
     monkeypatch: pytest.MonkeyPatch,
+    placement: dict[str, int],
+    overrides: dict[str, object],
+    message: str,
 ) -> None:
     arguments = _scheduled_run_arguments(tmp_path, execute=True)
-    arguments.profile = str(_slurm_profile(tmp_path, cpus_per_task=3))
+    profile_path = Path(arguments.profile)
+    document = yaml.safe_load(profile_path.read_bytes())
+    document["placement"].update(placement)
+    profile_path.write_text(yaml.safe_dump(document), encoding="utf-8")
+    for key, value in overrides.items():
+        setattr(arguments, key, value)
     monkeypatch.setattr(
         control.slurm_submission,
         "plan_submission",
         lambda *_args, **_kwargs: pytest.fail(
-            "CPU shortfall reached submission planning"
+            "reservation shortfall reached submission planning"
         ),
     )
 
     assert control.run_from_args(arguments) == 2
-    assert (
-        "Slurm CPUs per task cannot be lower than workflow cores: 3 < 4"
-        in capsys.readouterr().err
-    )
+    assert message in capsys.readouterr().err
     assert not (arguments.project.parent / "logs").exists()
 
 
@@ -3470,10 +3491,7 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
     captured = capsys.readouterr()
     if expected_exit == 2:
         assert submissions == []
-        assert (
-            "Slurm CPUs per task cannot be lower than workflow cores: 4 < 8"
-            in captured.err
-        )
+        assert "Workflow cores exceed Slurm reservation: 8 > 4" in captured.err
         assert not (first.workspace / "logs").exists()
     else:
         assert len(submissions) == 1

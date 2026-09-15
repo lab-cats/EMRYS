@@ -704,6 +704,8 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
         raise DoctorRepairError(
             "Doctor preserves execution profiles; restore or select a valid profile with --profile"
         )
+    if result.execution_profile is not None:
+        result.execution_profile.validate_reservation()
     project = result.project
     fasta = Path(str(result.analysis.workflow_inputs["reference"]["fasta"]["path"]))
     try:

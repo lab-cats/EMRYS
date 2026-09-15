@@ -632,6 +632,7 @@ def _resolve_execution_profile(
         and profile.binding_sha256 != expected_sha256
     ):
         raise ExecutionProfileError("Execution-profile binding SHA-256 differs")
+    profile.validate_reservation()
     return profile, slurm_submission.delegate_job_id(profile)
 
 
@@ -800,16 +801,6 @@ def _schedule(
     overrides: ResourceOverrides,
     workspace: Path,
 ) -> int:
-    placement = profile.placement
-    effective_workflow_cores = profile.resource_policy.declaration.workflow_cores
-    if (
-        isinstance(placement, SlurmPlacement)
-        and placement.cpus_per_task < effective_workflow_cores
-    ):
-        raise ControlError(
-            "Slurm CPUs per task cannot be lower than workflow cores: "
-            f"{placement.cpus_per_task} < {effective_workflow_cores}"
-        )
     delegate_argv = _delegate_argv(
         command,
         arguments,

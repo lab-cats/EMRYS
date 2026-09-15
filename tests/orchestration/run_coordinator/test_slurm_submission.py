@@ -38,6 +38,9 @@ class _Profile:
     binding_sha256: str
     placement: _Placement
 
+    def validate_reservation(self) -> None:
+        """This transport fixture is already admitted; real profiles test fitting."""
+
 
 def _profile(
     tmp_path: Path,

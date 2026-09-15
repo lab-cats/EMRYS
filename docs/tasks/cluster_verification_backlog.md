@@ -352,6 +352,17 @@ require installed Analysis entry-point metadata unavailable locally. Explicit
 reservation comparison and institutional heterogeneous-node acceptance remain
 separate, so CV-11 remains Open.
 
+**Implemented reservation-fit slice:** The final effective execution profile
+checks CPU and explicit memory requests before submission, Doctor repair
+planning, and profile creation. It reuses the shared resource predicates with
+reservation-specific diagnostics and replaces Control's duplicate CPU rule.
+Placement-only resume applies retained policy first using the existing reads;
+no inherited-policy loader API or fabricated capacity is introduced. Symbols
+are preserved, memory omission stays unknown, and actual allocation admission
+still controls execution. The final pure resource/profile suite passes 64
+tests; public no-submit/no-write, Doctor, authoring, and resume cases run in CI.
+Institutional heterogeneous-node acceptance remains pending.
+
 ### CV-12 Unexplained initial runtime qualification failure
 
 **Finding:** The first repaired runtime failed qualification after successful

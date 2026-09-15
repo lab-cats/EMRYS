@@ -6,14 +6,19 @@ from pathlib import Path
 import pytest
 import yaml
 
-from emrys.orchestration.run_coordinator import execution_profile
+from emrys.orchestration.run_coordinator import execution_profile, slurm_submission
 from emrys.orchestration.run_coordinator.execution_profile import (
     DirectPlacement,
     ExecutionProfileError,
     SlurmPlacement,
     load_execution_profile,
 )
-from emrys.orchestration.run_coordinator.resource_policy import ResourceOverrides
+from emrys.orchestration.run_coordinator.resource_policy import (
+    AllocationCapacity,
+    ResourceConfigError,
+    ResourceOverrides,
+    resolve_resource_policy,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 RESOURCE_SCHEMA_VERSION = "emrys.local-pilot-resources.v1"
@@ -162,6 +167,89 @@ def test_placement_only_profile_does_not_change_resource_policy(
     assert scheduled.resource_policy.config_path is None
     assert "placement" not in scheduled.resource_policy.document()
     assert scheduled.sha256 != direct.sha256
+
+
+@pytest.mark.parametrize("exclusive", (False, True))
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    (
+        (
+            ResourceOverrides(workflow_cores=9),
+            "Workflow cores exceed Slurm reservation: 9 > 8",
+        ),
+        (
+            ResourceOverrides(workflow_memory_mb=8192),
+            "Workflow memory exceeds Slurm reservation: 8192 > 4096 MiB",
+        ),
+        (
+            ResourceOverrides(stage_memory_mb=(("00a", 8192),)),
+            "workflow memory within Slurm reservation: 1 x 8192 > 4096 MiB",
+        ),
+    ),
+)
+def test_reservation_fit_rejects_only_declared_conflicts_without_mutation(
+    tmp_path: Path,
+    exclusive: bool,
+    overrides: ResourceOverrides,
+    message: str,
+) -> None:
+    placement = {
+        **_slurm_placement(tmp_path),
+        "exclusive": exclusive,
+        "memory_mb": 4096,
+    }
+    source = _write_profile(
+        tmp_path / "profile.yaml",
+        {"schema_version": execution_profile.SCHEMA_VERSION, "placement": placement},
+    )
+    profile = load_execution_profile(source, resource_overrides=overrides)
+    before = profile.document(), profile.binding_sha256, source.read_bytes()
+
+    with pytest.raises(ExecutionProfileError, match=message):
+        profile.validate_reservation()
+    with pytest.raises(ExecutionProfileError, match=message):
+        slurm_submission.plan_submission(
+            profile, emrys_argv=("emrys", "run"), log_dir=tmp_path / "logs"
+        )
+
+    assert (profile.document(), profile.binding_sha256, source.read_bytes()) == before
+    assert not (tmp_path / "logs").exists()
+
+
+@pytest.mark.parametrize("exclusive", (False, True))
+@pytest.mark.parametrize("memory_mb", (None, 8192))
+def test_reservation_fit_preserves_symbols_and_actual_allocation_admission(
+    tmp_path: Path, exclusive: bool, memory_mb: int | None
+) -> None:
+    source = _write_profile(
+        tmp_path / "profile.yaml",
+        {
+            "schema_version": execution_profile.SCHEMA_VERSION,
+            "placement": {
+                **_slurm_placement(tmp_path),
+                "exclusive": exclusive,
+                "memory_mb": memory_mb,
+            },
+        },
+    )
+    profile = load_execution_profile(
+        source, resource_overrides=ResourceOverrides(stage_memory_mb=(("00a", 8192),))
+    )
+    before = profile.document(), profile.binding_sha256
+    profile.validate_reservation()
+    assert profile.resource_policy.declaration.workflow_memory_mb == "allocation"
+    assert dict(profile.resource_policy.declaration.stage_memory_mb)["01"] == "workflow"
+    with pytest.raises(
+        ResourceConfigError, match="workflow memory: 1 x 8192 > 4096 MiB"
+    ):
+        resolve_resource_policy(
+            profile.resource_policy, AllocationCapacity(8, 4096, "actual fixture")
+        )
+    resolved = resolve_resource_policy(
+        profile.resource_policy, AllocationCapacity(8, 16384, "actual fixture")
+    )
+    assert resolved.workflow_memory_mb == 16384
+    assert (profile.document(), profile.binding_sha256) == before
 
 
 @pytest.mark.parametrize(

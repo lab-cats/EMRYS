@@ -275,6 +275,7 @@ def profile_create_from_args(arguments: argparse.Namespace) -> int:
             destination,
             data,
         )
+        profile.validate_reservation()
         print(f"Execution profile: {str(destination)!r}")
         for line in profile.submission_summary():
             print(line)
