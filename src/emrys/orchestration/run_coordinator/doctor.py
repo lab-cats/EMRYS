@@ -195,6 +195,11 @@ class _DoctorTiming:
     def finish(self, elapsed: float | None, status: int | None) -> None:
         if self.scheduler_timing is not None:
             observed = self.scheduler_timing
+            _stderr(
+                f"Slurm accounting observation: {observed['state']}; "
+                f"source: {observed.get('source') or 'unavailable'}; "
+                f"scheduler exit status: {observed.get('exit_code') or 'unavailable'}"
+            )
             timing = observed.get("timing", {})
             intervals = "; ".join(
                 f"{label}: {timing[key]}s" if key in timing else f"{label}: unavailable"
