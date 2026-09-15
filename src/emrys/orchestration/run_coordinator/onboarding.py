@@ -24,6 +24,7 @@ from emrys.evidence.runtime_availability.inspector import (
     runtime_profile_checks,
     runtime_profile_bytes,
 )
+from emrys.libraries.application_logging import phase_progress
 from emrys.libraries.exclusive_publication import publish_exclusive
 from emrys.libraries.process_environment import guarded_r_environment
 from emrys.libraries.references.contigs import (
@@ -489,12 +490,19 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
         answers["analysis_name"] = arguments.analysis_name
         answers["background_condition"] = arguments.background_condition
         project_bytes = _project_yaml(answers)
-        preview = _admit_project_data(
-            output / "project.yaml",
-            project_bytes,
-            source_root() / PROFILE_RELATIVE_PATH,
+        print(
+            "Project preparation reads and hashes all declared inputs and checks "
+            "reference compatibility. Large inputs may take several minutes.",
+            file=sys.stderr,
         )
-        validate_project_admission(preview)
+        with phase_progress("Reading and hashing Project inputs"):
+            preview = _admit_project_data(
+                output / "project.yaml",
+                project_bytes,
+                source_root() / PROFILE_RELATIVE_PATH,
+            )
+        with phase_progress("Checking reference and partition compatibility"):
+            validate_project_admission(preview)
         print(f"Project root: {output}")
         print("Owned directories: logs, runs, runtime")
         print("Referenced inputs remain in place; setup copies no input files.")
@@ -513,7 +521,8 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
             completion_bytes=project_bytes,
             directories=PROJECT_DIRECTORIES,
         )
-        validate_project(output / "project.yaml")
+        with phase_progress("Verifying the published Project"):
+            validate_project(output / "project.yaml")
         print(f"Project ready: {output / 'project.yaml'}")
         return 0
     except (

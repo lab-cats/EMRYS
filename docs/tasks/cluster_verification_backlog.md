@@ -32,7 +32,7 @@ cluster action, evidence promotion, or product-growth exception.
 | [CV-14](#cv-14-project-directory-layout) | P1 | Verification pending | Give Projects a clear home outside the source checkout. |
 | [CV-15](#cv-15-cross-node-active-run-status) | P1 | Open | Show remote active state without implying proven corruption. |
 | [CV-16](#cv-16-monitoring-dashboard) | P1 | Open | Restore an integrated view of scheduler, progress, and logs. |
-| [CV-17](#cv-17-project-creation-progress) | P1 | Open | Explain lengthy input validation during Project creation. |
+| [CV-17](#cv-17-project-creation-progress) | P1 | Verification pending | Explain lengthy input validation during Project creation. |
 | [CV-18](#cv-18-safe-emrys-stop) | P1 | Open | Provide an operator stop action with safe recovery semantics. |
 | [CV-19](#cv-19-verification-and-repair-vocabulary) | P1 | Verification pending | Name verification-only work accurately. |
 | [CV-20](#cv-20-submission-state-before-run-creation) | P1 | Open | Show queued and preparing jobs before a Run exists. |
@@ -329,6 +329,20 @@ useful file/byte progress when measurable. Explain large-input work before it
 starts; label estimates and avoid invented completion percentages. Preserve
 no-write preview, interruption behavior, and content/compatibility checks.
 **Owners/dependencies:** Onboarding and existing progress presentation; CV-06.
+
+**Selected implementation:** Named initialization reuses the existing phase and
+elapsed-time presenter for full input hashing, reference/partition compatibility,
+and post-publication verification. An upfront explanation identifies complete
+input reads. Existing admissions, hashes, publication, and interruption behavior
+are preserved; no shared validation path is changed. File/byte completion is
+not currently measured, so no percentage or speedup is claimed. Product growth
+is nine net lines within the approved ten-line cap, with no new product file.
+
+**Verification:** Existing public initialization tests check phase ordering and
+no-write preview, then all creation phases. Failure and interruption cases
+cover each validation boundary, preserving inputs and any published state.
+Ruff, formatting, AST, and whitespace checks pass locally; application tests
+run in CI. The institutional large-input walkthrough remains pending.
 
 ### CV-18 Safe EMRYS stop
 
