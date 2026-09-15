@@ -475,7 +475,7 @@ Inspection reports four independent states:
 | Run admission | `valid`, `blocked` |
 | Attempt | `not_started`, `running`, `succeeded`, `failed`, `interrupted`, `blocked` |
 | Scientific Results | `incomplete`, `complete`, `blocked` |
-| Reporting | `not applicable`, `incomplete`, `complete`, `blocked` |
+| Reporting admission | `not applicable`, `incomplete`, `complete`, `blocked` |
 
 The independent Run-lock observation distinguishes no lock, a local live owner,
 remote ownership unverified, a local process that is not live, and invalid or
@@ -495,6 +495,14 @@ generate, or reuse the receipt-bound report transaction. Reporting failure or
 regeneration cannot invalidate science and creates neither a Run nor an
 Attempt. Result locations are shown only from a fully revalidated report
 receipt; incomplete, failed, blocked, or dry-run state prints none.
+
+Normal inspection also shows each reporting transaction's admitted evidence:
+`No admitted start`, `Started; completion unverified`, or `Verified complete`.
+The same table appears once at every detail level. A start records transaction
+entry, not a currently live reporter; reporting begins after the scientific
+Attempt releases its Run lock. Output presence cannot replace the completion
+record. Incomplete/invalid reporting retains its admission blockers, while
+scientific Attempt/Results observations remain separate.
 
 Reporting has two transactions: build the result manifest, then render HTML.
 The manifest contains artifact status, identities, validation results, and shared

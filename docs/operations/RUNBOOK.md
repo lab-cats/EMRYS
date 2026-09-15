@@ -266,7 +266,7 @@ For failed or interrupted Runs, follow [resume and recovery](TROUBLESHOOTING.md#
 ### Inspect and open reports
 
 A successful full Run shows `Run admission: valid`, `Attempt outcome: succeeded`,
-`Scientific Results: complete`, and `Reporting: complete`. Open the printed
+`Scientific Results: complete`, and `Reporting admission: complete`. Open the printed
 `Scientific report` for candidate results and `Evidence report` for execution
 and provenance. Linked machine-readable tables contain the complete data;
 reports do not establish biological conclusions or validate editing sites.
@@ -286,6 +286,13 @@ emrys report
 The command never prompts to write. Only when generation is admitted, run
 `emrys report --execute`, then inspect again. Complete bundles are verified and
 reused; partial or blocked bundles need [recovery](TROUBLESHOOTING.md#run-and-reporting-state).
+The normal inspection table shows `No admitted start`, `Started; completion
+unverified`, or `Verified complete` for each reporting transaction. A start
+without completion can reflect work in progress or an interrupted publication;
+it does not establish that a reporter is alive. Preserve the records and follow
+the printed supported action. Do not delete partial files or rerun science to
+make a reporting blocker disappear.
+
 Reporting does not overwrite arbitrary bundles, change scientific Results, or
 create another scientific Attempt. Generation follows the Project's default
 execution profile: Slurm placement submits it to a compute node, while direct

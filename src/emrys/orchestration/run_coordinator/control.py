@@ -1732,7 +1732,18 @@ def inspect_from_args(
             if observed.processing_source_run_id is None or total:
                 print(f"    Verified tasks: {verified}/{total}")
     print(f"Scientific Results: {observed.results_status}")
-    print(f"Reporting: {observed.reporting_status}")
+    print(f"Reporting admission: {observed.reporting_status}")
+    if observed.reporting_status != "not applicable":
+        print("Reporting transactions:")
+        for kind, records in observed.reporting_completion_records.items():
+            state = (
+                "Verified complete"
+                if records["verified"] is not None
+                else "Started; completion unverified"
+                if records["start"] is not None
+                else "No admitted start"
+            )
+            print(f"  {kind}: {state}")
     receipt = observed.latest_receipt
     if detail != "normal":
         print(f"Run ID: {observed.run_id}")
@@ -1755,17 +1766,6 @@ def inspect_from_args(
                 f"Execution: {latest['executor']}/{latest['execution_mode']} "
                 f"placement={placement_kind} scheduler_job_id={scheduler_job_id}"
             )
-        if observed.reporting_status != "not applicable":
-            print("Reporting transactions:")
-            for kind, records in observed.reporting_completion_records.items():
-                state = (
-                    "complete"
-                    if records["verified"] is not None
-                    else "incomplete"
-                    if records["start"] is not None
-                    else "pending"
-                )
-                print(f"  {kind}: {state}")
     if detail == "debug":
         authority = observed.authority
         print("Run authority records:")

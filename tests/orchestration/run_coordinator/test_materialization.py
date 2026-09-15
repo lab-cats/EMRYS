@@ -2065,6 +2065,9 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
         run=plan.run.run_id,
         detail="normal",
     )
+    inspection_bytes = {
+        path: path.read_bytes() for path in plan.run_root.rglob("*") if path.is_file()
+    }
     assert control.inspect_from_args(arguments) == 0
     normal = capsys.readouterr().out
     assert normal.count(f"Run: {inspection.human_run_name(plan.run.run_id)}") == 1
@@ -2072,6 +2075,10 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     assert "Analysis ID:" not in normal
     assert "Execution Plan ID:" not in normal
     assert "Run root:" not in normal
+    assert normal.count("Reporting transactions:") == 1
+    assert "Reporting admission: incomplete" in normal
+    assert "run_summary: No admitted start" in normal
+    assert "html_report: No admitted start" in normal
 
     arguments.detail = "verbose"
     assert control.inspect_from_args(arguments) == 0
@@ -2080,6 +2087,7 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     assert f"Analysis ID: {plan.run.analysis.revision.analysis_revision_id}" in verbose
     assert f"Execution Plan ID: {plan.run.execution_plan.execution_plan_id}" in verbose
     assert "Attempt ID: none" in verbose
+    assert verbose.count("Reporting transactions:") == 1
 
     blocked = replace(
         observed,
@@ -2091,6 +2099,40 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     blocked_output = capsys.readouterr().out
     assert "QC evidence: blocked" in blocked_output
     assert "Verified tasks: 0/1" in blocked_output
+
+    started = replace(
+        observed,
+        reporting_completion_records={
+            "run_summary": {
+                "start": {
+                    "path": "state/reporting/run_summary/start.json",
+                    "sha256": "a" * 64,
+                },
+                "verified": None,
+            },
+            "html_report": {"start": None, "verified": None},
+        },
+        reporting_blockers=("run_summary reporting start has no verified completion",),
+    )
+    monkeypatch.setattr(control.inspection, "inspect_run", lambda _root: started)
+    for detail in ("normal", "verbose"):
+        arguments.detail = detail
+        assert control.inspect_from_args(arguments) == 0
+        started_output = capsys.readouterr().out
+        assert started_output.count("Reporting transactions:") == 1
+        assert "Reporting admission: blocked" in started_output
+        assert "run_summary: Started; completion unverified" in started_output
+        assert "html_report: No admitted start" in started_output
+        assert (
+            "REPORTING BLOCKER: run_summary reporting start has no verified completion"
+            in started_output
+        )
+        assert "Recovery available: no" in started_output
+        assert "Do not resume." in started_output
+        assert "reporter is running" not in started_output
+    assert {
+        path: path.read_bytes() for path in plan.run_root.rglob("*") if path.is_file()
+    } == inspection_bytes
 
     arguments.detail = "debug"
     monkeypatch.setattr(control.inspection, "inspect_run", lambda _root: observed)
@@ -4707,7 +4749,10 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert "Run lock: no lock" in inspect_output
     assert "Attempt outcome: succeeded" in inspect_output
     assert "Scientific Results: complete" in inspect_output
-    assert "Reporting: complete" in inspect_output
+    assert "Reporting admission: complete" in inspect_output
+    assert inspect_output.count("Reporting transactions:") == 1
+    assert "run_summary: Verified complete" in inspect_output
+    assert "html_report: Verified complete" in inspect_output
     assert (
         "Next supported action: Review the verified Results and report paths."
         in inspect_output
@@ -4732,7 +4777,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         in verbose_output
     )
     assert "Attempt ID:" in verbose_output
-    assert "Reporting transactions:" in verbose_output
+    assert verbose_output.count("Reporting transactions:") == 1
     assert "Engine command:" not in verbose_output
     inspect_arguments.detail = "debug"
     assert control.inspect_from_args(inspect_arguments) == 0

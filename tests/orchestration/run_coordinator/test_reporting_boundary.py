@@ -244,8 +244,58 @@ def test_start_and_completion_publish_fixed_closed_records(
         assert identity.attempt["workflow"] == config_document
         return _semantic_result(receipt_path)
 
-    ops = _publish_complete_summary_ledger(built, validator=validate)
     paths = reporting_boundary.ledger_paths(built.run_root, "run_summary")
+
+    def observe(started: bool, complete: bool, expected_blockers: list[str]) -> None:
+        before = {
+            path: path.read_bytes()
+            for path in built.run_root.rglob("*")
+            if path.is_file()
+        }
+        records, blockers, locations = inspect_reporting_ledger(
+            built.run_root, built.execution, built.profile, validate
+        )
+        assert records == {
+            "run_summary": {
+                "start": _reference(paths.start, built.run_root) if started else None,
+                "verified": _reference(paths.verified, built.run_root)
+                if complete
+                else None,
+            },
+            "html_report": {"start": None, "verified": None},
+        }
+        assert blockers == expected_blockers
+        assert locations == ()
+        assert not (built.run_root / "locks/run.lock").exists()
+        assert {
+            path: path.read_bytes()
+            for path in built.run_root.rglob("*")
+            if path.is_file()
+        } == before
+
+    observe(False, False, [])
+    ops = _ops(validate)
+    reporting_boundary.publish_start(
+        kind="run_summary", **_identity_paths(built), ops=ops
+    )
+    incomplete = [
+        "Could not close run_summary reporting ledger: run_summary reporting start has no verified completion"
+    ]
+    observe(True, False, incomplete)
+    built.run_summary.parent.mkdir(parents=True, exist_ok=True)
+    built.run_summary.write_bytes(b"semantic artifact receipt\n")
+    observe(True, False, incomplete)
+    reporting_boundary.publish_verified(
+        kind="run_summary",
+        receipt_path=built.run_summary,
+        **_identity_paths(built),
+        ops=ops,
+    )
+    observe(
+        True,
+        True,
+        ["html_report reporting is absent after a verified transaction prefix"],
+    )
     assert paths.start == (
         built.run_root / "state" / "reporting" / "run_summary" / "start.json"
     )

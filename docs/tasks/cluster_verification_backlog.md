@@ -565,6 +565,22 @@ do not add blind sleeps or turn missing evidence into success.
 **Owners/dependencies:** Reporting publication/boundary and inspection;
 CV-01/15/16. Visual report review remains separate.
 
+**Implemented observation slice:** Normal inspection now shows the existing
+reporting transaction table, with `No admitted start`, `Started; completion
+unverified`, and `Verified complete`, separately from Reporting admission.
+The admitted start survives the missing-completion blocker, and a start does
+not prove a live reporter. The table appears once at each detail level; no new
+state, reads, sleeps, completion inference, or weakened blocker is introduced.
+Public and hosted output consumers use the new admission label.
+
+**Verification:** Existing reporting-boundary coverage now inspects before
+start, after start, after producer output, and after verified publication;
+exact retained references/blockers and no writes are checked. Public inspection
+fixtures cover pending/started/complete rows at normal and verbose levels.
+Static checks pass; application cases require hosted CI. These cases establish
+the overlap mechanism, not the historical cause of E06. That cause and actual
+site visibility/finalization evidence remain unresolved, so CV-21 remains Open.
+
 ### CV-22 Complete submission preview
 
 **Finding:** Confirmation omitted node selection/exclusivity and obscured the
