@@ -1057,6 +1057,8 @@ def test_doctor_process_tree_sampler_observes_simultaneous_descendants():
 def test_doctor_experiment_supervisor_rejects_and_cleans_failed_groups(
     tmp_path, failure
 ):
+    import time
+
     import psutil
 
     driver = _doctor_measurement_driver()
@@ -1073,13 +1075,23 @@ def test_doctor_experiment_supervisor_rejects_and_cleans_failed_groups(
         subprocess.TimeoutExpired if failure == "timeout" else RuntimeError
     ):
         driver["supervised_trial"](command, tmp_path / "trial.log", timeout_seconds=0.2)
-    child = (
-        psutil.Process(int(pidfile.read_text()))
-        if psutil.pid_exists(int(pidfile.read_text()))
-        else None
-    )
-    if child is not None:
-        assert child.status() == psutil.STATUS_ZOMBIE
+    try:
+        child = psutil.Process(int(pidfile.read_text()))
+    except psutil.NoSuchProcess:
+        return
+    # SIGKILL delivery is asynchronous; waiting on the exited leader does not
+    # wait on this orphan. Require this same process to stop within the bound.
+    deadline = time.monotonic() + 5
+    while child.is_running():
+        try:
+            if child.status() == psutil.STATUS_ZOMBIE:
+                break
+        except psutil.NoSuchProcess:
+            break
+        assert time.monotonic() < deadline, (
+            "Fixture child remained active after SIGKILL"
+        )
+        time.sleep(0.01)
 
 
 def test_doctor_experiment_keeps_canonical_baseline_and_existing_ci_selection():
