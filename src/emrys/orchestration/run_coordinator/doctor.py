@@ -424,6 +424,7 @@ def diagnose_project(
     workspace: str | Path | None = None,
     runtime_inventory: str | Path | None = None,
     *,
+    execution_profile: str | Path | None = None,
     storage_requirement: StorageRequirement | None = None,
     analysis_name: str | None = None,
     expected_analysis_revision: AnalysisRevision | None = None,
@@ -435,8 +436,8 @@ def diagnose_project(
     execution = None
     execution_error: str | None = None
     if storage_requirement is None:
-        execution_path = project_execution_profile_path(project, None)
         try:
+            execution_path = project_execution_profile_path(project, execution_profile)
             execution = load_execution_profile(config_path=execution_path)
             storage_requirement = execution.placement.kind
         except ExecutionProfileError as exc:
@@ -593,10 +594,15 @@ def diagnose_project(
         )
         runtime_ready = python_ready and not failed
     if execution_error is not None:
-        blockers.append(f"default execution profile is not admitted: {execution_error}")
+        selection = "default" if execution_profile is None else "selected"
+        blockers.append(
+            f"{selection} execution profile is not admitted: {execution_error}"
+        )
         remediations.append(
             "Restore a valid Project-owned runtime/profiles/default.yaml; "
             "Doctor preserves operator execution policy."
+            if execution_profile is None
+            else "Select a valid execution profile with --profile; Doctor preserves operator execution policy."
         )
     return DoctorResult(
         project=admitted_project,
@@ -696,7 +702,7 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
         raise DoctorRepairError("Doctor requires an admitted installed EMRYS package")
     if not result.execution_ready:
         raise DoctorRepairError(
-            "Doctor preserves execution profiles; restore runtime/profiles/default.yaml"
+            "Doctor preserves execution profiles; restore or select a valid profile with --profile"
         )
     project = result.project
     fasta = Path(str(result.analysis.workflow_inputs["reference"]["fasta"]["path"]))
@@ -1273,6 +1279,8 @@ def _qualify_slurm(
             str(plan.project.source_path),
             "--analysis",
             plan.analysis_name,
+            "--profile",
+            str(execution.source_path),
             "--repair",
             "--execute",
             "--compute",
@@ -1308,7 +1316,9 @@ def _qualify_slurm(
     with phase_progress("Verifying the checked runtime and Project"):
         _readmit_repair_plan(replace(plan, runtime=None), before_storage=False)
         observed = diagnose_project(
-            plan.project.source_path, analysis_name=plan.analysis_name
+            plan.project.source_path,
+            analysis_name=plan.analysis_name,
+            execution_profile=execution.source_path,
         )
     _record_runtime_failures(
         observed.inspection, phase="head_requalification", attempt=attempt
@@ -1320,9 +1330,14 @@ def _qualify_slurm(
     with phase_progress("Checking shared storage from the head node"):
         storage_qualification.qualify_head(workspace, fasta)
     with phase_progress("Verifying final Project readiness"):
-        return diagnose_project(
-            plan.project.source_path, analysis_name=plan.analysis_name
+        final = diagnose_project(
+            plan.project.source_path,
+            analysis_name=plan.analysis_name,
+            execution_profile=execution.source_path,
         )
+    if final.execution_profile != execution:
+        raise DoctorRepairError("Execution profile changed during head finalization")
+    return final
 
 
 def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult:
@@ -1494,7 +1509,11 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                     )
         with phase_progress("Checking Project readiness"):
             final = diagnose_project(
-                plan.project.source_path, analysis_name=plan.analysis_name
+                plan.project.source_path,
+                analysis_name=plan.analysis_name,
+                execution_profile=plan.execution.source_path
+                if plan.execution
+                else None,
             )
         _record_runtime_failures(
             final.inspection, phase="project_readiness", attempt=attempt
@@ -1565,6 +1584,11 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
 def configure_parser(parser: argparse.ArgumentParser) -> None:
     onboarding.add_project_argument(parser)
     parser.add_argument(
+        "--profile",
+        metavar="NAME_OR_ABSOLUTE_PATH",
+        help="Project profile name or absolute path; defaults to runtime/profiles/default.yaml.",
+    )
+    parser.add_argument(
         "--analysis",
         help="Named Analysis; required only when the Project defines more than one.",
     )
@@ -1606,6 +1630,7 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
             result = diagnose_project(
                 onboarding.project_definition_path(arguments.project),
                 analysis_name=arguments.analysis,
+                execution_profile=getattr(arguments, "profile", None),
             )
         delegated = slurm_submission.delegate_binding() is not None
         if delegated:
