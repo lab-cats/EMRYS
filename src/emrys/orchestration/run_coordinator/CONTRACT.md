@@ -214,7 +214,7 @@ transport error at their public failure boundary without repeated translation.
 
 After approval and before ordinary Run/resume/report submission, Control creates
 one private `logs/submission-<uuid>/` request directory. Its immutable
-`request.json` uses `emrys.submission-request.v2` and retains UTC creation time,
+`request.json` uses `emrys.submission-request.v3` and retains UTC creation time,
 numeric submitter UID, command, absolute Project, requested Run/Analysis,
 resolved application-log root, profile binding, exact delegate arguments, and
 scheduler stream patterns. This is correlation context, not a Run/Attempt or
@@ -276,6 +276,28 @@ metadata stays `UNKNOWN`. State, queue reason and accounting exit status are
 escaped observations, never Run association, scientific success or recovery
 authority. The existing dashboard uses the same extracted identity/accounting
 mechanics and still loads directly under isolated system Python.
+
+Selected inspection additionally reads one bounded application scope from the
+request's retained custom log root: `run-pending` for new Runs or the exact
+requested Run scope for resume/report. It rechecks the closed request and raw
+response, then admits complete JSONL snapshots with matching envelope, opening
+job ID and one second-record token/profile/Project context. Exactly one match
+is required. The reader caps directory enumeration at 128 applications, each
+log at 1 MiB and aggregate log reads at 8 MiB. It rejects changing, noncanonical,
+unowned, linked, truncated or ambiguous evidence rather than guessing from time.
+Default roster inspection performs no application-log scan.
+
+Preparation/reporting-start events supply recorded candidates only. Existing
+Run and profile admission validates the candidate's immutable identity; Run or
+resume additionally admits the exact historical Attempt, its bound Project
+request snapshot, operation, workspace, Slurm ID and selected profile digest.
+The existing byte-reader injection enforces 4 MiB per authority file and
+16 MiB aggregate authority reads. Stable directory/file snapshots are checked
+again before returning. A failed candidate admission retains only the exact
+log and recorded candidate; changed scanned evidence clears the association.
+The result does not admit the Attempt chain, locks, receipts, Tasks or Results,
+and cannot prove workflow entry, liveness, completion or recovery eligibility.
+The public view offers exact Run inspection for that broader evidence.
 
 The existing dashboard's shared scheduler observer requires an exact canonical
 root job ID and current numeric UID. It rejects missing/mismatched/duplicate

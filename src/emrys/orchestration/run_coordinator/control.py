@@ -45,6 +45,7 @@ from emrys.libraries.source_authority import admit_installed_package
 from emrys.libraries.validation.errors import ValidationError
 from emrys.libraries.validation.inputs import read_bytes
 from emrys.orchestration.run_coordinator import (
+    _submission_inspection,
     capacity,
     doctor,
     inspection,
@@ -1774,6 +1775,48 @@ def _print_submission_roster(project: Path, selector: str | None = None) -> None
             ):
                 if scheduler.get(key):
                     _print_safe(f"    {label}: {scheduler[key]}")
+            with phase_progress(
+                "Reading application evidence for the selected request"
+            ):
+                application = _submission_inspection.inspect_submission_application(
+                    request
+                )
+            print(
+                f"    Application association: {application.status.replace('-', ' ')}"
+            )
+            if application.application_log is not None:
+                _print_safe(f"    Bound application log: {application.application_log}")
+                print(f"    Log snapshot SHA-256: {application.application_log_sha256}")
+            if application.recorded_event is not None:
+                label = (
+                    "Reporting start recorded"
+                    if application.recorded_event == "reporting_started"
+                    else "Preparation recorded"
+                )
+                _print_safe(
+                    f"    {label}: Run={application.recorded_run_id}; "
+                    f"Attempt={application.recorded_workflow_attempt_id or 'not applicable'}"
+                )
+            if application.run_root is not None:
+                _print_safe(f"    Admitted Run: {application.run_root}")
+                if application.workflow_attempt_id is not None:
+                    _print_safe(
+                        f"    Admitted Attempt record: {application.workflow_attempt_id}"
+                    )
+                _print_safe(
+                    "    Inspect Run evidence: "
+                    + shlex.join(
+                        [
+                            "emrys",
+                            "inspect",
+                            "--project",
+                            str(project),
+                            application.run_root.name,
+                        ]
+                    )
+                )
+            for diagnostic in application.diagnostics:
+                _print_safe(f"    Application observation: {diagnostic}")
     if selector is None:
         print(
             "Current scheduler state and Run association are not established by these records."
@@ -1781,7 +1824,8 @@ def _print_submission_roster(project: Path, selector: str | None = None) -> None
         print("Query one exact request with: emrys inspect --submission REQUEST")
     else:
         print(
-            "Scheduler observations do not establish Run completion or authorize cancellation or recovery."
+            "Scheduler and application observations do not establish workflow entry, "
+            "Run completion or recovery eligibility, or authorize cancellation."
         )
 
 

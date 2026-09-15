@@ -133,9 +133,14 @@ def admit_canonical_record(
     return record, data
 
 
-def admit_successor_run(root: Path) -> SuccessorRunAuthority:
+def admit_successor_run(
+    root: Path,
+    *,
+    read_bytes: Callable[[Path, Path, str], bytes] | None = None,
+) -> SuccessorRunAuthority:
     """Admit the current Analysis, Execution Plan, and Run binding."""
 
+    reader = _read_bytes if read_bytes is None else read_bytes
     paths = {
         "analysis": root / "contract" / "analysis.json",
         "execution_plan": root / "contract" / "execution-plan.json",
@@ -149,7 +154,7 @@ def admit_successor_run(root: Path) -> SuccessorRunAuthority:
         raise InspectionError(f"Incomplete Run authority; missing: {missing}")
     values: dict[str, Any] = {}
     for name, path in paths.items():
-        data = _read_bytes(path, root, f"{name} authority")
+        data = reader(path, root, f"{name} authority")
         try:
             values[name] = read_application_record(data)
         except orchestration_contracts.ContractValidationError as exc:
