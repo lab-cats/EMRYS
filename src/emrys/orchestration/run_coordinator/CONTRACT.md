@@ -190,13 +190,20 @@ no extra workflow budget or exclusive allocation is required. The recorded
 source identifies the unspecified Slurm limit. This ceiling is not a memory
 reservation or a measurement of currently free RAM on a shared node.
 
-`run`, `resume`, and `report` accept at most one closed
+`doctor`, `run`, `resume`, and `report` accept at most one closed
 `emrys.execution-profile.v1` fragment:
 
 - omission reads `<project-root>/runtime/profiles/default.yaml`;
 - `--profile NAME` reads exactly
   `<project-root>/runtime/profiles/NAME.yaml`; and
 - an absolute `--profile PATH` reads that exact file.
+
+Doctor carries the selected source through repair, compute qualification, and
+head finalization. Its confirmed profile binding is rechecked at execution
+boundaries, including the final readiness observation; changing it requires a
+new invocation and review. An unavailable or invalid explicit selection is
+`NOT ADMITTED` and never falls back to the Project default. Profile selection
+does not select a different runtime inventory or skip runtime/storage checks.
 
 Standalone report execution also reads the default profile and uses the same
 Slurm transport; its preview is local and read-only. A preview that proposes

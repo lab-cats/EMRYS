@@ -210,6 +210,20 @@ scientific parameters or promote an unbenchmarked preset as optimal. Qualificati
 submission size and resulting queue cost must be understandable.
 **Owners/dependencies:** Execution profiles, onboarding, Doctor; CV-09/11/22.
 
+**Implemented selector slice:** Doctor accepts the same default, named, or
+absolute profile selection as Run/resume/report. Repair, private compute
+qualification, and head finalization carry the admitted source and reject
+binding drift through the final readiness observation. Invalid explicit
+selections retain their diagnostic and never fall back. This does not change
+runtime inventory selection, queue policy, or scientific settings. Profile
+authoring without YAML remains a separate slice, so CV-07 remains Open.
+
+**Verification:** Existing Doctor fixtures cover all selection forms, invalid
+selection without mutation, exact private compute arguments, and selected
+profile changes before submission, after the job, and during finalization.
+Static checks pass; application cases require hosted CI. No actual cluster
+qualification or workload tuning is claimed.
+
 ### CV-08 Compatible runtime reuse
 
 **Finding:** New Projects defaulted to separate restoration; inventory copying

@@ -429,6 +429,14 @@ same requested placement when it plans compute qualification. If the requested
 settings are unsuitable, decline submission and select an appropriate profile;
 do not lower a stage allowance merely to make a plan pass.
 
+Use the same explicit profile with Doctor and the later submission. For example,
+if your Project already has `runtime/profiles/cohort.yaml`, run
+`emrys doctor --profile cohort --repair`, then `emrys run --profile cohort`.
+An absolute profile path is also accepted. Omission selects the Project default;
+an invalid explicit selection stops with its diagnostic. Each invocation
+reviews its current profile, so retain the selected file unchanged between
+qualification and submission.
+
 Keep the printed job number and log paths. From the same Project on the head
 node, check progress with:
 

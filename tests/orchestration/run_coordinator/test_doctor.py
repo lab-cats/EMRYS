@@ -431,6 +431,110 @@ def test_absent_runtime_diagnosis_is_read_only_and_opens_no_log(
     assert _snapshot(tmp_path) == before
 
 
+@pytest.mark.parametrize("selection", (None, "named", "absolute"))
+def test_doctor_selects_execution_profile_without_writes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    selection: str | None,
+) -> None:
+    from emrys.orchestration.run_coordinator import execution_profile
+
+    project = _project(tmp_path)
+    qualified = _patch_foundations(monkeypatch, project)
+    monkeypatch.setattr(
+        doctor.storage_qualification,
+        "admit_final_qualification",
+        lambda *_args: qualified,
+    )
+    selector = (
+        str(tmp_path / "alternate.yaml") if selection == "absolute" else selection
+    )
+    path = execution_profile.project_execution_profile_path(
+        project.source_path, selector
+    )
+    if selector is not None:
+        path.write_bytes(execution_profile.project_default_profile_bytes("viking"))
+    expected = execution_profile.load_execution_profile(path)
+    observed: list[doctor.DoctorResult] = []
+    diagnose = doctor.diagnose_project
+
+    def inspect(*args: Any, **kwargs: Any) -> doctor.DoctorResult:
+        result = diagnose(*args, **kwargs)
+        observed.append(result)
+        return result
+
+    monkeypatch.setattr(doctor, "diagnose_project", inspect)
+    monkeypatch.setattr(
+        doctor,
+        "open_attempt_log",
+        lambda **_kwargs: pytest.fail("diagnosis opened an application log"),
+    )
+    before = _snapshot(tmp_path)
+    parser = argparse.ArgumentParser()
+    doctor.configure_parser(parser)
+    arguments = ["--project", str(project.source_path)]
+    if selector is not None:
+        arguments.extend(("--profile", selector))
+
+    assert doctor.doctor_from_args(parser.parse_args(arguments)) == 1
+
+    (result,) = observed
+    assert result.execution_profile == expected
+    assert result.execution_ready and result.storage_ready
+    assert expected.placement.kind == ("direct" if selection is None else "slurm")
+    assert "Execution  PASS" in capsys.readouterr().err
+    assert _snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize("selection", ("missing", "../escape", "invalid.yaml"))
+def test_invalid_selected_execution_profile_does_not_fall_back_to_default(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    selection: str,
+) -> None:
+    project = _project(tmp_path)
+    _patch_foundations(monkeypatch, project)
+    before = _snapshot(tmp_path)
+    parser = argparse.ArgumentParser()
+    doctor.configure_parser(parser)
+
+    assert (
+        doctor.doctor_from_args(
+            parser.parse_args(
+                ["--project", str(project.source_path), "--profile", selection]
+            )
+        )
+        == 1
+    )
+
+    output = capsys.readouterr().err
+    assert "Execution  NOT ADMITTED" in output
+    assert "selected execution profile is not admitted" in output
+    assert "Select a valid execution profile with --profile" in output
+    assert (
+        doctor.doctor_from_args(
+            parser.parse_args(
+                [
+                    "--project",
+                    str(project.source_path),
+                    "--profile",
+                    selection,
+                    "--repair",
+                    "--execute",
+                ]
+            )
+        )
+        == 1
+    )
+    assert (
+        "DOCTOR BLOCKED: Doctor preserves execution profiles; restore or select a valid profile with --profile"
+        in capsys.readouterr().err
+    )
+    assert _snapshot(tmp_path) == before
+
+
 @pytest.mark.parametrize("state", ("malformed_default", "missing_explicit"))
 def test_invalid_runtime_inventory_is_not_presented_as_initial_setup(
     tmp_path: Path,
@@ -1606,14 +1710,28 @@ def test_log_open_failure_prevents_the_first_repair_write(
 
 
 @pytest.mark.parametrize(
-    "failure",
-    (None, "scheduler", "runtime", "startup", "head_runtime", "profile", "finalize"),
+    ("failure", "selection"),
+    (
+        (None, None),
+        (None, "named"),
+        (None, "absolute"),
+        ("scheduler", None),
+        ("runtime", None),
+        ("startup", None),
+        ("head_runtime", None),
+        ("profile", None),
+        ("finalize", None),
+        ("execution_before", "named"),
+        ("execution_after", "absolute"),
+        ("execution_final", "named"),
+    ),
 )
 def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     failure: str | None,
+    selection: str | None,
 ) -> None:
     from emrys.orchestration.run_coordinator import execution_profile, slurm_submission
     from tests.evidence.storage_inventory.test_storage_inventory import (
@@ -1621,8 +1739,11 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     )
 
     project = _project(tmp_path)
+    selector = (
+        str(tmp_path / "alternate.yaml") if selection == "absolute" else selection
+    )
     profile_path = execution_profile.project_execution_profile_path(
-        project.source_path, None
+        project.source_path, selector
     )
     profile_path.parent.mkdir(parents=True, exist_ok=True)
     profile_path.write_bytes(execution_profile.project_default_profile_bytes("viking"))
@@ -1655,17 +1776,29 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         )
     run_compute = qualification._run_compute
     qualify_head = qualification.qualify_head
+    selected_sources: list[object] = []
 
     def finalize(*args: Path) -> QualifiedStorage:
         if failure == "finalize" and state["jobs"] == 1:
             raise KeyboardInterrupt
-        return qualify_head(*args)
+        qualified = qualify_head(*args)
+        if failure == "execution_final":
+            profile_path.write_bytes(profile_path.read_bytes() + b"\n")
+        return qualified
 
     def probe(*args: Path) -> Path:
         state["probes"] += 1
         return run_compute(*args)
 
     def diagnose(*_args: object, **_kwargs: object) -> doctor.DoctorResult:
+        selected_sources.append(_kwargs.get("execution_profile"))
+        selected = execution_profile.load_execution_profile(
+            execution_profile.project_execution_profile_path(
+                project.source_path, _kwargs.get("execution_profile")
+            )
+        )
+        if failure != "execution_final":
+            assert selected == execution
         try:
             qualification.admit_final_qualification(project.source_path.parent, fasta)
         except qualification.StorageQualificationError:
@@ -1686,7 +1819,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
             result = replace(
                 result, inspection=replace(inspection, profile_sha256="f" * 64)
             )
-        return result
+        return replace(result, execution_profile=selected)
 
     monkeypatch.setattr(qualification, "_run_compute", probe)
     monkeypatch.setattr(qualification, "qualify_head", finalize)
@@ -1695,9 +1828,40 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     doctor.configure_parser(parser)
     arguments = parser.parse_args(
         ["--project", str(project.source_path), "--repair", "--execute"]
+        + (["--profile", selector] if selector is not None else [])
     )
     records: list[str] = []
-    _patch_logging(monkeypatch, doctor._build_repair_plan(diagnose()), records)
+    readmit = doctor._readmit_repair_plan
+    _patch_logging(
+        monkeypatch,
+        doctor._build_repair_plan(diagnose(execution_profile=selector)),
+        records,
+    )
+    selected_sources.clear()
+    monkeypatch.setattr(doctor, "_readmit_repair_plan", readmit)
+    monkeypatch.setattr(
+        doctor.onboarding,
+        "validate_project",
+        lambda *_args, **_kwargs: SimpleNamespace(project=project),
+    )
+    if failure == "execution_before":
+        open_log = doctor.open_attempt_log
+
+        def drift_after_plan(**kwargs: Any) -> Any:
+            attempt = open_log(**kwargs)
+            profile_path.write_bytes(profile_path.read_bytes() + b"\n")
+            return attempt
+
+        monkeypatch.setattr(doctor, "open_attempt_log", drift_after_plan)
+    plan_submission = slurm_submission.plan_submission
+    delegate_argv: list[str] = []
+
+    def plan_selected(*args: Any, **kwargs: Any) -> Any:
+        delegate_argv[:] = kwargs["emrys_argv"]
+        assert delegate_argv[delegate_argv.index("--profile") + 1] == str(profile_path)
+        return plan_submission(*args, **kwargs)
+
+    monkeypatch.setattr(slurm_submission, "plan_submission", plan_selected)
 
     def submit(submission: object, **kwargs: Any) -> str:
         state["jobs"] += 1
@@ -1715,15 +1879,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
             )
             compute.setenv(slurm_submission.SUBMIT_UID_ENV, str(doctor.os.getuid()))
             compute_args = parser.parse_args(
-                [
-                    "--project",
-                    str(project.source_path),
-                    "--repair",
-                    "--execute",
-                    "--compute",
-                    "--qualification-binding",
-                    doctor._qualification_binding(ready),
-                ]
+                delegate_argv[delegate_argv.index("doctor") + 1 :]
             )
             state["compute"] = True
             try:
@@ -1732,6 +1888,8 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
                 state["compute"] = False
         if status:
             raise slurm_submission.SlurmSubmissionError("compute qualification failed")
+        if failure == "execution_after":
+            profile_path.write_bytes(profile_path.read_bytes() + b"\n")
         return "614999"
 
     monkeypatch.setattr(slurm_submission, "submit", submit)
@@ -1753,6 +1911,24 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         assert "Verification interrupted;" in output
     else:
         assert "VERIFICATION FAILED:" in output
+    if failure in {"execution_before", "execution_after"}:
+        assert "Doctor plan changed before execution" in output
+        assert state["jobs"] == (0 if failure == "execution_before" else 1)
+        with pytest.raises(qualification.StorageQualificationError):
+            qualification.admit_final_qualification(project.source_path.parent, fasta)
+    if failure == "execution_final":
+        assert "Execution profile changed during head finalization" in output
+        assert str(log_path) in output
+        assert state["jobs"] == 1
+        changed = execution_profile.load_execution_profile(profile_path)
+        assert changed.sha256 == execution.sha256
+        assert changed.binding_sha256 != execution.binding_sha256
+        assert "repair_requalified" not in {item["event"] for item in events}
+        qualification.admit_final_qualification(project.source_path.parent, fasta)
+    if failure is None:
+        assert len(selected_sources) == 5
+        assert selected_sources[0] == selector
+        assert all(Path(str(source)) == profile_path for source in selected_sources[1:])
     if failure in {"runtime", "startup", "head_runtime"}:
         diagnostics = [
             item for item in events if item["event"] == "runtime_check_failed"
@@ -1792,7 +1968,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         if failure == "finalize":
             assert "interrupted" in records
         else:
-            assert diagnose().ready
+            assert diagnose(execution_profile=profile_path).ready
         assert doctor.doctor_from_args(arguments) == 0
         assert state["jobs"] == 2 and state["probes"] == 1
         assert compute.read_bytes() == original
@@ -1809,10 +1985,17 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         ] == [("repair_requalified", "Project verification completed.")]
         assert records.count("opened") == 2
     else:
-        assert state["probes"] == (1 if failure == "head_runtime" else 0)
+        assert state["probes"] == (
+            1
+            if failure in {"head_runtime", "execution_after", "execution_final"}
+            else 0
+        )
         assert "failed" in records
-        with pytest.raises(qualification.StorageQualificationError):
-            qualification.admit_final_qualification(project.source_path.parent, fasta)
+        if failure != "execution_final":
+            with pytest.raises(qualification.StorageQualificationError):
+                qualification.admit_final_qualification(
+                    project.source_path.parent, fasta
+                )
 
 
 def test_malformed_project_is_a_usage_error(
