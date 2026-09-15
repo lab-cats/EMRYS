@@ -37,7 +37,7 @@ cluster action, evidence promotion, or product-growth exception.
 | [CV-19](#cv-19-verification-and-repair-vocabulary) | P1 | Verification pending | Name verification-only work accurately. |
 | [CV-20](#cv-20-submission-state-before-run-creation) | P1 | Open | Show queued and preparing jobs before a Run exists. |
 | [CV-21](#cv-21-reporting-in-progress-and-visibility) | P1 | Open | Distinguish unfinished report publication from failed reporting. |
-| [CV-22](#cv-22-complete-submission-preview) | P1 | Open | Show effective placement and computational limits before approval. |
+| [CV-22](#cv-22-complete-submission-preview) | P1 | Verification pending | Show effective placement and computational limits before approval. |
 | [CV-23](#cv-23-safe-project-or-artifact-cleanup) | P2 | Open | Decide and scope safe cleanup of unused owned state. |
 | [CV-24](#cv-24-run-center-actions) | P2 | Open | Explore a dashboard that invokes supported CLI operations. |
 | [CV-25](#cv-25-log-discovery-and-readable-output) | P2 | Open | Find the correct logs without memorizing scheduler IDs. |
@@ -414,6 +414,22 @@ display must describe the frozen plan actually submitted and be clear for
 Doctor verification as well as Run/report submission.
 **Owners/dependencies:** Shared submission planning/presentation and profiles;
 CV-03/07/09/11. Preserve ordinary concise output.
+
+**Selected implementation:** One pure formatter on the admitted execution
+profile replaces the repeated placement summary and redundant workflow-core
+plumbing. Doctor, Run/resume, and report submission display requested placement,
+allocation resources, workflow limits, and stage caps from that same object.
+Planned report preview also admits its selected profile; already-complete
+reports keep their existing no-submission path. Unknown capacity, site policy,
+and configured limits remain distinct. No allocation probe or new state is
+introduced. The final 51 net product lines use the user's subsequent approval
+for minimum necessary expansion; no new product file is added.
+
+**Verification:** Existing profile, Control, and Doctor tests cover omitted and
+explicit placement fields, exact submitted arguments, no-write previews,
+profile refusal, resume policy, and report reuse. All 30 focused profile tests
+pass locally; public Control and Doctor execution runs in CI. These provide
+software evidence; institutional preview acceptance remains pending.
 
 ## P2 outcomes
 

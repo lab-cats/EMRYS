@@ -173,6 +173,61 @@ class ExecutionProfile:
     source_raw_sha256: str
     computational_resources_explicit: bool
 
+    def submission_summary(self) -> tuple[str, ...]:
+        """Describe admitted requests and limits without observing an allocation."""
+
+        placement, resources = self.placement, self.resource_policy.declaration
+        lines = [f"Execution placement: {placement.kind.capitalize()}"]
+        if isinstance(placement, SlurmPlacement):
+            lines.extend(
+                (
+                    f"Node request: 1; requested host(s): {placement.nodelist or 'scheduler-selected; exact host unknown'}",
+                    "Exclusive allocation: "
+                    + (
+                        "requested"
+                        if placement.exclusive
+                        else "not requested; site policy applies"
+                    ),
+                    f"Allocation request: {placement.cpus_per_task} CPUs, {placement.time}; memory: "
+                    + (
+                        "site default (unknown)"
+                        if placement.memory_mb is None
+                        else f"{placement.memory_mb} MiB"
+                    ),
+                    f"Account: {placement.account or 'site default'}; "
+                    f"partition: {placement.partition or 'site default'}; "
+                    f"QoS: {placement.qos or 'site default'}",
+                )
+            )
+        lines.extend(
+            (
+                f"Workflow CPU ceiling: {resources.workflow_cores}; memory ceiling: "
+                + (
+                    "allocation capacity (unknown until execution)"
+                    if resources.workflow_memory_mb == "allocation"
+                    else f"{resources.workflow_memory_mb} MiB"
+                ),
+                "Stage thread caps: "
+                + ", ".join(f"{step}={count}" for step, count in resources.step_threads)
+                + "; other stages=1",
+                "Repeated-stage concurrency caps: "
+                + ", ".join(
+                    f"{step}={count}" for step, count in resources.stage_concurrency
+                ),
+                "Stage memory: workflow ceiling; explicit MiB caps: "
+                + (
+                    ", ".join(
+                        f"{step}={memory}"
+                        for step, memory in resources.stage_memory_mb
+                        if memory != "workflow"
+                    )
+                    or "none"
+                ),
+                "Actual allocation capacity is unknown until execution; reservations and limits do not guarantee utilization.",
+            )
+        )
+        return tuple(lines)
+
     def document(self) -> dict[str, Any]:
         """Return the complete effective profile without source locators."""
 

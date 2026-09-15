@@ -796,12 +796,12 @@ def _schedule(
     command: str,
     arguments: argparse.Namespace,
     profile: ExecutionProfile,
-    effective_workflow_cores: int,
     controls: LogControls,
     overrides: ResourceOverrides,
     workspace: Path,
 ) -> int:
     placement = profile.placement
+    effective_workflow_cores = profile.resource_policy.declaration.workflow_cores
     if (
         isinstance(placement, SlurmPlacement)
         and placement.cpus_per_task < effective_workflow_cores
@@ -831,20 +831,8 @@ def _schedule(
         )
     else:
         console_print(f"Run: {inspection.human_run_name(arguments.run)}")
-    console_print("Execution placement: Slurm", style="blue")
-    console_print(
-        f"Allocation: {placement.cpus_per_task} CPUs, {placement.time}, "
-        + (
-            "site-default memory"
-            if placement.memory_mb is None
-            else f"{placement.memory_mb} MiB"
-        )
-    )
-    console_print(
-        f"Account: {placement.account or 'site default'}; "
-        f"partition: {placement.partition or 'site default'}; "
-        f"QoS: {placement.qos or 'site default'}"
-    )
+    for line in profile.submission_summary():
+        console_print(line)
     if controls.level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
         console_print(f"Execution profile: {profile.source_path}")
         console_print(f"Scheduler stdout: {submission.stdout_pattern}")
@@ -1243,7 +1231,6 @@ def _finish_control(
     *,
     command: str,
     profile: ExecutionProfile,
-    effective_workflow_cores: int,
     controls: LogControls,
     overrides: ResourceOverrides,
     scheduler_job_id: str | None,
@@ -1256,7 +1243,6 @@ def _finish_control(
             command,
             arguments,
             profile,
-            effective_workflow_cores,
             controls,
             overrides,
             workspace,
@@ -1466,7 +1452,6 @@ def _run_or_resume_from_args(
             overrides,
             resume_run_root=run_root,
         )
-        effective_workflow_cores = profile.resource_policy.declaration.workflow_cores
         report_enabled = not getattr(arguments, "no_report", False)
         if command == "run":
             source_run_id = None
@@ -1501,7 +1486,6 @@ def _run_or_resume_from_args(
             arguments,
             command=command,
             profile=profile,
-            effective_workflow_cores=effective_workflow_cores,
             build_plan=build_plan,
             controls=_resolve_controls(arguments, workspace),
             overrides=overrides,
@@ -1546,7 +1530,17 @@ def report_from_args(
     if not arguments.execute:
         try:
             planned = reporting_operation.run_reporting(root, execute=False)
-        except (reporting_operation.ReportingOperationError, OSError) as exc:
+            if planned.status == "planned":
+                profile, _job_id = _resolve_execution_profile(
+                    arguments, project_path, ResourceOverrides()
+                )
+                for line in profile.submission_summary():
+                    console_print(line)
+        except (
+            *_CONTROL_ERRORS,
+            reporting_operation.ReportingOperationError,
+            OSError,
+        ) as exc:
             console_print(f"emrys: error: {exc}")
             return 2
         _print_reporting_outcome(planned)
@@ -1564,7 +1558,6 @@ def report_from_args(
                 "report",
                 arguments,
                 profile,
-                profile.resource_policy.declaration.workflow_cores,
                 _resolve_controls(arguments, workspace),
                 overrides,
                 workspace,

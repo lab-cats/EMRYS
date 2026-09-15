@@ -162,9 +162,21 @@ reservation or a measurement of currently free RAM on a shared node.
 - an absolute `--profile PATH` reads that exact file.
 
 Standalone report execution also reads the default profile and uses the same
-Slurm transport; its preview is local and read-only. Automatic reporting stays
+Slurm transport; its preview is local and read-only. A preview that proposes
+new reports admits its selected profile before showing submission settings;
+already-complete reports require no new submission profile. Automatic reporting stays
 in the Run's existing allocation. Initial Viking selection changes placement
 only, not the scientific resource policy or Run identity.
+
+One pure formatter on the admitted execution profile supplies Doctor and
+Run/resume/report submission summaries. It shows requested nodes and exclusivity,
+allocation CPUs/time/memory and site fields, plus declared workflow and stage
+limits. It performs no allocation query. Omitted memory and host selection stay
+unknown; no exclusivity request leaves sharing to site policy. Numeric ceilings
+are configured limits, not observed RAM or measured demand. Compute admission
+still resolves actual capacity, and direct Run planning retains its separate
+observed-allocation display. The confirmed submission uses the same frozen
+profile; a later separate invocation reads and admits its own selected profile.
 
 There is no site/global registry or profile scan. Packaged defaults apply first,
 the selected profile overrides them, and resource CLI values have highest

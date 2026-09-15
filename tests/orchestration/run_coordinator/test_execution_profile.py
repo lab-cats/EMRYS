@@ -164,6 +164,115 @@ def test_placement_only_profile_does_not_change_resource_policy(
     assert scheduled.sha256 != direct.sha256
 
 
+@pytest.mark.parametrize("scheduled", (False, True))
+@pytest.mark.parametrize("explicit", (False, True))
+def test_submission_summary_keeps_requests_limits_and_unknown_capacity_distinct(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    scheduled: bool,
+    explicit: bool,
+) -> None:
+    from emrys.orchestration.run_coordinator import slurm_submission
+
+    placement = _slurm_placement(tmp_path)
+    placement.update(
+        account="site-account" if explicit else None,
+        partition="compute" if explicit else None,
+        qos="normal" if explicit else None,
+        memory_mb=65536 if explicit else None,
+        exclusive=explicit,
+        nodelist="node[01-02]" if explicit else None,
+    )
+    selected = _write_profile(
+        tmp_path / "profile.yaml",
+        {
+            "schema_version": execution_profile.SCHEMA_VERSION,
+            "placement": placement if scheduled else {"kind": "direct"},
+        },
+    )
+    profile = load_execution_profile(
+        config_path=selected,
+        resource_overrides=ResourceOverrides(
+            workflow_cores=6,
+            workflow_memory_mb=8192 if explicit else None,
+            step_threads=(("00a", 2),),
+            stage_concurrency=(("01", 1),),
+            stage_memory_mb=(("00a", 1024),) if explicit else (),
+        ),
+    )
+    before = profile.document(), profile.binding_sha256
+    monkeypatch.setattr(
+        execution_profile,
+        "read_bytes",
+        lambda *_args: pytest.fail("summary reread the selected profile"),
+    )
+    summary = "\n".join(profile.submission_summary())
+    assert (profile.document(), profile.binding_sha256) == before
+    assert f"Execution placement: {'Slurm' if scheduled else 'Direct'}" in summary
+    assert (
+        "Workflow CPU ceiling: 6; memory ceiling: "
+        + ("8192 MiB" if explicit else "allocation capacity (unknown until execution)")
+        in summary
+    )
+    assert "Stage thread caps: 00a=2, 01=4" in summary
+    assert "Repeated-stage concurrency caps: 01=1" in summary
+    assert (
+        "Stage memory: workflow ceiling; explicit MiB caps: "
+        + ("00a=1024" if explicit else "none")
+        in summary
+    )
+    assert "Actual allocation capacity is unknown until execution" in summary
+    assert "do not guarantee utilization" in summary
+    if not scheduled:
+        assert "Allocation request:" not in summary
+        assert "Node request:" not in summary
+        return
+    submission = slurm_submission.plan_submission(
+        profile,
+        emrys_argv=("emrys", "run"),
+        log_dir=tmp_path / "logs",
+        environment={},
+        submitter_uid=1000,
+    )
+    assert "--nodes=1" in submission.argv
+    assert "--cpus-per-task=8" in submission.argv
+    assert "--time=04:00:00" in submission.argv
+    assert (
+        "Allocation request: 8 CPUs, 04:00:00; memory: "
+        + ("65536 MiB" if explicit else "site default (unknown)")
+        in summary
+    )
+    assert (
+        "Node request: 1; requested host(s): "
+        + ("node[01-02]" if explicit else "scheduler-selected; exact host unknown")
+        in summary
+    )
+    assert (
+        "Exclusive allocation: "
+        + ("requested" if explicit else "not requested; site policy applies")
+        in summary
+    )
+    assert (
+        "Account: "
+        + (
+            "site-account; partition: compute; QoS: normal"
+            if explicit
+            else "site default; partition: site default; QoS: site default"
+        )
+        in summary
+    )
+    for argument in (
+        "--exclusive",
+        "--nodelist=node[01-02]",
+        "--mem=65536M",
+        "--account=site-account",
+        "--partition=compute",
+        "--qos=normal",
+    ):
+        assert (argument in submission.argv) is explicit
+    assert not (tmp_path / "logs").exists()
+
+
 def test_attempt_placement_projects_direct_and_slurm_provenance(
     tmp_path: Path,
 ) -> None:
