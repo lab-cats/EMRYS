@@ -24,6 +24,7 @@ from emrys.libraries.validation.inputs import (
 from emrys.orchestration.run_coordinator.resource_policy import (
     is_canonical_slurm_job_id,
 )
+from emrys.orchestration.run_coordinator import scheduler_observation
 
 if TYPE_CHECKING:
     from emrys.orchestration.run_coordinator.execution_profile import (
@@ -182,6 +183,27 @@ class SubmissionRequestObservation:
     recorded_cluster: str | None
     diagnostics: tuple[str, ...]
     stderr_excerpt: bytes = field(repr=False, default=b"")
+
+
+def observe_submission_request(
+    request: SubmissionRequestObservation,
+) -> dict[str, object]:
+    """Bind a retained v2 request to scheduler metadata without Run or recovery claims."""
+    context = request.context
+    if (
+        request.record_status != "recorded-response"
+        or context is None
+        or context["schema_version"] != "emrys.submission-request.v2"
+    ):
+        return scheduler_observation.unknown_observation(
+            "Complete request-specific stream identity is unavailable"
+        )
+    return scheduler_observation.observe_job(
+        request.recorded_job_id,
+        context["scheduler_stdout_pattern"],
+        context["scheduler_stderr_pattern"],
+        request.recorded_cluster,
+    )
 
 
 def submission_requests(project: Path) -> tuple[SubmissionRequestObservation, ...]:
@@ -736,6 +758,7 @@ __all__ = (
     "SlurmSubmission",
     "SlurmSubmissionError",
     "SubmissionRequestObservation",
+    "observe_submission_request",
     "plan_submission",
     "submission_requests",
     "submit",

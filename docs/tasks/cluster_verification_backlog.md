@@ -620,8 +620,18 @@ Doctor's qualification paths and isolated dashboard loading are unchanged.
 The token alone does not establish a job's current state or cluster identity.
 Transport/dashboard/shared-input tests pass 191 cases, with 17 affected cases
 rechecked after the final naming changes. Public confirmation/decline and
-repeated run/resume/report fixtures await hosted CI. Current-state correlation
-will require the exact ID, numeric UID, cluster and both frozen stream paths.
+repeated run/resume/report fixtures passed standard CI at PR #201.
+
+**Implemented selected-request scheduler view:** `inspect --submission REQUEST`
+selects one exact retained directory name or absolute path instead of a Run.
+It checks ID, numeric UID, cluster and both frozen paths in one complete queue
+record; only a successful empty queue reply permits duplicate-aware terminal
+accounting. State, queue reason and exit status are escaped observations.
+Legacy/incomplete requests make no queries; unsupported, malformed, mismatched,
+duplicate or unavailable metadata remains `UNKNOWN`. The ordinary roster makes
+no scheduler calls, keeping query cost independent of retained history. The
+existing dashboard and request adapter share extracted stdlib identity and
+accounting mechanics while preserving isolated dashboard loading.
 
 **Verification and remaining scope:** Tiny real subprocess tests cover accepted,
 rejected, malformed, invalid-byte, interrupted, and early-stdin-close responses;
@@ -631,10 +641,17 @@ boundaries, empty Analysis preservation, malformed/partial records, symlinks,
 owner mismatches and changed directories. Public fixtures cover zero/multiple
 requests before any Run, an existing Run, escaped output, unavailable logs,
 writer-reader roundtrips, and oversized context preventing submission; these
-application fixtures and full checks run in CI. Exact request-to-job binding,
-current scheduler state and admitted Run/log association remain separate slices,
-so CV-20 remains Open. Retained context alone grants no activity, completion,
-cancellation, or recovery claim.
+application fixtures passed standard CI at PR #199. Strict scheduler fixtures
+cover exact identity, wrong/reused IDs, clusters, streams, duplicate accounting,
+failed versus empty queries and invalid metadata. The focused suites passed
+266 cases before final identity/whitespace additions; all 90 affected cases
+passed afterward, including array/heterogeneous IDs and exact untrimmed paths.
+Public selected-request cases
+cover one-request query cost, default no-query behavior, unavailable/legacy
+observations, exact selection, escaped reason text and no writes; these new
+application cases await CI. CV-20 remains Open for admitted Run/log association
+and institutional scheduler acceptance. Neither retained context nor a terminal
+scheduler record grants scientific completion, cancellation or recovery authority.
 
 ### CV-21 Reporting in progress and visibility
 

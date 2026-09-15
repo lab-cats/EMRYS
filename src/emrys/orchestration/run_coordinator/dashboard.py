@@ -6,17 +6,25 @@ replace EMRYS inspection or completion evidence.
 """
 
 import argparse
+import importlib.util
 import curses
 import datetime as dt
 import os
 import re
-import shlex
 import statistics
 import stat
-import subprocess
 import sys
 import time
 import textwrap
+
+
+# The Make entry point uses Python -I; load only this exact adjacent stdlib owner.
+_scheduler_spec = importlib.util.spec_from_file_location(
+    "emrys_scheduler_observation",
+    os.path.join(os.path.dirname(__file__), "scheduler_observation.py"),
+)
+_scheduler = importlib.util.module_from_spec(_scheduler_spec)
+_scheduler_spec.loader.exec_module(_scheduler)
 
 
 STAGES = [
@@ -204,18 +212,6 @@ RULE_TO_STAGE.update({"build_run_summary": "REPORT", "build_html_report": "REPOR
 STAGE_BY_KEY = {row[0]: row for row in STAGES}
 SAMPLE_STAGE_KEYS = ("01", "02", "02b", "03", "04", "05", "06")
 SAMPLE_STAGES = set(SAMPLE_STAGE_KEYS)
-TERMINAL_STATES = {
-    "COMPLETED",
-    "FAILED",
-    "CANCELLED",
-    "TIMEOUT",
-    "OUT_OF_MEMORY",
-    "NODE_FAIL",
-    "PREEMPTED",
-    "BOOT_FAIL",
-    "DEADLINE",
-    "REVOKED",
-}
 MONTHS = {
     "Jan": 1,
     "Feb": 2,
@@ -234,15 +230,10 @@ TIMESTAMP_RE = re.compile(
     r"^\[[A-Z][a-z]{2} ([A-Z][a-z]{2})\s+(\d+) "
     r"(\d\d):(\d\d):(\d\d) (\d{4})\]$"
 )
-JOB_ID_RE = re.compile(r"^[1-9][0-9]*$")
 ANSI_CSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 ANSI_OSC_RE = re.compile(r"\x1b\].*?(?:\x07|\x1b\\)")
 CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 DISCOVERY_DAYS = 7
-
-
-class DiscoveryError(RuntimeError):
-    """Raised when scheduler metadata cannot prove a safe dashboard target."""
 
 
 class StreamCache:
@@ -252,7 +243,7 @@ class StreamCache:
         self.data = bytearray()
 
     def sync(self):
-        stat_result = command_bytes(
+        stat_result = _scheduler.command_bytes(
             ["timeout", "-k", "2s", "8s", "stat", "-c", "%s", self.path],
             timeout=11,
         )
@@ -267,7 +258,7 @@ class StreamCache:
             self.data.clear()
         if remote_size <= self.offset:
             return True
-        chunk = command_bytes(
+        chunk = _scheduler.command_bytes(
             [
                 "timeout",
                 "-k",
@@ -290,27 +281,6 @@ class StreamCache:
         return sanitize_text(self.data.decode("utf-8", "replace"))
 
 
-def command_bytes(argv, timeout=10):
-    try:
-        completed = subprocess.run(
-            argv,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            timeout=timeout,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        return None
-    if completed.returncode != 0:
-        return None
-    return completed.stdout
-
-
-def command_text(argv, timeout=10):
-    result = command_bytes(argv, timeout=timeout)
-    return "" if result is None else result.decode("utf-8", "replace").strip()
-
-
 def sanitize_text(value):
     """Remove terminal control sequences while preserving tabs and newlines."""
     value = ANSI_OSC_RE.sub("", value)
@@ -318,121 +288,13 @@ def sanitize_text(value):
     return CONTROL_RE.sub("", value)
 
 
-def parse_key_value_line(value):
-    fields = {}
-    try:
-        tokens = shlex.split(value)
-    except ValueError:
-        return fields
-    for token in tokens:
-        if "=" in token:
-            key, item = token.split("=", 1)
-            if key in fields:
-                return {}
-            fields[key] = item
-    return fields
-
-
-def slurm_job_metadata(job_id):
-    output = command_text(["scontrol", "show", "job", "-o", str(job_id)])
-    if not output:
-        return None
-    rows = output.splitlines()
-    if len(rows) != 1:
-        raise DiscoveryError("Slurm did not return one exact root record")
-    fields = parse_key_value_line(rows[0])
-    validate_scheduler_identity(job_id, fields, owner_field="UserId")
-    return fields
-
-
-def slurm_accounting_metadata(job_id):
-    """Return one exact root-allocation record from bounded Slurm accounting.
-
-    Prefer scheduler-declared stream paths.  Older Slurm accounting deployments
-    may reject ``StdOut``/``StdErr`` fields, so make one bounded basic-field
-    fallback query for identity/state proof. Include duplicate IDs so accounting
-    cannot silently select the most recent submission. Neither query searches storage.
-    """
-    for streams in (("StdOut", "StdErr"), ()):
-        names = (
-            ("JobIDRaw", "JobName", "State", "User", "UID")
-            + streams
-            + ("ExitCode", "Elapsed", "AllocCPUS", "NodeList")
-        )
-        output = command_text(
-            [
-                "sacct",
-                "--duplicates",
-                "-X",
-                "-n",
-                "-P",
-                "-j",
-                str(job_id),
-                "--format=" + ",".join(names),
-            ]
-        )
-        if not output:
-            continue
-        rows = [line.split("|") for line in output.splitlines()]
-        roots = [row for row in rows if JOB_ID_RE.fullmatch(row[0].strip())]
-        if len(roots) != 1 or len(roots[0]) != len(names):
-            raise DiscoveryError(
-                "Slurm accounting did not return one exact root record for job %s"
-                % job_id
-            )
-        metadata = dict(zip(names, (value.strip() for value in roots[0])))
-        metadata["JobId"] = metadata.pop("JobIDRaw")
-        metadata["JobState"] = metadata.pop("State")
-        validate_scheduler_identity(job_id, metadata)
-        return metadata
-    raise DiscoveryError("Slurm accounting metadata is unavailable for job %s" % job_id)
-
-
-def validate_scheduler_identity(job_id, metadata, owner_field="UID"):
-    """Prove a root ID and numeric owner, never a submission or recovery identity."""
-    if not JOB_ID_RE.fullmatch(str(job_id)) or metadata.get("JobId") != str(job_id):
-        raise DiscoveryError("Slurm returned metadata for a different or missing job")
-    uid = str(os.getuid())
-    owner = metadata.get(owner_field, "")
-    if owner != uid and not (
-        owner_field == "UserId" and re.fullmatch(r"[^()\s]+\(" + uid + r"\)", owner)
-    ):
-        raise DiscoveryError("job %s is not owned by the current UID" % job_id)
-    if not normalized_job_state(metadata.get("JobState")):
-        raise DiscoveryError("Slurm did not report a job state")
-
-
-def expand_job_path(value, job_id):
-    value = value.replace("%j", str(job_id))
-    if "%" in value:
-        raise DiscoveryError(
-            "scheduler log path contains an unsupported Slurm placeholder: %s" % value
-        )
-    return value
-
-
-def normalized_job_state(value):
-    """Strip Slurm decorations such as ``+`` and ``CANCELLED by <uid>``."""
-    return re.split(r"[+\s]", (value or "").strip(), maxsplit=1)[0]
-
-
-def validate_accounting_identity(job_id, metadata):
-    """Prove that one accounting record is the current user's terminal job."""
-    validate_scheduler_identity(job_id, metadata)
-    state_value = normalized_job_state(metadata.get("JobState"))
-    if state_value not in TERMINAL_STATES:
-        raise DiscoveryError(
-            "job %s is not terminal; live selection requires scontrol metadata" % job_id
-        )
-
-
 def accounting_log_selection(job_id, log_dir, metadata=None):
     """Admit explicit historical logs after exact terminal-job accounting proof."""
     if not os.path.isabs(log_dir):
-        raise DiscoveryError("LOG_DIR must be an absolute path")
+        raise _scheduler.DiscoveryError("LOG_DIR must be an absolute path")
     if metadata is None:
-        metadata = slurm_accounting_metadata(job_id)
-    validate_accounting_identity(job_id, metadata)
+        metadata = _scheduler.slurm_accounting_metadata(job_id)
+    _scheduler.validate_accounting_identity(job_id, metadata)
     selection = validate_log_selection(
         job_id,
         os.path.join(log_dir, "emrys-local-pilot-%s.out" % job_id),
@@ -445,25 +307,27 @@ def accounting_log_selection(job_id, log_dir, metadata=None):
 def accounting_stream_selection(metadata, log_dir=None):
     """Admit scheduler-declared historical streams without scanning storage."""
     job_id = metadata.get("JobId", "")
-    if not JOB_ID_RE.fullmatch(job_id):
-        raise DiscoveryError("Slurm accounting returned an invalid root job ID")
-    validate_accounting_identity(int(job_id), metadata)
+    if not _scheduler.JOB_ID_RE.fullmatch(job_id):
+        raise _scheduler.DiscoveryError(
+            "Slurm accounting returned an invalid root job ID"
+        )
+    _scheduler.validate_accounting_identity(int(job_id), metadata)
     out_path = metadata.get("StdOut")
     err_path = metadata.get("StdErr")
     if not out_path or not err_path:
-        raise DiscoveryError(
+        raise _scheduler.DiscoveryError(
             "Slurm accounting did not report stdout/stderr for job %s" % job_id
         )
-    out_path = expand_job_path(out_path, job_id)
-    err_path = expand_job_path(err_path, job_id)
+    out_path = _scheduler.expand_job_path(out_path, job_id)
+    err_path = _scheduler.expand_job_path(err_path, job_id)
     if log_dir:
         if not os.path.isabs(log_dir):
-            raise DiscoveryError("LOG_DIR must be an absolute path")
+            raise _scheduler.DiscoveryError("LOG_DIR must be an absolute path")
         requested = os.path.abspath(log_dir)
         if requested != os.path.dirname(
             os.path.abspath(out_path)
         ) or requested != os.path.dirname(os.path.abspath(err_path)):
-            raise DiscoveryError(
+            raise _scheduler.DiscoveryError(
                 "LOG_DIR disagrees with scheduler-declared stdout/stderr"
             )
     selection = validate_log_selection(job_id, out_path, err_path)
@@ -473,48 +337,60 @@ def accounting_stream_selection(metadata, log_dir=None):
 
 def validate_log_selection(job_id, out_path, err_path, allow_missing=False):
     if not os.path.isabs(out_path) or not os.path.isabs(err_path):
-        raise DiscoveryError("scheduler log paths must be absolute")
+        raise _scheduler.DiscoveryError("scheduler log paths must be absolute")
     out_path = os.path.abspath(out_path)
     err_path = os.path.abspath(err_path)
     if not re.fullmatch(
         r"emrys-local-pilot-(?:[0-9a-f]{32}-)?%s\.out" % re.escape(str(job_id)),
         os.path.basename(out_path),
     ):
-        raise DiscoveryError(
+        raise _scheduler.DiscoveryError(
             "stdout does not match the EMRYS wrapper contract: %s" % out_path
         )
     if os.path.basename(err_path) != os.path.basename(out_path)[:-4] + ".err":
-        raise DiscoveryError(
+        raise _scheduler.DiscoveryError(
             "stderr does not match the EMRYS wrapper contract: %s" % err_path
         )
     log_dir = os.path.dirname(out_path)
     if log_dir != os.path.dirname(err_path):
-        raise DiscoveryError("stdout and stderr do not share one log directory")
+        raise _scheduler.DiscoveryError(
+            "stdout and stderr do not share one log directory"
+        )
     try:
         directory = os.lstat(log_dir)
     except OSError as exc:
-        raise DiscoveryError("log directory is unavailable: %s" % log_dir) from exc
+        raise _scheduler.DiscoveryError(
+            "log directory is unavailable: %s" % log_dir
+        ) from exc
     if stat.S_ISLNK(directory.st_mode) or not stat.S_ISDIR(directory.st_mode):
-        raise DiscoveryError("log directory must be a real directory: %s" % log_dir)
+        raise _scheduler.DiscoveryError(
+            "log directory must be a real directory: %s" % log_dir
+        )
     if directory.st_uid != os.getuid():
-        raise DiscoveryError(
+        raise _scheduler.DiscoveryError(
             "log directory is not owned by the current UID: %s" % log_dir
         )
     if os.path.realpath(log_dir) != log_dir:
-        raise DiscoveryError("log directory contains a symlinked path: %s" % log_dir)
+        raise _scheduler.DiscoveryError(
+            "log directory contains a symlinked path: %s" % log_dir
+        )
     for path in (out_path, err_path):
         try:
             entry = os.lstat(path)
         except FileNotFoundError:
             if allow_missing:
                 continue
-            raise DiscoveryError("scheduler log is not present: %s" % path)
+            raise _scheduler.DiscoveryError("scheduler log is not present: %s" % path)
         except OSError as exc:
-            raise DiscoveryError("scheduler log is unavailable: %s" % path) from exc
+            raise _scheduler.DiscoveryError(
+                "scheduler log is unavailable: %s" % path
+            ) from exc
         if stat.S_ISLNK(entry.st_mode) or not stat.S_ISREG(entry.st_mode):
-            raise DiscoveryError("scheduler log must be a real regular file: %s" % path)
+            raise _scheduler.DiscoveryError(
+                "scheduler log must be a real regular file: %s" % path
+            )
         if entry.st_uid != os.getuid() or not os.access(path, os.R_OK):
-            raise DiscoveryError(
+            raise _scheduler.DiscoveryError(
                 "scheduler log is not owned/readable by the current UID: %s" % path
             )
     return {
@@ -528,7 +404,7 @@ def validate_log_selection(job_id, out_path, err_path, allow_missing=False):
 def scheduler_candidates():
     """Return bounded live and recent candidates with available path metadata."""
     user = str(os.getuid())
-    live = command_text(
+    live = _scheduler.command_text(
         [
             "squeue",
             "-h",
@@ -541,11 +417,11 @@ def scheduler_candidates():
     live_ids = []
     for line in live.splitlines():
         job_id = line.split("|", 1)[0].strip()
-        if JOB_ID_RE.fullmatch(job_id):
+        if _scheduler.JOB_ID_RE.fullmatch(job_id):
             live_ids.append(int(job_id))
 
     since = (dt.date.today() - dt.timedelta(days=DISCOVERY_DAYS)).isoformat()
-    recent = command_text(
+    recent = _scheduler.command_text(
         [
             "sacct",
             "--duplicates",
@@ -563,7 +439,7 @@ def scheduler_candidates():
     if not recent:
         # Older site accounting may not expose stream fields. Preserve the
         # prior bounded ID discovery, but require scontrol to prove its paths.
-        recent = command_text(
+        recent = _scheduler.command_text(
             [
                 "sacct",
                 "--duplicates",
@@ -581,7 +457,7 @@ def scheduler_candidates():
     for line in recent.splitlines():
         fields = line.split("|")
         job_id = fields[0].strip() if fields else ""
-        if not JOB_ID_RE.fullmatch(job_id):
+        if not _scheduler.JOB_ID_RE.fullmatch(job_id):
             continue
         numeric_id = int(job_id)
         record = {"JobId": job_id}
@@ -622,17 +498,17 @@ def scheduler_selection(
     job_id, log_dir=None, allow_accounting_fallback=False, accounting_metadata=None
 ):
     if log_dir and not os.path.isabs(log_dir):
-        raise DiscoveryError("LOG_DIR must be an absolute path")
-    metadata = slurm_job_metadata(job_id)
+        raise _scheduler.DiscoveryError("LOG_DIR must be an absolute path")
+    metadata = _scheduler.slurm_job_metadata(job_id)
     if metadata is None:
         accounting = accounting_metadata
         if accounting is None and allow_accounting_fallback:
-            accounting = slurm_accounting_metadata(job_id)
+            accounting = _scheduler.slurm_accounting_metadata(job_id)
         if accounting is not None:
             accounting_out = accounting.get("StdOut")
             accounting_err = accounting.get("StdErr")
             if bool(accounting_out) != bool(accounting_err):
-                raise DiscoveryError(
+                raise _scheduler.DiscoveryError(
                     "Slurm accounting did not report a complete stdout/stderr pair "
                     "for job %s" % job_id
                 )
@@ -640,28 +516,30 @@ def scheduler_selection(
                 return accounting_stream_selection(accounting, log_dir)
             if log_dir:
                 return accounting_log_selection(job_id, log_dir, accounting)
-            validate_accounting_identity(job_id, accounting)
-            raise DiscoveryError(
+            _scheduler.validate_accounting_identity(job_id, accounting)
+            raise _scheduler.DiscoveryError(
                 "Slurm accounting did not report stdout/stderr for job %s; "
                 "pass LOG_DIR explicitly" % job_id
             )
-        raise DiscoveryError("Slurm metadata is unavailable for job %s" % job_id)
-    validate_scheduler_identity(job_id, metadata, owner_field="UserId")
-    state = normalized_job_state(metadata.get("JobState"))
+        raise _scheduler.DiscoveryError(
+            "Slurm metadata is unavailable for job %s" % job_id
+        )
+    _scheduler.validate_scheduler_identity(job_id, metadata, owner_field="UserId")
+    state = _scheduler.normalized_job_state(metadata.get("JobState"))
     allow_missing = state in {"PENDING", "CONFIGURING"}
     scheduler_out = metadata.get("StdOut")
     scheduler_err = metadata.get("StdErr")
     if bool(scheduler_out) != bool(scheduler_err):
-        raise DiscoveryError(
+        raise _scheduler.DiscoveryError(
             "Slurm did not report a complete stdout/stderr pair for job %s" % job_id
         )
     if scheduler_out and scheduler_err:
-        scheduler_out = expand_job_path(scheduler_out, job_id)
-        scheduler_err = expand_job_path(scheduler_err, job_id)
+        scheduler_out = _scheduler.expand_job_path(scheduler_out, job_id)
+        scheduler_err = _scheduler.expand_job_path(scheduler_err, job_id)
         if log_dir:
             requested = os.path.abspath(log_dir)
             if requested != os.path.dirname(os.path.abspath(scheduler_out)):
-                raise DiscoveryError(
+                raise _scheduler.DiscoveryError(
                     "LOG_DIR disagrees with scheduler-declared stdout/stderr"
                 )
         return validate_log_selection(
@@ -671,7 +549,7 @@ def scheduler_selection(
             allow_missing=allow_missing,
         )
     if not log_dir:
-        raise DiscoveryError(
+        raise _scheduler.DiscoveryError(
             "Slurm did not report stdout/stderr; pass JOB_ID and LOG_DIR explicitly"
         )
     return validate_log_selection(
@@ -686,18 +564,18 @@ def resolve_selection(
     job_id=None, log_dir=None, out_path=None, err_path=None, offline=False
 ):
     """Resolve one dashboard target without scanning shared storage."""
-    if job_id is not None and not JOB_ID_RE.fullmatch(str(job_id)):
-        raise DiscoveryError("JOB_ID must be a positive root allocation ID")
+    if job_id is not None and not _scheduler.JOB_ID_RE.fullmatch(str(job_id)):
+        raise _scheduler.DiscoveryError("JOB_ID must be a positive root allocation ID")
     if bool(out_path) != bool(err_path):
-        raise DiscoveryError("--out and --err must be supplied together")
+        raise _scheduler.DiscoveryError("--out and --err must be supplied together")
     if out_path and err_path:
         if not offline:
-            raise DiscoveryError("explicit --out/--err requires --offline")
+            raise _scheduler.DiscoveryError("explicit --out/--err requires --offline")
         if job_id is None:
-            raise DiscoveryError("--offline requires JOB_ID")
+            raise _scheduler.DiscoveryError("--offline requires JOB_ID")
         return validate_log_selection(job_id, out_path, err_path)
     if offline:
-        raise DiscoveryError("--offline requires explicit --out and --err")
+        raise _scheduler.DiscoveryError("--offline requires explicit --out and --err")
     if job_id is not None:
         return scheduler_selection(
             int(job_id),
@@ -705,7 +583,7 @@ def resolve_selection(
             allow_accounting_fallback=True,
         )
     if log_dir:
-        raise DiscoveryError("LOG_DIR without JOB_ID is ambiguous")
+        raise _scheduler.DiscoveryError("LOG_DIR without JOB_ID is ambiguous")
     failures = []
     for candidate in scheduler_candidates():
         job_id = candidate["job_id"]
@@ -714,16 +592,16 @@ def resolve_selection(
         if accounting and accounting.get("StdOut") and accounting.get("StdErr"):
             try:
                 return accounting_stream_selection(accounting)
-            except DiscoveryError as exc:
+            except _scheduler.DiscoveryError as exc:
                 candidate_failures.append("accounting: %s" % exc)
         try:
             return scheduler_selection(job_id)
-        except DiscoveryError as exc:
+        except _scheduler.DiscoveryError as exc:
             candidate_failures.append("scontrol: %s" % exc)
         failures.append("%s: %s" % (job_id, "; ".join(candidate_failures)))
     detail = "; ".join(failures[:3])
     suffix = " (%s)" % detail if detail else ""
-    raise DiscoveryError(
+    raise _scheduler.DiscoveryError(
         "no recent current-user EMRYS wrapper job could be proven%s; "
         "pass JOB_ID and LOG_DIR" % suffix
     )
@@ -1054,96 +932,6 @@ def parse_workflow(stderr_text):
     }
 
 
-def query_slurm(job_id, out_path=None, err_path=None):
-    """Observe one owned scheduler job; ID/path reuse cannot identify a request."""
-    unknown = {"terminal": False, "state": "UNKNOWN"}
-    if not JOB_ID_RE.fullmatch(str(job_id)):
-        return unknown
-    row = command_text(
-        ["squeue", "-h", "-j", str(job_id), "-o", "%i|%U|%T|%M|%L|%C|%P|%N|%R"]
-    )
-    try:
-        if row:
-            rows = row.splitlines()
-            parts = [value.strip() for value in rows[0].split("|", 8)]
-            if len(rows) != 1 or len(parts) != 9:
-                return unknown
-            metadata = dict(
-                zip(
-                    (
-                        "JobId",
-                        "UID",
-                        "JobState",
-                        "Elapsed",
-                        "left",
-                        "AllocCPUS",
-                        "partition",
-                        "NodeList",
-                        "reason",
-                    ),
-                    parts,
-                )
-            )
-            validate_scheduler_identity(job_id, metadata)
-        else:
-            metadata = slurm_accounting_metadata(job_id)
-            validate_accounting_identity(job_id, metadata)
-        if out_path or err_path:
-            streams = slurm_job_metadata(job_id) if row else metadata
-            if streams is None:
-                return unknown
-            validate_scheduler_identity(
-                job_id, streams, owner_field="UserId" if row else "UID"
-            )
-            for key, expected in (("StdOut", out_path), ("StdErr", err_path)):
-                declared = streams.get(key, "")
-                if (
-                    not expected
-                    or not declared
-                    or expand_job_path(declared, job_id) != expected
-                ):
-                    return unknown
-    except DiscoveryError:
-        return unknown
-    state = normalized_job_state(metadata.get("JobState"))
-    result = {"terminal": state in TERMINAL_STATES, "state": state}
-    for key, field in (
-        ("elapsed", "Elapsed"),
-        ("left", "left"),
-        ("cpus", "AllocCPUS"),
-        ("partition", "partition"),
-        ("node", "NodeList"),
-        ("reason", "reason"),
-        ("exit_code", "ExitCode"),
-    ):
-        if metadata.get(field):
-            result[key] = metadata[field]
-    if row:
-        usage = command_text(
-            [
-                "sstat",
-                "-n",
-                "-P",
-                "-j",
-                "%s.batch" % job_id,
-                "--format=JobID,AveCPU,MaxRSS,MaxDiskRead,MaxDiskWrite",
-            ]
-        )
-        if usage:
-            rows = usage.splitlines()
-            fields = rows[0].split("|")
-            if len(rows) == 1 and len(fields) >= 5 and fields[0] == "%s.batch" % job_id:
-                result.update(
-                    {
-                        "ave_cpu": fields[1],
-                        "max_rss": fields[2],
-                        "disk_read": fields[3],
-                        "disk_write": fields[4],
-                    }
-                )
-    return result
-
-
 def human_size(value):
     if not value:
         return "-"
@@ -1444,7 +1232,7 @@ def job_lines(slurm, identity, width, attrs):
         if state == "COMPLETED"
         else "yellow"
     )
-    if state in TERMINAL_STATES - {"COMPLETED"}:
+    if state in _scheduler.TERMINAL_STATES - {"COMPLETED"}:
         state_style = "red"
     lines = [
         [
@@ -1917,7 +1705,7 @@ def overview_lines(slurm, identity, model, width):
         if state == "COMPLETED"
         else "yellow"
     )
-    if state in TERMINAL_STATES - {"COMPLETED"}:
+    if state in _scheduler.TERMINAL_STATES - {"COMPLETED"}:
         state_style = "red"
     phase_number, phase_title = workflow_phase(model)
     return [
@@ -2525,7 +2313,7 @@ def dashboard(screen, args):
                 work_scroll = 0
                 active_signature = new_signature
             if refresh_slurm:
-                slurm = query_slurm(args.job_id, args.out, args.err)
+                slurm = _scheduler.query_slurm(args.job_id, args.out, args.err)
             last_sync = now
             force = False
         render(
@@ -2597,7 +2385,7 @@ def parse_args(argv):
             args.err,
             args.offline,
         )
-    except DiscoveryError as exc:
+    except _scheduler.DiscoveryError as exc:
         parser.error(str(exc))
     args.job_id = selection["job_id"]
     args.log_dir = selection["log_dir"]
@@ -2615,7 +2403,7 @@ def main(argv=None):
         err_cache.sync()
         snapshot(
             args.job_id,
-            query_slurm(args.job_id, args.out, args.err),
+            _scheduler.query_slurm(args.job_id, args.out, args.err),
             parse_identity(out_cache.text()),
             parse_workflow(err_cache.text()),
         )

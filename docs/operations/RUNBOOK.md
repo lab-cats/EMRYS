@@ -23,6 +23,26 @@ A recorded job ID is historical response data; this roster does not query the
 scheduler or associate that request with a Run. An unavailable log directory
 is an inspection error, not an empty roster.
 
+To query one request, pass its exact printed directory name or absolute path:
+
+```bash
+emrys inspect --submission "submission-REPLACE_WITH_THE_EXACT_REQUEST_TOKEN"
+```
+
+This selects a submission instead of a Run. It prints the recorded scheduler
+stream paths and queries only that request: one `squeue` call and, only after
+a successful empty queue reply, at most one `sacct` call. Each has a ten-second
+timeout. A v2 request requires an exact job ID, current numeric UID, cluster
+and both request-specific stream paths. The output reports state and queue
+reason or accounting exit status when admitted. Unsupported fields, missing
+proof, duplicate records or query failure produce `UNKNOWN`. Legacy v1 or
+incomplete request records stay unknown without scheduler calls.
+
+The ordinary roster makes no scheduler calls. Scheduler observations describe
+the returned metadata only; they do not establish Run completion, identify
+the resulting Run, prove native process absence or authorize cancellation,
+lock removal or recovery.
+
 An empty or malformed response does not prove that submission was rejected.
 If acceptance is uncertain or the client was interrupted, resolve the exact
 request with the scheduler and its logs before submitting again. Do not choose

@@ -36,6 +36,7 @@ from emrys.libraries.application_logging import (
     event,
     field,
     open_attempt_log,
+    phase_progress,
     render_failure_summary,
     resolve_log_controls,
 )
@@ -1377,6 +1378,11 @@ def configure_report_parser(parser: argparse.ArgumentParser) -> None:
 def configure_inspect_parser(parser: argparse.ArgumentParser) -> None:
     _add_run_selector(parser)
     parser.add_argument(
+        "--submission",
+        metavar="REQUEST",
+        help="Inspect one exact request directory name or absolute path and query its scheduler state; excludes a Run selector.",
+    )
+    parser.add_argument(
         "--detail",
         choices=("normal", "verbose", "debug"),
         default="normal",
@@ -1684,8 +1690,18 @@ def report_from_args(
     return 0
 
 
-def _print_submission_roster(project: Path) -> None:
+def _print_submission_roster(project: Path, selector: str | None = None) -> None:
     requests = slurm_submission.submission_requests(project)
+    if selector is not None:
+        requests = tuple(
+            request
+            for request in requests
+            if selector in (request.request_root.name, str(request.request_root))
+        )
+        if len(requests) != 1:
+            raise ControlError(
+                "Submission selector must identify one exact retained request"
+            )
     print("Retained submissions:")
     if not requests:
         print("  None found; this does not establish that no job was submitted.")
@@ -1700,6 +1716,12 @@ def _print_submission_roster(project: Path) -> None:
                 f"requested Run: {context['requested_run'] or 'new Run'}"
             )
             _print_safe(f"    Application logs: {context['application_log_root']}")
+            if selector is not None:
+                for stream in ("stdout", "stderr"):
+                    path = context[f"scheduler_{stream}_pattern"].replace(
+                        "%j", request.recorded_job_id or "%j"
+                    )
+                    _print_safe(f"    Recorded scheduler {stream}: {path}")
         _print_safe(
             f"    Recorded response job ID: {request.recorded_job_id or 'unconfirmed'}; "
             f"cluster: {request.recorded_cluster or 'not recorded'}"
@@ -1711,20 +1733,49 @@ def _print_submission_roster(project: Path) -> None:
             )
         for diagnostic in request.diagnostics:
             _print_safe(f"    Observation: {diagnostic}")
-    print(
-        "Current scheduler state and Run association are not established by these records."
-    )
+        if selector is not None:
+            with phase_progress("Reading scheduler state for the selected request"):
+                scheduler = slurm_submission.observe_submission_request(request)
+            _print_safe(
+                f"    Scheduler observation: {scheduler['state']}; "
+                f"source: {scheduler['source'] or 'unavailable'}; "
+                f"cluster: {scheduler['cluster'] or 'unconfirmed'}"
+            )
+            for key, label in (
+                ("reason", "Queue reason"),
+                ("exit_code", "Scheduler exit status"),
+                ("diagnostic", "Observation"),
+            ):
+                if scheduler.get(key):
+                    _print_safe(f"    {label}: {scheduler[key]}")
+    if selector is None:
+        print(
+            "Current scheduler state and Run association are not established by these records."
+        )
+        print("Query one exact request with: emrys inspect --submission REQUEST")
+    else:
+        print(
+            "Scheduler observations do not establish Run completion or authorize cancellation or recovery."
+        )
 
 
 def inspect_from_args(
     arguments: argparse.Namespace,
 ) -> int:
     try:
+        submission_selector = getattr(arguments, "submission", None)
+        if (
+            submission_selector is not None
+            and getattr(arguments, "run", None) is not None
+        ):
+            raise ControlError("Select a submission or a Run, not both")
         if getattr(arguments, "run", None) is None:
             project = onboarding.project_definition_path(
                 getattr(arguments, "project", None)
             )
-            _print_submission_roster(project)
+            _print_submission_roster(project, submission_selector)
+            if submission_selector is not None:
+                return 0
         try:
             _project_path, run_root = _resolve_run_argument(arguments)
         except _NoProjectRuns:

@@ -47,7 +47,9 @@ def test_request_specific_scheduler_stream_pair_admission(
         selected = dashboard.validate_log_selection(JOB_ID, str(stdout), str(stderr))
         assert (selected["out"], selected["err"]) == (str(stdout), str(stderr))
     else:
-        with pytest.raises(dashboard.DiscoveryError, match="stderr does not match"):
+        with pytest.raises(
+            dashboard._scheduler.DiscoveryError, match="stderr does not match"
+        ):
             dashboard.validate_log_selection(JOB_ID, str(stdout), str(stderr))
 
 
@@ -61,6 +63,245 @@ def test_dashboard_remains_directly_executable_in_isolated_mode() -> None:
     )
     assert completed.returncode == 0, completed.stderr
     assert "--refresh" in completed.stdout
+
+
+@pytest.mark.parametrize("source", ["squeue", "sacct"])
+@pytest.mark.parametrize("cluster", [None, "alpha"])
+def test_exact_job_observation_uses_one_scoped_record(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, source: str, cluster: str | None
+) -> None:
+    out = str(tmp_path / f"emrys-local-pilot-{'a' * 32}-%j.out")
+    err = str(tmp_path / f"emrys-local-pilot-{'a' * 32}-%j.err")
+    calls = []
+    monkeypatch.setenv("SLURM_CLUSTERS", "wrong,other")
+    for key in ("SQUEUE_STATES", "SQUEUE_PARTITION", "SQUEUE_NAME", "SACCT_FORMAT"):
+        monkeypatch.setenv(key, "ambient-filter")
+    monkeypatch.setenv("SLURM_CONF", "/etc/slurm/observed.conf")
+    monkeypatch.setenv("SLURM_JWT", "test-auth-token")
+
+    def command(argv, timeout=10, environment=None):
+        calls.append(argv)
+        assert "SLURM_CLUSTERS" not in environment
+        assert not any(key.startswith(("SQUEUE_", "SACCT_")) for key in environment)
+        assert environment["SLURM_CONF"] == "/etc/slurm/observed.conf"
+        assert environment["SLURM_JWT"] == "test-auth-token"
+        assert environment["PATH"] == os.environ["PATH"]
+        assert argv[1] == ("--local" if cluster is None else "--clusters=alpha")
+        assert timeout == 10
+        if argv[0] != source:
+            assert argv[0] == "squeue"
+            return b""
+        if source == "squeue":
+            assert (
+                argv[-1]
+                == "JobArrayId:0|,UserID:0|,State:0|,Cluster:0|,STDOUT:0|,STDERR:0|,Reason:0"
+            )
+            state, suffix = "PENDING", "|Priority"
+        else:
+            assert "--duplicates" in argv and "-X" in argv
+            state, suffix = "COMPLETED", "|0:0"
+        return (f"{JOB_ID}|{os.getuid()}|{state}|alpha|{out}|{err}{suffix}\n").encode()
+
+    monkeypatch.setattr(dashboard._scheduler, "command_bytes", command)
+    observed = dashboard._scheduler.observe_job(JOB_ID, out, err, cluster)
+    assert observed["state"] == ("PENDING" if source == "squeue" else "COMPLETED")
+    assert observed["terminal"] is (source == "sacct")
+    assert observed["cluster"] == "alpha" and observed["source"] == source
+    assert observed["diagnostic"] is None
+    assert observed["reason" if source == "squeue" else "exit_code"] == (
+        "Priority" if source == "squeue" else "0:0"
+    )
+    assert len(calls) == (1 if source == "squeue" else 2)
+
+
+@pytest.mark.parametrize("source", ["squeue", "sacct"])
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "wrong-id",
+        "step-id",
+        "array-id",
+        "heterogeneous-id",
+        "wrong-uid",
+        "reused-id-path",
+        "missing-stream",
+        "stdout-leading-space",
+        "stdout-trailing-space",
+        "stderr-leading-space",
+        "stderr-trailing-space",
+        "wrong-cluster",
+        "missing-cluster",
+        "duplicate",
+        "truncated",
+        "invalid-utf8",
+        "oversized",
+        "failed-query",
+        "empty-state",
+        "unknown-state",
+        "decorated-state",
+        "truncated-state",
+        "leading-blank-line",
+        "trailing-blank-line",
+        "whitespace-only",
+    ],
+)
+def test_exact_job_observation_preserves_unknown_on_unproved_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, source: str, defect: str
+) -> None:
+    out = str(tmp_path / f"emrys-local-pilot-{'a' * 32}-%j.out")
+    err = str(tmp_path / f"emrys-local-pilot-{'a' * 32}-%j.err")
+    fields = [str(JOB_ID), str(os.getuid()), "COMPLETED", "alpha", out, err]
+    fields.append("0:0" if source == "sacct" else "None")
+    changes = {
+        "wrong-id": (0, str(JOB_ID + 1)),
+        "step-id": (0, f"{JOB_ID}.batch"),
+        "array-id": (0, f"{JOB_ID}_3"),
+        "heterogeneous-id": (0, f"{JOB_ID}+1"),
+        "wrong-uid": (1, str(os.getuid() + 1)),
+        "empty-state": (2, ""),
+        "unknown-state": (2, "NEW_STATE"),
+        "decorated-state": (2, "COMPLETED invalid"),
+        "truncated-state": (2, "CANCELLED+"),
+        "wrong-cluster": (3, "beta"),
+        "missing-cluster": (3, ""),
+        "reused-id-path": (4, out.replace("a" * 32, "b" * 32)),
+        "missing-stream": (5, ""),
+        "stdout-leading-space": (4, " " + out),
+        "stdout-trailing-space": (4, out + " "),
+        "stderr-leading-space": (5, " " + err),
+        "stderr-trailing-space": (5, err + " "),
+    }
+    if defect in changes:
+        index, value = changes[defect]
+        fields[index] = value
+    if defect == "truncated":
+        fields.pop()
+    reply = ("|".join(fields) + "\n").encode()
+    if defect == "duplicate":
+        reply += reply
+    elif defect == "leading-blank-line":
+        reply = b"\n" + reply
+    elif defect == "trailing-blank-line":
+        reply += b"\n"
+    elif defect == "whitespace-only":
+        reply = b" \t\n"
+    elif defect == "invalid-utf8":
+        reply = b"\xff\n"
+    elif defect == "oversized":
+        reply = b"x" * 65537
+    elif defect == "failed-query":
+        reply = None
+    calls = []
+
+    def command(argv, **_kwargs):
+        calls.append(argv)
+        return reply if argv[0] == source else b""
+
+    monkeypatch.setattr(dashboard._scheduler, "command_bytes", command)
+    observed = dashboard._scheduler.observe_job(JOB_ID, out, err, "alpha")
+    assert observed["state"] == "UNKNOWN" and observed["terminal"] is False
+    assert observed["source"] is None and observed["cluster"] is None
+    assert observed["diagnostic"]
+    assert len(calls) == (1 if source == "squeue" else 2)
+
+
+@pytest.mark.parametrize(
+    "state", ["COMPLETING", "REQUEUED", "SUSPENDED", "RECONFIG_FAIL"]
+)
+def test_exact_queue_transition_states_remain_nonterminal(
+    monkeypatch: pytest.MonkeyPatch, state: str
+) -> None:
+    monkeypatch.setattr(
+        dashboard._scheduler,
+        "command_bytes",
+        lambda *_args, **_kwargs: (
+            f"{JOB_ID}|{os.getuid()}|{state}|alpha|/logs/out|/logs/err|None\n"
+        ).encode(),
+    )
+    observed = dashboard._scheduler.observe_job(
+        JOB_ID, "/logs/out", "/logs/err", "alpha"
+    )
+    assert observed["state"] == state and observed["terminal"] is False
+    assert observed["source"] == "squeue" and observed["reason"] == "None"
+
+
+@pytest.mark.parametrize(
+    "state,exit_code,admitted",
+    [
+        ("COMPLETED", "0:0", True),
+        ("FAILED", "255:0", True),
+        ("CANCELLED by 0", "0:15", True),
+        (f"CANCELLED by {os.getuid()}", "0:9", True),
+        ("CANCELLED by user", "0:15", False),
+        ("CANCELLED by 00", "0:15", False),
+        ("FAILED", "", False),
+        ("FAILED", "0", False),
+        ("FAILED", "0:", False),
+        ("FAILED", "00:0", False),
+        ("FAILED", "0:09", False),
+        ("FAILED", "-1:0", False),
+        ("FAILED", "256:0", False),
+        ("FAILED", "0:128", False),
+        ("FAILED", "0:9:0", False),
+        ("FAILED", "0:９", False),
+    ],
+)
+def test_exact_accounting_requires_complete_state_and_canonical_exit_code(
+    monkeypatch: pytest.MonkeyPatch, state: str, exit_code: str, admitted: bool
+) -> None:
+    replies = iter(
+        [
+            b"",
+            f"{JOB_ID}|{os.getuid()}|{state}|alpha|/logs/out|/logs/err|{exit_code}\n".encode(),
+        ]
+    )
+    monkeypatch.setattr(
+        dashboard._scheduler, "command_bytes", lambda *_args, **_kwargs: next(replies)
+    )
+    observed = dashboard._scheduler.observe_job(
+        JOB_ID, "/logs/out", "/logs/err", "alpha"
+    )
+    if admitted:
+        assert observed["state"] == state.split()[0] and observed["terminal"] is True
+        assert observed["source"] == "sacct" and observed["exit_code"] == exit_code
+    else:
+        assert observed["state"] == "UNKNOWN" and observed["terminal"] is False
+        assert observed["source"] is None and observed["diagnostic"]
+
+
+@pytest.mark.parametrize(
+    "cluster", ["all", "ALL", "alpha,beta", "-alpha", "alpha\n", ""]
+)
+def test_request_cluster_cannot_expand_or_redirect_query(
+    monkeypatch: pytest.MonkeyPatch, cluster: str
+) -> None:
+    monkeypatch.setattr(
+        dashboard._scheduler,
+        "command_bytes",
+        lambda *_args, **_kwargs: pytest.fail("invalid cluster queried"),
+    )
+    observed = dashboard._scheduler.observe_job(
+        JOB_ID, "/logs/out", "/logs/err", cluster
+    )
+    assert observed["state"] == "UNKNOWN" and observed["diagnostic"]
+
+
+def test_accounting_nonterminal_record_is_not_current_queue_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    replies = iter(
+        [
+            b"",
+            f"{JOB_ID}|{os.getuid()}|RUNNING|alpha|/logs/out|/logs/err|0:0\n".encode(),
+        ]
+    )
+    monkeypatch.setattr(
+        dashboard._scheduler, "command_bytes", lambda *_args, **_kwargs: next(replies)
+    )
+    observed = dashboard._scheduler.observe_job(
+        JOB_ID, "/logs/out", "/logs/err", "alpha"
+    )
+    assert observed["state"] == "UNKNOWN" and "not terminal" in observed["diagnostic"]
 
 
 def _flatten_render_lines(lines: list[object]) -> str:
@@ -260,7 +501,7 @@ def test_explicit_job_failure_does_not_fall_back_to_discovery(
         **kwargs: object,
     ) -> dict[str, object]:
         del log_dir, kwargs
-        raise dashboard.DiscoveryError(f"invalid explicit job {job_id}")
+        raise dashboard._scheduler.DiscoveryError(f"invalid explicit job {job_id}")
 
     def unexpected_discovery() -> list[int]:
         pytest.fail("explicit selection must not call candidate discovery")
@@ -269,7 +510,9 @@ def test_explicit_job_failure_does_not_fall_back_to_discovery(
     monkeypatch.setattr(dashboard, "scheduler_candidate_ids", unexpected_discovery)
     monkeypatch.setattr(dashboard, "scheduler_candidates", unexpected_discovery)
 
-    with pytest.raises(dashboard.DiscoveryError, match="invalid explicit job 605305"):
+    with pytest.raises(
+        dashboard._scheduler.DiscoveryError, match="invalid explicit job 605305"
+    ):
         dashboard.resolve_selection(JOB_ID)
 
 
@@ -308,7 +551,7 @@ def test_validate_log_selection_rejects_wrong_contract_filenames(
     stdout.write_text("", encoding="utf-8")
     stderr.write_text("", encoding="utf-8")
 
-    with pytest.raises(dashboard.DiscoveryError, match=message):
+    with pytest.raises(dashboard._scheduler.DiscoveryError, match=message):
         dashboard.validate_log_selection(JOB_ID, stdout, stderr)
 
 
@@ -322,7 +565,7 @@ def test_validate_log_selection_rejects_symlinked_log(tmp_path: Path) -> None:
     stderr = log_dir / f"emrys-local-pilot-{JOB_ID}.err"
     stderr.write_text("stderr", encoding="utf-8")
 
-    with pytest.raises(dashboard.DiscoveryError, match="real regular file"):
+    with pytest.raises(dashboard._scheduler.DiscoveryError, match="real regular file"):
         dashboard.validate_log_selection(JOB_ID, stdout, stderr)
 
 
@@ -332,7 +575,7 @@ def test_validate_log_selection_rejects_symlinked_directory(tmp_path: Path) -> N
     linked_dir = tmp_path / "linked"
     linked_dir.symlink_to(real_dir, target_is_directory=True)
 
-    with pytest.raises(dashboard.DiscoveryError, match="real directory"):
+    with pytest.raises(dashboard._scheduler.DiscoveryError, match="real directory"):
         dashboard.validate_log_selection(
             JOB_ID, linked_dir / stdout.name, linked_dir / stderr.name
         )
@@ -356,7 +599,7 @@ def test_scheduler_candidate_ids_prefers_live_then_recent_root_allocations(
 
     monkeypatch.setenv("USER", "2609214")
     monkeypatch.setenv("LOGNAME", "another-user")
-    monkeypatch.setattr(dashboard, "command_text", fake_command)
+    monkeypatch.setattr(dashboard._scheduler, "command_text", fake_command)
 
     assert dashboard.scheduler_candidate_ids() == [
         605305,
@@ -389,7 +632,7 @@ def test_auto_discovery_skips_unprovable_candidate(
         del log_dir
         attempted.append(job_id)
         if job_id == 605305:
-            raise dashboard.DiscoveryError("not an EMRYS wrapper job")
+            raise dashboard._scheduler.DiscoveryError("not an EMRYS wrapper job")
         return selected
 
     monkeypatch.setattr(dashboard, "scheduler_selection", fake_selection)
@@ -444,7 +687,7 @@ def test_scheduler_selection_binds_metadata_owner_and_paths(
     stdout, stderr = _make_logs(tmp_path / "logs")
     monkeypatch.setenv("USER", "2609214")
     monkeypatch.setattr(
-        dashboard,
+        dashboard._scheduler,
         "slurm_job_metadata",
         lambda job_id: {
             "JobId": str(job_id),
@@ -488,8 +731,8 @@ def test_live_selection_rejects_unproven_identity_without_accounting_fallback(
         calls.append(argv)
         return record
 
-    monkeypatch.setattr(dashboard, "command_text", command)
-    with pytest.raises(dashboard.DiscoveryError):
+    monkeypatch.setattr(dashboard._scheduler, "command_text", command)
+    with pytest.raises(dashboard._scheduler.DiscoveryError):
         dashboard.scheduler_selection(JOB_ID, allow_accounting_fallback=True)
     assert len(calls) == 1
     assert calls[0][0] == "scontrol"
@@ -501,7 +744,7 @@ def test_explicit_job_and_log_dir_use_terminal_accounting_fallback(
 ) -> None:
     stdout, stderr = _make_logs(tmp_path / "logs")
     monkeypatch.setenv("USER", "2609214")
-    monkeypatch.setattr(dashboard, "slurm_job_metadata", lambda job_id: None)
+    monkeypatch.setattr(dashboard._scheduler, "slurm_job_metadata", lambda job_id: None)
 
     def fake_command(argv: list[str], timeout: int = 10) -> str:
         del timeout
@@ -513,7 +756,7 @@ def test_explicit_job_and_log_dir_use_terminal_accounting_fallback(
             f"{JOB_ID}.batch|batch|COMPLETED|2609214|{os.getuid()}"
         )
 
-    monkeypatch.setattr(dashboard, "command_text", fake_command)
+    monkeypatch.setattr(dashboard._scheduler, "command_text", fake_command)
 
     assert dashboard.resolve_selection(JOB_ID, str(tmp_path / "logs")) == {
         "job_id": JOB_ID,
@@ -530,7 +773,7 @@ def test_explicit_completed_job_uses_exact_accounting_streams_without_log_dir(
 ) -> None:
     stdout, stderr = _make_logs(tmp_path / "logs")
     monkeypatch.setenv("USER", "2609214")
-    monkeypatch.setattr(dashboard, "slurm_job_metadata", lambda job_id: None)
+    monkeypatch.setattr(dashboard._scheduler, "slurm_job_metadata", lambda job_id: None)
     calls: list[list[str]] = []
 
     def fake_command(argv: list[str], timeout: int = 10) -> str:
@@ -539,7 +782,7 @@ def test_explicit_completed_job_uses_exact_accounting_streams_without_log_dir(
         assert argv[0] == "sacct"
         return f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}|{stdout}|{stderr}||||"
 
-    monkeypatch.setattr(dashboard, "command_text", fake_command)
+    monkeypatch.setattr(dashboard._scheduler, "command_text", fake_command)
 
     assert dashboard.resolve_selection(JOB_ID) == {
         "job_id": JOB_ID,
@@ -561,7 +804,7 @@ def test_explicit_log_dir_must_agree_with_exact_accounting_streams(
     requested = tmp_path / "requested-logs"
     requested.mkdir()
     monkeypatch.setenv("USER", "2609214")
-    monkeypatch.setattr(dashboard, "slurm_job_metadata", lambda job_id: None)
+    monkeypatch.setattr(dashboard._scheduler, "slurm_job_metadata", lambda job_id: None)
     calls = 0
 
     def fake_command(argv: list[str], timeout: int = 10) -> str:
@@ -570,9 +813,9 @@ def test_explicit_log_dir_must_agree_with_exact_accounting_streams(
         calls += 1
         return f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}|{stdout}|{stderr}||||"
 
-    monkeypatch.setattr(dashboard, "command_text", fake_command)
+    monkeypatch.setattr(dashboard._scheduler, "command_text", fake_command)
 
-    with pytest.raises(dashboard.DiscoveryError, match="LOG_DIR disagrees"):
+    with pytest.raises(dashboard._scheduler.DiscoveryError, match="LOG_DIR disagrees"):
         dashboard.resolve_selection(JOB_ID, str(requested))
     assert calls == 1
 
@@ -583,7 +826,7 @@ def test_exact_accounting_uses_one_basic_fallback_when_stream_fields_unavailable
 ) -> None:
     stdout, stderr = _make_logs(tmp_path / "logs")
     monkeypatch.setenv("USER", "2609214")
-    monkeypatch.setattr(dashboard, "slurm_job_metadata", lambda job_id: None)
+    monkeypatch.setattr(dashboard._scheduler, "slurm_job_metadata", lambda job_id: None)
     formats: list[str] = []
 
     def fake_command(argv: list[str], timeout: int = 10) -> str:
@@ -594,7 +837,7 @@ def test_exact_accounting_uses_one_basic_fallback_when_stream_fields_unavailable
             return ""
         return f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}||||"
 
-    monkeypatch.setattr(dashboard, "command_text", fake_command)
+    monkeypatch.setattr(dashboard._scheduler, "command_text", fake_command)
 
     assert dashboard.resolve_selection(JOB_ID, str(tmp_path / "logs")) == {
         "job_id": JOB_ID,
@@ -613,7 +856,7 @@ def test_explicit_job_without_log_dir_fails_if_accounting_has_no_stream_paths(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("USER", "2609214")
-    monkeypatch.setattr(dashboard, "slurm_job_metadata", lambda job_id: None)
+    monkeypatch.setattr(dashboard._scheduler, "slurm_job_metadata", lambda job_id: None)
 
     def fake_command(argv: list[str], timeout: int = 10) -> str:
         del timeout
@@ -621,9 +864,11 @@ def test_explicit_job_without_log_dir_fails_if_accounting_has_no_stream_paths(
             return ""
         return f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}||||"
 
-    monkeypatch.setattr(dashboard, "command_text", fake_command)
+    monkeypatch.setattr(dashboard._scheduler, "command_text", fake_command)
 
-    with pytest.raises(dashboard.DiscoveryError, match="pass LOG_DIR explicitly"):
+    with pytest.raises(
+        dashboard._scheduler.DiscoveryError, match="pass LOG_DIR explicitly"
+    ):
         dashboard.resolve_selection(JOB_ID)
 
 
@@ -657,14 +902,14 @@ def test_historical_accounting_fallback_rejects_unproven_records(
 ) -> None:
     _make_logs(tmp_path / "logs")
     monkeypatch.setenv("USER", "2609214")
-    monkeypatch.setattr(dashboard, "slurm_job_metadata", lambda job_id: None)
+    monkeypatch.setattr(dashboard._scheduler, "slurm_job_metadata", lambda job_id: None)
     monkeypatch.setattr(
-        dashboard,
+        dashboard._scheduler,
         "command_text",
         lambda argv, timeout=10: "" if ",StdOut,StdErr" in argv[-1] else accounting,
     )
 
-    with pytest.raises(dashboard.DiscoveryError, match=message):
+    with pytest.raises(dashboard._scheduler.DiscoveryError, match=message):
         dashboard.resolve_selection(JOB_ID, str(tmp_path / "logs"))
 
 
@@ -677,13 +922,13 @@ def test_auto_discovery_never_uses_historical_accounting_fallback(
         "scheduler_candidates",
         lambda: [{"job_id": JOB_ID, "accounting": None}],
     )
-    monkeypatch.setattr(dashboard, "slurm_job_metadata", lambda job_id: None)
+    monkeypatch.setattr(dashboard._scheduler, "slurm_job_metadata", lambda job_id: None)
 
     def unexpected_accounting(*args: object) -> dict[str, str]:
         pytest.fail(f"auto-discovery must not use explicit accounting fallback: {args}")
 
     monkeypatch.setattr(
-        dashboard,
+        dashboard._scheduler,
         "slurm_accounting_metadata",
         unexpected_accounting,
     )
@@ -693,7 +938,9 @@ def test_auto_discovery_never_uses_historical_accounting_fallback(
         unexpected_accounting,
     )
 
-    with pytest.raises(dashboard.DiscoveryError, match="no recent current-user"):
+    with pytest.raises(
+        dashboard._scheduler.DiscoveryError, match="no recent current-user"
+    ):
         dashboard.resolve_selection()
 
 
@@ -704,7 +951,7 @@ def test_validate_log_selection_rejects_relative_paths(
     stdout, stderr = _make_logs(tmp_path / "logs")
     monkeypatch.chdir(tmp_path)
 
-    with pytest.raises(dashboard.DiscoveryError, match="absolute"):
+    with pytest.raises(dashboard._scheduler.DiscoveryError, match="absolute"):
         dashboard.validate_log_selection(
             JOB_ID,
             stdout.relative_to(tmp_path),
@@ -963,11 +1210,11 @@ def test_dashboard_drawing_and_rendering_support_wide_compact_and_small_screens(
 def test_stream_cache_commands_and_slurm_queries_cover_success_and_failures(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    real_command_bytes = dashboard.command_bytes
-    real_command_text = dashboard.command_text
+    real_command_bytes = dashboard._scheduler.command_bytes
+    real_command_text = dashboard._scheduler.command_text
     outputs = iter((b"5\n", b"hello", b"3\n", b"bye"))
     monkeypatch.setattr(
-        dashboard, "command_bytes", lambda *_args, **_kwargs: next(outputs)
+        dashboard._scheduler, "command_bytes", lambda *_args, **_kwargs: next(outputs)
     )
     cache = dashboard.StreamCache("/remote/log")
     assert cache.sync()
@@ -975,10 +1222,12 @@ def test_stream_cache_commands_and_slurm_queries_cover_success_and_failures(
     assert cache.sync()
     assert cache.text() == "bye"
 
-    monkeypatch.setattr(dashboard, "command_bytes", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        dashboard._scheduler, "command_bytes", lambda *_args, **_kwargs: None
+    )
     assert not dashboard.StreamCache("missing").sync()
     monkeypatch.setattr(
-        dashboard, "command_bytes", lambda *_args, **_kwargs: b"bad-size"
+        dashboard._scheduler, "command_bytes", lambda *_args, **_kwargs: b"bad-size"
     )
     assert not dashboard.StreamCache("invalid").sync()
 
@@ -989,9 +1238,9 @@ def test_stream_cache_commands_and_slurm_queries_cover_success_and_failures(
         )
     )
     monkeypatch.setattr(
-        dashboard, "command_text", lambda *_args, **_kwargs: next(calls)
+        dashboard._scheduler, "command_text", lambda *_args, **_kwargs: next(calls)
     )
-    live = dashboard.query_slurm(JOB_ID)
+    live = dashboard._scheduler.query_slurm(JOB_ID)
     assert live["state"] == "RUNNING"
     assert live["max_rss"] == "2G"
 
@@ -1002,25 +1251,25 @@ def test_stream_cache_commands_and_slurm_queries_cover_success_and_failures(
         )
     )
     monkeypatch.setattr(
-        dashboard, "command_text", lambda *_args, **_kwargs: next(calls)
+        dashboard._scheduler, "command_text", lambda *_args, **_kwargs: next(calls)
     )
-    completed = dashboard.query_slurm(JOB_ID)
+    completed = dashboard._scheduler.query_slurm(JOB_ID)
     assert completed["terminal"] is True
     assert completed["state"] == "COMPLETED"
 
-    monkeypatch.setattr(dashboard, "command_bytes", real_command_bytes)
+    monkeypatch.setattr(dashboard._scheduler, "command_bytes", real_command_bytes)
     monkeypatch.setattr(
-        dashboard.subprocess,
+        dashboard._scheduler.subprocess,
         "run",
         lambda argv, **_kwargs: subprocess.CompletedProcess(argv, 0, b"value\n", b""),
     )
     assert real_command_text(["fixture"]) == "value"
     monkeypatch.setattr(
-        dashboard.subprocess,
+        dashboard._scheduler.subprocess,
         "run",
         lambda argv, **_kwargs: subprocess.CompletedProcess(argv, 1, b"", b""),
     )
-    assert dashboard.command_bytes(["fixture"]) is None
+    assert dashboard._scheduler.command_bytes(["fixture"]) is None
 
 
 @pytest.mark.parametrize(
@@ -1047,8 +1296,11 @@ def test_scheduler_observation_rejects_unproven_live_identity(
         return identity + "|RUNNING|00:01|01:00|4|compute|node|None"
 
     monkeypatch.setenv("USER", "user")
-    monkeypatch.setattr(dashboard, "command_text", command)
-    assert dashboard.query_slurm(JOB_ID) == {"terminal": False, "state": "UNKNOWN"}
+    monkeypatch.setattr(dashboard._scheduler, "command_text", command)
+    assert dashboard._scheduler.query_slurm(JOB_ID) == {
+        "terminal": False,
+        "state": "UNKNOWN",
+    }
     assert len(calls) == 1
 
 
@@ -1093,8 +1345,11 @@ def test_scheduler_observation_preserves_unknown_for_ambiguous_records(
 
     monkeypatch.setenv("USER", "user")
     monkeypatch.setenv("LOGNAME", "user")
-    monkeypatch.setattr(dashboard, "command_text", command)
-    assert dashboard.query_slurm(JOB_ID) == {"terminal": False, "state": "UNKNOWN"}
+    monkeypatch.setattr(dashboard._scheduler, "command_text", command)
+    assert dashboard._scheduler.query_slurm(JOB_ID) == {
+        "terminal": False,
+        "state": "UNKNOWN",
+    }
     if defect != "unavailable":
         assert len(calls) == (1 if source == "squeue" else 2)
 
@@ -1138,8 +1393,8 @@ def test_scheduler_observation_rechecks_selected_stream_paths(
         assert argv[0] == "sstat"
         return ""
 
-    monkeypatch.setattr(dashboard, "command_text", command)
-    result = dashboard.query_slurm(JOB_ID, str(stdout), str(stderr))
+    monkeypatch.setattr(dashboard._scheduler, "command_text", command)
+    result = dashboard._scheduler.query_slurm(JOB_ID, str(stdout), str(stderr))
     assert result["state"] == (
         ("RUNNING" if live else "COMPLETED") if paths == "match" else "UNKNOWN"
     )
@@ -1163,8 +1418,11 @@ def test_accounting_identity_prefix_without_requested_trailing_fields_is_unknown
             "" if basic else "||"
         )
 
-    monkeypatch.setattr(dashboard, "command_text", command)
-    assert dashboard.query_slurm(JOB_ID) == {"terminal": False, "state": "UNKNOWN"}
+    monkeypatch.setattr(dashboard._scheduler, "command_text", command)
+    assert dashboard._scheduler.query_slurm(JOB_ID) == {
+        "terminal": False,
+        "state": "UNKNOWN",
+    }
     assert len(calls) == (3 if basic else 2)
 
 
@@ -1180,7 +1438,7 @@ def test_scheduler_observation_omits_ambiguous_usage(
     usage: str,
 ) -> None:
     monkeypatch.setattr(
-        dashboard,
+        dashboard._scheduler,
         "command_text",
         lambda argv, timeout=10: (
             f"{JOB_ID}|{os.getuid()}|RUNNING|00:01|01:00|4|compute|node|None"
@@ -1188,7 +1446,7 @@ def test_scheduler_observation_omits_ambiguous_usage(
             else usage
         ),
     )
-    result = dashboard.query_slurm(JOB_ID)
+    result = dashboard._scheduler.query_slurm(JOB_ID)
     assert result["state"] == "RUNNING"
     assert "max_rss" not in result
 
@@ -1212,7 +1470,7 @@ def test_dashboard_event_loop_handles_navigation_refresh_and_quit(
     screen = _FakeScreen(keys=keys)
     monkeypatch.setenv("NO_COLOR", "1")
     monkeypatch.setattr(dashboard.curses, "curs_set", lambda _value: None)
-    monkeypatch.setattr(dashboard, "query_slurm", lambda *_args: _slurm())
+    monkeypatch.setattr(dashboard._scheduler, "query_slurm", lambda *_args: _slurm())
     monkeypatch.setattr(dashboard, "render", lambda *_args, **_kwargs: None)
     arguments = SimpleNamespace(
         out="/missing/out",
