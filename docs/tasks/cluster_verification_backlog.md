@@ -1515,36 +1515,56 @@ This observation supports retaining the deferred digest-cache decision;
 equivalent fresh-probe semantics and representative site/queue measurements
 remain prerequisites to a performance change. It does not resolve E11.
 
-**Selected steady-ready experiment:** The existing CI measurement driver now
-supports four complete read-only Doctor diagnoses of one already-qualified
-borrower, in serial/two-worker/two-worker/serial order. Each namespace check
-keeps its own fresh Rscript process, original arguments, environment, timeout
-and parser. The canonical full probe roster and result order remain in use;
-only the CI candidate schedules each contiguous R group concurrently. There is
-no product optimization, digest reuse or new dependency. The existing manually
-selected managed-runtime lane runs the comparison; normal PRs run its fixture
-protections and ordinary managed journey.
+**Completed steady-ready experiment and disposition:** The explicitly selected
+[managed run 34995028343](https://github.com/lab-cats/EMRYS/actions/runs/34995028343)
+passed on exact checkout `45bd9cd2b7b5dc98046aa7df862200b1b674c99d`.
+[Artifact 10407268954](https://github.com/lab-cats/EMRYS/actions/runs/34995028343/artifacts/10407268954)
+contains all four complete Doctor diagnoses, logs and comparison records;
+its 9,209,702-byte archive has SHA-256
+`241fc3e4308b800f0c6f09c30238bb80560b20325c8709573c8c2e1e31d6d9e7`.
+Every invocation exited zero, performed one fresh admission with the same 26
+ordered passing observations and ten independent R namespace checks, and
+preserved borrower bytes/stable metadata and the donor comparisons. Both
+parallel trials observed two active R children and ten launches, without
+observation or cleanup failures. Serial launch counters were not instrumented.
 
-Repeated repair on this borrower would return after diagnosis, so this measures
-steady-ready diagnosis rather than the earlier two-boundary verification repair.
-Each trial must preserve borrower bytes and stable filesystem identity/metadata,
-pass the donor-preservation checks and retain identical ordered observations
-apart from elapsed values. Missing/invalid invocation duration, failed admission,
-cleanup uncertainty or an observed surviving group invalidates comparison.
-The trial supervisor retains its leader until signaling ownership is settled;
-its process listing is not kernel descendant-closure proof.
+| Trial | R workers | Complete diagnosis seconds | Self CPU seconds | Waited-child CPU seconds | Sampled process-tree peak MiB |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | 1 | 57.403428 | 7.612158 | 60.836692 | 1201.17 |
+| 2 | 2 | 41.068635 | 6.975059 | 61.601436 | 1626.86 |
+| 3 | 2 | 41.998423 | 7.063463 | 62.389509 | 1641.50 |
+| 4 | 1 | 57.486943 | 7.482891 | 60.859327 | 1207.46 |
 
-The already-locked psutil supplies sampled root/descendant RSS and CPU alongside
-the existing invocation counters. Sampled sums are neither unique memory nor
-exact peaks; short-lived processes and samples may be missed. Logical-read and
-block-accounting limitations remain, and host/cache state is uncontrolled.
-No setup, repair, institutional or physical-I/O saving is inferred. Local
-workflow/experiment fixtures and static checks pass; Linux, installed-parser
-and actual R comparisons require CI. Retain the exact trial artifacts and
-decision, then remove this temporary scheduling/comparison apparatus in the
-adoption or rejection slice as described in the
-[workflow guide](../../.github/workflows/README.md#doctor-namespace-concurrency-experiment).
-CV-26 remains Open pending valid measurements and that disposition.
+The two-worker mean was 41.533529 seconds versus 57.445185 serial: 15.911656
+seconds (27.70%) lower in this instrumented hosted workload. Mean sampled peaks
+rose by 429.86 MiB (35.69%); combined measured CPU rose by 0.91%. Each invocation
+completed 1,227 selected-owner reads totaling 227,044,786 logical bytes in
+0.150–0.160 seconds. Kernel read_bytes stayed zero; this is block-accounting,
+not proof of absent physical-device or NFS traffic. Samples can repeat shared
+pages and miss true peaks or short-lived children. Observer overhead and
+uncontrolled host/cache state remain included. These are steady-ready diagnoses,
+not setup, two-boundary repair, cluster or biological measurements.
+
+**Decision: retain serial namespace checks.** Valid profiles can select one CPU
+and bounded memory; diagnosis runs before allocation/resource resolution, and
+the probe owner receives no admitted concurrency budget. Unconditional parallel
+R loading would overcommit that supported selection and raises measured memory.
+Production interruption would also need a maintained concurrent child owner;
+the existing Task subreaper requires a single thread and registered command.
+A future resource-aware proposal must qualify cancellation and complete-operation
+benefit before adoption. The tiny measured read-time fraction does not justify
+cached admission or weaker fresh checks.
+
+The temporary scheduling, sampling and comparison apparatus and its prototype
+fixtures are retired; canonical donor/borrower counters and native-containment
+checks remain. No product optimization or evidence deletion occurs. The original
+and follow-up automatic PR suites had an unrelated prototype fixture failure
+(immediate SIGKILL observation, then a 0.2-second fixture startup timeout).
+Those failed suites are not promoted to passing evidence; the selected real
+experiment passed independently with its 600-second trial bound. Retirement
+requires fresh standard CI. CV-26 remains Open for the complete comparable
+institutional operation/queue measurements and E11 attribution; this experiment
+and its adoption decision are finished.
 
 ## P3 outcome
 
