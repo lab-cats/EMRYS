@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import importlib.metadata
+import json
+import subprocess
+import sys
 import tomllib
 from pathlib import Path
 from typing import Any
 
+import pytest
 import yaml
 
 
@@ -422,6 +427,18 @@ def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
     verification = 'doctor --project "${borrower_root}" --repair --execute'
     assert borrowing.index(preview) < borrowing.index(selection)
     assert borrowing.index(selection) < borrowing.index(verification)
+    for command, role, artifact in (
+        (path, "donor_setup", "donor"),
+        (borrowing, "borrower_verification", "borrower"),
+    ):
+        assert command.count('"${evidence_root}/measure-doctor.py"') == 1
+        assert (
+            '"${clean_clone}/.venv/bin/python" -X pycache_prefix=/dev/null -I'
+            in command
+        )
+        assert (
+            f'"${{evidence_root}}/doctor-{artifact}-measurement.json" {role}' in command
+        )
     assert 'test ! -e "${borrower_root}/runtime/runtime.tsv"' in borrowing
     assert 'test ! -e "${donor_root}/runtime/shared.json"' in borrowing
     assert 'test ! -e "${donor_root}/runtime/maintenance.lock"' in borrowing
@@ -448,6 +465,7 @@ def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
     assert "project/runtime/profiles" in upload["with"]["path"]
     for artifact in (
         "*.sha256",
+        "doctor-*-measurement.json",
         "borrower-verification.json",
         "project/runtime/shared.json",
         "project/runtime/maintenance.lock",
@@ -458,6 +476,191 @@ def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
     ):
         assert f"emrys-managed-golden/{artifact}" in upload["with"]["path"]
     assert "borrower/runtime/managed" not in upload["with"]["path"]
+
+
+def _doctor_measurement_source() -> str:
+    prepare = _named_step(
+        _workflow_jobs()["managed-golden-path"],
+        "Prepare a clean clone, environment, and synthetic Project",
+    )["run"]
+    return prepare.split("cat > \"${evidence_root}/measure-doctor.py\" <<'PY'\n", 1)[
+        1
+    ].split("\nPY\n", 1)[0]
+
+
+def _doctor_measurement_driver() -> dict[str, Any]:
+    namespace: dict[str, Any] = {"__name__": "ci_doctor_measurement"}
+    exec(compile(_doctor_measurement_source(), str(WORKFLOW_PATH), "exec"), namespace)
+    return namespace
+
+
+def test_doctor_read_measurement_returns_the_exact_object_once() -> None:
+    driver = _doctor_measurement_driver()
+    calls, counters = [], {}
+    returned = (b"contents", object())
+
+    def read(*args, **kwargs):
+        calls.append((args, kwargs))
+        return returned
+
+    # An unavailable clock leaves timing unknown and does not change the read.
+    driver["clock"] = lambda: None
+    observed = driver["read_observer"](read, counters)
+    assert observed("path", "Fixture", nonempty=False) is returned
+    assert calls == [(("path", "Fixture"), {"nonempty": False})]
+    assert counters["bytes"]["elapsed_seconds"] is None
+    assert counters["bytes"]["completed_bytes"] == len(returned[0])
+
+
+@pytest.mark.parametrize("failure", [None, SystemExit(2), KeyboardInterrupt()])
+def test_doctor_measurement_preserves_public_dispatch_and_owner_reads(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, failure: BaseException | None
+) -> None:
+    from emrys.libraries import installed_package_identity as package
+    from emrys.libraries.validation import inputs
+
+    driver = _doctor_measurement_driver()
+    monkeypatch.setenv("GITHUB_SHA", "a" * 40)
+    project = tmp_path / "project"
+    project.mkdir()
+    source = project / "input"
+    source.write_bytes(b"scientific input\n")
+    before = (source.read_bytes(), source.stat().st_mtime_ns)
+    original_read, original_package = inputs._read_file, package._read_regular_file
+    output = tmp_path / "measurement.json"
+    calls = []
+
+    def public(module, **options):
+        calls.append((module, options, tuple(sys.argv)))
+        # Imported public aliases still reach their defining module's read owner.
+        assert inputs.read_bytes(source, "Fixture") == before[0]
+        inputs.sha256_with_identity(source, "Fixture")
+        assert inputs.read_suffix_with_identity(source, "Fixture", 4)[0] == b"put\n"
+        assert package._read_regular_file(source, source.stat()) == before[0]
+        if failure is not None:
+            raise failure
+
+    monkeypatch.setattr(driver["runpy"], "run_module", public)
+    previous_argv = sys.argv
+    if failure is None:
+        driver["measure"](
+            output, "borrower_verification", ["doctor", "--repair", "--execute"]
+        )
+    else:
+        with pytest.raises(type(failure)) as caught:
+            driver["measure"](
+                output, "borrower_verification", ["doctor", "--repair", "--execute"]
+            )
+        assert caught.value is failure
+    assert calls == [
+        (
+            "emrys",
+            {"run_name": "__main__", "alter_sys": True},
+            ("emrys", "doctor", "--repair", "--execute"),
+        )
+    ]
+    assert inputs._read_file is original_read
+    assert package._read_regular_file is original_package
+    assert sys.argv is previous_argv
+    assert list(project.iterdir()) == [source]
+    assert (source.read_bytes(), source.stat().st_mtime_ns) == before
+    measured = json.loads(output.read_text())
+    assert measured["checkout_sha"] == "a" * 40
+    assert str(tmp_path) not in output.read_text()
+    assert measured["exit_status"] == (
+        0 if failure is None else 2 if isinstance(failure, SystemExit) else None
+    )
+    assert measured["exception_type"] == (
+        None if failure is None else type(failure).__name__
+    )
+    for mode, count in (
+        ("bytes", len(before[0])),
+        ("digest", len(before[0])),
+        ("suffix", 4),
+        ("package_payload", len(before[0])),
+    ):
+        row = measured["targeted_reads"][mode]
+        assert row["completed_calls"] == 1
+        assert row["completed_bytes"] == count
+        assert row["failed_calls"] == 0
+        assert row["elapsed_seconds"] >= 0
+
+
+@pytest.mark.parametrize("failure", [OSError("unavailable"), KeyboardInterrupt()])
+def test_doctor_measurement_keeps_one_failed_read_and_unknown_partial_bytes(
+    failure: BaseException,
+) -> None:
+    driver = _doctor_measurement_driver()
+    calls, counters = [], {}
+
+    def read(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise failure
+
+    observed = driver["read_observer"](read, counters)
+    with pytest.raises(type(failure)) as caught:
+        observed("input", "Fixture", digest_only=True)
+    assert caught.value is failure
+    assert calls == [(("input", "Fixture"), {"digest_only": True})]
+    row = counters["digest"]
+    assert row["completed_calls"] == row["completed_bytes"] == 0
+    assert row["failed_calls"] == 1
+    assert row["failed_partial_bytes"] is None
+
+
+def test_doctor_measurement_output_failure_does_not_replace_command_exit(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    driver = _doctor_measurement_driver()
+    existing = tmp_path / "measurement.json"
+    existing.write_bytes(b"retained")
+    failure = SystemExit(7)
+
+    def public(*_args, **_kwargs):
+        raise failure
+
+    monkeypatch.setattr(driver["runpy"], "run_module", public)
+    with pytest.raises(SystemExit) as caught:
+        driver["measure"](existing, "donor_setup", ["doctor", "--repair", "--execute"])
+    assert caught.value is failure
+    assert existing.read_bytes() == b"retained"
+    assert "Doctor measurement unavailable: FileExistsError" in capsys.readouterr().err
+
+
+def test_doctor_measurement_uses_real_controlled_public_parser(tmp_path: Path) -> None:
+    try:
+        importlib.metadata.distribution("emrys-rna-workflow")
+    except importlib.metadata.PackageNotFoundError:
+        pytest.skip("requires the installed EMRYS environment used by CI")
+    script, output = tmp_path / "measure.py", tmp_path / "measurement.json"
+    script.write_text(_doctor_measurement_source())
+    result = subprocess.run(
+        (
+            sys.executable,
+            "-X",
+            "pycache_prefix=/dev/null",
+            "-I",
+            str(script),
+            str(output),
+            "donor_setup",
+            "doctor",
+            "--execute",
+        ),
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "--execute requires --repair" in result.stderr
+    measured = json.loads(output.read_text())
+    assert measured["exit_status"] == 2
+    assert measured["exception_type"] == "SystemExit"
+    assert sorted(path.name for path in tmp_path.iterdir()) == [
+        "measure.py",
+        "measurement.json",
+    ]
 
 
 def test_synthetic_evidence_is_always_uploaded_with_hidden_state() -> None:
