@@ -1702,7 +1702,18 @@ def inspect_from_args(
     ) as exc:
         return _control_failure(exc)
     print(f"Run: {inspection.human_run_name(run_root.name)}")
-    print(f"Run integrity: {observed.integrity}")
+    print(f"Run admission: {observed.integrity}")
+    print(f"Run lock: {observed.lock_observation}")
+    latest = observed.latest_attempt
+    if latest is not None and observed.lock_observation in {
+        "local live owner",
+        "remote ownership unverified",
+        "local process not live",
+    }:
+        _print_safe(
+            f"Recorded lock host: {latest['host']}; scheduler job: "
+            f"{(latest.get('placement') or {}).get('scheduler_job_id') or 'none'}"
+        )
     print(f"Attempt outcome: {observed.attempt_outcome}")
     print(elapsed)
     if observed.processing_source_run_id is not None:
@@ -1722,7 +1733,6 @@ def inspect_from_args(
                 print(f"    Verified tasks: {verified}/{total}")
     print(f"Scientific Results: {observed.results_status}")
     print(f"Reporting: {observed.reporting_status}")
-    latest = observed.latest_attempt
     receipt = observed.latest_receipt
     if detail != "normal":
         print(f"Run ID: {observed.run_id}")
