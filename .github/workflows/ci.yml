@@ -545,6 +545,116 @@ jobs:
             "${evidence_root}/05-inspect.log"
           test "$(find "${run_root}/results/reports" -type f -name '*.html' | wc -l)" -eq 2
 
+      - name: Seal the completed donor and verify a separate borrower
+        shell: bash
+        run: |
+          set -euo pipefail
+          clean_clone="${{ steps.golden.outputs.clone }}"
+          evidence_root="${{ steps.golden.outputs.evidence }}"
+          donor_root="${evidence_root}/project"
+          borrower_root="${evidence_root}/borrower"
+          emrys=("${clean_clone}/.venv/bin/emrys")
+
+          # Preserve all non-managed bytes and the namespace/stable metadata.
+          # Directory timestamps change when the permanent seal is published.
+          # Doctor separately readmits the seal's fixed native/R content roster.
+          snapshot_donor() (
+            cd "${donor_root}"
+            find . -path './runtime/shared.json' -prune -o \
+              -type d -printf '%p\t%y\t%i\t%m\t%U\t%G\0' -o \
+              -printf '%p\t%y\t%i\t%m\t%U\t%G\t%s\t%T@\t%C@\t%l\0' \
+              | LC_ALL=C sort -z > "${evidence_root}/donor-$1.namespace.tsv"
+            find . \( -path './runtime/managed' -o -path './runtime/shared.json' \) \
+              -prune -o -type f -print0 \
+              | LC_ALL=C sort -z | xargs -0 sha256sum \
+              > "${evidence_root}/donor-$1.sha256"
+          )
+          test ! -e "${donor_root}/runtime/shared.json"
+          snapshot_donor before
+          "${emrys[@]}" init synthetic \
+            --output-dir "${borrower_root}" --execute \
+            2>&1 | tee "${evidence_root}/06-borrower-init.log"
+          "${emrys[@]}" inspect --project "${borrower_root}" \
+            | tee "${evidence_root}/07-borrower-inspect.log"
+          grep --fixed-strings --line-regexp 'Runs: none found at inspection time.' \
+            "${evidence_root}/07-borrower-inspect.log"
+          "${emrys[@]}" runtime discover --project "${borrower_root}" \
+            --from-project "${donor_root}" \
+            2>&1 | tee "${evidence_root}/08-borrower-preview.log"
+          test ! -e "${donor_root}/runtime/shared.json"
+          test ! -e "${donor_root}/runtime/maintenance.lock"
+          test ! -e "${borrower_root}/runtime/runtime.tsv"
+          snapshot_donor preview
+          cmp "${evidence_root}/donor-before.namespace.tsv" "${evidence_root}/donor-preview.namespace.tsv"
+          cmp "${evidence_root}/donor-before.sha256" "${evidence_root}/donor-preview.sha256"
+          "${emrys[@]}" runtime discover --project "${borrower_root}" \
+            --from-project "${donor_root}" --execute \
+            2>&1 | tee "${evidence_root}/09-borrower-select.log"
+          "${emrys[@]}" doctor --project "${borrower_root}" --repair --execute \
+            2>&1 | tee "${evidence_root}/10-borrower-doctor.log"
+          snapshot_donor after
+          cmp "${evidence_root}/donor-before.namespace.tsv" "${evidence_root}/donor-after.namespace.tsv"
+          cmp "${evidence_root}/donor-before.sha256" "${evidence_root}/donor-after.sha256"
+          "${clean_clone}/.venv/bin/python" -I - "${evidence_root}" <<'PY'
+          import csv
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          import yaml
+          from emrys.evidence.storage_inventory.qualification import admit_direct_qualification
+
+          evidence = Path(sys.argv[1])
+          donor, borrower = evidence / "project", evidence / "borrower"
+          logs = list((borrower / "logs/application").glob("maintenance-*/repair-*/emrys-doctor.jsonl"))
+          assert len(logs) == 1, logs
+          events = [json.loads(line) for line in logs[0].read_text().splitlines()]
+          started, = [item for item in events if item["event"] == "repair_started"]
+          terminal, = [item for item in events if item["phase"] == "terminal"]
+          assert started["message"] == "Project verification started."
+          assert started["fields"]["project"] == str(borrower / "project.yaml")
+          assert started["fields"]["runtime_work"] == (
+              "Selected runtime passed current checks; no package-manager work is needed."
+          )
+          assert not {"managed_root", "package_output"} & started["fields"].keys()
+          assert not any(item["event"].startswith("package_manager_") for item in events)
+          assert not list(borrower.rglob("package-output.log"))
+          assert not (borrower / "runtime/managed").exists()
+          assert terminal["event"] == "repair_requalified"
+          assert terminal["message"] == "Project verification completed."
+          assert all(terminal["fields"][key] is True for key in ("ready", "runtime_ready", "storage_ready"))
+          qualified, = [item for item in events if item["event"] == "storage_qualification_admitted"]
+          receipts = []
+          for project in (donor, borrower):
+              definition = yaml.safe_load((project / "project.yaml").read_text())
+              reference = (project / definition["reference"]["fasta"]).resolve(strict=True)
+              receipts.append(admit_direct_qualification(project, reference))
+          assert receipts[0].qualification_id != receipts[1].qualification_id
+          assert qualified["fields"]["receipt"] == str(receipts[1].receipt_path)
+          assert qualified["fields"]["sha256"] == receipts[1].receipt_sha256
+          with (borrower / "runtime/runtime.tsv").open(newline="") as stream:
+              reader = csv.DictReader(stream, delimiter="\t")
+              assert reader.fieldnames == ["seal_path", "seal_sha256", "python"]
+              selection, = list(reader)
+          seal = donor / "runtime/shared.json"
+          assert selection["seal_path"] == str(seal)
+          assert selection["seal_sha256"] == hashlib.sha256(seal.read_bytes()).hexdigest()
+          assert Path(selection["python"]).resolve(strict=True) == Path(sys.executable).resolve(strict=True)
+          assert not (donor / "runtime/maintenance.lock").exists()
+          assert not (borrower / "runtime/maintenance.lock").exists()
+          assert not list((borrower / "runs").glob("run-*"))
+          (evidence / "borrower-verification.json").write_text(json.dumps({
+              "scope": "Hosted direct runtime and storage verification; no borrower scientific Run",
+              "donor_preservation": "Non-managed bytes and namespace/stable metadata except seal; fixed native/R content admitted by Doctor",
+              "donor_seal": selection,
+              "doctor_log": str(logs[0]),
+              "donor_receipt": str(receipts[0].receipt_path),
+              "borrower_receipt": str(receipts[1].receipt_path),
+              "borrower_receipt_sha256": receipts[1].receipt_sha256,
+          }, indent=2) + "\n")
+          PY
+
       - name: Require the clean clone to remain unchanged
         if: always() && steps.golden.outcome == 'success'
         shell: bash
@@ -564,6 +674,8 @@ jobs:
             ${{ runner.temp }}/emrys-managed-golden/*.log
             ${{ runner.temp }}/emrys-managed-golden/*.txt
             ${{ runner.temp }}/emrys-managed-golden/*.tsv
+            ${{ runner.temp }}/emrys-managed-golden/*.sha256
+            ${{ runner.temp }}/emrys-managed-golden/borrower-verification.json
             ${{ runner.temp }}/emrys-managed-golden/project/project.yaml
             ${{ runner.temp }}/emrys-managed-golden/project/samples.tsv
             ${{ runner.temp }}/emrys-managed-golden/project/partitions.tsv
@@ -573,8 +685,21 @@ jobs:
             ${{ runner.temp }}/emrys-managed-golden/project/logs
             ${{ runner.temp }}/emrys-managed-golden/project/runs
             ${{ runner.temp }}/emrys-managed-golden/project/runtime/runtime.tsv
+            ${{ runner.temp }}/emrys-managed-golden/project/runtime/shared.json
+            ${{ runner.temp }}/emrys-managed-golden/project/runtime/maintenance.lock
             ${{ runner.temp }}/emrys-managed-golden/project/runtime/profiles
             ${{ runner.temp }}/emrys-managed-golden/project/runtime/.emrys-storage-qualification
+            ${{ runner.temp }}/emrys-managed-golden/borrower/project.yaml
+            ${{ runner.temp }}/emrys-managed-golden/borrower/samples.tsv
+            ${{ runner.temp }}/emrys-managed-golden/borrower/partitions.tsv
+            ${{ runner.temp }}/emrys-managed-golden/borrower/fixture.json
+            ${{ runner.temp }}/emrys-managed-golden/borrower/fixture.manifest.json
+            ${{ runner.temp }}/emrys-managed-golden/borrower/inputs
+            ${{ runner.temp }}/emrys-managed-golden/borrower/logs
+            ${{ runner.temp }}/emrys-managed-golden/borrower/runtime/runtime.tsv
+            ${{ runner.temp }}/emrys-managed-golden/borrower/runtime/maintenance.lock
+            ${{ runner.temp }}/emrys-managed-golden/borrower/runtime/profiles
+            ${{ runner.temp }}/emrys-managed-golden/borrower/runtime/.emrys-storage-qualification
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 14

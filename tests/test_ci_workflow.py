@@ -371,9 +371,14 @@ def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
     )
     cache = _named_step(job, "Cache managed golden-path R packages")
     journey = _named_step(job, "Repair and exercise the supported managed golden path")
+    reuse = _named_step(job, "Seal the completed donor and verify a separate borrower")
     step_names = [step.get("name") for step in job["steps"]]
     assert step_names.index(prepare["name"]) < step_names.index(cache["name"])
     assert step_names.index(cache["name"]) < step_names.index(journey["name"])
+    assert step_names.index(journey["name"]) < step_names.index(reuse["name"])
+    assert step_names.index(reuse["name"]) < step_names.index(
+        "Require the clean clone to remain unchanged"
+    )
 
     assert prepare["run"].index('cd "${clean_clone}"') < prepare["run"].index(
         '"${emrys[@]}" init synthetic'
@@ -408,11 +413,51 @@ def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
         "test_fresh_clone_e2e.py",
     ):
         assert retired not in path
+    borrowing = reuse["run"]
+    assert 'emrys=("${clean_clone}/.venv/bin/emrys")' in borrowing
+    assert 'init synthetic \\\n  --output-dir "${borrower_root}" --execute' in borrowing
+    assert 'inspect --project "${borrower_root}"' in borrowing
+    preview = '--from-project "${donor_root}" \\\n'
+    selection = '--from-project "${donor_root}" --execute'
+    verification = 'doctor --project "${borrower_root}" --repair --execute'
+    assert borrowing.index(preview) < borrowing.index(selection)
+    assert borrowing.index(selection) < borrowing.index(verification)
+    assert 'test ! -e "${borrower_root}/runtime/runtime.tsv"' in borrowing
+    assert 'test ! -e "${donor_root}/runtime/shared.json"' in borrowing
+    assert 'test ! -e "${donor_root}/runtime/maintenance.lock"' in borrowing
+    assert "Project verification started." in borrowing
+    assert "no package-manager work is needed." in borrowing
+    assert 'startswith("package_manager_")' in borrowing
+    assert 'borrower.rglob("package-output.log")' in borrowing
+    assert 'borrower / "runtime/managed"' in borrowing
+    assert "Project verification completed." in borrowing
+    assert '"runtime_ready", "storage_ready"' in borrowing
+    assert "admit_direct_qualification(project, reference)" in borrowing
+    assert "receipts[0].qualification_id != receipts[1].qualification_id" in borrowing
+    for suffix in ("namespace.tsv", "sha256"):
+        for after in ("preview", "after"):
+            assert (
+                f'cmp "${{evidence_root}}/donor-before.{suffix}" '
+                f'"${{evidence_root}}/donor-{after}.{suffix}"'
+            ) in borrowing
+    assert "no borrower scientific Run" in borrowing
     upload = _named_step(job, "Upload managed golden-path evidence")
     assert _expression(upload["if"]) == "always()"
     assert upload["with"]["include-hidden-files"] is True
     assert upload["with"]["if-no-files-found"] == "error"
     assert "project/runtime/profiles" in upload["with"]["path"]
+    for artifact in (
+        "*.sha256",
+        "borrower-verification.json",
+        "project/runtime/shared.json",
+        "project/runtime/maintenance.lock",
+        "borrower/logs",
+        "borrower/runtime/runtime.tsv",
+        "borrower/runtime/maintenance.lock",
+        "borrower/runtime/.emrys-storage-qualification",
+    ):
+        assert f"emrys-managed-golden/{artifact}" in upload["with"]["path"]
+    assert "borrower/runtime/managed" not in upload["with"]["path"]
 
 
 def test_synthetic_evidence_is_always_uploaded_with_hidden_state() -> None:
