@@ -7,6 +7,9 @@ approval. Keep that directory along with the printed job and stream paths.
 `request.json` records the command, Project, selected profile binding, and
 application-log location; `sbatch.stdout` and `sbatch.stderr` preserve the raw
 scheduler response. These records can exist while no Run has been created.
+New submissions use request-specific scheduler stream names. Preserve the
+complete printed paths, including the request token; the job number alone can
+be reused and does not identify those logs. Existing v1 records remain readable.
 
 From the Project, run `emrys inspect` to list every retained request before
 selecting a Run. The roster prints each exact directory, recorded command/time,

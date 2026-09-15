@@ -581,6 +581,18 @@ directory/file ownership, canonical paths, stable reads, strict response
 parsing and immutable returned context prevent guessing from arbitrary files.
 No newest-request selection, acceptance inference or Run association is added.
 
+**Implemented stream-identity prerequisite:** Each ordinary submission freezes
+one request UUID before preview/confirmation and uses it in both scheduler
+stream destinations. The v2 context binds those paths to the request directory;
+v1 remains readable as historical diagnostics. Existing dashboard discovery
+accepts exact matching token-based stream pairs and preserves legacy support.
+Doctor's qualification paths and isolated dashboard loading are unchanged.
+The token alone does not establish a job's current state or cluster identity.
+Transport/dashboard/shared-input tests pass 191 cases, with 17 affected cases
+rechecked after the final naming changes. Public confirmation/decline and
+repeated run/resume/report fixtures await hosted CI. Current-state correlation
+will require the exact ID, numeric UID, cluster and both frozen stream paths.
+
 **Verification and remaining scope:** Tiny real subprocess tests cover accepted,
 rejected, malformed, invalid-byte, interrupted, and early-stdin-close responses;
 directory/file failures prevent launch and Doctor callback ordering is retained.

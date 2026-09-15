@@ -322,6 +322,66 @@ def test_request_context_retains_exact_requested_run(
     assert observed.context["command"] == command
 
 
+@pytest.mark.parametrize("command", ["run", "resume", "report"])
+def test_request_specific_streams_roundtrip_through_producer_and_reader(
+    tmp_path: Path, command: str
+) -> None:
+    project, root, context = _request_record(tmp_path)
+    context.update(
+        schema_version="emrys.submission-request.v2",
+        command=command,
+        requested_run=None if command == "run" else "run-" + "e" * 64,
+    )
+    plan = slurm_submission.plan_submission(
+        _profile(tmp_path),
+        emrys_argv=context["emrys_argv"],
+        log_dir=project.parent / "logs",
+        request_token="a" * 32,
+    )
+    context.update(
+        scheduler_stdout_pattern=str(plan.stdout_pattern),
+        scheduler_stderr_pattern=str(plan.stderr_pattern),
+    )
+    admitted = slurm_submission.validate_request_context(context, project, root)
+    (root / "request.json").write_bytes(
+        slurm_submission.orchestration_contracts.canonical_json_bytes(admitted)
+    )
+    (observed,) = slurm_submission.submission_requests(project)
+    assert observed.record_status == "recorded-response"
+    assert observed.context["scheduler_stdout_pattern"] == str(plan.stdout_pattern)
+    assert observed.context["scheduler_stderr_pattern"] == str(plan.stderr_pattern)
+    assert observed.context["requested_run"] == context["requested_run"]
+
+
+@pytest.mark.parametrize(
+    "defect", ["missing-root", "other-root", "legacy-paths", "mixed-token"]
+)
+def test_request_specific_streams_refuse_unbound_paths(
+    tmp_path: Path, defect: str
+) -> None:
+    project, root, context = _request_record(tmp_path)
+    context["schema_version"] = "emrys.submission-request.v2"
+    for stream, suffix in (("stdout", "out"), ("stderr", "err")):
+        context[f"scheduler_{stream}_pattern"] = str(
+            project.parent / "logs" / f"emrys-local-pilot-{'a' * 32}-%j.{suffix}"
+        )
+    selected = root
+    if defect == "missing-root":
+        selected = None
+    elif defect == "other-root":
+        selected = root.with_name("submission-" + "b" * 32)
+    elif defect == "legacy-paths":
+        context["scheduler_stdout_pattern"] = str(
+            root.parent / "emrys-local-pilot-%j.out"
+        )
+    else:
+        context["scheduler_stderr_pattern"] = str(
+            root.parent / f"emrys-local-pilot-{'b' * 32}-%j.err"
+        )
+    with pytest.raises(slurm_submission.SlurmSubmissionError):
+        slurm_submission.validate_request_context(context, project, selected)
+
+
 @dataclass(frozen=True, slots=True)
 class _Placement:
     kind: str
@@ -391,7 +451,10 @@ def _batch_environment(
     return environment
 
 
-def test_plan_is_no_write_and_builds_exact_sbatch_argv(tmp_path: Path) -> None:
+@pytest.mark.parametrize("request_token", [None, "b" * 32])
+def test_plan_is_no_write_and_builds_exact_sbatch_argv(
+    tmp_path: Path, request_token: str | None
+) -> None:
     profile = _profile(tmp_path)
     log_dir = tmp_path / "log files"
     log_dir.mkdir()
@@ -409,6 +472,7 @@ def test_plan_is_no_write_and_builds_exact_sbatch_argv(tmp_path: Path) -> None:
             "/data/request with spaces.yaml",
         ),
         log_dir=log_dir,
+        request_token=request_token,
         sbatch="/opt/slurm/bin/sbatch",
         environment={
             "KEEP": "yes",
@@ -422,6 +486,7 @@ def test_plan_is_no_write_and_builds_exact_sbatch_argv(tmp_path: Path) -> None:
     )
 
     assert sorted(path.relative_to(tmp_path) for path in tmp_path.rglob("*")) == before
+    stem = "emrys-local-pilot" + (f"-{request_token}" if request_token else "")
     assert plan.argv == (
         "/opt/slurm/bin/sbatch",
         "--parsable",
@@ -436,8 +501,8 @@ def test_plan_is_no_write_and_builds_exact_sbatch_argv(tmp_path: Path) -> None:
         "--nodelist=node-[01-02]",
         "--time=02:30:00",
         "--job-name=emrys-local-pilot",
-        f"--output={log_dir}/emrys-local-pilot-%j.out",
-        f"--error={log_dir}/emrys-local-pilot-%j.err",
+        f"--output={log_dir}/{stem}-%j.out",
+        f"--error={log_dir}/{stem}-%j.err",
         "--export="
         f"{slurm_submission.DELEGATE_MARKER_ENV}="
         f"{slurm_submission.DELEGATE_MARKER},"
@@ -445,11 +510,25 @@ def test_plan_is_no_write_and_builds_exact_sbatch_argv(tmp_path: Path) -> None:
         f"{slurm_submission.SUBMIT_UID_ENV}=1234,LOGNAME,USER,LNAME,USERNAME",
     )
     assert dict(plan.environment) == {"KEEP": "yes"}
-    assert plan.stdout_pattern == log_dir / "emrys-local-pilot-%j.out"
-    assert plan.stderr_pattern == log_dir / "emrys-local-pilot-%j.err"
+    assert plan.stdout_pattern == log_dir / f"{stem}-%j.out"
+    assert plan.stderr_pattern == log_dir / f"{stem}-%j.err"
     assert plan.batch_script.startswith("#!/bin/bash\nset -euo pipefail\n")
     assert '/bin/rm -rf --one-file-system -- "$job_tmpdir"' in plan.batch_script
     assert "--wrap" not in plan.argv
+
+
+@pytest.mark.parametrize("token", ["", "a" * 31, "A" * 32, "../unsafe", True])
+def test_submission_plan_refuses_noncanonical_request_token(
+    tmp_path: Path, token: str
+) -> None:
+    with pytest.raises(slurm_submission.SlurmSubmissionError, match="request token"):
+        slurm_submission.plan_submission(
+            _profile(tmp_path),
+            emrys_argv=("emrys", "run"),
+            log_dir=tmp_path / "logs",
+            request_token=token,
+        )
+    assert not (tmp_path / "logs").exists()
 
 
 def test_optional_scheduler_flags_and_invalid_module_pairing(tmp_path: Path) -> None:

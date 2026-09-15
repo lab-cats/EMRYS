@@ -47,10 +47,26 @@ class SlurmSubmissionError(RuntimeError):
 _REQUEST_CONTEXT_LIMIT = 64 * 1024
 
 
+def _scheduler_stream_patterns(
+    log_dir: Path, request_token: str | None = None
+) -> tuple[Path, Path]:
+    if "%" in os.fspath(log_dir):
+        raise SlurmSubmissionError("scheduler log directory must not contain '%'")
+    if request_token is not None and (
+        not isinstance(request_token, str)
+        or not re.fullmatch(r"[0-9a-f]{32}", request_token)
+    ):
+        raise SlurmSubmissionError(
+            "Submission request token must be 32 lowercase hex digits"
+        )
+    stem = "emrys-local-pilot" + (f"-{request_token}" if request_token else "")
+    return log_dir / f"{stem}-%j.out", log_dir / f"{stem}-%j.err"
+
+
 def validate_request_context(
-    context: Mapping[str, object], project: Path
+    context: Mapping[str, object], project: Path, request_root: Path | None = None
 ) -> dict[str, object]:
-    """Admit the existing v1 diagnostic context shared by its writer and reader."""
+    """Admit legacy diagnostics or request-specific paths through one boundary."""
     fields = {
         "schema_version",
         "created_at",
@@ -66,9 +82,10 @@ def validate_request_context(
         "scheduler_stderr_pattern",
     }
     if set(context) != fields:
-        raise SlurmSubmissionError("Submission request context fields differ from v1")
+        raise SlurmSubmissionError("Submission request context fields differ")
     if (
-        context["schema_version"] != "emrys.submission-request.v1"
+        context["schema_version"]
+        not in ("emrys.submission-request.v1", "emrys.submission-request.v2")
         or type(context["submitter_uid"]) is not int
         or context["submitter_uid"] != os.getuid()
         or context["project"] != str(project)
@@ -123,8 +140,22 @@ def validate_request_context(
         raise SlurmSubmissionError(
             "Submission Run, analysis, profile binding or argv is malformed"
         )
-    for stream, suffix in (("stdout", "out"), ("stderr", "err")):
-        expected = project.parent / "logs" / f"emrys-local-pilot-%j.{suffix}"
+    token = None
+    if context["schema_version"] == "emrys.submission-request.v2":
+        if (
+            request_root is None
+            or request_root.parent != project.parent / "logs"
+            or not re.fullmatch(r"submission-[0-9a-f]{32}", request_root.name)
+        ):
+            raise SlurmSubmissionError(
+                "Submission request root differs from the Project"
+            )
+        token = request_root.name.removeprefix("submission-")
+    for stream, expected in zip(
+        ("stdout", "stderr"),
+        _scheduler_stream_patterns(project.parent / "logs", token),
+        strict=True,
+    ):
         if context[f"scheduler_{stream}_pattern"] != str(expected):
             raise SlurmSubmissionError(
                 "Submission scheduler paths differ from the Project"
@@ -239,7 +270,7 @@ def submission_requests(project: Path) -> tuple[SubmissionRequestObservation, ..
             parsed = orchestration_contracts.load_json_object_bytes(
                 data, "Submission request"
             )
-            context = validate_request_context(parsed, project)
+            context = validate_request_context(parsed, project, request_root)
             if orchestration_contracts.canonical_json_bytes(context) != data:
                 raise SlurmSubmissionError(
                     "Submission request.json is not canonical JSON"
@@ -449,6 +480,7 @@ def plan_submission(
     *,
     emrys_argv: Sequence[str],
     log_dir: Path,
+    request_token: str | None = None,
     sbatch: str = "sbatch",
     environment: Mapping[str, str] | None = None,
     submitter_uid: int | None = None,
@@ -471,11 +503,9 @@ def plan_submission(
     profile.validate_reservation()
     slurm_placement = cast("SlurmPlacement", placement)
 
-    scheduler_log_dir = Path(log_dir)
-    if "%" in os.fspath(scheduler_log_dir):
-        raise SlurmSubmissionError("scheduler log directory must not contain '%'")
-    stdout_pattern = scheduler_log_dir / "emrys-local-pilot-%j.out"
-    stderr_pattern = scheduler_log_dir / "emrys-local-pilot-%j.err"
+    stdout_pattern, stderr_pattern = _scheduler_stream_patterns(
+        Path(log_dir), request_token
+    )
     argv = [sbatch, "--parsable"]
     if slurm_placement.account is not None:
         argv.append(f"--account={slurm_placement.account}")

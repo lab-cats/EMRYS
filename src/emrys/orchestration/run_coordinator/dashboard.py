@@ -474,15 +474,16 @@ def accounting_stream_selection(metadata, log_dir=None):
 def validate_log_selection(job_id, out_path, err_path, allow_missing=False):
     if not os.path.isabs(out_path) or not os.path.isabs(err_path):
         raise DiscoveryError("scheduler log paths must be absolute")
-    expected_out = "emrys-local-pilot-%s.out" % job_id
-    expected_err = "emrys-local-pilot-%s.err" % job_id
     out_path = os.path.abspath(out_path)
     err_path = os.path.abspath(err_path)
-    if os.path.basename(out_path) != expected_out:
+    if not re.fullmatch(
+        r"emrys-local-pilot-(?:[0-9a-f]{32}-)?%s\.out" % re.escape(str(job_id)),
+        os.path.basename(out_path),
+    ):
         raise DiscoveryError(
             "stdout does not match the EMRYS wrapper contract: %s" % out_path
         )
-    if os.path.basename(err_path) != expected_err:
+    if os.path.basename(err_path) != os.path.basename(out_path)[:-4] + ".err":
         raise DiscoveryError(
             "stderr does not match the EMRYS wrapper contract: %s" % err_path
         )

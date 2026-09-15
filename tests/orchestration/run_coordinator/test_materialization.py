@@ -3664,17 +3664,25 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
             )
 
 
+@pytest.mark.parametrize("interactive", [False, True])
 def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
     tmp_path: Path,
     capsys,
     monkeypatch: pytest.MonkeyPatch,
+    interactive: bool,
 ) -> None:
     arguments = _scheduled_run_arguments(tmp_path, execute=False)
+    token = "d" * 32
+    monkeypatch.setattr(control.uuid, "uuid4", lambda: SimpleNamespace(hex=token))
     monkeypatch.setattr(
         control.sys,
         "stdin",
-        _InputStream(AssertionError("nonterminal input was read"), terminal=False),
+        _InputStream(
+            "n\n" if interactive else AssertionError("nonterminal input was read"),
+            terminal=interactive,
+        ),
     )
+    monkeypatch.setattr(control.sys, "stderr", _TerminalOutput(control.sys.stderr))
     monkeypatch.setattr(
         control.slurm_submission,
         "submit",
@@ -3696,7 +3704,7 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
         captured = capsys.readouterr()
         assert captured.out == ""
         projections[level] = captured.err
-        assert "Execute this plan?" not in captured.err
+        assert ("Execute this plan?" in captured.err) is interactive
         assert not (workspace / "logs").exists()
 
     normal = projections["normal"]
@@ -3726,8 +3734,14 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
     verbose = projections["verbose"]
     assert set(normal.splitlines()) <= set(verbose.splitlines())
     assert f"Execution profile: {arguments.profile}" in verbose
-    assert f"Scheduler stdout: {workspace}/logs/emrys-local-pilot-%j.out" in verbose
-    assert f"Scheduler stderr: {workspace}/logs/emrys-local-pilot-%j.err" in verbose
+    assert (
+        f"Scheduler stdout: {workspace}/logs/emrys-local-pilot-{token}-%j.out"
+        in verbose
+    )
+    assert (
+        f"Scheduler stderr: {workspace}/logs/emrys-local-pilot-{token}-%j.err"
+        in verbose
+    )
     assert "Scheduler command:" not in verbose
 
     debug = projections["debug"]
@@ -3753,10 +3767,22 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
         (workspace / "runs" / arguments.from_processing_run).mkdir(parents=True)
     submissions = []
     admitted = load_execution_profile(config_path=Path(arguments.profile))
+    tokens = []
+    original_uuid = control.uuid.uuid4
+
+    def request_uuid():
+        value = original_uuid()
+        tokens.append(value.hex)
+        return value
+
+    monkeypatch.setattr(control.uuid, "uuid4", request_uuid)
 
     def submit(plan, *, record_path):
         context = json.loads(record_path.with_name("request.json").read_bytes())
-        assert context["schema_version"] == "emrys.submission-request.v1"
+        assert context["schema_version"] == "emrys.submission-request.v2"
+        assert record_path.parent.name == f"submission-{tokens[0]}"
+        assert plan.stdout_pattern.name == f"emrys-local-pilot-{tokens[0]}-%j.out"
+        assert plan.stderr_pattern.name == f"emrys-local-pilot-{tokens[0]}-%j.err"
         assert context["command"] == "run"
         assert context["project"] == str(arguments.project)
         assert context["requested_run"] is None
@@ -3779,6 +3805,7 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
 
         def before_read() -> None:
             assert submissions == []
+            assert len(tokens) == 1
             assert not (workspace / "logs").exists()
 
         monkeypatch.setattr(control.sys, "stdin", _InputStream("y\n", before_read))
@@ -3795,10 +3822,11 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     assert control.run_from_args(arguments) == 0
 
     captured = capsys.readouterr()
+    assert len(tokens) == 1
     assert captured.out == (
         "JOB_ID=812345\n"
-        f"OUT={workspace}/logs/emrys-local-pilot-812345.out\n"
-        f"ERR={workspace}/logs/emrys-local-pilot-812345.err\n"
+        f"OUT={workspace}/logs/emrys-local-pilot-{tokens[0]}-812345.out\n"
+        f"ERR={workspace}/logs/emrys-local-pilot-{tokens[0]}-812345.err\n"
     )
     assert len(submissions) == 1
     expected_analysis = "''" if execute else "sensitivity"
@@ -3835,6 +3863,42 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
         ) < captured.err.index("Execute this plan?")
     assert ("Execute this plan? [y/N]" in captured.err) is not execute
     assert not arguments.log_root.exists()
+
+
+@pytest.mark.parametrize("command", ("run", "resume", "report"))
+def test_repeated_scheduled_commands_keep_distinct_frozen_streams(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: str
+) -> None:
+    arguments = _scheduled_run_arguments(tmp_path, execute=True)
+    arguments.run = "run-" + "a" * 64
+    workspace = arguments.project.parent
+    profile = load_execution_profile(config_path=Path(arguments.profile))
+    controls = control._resolve_controls(arguments, workspace)
+    plans = []
+
+    def submit(plan, *, record_path):
+        plans.append(plan)
+        record_path.write_bytes(b"812345\n")
+        record_path.with_suffix(".stderr").write_bytes(b"")
+        return "812345"
+
+    monkeypatch.setattr(control.slurm_submission, "submit", submit)
+    for _ in range(2):
+        assert (
+            control._schedule(
+                command, arguments, profile, controls, ResourceOverrides(), workspace
+            )
+            == 0
+        )
+    records = control.slurm_submission.submission_requests(arguments.project)
+    assert len(records) == len(plans) == 2
+    assert plans[0].stdout_pattern != plans[1].stdout_pattern
+    assert plans[0].stderr_pattern != plans[1].stderr_pattern
+    assert {record.context["scheduler_stdout_pattern"] for record in records} == {
+        str(plan.stdout_pattern) for plan in plans
+    }
+    assert all(record.context["command"] == command for record in records)
+    assert all(record.recorded_job_id == "812345" for record in records)
 
 
 @pytest.mark.parametrize(

@@ -171,13 +171,21 @@ transport error at their public failure boundary without repeated translation.
 
 After approval and before ordinary Run/resume/report submission, Control creates
 one private `logs/submission-<uuid>/` request directory. Its immutable
-`request.json` uses `emrys.submission-request.v1` and retains UTC creation time,
+`request.json` uses `emrys.submission-request.v2` and retains UTC creation time,
 numeric submitter UID, command, absolute Project, requested Run/Analysis,
 resolved application-log root, profile binding, exact delegate arguments, and
 scheduler stream patterns. This is correlation context, not a Run/Attempt or
 current scheduler-status record. The context and containing directory entries
 are synchronized before invoking `sbatch`; failure preserves partial records
 and prevents that invocation.
+
+The request UUID is chosen before submission planning and confirmation. The
+same frozen token appears in `submission-<uuid>` and both scheduler stream
+patterns, `emrys-local-pilot-<uuid>-%j.out` and `.err`. A v2 reader requires
+both patterns to match that exact request directory. Distinct requests therefore
+keep distinct stream destinations even if Slurm reuses a job number. Legacy
+v1 contexts remain readable diagnostic records, but their shared `%j` paths do
+not supply request identity. Doctor's private qualification streams are unchanged.
 
 The shared transport opens private raw `sbatch.stdout`/`sbatch.stderr` files and
 synchronizes their directory before launch. Ordinary submission does not add
