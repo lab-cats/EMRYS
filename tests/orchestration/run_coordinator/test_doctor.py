@@ -41,6 +41,12 @@ from emrys.orchestration.run_coordinator.normalization import (
 from tests.orchestration.run_coordinator import fixture
 
 
+def _arguments(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    doctor.configure_parser(parser)
+    return parser.parse_args(argv)
+
+
 def _project(tmp_path: Path) -> ProjectAdmission:
     root = tmp_path / "project"
     source = fixture.build(root)
@@ -438,12 +444,8 @@ def test_absent_runtime_diagnosis_is_read_only_and_opens_no_log(
     assert not result.runtime_ready
     assert result.inspection is None
     assert "runtime inventory is not admitted" in result.blockers[-1]
-    parser = argparse.ArgumentParser()
-    doctor.configure_parser(parser)
     assert (
-        doctor.doctor_from_args(
-            parser.parse_args(["--project", str(project.source_path)])
-        )
+        doctor.doctor_from_args(_arguments(["--project", str(project.source_path)]))
         == 1
     )
     output = capsys.readouterr().err
@@ -494,13 +496,11 @@ def test_doctor_selects_execution_profile_without_writes(
         lambda **_kwargs: pytest.fail("diagnosis opened an application log"),
     )
     before = _snapshot(tmp_path)
-    parser = argparse.ArgumentParser()
-    doctor.configure_parser(parser)
     arguments = ["--project", str(project.source_path)]
     if selector is not None:
         arguments.extend(("--profile", selector))
 
-    assert doctor.doctor_from_args(parser.parse_args(arguments)) == 1
+    assert doctor.doctor_from_args(_arguments(arguments)) == 1
 
     (result,) = observed
     assert result.execution_profile == expected
@@ -520,14 +520,10 @@ def test_invalid_selected_execution_profile_does_not_fall_back_to_default(
     project = _project(tmp_path)
     _patch_foundations(monkeypatch, project)
     before = _snapshot(tmp_path)
-    parser = argparse.ArgumentParser()
-    doctor.configure_parser(parser)
 
     assert (
         doctor.doctor_from_args(
-            parser.parse_args(
-                ["--project", str(project.source_path), "--profile", selection]
-            )
+            _arguments(["--project", str(project.source_path), "--profile", selection])
         )
         == 1
     )
@@ -538,7 +534,7 @@ def test_invalid_selected_execution_profile_does_not_fall_back_to_default(
     assert "Select a valid execution profile with --profile" in output
     assert (
         doctor.doctor_from_args(
-            parser.parse_args(
+            _arguments(
                 [
                     "--project",
                     str(project.source_path),
@@ -637,13 +633,9 @@ def test_doctor_rejects_an_unusable_default_execution_profile_without_repair(
     assert "default execution profile is not admitted" in result.blockers[-1]
     with pytest.raises(doctor.DoctorRepairError, match="preserves execution profiles"):
         doctor._build_repair_plan(result)
-    parser = argparse.ArgumentParser()
-    doctor.configure_parser(parser)
     assert (
         doctor.doctor_from_args(
-            parser.parse_args(
-                ["--project", str(project.source_path), "--repair", "--execute"]
-            )
+            _arguments(["--project", str(project.source_path), "--repair", "--execute"])
         )
         == 1
     )
@@ -676,14 +668,10 @@ def test_doctor_refuses_incompatible_reservation_before_planning_runtime_repair(
         ),
     )
     before = _snapshot(tmp_path)
-    parser = argparse.ArgumentParser()
-    doctor.configure_parser(parser)
 
     assert (
         doctor.doctor_from_args(
-            parser.parse_args(
-                ["--project", str(project.source_path), "--repair", "--execute"]
-            )
+            _arguments(["--project", str(project.source_path), "--repair", "--execute"])
         )
         == 1
     )
@@ -855,12 +843,10 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
         "open_attempt_log",
         lambda **_kwargs: pytest.fail("diagnosis opened an application log"),
     )
-    parser = argparse.ArgumentParser()
-    doctor.configure_parser(parser)
     for level in ("normal", "verbose", "debug"):
         assert (
             doctor.doctor_from_args(
-                parser.parse_args(
+                _arguments(
                     ["--project", str(project.source_path), "--log-level", level]
                 )
             )
@@ -1051,12 +1037,10 @@ def test_invocation_timing_includes_confirmation_and_preserves_read_only_preview
         "open_attempt_log",
         lambda **_kwargs: pytest.fail("preview opened a log"),
     )
-    parser = argparse.ArgumentParser()
-    doctor.configure_parser(parser)
     before = _snapshot(tmp_path)
     assert (
         doctor.doctor_from_args(
-            parser.parse_args(
+            _arguments(
                 [
                     "--project",
                     str(project.source_path),
@@ -1244,9 +1228,7 @@ def test_failed_diagnosis_timing_cannot_replace_error_or_interrupt(
         monkeypatch.setattr(doctor._DoctorTiming, "observe", failed_telemetry)
     elif fault == "finish":
         monkeypatch.setattr(doctor._DoctorTiming, "finish", failed_telemetry)
-    parser = argparse.ArgumentParser()
-    doctor.configure_parser(parser)
-    arguments = parser.parse_args(["--project", str(source)])
+    arguments = _arguments(["--project", str(source)])
     before = _snapshot(tmp_path)
     if interrupted:
         with pytest.raises(KeyboardInterrupt) as failure:
@@ -1768,9 +1750,7 @@ def test_pass_observation_failure_does_not_replace_readiness_or_interruption(
         "open_attempt_log",
         lambda **_kwargs: pytest.fail("diagnosis opened a log"),
     )
-    parser = argparse.ArgumentParser()
-    doctor.configure_parser(parser)
-    arguments = parser.parse_args(["--project", str(project.source_path)])
+    arguments = _arguments(["--project", str(project.source_path)])
     before = _snapshot(tmp_path)
     if interrupted:
         with pytest.raises(KeyboardInterrupt) as failure:
@@ -2177,12 +2157,8 @@ def test_repair_retains_failed_candidate_probe_after_managers_succeed(
         return SimpleNamespace(returncode=code, stdout=output.encode())
 
     monkeypatch.setattr(doctor.subprocess, "run", run)
-    parser = argparse.ArgumentParser()
-    doctor.configure_parser(parser)
     status = doctor.doctor_from_args(
-        parser.parse_args(
-            ["--project", str(project.source_path), "--repair", "--execute"]
-        )
+        _arguments(["--project", str(project.source_path), "--repair", "--execute"])
     )
 
     assert status == 1
@@ -2641,9 +2617,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     monkeypatch.setattr(qualification, "_run_compute", probe)
     monkeypatch.setattr(qualification, "qualify_head", finalize)
     monkeypatch.setattr(doctor, "diagnose_project", diagnose)
-    parser = argparse.ArgumentParser()
-    doctor.configure_parser(parser)
-    arguments = parser.parse_args(
+    arguments = _arguments(
         ["--project", str(project.source_path), "--repair", "--execute"]
         + (["--profile", selector] if selector is not None else [])
     )
@@ -2707,7 +2681,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
                 slurm_submission.PROFILE_SHA256_ENV, execution.binding_sha256
             )
             compute.setenv(slurm_submission.SUBMIT_UID_ENV, str(doctor.os.getuid()))
-            compute_args = parser.parse_args(
+            compute_args = _arguments(
                 delegate_argv[delegate_argv.index("doctor") + 1 :]
             )
             state["compute"] = True
