@@ -1162,6 +1162,37 @@ remain unchanged. Focused runtime tests pass; public Doctor phase, identity,
 failure and observation-degradation fixtures require hosted CI. Full byte/I/O/
 memory attribution and institutional before/after evidence remain Open.
 
+**Retained probe attribution:** The managed golden-path job at
+`1f4171d198cada8833f59ccd5a1bfeffab3ebaff`
+([run 34939155081](https://github.com/lab-cats/EMRYS/actions/runs/34939155081),
+job `104283598944`) completed donor setup and borrower verification. Artifact
+`emrys-managed-golden-1`, ID `10385365580`, contains 6,756,172 bytes; its downloaded
+SHA-256 matches `df47f8cbc74141df8395c3efd87c6c9d14572a21ad080e6ae2a045e719151685`.
+The overall workflow failed on separate display-fixture assertions, so this is
+evidence from the successful managed job rather than a whole-suite success.
+
+| Invocation / phase | Phase seconds | Timed probes | R namespace loads | Snakemake version + startup |
+| --- | ---: | ---: | ---: | ---: |
+| Donor discovery | 46.968 | 46.861 | 37.810 | 7.038 |
+| Donor final readiness | 47.024 | 46.745 | 38.687 | 6.282 |
+| Borrower diagnosis | 53.111 | 51.580 | 42.227 | 7.241 |
+| Borrower final readiness | 51.887 | 51.623 | 42.159 | 7.331 |
+
+Each qualification pass retains 26 passing observations and 24 timed child
+calls. Three path checks have no child timer; Snakemake has separate version
+and startup timers. The rounded probe sums account for 97.12–99.77% of their
+enclosing phases. R namespace loading is the largest observed component;
+VariantAnnotation, rtracklayer and SummarizedExperiment dominate those loads.
+
+The donor invocation took 140.458590 seconds, with a 140.350734-second phase sum
+and 44.889825 seconds in package-manager phases. Borrower verification took
+105.179918 seconds, with a 105.161497-second phase sum and no package-manager
+events. Reuse therefore still includes fresh qualification work in this case.
+Probe values have millisecond precision, and JSONL timestamps date deferred
+emission rather than phase chronology. Unattributed time is not measured hash
+or seal cost. These single hosted observations do not measure hashed bytes,
+CPU, physical I/O or RSS, explain E11, or establish an optimization comparison.
+
 ## P3 outcome
 
 ### CV-27 Terminal-only report access
