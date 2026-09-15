@@ -110,6 +110,7 @@ class _RunSelectionCancelled(ControlError):
 
 
 _CONTROL_ERRORS = (
+    slurm_submission.SlurmSubmissionError,
     ControlError,
     ExecutionProfileError,
     ResourceConfigError,
@@ -601,10 +602,7 @@ def _resolve_execution_profile(
 ) -> tuple[ExecutionProfile, str | None]:
     """Admit one selected profile and any private Slurm delegate binding."""
 
-    try:
-        expected_sha256 = slurm_submission.delegate_binding()
-    except slurm_submission.SlurmSubmissionError as exc:
-        raise ControlError(str(exc)) from exc
+    expected_sha256 = slurm_submission.delegate_binding()
     profile = load_execution_profile(
         config_path=project_execution_profile_path(
             project_path,
@@ -634,10 +632,7 @@ def _resolve_execution_profile(
         and profile.binding_sha256 != expected_sha256
     ):
         raise ExecutionProfileError("Execution-profile binding SHA-256 differs")
-    try:
-        return profile, slurm_submission.delegate_job_id(profile)
-    except slurm_submission.SlurmSubmissionError as exc:
-        raise ControlError(str(exc)) from exc
+    return profile, slurm_submission.delegate_job_id(profile)
 
 
 def _resolve_controls(arguments: argparse.Namespace, workspace: Path) -> LogControls:
@@ -815,20 +810,17 @@ def _schedule(
             "Slurm CPUs per task cannot be lower than workflow cores: "
             f"{placement.cpus_per_task} < {effective_workflow_cores}"
         )
-    try:
-        submission = slurm_submission.plan_submission(
+    submission = slurm_submission.plan_submission(
+        profile,
+        emrys_argv=_delegate_argv(
+            command,
+            arguments,
             profile,
-            emrys_argv=_delegate_argv(
-                command,
-                arguments,
-                profile,
-                controls,
-                overrides,
-            ),
-            log_dir=_absolute(workspace) / "logs",
-        )
-    except slurm_submission.SlurmSubmissionError as exc:
-        raise ControlError(str(exc)) from exc
+            controls,
+            overrides,
+        ),
+        log_dir=_absolute(workspace) / "logs",
+    )
     console_print(f"Project: {workspace.name!a}", style="bold")
     if command == "run":
         analysis = getattr(arguments, "analysis", None)
@@ -864,10 +856,7 @@ def _schedule(
         return 0
     _admit_workspace_location(workspace)
     _prepare_scheduler_log_dir(workspace)
-    try:
-        job_id = slurm_submission.submit(submission)
-    except slurm_submission.SlurmSubmissionError as exc:
-        raise ControlError(str(exc)) from exc
+    job_id = slurm_submission.submit(submission)
     print(f"JOB_ID={job_id}")
     print(f"OUT={str(submission.stdout_pattern).replace('%j', job_id)}")
     print(f"ERR={str(submission.stderr_pattern).replace('%j', job_id)}")
@@ -1580,7 +1569,7 @@ def report_from_args(
                 overrides,
                 workspace,
             )
-    except (ControlError, ExecutionProfileError, ResourceConfigError) as exc:
+    except _CONTROL_ERRORS as exc:
         return _control_failure(exc)
 
     execution_attempt_id = f"application-{uuid.uuid4().hex}"

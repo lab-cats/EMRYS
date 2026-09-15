@@ -66,6 +66,8 @@ compute-only/head requalification diagnostics to the existing focused tests.
 Injected manager/scheduler faults are simulations. They do not complete the
 managed golden path, establish an institutional result, or cover the remaining
 cancellation, startup, reuse, and inspection outcomes.
+CV-03 adds transport-failure cases that preserve a single submission, confirmed
+or uncertain job identity, and the existing retained transcripts.
 
 ### CV-02 Individual qualification diagnostics
 
@@ -108,6 +110,24 @@ cancellation, and head finalization failure separately. Include the known job
 identity, underlying failure, and relevant logs. A nonzero waited `sbatch` exit
 must not erase the distinction. Test each phase without duplicate submissions.
 **Owners/dependencies:** Shared Slurm transport, Doctor, Run control, logging.
+
+**Selected implementation:** The first slice distinguishes scheduler invocation,
+submission-record failure, an unconfirmed submission response, and failure after
+a canonical job ID was returned. It preserves escaped underlying diagnostics,
+known job identity, and existing stream/transcript paths without retrying.
+All four Control exception-translation wrappers are replaced by handling the
+existing shared exception at public failure boundaries. No new scheduler
+observer, command, file, schema, receipt, or recovery rule is introduced.
+The approved exception permits at most 25 net added product lines across the
+existing transport and Control owners; tests and documentation are separate.
+
+**Verification and remaining scope:** Focused transport tests exercise real
+tiny subprocess fixtures and injected scheduler responses, including nonzero
+waited jobs, malformed responses, transcript failures, escaped diagnostics,
+and exactly one submission. Public Control regressions run in CI. These are
+simulations, not scheduler or institutional proof. Queue reasons, confirmed
+cancellation, and head-finalization failure classification remain open, so
+CV-03 remains Open after this bounded slice.
 
 ### CV-04 Workflow startup readiness
 
