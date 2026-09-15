@@ -2126,8 +2126,16 @@ def test_terminal_task_observation_does_not_admit_unverified_results(
                 in output
             )
             assert f"    record: {plan.task_attempt_path}" in output
-            assert f"    stdout: {plan.stdout_path}" in output
-            assert f"    stderr: {plan.stderr_path}" in output
+            assert (
+                "Task diagnostic streams (paths do not establish existence or liveness):"
+                in output
+            )
+            stream_label = (
+                f"  Task {plan.machine_key}/{plan.scope['scope_id']} "
+                f"({terminal.record['workflow_attempt_id']}; recorded {recorded_status})"
+            )
+            assert f"{stream_label} stdout: {plan.stdout_path}" in output
+            assert f"{stream_label} stderr: {plan.stderr_path}" in output
             if recorded_status == "failed":
                 assert "fixture postentry failure\\x1b[31m" in output
         assert "\x1b" not in output
