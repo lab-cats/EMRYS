@@ -601,9 +601,21 @@ cancellation leaves a reuse race. Slurm added that `scancel --ctld` behavior in
 [23.11.6](https://raw.githubusercontent.com/SchedMD/slurm/slurm-23-11-10-1/NEWS).
 Older or unconfirmed clients must refuse before any mutating command. Even a
 successful command means only that the request was processed; independently
-admitted Run receipts/locks still decide completion and recovery. Exact client
-admission, preview/recheck, durable diagnostics and public stop remain separate
-implementation work; actual cluster cancellation retains its own authority.
+admitted Run receipts/locks still decide completion and recovery. Actual cluster
+cancellation retains its own authority.
+
+**Selected stop slice:** `emrys stop --submission REQUEST` with Project context
+previews one exact owned v3 request. Explicit `--execute` requires fresh target
+identity and an unchanged admitted client before one controller-filtered
+whole-job cancellation. The existing logger synchronizes exact intent; the
+shared submission transport retains raw output through pinned directory/file
+identities. Errors, timeout and interruption preserve records without retry.
+An already terminal target causes no cancellation; a processed request and
+terminal scheduler observation remain distinct from native process absence or
+Run recovery eligibility. No lock, receipt, Task output or retained evidence is
+removed or repaired. Local fixtures and hosted CI can validate these software
+boundaries; actual queued/native-task cancellation and institutional recovery
+evidence remain separate and pending.
 
 ### CV-19 Verification and repair vocabulary
 

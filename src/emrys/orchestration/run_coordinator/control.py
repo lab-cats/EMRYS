@@ -89,6 +89,9 @@ RESUME_DESCRIPTION = "Plan a safe resume, then confirm or use --execute for auto
 INSPECT_DESCRIPTION = (
     "Show retained Project submissions and inspect one Run without changing state."
 )
+STOP_DESCRIPTION = (
+    "Preview one exact submission stop; use --execute to request cancellation."
+)
 REPORT_DESCRIPTION = (
     "Plan, generate, or reuse the fixed reports for one completed immutable Run. "
     "Dry-run is the default and reporting never creates a scientific Attempt."
@@ -1412,6 +1415,20 @@ def configure_inspect_parser(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def configure_stop_parser(parser: argparse.ArgumentParser) -> None:
+    onboarding.add_project_argument(parser)
+    parser.add_argument(
+        "--submission",
+        required=True,
+        metavar="REQUEST",
+        help="Exact retained request directory name or absolute path; no job-ID or Run aliases.",
+    )
+    add_log_arguments(parser)
+    parser.add_argument(
+        "--execute", action="store_true", help="Issue the previewed stop request."
+    )
+
+
 def _progress_state(tasks: tuple[inspection.TaskInspection, ...]) -> str:
     if not tasks:
         return "not applicable"
@@ -1714,17 +1731,11 @@ def report_from_args(
 
 
 def _print_submission_roster(project: Path, selector: str | None = None) -> None:
-    requests = slurm_submission.submission_requests(project)
-    if selector is not None:
-        requests = tuple(
-            request
-            for request in requests
-            if selector in (request.request_root.name, str(request.request_root))
-        )
-        if len(requests) != 1:
-            raise ControlError(
-                "Submission selector must identify one exact retained request"
-            )
+    requests = (
+        (slurm_submission.select_submission_request(project, selector),)
+        if selector is not None
+        else slurm_submission.submission_requests(project)
+    )
     print("Retained submissions:")
     if not requests:
         print("  None found; this does not establish that no job was submitted.")
@@ -1827,6 +1838,185 @@ def _print_submission_roster(project: Path, selector: str | None = None) -> None
             "Scheduler and application observations do not establish workflow entry, "
             "Run completion or recovery eligibility, or authorize cancellation."
         )
+
+
+def stop_from_args(arguments: argparse.Namespace) -> int:
+    attempt = None
+    try:
+        project = onboarding.project_definition_path(arguments.project)
+        with phase_progress("Reading the selected stop target and client"):
+            plan = slurm_submission.plan_stop(project, arguments.submission)
+        context = plan.request.context
+        assert context is not None
+        controls = resolve_log_controls(
+            cli_level=arguments.log_level,
+            cli_root=arguments.log_root,
+            default_root=Path(str(context["application_log_root"])),
+        )
+        _print_safe(f"Stop request: {plan.request.request_root}")
+        _print_safe(f"Project: {project}")
+        _print_safe(
+            f"Target: job {plan.request.recorded_job_id}; UID {context['submitter_uid']}; "
+            f"cluster {plan.observation['cluster']}; name {context['scheduler_job_name']}"
+        )
+        _print_safe(f"Scheduler observation: {plan.observation['state']}")
+        _print_safe(
+            "Inspect retained evidence: "
+            + shlex.join(
+                [
+                    "emrys",
+                    "inspect",
+                    "--project",
+                    str(project),
+                    "--submission",
+                    plan.request.request_root.name,
+                ]
+            )
+        )
+        print(
+            "Scheduler state does not prove native-task quiescence or authorize resume."
+        )
+        if not plan.argv:
+            print(
+                "The exact scheduler record is already terminal; no stop request is needed."
+            )
+            return 0
+        _print_safe(f"Client: {plan.client_version}; command: {shlex.join(plan.argv)}")
+        if not arguments.execute:
+            print(
+                "Preview only; use --execute to issue this stop request. No files were written."
+            )
+            return 0
+        attempt = open_attempt_log(
+            controls=controls,
+            identity=AttemptIdentity(
+                "maintenance",
+                plan.request.request_root.name,
+                f"application-{uuid.uuid4().hex}",
+                "emrys-stop",
+            ),
+            mode="stop",
+            component="scheduler",
+        )
+        stdout = attempt.path.parent / "scancel.stdout"
+        _print_safe(
+            f"Stop diagnostics: {attempt.path}; {stdout}; {stdout.with_suffix('.stderr')}"
+        )
+        record_intent = partial(
+            attempt.intent,
+            event_name="slurm_stop_intent",
+            message="Exact controller stop request admitted.",
+            fields={
+                name: field(value)
+                for name, value in {
+                    "request_root": plan.request.request_root,
+                    "project": project,
+                    "request_context_sha256": hashlib.sha256(
+                        orchestration_contracts.canonical_json_bytes(dict(context))
+                    ).hexdigest(),
+                    "job_id": plan.request.recorded_job_id,
+                    "submitter_uid": context["submitter_uid"],
+                    "cluster": plan.observation["cluster"],
+                    "scheduler_job_name": context["scheduler_job_name"],
+                    "client_version": plan.client_version,
+                    "client_file_binding": plan.client_binding,
+                    "argv": plan.argv,
+                    "stdout": stdout,
+                    "stderr": stdout.with_suffix(".stderr"),
+                }.items()
+            },
+        )
+        with phase_progress(
+            "Rechecking the target, requesting stop and observing the scheduler"
+        ):
+            result = slurm_submission.stop(
+                plan, record_path=stdout, record_intent=record_intent
+            )
+        if result.invocation_attempted:
+            _print_safe(
+                f"scancel exit status: {result.returncode if result.returncode is not None else 'unconfirmed'}"
+            )
+            print(
+                "A zero exit status means the controller request was processed; it does not prove the job was cancelled."
+            )
+        else:
+            print(
+                "No stop request was sent; the exact scheduler record became terminal."
+            )
+        _print_safe(
+            f"Post-check scheduler observation: {result.observation['state']}; source: {result.observation['source'] or 'unavailable'}"
+        )
+        for label, value in (
+            ("Stop diagnostic", result.diagnostic),
+            ("Scheduler diagnostic", result.observation.get("diagnostic")),
+            ("scancel stdout", result.stdout_excerpt.decode("utf-8", "replace")),
+            ("scancel stderr", result.stderr_excerpt.decode("utf-8", "replace")),
+        ):
+            if value:
+                _print_safe(f"{label}: {value}")
+        recorded = attempt.best_effort(
+            lambda: attempt.terminal(
+                event_name="slurm_stop_observed",
+                message="Stop transport and scheduler observations retained.",
+                fields={
+                    name: field(value)
+                    for name, value in {
+                        "invocation_attempted": result.invocation_attempted,
+                        "returncode": result.returncode,
+                        "scheduler": dict(result.observation),
+                        "diagnostic": result.diagnostic,
+                    }.items()
+                },
+            ),
+            warning="WARNING: stop logging degraded; raw diagnostics are retained and the outcome remains unconfirmed.",
+        )
+        return (
+            0
+            if (
+                recorded
+                and result.observation["terminal"]
+                and result.diagnostic is None
+                and (not result.invocation_attempted or result.returncode == 0)
+            )
+            else 1
+        )
+    except KeyboardInterrupt:
+        if attempt is not None:
+            attempt.best_effort(
+                lambda: attempt.interrupt_best_effort(
+                    message="Stop invocation interrupted; submitted request outcome is unconfirmed."
+                ),
+                warning="WARNING: stop interruption logging degraded; retained diagnostics remain controlling.",
+            )
+        print(
+            "Stop interrupted; any issued controller request may have been processed. Inspect retained evidence before another request.",
+            file=sys.stderr,
+        )
+        return 130
+    except (
+        slurm_submission.SlurmSubmissionError,
+        onboarding.OnboardingError,
+        ApplicationLogError,
+        LogControlError,
+        ValueError,
+        OSError,
+    ) as exc:
+        error = str(exc)
+        if attempt is not None:
+            attempt.best_effort(
+                lambda: attempt.fail(
+                    phase="stop",
+                    message="Stop failed or was refused.",
+                    fields={"error": field(error)},
+                ),
+                warning="WARNING: stop failure logging degraded; retained diagnostics were preserved.",
+            )
+        _print_safe(f"emrys: error: {exc}", file=sys.stderr)
+        return 2
+    finally:
+        if attempt is not None:
+            with suppress(Exception):
+                attempt.close()
 
 
 def inspect_from_args(
@@ -2063,11 +2253,14 @@ __all__ = (
     "REPORT_DESCRIPTION",
     "RESUME_DESCRIPTION",
     "RUN_DESCRIPTION",
+    "STOP_DESCRIPTION",
     "configure_inspect_parser",
+    "configure_stop_parser",
     "configure_report_parser",
     "configure_resume_parser",
     "configure_run_parser",
     "inspect_from_args",
+    "stop_from_args",
     "report_from_args",
     "resume_from_args",
     "run_from_args",

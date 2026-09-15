@@ -317,6 +317,32 @@ step. Accounting selection and state observation share one parser. Even a
 matching job ID/UID/path does not establish a durable request's submission or
 cluster identity, nor prove process absence, EMRYS completion, or safe recovery.
 
+`stop --submission REQUEST` uses the same exact retained-request selector as
+inspection, with Project context and no bare job-ID form. Its default is a
+no-write preview; `--execute` admits only complete v3 request identity and a
+current matching scheduler observation. A terminal target needs no cancellation.
+Nonterminal targets require a stable canonical executable and a confirmed plain
+`scancel` release at least 23.11.6, where owner/name/ID filtering occurs together
+at the controller. The plan freezes target, cluster, client binding, arguments
+and environment; `SCANCEL_*` and `SLURM_CLUSTERS` overrides are removed.
+
+Before mutation, the existing maintenance-log owner synchronizes the exact
+target/client/arguments intent. The shared transport creates private raw output
+files through one pinned canonical current-owned directory descriptor and
+synchronizes that directory. Request, scheduler and client identities are
+rechecked before the sole `scancel --ctld --clusters=CLUSTER --name=NAME --me ID`
+invocation. It uses ordinary whole-job cancellation with no custom signal,
+step target, retry, bulk form or ID-only fallback. Raw stdout/stderr remain next
+to the maintenance JSONL, outside the closed submission-request directory.
+
+The client has a ten-second timeout. Normal return, nonzero exit or timeout is
+followed by one fresh exact scheduler observation; process-control interruption
+preserves diagnostics and unwinds without additional queries. Command exit zero
+means the request was processed, not that the target matched or all processes
+stopped. Missing identity or uncertain output remains unconfirmed. Run receipts,
+locks, Task records and recovery admission are untouched; this command cannot
+promise resume or reconstruct missing terminal evidence.
+
 ## Profiles and immutable planning
 
 Allocation observation preserves CPU affinity and declared Slurm CPU limits.

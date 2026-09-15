@@ -44,6 +44,7 @@ EMRYS_COMMANDS = (
     (("run",), "usage: emrys run"),
     (("resume",), "usage: emrys resume"),
     (("report",), "usage: emrys report"),
+    (("stop",), "usage: emrys stop"),
     (
         ("validate", "artifact-contracts"),
         "usage: emrys validate artifact-contracts",
@@ -535,6 +536,7 @@ def test_installed_emrys_commands_are_isolated_and_cwd_independent(
         ("resume",),
         ("inspect",),
         ("report",),
+        ("stop",),
     ):
         assert ("--analysis" in help_result.stdout) is (
             command in (("doctor",), ("run",))

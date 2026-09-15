@@ -266,6 +266,12 @@ def build_parser() -> argparse.ArgumentParser:
             "inspect",
             "Inspect one Project-local Run without mutation.",
         ),
+        (
+            "stop",
+            run_coordinator_control_command,
+            "stop",
+            "Preview or request cancellation of one exact retained submission.",
+        ),
     ):
         _add_owned_command(command_parsers, *command, controlled=True)
     _add_group(

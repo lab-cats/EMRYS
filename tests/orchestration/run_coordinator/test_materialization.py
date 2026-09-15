@@ -3500,6 +3500,208 @@ def test_public_inspect_retains_submission_observations_before_any_run(
     assert "Retained submissions:" not in capsys.readouterr().out
 
 
+@pytest.mark.parametrize("level", ("normal", "verbose", "debug"))
+def test_public_stop_preview_is_read_only_and_names_exact_target(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    level: str,
+) -> None:
+    from tests.orchestration.run_coordinator.test_slurm_submission import _stop_fixture
+
+    fixture = _stop_fixture(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        control,
+        "open_attempt_log",
+        lambda **_kwargs: pytest.fail("stop preview opened a log"),
+    )
+    monkeypatch.setattr(
+        control._submission_inspection,
+        "inspect_submission_application",
+        lambda *_args: pytest.fail("stop scanned application logs"),
+    )
+    parser = argparse.ArgumentParser()
+    control.configure_stop_parser(parser)
+    before = {path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
+    assert (
+        control.stop_from_args(
+            parser.parse_args(
+                [
+                    "--project",
+                    str(fixture.project),
+                    "--submission",
+                    fixture.root.name,
+                    "--log-level",
+                    level,
+                ]
+            )
+        )
+        == 0
+    )
+    output = capsys.readouterr().out
+    assert f"Project: {fixture.project}" in output
+    assert fixture.context["scheduler_job_name"] in output
+    assert "cluster alpha" in output and f"UID {os.getuid()}" in output
+    assert "Preview only" in output and "--ctld" in output and "--me" in output
+    assert not fixture.marker.exists()
+    assert {
+        path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()
+    } == before
+
+
+@pytest.mark.parametrize(
+    "outcome,expected",
+    [
+        ("terminal", 0),
+        ("active", 1),
+        ("unknown", 1),
+        ("nonzero", 1),
+        ("interrupt", 130),
+        ("intent-write", 2),
+        ("intent-sync", 2),
+        ("replace-before-intent", 2),
+        ("replace-during-intent", 2),
+    ],
+)
+def test_public_stop_requires_durable_intent_and_preserves_uncertain_outcomes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    outcome: str,
+    expected: int,
+) -> None:
+    from emrys.libraries.application_logging.storage import (
+        ApplicationLogFile,
+        ApplicationLogStorageError,
+    )
+    from tests.orchestration.run_coordinator.test_slurm_submission import _stop_fixture
+
+    fixture = _stop_fixture(
+        tmp_path, monkeypatch, stop_status=7 if outcome == "nonzero" else 0
+    )
+    if outcome in {"active", "nonzero"}:
+        fixture.replies[-1] = "RUNNING"
+    elif outcome == "unknown":
+        fixture.replies[-1] = None
+    log_root = tmp_path / "explicit application logs"
+    synchronized_intents = []
+    written_intents = []
+    write = ApplicationLogFile.write_bytes
+    synchronize = ApplicationLogFile.synchronize
+    moved = tmp_path / "preserved-stop-attempt"
+
+    def replace_attempt(parent: Path) -> None:
+        parent.rename(moved)
+        parent.mkdir()
+
+    def observe_write(file: ApplicationLogFile, payload: bytes) -> None:
+        entry = json.loads(payload)
+        if entry["event"] == "slurm_stop_intent":
+            written_intents.append(entry)
+            if outcome == "intent-write":
+                raise ApplicationLogStorageError("stop intent write failed")
+        write(file, payload)
+
+    def observe_sync(file: ApplicationLogFile) -> None:
+        latest = json.loads(file.path.read_text().splitlines()[-1])
+        if latest["event"] == "slurm_stop_intent":
+            if outcome == "intent-sync":
+                raise ApplicationLogStorageError("stop intent fsync failed")
+            synchronize(file)
+            synchronized_intents.append(latest)
+            if outcome == "replace-during-intent":
+                replace_attempt(file.path.parent)
+        else:
+            synchronize(file)
+
+    monkeypatch.setattr(ApplicationLogFile, "write_bytes", observe_write)
+    monkeypatch.setattr(ApplicationLogFile, "synchronize", observe_sync)
+    run = control.slurm_submission.subprocess.run
+    mutations = []
+
+    def observed_run(argv: tuple[str, ...], **kwargs: object) -> object:
+        if argv[-1] == "--version":
+            return run(argv, **kwargs)
+        mutations.append(tuple(argv))
+        assert len(synchronized_intents) == 1
+        assert synchronized_intents[0]["fields"]["argv"] == list(argv)
+        result = run(argv, **kwargs)
+        if outcome == "interrupt":
+            raise KeyboardInterrupt("operator stop interrupted")
+        return result
+
+    monkeypatch.setattr(control.slurm_submission.subprocess, "run", observed_run)
+    if outcome == "replace-before-intent":
+        observe = control.slurm_submission.scheduler_observation.command_bytes
+
+        def replace_during_readmission(*args: object, **kwargs: object) -> object:
+            response = observe(*args, **kwargs)
+            if len(fixture.queries) == 2:
+                (log,) = log_root.glob("maintenance-*/application-*/emrys-stop.jsonl")
+                replace_attempt(log.parent)
+            return response
+
+        monkeypatch.setattr(
+            control.slurm_submission.scheduler_observation,
+            "command_bytes",
+            replace_during_readmission,
+        )
+    monkeypatch.setattr(
+        control._submission_inspection,
+        "inspect_submission_application",
+        lambda *_args: pytest.fail("stop scanned application logs"),
+    )
+    parser = argparse.ArgumentParser()
+    control.configure_stop_parser(parser)
+    arguments = parser.parse_args(
+        [
+            "--project",
+            str(fixture.project),
+            "--submission",
+            str(fixture.root),
+            "--execute",
+            "--log-root",
+            str(log_root),
+        ]
+    )
+    assert control.stop_from_args(arguments) == expected
+    captured = capsys.readouterr()
+    attempted = outcome in {"terminal", "active", "unknown", "nonzero", "interrupt"}
+    assert fixture.marker.exists() == attempted
+    assert len(mutations) == (1 if attempted else 0)
+    assert not (tmp_path / "runs").exists()
+    assert "native-task quiescence" in captured.out
+    assert "Stop diagnostics:" in captured.out
+    if attempted:
+        (log,) = log_root.glob("maintenance-*/application-*/emrys-stop.jsonl")
+        records = [json.loads(line) for line in log.read_text().splitlines()]
+        assert records[1]["event"] == "slurm_stop_intent"
+        fields = records[1]["fields"]
+        assert fields["request_root"] == str(fixture.root)
+        assert fields["project"] == str(fixture.project)
+        assert fields["job_id"] == "700123" and fields["submitter_uid"] == os.getuid()
+        assert fields["scheduler_job_name"] == fixture.context["scheduler_job_name"]
+        assert fields["client_version"] == "slurm 23.11.6"
+        assert isinstance(fields["client_file_binding"], list)
+        assert (log.parent / "scancel.stdout").read_bytes() == fixture.stdout
+        assert (log.parent / "scancel.stderr").read_bytes() == fixture.stderr
+        assert records[-1]["event"] == (
+            "attempt_interrupted" if outcome == "interrupt" else "slurm_stop_observed"
+        )
+        if outcome != "interrupt":
+            assert (
+                "zero exit status means the controller request was processed"
+                in captured.out
+            )
+            assert "Post-check scheduler observation:" in captured.out
+        assert len(fixture.queries) == (2 if outcome == "interrupt" else 3)
+    else:
+        assert "emrys: error:" in captured.out + captured.err
+        if outcome.startswith("replace-"):
+            assert (moved / "emrys-stop.jsonl").is_file()
+        assert len(fixture.queries) == 2
+
+
 def test_oversized_submission_context_prevents_scheduler_invocation(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -5106,6 +5308,7 @@ def test_public_help_routes() -> None:
         (("run", "--help"), "usage: emrys run"),
         (("resume", "--help"), "usage: emrys resume"),
         (("inspect", "--help"), "usage: emrys inspect"),
+        (("stop", "--help"), "usage: emrys stop"),
     ):
         result = subprocess.run(
             [sys.executable, "-I", "-m", "emrys", *command],
@@ -5122,6 +5325,9 @@ def test_public_help_routes() -> None:
         if command[0] == "resume":
             assert "--through" not in result.stdout
             assert "--profile NAME_OR_ABSOLUTE_PATH" in result.stdout
+        if command[0] == "stop":
+            assert "--submission REQUEST" in result.stdout
+            assert "--execute" in result.stdout and "--profile" not in result.stdout
 
 
 def _package_copy(tmp_path: Path) -> Path:
