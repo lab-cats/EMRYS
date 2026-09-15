@@ -6,6 +6,7 @@ import fcntl
 import importlib.util
 import os
 import pty
+import re
 import select
 import struct
 import subprocess
@@ -743,6 +744,8 @@ raise SystemExit(result)
     environment = dict(
         os.environ,
         TERM="xterm",
+        COLUMNS="160",
+        LINES="40",
         PYTHONDONTWRITEBYTECODE="1",
         PYTHONPATH=str(Path(__file__).resolve().parents[3] / "src"),
     )
@@ -755,21 +758,25 @@ raise SystemExit(result)
     )
     os.close(slave)
     output = b""
+
+    def rendered_text():
+        return b" ".join(re.sub(rb"\x1b\[[0-?]*[ -/]*[@-~]", b"", output).split())
+
     try:
         deadline = time.monotonic() + 5
         caption = (
             b"q quit" if mode == "readonly" else b"p leave view and review resume plan"
         )
         while (
-            (not marker.exists() or caption not in output)
+            (not marker.exists() or caption not in rendered_text())
             and process.poll() is None
             and time.monotonic() < deadline
         ):
             if select.select([master], [], [], 0.05)[0]:
                 output += os.read(master, 65536)
         assert marker.exists(), output
-        assert caption in output, output
-        assert (b"review resume plan" in output) is (mode != "readonly")
+        assert caption in rendered_text(), output
+        assert (b"review resume plan" in rendered_text()) is (mode != "readonly")
         os.write(
             master,
             b"pq" if mode == "readonly" else b"q" if mode == "quit-enabled" else b"pp",
