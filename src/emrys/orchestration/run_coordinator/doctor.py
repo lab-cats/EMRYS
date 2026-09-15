@@ -1294,7 +1294,7 @@ def _qualify_slurm(
         log_dir=attempt.path.parent,
     )
     with phase_progress("Waiting for Slurm runtime and storage checks"):
-        slurm_submission.submit(
+        job_id = slurm_submission.submit(
             submission,
             wait_record=attempt.path.parent / "slurm-submit.stdout",
             on_submitted=lambda job_id: attempt.best_effort(
@@ -1328,7 +1328,12 @@ def _qualify_slurm(
             "Project, package, or runtime changed during compute qualification"
         )
     with phase_progress("Checking shared storage from the head node"):
-        storage_qualification.qualify_head(workspace, fasta)
+        try:
+            storage_qualification.qualify_head(workspace, fasta)
+        except (storage_qualification.StorageQualificationError, OSError) as exc:
+            raise DoctorRepairError(
+                f"Head storage finalization failed after Slurm job {job_id}: {str(exc)!a}"
+            ) from exc
     with phase_progress("Verifying final Project readiness"):
         final = diagnose_project(
             plan.project.source_path,
@@ -1336,7 +1341,13 @@ def _qualify_slurm(
             execution_profile=execution.source_path,
         )
     if final.execution_profile != execution:
-        raise DoctorRepairError("Execution profile changed during head finalization")
+        raise DoctorRepairError(
+            f"Execution profile changed during head finalization after Slurm job {job_id}"
+        )
+    if final.ready and _qualification_binding(final) != binding:
+        raise DoctorRepairError(
+            f"Project, package, or runtime changed during head finalization after Slurm job {job_id}"
+        )
     return final
 
 
