@@ -87,8 +87,11 @@ previously verified snapshot is not current completion or recovery proof.
 Stream tails show at most 64 KiB and 256 retained lines; the terminal may show
 fewer. Missing, changing, truncated or replaced streams are identified and
 terminal controls are escaped. Appended diagnostic bytes do not inherit an
-earlier log digest's authority. The available Task streams come from admitted
-terminal Task records; this is not a complete active-native-log roster.
+earlier log digest's authority. Task streams come from admitted terminal records
+or the fixed paths identified by an admitted Task start. A start is published
+before its streams open: an expected path does not prove a file exists or a Task
+is live. Missing or unadmitted starts do not supply guessed stream locations.
+Verbose/debug static inspection lists the same exact Task paths.
 Redirected output or a noninteractive terminal produces one plain snapshot.
 Ordinary watch runs no operational action and creates no logs or state. A stalled
 filesystem read can delay refresh; after the view opens, quitting does not wait

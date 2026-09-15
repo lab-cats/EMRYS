@@ -354,9 +354,12 @@ Diagnostic suffixes use the existing no-follow byte reader with 64 KiB and
 256-line bounds. Directory, UID and descriptor/path checks reject unsafe or
 changing streams. Rotation/truncation clears previous content rather than
 concatenating generations. Current tail bytes are unverified diagnostics even
-when the path came from a previously admitted content reference. Available
-Task tails come from admitted terminal records; active native-log discovery
-remains incomplete. Legacy standalone dashboard/discovery/accounting and
+when the path came from a previously admitted content reference. Task tails
+come from admitted terminal records or expected paths derived from an admitted
+start. Both start origin and content reference are required. Start publication
+precedes stream opening, so path derivation proves neither existence nor
+liveness. Missing/unadmitted starts supply no derived stream. Legacy standalone
+dashboard/discovery/accounting and
 offline paths remain until complete replacement validation.
 
 The existing dashboard's shared scheduler observer requires an exact canonical

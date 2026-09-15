@@ -964,6 +964,23 @@ text, preserves evidence and retains Results/recovery refusal. Static checks
 pass; application fixtures require hosted CI. Startup/application/reporting
 stream association and the integrated dashboard remain open.
 
+**Started-Task stream slice:** The admitted start already binds the exact frozen
+Task dispatch. One pure Task-owned root builder replaces repeated construction
+in dispatch, directory materialization, terminal admission and debug output.
+One stream projection serves watch and verbose/debug inspection without new
+reads, schemas or admission rules. It preserves terminal references, including
+preentry failure history, and derives expected paths only when both admitted
+start fields are present. Exact historical Attempt filtering and path
+deduplication keep the selected request's streams distinct.
+
+Start publication precedes stream opening; derived paths establish neither
+existence nor liveness. Current tail bytes remain unverified diagnostics under
+the existing ownership/stability checks. Missing or damaged starts supply no
+derived path. Focused presentation tests cover these cases and no-I/O projection;
+actual lifecycle/public cases require hosted CI. Institutional discovery,
+standalone/offline replacement and interpretation of native liveness remain
+separate acceptance.
+
 ### CV-26 Repeated Doctor input reads
 
 **Finding:** A verification-only Doctor operation repeated Project/runtime

@@ -1455,6 +1455,12 @@ def test_processing_source_binding_is_closed_and_input_only(
 
 def test_dispatch_is_closed_and_binds_exact_owner_scope(tmp_path: Path) -> None:
     built = _task_fixture(tmp_path)
+    root = task.task_attempt_root(
+        built.run_root, WORKFLOW_ATTEMPT_ID, MACHINE_KEY, SCOPE_ID
+    )
+    assert built.plan.task_attempt_path == root / "task-attempt.json"
+    assert built.plan.stdout_path == root / "stdout.log"
+    assert built.plan.stderr_path == root / "stderr.log"
     built.definition["unexpected"] = True
     _rewrite_task(built)
     with pytest.raises(

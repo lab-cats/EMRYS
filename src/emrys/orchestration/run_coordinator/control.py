@@ -2104,14 +2104,19 @@ def inspect_from_args(
                 f"  TASK {record['machine_key']}/{record['scope']['scope_id']}: "
                 f"recorded {record['status']}; Attempt {record['workflow_attempt_id']}"
             )
-            for label, reference in (
-                ("record", terminal.record_reference),
-                ("stdout", record["stdout_log"]),
-                ("stderr", record["stderr_log"]),
-            ):
-                _print_safe(f"    {label}: {observed.run_root / reference['path']}")
+            _print_safe(
+                f"    record: {observed.run_root / terminal.record_reference['path']}"
+            )
             if record["failure_message"] is not None:
                 _print_safe(f"    failure: {record['failure_message']}")
+    if detail != "normal":
+        streams = _inspection_presentation.task_stream_sources(observed)
+        if streams:
+            print(
+                "Task diagnostic streams (paths do not establish existence or liveness):"
+            )
+            for source in streams:
+                _print_safe(f"  {source.label}: {source.path}")
     if detail == "debug":
         authority = observed.authority
         print("Run authority records:")
@@ -2162,12 +2167,12 @@ def inspect_from_args(
                 )
             if task.record is not None:
                 attempt_path = (
-                    observed.run_root
-                    / "attempts"
-                    / task.record["workflow_attempt_id"]
-                    / "tasks"
-                    / task.expected.machine_key
-                    / task.expected.scope_id
+                    task_boundary.task_attempt_root(
+                        observed.run_root,
+                        task.record["workflow_attempt_id"],
+                        task.expected.machine_key,
+                        task.expected.scope_id,
+                    )
                     / "task-attempt.json"
                 )
                 task_detail += (

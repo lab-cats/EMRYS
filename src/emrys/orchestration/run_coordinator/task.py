@@ -353,6 +353,15 @@ def load_task(
     )
 
 
+def task_attempt_root(
+    run_root: Path, workflow_attempt_id: str, machine_key: str, scope_id: str
+) -> Path:
+    """Derive the fixed evidence root from admitted identities without I/O."""
+    return (
+        run_root / "attempts" / workflow_attempt_id / "tasks" / machine_key / scope_id
+    )
+
+
 def task_from_attempt(
     path: Path,
     attempt: Mapping[str, Any],
@@ -391,9 +400,7 @@ def task_from_attempt(
         "scope_type": _safe_id(record["scope_type"], "scope.scope_type"),
         "scope_id": selected_scope,
     }
-    task_root = (
-        run_root / "attempts" / workflow_attempt_id / "tasks" / owner / selected_scope
-    )
+    task_root = task_attempt_root(run_root, workflow_attempt_id, owner, selected_scope)
     declared = _closed_object(
         record["publication"], fields=_PUBLICATION_FIELDS, label="publication"
     )
@@ -1046,14 +1053,17 @@ def _sync_directory(path: Path, label: str) -> None:
 def _materialize_task_scope(dispatch: TaskPlan) -> None:
     """Create only this attempt's exact task evidence directory."""
 
-    attempt_root = dispatch.run_root / "attempts" / dispatch.workflow_attempt_id
+    scope_root = task_attempt_root(
+        dispatch.run_root,
+        dispatch.workflow_attempt_id,
+        dispatch.machine_key,
+        dispatch.scope["scope_id"],
+    )
+    attempt_root = scope_root.parents[2]
     _require_real_directory(attempt_root, "workflow-attempt directory")
     parents = (
-        (attempt_root / "tasks", "workflow-attempt tasks directory"),
-        (
-            attempt_root / "tasks" / dispatch.machine_key,
-            "workflow-attempt owner directory",
-        ),
+        (scope_root.parent.parent, "workflow-attempt tasks directory"),
+        (scope_root.parent, "workflow-attempt owner directory"),
     )
     for path, label in parents:
         try:
@@ -1066,7 +1076,6 @@ def _materialize_task_scope(dispatch: TaskPlan) -> None:
             _sync_directory(path, label)
             _sync_directory(path.parent, f"{label} parent")
 
-    scope_root = parents[-1][0] / dispatch.scope["scope_id"]
     try:
         scope_root.mkdir(mode=0o700)
     except FileExistsError as exc:
@@ -1776,12 +1785,9 @@ def _admit_task_attempt(
     )
     identifier = _safe_id(workflow_attempt_id, "workflow_attempt_id")
     attempt_path = (
-        canonical_root
-        / "attempts"
-        / identifier
-        / "tasks"
-        / owner_key
-        / expected_scope["scope_id"]
+        task_attempt_root(
+            canonical_root, identifier, owner_key, expected_scope["scope_id"]
+        )
         / "task-attempt.json"
     )
     record, data = _admit_record(attempt_path, canonical_root, "task-attempt")
