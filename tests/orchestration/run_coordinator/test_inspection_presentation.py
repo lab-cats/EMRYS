@@ -15,9 +15,11 @@ import termios
 import threading
 import time
 from dataclasses import replace
+from functools import partial
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
@@ -27,6 +29,7 @@ from emrys.orchestration.run_coordinator import slurm_submission
 
 
 NOW = datetime(2026, 9, 15, 12, 0, tzinfo=UTC)
+_DISCOVER_RUN_APPLICATIONS = association.inspect_run_applications
 
 
 def _run(root):
@@ -71,6 +74,29 @@ def _request(root):
         "42",
         None,
         (),
+    )
+
+
+@pytest.fixture
+def watcher(monkeypatch):
+    """Record callbacks; unconfigured callbacks still execute their real owner."""
+    calls = Mock()
+    calls.inspect.side_effect = _run
+    calls.action.return_value = "Review"
+    for owner, name, alias in (
+        (slurm_submission, "select_submission_request", "select"),
+        (slurm_submission, "observe_submission_request", "scheduler"),
+        (association, "inspect_submission_application", "associate"),
+        (association, "inspect_run_applications", "discover"),
+    ):
+        callback = Mock(wraps=getattr(owner, name))
+        calls.attach_mock(callback, alias)
+        monkeypatch.setattr(owner, name, callback)
+    return calls, partial(
+        view.refresh_snapshot,
+        stream_index=0,
+        inspect_run=calls.inspect,
+        next_action=calls.action,
     )
 
 
@@ -256,138 +282,83 @@ def test_started_task_streams_remain_expected_and_use_current_unverified_tail(tm
 
 
 def test_refresh_keeps_selected_request_and_only_reverifies_when_explicit(
-    tmp_path, monkeypatch
+    tmp_path, watcher
 ):
-    request = _request(tmp_path)
-    selected_run = tmp_path / "run-exact"
-    calls = []
-
-    def associate(selected):
-        calls.append(("associate", selected))
-        return association.SubmissionApplicationObservation(
-            status="run-and-attempt-associated",
-            run_root=selected_run,
-            workflow_attempt_id="workflow-earlier",
-            recorded_event="analysis_prepared",
-        )
-
-    def inspect(root):
-        calls.append(("inspect", root))
-        return _run(root)
-
-    def action(observed):
-        calls.append(("action", observed.run_root))
-        return "Review this exact Run."
-
-    def scheduler(selected):
-        calls.append(("scheduler", selected))
-        return {"state": "PENDING", "reason": "Resources", "source": "squeue"}
-
-    monkeypatch.setattr(association, "inspect_submission_application", associate)
-
-    def select_request(project, selector):
-        calls.append(("select", selector))
-        assert project == tmp_path / "project.yaml"
-        assert selector == str(request.request_root)
-        return request
-
-    monkeypatch.setattr(slurm_submission, "select_submission_request", select_request)
-    monkeypatch.setattr(slurm_submission, "observe_submission_request", scheduler)
-    initial = view.WatchSnapshot(tmp_path / "project.yaml", request=request)
-    observed = view.refresh_snapshot(
-        initial, verify=True, stream_index=0, inspect_run=inspect, next_action=action
+    calls, refresh = watcher
+    request, selected_run = _request(tmp_path), tmp_path / "run-exact"
+    calls.select.return_value = request
+    calls.associate.return_value = association.SubmissionApplicationObservation(
+        status="run-and-attempt-associated",
+        run_root=selected_run,
+        workflow_attempt_id="workflow-earlier",
+        recorded_event="analysis_prepared",
     )
+    calls.action.return_value = "Review this exact Run."
+    calls.scheduler.return_value = {
+        "state": "PENDING",
+        "reason": "Resources",
+        "source": "squeue",
+    }
+    initial = view.WatchSnapshot(tmp_path / "project.yaml", request=request)
+    observed = refresh(initial, verify=True)
     for _ in range(3):
-        observed = view.refresh_snapshot(
-            observed,
-            verify=False,
-            stream_index=0,
-            inspect_run=inspect,
-            next_action=action,
-        )
-
-    assert [name for name, _ in calls].count("inspect") == 1
-    assert [name for name, _ in calls].count("associate") == 1
-    assert [name for name, _ in calls].count("action") == 1
-    assert [name for name, _ in calls].count("select") == 1
-    assert [value for name, value in calls if name == "scheduler"] == [request] * 4
+        observed = refresh(observed, verify=False)
+    calls.inspect.assert_called_once_with(selected_run)
+    calls.associate.assert_called_once_with(request)
+    calls.action.assert_called_once_with(observed.observed)
+    calls.select.assert_called_once_with(
+        tmp_path / "project.yaml", str(request.request_root)
+    )
+    assert [call.args for call in calls.scheduler.call_args_list] == [(request,)] * 4
     assert initial.observed is None
     text = view.render_snapshot(observed, now=NOW)
-    assert "selected Attempt: workflow-earlier" in text
-    assert "latest Attempt: workflow-later" in text
-    assert "Started; completion unverified" in text
-    assert "Run evidence as of:" in text and "changes require r" in text
-    assert "not verified completion" in text
+    for value in (
+        "selected Attempt: workflow-earlier",
+        "latest Attempt: workflow-later",
+        "Started; completion unverified",
+        "Run evidence as of:",
+        "changes require r",
+        "not verified completion",
+    ):
+        assert value in text
+    refreshed = refresh(observed, verify=True)
+    assert calls.inspect.call_count == 2 and refreshed.request is request
 
-    refreshed = view.refresh_snapshot(
-        observed, verify=True, stream_index=0, inspect_run=inspect, next_action=action
-    )
-    assert [name for name, _ in calls].count("inspect") == 2
-    assert refreshed.request is request
 
-
-def test_request_without_run_does_not_infer_or_scan_again_on_timer(
-    tmp_path, monkeypatch
-):
+def test_request_without_run_does_not_infer_or_scan_again_on_timer(tmp_path, watcher):
+    calls, refresh = watcher
     request = _request(tmp_path)
-    calls = []
-
-    def associate(selected):
-        calls.append(selected)
-        return association.SubmissionApplicationObservation(
-            status="application-log-bound", recorded_event="submission_context_bound"
-        )
-
-    monkeypatch.setattr(association, "inspect_submission_application", associate)
-    monkeypatch.setattr(
-        slurm_submission, "select_submission_request", lambda project, selector: request
+    calls.select.return_value = request
+    calls.associate.return_value = association.SubmissionApplicationObservation(
+        status="application-log-bound", recorded_event="submission_context_bound"
     )
-    monkeypatch.setattr(
-        slurm_submission,
-        "observe_submission_request",
-        lambda selected: {"state": "RUNNING"},
+    calls.scheduler.return_value = {"state": "RUNNING"}
+    calls.inspect.side_effect = calls.action.side_effect = AssertionError(
+        "No associated Run"
     )
-
-    def forbidden(*args):
-        raise AssertionError("No associated Run is available")
-
     snapshot = view.WatchSnapshot(tmp_path / "project.yaml", request=request)
     for verify in (True, False, False):
-        snapshot = view.refresh_snapshot(
-            snapshot,
-            verify=verify,
-            stream_index=0,
-            inspect_run=forbidden,
-            next_action=forbidden,
-        )
-    assert calls == [request]
+        snapshot = refresh(snapshot, verify=verify)
+    calls.associate.assert_called_once_with(request)
     assert snapshot.run_root is None and snapshot.observed is None
     assert "Press r to check this request" in view.render_snapshot(snapshot, now=NOW)
 
 
 def test_run_only_never_queries_scheduler_and_failed_reverify_clears_old_evidence(
-    tmp_path, monkeypatch
+    tmp_path, watcher
 ):
-    def forbidden(*args):
-        raise AssertionError("Run job ID does not establish a scheduler binding")
-
-    monkeypatch.setattr(slurm_submission, "observe_submission_request", forbidden)
-    snapshot = view.WatchSnapshot(tmp_path / "project.yaml", run_root=tmp_path / "run")
-    snapshot = view.refresh_snapshot(
-        snapshot,
+    calls, refresh = watcher
+    calls.scheduler.side_effect = AssertionError(
+        "Run job ID does not establish a scheduler binding"
+    )
+    snapshot = refresh(
+        view.WatchSnapshot(tmp_path / "project.yaml", run_root=tmp_path / "run"),
         verify=True,
-        stream_index=0,
-        inspect_run=_run,
-        next_action=lambda _: "Review",
     )
     assert snapshot.scheduler["state"] == "UNKNOWN"
-
-    def failed(root):
-        raise OSError("read unavailable\x1b[31m")
-
-    snapshot = view.refresh_snapshot(
-        snapshot, verify=True, stream_index=0, inspect_run=failed, next_action=forbidden
-    )
+    calls.inspect.side_effect = OSError("read unavailable\x1b[31m")
+    calls.action.side_effect = AssertionError("Unverified Run cannot be replanned")
+    snapshot = refresh(snapshot, verify=True)
     assert snapshot.observed is None and snapshot.verified_at is None
     assert "Verification unavailable" in view.render_snapshot(snapshot, now=NOW)
     assert "\x1b" not in snapshot.verification_error
@@ -419,38 +390,26 @@ def test_repainting_is_read_free_and_retains_dated_observation(tmp_path, monkeyp
 
 @pytest.mark.parametrize("changed", ("context", "job", "cluster"))
 def test_explicit_refresh_refuses_changed_admitted_request_identity(
-    tmp_path, monkeypatch, changed
+    tmp_path, watcher, changed
 ):
+    calls, refresh = watcher
     original = _request(tmp_path)
-    current = (
-        replace(
-            original,
-            **{
-                "context": {
-                    **original.context,
-                    "application_log_root": str(tmp_path / "other"),
-                }
-            },
-        )
+    changes = (
+        {
+            "context": {
+                **original.context,
+                "application_log_root": str(tmp_path / "other"),
+            }
+        }
         if changed == "context"
-        else replace(
-            original,
-            **{"recorded_job_id" if changed == "job" else "recorded_cluster": "other"},
+        else {"recorded_job_id" if changed == "job" else "recorded_cluster": "other"}
+    )
+    calls.select.return_value = replace(original, **changes)
+    calls.scheduler.return_value = {"state": "UNKNOWN"}
+    for actor in (calls.associate, calls.inspect, calls.action):
+        actor.side_effect = AssertionError(
+            "Changed selection cannot acquire Run authority"
         )
-    )
-    monkeypatch.setattr(
-        slurm_submission, "select_submission_request", lambda project, selector: current
-    )
-    monkeypatch.setattr(
-        slurm_submission,
-        "observe_submission_request",
-        lambda request: {"state": "UNKNOWN"},
-    )
-
-    def forbidden(*args):
-        raise AssertionError("Changed selection cannot acquire Run authority")
-
-    monkeypatch.setattr(association, "inspect_submission_application", forbidden)
     snapshot = view.WatchSnapshot(
         tmp_path / "project.yaml",
         request=original,
@@ -460,19 +419,16 @@ def test_explicit_refresh_refuses_changed_admitted_request_identity(
         ),
         application_at=NOW,
     )
-    result = view.refresh_snapshot(
-        snapshot,
-        verify=True,
-        stream_index=0,
-        inspect_run=forbidden,
-        next_action=forbidden,
-    )
+    result = refresh(snapshot, verify=True)
     assert result.request is original and result.request_at == NOW
     assert result.application is None and result.application_at is None
     assert "confirmed response changed" in result.verification_error
 
 
-def test_slow_tail_does_not_make_scheduler_reply_appear_fresh(tmp_path, monkeypatch):
+def test_slow_tail_does_not_make_scheduler_reply_appear_fresh(
+    tmp_path, monkeypatch, watcher
+):
+    calls, refresh = watcher
     current = [NOW]
 
     class Clock(datetime):
@@ -481,25 +437,20 @@ def test_slow_tail_does_not_make_scheduler_reply_appear_fresh(tmp_path, monkeypa
             return current[0]
 
     monkeypatch.setattr(view, "datetime", Clock)
-    monkeypatch.setattr(
-        slurm_submission, "observe_submission_request", lambda _: {"state": "RUNNING"}
-    )
+    calls.scheduler.return_value = {"state": "RUNNING"}
 
     def delayed_tail(source, previous):
         current[0] += timedelta(minutes=5)
         return view.StreamTail(source, observed_at=current[0])
 
     monkeypatch.setattr(view, "read_tail", delayed_tail)
-    snapshot = view.WatchSnapshot(tmp_path / "project.yaml", request=_request(tmp_path))
-    result = view.refresh_snapshot(
-        snapshot,
+    result = refresh(
+        view.WatchSnapshot(tmp_path / "project.yaml", request=_request(tmp_path)),
         verify=False,
-        stream_index=0,
-        inspect_run=_run,
-        next_action=lambda _: "unused",
     )
-    assert result.scheduler_at == NOW
-    assert result.tail.observed_at == NOW + timedelta(minutes=5)
+    assert result.scheduler_at == NOW and result.tail.observed_at == NOW + timedelta(
+        minutes=5
+    )
 
 
 @pytest.mark.parametrize(
@@ -933,8 +884,9 @@ raise SystemExit(result)
     "refresh_result", ["unknown", "partial", "exception", "run-failure"]
 )
 def test_run_log_refresh_retains_all_matches_and_revokes_unadmitted_streams(
-    tmp_path, monkeypatch, refresh_result
+    tmp_path, monkeypatch, watcher, refresh_result
 ):
+    calls, refresh = watcher
     project, root, logs = tmp_path / "project.yaml", tmp_path / "run", tmp_path / "logs"
     paths = (
         logs / "application-a/emrys-run.jsonl",
@@ -953,79 +905,62 @@ def test_run_log_refresh_retains_all_matches_and_revokes_unadmitted_streams(
         )
         for index, path in enumerate(paths)
     )
-    calls = []
-    original = association.inspect_run_applications
-
-    def discover(selected_project, selected_run, selected_root):
-        assert (selected_project, selected_run, selected_root) == (project, root, logs)
-        calls.append("scan")
-        if len(calls) == 1 or refresh_result == "run-failure":
-            return association.RunApplicationObservation(logs, matches, "complete")
-        if refresh_result == "exception":
-
-            def failed(*_args):
-                raise RuntimeError("new reader unavailable\x1b[31m")
-
-            monkeypatch.setattr(association, "_CandidateAdmission", failed)
-            return original(selected_project, selected_run, selected_root)
-        return association.RunApplicationObservation(
-            logs,
-            matches[1:] if refresh_result == "partial" else (),
-            "unknown",
-            ("scan changed\nretain evidence",),
-        )
-
-    monkeypatch.setattr(association, "inspect_run_applications", discover)
-    monkeypatch.setattr(
-        slurm_submission,
-        "observe_submission_request",
-        lambda *_: pytest.fail("Run logs do not establish a scheduler binding"),
+    complete = association.RunApplicationObservation(logs, matches, "complete")
+    calls.discover.return_value = complete
+    calls.scheduler.side_effect = pytest.fail.Exception(
+        "Run logs do not establish a scheduler binding"
     )
-
-    def inspect(selected_root):
-        if refresh_result == "run-failure" and len(calls) > 1:
-            raise OSError("Run authority unavailable")
-        return _run(selected_root)
-
-    initial = view.WatchSnapshot(
-        project,
-        run_root=root,
-        run_applications=association.RunApplicationObservation(logs),
-    )
-    selected = view.refresh_snapshot(
-        initial,
+    selected = refresh(
+        view.WatchSnapshot(
+            project,
+            run_root=root,
+            run_applications=association.RunApplicationObservation(logs),
+        ),
         verify=True,
-        stream_index=0,
-        inspect_run=inspect,
-        next_action=lambda _: "Review",
     )
     assert [source.path for source in selected.streams[:2]] == list(paths)
     task_sources = selected.streams[2:]
     assert len(task_sources) == 2 and all(
         "workflow-later" in str(item.path) for item in task_sources
     )
+    calls.inspect.side_effect = calls.action.side_effect = pytest.fail.Exception(
+        "Timer reverified or replanned Run"
+    )
     for _ in range(3):
-        selected = view.refresh_snapshot(
-            selected,
-            verify=False,
-            stream_index=0,
-            inspect_run=lambda _: pytest.fail("Timer reverified Run"),
-            next_action=lambda _: pytest.fail("Timer replanned"),
-        )
-    assert calls == ["scan"]
+        selected = refresh(selected, verify=False)
+    calls.discover.assert_called_once_with(project, root, logs)
     text = view.render_snapshot(selected, now=NOW)
-    assert "Run diagnostic logs: 2 association(s); scan complete." in text
-    assert (
-        "Run log associations as of:" in text and "Application log search root:" in text
+    for value in (
+        "Run diagnostic logs: 2 association(s); scan complete.",
+        "Run log associations as of:",
+        "Application log search root:",
+    ):
+        assert value in text
+    calls.inspect.side_effect = (
+        OSError("Run authority unavailable")
+        if refresh_result == "run-failure"
+        else _run
     )
-    selected = view.refresh_snapshot(
-        selected,
-        verify=True,
-        stream_index=0,
-        inspect_run=inspect,
-        next_action=lambda _: "Review",
+    calls.action.side_effect = None
+    if refresh_result == "exception":
+        monkeypatch.setattr(
+            association,
+            "_CandidateAdmission",
+            Mock(side_effect=RuntimeError("new reader unavailable\x1b[31m")),
+        )
+        calls.discover.side_effect = _DISCOVER_RUN_APPLICATIONS
+    elif refresh_result != "run-failure":
+        calls.discover.return_value = association.RunApplicationObservation(
+            logs,
+            matches[1:] if refresh_result == "partial" else (),
+            "unknown",
+            ("scan changed\nretain evidence",),
+        )
+    selected = refresh(selected, verify=True)
+    assert calls.discover.call_count == 2
+    assert all(
+        call.args == (project, root, logs) for call in calls.discover.call_args_list
     )
-    assert calls == ["scan", "scan"]
     assert paths[0] not in [source.path for source in selected.streams]
     assert (paths[1] in [source.path for source in selected.streams]) is (
         refresh_result == "partial"
@@ -1317,9 +1252,9 @@ def test_no_project_watch_uses_shared_scheduler_discovery(tmp_path, monkeypatch)
 
 
 def test_terminal_dashboard_poll_retains_original_date_until_explicit_refresh(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, watcher
 ):
-    calls = []
+    calls, refresh = watcher
     job = {"job_id": 42, "out": str(tmp_path / "out"), "err": str(tmp_path / "err")}
     initial = view.WatchSnapshot(
         None,
@@ -1327,28 +1262,15 @@ def test_terminal_dashboard_poll_retains_original_date_until_explicit_refresh(
         scheduler={"state": "COMPLETED", "terminal": True},
         scheduler_at=NOW,
     )
-
-    def query(*args):
-        calls.append(args)
-        return {"state": "UNKNOWN", "terminal": False}
-
-    def forbidden(*args):
-        pytest.fail("A raw diagnostic selection cannot admit a Run")
-
+    query = Mock(return_value={"state": "UNKNOWN", "terminal": False})
     monkeypatch.setattr(view.dashboard._scheduler, "query_slurm", query)
     monkeypatch.setattr(view, "read_tail", lambda *args: None)
-    kept = view.refresh_snapshot(
-        initial,
-        verify=False,
-        stream_index=0,
-        inspect_run=forbidden,
-        next_action=forbidden,
+    calls.inspect.side_effect = calls.action.side_effect = pytest.fail.Exception(
+        "A raw selection cannot admit a Run"
     )
-    assert (
-        kept.scheduler_at == NOW and kept.scheduler == initial.scheduler and calls == []
-    )
-    fresh = view.refresh_snapshot(
-        kept, verify=True, stream_index=0, inspect_run=forbidden, next_action=forbidden
-    )
+    kept = refresh(initial, verify=False)
+    query.assert_not_called()
+    assert kept.scheduler_at == NOW and kept.scheduler == initial.scheduler
+    fresh = refresh(kept, verify=True)
     assert fresh.scheduler["state"] == "UNKNOWN" and fresh.scheduler_at != NOW
-    assert calls == [(42, job["out"], job["err"])]
+    query.assert_called_once_with(42, job["out"], job["err"])

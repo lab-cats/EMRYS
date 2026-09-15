@@ -12,10 +12,44 @@ import time
 from dataclasses import dataclass, replace
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
 from emrys.orchestration.run_coordinator import slurm_submission
+
+
+def _scheduler_replies(monkeypatch, scheduler, *replies):
+    """Keep RPC inputs observable and responses independent of requested fields."""
+    command = Mock(side_effect=replies)
+
+    def reply(argv, timeout=10, environment=None):
+        return command(argv, timeout=timeout, environment=environment)
+
+    monkeypatch.setattr(scheduler, "command_bytes", reply)
+    return command
+
+
+def _root_row(**changes):
+    fields = dict(
+        JobIDRaw="700123",
+        UID=str(os.getuid()),
+        State="COMPLETED",
+        Cluster="alpha",
+        StdOut="/tmp/a%j.out",
+        StdErr="/tmp/a%j.err",
+        ExitCode="0:0",
+    )
+    fields.update(changes)
+    return ("|".join(fields.values()) + "\n").encode()
+
+
+def _observe_scheduler(monkeypatch, *replies, job="700123", cluster=None, **options):
+    scheduler = slurm_submission.scheduler_observation
+    command = _scheduler_replies(monkeypatch, scheduler, *replies)
+    return scheduler.observe_job(
+        job, "/tmp/a%j.out", "/tmp/a%j.err", cluster, **options
+    ), command
 
 
 def _request_record(
@@ -1418,75 +1452,65 @@ def test_recorded_submission_retains_raw_responses_without_waiting_for_the_job(
 @pytest.mark.parametrize("cluster", [None, "alpha"])
 @pytest.mark.parametrize("state", ["PENDING", "RUNNING", "COMPLETED"])
 def test_request_resources_share_exact_root_and_usage_has_local_identity_brackets(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, version, cluster, state
-) -> None:
-    project, root, context = _request_record(
+    tmp_path, monkeypatch, version, cluster, state
+):
+    project, _root, context = _request_record(
         tmp_path,
         stdout=b"700123\n" if cluster is None else b"700123;alpha\n",
         version=version,
     )
-    name = "emrys-local-pilot-" + "a" * 32
     (request,) = slurm_submission.submission_requests(project)
-    calls = []
-
-    def command(argv, timeout=10, environment=None):
-        calls.append(argv)
-        assert timeout == 10 and "SLURM_CLUSTERS" not in environment
-        if argv[0] == "sstat":
-            assert argv == [
-                "sstat",
-                "-n",
-                "-P",
-                "-j",
-                "700123.batch",
-                "--format=JobID,AveCPU,MaxRSS,MaxDiskRead,MaxDiskWrite",
-            ]
-            return b"700123.batch|00:00:02|1024K|8M|0\n"
-        source = "sacct" if state == "COMPLETED" else "squeue"
-        if argv[0] != source:
-            assert argv[0] == "squeue"
-            return b""
-        fields = [
-            "700123",
-            str(os.getuid()),
-            state,
-            "alpha",
-            context["scheduler_stdout_pattern"],
-            context["scheduler_stderr_pattern"],
-            "0:0" if source == "sacct" else "Priority",
+    fields = dict(
+        State=state,
+        StdOut=context["scheduler_stdout_pattern"],
+        StdErr=context["scheduler_stderr_pattern"],
+        ExitCode="0:0" if state == "COMPLETED" else "Priority",
+    )
+    if version == "v3":
+        fields["JobName"] = "emrys-local-pilot-" + "a" * 32
+    plain = _root_row(**fields)
+    detailed = _root_row(
+        **fields,
+        Elapsed="00:01:00",
+        Timelimit="01:00:00",
+        AllocCPUS="4",
+        Partition="compute",
+        NodeList="node[1-2]",
+    )
+    replies = [b"", detailed] if state == "COMPLETED" else [detailed]
+    if state == "RUNNING":
+        replies += ([plain] if cluster is not None else []) + [
+            b"700123.batch|00:00:02|1024K|8M|0\n",
+            plain,
         ]
-        if version == "v3":
-            fields.append(name)
-        if "TimeUsed:0" in argv[-1] or ",Elapsed," in argv[-1]:
-            assert argv[1] == ("--local" if cluster is None else "--clusters=alpha")
-            if source == "squeue":
-                assert argv[-1].endswith(
-                    "|,TimeUsed:0|,TimeLeft:0|,NumCPUs:0|,Partition:0|,NodeList:0"
-                )
-            else:
-                assert argv[-1].endswith(
-                    ",Elapsed,Timelimit,AllocCPUS,Partition,NodeList"
-                )
-                assert "--duplicates" in argv and "-X" in argv
-            fields.extend(["00:01:00", "01:00:00", "4", "compute", "node[1-2]"])
-        else:
-            assert argv[1] == "--local"
-        return ("|".join(fields) + "\n").encode()
-
     monkeypatch.setenv("SLURM_CLUSTERS", "other")
-    monkeypatch.setattr(
-        slurm_submission.scheduler_observation, "command_bytes", command
+    command = _scheduler_replies(
+        monkeypatch, slurm_submission.scheduler_observation, *replies
     )
     result = slurm_submission.observe_submission_request(
         request, include_resources=True
     )
+    calls = [call.args[0] for call in command.call_args_list]
+    source = "sacct" if state == "COMPLETED" else "squeue"
+    initial = calls[1 if state == "COMPLETED" else 0]
+    assert initial[1] == ("--local" if cluster is None else "--clusters=alpha")
+    assert initial[-1].endswith(
+        ",Elapsed,Timelimit,AllocCPUS,Partition,NodeList"
+        if source == "sacct"
+        else "|,TimeUsed:0|,TimeLeft:0|,NumCPUs:0|,Partition:0|,NodeList:0"
+    )
+    if source == "sacct":
+        assert "--duplicates" in initial and "-X" in initial
+    for call in command.call_args_list:
+        assert call.kwargs["timeout"] == 10
+        assert "SLURM_CLUSTERS" not in call.kwargs["environment"]
     assert result["state"] == state and result["terminal"] is (state == "COMPLETED")
-    assert {key: result[key] for key in ("elapsed", "cpus", "partition", "node")} == {
-        "elapsed": "00:01:00",
-        "cpus": "4",
-        "partition": "compute",
-        "node": "node[1-2]",
-    }
+    assert [result[key] for key in ("elapsed", "cpus", "partition", "node")] == [
+        "00:01:00",
+        "4",
+        "compute",
+        "node[1-2]",
+    ]
     assert result["time_limit" if state == "COMPLETED" else "left"] == "01:00:00"
     if state == "RUNNING":
         assert [call[0] for call in calls] == (
@@ -1494,16 +1518,21 @@ def test_request_resources_share_exact_root_and_usage_has_local_identity_bracket
             if cluster is None
             else ["squeue", "squeue", "sstat", "squeue"]
         )
-        assert result["usage_diagnostic"] is None
-        assert result["usage_observed_at"].endswith("+00:00")
+        assert all(call[1] == "--local" for call in calls[1:] if call[0] == "squeue")
+        assert next(call for call in calls if call[0] == "sstat") == [
+            "sstat",
+            "-n",
+            "-P",
+            "-j",
+            "700123.batch",
+            "--format=JobID,AveCPU,MaxRSS,MaxDiskRead,MaxDiskWrite",
+        ]
+        assert result["usage_diagnostic"] is None and result[
+            "usage_observed_at"
+        ].endswith("+00:00")
         assert [
             result[key] for key in ("ave_cpu", "max_rss", "disk_read", "disk_write")
-        ] == [
-            "00:00:02",
-            "1024K",
-            "8M",
-            "0",
-        ]
+        ] == ["00:00:02", "1024K", "8M", "0"]
     else:
         assert [call[0] for call in calls] == (
             ["squeue", "sacct"] if state == "COMPLETED" else ["squeue"]
@@ -1516,54 +1545,42 @@ def test_request_resources_share_exact_root_and_usage_has_local_identity_bracket
 @pytest.mark.parametrize("boundary", ["initial", "before-usage", "after-usage"])
 @pytest.mark.parametrize("defect", ["id", "uid", "name", "stdout", "stderr", "cluster"])
 def test_request_resource_usage_rejects_identity_drift_without_erasing_root(
-    monkeypatch: pytest.MonkeyPatch, boundary, defect
-) -> None:
-    scheduler = slurm_submission.scheduler_observation
+    monkeypatch, boundary, defect
+):
     name = "emrys-local-pilot-" + "a" * 32
-    calls = []
-    roots = 0
-
-    def command(argv, timeout=10, environment=None):
-        nonlocal roots
-        calls.append(argv[0])
-        if argv[0] == "sstat":
-            return b"700123.batch|00:00:02|1024K|8M|0\n"
-        assert argv[0] == "squeue"
-        fields = [
-            "700123",
-            str(os.getuid()),
-            "RUNNING",
-            "alpha",
-            "/tmp/a%j.out",
-            "/tmp/a%j.err",
-            "None",
-            name,
-        ]
-        selected = {"initial": 0, "before-usage": 1, "after-usage": 2}[boundary]
-        if roots == selected:
-            index, value = {
-                "id": (0, "700124"),
-                "uid": (1, str(os.getuid() + 1)),
-                "name": (7, name + "x"),
-                "stdout": (4, "/tmp/b%j.out"),
-                "stderr": (5, "/tmp/b%j.err"),
-                "cluster": (3, "beta"),
-            }[defect]
-            fields[index] = value
-        if roots == 0:
-            fields.extend(["00:01", "01:00", "4", "compute", "node"])
-        roots += 1
-        return ("|".join(fields) + "\n").encode()
-
-    monkeypatch.setattr(scheduler, "command_bytes", command)
-    result = scheduler.observe_job(
-        "700123",
-        "/tmp/a%j.out",
-        "/tmp/a%j.err",
-        "alpha",
+    fields = dict(State="RUNNING", ExitCode="None", JobName=name)
+    resources = dict(
+        Elapsed="00:01",
+        Timelimit="01:00",
+        AllocCPUS="4",
+        Partition="compute",
+        NodeList="node",
+    )
+    rows = [_root_row(**fields, **resources), _root_row(**fields), _root_row(**fields)]
+    selected = {"initial": 0, "before-usage": 1, "after-usage": 2}[boundary]
+    changes = {
+        "id": {"JobIDRaw": "700124"},
+        "uid": {"UID": str(os.getuid() + 1)},
+        "name": {"JobName": name + "x"},
+        "stdout": {"StdOut": "/tmp/b%j.out"},
+        "stderr": {"StdErr": "/tmp/b%j.err"},
+        "cluster": {"Cluster": "beta"},
+    }[defect]
+    rows[selected] = _root_row(
+        **(fields | changes | (resources if selected == 0 else {}))
+    )
+    initial, before, after = rows
+    result, command = _observe_scheduler(
+        monkeypatch,
+        initial,
+        before,
+        b"700123.batch|00:00:02|1024K|8M|0\n",
+        after,
+        cluster="alpha",
         job_name=name,
         include_resources=True,
     )
+    calls = [call.args[0][0] for call in command.call_args_list]
     if boundary == "initial":
         assert result["state"] == "UNKNOWN" and calls == ["squeue"]
         assert "elapsed" not in result
@@ -1596,25 +1613,17 @@ def test_request_resource_usage_rejects_identity_drift_without_erasing_root(
     ],
 )
 def test_request_resource_usage_faults_preserve_exact_root_observation(
-    monkeypatch: pytest.MonkeyPatch, reply
-) -> None:
-    scheduler = slurm_submission.scheduler_observation
-    calls = []
-
-    def command(argv, timeout=10, environment=None):
-        calls.append(argv[0])
-        if argv[0] == "sstat":
-            return reply
-        assert calls == ["squeue"]
-        return f"700123|{os.getuid()}|RUNNING|alpha|/tmp/a%j.out|/tmp/a%j.err|None|00:01|01:00|4|compute|node\n".encode()
-
-    monkeypatch.setattr(scheduler, "command_bytes", command)
-    result = scheduler.observe_job(
-        "700123", "/tmp/a%j.out", "/tmp/a%j.err", include_resources=True
+    monkeypatch, reply
+):
+    result, command = _observe_scheduler(
+        monkeypatch,
+        f"700123|{os.getuid()}|RUNNING|alpha|/tmp/a%j.out|/tmp/a%j.err|None|00:01|01:00|4|compute|node\n".encode(),
+        reply,
+        include_resources=True,
     )
     assert result["state"] == "RUNNING" and result["cpus"] == "4"
     assert result["usage_diagnostic"] and "max_rss" not in result
-    assert calls == ["squeue", "sstat"]
+    assert [call.args[0][0] for call in command.call_args_list] == ["squeue", "sstat"]
 
 
 def test_request_resource_dates_precede_followup_identity_queries(monkeypatch) -> None:
@@ -1648,25 +1657,18 @@ def test_request_resource_dates_precede_followup_identity_queries(monkeypatch) -
 
 
 def _timing_accounting_row(**changes):
-    fields = {
-        "JobIDRaw": "700123",
-        "UID": str(os.getuid()),
-        "State": "COMPLETED",
-        "Cluster": "alpha",
-        "StdOut": "/tmp/a%j.out",
-        "StdErr": "/tmp/a%j.err",
-        "ExitCode": "0:0",
-        "JobName": "emrys-local-pilot",
-        "Submit": "2026-09-15T12:00:00Z",
-        "Eligible": "2026-09-15T12:01:00Z",
-        "Start": "2026-09-15T12:03:00Z",
-        "End": "2026-09-15T12:05:00Z",
-        "ElapsedRaw": "120",
-        "Restarts": "0",
-        "Suspended": "00:00:00",
-    }
+    fields = dict(
+        JobName="emrys-local-pilot",
+        Submit="2026-09-15T12:00:00Z",
+        Eligible="2026-09-15T12:01:00Z",
+        Start="2026-09-15T12:03:00Z",
+        End="2026-09-15T12:05:00Z",
+        ElapsedRaw="120",
+        Restarts="0",
+        Suspended="00:00:00",
+    )
     fields.update(changes)
-    return ("|".join(fields.values()) + "\n").encode()
+    return _root_row(**fields)
 
 
 @pytest.mark.parametrize("cluster", [None, "alpha"])
@@ -1675,52 +1677,50 @@ def _timing_accounting_row(**changes):
 def test_accounting_timing_is_one_exact_utc_observation(
     monkeypatch, cluster, resources, state
 ):
-    scheduler = slurm_submission.scheduler_observation
-    calls = []
     monkeypatch.setenv("TZ", "America/New_York")
     monkeypatch.setenv("SLURM_TIME_FORMAT", "relative")
     monkeypatch.setenv("SLURM_CLUSTERS", "other")
     monkeypatch.setenv("SACCT_FORMAT", "JobID")
-
-    def command(argv, timeout=10, environment=None):
-        calls.append(argv)
-        assert argv[:8] == [
-            "sacct",
-            "--local" if cluster is None else "--clusters=alpha",
-            "--duplicates",
-            "-X",
-            "-n",
-            "-P",
-            "-j",
-            "700123",
-        ]
-        assert timeout == 10
-        assert environment["TZ"] == "UTC0"
-        assert environment["SLURM_TIME_FORMAT"] == "%Y-%m-%dT%H:%M:%SZ"
-        assert "SLURM_CLUSTERS" not in environment and "SACCT_FORMAT" not in environment
-        reply = _timing_accounting_row(State=state)
-        if resources:
-            assert ",Elapsed,Timelimit,AllocCPUS,Partition,NodeList," in argv[-1]
-            reply = reply.replace(
-                b"|2026-09-15T12:00:00Z",
-                b"|00:02:00|01:00:00|2|compute|node|2026-09-15T12:00:00Z",
-            )
-        assert argv[-1].endswith(
-            ",Submit,Eligible,Start,End,ElapsedRaw,Restarts,Suspended"
+    reply = _timing_accounting_row(State=state)
+    if resources:
+        reply = reply.replace(
+            b"|2026-09-15T12:00:00Z",
+            b"|00:02:00|01:00:00|2|compute|node|2026-09-15T12:00:00Z",
         )
-        return reply
-
-    monkeypatch.setattr(scheduler, "command_bytes", command)
-    result = scheduler.observe_job(
-        "700123",
-        "/tmp/a%j.out",
-        "/tmp/a%j.err",
-        cluster,
+    result, command = _observe_scheduler(
+        monkeypatch,
+        reply,
+        cluster=cluster,
         job_name="emrys-local-pilot",
         include_timing=True,
         include_resources=resources,
     )
-    assert len(calls) == 1 and result["terminal"] and result["source"] == "sacct"
+    argv, environment = (
+        command.call_args.args[0],
+        command.call_args.kwargs["environment"],
+    )
+    assert argv[:8] == [
+        "sacct",
+        "--local" if cluster is None else "--clusters=alpha",
+        "--duplicates",
+        "-X",
+        "-n",
+        "-P",
+        "-j",
+        "700123",
+    ]
+    assert command.call_args.kwargs["timeout"] == 10
+    assert (
+        environment["TZ"] == "UTC0"
+        and environment["SLURM_TIME_FORMAT"] == "%Y-%m-%dT%H:%M:%SZ"
+    )
+    assert "SLURM_CLUSTERS" not in environment and "SACCT_FORMAT" not in environment
+    if resources:
+        assert ",Elapsed,Timelimit,AllocCPUS,Partition,NodeList," in argv[-1]
+    assert argv[-1].endswith(",Submit,Eligible,Start,End,ElapsedRaw,Restarts,Suspended")
+    assert (
+        command.call_count == 1 and result["terminal"] and result["source"] == "sacct"
+    )
     assert result["state"] == state.split(" by ")[0]
     assert result["timing_observed_at"].endswith("+00:00")
     assert result["timing"] == {
@@ -1767,23 +1767,14 @@ def test_accounting_timing_is_one_exact_utc_observation(
 def test_uncertain_accounting_timing_preserves_root_and_raw_dates_not_intervals(
     monkeypatch, changes
 ):
-    scheduler = slurm_submission.scheduler_observation
-    calls = []
-
-    def command(argv, **_kwargs):
-        calls.append(argv)
-        return _timing_accounting_row(**changes)
-
-    monkeypatch.setattr(scheduler, "command_bytes", command)
-    result = scheduler.observe_job(
-        "700123",
-        "/tmp/a%j.out",
-        "/tmp/a%j.err",
-        "alpha",
+    result, command = _observe_scheduler(
+        monkeypatch,
+        _timing_accounting_row(**changes),
+        cluster="alpha",
         job_name="emrys-local-pilot",
         include_timing=True,
     )
-    assert len(calls) == 1 and result["source"] == "sacct"
+    assert command.call_count == 1 and result["source"] == "sacct"
     assert result["state"] == changes.get("State", "COMPLETED")
     timing = result["timing"]
     assert timing["diagnostic"] and result["diagnostic"] is None
@@ -1821,7 +1812,6 @@ def test_uncertain_accounting_timing_preserves_root_and_raw_dates_not_intervals(
     ],
 )
 def test_accounting_timing_cannot_bypass_exact_root_identity(monkeypatch, defect):
-    scheduler = slurm_submission.scheduler_observation
     changes = {
         "id": {"JobIDRaw": "700124"},
         "uid": {"UID": str(os.getuid() + 1)},
@@ -1844,22 +1834,14 @@ def test_accounting_timing_cannot_bypass_exact_root_identity(monkeypatch, defect
         "truncated": reply.rsplit(b"|", 1)[0],
         "unicode": b"\xff",
     }.get(defect, reply)
-    calls = []
-
-    def command(argv, **_kwargs):
-        calls.append(argv)
-        return reply
-
-    monkeypatch.setattr(scheduler, "command_bytes", command)
-    result = scheduler.observe_job(
-        "700123",
-        "/tmp/a%j.out",
-        "/tmp/a%j.err",
-        "alpha",
+    result, command = _observe_scheduler(
+        monkeypatch,
+        reply,
+        cluster="alpha",
         job_name="emrys-local-pilot",
         include_timing=True,
     )
-    assert len(calls) == 1 and result["state"] == "UNKNOWN"
+    assert command.call_count == 1 and result["state"] == "UNKNOWN"
     assert "timing" not in result and result["diagnostic"]
 
 
@@ -1869,13 +1851,10 @@ def test_accounting_timing_cannot_bypass_exact_root_identity(monkeypatch, defect
 def test_accounting_timing_refuses_nonexact_request_without_rpc(
     monkeypatch, job, cluster
 ):
-    scheduler = slurm_submission.scheduler_observation
-    monkeypatch.setattr(
-        scheduler, "command_bytes", lambda *_a, **_kw: pytest.fail("RPC")
+    result, command = _observe_scheduler(
+        monkeypatch, job=job, cluster=cluster, include_timing=True
     )
-    result = scheduler.observe_job(
-        job, "/tmp/a%j.out", "/tmp/a%j.err", cluster, include_timing=True
-    )
+    command.assert_not_called()
     assert result["state"] == "UNKNOWN" and "timing" not in result
 
 
