@@ -24,7 +24,12 @@ from datetime import UTC, datetime
 from functools import partial
 from operator import attrgetter
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from emrys.orchestration.run_coordinator.lifecycle import (
+        TransactionSignalController,
+    )
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.libraries.exclusive_publication import publish_exclusive
@@ -811,16 +816,17 @@ class _TaskStreamCapture:
                 )
 
 
-def _default_run_command(
+def _run_native_command(
     argv: tuple[str, ...],
     cwd: Path,
     environment: Mapping[str, str] | None = None,
     stdout_descriptor: int = -1,
     stderr_descriptor: int = -1,
+    *,
+    signals: TransactionSignalController,
 ) -> CommandResult:
     from emrys.orchestration.run_coordinator.lifecycle import (
         DEFAULT_PROCESS_GROUP_OPS,
-        ProcessGroupAmbiguity,
         quiesce_process_group,
     )
 
@@ -848,6 +854,7 @@ def _default_run_command(
     selector: selectors.BaseSelector | None = None
     group_quiesced = False
     try:
+        signals.register_process_group(process.pid)
         if process.stdout is None or process.stderr is None:
             raise TaskBoundaryError("Task command did not expose both captured streams")
         selector = selectors.DefaultSelector()
@@ -861,14 +868,12 @@ def _default_run_command(
             selectors.EVENT_READ,
             (stderr_descriptor, "task stderr log"),
         )
-        while selector.get_map():
+        while selector.get_map() or process.poll() is None:
+            signals.raise_forwarding_error()
+            if signals.first_signal is not None:
+                break
             if process.poll() not in (None, 0) and not group_quiesced:
-                try:
-                    quiesce_process_group(
-                        process.pid, process, DEFAULT_PROCESS_GROUP_OPS
-                    )
-                except ProcessGroupAmbiguity as exc:
-                    raise TaskProcessGroupAmbiguity(str(exc)) from exc
+                quiesce_process_group(process.pid, process, DEFAULT_PROCESS_GROUP_OPS)
                 group_quiesced = True
             try:
                 ready = selector.select(timeout=0.1)
@@ -886,13 +891,15 @@ def _default_run_command(
                     _write_descriptor(destination, chunk, label)
                 else:
                     selector.unregister(key.fileobj)
-        return_code = process.wait()
+        return_code = (
+            process.poll() if signals.first_signal is not None else process.wait()
+        )
     finally:
         try:
             if not group_quiesced:
                 quiesce_process_group(process.pid, process, DEFAULT_PROCESS_GROUP_OPS)
-        except ProcessGroupAmbiguity as exc:
-            raise TaskProcessGroupAmbiguity(str(exc)) from exc
+            signals.raise_forwarding_error()
+            signals.clear_process_group(process.pid)
         finally:
             try:
                 if selector is not None:
@@ -904,8 +911,64 @@ def _default_run_command(
                 finally:
                     if process.stderr is not None:
                         process.stderr.close()
-    exit_code = return_code if 0 <= return_code <= 255 else 128
+    exit_code = (
+        return_code if return_code is not None and 0 <= return_code <= 255 else 128
+    )
     return CommandResult(argv, exit_code)
+
+
+def _default_run_command(
+    argv: tuple[str, ...],
+    cwd: Path,
+    environment: Mapping[str, str] | None = None,
+    stdout_descriptor: int = -1,
+    stderr_descriptor: int = -1,
+) -> CommandResult:
+    from emrys.orchestration.run_coordinator.lifecycle import (
+        DEFAULT_PROCESS_GROUP_OPS,
+        DEFAULT_SIGNAL_OPS,
+        TransactionSignalController,
+    )
+
+    try:
+        with TransactionSignalController(
+            DEFAULT_SIGNAL_OPS,
+            DEFAULT_PROCESS_GROUP_OPS,
+            watched_signals=_TASK_SIGNALS,
+        ) as signals:
+            result = _run_native_command(
+                argv,
+                cwd,
+                environment,
+                stdout_descriptor,
+                stderr_descriptor,
+                signals=signals,
+            )
+    except BaseException as exc:
+        ambiguity = _process_group_ambiguity(exc)
+        if ambiguity is not None:
+            raise TaskProcessGroupAmbiguity(str(ambiguity)) from exc
+        raise
+    if signals.first_signal is not None:
+        raise TaskBoundaryError(f"Task interrupted by signal {signals.first_signal}")
+    return result
+
+
+def _process_group_ambiguity(*errors: BaseException | None) -> BaseException | None:
+    """Keep lost writer ownership visible through signal/restoration failures."""
+    from emrys.orchestration.run_coordinator.lifecycle import ProcessGroupAmbiguity
+
+    pending = list(errors)
+    seen: set[int] = set()
+    while pending:
+        error = pending.pop()
+        if error is None or id(error) in seen:
+            continue
+        seen.add(id(error))
+        if isinstance(error, (TaskProcessGroupAmbiguity, ProcessGroupAmbiguity)):
+            return error
+        pending.extend((error.__cause__, error.__context__))
+    return None
 
 
 def _publish_bytes(path: Path, data: bytes) -> None:
@@ -2285,11 +2348,6 @@ def _run_task(
             raise TaskBoundaryError(
                 "The validation report changed during semantic all-pass gating"
             )
-    except TaskProcessGroupAmbiguity as exc:
-        # The process-group owner could not prove every writer stopped.
-        # Preserve the entire native workspace and locks for operator recovery.
-        native_publication = None
-        failure = exc
     except TaskBoundaryError as exc:
         failure = exc
     except OSError as exc:
@@ -2299,12 +2357,24 @@ def _run_task(
         raise
     finally:
         if native_publication is not None:
+            cleanup_mask = signal.pthread_sigmask(signal.SIG_BLOCK, _TASK_SIGNALS)
             try:
-                native_publication.close()
-            except TaskBoundaryError as exc:
-                if sys.exc_info()[1] is not None and failure is None:
-                    streams.preserve_incomplete()
-                failure = TaskBoundaryError(f"{failure or 'Task interrupted'}; {exc}")
+                ambiguity = _process_group_ambiguity(failure, sys.exception())
+                if ambiguity is not None:
+                    # A replacement exception cannot authorize cleanup of live writers.
+                    native_publication = None
+                    failure = TaskProcessGroupAmbiguity(str(ambiguity))
+            finally:
+                signal.pthread_sigmask(signal.SIG_SETMASK, cleanup_mask)
+            if native_publication is not None:
+                try:
+                    native_publication.close()
+                except TaskBoundaryError as exc:
+                    if sys.exc_info()[1] is not None and failure is None:
+                        streams.preserve_incomplete()
+                    failure = TaskBoundaryError(
+                        f"{failure or 'Task interrupted'}; {exc}"
+                    )
 
     message = (
         None if failure is None else str(failure).strip() or type(failure).__name__

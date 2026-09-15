@@ -12,6 +12,7 @@ import signal
 import shutil
 import subprocess
 import sys
+import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
@@ -556,7 +557,8 @@ def test_process_group_ambiguity_escalates_and_fails_closed() -> None:
     assert sent == [signal.SIGTERM, signal.SIGKILL]
 
 
-def test_process_group_poll_failure_still_forces_quiescence() -> None:
+@pytest.mark.parametrize("stopped_by", (signal.SIGTERM, signal.SIGKILL))
+def test_process_group_poll_failure_still_forces_quiescence(stopped_by: int) -> None:
     class Process:
         pid = 9003
 
@@ -574,7 +576,7 @@ def test_process_group_poll_failure_still_forces_quiescence() -> None:
     def send(_pgid: int, signum: int) -> None:
         nonlocal alive
         sent.append(signum)
-        if signum == signal.SIGTERM:
+        if signum == stopped_by:
             alive = False
 
     controller = lifecycle.TransactionSignalController(
@@ -588,12 +590,21 @@ def test_process_group_poll_failure_still_forces_quiescence() -> None:
         signal_group=send,
         monotonic=lambda: 0.0,
         sleep=lambda _seconds: None,
+        terminate_grace_seconds=0.0,
     )
 
-    with pytest.raises(OSError, match="poll failed"):
+    failure = (
+        OSError if stopped_by == signal.SIGTERM else lifecycle.ProcessGroupAmbiguity
+    )
+    message = "poll failed" if stopped_by == signal.SIGTERM else "quiescent"
+    with pytest.raises(failure, match=message):
         lifecycle._run_process_group(("fixture",), Path("/"), controller, ops=ops)
 
-    assert sent == [signal.SIGTERM]
+    assert sent == (
+        [signal.SIGTERM]
+        if stopped_by == signal.SIGTERM
+        else [signal.SIGTERM, signal.SIGKILL]
+    )
 
 
 @pytest.mark.parametrize(
@@ -742,6 +753,136 @@ def test_process_group_ambiguity_retains_public_lock_without_receipt(
     assert (attempt_root / "attempt.json").is_file()
     assert not (attempt_root / "released-run-lock.json").exists()
     assert not (attempt_root / "attempt-receipt.json").exists()
+
+
+def _nested_native_cancellation_child(root: Path, grace: str) -> None:
+    """Exercise lifecycle -> Task wrapper -> separate native session, without Snakemake."""
+    built = _build_harness(root / "lifecycle")
+    native_root = root / "task"
+    native_record = native_root / "native.json"
+    process: subprocess.Popen[bytes] | None = None
+    interrupted = False
+    deadline = time.monotonic() + 20
+    prior_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+    prior_handlers = {
+        signum: signal.getsignal(signum) for signum in (signal.SIGINT, signal.SIGTERM)
+    }
+
+    def spawn(
+        _argv: tuple[str, ...], _cwd: Path, environment: Mapping[str, str]
+    ) -> subprocess.Popen[bytes]:
+        nonlocal process
+        process = subprocess.Popen(
+            [
+                sys.executable,
+                "-c",
+                "from pathlib import Path; import sys; "
+                "from tests.orchestration.run_coordinator.test_task import "
+                "_task_native_signal_child; "
+                "_task_native_signal_child(Path(sys.argv[1]), 'nested')",
+                str(native_root),
+            ],
+            cwd=Path(__file__).resolve().parents[3],
+            env=environment,
+            start_new_session=True,
+        )
+        return process
+
+    def poll(child: subprocess.Popen[bytes]) -> int | None:
+        nonlocal interrupted
+        assert time.monotonic() < deadline, "native fixture did not terminate in time"
+        if not interrupted and native_record.exists():
+            interrupted = True
+            if grace == "external-kill":
+                os.killpg(child.pid, signal.SIGKILL)
+            else:
+                os.kill(os.getpid(), signal.SIGTERM)
+        return child.poll()
+
+    process_ops = replace(lifecycle.WORKFLOW_PROCESS_GROUP_OPS, spawn=spawn, poll=poll)
+    if grace == "forced":
+        process_ops = replace(process_ops, terminate_grace_seconds=0.05)
+    identifier = str(_attempt_record(built.request)["workflow_attempt_id"])
+    attempt_root = built.built.run_root / "attempts" / identifier
+    try:
+        if grace != "default":
+            with pytest.raises(
+                lifecycle.ProcessGroupAmbiguity, match="separately owned native groups"
+            ):
+                _run_attempt(
+                    built.request,
+                    ops=replace(
+                        built.ops(), run_workflow=None, process_group_ops=process_ops
+                    ),
+                )
+            assert (built.built.run_root / "locks/run.lock").is_file()
+            assert (attempt_root / "attempt.json").is_file()
+            assert not (attempt_root / "attempt-receipt.json").exists()
+            assert not (attempt_root / "released-run-lock.json").exists()
+            assert not (native_root / "native-cleanup.json").exists()
+            os.kill(int(json.loads(native_record.read_text())["pid"]), 0)
+        else:
+            outcome = _run_attempt(
+                built.request,
+                ops=replace(
+                    built.ops(), run_workflow=None, process_group_ops=process_ops
+                ),
+            )
+            assert outcome.receipt["status"] == "interrupted"
+            assert outcome.receipt["termination_signal"] == signal.SIGTERM
+            assert (
+                outcome.receipt_path.is_file() and outcome.released_lock_path.is_file()
+            )
+            assert not outcome.lock_path.exists()
+            assert (native_root / "native-cleanup.json").is_file()
+        assert process is not None and process.returncode == (
+            -signal.SIGKILL if grace != "default" else 0
+        )
+        with pytest.raises(ProcessLookupError):
+            os.killpg(process.pid, 0)
+        assert signal.pthread_sigmask(signal.SIG_BLOCK, set()) == prior_mask
+        assert {
+            signum: signal.getsignal(signum) for signum in prior_handlers
+        } == prior_handlers
+    finally:
+        if process is not None and process.poll() is None:
+            lifecycle._signal_process_group(process.pid, signal.SIGKILL)
+            process.wait(timeout=5)
+        if native_record.is_file():
+            lifecycle._signal_process_group(
+                int(json.loads(native_record.read_text())["pid"]), signal.SIGKILL
+            )
+
+
+@pytest.mark.parametrize("grace", ("default", "forced", "external-kill"))
+def test_nested_native_cancellation_requires_wrapper_cleanup_proof(
+    tmp_path: Path, grace: str
+) -> None:
+    try:
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "from pathlib import Path; import sys; "
+                "from tests.orchestration.run_coordinator.test_lifecycle import "
+                "_nested_native_cancellation_child; "
+                "_nested_native_cancellation_child(Path(sys.argv[1]), sys.argv[2])",
+                str(tmp_path),
+                grace,
+            ],
+            cwd=Path(__file__).resolve().parents[3],
+            capture_output=True,
+            text=True,
+            timeout=40,
+            check=False,
+        )
+        assert completed.returncode == 0, (completed.stdout, completed.stderr)
+    finally:
+        native_record = tmp_path / "task/native.json"
+        if native_record.is_file():
+            lifecycle._signal_process_group(
+                int(json.loads(native_record.read_text())["pid"]), signal.SIGKILL
+            )
 
 
 def test_signal_forwarding_failure_is_nonraising_then_fails_closed() -> None:
