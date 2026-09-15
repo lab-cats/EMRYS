@@ -63,7 +63,7 @@ STEP09_LOCAL_PATH_FIELDS = frozenset(
     }
 )
 TASK_ENTRY_EVIDENCE_FIELDS = (
-    "preentry_task_attempt_records",
+    "task_attempt_records",
     "task_start_records",
     "verified_tasks",
 )

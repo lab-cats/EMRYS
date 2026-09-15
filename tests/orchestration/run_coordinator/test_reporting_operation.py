@@ -15,7 +15,7 @@ from emrys.orchestration.run_coordinator import reporting_operation
 def _state(
     root: Path,
     *,
-    receipt_version: str = "emrys.attempt-receipt.v2",
+    receipt_version: str = "emrys.attempt-receipt.v3",
     reporting_status: str = "incomplete",
     records: dict[str, dict[str, object | None]] | None = None,
 ) -> SimpleNamespace:

@@ -38,6 +38,7 @@ def _run(root):
         start_origin="workflow-later",
         start_reference={"path": "start.json"},
         terminal_attempts=(),
+        retry_task_attempt_record=None,
     )
     return SimpleNamespace(
         run_root=root,
@@ -71,6 +72,23 @@ def _request(root):
         None,
         (),
     )
+
+
+@pytest.mark.parametrize(
+    ("state", "expected"),
+    (
+        ("pending", "Aborted before publication; retry available"),
+        ("blocked", "Verification not admitted"),
+        ("verified", "Verified complete"),
+    ),
+)
+def test_task_observation_distinguishes_current_retry_readiness(
+    tmp_path, state, expected
+):
+    task = _run(tmp_path).tasks[0]
+    task.state = state
+    task.retry_task_attempt_record = {"path": "retained-abort.json", "sha256": "a" * 64}
+    assert view.task_observation(task) == expected
 
 
 @pytest.mark.parametrize("outcome", [None, "attempt_failed", "attempt_interrupted"])

@@ -68,6 +68,7 @@ from emrys.orchestration.run_coordinator.execution_profile import (
 from emrys.orchestration.run_coordinator.materialization import (
     AttemptPlan,
     MaterializationError,
+    PlannedFile,
     admit_run,
     build_attempt_plan,
     build_run_candidate,
@@ -288,7 +289,7 @@ def _admit_resume_predecessor(
         raise ControlError(str(exc)) from exc
     if not observed.recovery_available or observed.latest_attempt is None:
         raise ControlError(
-            "Run is not at an admissible between-task resume boundary: "
+            "Run is not at an admissible closed-task resume boundary: "
             + "; ".join(
                 observed.blockers
                 or (
@@ -320,17 +321,23 @@ def _resume_predecessor_policy(
 def _retained_tasks(
     observed: inspection.RunInspection,
     attempt: Mapping[str, Any],
-) -> tuple[dict[tuple[str, str], dict[str, Any]], bytes | None]:
+) -> tuple[dict[tuple[str, str], dict[str, Any]], PlannedFile | None]:
     tasks = attempt["tasks"]
     retained: dict[tuple[str, str], dict[str, Any]] = {}
     attempt_reference = {
         "path": f"attempts/{attempt['workflow_attempt_id']}/attempt.json",
         "sha256": orchestration_contracts.canonical_sha256(attempt),
     }
-    selected_manifest: bytes | None = None
+    selected_manifest: PlannedFile | None = None
     selected_projection: bool | None = None
+    historical_ids = {
+        str(item.record["workflow_attempt_id"])
+        for inspected in observed.tasks
+        for item in inspected.terminal_attempts
+    }
     for inspected in observed.tasks:
-        if inspected.state != "verified":
+        retry = inspected.retry_task_attempt_record
+        if inspected.state != "verified" and retry is None:
             continue
         try:
             definition = tasks[inspected.expected.machine_key][
@@ -344,38 +351,57 @@ def _retained_tasks(
         reference = definition.get("workflow_attempt_record", attempt_reference)
         path = observed.run_root / reference["path"]
         try:
-            dispatch = task_boundary.load_task(
-                path,
-                expected_sha256=reference["sha256"],
-                machine_key=inspected.expected.machine_key,
-                scope_id=inspected.expected.scope_id,
-            )
+            if retry is None:
+                dispatch = task_boundary.load_task(
+                    path,
+                    expected_sha256=reference["sha256"],
+                    machine_key=inspected.expected.machine_key,
+                    scope_id=inspected.expected.scope_id,
+                )
+            else:
+                dispatch = task_boundary.recheck_aborted_task(
+                    run_root=observed.run_root,
+                    execution=observed.authority.run_binding.record,
+                    profile=orchestration_contracts.load_json_object(
+                        observed.run_root / "contract" / "profile.json"
+                    ),
+                    machine_key=inspected.expected.machine_key,
+                    scope=inspected.expected.scope,
+                    record_reference=retry,
+                )
         except task_boundary.TaskBoundaryError as exc:
             raise ControlError(
                 f"Reusable task plan is unavailable: {path}: {exc}"
             ) from exc
-        retained[(inspected.expected.machine_key, inspected.expected.scope_id)] = {
-            "workflow_attempt_record": dict(reference)
-        }
+        if retry is None:
+            retained[(inspected.expected.machine_key, inspected.expected.scope_id)] = {
+                "workflow_attempt_record": dict(reference)
+            }
         if inspected.expected.step_id != "07":
             continue
-        manifest_path = (
-            observed.run_root
-            / "contract"
-            / "workflow-inputs"
-            / dispatch.workflow_attempt_id
-            / "samples.tsv"
+        projections = tuple(
+            item
+            for item in dispatch.inputs
+            if item.path.name == "samples.tsv"
+            and item.path.parent.parent
+            == observed.run_root / "contract" / "workflow-inputs"
         )
-        declaration = next(
-            (item for item in dispatch.inputs if item.path == manifest_path),
-            None,
-        )
+        if len(projections) > 1:
+            raise ControlError(
+                "Reusable Step 07 task binds multiple sample projections"
+            )
+        declaration = next(iter(projections), None)
         projected = declaration is not None
         if selected_projection is not None and projected != selected_projection:
             raise ControlError("Reusable Step 07 tasks disagree on sample projection")
         selected_projection = projected
         if not projected:
             continue
+        manifest_path = declaration.path
+        if manifest_path.parent.name not in historical_ids:
+            raise ControlError(
+                "Reusable sample projection has no admitted historical origin"
+            )
         if declaration.expected_binding is None:
             raise ControlError(
                 "Reusable Step 07 sample projection is not content-bound"
@@ -391,9 +417,10 @@ def _retained_tasks(
             raise ControlError(
                 "Reusable Step 07 sample projection differs from its binding"
             )
-        if selected_manifest is not None and data != selected_manifest:
+        projection = PlannedFile(manifest_path, data)
+        if selected_manifest is not None and projection != selected_manifest:
             raise ControlError("Reusable Step 07 tasks disagree on sample projection")
-        selected_manifest = data
+        selected_manifest = projection
     return retained, selected_manifest
 
 
@@ -455,7 +482,7 @@ def _plan_resume(
     scheduler_job_id: str | None = None,
     report_enabled: bool = True,
 ) -> AttemptPlan:
-    """Plan a safe between-task resume without writing run state."""
+    """Plan a safe closed-task resume without writing run state."""
 
     root = _absolute(run_root)
     observed, previous = _admit_resume_predecessor(root)
@@ -485,7 +512,7 @@ def _plan_resume(
         if retained_sample_manifest is not None:
             analysis = replace(
                 analysis,
-                selected_sample_manifest_bytes=retained_sample_manifest,
+                selected_sample_manifest_bytes=retained_sample_manifest.data,
             )
             readiness = replace(readiness, analysis=analysis)
         policy = execution_profile.resource_policy
@@ -525,6 +552,15 @@ def _plan_resume(
             operation="resume",
             supersedes_workflow_attempt_id=str(previous["workflow_attempt_id"]),
             retained_tasks=retained_tasks,
+            retry_task_attempt_records={
+                (
+                    item.expected.machine_key,
+                    item.expected.scope_id,
+                ): item.retry_task_attempt_record
+                for item in observed.tasks
+                if item.retry_task_attempt_record is not None
+            },
+            retained_sample_manifest=retained_sample_manifest,
             placement=execution_profile.attempt_placement(scheduler_job_id),
             processing_source=processing_source,
         )

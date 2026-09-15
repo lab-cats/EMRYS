@@ -47,6 +47,8 @@ def task_observation(task: TaskInspection) -> str:
         return "Verified complete"
     if task.state == "blocked":
         return "Verification not admitted"
+    if task.retry_task_attempt_record is not None:
+        return "Aborted before publication; retry available"
     if task.start_reference is not None:
         return "Started; completion unverified"
     return "No admitted start"

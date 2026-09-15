@@ -474,7 +474,7 @@ def test_resume_reuses_every_completed_file_with_existing_engine_metadata(
 ) -> None:
     completed = _snakemake(built, "--", "cohort_slice")
     markers = sorted(built.verified_root.glob("*/*.json"))
-    starts = sorted((built.run_root / "state" / "task-starts").glob("*/*.json"))
+    starts = sorted(built.run_root.glob("attempts/*/tasks/*/*/task-start.json"))
     assert len(markers) == len(starts) == 35, completed.stdout
     for marker in markers:
         marker_record = orchestration_contracts.load_record(marker, "verified-task")
@@ -493,12 +493,21 @@ def test_resume_reuses_every_completed_file_with_existing_engine_metadata(
         start = orchestration_contracts.load_record(start_path, "task-start")
         assert start_path == (
             built.run_root
-            / "state/task-starts"
+            / "attempts"
+            / record["workflow_attempt_id"]
+            / "tasks"
             / record["machine_key"]
-            / f"{scope_id}.json"
+            / scope_id
+            / "task-start.json"
         )
         assert start["machine_key"] == record["machine_key"]
         assert start["scope"] == record["scope"]
+        assert start["inputs"] == record["inputs"]
+        assert [item["role"] for item in start["inputs"][:3]] == [
+            "workflow_attempt",
+            "execution_contract",
+            "workflow_profile",
+        ]
         assert (
             record["task_start_record"]["sha256"]
             == hashlib.sha256(start_path.read_bytes()).hexdigest()

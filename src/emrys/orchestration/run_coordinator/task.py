@@ -18,7 +18,7 @@ import signal
 import stat
 import subprocess
 import sys
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from functools import partial
@@ -139,6 +139,7 @@ class TaskPlan:
     stdout_path: Path
     stderr_path: Path
     publication: PublicationPlan
+    retry_task_attempt_record: Mapping[str, str] | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -173,6 +174,7 @@ class TaskOps:
     now: Clock
     admit_installed_package: PackageObserver = _admit_installed_package
     path_access: PathAccess = os.access
+    require_descendants_reaped: Callable[[], None] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -445,11 +447,7 @@ def task_from_attempt(
         validation_report_path=_absolute_path(
             record["validation_report_path"], "validation_report_path"
         ),
-        task_start_path=run_root
-        / "state"
-        / "task-starts"
-        / owner
-        / f"{selected_scope}.json",
+        task_start_path=task_root / "task-start.json",
         task_attempt_path=task_root / "task-attempt.json",
         verified_task_path=run_root
         / "state"
@@ -459,6 +457,7 @@ def task_from_attempt(
         stdout_path=task_root / "stdout.log",
         stderr_path=task_root / "stderr.log",
         publication=publication,
+        retry_task_attempt_record=record["retry_task_attempt_record"],
     )
 
     mutable_paths = {
@@ -945,6 +944,27 @@ class _TaskChildren:
             group_exists=lambda _process_group_id: not self.empty,
         )
 
+    def require_reaped(self) -> None:
+        """Require registered completion and fresh absence without consuming a child."""
+        try:
+            self._check_owner()
+            if self.process is None:
+                raise TaskBoundaryError("Task lacks a registered native command result")
+            if self.process.returncode is None or not self.empty:
+                raise TaskProcessGroupAmbiguity(
+                    "Task lacks registered descendant closure"
+                )
+            os.waitid(os.P_ALL, 0, os.WEXITED | os.WNOHANG | os.WNOWAIT | 0x40000000)
+        except ChildProcessError:
+            return
+        except (AttributeError, OSError, ValueError) as exc:
+            raise TaskProcessGroupAmbiguity(
+                "Task descendant closure is uncertain"
+            ) from exc
+        raise TaskProcessGroupAmbiguity(
+            "Task descendants remain after command completion"
+        )
+
 
 def _run_native_command(
     argv: tuple[str, ...],
@@ -1151,6 +1171,9 @@ def default_task_ops(*, descendants: _TaskChildren | None = None) -> TaskOps:
         publish_bytes=_publish_bytes,
         now=lambda: datetime.now(UTC),
         admit_installed_package=_admit_installed_package,
+        require_descendants_reaped=(
+            None if descendants is None else descendants.require_reaped
+        ),
     )
 
 
@@ -1439,6 +1462,31 @@ def _directory_members(
     return members
 
 
+def _native_workspaces(dispatch: TaskPlan) -> tuple[Path, ...]:
+    working = tuple(
+        dict.fromkeys(item.working_path.parent for item in dispatch.outputs)
+    )
+    return (*working, working[0].with_name(working[0].name + ".scratch"))
+
+
+def _require_unpublished(dispatch: TaskPlan, *, cleaned: bool) -> None:
+    paths = (
+        *(item.path for item in dispatch.outputs),
+        dispatch.validation_report_path,
+        dispatch.verified_task_path,
+        *(
+            (dispatch.publication.output_directory,)
+            if dispatch.publication.output_directory
+            else ()
+        ),
+    )
+    if cleaned:
+        paths += (*_native_workspaces(dispatch), *dispatch.publication.locks)
+        _NativePublication(dispatch).reject_residue()
+    for path in paths:
+        _require_absent(path, "aborted Task destination or residue")
+
+
 @dataclass
 class _NativePublication:
     """Own worker scratch and publish its completed files without replacement."""
@@ -1496,11 +1544,7 @@ class _NativePublication:
                     )
 
     def prepare(self, *, reused: bool) -> Path | None:
-        working_parents = tuple(
-            dict.fromkeys(
-                output.working_path.parent for output in self.dispatch.outputs
-            )
-        )
+        *working_parents, scratch = _native_workspaces(self.dispatch)
         destinations = {
             *(parent.parent for parent in working_parents),
             *(path.parent for path in self.plan.locks),
@@ -1527,7 +1571,6 @@ class _NativePublication:
             parent.mkdir(mode=0o700)
             self.staging[parent] = self.identity(parent)
             _sync_directory(parent.parent, "worker staging parent")
-        scratch = working_parents[0].with_name(working_parents[0].name + ".scratch")
         scratch.mkdir(mode=0o700)
         self.staging[scratch] = self.identity(scratch)
         return scratch
@@ -1741,6 +1784,73 @@ def _bound_file_matches(record: Mapping[str, Any], label: str) -> None:
         raise TaskBoundaryError(f"{label} content binding no longer matches")
 
 
+def _task_input_declarations(
+    dispatch: TaskPlan, member_paths: Iterable[Path]
+) -> tuple[FileDeclaration, ...]:
+    declared = {item.path for item in dispatch.inputs}
+    return (
+        FileDeclaration("workflow_attempt", dispatch.path),
+        FileDeclaration("execution_contract", dispatch.execution_path),
+        FileDeclaration("workflow_profile", dispatch.profile_path),
+        *dispatch.inputs,
+        *(
+            FileDeclaration(f"directory_input_{index:03d}", path)
+            for index, path in enumerate(member_paths, 1)
+            if path not in declared
+        ),
+    )
+
+
+def _admit_start_inputs(
+    dispatch: TaskPlan, inputs: Sequence[Mapping[str, Any]], *, current: bool
+) -> None:
+    paths = [Path(item["path"]) for item in inputs]
+    if len(set(paths)) != len(paths) or len({item["role"] for item in inputs}) != len(
+        inputs
+    ):
+        raise TaskBoundaryError("Task-start repeats an input role or path")
+    members = tuple(
+        path
+        for directory in dispatch.publication.input_directories
+        for path in sorted(path for path in paths if path.parent == directory)
+    )
+    declarations = _task_input_declarations(dispatch, members)
+    if [(item["role"], item["path"]) for item in inputs] != [
+        (item.role, str(item.path)) for item in declarations
+    ]:
+        raise TaskBoundaryError("Task-start inputs differ from its admitted Task plan")
+    for index, (bound, declaration) in enumerate(
+        zip(inputs, declarations, strict=True)
+    ):
+        if (
+            declaration.expected_binding is not None
+            and declaration.expected_binding != (bound["size_bytes"], bound["sha256"])
+        ):
+            raise TaskBoundaryError(
+                "Task-start input differs from its declared binding"
+            )
+        if current or index < 3:
+            _bound_file_matches(bound, "Task-start input")
+    if current:
+        for directory in dispatch.publication.input_directories:
+            observed_members = _directory_members(directory)
+            if tuple(path for path, _ in observed_members) != tuple(
+                path for path in members if path.parent == directory
+            ):
+                raise TaskBoundaryError(
+                    "Aborted Task input directory membership changed"
+                )
+            bindings = {Path(item["path"]): item for item in inputs}
+            if any(
+                (snapshot.record["size_bytes"], snapshot.record["sha256"])
+                != (bindings[path]["size_bytes"], bindings[path]["sha256"])
+                for path, snapshot in observed_members
+            ):
+                raise TaskBoundaryError(
+                    "Aborted Task directory input changed during admission"
+                )
+
+
 def _attempt_reference(dispatch: TaskPlan) -> dict[str, str]:
     return {
         "path": _relative(dispatch.path, dispatch.run_root),
@@ -1850,15 +1960,6 @@ def validate_task_start(
         run_root, machine_key, scope
     )
     start_path = _absolute_path(str(path), "task-start path")
-    expected_path = (
-        canonical_root
-        / "state"
-        / "task-starts"
-        / owner_key
-        / f"{expected_scope['scope_id']}.json"
-    )
-    if start_path != expected_path:
-        raise TaskBoundaryError("Task-start record is not at its exact ledger path")
     _safe_in_run_destination(start_path, canonical_root, "task-start path")
     orchestration_contracts.validate_record("profile", profile)
     record, start_data = _admit_record(start_path, canonical_root, "task-start")
@@ -1891,6 +1992,7 @@ def validate_task_start(
             raise TaskBoundaryError(f"Task-start and dispatch disagree on {field}")
     if dispatch.task_start_path != start_path:
         raise TaskBoundaryError("Task-start dispatch binds a different ledger path")
+    _admit_start_inputs(dispatch, record["inputs"], current=False)
     attempt_reference, run_lock_reference = _admit_start_origins(
         dispatch,
         execution=loaded_execution,
@@ -1974,13 +2076,7 @@ def _admit_task_attempt(
         if record["status"] != "failed":
             raise TaskBoundaryError("Preentry task attempt must be failed")
     else:
-        start_path = (
-            canonical_root
-            / "state"
-            / "task-starts"
-            / owner_key
-            / f"{expected_scope['scope_id']}.json"
-        )
+        start_path = attempt_path.with_name("task-start.json")
         if (
             _verify_reference(
                 start_reference,
@@ -1990,7 +2086,127 @@ def _admit_task_attempt(
             != start_path
         ):
             raise TaskBoundaryError("Task attempt does not bind its exact start")
+        start = validate_task_start(
+            start_path,
+            run_root=canonical_root,
+            execution=execution,
+            profile=profile,
+            machine_key=owner_key,
+            scope=expected_scope,
+        )
+        for field in (
+            "workflow_attempt_id",
+            "task_attempt_id",
+            "owner_run_token",
+            "inputs",
+        ):
+            if record[field] != start[field]:
+                raise TaskBoundaryError(f"Task terminal and start disagree on {field}")
+        origin = start["workflow_attempt_record"]
+        dispatch = load_task(
+            canonical_root / origin["path"],
+            expected_sha256=origin["sha256"],
+            machine_key=owner_key,
+            scope_id=expected_scope["scope_id"],
+        )
+        step_id = next(
+            item["step_id"]
+            for item in profile["owner_tasks"]
+            if item["machine_key"] == owner_key
+        )
+        for name, argv in (
+            ("producer", dispatch.backend.producer_argv),
+            ("validator", _validator_argv(dispatch)),
+            ("semantic_all_pass", _semantic_argv(dispatch, str(step_id))),
+        ):
+            if record[name] is not None and record[name]["argv"] != list(argv):
+                raise TaskBoundaryError(
+                    f"Task terminal {name} command differs from its origin"
+                )
+    if record["abort_closure"] is not None and (
+        record["status"] != "failed"
+        or start_reference is None
+        or not record["stable_inputs_rechecked"]
+        or record["outputs"]
+        or record["validation_report"] is not None
+        or not record["failure_message"]
+    ):
+        raise TaskBoundaryError("Task abort closure lacks its required failed evidence")
+    if _record_reference(attempt_path, canonical_root) != reference:
+        raise TaskBoundaryError("Task terminal changed during admission")
     return record, reference
+
+
+def _admit_attempt_reference(
+    reference: Mapping[str, str],
+    *,
+    run_root: Path,
+    execution: Mapping[str, Any],
+    profile: Mapping[str, Any],
+    machine_key: str,
+    scope: Mapping[str, str],
+) -> dict[str, Any]:
+    parts = Path(reference["path"]).parts
+    if len(parts) != 6:
+        raise TaskBoundaryError(
+            "Task reference does not name one exact terminal attempt"
+        )
+    record, admitted = _admit_task_attempt(
+        run_root=run_root,
+        execution=execution,
+        profile=profile,
+        workflow_attempt_id=parts[1],
+        machine_key=machine_key,
+        scope=scope,
+    )
+    if admitted != dict(reference):
+        raise TaskBoundaryError("Task-attempt record reference no longer matches")
+    return record
+
+
+def recheck_aborted_task(
+    *,
+    run_root: Path,
+    execution: Mapping[str, Any],
+    profile: Mapping[str, Any],
+    machine_key: str,
+    scope: Mapping[str, str],
+    record_reference: Mapping[str, str],
+) -> TaskPlan:
+    """Recheck current retry readiness separately from immutable abort history."""
+    record = _admit_attempt_reference(
+        record_reference,
+        run_root=run_root,
+        execution=execution,
+        profile=profile,
+        machine_key=machine_key,
+        scope=scope,
+    )
+    if record["abort_closure"] != "linux-task-prepublication.v1":
+        raise TaskBoundaryError("Task terminal does not establish Linux abort closure")
+    start_path = _verify_reference(
+        record["task_start_record"], run_root=run_root, label="aborted Task start"
+    )
+    start, start_bytes = _admit_record(start_path, run_root, "task-start")
+    if hashlib.sha256(start_bytes).hexdigest() != record["task_start_record"]["sha256"]:
+        raise TaskBoundaryError("Aborted Task start changed during admission")
+    reference = start["workflow_attempt_record"]
+    dispatch = load_task(
+        run_root / reference["path"],
+        expected_sha256=reference["sha256"],
+        machine_key=machine_key,
+        scope_id=scope["scope_id"],
+    )
+    _admit_start_inputs(dispatch, start["inputs"], current=True)
+    _require_unpublished(dispatch, cleaned=True)
+    if _record_reference(start_path, run_root) != record["task_start_record"] or (
+        _record_reference(run_root / record_reference["path"], run_root)
+        != dict(record_reference)
+    ):
+        raise TaskBoundaryError(
+            "Aborted Task evidence changed during readiness admission"
+        )
+    return dispatch
 
 
 def validate_verified_task(
@@ -2027,21 +2243,14 @@ def validate_verified_task(
     orchestration_contracts.validate_record("profile", profile)
     marker, marker_bytes = _admit_record(verified_path, canonical_root, "verified-task")
     attempt_reference = marker["task_attempt_record"]
-    parts = Path(attempt_reference["path"]).parts
-    if len(parts) != 6:
-        raise TaskBoundaryError(
-            "Verified task does not reference one exact task attempt"
-        )
-    record, admitted_attempt_reference = _admit_task_attempt(
+    record = _admit_attempt_reference(
+        attempt_reference,
         run_root=canonical_root,
         execution=execution,
         profile=profile,
-        workflow_attempt_id=parts[1],
         machine_key=owner_key,
         scope=expected_scope,
     )
-    if admitted_attempt_reference != attempt_reference:
-        raise TaskBoundaryError("Task-attempt record reference no longer matches")
     if record["status"] != "succeeded":
         raise TaskBoundaryError("Referenced task attempt is not successful")
     profile_tasks = [
@@ -2067,13 +2276,7 @@ def validate_verified_task(
             paths.add(file_path)
             _bound_file_matches(bound, f"verified {group}[{index}]")
 
-    start_path = (
-        canonical_root
-        / "state"
-        / "task-starts"
-        / owner_key
-        / f"{expected_scope['scope_id']}.json"
-    )
+    start_path = canonical_root / record["task_start_record"]["path"]
     start = validate_task_start(
         start_path,
         run_root=canonical_root,
@@ -2187,6 +2390,7 @@ def _publish_attempt(
     streams: _TaskStreamCapture,
     inputs: tuple[dict[str, Any], ...],
     outputs: tuple[dict[str, Any], ...],
+    prove_abort: Callable[[], None] | None = None,
 ) -> bytes:
     stdout_reference, stderr_reference = streams.finalize()
     report_reference = None
@@ -2200,7 +2404,7 @@ def _publish_attempt(
                 raise
     status = "succeeded" if failure_message is None else "failed"
     attempt = {
-        "schema_version": "emrys.task-attempt.v3",
+        "schema_version": "emrys.task-attempt.v4",
         **identity,
         "task_start_record": (
             None if task_start_reference is None else dict(task_start_reference)
@@ -2218,7 +2422,16 @@ def _publish_attempt(
         "failure_message": failure_message,
         "inputs": list(inputs),
         "outputs": list(outputs),
+        "abort_closure": None,
     }
+    if prove_abort is not None:
+        try:
+            prove_abort()
+        except (OSError, TaskBoundaryError):
+            pass
+        else:
+            attempt["abort_closure"] = "linux-task-prepublication.v1"
+            attempt["stable_inputs_rechecked"] = True
     orchestration_contracts.validate_record("task-attempt", attempt)
     attempt_bytes = orchestration_contracts.canonical_json_bytes(attempt)
     _publish_terminal_record(ops, dispatch.task_attempt_path, attempt_bytes)
@@ -2248,12 +2461,16 @@ def _run_task(
     semantic: CommandResult | None = None
     stable_inputs_rechecked = False
     initial_inputs: tuple[dict[str, Any], ...] = ()
+    initial_bound_inputs: tuple[_BoundFileSnapshot, ...] = ()
+    stable_inputs: tuple[FileDeclaration, ...] = ()
     outputs: tuple[dict[str, Any], ...] = ()
     producer_outputs = outputs
     task_start_reference: dict[str, str] | None = None
     task_scope_materialized = False
     reused_outputs: dict[FileDeclaration, _BoundFileSnapshot] = {}
     native_publication: _NativePublication | None = None
+    publication_started = False
+    abort_closed = False
     output_declarations = dispatch.outputs
     directory_inputs: dict[Path, tuple[tuple[Path, _BoundFileSnapshot], ...]] = {}
     extra_inputs: tuple[FileDeclaration, ...] = ()
@@ -2263,6 +2480,37 @@ def _run_task(
         dispatch.run_root,
     )
     failure: TaskBoundaryError | None = None
+
+    def prove_abort(*, cleaned: bool) -> None:
+        if (
+            ops.require_descendants_reaped is None
+            or publication_started
+            or reused_outputs
+            or task_start_reference is None
+            or native_publication is None
+        ):
+            raise TaskBoundaryError("Task lacks prepublication abort authority")
+        ops.require_descendants_reaped()
+        native_publication.recheck_directories()
+        if (
+            tuple(_bound_snapshot(item) for item in stable_inputs)
+            != initial_bound_inputs
+        ):
+            raise TaskBoundaryError("Task input changed before abort closure")
+        if any(
+            _directory_members(path) != members
+            for path, members in directory_inputs.items()
+        ):
+            raise TaskBoundaryError("Task input directory changed before abort closure")
+        _attempt, current_lock = admit_origins()
+        if (
+            current_lock != task_start["run_lock"]
+            or _record_reference(dispatch.task_start_path, dispatch.run_root)
+            != task_start_reference
+        ):
+            raise TaskBoundaryError("Task start or origin changed before abort closure")
+        _require_unpublished(dispatch, cleaned=cleaned)
+
     protected = (
         dispatch.task_start_path,
         dispatch.task_attempt_path,
@@ -2311,29 +2559,51 @@ def _run_task(
             observe_package=ops.admit_installed_package,
         )
         admit_origins()
+        if dispatch.attempt_record["operation"] == "resume":
+            from emrys.orchestration.run_coordinator._inspection_attempts import (  # noqa: PLC0415
+                inspect_attempt_chain,
+            )
+            from emrys.orchestration.run_coordinator._inspection_evidence import (  # noqa: PLC0415
+                inspect_task_evidence,
+            )
+
+            attempts, receipts, blockers = inspect_attempt_chain(
+                dispatch.run_root, profile=profile
+            )
+            history = inspect_task_evidence(
+                dispatch.run_root,
+                execution,
+                profile,
+                attempts,
+                receipts=receipts,
+                allow_incomplete_origin=dispatch.workflow_attempt_id,
+                selected_task=(dispatch.machine_key, dispatch.scope["scope_id"]),
+            )
+            errors = (*blockers, *history.integrity_blockers, *history.results_blockers)
+            if errors:
+                raise TaskBoundaryError(
+                    "Retry Task history is blocked: " + "; ".join(errors)
+                )
+            if len(history.tasks) != 1 or (
+                history.tasks[0].retry_task_attempt_record
+                != dispatch.retry_task_attempt_record
+            ):
+                raise TaskBoundaryError(
+                    "Retry Task does not bind its latest aborted predecessor"
+                )
         _materialize_task_scope(dispatch)
         task_scope_materialized = True
         directory_inputs = {
             directory: _directory_members(directory)
             for directory in dispatch.publication.input_directories
         }
-        existing_input_paths = {item.path for item in dispatch.inputs}
-        extra_inputs = tuple(
-            FileDeclaration(f"directory_input_{index:03d}", path)
-            for index, path in enumerate(
-                (path for members in directory_inputs.values() for path, _ in members),
-                1,
-            )
-            if path not in existing_input_paths
+        stable_inputs = _task_input_declarations(
+            dispatch,
+            (path for members in directory_inputs.values() for path, _ in members),
         )
-        stable_inputs = (
-            FileDeclaration("workflow_attempt", dispatch.path),
-            FileDeclaration("execution_contract", dispatch.execution_path),
-            FileDeclaration("workflow_profile", dispatch.profile_path),
-            *dispatch.inputs,
-            *extra_inputs,
-        )
-        initial_inputs = tuple(_snapshot(item) for item in stable_inputs)
+        extra_inputs = stable_inputs[3 + len(dispatch.inputs) :]
+        initial_bound_inputs = tuple(_bound_snapshot(item) for item in stable_inputs)
+        initial_inputs = tuple(item.record for item in initial_bound_inputs)
         if initial_inputs[0]["sha256"] != dispatch.manifest_sha256:
             raise TaskBoundaryError("Task plan changed before producer execution")
         if len({item["role"] for item in initial_inputs}) != len(initial_inputs):
@@ -2357,14 +2627,35 @@ def _run_task(
             path_access=ops.path_access,
         )
 
+        if dispatch.retry_task_attempt_record is not None:
+            previous = recheck_aborted_task(
+                run_root=dispatch.run_root,
+                execution=execution,
+                profile=profile,
+                machine_key=dispatch.machine_key,
+                scope=dispatch.scope,
+                record_reference=dispatch.retry_task_attempt_record,
+            )
+            if (
+                previous.inputs != dispatch.inputs
+                or [(item.role, item.path) for item in previous.outputs]
+                != [(item.role, item.path) for item in dispatch.outputs]
+                or previous.publication != dispatch.publication
+                or previous.validation_report_path != dispatch.validation_report_path
+            ):
+                raise TaskBoundaryError(
+                    "Retry Task changes its original logical inputs or destinations"
+                )
+
         created_at = _utc_timestamp(ops.now())
         attempt_reference, run_lock_reference = admit_origins()
         task_start = {
-            "schema_version": "emrys.task-start.v2",
+            "schema_version": "emrys.task-start.v3",
             **identity,
             "workflow_attempt_record": attempt_reference,
             "run_lock": run_lock_reference,
             "created_at": created_at,
+            "inputs": list(initial_inputs),
         }
         orchestration_contracts.validate_record("task-start", task_start)
         task_start_bytes = orchestration_contracts.canonical_json_bytes(task_start)
@@ -2456,8 +2747,10 @@ def _run_task(
 
         def publish_native_outputs() -> None:
             nonlocal native_publication, output_declarations, outputs, producer_outputs
+            nonlocal publication_started
             recheck_native_authority()
             if not reused_outputs:
+                publication_started = True
                 output_declarations = native_publication.publish(prepared_outputs)
                 recheck_native_authority()
             native_publication.committed = True
@@ -2533,13 +2826,38 @@ def _run_task(
                 signal.pthread_sigmask(signal.SIG_SETMASK, cleanup_mask)
             if native_publication is not None:
                 try:
+                    candidate = (
+                        failure is not None
+                        and ops.require_descendants_reaped is not None
+                        and not publication_started
+                        and not reused_outputs
+                        and task_start_reference is not None
+                    )
+                    if candidate:
+                        try:
+                            prove_abort(cleaned=False)
+                        except TaskProcessGroupAmbiguity:
+                            native_publication = None
+                            raise
+                        except (OSError, TaskBoundaryError):
+                            candidate = False
                     native_publication.close()
+                    if candidate:
+                        try:
+                            prove_abort(cleaned=True)
+                        except (OSError, TaskBoundaryError):
+                            pass
+                        else:
+                            abort_closed = True
                 except TaskBoundaryError as exc:
                     if sys.exc_info()[1] is not None and failure is None:
                         streams.preserve_incomplete()
-                    failure = TaskBoundaryError(
-                        f"{failure or 'Task interrupted'}; {exc}"
+                    failure_type = (
+                        TaskProcessGroupAmbiguity
+                        if _process_group_ambiguity(failure, exc) is not None
+                        else TaskBoundaryError
                     )
+                    failure = failure_type(f"{failure or 'Task interrupted'}; {exc}")
 
     message = (
         None if failure is None else str(failure).strip() or type(failure).__name__
@@ -2560,6 +2878,7 @@ def _run_task(
         streams=streams,
         inputs=initial_inputs,
         outputs=outputs,
+        prove_abort=partial(prove_abort, cleaned=True) if abort_closed else None,
     )
     if failure is not None:
         raise TaskBoundaryError(message) from failure

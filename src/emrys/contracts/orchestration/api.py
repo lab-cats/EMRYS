@@ -63,11 +63,11 @@ SCHEMA_IDS.update(
         "resource-config": "urn:emrys:schema:orchestration:resource-config:v1",
         "execution-profile": "urn:emrys:schema:orchestration:execution-profile:v1",
         "profile": "urn:emrys:schema:orchestration:profile:v2",
-        "attempt-receipt": "urn:emrys:schema:orchestration:attempt-receipt:v2",
-        "workflow-attempt": "urn:emrys:schema:orchestration:workflow-attempt:v3",
-        "task-start": "urn:emrys:schema:orchestration:task-start:v2",
+        "attempt-receipt": "urn:emrys:schema:orchestration:attempt-receipt:v3",
+        "workflow-attempt": "urn:emrys:schema:orchestration:workflow-attempt:v4",
+        "task-start": "urn:emrys:schema:orchestration:task-start:v3",
         "reporting-start": "urn:emrys:schema:orchestration:reporting-start:v2",
-        "task-attempt": "urn:emrys:schema:orchestration:task-attempt:v3",
+        "task-attempt": "urn:emrys:schema:orchestration:task-attempt:v4",
         "verified-task": "urn:emrys:schema:orchestration:verified-task:v2",
     }
 )
@@ -429,6 +429,12 @@ def _validate_identity_record(name: str, record: Mapping[str, Any]) -> None:
         )
     elif name == "workflow-attempt":
         _require_distinct_ids(record, "run_id", "workflow_attempt_id", "owner_token")
+        if record["operation"] == "execute" and any(
+            entry.get("retry_task_attempt_record") is not None
+            for scopes in record["tasks"].values()
+            for entry in scopes.values()
+        ):
+            raise ContractValidationError("Initial execution may not retry a task")
         if (
             record.get("supersedes_workflow_attempt_id")
             == record["workflow_attempt_id"]
@@ -567,50 +573,55 @@ def _validate_identity_record(name: str, record: Mapping[str, Any]) -> None:
         ]
         start_identities = [
             (
+                item["workflow_attempt_id"],
                 item["machine_key"],
                 item["scope"]["scope_type"],
                 item["scope"]["scope_id"],
             )
             for item in record["task_start_records"]
         ]
-        preentry_identities = [
+        terminal_identities = [
             (
                 item["workflow_attempt_id"],
                 item["machine_key"],
                 item["scope"]["scope_type"],
                 item["scope"]["scope_id"],
             )
-            for item in record["preentry_task_attempt_records"]
+            for item in record["task_attempt_records"]
         ]
-        if preentry_identities != sorted(preentry_identities):
+        if terminal_identities != sorted(terminal_identities):
             raise ContractValidationError(
-                "Attempt receipt preentry_task_attempt_records must use normalized "
+                "Attempt receipt task_attempt_records must use normalized "
                 "attempt-owner-scope order"
             )
-        if len(preentry_identities) != len(set(preentry_identities)):
+        if len(terminal_identities) != len(set(terminal_identities)):
             raise ContractValidationError(
-                "Attempt receipt preentry_task_attempt_records must be unique"
+                "Attempt receipt task_attempt_records must be unique"
             )
         if start_identities != sorted(start_identities):
             raise ContractValidationError(
-                "Attempt receipt task_start_records must use normalized owner-scope "
+                "Attempt receipt task_start_records must use normalized attempt-owner-scope "
                 "order"
             )
         if len(start_identities) != len(set(start_identities)):
             raise ContractValidationError(
-                "Attempt receipt task_start_records must have unique owner scopes"
+                "Attempt receipt task_start_records must have unique attempt-owner scopes"
             )
         if len(task_identities) != len(set(task_identities)):
             raise ContractValidationError(
                 "Attempt receipt verified_tasks must have unique owner scopes"
             )
-        if not set(task_identities).issubset(start_identities):
+        if not set(task_identities).issubset(
+            identity[1:] for identity in start_identities
+        ):
             raise ContractValidationError(
                 "Attempt receipt verified_tasks must have corresponding task starts"
             )
-        if status != "blocked" and set(task_identities) != set(start_identities):
+        if status != "blocked" and not set(start_identities).issubset(
+            terminal_identities
+        ):
             raise ContractValidationError(
-                "Non-blocked attempt receipts require every task start to be verified"
+                "Non-blocked attempt receipts require every task start to have a terminal record"
             )
         if status == "succeeded" and (exit_code != 0 or signal_number is not None):
             raise ContractValidationError(
@@ -649,6 +660,13 @@ def _validate_identity_record(name: str, record: Mapping[str, Any]) -> None:
             "task_attempt_id",
             "owner_run_token",
         )
+        if name == "task-start" or record.get("abort_closure") is not None:
+            for field in ("role", "path"):
+                identities = [item[field] for item in record["inputs"]]
+                if len(identities) != len(set(identities)):
+                    raise ContractValidationError(
+                        f"Task input {field} values must be unique"
+                    )
         if name == "task-attempt":
             _require_attempt_time(
                 record["task_attempt_id"],

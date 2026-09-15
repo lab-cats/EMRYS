@@ -17,7 +17,7 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -107,8 +107,6 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
     mutable_input.write_bytes(b"stable owner input\n")
     verified_path = run_root / "state" / "verified" / machine_key / f"{scope_id}.json"
     (run_root / "attempts" / WORKFLOW_ATTEMPT_ID).mkdir(parents=True)
-    task_start = run_root / "state" / "task-starts" / machine_key / f"{scope_id}.json"
-    task_start.parent.mkdir(parents=True)
     verified_path.parent.mkdir(parents=True)
 
     first_output = run_root / "results" / "samples" / scope_id / "aligned.bam"
@@ -146,6 +144,7 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
     definition = {
         "task_attempt_id": TASK_ATTEMPT_ID,
         "owner_run_token": "owner-run-ev-1",
+        "retry_task_attempt_record": None,
         "scope_type": "cohort" if prepublication else "sample",
         "producer_argv": producer,
         "validator_argv": validator,
@@ -177,7 +176,7 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
     request_bytes = b"task-fixture: true\n"
     request_snapshot.write_bytes(request_bytes)
     attempt = {
-        "schema_version": "emrys.workflow-attempt.v3",
+        "schema_version": "emrys.workflow-attempt.v4",
         "run_id": execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(execution_bytes).hexdigest(),
         "profile_sha256": hashlib.sha256(profile_path.read_bytes()).hexdigest(),
@@ -1649,6 +1648,214 @@ def test_task_subreaper_real_canonical_cancellation(
                     pass
                 finally:
                     os.close(stopped_descriptor)
+
+
+def _task_subreaper_abort_child(root: Path, mode: str) -> None:
+    built = _task_fixture(root)
+    if mode == "launch":
+        built.definition["producer_argv"] = [str(root / "absent-producer")]
+        _rewrite_task(built)
+    elif mode != "publication":
+        built.definition["producer_argv"].extend(["--fail-after", "1"])
+        _rewrite_task(built)
+    descendants = None if mode == "inline" else task._TaskChildren()
+    defaults = task.default_task_ops(descendants=descendants)
+    produced = False
+    original_publish = task._NativePublication.publish
+    original_close = task._NativePublication.close
+    final = Path(built.definition["outputs"][0]["path"])
+    scratch = Path(built.definition["outputs"][0]["working_path"]).parent
+    scratch = scratch.with_name(scratch.name + ".scratch")
+
+    def command(argv, *arguments):
+        nonlocal produced
+        result = defaults.run_command(argv, *arguments)
+        if "producer" in argv:
+            produced = True
+            if mode == "input":
+                built.mutable_input.write_bytes(b"changed before cleanup\n")
+            elif mode == "report":
+                report = Path(built.definition["validation_report_path"])
+                report.parent.mkdir(parents=True, exist_ok=True)
+                report.write_bytes(b"retained validation report\n")
+        return result
+
+    def now():
+        if produced and mode == "terminal-input":
+            built.mutable_input.write_bytes(b"changed before terminal publication\n")
+        elif produced and mode == "terminal-output":
+            final.write_bytes(b"foreign destination before terminal publication\n")
+        return defaults.now()
+
+    def publish(publication, *arguments):
+        result = original_publish(publication, *arguments)
+        if mode == "publication":
+            raise task.TaskBoundaryError("fixture failure after native publication")
+        return result
+
+    def close(publication):
+        if mode == "cleanup":
+            raise task.TaskBoundaryError("fixture incomplete cleanup")
+        return original_close(publication)
+
+    def unknown():
+        raise task.TaskProcessGroupAmbiguity("fixture lost descendant observation")
+
+    ops = replace(
+        defaults,
+        run_command=command,
+        now=now,
+        require_descendants_reaped=(
+            unknown if mode == "observation" else defaults.require_descendants_reaped
+        ),
+    )
+    with (
+        patch.object(task._NativePublication, "publish", publish),
+        patch.object(task._NativePublication, "close", close),
+        pytest.raises(task.TaskBoundaryError) as failure,
+    ):
+        _execute_task(built.plan, ops=ops)
+    if mode == "observation":
+        assert task._process_group_ambiguity(failure.value) is not None
+    terminal = _record(built.plan.task_attempt_path)
+    assert terminal["status"] == "failed"
+    assert terminal["abort_closure"] == (
+        "linux-task-prepublication.v1" if mode == "closed" else None
+    )
+    assert scratch.exists() == (mode in {"cleanup", "observation"})
+    if mode == "publication":
+        assert not final.exists()
+    if mode == "closed":
+        assert terminal["stable_inputs_rechecked"]
+        assert terminal["inputs"] == _record(built.plan.task_start_path)["inputs"]
+        identity = {
+            "run_root": built.run_root,
+            "execution": _record(built.plan.execution_path),
+            "profile": _record(built.plan.profile_path),
+            "machine_key": built.plan.machine_key,
+            "scope": built.plan.scope,
+        }
+        reference = task._record_reference(built.plan.task_attempt_path, built.run_root)
+        assert task.recheck_aborted_task(
+            **identity, record_reference=reference
+        ) == _load_task(built.manifest_path)
+        final.write_bytes(b"later successful native output\n")
+        historical, bound = task._admit_task_attempt(
+            **identity, workflow_attempt_id=built.plan.workflow_attempt_id
+        )
+        assert historical == terminal and bound == reference
+        with pytest.raises(task.TaskBoundaryError, match="destination or residue"):
+            task.recheck_aborted_task(**identity, record_reference=reference)
+        built.mutable_input.write_bytes(b"later changed scientific input\n")
+        assert (
+            task._admit_task_attempt(
+                **identity, workflow_attempt_id=built.plan.workflow_attempt_id
+            )[0]
+            == terminal
+        )
+        with pytest.raises(task.TaskBoundaryError, match="content binding"):
+            task.recheck_aborted_task(**identity, record_reference=reference)
+    (root / "abort-checked.json").write_text(json.dumps({"mode": mode}))
+
+
+@pytest.mark.skipif(
+    sys.platform != "linux", reason="requires dedicated Linux Task worker"
+)
+@pytest.mark.parametrize(
+    "mode",
+    (
+        "closed",
+        "inline",
+        "launch",
+        "input",
+        "report",
+        "publication",
+        "cleanup",
+        "observation",
+        "terminal-input",
+        "terminal-output",
+    ),
+)
+def test_task_subreaper_abort_closure_requires_every_prepublication_proof(
+    tmp_path: Path, mode: str
+) -> None:
+    root = _subreaper_evidence_root(tmp_path, f"abort-{mode}")
+    completed = subprocess.run(
+        _subreaper_child_command("_task_subreaper_abort_child", root, mode),
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert completed.returncode == 0, (completed.stdout, completed.stderr)
+    assert _record(root / "abort-checked.json") == {"mode": mode}
+
+
+@pytest.mark.parametrize(
+    "outcome", ("closed", "live", "unregistered", "ownership", "wait-error")
+)
+def test_task_subreaper_closure_requires_fresh_exclusive_wait(monkeypatch, outcome):
+    descendants = task._TaskChildren.__new__(task._TaskChildren)
+    descendants.process = None if outcome == "unregistered" else Mock(returncode=0)
+    descendants.empty = True
+    descendants._check_owner = Mock(
+        side_effect=OSError("fixture owner read") if outcome == "ownership" else None
+    )
+    wait = Mock(
+        side_effect=(
+            ChildProcessError()
+            if outcome == "closed"
+            else OSError("fixture wait error")
+            if outcome == "wait-error"
+            else None
+        ),
+        return_value=None,
+    )
+    monkeypatch.setattr(task.os, "waitid", wait, raising=False)
+    for name in ("P_ALL", "WEXITED", "WNOHANG", "WNOWAIT"):
+        monkeypatch.setattr(task.os, name, 1, raising=False)
+    if outcome == "closed":
+        descendants.require_reaped()
+    else:
+        with pytest.raises(
+            task.TaskBoundaryError
+            if outcome == "unregistered"
+            else task.TaskProcessGroupAmbiguity
+        ):
+            descendants.require_reaped()
+    assert task.default_task_ops().require_descendants_reaped is None
+
+
+def test_abort_revalidation_remains_interruptible_before_terminal_publication():
+    publish = Mock()
+    streams = Mock()
+    streams.finalize.return_value = ({}, {})
+
+    def interrupted():
+        assert not task._TASK_SIGNALS.intersection(
+            signal.pthread_sigmask(signal.SIG_BLOCK, set())
+        )
+        raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        task._publish_attempt(
+            Mock(),
+            ops=replace(_fixed_ops(), publish_bytes=publish),
+            identity={},
+            started_at="2026-08-12T12:01:00Z",
+            producer=None,
+            validator=None,
+            semantic=None,
+            stable_inputs_rechecked=False,
+            task_start_reference=None,
+            failure_message="fixture producer failure",
+            streams=streams,
+            inputs=(),
+            outputs=(),
+            prove_abort=interrupted,
+        )
+    publish.assert_not_called()
 
 
 @pytest.mark.parametrize("observation", ("closed", "live", "busy", "leader-live"))

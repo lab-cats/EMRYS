@@ -304,19 +304,6 @@ def _exact_scope_tree_blockers(
     return tuple(blockers)
 
 
-def task_start_tree_blockers(
-    root: Path, expected: Sequence[ExpectedTask]
-) -> tuple[str, ...]:
-    """Require the aggregate producer-entry ledger to have an exact roster."""
-
-    return _exact_scope_tree_blockers(
-        root / "state" / "task-starts",
-        expected,
-        file_name=lambda item: f"{item.scope_id}.json",
-        label="task-start",
-    )
-
-
 def _state_tree_blockers_by_domain(
     root: Path,
 ) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
@@ -327,7 +314,7 @@ def _state_tree_blockers_by_domain(
         entries = _stable_directory_entries(state_root, root, "aggregate state root")
     except InspectionError as exc:
         return (str(exc),), (), ()
-    allowed = frozenset({"task-starts", "verified", "reporting"})
+    allowed = frozenset({"verified", "reporting"})
     integrity_blockers: list[str] = []
     results_blockers: list[str] = []
     reporting_blockers: list[str] = []
@@ -338,7 +325,6 @@ def _state_tree_blockers_by_domain(
         elif path.is_symlink() or not path.is_dir():
             label = {
                 "reporting": "Reporting state root",
-                "task-starts": "Task-start state root",
                 "verified": "Verified state root",
             }[name]
             target = reporting_blockers if name == "reporting" else results_blockers
