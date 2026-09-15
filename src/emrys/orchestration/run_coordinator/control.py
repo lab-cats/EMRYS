@@ -1408,7 +1408,37 @@ def configure_inspect_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--actions",
         action="store_true",
-        help="Enable interactive watch handoffs: p resume plan/confirm, o report preview for a Run; s stop preview for a submission. Run handoffs use the default profile.",
+        help="Enable interactive watch handoffs: p resume plan/confirm, b report preview for a Run; s stop preview for a submission. Run handoffs use the default profile.",
+    )
+    parser.add_argument(
+        "--job-id",
+        nargs="?",
+        const="auto",
+        metavar="JOB_ID",
+        help="Watch a scheduler job without Project admission; omit JOB_ID to discover a current-user EMRYS job. Cannot authorize actions.",
+    )
+    parser.add_argument(
+        "--log-dir",
+        help="Absolute scheduler log directory for historical job selection.",
+    )
+    parser.add_argument("--out", help="Explicit scheduler stdout for --offline.")
+    parser.add_argument("--err", help="Explicit scheduler stderr for --offline.")
+    parser.add_argument(
+        "--offline",
+        action="store_true",
+        help="Read an explicit job and log pair without any scheduler queries.",
+    )
+    parser.add_argument(
+        "--refresh",
+        type=int,
+        default=30,
+        metavar="SECONDS",
+        help="Dashboard diagnostic refresh interval, at least 5 seconds (default 30).",
+    )
+    parser.add_argument(
+        "--snapshot",
+        action="store_true",
+        help="Print one plain dashboard snapshot without entering the interactive terminal.",
     )
     parser.add_argument(
         "--submission",
@@ -1419,7 +1449,7 @@ def configure_inspect_parser(parser: argparse.ArgumentParser) -> None:
         "--detail",
         choices=("normal", "verbose", "debug"),
         default="normal",
-        help="Select static inspection detail; --watch uses a fixed layout.",
+        help="Select static inspection detail; --watch has overview, details and evidence/log views.",
     )
 
 
@@ -1960,7 +1990,7 @@ def _watch_review_actions(
                 resume_from_args,
             ),
             (
-                b"o",
+                b"b",
                 "report preview",
                 "report",
                 configure_report_parser,
@@ -2000,10 +2030,70 @@ def inspect_from_args(
             and getattr(arguments, "run", None) is not None
         ):
             raise ControlError("Select a submission or a Run, not both")
-        watching = getattr(arguments, "watch", False)
+        snapshot_only = getattr(arguments, "snapshot", False)
+        watching = getattr(arguments, "watch", False) or snapshot_only
         actions = getattr(arguments, "actions", False)
+        refresh_seconds = getattr(arguments, "refresh", 30)
+        if refresh_seconds < 5:
+            raise ControlError("--refresh must be at least 5 seconds")
+        raw_selector = getattr(arguments, "job_id", None)
+        raw_mode = raw_selector is not None or any(
+            getattr(arguments, key, None)
+            for key in ("log_dir", "out", "err", "offline")
+        )
+        if (
+            watching
+            and not raw_mode
+            and not actions
+            and not explicit_run
+            and submission_selector is None
+            and getattr(arguments, "project", None) is None
+        ):
+            try:
+                Path("project.yaml").lstat()
+            except FileNotFoundError:
+                raw_mode = True
+        if raw_mode:
+            if not watching:
+                raise ControlError(
+                    "Scheduler dashboard selection requires --watch or --snapshot"
+                )
+            if (
+                actions
+                or explicit_run
+                or submission_selector is not None
+                or getattr(arguments, "project", None) is not None
+                or cli_log_root is not None
+            ):
+                raise ControlError(
+                    "Scheduler diagnostic selection excludes Project, Run, submission, log-root and action selectors"
+                )
+            from . import dashboard
+
+            selected = dashboard.resolve_selection(
+                (os.environ.get("EMRYS_DASHBOARD_JOB_ID", "").strip() or None)
+                if raw_selector in (None, "auto")
+                else raw_selector,
+                getattr(arguments, "log_dir", None)
+                or os.environ.get("EMRYS_DASHBOARD_LOG_DIR", "").strip()
+                or None,
+                getattr(arguments, "out", None),
+                getattr(arguments, "err", None),
+                getattr(arguments, "offline", False),
+            )
+            return _inspection_presentation.watch(
+                None,
+                raw_job=selected,
+                offline=getattr(arguments, "offline", False),
+                refresh_seconds=refresh_seconds,
+                snapshot_only=snapshot_only,
+                inspect_run=inspection.inspect_run,
+                next_action=_next_supported_action,
+            )
         if actions and not watching:
             raise ControlError("--actions requires --watch")
+        if actions and snapshot_only:
+            raise ControlError("--actions cannot be used with --snapshot")
         if actions:
             _inspection_presentation.require_action_terminal()
         if getattr(arguments, "run", None) is None:
@@ -2019,6 +2109,8 @@ def inspect_from_args(
                     request=request,
                     inspect_run=inspection.inspect_run,
                     next_action=_next_supported_action,
+                    refresh_seconds=refresh_seconds,
+                    snapshot_only=snapshot_only,
                     review_actions=(
                         _watch_review_actions(
                             project, request.request_root, submission=True
@@ -2054,6 +2146,8 @@ def inspect_from_args(
                 application_log_root=log_root,
                 inspect_run=inspection.inspect_run,
                 next_action=_next_supported_action,
+                refresh_seconds=refresh_seconds,
+                snapshot_only=snapshot_only,
                 review_actions=(
                     _watch_review_actions(_project_path, run_root) if actions else ()
                 ),
@@ -2085,6 +2179,7 @@ def inspect_from_args(
         OSError,
         inspection.InspectionError,
         _inspection_presentation.PresentationError,
+        slurm_submission.scheduler_observation.DiscoveryError,
         onboarding.OnboardingError,
         ControlError,
         LogControlError,

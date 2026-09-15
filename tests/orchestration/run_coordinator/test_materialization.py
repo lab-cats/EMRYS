@@ -3212,7 +3212,7 @@ def test_watch_resume_handoff_fresh_plan_and_decline_preserve_every_record(
     def watch(selected_project, *, run_root, review_actions, **kwargs):
         nonlocal before
         assert selected_project == project and run_root == first.run_root
-        assert tuple(key for key, _label, _call in review_actions) == (b"p", b"o")
+        assert tuple(key for key, _label, _call in review_actions) == (b"p", b"b")
         if changed:
             profile.write_text("invalid profile selected after watch entry\n")
         before = snapshot()
@@ -4025,6 +4025,11 @@ def test_public_watch_selected_request_is_one_read_only_nonterminal_snapshot(
                     ),
                     "Resources\x1b[31m",
                     context["scheduler_job_name"],
+                    "0:00",
+                    "1:00:00",
+                    "12",
+                    "compute",
+                    "(Priority)",
                 )
             )
             + "\n"
@@ -5272,7 +5277,7 @@ def test_standalone_report_logging_boundary(
             assert selected_project == project and run_root.name == arguments.run
             assert calls == []
             return next(
-                callback for key, _label, callback in review_actions if key == b"o"
+                callback for key, _label, callback in review_actions if key == b"b"
             )()
 
         monkeypatch.setattr(control._inspection_presentation, "watch", watch)
@@ -5359,7 +5364,7 @@ def test_watch_report_handoff_freshly_refuses_ineligible_run_without_writes(
         control._inspection_presentation,
         "watch",
         lambda _project, *, review_actions, **_kwargs: next(
-            callback for key, _label, callback in review_actions if key == b"o"
+            callback for key, _label, callback in review_actions if key == b"b"
         )(),
     )
     parser = argparse.ArgumentParser()

@@ -211,6 +211,8 @@ class SubmissionRequestObservation:
 
 def observe_submission_request(
     request: SubmissionRequestObservation,
+    *,
+    include_resources: bool = False,
 ) -> dict[str, object]:
     """Bind retained request identity to metadata without Run or recovery claims."""
     context = request.context
@@ -233,6 +235,7 @@ def observe_submission_request(
             if context["schema_version"] == "emrys.submission-request.v3"
             else None
         ),
+        include_resources=include_resources,
     )
 
 

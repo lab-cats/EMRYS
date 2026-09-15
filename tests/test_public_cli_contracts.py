@@ -628,7 +628,7 @@ def test_watch_handoff_uses_exact_selection_and_fresh_ordinary_parser_defaults(
             assert kwargs["run_root"] == run_root
             assert "request" not in kwargs
         assert isinstance(review_actions, tuple)
-        expected_keys = (b"s",) if command == "stop" else (b"p", b"o")
+        expected_keys = (b"s",) if command == "stop" else (b"p", b"b")
         assert tuple(key for key, _label, _callback in review_actions) == (
             expected_keys if enabled else ()
         )
@@ -639,7 +639,7 @@ def test_watch_handoff_uses_exact_selection_and_fresh_ordinary_parser_defaults(
         in_view = False
         if not enabled:
             return 0
-        key = {"resume": b"p", "report": b"o", "stop": b"s"}[command]
+        key = {"resume": b"p", "report": b"b", "stop": b"s"}[command]
         return next(
             callback for selected, _label, callback in review_actions if selected == key
         )()

@@ -695,24 +695,33 @@ inspection snapshot. CV-20 supplies exact selected-request scheduler state.
 These are shared CLI observations for the integrated watch view; the existing
 dashboard remains in place until its complete replacement acceptance is met.
 
-**Selected watch slice:** `inspect --watch` holds one exact Project/request/Run
-selection and presents scheduler observations, dated scientific and reporting
-evidence, elapsed context, bounded sanitized tails and next supported actions.
-Shared presentation replaces duplicate milestone/Task/elapsed projection across
-static and watch output. The initial and explicit refresh perform existing full
-Run admission; screen painting performs no reads and automatic refresh only
-checks scheduler state and the selected diagnostic tail. One daemon reader
-coalesces refresh requests so quitting does not await stalled filesystem I/O.
-Observation dates and historical Attempt identity remain explicit.
+**Dashboard parity implementation:** Installed `inspect --watch` now shares the
+legacy diagnostic discovery, selection, parser and overview/detail renderer.
+It reproduces explicit/recent/historical job selection, environment precedence,
+offline owned streams, configurable refresh and snapshots, pipeline history,
+sample lanes and peer timings, stage explanations/resources, current frontier,
+activity/errors, scheduler placement/usage and legacy navigation. Exact-request
+resources preserve stronger name/UID/cluster/path identity; optional batch usage
+has independent dates and before/after local identity checks.
 
-The existing input owner supplies bounded suffix reads with stable no-follow
-identity checks. Replaced/truncated streams do not inherit previous bytes or
-digest authority. No command execution, automatic resubmission or recovery
-action is added by the ordinary view. CV-24 supplies opt-in handoffs; CV-25 adds
-admitted Task paths and Run-selected application discovery. Legacy standalone
-discovery/accounting parity and institutional terminal/NFS behavior remain open.
-Those gaps and complete replacement validation remain under this card and
-`DASHBOARD-RETIRE-01`; no old dashboard surface or evidence is retired.
+The new evidence/log view preserves Run/Attempt/Task/reporting admissions and
+application-log discovery. Full retained diagnostic history reconstructs progress
+on reconnect, while no-follow generation checks prevent rotation/truncation from
+mixing bytes. One bounded daemon per stream and closed/start synchronization
+preserve responsive exit. `o` remains overview; report preview moves to `b`.
+Queued input is discarded before CLI handoff. Unknown invocation totals are
+shown as unknown, replacing the legacy six-sample/25-partition assumptions.
+
+**Consolidation and validation:** Reuse existing selection, scheduler, parser,
+line projections and CLI handlers; no new product file, dependency, command,
+persistent schema or recovery authority. The installed Rich view adapts the
+shared layout instead of implementing another pipeline/sample presenter.
+Legacy and installed public fixtures cover discovery/accounting/ownership,
+full-trace reconnect, changed streams, resource identity/usage, layouts,
+plain/color output, navigation and fresh action handoff. Focused local checks
+and final hosted CI are required before software acceptance. Institutional
+terminal/NFS and operator walkthrough remain CV-16 acceptance; the original
+entry point and generated legacy names remain under `DASHBOARD-RETIRE-01`.
 
 **Legacy offline correction:** The existing `--offline` selector already avoided
 scheduler discovery, but snapshot and interactive refresh still queried Slurm.
@@ -1054,7 +1063,7 @@ under `DASHBOARD-RETIRE-01`.
 **Owners/dependencies:** Existing CLI/control and dashboard; CV-16 first.
 
 **Selected actions:** Interactive `--watch --actions` offers `p` for a Run's
-ordinary resume plan and confirmation, `o` for its report preview, or `s` for
+ordinary resume plan and confirmation, `b` for its report preview, or `s` for
 an exact request's stop preview. One immutable action list replaces the
 resume-only callback. Each handoff captures only the exact Project/selection,
 closes the view and restores the terminal, then constructs the ordinary parser
