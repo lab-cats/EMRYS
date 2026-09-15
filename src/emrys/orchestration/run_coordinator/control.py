@@ -807,6 +807,8 @@ def _schedule(
     overrides: ResourceOverrides,
     workspace: Path,
 ) -> int:
+    request_token = uuid.uuid4().hex
+    request_root = _absolute(workspace) / "logs" / f"submission-{request_token}"
     delegate_argv = _delegate_argv(
         command,
         arguments,
@@ -818,6 +820,7 @@ def _schedule(
         profile,
         emrys_argv=delegate_argv,
         log_dir=_absolute(workspace) / "logs",
+        request_token=request_token,
     )
     console_print(f"Project: {workspace.name!a}", style="bold")
     if command == "run":
@@ -841,13 +844,11 @@ def _schedule(
         _print_no_write("scheduler or workspace")
         return 0
     _admit_workspace_location(workspace)
-    request_root = (
-        _prepare_scheduler_log_dir(workspace) / f"submission-{uuid.uuid4().hex}"
-    )
+    _prepare_scheduler_log_dir(workspace)
     try:
         request_root.mkdir(mode=0o700)
         context = {
-            "schema_version": "emrys.submission-request.v1",
+            "schema_version": "emrys.submission-request.v2",
             "created_at": datetime.now(UTC).isoformat(),
             "submitter_uid": os.getuid(),
             "command": command,
@@ -861,7 +862,7 @@ def _schedule(
             "scheduler_stderr_pattern": str(submission.stderr_pattern),
         }
         context = slurm_submission.validate_request_context(
-            context, _absolute(arguments.project)
+            context, _absolute(arguments.project), request_root
         )
         with open(
             request_root / "request.json",

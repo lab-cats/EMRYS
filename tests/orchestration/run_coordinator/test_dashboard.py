@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import os
 import subprocess
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -29,6 +30,37 @@ def _make_logs(log_dir: Path, job_id: int = JOB_ID) -> tuple[Path, Path]:
     stdout.write_text("stdout\n", encoding="utf-8")
     stderr.write_text("stderr\n", encoding="utf-8")
     return stdout, stderr
+
+
+@pytest.mark.parametrize("matching_token", [True, False])
+def test_request_specific_scheduler_stream_pair_admission(
+    tmp_path: Path, matching_token: bool
+) -> None:
+    stdout = tmp_path / f"emrys-local-pilot-{'a' * 32}-{JOB_ID}.out"
+    stderr = (
+        tmp_path
+        / f"emrys-local-pilot-{('a' if matching_token else 'b') * 32}-{JOB_ID}.err"
+    )
+    stdout.write_bytes(b"")
+    stderr.write_bytes(b"")
+    if matching_token:
+        selected = dashboard.validate_log_selection(JOB_ID, str(stdout), str(stderr))
+        assert (selected["out"], selected["err"]) == (str(stdout), str(stderr))
+    else:
+        with pytest.raises(dashboard.DiscoveryError, match="stderr does not match"):
+            dashboard.validate_log_selection(JOB_ID, str(stdout), str(stderr))
+
+
+def test_dashboard_remains_directly_executable_in_isolated_mode() -> None:
+    completed = subprocess.run(
+        [sys.executable, "-I", "-B", str(MODULE_PATH), "--help"],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert "--refresh" in completed.stdout
 
 
 def _flatten_render_lines(lines: list[object]) -> str:
