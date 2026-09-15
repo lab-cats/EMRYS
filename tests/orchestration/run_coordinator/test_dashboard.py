@@ -11,6 +11,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from tests.orchestration.run_coordinator.test_slurm_submission import _scheduler_replies
+
 MODULE_PATH = (
     Path(__file__).resolve().parents[3]
     / "src/emrys/orchestration/run_coordinator/dashboard.py"
@@ -107,85 +109,120 @@ def test_installed_dashboard_uses_the_shared_scheduler_exception_class() -> None
 @pytest.mark.parametrize("cluster", [None, "alpha"])
 @pytest.mark.parametrize("job_name", [None, "emrys-local-pilot-" + "a" * 32])
 def test_exact_job_observation_uses_one_scoped_record(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    source: str,
-    cluster: str | None,
-    job_name: str | None,
-) -> None:
+    tmp_path, monkeypatch, source, cluster, job_name
+):
     out = str(tmp_path / f"emrys-local-pilot-{'a' * 32}-%j.out")
     err = str(tmp_path / f"emrys-local-pilot-{'a' * 32}-%j.err")
-    calls = []
     monkeypatch.setenv("SLURM_CLUSTERS", "wrong,other")
     for key in ("SQUEUE_STATES", "SQUEUE_PARTITION", "SQUEUE_NAME", "SACCT_FORMAT"):
         monkeypatch.setenv(key, "ambient-filter")
     monkeypatch.setenv("SLURM_CONF", "/etc/slurm/observed.conf")
     monkeypatch.setenv("SLURM_JWT", "test-auth-token")
-
-    def command(argv, timeout=10, environment=None):
-        calls.append(argv)
+    state, detail = (
+        ("PENDING", "Priority") if source == "squeue" else ("COMPLETED", "0:0")
+    )
+    reply = f"{JOB_ID}|{os.getuid()}|{state}|alpha|{out}|{err}|{detail}"
+    command = _scheduler_replies(
+        monkeypatch,
+        dashboard._scheduler,
+        *([b""] if source == "sacct" else []),
+        (reply + ("|" + job_name if job_name else "") + "\n").encode(),
+    )
+    observed = dashboard._scheduler.observe_job(
+        JOB_ID, out, err, cluster, job_name=job_name
+    )
+    assert [call.args[0][0] for call in command.call_args_list] == (
+        ["squeue"] if source == "squeue" else ["squeue", "sacct"]
+    )
+    for call in command.call_args_list:
+        argv, environment = call.args[0], call.kwargs["environment"]
+        assert call.kwargs["timeout"] == 10
         assert "SLURM_CLUSTERS" not in environment
         assert not any(key.startswith(("SQUEUE_", "SACCT_")) for key in environment)
         assert environment["SLURM_CONF"] == "/etc/slurm/observed.conf"
         assert environment["SLURM_JWT"] == "test-auth-token"
         assert environment["PATH"] == os.environ["PATH"]
         assert argv[1] == ("--local" if cluster is None else "--clusters=alpha")
-        assert timeout == 10
-        if argv[0] != source:
-            assert argv[0] == "squeue"
-            return b""
-        if source == "squeue":
-            assert (
-                argv[-1]
-                == "JobArrayId:0|,UserID:0|,State:0|,Cluster:0|,STDOUT:0|,STDERR:0|,Reason:0"
-                + ("|,Name:0" if job_name is not None else "")
-            )
-            state, suffix = "PENDING", "|Priority"
-        else:
-            assert "--duplicates" in argv and "-X" in argv
-            assert argv[-1].endswith(
-                ",JobName" if job_name is not None else ",ExitCode"
-            )
-            state, suffix = "COMPLETED", "|0:0"
-        if job_name is not None:
-            suffix += "|" + job_name
-        return (f"{JOB_ID}|{os.getuid()}|{state}|alpha|{out}|{err}{suffix}\n").encode()
-
-    monkeypatch.setattr(dashboard._scheduler, "command_bytes", command)
-    observed = dashboard._scheduler.observe_job(
-        JOB_ID, out, err, cluster, job_name=job_name
-    )
-    assert observed["state"] == ("PENDING" if source == "squeue" else "COMPLETED")
-    assert observed["terminal"] is (source == "sacct")
+    argv = command.call_args.args[0]
+    if source == "squeue":
+        assert (
+            argv[-1]
+            == "JobArrayId:0|,UserID:0|,State:0|,Cluster:0|,STDOUT:0|,STDERR:0|,Reason:0"
+            + ("|,Name:0" if job_name is not None else "")
+        )
+    else:
+        assert "--duplicates" in argv and "-X" in argv
+        assert argv[-1].endswith(",JobName" if job_name is not None else ",ExitCode")
+    assert observed["state"] == state and observed["terminal"] is (source == "sacct")
     assert observed["cluster"] == "alpha" and observed["source"] == source
-    assert observed["diagnostic"] is None
-    assert observed.get("job_name") == job_name
-    assert observed["reason" if source == "squeue" else "exit_code"] == (
-        "Priority" if source == "squeue" else "0:0"
+    assert observed["diagnostic"] is None and observed.get("job_name") == job_name
+    assert observed["reason" if source == "squeue" else "exit_code"] == detail
+
+
+@pytest.mark.parametrize("job_name", ["", "a,b", "-other", "unsafe\n", True, "x" * 129])
+def test_invalid_expected_job_name_does_not_query_scheduler(monkeypatch, job_name):
+    command = _scheduler_replies(monkeypatch, dashboard._scheduler)
+    result = dashboard._scheduler.observe_job(
+        JOB_ID, "/logs/out", "/logs/err", "alpha", job_name=job_name
     )
-    assert len(calls) == (1 if source == "squeue" else 2)
+    command.assert_not_called()
+    assert result["state"] == "UNKNOWN" and result["diagnostic"]
 
 
-@pytest.mark.parametrize("source", ["squeue", "sacct"])
-@pytest.mark.parametrize(
-    "defect",
-    [
-        "different",
-        "empty",
-        "truncated",
-        "padded",
-        "missing-column",
-        "duplicate",
-        "uid",
-        "cluster",
-        "root-id",
-    ],
-)
-def test_named_request_observation_requires_the_full_identity(
-    monkeypatch: pytest.MonkeyPatch, source: str, defect: str
-) -> None:
-    name = "emrys-local-pilot-" + "a" * 32
+def _identity_rejections(out, err, source):
     fields = [
+        str(JOB_ID),
+        str(os.getuid()),
+        "COMPLETED",
+        "alpha",
+        out,
+        err,
+        "0:0" if source == "sacct" else "None",
+    ]
+
+    def row(index=None, value=None):
+        changed = fields.copy()
+        if index is not None:
+            changed[index] = value
+        return ("|".join(changed) + "\n").encode()
+
+    replies = {
+        name: row(index, value)
+        for name, (index, value) in {
+            "wrong-id": (0, str(JOB_ID + 1)),
+            "step-id": (0, f"{JOB_ID}.batch"),
+            "array-id": (0, f"{JOB_ID}_3"),
+            "heterogeneous-id": (0, f"{JOB_ID}+1"),
+            "wrong-uid": (1, str(os.getuid() + 1)),
+            "empty-state": (2, ""),
+            "unknown-state": (2, "NEW_STATE"),
+            "decorated-state": (2, "COMPLETED invalid"),
+            "truncated-state": (2, "CANCELLED+"),
+            "wrong-cluster": (3, "beta"),
+            "missing-cluster": (3, ""),
+            "reused-id-path": (4, out.replace("a" * 32, "b" * 32)),
+            "missing-stream": (5, ""),
+            "stdout-leading-space": (4, " " + out),
+            "stdout-trailing-space": (4, out + " "),
+            "stderr-leading-space": (5, " " + err),
+            "stderr-trailing-space": (5, err + " "),
+        }.items()
+    }
+    base = row()
+    replies.update(
+        duplicate=base * 2,
+        truncated=base.rsplit(b"|", 1)[0] + b"\n",
+        **{
+            "invalid-utf8": b"\xff\n",
+            "oversized": b"x" * 65537,
+            "failed-query": None,
+            "leading-blank-line": b"\n" + base,
+            "trailing-blank-line": base + b"\n",
+            "whitespace-only": b" \t\n",
+        },
+    )
+    name = "emrys-local-pilot-" + "a" * 32
+    fields[:] = [
         str(JOB_ID),
         str(os.getuid()),
         "COMPLETED",
@@ -195,163 +232,55 @@ def test_named_request_observation_requires_the_full_identity(
         "0:0",
         name,
     ]
-    if defect == "different":
-        fields[-1] = name.replace("a" * 32, "b" * 32)
-    elif defect == "empty":
-        fields[-1] = ""
-    elif defect == "truncated":
-        fields[-1] = name[:20] + "+"
-    elif defect == "padded":
-        fields[-1] += " "
-    elif defect == "missing-column":
-        fields.pop()
-    elif defect == "uid":
-        fields[1] = str(os.getuid() + 1)
-    elif defect == "cluster":
-        fields[3] = "beta"
-    elif defect == "root-id":
-        fields[0] = str(JOB_ID + 1)
-    reply = ("|".join(fields) + "\n").encode()
-    if defect == "duplicate":
-        reply *= 2
-    monkeypatch.setattr(
-        dashboard._scheduler,
-        "command_bytes",
-        lambda argv, **_kwargs: reply if argv[0] == source else b"",
+    replies.update(
+        {
+            "named-" + defect: row(index, value)
+            for defect, (index, value) in {
+                "different": (7, name.replace("a" * 32, "b" * 32)),
+                "empty": (7, ""),
+                "truncated": (7, name[:20] + "+"),
+                "padded": (7, name + " "),
+                "uid": (1, str(os.getuid() + 1)),
+                "cluster": (3, "beta"),
+                "root-id": (0, str(JOB_ID + 1)),
+            }.items()
+        }
     )
-    result = dashboard._scheduler.observe_job(
-        JOB_ID,
-        "/logs/out",
-        "/logs/err",
-        "alpha",
-        job_name=name,
-    )
-    assert result["state"] == "UNKNOWN" and result["terminal"] is False
-    assert result["diagnostic"] and "job_name" not in result
-
-
-@pytest.mark.parametrize("job_name", ["", "a,b", "-other", "unsafe\n", True, "x" * 129])
-def test_invalid_expected_job_name_does_not_query_scheduler(
-    monkeypatch: pytest.MonkeyPatch, job_name: object
-) -> None:
-    monkeypatch.setattr(
-        dashboard._scheduler,
-        "command_bytes",
-        lambda *_args, **_kwargs: pytest.fail("invalid name queried scheduler"),
-    )
-    result = dashboard._scheduler.observe_job(
-        JOB_ID,
-        "/logs/out",
-        "/logs/err",
-        "alpha",
-        job_name=job_name,
-    )
-    assert result["state"] == "UNKNOWN" and result["diagnostic"]
+    replies["named-missing-column"] = row().rsplit(b"|", 1)[0] + b"\n"
+    replies["named-duplicate"] = row() * 2
+    return replies
 
 
 @pytest.mark.parametrize("source", ["squeue", "sacct"])
-@pytest.mark.parametrize(
-    "defect",
-    [
-        "wrong-id",
-        "step-id",
-        "array-id",
-        "heterogeneous-id",
-        "wrong-uid",
-        "reused-id-path",
-        "missing-stream",
-        "stdout-leading-space",
-        "stdout-trailing-space",
-        "stderr-leading-space",
-        "stderr-trailing-space",
-        "wrong-cluster",
-        "missing-cluster",
-        "duplicate",
-        "truncated",
-        "invalid-utf8",
-        "oversized",
-        "failed-query",
-        "empty-state",
-        "unknown-state",
-        "decorated-state",
-        "truncated-state",
-        "leading-blank-line",
-        "trailing-blank-line",
-        "whitespace-only",
-    ],
-)
+@pytest.mark.parametrize("defect", _identity_rejections("", "", "squeue"))
 def test_exact_job_observation_preserves_unknown_on_unproved_identity(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, source: str, defect: str
-) -> None:
+    tmp_path, monkeypatch, source, defect
+):
     out = str(tmp_path / f"emrys-local-pilot-{'a' * 32}-%j.out")
     err = str(tmp_path / f"emrys-local-pilot-{'a' * 32}-%j.err")
-    fields = [str(JOB_ID), str(os.getuid()), "COMPLETED", "alpha", out, err]
-    fields.append("0:0" if source == "sacct" else "None")
-    changes = {
-        "wrong-id": (0, str(JOB_ID + 1)),
-        "step-id": (0, f"{JOB_ID}.batch"),
-        "array-id": (0, f"{JOB_ID}_3"),
-        "heterogeneous-id": (0, f"{JOB_ID}+1"),
-        "wrong-uid": (1, str(os.getuid() + 1)),
-        "empty-state": (2, ""),
-        "unknown-state": (2, "NEW_STATE"),
-        "decorated-state": (2, "COMPLETED invalid"),
-        "truncated-state": (2, "CANCELLED+"),
-        "wrong-cluster": (3, "beta"),
-        "missing-cluster": (3, ""),
-        "reused-id-path": (4, out.replace("a" * 32, "b" * 32)),
-        "missing-stream": (5, ""),
-        "stdout-leading-space": (4, " " + out),
-        "stdout-trailing-space": (4, out + " "),
-        "stderr-leading-space": (5, " " + err),
-        "stderr-trailing-space": (5, err + " "),
-    }
-    if defect in changes:
-        index, value = changes[defect]
-        fields[index] = value
-    if defect == "truncated":
-        fields.pop()
-    reply = ("|".join(fields) + "\n").encode()
-    if defect == "duplicate":
-        reply += reply
-    elif defect == "leading-blank-line":
-        reply = b"\n" + reply
-    elif defect == "trailing-blank-line":
-        reply += b"\n"
-    elif defect == "whitespace-only":
-        reply = b" \t\n"
-    elif defect == "invalid-utf8":
-        reply = b"\xff\n"
-    elif defect == "oversized":
-        reply = b"x" * 65537
-    elif defect == "failed-query":
-        reply = None
-    calls = []
-
-    def command(argv, **_kwargs):
-        calls.append(argv)
-        return reply if argv[0] == source else b""
-
-    monkeypatch.setattr(dashboard._scheduler, "command_bytes", command)
-    observed = dashboard._scheduler.observe_job(JOB_ID, out, err, "alpha")
-    assert observed["state"] == "UNKNOWN" and observed["terminal"] is False
-    assert observed["source"] is None and observed["cluster"] is None
-    assert observed["diagnostic"]
-    assert len(calls) == (1 if source == "squeue" else 2)
+    reply = _identity_rejections(out, err, source)[defect]
+    named = defect.startswith("named-")
+    options = {"job_name": "emrys-local-pilot-" + "a" * 32} if named else {}
+    if named:
+        out, err = "/logs/out", "/logs/err"
+    command = _scheduler_replies(
+        monkeypatch, dashboard._scheduler, *([b""] if source == "sacct" else []), reply
+    )
+    result = dashboard._scheduler.observe_job(JOB_ID, out, err, "alpha", **options)
+    assert result["state"] == "UNKNOWN" and result["terminal"] is False
+    assert result["source"] is None and result["cluster"] is None
+    assert result["diagnostic"] and "job_name" not in result
+    assert command.call_count == (1 if source == "squeue" else 2)
 
 
 @pytest.mark.parametrize(
     "state", ["COMPLETING", "REQUEUED", "SUSPENDED", "RECONFIG_FAIL"]
 )
-def test_exact_queue_transition_states_remain_nonterminal(
-    monkeypatch: pytest.MonkeyPatch, state: str
-) -> None:
-    monkeypatch.setattr(
+def test_exact_queue_transition_states_remain_nonterminal(monkeypatch, state):
+    _scheduler_replies(
+        monkeypatch,
         dashboard._scheduler,
-        "command_bytes",
-        lambda *_args, **_kwargs: (
-            f"{JOB_ID}|{os.getuid()}|{state}|alpha|/logs/out|/logs/err|None\n"
-        ).encode(),
+        f"{JOB_ID}|{os.getuid()}|{state}|alpha|/logs/out|/logs/err|None\n".encode(),
     )
     observed = dashboard._scheduler.observe_job(
         JOB_ID, "/logs/out", "/logs/err", "alpha"
@@ -382,16 +311,13 @@ def test_exact_queue_transition_states_remain_nonterminal(
     ],
 )
 def test_exact_accounting_requires_complete_state_and_canonical_exit_code(
-    monkeypatch: pytest.MonkeyPatch, state: str, exit_code: str, admitted: bool
-) -> None:
-    replies = iter(
-        [
-            b"",
-            f"{JOB_ID}|{os.getuid()}|{state}|alpha|/logs/out|/logs/err|{exit_code}\n".encode(),
-        ]
-    )
-    monkeypatch.setattr(
-        dashboard._scheduler, "command_bytes", lambda *_args, **_kwargs: next(replies)
+    monkeypatch, state, exit_code, admitted
+):
+    _scheduler_replies(
+        monkeypatch,
+        dashboard._scheduler,
+        b"",
+        f"{JOB_ID}|{os.getuid()}|{state}|alpha|/logs/out|/logs/err|{exit_code}\n".encode(),
     )
     observed = dashboard._scheduler.observe_job(
         JOB_ID, "/logs/out", "/logs/err", "alpha"
@@ -407,31 +333,21 @@ def test_exact_accounting_requires_complete_state_and_canonical_exit_code(
 @pytest.mark.parametrize(
     "cluster", ["all", "ALL", "alpha,beta", "-alpha", "alpha\n", ""]
 )
-def test_request_cluster_cannot_expand_or_redirect_query(
-    monkeypatch: pytest.MonkeyPatch, cluster: str
-) -> None:
-    monkeypatch.setattr(
-        dashboard._scheduler,
-        "command_bytes",
-        lambda *_args, **_kwargs: pytest.fail("invalid cluster queried"),
-    )
+def test_request_cluster_cannot_expand_or_redirect_query(monkeypatch, cluster):
+    command = _scheduler_replies(monkeypatch, dashboard._scheduler)
     observed = dashboard._scheduler.observe_job(
         JOB_ID, "/logs/out", "/logs/err", cluster
     )
+    command.assert_not_called()
     assert observed["state"] == "UNKNOWN" and observed["diagnostic"]
 
 
-def test_accounting_nonterminal_record_is_not_current_queue_state(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    replies = iter(
-        [
-            b"",
-            f"{JOB_ID}|{os.getuid()}|RUNNING|alpha|/logs/out|/logs/err|0:0\n".encode(),
-        ]
-    )
-    monkeypatch.setattr(
-        dashboard._scheduler, "command_bytes", lambda *_args, **_kwargs: next(replies)
+def test_accounting_nonterminal_record_is_not_current_queue_state(monkeypatch):
+    _scheduler_replies(
+        monkeypatch,
+        dashboard._scheduler,
+        b"",
+        f"{JOB_ID}|{os.getuid()}|RUNNING|alpha|/logs/out|/logs/err|0:0\n".encode(),
     )
     observed = dashboard._scheduler.observe_job(
         JOB_ID, "/logs/out", "/logs/err", "alpha"

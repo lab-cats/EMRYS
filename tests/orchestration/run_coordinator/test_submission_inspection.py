@@ -3,14 +3,24 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import os
 from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from unittest.mock import Mock
 
 from emrys.contracts.orchestration import api as contracts
+from emrys.libraries.application_logging import (
+    AttemptIdentity,
+    LogControls,
+    LogLevel,
+    event,
+    field,
+    open_attempt_log,
+)
 from emrys.orchestration.run_coordinator import _submission_inspection as reader
 from emrys.orchestration.run_coordinator import slurm_submission
 from emrys.orchestration.run_coordinator.execution_profile import (
@@ -22,6 +32,59 @@ from tests.contracts.orchestration.test_application_model_contracts import (
     successor_run_fixture,
 )
 from tests.orchestration.run_coordinator.test_slurm_submission import _request_record
+
+
+def _snapshot(root, *, dated=False):
+    return {
+        path: (path.read_bytes(), path.stat().st_mtime_ns)
+        if dated
+        else path.read_bytes()
+        for path in root.rglob("*")
+        if path.is_file()
+    }
+
+
+def _current_writer(request, *, scheduler=False):
+    context, command = request.context, request.context["command"]
+    return open_attempt_log(
+        controls=LogControls(
+            LogLevel.NORMAL,
+            Path(context["application_log_root"]),
+            "default",
+            "command_line",
+        ),
+        identity=AttemptIdentity(
+            "run",
+            "pending" if command == "run" else context["requested_run"],
+            "application-" + "b" * 32,
+            f"emrys-{command}",
+        ),
+        mode={"run": "execute", "resume": "resume", "report": "report"}[command],
+        component="orchestration",
+        stderr=io.StringIO(),
+        **({"scheduler_environment": {"SLURM_JOB_ID": "700123"}} if scheduler else {}),
+    )
+
+
+def _clone_attempt(attempt_path, token, *, resume=False):
+    other = json.loads(attempt_path.read_bytes())
+    other_id = "workflow-20260915T120000Z-" + token * 32
+    other_path = attempt_path.parent.parent / other_id / "attempt.json"
+    other_path.parent.mkdir()
+    request_path = other_path.with_name("request.yaml")
+    request_path.write_bytes(attempt_path.with_name("request.yaml").read_bytes())
+    other["request"]["path"] = str(request_path)
+    if resume:
+        other.update(
+            operation="resume",
+            supersedes_workflow_attempt_id=other["workflow_attempt_id"],
+        )
+        other["snakemake_argv"].extend(
+            ["--rerun-triggers", "input", "--ignore-incomplete"]
+        )
+    other.update(workflow_attempt_id=other_id, created_at="2026-09-15T12:00:00Z")
+    contracts.validate_record("workflow-attempt", other)
+    return other_path, other
 
 
 def _request(
@@ -174,7 +237,7 @@ def test_early_context_binds_one_custom_log_without_run_or_terminal_event(
     )
     path, _ = _log(request)
     _log(request, suffix="c", token="d")
-    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    before = _snapshot(tmp_path)
     result = reader.inspect_submission_application(request)
     assert result.status == "application-log-bound" and result.application_log == path
     assert (
@@ -185,7 +248,7 @@ def test_early_context_binds_one_custom_log_without_run_or_terminal_event(
     )
     assert result.diagnostics == ()
     assert result.recorded_outcome is result.recorded_outcome_phase is None
-    assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before
+    assert _snapshot(tmp_path) == before
 
 
 @pytest.mark.parametrize("command", ["run", "resume"])
@@ -193,39 +256,11 @@ def test_early_context_binds_one_custom_log_without_run_or_terminal_event(
 def test_current_writer_preparation_failure_is_recorded_without_run_authority(
     tmp_path, command, outcome
 ):
-    import io
-
-    from emrys.libraries.application_logging import (
-        AttemptIdentity,
-        LogControls,
-        LogLevel,
-        event,
-        field,
-        open_attempt_log,
-    )
-
     request, _ = _request(
         tmp_path, command, None if command == "run" else "run-" + "d" * 64
     )
     context = request.context
-    application = open_attempt_log(
-        controls=LogControls(
-            LogLevel.NORMAL,
-            Path(context["application_log_root"]),
-            "default",
-            "command_line",
-        ),
-        identity=AttemptIdentity(
-            "run",
-            "pending" if command == "run" else context["requested_run"],
-            "application-" + "b" * 32,
-            f"emrys-{command}",
-        ),
-        mode="execute" if command == "run" else "resume",
-        component="orchestration",
-        scheduler_environment={"SLURM_JOB_ID": "700123"},
-        stderr=io.StringIO(),
-    )
+    application = _current_writer(request, scheduler=True)
     application.logger(component="orchestration", phase="preflight").info(
         "Request context recorded.",
         extra=event(
@@ -245,7 +280,7 @@ def test_current_writer_preparation_failure_is_recorded_without_run_authority(
         application.fail(phase="preflight", message="Preparation failed.")
     else:
         assert application.interrupt_best_effort(message="Preparation interrupted.")
-    retained = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    retained = _snapshot(tmp_path)
     after = reader.inspect_submission_application(request)
     assert after.status == before.status and after.application_log == application.path
     assert after.recorded_outcome == f"attempt_{outcome}"
@@ -256,7 +291,7 @@ def test_current_writer_preparation_failure_is_recorded_without_run_authority(
     assert after.run_root is after.workflow_attempt_id is None
     assert after.diagnostics == ()
     assert not (tmp_path / "runs").exists()
-    assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == retained
+    assert _snapshot(tmp_path) == retained
 
 
 @pytest.mark.parametrize("command", ["run", "resume", "report"])
@@ -348,111 +383,86 @@ def test_recorded_preparation_cannot_replace_independent_run_and_attempt_admissi
     assert "not admitted" in " ".join(result.diagnostics)
 
 
-@pytest.mark.parametrize(
-    "defect",
-    [
-        "duplicate-match",
-        "truncated",
-        "invalid-utf8",
-        "duplicate-json-key",
-        "sequence",
-        "scope",
-        "entrypoint",
-        "opening-job",
-        "opening-path",
-        "profile",
-        "project",
-        "duplicate-context",
-        "missing-token",
-        "post-terminal",
-        "terminal-phase",
-        "oversized-number",
-        "deep-json",
-        "unknown-field",
-        "bad-timestamp",
-        "regressing-clock",
-        "prepared-traversal",
-        "duplicate-prepared",
-        "symlink-log",
-        "symlink-loop",
-        "symlink-scope",
-        "unexpected-entry",
-    ],
-)
+def _record_faults(records):
+    def prepared():
+        records.append(
+            {
+                **records[1],
+                "sequence": 3,
+                "event": "analysis_prepared",
+                "fields": {
+                    "run_id": "../../escape",
+                    "workflow_attempt_id": "../escape",
+                },
+            }
+        )
+
+    return {
+        "sequence": lambda: records[1].update(sequence=4),
+        "scope": lambda: records[1].update(scope_id="other"),
+        "entrypoint": lambda: records[1].update(entrypoint="emrys-resume"),
+        "opening-job": lambda: records[0]["fields"].update(slurm_job_id="700124"),
+        "opening-path": lambda: records[0]["fields"].update(
+            log_path="/other/log.jsonl"
+        ),
+        "profile": lambda: records[1]["fields"].update(profile_binding_sha256="d" * 64),
+        "project": lambda: records[1]["fields"].update(project_root="/other"),
+        "duplicate-context": lambda: records.append({**records[1], "sequence": 3}),
+        "missing-token": lambda: records[1]["fields"].update(request_token=None),
+        "post-terminal": lambda: records.extend(
+            [
+                {**records[1], "sequence": 3, "event": "attempt_failed"},
+                {**records[1], "sequence": 4, "event": "after_failure"},
+            ]
+        ),
+        "terminal-phase": lambda: records.append(
+            {**records[1], "sequence": 3, "event": "attempt_failed", "phase": None}
+        ),
+        "oversized-number": lambda: records[1].update(monotonic_seconds=10**1000),
+        "unknown-field": lambda: records[1].update(unexpected=True),
+        "bad-timestamp": lambda: records[1].update(timestamp_utc="invalid"),
+        "regressing-clock": lambda: records[1].update(monotonic_seconds=0),
+        "prepared-traversal": prepared,
+        "duplicate-prepared": lambda: (
+            prepared(),
+            records.append({**records[-1], "sequence": 4}),
+        ),
+    }
+
+
+def _path_faults(request, path):
+    def link(target, directory=False):
+        moved = target.with_name(target.name + "-moved")
+        target.rename(moved)
+        target.symlink_to(moved, target_is_directory=directory)
+
+    return {
+        "duplicate-match": lambda: _log(request, suffix="c"),
+        "truncated": lambda: path.write_bytes(path.read_bytes()[:-1]),
+        "invalid-utf8": lambda: path.write_bytes(b"\xff\n"),
+        "duplicate-json-key": lambda: path.write_bytes(
+            path.read_bytes().replace(b'"sequence":1', b'"sequence":1,"sequence":1', 1)
+        ),
+        "deep-json": lambda: path.write_bytes(
+            b'{"nested":' + b"[" * 2000 + b"0" + b"]" * 2000 + b"}\n"
+        ),
+        "symlink-loop": lambda: (path.unlink(), path.symlink_to(path.name)),
+        "symlink-log": lambda: link(path),
+        "symlink-scope": lambda: link(path.parent.parent, True),
+        "unexpected-entry": lambda: (path.parent / "extra").touch(),
+    }
+
+
+@pytest.mark.parametrize("defect", [*_record_faults(None), *_path_faults(None, None)])
 def test_malformed_or_ambiguous_scope_cannot_bind_application(tmp_path, defect):
     request, _ = _request(tmp_path)
     path, records = _log(request)
-    if defect == "duplicate-match":
-        _log(request, suffix="c")
-    elif defect == "truncated":
-        path.write_bytes(path.read_bytes()[:-1])
-    elif defect == "invalid-utf8":
-        path.write_bytes(b"\xff\n")
-    elif defect == "duplicate-json-key":
-        path.write_bytes(
-            path.read_bytes().replace(b'"sequence":1', b'"sequence":1,"sequence":1', 1)
-        )
-    elif defect == "deep-json":
-        path.write_bytes(b'{"nested":' + b"[" * 2000 + b"0" + b"]" * 2000 + b"}\n")
-    elif defect == "symlink-loop":
-        path.unlink()
-        path.symlink_to(path.name)
-    elif defect in ("symlink-log", "symlink-scope"):
-        target = path if defect == "symlink-log" else path.parent.parent
-        moved = target.with_name(target.name + "-moved")
-        target.rename(moved)
-        target.symlink_to(moved, target_is_directory=defect == "symlink-scope")
-    elif defect == "unexpected-entry":
-        (path.parent / "extra").touch()
-    else:
-        if defect == "sequence":
-            records[1]["sequence"] = 4
-        elif defect == "scope":
-            records[1]["scope_id"] = "other"
-        elif defect == "entrypoint":
-            records[1]["entrypoint"] = "emrys-resume"
-        elif defect == "opening-job":
-            records[0]["fields"]["slurm_job_id"] = "700124"
-        elif defect == "opening-path":
-            records[0]["fields"]["log_path"] = "/other/log.jsonl"
-        elif defect == "profile":
-            records[1]["fields"]["profile_binding_sha256"] = "d" * 64
-        elif defect == "project":
-            records[1]["fields"]["project_root"] = "/other"
-        elif defect == "duplicate-context":
-            records.append({**records[1], "sequence": 3})
-        elif defect == "missing-token":
-            records[1]["fields"]["request_token"] = None
-        elif defect == "post-terminal":
-            records.append({**records[1], "sequence": 3, "event": "attempt_failed"})
-            records.append({**records[1], "sequence": 4, "event": "after_failure"})
-        elif defect == "terminal-phase":
-            records.append(
-                {**records[1], "sequence": 3, "event": "attempt_failed", "phase": None}
-            )
-        elif defect == "oversized-number":
-            records[1]["monotonic_seconds"] = 10**1000
-        elif defect == "unknown-field":
-            records[1]["unexpected"] = True
-        elif defect == "bad-timestamp":
-            records[1]["timestamp_utc"] = "invalid"
-        elif defect == "regressing-clock":
-            records[1]["monotonic_seconds"] = 0
-        else:
-            records.append(
-                {
-                    **records[1],
-                    "sequence": 3,
-                    "event": "analysis_prepared",
-                    "fields": {
-                        "run_id": "../../escape",
-                        "workflow_attempt_id": "../escape",
-                    },
-                }
-            )
-            if defect == "duplicate-prepared":
-                records.append({**records[-1], "sequence": 4})
+    changes = _record_faults(records)
+    if defect in changes:
+        changes[defect]()
         _write_log(path, records)
+    else:
+        _path_faults(request, path)[defect]()
     result = reader.inspect_submission_application(request)
     assert (
         result.status == "unknown" and result.application_log is result.run_root is None
@@ -649,31 +659,9 @@ def _prepared(root, attempt):
 def test_run_discovery_admits_current_writer_without_submission_or_live_project(
     tmp_path, monkeypatch, command, outcome
 ):
-    import io
-
-    from emrys.libraries.application_logging import (
-        AttemptIdentity,
-        LogControls,
-        LogLevel,
-        event,
-        field,
-        open_attempt_log,
-    )
-
     request, root, _attempt_path, attempt = _authority(tmp_path, command=command)
     log_root = Path(request.context["application_log_root"])
-    application = open_attempt_log(
-        controls=LogControls(LogLevel.NORMAL, log_root, "default", "command_line"),
-        identity=AttemptIdentity(
-            "run",
-            "pending" if command == "run" else root.name,
-            "application-" + "b" * 32,
-            f"emrys-{command}",
-        ),
-        mode={"run": "execute", "resume": "resume", "report": "report"}[command],
-        component="orchestration",
-        stderr=io.StringIO(),
-    )
+    application = _current_writer(request)
     logger = application.logger(component="orchestration", phase="preflight")
     logger.info(
         "Preparation recorded.",
@@ -700,11 +688,7 @@ def test_run_discovery_admits_current_writer_without_submission_or_live_project(
     # Historical association uses retained records, not current authored inputs.
     Path(request.context["project"]).unlink()
     (tmp_path / "selected.yaml").write_bytes(b"current placement has changed\n")
-    before = {
-        p: (p.read_bytes(), p.stat().st_mtime_ns)
-        for p in tmp_path.rglob("*")
-        if p.is_file()
-    }
+    before = _snapshot(tmp_path, dated=True)
     reads = []
     original = reader.read_bytes_with_identity
 
@@ -735,11 +719,7 @@ def test_run_discovery_admits_current_writer_without_submission_or_live_project(
         }[outcome]
     )
     assert len(reads) == len(set(reads))
-    assert {
-        p: (p.read_bytes(), p.stat().st_mtime_ns)
-        for p in tmp_path.rglob("*")
-        if p.is_file()
-    } == before
+    assert _snapshot(tmp_path, dated=True) == before
     assert not (root / "results").exists()
 
 
@@ -749,21 +729,8 @@ def test_run_discovery_retains_all_historical_and_duplicate_attempt_logs(
     request, root, attempt_path, attempt = _authority(tmp_path)
     first, first_records = _log(request, prepared=_prepared(root, attempt))
     duplicate, _ = _log(request, suffix="c", prepared=_prepared(root, attempt))
-    later = json.loads(attempt_path.read_bytes())
-    later_id = "workflow-20260915T120000Z-" + "f" * 32
-    later.update(
-        workflow_attempt_id=later_id,
-        created_at="2026-09-15T12:00:00Z",
-        operation="resume",
-        supersedes_workflow_attempt_id=attempt["workflow_attempt_id"],
-    )
-    later["snakemake_argv"].extend(["--rerun-triggers", "input", "--ignore-incomplete"])
-    later_path = root / "attempts" / later_id / "attempt.json"
-    later_path.parent.mkdir()
-    later_request = later_path.with_name("request.yaml")
-    later_request.write_bytes(attempt_path.with_name("request.yaml").read_bytes())
-    later["request"]["path"] = str(later_request)
-    contracts.validate_record("workflow-attempt", later)
+    later_path, later = _clone_attempt(attempt_path, "f", resume=True)
+    later_id = later["workflow_attempt_id"]
     later_path.write_bytes(contracts.canonical_json_bytes(later))
     resumed = replace(
         request,
@@ -787,13 +754,7 @@ def test_run_discovery_retains_all_historical_and_duplicate_attempt_logs(
         }
     )
     _write_log(first, first_records)
-    reads = []
-    original = reader.read_bytes_with_identity
-
-    def read(path, *args, **kwargs):
-        reads.append(path)
-        return original(path, *args, **kwargs)
-
+    read = Mock(wraps=reader.read_bytes_with_identity)
     monkeypatch.setattr(reader, "read_bytes_with_identity", read)
     result = _discover(request, root)
     assert result.status == "complete" and result.diagnostics == (), result.diagnostics
@@ -809,6 +770,7 @@ def test_run_discovery_retains_all_historical_and_duplicate_attempt_logs(
         later_id,
         None,
     ]
+    reads = [call.args[0] for call in read.call_args_list]
     assert len(reads) == len(set(reads)), "Each distinct frozen record is read once"
     assert not attempt_path.with_name("attempt-receipt.json").exists()
     # Selected-request identity remains strictly unique, despite Run discovery preserving both.
@@ -850,16 +812,9 @@ def test_run_discovery_keeps_stable_matches_but_reports_incomplete_scan(
         "request-snapshot",
         "missing-attempt",
     }:
-        other_id = "workflow-20260915T120000Z-" + "e" * 32
-        other_path = root / "attempts" / other_id / "attempt.json"
-        other_path.parent.mkdir()
-        other = json.loads(attempt_path.read_bytes())
-        other["workflow_attempt_id"] = other_id
-        other["created_at"] = "2026-09-15T12:00:00Z"
+        other_path, other = _clone_attempt(attempt_path, "e")
+        other_id = other["workflow_attempt_id"]
         other_request = other_path.with_name("request.yaml")
-        other_request.write_bytes(attempt_path.with_name("request.yaml").read_bytes())
-        other["request"]["path"] = str(other_request)
-        contracts.validate_record("workflow-attempt", other)
         records[-1]["fields"]["workflow_attempt_id"] = other_id
         if defect == "wrong-project":
             other["authored_paths"]["request"] = "/elsewhere/project.yaml"
