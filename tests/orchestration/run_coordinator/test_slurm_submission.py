@@ -235,6 +235,7 @@ def test_submit_uses_one_process_call_and_parses_one_job_id(
             "input": plan.batch_script,
             "env": {"KEEP": "yes"},
             "text": True,
+            "errors": "replace",
             "capture_output": True,
             "check": False,
         },
@@ -244,14 +245,16 @@ def test_submit_uses_one_process_call_and_parses_one_job_id(
 @pytest.mark.parametrize(
     ("returncode", "stdout", "message"),
     (
-        (1, "", "sbatch failed with exit 1"),
-        (0, "", "one parsable job ID"),
-        (0, "123\n456\n", "one parsable job ID"),
-        (0, "123;cluster;extra\n", "invalid job ID"),
-        (0, "not-a-job\n", "invalid job ID"),
-        (0, "0\n", "invalid job ID"),
-        (0, "00\n", "invalid job ID"),
-        (0, "１２３\n", "invalid job ID"),
+        (1, "", "job ID unconfirmed"),
+        (1, "812345;cluster\n", "accepted job 812345"),
+        (0, "", "Invalid sbatch response"),
+        (0, "123\n456\n", "Invalid sbatch response"),
+        (0, "123;cluster;extra\n", "Invalid sbatch response"),
+        (0, "not-a-job\n", "Invalid sbatch response"),
+        (0, "0\n", "Invalid sbatch response"),
+        (0, "00\n", "Invalid sbatch response"),
+        (0, "１２３\n", "Invalid sbatch response"),
+        (1, "invalid\x1b[31m\n", "Invalid sbatch response"),
     ),
 )
 def test_submit_rejects_failed_or_ambiguous_scheduler_results(
@@ -267,17 +270,64 @@ def test_submit_rejects_failed_or_ambiguous_scheduler_results(
         log_dir=tmp_path / "logs",
     )
     call_count = 0
+    detail = 'submission rejected: "memory"\n\x1b[31m' + "x" * 4096 + "hidden tail"
 
     def fake_run(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
         nonlocal call_count
         call_count += 1
-        return subprocess.CompletedProcess(args, returncode, stdout, "scheduler error")
+        return subprocess.CompletedProcess(args, returncode, stdout, detail)
 
     monkeypatch.setattr(slurm_submission.subprocess, "run", fake_run)
 
-    with pytest.raises(slurm_submission.SlurmSubmissionError, match=message):
+    with pytest.raises(slurm_submission.SlurmSubmissionError, match=message) as caught:
         slurm_submission.submit(plan)
     assert call_count == 1
+    diagnostic = str(caught.value)
+    assert "\x1b" not in diagnostic and "\n" not in diagnostic
+    assert "hidden tail" not in diagnostic
+    if returncode and stdout in {"", "812345;cluster\n"}:
+        assert "sbatch exited with 1" in diagnostic
+        assert "cancelled" not in diagnostic
+    assert ascii(detail[:4096]) in diagnostic
+    if stdout == "812345;cluster\n":
+        assert str(plan.stdout_pattern).replace("%j", "812345") in diagnostic
+        assert str(plan.stderr_pattern).replace("%j", "812345") in diagnostic
+
+
+@pytest.mark.parametrize("failure", ("invoke", "waited_invoke", "records"))
+def test_submission_io_failure_preserves_cause_and_does_not_retry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    plan = slurm_submission.plan_submission(
+        _profile(tmp_path),
+        emrys_argv=("emrys", "doctor"),
+        log_dir=tmp_path,
+        sbatch=str(tmp_path / "missing-sbatch"),
+    )
+    transcript = None if failure == "invoke" else tmp_path / "submission.stdout"
+    if failure == "records":
+        transcript.write_bytes(b"preserved submission\n")
+    attempts = []
+    real_popen = slurm_submission.subprocess.Popen
+
+    def popen(*args, **kwargs):
+        attempts.append(args)
+        return real_popen(*args, **kwargs)
+
+    monkeypatch.setattr(slurm_submission.subprocess, "Popen", popen)
+    operation = (
+        "prepare submission records" if failure == "records" else "invoke sbatch"
+    )
+    with pytest.raises(
+        slurm_submission.SlurmSubmissionError, match=f"Could not {operation}"
+    ) as caught:
+        slurm_submission.submit(plan, wait_record=transcript)
+    assert "job ID unconfirmed" in str(caught.value)
+    assert isinstance(caught.value.__cause__, OSError)
+    assert ascii(str(caught.value.__cause__)) in str(caught.value)
+    assert len(attempts) == (0 if failure == "records" else 1)
+    if failure == "records":
+        assert transcript.read_bytes() == b"preserved submission\n"
 
 
 @pytest.mark.parametrize("username_variable", ("LOGNAME", "USER", "LNAME", "USERNAME"))
@@ -385,22 +435,41 @@ def test_batch_script_rejects_submitter_uid_drift_before_running(
     assert list(profile.placement.scratch_parent.iterdir()) == []
 
 
-@pytest.mark.parametrize("outcome", ("success", "failed", "interrupted"))
+@pytest.mark.parametrize(
+    "outcome",
+    (
+        "success",
+        "failed",
+        "interrupted",
+        "rejected",
+        "ambiguous",
+        "record_failure",
+        "wait_failure",
+    ),
+)
 def test_waited_submission_announces_job_before_wait_and_retains_diagnostics(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
     outcome: str,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     release = tmp_path / "release"
+    submitted = tmp_path / "submitted"
     scheduler = tmp_path / "sbatch"
+    detail = (
+        b'scheduler diagnostics: "reason"\n\x1b[31m\xff' + b"x" * 4096 + b"hidden tail"
+    )
     scheduler.write_text(
         f"#!{sys.executable}\n"
         "import pathlib, sys, time\n"
         "assert '--wait' in sys.argv\n"
         "assert sys.stdin.read().startswith('#!/bin/bash')\n"
-        "print('scheduler diagnostics', file=sys.stderr, flush=True)\n"
+        f"with pathlib.Path({str(submitted)!r}).open('ab') as handle: handle.write(b'submit\\n')\n"
+        f"sys.stderr.buffer.write({detail!r}); sys.stderr.flush()\n"
+        f"if {outcome == 'rejected'}: raise SystemExit(2)\n"
         "print('614999;fixture', flush=True)\n"
         f"while not pathlib.Path({str(release)!r}).exists(): time.sleep(0.01)\n"
+        f"if {outcome in {'ambiguous', 'wait_failure'}}: print('extra output', flush=True)\n"
         f"raise SystemExit({1 if outcome == 'failed' else 0})\n",
     )
     scheduler.chmod(0o700)
@@ -412,6 +481,24 @@ def test_waited_submission_announces_job_before_wait_and_retains_diagnostics(
     )
     transcript = tmp_path / "submission.stdout"
     received: list[str] = []
+    if outcome == "record_failure":
+
+        def fail_fsync(_descriptor: int) -> None:
+            raise OSError("fixture fsync failed")
+
+        monkeypatch.setattr(slurm_submission.os, "fsync", fail_fsync)
+    if outcome == "wait_failure":
+        real_wait = slurm_submission.subprocess.Popen.wait
+        failed_wait = False
+
+        def fail_wait_once(process, *args, **kwargs):
+            nonlocal failed_wait
+            if not failed_wait:
+                failed_wait = True
+                raise OSError("fixture wait failed")
+            return real_wait(process, *args, **kwargs)
+
+        monkeypatch.setattr(slurm_submission.subprocess.Popen, "wait", fail_wait_once)
 
     def announce(job_id: str) -> None:
         received.append(job_id)
@@ -434,12 +521,38 @@ def test_waited_submission_announces_job_before_wait_and_retains_diagnostics(
             if outcome == "interrupted"
             else slurm_submission.SlurmSubmissionError
         )
-        with pytest.raises(error):
+        with pytest.raises(error) as caught:
             slurm_submission.submit(
                 submission, wait_record=transcript, on_submitted=announce
             )
-    assert received == ["614999"]
-    assert transcript.read_text() == "614999;fixture\n"
-    assert transcript.with_suffix(".stderr").read_text() == "scheduler diagnostics\n"
+        if outcome != "interrupted":
+            diagnostic = str(caught.value)
+            identity = "unconfirmed" if outcome == "rejected" else "614999"
+            assert identity in diagnostic
+            assert "cancelled" not in diagnostic
+            assert "\x1b" not in diagnostic and "\n" not in diagnostic
+            assert "hidden tail" not in diagnostic
+            if outcome == "record_failure":
+                assert (
+                    "Could not retain submission records; job ID 614999" in diagnostic
+                )
+                assert "fixture fsync failed" in diagnostic
+            elif outcome == "wait_failure":
+                assert "Could not wait for sbatch; job ID 614999" in diagnostic
+                assert "fixture wait failed" in diagnostic
+            else:
+                assert r"\x1b" in diagnostic and r"\ufffd" in diagnostic
+            if outcome == "failed":
+                assert "accepted job 614999: sbatch exited with 1" in diagnostic
+                assert (
+                    str(submission.stderr_pattern).replace("%j", "614999") in diagnostic
+                )
+    assert submitted.read_bytes() == b"submit\n"
+    assert received == ([] if outcome in {"rejected", "record_failure"} else ["614999"])
+    expected_stdout = "" if outcome == "rejected" else "614999;fixture\n"
+    assert transcript.read_text() == expected_stdout + (
+        "extra output\n" if outcome in {"ambiguous", "wait_failure"} else ""
+    )
+    assert transcript.with_suffix(".stderr").read_bytes() == detail
     assert transcript.stat().st_mode & 0o777 == 0o600
     assert transcript.with_suffix(".stderr").stat().st_mode & 0o777 == 0o600

@@ -120,6 +120,17 @@ initializer/roster, and delegates to the same grouped Run path. Scheduler
 streams and job identity are operational provenance, never scientific or
 completion authority.
 
+The shared transport retains the failing operation and underlying OS error,
+and includes bounded, escaped scheduler diagnostics. A canonical returned job
+ID establishes acceptance even if the scheduler command then exits nonzero;
+that error retains the known ID and stream paths. In waited qualification,
+`sbatch --wait` returns the job's exit status and maps signal termination to 1,
+so a nonzero exit alone cannot distinguish failed execution from cancellation.
+Without a canonical ID, acceptance remains unconfirmed. Invalid responses
+remain errors and never trigger automatic resubmission. Doctor retains its
+existing private submission transcripts; Run/resume/report preserve the shared
+transport error at their public failure boundary without repeated translation.
+
 ## Profiles and immutable planning
 
 Allocation observation preserves CPU affinity and declared Slurm CPU limits.

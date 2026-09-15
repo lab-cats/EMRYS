@@ -192,3 +192,19 @@ variables, requesting an exclusive node, or imposing an arbitrary memory request
 **Missing scheduler stream.** Check the exact job with the Runbook's
 [`squeue`/`sacct` commands](RUNBOOK.md#inspecting-a-slurm-run). Slurm may not have
 opened its stream yet; scheduler success does not establish Run completion.
+
+**Submission or waited-job error.** Read the operation and underlying error:
+failure to invoke `sbatch` differs from failure to prepare or read Doctor's
+submission records. Retain the printed scheduler diagnostics and, for Doctor,
+both submission transcripts. Escaped characters in the message represent the
+original scheduler text; full Doctor transcripts remain at the printed paths.
+
+If a job ID was confirmed, the job was accepted: inspect that exact ID and its
+printed stdout/stderr paths before another action. A nonzero
+[`sbatch --wait` exit](https://slurm.schedmd.com/sbatch.html#OPT_wait) can reflect
+job failure or signal termination; exit 1 alone does not establish cancellation.
+If the response leaves the job ID unconfirmed, keep the command, submission
+time, and response, and resolve acceptance with the scheduler/operator before
+retrying. EMRYS does not automatically resubmit an uncertain request. Scheduler
+accounting is operational evidence; inspect the Run to determine its actual
+completion and supported recovery.

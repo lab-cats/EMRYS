@@ -269,6 +269,8 @@ def submit(
 ) -> str:
     """Submit one planned script in one subprocess call and return its job ID."""
 
+    job_id = None
+    operation = "invoke sbatch" if wait_record is None else "prepare submission records"
     try:
         if wait_record is None:
             completed = subprocess.run(
@@ -276,10 +278,12 @@ def submit(
                 input=submission.batch_script,
                 env=dict(submission.environment),
                 text=True,
+                errors="replace",
                 capture_output=True,
                 check=False,
             )
-            stdout = completed.stdout
+            stdout, stderr = completed.stdout, completed.stderr
+            job_id = _submitted_job_id(stdout, stderr=stderr) if stdout else None
         else:
             error_record = wait_record.with_suffix(".stderr")
 
@@ -288,29 +292,35 @@ def submit(
 
             with (
                 open(wait_record, "x+", opener=private_opener) as output,
-                open(error_record, "x", opener=private_opener) as errors,
+                open(error_record, "xb+", opener=private_opener) as errors,
             ):
                 print(
                     f"Slurm submission records: {wait_record}, {error_record}",
                     file=sys.stderr,
                 )
+                operation = "invoke sbatch"
                 with subprocess.Popen(
                     (*submission.argv, "--wait"),
                     env=dict(submission.environment),
                     text=True,
+                    errors="replace",
                     stdin=subprocess.PIPE,
                     stdout=subprocess.PIPE,
                     stderr=errors,
                 ) as process:
+                    operation = "communicate with sbatch"
                     try:
                         process.stdin.write(submission.batch_script)
                         process.stdin.close()
                         first = process.stdout.readline()
-                        output.write(first)
-                        output.flush()
-                        os.fsync(output.fileno())
-                        if first:
-                            job_id = _submitted_job_id(first)
+                        try:
+                            job_id = _submitted_job_id(first) if first else None
+                        finally:
+                            operation = "retain submission records"
+                            output.write(first)
+                            output.flush()
+                            os.fsync(output.fileno())
+                        if job_id:
                             print(
                                 f"Slurm job {job_id}; logs: {str(submission.stdout_pattern).replace('%j', job_id)}, {str(submission.stderr_pattern).replace('%j', job_id)}",
                                 file=sys.stderr,
@@ -318,11 +328,17 @@ def submit(
                             )
                             if on_submitted is not None:
                                 on_submitted(job_id)
+                        operation = "wait for sbatch"
                         rest = process.stdout.read()
+                        operation = "retain submission records"
                         output.write(rest)
                         stdout = first + rest
                         completed = process
+                        operation = "wait for sbatch"
                         process.wait()
+                        operation = "read submission records"
+                        errors.seek(0)
+                        stderr = errors.read(4096).decode("utf-8", "replace")
                     except BaseException:
                         process.terminate()
                         try:
@@ -332,24 +348,40 @@ def submit(
                             process.wait()
                         raise
     except OSError as exc:
-        raise SlurmSubmissionError("could not execute sbatch") from exc
+        raise SlurmSubmissionError(
+            f"Could not {operation}; job ID {job_id or 'unconfirmed'}: {str(exc)[:4096]!a}"
+        ) from exc
     if completed.returncode != 0:
-        raise SlurmSubmissionError(f"sbatch failed with exit {completed.returncode}")
-    return _submitted_job_id(stdout)
+        subject = (
+            f"accepted job {job_id}" if job_id else "submission (job ID unconfirmed)"
+        )
+        logs = tuple(
+            str(path).replace("%j", job_id or "%j")
+            for path in (submission.stdout_pattern, submission.stderr_pattern)
+        )
+        raise SlurmSubmissionError(
+            f"Slurm {subject}: sbatch exited with {completed.returncode}; "
+            f"logs={logs!a}; stderr excerpt={stderr[:4096]!a}"
+        )
+    return _submitted_job_id(stdout, job_id, stderr)
 
 
-def _submitted_job_id(stdout: str) -> str:
+def _submitted_job_id(
+    stdout: str, confirmed: str | None = None, stderr: str | None = None
+) -> str:
 
     lines = stdout.splitlines()
-    if len(lines) != 1:
-        raise SlurmSubmissionError("sbatch did not return one parsable job ID")
-    fields = lines[0].split(";")
+    fields = lines[0].split(";") if len(lines) == 1 else ()
     if (
         len(fields) not in {1, 2}
         or not is_canonical_slurm_job_id(fields[0])
         or (len(fields) == 2 and not fields[1])
     ):
-        raise SlurmSubmissionError("sbatch returned an invalid job ID")
+        detail = f"; stderr excerpt={stderr[:4096]!a}" if stderr is not None else ""
+        raise SlurmSubmissionError(
+            f"Invalid sbatch response; job ID {confirmed or 'unconfirmed'}; "
+            f"stdout excerpt={stdout[:4096]!a}{detail}"
+        )
     return fields[0]
 
 

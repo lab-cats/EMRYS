@@ -3608,6 +3608,89 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     assert ("Execute this plan? [y/N]" in captured.err) is not execute
 
 
+@pytest.mark.parametrize("command", ("run", "resume", "report"))
+@pytest.mark.parametrize("failure", ("binding", "allocation", "planning", "submission"))
+def test_public_slurm_errors_keep_control_exit_and_never_retry(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+    command: str,
+    failure: str,
+) -> None:
+    root = tmp_path / ("project%logs" if failure == "planning" else "fixture")
+    root.mkdir()
+    if command == "resume":
+        plan = _plan(root)
+        _failed_run(plan)
+        project, run_id = plan.run.analysis.source_path, plan.run.run_id
+    else:
+        project = build(root / "project")
+        run_id = "run-" + "a" * 64
+        if command == "report":
+            (project.parent / "runs" / run_id).mkdir(parents=True)
+    arguments = argparse.Namespace(
+        project=project,
+        run=run_id,
+        profile=str(_slurm_profile(root)),
+        log_level=None,
+        log_root=None,
+        execute=True,
+    )
+    scheduler = control.slurm_submission
+    for name in (
+        scheduler.DELEGATE_MARKER_ENV,
+        scheduler.PROFILE_SHA256_ENV,
+        scheduler.SUBMIT_UID_ENV,
+        "SLURM_JOB_ID",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    if failure == "binding":
+        monkeypatch.setenv(scheduler.DELEGATE_MARKER_ENV, scheduler.DELEGATE_MARKER)
+    elif failure == "allocation":
+        profile, _job = control._resolve_execution_profile(
+            arguments,
+            project,
+            ResourceOverrides(),
+            project.parent / "runs" / run_id if command == "resume" else None,
+        )
+        monkeypatch.setenv(scheduler.DELEGATE_MARKER_ENV, scheduler.DELEGATE_MARKER)
+        monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, profile.binding_sha256)
+        monkeypatch.setenv(scheduler.SUBMIT_UID_ENV, str(os.getuid()))
+        monkeypatch.setenv("SLURM_JOB_ID", "0")
+    submissions = []
+
+    def reject(argv, **_kwargs):
+        submissions.append(argv)
+        return subprocess.CompletedProcess(argv, 1, "", "scheduler rejected\n\x1b[31m")
+
+    monkeypatch.setattr(scheduler.subprocess, "run", reject)
+    monkeypatch.setattr(
+        control.doctor,
+        "diagnose_project",
+        lambda *_args, **_kwargs: pytest.fail(
+            "submission failure reached compute readiness"
+        ),
+    )
+    monkeypatch.setattr(
+        reporting_operation,
+        "run_reporting",
+        lambda *_args, **_kwargs: pytest.fail("submission failure executed reporting"),
+    )
+    assert getattr(control, f"{command}_from_args")(arguments) == 2
+    output = capsys.readouterr()
+    assert output.out == ""
+    expected = {
+        "binding": "Private Slurm delegate context is incomplete",
+        "allocation": "canonical positive decimal",
+        "planning": "scheduler log directory must not contain",
+        "submission": "job ID unconfirmed",
+    }
+    assert expected[failure] in output.err
+    assert "\x1b" not in output.err
+    assert len(submissions) == (1 if failure == "submission" else 0)
+    assert not (project.parent / "logs/application").exists()
+
+
 def test_private_slurm_delegate_rejects_profile_drift_before_readiness(
     tmp_path: Path,
     capsys,
