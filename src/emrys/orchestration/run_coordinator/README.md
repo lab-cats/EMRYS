@@ -80,10 +80,10 @@ quit. Explicit Run views discover all admitted application-log associations
 under the selected root, alongside Task streams; `--log-root` selects historical
 custom roots. No latest-file heuristic or inferred scheduler binding is used.
 
-The old CSU-oriented `dashboard.py` preview remains until a replacement is
-implemented and validated under `DASHBOARD-RETIRE-01`. `emrys inspect` stays the
-authority for Run status and recovery; expert commands alone do not replace the
-dashboard. The replacement must preserve scheduler discovery and historical
+The installed dashboard uses the same legacy functionality. The original
+CSU-oriented entry point remains until institutional validation and coordinated
+retirement under `DASHBOARD-RETIRE-01`. `emrys inspect` stays the authority for Run
+status and recovery. Shared selection preserves scheduler discovery, historical
 accounting fallback, exact job identity, stream ownership, regular-file and
 symlink checks, and sanitized display of raw streams.
 Legacy `--offline` with explicit job/stream paths makes no scheduler queries

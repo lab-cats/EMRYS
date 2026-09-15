@@ -66,7 +66,11 @@ from emrys.libraries.source_authority import (
     InstalledPackageError,
     admit_installed_package,
 )
-from emrys.orchestration.run_coordinator import onboarding, slurm_submission
+from emrys.orchestration.run_coordinator import (
+    onboarding,
+    scheduler_observation,
+    slurm_submission,
+)
 from emrys.orchestration.run_coordinator.capacity import observe_allocation
 from emrys.orchestration.run_coordinator.execution_profile import (
     ExecutionProfileError,
@@ -111,6 +115,7 @@ class _DoctorTiming:
         self.detail = LogLevel.NORMAL
         self.phases: list[dict[str, object]] = []
         self.runtime_probes: list[tuple[str, dict[str, object]]] = []
+        self.scheduler_timing: dict[str, object] | None = None
         self.flushed = False
 
     def observe(self, name: str, elapsed: float | None, outcome: str) -> None:
@@ -150,8 +155,63 @@ class _DoctorTiming:
                     **values,
                 ):
                     return
+            if self.scheduler_timing is not None:
+                record(
+                    "doctor_scheduler_timing",
+                    "Recorded Slurm accounting intervals observed.",
+                    **self.scheduler_timing,
+                )
+
+    def observe_scheduler(
+        self,
+        submission: slurm_submission.SlurmSubmission,
+        identity: tuple[str, str | None] | None,
+    ) -> None:
+        observed = scheduler_observation.unknown_observation(
+            "No response-recorded job identity; accounting was not queried"
+        )
+        if identity is not None:
+            try:
+                with phase_progress(
+                    "Reading recorded Slurm timing", on_complete=self.observe
+                ):
+                    observed = scheduler_observation.observe_job(
+                        identity[0],
+                        str(submission.stdout_pattern),
+                        str(submission.stderr_pattern),
+                        identity[1],
+                        job_name=submission.job_name,
+                        include_timing=True,
+                    )
+                    if not isinstance(observed, dict):
+                        raise TypeError("Accounting observation was not a record")
+            except Exception as exc:
+                observed = scheduler_observation.unknown_observation(str(exc)[:4096])
+        self.scheduler_timing = {
+            "scheduler_job_id": identity[0] if identity is not None else None,
+            **observed,
+        }
 
     def finish(self, elapsed: float | None, status: int | None) -> None:
+        if self.scheduler_timing is not None:
+            observed = self.scheduler_timing
+            timing = observed.get("timing", {})
+            intervals = "; ".join(
+                f"{label}: {timing[key]}s" if key in timing else f"{label}: unavailable"
+                for key, label in (
+                    ("submission_to_start_seconds", "submitted-to-start wait"),
+                    ("eligible_to_start_seconds", "eligible queue wait"),
+                    ("allocation_wall_seconds", "allocation wall time"),
+                )
+            )
+            _stderr(
+                f"Slurm accounting timing (job {observed['scheduler_job_id'] or 'unconfirmed'}; "
+                f"cluster {observed.get('cluster') or 'unconfirmed'}; "
+                f"observed {observed.get('timing_observed_at', 'unavailable')}): {intervals}"
+            )
+            diagnostic = timing.get("diagnostic") or observed.get("diagnostic")
+            if diagnostic:
+                _stderr(f"Slurm timing limitation: {str(diagnostic)!a}")
         if self.detail in {LogLevel.VERBOSE, LogLevel.DEBUG}:
             for values in self.phases:
                 seconds = values["elapsed_seconds"]
@@ -1313,26 +1373,43 @@ def _qualify_slurm(
         ),
         log_dir=attempt.path.parent,
     )
-    with progress("Slurm submission-to-return wait"):
-        job_id = slurm_submission.submit(
-            submission,
-            wait_record=attempt.path.parent / "slurm-submit.stdout",
-            on_submitted=lambda job_id: attempt.best_effort(
-                lambda: attempt.logger(component="maintenance", phase="repair").info(
-                    "Compute qualification submitted.",
-                    extra=event(
-                        "repair_compute_submitted",
-                        fields={
-                            "scheduler_job_id": field(job_id),
-                            "binding": field(binding),
-                            "stdout": field(submission.stdout_pattern),
-                            "stderr": field(submission.stderr_pattern),
-                        },
-                    ),
+    submitted: tuple[str, str | None] | None = None
+
+    def announce(job_id: str, cluster: str | None) -> None:
+        nonlocal submitted
+        submitted = job_id, cluster
+        attempt.best_effort(
+            lambda: attempt.logger(component="maintenance", phase="repair").info(
+                "Compute qualification submitted.",
+                extra=event(
+                    "repair_compute_submitted",
+                    fields={
+                        "scheduler_job_id": field(job_id),
+                        "scheduler_cluster": field(cluster),
+                        "binding": field(binding),
+                        "stdout": field(submission.stdout_pattern),
+                        "stderr": field(submission.stderr_pattern),
+                    },
                 ),
-                warning="WARNING: scheduler logging degraded; submission records are retained.",
             ),
+            warning="WARNING: scheduler logging degraded; submission records are retained.",
         )
+
+    try:
+        with progress("Slurm submission-to-return wait"):
+            job_id = slurm_submission.submit(
+                submission,
+                wait_record=attempt.path.parent / "slurm-submit.stdout",
+                on_submitted=announce,
+            )
+    except slurm_submission.SlurmSubmissionError:
+        with suppress(Exception):
+            if timing is not None:
+                timing.observe_scheduler(submission, submitted)
+        raise
+    with suppress(Exception):
+        if timing is not None:
+            timing.observe_scheduler(submission, submitted)
     with progress("Verifying the checked runtime and Project"):
         _readmit_repair_plan(replace(plan, runtime=None), before_storage=False)
         observed = diagnose_project(
@@ -1411,7 +1488,12 @@ def _execute_repair(
                     fields={key: field(value) for key, value in values.items()},
                     detail="durable_only"
                     if name.startswith(
-                        ("package_manager_", "doctor_phase_", "runtime_check_")
+                        (
+                            "package_manager_",
+                            "doctor_phase_",
+                            "doctor_scheduler_",
+                            "runtime_check_",
+                        )
                     )
                     else "normal",
                 ),

@@ -99,8 +99,12 @@ def observe_job(
     *,
     job_name=None,
     include_resources=False,
+    include_timing=False,
 ):
-    """Observe an exact owned job/path binding; the caller owns request uniqueness."""
+    """Observe an exact owned job/path binding; the caller owns request uniqueness.
+
+    Optional timing selects one terminal accounting record without a queue query.
+    """
     if not JOB_ID_RE.fullmatch(str(job_id)) or (
         cluster is not None and not _cluster_name(cluster)
     ):
@@ -117,6 +121,19 @@ def observe_job(
         resource_names = (
             ("elapsed", "left", "cpus", "partition", "node")
             if include_resources
+            else ()
+        )
+        timing_names = (
+            (
+                "Submit",
+                "Eligible",
+                "Start",
+                "End",
+                "ElapsedRaw",
+                "Restarts",
+                "Suspended",
+            )
+            if include_timing
             else ()
         )
         expected = []
@@ -137,6 +154,8 @@ def observe_job(
             for key, value in os.environ.items()
             if key != "SLURM_CLUSTERS" and not key.startswith(("SQUEUE_", "SACCT_"))
         }
+        if include_timing:
+            environment.update(TZ="UTC0", SLURM_TIME_FORMAT="%Y-%m-%dT%H:%M:%SZ")
         sources = (
             (
                 "squeue",
@@ -177,17 +196,21 @@ def observe_job(
                         ",Elapsed,Timelimit,AllocCPUS,Partition,NodeList"
                         if include_resources
                         else ""
-                    ),
+                    )
+                    + ("," + ",".join(timing_names) if include_timing else ""),
                 ],
                 ("JobId", "UID", "JobState", "Cluster", "StdOut", "StdErr", "ExitCode")
                 + extra_names
-                + resource_names,
+                + resource_names
+                + timing_names,
             ),
         )
-        for source, argv, names in sources:
+        for source, argv, names in sources[1:] if include_timing else sources:
             reply = command_bytes(argv, environment=environment)
             observed_at = (
-                datetime.now(timezone.utc).isoformat() if include_resources else None
+                datetime.now(timezone.utc).isoformat()
+                if include_resources or include_timing
+                else None
             )
             if reply is None:
                 raise DiscoveryError(source + " query failed or is unavailable")
@@ -267,9 +290,63 @@ def observe_job(
                         environment,
                     )
                 )
+            if include_timing:
+                result["timing_observed_at"] = observed_at
+                result["timing"] = _accounting_timing(metadata)
             return result
     except (DiscoveryError, UnicodeError) as exc:
         return unknown_observation(str(exc))
+
+
+def _accounting_timing(metadata):
+    """Keep recorded dates separate from defensible single-allocation intervals."""
+    values, dates, issues = {}, {}, []
+    for name in ("Submit", "Eligible", "Start", "End"):
+        raw = metadata[name]
+        try:
+            if not re.fullmatch(
+                r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", raw
+            ):
+                raise ValueError
+            dates[name] = datetime.fromisoformat(raw)
+            values[name.lower() + "_utc"] = raw
+        except ValueError:
+            issues.append(name + " time is unavailable or malformed")
+    for name, key in (("ElapsedRaw", "elapsed_seconds"), ("Restarts", "restarts")):
+        raw = metadata[name]
+        if re.fullmatch(r"(?:0|[1-9][0-9]{0,9})", raw):
+            values[key] = int(raw)
+        else:
+            issues.append(name + " is unavailable or malformed")
+    suspended = re.fullmatch(
+        r"(?:(0|[1-9][0-9]{0,9})-)?([0-9]{2}):([0-5][0-9]):([0-5][0-9])",
+        metadata["Suspended"],
+    )
+    if suspended and int(suspended[2]) < 24:
+        values["suspended_seconds"] = sum(
+            int(value or 0) * factor
+            for value, factor in zip(suspended.groups(), (86400, 3600, 60, 1))
+        )
+    else:
+        issues.append("Suspended time is unavailable or malformed")
+    if values.get("restarts", 0):
+        issues.append("Requeued/restarted job intervals are unknown")
+    if values.get("suspended_seconds", 0):
+        issues.append("Suspended job intervals are unknown")
+    if not issues:
+        submit, eligible, start, end = (
+            dates[name] for name in ("Submit", "Eligible", "Start", "End")
+        )
+        wall = int((end - start).total_seconds())
+        if not submit <= eligible <= start <= end or values["elapsed_seconds"] != wall:
+            issues.append("Accounting dates and elapsed time are inconsistent")
+        else:
+            values.update(
+                submission_to_start_seconds=int((start - submit).total_seconds()),
+                eligible_to_start_seconds=int((start - eligible).total_seconds()),
+                allocation_wall_seconds=wall,
+            )
+    return {**values, "diagnostic": "; ".join(issues) if issues else None}
 
 
 def _observe_batch_usage(

@@ -583,12 +583,12 @@ Specialist commands validate existing outputs, reconcile reference provenance
 owner-validation report because validator exit zero alone does not establish
 semantic success.
 
-The legacy CSU dashboard remains a separate operational view pending validated
-replacement. Its scheduler observer checks numeric ownership, exact root IDs,
-duplicate accounting records, and selected stream paths; uncertainty appears
-as `UNKNOWN`. Its log interpretation does not replace current Run inspection
-or establish which retained request owns a reused job ID. Use `emrys inspect`
-and exact Slurm accounting/streams for status and completion.
+The installed dashboard shares the legacy selection, scheduler and diagnostic
+presentation owners. The original CSU entry point remains supported until
+institutional validation and coordinated retirement. Shared observation checks
+numeric ownership, exact root IDs, duplicate accounting records and selected
+stream paths; uncertainty appears as `UNKNOWN`. Log interpretation does not
+replace Run inspection or establish which retained request owns a reused job ID.
 Its existing `--offline` mode requires an explicit job ID and both stream paths.
 Selection, snapshots and interactive refresh make no Slurm queries; scheduler
 state stays `UNKNOWN` while the same sanitized diagnostic streams remain usable.
@@ -717,15 +717,36 @@ phase times. For approved maintenance, the same phase measurements appear in
 the existing diagnostic JSONL as `doctor_phase_timing`; read-only diagnosis does
 not create a log. Compute observations stay distinct from head observations.
 `Slurm submission-to-return wait` includes waiting, launch, compute and return
-overhead. It cannot by itself tell you how long the job spent queued. Keep the
-complete diagnostics when investigating slow verification; these timings do not
-justify removing input reads or changing resource requests.
+overhead. It cannot by itself tell you how long the job spent queued. After a
+waited submission, Doctor makes one bounded accounting lookup using the recorded
+job identity and exact maintenance stream paths. Its normal summary separates
+submitted-to-start wait, eligible queue wait and allocation wall time; time
+before eligibility is not eligible queue wait. Allocation wall time includes
+launch/verification overhead and does not measure scientific compute time.
+Missing, delayed, inconsistent, requeued or suspended accounting leaves derived
+intervals unavailable. The existing maintenance log retains admitted UTC dates,
+accounting counters and limitations as `doctor_scheduler_timing`, after the
+maintenance outcome. Lookup duration is a separate phase, outside the waited
+submission timer. Timing never establishes qualification or permits recovery.
+Keep complete diagnostics when investigating slow verification; these timings
+do not justify removing input reads or changing resource requests.
 Maintenance logs also retain `runtime_check_passed` details for their actual
 Doctor phases, buffered until the operation outcome. Verbose/debug diagnosis
 shows escaped passing details, including available subprocess durations.
 Separate Snakemake version/startup times from content hashing; the SHA-256
 utility check measures only its known test payload. These observations still
 do not attribute runtime-file bytes, physical I/O or memory.
+
+Allow more than ten minutes when planning setup; downloads, compilation and
+queue waits can take considerably longer, and verification alone can exceed
+that allowance. Read the named phase and retained diagnostics instead of treating
+elapsed time as failure. An unchanged retry preserves package reuse but repeats
+current admission checks. Interrupted setup may reuse retained tools even when
+the inventory is missing; changed dependencies or inputs require fresh checks.
+The immutable plan names required work, while `package-output.log` records actual
+package-manager reuse and changes. Earlier successful evidence remains retained
+without qualifying the present files. Comparable site measurements and any
+reduction of repeated checks remain CV-26 work.
 
 Institutional R restoration below requires the installed EMRYS R guard and
 permission to install packages. The [engineering guide](ENGINEERING_CONVENTIONS.md#dependencies-and-environments)

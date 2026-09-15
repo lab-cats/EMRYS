@@ -953,7 +953,7 @@ def submit(
     *,
     wait_record: Path | None = None,
     record_path: Path | None = None,
-    on_submitted: Callable[[str], None] | None = None,
+    on_submitted: Callable[[str, str | None], None] | None = None,
 ) -> str:
     """Submit one planned script in one subprocess call and return its job ID."""
 
@@ -1013,13 +1013,13 @@ def submit(
                             errors.seek(0)
                             stderr = errors.read(4096).decode("utf-8", "replace")
                         try:
-                            job_id = (
+                            job_id, cluster = (
                                 _submitted_response(
                                     first.decode("utf-8", "replace"),
                                     stderr=stderr if wait_record is None else None,
-                                )[0]
+                                )
                                 if first
-                                else None
+                                else (None, None)
                             )
                         finally:
                             operation = "retain submission records"
@@ -1034,7 +1034,7 @@ def submit(
                                 flush=True,
                             )
                             if on_submitted is not None:
-                                on_submitted(job_id)
+                                on_submitted(job_id, cluster)
                         operation = "wait for sbatch"
                         rest = process.stdout.read() if wait_record is not None else b""
                         operation = "retain submission records"
