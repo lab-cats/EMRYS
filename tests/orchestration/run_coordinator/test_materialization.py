@@ -5843,8 +5843,117 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert "Results:" not in dry_output.splitlines()
     assert _verified_snapshot(run_root) == before
 
+    real_publish = reporting_operation._publish_prepared
+    reporting_observations = []
+
+    def observe_reporting(kind, phase):
+        namespace = sorted(workspace.rglob("*"))
+        evidence = {
+            path: (path.read_bytes(), path.stat().st_mtime_ns)
+            for path in namespace
+            if path.is_file()
+        }
+        observed = inspection.inspect_run(run_root)
+        assert observed.authority is not None
+        assert (
+            observed.integrity,
+            observed.attempt_outcome,
+            observed.results_status,
+            observed.reporting_status,
+            observed.recovery_available,
+        ) == ("valid", "succeeded", "complete", "blocked", False)
+        assert observed.lock_observation == "no lock"
+        assert observed.verified_report_locations == ()
+        records = observed.reporting_completion_records
+        assert records[kind]["start"] is not None
+        assert records[kind]["verified"] is None
+        assert not reporting_operation.reporting_boundary.ledger_paths(
+            run_root, kind
+        ).verified.exists()
+        if kind == "run_summary":
+            assert records["html_report"] == {"start": None, "verified": None}
+        else:
+            assert records["run_summary"]["start"] is not None
+            assert records["run_summary"]["verified"] is not None
+        assert any(
+            f"{kind} reporting start has no verified completion" in blocker
+            for blocker in observed.reporting_blockers
+        )
+        # A separate public reader observes the real publisher paused at this boundary.
+        public = subprocess.run(
+            (
+                sys.executable,
+                "-I",
+                "-B",
+                "-m",
+                "emrys",
+                "inspect",
+                run_id,
+                "--project",
+                str(request),
+                "--detail",
+                "normal" if phase == "before producer" else "verbose",
+            ),
+            cwd=tmp_path,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        assert public.returncode == 0, public.stdout + public.stderr
+        assert "Run admission: valid" in public.stdout
+        assert "Run lock: no lock" in public.stdout
+        assert "Attempt outcome: succeeded" in public.stdout
+        assert "Scientific Results: complete" in public.stdout
+        assert "Reporting admission: blocked" in public.stdout
+        assert public.stdout.count("Reporting transactions:") == 1
+        assert f"{kind}: Started; completion unverified" in public.stdout
+        other_row = (
+            "html_report: No admitted start"
+            if kind == "run_summary"
+            else "run_summary: Verified complete"
+        )
+        assert other_row in public.stdout
+        assert "REPORTING BLOCKER:" in public.stdout
+        assert "Recovery available: no" in public.stdout
+        assert "Preserve completed Results; do not rerun science." in public.stdout
+        assert "Results:" not in public.stdout.splitlines()
+        assert "Scientific report:" not in public.stdout
+        assert "Evidence report:" not in public.stdout
+        assert "reporter is running" not in public.stdout
+        assert sorted(workspace.rglob("*")) == namespace
+        assert {
+            path: (path.read_bytes(), path.stat().st_mtime_ns)
+            for path in namespace
+            if path.is_file()
+        } == evidence
+        reporting_observations.append((kind, phase))
+        return records
+
+    def publish_and_observe(kind, context):
+        expected_receipt = (
+            context.summary_paths.summary_json
+            if kind == "run_summary"
+            else context.output_receipt
+        )
+        assert not expected_receipt.exists()
+        started = observe_reporting(kind, "before producer")
+        receipt = real_publish(kind, context)
+        assert receipt == expected_receipt
+        assert receipt.is_file()
+        assert observe_reporting(kind, "after producer") == started
+        return receipt
+
+    monkeypatch.setattr(reporting_operation, "_publish_prepared", publish_and_observe)
     resume_arguments.execute = True
     assert control.resume_from_args(resume_arguments) == 0
+    assert reporting_observations == [
+        ("run_summary", "before producer"),
+        ("run_summary", "after producer"),
+        ("html_report", "before producer"),
+        ("html_report", "after producer"),
+    ]
     resumed_output = capsys.readouterr().err
     report_root = run_root / "results" / "reports" / run_id
     expected_results = (

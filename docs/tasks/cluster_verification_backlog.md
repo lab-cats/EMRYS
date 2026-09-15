@@ -115,6 +115,10 @@ separate defense. Static and standalone native-gate checks pass; full integratio
 requires CI. This does not establish actual scientific-tool or Slurm/site
 cancellation, or make a postentry Task retryable.
 
+The existing public failed-Run/resume journey also checks real report producer
+publication boundaries through separate public inspection processes, as recorded
+under [CV-21](#cv-21-reporting-in-progress-and-visibility).
+
 ### CV-02 Individual qualification diagnostics
 
 **Finding:** Generic qualification failure required manual reconstruction of
@@ -891,6 +895,20 @@ fixtures cover pending/started/complete rows at normal and verbose levels.
 Static checks pass; application cases require hosted CI. These cases establish
 the overlap mechanism, not the historical cause of E06. That cause and actual
 site visibility/finalization evidence remain unresolved, so CV-21 remains Open.
+
+**Integrated public reporting slice:** The existing failed-Run/resume fixture
+pauses immediately before and after each real summary/HTML producer, while its
+reporting start is admitted and verified completion is still absent. Four
+separate public CLI readers must preserve complete scientific Results, show
+the unverified transaction and blockers, and withhold public report locations.
+The exact producer receipt is absent before production and present afterward;
+neither presence nor a start grants verified reporting admission. Whole-Project
+namespace, file bytes and modification times remain unchanged by inspection.
+The original final verified-report and byte-preserving resume assertions remain.
+This reuses scientific owner doubles and real reporting owners without another
+scientific journey. Static checks and independent review pass; full integration
+requires CI. It covers producer publication boundaries, not arbitrary mid-write
+timing, institutional filesystem visibility or the cause of E06.
 
 ### CV-22 Complete submission preview
 
