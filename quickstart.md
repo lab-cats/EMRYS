@@ -198,6 +198,12 @@ Scientific Results: complete
 Reporting admission: complete
 ```
 
+**Scientific task observations** counts the evidence already admitted. `Started;
+completion unverified` means a start record is present, not that a worker is
+currently running. `No admitted start` can mean absent or invalid records; read
+the printed blockers before choosing an action. These counts do not override
+the completion lines or recovery decision.
+
 Keep the original Project, inputs, runtime, logs and complete Run so
 the computation remains inspectable. An unsuccessful inspection prints the
 problem and the next supported action; retain that output before attempting

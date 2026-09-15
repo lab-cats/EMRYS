@@ -475,15 +475,25 @@ only for a structurally admitted owner. An exact remote lock is labeled
 `remote ownership unverified`; it remains blocked and non-resumable. Invalid
 namespace/binding, dead local owner, live local owner, and no lock remain
 distinct. This uses the existing lock read and does not query remote hosts or
-infer scheduler liveness. Unfinished task evidence retains its strict blockers;
-separating its progress observations remains coordinated with CV-16/21, so
-CV-15 remains Open.
+infer scheduler liveness. Unfinished task evidence retains its strict blockers.
+
+**Implemented task-observation slice:** All inspection detail levels now count
+`Verified complete`, `Verification not admitted`, `Started; completion
+unverified`, and `No admitted start` from the existing typed task snapshot.
+Debug rows share those labels and show admitted start paths. A start does not
+prove current worker activity; missing/invalid start evidence does not prove
+that work never ran. No new read, stored state or recovery permission is added.
 
 **Verification:** Lifecycle fixtures inspect during actual admitted Attempt
 execution, including remote/dead/invalid locks and terminal retained locks;
-public normal/verbose output retains the uncertainty and blockers without
-mutating evidence or probing an unbound PID. Static checks pass; application
-tests and institutional cross-node observations remain pending.
+public output retains uncertainty and blockers without mutating evidence or
+probing an unbound PID. Task fixtures follow the same admitted start through
+local-live, remote-unverified and terminal-incomplete observations; all display
+levels acquire one snapshot per render and preserve files and recovery refusal.
+Existing complete, changed-verified and missing/malformed-start cases cover the
+other labels. Static checks pass; the new task cases await hosted CI. CV-15
+remains Open for institutional cross-node observations and any remaining
+state distinctions established by those observations.
 
 ### CV-16 Monitoring dashboard
 

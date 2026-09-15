@@ -1394,6 +1394,16 @@ def _progress_state(tasks: tuple[inspection.TaskInspection, ...]) -> str:
     return "incomplete"
 
 
+def _task_observation(task: inspection.TaskInspection) -> str:
+    if task.state == "verified":
+        return "Verified complete"
+    if task.state == "blocked":
+        return "Verification not admitted"
+    if task.start_reference is not None:
+        return "Started; completion unverified"
+    return "No admitted start"
+
+
 def _milestone_progress(
     tasks: tuple[inspection.TaskInspection, ...],
     *,
@@ -1777,6 +1787,12 @@ def inspect_from_args(
         if detail != "normal":
             if observed.processing_source_run_id is None or total:
                 print(f"    Verified tasks: {verified}/{total}")
+    if observed.tasks:
+        print("Scientific task observations:")
+        for label, count in Counter(
+            _task_observation(task) for task in observed.tasks
+        ).items():
+            print(f"  {label}: {count}")
     print(f"Scientific Results: {observed.results_status}")
     print(f"Reporting admission: {observed.reporting_status}")
     if observed.reporting_status != "not applicable":
@@ -1849,7 +1865,11 @@ def inspect_from_args(
         print("Task records:")
         for task in observed.tasks:
             identity = f"{task.expected.machine_key}/{task.expected.scope_id}"
-            task_detail = f"  TASK {identity}: {task.state}"
+            task_detail = f"  TASK {identity}: {_task_observation(task)}"
+            if task.start_reference is not None:
+                task_detail += (
+                    f"; start={observed.run_root / task.start_reference['path']}"
+                )
             if task.record_reference is not None:
                 task_detail += (
                     f"; verified={observed.run_root / task.record_reference['path']}"

@@ -2076,6 +2076,8 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     assert "Analysis ID:" not in normal
     assert "Execution Plan ID:" not in normal
     assert "Run root:" not in normal
+    assert normal.count("Scientific task observations:") == 1
+    assert f"  No admitted start: {len(observed.tasks)}" in normal
     assert normal.count("Reporting transactions:") == 1
     assert "Reporting admission: incomplete" in normal
     assert "run_summary: No admitted start" in normal
@@ -2088,6 +2090,8 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     assert f"Analysis ID: {plan.run.analysis.revision.analysis_revision_id}" in verbose
     assert f"Execution Plan ID: {plan.run.execution_plan.execution_plan_id}" in verbose
     assert "Attempt ID: none" in verbose
+    assert verbose.count("Scientific task observations:") == 1
+    assert f"  No admitted start: {len(observed.tasks)}" in verbose
     assert verbose.count("Reporting transactions:") == 1
 
     blocked = replace(
@@ -2100,6 +2104,7 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     blocked_output = capsys.readouterr().out
     assert "QC evidence: blocked" in blocked_output
     assert "Verified tasks: 0/1" in blocked_output
+    assert "  Verification not admitted: 1" in blocked_output
 
     started = replace(
         observed,
@@ -2145,6 +2150,12 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     assert "Effective plan: backend=local; engine=snakemake" in debug
     assert "Attempt receipt:" not in debug
     assert "Engine command:" not in debug
+    assert debug.count("Scientific task observations:") == 1
+    for task in observed.tasks:
+        assert (
+            f"TASK {task.expected.machine_key}/{task.expected.scope_id}: No admitted start"
+            in debug
+        )
 
     escaped = replace(
         observed,
