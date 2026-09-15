@@ -165,9 +165,15 @@ def _snapshot(root: Path) -> dict[str, bytes]:
     }
 
 
-def _repair_log(project: ProjectAdmission) -> tuple[Path, list[dict[str, Any]]]:
-    (path,) = (project.source_path.parent / "logs/application").glob(
-        "**/emrys-doctor.jsonl"
+def _repair_log(
+    project: ProjectAdmission, *, previous: Path | None = None
+) -> tuple[Path, list[dict[str, Any]]]:
+    (path,) = (
+        path
+        for path in (project.source_path.parent / "logs/application").glob(
+            "**/emrys-doctor.jsonl"
+        )
+        if path != previous
     )
     return path, [json.loads(line) for line in path.read_text().splitlines()]
 
@@ -860,7 +866,6 @@ def test_managed_repair_refuses_external_dependency_installation(
 def test_storage_only_repair_preserves_ready_site_runtime_and_skips_managers(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     from emrys.evidence.storage_inventory import qualification
 
@@ -934,7 +939,12 @@ def test_storage_only_repair_preserves_ready_site_runtime_and_skips_managers(
     assert profile.read_bytes() == b"site runtime\n"
     assert records[0] == "opened"
     assert "terminal" in records
-    assert "Project verification completed." in capsys.readouterr().err
+    _log_path, events = _repair_log(project)
+    assert [
+        (item["event"], item["message"])
+        for item in events
+        if item["phase"] == "terminal"
+    ] == [("repair_requalified", "Project verification completed.")]
 
 
 def test_repair_refuses_redirected_pixi_state(tmp_path: Path) -> None:
@@ -1204,7 +1214,12 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     output = capsys.readouterr().err
     assert "Checking/updating native tools and R" in output
     assert "Checking/restoring R packages" in output
-    assert "Project repair and verification completed." in output
+    _log_path, events = _repair_log(project)
+    assert [
+        (item["event"], item["message"])
+        for item in events
+        if item["phase"] == "terminal"
+    ] == [("repair_requalified", "Project repair and verification completed.")]
     assert (
         next(
             project.source_path.parent.glob("logs/application/**/package-output.log")
@@ -1621,16 +1636,20 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     assert doctor.doctor_from_args(arguments) == expected_status
     assert records.count("opened") == 1
     output = capsys.readouterr().err
+    log_path, events = _repair_log(project)
     assert "EMRYS Doctor verification plan" in output
     assert "Checking/updating native tools and R" not in output
     if failure is None:
-        assert "Project verification completed." in output
+        assert [
+            (item["event"], item["message"])
+            for item in events
+            if item["phase"] == "terminal"
+        ] == [("repair_requalified", "Project verification completed.")]
     elif failure == "finalize":
         assert "Verification interrupted;" in output
     else:
         assert "VERIFICATION FAILED:" in output
     if failure in {"runtime", "head_runtime"}:
-        log_path, events = _repair_log(project)
         diagnostics = [
             item for item in events if item["event"] == "runtime_check_failed"
         ]
@@ -1667,24 +1686,28 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         original = compute.read_bytes()
         if failure == "finalize":
             assert "interrupted" in records
+        else:
+            assert diagnose().ready
         assert doctor.doctor_from_args(arguments) == 0
         assert state["jobs"] == 2 and state["probes"] == 1
         assert compute.read_bytes() == original
         qualification.admit_final_qualification(project.source_path.parent, fasta)
+        repeated_output = capsys.readouterr().err
+        assert "EMRYS is ready." in repeated_output
+        assert "EMRYS Doctor verification plan" in repeated_output
+        assert "Checking/updating native tools and R" not in repeated_output
+        _repeated_log_path, repeated_events = _repair_log(project, previous=log_path)
+        assert [
+            (item["event"], item["message"])
+            for item in repeated_events
+            if item["phase"] == "terminal"
+        ] == [("repair_requalified", "Project verification completed.")]
+        assert records.count("opened") == 2
     else:
         assert state["probes"] == (1 if failure == "head_runtime" else 0)
         assert "failed" in records
         with pytest.raises(qualification.StorageQualificationError):
             qualification.admit_final_qualification(project.source_path.parent, fasta)
-    if failure is None:
-        assert diagnose().ready
-        assert doctor.doctor_from_args(arguments) == 0
-        repeated_output = capsys.readouterr().err
-        assert "EMRYS is ready." in repeated_output
-        assert "EMRYS Doctor verification plan" in repeated_output
-        assert "Project verification completed." in repeated_output
-        assert "Checking/updating native tools and R" not in repeated_output
-        assert records.count("opened") == 2
 
 
 def test_malformed_project_is_a_usage_error(
