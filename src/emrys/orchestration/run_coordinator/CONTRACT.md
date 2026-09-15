@@ -113,6 +113,21 @@ not install packages or treat a prior successful check as current evidence.
 Existing CLI flags, maintenance log modes/event IDs, refusals, and exits remain
 unchanged. Slurm-stage elapsed time includes queue waiting and compute work.
 
+Doctor reports invocation timing separately from admission. The total spans
+entry through return/exception and explicitly includes operator confirmation
+time; verbose/debug output shows precise phase elapsed seconds. An
+invocation-local collector receives best-effort observations from the shared
+progress owner without removing or reusing any input checks. Approved maintenance
+buffers all phases until controlling work and the claim-release decision finish,
+then flushes `doctor_phase_timing` events once before its existing terminal log
+event. A failed timing write cannot disrupt package-output handling. The final
+invocation total is console-only after that log
+closes. Read-only diagnosis and delegated compute create no second log.
+Slurm submission-to-return wait is not an isolated queue-time measurement.
+Ordinary observation failures leave work, receipts and exits controlling;
+process-control exceptions retain cancellation semantics. These timings do not
+measure read bytes, process-tree memory or scientific performance.
+
 Managed repair opens its diagnostic log before acquiring the private durable
 `runtime/maintenance.lock` claim, then re-admits the plan before manager work.
 The shared ownership primitive pins a canonical no-follow parent, synchronizes

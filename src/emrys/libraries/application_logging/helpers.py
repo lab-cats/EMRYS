@@ -7,7 +7,7 @@ import os
 import sys
 import time
 import unicodedata
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -45,9 +45,16 @@ def console_print(
 
 
 @contextmanager
-def phase_progress(message: str, *, file: Any = None) -> Iterator[None]:
+def phase_progress(
+    message: str,
+    *,
+    file: Any = None,
+    on_complete: Callable[[str, float | None, str], None] | None = None,
+) -> Iterator[None]:
     """Show the current phase and elapsed time without estimating completion."""
-    started = time.monotonic()
+    started = None
+    with suppress(Exception):
+        started = time.monotonic()
     progress = None
     with suppress(Exception):
         console = _console(file)
@@ -76,10 +83,20 @@ def phase_progress(message: str, *, file: Any = None) -> Iterator[None]:
         with suppress(Exception):
             if progress is not None:
                 progress.stop()
+        elapsed = None
         with suppress(Exception):
-            elapsed = int(time.monotonic() - started)
+            if started is not None:
+                elapsed = time.monotonic() - started
+        with suppress(Exception):
+            if on_complete is not None:
+                on_complete(message, elapsed, outcome)
+        with suppress(Exception):
+            duration = "elapsed unavailable"
+            if elapsed is not None:
+                seconds = int(elapsed)
+                duration = f"{seconds // 60}m {seconds % 60:02d}s"
             console_print(
-                f"{message}: {outcome} ({elapsed // 60}m {elapsed % 60:02d}s)",
+                f"{message}: {outcome} ({duration})",
                 style="green" if outcome == "complete" else "red",
                 file=file,
             )

@@ -12,7 +12,9 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import uuid
+from collections.abc import Callable
 from contextlib import suppress
 from functools import partial
 from dataclasses import dataclass, replace
@@ -98,6 +100,50 @@ class DoctorInputError(RuntimeError):
 
 class DoctorRepairError(RuntimeError):
     """The managed-runtime repair cannot proceed or did not complete."""
+
+
+class _DoctorTiming:
+    """Invocation-local observations; never an admission or execution authority."""
+
+    def __init__(self) -> None:
+        self.context = "head/local"
+        self.detail = LogLevel.NORMAL
+        self.phases: list[dict[str, object]] = []
+        self.flushed = False
+
+    def observe(self, name: str, elapsed: float | None, outcome: str) -> None:
+        values = {"phase_name": name, "elapsed_seconds": elapsed, "outcome": outcome}
+        self.phases.append(values)
+
+    def flush(self, record: Callable[..., bool]) -> None:
+        if self.flushed:
+            return
+        self.flushed = True
+        with suppress(Exception):
+            for values in self.phases:
+                if not record(
+                    "doctor_phase_timing",
+                    "Doctor phase timing observed.",
+                    execution_context=self.context,
+                    **values,
+                ):
+                    break
+
+    def finish(self, elapsed: float | None, status: int | None) -> None:
+        if self.detail in {LogLevel.VERBOSE, LogLevel.DEBUG}:
+            for values in self.phases:
+                seconds = values["elapsed_seconds"]
+                duration = "unavailable" if seconds is None else f"{seconds:.6f}s"
+                _stderr(
+                    f"Doctor phase timing ({self.context}): {values['phase_name']}; "
+                    f"{values['outcome']}; elapsed {duration}"
+                )
+        duration = "unavailable" if elapsed is None else f"{elapsed:.6f}s"
+        outcome = "interrupted or failed" if status is None else f"exit status {status}"
+        _stderr(
+            f"Doctor invocation timing ({self.context}, including operator confirmation time): "
+            f"elapsed {duration}; {outcome}"
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1167,7 +1213,9 @@ def _qualify_slurm(
     result: DoctorResult,
     attempt: AttemptLog | None,
     controls: LogControls,
+    timing: _DoctorTiming | None = None,
 ) -> DoctorResult:
+    progress = partial(phase_progress, on_complete=timing.observe if timing else None)
     execution = plan.execution
     assert execution is not None
     binding = _qualification_binding(result)
@@ -1183,7 +1231,7 @@ def _qualify_slurm(
                 "Project, package, or runtime changed before compute qualification"
             )
         resolve_resource_policy(execution.resource_policy, observe_allocation())
-        with phase_progress("Checking storage from the compute node"):
+        with progress("Checking storage from the compute node"):
             receipt = storage_qualification.qualify_compute(workspace, fasta)
         _stderr(
             f"Compute checks passed; storage evidence: {receipt}. Head finalization is required."
@@ -1218,7 +1266,7 @@ def _qualify_slurm(
         ),
         log_dir=attempt.path.parent,
     )
-    with phase_progress("Waiting for Slurm runtime and storage checks"):
+    with progress("Slurm submission-to-return wait"):
         job_id = slurm_submission.submit(
             submission,
             wait_record=attempt.path.parent / "slurm-submit.stdout",
@@ -1238,7 +1286,7 @@ def _qualify_slurm(
                 warning="WARNING: scheduler logging degraded; submission records are retained.",
             ),
         )
-    with phase_progress("Verifying the checked runtime and Project"):
+    with progress("Verifying the checked runtime and Project"):
         _readmit_repair_plan(replace(plan, runtime=None), before_storage=False)
         observed = diagnose_project(
             plan.project.source_path,
@@ -1252,14 +1300,14 @@ def _qualify_slurm(
         raise DoctorRepairError(
             "Project, package, or runtime changed during compute qualification"
         )
-    with phase_progress("Checking shared storage from the head node"):
+    with progress("Checking shared storage from the head node"):
         try:
             storage_qualification.qualify_head(workspace, fasta)
         except (storage_qualification.StorageQualificationError, OSError) as exc:
             raise DoctorRepairError(
                 f"Head storage finalization failed after Slurm job {job_id}: {str(exc)!a}"
             ) from exc
-    with phase_progress("Verifying final Project readiness"):
+    with progress("Verifying final Project readiness"):
         final = diagnose_project(
             plan.project.source_path,
             analysis_name=plan.analysis_name,
@@ -1276,7 +1324,10 @@ def _qualify_slurm(
     return final
 
 
-def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult:
+def _execute_repair(
+    plan: _RepairPlan, *, controls: LogControls, timing: _DoctorTiming | None = None
+) -> DoctorResult:
+    progress = partial(phase_progress, on_complete=timing.observe if timing else None)
     try:
         attempt = open_attempt_log(
             controls=controls,
@@ -1299,19 +1350,23 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
         warning="WARNING: Doctor logging degraded; requalification remains controlling.",
     )
 
-    def emit(name: str, message: str, **values: object) -> None:
-        record(
+    def emit(name: str, message: str, **values: object) -> bool:
+        return record(
             lambda: logger.info(
                 message,
                 extra=event(
                     name,
                     fields={key: field(value) for key, value in values.items()},
                     detail="durable_only"
-                    if name.startswith("package_manager_")
+                    if name.startswith(("package_manager_", "doctor_phase_"))
                     else "normal",
                 ),
             )
         )
+
+    def flush_timing() -> None:
+        if timing is not None:
+            timing.flush(emit)
 
     started: dict[str, object] = {"project": plan.project.source_path}
     if plan.storage is not None:
@@ -1345,7 +1400,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                 claim_path, payload, DoctorRepairError, retain_on_failure=True
             )
             claim = claim_path, ownership, payload
-        with phase_progress("Verifying the approved plan inputs"):
+        with progress("Verifying the approved plan inputs"):
             _readmit_repair_plan(plan, before_storage=True)
         if plan.storage is not None:
             emit(
@@ -1353,7 +1408,10 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                 "Single-host storage qualification started.",
                 receipt=plan.storage.receipt_path,
             )
-            qualified = storage_qualification.execute_direct_qualification(plan.storage)
+            with progress("Qualifying single-host storage"):
+                qualified = storage_qualification.execute_direct_qualification(
+                    plan.storage
+                )
             emit(
                 "storage_qualification_admitted",
                 "Single-host storage qualification admitted.",
@@ -1387,7 +1445,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                         manager=manager,
                         argv=argv,
                     )
-                    with phase_progress(label):
+                    with progress(label):
                         completed = subprocess.run(
                             argv,
                             cwd=plan.installed_package.root,
@@ -1408,7 +1466,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                             )
             with (
                 tempfile.TemporaryDirectory(prefix="emrys-doctor-") as temporary,
-                phase_progress("Discovering and verifying the installed runtime"),
+                progress("Discovering and verifying the installed runtime"),
             ):
                 _readmit_repair_plan(plan, before_storage=False)
                 candidate = onboarding.discover_runtime_profile(
@@ -1457,7 +1515,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                     raise DoctorRepairError(
                         "existing managed profile differs and was preserved"
                     )
-        with phase_progress("Checking Project readiness"):
+        with progress("Checking Project readiness"):
             final = diagnose_project(
                 plan.project.source_path,
                 analysis_name=plan.analysis_name,
@@ -1472,7 +1530,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
         if plan.execution is not None and isinstance(
             plan.execution.placement, SlurmPlacement
         ):
-            final = _qualify_slurm(plan, final, attempt, controls)
+            final = _qualify_slurm(plan, final, attempt, controls, timing)
             _record_runtime_failures(
                 final.inspection, phase="project_readiness", attempt=attempt
             )
@@ -1482,6 +1540,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
         if claim is not None:
             release_lock(*claim, DoctorRepairError)
             claim = None
+        flush_timing()
         if compute_checked:
             record(
                 lambda: attempt.terminal(
@@ -1503,6 +1562,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
             )
         return final
     except KeyboardInterrupt:
+        flush_timing()
         record(
             lambda: attempt.interrupt_best_effort(
                 message=f"Project {plan.operation} interrupted."
@@ -1523,6 +1583,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
         ApplicationLogError,
     ) as exc:
         error = str(exc)
+        flush_timing()
         record(
             lambda: attempt.fail(
                 phase="repair",
@@ -1573,11 +1634,29 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
 
 
 def doctor_from_args(arguments: argparse.Namespace) -> int:
+    timing = _DoctorTiming()
+    started = elapsed = status = None
+    with suppress(Exception):
+        started = time.monotonic()
+    try:
+        status = _doctor_from_args(arguments, timing)
+        return status
+    finally:
+        with suppress(Exception):
+            if started is not None:
+                elapsed = time.monotonic() - started
+        with suppress(Exception):
+            timing.finish(elapsed, status)
+
+
+def _doctor_from_args(arguments: argparse.Namespace, timing: _DoctorTiming) -> int:
+    progress = partial(phase_progress, on_complete=timing.observe)
     if arguments.execute and not arguments.repair:
         print("emrys: error: --execute requires --repair", file=sys.stderr)
         return 2
     try:
         compute = getattr(arguments, "compute", False)
+        timing.context = "compute" if compute else "head/local"
         expected = getattr(arguments, "qualification_binding", None)
         job_id = os.environ.get("SLURM_JOB_ID", "").strip()
         if compute and not is_canonical_slurm_job_id(job_id):
@@ -1586,7 +1665,7 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
             raise DoctorInputError(
                 "Run Doctor on the head node, or select the advanced --compute option"
             )
-        with phase_progress("Inspecting the Project and runtime"):
+        with progress("Inspecting the Project and runtime"):
             result = diagnose_project(
                 onboarding.project_definition_path(arguments.project),
                 analysis_name=arguments.analysis,
@@ -1604,6 +1683,7 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
                 raise DoctorInputError(
                     "Project, package, or runtime changed before compute qualification"
                 )
+            timing.context = "delegated compute"
         elif expected is not None:
             raise DoctorInputError(
                 "Compute input bindings require private Slurm delegation"
@@ -1626,6 +1706,7 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
         print(f"emrys: error: {exc}", file=sys.stderr)
         return 2
     detail = controls.level
+    timing.detail = detail
     _print_result(result, detail)
     slurm = result.execution_profile is not None and isinstance(
         result.execution_profile.placement, SlurmPlacement
@@ -1638,8 +1719,9 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
         if delegated:
             if not arguments.execute:
                 raise DoctorRepairError("Private Doctor delegation requires --execute")
-            _readmit_repair_plan(plan, before_storage=True)
-            _qualify_slurm(plan, result, None, controls)
+            with progress("Verifying the approved plan inputs"):
+                _readmit_repair_plan(plan, before_storage=True)
+            _qualify_slurm(plan, result, None, controls, timing)
             return 0
     except (
         DoctorRepairError,
@@ -1661,7 +1743,7 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
             )
             return 1
     try:
-        final = _execute_repair(plan, controls=controls)
+        final = _execute_repair(plan, controls=controls, timing=timing)
     except KeyboardInterrupt:
         print(
             f"{plan.operation.capitalize()} interrupted; partial state and submission records were preserved. A submitted Slurm job may still be running.",

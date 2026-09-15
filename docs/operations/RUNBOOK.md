@@ -548,6 +548,16 @@ Project and make an explicit selection rather than editing a retained selector.
 
 ## Dependency maintenance
 
+Doctor prints its full invocation elapsed time and exit outcome, including time
+spent awaiting operator confirmation. Add `--log-level verbose` for precise
+phase times. For approved maintenance, the same phase measurements appear in
+the existing diagnostic JSONL as `doctor_phase_timing`; read-only diagnosis does
+not create a log. Compute observations stay distinct from head observations.
+`Slurm submission-to-return wait` includes waiting, launch, compute and return
+overhead. It cannot by itself tell you how long the job spent queued. Keep the
+complete diagnostics when investigating slow verification; these timings do not
+justify removing input reads or changing resource requests.
+
 Institutional R restoration below requires the installed EMRYS R guard and
 permission to install packages. The [engineering guide](ENGINEERING_CONVENTIONS.md#dependencies-and-environments)
 owns dependency policy and developer maintenance. First check the Python locks

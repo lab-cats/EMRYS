@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import hashlib
 import json
 import sys
@@ -30,6 +31,7 @@ from emrys.libraries.application_logging import (
     ApplicationLogError,
     LogControls,
     LogLevel,
+    helpers as log_helpers,
 )
 from emrys.orchestration.run_coordinator import doctor
 from emrys.orchestration.run_coordinator.normalization import (
@@ -922,6 +924,12 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
     assert _snapshot(tmp_path) == before
     output = capsys.readouterr()
     assert output.out == ""
+    assert (
+        "Doctor invocation timing (head/local, including operator confirmation time):"
+        in output.err
+    )
+    assert f"exit status {expected_status}" in output.err
+    assert "Doctor phase timing" not in output.err
     if repair:
         assert f"EMRYS Doctor {operation} plan" in output.err
         assert "Execution placement: Direct" in output.err
@@ -937,6 +945,126 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
         ) == runtime_required
         assert ("Checking/restoring R packages" in output.err) == runtime_required
         assert ("Maintenance claim:" in output.err) == runtime_required
+
+
+def test_invocation_timing_includes_confirmation_and_preserves_read_only_preview(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    project = _project(tmp_path)
+    result = _result(project, ready=False)
+    elapsed = 10.0
+
+    def diagnose(*_args: object, **_kwargs: object) -> doctor.DoctorResult:
+        nonlocal elapsed
+        elapsed += 1.25
+        return result
+
+    def readline() -> str:
+        nonlocal elapsed
+        elapsed += 7.5
+        return "n\n"
+
+    clock = SimpleNamespace(monotonic=lambda: elapsed)
+    monkeypatch.setattr(doctor, "time", clock)
+    monkeypatch.setattr(log_helpers, "time", clock)
+    monkeypatch.setattr(doctor, "diagnose_project", diagnose)
+    monkeypatch.setattr(doctor, "_build_repair_plan", lambda _result: _plan(project))
+    monkeypatch.setattr(
+        doctor.sys, "stdin", SimpleNamespace(isatty=lambda: True, readline=readline)
+    )
+    monkeypatch.setattr(doctor.sys.stderr, "isatty", lambda: True)
+    monkeypatch.setenv("NO_COLOR", "1")
+    monkeypatch.setattr(
+        doctor,
+        "open_attempt_log",
+        lambda **_kwargs: pytest.fail("preview opened a log"),
+    )
+    parser = argparse.ArgumentParser()
+    doctor.configure_parser(parser)
+    before = _snapshot(tmp_path)
+    assert (
+        doctor.doctor_from_args(
+            parser.parse_args(
+                [
+                    "--project",
+                    str(project.source_path),
+                    "--repair",
+                    "--log-level",
+                    "verbose",
+                ]
+            )
+        )
+        == 1
+    )
+    output = capsys.readouterr().err
+    assert (
+        "Doctor phase timing (head/local): Inspecting the Project and runtime; complete; elapsed 1.250000s"
+        in output
+    )
+    assert (
+        "Doctor invocation timing (head/local, including operator confirmation time): elapsed 8.750000s; exit status 1"
+        in output
+    )
+    assert _snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize("fault", ("none", "clock", "callback", "finish"))
+@pytest.mark.parametrize("interrupted", (False, True))
+def test_failed_diagnosis_timing_cannot_replace_error_or_interrupt(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    fault: str,
+    interrupted: bool,
+) -> None:
+    calls: list[str] = []
+    original = KeyboardInterrupt("diagnosis interrupted")
+    source = tmp_path / "project.yaml"
+    source.write_text("input: refused\n", encoding="utf-8")
+
+    def diagnose(*_args: object, **_kwargs: object) -> doctor.DoctorResult:
+        calls.append("diagnose")
+        if interrupted:
+            raise original
+        raise doctor.DoctorInputError("input refused")
+
+    def failed_telemetry(*_args: object) -> None:
+        raise OSError("telemetry unavailable")
+
+    monkeypatch.setattr(doctor, "diagnose_project", diagnose)
+    monkeypatch.setattr(
+        doctor,
+        "open_attempt_log",
+        lambda **_kwargs: pytest.fail("failed diagnosis opened a log"),
+    )
+    if fault == "clock":
+        clock = SimpleNamespace(monotonic=failed_telemetry)
+        monkeypatch.setattr(doctor, "time", clock)
+        monkeypatch.setattr(log_helpers, "time", clock)
+    elif fault == "callback":
+        monkeypatch.setattr(doctor._DoctorTiming, "observe", failed_telemetry)
+    elif fault == "finish":
+        monkeypatch.setattr(doctor._DoctorTiming, "finish", failed_telemetry)
+    parser = argparse.ArgumentParser()
+    doctor.configure_parser(parser)
+    arguments = parser.parse_args(["--project", str(source)])
+    before = _snapshot(tmp_path)
+    if interrupted:
+        with pytest.raises(KeyboardInterrupt) as failure:
+            doctor.doctor_from_args(arguments)
+        assert failure.value is original
+    else:
+        assert doctor.doctor_from_args(arguments) == 2
+    output = capsys.readouterr().err
+    assert calls == ["diagnose"]
+    assert _snapshot(tmp_path) == before
+    if fault != "finish":
+        assert "Doctor invocation timing" in output
+        assert ("interrupted or failed" if interrupted else "exit status 2") in output
+    if fault == "clock":
+        assert "elapsed unavailable" in output
 
 
 def test_diagnosis_resolves_shared_log_controls_without_opening_a_log(
@@ -1312,6 +1440,88 @@ def _patch_logging(
     monkeypatch.setattr(doctor, "open_attempt_log", open_log)
 
 
+@pytest.mark.parametrize("log_error", (None, OSError))
+@pytest.mark.parametrize("failed_readmission", (False, True))
+def test_phase_timing_uses_only_open_maintenance_log_and_never_controls_repair(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    log_error: type[Exception] | None,
+    failed_readmission: bool,
+) -> None:
+    project = _project(tmp_path)
+    plan = replace(_plan(project), runtime=None)
+    ready = _result(project, ready=True)
+    records: list[str] = []
+    _patch_logging(monkeypatch, plan, records)
+    open_log = doctor.open_attempt_log
+    log_attempts: list[str] = []
+
+    def open_observed(**kwargs: Any) -> Any:
+        attempt = open_log(**kwargs)
+        write = attempt._write_record
+
+        def record(entry: Any, **kwargs: Any) -> None:
+            if entry.emrys_event == "doctor_phase_timing":
+                log_attempts.append(entry.emrys_fields["phase_name"].value)
+                if log_error is not None:
+                    raise log_error("timing log unavailable")
+            write(entry, **kwargs)
+
+        monkeypatch.setattr(attempt, "_write_record", record)
+        return attempt
+
+    def readmit(*_args: object, **_kwargs: object) -> None:
+        if failed_readmission:
+            raise doctor.DoctorRepairError("readmission refused")
+
+    monkeypatch.setattr(doctor, "open_attempt_log", open_observed)
+    monkeypatch.setattr(doctor, "_readmit_repair_plan", readmit)
+    monkeypatch.setattr(doctor, "diagnose_project", lambda *_args, **_kwargs: ready)
+    timing = doctor._DoctorTiming()
+    timing.observe("Inspecting the Project and runtime", 0.125, "complete")
+    assert records == [] and log_attempts == []
+    if failed_readmission:
+        with pytest.raises(doctor.DoctorRepairError, match="readmission refused"):
+            doctor._execute_repair(plan, controls=_controls(project), timing=timing)
+    else:
+        assert (
+            doctor._execute_repair(plan, controls=_controls(project), timing=timing)
+            is ready
+        )
+    log_path, events = _repair_log(project)
+    assert records[0] == "opened" and records[-1] == "closed"
+    terminal = "failed" if failed_readmission else "terminal"
+    assert (terminal in records) == (log_error is not OSError)
+    expected_phases = [
+        "Inspecting the Project and runtime",
+        "Verifying the approved plan inputs",
+        *([] if failed_readmission else ["Checking Project readiness"]),
+    ]
+    assert log_attempts == (
+        expected_phases if log_error is None else expected_phases[:1]
+    )
+    assert timing.flushed
+    before = log_path.read_bytes()
+    timing.observe("after close", 0.5, "complete")
+    timing.flush(lambda *_args, **_kwargs: pytest.fail("timing flush retried"))
+    assert log_path.read_bytes() == before
+    observations = [
+        item["fields"] for item in events if item["event"] == "doctor_phase_timing"
+    ]
+    if log_error is not None:
+        assert observations == []
+    else:
+        assert observations[0] == {
+            "execution_context": "head/local",
+            "phase_name": "Inspecting the Project and runtime",
+            "elapsed_seconds": 0.125,
+            "outcome": "complete",
+        }
+        assert observations[-1]["outcome"] == (
+            "interrupted or failed" if failed_readmission else "complete"
+        )
+
+
 @pytest.mark.parametrize("changed", ("profile", "package", "settings"))
 def test_repair_readmission_rejects_changed_package_or_appeared_profile(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, changed: str
@@ -1371,12 +1581,15 @@ def test_repair_readmission_rejects_a_redirected_runtime_before_writing(
     assert not (external / "managed").exists()
 
 
+@pytest.mark.parametrize("timing_fault", (None, "write", "interrupt"))
 def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
+    timing_fault: str | None,
 ) -> None:
     from emrys.evidence.storage_inventory import qualification
+    from emrys.libraries.application_logging import storage as log_storage
 
     project = _project(tmp_path)
     monkeypatch.setattr(
@@ -1462,10 +1675,41 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     monkeypatch.setattr(doctor.subprocess, "run", run_manager)
     monkeypatch.setattr(doctor.onboarding, "discover_runtime_profile", discover)
     monkeypatch.setattr(doctor, "diagnose_project", diagnose)
+    write = log_storage._write
+    timing_writes: list[str] = []
+    timing_boundaries: list[tuple[int, tuple[Path, ...], bool]] = []
+    original = KeyboardInterrupt("timing write interrupted")
 
-    observed = doctor._execute_repair(plan, controls=_controls(project))
+    def write_observed(descriptor: int, payload: bytes) -> int:
+        document = json.loads(payload)
+        if document["event"] == "doctor_phase_timing":
+            timing_writes.append(document["fields"]["phase_name"])
+            timing_boundaries.append(
+                (
+                    len(commands),
+                    tuple(requalified),
+                    (runtime.managed_root.parent / "maintenance.lock").exists(),
+                )
+            )
+            if timing_fault == "write":
+                raise OSError(errno.ENOSPC, "timing write full")
+            if timing_fault == "interrupt":
+                raise original
+        return write(descriptor, payload)
 
-    assert observed is final
+    monkeypatch.setattr(log_storage, "_write", write_observed)
+    timing = doctor._DoctorTiming()
+    if timing_fault == "interrupt":
+        with pytest.raises(KeyboardInterrupt) as failure:
+            doctor._execute_repair(plan, controls=_controls(project), timing=timing)
+        assert failure.value is original
+    else:
+        assert (
+            doctor._execute_repair(plan, controls=_controls(project), timing=timing)
+            is final
+        )
+
+    assert timing.flushed
     assert not (runtime.managed_root.parent / "maintenance.lock").exists()
     assert [Path(argv[0]).name for argv in commands] == ["pixi", "pixi"]
     assert "install" in commands[0]
@@ -1483,18 +1727,42 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     )
     assert runtime.profile.read_bytes() == b"admitted runtime\n"
     assert records[0] == "opened"
-    assert "terminal" in records
+    assert ("terminal" in records) == (timing_fault is None)
+    assert ("interrupted" in records) == (timing_fault == "interrupt")
     assert records[-1] == "closed"
     assert not list((runtime.managed_root / "cache").glob("repair-*"))
     output = capsys.readouterr().err
     assert "Checking/updating native tools and R" in output
     assert "Checking/restoring R packages" in output
     _log_path, events = _repair_log(project)
+    phases = [
+        "Verifying the approved plan inputs",
+        "Qualifying single-host storage",
+        "Checking/updating native tools and R",
+        "Checking/restoring R packages",
+        "Discovering and verifying the installed runtime",
+        "Checking Project readiness",
+    ]
+    assert timing_writes == (phases if timing_fault is None else phases[:1])
+    assert timing_boundaries == [(2, (project.source_path,), False)] * len(
+        timing_writes
+    )
+    assert [
+        item["fields"]["phase_name"]
+        for item in events
+        if item["event"] == "doctor_phase_timing"
+    ] == (phases if timing_fault is None else [])
     assert [
         (item["event"], item["message"])
         for item in events
         if item["phase"] == "terminal"
-    ] == [("repair_requalified", "Project repair and verification completed.")]
+    ] == (
+        [("repair_requalified", "Project repair and verification completed.")]
+        if timing_fault is None
+        else []
+    )
+    if timing_fault == "interrupt":
+        assert events[-1]["event"] == "attempt_interrupted"
     assert (
         next(
             project.source_path.parent.glob("logs/application/**/package-output.log")
@@ -2108,6 +2376,28 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     assert records.count("opened") == 1
     output = capsys.readouterr().err
     log_path, events = _repair_log(project)
+    timing_events = [
+        item["fields"] for item in events if item["event"] == "doctor_phase_timing"
+    ]
+    assert timing_events[0]["phase_name"] == "Inspecting the Project and runtime"
+    assert all(item["execution_context"] == "head/local" for item in timing_events)
+    assert all(
+        isinstance(item["elapsed_seconds"], float) and item["elapsed_seconds"] >= 0
+        for item in timing_events
+    )
+    waits = [
+        item
+        for item in timing_events
+        if item["phase_name"] == "Slurm submission-to-return wait"
+    ]
+    assert len(waits) == (1 if state["jobs"] else 0)
+    if failure == "scheduler":
+        assert waits[0]["outcome"] == "interrupted or failed"
+    if failure is None:
+        assert waits[0]["outcome"] == "complete"
+        assert "Doctor invocation timing (delegated compute," in output
+    assert "Doctor invocation timing (head/local," in output
+    assert "Waiting for Slurm runtime and storage checks" not in output
     assert "EMRYS Doctor verification plan" in output
     assert all(line in output for line in execution.submission_summary())
     assert "Checking/updating native tools and R" not in output
