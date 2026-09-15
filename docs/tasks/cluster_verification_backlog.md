@@ -146,15 +146,17 @@ groups. A FIFO readiness handshake follows a native fixture's partial output;
 only then does the test signal the isolated public Run process. Production
 signal forwarding, native escalation and workflow grace periods remain in use.
 The fixture checks group absence before lock release and receipt publication,
-retained failed Task/start/log evidence, cleaned owned work and the current
-blocked receipt. Scientific effects and readiness remain explicit test doubles.
+retained failed Task/start/log evidence and cleaned owned work. With CV-10's
+current Linux abort contract, it also checks a positively closed interrupted
+receipt, read-only resume preview and successful execution in a new Attempt.
+Earlier records and verified outputs remain unchanged. Scientific effects and
+readiness remain explicit test doubles; actual-tool descendant containment is
+verified separately under CV-10.
 
-Resume preview must refuse without writes. Execution-mode refusal may retain
-its normal failed application log, while the Run and all earlier evidence stay
-unchanged. The existing successful between-Task failure/resume case remains a
-separate defense. Full integration passed the combined standard CI above.
-This does not establish actual scientific-tool or Slurm/site
-cancellation, or make a postentry Task retryable.
+The successful between-Task failure/resume case remains a separate defense.
+Both public journeys passed the final CV-10 standard CI recorded below. Missing
+finalization or unclosed Task evidence still prevents resume. This does not
+establish Slurm/site cancellation or recover historical interrupted Runs.
 
 The existing public failed-Run/resume journey also checks real report producer
 publication boundaries through separate public inspection processes, as recorded
@@ -687,9 +689,15 @@ has SHA-256 `a8b0e166cd0d1b5f1a898cd8abb32eb91b2b418582ea2342ed7926ba1fd0f258`.
 That initial complete suite failed four older fixture assumptions about Task
 labels, retained origins and immutable resource policy. Their corrections keep
 the refusal checks and construct valid predecessor/Run bindings; no recovery
-predicate was relaxed. The standard-suite follow-up is recorded in
-[PR #248](https://github.com/lab-cats/EMRYS/pull/248). CV-10 remains Open for
-institutional cancellation acceptance and E09's missing finalization/diagnostic
+predicate was relaxed. Final product head
+`a947b8fca04eb052c3829e897f255b046b002087` passed all 14 standard jobs, with
+four configured skips, in
+[CI 35002451860](https://github.com/lab-cats/EMRYS/actions/runs/35002451860).
+The strengthened public cancellation/resume journey passed in 282.22 seconds;
+all 47 native cases passed without skips. Final
+[artifact 10411245477](https://github.com/lab-cats/EMRYS/actions/runs/35002451860/artifacts/10411245477)
+has SHA-256 `7f691245b22bf4b24cd479745b041adfdcc9d11b662f0455ff1ceebde6d16985`.
+CV-10 remains Open for institutional cancellation acceptance and E09's missing finalization/diagnostic
 evidence. This change does not recover the historical interrupted Run or
 establish its cause.
 
