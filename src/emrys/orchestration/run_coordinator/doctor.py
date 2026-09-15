@@ -594,6 +594,17 @@ class _RepairPlan:
     def operation(self) -> str:
         return "repair and verification" if self.runtime else "verification"
 
+    @property
+    def runtime_work(self) -> str:
+        if self.runtime is None:
+            return "Selected runtime passed current checks; no package-manager work is needed."
+        action = (
+            "Prepare a managed runtime inventory; package managers check any retained tools and caches."
+            if self.runtime.profile_bytes is None
+            else "Check/update tools selected by the retained managed runtime inventory."
+        )
+        return f"{action} Package-manager output records which packages are reused, installed, or changed."
+
 
 def _profile_is_managed(
     checks: tuple[RuntimeCheck, ...],
@@ -1138,6 +1149,7 @@ def _print_result(result: DoctorResult, detail: LogLevel) -> None:
 def _print_repair_plan(plan: _RepairPlan) -> None:
     _stderr(f"EMRYS Doctor {plan.operation} plan", style="bold blue")
     _stderr(f"  Project: {plan.project.source_path}")
+    _stderr(f"  Runtime work: {plan.runtime_work}")
     if plan.execution is not None:
         for line in plan.execution.submission_summary():
             _stderr(f"  {line}")
@@ -1368,7 +1380,10 @@ def _execute_repair(
         if timing is not None:
             timing.flush(emit)
 
-    started: dict[str, object] = {"project": plan.project.source_path}
+    started: dict[str, object] = {
+        "project": plan.project.source_path,
+        "runtime_work": plan.runtime_work,
+    }
     if plan.storage is not None:
         started["storage_receipt"] = plan.storage.receipt_path
     if plan.runtime is not None:
@@ -1376,6 +1391,7 @@ def _execute_repair(
         started.update(
             {
                 "managed_root": runtime.managed_root,
+                "package_output": attempt.path.parent / "package-output.log",
                 "pixi": runtime.pixi,
                 "pixi_sha256": runtime.pixi_sha256,
                 "pixi_manifest_sha256": hashlib.sha256(
@@ -1387,6 +1403,7 @@ def _execute_repair(
     emit("repair_started", f"Project {plan.operation} started.", **started)
     claim: tuple[Path, os.stat_result, bytes] | None = None
     try:
+        _stderr(f"Runtime work: {plan.runtime_work}")
         if plan.runtime is not None:
             runtime_root = onboarding.project_runtime_directory(plan.project)
             if runtime_root != plan.runtime.managed_root.parent:
@@ -1421,10 +1438,6 @@ def _execute_repair(
         runtime = plan.runtime
         if runtime is not None:
             _admit_managed_root(runtime)
-            if runtime.profile_bytes is None:
-                _stderr(
-                    "Allow roughly 5–15 minutes for first setup; it may take longer."
-                )
             with (
                 attempt.package_output() as output,
                 tempfile.TemporaryDirectory(

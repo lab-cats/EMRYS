@@ -175,6 +175,21 @@ setup, and a changed dependency/input. Show first-setup duration guidance and
 queue time separately from work; keep performance changes under CV-26.
 **Owners/dependencies:** Doctor and existing package-manager integration.
 
+**Selected runtime-work slice:** One immutable-plan summary is reused in preview,
+execution and the existing maintenance-start diagnostic. It distinguishes a
+currently verified selected runtime with no package-manager work, preparation
+of a missing managed inventory, and checking/updating tools selected by a
+retained inventory. Missing inventory can follow interrupted setup; retained
+files or caches alone do not prove usable packages. Actual package reuse and
+changes remain in the manager's exact printed/recorded `package-output.log`.
+No new probe, cache parser, receipt or skipped admission is introduced.
+
+Focused public fixtures preserve no-write preview, retained cache/inventory
+bytes, manager-free verification, identical manager commands and existing
+failure/interrupt behavior. Application execution requires hosted CI. CV-26's
+phase timing separates observed work stages from submission-to-return waiting;
+isolated queue attribution and first-setup/retry measurements remain open.
+
 ### CV-06 Actual-data onboarding
 
 **Finding:** Quickstart step 7 required legacy-file archaeology, many flags, and

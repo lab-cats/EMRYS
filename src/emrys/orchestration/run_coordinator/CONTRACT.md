@@ -113,6 +113,15 @@ not install packages or treat a prior successful check as current evidence.
 Existing CLI flags, maintenance log modes/event IDs, refusals, and exits remain
 unchanged. Slurm-stage elapsed time includes queue waiting and compute work.
 
+The immutable repair plan supplies one runtime-work summary for preview,
+execution and the existing `repair_started` diagnostic. It distinguishes a
+currently verified selected runtime without manager work, preparation of a
+missing managed inventory, and checking/updating tools selected by a retained
+managed inventory. Missing inventory does not imply absent tools or a fresh
+installation. Manager plans retain the exact `package-output.log` path;
+only package-manager output identifies actual package reuse or changes.
+These descriptions add no probes, inferred cache admission or skipped checks.
+
 Doctor reports invocation timing separately from admission. The total spans
 entry through return/exception and explicitly includes operator confirmation
 time; verbose/debug output shows precise phase elapsed seconds. An
