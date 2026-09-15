@@ -5722,7 +5722,8 @@ def test_public_real_snakemake_native_cancellation_preserves_blocked_resume(
             )
             with selectors.DefaultSelector() as selector:
                 selector.register(reader, selectors.EVENT_READ)
-                deadline = time.monotonic() + 120
+                # Snakemake may schedule other samples before this fixed target.
+                deadline = time.monotonic() + 300
                 while True:
                     returncode = process.poll()
                     assert returncode is None, (
