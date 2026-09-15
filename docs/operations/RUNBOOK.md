@@ -91,7 +91,8 @@ Prepare the Project's scientific runtime and storage:
 emrys doctor --repair
 ```
 
-Review the repair plan and answer `y` to approve installation and storage checks.
+Review the displayed repair-and-verification or verification plan and answer
+`y` to approve its listed actions.
 Doctor manages Project-owned native tools and R packages and retains a maintenance
 log; Python dependencies remain the package manager's responsibility. The
 ordinary command is correct on this non-Slurm host; `--compute` is for advanced

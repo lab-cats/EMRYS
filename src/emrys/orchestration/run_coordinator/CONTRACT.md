@@ -79,6 +79,16 @@ head-node evidence. A prior storage receipt alone does not qualify a changed
 runtime. Each automatic repair has one maintenance log; its compute checks
 retain scheduler streams without opening another application attempt.
 
+Doctor labels a plan with package-manager actions as repair and verification;
+a plan without those actions is verification. Plan, confirmation, progress,
+and terminal messages use that distinction. Package action labels are carried
+with the exact command/environment pairs consumed by both preview and execution.
+The managers determine which packages are reused or changed. Verification
+repeats admission at its existing input, mutation, and host boundaries; it does
+not install packages or treat a prior successful check as current evidence.
+Existing CLI flags, maintenance log modes/event IDs, refusals, and exits remain
+unchanged. Slurm-stage elapsed time includes queue waiting and compute work.
+
 Failed runtime checks retain their identity, target, expected/observed values,
 probe detail, host, inventory digest, and qualification phase before a repair
 aborts. Head-side discovery and requalification write `runtime_check_failed`

@@ -615,6 +615,10 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
     ("execute", "repair", "expected_status"),
     ((False, False, 1), (True, False, 2), (False, True, 1)),
 )
+@pytest.mark.parametrize(
+    ("runtime_required", "operation"),
+    ((False, "verification"), (True, "repair and verification")),
+)
 def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -622,13 +626,23 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
     execute: bool,
     repair: bool,
     expected_status: int,
+    runtime_required: bool,
+    operation: str,
 ) -> None:
     project = _project(tmp_path)
     result = _result(project, ready=False)
     plan = _plan(project)
+    if not runtime_required:
+        plan = replace(plan, runtime=None)
     monkeypatch.setattr(doctor, "diagnose_project", lambda *_args, **_kwargs: result)
     monkeypatch.setattr(doctor, "_build_repair_plan", lambda _result: plan)
-    monkeypatch.setattr(doctor, "_confirm_repair", lambda: False)
+    monkeypatch.setattr(
+        doctor.sys,
+        "stdin",
+        SimpleNamespace(isatty=lambda: True, readline=lambda: "n\n"),
+    )
+    monkeypatch.setattr(doctor.sys.stderr, "isatty", lambda: True)
+    monkeypatch.setenv("NO_COLOR", "1")
     monkeypatch.setattr(
         doctor,
         "_execute_repair",
@@ -654,7 +668,20 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
 
     assert status == expected_status
     assert _snapshot(tmp_path) == before
-    assert capsys.readouterr().out == ""
+    output = capsys.readouterr()
+    assert output.out == ""
+    if repair:
+        assert f"EMRYS Doctor {operation} plan" in output.err
+        assert f"Apply this {operation} plan? [y/N]" in output.err
+        assert f"{operation.capitalize()} preview complete" in output.err
+        assert (
+            "Checks repeat because inputs, packages, and node visibility can change."
+            in output.err
+        )
+        assert (
+            "Checking/updating native tools and R" in output.err
+        ) == runtime_required
+        assert ("Checking/restoring R packages" in output.err) == runtime_required
 
 
 def test_diagnosis_resolves_shared_log_controls_without_opening_a_log(
@@ -833,6 +860,7 @@ def test_managed_repair_refuses_external_dependency_installation(
 def test_storage_only_repair_preserves_ready_site_runtime_and_skips_managers(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     from emrys.evidence.storage_inventory import qualification
 
@@ -906,6 +934,7 @@ def test_storage_only_repair_preserves_ready_site_runtime_and_skips_managers(
     assert profile.read_bytes() == b"site runtime\n"
     assert records[0] == "opened"
     assert "terminal" in records
+    assert "Project verification completed." in capsys.readouterr().err
 
 
 def test_repair_refuses_redirected_pixi_state(tmp_path: Path) -> None:
@@ -940,7 +969,7 @@ def test_repair_isolates_and_refuses_pixi_configuration(
     monkeypatch.setenv("PIXI_CACHE_DETACHED_ENVIRONMENTS_DIR", "/tmp/external")
     pixi_environments = [
         environment
-        for argv, environment in doctor._repair_actions(plan)
+        for _label, argv, environment in doctor._repair_actions(plan)
         if Path(argv[0]).name == "pixi"
     ]
     assert pixi_environments
@@ -1066,6 +1095,7 @@ def test_repair_readmission_rejects_a_redirected_runtime_before_writing(
 def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     from emrys.evidence.storage_inventory import qualification
 
@@ -1171,6 +1201,10 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     assert "terminal" in records
     assert records[-1] == "closed"
     assert not list((runtime.managed_root / "cache").glob("repair-*"))
+    output = capsys.readouterr().err
+    assert "Checking/updating native tools and R" in output
+    assert "Checking/restoring R packages" in output
+    assert "Project repair and verification completed." in output
     assert (
         next(
             project.source_path.parent.glob("logs/application/**/package-output.log")
@@ -1309,7 +1343,9 @@ def test_repair_retains_failed_candidate_probe_after_managers_succeed(
     assert fields["inventory"] == str(managed.parent / "runtime.tsv")
     assert len(fields["inventory_sha256"]) == 64
     assert not any(item["event"] == "runtime_profile_admitted" for item in records)
-    assert str(log_path) in capsys.readouterr().err
+    output = capsys.readouterr().err
+    assert str(log_path) in output
+    assert "REPAIR AND VERIFICATION FAILED:" in output
 
 
 def test_repair_refuses_a_discovered_executable_symlink_outside_managed_root(
@@ -1584,12 +1620,20 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     expected_status = 0 if failure is None else 130 if failure == "finalize" else 1
     assert doctor.doctor_from_args(arguments) == expected_status
     assert records.count("opened") == 1
+    output = capsys.readouterr().err
+    assert "EMRYS Doctor verification plan" in output
+    assert "Checking/updating native tools and R" not in output
+    if failure is None:
+        assert "Project verification completed." in output
+    elif failure == "finalize":
+        assert "Verification interrupted;" in output
+    else:
+        assert "VERIFICATION FAILED:" in output
     if failure in {"runtime", "head_runtime"}:
         log_path, events = _repair_log(project)
         diagnostics = [
             item for item in events if item["event"] == "runtime_check_failed"
         ]
-        output = capsys.readouterr().err
         assert str(log_path) in output
         if failure == "runtime":
             assert diagnostics == []
@@ -1632,6 +1676,15 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         assert "failed" in records
         with pytest.raises(qualification.StorageQualificationError):
             qualification.admit_final_qualification(project.source_path.parent, fasta)
+    if failure is None:
+        assert diagnose().ready
+        assert doctor.doctor_from_args(arguments) == 0
+        repeated_output = capsys.readouterr().err
+        assert "EMRYS is ready." in repeated_output
+        assert "EMRYS Doctor verification plan" in repeated_output
+        assert "Project verification completed." in repeated_output
+        assert "Checking/updating native tools and R" not in repeated_output
+        assert records.count("opened") == 2
 
 
 def test_malformed_project_is_a_usage_error(

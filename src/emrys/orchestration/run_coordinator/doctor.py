@@ -636,6 +636,10 @@ class _RepairPlan:
     compute: bool = False
     qualification_binding: str | None = None
 
+    @property
+    def operation(self) -> str:
+        return "repair and verification" if self.runtime else "verification"
+
 
 def _profile_is_managed(
     checks: tuple[RuntimeCheck, ...],
@@ -689,10 +693,10 @@ def _file_sha256(path: Path) -> str:
 
 def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
     if result.installed_package is None:
-        raise DoctorRepairError("repair requires an admitted installed EMRYS package")
+        raise DoctorRepairError("Doctor requires an admitted installed EMRYS package")
     if not result.execution_ready:
         raise DoctorRepairError(
-            "repair preserves execution profiles; restore runtime/profiles/default.yaml"
+            "Doctor preserves execution profiles; restore runtime/profiles/default.yaml"
         )
     project = result.project
     fasta = Path(str(result.analysis.workflow_inputs["reference"]["fasta"]["path"]))
@@ -711,15 +715,16 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
         )
     except storage_qualification.StorageQualificationError as exc:
         raise DoctorRepairError(str(exc)) from exc
+    plan = _RepairPlan(
+        project=project,
+        analysis_name=result.analysis.name,
+        installed_package=result.installed_package,
+        storage=storage,
+        runtime=None,
+        execution=result.execution_profile,
+    )
     if result.runtime_ready:
-        return _RepairPlan(
-            project=project,
-            analysis_name=result.analysis.name,
-            installed_package=result.installed_package,
-            storage=storage,
-            runtime=None,
-            execution=result.execution_profile,
-        )
+        return plan
     if result.inspection is not None and any(
         item.check.check_id in PYTHON_CHECK_IDS and item.status != "pass"
         for item in result.inspection.observations
@@ -795,14 +800,7 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
                 "the admitted runtime inventory is site- or user-owned and was "
                 "preserved; repair that environment or explicitly admit a replacement"
             )
-    return _RepairPlan(
-        project=project,
-        analysis_name=result.analysis.name,
-        installed_package=result.installed_package,
-        storage=storage,
-        runtime=managed_plan,
-        execution=result.execution_profile,
-    )
+    return replace(plan, runtime=managed_plan)
 
 
 def _readmit_repair_plan(
@@ -834,7 +832,7 @@ def _readmit_repair_plan(
         storage_qualification.StorageQualificationError,
         ExecutionProfileError,
     ) as exc:
-        raise DoctorRepairError(f"repair plan changed before execution: {exc}") from exc
+        raise DoctorRepairError(f"Doctor plan changed before execution: {exc}") from exc
     if (
         installed_package != plan.installed_package
         or project != plan.project
@@ -844,7 +842,7 @@ def _readmit_repair_plan(
             and runtime_root != plan.runtime.managed_root.parent
         )
     ):
-        raise DoctorRepairError("repair plan changed before execution")
+        raise DoctorRepairError("Doctor plan changed before execution")
     runtime = plan.runtime
     if runtime is None:
         return
@@ -947,7 +945,7 @@ def _admit_managed_root(plan: _ManagedRuntimePlan) -> None:
 
 def _repair_actions(
     plan: _RepairPlan,
-) -> tuple[tuple[tuple[str, ...], dict[str, str]], ...]:
+) -> tuple[tuple[str, tuple[str, ...], dict[str, str]], ...]:
     runtime = plan.runtime
     if runtime is None:
         return ()
@@ -994,6 +992,7 @@ def _repair_actions(
     )
     return (
         (
+            "Checking/updating native tools and R",
             (
                 str(runtime.pixi),
                 "install",
@@ -1005,6 +1004,7 @@ def _repair_actions(
             pixi,
         ),
         (
+            "Checking/restoring R packages",
             (
                 str(runtime.pixi),
                 "run",
@@ -1161,17 +1161,9 @@ def _print_result(result: DoctorResult, detail: LogLevel) -> None:
 
 
 def _print_repair_plan(plan: _RepairPlan) -> None:
-    _stderr("EMRYS Doctor repair plan", style="bold blue")
+    _stderr(f"EMRYS Doctor {plan.operation} plan", style="bold blue")
     _stderr(f"  Project: {plan.project.source_path}")
     actions = []
-    if plan.execution is not None and isinstance(
-        plan.execution.placement, SlurmPlacement
-    ):
-        actions.append(
-            "compute runtime/storage checks (head finalization follows)"
-            if plan.compute
-            else "Slurm runtime/storage checks, then head finalization"
-        )
     if plan.storage is not None:
         _stderr(f"  Direct storage receipt: {plan.storage.receipt_path}")
         for role, root in zip(
@@ -1185,21 +1177,25 @@ def _print_repair_plan(plan: _RepairPlan) -> None:
         runtime = plan.runtime
         _stderr(f"  Managed runtime: {runtime.managed_root}")
         _stderr(f"  Pixi: {runtime.pixi}")
-        actions.extend(
-            (
-                "Pixi native/R install",
-                "renv restore",
-                "runtime qualification",
-            )
+        actions.extend(label for label, *_ in _repair_actions(plan))
+    if plan.execution is not None and isinstance(
+        plan.execution.placement, SlurmPlacement
+    ):
+        actions.append(
+            "compute runtime/storage checks (head finalization follows)"
+            if plan.compute
+            else "Slurm runtime/storage checks, then head finalization"
         )
+    actions.append("rechecking Project, package, runtime, and storage readiness")
     _stderr("  Actions: " + "; ".join(actions), style="blue")
+    _stderr("Checks repeat because inputs, packages, and node visibility can change.")
     _stderr("Declared input files and site/user environments will not be modified.")
 
 
-def _confirm_repair() -> bool:
+def _confirm_repair(plan: _RepairPlan) -> bool:
     if not sys.stdin.isatty() or not sys.stderr.isatty():
         return False
-    print("Apply this repair? [y/N] ", end="", file=sys.stderr, flush=True)
+    console_print(f"Apply this {plan.operation} plan? [y/N] ", end="")
     return sys.stdin.readline().strip().casefold() in {"y", "yes"}
 
 
@@ -1337,12 +1333,12 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
         )
     except (ApplicationLogError, ValueError) as exc:
         raise DoctorRepairError(
-            f"could not open repair log before mutation: {exc}"
+            f"could not open Doctor log before mutation: {exc}"
         ) from exc
     logger = attempt.logger(component="maintenance", phase="repair")
     record = partial(
         attempt.best_effort,
-        warning="WARNING: repair logging degraded; requalification remains controlling.",
+        warning="WARNING: Doctor logging degraded; requalification remains controlling.",
     )
 
     def emit(name: str, message: str, **values: object) -> None:
@@ -1375,9 +1371,9 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                 "pixi_lock_sha256": hashlib.sha256(runtime.lock_bytes).hexdigest(),
             }
         )
-    emit("repair_started", "Project repair started.", **started)
+    emit("repair_started", f"Project {plan.operation} started.", **started)
     try:
-        with phase_progress("Verifying the approved repair inputs"):
+        with phase_progress("Verifying the approved plan inputs"):
             _readmit_repair_plan(plan, before_storage=True)
         if plan.storage is not None:
             emit(
@@ -1405,7 +1401,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                     prefix="repair-", dir=runtime.managed_root / "cache"
                 ) as temporary,
             ):
-                for argv, environment in _repair_actions(plan):
+                for label, argv, environment in _repair_actions(plan):
                     manager = Path(argv[0]).name
                     if manager == "pixi" and os.path.lexists(
                         runtime.managed_root / ".pixi/config.toml"
@@ -1419,11 +1415,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                         manager=manager,
                         argv=argv,
                     )
-                    with phase_progress(
-                        "Restoring R packages"
-                        if "run" in argv
-                        else "Installing native tools and R"
-                    ):
+                    with phase_progress(label):
                         completed = subprocess.run(
                             argv,
                             cwd=plan.installed_package.root,
@@ -1516,13 +1508,11 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                 )
                 return final
         if not final.ready:
-            raise DoctorRepairError(
-                "Project remained not ready after repair requalification"
-            )
+            raise DoctorRepairError("Project remained not ready after verification")
         record(
             lambda: attempt.terminal(
                 event_name="repair_requalified",
-                message="Project repair completed and was requalified.",
+                message=f"Project {plan.operation} completed.",
                 fields={
                     "ready": field(final.ready, console=True),
                     "storage_ready": field(final.storage_ready),
@@ -1533,7 +1523,9 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
         return final
     except KeyboardInterrupt:
         record(
-            lambda: attempt.interrupt_best_effort(message="Project repair interrupted.")
+            lambda: attempt.interrupt_best_effort(
+                message=f"Project {plan.operation} interrupted."
+            )
         )
         raise
     except (
@@ -1553,7 +1545,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
         record(
             lambda: attempt.fail(
                 phase="repair",
-                message="Project repair failed.",
+                message=f"Project {plan.operation} failed.",
                 fields={"error": field(error)},
             )
         )
@@ -1573,7 +1565,7 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--repair",
         action="store_true",
-        help="Preview supported EMRYS-owned readiness repair and confirm on a terminal.",
+        help="Preview verification and any required EMRYS-owned runtime repair.",
     )
     parser.add_argument(
         "--execute",
@@ -1663,27 +1655,29 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
         ExecutionProfileError,
         storage_qualification.StorageQualificationError,
     ) as exc:
-        print(f"REPAIR BLOCKED: {exc}", file=sys.stderr)
+        print(f"DOCTOR BLOCKED: {exc}", file=sys.stderr)
         return 1
     _print_repair_plan(plan)
     if not arguments.execute:
         try:
-            confirmed = _confirm_repair()
+            confirmed = _confirm_repair(plan)
         except KeyboardInterrupt:
             confirmed = False
         if not confirmed:
-            print("Repair preview complete; no files were written.", file=sys.stderr)
+            _stderr(
+                f"{plan.operation.capitalize()} preview complete; no files were written."
+            )
             return 1
     try:
         final = _execute_repair(plan, controls=controls)
     except KeyboardInterrupt:
         print(
-            "Repair interrupted; partial state and submission records were preserved. A submitted Slurm job may still be running.",
+            f"{plan.operation.capitalize()} interrupted; partial state and submission records were preserved. A submitted Slurm job may still be running.",
             file=sys.stderr,
         )
         return 130
     except DoctorRepairError as exc:
-        print(f"REPAIR FAILED: {exc}", file=sys.stderr)
+        print(f"{plan.operation.upper()} FAILED: {exc}", file=sys.stderr)
         return 1
     if compute and slurm:
         return 0
