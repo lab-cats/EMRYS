@@ -83,13 +83,9 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
         candidate.analysis.revision.scope_id("cohort") if prepublication else SCOPE_ID
     )
     step_id = "08" if prepublication else "01"
-    execution = candidate.run_binding.record
-    execution_bytes = candidate.run_binding.canonical_bytes
     profile = candidate.analysis.profile
     run_root = tmp_path / "runs" / candidate.run_id
     fixture.publish_run(candidate, run_root)
-    contract = run_root / "contract"
-    profile_path = contract / "profile.json"
 
     files, reporting_config, _ = reporting_boundary._attempt_reporting_materialization(
         {**candidate.analysis.workflow_inputs, "run_id": candidate.run_id},
@@ -175,55 +171,29 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
     request_snapshot = attempt_path.parent / "request.yaml"
     request_bytes = b"task-fixture: true\n"
     request_snapshot.write_bytes(request_bytes)
-    attempt = {
-        "schema_version": "emrys.workflow-attempt.v4",
-        "run_id": execution["run_id"],
-        "execution_contract_sha256": hashlib.sha256(execution_bytes).hexdigest(),
-        "profile_sha256": hashlib.sha256(profile_path.read_bytes()).hexdigest(),
-        "workflow_attempt_id": WORKFLOW_ATTEMPT_ID,
-        "supersedes_workflow_attempt_id": None,
-        "operation": "execute",
-        "created_at": "2026-08-12T12:00:00Z",
-        "request": {
-            "path": str(request_snapshot),
-            "size_bytes": len(request_bytes),
-            "sha256": hashlib.sha256(request_bytes).hexdigest(),
-        },
-        "request_label": "generic task fixture",
-        "authored_paths": {
-            "request": str(request_snapshot),
-            "sample_manifest": "samples.tsv",
-            "partition_manifest": "partitions.tsv",
-            "reference_fasta": "reference.fa",
-            "reference_gtf": "reference.gtf",
-            "analysis_policy": None,
-        },
-        "normalizer": normalizer,
-        "workspace": str(tmp_path.resolve()),
-        "scratch": None,
-        "installed_package": admit_installed_package().record,
-        "executor": "local",
-        "execution_mode": "local-science-tools",
-        "snakemake_argv": list(
+    attempt = workflow_fixture.attempt_record(
+        run_root,
+        WORKFLOW_ATTEMPT_ID,
+        request_snapshot,
+        runtime=(normalizer, required_tools),
+        request_label="generic task fixture",
+        snakemake_argv=list(
             controlled_python_argv(
-                sys.executable,
-                "-m",
-                "snakemake",
-                "--",
-                "cohort_slice",
+                sys.executable, "-m", "snakemake", "--", "cohort_slice"
             )
         ),
-        "workflow": {
+        workflow={
             **reporting_config,
             "resource_policy": workflow_fixture._resource_policy(),
         },
-        "tasks": {machine_key: {scope_id: definition}},
-        "host": "task-fixture",
-        "process_id": 1,
-        "owner_token": "task-fixture-owner",
-        "cores": 1,
-        "required_tools": required_tools,
-    }
+        tasks={machine_key: {scope_id: definition}},
+        host="task-fixture",
+        process_id=1,
+        owner_token="task-fixture-owner",
+    )
+    attempt["authored_paths"].update(
+        reference_fasta="reference.fa", reference_gtf="reference.gtf"
+    )
     orchestration_contracts.validate_record("workflow-attempt", attempt)
     _publish_json(attempt_path, attempt)
     _materialize_active_lock(run_root, attempt_path)
@@ -234,6 +204,32 @@ def _task_fixture(tmp_path: Path, *, prepublication: bool = False) -> TaskFixtur
         scope_id=scope_id,
     )
     return TaskFixture(run_root, attempt_path, definition, mutable_input, plan)
+
+
+def _observe(operation, *, before=None, after=None):
+    """Keep the real operation between boundary-specific fixture observations."""
+
+    def observed(*arguments):
+        if before is not None:
+            before(*arguments)
+        result = operation(*arguments)
+        if after is not None:
+            after(*arguments)
+        return result
+
+    return observed
+
+
+def _record_command(calls, operation=None):
+    def command(argv, *arguments):
+        calls.append(argv)
+        return (
+            task.CommandResult(argv, 0)
+            if operation is None
+            else operation(argv, *arguments)
+        )
+
+    return command
 
 
 def _fixed_ops() -> task.TaskOps:
@@ -686,46 +682,26 @@ def test_stream_capture_preserves_exact_opaque_bytes_and_per_stream_order(
     built = _task_fixture(tmp_path)
     defaults = _fixed_ops()
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
-        label = b"producer" if "producer" in argv else b"validator"
-        os.write(stdout_descriptor, b"\x00\xff" + label + b":before\n")
-        os.write(stderr_descriptor, b"\xfe\x00" + label + b":before\n")
-        result = defaults.run_command(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
-        os.write(stdout_descriptor, b"\x80" + label + b":after\n")
-        os.write(stderr_descriptor, b"\x81" + label + b":after\n")
-        return result
+    def capture(operation, semantic=False):
+        def command(argv, cwd, environment, stdout_descriptor, stderr_descriptor):
+            label = (
+                b"semantic"
+                if semantic
+                else (b"producer" if "producer" in argv else b"validator")
+            )
+            os.write(stdout_descriptor, b"\x00\xff" + label + b":before\n")
+            os.write(stderr_descriptor, b"\xfe\x00" + label + b":before\n")
+            result = operation(
+                argv, cwd, environment, stdout_descriptor, stderr_descriptor
+            )
+            os.write(stdout_descriptor, b"\x80" + label + b":after\n")
+            os.write(stderr_descriptor, b"\x81" + label + b":after\n")
+            return result
 
-    def semantic(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
-        os.write(stdout_descriptor, b"\x00\xffsemantic:before\n")
-        os.write(stderr_descriptor, b"\xfe\x00semantic:before\n")
-        result = defaults.run_semantic_all_pass(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
-        os.write(stdout_descriptor, b"\x80semantic:after\n")
-        os.write(stderr_descriptor, b"\x81semantic:after\n")
-        return result
+        return command
+
+    command = capture(defaults.run_command)
+    semantic = capture(defaults.run_semantic_all_pass, semantic=True)
 
     _execute_task(
         built.plan,
@@ -848,11 +824,11 @@ def test_native_publication_preserves_unowned_state_and_rolls_back_owned_files(
         else:
             original_link(source, destination, **kwargs)
 
-    def command(*arguments: Any) -> task.CommandResult:
-        result = defaults.run_command(*arguments)
+    def command(*_arguments):
         if fault == "owner_loss":
             (lock / "owner").write_bytes(b"foreign owner\n")
-        return result
+
+    command = _observe(defaults.run_command, after=command)
 
     if fault == "residue":
         (first.parent / ".owner.recovery").write_bytes(b"retained recovery\n")
@@ -910,8 +886,7 @@ def test_star_publication_and_input_directory_roster_are_content_bound(
     _rewrite_task(built)
     defaults = _fixed_ops()
 
-    def command(*arguments: Any) -> task.CommandResult:
-        result = defaults.run_command(*arguments)
+    def command(*arguments):
         if mutation == "replace_input":
             replacement = inputs / "replacement"
             replacement.write_bytes(member.read_bytes())
@@ -922,7 +897,8 @@ def test_star_publication_and_input_directory_roster_are_content_bound(
             member.write_bytes(b"")
         elif arguments[0] == tuple(built.definition["producer_argv"]):
             (working / "Log.progress.out").touch()
-        return result
+
+    command = _observe(defaults.run_command, after=command)
 
     if mutation != "none":
         with pytest.raises(task.TaskBoundaryError, match="input directory"):
@@ -1155,22 +1131,8 @@ def test_native_signal_ownership_survives_spawn_and_cleanup(
     tmp_path: Path, fault: str
 ) -> None:
     try:
-        completed = subprocess.run(
-            [
-                sys.executable,
-                "-c",
-                "from pathlib import Path; import sys; "
-                "from tests.orchestration.run_coordinator.test_task import "
-                "_task_native_signal_child; "
-                "_task_native_signal_child(Path(sys.argv[1]), sys.argv[2])",
-                str(tmp_path),
-                fault,
-            ],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
+        completed = workflow_fixture.run_child(
+            _task_native_signal_child, tmp_path, fault
         )
         assert completed.returncode == 0, (completed.stdout, completed.stderr)
         assert (tmp_path / "native-cleanup.json").is_file()
@@ -1254,18 +1216,6 @@ def _subreaper_evidence_root(tmp_path: Path, name: str) -> Path:
     return root
 
 
-def _subreaper_child_command(helper: str, root: Path, *arguments: str) -> list[str]:
-    return [
-        sys.executable,
-        "-c",
-        "import sys; from pathlib import Path; "
-        "from tests.orchestration.run_coordinator.test_task import "
-        f"{helper}; {helper}(Path(sys.argv[1]), *sys.argv[2:])",
-        str(root),
-        *arguments,
-    ]
-
-
 def _kill_subreaper_fixture(root: Path) -> None:
     if not (root / "pids.jsonl").exists() or (root / "closed.json").exists():
         return
@@ -1311,7 +1261,7 @@ def test_task_subreaper_owns_detached_children(tmp_path: Path, mode: str) -> Non
         (root / "supervisor.stderr").open("wb") as stderr,
     ):
         process = subprocess.Popen(
-            _subreaper_child_command("_task_subreaper_child", root, mode),
+            workflow_fixture.child_command(_task_subreaper_child, root, mode),
             cwd=REPO_ROOT,
             stdout=stdout,
             stderr=stderr,
@@ -1361,22 +1311,8 @@ def test_task_subreaper_owns_detached_children(tmp_path: Path, mode: str) -> Non
 def test_task_subreaper_cancellation_preserves_task_publication(
     tmp_path: Path, fault: str
 ) -> None:
-    completed = subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "import sys; from pathlib import Path; "
-            "from tests.orchestration.run_coordinator.test_task import "
-            "_task_native_signal_child; "
-            "_task_native_signal_child(Path(sys.argv[1]), sys.argv[2], subreaper=True)",
-            str(tmp_path),
-            fault,
-        ],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=False,
+    completed = workflow_fixture.run_child(
+        _task_native_signal_child, tmp_path, fault, subreaper=True
     )
     assert completed.returncode == 0, (completed.stdout, completed.stderr)
 
@@ -1447,14 +1383,7 @@ def test_task_subreaper_faults_preserve_live_writer_state(
     tmp_path: Path, fault: str
 ) -> None:
     root = _subreaper_evidence_root(tmp_path, fault)
-    completed = subprocess.run(
-        _subreaper_child_command("_task_subreaper_fault_child", root, fault),
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=False,
-    )
+    completed = workflow_fixture.run_child(_task_subreaper_fault_child, root, fault)
     assert completed.returncode == 0, (completed.stdout, completed.stderr)
     assert (root / "blocked.json").is_file()
 
@@ -1550,15 +1479,8 @@ def test_task_subreaper_real_canonical_success(tmp_path: Path, threads: int) -> 
     samtools = _subreaper_real_samtools()
     root = _subreaper_evidence_root(tmp_path, f"real-success-{threads}")
     _prepare_subreaper_sam(root, samtools)
-    completed = subprocess.run(
-        _subreaper_child_command(
-            "_task_subreaper_real_child", root, "success", str(threads)
-        ),
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=False,
+    completed = workflow_fixture.run_child(
+        _task_subreaper_real_child, root, "success", str(threads)
     )
     assert completed.returncode == 0, (completed.stdout, completed.stderr)
     assert _record(root / "closed.json") == {"success": True}
@@ -1577,8 +1499,8 @@ def test_task_subreaper_real_canonical_cancellation(
         (root / "supervisor.stderr").open("wb") as stderr,
     ):
         process = subprocess.Popen(
-            _subreaper_child_command(
-                "_task_subreaper_real_child", root, "cancel", str(threads)
+            workflow_fixture.child_command(
+                _task_subreaper_real_child, root, "cancel", str(threads)
             ),
             cwd=REPO_ROOT,
             stdout=stdout,
@@ -1780,14 +1702,7 @@ def test_task_subreaper_abort_closure_requires_every_prepublication_proof(
     tmp_path: Path, mode: str
 ) -> None:
     root = _subreaper_evidence_root(tmp_path, f"abort-{mode}")
-    completed = subprocess.run(
-        _subreaper_child_command("_task_subreaper_abort_child", root, mode),
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=False,
-    )
+    completed = workflow_fixture.run_child(_task_subreaper_abort_child, root, mode)
     assert completed.returncode == 0, (completed.stdout, completed.stderr)
     assert _record(root / "abort-checked.json") == {"mode": mode}
 
@@ -2102,22 +2017,8 @@ def _task_signal_publication_child(root: Path, fault: str) -> None:
 def test_task_signals_preserve_exact_finalization_boundary(
     tmp_path: Path, fault: str
 ) -> None:
-    completed = subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "from pathlib import Path; import sys; "
-            "from tests.orchestration.run_coordinator.test_task import "
-            "_task_signal_publication_child; "
-            "_task_signal_publication_child(Path(sys.argv[1]), sys.argv[2])",
-            str(tmp_path),
-            fault,
-        ],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=False,
+    completed = workflow_fixture.run_child(
+        _task_signal_publication_child, tmp_path, fault
     )
     assert completed.returncode == (-signal.SIGKILL if fault == "kill" else 0), (
         completed.stdout,
@@ -2397,15 +2298,7 @@ def test_dispatch_hash_is_bound_before_parsing_or_producer_execution(
     _publish_json(changed.manifest_path, modified_attempt)
     calls: list[tuple[str, ...]] = []
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        _environment: Mapping[str, str],
-        _stdout_descriptor: int,
-        _stderr_descriptor: int,
-    ) -> task.CommandResult:
-        calls.append(argv)
-        return task.CommandResult(argv, 0)
+    command = _record_command(calls)
 
     defaults = _fixed_ops()
     ops = task.TaskOps(
@@ -2431,22 +2324,15 @@ def test_task_start_publication_failure_after_link_never_enters_producer(
     calls: list[tuple[str, ...]] = []
     injected = False
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        _environment: Mapping[str, str],
-        _stdout_descriptor: int,
-        _stderr_descriptor: int,
-    ) -> task.CommandResult:
-        calls.append(argv)
-        return task.CommandResult(argv, 0)
+    command = _record_command(calls)
 
-    def publish(path: Path, data: bytes) -> None:
+    def publish(path, _data):
         nonlocal injected
-        defaults.publish_bytes(path, data)
         if path == Path(built.plan.task_start_path) and not injected:
             injected = True
             raise task.TaskBoundaryError("injected after task-start link")
+
+    publish = _observe(defaults.publish_bytes, after=publish)
 
     ops = replace(
         defaults,
@@ -2510,10 +2396,11 @@ def test_task_streams_are_fsynced_and_closed_before_attempt_publication(
             events.append(f"close-{label}")
         original_close(descriptor)
 
-    def publish(path: Path, data: bytes) -> None:
+    def publish(path, _data):
         if path == Path(built.plan.task_attempt_path):
             events.append("publish-attempt")
-        defaults.publish_bytes(path, data)
+
+    publish = _observe(defaults.publish_bytes, before=publish)
 
     monkeypatch.setattr(task.os, "fsync", tracked_fsync)
     monkeypatch.setattr(task.os, "close", tracked_close)
@@ -2538,21 +2425,8 @@ def test_same_byte_log_replacement_while_descriptor_open_is_not_admitted(
     field = f"{label}_path"
     replacement_bytes = b""
 
-    def semantic(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
+    def semantic(_argv, _cwd, _environment, stdout_descriptor, stderr_descriptor):
         nonlocal replacement_bytes
-        result = defaults.run_semantic_all_pass(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
         descriptor = stdout_descriptor if label == "stdout" else stderr_descriptor
         target = Path(getattr(built.plan, field))
         original_state = os.fstat(descriptor)
@@ -2564,7 +2438,8 @@ def test_same_byte_log_replacement_while_descriptor_open_is_not_admitted(
         still_open_state = os.fstat(descriptor)
         assert os.path.samestat(still_open_state, original_state)
         assert not os.path.samestat(current_state, still_open_state)
-        return result
+
+    semantic = _observe(defaults.run_semantic_all_pass, after=semantic)
 
     with pytest.raises(
         task.TaskBoundaryError,
@@ -2603,11 +2478,12 @@ def test_evidence_change_during_terminal_publication_blocks_verified_marker(
         else getattr(built.plan, field)
     )
 
-    def publish(path: Path, data: bytes) -> None:
-        defaults.publish_bytes(path, data)
+    def publish(path, _data):
         if path == Path(built.plan.task_attempt_path):
             with target.open("ab") as stream:
                 stream.write(b"foreign evidence bytes\n")
+
+    publish = _observe(defaults.publish_bytes, after=publish)
 
     with pytest.raises(task.TaskBoundaryError, match=message):
         _execute_task(
@@ -2688,21 +2564,13 @@ def test_task_log_symlink_injected_at_stream_open_is_never_followed(
     outside.write_bytes(b"foreign bytes\n")
     calls: list[tuple[str, ...]] = []
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
-        del cwd, environment, stdout_descriptor, stderr_descriptor
-        calls.append(argv)
-        return task.CommandResult(argv, 0)
+    command = _record_command(calls)
 
-    def publish(path: Path, data: bytes) -> None:
-        defaults.publish_bytes(path, data)
+    def publish(path, _data):
         if path == Path(built.plan.task_start_path):
             Path(built.plan.stdout_path).symlink_to(outside)
+
+    publish = _observe(defaults.publish_bytes, after=publish)
 
     with pytest.raises(task.TaskBoundaryError, match="canonical|replace existing"):
         _execute_task(
@@ -2786,25 +2654,14 @@ def test_task_log_hashing_uses_shared_streaming_hasher_without_full_log_reads(
             raise AssertionError(f"task log was fully read: {label}")
         return original_read(path, label)
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
+    def command(argv, _cwd, _environment, stdout_descriptor, _stderr_descriptor):
         if "producer" in argv:
             large_chunk = b"x" * (1024 * 1024)
             assert os.write(stdout_descriptor, large_chunk) == len(large_chunk)
             assert os.write(stdout_descriptor, large_chunk) == len(large_chunk)
             assert os.write(stdout_descriptor, b"tail") == 4
-        return defaults.run_command(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
+
+    command = _observe(defaults.run_command, before=command)
 
     monkeypatch.setattr(task, "sha256_with_identity", tracked_hash)
     monkeypatch.setattr(task, "_read_bound_file", reject_full_log_read)
@@ -2961,23 +2818,11 @@ def test_semantic_gate_cannot_change_the_report_it_approves(tmp_path: Path) -> N
     built = _task_fixture(tmp_path)
     defaults = _fixed_ops()
 
-    def semantic(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
-        result = defaults.run_semantic_all_pass(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
+    def semantic(*_arguments):
         with Path(built.definition["validation_report_path"]).open("ab") as stream:
             stream.write(b"post-gate mutation\n")
-        return result
+
+    semantic = _observe(defaults.run_semantic_all_pass, after=semantic)
 
     ops = replace(defaults, run_semantic_all_pass=semantic)
     with pytest.raises(task.TaskBoundaryError, match="report changed"):
@@ -2989,24 +2834,12 @@ def test_validator_cannot_change_a_producer_output(tmp_path: Path) -> None:
     built = _task_fixture(tmp_path)
     defaults = _fixed_ops()
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
-        result = defaults.run_command(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
+    def command(argv, *_arguments):
         if "validator" in argv:
             with Path(built.definition["outputs"][0]["path"]).open("ab") as stream:
                 stream.write(b"validator mutation\n")
-        return result
+
+    command = _observe(defaults.run_command, after=command)
 
     ops = replace(defaults, run_command=command)
     with pytest.raises(task.TaskBoundaryError, match="producer output changed"):
@@ -3058,15 +2891,7 @@ def test_step00c_symlinked_stationary_reference_blocks_before_producer(
 
     calls: list[tuple[str, ...]] = []
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        _environment: Mapping[str, str],
-        _stdout_descriptor: int,
-        _stderr_descriptor: int,
-    ) -> task.CommandResult:
-        calls.append(argv)
-        return task.CommandResult(argv, 0)
+    command = _record_command(calls)
 
     defaults = _fixed_ops()
     ops = replace(
@@ -3099,15 +2924,7 @@ def test_step00c_parent_permission_drift_blocks_before_task_start(
     parent = Path(str(built.execution["reference"]["fasta"]["path"])).parent
     calls: list[tuple[str, ...]] = []
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        _environment: Mapping[str, str],
-        _stdout_descriptor: int,
-        _stderr_descriptor: int,
-    ) -> task.CommandResult:
-        calls.append(argv)
-        return task.CommandResult(argv, 0)
+    command = _record_command(calls)
 
     defaults = _fixed_ops()
     parent_checks = 0
@@ -3169,23 +2986,13 @@ def test_complete_step00c_sidecar_pair_is_reused_and_content_bound(
     defaults = _fixed_ops()
     calls: list[tuple[str, ...]] = []
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
+    def command(argv, cwd, environment, stdout_descriptor, stderr_descriptor):
         calls.append(argv)
         if argv == producer_argv:
             os.write(stdout_descriptor, b"reused existing sidecars\n")
             return task.CommandResult(argv, 0)
         return defaults.run_command(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
+            argv, cwd, environment, stdout_descriptor, stderr_descriptor
         )
 
     outcome = _execute_task(
@@ -3220,21 +3027,7 @@ def test_partial_step00c_sidecar_pair_blocks_before_producer(tmp_path: Path) -> 
     calls: list[tuple[str, ...]] = []
     defaults = _fixed_ops()
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
-        calls.append(argv)
-        return defaults.run_command(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
+    command = _record_command(calls, defaults.run_command)
 
     with pytest.raises(task.TaskBoundaryError, match="partial pre-existing Step 00c"):
         _execute_task(
@@ -3259,22 +3052,10 @@ def test_reused_step00c_sidecar_mutation_during_validation_fails_closed(
     producer_argv = tuple(record["producer_argv"])
     defaults = _fixed_ops()
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
+    def command(argv, *arguments):
         if argv == producer_argv:
             return task.CommandResult(argv, 0)
-        result = defaults.run_command(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
+        result = defaults.run_command(argv, *arguments)
         with outputs[1].open("ab") as stream:
             stream.write(b"foreign mutation\n")
         return result
@@ -3297,29 +3078,18 @@ def test_reused_step00c_sidecar_rechecked_before_verified_publication(
     original = outputs[0].read_bytes()
     defaults = _fixed_ops()
 
-    def command(
-        argv: tuple[str, ...],
-        cwd: Path,
-        environment: Mapping[str, str],
-        stdout_descriptor: int,
-        stderr_descriptor: int,
-    ) -> task.CommandResult:
+    def command(argv, *arguments):
         if argv == producer_argv:
             return task.CommandResult(argv, 0)
-        return defaults.run_command(
-            argv,
-            cwd,
-            environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
+        return defaults.run_command(argv, *arguments)
 
-    def publish(path: Path, data: bytes) -> None:
-        defaults.publish_bytes(path, data)
+    def publish(path, _data):
         if path == Path(plan.task_attempt_path):
             replacement = outputs[0].with_name(f".{outputs[0].name}.late-replacement")
             replacement.write_bytes(original)
             replacement.replace(outputs[0])
+
+    publish = _observe(defaults.publish_bytes, after=publish)
 
     with pytest.raises(task.TaskBoundaryError, match="before verified publication"):
         _execute_task(
