@@ -137,10 +137,18 @@ study's storage works across both nodes. Keep
 this command running until it reports `EMRYS is ready.` All of the scheduler
 and storage setup is handled by EMRYS.
 
-On a fresh Project, Doctor may initially mark Runtime and Storage as `FAIL`
-because they have not been prepared yet. The repair that follows is intended
-to resolve those findings. Downloads and R-package compilation take most of
-the first setup; a later stage may wait for Slurm to start its checks.
+Read Doctor's status words and the accompanying execution requirements:
+
+| Status | Meaning |
+| --- | --- |
+| Runtime `NOT PREPARED` | The default runtime inventory has not been created. Review the proposed setup actions. |
+| Runtime `CHECKS FAILED` | The selected runtime was inspected and failed required checks; retain the named diagnostics. |
+| Storage `NOT QUALIFIED` | Required storage proof is unavailable or invalid. The detail distinguishes the observed problem; this is not always fresh setup. |
+| Execution `NOT ADMITTED` | The execution profile cannot be used as selected. Follow its diagnostic before running. |
+
+`PASS` means that domain passed its current checks. `DOCTOR BLOCKED` means the
+requested maintenance operation itself cannot proceed; it remains a refusal.
+Downloads, compilation, verification, and Slurm queue waits can all add time.
 
 A verification-only plan reuses the selected runtime without invoking package
 managers. It repeats current input/runtime checks and, for Slurm, compute checks

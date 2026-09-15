@@ -398,6 +398,7 @@ def test_runtime_contract_allows_missing_but_refuses_symlinked_renv_library(
 def test_absent_runtime_diagnosis_is_read_only_and_opens_no_log(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     project = _project(tmp_path)
     _patch_foundations(monkeypatch, project)
@@ -414,6 +415,75 @@ def test_absent_runtime_diagnosis_is_read_only_and_opens_no_log(
     assert not result.runtime_ready
     assert result.inspection is None
     assert "runtime inventory is not admitted" in result.blockers[-1]
+    parser = argparse.ArgumentParser()
+    doctor.configure_parser(parser)
+    assert (
+        doctor.doctor_from_args(
+            parser.parse_args(["--project", str(project.source_path)])
+        )
+        == 1
+    )
+    output = capsys.readouterr().err
+    assert "Runtime    NOT PREPARED" in output
+    assert "Storage    PASS" in output
+    assert "Execution  PASS" in output
+    assert f"EXECUTION REQUIREMENT: {result.blockers[-1]}" in output
+    assert _snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize("state", ("malformed_default", "missing_explicit"))
+def test_invalid_runtime_inventory_is_not_presented_as_initial_setup(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    state: str,
+) -> None:
+    project = _project(tmp_path)
+    _patch_foundations(monkeypatch, project)
+    inventory = doctor.onboarding.runtime_profile_path(project.source_path)
+    if state == "malformed_default":
+        inventory.write_text("invalid inventory\n", encoding="utf-8")
+    before = _snapshot(tmp_path)
+    with pytest.raises(doctor.DoctorInputError):
+        doctor.diagnose_project(
+            project.source_path,
+            runtime_inventory=inventory if state == "missing_explicit" else None,
+        )
+    assert _snapshot(tmp_path) == before
+
+
+def test_existing_invalid_storage_evidence_is_not_assumed_to_be_fresh_setup(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    project = _project(tmp_path)
+    monkeypatch.setattr(
+        doctor.onboarding,
+        "validate_project",
+        lambda *_args, **_kwargs: SimpleNamespace(project=project),
+    )
+    fasta = Path(
+        str(project.select_analysis().workflow_inputs["reference"]["fasta"]["path"])
+    )
+    plan = doctor.storage_qualification.plan_direct_qualification(
+        project.source_path.parent, fasta
+    )
+    plan.evidence_root.mkdir()
+    plan.receipt_path.write_bytes(b"invalid existing receipt\n")
+    before = _snapshot(tmp_path)
+    result = doctor.diagnose_project(project.source_path)
+    assert not result.storage_ready
+    assert any(
+        "Direct storage qualification receipt is not valid UTF-8 JSON" in blocker
+        for blocker in result.blockers
+    )
+    doctor._print_result(result, LogLevel.NORMAL)
+    output = capsys.readouterr().err
+    assert "Storage    NOT QUALIFIED" in output
+    assert "Storage    NOT PREPARED" not in output
+    assert all(
+        f"EXECUTION REQUIREMENT: {blocker}" in output for blocker in result.blockers
+    )
     assert _snapshot(tmp_path) == before
 
 
@@ -421,6 +491,7 @@ def test_absent_runtime_diagnosis_is_read_only_and_opens_no_log(
 def test_doctor_rejects_an_unusable_default_execution_profile_without_repair(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
     state: str,
 ) -> None:
     project = _project(tmp_path)
@@ -439,6 +510,19 @@ def test_doctor_rejects_an_unusable_default_execution_profile_without_repair(
     assert "default execution profile is not admitted" in result.blockers[-1]
     with pytest.raises(doctor.DoctorRepairError, match="preserves execution profiles"):
         doctor._build_repair_plan(result)
+    parser = argparse.ArgumentParser()
+    doctor.configure_parser(parser)
+    assert (
+        doctor.doctor_from_args(
+            parser.parse_args(
+                ["--project", str(project.source_path), "--repair", "--execute"]
+            )
+        )
+        == 1
+    )
+    output = capsys.readouterr().err
+    assert "Execution  NOT ADMITTED" in output
+    assert "DOCTOR BLOCKED: Doctor preserves execution profiles" in output
     assert _snapshot(tmp_path) == before
 
 
@@ -611,7 +695,11 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
             == 1
         )
         output = capsys.readouterr().err
-        assert "BLOCKER: bash: fail (unavailable)" in output
+        assert "EXECUTION REQUIREMENT: bash: fail (unavailable)" in output
+        assert "Runtime    CHECKS FAILED" in output
+        assert "Runtime    NOT PREPARED" not in output
+        assert f"Storage    {'PASS' if storage_ready else 'NOT QUALIFIED'}" in output
+        assert "Execution  NOT ADMITTED" in output
         assert ('"expected": ".*"' in output) == (level != "normal")
         assert ("Executable was not found" in output) == (level != "normal")
         assert _snapshot(tmp_path) == before

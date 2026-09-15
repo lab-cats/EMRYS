@@ -28,7 +28,7 @@ cluster action, evidence promotion, or product-growth exception.
 | [CV-10](#cv-10-external-cancellation-and-recovery) | P0 | Open | Recover safely from externally cancelled jobs when possible. |
 | [CV-11](#cv-11-resource-profile-compatibility) | P0 | Open | Detect and explain resource profiles that cannot fit a node. |
 | [CV-12](#cv-12-unexplained-initial-runtime-qualification-failure) | P0 | Open | Establish the original runtime-qualification failure's cause. |
-| [CV-13](#cv-13-expected-setup-versus-blockers) | P1 | Open | Distinguish expected initial setup needs from failures. |
+| [CV-13](#cv-13-expected-setup-versus-blockers) | P1 | Verification pending | Distinguish expected initial setup needs from failures. |
 | [CV-14](#cv-14-project-directory-layout) | P1 | Verification pending | Give Projects a clear home outside the source checkout. |
 | [CV-15](#cv-15-cross-node-active-run-status) | P1 | Open | Show remote active state without implying proven corruption. |
 | [CV-16](#cv-16-monitoring-dashboard) | P1 | Open | Restore an integrated view of scheduler, progress, and logs. |
@@ -309,6 +309,19 @@ not-yet-prepared state, repairable failed checks, and conditions preventing the
 requested operation. Keep real execution refusal and check detail intact;
 plain output must remain understandable without relying on color alone.
 **Owners/dependencies:** Doctor presentation and quickstart; CV-05/19.
+
+**Selected implementation:** Doctor derives domain labels from existing admitted
+observations: absent default runtime inventory is `NOT PREPARED`, inspected
+runtime failures are `CHECKS FAILED`, storage is `NOT QUALIFIED`, and unusable
+execution profiles are `NOT ADMITTED`. Exact failure details remain execution
+requirements, and actual operation refusal still reports `DOCTOR BLOCKED`.
+Invalid storage evidence is not assumed to be an initial setup condition.
+Four net product lines implement the change, with no new read, state, or schema.
+
+**Verification:** Diagnosis-backed tests cover absent versus malformed/explicitly
+missing inventories, failed checks, invalid retained storage evidence, plain
+output, preserved no-write behavior, and unchanged refusals/exits. Static checks
+pass locally; application execution requires CI. Operator acceptance is pending.
 
 ### CV-14 Project directory layout
 

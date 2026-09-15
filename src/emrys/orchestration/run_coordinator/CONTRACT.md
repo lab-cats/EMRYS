@@ -105,6 +105,15 @@ not install packages or treat a prior successful check as current evidence.
 Existing CLI flags, maintenance log modes/event IDs, refusals, and exits remain
 unchanged. Slurm-stage elapsed time includes queue waiting and compute work.
 
+Doctor's domain summary distinguishes absent default runtime inventory
+(`NOT PREPARED`), inspected runtime check failures (`CHECKS FAILED`), unqualified
+storage (`NOT QUALIFIED`), and an inadmissible execution profile (`NOT ADMITTED`).
+Storage's summary does not infer that missing or invalid evidence is fresh setup.
+Exact blockers remain visible as execution requirements. Malformed/explicitly
+missing runtime inventories retain their input errors, and inability to perform
+the requested maintenance still reports `DOCTOR BLOCKED`. This presentation
+changes no readiness, repair, logging, or execution authority.
+
 Failed runtime checks retain their identity, target, expected/observed values,
 probe detail, host, inventory digest, and qualification phase before a repair
 aborts. Head-side discovery and requalification write `runtime_check_failed`

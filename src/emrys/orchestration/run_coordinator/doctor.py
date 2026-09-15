@@ -1121,13 +1121,17 @@ def _print_result(result: DoctorResult, detail: LogLevel) -> None:
     _stderr(f"  Project    PASS  {result.project.source_path.parent}", style="green")
     _stderr(f"  Analysis   PASS  {result.analysis.name}", style="green")
     _stderr("  Inputs     PASS", style="green")
-    for label, ready in (
-        ("Storage", result.storage_ready),
-        ("Runtime", result.runtime_ready),
-        ("Execution", result.execution_ready),
+    for label, ready, requirement in (
+        ("Storage", result.storage_ready, "NOT QUALIFIED"),
+        (
+            "Runtime",
+            result.runtime_ready,
+            "NOT PREPARED" if result.inspection is None else "CHECKS FAILED",
+        ),
+        ("Execution", result.execution_ready, "NOT ADMITTED"),
     ):
         _stderr(
-            f"  {label:<10} {'PASS' if ready else 'FAIL'}",
+            f"  {label:<10} {'PASS' if ready else requirement}",
             style="green" if ready else "red",
         )
     if detail in {LogLevel.VERBOSE, LogLevel.DEBUG}:
@@ -1155,7 +1159,7 @@ def _print_result(result: DoctorResult, detail: LogLevel) -> None:
         style="green" if result.ready else "yellow",
     )
     for blocker in result.blockers:
-        _stderr(f"BLOCKER: {blocker}", style="red")
+        _stderr(f"EXECUTION REQUIREMENT: {blocker}", style="red")
     for remediation in result.remediations:
         _stderr(f"REMEDIATION: {remediation}", style="yellow")
 
