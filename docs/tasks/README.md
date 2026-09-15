@@ -3,6 +3,11 @@
 Use the [backlog](backlog_matrix.md) for accepted outcomes, priorities, status,
 completion criteria, and campaign closure results.
 
+The [cluster verification campaign](cluster_verification_campaign.md) records
+the Viking walkthrough's scope and evidence. Its explicitly delegated
+[backlog](cluster_verification_backlog.md) owns the finite CV cards, operator
+priorities, statuses, and acceptance under `CLUSTER-VERIFY-01`.
+
 The [polish campaign](polish-campaign.md) holds audit findings and proposed
 follow-ups. The [optimization campaign](optimization_campaign.md) holds resource
 costs, tradeoffs, and measurement proposals. They support selection without
