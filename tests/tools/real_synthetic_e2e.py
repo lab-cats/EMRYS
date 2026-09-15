@@ -37,7 +37,7 @@ TERMINAL_STATES = frozenset(
     }
 )
 RUN_ROOT = re.compile(r"^Run root: (/.+/runs/run-[a-f0-9]{64})$", re.MULTILINE)
-JOB_ID = re.compile(r"^JOB_ID=([0-9]+)$", re.MULTILINE)
+JOB_ID = re.compile(r"^JOB_ID=([1-9][0-9]*)$", re.MULTILINE)
 OUT = re.compile(r"^OUT=(/.+)$", re.MULTILINE)
 ERR = re.compile(r"^ERR=(/.+)$", re.MULTILINE)
 STATE = re.compile(r"(?:^| )JobState=([A-Z_]+)")
@@ -525,8 +525,12 @@ def parse_submission(text: str, log_dir: Path) -> Job:
         Path(_one(ERR, text, "stderr", "submit-slurm")),
     )
     if (
-        job.stdout != log_dir / f"emrys-local-pilot-{job_id}.out"
-        or job.stderr != log_dir / f"emrys-local-pilot-{job_id}.err"
+        job.stdout.parent != log_dir
+        or re.fullmatch(
+            rf"emrys-local-pilot-[0-9a-f]{{32}}-{job_id}\.out", job.stdout.name
+        )
+        is None
+        or job.stderr != job.stdout.with_suffix(".err")
     ):
         raise DriverError("submit-slurm", "submission stream paths differ")
     return job
@@ -576,8 +580,9 @@ def cancel_job(
 
 
 def wait_for_job(
-    job: Job,
+    submission: str,
     *,
+    log_dir: Path,
     scontrol: Path,
     scancel: Path,
     cwd: Path,
@@ -585,8 +590,11 @@ def wait_for_job(
     poll_seconds: float,
     expected: tuple[str, str] = ("COMPLETED", "0:0"),
 ) -> Job:
+    # A single reported job ID is required before any cancellation is safe.
+    job_id = _one(JOB_ID, submission, "job ID", "submit-slurm")
     deadline = time.monotonic() + timeout_seconds
     try:
+        job = parse_submission(submission, log_dir)
         while True:
             if time.monotonic() >= deadline:
                 raise DriverError("wait-slurm", "job timed out")
@@ -601,7 +609,7 @@ def wait_for_job(
             time.sleep(poll_seconds)
     except (DriverError, KeyboardInterrupt) as exc:
         disposition = cancel_job(
-            job.job_id,
+            job_id,
             scancel=scancel,
             scontrol=scontrol,
             cwd=cwd,
@@ -1432,7 +1440,8 @@ def run_driver(
         cwd=repo,
     )
     initial_job = wait_for_job(
-        parse_submission(submission.stdout, paths.slurm_workspace / "logs"),
+        submission.stdout,
+        log_dir=paths.slurm_workspace / "logs",
         scontrol=scontrol,
         scancel=scancel,
         cwd=repo,
@@ -1495,10 +1504,8 @@ def run_driver(
             cwd=repo,
         )
         resumed_job = wait_for_job(
-            parse_submission(
-                resume_submission.stdout,
-                paths.slurm_workspace / "logs",
-            ),
+            resume_submission.stdout,
+            log_dir=paths.slurm_workspace / "logs",
             scontrol=scontrol,
             scancel=scancel,
             cwd=repo,
