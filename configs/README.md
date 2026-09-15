@@ -214,6 +214,12 @@ prove a conflict; symbolic `allocation`/`workflow` values remain symbolic until
 actual allocation admission. An explicit CLI correction is applied before
 these relationship checks. EMRYS does not silently lower an allowance.
 
+Slurm planning also rejects a final workflow policy that cannot fit its explicit
+CPU or memory request. This is a reservation check, not a claim about the node's
+observed or free memory. An omitted memory request remains unknown even when
+exclusivity is requested. Placement-only resume compares its retained Run policy;
+actual allocation checks still run after the scheduler starts the job.
+
 The four-CPU initial Viking placement serves a bounded fixture, not a promise
 that a full cohort will fit or run efficiently. Qualification uses the selected
 allocation request, so choosing a large request can also increase queue time.

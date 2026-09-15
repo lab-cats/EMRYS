@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import Any, Literal
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.application_model import (
+    resolve_computational_resources,
+)
 from emrys.libraries.validation.errors import ValidationError
 from emrys.libraries.validation.inputs import read_bytes
 from emrys.orchestration.run_coordinator.resource_policy import (
@@ -171,6 +174,19 @@ class ExecutionProfile:
     source_path: Path
     source_raw_sha256: str
     computational_resources_explicit: bool
+
+    def validate_reservation(self) -> None:
+        """Reject known reservation conflicts without changing symbolic policy."""
+        if isinstance(self.placement, SlurmPlacement):
+            try:
+                resolve_computational_resources(
+                    self.resource_policy.declaration.identity_document(),
+                    self.placement.cpus_per_task,
+                    self.placement.memory_mb,
+                    limit_source="Slurm reservation",
+                )
+            except orchestration_contracts.ContractValidationError as exc:
+                raise ExecutionProfileError(str(exc)) from exc
 
     def submission_summary(self) -> tuple[str, ...]:
         """Describe admitted requests and limits without observing an allocation."""

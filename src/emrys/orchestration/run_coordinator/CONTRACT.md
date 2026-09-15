@@ -254,6 +254,15 @@ checks. `allocation` and `workflow` aliases remain symbolic in retained policy;
 unknown capacity is neither guessed nor materialized into a Run. This early
 declaration check does not equate scheduler reservations with observed capacity.
 
+Before submission planning, the final effective profile also checks known Slurm
+CPU and explicit memory reservations using those same predicates. Diagnostics
+name the reservation separately from observed allocation. Placement-only resume
+applies the retained policy first; no extra predecessor read or default-policy
+comparison is introduced. Doctor repair planning and profile authoring use the
+same check before approval/write. Omitted memory remains unknown for both shared
+and exclusive requests. A reservation check discards its numeric projection:
+retained symbols and actual allocation admission remain unchanged.
+
 `emrys profile create NAME` previews one named Project profile and writes only
 with `--execute`. It requires explicit built-in site or direct/Slurm placement,
 reuses existing resource flags, and admits the exact candidate bytes through

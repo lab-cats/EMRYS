@@ -630,6 +630,48 @@ def test_doctor_rejects_an_unusable_default_execution_profile_without_repair(
     assert _snapshot(tmp_path) == before
 
 
+def test_doctor_refuses_incompatible_reservation_before_planning_runtime_repair(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from emrys.orchestration.run_coordinator.execution_profile import (
+        project_default_profile_bytes,
+    )
+
+    project = _project(tmp_path)
+    _patch_foundations(monkeypatch, project)
+    profile = project.source_path.parent / "runtime/profiles/default.yaml"
+    profile.write_bytes(
+        project_default_profile_bytes("viking").replace(
+            b"cpus_per_task: 4", b"cpus_per_task: 3"
+        )
+    )
+    monkeypatch.setattr(
+        doctor,
+        "_manager",
+        lambda *_args: pytest.fail(
+            "invalid reservation reached runtime repair planning"
+        ),
+    )
+    before = _snapshot(tmp_path)
+    parser = argparse.ArgumentParser()
+    doctor.configure_parser(parser)
+
+    assert (
+        doctor.doctor_from_args(
+            parser.parse_args(
+                ["--project", str(project.source_path), "--repair", "--execute"]
+            )
+        )
+        == 1
+    )
+
+    assert (
+        "DOCTOR BLOCKED: Workflow cores exceed Slurm reservation: 4 > 3"
+        in capsys.readouterr().err
+    )
+    assert _snapshot(tmp_path) == before
+
+
 def test_doctor_derives_storage_requirement_from_the_default_profile(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

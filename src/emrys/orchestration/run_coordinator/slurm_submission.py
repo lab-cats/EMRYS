@@ -193,6 +193,7 @@ def plan_submission(
     placement = profile.placement
     if getattr(placement, "kind", None) != "slurm":
         raise SlurmSubmissionError("scheduler submission requires Slurm placement")
+    profile.validate_reservation()
     slurm_placement = cast("SlurmPlacement", placement)
 
     scheduler_log_dir = Path(log_dir)
