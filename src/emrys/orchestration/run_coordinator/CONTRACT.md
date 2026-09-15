@@ -240,6 +240,20 @@ scientific authority outside its declared tasks and artifacts.
 
 ## Task and Attempt lifecycle
 
+Task HUP/INT/TERM handlers remain installed through terminal task evidence
+publication. Each terminal attempt or verified-task record defers those signals
+only while its exclusive publication runs; input/output hashing and revalidation
+remain interruptible. Pending signals are delivered after that record boundary,
+and the caller's original handlers and signal mask are restored. An ambient
+mask that blocks task signals is refused before task mutation.
+
+The terminal attempt and verified-task reference are separate records. An
+interruption between them preserves an incomplete, blocked chain; completing
+one record does not fabricate the other. Uncatchable termination and uncertain
+writer-group absence can still leave preserved ambiguous state. A stopped
+Snakemake process group does not prove that an independent native process group
+has stopped, and this boundary grants no new resume or reconciliation authority.
+
 The initial Run tree and each Attempt directory must be absent before creation.
 Lifecycle holds a persistent advisory mutex while it revalidates the prepared
 Attempt. It then publishes the Run lock, including the admitted manifest's hash,

@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -912,6 +913,159 @@ def test_catchable_task_termination_kills_worker_group_and_preserves_attempt(
     assert killed and all(identifier != os.getpgrp() for identifier in killed)
     assert _record(built.plan.task_attempt_path)["status"] == "failed"
     assert not Path(built.definition["outputs"][0]["working_path"]).parent.exists()
+
+
+def _task_signal_publication_child(root: Path, fault: str) -> None:
+    """Exercise real process signals without changing the pytest process."""
+    built = _task_fixture(root)
+    defaults = _fixed_ops()
+    watched = {signal.SIGHUP, signal.SIGINT, signal.SIGTERM}
+    signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGUSR1})
+    if fault == "blocked":
+        signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGTERM})
+    prior_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+    prior_handlers = {signum: signal.getsignal(signum) for signum in watched}
+    reached: list[str] = []
+    print(
+        json.dumps(
+            {
+                "attempt": str(built.plan.task_attempt_path),
+                "verified": str(built.plan.verified_task_path),
+            }
+        ),
+        flush=True,
+    )
+
+    def command(*arguments: Any) -> task.CommandResult:
+        assert not watched.intersection(signal.pthread_sigmask(signal.SIG_BLOCK, set()))
+        reached.append("command")
+        result = defaults.run_command(*arguments)
+        if fault in {"producer", "failed-attempt"}:
+            os.kill(os.getpid(), signal.SIGTERM)
+        return result
+
+    def publish(path: Path, data: bytes) -> None:
+        destination = (
+            "attempt"
+            if path == built.plan.task_attempt_path
+            else "verified"
+            if path == built.plan.verified_task_path
+            else None
+        )
+        if destination is not None:
+            reached.append(destination)
+        if fault in {destination, f"{destination}-failure"} or (
+            fault in {"kill", "failed-attempt"} and destination == "attempt"
+        ):
+            os.kill(os.getpid(), signal.SIGKILL if fault == "kill" else signal.SIGTERM)
+            assert watched.issubset(signal.pthread_sigmask(signal.SIG_BLOCK, set()))
+            if fault.endswith("-failure"):
+                raise OSError("injected record publication failure")
+        defaults.publish_bytes(path, data)
+
+    revalidate = task._TaskStreamCapture.revalidate_after_attempt_publication
+
+    def between(streams: task._TaskStreamCapture) -> None:
+        assert not watched.intersection(signal.pthread_sigmask(signal.SIG_BLOCK, set()))
+        revalidate(streams)
+        if fault == "between":
+            os.kill(os.getpid(), signal.SIGTERM)
+
+    task._TaskStreamCapture.revalidate_after_attempt_publication = between
+    error = None
+    context = None
+    try:
+        _execute_task(
+            built.plan,
+            ops=replace(defaults, run_command=command, publish_bytes=publish),
+        )
+        if fault == "reentry":
+            _execute_task(built.plan, ops=defaults)
+    except (task.TaskBoundaryError, OSError) as exc:
+        error = str(exc)
+        context = str(exc.__context__)
+    finally:
+        task._TaskStreamCapture.revalidate_after_attempt_publication = revalidate
+    assert {signum: signal.getsignal(signum) for signum in watched} == prior_handlers
+    assert signal.pthread_sigmask(signal.SIG_BLOCK, set()) == prior_mask
+    verified = built.plan.verified_task_path.exists()
+    if verified:
+        assert _validate_verified(built)["status"] == "succeeded"
+    print(json.dumps({"error": error, "context": context, "reached": reached}))
+
+
+@pytest.mark.parametrize(
+    "fault",
+    (
+        "none",
+        "producer",
+        "failed-attempt",
+        "attempt",
+        "between",
+        "verified",
+        "attempt-failure",
+        "verified-failure",
+        "kill",
+        "blocked",
+        "reentry",
+    ),
+)
+def test_task_signals_preserve_exact_finalization_boundary(
+    tmp_path: Path, fault: str
+) -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from pathlib import Path; import sys; "
+            "from tests.orchestration.run_coordinator.test_task import "
+            "_task_signal_publication_child; "
+            "_task_signal_publication_child(Path(sys.argv[1]), sys.argv[2])",
+            str(tmp_path),
+            fault,
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert completed.returncode == (-signal.SIGKILL if fault == "kill" else 0), (
+        completed.stdout,
+        completed.stderr,
+    )
+    records = [json.loads(line) for line in completed.stdout.splitlines()]
+    paths = records[0]
+    attempt_exists = fault not in {"attempt-failure", "kill", "blocked"}
+    assert Path(paths["attempt"]).exists() is attempt_exists
+    assert Path(paths["verified"]).exists() is (
+        fault in {"none", "verified", "reentry"}
+    )
+    if attempt_exists:
+        attempt = _record(paths["attempt"])
+        assert attempt["status"] == (
+            "failed" if fault in {"producer", "failed-attempt"} else "succeeded"
+        )
+        if fault in {"producer", "failed-attempt"}:
+            assert "interrupted by signal" in attempt["failure_message"]
+            assert attempt["validator"] is None and attempt["semantic_all_pass"] is None
+    if fault == "kill":
+        assert len(records) == 1
+        return
+    result = records[1]
+    if fault == "none":
+        assert result["error"] is None
+    elif fault == "blocked":
+        assert "ambient mask" in result["error"]
+        assert result["reached"] == []
+    elif fault == "reentry":
+        assert "existing" in result["error"]
+    else:
+        assert "interrupted by signal" in result["error"]
+        if fault.endswith("-failure"):
+            assert "injected record publication failure" in result["context"]
+    if fault in {"producer", "failed-attempt"}:
+        assert result["reached"] == ["command", "attempt"]
 
 
 def test_historical_attempt_is_rejected_before_task_mutation(

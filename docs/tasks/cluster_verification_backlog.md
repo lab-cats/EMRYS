@@ -233,6 +233,25 @@ authority; never fabricate success or delete a lock to obtain resume.
 **Owners/dependencies:** Slurm transport, lifecycle, task/publication owners,
 inspection/control; CV-01, CV-03, CV-15, CV-18.
 
+**Selected first slice:** Source review found that task signal handlers were
+restored before terminal evidence publication. The existing task boundary now
+retains its handlers through finalization and masks catchable signals only
+during each exclusive terminal-record write. Hashing and revalidation remain
+interruptible. A failed task stays failed; an interrupted record pair stays
+incomplete and blocked. Existing caller handlers/masks are restored, and an
+ambient mask that prevents task cancellation is refused before mutation.
+This is 37 net product lines under the approved minimum necessary expansion,
+with no new product file or recovery state.
+
+**Verification and remaining scope:** Eleven isolated real-signal test cases
+cover producer interruption, successful/failed terminal-record writes, the
+gap between records, mask restoration, re-entry, and SIGKILL. Execution is
+CI-pending; local Ruff, formatting, and whitespace checks pass. This addresses
+one source-derived window, not an established cause of E09. Independent native
+sessions, nested termination deadlines, lost wrappers, and explicit safe
+reconciliation remain open. No task or Run is declared recoverable merely
+because the outer scheduler/process group stopped.
+
 ### CV-11 Resource profile compatibility
 
 **Finding:** The selected smaller-memory node could not satisfy the retained
