@@ -535,13 +535,13 @@ jobs:
           printf '%s\n' "${run_root}" > "${evidence_root}/run-root.txt"
           "${emrys[@]}" inspect \
             | tee "${evidence_root}/05-inspect.log"
-          grep --fixed-strings --line-regexp 'Run integrity: valid' \
+          grep --fixed-strings --line-regexp 'Run admission: valid' \
             "${evidence_root}/05-inspect.log"
           grep --fixed-strings --line-regexp 'Attempt outcome: succeeded' \
             "${evidence_root}/05-inspect.log"
           grep --fixed-strings --line-regexp 'Scientific Results: complete' \
             "${evidence_root}/05-inspect.log"
-          grep --fixed-strings --line-regexp 'Reporting: complete' \
+          grep --fixed-strings --line-regexp 'Reporting admission: complete' \
             "${evidence_root}/05-inspect.log"
           test "$(find "${run_root}/results/reports" -type f -name '*.html' | wc -l)" -eq 2
 
