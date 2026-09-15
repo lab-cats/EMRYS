@@ -3900,7 +3900,10 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
 
     def submit(plan, *, record_path):
         context = json.loads(record_path.with_name("request.json").read_bytes())
-        assert context["schema_version"] == "emrys.submission-request.v2"
+        assert context["schema_version"] == "emrys.submission-request.v3"
+        assert context["scheduler_job_name"] == plan.job_name
+        assert plan.job_name == f"emrys-local-pilot-{tokens[0]}"
+        assert f"--job-name={plan.job_name}" in plan.argv
         assert record_path.parent.name == f"submission-{tokens[0]}"
         assert plan.stdout_pattern.name == f"emrys-local-pilot-{tokens[0]}-%j.out"
         assert plan.stderr_pattern.name == f"emrys-local-pilot-{tokens[0]}-%j.err"

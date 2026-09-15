@@ -302,6 +302,11 @@ diagnosis. `--detail debug` also adds authority hashes, receipts and task comman
 Planning, execution, and Doctor instead use `--log-level verbose` or `debug`.
 For failed or interrupted Runs, follow [resume and recovery](TROUBLESHOOTING.md#run-and-reporting-state).
 
+Selected submission inspection also prints the retained scheduler name for new
+v3 requests and requires that exact name in scheduler metadata. Older requests
+remain readable with their original evidence limits. A matching name or a
+terminal scheduler state alone does not authorize recovery or prove completion.
+
 ### Inspect and open reports
 
 A successful full Run shows `Run admission: valid`, `Attempt outcome: succeeded`,

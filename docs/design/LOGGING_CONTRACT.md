@@ -157,7 +157,9 @@ Slurm compatibility streams live under `<project-root>/logs` as
 `emrys-local-pilot-<request-uuid>-%j.out` and
 `emrys-local-pilot-<request-uuid>-%j.err` for ordinary Run/resume/report
 submission. The request token is frozen before confirmation and bound to its
-retained request record. Legacy and Doctor qualification streams retain
+retained request record. New v3 requests also retain the exact scheduler name
+`emrys-local-pilot-<request-uuid>`; selected observation checks it against live
+metadata in addition to the stream paths. Legacy and Doctor qualification streams retain
 `emrys-local-pilot-%j.out` and `.err`. Scheduler streams are not
 application logs. Submission dry-run creates neither those paths nor an
 application log. The compute delegate receives the resolved controls, opens

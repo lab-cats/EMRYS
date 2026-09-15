@@ -90,7 +90,7 @@ def _cluster_name(value):
     )
 
 
-def observe_job(job_id, stdout_pattern, stderr_pattern, cluster=None):
+def observe_job(job_id, stdout_pattern, stderr_pattern, cluster=None, *, job_name=None):
     """Observe an exact owned job/path binding; the caller owns request uniqueness."""
     if not JOB_ID_RE.fullmatch(str(job_id)) or (
         cluster is not None and not _cluster_name(cluster)
@@ -99,6 +99,12 @@ def observe_job(job_id, stdout_pattern, stderr_pattern, cluster=None):
             "The recorded job ID or cluster cannot be queried exactly"
         )
     try:
+        if job_name is not None and (
+            not isinstance(job_name, str)
+            or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", job_name) is None
+        ):
+            raise DiscoveryError("Recorded scheduler name is not one bounded name")
+        extra_names = ("JobName",) if job_name is not None else ()
         expected = []
         for value in (stdout_pattern, stderr_pattern):
             if (
@@ -128,9 +134,11 @@ def observe_job(job_id, stdout_pattern, stderr_pattern, cluster=None):
                     str(job_id),
                     "-O",
                     # Like %i, JobArrayId preserves array and heterogeneous suffixes.
-                    "JobArrayId:0|,UserID:0|,State:0|,Cluster:0|,STDOUT:0|,STDERR:0|,Reason:0",
+                    "JobArrayId:0|,UserID:0|,State:0|,Cluster:0|,STDOUT:0|,STDERR:0|,Reason:0"
+                    + ("|,Name:0" if extra_names else ""),
                 ],
-                ("JobId", "UID", "JobState", "Cluster", "StdOut", "StdErr", "Reason"),
+                ("JobId", "UID", "JobState", "Cluster", "StdOut", "StdErr", "Reason")
+                + extra_names,
             ),
             (
                 "sacct",
@@ -143,9 +151,11 @@ def observe_job(job_id, stdout_pattern, stderr_pattern, cluster=None):
                     "-P",
                     "-j",
                     str(job_id),
-                    "--format=JobIDRaw,UID,State,Cluster,StdOut,StdErr,ExitCode",
+                    "--format=JobIDRaw,UID,State,Cluster,StdOut,StdErr,ExitCode"
+                    + (",JobName" if extra_names else ""),
                 ],
-                ("JobId", "UID", "JobState", "Cluster", "StdOut", "StdErr", "ExitCode"),
+                ("JobId", "UID", "JobState", "Cluster", "StdOut", "StdErr", "ExitCode")
+                + extra_names,
             ),
         )
         for source, argv, names in sources:
@@ -164,6 +174,10 @@ def observe_job(job_id, stdout_pattern, stderr_pattern, cluster=None):
                 )
             metadata = dict(zip(names, rows[0]))
             validate_scheduler_identity(job_id, metadata)
+            if job_name is not None and metadata["JobName"] != job_name:
+                raise DiscoveryError(
+                    "Scheduler job name differs from the recorded request"
+                )
             observed_cluster = metadata["Cluster"]
             if not _cluster_name(observed_cluster) or (
                 cluster is not None and observed_cluster != cluster
@@ -200,6 +214,8 @@ def observe_job(job_id, stdout_pattern, stderr_pattern, cluster=None):
                 "cluster": observed_cluster,
                 "diagnostic": None,
             }
+            if job_name is not None:
+                result["job_name"] = metadata["JobName"]
             if source == "sacct":
                 result["exit_code"] = metadata["ExitCode"]
             else:

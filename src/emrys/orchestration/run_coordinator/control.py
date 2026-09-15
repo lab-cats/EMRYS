@@ -850,7 +850,7 @@ def _schedule(
     try:
         request_root.mkdir(mode=0o700)
         context = {
-            "schema_version": "emrys.submission-request.v2",
+            "schema_version": "emrys.submission-request.v3",
             "created_at": datetime.now(UTC).isoformat(),
             "submitter_uid": os.getuid(),
             "command": command,
@@ -862,6 +862,7 @@ def _schedule(
             "emrys_argv": list(delegate_argv),
             "scheduler_stdout_pattern": str(submission.stdout_pattern),
             "scheduler_stderr_pattern": str(submission.stderr_pattern),
+            "scheduler_job_name": submission.job_name,
         }
         context = slurm_submission.validate_request_context(
             context, _absolute(arguments.project), request_root
@@ -1737,6 +1738,10 @@ def _print_submission_roster(project: Path, selector: str | None = None) -> None
                 f"requested Run: {context['requested_run'] or 'new Run'}"
             )
             _print_safe(f"    Application logs: {context['application_log_root']}")
+            if "scheduler_job_name" in context:
+                _print_safe(
+                    f"    Recorded scheduler name: {context['scheduler_job_name']}"
+                )
             if selector is not None:
                 for stream in ("stdout", "stderr"):
                     path = context[f"scheduler_{stream}_pattern"].replace(

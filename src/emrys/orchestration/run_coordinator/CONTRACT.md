@@ -248,9 +248,11 @@ explicit Run selection retains its existing missing/ambiguous selection errors.
 
 `inspect --submission REQUEST` selects one exact retained directory name or
 absolute path, mutually exclusive with a Run selector. The ordinary roster
-does not query the scheduler. The selected request's v2 binding uses a shared
+does not query the scheduler. The selected request's v2/v3 binding uses a shared
 stdlib-only scheduler owner: exact root ID, numeric UID, cluster and both frozen
-stream paths must agree in one complete metadata row. A successful empty queue
+stream paths must agree in one complete metadata row. New v3 requests also
+retain and compare the exact scheduler job name, derived from the same request
+token as the streams; v2 retains its previous observation shape. A successful empty queue
 query may fall back to duplicate-aware terminal accounting; a failed queue
 query cannot. Each of at most two commands has the existing ten-second timeout.
 Admitted replies are capped at 64 KiB; subprocess capture memory itself is not
