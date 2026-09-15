@@ -102,25 +102,32 @@ watch uses one fixed layout.
 The existing standalone dashboard remains supported while its full replacement
 is validated, including legacy discovery, accounting and offline stream access.
 
-### Review a resume plan from watch
+### Review CLI operations from watch
 
-For an interactive view of one exact Run, opt in to the resume-plan shortcut:
+For an interactive view, opt in to the shortcuts for one exact selection:
 
 ```bash
 emrys inspect RUN --project "$EMRYS_PROJECT_ROOT" --watch --actions
+emrys inspect --submission REQUEST --project "$EMRYS_PROJECT_ROOT" --watch --actions
 ```
 
-Press `p` to leave the view and open the ordinary resume preview and confirmation.
-The command freshly checks the selected Run; the dated watch snapshot does not
-authorize recovery. Decline the confirmation to leave without starting work.
-Request-selected and noninteractive action modes are refused.
+| Selection | Key | Operation after leaving watch |
+| --- | --- | --- |
+| Run | `p` | Ordinary resume plan and confirmation; decline to leave without starting work. |
+| Run | `o` | Report preview; does not generate or submit reporting work. |
+| Submission request | `s` | Stop preview for the exact retained request; does not cancel the job. |
 
-The terminal is restored before the resume handler runs. A read already in
+Each command freshly checks its selection; dated watch observations do not
+authorize recovery or cancellation. Run handoffs use the ordinary default
+profile. Use the corresponding CLI directly to choose another profile or to
+execute a report/stop plan. Noninteractive action mode is refused.
+
+The terminal is restored before the CLI handler runs. A read already in
 progress may finish in the background, but its result is discarded. The command
-returns the resume handler's result and does not reopen watch. Slurm follows the
+returns that handler's result and does not reopen watch. Slurm resume follows the
 existing submission preview: scientific resume admission happens on compute,
 so a concurrent resume can make an allocation unnecessary without bypassing
-recovery checks. Use the ordinary CLI for other operations.
+recovery checks. A request handoff never selects an associated historical Run.
 
 ## Stop one exact Slurm request
 

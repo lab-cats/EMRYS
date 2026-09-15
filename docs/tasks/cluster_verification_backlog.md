@@ -1002,19 +1002,27 @@ implementation. Record the selected interface and coverage before retirement
 under `DASHBOARD-RETIRE-01`.
 **Owners/dependencies:** Existing CLI/control and dashboard; CV-16 first.
 
-**Selected first action:** After the watch implementation passed its standard
-CI checks, interactive Run-selected `--watch --actions` adds `p` to review the
-ordinary resume plan. It captures the exact Project/Run, closes the view and
-restores the terminal, then calls the existing resume handler once with its
-ordinary preview/confirmation defaults. An already active read may finish but
+**Selected actions:** Interactive `--watch --actions` offers `p` for a Run's
+ordinary resume plan and confirmation, `o` for its report preview, or `s` for
+an exact request's stop preview. One immutable action list replaces the
+resume-only callback. Each handoff captures only the exact Project/selection,
+closes the view and restores the terminal, then constructs the ordinary parser
+and calls its existing handler once. An already active read may finish but
 cannot supply action authority or trigger another refresh. There is no shell
 executor, action worker, stored plan or automatic return to monitoring.
 
-Request-selected and noninteractive action modes are refused. Fresh Control
+Run handoffs use the default profile. Report and stop remain strict previews;
+resume retains its explicit confirmation. No inspected `execute` value or
+associated historical Run becomes a command argument. Noninteractive action
+mode is refused. Fresh Control
 and lifecycle checks retain selection, predecessor and recovery authority.
 For Slurm, the existing preview freezes the submission/profile request and
 scientific admission runs on compute; a concurrent resume can still consume an
-unnecessary allocation. Stop, report, new-analysis selection and complete
+unnecessary allocation. Public owner fixtures cover exact selections, fresh
+profile/request refusal, declined direct/Slurm resume, and report/stop no-write
+previews. Terminal cases preserve teardown before one callback under stalled
+reads and restoration failure. Pure presentation tests and static checks pass;
+application/PTY execution requires CI. New-analysis selection and complete
 dashboard replacement remain separate work. This slice does not establish
 institutional monitoring/action acceptance or retire the old dashboard.
 

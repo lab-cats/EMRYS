@@ -336,19 +336,24 @@ terminals produce one plain snapshot; watch has one layout independent of the
 static `--detail` setting. Ordinary watch creates no operational action,
 persistent cache or additional log.
 
-Interactive Run-selected `--watch --actions` adds an explicit resume-plan
-handoff. The presentation closes its worker, discards pending refreshes, leaves
+Interactive `--watch --actions` offers `p` for a Run's ordinary resume plan and
+confirmation, `o` for its report preview, or `s` for an exact request's stop
+preview. The presentation closes its worker, discards pending refreshes, leaves
 the alternate screen and restores the terminal before invoking the existing
-Control resume handler once on the main thread. An active read may finish,
+Control handler once on the main thread. An active read may finish,
 but no resulting snapshot is consumed and no refresh is restarted. There is
 no automatic return to watch or concurrent action loop.
 
-Only the exact resolved Project and Run are captured. Ordinary resume parser
-defaults, fresh planning, preview/confirmation, lifecycle locking and recovery
+Only the exact resolved Project and Run/request selector are captured. The
+ordinary parser and defaults are constructed after leaving the view. Run
+handoffs select the default profile; neither report nor stop receives
+`--execute`. Resume retains its explicit confirmation. Fresh planning,
+preview/confirmation, lifecycle locking and recovery
 admission remain authoritative; cached inspection never supplies a plan or
 predecessor. Slurm retains its existing compute-side scientific admission and
-possible unnecessary allocation under a concurrent resume. Request-selected
-and noninteractive action modes are refused.
+possible unnecessary allocation under a concurrent resume. A request handoff
+never infers a Run from an association; stop freshly checks that retained
+request and scheduler identity. Noninteractive action mode is refused.
 
 Diagnostic suffixes use the existing no-follow byte reader with 64 KiB and
 256-line bounds. Directory, UID and descriptor/path checks reject unsafe or

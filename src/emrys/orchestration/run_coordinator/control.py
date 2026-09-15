@@ -1403,7 +1403,7 @@ def configure_inspect_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--actions",
         action="store_true",
-        help="Enable p in interactive Run watch to leave the view and review the ordinary resume plan and confirmation.",
+        help="Enable interactive watch handoffs: p resume plan/confirm, o report preview for a Run; s stop preview for a submission. Run handoffs use the default profile.",
     )
     parser.add_argument(
         "--submission",
@@ -1938,6 +1938,45 @@ def stop_from_args(arguments: argparse.Namespace) -> int:
                 attempt.close()
 
 
+def _watch_review_actions(
+    project: Path, selection: Path, *, submission: bool = False
+) -> tuple[tuple[bytes, str, Callable[[], int]], ...]:
+    """Capture exact selectors; leave fresh admission to each public CLI owner."""
+    selected = ("--submission", str(selection)) if submission else (selection.name,)
+    commands = (
+        ((b"s", "stop preview", "stop", configure_stop_parser, stop_from_args),)
+        if submission
+        else (
+            (
+                b"p",
+                "resume plan/confirm",
+                "resume",
+                configure_resume_parser,
+                resume_from_args,
+            ),
+            (
+                b"o",
+                "report preview",
+                "report",
+                configure_report_parser,
+                report_from_args,
+            ),
+        )
+    )
+
+    def review(command, configure, handler):
+        parser = argparse.ArgumentParser(prog=f"emrys {command}")
+        configure(parser)
+        argv = ["--project", str(project), *selected]
+        _print_safe("Reviewing: " + shlex.join(["emrys", command, *argv]))
+        return handler(parser.parse_args(argv))
+
+    return tuple(
+        (key, label, partial(review, command, configure, handler))
+        for key, label, command, configure, handler in commands
+    )
+
+
 def inspect_from_args(
     arguments: argparse.Namespace,
 ) -> int:
@@ -1950,8 +1989,8 @@ def inspect_from_args(
             raise ControlError("Select a submission or a Run, not both")
         watching = getattr(arguments, "watch", False)
         actions = getattr(arguments, "actions", False)
-        if actions and (not watching or submission_selector is not None):
-            raise ControlError("--actions requires Run-only --watch")
+        if actions and not watching:
+            raise ControlError("--actions requires --watch")
         if actions:
             _inspection_presentation.require_action_terminal()
         if getattr(arguments, "run", None) is None:
@@ -1967,6 +2006,13 @@ def inspect_from_args(
                     request=request,
                     inspect_run=inspection.inspect_run,
                     next_action=_next_supported_action,
+                    review_actions=(
+                        _watch_review_actions(
+                            project, request.request_root, submission=True
+                        )
+                        if actions
+                        else ()
+                    ),
                 )
             if not watching:
                 _print_submission_roster(project, submission_selector)
@@ -1981,20 +2027,14 @@ def inspect_from_args(
             )
             return 0
         if watching:
-            review_resume = None
-            if actions:
-                parser = argparse.ArgumentParser(prog="emrys resume")
-                configure_resume_parser(parser)
-                resume_arguments = parser.parse_args(
-                    ["--project", str(_project_path), run_root.name]
-                )
-                review_resume = partial(resume_from_args, resume_arguments)
             return _inspection_presentation.watch(
                 _project_path,
                 run_root=run_root,
                 inspect_run=inspection.inspect_run,
                 next_action=_next_supported_action,
-                review_resume=review_resume,
+                review_actions=(
+                    _watch_review_actions(_project_path, run_root) if actions else ()
+                ),
             )
         observed = inspection.inspect_run(run_root)
         detail = getattr(arguments, "detail", "normal")

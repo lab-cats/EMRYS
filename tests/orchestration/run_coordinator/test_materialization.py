@@ -3154,6 +3154,95 @@ def test_interactive_resume_uses_the_same_no_write_gate(
     assert list(plan.run_root.iterdir()) == []
 
 
+@pytest.mark.parametrize("placement", ("direct", "slurm"))
+@pytest.mark.parametrize("changed", (False, True))
+def test_watch_resume_handoff_fresh_plan_and_decline_preserve_every_record(
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch, placement, changed
+) -> None:
+    first = _plan(tmp_path)
+    _failed_run(first)
+    project = first.run.analysis.source_path
+    profile = project.parent / "runtime/profiles/default.yaml"
+    profile.write_bytes(
+        _slurm_profile(tmp_path).read_bytes()
+        if placement == "slurm"
+        else b"schema_version: emrys.execution-profile.v1\nplacement: {kind: direct}\n"
+    )
+    readiness_calls = []
+
+    def diagnose(*args, **kwargs):
+        readiness_calls.append((args, kwargs))
+        return first.readiness
+
+    monkeypatch.setattr(control.doctor, "diagnose_project", diagnose)
+    monkeypatch.setattr(
+        control.capacity, "observe_allocation", lambda: first.resources.allocation
+    )
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("A declined watch plan must not open logs, execute, or submit")
+
+    monkeypatch.setattr(control, "_execute_plan", forbidden)
+    monkeypatch.setattr(control, "open_attempt_log", forbidden)
+    monkeypatch.setattr(control.slurm_submission, "submit", forbidden)
+    handed_off = []
+    confirmations = []
+    before = {}
+
+    def snapshot():
+        return {
+            path: (path.read_bytes(), path.stat().st_mtime_ns)
+            if path.is_file()
+            else None
+            for path in tmp_path.rglob("*")
+        }
+
+    def before_read():
+        assert handed_off == [True]
+        assert snapshot() == before
+        confirmations.append(True)
+
+    monkeypatch.setattr(control.sys, "stdin", _InputStream("no\n", before_read))
+    for name in ("stdout", "stderr"):
+        monkeypatch.setattr(
+            control.sys, name, _TerminalOutput(getattr(control.sys, name))
+        )
+    monkeypatch.setenv("TERM", "xterm")
+
+    def watch(selected_project, *, run_root, review_actions, **kwargs):
+        nonlocal before
+        assert selected_project == project and run_root == first.run_root
+        assert tuple(key for key, _label, _call in review_actions) == (b"p", b"o")
+        if changed:
+            profile.write_text("invalid profile selected after watch entry\n")
+        before = snapshot()
+        handed_off.append(True)
+        return review_actions[0][2]()
+
+    monkeypatch.setattr(control._inspection_presentation, "watch", watch)
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    arguments = parser.parse_args(
+        [first.run.run_id, "--project", str(project), "--watch", "--actions"]
+    )
+    arguments.execute = True
+    assert control.inspect_from_args(arguments) == (2 if changed else 0)
+    assert confirmations == ([] if changed else [True])
+    assert len(readiness_calls) == int(not changed and placement == "direct")
+    rendered = capsys.readouterr().err
+    if changed:
+        assert "emrys: error:" in rendered
+        assert "Execute this plan?" not in rendered
+    else:
+        assert rendered.index("Run: ") < rendered.index("Execute this plan? [y/N]")
+        assert (
+            "no scheduler or workspace state was written" in rendered
+            if placement == "slurm"
+            else "no resume state was written" in rendered
+        )
+    assert snapshot() == before
+
+
 def test_public_execute_logs_and_terminalizes_doctor_failure_before_run_state(
     tmp_path: Path,
     capsys,
@@ -3550,6 +3639,71 @@ def test_public_stop_preview_is_read_only_and_names_exact_target(
     assert {
         path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()
     } == before
+
+
+@pytest.mark.parametrize("changed", (False, True))
+def test_watch_stop_handoff_readmits_exact_request_without_mutation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys, changed
+) -> None:
+    from tests.orchestration.run_coordinator.test_slurm_submission import _stop_fixture
+
+    fixture = _stop_fixture(tmp_path, monkeypatch)
+    for stream in (control.sys.stdin, control.sys.stdout, control.sys.stderr):
+        monkeypatch.setattr(stream, "isatty", lambda: True)
+    monkeypatch.setenv("TERM", "xterm")
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Stop preview must not confirm, open a log, or issue cancellation")
+
+    monkeypatch.setattr(control, "_confirm_execution", forbidden)
+    monkeypatch.setattr(control, "open_attempt_log", forbidden)
+    monkeypatch.setattr(
+        control._submission_inspection, "inspect_submission_application", forbidden
+    )
+    before = {}
+
+    def snapshot():
+        return {
+            path: path.read_bytes() if path.is_file() else None
+            for path in tmp_path.rglob("*")
+        }
+
+    def watch(project, *, request, review_actions, **kwargs):
+        nonlocal before
+        assert project == fixture.project and request.request_root == fixture.root
+        assert "run_root" not in kwargs
+        assert tuple(key for key, _label, _call in review_actions) == (b"s",)
+        assert fixture.queries == []
+        if changed:
+            (fixture.root / "request.json").write_bytes(b"{}")
+        before = snapshot()
+        return review_actions[0][2]()
+
+    monkeypatch.setattr(control._inspection_presentation, "watch", watch)
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    arguments = parser.parse_args(
+        [
+            "--project",
+            str(fixture.project),
+            "--submission",
+            fixture.root.name,
+            "--watch",
+            "--actions",
+        ]
+    )
+    arguments.execute = True
+    assert control.inspect_from_args(arguments) == (2 if changed else 0)
+    captured = capsys.readouterr()
+    if changed:
+        assert "emrys: error:" in captured.err
+        assert "Preview only" not in captured.out
+        assert fixture.queries == []
+    else:
+        assert "Preview only" in captured.out
+        assert len(fixture.queries) == 1
+    assert not fixture.marker.exists()
+    assert snapshot() == before
 
 
 @pytest.mark.parametrize(
@@ -5018,13 +5172,16 @@ def test_application_log_degradation_cannot_change_receipt_or_exit(
         "outcome_status",
         "execute_requested",
         "logging_fails",
+        "via_watch",
     ),
     (
-        ("planned", False, False),
-        ("reused", False, False),
-        ("generated", True, False),
-        ("generated", True, True),
-        ("reused", True, False),
+        ("planned", False, False, False),
+        ("reused", False, False, False),
+        ("generated", True, False, False),
+        ("generated", True, True, False),
+        ("reused", True, False, False),
+        ("planned", False, False, True),
+        ("reused", False, False, True),
     ),
 )
 def test_standalone_report_logging_boundary(
@@ -5034,6 +5191,7 @@ def test_standalone_report_logging_boundary(
     outcome_status: str,
     execute_requested: bool,
     logging_fails: bool,
+    via_watch: bool,
 ) -> None:
     workspace = tmp_path / "workspace"
     project = workspace / "project.yaml"
@@ -5094,7 +5252,43 @@ def test_standalone_report_logging_boundary(
             ),
         )
 
-    assert control.report_from_args(arguments) == 0
+    before = {
+        path: path.read_bytes() if path.is_file() else None
+        for path in tmp_path.rglob("*")
+    }
+    if via_watch:
+        for stream in (control.sys.stdin, control.sys.stdout, control.sys.stderr):
+            monkeypatch.setattr(stream, "isatty", lambda: True)
+        monkeypatch.setenv("TERM", "xterm")
+
+        def forbidden(*args, **kwargs):
+            pytest.fail("Watch report preview must not confirm, submit, or open logs")
+
+        monkeypatch.setattr(control, "_confirm_execution", forbidden)
+        monkeypatch.setattr(control, "open_attempt_log", forbidden)
+        monkeypatch.setattr(control.slurm_submission, "submit", forbidden)
+
+        def watch(selected_project, *, run_root: Path, review_actions, **kwargs):
+            assert selected_project == project and run_root.name == arguments.run
+            assert calls == []
+            return next(
+                callback for key, _label, callback in review_actions if key == b"o"
+            )()
+
+        monkeypatch.setattr(control._inspection_presentation, "watch", watch)
+        parser = argparse.ArgumentParser()
+        control.configure_inspect_parser(parser)
+        selected = parser.parse_args(
+            [run_root.name, "--project", str(project), "--watch", "--actions"]
+        )
+        selected.execute = True
+        assert control.inspect_from_args(selected) == 0
+        assert {
+            path: path.read_bytes() if path.is_file() else None
+            for path in tmp_path.rglob("*")
+        } == before
+    else:
+        assert control.report_from_args(arguments) == 0
     generated = execute_requested and outcome_status == "generated"
     assert calls == [execute_requested]
     rendered = capsys.readouterr().err
@@ -5143,6 +5337,46 @@ def test_planned_report_rejects_an_unavailable_or_unsupported_profile_without_wr
     assert "Reporting: planned" not in output.err
     assert "Execution placement:" not in output.err
     assert sorted(tmp_path.rglob("*")) == before
+
+
+def test_watch_report_handoff_freshly_refuses_ineligible_run_without_writes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    first = _plan(tmp_path)
+    _failed_run(first)
+    project = first.run.analysis.source_path
+    for stream in (control.sys.stdin, control.sys.stdout, control.sys.stderr):
+        monkeypatch.setattr(stream, "isatty", lambda: True)
+    monkeypatch.setenv("TERM", "xterm")
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Ineligible report preview must not confirm, open logs, or submit")
+
+    monkeypatch.setattr(control, "_confirm_execution", forbidden)
+    monkeypatch.setattr(control, "open_attempt_log", forbidden)
+    monkeypatch.setattr(control.slurm_submission, "submit", forbidden)
+    monkeypatch.setattr(
+        control._inspection_presentation,
+        "watch",
+        lambda _project, *, review_actions, **_kwargs: next(
+            callback for key, _label, callback in review_actions if key == b"o"
+        )(),
+    )
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    arguments = parser.parse_args(
+        [first.run.run_id, "--project", str(project), "--watch", "--actions"]
+    )
+    before = {
+        path: path.read_bytes() if path.is_file() else None
+        for path in tmp_path.rglob("*")
+    }
+    assert control.inspect_from_args(arguments) == 2
+    assert "emrys: error:" in capsys.readouterr().err
+    assert {
+        path: path.read_bytes() if path.is_file() else None
+        for path in tmp_path.rglob("*")
+    } == before
 
 
 @pytest.mark.parametrize("profile_selection", ("default", "named", "absolute"))

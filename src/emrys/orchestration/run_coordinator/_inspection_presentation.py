@@ -543,7 +543,7 @@ def require_action_terminal() -> None:
     if not all(stream.isatty() for stream in (sys.stdin, sys.stdout, sys.stderr)) or (
         os.environ.get("TERM") == "dumb"
     ):
-        raise PresentationError("Actions require an interactive Run-only watch")
+        raise PresentationError("Actions require an interactive watch")
 
 
 def watch(
@@ -553,7 +553,7 @@ def watch(
     run_root: Path | None = None,
     inspect_run: Callable[[Path], RunInspection],
     next_action: Callable[[RunInspection], str],
-    review_resume: Callable[[], int] | None = None,
+    review_actions: tuple[tuple[bytes, str, Callable[[], int]], ...] = (),
 ) -> int:
     from functools import partial
 
@@ -564,10 +564,10 @@ def watch(
     interactive = (
         sys.stdin.isatty() and sys.stdout.isatty() and os.environ.get("TERM") != "dumb"
     )
-    if review_resume is not None:
+    if review_actions:
         require_action_terminal()
-        if request is not None or run_root is None:
-            raise PresentationError("Actions require an interactive Run-only watch")
+        if (request is None) == (run_root is None):
+            raise PresentationError("Actions require one exact Run or submission")
     if not interactive:
         print(
             render_snapshot(
@@ -588,6 +588,8 @@ def watch(
     worker = RefreshWorker(initial, refresh)
     stream_index = 0
     scroll = 0
+    selected_review = None
+    reviews = {key: callback for key, _label, callback in review_actions}
     deadline = time.monotonic() + _REFRESH_SECONDS
     worker.request(verify=True, stream_index=stream_index)
     try:
@@ -600,7 +602,9 @@ def watch(
             redirect_stderr=False,
         ) as live:
             layout = Layout()
-            layout.split_column(Layout(name="body"), Layout(name="controls", size=2))
+            layout.split_column(
+                Layout(name="body"), Layout(name="controls", size=3 if reviews else 2)
+            )
             while True:
                 now = time.monotonic()
                 if now >= deadline:
@@ -609,8 +613,11 @@ def watch(
                 snapshot = worker.snapshot
                 text = render_snapshot(snapshot, now=datetime.now(UTC))
                 controls = "q quit | r verify/associate again | Tab stream | j/k scroll"
-                if review_resume is not None:
-                    controls += " | p leave view and review resume plan"
+                if reviews:
+                    controls += "\nLeave view: " + " | ".join(
+                        f"{key.decode('ascii')} {label}"
+                        for key, label, _ in review_actions
+                    )
                 if worker.busy or worker.pending is not None:
                     controls += (
                         "\nRefresh in progress; displayed observations are dated"
@@ -624,7 +631,8 @@ def watch(
                     key = os.read(descriptor, 1)
                     if key in (b"q", b"Q", b"\x04", b""):
                         return 0
-                    if key in (b"p", b"P") and review_resume is not None:
+                    selected_review = reviews.get(key.lower())
+                    if selected_review is not None:
                         break
                     if key in (b"r", b"R", b"\t"):
                         if key == b"\t":
@@ -638,6 +646,6 @@ def watch(
         worker.close()
         termios.tcsetattr(descriptor, termios.TCSADRAIN, original)
     # An active daemon read may finish, but no queued refresh or cached evidence
-    # participates in the CLI operation. Its owner admits and confirms a new plan.
-    assert review_resume is not None
-    return review_resume()
+    # participates in the CLI operation. Its owner admits a fresh review.
+    assert selected_review is not None
+    return selected_review()
