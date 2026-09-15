@@ -982,6 +982,48 @@ execution requires hosted CI. Read/hash bytes, probe attribution, process memory
 actual scheduler timing and comparable before/after measurements remain open;
 this slice establishes timing observations, not a measured speedup.
 
+**Retained hosted observation:** The managed golden path at
+`2e03177747e67e8d970083e3994f3c8970d77caf`
+([run 34935510824](https://github.com/lab-cats/EMRYS/actions/runs/34935510824),
+artifact `emrys-managed-golden-1`, ID `10382984827`) retained one complete
+direct Doctor repair invocation lasting **175.681 seconds**. Its application
+log recorded these phase durations:
+
+| Phase | Seconds |
+| --- | ---: |
+| Initial Project/runtime inspection | 1.727 |
+| Approved-input revalidation | 0.100 |
+| Single-host storage qualification | 0.068 |
+| Native tools and R preparation | 43.478 |
+| R package restore/check | 20.146 |
+| Installed-runtime discovery and verification | 55.091 |
+| Final Project readiness | 54.907 |
+
+The unrounded phases sum to 175.517 seconds, leaving 0.164 seconds outside
+the named phases. Discovery and final readiness account for 62.61% of total
+elapsed time. Those phases combine probes and content/admission work; the
+artifact has no complete per-probe, hash-byte, CPU, physical-I/O or RSS
+attribution. R restore linked 71 packages from cache. This is one hosted direct
+managed-setup observation, not a cold setup, borrower steady-state, Slurm/NFS
+measurement or explanation of E11. No optimization before/after claim follows.
+
+**Hash-reuse audit disposition:** Retain fresh content checks and defer an
+invocation-local digest cache. In a fixed-roster local fixture, the Python
+aliases and Java/Picard selection produced 14 executable/jar hashes for 11
+distinct files. Removing three reads would still require independent current
+path, descriptor and content-identity guarantees at each use. Repeated checks
+across repair, qualification and final revalidation also protect different
+mutation boundaries; they are not interchangeable observations.
+
+The fixture exercised actual file and R-tree hashing with synthetic runtime
+observations on a warm local filesystem. It did not run Doctor or native probes,
+measure physical storage I/O, or attribute the reported institutional delay.
+Its duplicate-read cost does not justify a new cache or a weaker admission
+rule. The existing binding and byte-reading owners remain shared; no alternate
+hasher, persistent cache or product state is added. Reconsider the candidate
+only after full-operation phase/byte measurements show a material cost and an
+equivalent identity-preserving replacement demonstrates a measured benefit.
+
 ## P3 outcome
 
 ### CV-27 Terminal-only report access
