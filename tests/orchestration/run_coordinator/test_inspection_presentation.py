@@ -790,7 +790,11 @@ raise SystemExit(result)
             )
         )
         while (
-            (not marker.exists() or caption not in rendered_text())
+            (
+                not marker.exists()
+                or caption not in rendered_text()
+                or b"Refresh in progress" not in rendered_text()
+            )
             and process.poll() is None
             and time.monotonic() < deadline
         ):
