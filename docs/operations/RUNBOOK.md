@@ -372,8 +372,12 @@ Specialist commands validate existing outputs, reconcile reference provenance
 owner-validation report because validator exit zero alone does not establish
 semantic success.
 
-The CSU dashboard is stale and frozen pending separate replacement work.
-Use `emrys inspect` and exact Slurm accounting/streams for status and completion.
+The legacy CSU dashboard remains a separate operational view pending validated
+replacement. Its scheduler observer checks numeric ownership, exact root IDs,
+duplicate accounting records, and selected stream paths; uncertainty appears
+as `UNKNOWN`. Its log interpretation does not replace current Run inspection
+or establish which retained request owns a reused job ID. Use `emrys inspect`
+and exact Slurm accounting/streams for status and completion.
 
 ## Slurm setup and submission
 

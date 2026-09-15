@@ -188,6 +188,15 @@ The existing stdout response is the sole recorded scheduler response; there is
 no second job-ID/status file. These records do not prove that a Run was created,
 that a job still exists, or that cancellation or recovery is safe.
 
+The existing dashboard's shared scheduler observer requires an exact canonical
+root job ID and current numeric UID. It rejects missing/mismatched/duplicate
+identity, including accounting duplicates, and never substitutes `USER` or
+`LOGNAME` for UID proof. Refresh also checks selected stream paths; unavailable
+or ambiguous metadata yields `UNKNOWN`, and usage must name the exact batch
+step. Accounting selection and state observation share one parser. Even a
+matching job ID/UID/path does not establish a durable request's submission or
+cluster identity, nor prove process absence, EMRYS completion, or safe recovery.
+
 ## Profiles and immutable planning
 
 Allocation observation preserves CPU affinity and declared Slurm CPU limits.
