@@ -210,6 +210,11 @@ record alone does not prove a complete verified task or a recoverable Run.
 Use inspection's supported recovery decision; preserve incomplete chains,
 logs, native partials, and locks. SIGKILL and lost native-worker ownership can
 still leave ambiguity that requires maintainer investigation.
+`Forced workflow termination cannot prove separately owned native groups
+stopped` means the outer workflow ended without proof that all native writers
+stopped. EMRYS retains the Run lock and omits the Attempt receipt. A missing
+outer process or completed scheduler job does not authorize removing that lock;
+retain the Run and native workspace for investigation.
 If the response leaves the job ID unconfirmed, keep the command, submission
 time, and response, and resolve acceptance with the scheduler/operator before
 retrying. EMRYS does not automatically resubmit an uncertain request. Scheduler

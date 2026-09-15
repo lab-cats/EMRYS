@@ -311,14 +311,29 @@ ambient mask that prevents task cancellation is refused before mutation.
 This is 37 net product lines under the approved minimum necessary expansion,
 with no new product file or recovery state.
 
-**Verification and remaining scope:** Eleven isolated real-signal test cases
+**Implemented nested-cancellation slice:** Native execution uses the existing
+signal controller from spawn through stream drain and group quiescence,
+watching HUP/INT/TERM without throwing from its handlers. Children receive
+watched signals unblocked; repeated signals cannot bypass cleanup. Closed
+pipes do not prove process completion. The outer workflow allows native
+cleanup time, but any forced or externally observed workflow SIGKILL retains
+the Run lock and publishes no Attempt receipt because an independent native
+session may remain. Typed native ambiguity also prevents workspace/lock
+cleanup when another signal replaces the exception during handler restoration.
+Only that cleanup-authority decision is masked; filesystem cleanup is not.
+
+**Verification and remaining scope:** Eleven earlier isolated real-signal cases
 cover producer interruption, successful/failed terminal-record writes, the
 gap between records, mask restoration, re-entry, and SIGKILL. Execution is
-CI-pending; local Ruff, formatting, and whitespace checks pass. This addresses
-one source-derived window, not an established cause of E09. Independent native
-sessions, nested termination deadlines, lost wrappers, and explicit safe
-reconciliation remain open. No task or Run is declared recoverable merely
-because the outer scheduler/process group stopped.
+covered by the passing combined standard CI at PR #198. The nested slice adds
+real local process fixtures for repeated signals, the spawn/registration gap,
+closed pipes, handler restoration, and lifecycle-to-Task-to-native cancellation.
+They retain an actual live native PID after forced outer termination and check
+the preserved lock/no-receipt boundary; their execution awaits hosted CI.
+Ruff, formatting and whitespace checks pass. These source-derived protections
+do not establish E09's cause or real Snakemake/Slurm cancellation behavior.
+Lost wrappers, escaped descendants and explicit safe reconciliation remain
+open. No task or Run becomes recoverable solely because an outer group stopped.
 
 ### CV-11 Resource profile compatibility
 

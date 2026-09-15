@@ -11,6 +11,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
@@ -915,6 +916,204 @@ def test_catchable_task_termination_kills_worker_group_and_preserves_attempt(
     assert not Path(built.definition["outputs"][0]["working_path"]).parent.exists()
 
 
+def _task_native_signal_child(root: Path, fault: str) -> None:
+    """Run a real separately owned native group inside an isolated Task process."""
+    built = _task_fixture(root)
+    native_record = root / "native.json"
+    native_script = """
+import json, os, signal, sys, time
+from pathlib import Path
+watched = (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
+for signum in watched:
+    signal.signal(signum, signal.SIG_IGN)
+blocked = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+if sys.argv[2] == 'closed-streams':
+    os.close(1)
+    os.close(2)
+Path(sys.argv[1]).write_text(json.dumps({'pid': os.getpid(), 'blocked': list(blocked)}))
+if sys.argv[2] not in ('post-spawn', 'nested'):
+    os.kill(os.getppid(), signal.SIGTERM)
+time.sleep(60)
+"""
+    argv = controlled_python_argv(
+        sys.executable, "-c", native_script, str(native_record), fault
+    )
+    built.definition["producer_argv"] = list(argv)
+    _rewrite_task(built)
+    signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGUSR1})
+    previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+    previous_handlers = {
+        signum: signal.getsignal(signum) for signum in task._TASK_SIGNALS
+    }
+    process: subprocess.Popen[bytes] | None = None
+    original_spawn = subprocess.Popen
+    original_ops = lifecycle.DEFAULT_PROCESS_GROUP_OPS
+    original_signal_ops = lifecycle.DEFAULT_SIGNAL_OPS
+    original_quiesce = lifecycle.quiesce_process_group
+    original_ambiguity = task._process_group_ambiguity
+    original_close = task._NativePublication.close
+    repeated: list[int] = []
+    ambiguity_checks = 0
+    cleanup_calls = 0
+
+    def spawn(*args: Any, **kwargs: Any) -> subprocess.Popen[bytes]:
+        nonlocal process
+        process = original_spawn(*args, **kwargs)
+        if fault == "post-spawn":
+            deadline = time.monotonic() + 10
+            while not native_record.exists():
+                assert process.poll() is None and time.monotonic() < deadline
+                time.sleep(0.01)
+            os.kill(os.getpid(), signal.SIGTERM)
+        return process
+
+    def repeat_during_cleanup(seconds: float) -> None:
+        for signum in task._TASK_SIGNALS:
+            repeated.append(signum)
+            os.kill(os.getpid(), signum)
+        time.sleep(seconds)
+
+    def unproved(*_args: Any) -> bool:
+        assert process is not None and process.poll() is None
+        raise lifecycle.ProcessGroupAmbiguity("fixture native writer still alive")
+
+    def restore(previous: Mapping[int, Any], mask: set[signal.Signals]) -> None:
+        if fault == "ambiguous-restore-signal":
+            signal.pthread_sigmask(signal.SIG_BLOCK, set(previous))
+            os.kill(os.getpid(), signal.SIGTERM)
+        original_signal_ops.restore_handlers(previous, mask)
+        if fault == "ambiguous-restore-error":
+            raise OSError("fixture handler restoration failure")
+
+    def ambiguity(*errors: BaseException | None) -> BaseException | None:
+        nonlocal ambiguity_checks
+        ambiguity_checks += 1
+        result = original_ambiguity(*errors)
+        if (fault == "ambiguous-conversion-signal" and ambiguity_checks == 1) or (
+            fault == "ambiguous-cleanup-signal" and ambiguity_checks == 2
+        ):
+            if fault == "ambiguous-cleanup-signal":
+                assert task._TASK_SIGNALS.issubset(
+                    signal.pthread_sigmask(signal.SIG_BLOCK, set())
+                )
+            os.kill(os.getpid(), signal.SIGTERM)
+        return result
+
+    def close(publication: task._NativePublication) -> None:
+        nonlocal cleanup_calls
+        cleanup_calls += 1
+        assert not task._TASK_SIGNALS.intersection(
+            signal.pthread_sigmask(signal.SIG_BLOCK, set())
+        )
+        original_close(publication)
+
+    task.subprocess.Popen = spawn
+    task._NativePublication.close = close
+    lifecycle.DEFAULT_PROCESS_GROUP_OPS = replace(
+        original_ops, sleep=repeat_during_cleanup
+    )
+    if fault.startswith("ambiguous-"):
+        lifecycle.quiesce_process_group = unproved
+        lifecycle.DEFAULT_SIGNAL_OPS = replace(
+            original_signal_ops, restore_handlers=restore
+        )
+        task._process_group_ambiguity = ambiguity
+    error = None
+    try:
+        try:
+            _execute_task(built.plan, ops=_fixed_ops())
+        except task.TaskBoundaryError as exc:
+            error = str(exc)
+        assert error is not None and process is not None
+        assert not task._TASK_SIGNALS.intersection(_record(native_record)["blocked"])
+        assert signal.pthread_sigmask(signal.SIG_BLOCK, set()) == previous_mask
+        assert {
+            signum: signal.getsignal(signum) for signum in task._TASK_SIGNALS
+        } == previous_handlers
+        assert not built.plan.verified_task_path.exists()
+        ambiguous = fault.startswith("ambiguous-")
+        expected_error = (
+            "fixture native writer still alive"
+            if ambiguous and fault != "ambiguous-cleanup-signal"
+            else "Task interrupted by signal 15"
+        )
+        assert expected_error in error
+        assert (
+            Path(built.definition["outputs"][0]["working_path"]).parent.exists()
+            is ambiguous
+        )
+        assert Path(built.definition["publication"]["locks"][0]).exists() is ambiguous
+        if ambiguous:
+            assert process.poll() is None and cleanup_calls == 0
+            os.killpg(process.pid, 0)
+        else:
+            assert process.returncode == -signal.SIGKILL and cleanup_calls == 1
+            with pytest.raises(ProcessLookupError):
+                os.killpg(process.pid, 0)
+            assert set(repeated) == task._TASK_SIGNALS
+        if fault == "ambiguous-cleanup-signal":
+            assert not built.plan.task_attempt_path.exists()
+        else:
+            attempt = _record(built.plan.task_attempt_path)
+            assert attempt["status"] == "failed"
+            assert expected_error in attempt["failure_message"]
+            assert attempt["validator"] is None and attempt["semantic_all_pass"] is None
+        (root / "native-cleanup.json").write_text(json.dumps({"error": error}))
+    finally:
+        task.subprocess.Popen = original_spawn
+        lifecycle.DEFAULT_PROCESS_GROUP_OPS = original_ops
+        lifecycle.DEFAULT_SIGNAL_OPS = original_signal_ops
+        lifecycle.quiesce_process_group = original_quiesce
+        task._process_group_ambiguity = original_ambiguity
+        task._NativePublication.close = original_close
+        if process is not None and process.poll() is None:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.wait(timeout=5)
+
+
+@pytest.mark.parametrize(
+    "fault",
+    (
+        "repeated",
+        "post-spawn",
+        "closed-streams",
+        "ambiguous-restore-signal",
+        "ambiguous-restore-error",
+        "ambiguous-conversion-signal",
+        "ambiguous-cleanup-signal",
+    ),
+)
+def test_native_signal_ownership_survives_spawn_and_cleanup(
+    tmp_path: Path, fault: str
+) -> None:
+    try:
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "from pathlib import Path; import sys; "
+                "from tests.orchestration.run_coordinator.test_task import "
+                "_task_native_signal_child; "
+                "_task_native_signal_child(Path(sys.argv[1]), sys.argv[2])",
+                str(tmp_path),
+                fault,
+            ],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        assert completed.returncode == 0, (completed.stdout, completed.stderr)
+        assert (tmp_path / "native-cleanup.json").is_file()
+    finally:
+        native_record = tmp_path / "native.json"
+        if native_record.is_file():
+            lifecycle._signal_process_group(
+                _record(native_record)["pid"], signal.SIGKILL
+            )
+
+
 def _task_signal_publication_child(root: Path, fault: str) -> None:
     """Exercise real process signals without changing the pytest process."""
     built = _task_fixture(root)
@@ -1097,6 +1296,18 @@ def test_uncertain_worker_group_preserves_workspace_and_owner_lock(
     assert Path(built.definition["publication"]["locks"][0]).is_dir()
     assert not Path(built.definition["outputs"][0]["path"]).exists()
     assert not Path(built.plan.verified_task_path).exists()
+
+
+def test_ambiguity_survives_distinct_failures_and_cyclic_exception_context() -> None:
+    earlier = task.TaskBoundaryError("earlier task failure")
+    earlier.__context__ = earlier
+    replacement = task.TaskBoundaryError("signal during handler restoration")
+    replacement.__context__ = replacement
+    ambiguity = lifecycle.ProcessGroupAmbiguity("native writer still alive")
+    replacement.__cause__ = ambiguity
+
+    assert task._process_group_ambiguity(earlier, replacement) is ambiguity
+    assert task._process_group_ambiguity(earlier) is None
 
 
 def test_unexpected_interruption_preserves_and_closes_partial_task_logs(

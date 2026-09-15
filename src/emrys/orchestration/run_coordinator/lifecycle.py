@@ -22,7 +22,7 @@ import sys
 import time
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
@@ -133,7 +133,7 @@ LifecyclePhaseObserver = Callable[[str], None]
 ApplicationEventObserver = Callable[[str], None]
 SignalHandler = Callable[[int, FrameType | None], None]
 SignalHandlerInstaller = Callable[
-    [SignalHandler], tuple[Mapping[int, Any], set[signal.Signals]]
+    [SignalHandler, frozenset[int]], tuple[Mapping[int, Any], set[signal.Signals]]
 ]
 SignalHandlerRestorer = Callable[[Mapping[int, Any], set[signal.Signals]], None]
 ProcessSpawner = Callable[[tuple[str, ...], Path, Mapping[str, str]], Any]
@@ -156,12 +156,12 @@ def _ignore_application_event(_event: str) -> None:
 
 def _install_transaction_signal_handlers(
     handler: SignalHandler,
+    watched: frozenset[int],
 ) -> tuple[Mapping[int, Any], set[signal.Signals]]:
     if not hasattr(signal, "pthread_sigmask") or not hasattr(signal, "SIG_BLOCK"):
         raise LifecycleError(
             "This platform lacks required POSIX lifecycle signal masking"
         )
-    watched = {signal.SIGINT, signal.SIGTERM}
     try:
         previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, watched)
     except (OSError, ValueError) as exc:
@@ -171,7 +171,7 @@ def _install_transaction_signal_handlers(
     if watched.intersection(previous_mask):
         signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
         raise LifecycleError(
-            "Lifecycle refuses an ambient mask that already blocks SIGINT or SIGTERM"
+            "Lifecycle refuses an ambient mask that already blocks watched signals"
         )
     previous: dict[int, Any] = {}
     try:
@@ -214,7 +214,7 @@ def _restore_transaction_signal_handlers(
     previous: Mapping[int, Any],
     previous_mask: set[signal.Signals],
 ) -> None:
-    watched = {signal.SIGINT, signal.SIGTERM}
+    watched = set(previous)
     try:
         signal.pthread_sigmask(signal.SIG_BLOCK, watched)
     except (OSError, ValueError) as exc:
@@ -294,6 +294,14 @@ class ProcessGroupOps:
 
 DEFAULT_SIGNAL_OPS = TransactionSignalOps()
 DEFAULT_PROCESS_GROUP_OPS = ProcessGroupOps()
+WORKFLOW_PROCESS_GROUP_OPS = replace(
+    DEFAULT_PROCESS_GROUP_OPS,
+    terminate_grace_seconds=(
+        DEFAULT_PROCESS_GROUP_OPS.terminate_grace_seconds
+        + DEFAULT_PROCESS_GROUP_OPS.kill_grace_seconds
+        + 1.0
+    ),
+)
 
 
 class TransactionSignalController:
@@ -303,9 +311,12 @@ class TransactionSignalController:
         self,
         signal_ops: TransactionSignalOps,
         process_group_ops: ProcessGroupOps,
+        *,
+        watched_signals: frozenset[int] = frozenset((signal.SIGINT, signal.SIGTERM)),
     ) -> None:
         self._signal_ops = signal_ops
         self._process_group_ops = process_group_ops
+        self._watched_signals = watched_signals
         self._previous: Mapping[int, Any] | None = None
         self._previous_mask: set[signal.Signals] | None = None
         self._process_group_id: int | None = None
@@ -317,7 +328,7 @@ class TransactionSignalController:
 
     def __enter__(self) -> "TransactionSignalController":
         self._previous, self._previous_mask = self._signal_ops.install_handlers(
-            self.record
+            self.record, self._watched_signals
         )
         return self
 
@@ -360,7 +371,7 @@ class TransactionSignalController:
             )
         signal.pthread_sigmask(
             signal.SIG_BLOCK,
-            {signal.SIGINT, signal.SIGTERM},
+            self._watched_signals,
         )
         self._receipt_commit_blocked = True
 
@@ -372,7 +383,7 @@ class TransactionSignalController:
     def record(self, signum: int, _frame: FrameType | None = None) -> None:
         """Record only the first signal and forward it at most once."""
 
-        if signum not in {signal.SIGINT, signal.SIGTERM}:
+        if signum not in self._watched_signals:
             raise LifecycleError(f"Unsupported lifecycle signal: {signum}")
         if self.first_signal is None:
             self.first_signal = signum
@@ -429,7 +440,7 @@ class LifecycleOps:
     admit_storage_context: StorageContextAdmission
     admit_runtime_context: RuntimeContextAdmission
     sync_directory: DirectorySynchronizer
-    process_group_ops: ProcessGroupOps = DEFAULT_PROCESS_GROUP_OPS
+    process_group_ops: ProcessGroupOps = WORKFLOW_PROCESS_GROUP_OPS
     observe_mutex: MutexObserver = _ignore_mutex_event
     observe_phase: LifecyclePhaseObserver = _ignore_lifecycle_phase
     observe_application_event: ApplicationEventObserver = _ignore_application_event
@@ -913,14 +924,14 @@ def quiesce_process_group(
     process_group_id: int,
     process: Any,
     ops: ProcessGroupOps,
-) -> None:
-    """Prove a group empty, escalating bounded TERM then KILL when necessary."""
+) -> bool:
+    """Prove a group empty and return whether bounded escalation required KILL."""
 
     try:
         leader_returncode = ops.poll(process)
         group_present = ops.group_exists(process_group_id)
         if leader_returncode is not None and not group_present:
-            return
+            return False
         ops.signal_group(process_group_id, signal.SIGTERM)
         if _wait_for_group_absence(
             process_group_id,
@@ -928,7 +939,7 @@ def quiesce_process_group(
             ops.monotonic() + ops.terminate_grace_seconds,
             ops,
         ):
-            return
+            return False
         ops.signal_group(process_group_id, signal.SIGKILL)
         if _wait_for_group_absence(
             process_group_id,
@@ -936,7 +947,7 @@ def quiesce_process_group(
             ops.monotonic() + ops.kill_grace_seconds,
             ops,
         ):
-            return
+            return True
     except ProcessGroupAmbiguity:
         raise
     except BaseException as exc:
@@ -951,7 +962,7 @@ def _run_process_group(
     cwd: Path,
     signals: TransactionSignalController,
     *,
-    ops: ProcessGroupOps = DEFAULT_PROCESS_GROUP_OPS,
+    ops: ProcessGroupOps = WORKFLOW_PROCESS_GROUP_OPS,
 ) -> WorkflowResult:
     """Spawn one sanitized process group and return only after quiescence proof."""
 
@@ -989,7 +1000,11 @@ def _run_process_group(
                     )
             ops.sleep(ops.poll_interval_seconds)
         quiescence_attempted = True
-        quiesce_process_group(process_group_id, process, ops)
+        forced_quiescence = quiesce_process_group(process_group_id, process, ops)
+        if return_code == -signal.SIGKILL or kill_sent or forced_quiescence:
+            raise ProcessGroupAmbiguity(
+                "Forced workflow termination cannot prove separately owned native groups stopped"
+            )
         signals.raise_forwarding_error()
         signals.clear_process_group(process_group_id)
         registered = False
@@ -997,7 +1012,10 @@ def _run_process_group(
         if quiescence_attempted:
             raise
         try:
-            quiesce_process_group(process_group_id, process, ops)
+            if quiesce_process_group(process_group_id, process, ops):
+                raise ProcessGroupAmbiguity(
+                    "Forced workflow cleanup cannot prove separately owned native groups stopped"
+                )
         except BaseException as cleanup_error:
             raise ProcessGroupAmbiguity(
                 "Delegated process group could not be proved quiescent after an execution-boundary failure"

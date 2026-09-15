@@ -429,6 +429,23 @@ receipt. Ambiguous release, process-group state, collision, or partial
 establishment keeps the public lock or recovery residue and publishes no
 resumable success.
 
+The native command runner records HUP/INT/TERM without throwing while it owns
+the spawned group, including the interval between spawn and PGID registration.
+It stops and reaps that group before restoring the outer Task handlers and
+raising interruption. Repeated signals cannot interrupt bounded TERM/KILL
+cleanup; child execution receives these signals unblocked. Closed stream pipes
+do not establish process completion.
+
+The outer workflow gives native cleanup its bounded grace period. Any forced
+workflow SIGKILL, including a leader observed as killed externally, remains
+ambiguous even if the outer group is absent: a separately owned native session
+may survive. Lifecycle retains the Run lock and publishes no Attempt receipt.
+Typed native-group ambiguity also dominates replacement exceptions during Task
+handler restoration. A short masked decision revokes native workspace cleanup
+authority before signals are unmasked; filesystem cleanup remains interruptible.
+These rules do not reconcile lost wrappers or prove the absence of a child
+that escaped its owned group.
+
 After every selected task is verified, the scientific Attempt receipt is
 published last. Application logging follows the separate logging contract and
 cannot change task, receipt, rollback, recovery, or exit authority.
