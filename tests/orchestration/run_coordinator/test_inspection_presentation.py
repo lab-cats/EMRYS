@@ -706,14 +706,20 @@ def test_interactive_quit_restores_terminal_without_waiting_for_stalled_worker(
 ):
     marker = tmp_path / "entered"
     code = """
-import sys, termios, threading
+import sys, termios, threading, select
 from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
 from emrys.orchestration.run_coordinator import _inspection_presentation as view
 root = Path(sys.argv[1])
 mode = sys.argv[2]
-original_terminal = termios.tcgetattr(0)
+def terminal_settings():
+    attrs = termios.tcgetattr(0)
+    # Darwin sets this kernel retype-pending bit on canonical-mode restoration.
+    if sys.platform == "darwin":
+        attrs[3] &= ~termios.PENDIN
+    return attrs
+original_terminal = terminal_settings()
 workers = []
 original_worker = view.RefreshWorker
 def worker(*args, **kwargs):
@@ -728,7 +734,8 @@ def blocked(*args, **kwargs):
 view.refresh_snapshot = blocked
 def review(command):
     assert threading.current_thread() is threading.main_thread()
-    assert termios.tcgetattr(0) == original_terminal
+    assert terminal_settings() == original_terminal
+    assert not select.select([0], [], [], 0)[0]
     assert len(workers) == 1 and workers[0].closed
     assert workers[0].pending is None and workers[0].thread.is_alive()
     print('REVIEW CALLED', command)
@@ -743,7 +750,7 @@ if mode == 'restore-failure':
 actions = () if mode == 'readonly' else (
     ((b's', 'stop preview', partial(review, 'stop')),) if mode == 'stop' else (
         (b'p', 'resume plan/confirm', partial(review, 'resume')),
-        (b'o', 'report preview', partial(review, 'report')),
+        (b'b', 'report preview', partial(review, 'report')),
     )
 )
 request = SimpleNamespace(request_root=root / 'submission', recorded_job_id=None)
@@ -786,7 +793,7 @@ raise SystemExit(result)
             else (
                 b"s stop preview"
                 if mode == "stop"
-                else b"p resume plan/confirm | o report preview"
+                else b"p resume plan/confirm | b report preview"
             )
         )
         while (
@@ -799,7 +806,10 @@ raise SystemExit(result)
             and time.monotonic() < deadline
         ):
             if select.select([master], [], [], 0.05)[0]:
-                output += os.read(master, 65536)
+                chunk = os.read(master, 65536)
+                if not chunk:
+                    break
+                output += chunk
         assert marker.exists(), output
         assert caption in rendered_text(), output
         assert (b"resume plan/confirm" in rendered_text()) is (
@@ -807,27 +817,33 @@ raise SystemExit(result)
         )
         assert (b"stop preview" in rendered_text()) is (mode == "stop")
         assert b"Refresh in progress" in rendered_text()
-        selected_key = {"report": b"o", "stop": b"s"}.get(mode, b"p")
+        selected_key = {"report": b"b", "stop": b"s"}.get(mode, b"p")
         os.write(
             master,
-            b"posq"
+            b"pobsq"
             if mode == "readonly"
-            else b"q"
+            else b"o2\t1\x1b[B\x1b[A\x1b[6~\x1b[5~gq"
             if mode == "quit-enabled"
             else selected_key * 2,
         )
         while process.poll() is None and time.monotonic() < deadline:
             if select.select([master], [], [], 0.05)[0]:
                 try:
-                    output += os.read(master, 65536)
+                    chunk = os.read(master, 65536)
+                    if not chunk:
+                        break
+                    output += chunk
                 except OSError:
                     break
         reviewed = mode in {"resume", "report", "stop"}
         expected = 7 if reviewed else 1 if mode == "restore-failure" else 0
-        assert process.wait(timeout=1) == expected, output
+        assert process.wait(timeout=1) == expected, output[-1800:]
         while select.select([master], [], [], 0)[0]:
             try:
-                output += os.read(master, 65536)
+                chunk = os.read(master, 65536)
+                if not chunk:
+                    break
+                output += chunk
             except OSError:
                 break
         assert b"\x1b[?1049l" in output
@@ -988,3 +1004,286 @@ def test_run_log_rendering_uses_only_the_collection_and_escapes_public_output(
     assert "none (Run only)" in "\n".join(verbose)
     text = view.render_snapshot(snapshot, now=NOW)
     assert "\x1b" not in text and "issue\\nnext" in text
+
+
+def _legacy_trace():
+    return """Job stats:
+job                            count
+---------------------------  -------
+align_RNA_reads_with_STAR           2
+construct_canonical_BAM             2
+total                              4
+
+[Tue Sep 15 11:00:00 2026]
+localrule align_RNA_reads_with_STAR:
+    jobid: 1
+    wildcards: sample_id=control1
+[Tue Sep 15 11:02:00 2026]
+Finished jobid: 1 (Rule: align_RNA_reads_with_STAR)
+1 of 4 steps (25%) done
+"""
+
+
+def test_scheduler_snapshot_reconnects_complete_trace_without_project_or_rpc(
+    tmp_path, monkeypatch, capsys
+):
+    import argparse
+    from emrys.orchestration.run_coordinator import control
+
+    stdout = tmp_path / "emrys-local-pilot-42.out"
+    stderr = tmp_path / "emrys-local-pilot-42.err"
+    stdout.write_text(
+        "Run ID: unverified-from-stream\nRun root: /never/admit/from/log\n"
+    )
+    stderr.write_text(_legacy_trace() + "ordinary diagnostic\n" * 400)
+    original = {p: p.read_bytes() for p in (stdout, stderr)}
+
+    def forbidden(*args, **kwargs):
+        pytest.fail(
+            "Offline diagnostic viewing cannot query Slurm, admit a Project/Run, or execute"
+        )
+
+    monkeypatch.setattr(view.dashboard._scheduler, "command_bytes", forbidden)
+    monkeypatch.setattr(control, "_resolve_run_argument", forbidden)
+    monkeypatch.setattr(control.inspection, "inspect_run", forbidden)
+    monkeypatch.setattr(control, "open_attempt_log", forbidden)
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    args = parser.parse_args(
+        [
+            "--snapshot",
+            "--job-id",
+            "42",
+            "--offline",
+            "--out",
+            str(stdout),
+            "--err",
+            str(stderr),
+        ]
+    )
+    assert control.inspect_from_args(args) == 0
+    text = capsys.readouterr().out
+    assert "1/4" in text and "STAR alignment" in text
+    assert "unverified-from-stream" in text and "diagnostic selection only" in text
+    assert "Scheduler: UNKNOWN" in text and "Offline; scheduler not queried" in text
+    assert "Run evidence as of: unavailable" in text
+    assert "Project:" not in text and "\x1b" not in text
+    assert {p: p.read_bytes() for p in (stdout, stderr)} == original
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+def test_scheduler_dashboard_uses_legacy_selector_precedence_and_freezes_selection(
+    tmp_path, monkeypatch, explicit
+):
+    import argparse
+    from emrys.orchestration.run_coordinator import control
+
+    monkeypatch.setenv("EMRYS_DASHBOARD_JOB_ID", "41")
+    monkeypatch.setenv("EMRYS_DASHBOARD_LOG_DIR", str(tmp_path))
+    selected = {
+        "job_id": 42 if explicit else 41,
+        "out": str(tmp_path / "out"),
+        "err": str(tmp_path / "err"),
+    }
+    calls = []
+
+    def resolve(*args):
+        calls.append(args)
+        return selected
+
+    def watch(project, **kwargs):
+        assert project is None
+        assert kwargs["raw_job"] is selected
+        assert kwargs["refresh_seconds"] == 5
+        assert kwargs["snapshot_only"] is False
+        assert not kwargs.get("review_actions")
+        return 0
+
+    monkeypatch.setattr(view.dashboard, "resolve_selection", resolve)
+    monkeypatch.setattr(view, "watch", watch)
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    args = ["--watch", "--refresh", "5", "--job-id", *(["42"] if explicit else [])]
+    assert control.inspect_from_args(parser.parse_args(args)) == 0
+    assert calls == [("42" if explicit else "41", str(tmp_path), None, None, False)]
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        ["--actions"],
+        ["--project", "/not-admitted"],
+        ["some-run"],
+        ["--submission", "request"],
+        ["--refresh", "4"],
+    ],
+)
+def test_raw_dashboard_refuses_ambiguous_or_action_selection_before_reads(
+    monkeypatch, extra, capsys
+):
+    import argparse
+    from emrys.orchestration.run_coordinator import control
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Invalid raw selector must fail before discovery or action")
+
+    monkeypatch.setattr(view.dashboard, "resolve_selection", forbidden)
+    monkeypatch.setattr(view, "watch", forbidden)
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    assert (
+        control.inspect_from_args(
+            parser.parse_args(["--watch", "--job-id", "42", *extra])
+        )
+        == 2
+    )
+    assert "error:" in capsys.readouterr().err
+
+
+def test_parity_views_preserve_panels_styles_and_literal_log_text(
+    tmp_path, monkeypatch
+):
+    snapshot = view.WatchSnapshot(
+        None,
+        raw_job={"job_id": 42},
+        scheduler={
+            "state": "RUNNING",
+            "cpus": "12",
+            "partition": "compute",
+            "node": "node1",
+            "max_rss": "4G",
+        },
+        control_identity={"run_id": "run-<literal>\x1b[31m", "workflow_cores": "12"},
+        workflow=view.dashboard.parse_workflow(_legacy_trace()),
+        trace_at=NOW,
+    )
+
+    def forbidden(*args, **kwargs):
+        pytest.fail(
+            "Repainting shared projections must not read any filesystem or scheduler state"
+        )
+
+    monkeypatch.setattr(Path, "open", forbidden)
+    monkeypatch.setattr(view.dashboard._scheduler, "command_bytes", forbidden)
+    overview = view.render_dashboard(
+        snapshot, height=56, width=160, view="overview", scroll=0
+    )
+    details = view.render_dashboard(
+        snapshot, height=56, width=160, view="details", scroll=0
+    )
+    for title in (
+        "RUN OVERVIEW",
+        "PIPELINE",
+        "CURRENT WORK",
+        "SAMPLE LANES",
+        "FLOW, RUN ID & ACTIVITY",
+    ):
+        assert title in overview.plain
+    for title in (
+        "JOB, RESOURCES & RUN IDENTITY",
+        "CURRENT WORK DETAILS",
+        "SAMPLE DETAILS",
+    ):
+        assert title in details.plain
+    assert "control1" in details.plain and "12 CPUs" in details.plain
+    assert "run-<literal>\\x1b[31m" in details.plain and "\x1b" not in details.plain
+    assert any(span.style == "bold yellow" for span in overview.spans)
+    undated = view.render_dashboard(
+        replace(snapshot, trace_at=None),
+        height=56,
+        width=160,
+        view="details",
+        scroll=0,
+    )
+    assert "NFS-light 30s (unavailable)" in undated.plain
+    for width, height in ((100, 30), (60, 10)):
+        text = view.render_dashboard(
+            snapshot, height=height, width=width, view="details", scroll=6
+        )
+        assert len(text.plain.splitlines()) == height
+        assert all(len(line) <= width for line in text.plain.splitlines())
+
+
+def test_action_keys_cannot_override_legacy_navigation(tmp_path, monkeypatch):
+    for name in ("stdin", "stdout", "stderr"):
+        monkeypatch.setattr(getattr(sys, name), "isatty", lambda: True)
+    monkeypatch.setenv("TERM", "xterm")
+    with pytest.raises(view.PresentationError, match="navigation"):
+        view.watch(
+            tmp_path,
+            run_root=tmp_path / "run",
+            inspect_run=lambda _: None,
+            next_action=lambda _: "",
+            review_actions=((b"o", "unsafe action collision", lambda: 0),),
+        )
+
+
+def test_no_project_watch_uses_shared_scheduler_discovery(tmp_path, monkeypatch):
+    import argparse
+    from emrys.orchestration.run_coordinator import control
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("EMRYS_DASHBOARD_JOB_ID", raising=False)
+    monkeypatch.delenv("EMRYS_DASHBOARD_LOG_DIR", raising=False)
+    calls = []
+    selected = {
+        "job_id": 42,
+        "out": str(tmp_path / "out"),
+        "err": str(tmp_path / "err"),
+    }
+
+    def select(*args):
+        calls.append(args)
+        return selected
+
+    def watch(project, **kwargs):
+        assert project is None and kwargs["raw_job"] is selected
+        return 0
+
+    monkeypatch.setattr(view.dashboard, "resolve_selection", select)
+    monkeypatch.setattr(view, "watch", watch)
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    assert control.inspect_from_args(parser.parse_args(["--watch"])) == 0
+    assert calls == [(None, None, None, None, False)]
+    (tmp_path / "project.yaml").symlink_to(tmp_path / "missing")
+    assert control.inspect_from_args(parser.parse_args(["--watch"])) == 2
+    assert len(calls) == 1
+
+
+def test_terminal_dashboard_poll_retains_original_date_until_explicit_refresh(
+    tmp_path, monkeypatch
+):
+    calls = []
+    job = {"job_id": 42, "out": str(tmp_path / "out"), "err": str(tmp_path / "err")}
+    initial = view.WatchSnapshot(
+        None,
+        raw_job=job,
+        scheduler={"state": "COMPLETED", "terminal": True},
+        scheduler_at=NOW,
+    )
+
+    def query(*args):
+        calls.append(args)
+        return {"state": "UNKNOWN", "terminal": False}
+
+    def forbidden(*args):
+        pytest.fail("A raw diagnostic selection cannot admit a Run")
+
+    monkeypatch.setattr(view.dashboard._scheduler, "query_slurm", query)
+    monkeypatch.setattr(view, "read_tail", lambda *args: None)
+    kept = view.refresh_snapshot(
+        initial,
+        verify=False,
+        stream_index=0,
+        inspect_run=forbidden,
+        next_action=forbidden,
+    )
+    assert (
+        kept.scheduler_at == NOW and kept.scheduler == initial.scheduler and calls == []
+    )
+    fresh = view.refresh_snapshot(
+        kept, verify=True, stream_index=0, inspect_run=forbidden, next_action=forbidden
+    )
+    assert fresh.scheduler["state"] == "UNKNOWN" and fresh.scheduler_at != NOW
+    assert calls == [(42, job["out"], job["err"])]

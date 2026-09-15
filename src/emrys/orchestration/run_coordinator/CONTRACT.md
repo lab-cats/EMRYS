@@ -352,20 +352,55 @@ distinct from the Run's latest Attempt. A timer cannot promote historical
 evidence to current progress or recovery eligibility. Run-only views cannot
 derive current scheduler identity from an unbound recorded job ID.
 
-One daemon worker performs read-only refreshes, with at most one active and
-one coalesced pending request. Painting from memory performs no I/O. Automatic
-30-second refresh uses only strict scheduler observation and one diagnostic
-stream suffix; explicit refresh rechecks association and full Run evidence.
-Once the view opens, quitting restores the terminal without waiting on blocked
-refresh reads. Initial selection remains synchronous. Noninteractive/dumb
-terminals produce one plain snapshot; watch has one layout independent of the
-static `--detail` setting. Ordinary watch creates no operational action,
-persistent cache or additional log.
+The installed view shares the legacy overview/detail renderer and diagnostic
+parser. Sample lanes, peer timing, stage context, progress history, activity,
+errors, scheduler resources and historical accounting remain available.
+Reported Job stats define invocation counts; absent totals remain unknown.
+Generic current analysis-owner rules and historical named rules are recognized.
+Parsed log completion cannot supply scientific completion or Run authority.
+
+`--job-id [JOB_ID]` selects a raw scheduler view without Project admission;
+omitting the ID uses bounded current-user discovery. A watch with no explicit
+selection and no current Project also discovers through that same owner.
+Explicit IDs do not rediscover on failure. `--log-dir` supplies a historical
+scheduler root; command-line selectors outrank the legacy environment defaults.
+`--offline` requires an exact ID and both explicit owned regular streams and
+issues no scheduler query. Raw selection rejects Project, Run, request, log-root
+and action combinations, and never derives Run admission from a parsed path.
+
+One daemon worker coalesces read-only refreshes. Painting performs no I/O.
+`--refresh` defaults to 30 seconds and rejects intervals below five seconds.
+Timers update scheduler diagnostics and full workflow streams plus one bounded
+selected tail; explicit refresh rechecks association and full Run evidence.
+A terminal scheduler result is retained with its original date until explicit
+refresh. Exact-request resources come from the same admitted root record;
+batch usage additionally requires local binding before and after the sample.
+Root and usage dates reflect their actual replies, not later proof-query time.
+Missing usage preserves root state and reports usage unknown.
+
+The shared diagnostic reader pins canonical directory/file identities, ownership,
+regular-file type and generation. It reads captured sizes in bounded chunks,
+retains the full consumed trace, and clears history on failed admission or
+replacement/truncation. Each stream has at most one bounded-wait daemon read;
+closing cannot admit another read or publish a late result. Full-history memory
+is proportional to consumed trace bytes. Initial selection remains synchronous;
+quitting the opened view does not wait for blocked reads.
+Search-only directory access is sufficient on macOS and Linux; no directory
+listing permission is required. Both installed and standalone views retain actual
+trace observation dates and label pending or unavailable reads. A standalone
+snapshot with an incomplete stream read prints its diagnostics and exits 1.
+
+Legacy overview/detail navigation uses `1`/`o`, `2`/`d` and Tab; arrows, `j`/`k`,
+Page Up/Down and Home/`g` scroll. `3`/`v` selects dated evidence/logs and `[`/`]`
+cycles streams. Action keys cannot replace navigation keys. `NO_COLOR` suppresses
+status colors. `--snapshot`, noninteractive or dumb terminals emit one plain,
+dated snapshot; `--detail` remains the static-inspection selector. Ordinary
+watch creates no operational action, persistent cache or additional log.
 
 Interactive `--watch --actions` offers `p` for a Run's ordinary resume plan and
-confirmation, `o` for its report preview, or `s` for an exact request's stop
+confirmation, `b` for its report preview, or `s` for an exact request's stop
 preview. The presentation closes its worker, discards pending refreshes, leaves
-the alternate screen and restores the terminal before invoking the existing
+the alternate screen and restores the terminal and discards pending keys before invoking the existing
 Control handler once on the main thread. An active read may finish,
 but no resulting snapshot is consumed and no refresh is restarted. There is
 no automatic return to watch or concurrent action loop.
@@ -389,9 +424,8 @@ when the path came from a previously admitted content reference. Task tails
 come from admitted terminal records or expected paths derived from an admitted
 start. Both start origin and content reference are required. Start publication
 precedes stream opening, so path derivation proves neither existence nor
-liveness. Missing/unadmitted starts supply no derived stream. Legacy standalone
-dashboard/discovery/accounting and
-offline paths remain until complete replacement validation.
+liveness. Missing/unadmitted starts supply no derived stream. The original standalone entry point remains until institutional replacement
+validation and coordinated retirement.
 
 The existing dashboard's shared scheduler observer requires an exact canonical
 root job ID and current numeric UID. It rejects missing/mismatched/duplicate

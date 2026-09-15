@@ -4,6 +4,8 @@ import importlib.util
 import os
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -63,6 +65,27 @@ def test_dashboard_remains_directly_executable_in_isolated_mode() -> None:
     )
     assert completed.returncode == 0, completed.stderr
     assert "--refresh" in completed.stdout
+
+
+def test_installed_dashboard_uses_the_shared_scheduler_exception_class() -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-B",
+            "-c",
+            "import sys; sys.path.insert(0, sys.argv[1]); "
+            "from emrys.orchestration.run_coordinator import dashboard, scheduler_observation; "
+            "assert dashboard._scheduler is scheduler_observation; "
+            "assert dashboard._scheduler.DiscoveryError is scheduler_observation.DiscoveryError",
+            str(MODULE_PATH.parents[3]),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
 
 
 @pytest.mark.parametrize("source", ["squeue", "sacct"])
@@ -413,6 +436,156 @@ def _flatten_render_lines(lines: list[object]) -> str:
     return "\n".join(rendered)
 
 
+@pytest.mark.parametrize("samples,partitions", [(1, 2), (9, 37)])
+def test_workflow_counts_follow_complete_job_stats_for_arbitrary_project_sizes(
+    samples, partitions
+):
+    total = samples + partitions + 1
+    model = dashboard.parse_workflow(
+        f"""Job stats:
+job                                                   count
+---------------------------------------------------  -------
+align_RNA_reads_with_STAR                              {samples}
+generate_partitioned_cohort_mpileup_VCFs                {partitions}
+cohort_slice                                          1
+total                                                 {total}
+[Mon Sep 14 12:00:00 2026]
+rule align_RNA_reads_with_STAR:
+    jobid: 1
+    wildcards: sample_id=first
+[Mon Sep 14 12:01:00 2026]
+Finished jobid: 1 (Rule: align_RNA_reads_with_STAR)
+"""
+    )
+    assert model["expected"] == {"01": samples, "07": partitions, "FINAL": 1}
+    assert dashboard.progress_values(model) == (1, total, total - 1)
+    lines = dashboard.pipeline_lines(model, 1_800_000_000, 100)
+    alignment = next(
+        line[0]
+        for line in lines
+        if isinstance(line, tuple) and line[0].startswith("01 ")
+    )
+    assert f"1/{samples}" in alignment
+    assert ("DONE" in alignment) is (samples == 1)
+    partitions_line = next(
+        line[0]
+        for line in lines
+        if isinstance(line, tuple) and line[0].startswith("07 ")
+    )
+    assert f"0/{partitions}" in partitions_line
+
+
+@pytest.mark.parametrize(
+    "stats",
+    [
+        "",
+        "Job stats:\njob count\n--- -----\nalign_RNA_reads_with_STAR 9\n",
+        "Job stats:\njob count\n--- -----\nalign_RNA_reads_with_STAR 9\ntotal 2\n",
+        "Job stats:\njob count\n--- -----\nalign_RNA_reads_with_STAR 1\nalign_RNA_reads_with_STAR 1\ntotal 2\n",
+    ],
+)
+def test_missing_or_invalid_counts_never_invent_completion(stats, capsys):
+    model = dashboard.parse_workflow(stats)
+    model["done"]["01"] = 6
+    model["done"]["07"] = 25
+    model["active"]["10"] = {
+        "stage": "01",
+        "rule": "align_RNA_reads_with_STAR",
+        "wildcards": "sample_id=only_seen",
+        "started": None,
+    }
+    model["sample_order"] = ["only_seen"]
+    model["samples"] = {"only_seen": {"history": {"06": 1}}}
+    assert dashboard.progress_values(model) == (31, None, None)
+    assert "total and remaining unknown" in dashboard.progress_line(model, 100)
+    assert not any(
+        isinstance(line, tuple) and line[0].endswith("DONE")
+        for line in dashboard.pipeline_lines(model, 10, 100)
+    )
+    assert "unknown waiting" in _flatten_render_lines(
+        dashboard.current_lines(model, {}, 10, 100)
+    )
+    assert "1/?" in _flatten_render_lines(dashboard.sample_lane_lines(model, 10, 100))
+    assert "1/? samples completed Step 06" in _flatten_render_lines(
+        dashboard.workflow_frontier_lines(model, 10, 100)
+    )
+    assert dashboard.workflow_phase(model) == (2, "SAMPLE PROCESSING (observed)")
+    dashboard.activity_lines(model, _slurm(terminal=True), {}, 10)
+    dashboard.snapshot(JOB_ID, _slurm(terminal=True), {}, model)
+    assert "unknown remaining" in capsys.readouterr().out
+
+
+def test_expected_counts_are_fallback_context_not_fabricated_global_progress():
+    expected = {"01": 12, "06": 12, "07": 40}
+    model = dashboard.parse_workflow(
+        "Job stats:\njob count\n--- -----\nalign_RNA_reads_with_STAR 2\ntotal 2\n",
+        expected=expected,
+    )
+    assert model["expected"] == {"01": 2, "06": 12, "07": 40}
+    assert expected == {"01": 12, "06": 12, "07": 40}
+    assert dashboard.progress_values(model) == (0, 2, 2)
+    without_stats = dashboard.parse_workflow("", expected=expected)
+    assert dashboard.progress_values(without_stats) == (0, None, None)
+
+
+@pytest.mark.parametrize(
+    "timestamp",
+    [
+        "[Mon Xxx 14 12:00:00 2026]",
+        "[Mon Sep 99 12:00:00 2026]",
+        "[Mon Sep 14 99:00:00 2026]",
+    ],
+)
+def test_current_analysis_rules_unknown_rules_and_invalid_timestamps_are_safe(
+    timestamp,
+):
+    model = dashboard.parse_workflow(
+        f"""[Mon Sep 14 12:00:00 2026]
+rule analysis_owner:
+    jobid: 1
+    wildcards: analysis_owner=emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1
+[Mon Sep 14 12:00:01 2026]
+Finished jobid: 1 (Rule: analysis_owner)
+Finished jobid: 1 (Rule: analysis_owner)
+{timestamp}
+rule analysis_owner:
+    jobid: 2
+    wildcards: analysis_owner=custom.owner
+rule unfamiliar_future_rule:
+    jobid: 3
+    wildcards: sample_id=third
+WorkflowError: real failure text
+""",
+        rule_stages={"custom.owner": "10"},
+    )
+    assert model["done"]["09"] == 1
+    assert model["samples"]["third"]["history"] == {}
+    assert model["active"]["2"]["stage"] == "10"
+    assert model["active"]["2"]["started"] is None
+    assert model["active"]["3"]["stage"] == "?"
+    assert model["warning"] == "WorkflowError: real failure text"
+    assert "Unmapped rule" in _flatten_render_lines(
+        dashboard.current_lines(model, {}, 10, 100)
+    )
+    dashboard.pipeline_lines(model, 10, 100)
+    frontier = _flatten_render_lines(dashboard.workflow_frontier_lines(model, 10, 100))
+    assert "Unmapped active rules" in frontier
+    assert "unfamiliar_future_rule" in frontier
+    assert dashboard.workflow_phase(model) == (3, "COHORT ANALYSIS (observed)")
+
+
+def test_dashboard_processing_rule_mapping_matches_current_backend_contract():
+    import json
+
+    profile = json.loads(
+        (MODULE_PATH.parents[2] / "workflow/contracts/local_cmh_v2.json").read_text()
+    )
+    for task in profile["owner_tasks"]:
+        assert dashboard.RULE_TO_STAGE[task["rule_name"]] == task["step_id"]
+    assert dashboard.RULE_TO_STAGE["cohort_slice"] == "FINAL"
+    assert dashboard.RULE_TO_STAGE["local_pipeline_slice"] == "FINAL"
+
+
 def test_parse_and_render_dynamic_per_stage_resource_plan() -> None:
     control = f"""
 Run ID: {RUN_ID}
@@ -562,6 +735,339 @@ def test_stream_cache_sanitizes_terminal_sequences_and_controls() -> None:
     )
 
     assert cache.text() == "plainred\tkept\nafter"
+
+
+def test_stream_cache_retains_full_history_and_reads_only_appended_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "stream.log"
+    original = b"old history\n" * 20000
+    path.write_bytes(original)
+    reads = []
+    read = dashboard.os.read
+
+    def recorded_read(descriptor, size):
+        data = read(descriptor, size)
+        reads.append((size, len(data)))
+        return data
+
+    monkeypatch.setattr(dashboard.os, "read", recorded_read)
+    cache = dashboard.StreamCache(path)
+    assert cache.sync()
+    assert cache.data == original and cache.offset == len(original)
+    assert max(size for size, _ in reads) <= 64 * 1024
+    assert sum(count for _, count in reads) == len(original)
+    assert cache.observed_at is not None and not cache.pending
+    reads.clear()
+    assert cache.sync() and reads == []
+    with path.open("ab") as stream:
+        stream.write(b"new history\n")
+    assert cache.sync()
+    assert cache.data == original + b"new history\n"
+    assert sum(count for _, count in reads) == len(b"new history\n")
+    assert "content not verified" in cache.diagnostic
+
+
+@pytest.mark.parametrize("change", ["replace", "truncate", "rewrite"])
+def test_stream_cache_resets_changed_generations(tmp_path: Path, change: str) -> None:
+    path = tmp_path / "stream.log"
+    path.write_bytes(b"original bytes\n")
+    cache = dashboard.StreamCache(path)
+    assert cache.sync()
+    if change == "replace":
+        path.rename(tmp_path / "previous.log")
+        replacement = b"replacement is longer than the old stream\n"
+    elif change == "truncate":
+        replacement = b"short\n"
+    else:
+        replacement = b"modified bytes\n"
+    path.write_bytes(replacement)
+    os.utime(path, ns=(path.stat().st_atime_ns, path.stat().st_mtime_ns + 1000000))
+    assert cache.sync() and cache.data == replacement
+    assert {"replace": "replaced", "truncate": "truncated", "rewrite": "changed"}[
+        change
+    ] in cache.diagnostic
+
+
+@pytest.mark.parametrize("defect", ["missing", "symlink", "directory", "fifo", "owner"])
+def test_stream_cache_failed_admission_clears_retained_history(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, defect: str
+) -> None:
+    path = tmp_path / "stream.log"
+    path.write_bytes(b"old bytes\n")
+    cache = dashboard.StreamCache(path)
+    assert cache.sync()
+    path.unlink()
+    if defect == "symlink":
+        target = tmp_path / "target.log"
+        target.write_bytes(b"must not follow")
+        path.symlink_to(target)
+    elif defect == "directory":
+        path.mkdir()
+    elif defect == "fifo":
+        os.mkfifo(path)
+    elif defect == "owner":
+        path.write_bytes(b"wrong owner")
+        actual_uid = os.getuid()
+        monkeypatch.setattr(dashboard.os, "getuid", lambda: actual_uid + 1)
+    assert not cache.sync()
+    assert cache.text() == "" and cache.offset == 0 and cache.observed_at is None
+    assert cache.diagnostic.startswith("Unavailable:")
+
+
+def test_stream_cache_refuses_relative_and_symlinked_ancestor_paths(
+    tmp_path: Path,
+) -> None:
+    parent = tmp_path / "real"
+    parent.mkdir()
+    path = parent / "stream.log"
+    path.write_bytes(b"must not follow")
+    alias = tmp_path / "alias"
+    alias.symlink_to(parent, target_is_directory=True)
+    for selected in (Path("relative.log"), alias / path.name):
+        cache = dashboard.StreamCache(selected)
+        assert not cache.sync() and cache.text() == ""
+
+
+@pytest.mark.parametrize("restricted", ["ancestor", "log-directory"])
+def test_stream_cache_reads_through_search_only_directories(
+    tmp_path: Path, restricted: str
+) -> None:
+    ancestor = tmp_path / "search-only"
+    ancestor.mkdir()
+    stdout, stderr = _make_logs(ancestor / "logs")
+    directory = ancestor if restricted == "ancestor" else stdout.parent
+    directory.chmod(0o111)
+    cache = dashboard.StreamCache(stdout)
+    try:
+        assert stdout.read_bytes() == b"stdout\n"
+        selected = dashboard.validate_log_selection(JOB_ID, str(stdout), str(stderr))
+        assert selected["out"] == str(stdout)
+        assert cache.sync() and cache.text() == "stdout\n"
+        assert cache.observed_at is not None and not cache.pending
+    finally:
+        cache.close()
+        directory.chmod(0o700)
+
+
+def test_stream_cache_refuses_foreign_file_inside_owned_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "stream.log"
+    path.write_bytes(b"foreign file bytes")
+    real_stat = dashboard.os.stat
+
+    def foreign_file_stat(selected, **kwargs):
+        state = real_stat(selected, **kwargs)
+        if selected == path.name and kwargs.get("follow_symlinks") is False:
+            fields = list(state)
+            fields[4] += 1
+            return os.stat_result(fields)
+        return state
+
+    monkeypatch.setattr(dashboard.os, "stat", foreign_file_stat)
+    cache = dashboard.StreamCache(path)
+    assert not cache.sync() and cache.text() == ""
+    assert "regular file owned by the current UID" in cache.diagnostic
+
+
+@pytest.mark.parametrize("failure", ["error", "early-eof"])
+def test_stream_cache_read_failure_clears_prior_history(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    path = tmp_path / "stream.log"
+    path.write_bytes(b"old bytes")
+    cache = dashboard.StreamCache(path)
+    assert cache.sync()
+    with path.open("ab") as stream:
+        stream.write(b"new bytes")
+
+    def failed_read(*_args):
+        if failure == "error":
+            raise OSError("fixture read failure")
+        return b""
+
+    monkeypatch.setattr(dashboard.os, "read", failed_read)
+    assert not cache.sync() and cache.text() == "" and cache.offset == 0
+    assert cache.observed_at is None and cache.diagnostic.startswith("Unavailable:")
+
+
+@pytest.mark.parametrize("replace", ["file", "parent"])
+def test_stream_cache_rejects_replacement_during_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, replace: str
+) -> None:
+    parent = tmp_path / "logs"
+    parent.mkdir()
+    path = parent / "stream.log"
+    path.write_bytes(b"old generation\n")
+    cache = dashboard.StreamCache(path)
+    assert cache.sync()
+    with path.open("ab") as stream:
+        stream.write(b"appended data\n")
+    read = dashboard.os.read
+    swapped = False
+
+    def replace_during_read(descriptor, size):
+        nonlocal swapped
+        data = read(descriptor, size)
+        if not swapped:
+            swapped = True
+            if replace == "file":
+                path.rename(parent / "old.log")
+            else:
+                parent.rename(tmp_path / "old-logs")
+                parent.mkdir()
+            path.write_bytes(b"replacement generation\n")
+        return data
+
+    monkeypatch.setattr(dashboard.os, "read", replace_during_read)
+    assert not cache.sync() and swapped
+    assert cache.text() == "" and cache.observed_at is None
+    assert "changed while read" in cache.diagnostic
+
+
+def test_stream_cache_captures_growth_for_the_next_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "stream.log"
+    path.write_bytes(b"first generation\n")
+    read = dashboard.os.read
+    appended = False
+
+    def append_during_read(descriptor, size):
+        nonlocal appended
+        data = read(descriptor, size)
+        if not appended:
+            appended = True
+            with path.open("ab") as stream:
+                stream.write(b"later bytes\n")
+        return data
+
+    monkeypatch.setattr(dashboard.os, "read", append_during_read)
+    cache = dashboard.StreamCache(path)
+    assert cache.sync() and cache.text() == "first generation\n"
+    assert cache.sync() and cache.text() == "first generation\nlater bytes\n"
+
+
+def test_stream_cache_bounds_wait_and_keeps_one_stalled_reader(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "stream.log"
+    path.write_bytes(b"prior history\n")
+    cache = dashboard.StreamCache(path)
+    assert cache.sync()
+    previous_date = cache.observed_at
+    with path.open("ab") as stream:
+        stream.write(b"new history\n")
+    entered, release = threading.Event(), threading.Event()
+    read_stream = dashboard._read_stream
+    calls = []
+
+    def blocked(*arguments):
+        calls.append(arguments[0])
+        entered.set()
+        assert release.wait(5)
+        return read_stream(*arguments)
+
+    monkeypatch.setattr(dashboard, "_read_stream", blocked)
+    monkeypatch.setattr(dashboard, "_STREAM_WAIT_SECONDS", 0.01)
+    started = time.monotonic()
+    try:
+        assert not cache.sync() and entered.wait(1)
+        reader = cache._reader
+        assert reader.daemon
+        assert not cache.sync() and cache._reader is reader and cache.pending
+        assert time.monotonic() - started < 1
+        assert calls == [str(path)]
+        assert cache.text() == "prior history\n" and cache.observed_at == previous_date
+        assert "Read pending" in cache.diagnostic
+    finally:
+        release.set()
+        cache._reader.join(2)
+    assert cache.sync() and not cache.pending
+    assert cache.text() == "prior history\nnew history\n"
+
+
+def test_stream_cache_close_never_waits_or_starts_another_reader(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "stream.log"
+    path.write_bytes(b"history")
+    entered, release = threading.Event(), threading.Event()
+    read_stream = dashboard._read_stream
+    calls = []
+
+    def blocked(*arguments):
+        calls.append(arguments[0])
+        entered.set()
+        assert release.wait(5)
+        return read_stream(*arguments)
+
+    monkeypatch.setattr(dashboard, "_read_stream", blocked)
+    monkeypatch.setattr(dashboard, "_STREAM_WAIT_SECONDS", 0.01)
+    cache = dashboard.StreamCache(path)
+    try:
+        assert not cache.sync() and entered.wait(1)
+        reader = cache._reader
+        started = time.monotonic()
+        cache.close()
+        assert time.monotonic() - started < 0.5
+        assert not cache.sync() and cache.pending and calls == [str(path)]
+    finally:
+        release.set()
+        cache._reader.join(2)
+    assert not cache.sync() and cache.text() == "" and calls == [str(path)]
+    assert cache._reader is reader
+
+
+def test_stream_cache_close_serializes_start_without_waiting_for_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "stream.log"
+    path.write_bytes(b"history")
+    cache = dashboard.StreamCache(path)
+    starting, allow_start = threading.Event(), threading.Event()
+    reading, allow_read = threading.Event(), threading.Event()
+    closing, closed = threading.Event(), threading.Event()
+    real_thread, real_read = threading.Thread, dashboard._read_stream
+
+    class GatedStart(real_thread):
+        def start(self):
+            starting.set()
+            assert allow_start.wait(5)
+            super().start()
+
+    def blocked_read(*arguments):
+        reading.set()
+        assert allow_read.wait(5)
+        return real_read(*arguments)
+
+    def close():
+        closing.set()
+        cache.close()
+        closed.set()
+
+    sync_thread = real_thread(target=cache.sync)
+    close_thread = real_thread(target=close)
+    monkeypatch.setattr(dashboard.threading, "Thread", GatedStart)
+    monkeypatch.setattr(dashboard, "_read_stream", blocked_read)
+    try:
+        sync_thread.start()
+        assert starting.wait(1)
+        close_thread.start()
+        assert closing.wait(1)
+        assert not closed.wait(0.02)
+        allow_start.set()
+        assert reading.wait(1) and closed.wait(1)
+        assert cache.pending and not cache.sync()
+    finally:
+        allow_start.set()
+        allow_read.set()
+        sync_thread.join(2)
+        close_thread.join(2)
+        if cache._reader is not None:
+            cache._reader.join(2)
+    assert not cache.sync() and cache.text() == "" and cache.observed_at is None
 
 
 def test_positional_overrides_take_precedence_over_environment(
@@ -1304,30 +1810,11 @@ def test_dashboard_drawing_and_rendering_support_wide_compact_and_small_screens(
     assert any("too small" in write[2] for write in small.writes)
 
 
-def test_stream_cache_commands_and_slurm_queries_cover_success_and_failures(
+def test_slurm_queries_cover_success_and_failures(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     real_command_bytes = dashboard._scheduler.command_bytes
     real_command_text = dashboard._scheduler.command_text
-    outputs = iter((b"5\n", b"hello", b"3\n", b"bye"))
-    monkeypatch.setattr(
-        dashboard._scheduler, "command_bytes", lambda *_args, **_kwargs: next(outputs)
-    )
-    cache = dashboard.StreamCache("/remote/log")
-    assert cache.sync()
-    assert cache.text() == "hello"
-    assert cache.sync()
-    assert cache.text() == "bye"
-
-    monkeypatch.setattr(
-        dashboard._scheduler, "command_bytes", lambda *_args, **_kwargs: None
-    )
-    assert not dashboard.StreamCache("missing").sync()
-    monkeypatch.setattr(
-        dashboard._scheduler, "command_bytes", lambda *_args, **_kwargs: b"bad-size"
-    )
-    assert not dashboard.StreamCache("invalid").sync()
-
     calls = iter(
         (
             f"{JOB_ID}|{os.getuid()}|RUNNING|00:10:00|01:50:00|12|compute|node01|None",
@@ -1598,20 +2085,11 @@ def test_offline_public_modes_read_exact_streams_without_scheduler_queries(
     stdout, stderr = _make_logs(tmp_path / "logs")
     stdout.write_text(f"\x1b[31mRun ID: {RUN_ID}\x1b[0m\n")
     before = {path: path.read_bytes() for path in (stdout, stderr)}
-    commands = []
-
-    def stream_command(argv, **_kwargs):
-        commands.append(argv)
-        data = before[Path(argv[-1])]
-        if argv[4:7] == ["stat", "-c", "%s"]:
-            return f"{len(data)}\n".encode()
-        assert argv[4:6] == ["tail", "-c"]
-        return data[int(argv[6]) - 1 :]
 
     def forbidden(*args, **kwargs):
         pytest.fail("Offline selection, snapshot and refresh must not query Slurm")
 
-    monkeypatch.setattr(dashboard._scheduler, "command_bytes", stream_command)
+    monkeypatch.setattr(dashboard._scheduler, "command_bytes", forbidden)
     monkeypatch.setattr(dashboard._scheduler, "query_slurm", forbidden)
     monkeypatch.setattr(dashboard._scheduler, "slurm_job_metadata", forbidden)
     monkeypatch.setattr(dashboard, "scheduler_candidates", forbidden)
@@ -1645,5 +2123,183 @@ def test_offline_public_modes_read_exact_streams_without_scheduler_queries(
         assert f"Run: {RUN_ID}" in rendered
     else:
         assert screen.refreshes == 2
-    assert len(commands) == (4 if snapshot else 6)
     assert {path: path.read_bytes() for path in before} == before
+
+
+@pytest.mark.parametrize("failure", ["pending", "unavailable"])
+def test_standalone_snapshot_reports_incomplete_stream_reads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys, failure: str
+) -> None:
+    stdout, stderr = _make_logs(tmp_path / "logs")
+    release = threading.Event()
+    caches = []
+    cache_type, read_stream = dashboard.StreamCache, dashboard._read_stream
+
+    class RecordedCache(cache_type):
+        def __init__(self, path):
+            super().__init__(path)
+            caches.append(self)
+
+    def unavailable(*arguments):
+        if failure == "unavailable":
+            raise OSError("fixture read unavailable")
+        assert release.wait(5)
+        return read_stream(*arguments)
+
+    monkeypatch.setattr(dashboard, "StreamCache", RecordedCache)
+    monkeypatch.setattr(dashboard, "_read_stream", unavailable)
+    monkeypatch.setattr(dashboard, "_STREAM_WAIT_SECONDS", 0.01)
+    started = time.monotonic()
+    try:
+        assert (
+            dashboard.main(
+                [
+                    str(JOB_ID),
+                    "--offline",
+                    "--out",
+                    str(stdout),
+                    "--err",
+                    str(stderr),
+                    "--snapshot",
+                ]
+            )
+            == 1
+        )
+        assert time.monotonic() - started < 1
+        output = capsys.readouterr().out
+        assert "Trace unavailable" in output
+        assert f"out {failure}; err {failure}" in output
+        assert "Parsed log progress is unverified diagnostic context." in output
+        assert (
+            "Read pending" in output
+            if failure == "pending"
+            else "fixture read unavailable" in output
+        )
+        assert all(not cache.sync() for cache in caches)
+    finally:
+        release.set()
+        for cache in caches:
+            if cache._reader is not None:
+                cache._reader.join(2)
+
+
+def test_standalone_pending_refresh_dates_retained_history(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stdout, stderr = _make_logs(tmp_path / "logs")
+    stdout.write_text(f"Run ID: {RUN_ID}\n")
+    release = threading.Event()
+    caches, rendered = [], []
+    cache_type, read_stream = dashboard.StreamCache, dashboard._read_stream
+    clock = [1_800_000_000.0]
+    blocked = [False]
+
+    class RecordedCache(cache_type):
+        def __init__(self, path):
+            super().__init__(path)
+            caches.append(self)
+
+    def delayed(*arguments):
+        if blocked[0]:
+            assert release.wait(5)
+        return read_stream(*arguments)
+
+    def render(*arguments):
+        rendered.append((arguments[3], arguments[6], arguments[9]))
+        if len(rendered) == 1:
+            clock[0] += 60
+            blocked[0] = True
+            monkeypatch.setattr(dashboard, "_STREAM_WAIT_SECONDS", 0.01)
+            with stdout.open("a") as stream:
+                stream.write("Run ID: later-unread-run\n")
+
+    monkeypatch.setattr(dashboard, "StreamCache", RecordedCache)
+    monkeypatch.setattr(dashboard, "_read_stream", delayed)
+    monkeypatch.setattr(dashboard.time, "time", lambda: clock[0])
+    monkeypatch.setattr(dashboard, "render", render)
+    monkeypatch.setattr(dashboard, "init_colors", dict)
+    monkeypatch.setattr(dashboard.curses, "curs_set", lambda *_args: None)
+    args = SimpleNamespace(
+        job_id=JOB_ID, out=str(stdout), err=str(stderr), refresh=30, offline=True
+    )
+    try:
+        dashboard.dashboard(_FakeScreen(keys=[ord("r"), ord("q")]), args)
+        assert len(rendered) == 2
+        assert rendered[0][0]["run_id"] == rendered[1][0]["run_id"] == RUN_ID
+        assert "out current; err current" in rendered[0][2]
+        assert "out pending; err pending" in rendered[1][2]
+        assert rendered[0][2].split(" | ")[0] == rendered[1][2].split(" | ")[0]
+        assert time.monotonic() - rendered[1][1] >= 59
+        assert all(not cache.sync() for cache in caches)
+    finally:
+        release.set()
+        for cache in caches:
+            if cache._reader is not None:
+                cache._reader.join(2)
+
+
+@pytest.mark.parametrize("usage", ["complete", "unavailable"])
+def test_dashboard_resource_labels_preserve_batch_scope_and_unknown(usage):
+    slurm = {
+        "state": "PENDING" if usage == "unavailable" else "RUNNING",
+        "cpus": "4",
+        "partition": "compute",
+        "node": "node1",
+    }
+    if usage == "complete":
+        slurm.update(
+            max_rss="1024K",
+            disk_read="8M",
+            disk_write="0",
+            ave_cpu="00:00:02",
+            usage_observed_at="2026-09-15T12:00:00+00:00",
+            usage_diagnostic=None,
+        )
+    else:
+        slurm["usage_diagnostic"] = "Exact local batch-step usage is unavailable"
+    detailed = _flatten_render_lines(dashboard.job_lines(slurm, {}, 180, {}))
+    overview = _flatten_render_lines(
+        dashboard.overview_lines(slurm, {}, dashboard.parse_workflow(""), 180)
+    )
+    for text in (detailed, overview):
+        assert "Slurm placement" in text and "Allocation:" not in text
+        assert "peak RSS" not in text and "I/O" not in text
+    if usage == "complete":
+        assert (
+            "Batch per-task maxima: RSS 1.0 MiB | read 8.0 MiB | written 0.0 B"
+            in detailed
+        )
+        assert (
+            "average task CPU time 00:00:02; as of 2026-09-15T12:00:00+00:00"
+            in detailed
+        )
+        assert "per-task max RSS 1.0 MiB" in overview
+    else:
+        assert slurm["usage_diagnostic"] in detailed and "as of unknown" in detailed
+        assert "usage unknown" in overview
+
+
+@pytest.mark.parametrize("value", ["1.2.3M", ".K", "..", "unknown"])
+def test_dashboard_malformed_raw_usage_remains_printable(value):
+    assert dashboard.human_size(value) == value
+    text = _flatten_render_lines(dashboard.job_lines({"max_rss": value}, {}, 180, {}))
+    assert value in text
+
+
+def test_unbounded_numeric_diagnostics_remain_unknown():
+    huge = "9" * 5000
+    trace = (
+        "Job stats:\njob count\nalign_RNA_reads_with_STAR "
+        + huge
+        + "\ntotal "
+        + huge
+        + "\n"
+        + huge
+        + " of "
+        + huge
+        + " steps (10%) done\n"
+    )
+    observed = dashboard.parse_workflow(trace)
+    assert observed["expected"] == {} and observed["progress_total"] is None
+    identity = dashboard.parse_identity("Stage concurrency:\n  Step 01: " + huge + "\n")
+    assert identity["stage_concurrency"] == {}

@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 from emrys.contracts.orchestration.application_model import PROCESSING_STEP_IDS
 from emrys.libraries.validation.inputs import read_suffix_with_identity
-from . import _submission_inspection, slurm_submission
+from . import _submission_inspection, dashboard, slurm_submission
 from .task import task_attempt_root
 
 if TYPE_CHECKING:
@@ -213,7 +213,8 @@ def read_tail(source: StreamSource, previous: StreamTail | None = None) -> Strea
 
 @dataclass(frozen=True)
 class WatchSnapshot:
-    project: Path
+    project: Path | None
+    raw_job: Mapping[str, object] | None = None
     request: slurm_submission.SubmissionRequestObservation | None = None
     request_at: datetime | None = None
     run_root: Path | None = None
@@ -228,6 +229,10 @@ class WatchSnapshot:
     scheduler_at: datetime | None = None
     streams: tuple[StreamSource, ...] = ()
     tail: StreamTail | None = None
+    workflow: Mapping[str, object] | None = None
+    control_identity: Mapping[str, object] | None = None
+    trace_at: datetime | None = None
+    trace_diagnostics: tuple[str, ...] = ()
 
 
 def run_application_lines(
@@ -294,6 +299,10 @@ def task_stream_sources(
 
 def _stream_sources(snapshot: WatchSnapshot) -> tuple[StreamSource, ...]:
     sources = []
+    if snapshot.raw_job is not None:
+        for kind, key in (("stderr", "err"), ("stdout", "out")):
+            path = Path(str(snapshot.raw_job[key]))
+            sources.append(StreamSource("Scheduler " + kind, path, path.parent))
     request = snapshot.request
     if request is not None and request.context is not None and request.recorded_job_id:
         for kind in ("stderr", "stdout"):
@@ -337,9 +346,12 @@ def refresh_snapshot(
     stream_index: int,
     inspect_run: Callable[[Path], RunInspection],
     next_action: Callable[[RunInspection], str],
+    stream_caches: dict[str, dashboard.StreamCache] | None = None,
+    offline: bool = False,
+    trace_closed: threading.Event | None = None,
 ) -> WatchSnapshot:
     """Only this worker boundary reads observations; rendering uses its result."""
-    if verify:
+    if verify and snapshot.raw_job is None:
         try:
             if snapshot.request is not None:
                 previous = snapshot.request
@@ -414,15 +426,74 @@ def refresh_snapshot(
                 verification_error=safe_text(str(exc)[:4096]),
                 next_action="Preserve retained evidence; inspect again when available.",
             )
-    scheduler = (
-        slurm_submission.scheduler_observation.unknown_observation(
-            "No exact submission selected; recorded Run job IDs are not a current binding"
-        )
-        if snapshot.request is None
-        else slurm_submission.observe_submission_request(snapshot.request)
+    retained_terminal = not verify and bool(
+        snapshot.scheduler and snapshot.scheduler.get("terminal")
     )
-    scheduler_at = datetime.now(UTC)
+    scheduler = (
+        snapshot.scheduler
+        if retained_terminal
+        else (
+            {
+                "state": "UNKNOWN",
+                "terminal": False,
+                "reason": "Offline; scheduler not queried",
+            }
+            if offline
+            else dashboard._scheduler.query_slurm(
+                snapshot.raw_job["job_id"],
+                snapshot.raw_job["out"],
+                snapshot.raw_job["err"],
+            )
+            if snapshot.raw_job is not None
+            else slurm_submission.scheduler_observation.unknown_observation(
+                "No exact submission selected; recorded Run job IDs are not a current binding"
+            )
+            if snapshot.request is None
+            else slurm_submission.observe_submission_request(
+                snapshot.request,
+                **({"include_resources": True} if stream_caches is not None else {}),
+            )
+        )
+    )
+    scheduler_at = (
+        snapshot.scheduler_at
+        if retained_terminal
+        else (
+            datetime.fromisoformat(str(scheduler["observed_at"]))
+            if scheduler.get("observed_at")
+            else datetime.now(UTC)
+        )
+    )
     streams = _stream_sources(snapshot)
+    if stream_caches is not None:
+        traces = {}
+        diagnostics = []
+        dates = []
+        for source in streams:
+            if trace_closed is not None and trace_closed.is_set():
+                break
+            if source.label not in ("Scheduler stdout", "Scheduler stderr"):
+                continue
+            cache = stream_caches.setdefault(
+                str(source.path), dashboard.StreamCache(str(source.path))
+            )
+            if trace_closed is not None and trace_closed.is_set():
+                cache.close()
+                break
+            cache.sync()
+            traces[source.label] = cache.text()
+            diagnostics.append(f"{source.label}: {cache.diagnostic}")
+            if cache.observed_at is not None:
+                dates.append(datetime.fromtimestamp(cache.observed_at, UTC))
+        snapshot = replace(
+            snapshot,
+            workflow=dashboard.parse_workflow(traces.get("Scheduler stderr", "")),
+            control_identity=dashboard.parse_identity(
+                traces.get("Scheduler stdout", "")
+            ),
+            trace_at=min(dates) if len(dates) == 2 else None,
+            trace_diagnostics=tuple(diagnostics),
+        )
     tail = (
         None
         if not streams
@@ -496,7 +567,13 @@ def render_snapshot(
     snapshot: WatchSnapshot, *, now: datetime, tail_lines: int = _TAIL_LINES
 ) -> str:
     """Literal display only: no filesystem, scheduler, association or hash reads."""
-    lines = ["EMRYS inspection — read-only", f"Project: {snapshot.project}"]
+    lines = ["EMRYS inspection — read-only"]
+    if snapshot.project is not None:
+        lines.append(f"Project: {snapshot.project}")
+    if snapshot.raw_job is not None:
+        lines.append(
+            f"Scheduler job: {snapshot.raw_job['job_id']}; diagnostic selection only"
+        )
     if snapshot.request is not None:
         lines.extend(
             (
@@ -511,6 +588,27 @@ def render_snapshot(
     for name in ("cluster", "reason", "exit_code", "diagnostic"):
         if scheduler.get(name) is not None:
             lines.append(f"  {name}: {scheduler[name]}")
+    for name in (
+        "elapsed",
+        "left",
+        "time_limit",
+        "cpus",
+        "partition",
+        "node",
+        "max_rss",
+        "disk_read",
+        "disk_write",
+        "ave_cpu",
+        "usage_observed_at",
+        "usage_diagnostic",
+    ):
+        if scheduler.get(name) is not None:
+            lines.append(f"  {name}: {scheduler[name]}")
+    lines.extend(snapshot.trace_diagnostics)
+    if snapshot.workflow is not None:
+        lines.append(
+            f"Diagnostic trace as of {snapshot.trace_at or 'unavailable'}; parsed log progress is unverified"
+        )
     application = snapshot.application
     if application is not None:
         lines.append(
@@ -594,6 +692,88 @@ def render_snapshot(
     return "\n".join(safe_text(line) for line in lines)
 
 
+class _DashboardCanvas:
+    """Project the shared dashboard's terminal layout into styled Rich rows."""
+
+    def __init__(self, height: int, width: int):
+        self.height, self.width = height, width
+        self.erase()
+
+    def getmaxyx(self):
+        return self.height, self.width
+
+    def erase(self):
+        self.rows = [[(" ", "") for _ in range(self.width)] for _ in range(self.height)]
+
+    def addnstr(self, y, x, text, count, attr=""):
+        for index, character in enumerate(safe_text(text)[:count]):
+            if 0 <= y < self.height and 0 <= x + index < self.width:
+                self.rows[y][x + index] = (character, attr)
+
+    def refresh(self):
+        pass
+
+    def text(self):
+        from itertools import groupby
+        from rich.text import Text
+
+        result = Text()
+        for row in self.rows:
+            for style, cells in groupby(row, key=lambda cell: cell[1]):
+                result.append(
+                    "".join(character for character, _ in cells), style=style or None
+                )
+            result.append("\n")
+        return result
+
+
+def render_dashboard(
+    snapshot, *, height, width, view, scroll, refresh_seconds=_REFRESH_SECONDS
+):
+    """Reuse every legacy overview/detail projection without reading any source."""
+    canvas = _DashboardCanvas(height, width)
+    dashboard.render.attrs = {
+        "normal": "",
+        "dim": "dim",
+        "border": "dim cyan",
+        "label": "bold",
+        "value": "",
+        "title": "bold cyan",
+        "panel_title": "bold cyan",
+        "green": "green",
+        "green_bold": "bold green",
+        "yellow": "yellow",
+        "yellow_bold": "bold yellow",
+        "red": "red",
+        "cyan": "cyan",
+    }
+    job = snapshot.raw_job
+    job_id = (
+        job["job_id"]
+        if job is not None
+        else (
+            snapshot.request.recorded_job_id
+            if snapshot.request is not None
+            else "unbound"
+        )
+    )
+    dashboard.render(
+        canvas,
+        job_id,
+        snapshot.scheduler or {"state": "QUERYING"},
+        snapshot.control_identity or {},
+        snapshot.workflow or dashboard.parse_workflow(""),
+        refresh_seconds,
+        time.monotonic()
+        - max(0, (datetime.now(UTC) - snapshot.trace_at).total_seconds())
+        if snapshot.trace_at is not None
+        else None,
+        view,
+        scroll,
+    )
+    return canvas.text()
+
+
 def require_action_terminal() -> None:
     if not all(stream.isatty() for stream in (sys.stdin, sys.stdout, sys.stderr)) or (
         os.environ.get("TERM") == "dumb"
@@ -602,7 +782,7 @@ def require_action_terminal() -> None:
 
 
 def watch(
-    project: Path,
+    project: Path | None,
     *,
     request: slurm_submission.SubmissionRequestObservation | None = None,
     run_root: Path | None = None,
@@ -610,16 +790,39 @@ def watch(
     inspect_run: Callable[[Path], RunInspection],
     next_action: Callable[[RunInspection], str],
     review_actions: tuple[tuple[bytes, str, Callable[[], int]], ...] = (),
+    raw_job: Mapping[str, object] | None = None,
+    offline: bool = False,
+    refresh_seconds: int = _REFRESH_SECONDS,
+    snapshot_only: bool = False,
 ) -> int:
     from functools import partial
 
+    if refresh_seconds < 5:
+        raise PresentationError("--refresh must be at least 5 seconds")
+    if raw_job is not None and (
+        project is not None
+        or request is not None
+        or run_root is not None
+        or review_actions
+    ):
+        raise PresentationError(
+            "A scheduler diagnostic selection has no Project, Run or action authority"
+        )
+    stream_caches = {}
+    trace_closed = threading.Event()
     refresh = partial(
-        refresh_snapshot, inspect_run=inspect_run, next_action=next_action
+        refresh_snapshot,
+        inspect_run=inspect_run,
+        next_action=next_action,
+        stream_caches=stream_caches,
+        offline=offline,
+        trace_closed=trace_closed,
     )
     if application_log_root is not None and (request is not None or run_root is None):
         raise PresentationError("A log search root requires an explicit Run selection")
     initial = WatchSnapshot(
         project,
+        raw_job=raw_job,
         request=request,
         run_root=run_root,
         run_applications=None
@@ -627,16 +830,56 @@ def watch(
         else _submission_inspection.RunApplicationObservation(application_log_root),
     )
     interactive = (
-        sys.stdin.isatty() and sys.stdout.isatty() and os.environ.get("TERM") != "dumb"
+        not snapshot_only
+        and sys.stdin.isatty()
+        and sys.stdout.isatty()
+        and os.environ.get("TERM") != "dumb"
     )
     if review_actions:
         require_action_terminal()
+        if snapshot_only:
+            raise PresentationError("Actions require an interactive watch")
+        if any(
+            key.lower()
+            in (
+                b"o",
+                b"d",
+                b"r",
+                b"q",
+                b"v",
+                b"g",
+                b"j",
+                b"k",
+                b"1",
+                b"2",
+                b"3",
+                b"\t",
+                b"[",
+                b"]",
+            )
+            for key, _, _ in review_actions
+        ):
+            raise PresentationError("Actions cannot replace dashboard navigation keys")
         if (request is None) == (run_root is None):
             raise PresentationError("Actions require one exact Run or submission")
     if not interactive:
+        try:
+            observed = refresh(initial, verify=True, stream_index=0)
+        finally:
+            trace_closed.set()
+            for cache in tuple(stream_caches.values()):
+                cache.close()
+        from rich.console import Console
+
+        if observed.workflow is not None:
+            Console(no_color=True, force_terminal=False, width=100).print(
+                render_dashboard(
+                    observed, height=56, width=100, view="details", scroll=0
+                )
+            )
         print(
             render_snapshot(
-                refresh(initial, verify=True, stream_index=0),
+                observed,
                 now=datetime.now(UTC),
                 tail_lines=8,
             )
@@ -653,9 +896,12 @@ def watch(
     worker = RefreshWorker(initial, refresh)
     stream_index = 0
     scroll = 0
+    selected_view = (
+        "evidence" if run_root is not None and request is None else "overview"
+    )
     selected_review = None
     reviews = {key: callback for key, _label, callback in review_actions}
-    deadline = time.monotonic() + _REFRESH_SECONDS
+    deadline = time.monotonic() + refresh_seconds
     worker.request(verify=True, stream_index=stream_index)
     try:
         tty.setcbreak(descriptor)
@@ -668,16 +914,20 @@ def watch(
         ) as live:
             layout = Layout()
             layout.split_column(
-                Layout(name="body"), Layout(name="controls", size=3 if reviews else 2)
+                Layout(name="body"), Layout(name="controls", size=5 if reviews else 4)
             )
             while True:
                 now = time.monotonic()
                 if now >= deadline:
                     worker.request(verify=False, stream_index=stream_index)
-                    deadline = now + _REFRESH_SECONDS
+                    deadline = now + refresh_seconds
                 snapshot = worker.snapshot
                 text = render_snapshot(snapshot, now=datetime.now(UTC))
-                controls = "q quit | r verify/associate again | Tab stream | j/k scroll"
+                controls = "1/o overview | 2/d details | Tab switch | 3/v evidence/logs | [/] stream\nq quit | r verify/associate again | arrows/j/k scroll | PgUp/PgDn | Home/g"
+                controls += f"\nDiagnostic trace as of {snapshot.trace_at or 'unavailable'}; log identity/progress are unverified"
+                controls += (
+                    f"\nScheduler as of {snapshot.scheduler_at or 'unavailable'}"
+                )
                 if reviews:
                     controls += "\nLeave view: " + " | ".join(
                         f"{key.decode('ascii')} {label}"
@@ -687,28 +937,116 @@ def watch(
                     controls += (
                         "\nRefresh in progress; displayed observations are dated"
                     )
-                rows = text.split("\n")
-                scroll = min(scroll, max(0, len(rows) - 1))
-                layout["body"].update(Text("\n".join(rows[scroll:])))
-                layout["controls"].update(Text(controls))
+                controls_text = Text(controls)
+                layout["controls"].size = min(
+                    console.size.height - 1,
+                    max(
+                        1,
+                        sum(
+                            max(
+                                1,
+                                (len(line) + console.size.width - 1)
+                                // console.size.width,
+                            )
+                            for line in controls.splitlines()
+                        ),
+                    ),
+                )
+                if selected_view == "evidence":
+                    rows = text.split("\n")
+                    scroll = min(scroll, max(0, len(rows) - 1))
+                    layout["body"].update(Text("\n".join(rows[scroll:])))
+                else:
+                    layout["body"].update(
+                        render_dashboard(
+                            snapshot,
+                            height=max(
+                                1, console.size.height - layout["controls"].size
+                            ),
+                            width=console.size.width,
+                            view=selected_view,
+                            scroll=scroll,
+                            refresh_seconds=refresh_seconds,
+                        )
+                    )
+                layout["controls"].update(controls_text)
                 live.update(layout, refresh=True)
                 if select.select([descriptor], [], [], 1)[0]:
                     key = os.read(descriptor, 1)
+                    if key == b"\x1b":
+                        while (
+                            len(key) < 8
+                            and select.select([descriptor], [], [], 0.01)[0]
+                        ):
+                            key += os.read(descriptor, 1)
+                            if key[-1:] in b"ABCDHF~":
+                                break
                     if key in (b"q", b"Q", b"\x04", b""):
                         return 0
                     selected_review = reviews.get(key.lower())
                     if selected_review is not None:
                         break
-                    if key in (b"r", b"R", b"\t"):
-                        if key == b"\t":
-                            stream_index += 1
-                        worker.request(verify=key != b"\t", stream_index=stream_index)
-                    if key in (b"j", b"k"):
-                        scroll = max(0, scroll + (1 if key == b"j" else -1))
+                    if key in (
+                        b"1",
+                        b"o",
+                        b"O",
+                        b"2",
+                        b"d",
+                        b"D",
+                        b"3",
+                        b"v",
+                        b"V",
+                        b"\t",
+                    ):
+                        selected_view = (
+                            ("details" if selected_view == "overview" else "overview")
+                            if key == b"\t"
+                            else (
+                                "overview"
+                                if key in (b"1", b"o", b"O")
+                                else "details"
+                                if key in (b"2", b"d", b"D")
+                                else "evidence"
+                            )
+                        )
+                        scroll = 0
+                    if key in (b"r", b"R", b"[", b"]"):
+                        if key in (b"[", b"]"):
+                            stream_index += 1 if key == b"]" else -1
+                            selected_view, scroll = "evidence", 0
+                        worker.request(
+                            verify=key in (b"r", b"R"), stream_index=stream_index
+                        )
+                    if key in (
+                        b"j",
+                        b"J",
+                        b"\x1b[B",
+                        b"k",
+                        b"K",
+                        b"\x1b[A",
+                        b"\x1b[5~",
+                        b"\x1b[6~",
+                    ):
+                        delta = (
+                            6
+                            if key == b"\x1b[6~"
+                            else -6
+                            if key == b"\x1b[5~"
+                            else 1
+                            if key in (b"j", b"J", b"\x1b[B")
+                            else -1
+                        )
+                        scroll = max(0, scroll + delta)
+                    if key in (b"g", b"\x1b[H", b"\x1bOH", b"\x1b[1~", b"\x1b[7~"):
+                        scroll = 0
     except KeyboardInterrupt:
         return 0
     finally:
+        trace_closed.set()
         worker.close()
+        for cache in tuple(stream_caches.values()):
+            cache.close()
+        termios.tcflush(descriptor, termios.TCIFLUSH)
         termios.tcsetattr(descriptor, termios.TCSADRAIN, original)
     # An active daemon read may finish, but no queued refresh or cached evidence
     # participates in the CLI operation. Its owner admits a fresh review.

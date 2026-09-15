@@ -4,6 +4,7 @@ import os
 import re
 import shlex
 import subprocess
+from datetime import datetime, timezone
 
 
 TERMINAL_STATES = {
@@ -90,7 +91,15 @@ def _cluster_name(value):
     )
 
 
-def observe_job(job_id, stdout_pattern, stderr_pattern, cluster=None, *, job_name=None):
+def observe_job(
+    job_id,
+    stdout_pattern,
+    stderr_pattern,
+    cluster=None,
+    *,
+    job_name=None,
+    include_resources=False,
+):
     """Observe an exact owned job/path binding; the caller owns request uniqueness."""
     if not JOB_ID_RE.fullmatch(str(job_id)) or (
         cluster is not None and not _cluster_name(cluster)
@@ -105,6 +114,11 @@ def observe_job(job_id, stdout_pattern, stderr_pattern, cluster=None, *, job_nam
         ):
             raise DiscoveryError("Recorded scheduler name is not one bounded name")
         extra_names = ("JobName",) if job_name is not None else ()
+        resource_names = (
+            ("elapsed", "left", "cpus", "partition", "node")
+            if include_resources
+            else ()
+        )
         expected = []
         for value in (stdout_pattern, stderr_pattern):
             if (
@@ -135,10 +149,16 @@ def observe_job(job_id, stdout_pattern, stderr_pattern, cluster=None, *, job_nam
                     "-O",
                     # Like %i, JobArrayId preserves array and heterogeneous suffixes.
                     "JobArrayId:0|,UserID:0|,State:0|,Cluster:0|,STDOUT:0|,STDERR:0|,Reason:0"
-                    + ("|,Name:0" if extra_names else ""),
+                    + ("|,Name:0" if extra_names else "")
+                    + (
+                        "|,TimeUsed:0|,TimeLeft:0|,NumCPUs:0|,Partition:0|,NodeList:0"
+                        if include_resources
+                        else ""
+                    ),
                 ],
                 ("JobId", "UID", "JobState", "Cluster", "StdOut", "StdErr", "Reason")
-                + extra_names,
+                + extra_names
+                + resource_names,
             ),
             (
                 "sacct",
@@ -152,14 +172,23 @@ def observe_job(job_id, stdout_pattern, stderr_pattern, cluster=None, *, job_nam
                     "-j",
                     str(job_id),
                     "--format=JobIDRaw,UID,State,Cluster,StdOut,StdErr,ExitCode"
-                    + (",JobName" if extra_names else ""),
+                    + (",JobName" if extra_names else "")
+                    + (
+                        ",Elapsed,Timelimit,AllocCPUS,Partition,NodeList"
+                        if include_resources
+                        else ""
+                    ),
                 ],
                 ("JobId", "UID", "JobState", "Cluster", "StdOut", "StdErr", "ExitCode")
-                + extra_names,
+                + extra_names
+                + resource_names,
             ),
         )
         for source, argv, names in sources:
             reply = command_bytes(argv, environment=environment)
+            observed_at = (
+                datetime.now(timezone.utc).isoformat() if include_resources else None
+            )
             if reply is None:
                 raise DiscoveryError(source + " query failed or is unavailable")
             if len(reply) > 65536:
@@ -220,9 +249,99 @@ def observe_job(job_id, stdout_pattern, stderr_pattern, cluster=None, *, job_nam
                 result["exit_code"] = metadata["ExitCode"]
             else:
                 result["reason"] = metadata["Reason"]
+            for name in resource_names:
+                if metadata[name]:
+                    result[
+                        "time_limit" if source == "sacct" and name == "left" else name
+                    ] = metadata[name]
+            if include_resources:
+                result["observed_at"] = observed_at
+                result.update(
+                    _observe_batch_usage(
+                        job_id,
+                        stdout_pattern,
+                        stderr_pattern,
+                        cluster,
+                        job_name,
+                        result,
+                        environment,
+                    )
+                )
             return result
     except (DiscoveryError, UnicodeError) as exc:
         return unknown_observation(str(exc))
+
+
+def _observe_batch_usage(
+    job_id, stdout_pattern, stderr_pattern, cluster, job_name, root, environment
+):
+    """Observe one local batch step between exact root checks, without authority."""
+    active = {"RUNNING", "SUSPENDED", "COMPLETING"}
+
+    def local_matches():
+        current = observe_job(job_id, stdout_pattern, stderr_pattern, job_name=job_name)
+        return (
+            current["source"] == "squeue"
+            and current["state"] in active
+            and current["cluster"] == root["cluster"]
+        )
+
+    unavailable = {"usage_diagnostic": "Exact local batch-step usage is unavailable"}
+    if root["source"] != "squeue" or root["state"] not in active:
+        return unavailable
+    if cluster is not None and not local_matches():
+        return unavailable
+    reply = command_bytes(
+        [
+            "sstat",
+            "-n",
+            "-P",
+            "-j",
+            str(job_id) + ".batch",
+            "--format=JobID,AveCPU,MaxRSS,MaxDiskRead,MaxDiskWrite",
+        ],
+        environment=environment,
+    )
+    observed_at = datetime.now(timezone.utc).isoformat()
+    if reply is None or len(reply) > 65536:
+        return unavailable
+    try:
+        rows = [line.split("|") for line in reply.decode("utf-8").splitlines()]
+    except UnicodeError:
+        return unavailable
+    if (
+        len(rows) != 1
+        or len(rows[0]) != 5
+        or rows[0][0] != str(job_id) + ".batch"
+        or any(
+            len(value) > 256 or any(ord(char) < 32 or ord(char) > 126 for char in value)
+            for value in rows[0][1:]
+        )
+        or any(
+            value not in ("", "N/A") and re.fullmatch(pattern, value) is None
+            for value, pattern in zip(
+                rows[0][1:],
+                (r"(?:(?:[0-9]+-)?[0-9]+:)?[0-9]{2}:[0-9]{2}(?:[.][0-9]+)?",)
+                + (r"[0-9]+(?:[.][0-9]+)?[KMGTPE]?",) * 3,
+            )
+        )
+        or not local_matches()
+    ):
+        return unavailable
+    values = {
+        name: value
+        for name, value in zip(
+            ("ave_cpu", "max_rss", "disk_read", "disk_write"), rows[0][1:]
+        )
+        if value and value != "N/A"
+    }
+    return {
+        **values,
+        "usage_observed_at": observed_at,
+        "usage_diagnostic": None
+        if len(values) == 4
+        else "Some batch-step usage is unavailable",
+    }
 
 
 def parse_key_value_line(value):

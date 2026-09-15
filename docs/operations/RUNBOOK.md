@@ -77,49 +77,81 @@ authority.
 
 ## Watch one fixed selection
 
-Add `--watch` to inspection for an integrated terminal view. A submitted request
-works before a Run exists:
+The dashboard offers the legacy overview and detail screens plus verified
+Run evidence and selected logs. For a submitted Project request, including
+before its Run exists:
 
 ```bash
 emrys inspect --project "$EMRYS_PROJECT_ROOT" --submission "submission-EXACT_TOKEN" --watch
 ```
 
-You can also select an exact Run with `emrys inspect RUN --watch`. A Run's
-recorded job number alone does not establish current scheduler identity, so
-select its retained request when scheduler observations are needed.
+Use `emrys inspect RUN --watch` for a Run's evidence and application/Task logs.
+Its recorded job number does not establish current scheduler identity; select
+its retained request for scheduler observations and the workflow trace.
 
-The view combines scheduler state, dated Run/Task/milestone and reporting
-evidence, elapsed-time context, one diagnostic stream and the last supported
-action. It keeps the selected request's historical Attempt distinct from the
-Run's latest Attempt. It never switches to the newest job or log on reconnect.
+The dashboard also reproduces standalone scheduler discovery and historical
+selection without requiring a Project:
 
-Use `r` to recheck application association and fully verify the selected Run,
-Tab to change stream, `j`/`k` to scroll, and `q` to quit. Full verification can
-read substantial scientific data; it runs initially and when requested. Screen
-painting performs no reads. Automatic refresh checks only the scheduler and
-selected diagnostic tail every 30 seconds. Read the observation dates: a
-previously verified snapshot is not current completion or recovery proof.
-For an explicit Run, refresh searches its selected log root again and removes
-application streams whose association is no longer admitted. Independent Task
-streams remain available. Screen/timer refresh does not rescan application logs.
+```bash
+emrys inspect --watch --job-id
+emrys inspect --watch --job-id 12345
+emrys inspect --snapshot --job-id 12345 --log-dir /absolute/scheduler/logs
+emrys inspect --snapshot --job-id 12345 --offline --out /absolute/scheduler/logs/emrys-local-pilot-12345.out --err /absolute/scheduler/logs/emrys-local-pilot-12345.err
+```
 
-Stream tails show at most 64 KiB and 256 retained lines; the terminal may show
-fewer. Missing, changing, truncated or replaced streams are identified and
-terminal controls are escaped. Appended diagnostic bytes do not inherit an
-earlier log digest's authority. Task streams come from admitted terminal records
-or the fixed paths identified by an admitted Task start. A start is published
-before its streams open: an expected path does not prove a file exists or a Task
-is live. Missing or unadmitted starts do not supply guessed stream locations.
-Verbose/debug static inspection lists the same exact Task paths.
-Redirected output or a noninteractive terminal produces one plain snapshot.
-Ordinary watch runs no operational action and creates no logs or state. A stalled
-filesystem read can delay refresh; after the view opens, quitting does not wait
-for that reader. Initial Project/Run/request selection still performs ordinary
-synchronous reads before the view opens. `--detail` controls static inspection;
-watch uses one fixed layout.
+Without a current `project.yaml`, plain `emrys inspect --watch` also discovers
+a current-user EMRYS job. Discovery checks live jobs and bounded recent
+accounting; it never scans storage for a newest log. Explicit IDs never fall
+back to another job. `EMRYS_DASHBOARD_JOB_ID` and `EMRYS_DASHBOARD_LOG_DIR` are
+fallbacks for scheduler selection; command-line values take precedence.
+Offline requires an exact ID and both owned regular streams and makes no
+scheduler queries. Raw scheduler selection permits no operational actions and
+never admits a Project or Run from text printed in a log.
 
-The existing standalone dashboard remains supported while its full replacement
-is validated, including legacy discovery, accounting and offline stream access.
+| Control | Behavior |
+| --- | --- |
+| `1` / `o`, `2` / `d`, Tab | Overview, details, or switch between them. |
+| `3` / `v` | Dated Run evidence and selected diagnostic log. |
+| `[` / `]` | Previous/next log; opens the evidence/log view. |
+| Arrows / `j` / `k`, Page Up/Down, Home / `g` | Scroll or return to the top. |
+| `r` | Refresh diagnostics, recheck association, and fully verify the selected Run. |
+| `q` | Quit and restore the terminal. |
+
+Overview/details preserve pipeline progress, stage explanations and resources,
+sample lanes and timings, peer comparisons, recent activity, errors, scheduler
+placement and batch usage. Counts come from the reported invocation; unknown
+counts stay unknown. Logs describe observed workflow activity and cannot prove
+scientific completion. Resource maxima are per-task batch-step observations,
+not total job I/O or whole-process memory. Read their observation dates.
+
+Automatic refresh checks scheduler diagnostics and stream updates every 30
+seconds; `--refresh SECONDS` accepts intervals of at least five seconds. A
+terminal scheduler observation stays dated until `r` requests another query.
+Full Run verification runs initially and on `r`, and can read substantial
+scientific data. Screen painting performs no reads. Timers cannot refresh the
+authority of dated Run/Task/reporting evidence or infer recovery eligibility.
+The selected request's historical Attempt stays distinct from the Run's latest
+Attempt. Reconnecting to the same selection reconstructs its full workflow
+trace. The dashboard never switches to another job or a guessed latest log.
+
+Workflow stdout/stderr use the shared full-history reader; other selected tails
+retain at most 64 KiB and 256 lines. Missing, changed, truncated or replaced
+streams are identified, previous generations are cleared, and terminal controls
+are sanitized. A stalled read preserves its earlier date and cannot prevent
+quitting after the view opens. Initial selection remains synchronous. Memory
+for the parsed workflow trace grows with retained diagnostic history.
+
+An explicit Run's `r` refresh searches its selected application-log root again
+and removes associations no longer admitted. Independent Task streams remain
+available. Expected Task paths require an admitted start; they prove neither
+file existence nor worker liveness. Static verbose/debug inspection lists the
+same exact paths. Use `--log-root` to select a historical custom application root.
+
+`--snapshot`, redirected output, or a noninteractive terminal produces one
+plain snapshot. `NO_COLOR` disables optional status colors. Ordinary watch
+creates no operational action, log or persistent state. The original standalone
+entry point remains supported until institutional validation and coordinated
+retirement are complete.
 
 ### Review CLI operations from watch
 
@@ -133,7 +165,7 @@ emrys inspect --submission REQUEST --project "$EMRYS_PROJECT_ROOT" --watch --act
 | Selection | Key | Operation after leaving watch |
 | --- | --- | --- |
 | Run | `p` | Ordinary resume plan and confirmation; decline to leave without starting work. |
-| Run | `o` | Report preview; does not generate or submit reporting work. |
+| Run | `b` | Report preview; does not generate or submit reporting work. |
 | Submission request | `s` | Stop preview for the exact retained request; does not cancel the job. |
 
 Each command freshly checks its selection; dated watch observations do not
@@ -551,12 +583,12 @@ Specialist commands validate existing outputs, reconcile reference provenance
 owner-validation report because validator exit zero alone does not establish
 semantic success.
 
-The legacy CSU dashboard remains a separate operational view pending validated
-replacement. Its scheduler observer checks numeric ownership, exact root IDs,
-duplicate accounting records, and selected stream paths; uncertainty appears
-as `UNKNOWN`. Its log interpretation does not replace current Run inspection
-or establish which retained request owns a reused job ID. Use `emrys inspect`
-and exact Slurm accounting/streams for status and completion.
+The installed dashboard shares the legacy selection, scheduler and diagnostic
+presentation owners. The original CSU entry point remains supported until
+institutional validation and coordinated retirement. Shared observation checks
+numeric ownership, exact root IDs, duplicate accounting records and selected
+stream paths; uncertainty appears as `UNKNOWN`. Log interpretation does not
+replace Run inspection or establish which retained request owns a reused job ID.
 Its existing `--offline` mode requires an explicit job ID and both stream paths.
 Selection, snapshots and interactive refresh make no Slurm queries; scheduler
 state stays `UNKNOWN` while the same sanitized diagnostic streams remain usable.
