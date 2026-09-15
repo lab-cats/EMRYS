@@ -119,6 +119,19 @@ The existing public failed-Run/resume journey also checks real report producer
 publication boundaries through separate public inspection processes, as recorded
 under [CV-21](#cv-21-reporting-in-progress-and-visibility).
 
+**Combined batch-startup slice:** The real generated Bash wrapper now runs the
+current capacity observer and Snakemake readiness probe together under simulated
+allocation metadata. Its restricted export projection drops submitting-shell
+memory values; no Slurm memory variables are supplied to the child. Capacity
+uses process-visible memory while explicitly recording an unspecified scheduler
+memory limit. Actual Snakemake version and empty-workflow startup run with
+passwd lookup made unavailable: forwarding `USER` permits startup, while no
+username produces the expected bounded failure. Both cases check private batch
+and probe scratch cleanup without creating scheduler logs. The two cases pass
+locally with Python 3.14.5/Snakemake 9.25.1; static checks and independent review
+pass. This is real local Bash/backend evidence with simulated scheduler inputs,
+not an allocation, site memory-rejection or institutional execution result.
+
 ### CV-02 Individual qualification diagnostics
 
 **Finding:** Generic qualification failure required manual reconstruction of

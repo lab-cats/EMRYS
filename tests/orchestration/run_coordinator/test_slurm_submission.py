@@ -1619,6 +1619,146 @@ def test_batch_script_checks_identity_loads_modules_and_cleans_private_scratch(
     assert list(profile.placement.scratch_parent.iterdir()) == []
 
 
+def _batch_startup_child(destination: str) -> None:
+    """Observe simulated allocation metadata, then start the actual local backend."""
+    from dataclasses import asdict
+
+    from emrys.evidence.runtime_availability import _probes, inspector
+    from emrys.libraries.source_authority import controlled_python_argv
+    from emrys.orchestration.run_coordinator import capacity
+
+    allocation = capacity.observe_allocation()
+    check = replace(
+        next(
+            item
+            for item in inspector.load_runtime_policy()
+            if item.check_id == "snakemake"
+        ),
+        target=sys.executable,
+        probe_args=tuple(
+            controlled_python_argv(sys.executable, "-m", "snakemake", "--version")[1:]
+        ),
+    )
+    commands = []
+    scratch_paths = []
+
+    def run(argv, stdin, environment, timeout):
+        module_index = argv.index("-m")
+        assert argv[module_index + 1] == "snakemake"
+        if "--directory" in argv:
+            scratch_paths.append(Path(argv[argv.index("--directory") + 1]))
+        # Preserve the real probe's interpreter/options/environment; only NSS
+        # lookup is unavailable, as in the separate runtime startup oracle.
+        injected = [
+            *argv[:module_index],
+            "-c",
+            "from unittest.mock import patch\n"
+            "with patch('pwd.getpwuid', side_effect=KeyError('uid unavailable')):\n"
+            " from snakemake.cli import main\n"
+            " main()\n",
+            *argv[module_index + 2 :],
+        ]
+        outcome = _probes._run_command(injected, stdin, environment, timeout)
+        commands.append({"argv": argv, "code": outcome[0], "output": outcome[1]})
+        return outcome
+
+    observed = _probes.run_checks(
+        [check], environment=dict(os.environ), command_runner=run
+    )[0]
+    Path(destination).write_text(
+        json.dumps(
+            {
+                "allocation": asdict(allocation),
+                "status": observed.status,
+                "observed": observed.observed,
+                "detail": observed.detail,
+                "commands": commands,
+                "username": os.environ.get("USER"),
+                "memory_variables": {
+                    key: value
+                    for key, value in os.environ.items()
+                    if key.startswith("SLURM_MEM_")
+                },
+                "scratch": os.environ["TMPDIR"],
+                "startup_directories": [str(path) for path in scratch_paths],
+                "startup_cleaned": all(not path.exists() for path in scratch_paths),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+@pytest.mark.parametrize("forward_username", [True, False])
+def test_simulated_batch_environment_starts_real_snakemake_without_passwd_or_memory_vars(
+    tmp_path: Path, forward_username: bool
+) -> None:
+    profile = _profile(tmp_path, memory_mb=None)
+    capture = tmp_path / "startup.json"
+    plan = slurm_submission.plan_submission(
+        profile,  # type: ignore[arg-type]
+        emrys_argv=(
+            sys.executable,
+            "-B",
+            "-I",
+            "-c",
+            "import runpy, sys; sys.path.insert(0, sys.argv[1]); "
+            "runpy.run_path(sys.argv[2])['_batch_startup_child'](sys.argv[3])",
+            str(Path(slurm_submission.__file__).resolve().parents[3]),
+            str(Path(__file__).resolve()),
+            str(capture),
+        ),
+        log_dir=tmp_path / "logs",
+        environment={
+            **({"USER": "emrys-batch-user"} if forward_username else {}),
+            "SLURM_MEM_PER_NODE": "32768",
+            "SLURM_MEM_PER_CPU": "4096",
+        },
+    )
+    assert not any(item.startswith("--mem") for item in plan.argv)
+    environment = {**_batch_environment(plan), "SLURM_CPUS_PER_TASK": "1"}
+    assert not any(key.startswith("SLURM_MEM_") for key in environment)
+
+    completed = subprocess.run(
+        ("/bin/bash",),
+        input=plan.batch_script,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=90,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    observed = json.loads(capture.read_text(encoding="utf-8"))
+    allocation = observed["allocation"]
+    assert allocation["slurm_job_id"] == "700123"
+    assert allocation["cores"] == 1 and allocation["memory_mb"] > 0
+    assert (
+        "process-visible memory; Slurm memory limit unspecified" in allocation["source"]
+    )
+    assert observed["memory_variables"] == {}
+    version, startup = observed["commands"]
+    assert version["argv"][-1] == "--version" and version["code"] == 0
+    assert version["output"] == "9.25.1"
+    assert "--snakefile" in startup["argv"] and os.devnull in startup["argv"]
+    assert startup["argv"][startup["argv"].index("--executor") + 1] == "local"
+    assert observed["startup_cleaned"] and len(observed["startup_directories"]) == 1
+    assert Path(observed["startup_directories"][0]).parent == Path(observed["scratch"])
+    assert list(profile.placement.scratch_parent.iterdir()) == []
+    assert not (tmp_path / "logs").exists()
+    if forward_username:
+        assert observed["username"] == "emrys-batch-user"
+        assert observed["status"] == "pass" and startup["code"] == 0
+        assert "Nothing to be done" in startup["output"]
+        assert "user: emrys-batch-user" in startup["output"].lower()
+        assert "minimal local Snakemake startup passed" in observed["detail"]
+    else:
+        assert observed["username"] is None
+        assert observed["status"] == "fail" and startup["code"] == 1
+        assert "No username set in the environment" in observed["observed"]
+        assert "Snakemake startup failed; exit_status=1" in observed["detail"]
+
+
 @pytest.mark.parametrize("observed_token", [None, "c" * 32, "module-mutation"])
 def test_batch_rejects_missing_or_changed_request_before_modules_and_scratch(
     tmp_path: Path, observed_token: str | None
