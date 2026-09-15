@@ -136,6 +136,52 @@ class _TerminalOutput:
         self.stream.flush()
 
 
+def _command_arguments(project: Path, **options) -> argparse.Namespace:
+    return argparse.Namespace(
+        project=project, profile=None, log_level=None, log_root=None, **options
+    )
+
+
+def _read_log(path: Path) -> list[dict]:
+    return [json.loads(line) for line in path.read_text().splitlines()]
+
+
+def _log_events(path: Path) -> list[str]:
+    return [record["event"] for record in _read_log(path)]
+
+
+def _application_controls(root: Path) -> LogControls:
+    return LogControls(LogLevel.NORMAL, root, "default", "default")
+
+
+def _terminal_input(monkeypatch, response, before_read=lambda: None) -> None:
+    monkeypatch.setattr(control.sys, "stdin", _InputStream(response, before_read))
+    monkeypatch.setattr(control.sys, "stderr", _TerminalOutput(control.sys.stderr))
+
+
+def _watch_terminal(monkeypatch) -> None:
+    for stream in (control.sys.stdin, control.sys.stdout, control.sys.stderr):
+        monkeypatch.setattr(stream, "isatty", lambda: True)
+    monkeypatch.setenv("TERM", "xterm")
+
+
+def _bind_readiness(monkeypatch, readiness, resources) -> None:
+    monkeypatch.setattr(control.doctor, "diagnose_project", lambda *_a, **_k: readiness)
+    monkeypatch.setattr(
+        control.capacity, "observe_allocation", lambda: resources.allocation
+    )
+
+
+def _lifecycle_outcome(root: Path, *, status: str, **paths):
+    return lifecycle.LifecycleOutcome(
+        attempt_path=paths.get("attempt_path", root / "attempt.json"),
+        receipt_path=paths.get("receipt_path", root / "attempt-receipt.json"),
+        lock_path=paths.get("lock_path", root / "run.lock"),
+        released_lock_path=paths.get("released_lock_path", root / "released-lock.json"),
+        receipt={"status": status},
+    )
+
+
 def _readiness(
     tmp_path: Path,
     *,
@@ -343,56 +389,49 @@ def _after_plan(plan, *, minutes: int = 0) -> datetime:
     return created + timedelta(minutes=minutes)
 
 
-def _patch_run_control(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    *,
-    execute_plan,
-    transform_plan,
-):
+def _patch_run_control(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     readiness, resources, project_path, workspace = _readiness(tmp_path)
-    arguments = argparse.Namespace(
-        project=project_path,
-        profile=None,
-        log_level=None,
-        log_root=None,
-        execute=False,
+    case = SimpleNamespace(
+        arguments=_command_arguments(project_path, execute=False),
+        workspace=workspace,
+        plans=[],
+        executed=[],
+        runtime_inspections=[],
     )
     real_build = control.build_attempt_plan
-    plans = []
 
     def diagnose(*_args, **kwargs):
         assert kwargs == {
             "storage_requirement": "direct",
             "analysis_name": None,
-            "require_reporter": getattr(arguments, "through", "analysis") == "analysis"
-            and not getattr(arguments, "no_report", False),
+            "require_reporter": getattr(case.arguments, "through", "analysis")
+            == "analysis"
+            and not getattr(case.arguments, "no_report", False),
         }
         return readiness
 
-    monkeypatch.setattr(
-        control.doctor,
-        "diagnose_project",
-        diagnose,
-    )
-    monkeypatch.setattr(
-        control.capacity,
-        "observe_allocation",
-        lambda: resources.allocation,
-    )
-    _patch_lifecycle_execution(monkeypatch, lambda: plans[-1], execute_plan)
-
     def build(*args, **kwargs):
-        plan = transform_plan(real_build(*args, **kwargs))
-        plans.append(plan)
+        plan = real_build(*args, **kwargs)
+        case.plans.append(plan)
         return plan
 
+    def execute(plan, _observe, initial_runtime_inspection):
+        case.executed.append(plan)
+        case.runtime_inspections.append(initial_runtime_inspection)
+        return _lifecycle_outcome(
+            plan.run_root,
+            status="failed",
+            lock_path=plan.run_root / "locks/run.lock",
+            released_lock_path=plan.run_root / "locks/released.json",
+        )
+
+    monkeypatch.setattr(control.doctor, "diagnose_project", diagnose)
     monkeypatch.setattr(
-        control,
-        "build_attempt_plan",
-        build,
+        control.capacity, "observe_allocation", lambda: resources.allocation
     )
-    return arguments, workspace
+    monkeypatch.setattr(control, "build_attempt_plan", build)
+    _patch_lifecycle_execution(monkeypatch, lambda: case.plans[-1], execute)
+    return case
 
 
 def _patch_lifecycle_execution(
@@ -2946,13 +2985,8 @@ def test_public_run_dry_run_is_no_write(
     capsys,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    executed: list[object] = []
-    arguments, workspace = _patch_run_control(
-        tmp_path,
-        monkeypatch,
-        execute_plan=lambda plan, _observe, _inspection: executed.append(plan),
-        transform_plan=lambda plan: plan,
-    )
+    case = _patch_run_control(tmp_path, monkeypatch)
+    arguments, workspace = case.arguments, case.workspace
     named = workspace / "runtime/profiles/ci.yaml"
     shutil.copy2(workspace / "runtime/profiles/default.yaml", named)
     arguments.profile = "ci"
@@ -3014,7 +3048,7 @@ def test_public_run_dry_run_is_no_write(
     assert set(verbose.splitlines()) <= set(debug.splitlines())
     assert "Snakemake command:" in debug
     assert "TASK " in debug
-    assert executed == []
+    assert case.executed == []
     arguments.profile = "missing"
     assert control.run_from_args(arguments) == 2
     assert "runtime/profiles/missing.yaml" in capsys.readouterr().err
@@ -3025,12 +3059,8 @@ def test_processing_run_dry_run_is_no_write_and_truthfully_scoped(
     capsys,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    arguments, workspace = _patch_run_control(
-        tmp_path,
-        monkeypatch,
-        execute_plan=lambda *_args: pytest.fail("dry-run executed processing"),
-        transform_plan=lambda plan: plan,
-    )
+    case = _patch_run_control(tmp_path, monkeypatch)
+    arguments, workspace = case.arguments, case.workspace
     arguments.through = "processing"
     monkeypatch.setattr(
         control.sys,
@@ -3039,6 +3069,7 @@ def test_processing_run_dry_run_is_no_write_and_truthfully_scoped(
     )
 
     assert control.run_from_args(arguments) == 0
+    assert case.executed == []
 
     rendered = capsys.readouterr().err
     assert "Scientific boundary: sample processing (through Step 06)" in rendered
@@ -3060,31 +3091,8 @@ def test_interactive_run_confirms_exact_plan_before_every_write(
     response,
     expected_exit: int | None,
 ) -> None:
-    planned = []
-    executed = []
-    runtime_inspections: list[RuntimeInspection | None] = []
-
-    def transform(plan):
-        planned.append(plan)
-        return plan
-
-    def execute(plan, _observe, initial_runtime_inspection):
-        executed.append(plan)
-        runtime_inspections.append(initial_runtime_inspection)
-        return lifecycle.LifecycleOutcome(
-            attempt_path=plan.run_root / "attempt.json",
-            receipt_path=plan.run_root / "attempt-receipt.json",
-            lock_path=plan.run_root / "locks/run.lock",
-            released_lock_path=plan.run_root / "locks/released.json",
-            receipt={"status": "failed"},
-        )
-
-    arguments, workspace = _patch_run_control(
-        tmp_path,
-        monkeypatch,
-        execute_plan=execute,
-        transform_plan=transform,
-    )
+    case = _patch_run_control(tmp_path, monkeypatch)
+    arguments, workspace = case.arguments, case.workspace
     log_root = tmp_path / "application-logs"
     arguments.log_root = log_root
 
@@ -3092,10 +3100,9 @@ def test_interactive_run_confirms_exact_plan_before_every_write(
         assert not (workspace / "runs").exists()
         assert not (workspace / "logs").exists()
         assert not log_root.exists()
-        assert executed == []
+        assert case.executed == []
 
-    monkeypatch.setattr(control.sys, "stdin", _InputStream(response, before_read))
-    monkeypatch.setattr(control.sys, "stderr", _TerminalOutput(control.sys.stderr))
+    _terminal_input(monkeypatch, response, before_read)
     if expected_exit is None:
         with pytest.raises(KeyboardInterrupt):
             control.run_from_args(arguments)
@@ -3106,13 +3113,13 @@ def test_interactive_run_confirms_exact_plan_before_every_write(
     assert rendered.count("Run: ") == 1
     assert rendered.index("Run: ") < rendered.index("Execute this plan? [y/N]")
     if expected_exit == 1:
-        assert len(planned) == len(executed) == 1
-        assert executed[0] is planned[0]
-        assert runtime_inspections == [None]
+        assert len(case.plans) == len(case.executed) == 1
+        assert case.executed[0] is case.plans[0]
+        assert case.runtime_inspections == [None]
         assert list(log_root.rglob("*.jsonl"))
     else:
-        assert len(planned) == 1 and executed == []
-        assert runtime_inspections == []
+        assert len(case.plans) == 1 and case.executed == []
+        assert case.runtime_inspections == []
         assert not (workspace / "runs").exists()
         assert not (workspace / "logs").exists()
         assert not log_root.exists()
@@ -3136,8 +3143,7 @@ def test_interactive_resume_uses_the_same_no_write_gate(
         return plan
 
     monkeypatch.setattr(control, "_plan_resume", plan_resume)
-    monkeypatch.setattr(control.sys, "stdin", _InputStream("no\n"))
-    monkeypatch.setattr(control.sys, "stderr", _TerminalOutput(control.sys.stderr))
+    _terminal_input(monkeypatch, "no\n")
     arguments = argparse.Namespace(
         project=plan.run.analysis.source_path,
         run=plan.run.run_id,
@@ -3244,12 +3250,28 @@ def test_watch_resume_handoff_fresh_plan_and_decline_preserve_every_record(
     assert snapshot() == before
 
 
-def test_public_execute_logs_and_terminalizes_doctor_failure_before_run_state(
-    tmp_path: Path,
-    capsys,
-    monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.parametrize("command", ("run", "resume"))
+def test_public_preflight_failure_closes_log_without_run_mutation(
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch, command: str
 ) -> None:
-    _readiness_result, _resources, request, workspace = _readiness(tmp_path)
+    if command == "run":
+        _ready, _resources, project, workspace = _readiness(tmp_path)
+        message, error = "injected Doctor failure", doctor.DoctorInputError
+        owner, method = control.doctor, "diagnose_project"
+        run_id = None
+    else:
+        workspace = tmp_path / "workspace"
+        workspace.mkdir()
+        project = build(workspace)
+        run_id = "run-" + "a" * 64
+        (workspace / "runs" / run_id).mkdir(parents=True)
+        message = "injected resume inspection failure"
+        error, owner, method = (
+            inspection.InspectionError,
+            control.inspection,
+            "inspect_run",
+        )
+    root = workspace / "logs/application"
     opened = []
     real_open = control.open_attempt_log
 
@@ -3258,43 +3280,38 @@ def test_public_execute_logs_and_terminalizes_doctor_failure_before_run_state(
         opened.append(attempt)
         return attempt
 
-    def reject_readiness(*_args, **_kwargs):
-        log_paths = list((workspace / "logs/application").rglob("*.jsonl"))
-        assert len(log_paths) == 1
-        records = [json.loads(line) for line in log_paths[0].read_text().splitlines()]
-        assert [record["event"] for record in records] == ["attempt_opened"]
-        raise doctor.DoctorInputError("injected Doctor failure")
+    def reject_preflight(*_args, **_kwargs):
+        (log_path,) = root.rglob("*.jsonl")
+        assert _log_events(log_path) == ["attempt_opened"]
+        raise error(message)
 
     monkeypatch.setattr(control, "open_attempt_log", capture_open)
-    monkeypatch.setattr(control.doctor, "diagnose_project", reject_readiness)
-    arguments = argparse.Namespace(
-        project=request,
-        profile=None,
-        log_level=None,
-        log_root=None,
-        execute=True,
-    )
-
-    assert control.run_from_args(arguments) == 2
-
+    monkeypatch.setattr(owner, method, reject_preflight)
+    arguments = _command_arguments(project, execute=True)
+    if run_id is not None:
+        arguments.run = run_id
+    assert getattr(control, f"{command}_from_args")(arguments) == 2
     assert len(opened) == 1
     with pytest.raises(ApplicationLogError, match="closed"):
         opened[0].logger(component="test", phase="after_preflight")
-    log_paths = list((workspace / "logs/application").rglob("*.jsonl"))
-    assert len(log_paths) == 1
-    records = [json.loads(line) for line in log_paths[0].read_text().splitlines()]
+    (log_path,) = root.rglob("*.jsonl")
+    records = _read_log(log_path)
     assert [record["event"] for record in records] == [
         "attempt_opened",
         "attempt_failed",
     ]
     assert records[-1]["phase"] == "preflight"
-    assert not (workspace / "runs").exists()
+    if run_id is None:
+        assert not (workspace / "runs").exists()
+    else:
+        assert records[0]["scope_id"] == run_id
+        assert list((workspace / "runs" / run_id).iterdir()) == []
     assert not list(workspace.rglob("run.lock"))
     captured = capsys.readouterr()
     assert captured.out == ""
-    assert "injected Doctor failure" in captured.err
+    assert message in captured.err
     assert "phase=preflight status=failed" in captured.err
-    assert f"Application log: {log_paths[0]}" in captured.err
+    assert f"Application log: {log_path}" in captured.err
 
 
 def test_execute_preflight_interrupt_terminalizes_log_and_preserves_signal(
@@ -3302,12 +3319,7 @@ def test_execute_preflight_interrupt_terminalizes_log_and_preserves_signal(
     capsys,
 ) -> None:
     plan = _plan(tmp_path)
-    controls = LogControls(
-        LogLevel.NORMAL,
-        tmp_path / "application-logs",
-        "default",
-        "default",
-    )
+    controls = _application_controls(tmp_path / "application-logs")
 
     with pytest.raises(KeyboardInterrupt):
         control._execute_plan(
@@ -3319,10 +3331,7 @@ def test_execute_preflight_interrupt_terminalizes_log_and_preserves_signal(
             entrypoint="emrys-run",
         )
 
-    records = [
-        json.loads(line)
-        for line in next(controls.root.rglob("*.jsonl")).read_text().splitlines()
-    ]
+    records = _read_log(next(controls.root.rglob("*.jsonl")))
     assert [record["event"] for record in records] == [
         "attempt_opened",
         "attempt_interrupted",
@@ -3360,12 +3369,7 @@ def test_execute_failure_summary_names_only_proven_owned_lock_and_recovery(
         recovery_path.write_text("owned", encoding="utf-8")
         raise lifecycle.LifecycleError("injected lifecycle failure")
 
-    controls = LogControls(
-        LogLevel.NORMAL,
-        tmp_path / "application-logs",
-        "default",
-        "default",
-    )
+    controls = _application_controls(tmp_path / "application-logs")
     _patch_lifecycle_execution(monkeypatch, plan, fail_with_owned_paths)
 
     with pytest.raises(control.ControlError, match="injected lifecycle failure"):
@@ -3382,46 +3386,6 @@ def test_execute_failure_summary_names_only_proven_owned_lock_and_recovery(
     captured = capsys.readouterr()
     assert (f"Owned lock: {lock_path}" in captured.err) is owned_lock
     assert f"Owned recovery: {recovery_path}" in captured.err
-
-
-def test_public_resume_logs_inspection_failure_before_run_state(
-    tmp_path: Path,
-    capsys,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    workspace = tmp_path / "workspace"
-    workspace.mkdir()
-    project = build(workspace)
-    run_id = f"run-{'a' * 64}"
-    run_root = workspace / "runs" / run_id
-    run_root.mkdir(parents=True)
-
-    def reject_inspection(_root: Path) -> inspection.RunInspection:
-        raise inspection.InspectionError("injected resume inspection failure")
-
-    monkeypatch.setattr(control.inspection, "inspect_run", reject_inspection)
-    arguments = argparse.Namespace(
-        project=project,
-        run=run_id,
-        profile=None,
-        log_level=None,
-        log_root=None,
-        execute=True,
-    )
-
-    assert control.resume_from_args(arguments) == 2
-
-    log_path = next((workspace / "logs/application").rglob("*.jsonl"))
-    records = [json.loads(line) for line in log_path.read_text().splitlines()]
-    assert [record["event"] for record in records] == [
-        "attempt_opened",
-        "attempt_failed",
-    ]
-    assert records[0]["scope_id"] == run_id
-    assert list(run_root.iterdir()) == []
-    captured = capsys.readouterr()
-    assert "injected resume inspection failure" in captured.err
-    assert "phase=preflight status=failed" in captured.err
 
 
 def _slurm_profile(tmp_path: Path, *, cpus_per_task: int = 4) -> Path:
@@ -3649,9 +3613,7 @@ def test_watch_stop_handoff_readmits_exact_request_without_mutation(
     from tests.orchestration.run_coordinator.test_slurm_submission import _stop_fixture
 
     fixture = _stop_fixture(tmp_path, monkeypatch)
-    for stream in (control.sys.stdin, control.sys.stdout, control.sys.stderr):
-        monkeypatch.setattr(stream, "isatty", lambda: True)
-    monkeypatch.setenv("TERM", "xterm")
+    _watch_terminal(monkeypatch)
 
     def forbidden(*args, **kwargs):
         pytest.fail("Stop preview must not confirm, open a log, or issue cancellation")
@@ -3832,7 +3794,7 @@ def test_public_stop_requires_durable_intent_and_preserves_uncertain_outcomes(
     assert "Stop diagnostics:" in captured.out
     if attempted:
         (log,) = log_root.glob("maintenance-*/application-*/emrys-stop.jsonl")
-        records = [json.loads(line) for line in log.read_text().splitlines()]
+        records = _read_log(log)
         assert records[1]["event"] == "slurm_stop_intent"
         fields = records[1]["fields"]
         assert fields["request_root"] == str(fixture.root)
@@ -4513,8 +4475,7 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
             assert len(tokens) == 1
             assert not (workspace / "logs").exists()
 
-        monkeypatch.setattr(control.sys, "stdin", _InputStream("y\n", before_read))
-        monkeypatch.setattr(control.sys, "stderr", _TerminalOutput(control.sys.stderr))
+        _terminal_input(monkeypatch, "y\n", before_read)
     monkeypatch.setattr(control.slurm_submission, "submit", submit)
     monkeypatch.setattr(
         control.doctor,
@@ -4849,7 +4810,7 @@ def test_delegated_operation_records_request_before_preparation_in_one_unique_lo
         paths = set(arguments.log_root.rglob("*.jsonl")) - completed_paths
         assert len(paths) == 1
         path = paths.pop()
-        records = [json.loads(line) for line in path.read_text().splitlines()]
+        records = _read_log(path)
         assert records[0]["event"] == "attempt_opened"
         assert records[0]["fields"]["slurm_job_id"] == "812345"
         expected_events = ["attempt_opened"]
@@ -4968,24 +4929,47 @@ def test_private_slurm_delegate_rejects_profile_drift_before_readiness(
 
 
 @pytest.mark.parametrize(
-    "report_mode",
-    ("disabled", "success", "failure"),
+    "report_mode,fault,expected_events",
+    (
+        ("disabled", None, ["reporting_skipped"]),
+        ("success", None, ["reporting_started", "reporting_completed"]),
+        ("failure", None, ["reporting_started", "reporting_failed"]),
+        ("disabled", "write", ["attempt_opened", "analysis_prepared"]),
+        (
+            "disabled",
+            "sync",
+            [
+                "attempt_opened",
+                "analysis_prepared",
+                "analysis_started",
+                "publication_ready",
+            ],
+        ),
+    ),
 )
-def test_direct_execution_owns_receipt_ordered_reporting_log(
+def test_execution_log_preserves_receipt_and_reporting_boundary(
     tmp_path: Path,
     capsys,
     monkeypatch: pytest.MonkeyPatch,
     report_mode: str,
+    fault: str | None,
+    expected_events: list[str],
 ) -> None:
     plan = _plan(tmp_path)
     receipt_path = tmp_path / "attempt-receipt.json"
-    receipt_bytes = b"immutable scientific receipt\n"
-    lock_path = tmp_path / "run.lock"
-    released_lock_path = tmp_path / "released-lock.json"
-    lock_path.write_text("active\n")
-    observed_events = []
-    report_calls = []
-    runtime_inspections = []
+    receipt_bytes = (
+        b"immutable scientific receipt\n"
+        if fault is None
+        else b"authoritative receipt\n"
+    )
+    lock_path, released_lock_path = (
+        tmp_path / "run.lock",
+        tmp_path / "released-lock.json",
+    )
+    if fault is None:
+        lock_path.write_text("active\n")
+    observed_events, report_calls, runtime_inspections = [], [], []
+    controls = _application_controls(tmp_path / "application-logs")
 
     def execute(_plan, observe, initial_runtime_inspection):
         runtime_inspections.append(initial_runtime_inspection)
@@ -4993,29 +4977,13 @@ def test_direct_execution_owns_receipt_ordered_reporting_log(
             observed_events.append(event_name)
             observe(event_name)
         receipt_path.write_bytes(receipt_bytes)
-        lock_path.replace(released_lock_path)
-        return lifecycle.LifecycleOutcome(
-            attempt_path=tmp_path / "attempt.json",
-            receipt_path=receipt_path,
-            lock_path=lock_path,
-            released_lock_path=released_lock_path,
-            receipt={"status": "succeeded"},
-        )
-
-    controls = LogControls(
-        LogLevel.NORMAL,
-        tmp_path / "application-logs",
-        "default",
-        "default",
-    )
+        if fault is None:
+            lock_path.replace(released_lock_path)
+        return _lifecycle_outcome(tmp_path, status="succeeded")
 
     def report(run_root: Path, *, execute: bool):
-        if report_mode == "disabled":
-            pytest.fail("--no-report invoked reporting")
-        events = [
-            json.loads(line)["event"]
-            for line in next(controls.root.rglob("*.jsonl")).read_text().splitlines()
-        ]
+        assert report_mode != "disabled", "--no-report invoked reporting"
+        events = _log_events(next(controls.root.rglob("*.jsonl")))
         report_calls.append(
             (
                 run_root,
@@ -5036,9 +5004,28 @@ def test_direct_execution_owns_receipt_ordered_reporting_log(
             ),
         )
 
+    if fault == "write":
+        real_write = ApplicationLogFile.write_bytes
+        write_count = 0
+
+        def fail_third_write(file: ApplicationLogFile, payload: bytes) -> None:
+            nonlocal write_count
+            write_count += 1
+            if write_count == 3:
+                raise ApplicationLogStorageError(
+                    "injected application-log write failure"
+                )
+            real_write(file, payload)
+
+        monkeypatch.setattr(ApplicationLogFile, "write_bytes", fail_third_write)
+    elif fault == "sync":
+
+        def reject_sync(_file: ApplicationLogFile) -> None:
+            raise ApplicationLogStorageError("injected application-log sync failure")
+
+        monkeypatch.setattr(ApplicationLogFile, "synchronize", reject_sync)
     _patch_lifecycle_execution(monkeypatch, plan, execute)
     monkeypatch.setattr(reporting_operation, "run_reporting", report)
-
     status = control._execute_plan(
         lambda: plan,
         controls=controls,
@@ -5048,7 +5035,6 @@ def test_direct_execution_owns_receipt_ordered_reporting_log(
         entrypoint="emrys-run",
         report_enabled=report_mode != "disabled",
     )
-
     assert status == (1 if report_mode == "failure" else 0)
     assert report_calls == (
         []
@@ -5065,124 +5051,26 @@ def test_direct_execution_owns_receipt_ordered_reporting_log(
         ]
     )
     assert receipt_path.read_bytes() == receipt_bytes
-    events = [
-        json.loads(line)["event"]
-        for line in next(controls.root.rglob("*.jsonl")).read_text().splitlines()
+    events = _log_events(next(controls.root.rglob("*.jsonl")))
+    prefix = [
+        "attempt_opened",
+        "analysis_prepared",
+        "analysis_started",
+        "publication_ready",
+        "attempt_receipt_observed",
     ]
-    reporting_events = {
-        "disabled": ["reporting_skipped"],
-        "success": ["reporting_started", "reporting_completed"],
-        "failure": ["reporting_started", "reporting_failed"],
-    }
-    assert (
-        events
-        == [
-            "attempt_opened",
-            "analysis_prepared",
-            "analysis_started",
-            "publication_ready",
-            "attempt_receipt_observed",
-        ]
-        + reporting_events[report_mode]
-    )
+    assert events == (prefix + expected_events if fault is None else expected_events)
     assert observed_events == ["analysis_started", "publication_ready"]
     assert runtime_inspections == [plan.readiness.inspection]
     captured = capsys.readouterr()
     assert captured.out == ""
     assert f"Evidence: {receipt_path}" in captured.err
+    if fault is not None:
+        assert captured.err.count("Application logging degraded") == 1
     if report_mode == "failure":
         assert "Scientific Results remain complete" in captured.err
         assert "Inspect the Run and follow its admitted next action" in captured.err
         assert "emrys report" not in captured.err
-
-
-@pytest.mark.parametrize(
-    ("fault", "expected_events"),
-    (
-        ("write", ["attempt_opened", "analysis_prepared"]),
-        (
-            "sync",
-            [
-                "attempt_opened",
-                "analysis_prepared",
-                "analysis_started",
-                "publication_ready",
-            ],
-        ),
-    ),
-)
-def test_application_log_degradation_cannot_change_receipt_or_exit(
-    tmp_path: Path,
-    capsys,
-    monkeypatch: pytest.MonkeyPatch,
-    fault: str,
-    expected_events: list[str],
-) -> None:
-    plan = _plan(tmp_path)
-    receipt_path = tmp_path / "attempt-receipt.json"
-    receipt_bytes = b"authoritative receipt\n"
-
-    def execute(_plan, observe, _inspection):
-        observe("analysis_started")
-        observe("publication_ready")
-        receipt_path.write_bytes(receipt_bytes)
-        return lifecycle.LifecycleOutcome(
-            attempt_path=tmp_path / "attempt.json",
-            receipt_path=receipt_path,
-            lock_path=tmp_path / "run.lock",
-            released_lock_path=tmp_path / "released-lock.json",
-            receipt={"status": "succeeded"},
-        )
-
-    controls = LogControls(
-        LogLevel.NORMAL,
-        tmp_path / "application-logs",
-        "default",
-        "default",
-    )
-    if fault == "write":
-        real_write = ApplicationLogFile.write_bytes
-        write_count = 0
-
-        def fail_third_write(file: ApplicationLogFile, payload: bytes) -> None:
-            nonlocal write_count
-            write_count += 1
-            if write_count == 3:
-                raise ApplicationLogStorageError(
-                    "injected application-log write failure"
-                )
-            real_write(file, payload)
-
-        monkeypatch.setattr(ApplicationLogFile, "write_bytes", fail_third_write)
-    else:
-
-        def reject_sync(_file: ApplicationLogFile) -> None:
-            raise ApplicationLogStorageError("injected application-log sync failure")
-
-        monkeypatch.setattr(ApplicationLogFile, "synchronize", reject_sync)
-    _patch_lifecycle_execution(monkeypatch, plan, execute)
-
-    status = control._execute_plan(
-        lambda: plan,
-        controls=controls,
-        workspace=plan.workspace,
-        mode="execute",
-        scope_id="pending",
-        entrypoint="emrys-run",
-        report_enabled=False,
-    )
-
-    assert status == 0
-    assert receipt_path.read_bytes() == receipt_bytes
-    records = [
-        json.loads(line)
-        for line in next(controls.root.rglob("*.jsonl")).read_text().splitlines()
-    ]
-    assert [record["event"] for record in records] == expected_events
-    captured = capsys.readouterr()
-    assert captured.out == ""
-    assert captured.err.count("Application logging degraded") == 1
-    assert "Evidence: " + str(receipt_path) in captured.err
 
 
 @pytest.mark.parametrize(
@@ -5275,9 +5163,7 @@ def test_standalone_report_logging_boundary(
         for path in tmp_path.rglob("*")
     }
     if via_watch:
-        for stream in (control.sys.stdin, control.sys.stdout, control.sys.stderr):
-            monkeypatch.setattr(stream, "isatty", lambda: True)
-        monkeypatch.setenv("TERM", "xterm")
+        _watch_terminal(monkeypatch)
 
         def forbidden(*args, **kwargs):
             pytest.fail("Watch report preview must not confirm, submit, or open logs")
@@ -5318,7 +5204,7 @@ def test_standalone_report_logging_boundary(
         assert "Application logging unavailable for reporting" in rendered
     elif generated:
         assert len(log_paths) == 1
-        records = [json.loads(line) for line in log_paths[0].read_text().splitlines()]
+        records = _read_log(log_paths[0])
         assert [record["event"] for record in records] == [
             "attempt_opened",
             "reporting_started",
@@ -5363,9 +5249,7 @@ def test_watch_report_handoff_freshly_refuses_ineligible_run_without_writes(
     first = _plan(tmp_path)
     _failed_run(first)
     project = first.run.analysis.source_path
-    for stream in (control.sys.stdin, control.sys.stdout, control.sys.stderr):
-        monkeypatch.setattr(stream, "isatty", lambda: True)
-    monkeypatch.setenv("TERM", "xterm")
+    _watch_terminal(monkeypatch)
 
     def forbidden(*args, **kwargs):
         pytest.fail("Ineligible report preview must not confirm, open logs, or submit")
@@ -6081,16 +5965,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     real_build = control.build_attempt_plan
     real_ops = control.lifecycle.default_lifecycle_ops
     fail_after_rule: list[str | None] = ["construct_canonical_BAM"]
-    monkeypatch.setattr(
-        control.doctor,
-        "diagnose_project",
-        lambda *_args, **_kwargs: readiness,
-    )
-    monkeypatch.setattr(
-        control.capacity,
-        "observe_allocation",
-        lambda: resources.allocation,
-    )
+    _bind_readiness(monkeypatch, readiness, resources)
     monkeypatch.setattr(
         control,
         "build_attempt_plan",
