@@ -57,9 +57,11 @@ Automatic refresh reads scheduler diagnostics and a bounded stream tail;
 scientific evidence is dated and reverified explicitly. Operational actions
 remain in the ordinary CLI. This first view does not retire the standalone
 dashboard or establish institutional replacement acceptance.
-Interactive Run-selected `--watch --actions` can leave the view to review the
-ordinary resume plan. It invokes the same Control preview and confirmation
-after terminal cleanup; no worker executes an operation or owns recovery.
+Interactive `--watch --actions` leaves the view for an ordinary CLI operation:
+`p` reviews a selected Run's resume plan and confirmation, `o` previews its
+report, and `s` previews stopping a selected request. Run handoffs use the
+default profile. All handlers run after terminal cleanup with fresh admission;
+report/stop previews do not execute, and no worker owns an operation or recovery.
 
 The old CSU-oriented `dashboard.py` preview remains until a replacement is
 implemented and validated under `DASHBOARD-RETIRE-01`. `emrys inspect` stays the
@@ -68,7 +70,7 @@ dashboard. The replacement must preserve scheduler discovery and historical
 accounting fallback, exact job identity, stream ownership, regular-file and
 symlink checks, and sanitized display of raw streams.
 
-The current stream cache resets after truncation but does not protect against
+The legacy dashboard's stream cache resets after truncation but does not protect against
 inode rotation. `tail -F` does not remove terminal-control sequences from logs.
 Validate missing and replaced streams as well as the normal display before
 retiring the owner, tests, Make target, and documented callers together.

@@ -10,6 +10,7 @@ import stat
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -555,57 +556,121 @@ def test_installed_emrys_commands_are_isolated_and_cwd_independent(
 
 
 @pytest.mark.parametrize("enabled", (False, True))
-def test_watch_resume_handoff_uses_exact_selection_and_ordinary_parser_defaults(
-    tmp_path, monkeypatch, enabled
+@pytest.mark.parametrize("command", ("resume", "report", "stop"))
+def test_watch_handoff_uses_exact_selection_and_fresh_ordinary_parser_defaults(
+    tmp_path, monkeypatch, enabled, command
 ):
     from emrys.orchestration.run_coordinator import control
 
     project = tmp_path / "project.yaml"
     run_root = tmp_path / "runs" / ("run-" + "a" * 64)
+    request_root = tmp_path / "logs" / ("submission-" + "b" * 32)
     calls = []
+    configurations = []
+    in_view = True
     for stream in (sys.stdin, sys.stdout, sys.stderr):
         monkeypatch.setattr(stream, "isatty", lambda: True)
     monkeypatch.setenv("TERM", "xterm")
     parser = argparse.ArgumentParser()
     control.configure_inspect_parser(parser)
     arguments = parser.parse_args(
-        ["human-name", "--watch", *(["--actions"] if enabled else [])]
+        [
+            *(
+                ["--submission", "retained-name"]
+                if command == "stop"
+                else ["human-name"]
+            ),
+            "--watch",
+            *(["--actions"] if enabled else []),
+        ]
     )
     # Inspection options and mutable caller input must not become execution flags.
     arguments.execute = True
     monkeypatch.setattr(control, "_resolve_run_argument", lambda _: (project, run_root))
+    monkeypatch.setattr(
+        control.onboarding, "project_definition_path", lambda _: project
+    )
+    monkeypatch.setattr(
+        control.slurm_submission,
+        "select_submission_request",
+        lambda selected_project, selected: SimpleNamespace(request_root=request_root),
+    )
+    original_configure = getattr(control, f"configure_{command}_parser")
 
-    def resume(selected):
+    def configure(parser):
+        assert not in_view
+        configurations.append(command)
+        original_configure(parser)
+
+    def review(selected):
         calls.append(selected)
         assert Path(selected.project) == project
-        assert selected.run == run_root.name
+        if command == "stop":
+            assert selected.submission == str(request_root)
+            assert not hasattr(selected, "run")
+        else:
+            assert selected.run == run_root.name
+            assert selected.profile is None
+        if command == "resume":
+            assert selected.no_report is False
         assert selected.execute is False
-        assert selected.profile is None and selected.no_report is False
         assert selected.log_level is None and selected.log_root is None
         assert not hasattr(selected, "watch") and not hasattr(selected, "actions")
         return 17
 
-    def watch(selected_project, *, run_root, review_resume, **kwargs):
+    def watch(selected_project, *, review_actions, **kwargs):
+        nonlocal in_view
         assert selected_project == project
-        assert run_root.name == "run-" + "a" * 64
-        assert (review_resume is not None) is enabled
+        if command == "stop":
+            assert kwargs["request"].request_root == request_root
+            assert "run_root" not in kwargs
+        else:
+            assert kwargs["run_root"] == run_root
+            assert "request" not in kwargs
+        assert isinstance(review_actions, tuple)
+        expected_keys = (b"s",) if command == "stop" else (b"p", b"o")
+        assert tuple(key for key, _label, _callback in review_actions) == (
+            expected_keys if enabled else ()
+        )
+        assert configurations == [] and calls == []
         arguments.project = tmp_path / "different-project.yaml"
         arguments.run = "different-run"
-        return 0 if review_resume is None else review_resume()
+        arguments.submission = "different-request"
+        in_view = False
+        if not enabled:
+            return 0
+        key = {"resume": b"p", "report": b"o", "stop": b"s"}[command]
+        return next(
+            callback for selected, _label, callback in review_actions if selected == key
+        )()
 
-    monkeypatch.setattr(control, "resume_from_args", resume)
+    monkeypatch.setattr(control, f"configure_{command}_parser", configure)
+    for candidate in ("resume", "report", "stop"):
+        monkeypatch.setattr(
+            control,
+            f"{candidate}_from_args",
+            review if candidate == command else lambda _: pytest.fail("wrong action"),
+        )
     monkeypatch.setattr(control._inspection_presentation, "watch", watch)
     before = relative_snapshot(tmp_path)
     assert control.inspect_from_args(arguments) == (17 if enabled else 0)
     assert len(calls) == int(enabled)
+    assert configurations == ([command] if enabled else [])
     assert relative_snapshot(tmp_path) == before
 
 
 @pytest.mark.parametrize(
-    "options", (("--actions",), ("--watch", "--actions", "--submission", "exact"))
+    ("options", "message"),
+    (
+        (("--actions",), "--actions requires --watch"),
+        (
+            ("run-id", "--watch", "--actions", "--submission", "exact"),
+            "Select a submission or a Run, not both",
+        ),
+    ),
 )
 def test_watch_actions_reject_invalid_selection_before_project_or_run_reads(
-    tmp_path, monkeypatch, capsys, options
+    tmp_path, monkeypatch, capsys, options, message
 ):
     from emrys.orchestration.run_coordinator import control
 
@@ -619,7 +684,7 @@ def test_watch_actions_reject_invalid_selection_before_project_or_run_reads(
     control.configure_inspect_parser(parser)
     before = relative_snapshot(tmp_path)
     assert control.inspect_from_args(parser.parse_args(options)) == CLI_USAGE_ERROR
-    assert "--actions requires Run-only --watch" in capsys.readouterr().err
+    assert message in capsys.readouterr().err
     assert relative_snapshot(tmp_path) == before
 
 
@@ -647,7 +712,7 @@ def test_watch_actions_reject_noninteractive_mode_without_observation_or_executi
         )
         == CLI_USAGE_ERROR
     )
-    assert "interactive Run-only watch" in capsys.readouterr().err
+    assert "interactive watch" in capsys.readouterr().err
     assert relative_snapshot(tmp_path) == before
 
 
