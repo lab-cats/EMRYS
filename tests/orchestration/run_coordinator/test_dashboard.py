@@ -1759,18 +1759,18 @@ def test_dashboard_drawing_and_rendering_support_wide_compact_and_small_screens(
     )
     dashboard.safe_add(screen, -1, 0, "outside")
     dashboard.safe_add(screen, 0, screen.width, "outside")
-    dashboard.render_overview(screen, JOB_ID, _slurm(), identity, model, 30, 0, 0)
-    dashboard.render_details(screen, JOB_ID, _slurm(), identity, model, 30, 0, 0)
+    for selected in ("overview", "details"):
+        dashboard.render(screen, JOB_ID, _slurm(), identity, model, 30, 0, selected, 0)
     dashboard.render(screen, JOB_ID, _slurm(), identity, model, 30, 0, "details", 0)
     dashboard.render(screen, JOB_ID, _slurm(), identity, model, 30, 0, "overview", 0)
     assert screen.writes
     assert screen.refreshes == 4
 
     compact = _FakeScreen(height=30, width=100)
-    dashboard.render_overview(compact, JOB_ID, _slurm(), identity, model, 30, 0, 0)
-    dashboard.render_details(compact, JOB_ID, _slurm(), identity, model, 30, 0, 0)
+    for selected in ("overview", "details"):
+        dashboard.render(compact, JOB_ID, _slurm(), identity, model, 30, 0, selected, 0)
     small = _FakeScreen(height=10, width=60)
-    dashboard.render_overview(small, JOB_ID, _slurm(), identity, model, 30, 0, 0)
+    dashboard.render(small, JOB_ID, _slurm(), identity, model, 30, 0, "overview", 0)
     assert any("too small" in write[2] for write in small.writes)
 
 
