@@ -408,6 +408,14 @@ Submit the study once, reviewing the summary and answering `y`:
 emrys run
 ```
 
+Review the requested hosts, exclusivity, CPUs, time, and memory, followed by
+workflow and stage limits. A CPU reservation can exceed the workflow's CPU
+ceiling; it does not guarantee that every CPU will be used. Site-default memory
+and scheduler-selected hosts remain unknown until allocation. Doctor shows the
+same requested placement when it plans compute qualification. If the requested
+settings are unsuitable, decline submission and select an appropriate profile;
+do not lower a stage allowance merely to make a plan pass.
+
 Keep the printed job number and log paths. From the same Project on the head
 node, check progress with:
 

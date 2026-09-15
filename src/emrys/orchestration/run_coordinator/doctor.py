@@ -1163,6 +1163,9 @@ def _print_result(result: DoctorResult, detail: LogLevel) -> None:
 def _print_repair_plan(plan: _RepairPlan) -> None:
     _stderr(f"EMRYS Doctor {plan.operation} plan", style="bold blue")
     _stderr(f"  Project: {plan.project.source_path}")
+    if plan.execution is not None:
+        for line in plan.execution.submission_summary():
+            _stderr(f"  {line}")
     actions = []
     if plan.storage is not None:
         _stderr(f"  Direct storage receipt: {plan.storage.receipt_path}")

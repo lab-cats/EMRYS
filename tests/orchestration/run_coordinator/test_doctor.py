@@ -638,6 +638,11 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
     project = _project(tmp_path)
     result = _result(project, ready=False)
     plan = _plan(project)
+    from emrys.orchestration.run_coordinator.execution_profile import (
+        load_execution_profile,
+    )
+
+    plan = replace(plan, execution=load_execution_profile())
     if not runtime_required:
         plan = replace(plan, runtime=None)
     monkeypatch.setattr(doctor, "diagnose_project", lambda *_args, **_kwargs: result)
@@ -678,6 +683,8 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
     assert output.out == ""
     if repair:
         assert f"EMRYS Doctor {operation} plan" in output.err
+        assert "Execution placement: Direct" in output.err
+        assert "Workflow CPU ceiling: 4;" in output.err
         assert f"Apply this {operation} plan? [y/N]" in output.err
         assert f"{operation.capitalize()} preview complete" in output.err
         assert (
@@ -1646,6 +1653,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     output = capsys.readouterr().err
     log_path, events = _repair_log(project)
     assert "EMRYS Doctor verification plan" in output
+    assert all(line in output for line in execution.submission_summary())
     assert "Checking/updating native tools and R" not in output
     if failure is None:
         assert [

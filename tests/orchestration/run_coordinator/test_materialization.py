@@ -3441,6 +3441,7 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
             selected_profile,
             resource_policy=first.resources.policy,
         )
+        assert f"Workflow CPU ceiling: {workflow_cores};" in captured.err
         assert inherited_profile.binding_sha256 != selected_profile.binding_sha256
         assert any(
             f"{control.slurm_submission.PROFILE_SHA256_ENV}="
@@ -3525,7 +3526,21 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
     normal = projections["normal"]
     assert "Execution placement: Slurm" in normal
     assert "Analysis: 'sensitivity'" in normal
-    assert "Allocation: 4 CPUs, 01:00:00, site-default memory" in normal
+    assert (
+        "Allocation request: 4 CPUs, 01:00:00; memory: site default (unknown)" in normal
+    )
+    assert (
+        "Node request: 1; requested host(s): scheduler-selected; exact host unknown"
+        in normal
+    )
+    assert "Exclusive allocation: not requested; site policy applies" in normal
+    assert (
+        "Workflow CPU ceiling: 4; memory ceiling: allocation capacity (unknown until execution)"
+        in normal
+    )
+    assert "Stage thread caps:" in normal
+    assert "Repeated-stage concurrency caps:" in normal
+    assert "Stage memory:" in normal
     assert "Dry-run complete; no scheduler or workspace state was written." in normal
     assert "Execution profile:" not in normal
     assert "Scheduler stdout:" not in normal
@@ -3560,6 +3575,7 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     if execute:
         (workspace / "runs" / arguments.from_processing_run).mkdir(parents=True)
     submissions = []
+    admitted = load_execution_profile(config_path=Path(arguments.profile))
 
     def submit(plan):
         submissions.append(plan)
@@ -3605,6 +3621,11 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     assert " --execute --no-report" in submissions[0].batch_script
     assert list((workspace / "logs").iterdir()) == []
     assert "Execution placement: Slurm" in captured.err
+    assert all(line in captured.err for line in admitted.submission_summary())
+    if not execute:
+        assert captured.err.index(
+            admitted.submission_summary()[-1]
+        ) < captured.err.index("Execute this plan?")
     assert ("Execute this plan? [y/N]" in captured.err) is not execute
 
 
@@ -3974,7 +3995,7 @@ def test_standalone_report_logging_boundary(
     run_root = workspace / "runs" / ("run-" + "a" * 64)
     run_root.mkdir(parents=True)
     project.write_text("report selection anchor\n", encoding="utf-8")
-    if execute_requested:
+    if execute_requested or outcome_status == "planned":
         profile = workspace / "runtime/profiles/default.yaml"
         profile.parent.mkdir(parents=True)
         profile.write_bytes(project_default_profile_bytes())
@@ -4019,12 +4040,21 @@ def test_standalone_report_logging_boundary(
         log_root=None,
     )
     monkeypatch.setattr(reporting_operation, "run_reporting", report)
+    if not execute_requested and outcome_status == "reused":
+        monkeypatch.setattr(
+            control,
+            "_resolve_execution_profile",
+            lambda *_args: pytest.fail(
+                "completed reporting resolved an execution profile"
+            ),
+        )
 
     assert control.report_from_args(arguments) == 0
     generated = execute_requested and outcome_status == "generated"
     assert calls == [execute_requested]
     rendered = capsys.readouterr().err
     assert f"Reporting: {outcome_status}" in rendered
+    assert ("Execution placement: Direct" in rendered) is (outcome_status == "planned")
     log_paths = list((workspace / "logs" / "application").rglob("*.jsonl"))
     if logging_fails:
         assert log_paths == []
@@ -4041,8 +4071,38 @@ def test_standalone_report_logging_boundary(
         assert log_paths == []
 
 
+@pytest.mark.parametrize("selection", ("missing", "../unsupported"))
+def test_planned_report_rejects_an_unavailable_or_unsupported_profile_without_writing(
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch, selection: str
+) -> None:
+    project = tmp_path / "project.yaml"
+    project.write_text("report selection anchor\n", encoding="utf-8")
+    run_root = tmp_path / "runs" / ("run-" + "a" * 64)
+    run_root.mkdir(parents=True)
+    monkeypatch.setattr(
+        reporting_operation,
+        "run_reporting",
+        lambda _root, *, execute: reporting_operation.ReportingOperationOutcome(
+            status="planned", verified_report_locations=()
+        ),
+    )
+    parser = argparse.ArgumentParser()
+    control.configure_report_parser(parser)
+    arguments = parser.parse_args(
+        [run_root.name, "--project", str(project), "--profile", selection]
+    )
+    before = sorted(tmp_path.rglob("*"))
+    assert control.report_from_args(arguments) == 2
+    output = capsys.readouterr()
+    assert "emrys: error:" in output.err
+    assert "Reporting: planned" not in output.err
+    assert "Execution placement:" not in output.err
+    assert sorted(tmp_path.rglob("*")) == before
+
+
+@pytest.mark.parametrize("profile_selection", ("default", "named", "absolute"))
 def test_standalone_report_uses_project_slurm_placement(
-    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch, profile_selection: str
 ) -> None:
     parser = argparse.ArgumentParser()
     control.configure_report_parser(parser)
@@ -4053,6 +4113,13 @@ def test_standalone_report_uses_project_slurm_placement(
     run_root.mkdir(parents=True)
     profile = tmp_path / "runtime/profiles/default.yaml"
     profile.parent.mkdir(parents=True)
+    if profile_selection != "default":
+        profile.write_bytes(project_default_profile_bytes())
+        profile = (
+            profile.with_name("compute.yaml")
+            if profile_selection == "named"
+            else tmp_path / "external-profile.yaml"
+        )
     profile.write_bytes(project_default_profile_bytes("viking"))
     calls: list[bool] = []
     submissions = []
@@ -4070,10 +4137,20 @@ def test_standalone_report_uses_project_slurm_placement(
         scheduler, "submit", lambda plan: submissions.append(plan) or "812345"
     )
     argv = [run_root.name, "--project", str(project)]
+    if profile_selection != "default":
+        argv.extend(
+            ["--profile", "compute" if profile_selection == "named" else str(profile)]
+        )
     assert control.report_from_args(parser.parse_args(argv)) == 0
     assert calls == [False] and submissions == []
     assert not (tmp_path / "logs").exists()
-    capsys.readouterr()
+    preview = capsys.readouterr().err
+    assert "Execution placement: Slurm" in preview
+    assert (
+        "Allocation request: 4 CPUs, 08:00:00; memory: site default (unknown)"
+        in preview
+    )
+    assert "Workflow CPU ceiling: 4;" in preview
 
     assert control.report_from_args(parser.parse_args([*argv, "--execute"])) == 0
     assert calls == [False] and len(submissions) == 1
