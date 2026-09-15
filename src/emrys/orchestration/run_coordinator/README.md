@@ -73,6 +73,9 @@ authority for Run status and recovery; expert commands alone do not replace the
 dashboard. The replacement must preserve scheduler discovery and historical
 accounting fallback, exact job identity, stream ownership, regular-file and
 symlink checks, and sanitized display of raw streams.
+Legacy `--offline` with explicit job/stream paths makes no scheduler queries
+during selection, snapshot or interactive refresh. It shows scheduler state as
+`UNKNOWN`; raw-stream interpretation remains unverified diagnostic context.
 
 The legacy dashboard's stream cache resets after truncation but does not protect against
 inode rotation. `tail -F` does not remove terminal-control sequences from logs.

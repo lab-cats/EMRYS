@@ -1567,15 +1567,83 @@ def test_dashboard_event_loop_handles_navigation_refresh_and_quit(
     screen = _FakeScreen(keys=keys)
     monkeypatch.setenv("NO_COLOR", "1")
     monkeypatch.setattr(dashboard.curses, "curs_set", lambda _value: None)
-    monkeypatch.setattr(dashboard._scheduler, "query_slurm", lambda *_args: _slurm())
+    queries = []
+    monkeypatch.setattr(
+        dashboard._scheduler,
+        "query_slurm",
+        lambda *args: queries.append(args) or _slurm(),
+    )
     monkeypatch.setattr(dashboard, "render", lambda *_args, **_kwargs: None)
     arguments = SimpleNamespace(
         out="/missing/out",
         err="/missing/err",
         refresh=30,
         job_id=JOB_ID,
+        offline=False,
     )
 
     dashboard.dashboard(screen, arguments)
 
     assert screen.erases == 1
+    assert queries == [(JOB_ID, arguments.out, arguments.err)] * 2
+
+
+@pytest.mark.parametrize("snapshot", [False, True])
+def test_offline_public_modes_read_exact_streams_without_scheduler_queries(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    snapshot: bool,
+) -> None:
+    stdout, stderr = _make_logs(tmp_path / "logs")
+    stdout.write_text(f"\x1b[31mRun ID: {RUN_ID}\x1b[0m\n")
+    before = {path: path.read_bytes() for path in (stdout, stderr)}
+    commands = []
+
+    def stream_command(argv, **_kwargs):
+        commands.append(argv)
+        data = before[Path(argv[-1])]
+        if argv[4:7] == ["stat", "-c", "%s"]:
+            return f"{len(data)}\n".encode()
+        assert argv[4:6] == ["tail", "-c"]
+        return data[int(argv[6]) - 1 :]
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Offline selection, snapshot and refresh must not query Slurm")
+
+    monkeypatch.setattr(dashboard._scheduler, "command_bytes", stream_command)
+    monkeypatch.setattr(dashboard._scheduler, "query_slurm", forbidden)
+    monkeypatch.setattr(dashboard._scheduler, "slurm_job_metadata", forbidden)
+    monkeypatch.setattr(dashboard, "scheduler_candidates", forbidden)
+    monkeypatch.setenv("NO_COLOR", "1")
+    monkeypatch.setattr(dashboard.curses, "curs_set", lambda _value: None)
+    screen = _FakeScreen(keys=[ord("r"), ord("q")])
+    monkeypatch.setattr(
+        dashboard.curses, "wrapper", lambda callback, args: callback(screen, args)
+    )
+    assert (
+        dashboard.main(
+            [
+                str(JOB_ID),
+                "--offline",
+                "--out",
+                str(stdout),
+                "--err",
+                str(stderr),
+                *(["--snapshot"] if snapshot else []),
+            ]
+        )
+        == 0
+    )
+    rendered = (
+        capsys.readouterr().out
+        if snapshot
+        else "\n".join(row[2] for row in screen.writes)
+    )
+    assert "UNKNOWN" in rendered and "\x1b" not in rendered
+    if snapshot:
+        assert f"Run: {RUN_ID}" in rendered
+    else:
+        assert screen.refreshes == 2
+    assert len(commands) == (4 if snapshot else 6)
+    assert {path: path.read_bytes() for path in before} == before
