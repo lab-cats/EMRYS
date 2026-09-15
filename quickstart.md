@@ -123,9 +123,10 @@ emrys doctor --repair
 
 Doctor names the planned actions: **repair and verification** when package-manager
 work is needed, or **verification** when the selected runtime already passes.
-Answer `y` to begin the displayed plan. **Allow roughly
-5–15 minutes for first setup; downloads, compilation and queue waits can make
-it longer.** The progress display names the current stage and shows elapsed
+Answer `y` to begin the displayed plan. **Allow more than ten minutes for setup;
+downloads, compilation and queue waits can extend it considerably.** This is a
+planning allowance, not a completion deadline: verification alone can exceed
+ten minutes. The progress display names the current stage and shows elapsed
 time. Complete installation output is retained at the printed log location.
 For optional detail while setup runs, see
 [watching the installation log](docs/operations/TROUBLESHOOTING.md#watching-doctors-installation-log).
@@ -137,10 +138,18 @@ preparing a missing managed inventory, and checking/updating tools selected by
 a retained inventory. A missing inventory can follow an interrupted setup;
 it does not mean all tools must be installed again. The manager output at
 `package-output.log` records actual package reuse and changes.
+An unchanged retry still checks current files, tools and storage at the required
+boundaries. An interrupted setup may reuse retained packages while completing
+missing work; changed inputs or tools must pass fresh checks. A previous success
+is retained evidence of that attempt, not a promise that the current files pass.
 Doctor then submits the required compute-node checks and confirms that the
 study's storage works across both nodes. Keep
 this command running until it reports `EMRYS is ready.` All of the scheduler
 and storage setup is handled by EMRYS.
+At return, Slurm accounting timing separates submitted-to-start and eligible
+queue waits from allocation wall time when an exact record is available.
+Allocation wall time includes launch and verification overhead; it is not
+scientific compute time. Unavailable timing does not change Doctor's result.
 
 Read Doctor's status words and the accompanying execution requirements:
 

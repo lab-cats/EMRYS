@@ -14,15 +14,15 @@ cluster action, evidence promotion, or product-growth exception.
 
 ## Verified scope and remaining evidence
 
-The combined standard suite passed at
-`cea7b60f1dd4164c8f8e61266f73bccbb2024caa`
-([CI 34943965738](https://github.com/lab-cats/EMRYS/actions/runs/34943965738)):
+The combined standard suite passed for product
+`b0482d6a6db2098ab352ac8b08476b82454a2ce1`
+([CI 34976503453](https://github.com/lab-cats/EMRYS/actions/runs/34976503453)):
 14 jobs succeeded, including all Python 3.14 shards and coverage policy, Python
 3.11 compatibility, public/PTY regressions, and the managed golden path. Four
-configured lanes were skipped. This supersedes earlier slice-local statements
-that their application tests require CI, through the report/stop watch handoffs.
-Later Run-log discovery, invocation counters and offline correction retain
-their separate exact-head checks; a passing ancestor does not verify them.
+configured lanes were skipped. This includes Run-log discovery, invocation
+counters, offline correction and complete dashboard functional parity. It
+supersedes their earlier local-environment notes that application or PTY checks
+still required CI. Later product changes require their own applicable checks.
 
 The covered journey includes donor science/reporting and borrower runtime
 selection/verification, actual Snakemake startup, real-backend/native-fixture
@@ -38,7 +38,7 @@ real-Slurm lane nor an institutional walkthrough.
 | Historical unexplained failures | CV-12/E01, CV-21/E06 and CV-10/E09: recover original diagnostics or a discriminating reproduction; newer successful checks cannot identify those causes. |
 | Postentry Task retry | CV-10: qualify the production writer boundary, then implement one complete history/abort/retry contract across all consumers. Existing blocked receipts remain ineligible. |
 | Doctor performance | CV-05/26 and the optimization campaign: obtain invocation counters, comparable setup/retry observations and isolated queue attribution; preserve fresh admission checks until an equivalent replacement has measured benefit. |
-| Optional interface and retirement | CV-23 keeps cleanup Deferred; CV-24 retains explicit new-analysis selection in the CLI; `DASHBOARD-RETIRE-01` owns standalone discovery/accounting parity and complete caller/name retirement. |
+| Optional interface and retirement | CV-23 keeps cleanup Deferred; CV-24 retains explicit new-analysis selection in the CLI; `DASHBOARD-RETIRE-01` owns institutional replacement validation and coordinated standalone entry-point/caller/name retirement. |
 
 All card acceptance below remains authoritative. No institutional execution,
 active-installation update, destructive cleanup, report visual review or
@@ -64,7 +64,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-13](#cv-13-expected-setup-versus-blockers) | P1 | Verification pending | Distinguish expected initial setup needs from failures. |
 | [CV-14](#cv-14-project-directory-layout) | P1 | Verification pending | Give Projects a clear home outside the source checkout. |
 | [CV-15](#cv-15-cross-node-active-run-status) | P1 | Open | Show remote active state without implying proven corruption. |
-| [CV-16](#cv-16-monitoring-dashboard) | P1 | Open | Restore an integrated view of scheduler, progress, and logs. |
+| [CV-16](#cv-16-monitoring-dashboard) | P1 | Verification pending | Restore an integrated view of scheduler, progress, and logs. |
 | [CV-17](#cv-17-project-creation-progress) | P1 | Verification pending | Explain lengthy input validation during Project creation. |
 | [CV-18](#cv-18-safe-emrys-stop) | P1 | Open | Provide an operator stop action with safe recovery semantics. |
 | [CV-19](#cv-19-verification-and-repair-vocabulary) | P1 | Verification pending | Name verification-only work accurately. |
@@ -72,8 +72,8 @@ no supplied terminal scientific/reporting evidence.
 | [CV-21](#cv-21-reporting-in-progress-and-visibility) | P1 | Open | Distinguish unfinished report publication from failed reporting. |
 | [CV-22](#cv-22-complete-submission-preview) | P1 | Verification pending | Show effective placement and computational limits before approval. |
 | [CV-23](#cv-23-safe-project-or-artifact-cleanup) | P2 | Deferred | Decide and scope safe cleanup of unused owned state. |
-| [CV-24](#cv-24-run-center-actions) | P2 | Open | Explore a dashboard that invokes supported CLI operations. |
-| [CV-25](#cv-25-log-discovery-and-readable-output) | P2 | Open | Find the correct logs without memorizing scheduler IDs. |
+| [CV-24](#cv-24-run-center-actions) | P2 | Completed | Explore a dashboard that invokes supported CLI operations. |
+| [CV-25](#cv-25-log-discovery-and-readable-output) | P2 | Completed | Find the correct logs without memorizing scheduler IDs. |
 | [CV-26](#cv-26-repeated-doctor-input-reads) | P2 | Open | Measure and remove redundant reads within Doctor. |
 | [CV-27](#cv-27-terminal-only-report-access) | P3 | Verification pending | Retrieve portable reports from a terminal-based workflow. |
 
@@ -285,9 +285,30 @@ No new probe, cache parser, receipt or skipped admission is introduced.
 
 Focused public fixtures preserve no-write preview, retained cache/inventory
 bytes, manager-free verification, identical manager commands and existing
-failure/interrupt behavior. Application execution requires hosted CI. CV-26's
-phase timing separates observed work stages from submission-to-return waiting;
-isolated queue attribution and first-setup/retry measurements remain open.
+failure/interrupt behavior; these passed the earlier combined standard CI.
+
+**Queue attribution and setup guidance:** One optional terminal accounting query
+extends the existing strict scheduler observer. The existing submission callback
+now carries the response-recorded job ID and cluster caller-completely, without
+rereading a transcript or changing submission success. Exact ownership, root ID,
+cluster, planned name and maintenance streams must match. Ordered UTC dates,
+zero restarts/suspension and consistent elapsed time support submitted-to-start
+wait, eligible queue wait and allocation wall time. Incomplete or ambiguous
+accounting stays unavailable. This is diagnostic timing, not scientific compute
+time, qualification or recovery proof. Lookup has a separate bounded phase;
+process-control exceptions during submission skip it. Optional observation
+failures preserve the controlling outcome. The existing timing collector buffers
+the result until maintenance outcome, in the same log.
+
+Quickstart and runbook now cover unchanged retry, interrupted inventory creation,
+changed tools/inputs and a planning allowance exceeding ten minutes rather than
+a promised setup deadline. Actual package reuse remains the package manager's
+report, and every required fresh check remains. Existing owners plus standard
+library date parsing close the timing capability gap without a parallel parser,
+new product file, command, dependency, persistent schema or mutable recovery state.
+Focused timing/transport checks pass; final public Doctor execution and combined
+standard CI remain required for this slice. Site setup/retry duration measurement
+and performance changes remain under CV-26.
 
 ### CV-06 Actual-data onboarding
 
@@ -687,7 +708,7 @@ dashboard's useful discovery/accounting behavior and sanitized stream handling;
 cover missing/rotated/truncated logs and reconnecting. Retire the old dashboard
 only after the replacement is validated under `DASHBOARD-RETIRE-01`.
 **Owners/dependencies:** Run coordinator presentation and existing dashboard;
-CV-15/20/21/25. Action execution is the separate CV-24 proposal.
+CV-15/20/21/25. The selected CLI handoffs are completed under CV-24.
 
 **Implemented evidence projection:** CV-15 supplies Task evidence counts;
 CV-25 adds admitted terminal outcomes and exact retained logs to the same
@@ -718,10 +739,10 @@ persistent schema or recovery authority. The installed Rich view adapts the
 shared layout instead of implementing another pipeline/sample presenter.
 Legacy and installed public fixtures cover discovery/accounting/ownership,
 full-trace reconnect, changed streams, resource identity/usage, layouts,
-plain/color output, navigation and fresh action handoff. Focused local checks
-and final hosted CI are required before software acceptance. Institutional
-terminal/NFS and operator walkthrough remain CV-16 acceptance; the original
-entry point and generated legacy names remain under `DASHBOARD-RETIRE-01`.
+plain/color output, navigation and fresh action handoff. These software checks
+passed the final combined standard CI above. CV-16 is Verification pending for
+institutional terminal/NFS and operator walkthrough evidence. The original entry
+point and generated legacy names remain under `DASHBOARD-RETIRE-01`.
 
 **Legacy offline correction:** The existing `--offline` selector already avoided
 scheduler discovery, but snapshot and interactive refresh still queried Slurm.
@@ -730,7 +751,8 @@ scheduler query; online observation keeps its exact prior arguments. Existing
 regular-file/ownership admission and sanitized stream display remain in use.
 The full standalone suite passes 182 local tests, including both public offline
 modes and unchanged online refresh queries. This preserves the supported legacy
-surface without claiming complete replacement or institutional acceptance.
+surface without establishing institutional acceptance or retiring the standalone
+entry point.
 
 ### CV-17 Project creation progress
 
@@ -1002,8 +1024,8 @@ This reuses scientific owner doubles and real reporting owners without another
 scientific journey. Full integration passed the combined standard CI after
 the test reader adopted the controlled Python argv owner. It covers producer
 publication boundaries, not arbitrary mid-write timing, institutional filesystem
-visibility or the cause of E06. The later Run-log discovery slice adds separate
-association assertions to this same journey and requires its own CI result.
+visibility or the cause of E06. The later Run-log discovery association assertions
+in this same journey also passed the final combined standard CI above.
 
 ### CV-22 Complete submission preview
 
@@ -1103,10 +1125,10 @@ scientific admission runs on compute; a concurrent resume can still consume an
 unnecessary allocation. Public owner fixtures cover exact selections, fresh
 profile/request refusal, declined direct/Slurm resume, and report/stop no-write
 previews. Terminal cases preserve teardown before one callback under stalled
-reads and restoration failure. Pure presentation tests and static checks pass;
-application/PTY execution passed the combined standard CI above. Complete
-dashboard replacement remains separate work. This slice does not establish
-institutional monitoring/action acceptance or retire the old dashboard.
+reads and restoration failure. Presentation, application and PTY cases passed
+the final combined standard CI above. CV-24 is Completed for the selected hosted
+software interface. Institutional monitoring/action use remains under CV-16;
+standalone retirement remains under `DASHBOARD-RETIRE-01`.
 
 **New-analysis interface disposition:** Keep launch in
 `emrys run --project PROJECT --analysis NAME`. Project admission selects an
@@ -1167,10 +1189,10 @@ deduplication keep the selected request's streams distinct.
 Start publication precedes stream opening; derived paths establish neither
 existence nor liveness. Current tail bytes remain unverified diagnostics under
 the existing ownership/stability checks. Missing or damaged starts supply no
-derived path. Focused presentation tests cover these cases and no-I/O projection;
-actual lifecycle/public cases require hosted CI. Institutional discovery,
-standalone/offline replacement and interpretation of native liveness remain
-separate acceptance.
+derived path. Presentation, lifecycle and public fixtures passed the final
+combined standard CI above. Institutional discovery and interpretation of native
+liveness remain under CV-16/15; coordinated standalone retirement remains under
+`DASHBOARD-RETIRE-01`.
 
 **Run-selected application discovery:** Explicit Run inspection and watch now
 share a bounded search of one default, environment-selected or explicit
@@ -1187,9 +1209,11 @@ malformed evidence remains unknown; independently rechecked matches may survive,
 but namespace drift clears them. Explicit watch refresh rebuilds sources and
 removes revoked associations while retaining independent Task streams; timer
 refresh never repeats discovery. Associations do not establish unique ownership,
-native liveness, completion or recovery. Focused reader/presentation checks pass;
-real writer/public-handler and historical resume/report cases require CI. Full
-standalone/offline replacement and institutional acceptance remain separate.
+native liveness, completion or recovery. Reader, presentation, real writer/public
+handler and historical resume/report cases passed the final combined standard CI
+above. CV-25 is Completed for hosted software log discovery and presentation.
+Institutional monitoring remains under CV-16; legacy entry-point/name retirement
+remains under `DASHBOARD-RETIRE-01`.
 
 ### CV-26 Repeated Doctor input reads
 

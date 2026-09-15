@@ -1738,6 +1738,238 @@ def test_request_resource_dates_precede_followup_identity_queries(monkeypatch) -
     assert result["usage_observed_at"] == dates[1]
 
 
+def _timing_accounting_row(**changes):
+    fields = {
+        "JobIDRaw": "700123",
+        "UID": str(os.getuid()),
+        "State": "COMPLETED",
+        "Cluster": "alpha",
+        "StdOut": "/tmp/a%j.out",
+        "StdErr": "/tmp/a%j.err",
+        "ExitCode": "0:0",
+        "JobName": "emrys-local-pilot",
+        "Submit": "2026-09-15T12:00:00Z",
+        "Eligible": "2026-09-15T12:01:00Z",
+        "Start": "2026-09-15T12:03:00Z",
+        "End": "2026-09-15T12:05:00Z",
+        "ElapsedRaw": "120",
+        "Restarts": "0",
+        "Suspended": "00:00:00",
+    }
+    fields.update(changes)
+    return ("|".join(fields.values()) + "\n").encode()
+
+
+@pytest.mark.parametrize("cluster", [None, "alpha"])
+@pytest.mark.parametrize("resources", [False, True])
+@pytest.mark.parametrize("state", ["COMPLETED", "FAILED", "CANCELLED by 123"])
+def test_accounting_timing_is_one_exact_utc_observation(
+    monkeypatch, cluster, resources, state
+):
+    scheduler = slurm_submission.scheduler_observation
+    calls = []
+    monkeypatch.setenv("TZ", "America/New_York")
+    monkeypatch.setenv("SLURM_TIME_FORMAT", "relative")
+    monkeypatch.setenv("SLURM_CLUSTERS", "other")
+    monkeypatch.setenv("SACCT_FORMAT", "JobID")
+
+    def command(argv, timeout=10, environment=None):
+        calls.append(argv)
+        assert argv[:8] == [
+            "sacct",
+            "--local" if cluster is None else "--clusters=alpha",
+            "--duplicates",
+            "-X",
+            "-n",
+            "-P",
+            "-j",
+            "700123",
+        ]
+        assert timeout == 10
+        assert environment["TZ"] == "UTC0"
+        assert environment["SLURM_TIME_FORMAT"] == "%Y-%m-%dT%H:%M:%SZ"
+        assert "SLURM_CLUSTERS" not in environment and "SACCT_FORMAT" not in environment
+        reply = _timing_accounting_row(State=state)
+        if resources:
+            assert ",Elapsed,Timelimit,AllocCPUS,Partition,NodeList," in argv[-1]
+            reply = reply.replace(
+                b"|2026-09-15T12:00:00Z",
+                b"|00:02:00|01:00:00|2|compute|node|2026-09-15T12:00:00Z",
+            )
+        assert argv[-1].endswith(
+            ",Submit,Eligible,Start,End,ElapsedRaw,Restarts,Suspended"
+        )
+        return reply
+
+    monkeypatch.setattr(scheduler, "command_bytes", command)
+    result = scheduler.observe_job(
+        "700123",
+        "/tmp/a%j.out",
+        "/tmp/a%j.err",
+        cluster,
+        job_name="emrys-local-pilot",
+        include_timing=True,
+        include_resources=resources,
+    )
+    assert len(calls) == 1 and result["terminal"] and result["source"] == "sacct"
+    assert result["state"] == state.split(" by ")[0]
+    assert result["timing_observed_at"].endswith("+00:00")
+    assert result["timing"] == {
+        "submit_utc": "2026-09-15T12:00:00Z",
+        "eligible_utc": "2026-09-15T12:01:00Z",
+        "start_utc": "2026-09-15T12:03:00Z",
+        "end_utc": "2026-09-15T12:05:00Z",
+        "elapsed_seconds": 120,
+        "restarts": 0,
+        "suspended_seconds": 0,
+        "submission_to_start_seconds": 180,
+        "eligible_to_start_seconds": 120,
+        "allocation_wall_seconds": 120,
+        "diagnostic": None,
+    }
+    assert os.environ["TZ"] == "America/New_York"
+    assert os.environ["SLURM_TIME_FORMAT"] == "relative"
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"Submit": "Unknown"},
+        {"Eligible": "None"},
+        {"Start": ""},
+        {"End": "Unknown"},
+        {"Eligible": "2026-09-15T12:04:00Z"},
+        {"Submit": "2026-09-15T12:02:00Z"},
+        {"End": "2026-09-15T12:01:00Z"},
+        {"Start": "2026-02-30T12:03:00Z"},
+        {"Submit": "2026-09-15T12:00:00+02:00"},
+        {"ElapsedRaw": "119"},
+        {"ElapsedRaw": "-1"},
+        {"ElapsedRaw": "9" * 100},
+        {"Restarts": "Unknown"},
+        {"Restarts": "1"},
+        {"Suspended": "00:00:30", "ElapsedRaw": "90"},
+        {"Suspended": "1-01:00:00"},
+        {"Suspended": "Unknown"},
+        {"Suspended": "24:00:00"},
+        {"Suspended": "00:60:00"},
+    ],
+)
+def test_uncertain_accounting_timing_preserves_root_and_raw_dates_not_intervals(
+    monkeypatch, changes
+):
+    scheduler = slurm_submission.scheduler_observation
+    calls = []
+
+    def command(argv, **_kwargs):
+        calls.append(argv)
+        return _timing_accounting_row(**changes)
+
+    monkeypatch.setattr(scheduler, "command_bytes", command)
+    result = scheduler.observe_job(
+        "700123",
+        "/tmp/a%j.out",
+        "/tmp/a%j.err",
+        "alpha",
+        job_name="emrys-local-pilot",
+        include_timing=True,
+    )
+    assert len(calls) == 1 and result["source"] == "sacct"
+    assert result["state"] == changes.get("State", "COMPLETED")
+    timing = result["timing"]
+    assert timing["diagnostic"] and result["diagnostic"] is None
+    assert "submission_to_start_seconds" not in timing
+    assert "eligible_to_start_seconds" not in timing
+    assert "allocation_wall_seconds" not in timing
+    if "Submit" not in changes:
+        assert timing["submit_utc"] == "2026-09-15T12:00:00Z"
+    if changes.get("Suspended") == "00:00:30":
+        assert timing["suspended_seconds"] == 30 and timing["elapsed_seconds"] == 90
+    if changes.get("Restarts") == "1":
+        assert timing["restarts"] == 1 and "Requeued" in timing["diagnostic"]
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "id",
+        "uid",
+        "name",
+        "stdout",
+        "stderr",
+        "cluster",
+        "array",
+        "step",
+        "duplicate",
+        "empty",
+        "missing",
+        "oversized",
+        "truncated",
+        "unicode",
+        "running",
+        "suspended",
+        "requeued",
+    ],
+)
+def test_accounting_timing_cannot_bypass_exact_root_identity(monkeypatch, defect):
+    scheduler = slurm_submission.scheduler_observation
+    changes = {
+        "id": {"JobIDRaw": "700124"},
+        "uid": {"UID": str(os.getuid() + 1)},
+        "name": {"JobName": "other"},
+        "stdout": {"StdOut": "/tmp/other%j.out"},
+        "stderr": {"StdErr": "/tmp/other%j.err"},
+        "cluster": {"Cluster": "other"},
+        "array": {"JobIDRaw": "700123_1"},
+        "step": {"JobIDRaw": "700123.batch"},
+        "running": {"State": "RUNNING"},
+        "suspended": {"State": "SUSPENDED"},
+        "requeued": {"State": "REQUEUED"},
+    }
+    reply = _timing_accounting_row(**changes.get(defect, {}))
+    reply = {
+        "duplicate": reply + reply,
+        "empty": b"",
+        "missing": None,
+        "oversized": b"x" * 65537,
+        "truncated": reply.rsplit(b"|", 1)[0],
+        "unicode": b"\xff",
+    }.get(defect, reply)
+    calls = []
+
+    def command(argv, **_kwargs):
+        calls.append(argv)
+        return reply
+
+    monkeypatch.setattr(scheduler, "command_bytes", command)
+    result = scheduler.observe_job(
+        "700123",
+        "/tmp/a%j.out",
+        "/tmp/a%j.err",
+        "alpha",
+        job_name="emrys-local-pilot",
+        include_timing=True,
+    )
+    assert len(calls) == 1 and result["state"] == "UNKNOWN"
+    assert "timing" not in result and result["diagnostic"]
+
+
+@pytest.mark.parametrize(
+    "job,cluster", [("0", None), ("700123", "all"), ("700123", "a,b")]
+)
+def test_accounting_timing_refuses_nonexact_request_without_rpc(
+    monkeypatch, job, cluster
+):
+    scheduler = slurm_submission.scheduler_observation
+    monkeypatch.setattr(
+        scheduler, "command_bytes", lambda *_a, **_kw: pytest.fail("RPC")
+    )
+    result = scheduler.observe_job(
+        job, "/tmp/a%j.out", "/tmp/a%j.err", cluster, include_timing=True
+    )
+    assert result["state"] == "UNKNOWN" and "timing" not in result
+
+
 @pytest.mark.parametrize("accepted", (False, True))
 @pytest.mark.parametrize("waited", (False, True))
 def test_recorded_scheduler_early_stdin_close_preserves_rejection_and_job_identity(
@@ -1772,7 +2004,7 @@ def test_recorded_scheduler_early_stdin_close_preserves_rejection_and_job_identi
         slurm_submission.submit(
             submission,
             **{"wait_record" if waited else "record_path": transcript},
-            on_submitted=received.append,
+            on_submitted=lambda job_id, cluster: received.append((job_id, cluster)),
         )
     assert "sbatch exited with 23" in str(caught.value)
     assert "invalid account" in str(caught.value)
@@ -1781,7 +2013,7 @@ def test_recorded_scheduler_early_stdin_close_preserves_rejection_and_job_identi
         if accepted
         else "job ID unconfirmed" in str(caught.value)
     )
-    assert received == (["614999"] if accepted else [])
+    assert received == ([("614999", "fixture")] if accepted else [])
     assert transcript.read_bytes() == stdout
     assert transcript.with_suffix(".stderr").read_bytes() == stderr
     assert marker.read_bytes() == b"once\n"
@@ -2129,7 +2361,7 @@ def test_waited_submission_announces_job_before_wait_and_retains_diagnostics(
         sbatch=str(scheduler),
     )
     transcript = tmp_path / "submission.stdout"
-    received: list[str] = []
+    received: list[tuple[str, str | None]] = []
     synchronized_stderr_sizes = []
     real_fsync = slurm_submission.os.fsync
 
@@ -2163,8 +2395,8 @@ def test_waited_submission_announces_job_before_wait_and_retains_diagnostics(
 
         monkeypatch.setattr(slurm_submission.subprocess.Popen, "wait", fail_wait_once)
 
-    def announce(job_id: str) -> None:
-        received.append(job_id)
+    def announce(job_id: str, cluster: str | None) -> None:
+        received.append((job_id, cluster))
         assert transcript.read_text() == "614999;fixture\n"
         assert "Slurm job 614999" in capsys.readouterr().err
         if outcome == "interrupted":
@@ -2211,7 +2443,9 @@ def test_waited_submission_announces_job_before_wait_and_retains_diagnostics(
                     str(submission.stderr_pattern).replace("%j", "614999") in diagnostic
                 )
     assert submitted.read_bytes() == b"submit\n"
-    assert received == ([] if outcome in {"rejected", "record_failure"} else ["614999"])
+    assert received == (
+        [] if outcome in {"rejected", "record_failure"} else [("614999", "fixture")]
+    )
     expected_stdout = "" if outcome == "rejected" else "614999;fixture\n"
     assert transcript.read_text() == expected_stdout + (
         "extra output\n" if outcome in {"ambiguous", "wait_failure"} else ""

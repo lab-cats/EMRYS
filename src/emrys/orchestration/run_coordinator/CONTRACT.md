@@ -133,6 +133,22 @@ event. A failed timing write cannot disrupt package-output handling. The final
 invocation total is console-only after that log
 closes. Read-only diagnosis and delegated compute create no second log.
 Slurm submission-to-return wait is not an isolated queue-time measurement.
+After that timer ends, an ordinary return or submission error may trigger one
+bounded, optional `sacct` query through the existing scheduler observer. The
+recorded submission callback carries job ID and optional cluster to the collector;
+no response-recorded identity means no query. Numeric ownership, exact root ID,
+cluster, planned name, unique record and both maintenance streams must match.
+The query requests UTC dates using `TZ`/`SLURM_TIME_FORMAT`; unsupported accounting
+fields, unknown dates and inconsistent values remain unavailable diagnostics.
+Only a terminal, non-restarted, non-suspended record with ordered dates and
+consistent elapsed time supplies submitted-to-start wait, eligible queue wait
+and allocation wall time. Admitted dates/counters remain separate from those
+derived intervals. Wall time includes launch overhead, not just computation.
+The collector buffers `doctor_scheduler_timing` in the same maintenance log at
+the outcome boundary above, and its normal console summary escapes limitations.
+Accounting lookup has its own phase outside submission-to-return waiting; no
+polling, runtime probe, new log, receipt or admission authority is introduced.
+Process-control exceptions during submission skip the lookup entirely.
 Ordinary observation failures leave work, receipts and exits controlling;
 process-control exceptions retain cancellation semantics. These timings do not
 measure read bytes, process-tree memory or scientific performance.
