@@ -478,6 +478,32 @@ def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
     assert "borrower/runtime/managed" not in upload["with"]["path"]
 
 
+def test_managed_native_containment_requires_the_provisioned_tool() -> None:
+    job = _workflow_jobs()["managed-golden-path"]
+    step = _named_step(
+        job, "Verify Task descendant containment with the selected samtools"
+    )
+    names = [item.get("name") for item in job["steps"]]
+    assert (
+        names.index("Seal the completed donor and verify a separate borrower")
+        < names.index(step["name"])
+        < names.index("Require the clean clone to remain unchanged")
+    )
+    command = step["run"]
+    assert 'test -x "${EMRYS_TEST_SAMTOOLS}"' in command
+    assert '/project/runtime/managed/.pixi/envs/native/bin/samtools"' in command
+    assert "test_task.py -k subreaper" in command
+    assert '--junitxml="${EMRYS_TEST_NATIVE_EVIDENCE}/tests.xml"' in command
+    assert 'startswith("test_task_subreaper_real_canonical_")' in command
+    assert "assert len(cases) == 4" in command
+    assert 'for tag in ("skipped", "failure", "error")' in command
+    assert "uv sync" not in command and "pixi install" not in command
+    assert (
+        "emrys-managed-golden/native-containment"
+        in _named_step(job, "Upload managed golden-path evidence")["with"]["path"]
+    )
+
+
 def _doctor_measurement_source() -> str:
     prepare = _named_step(
         _workflow_jobs()["managed-golden-path"],

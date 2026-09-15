@@ -916,9 +916,20 @@ def test_catchable_task_termination_kills_worker_group_and_preserves_attempt(
     assert not Path(built.definition["outputs"][0]["working_path"]).parent.exists()
 
 
-def _task_native_signal_child(root: Path, fault: str) -> None:
+def _task_native_signal_child(
+    root: Path, fault: str, *, subreaper: bool = False
+) -> None:
     """Run a real separately owned native group inside an isolated Task process."""
     built = _task_fixture(root)
+    descendants = task._TaskChildren() if subreaper else None
+    defaults = _fixed_ops()
+    if descendants is not None:
+        runners = task.default_task_ops(descendants=descendants)
+        defaults = replace(
+            defaults,
+            run_command=runners.run_command,
+            run_semantic_all_pass=runners.run_semantic_all_pass,
+        )
     native_record = root / "native.json"
     native_script = """
 import json, os, signal, sys, time
@@ -1021,7 +1032,7 @@ time.sleep(60)
     error = None
     try:
         try:
-            _execute_task(built.plan, ops=_fixed_ops())
+            _execute_task(built.plan, ops=defaults)
         except task.TaskBoundaryError as exc:
             error = str(exc)
         assert error is not None and process is not None
@@ -1112,6 +1123,620 @@ def test_native_signal_ownership_survives_spawn_and_cleanup(
             lifecycle._signal_process_group(
                 _record(native_record)["pid"], signal.SIGKILL
             )
+
+
+def _subreaper_native_script() -> str:
+    return """
+import ctypes, json, os, signal, sys, time
+from pathlib import Path
+root, mode = Path(sys.argv[1]), sys.argv[2]
+def record():
+    fd = os.open(root / 'pids.jsonl', os.O_CREAT | os.O_APPEND | os.O_WRONLY, 0o600)
+    os.write(fd, (json.dumps({'pid': os.getpid()}) + '\\n').encode())
+    os.close(fd)
+record()
+if mode not in ('cancel', 'worker-loss') and not mode.startswith('fault-'):
+    if os.fork():
+        while not (root / 'ready').exists():
+            time.sleep(0.005)
+        os._exit(7 if mode == 'failed-leader' else 0)
+    os.setsid()
+    record()
+    if mode in ('double-fork', 'nested-subreaper'):
+        if mode == 'nested-subreaper':
+            assert ctypes.CDLL(None).prctl(36, 1, 0, 0, 0) == 0
+        if os.fork():
+            if mode == 'double-fork':
+                os._exit(0)
+            signal.signal(signal.SIGTERM, signal.SIG_IGN)
+            while True:
+                time.sleep(1)
+        record()
+for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):
+    signal.signal(signum, signal.SIG_IGN)
+if mode == 'closed-streams':
+    os.close(1)
+    os.close(2)
+(root / 'partial').write_text('unfinished native output\\n')
+(root / 'ready').write_text('ready\\n')
+while True:
+    time.sleep(1)
+"""
+
+
+def _task_subreaper_child(root: Path, mode: str) -> None:
+    """A fresh supervisor, never the pytest process or its other children."""
+    descendants = task._TaskChildren()
+    runner = task.default_task_ops(descendants=descendants).run_command
+    command = (
+        sys.executable,
+        "-c",
+        _subreaper_native_script(),
+        str(root),
+        mode,
+    )
+    with (
+        (root / "native.stdout").open("wb") as stdout,
+        (root / "native.stderr").open("wb") as stderr,
+    ):
+        try:
+            result = runner(command, root, os.environ, stdout.fileno(), stderr.fileno())
+            outcome = {"exit_code": result.exit_code}
+        except task.TaskBoundaryError as exc:
+            outcome = {"error": str(exc)}
+    assert descendants.empty
+    with pytest.raises(ChildProcessError):
+        os.waitpid(-1, os.WNOHANG | 0x40000000)
+    (root / "closed.json").write_text(json.dumps(outcome))
+
+
+def _subreaper_evidence_root(tmp_path: Path, name: str) -> Path:
+    retained = os.environ.get("EMRYS_TEST_NATIVE_EVIDENCE")
+    root = Path(retained) / name if retained else tmp_path / name
+    root.mkdir(parents=True)
+    return root
+
+
+def _subreaper_child_command(helper: str, root: Path, *arguments: str) -> list[str]:
+    return [
+        sys.executable,
+        "-c",
+        "import sys; from pathlib import Path; "
+        "from tests.orchestration.run_coordinator.test_task import "
+        f"{helper}; {helper}(Path(sys.argv[1]), *sys.argv[2:])",
+        str(root),
+        *arguments,
+    ]
+
+
+def _kill_subreaper_fixture(root: Path) -> None:
+    if not (root / "pids.jsonl").exists() or (root / "closed.json").exists():
+        return
+    for line in (root / "pids.jsonl").read_text().splitlines():
+        pid = json.loads(line)["pid"]
+        try:
+            descriptor = os.pidfd_open(pid)
+        except ProcessLookupError:
+            continue
+        try:
+            if str(root).encode() in Path(f"/proc/{pid}/cmdline").read_bytes().split(
+                b"\0"
+            ):
+                signal.pidfd_send_signal(descriptor, signal.SIGKILL)
+        except (ProcessLookupError, FileNotFoundError):
+            pass
+        finally:
+            os.close(descriptor)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux child-subreaper proof")
+@pytest.mark.parametrize(
+    "mode",
+    (
+        "detached",
+        "double-fork",
+        "nested-subreaper",
+        "closed-streams",
+        "failed-leader",
+        "cancel",
+        "worker-loss",
+    ),
+)
+def test_task_subreaper_owns_detached_children(tmp_path: Path, mode: str) -> None:
+    root = _subreaper_evidence_root(tmp_path, mode)
+    with (
+        subprocess.Popen(
+            [sys.executable, "-c", "import time; time.sleep(60)"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ) as sibling,
+        (root / "supervisor.stdout").open("wb") as stdout,
+        (root / "supervisor.stderr").open("wb") as stderr,
+    ):
+        process = subprocess.Popen(
+            _subreaper_child_command("_task_subreaper_child", root, mode),
+            cwd=REPO_ROOT,
+            stdout=stdout,
+            stderr=stderr,
+        )
+        try:
+            deadline = time.monotonic() + 15
+            while not (root / "ready").exists():
+                assert process.poll() is None, (root / "supervisor.stderr").read_text()
+                assert time.monotonic() < deadline
+                time.sleep(0.01)
+            if mode in ("cancel", "worker-loss"):
+                os.kill(
+                    process.pid,
+                    signal.SIGKILL if mode == "worker-loss" else signal.SIGTERM,
+                )
+            process.wait(timeout=15)
+            assert sibling.poll() is None
+            if mode == "worker-loss":
+                assert process.returncode == -signal.SIGKILL
+                assert not (root / "closed.json").exists()
+                for line in (root / "pids.jsonl").read_text().splitlines():
+                    os.kill(json.loads(line)["pid"], 0)
+            else:
+                assert process.returncode == 0, (root / "supervisor.stderr").read_text()
+                outcome = _record(root / "closed.json")
+                if mode == "cancel":
+                    assert "interrupted by signal 15" in outcome["error"]
+                else:
+                    assert outcome["exit_code"] == (7 if mode == "failed-leader" else 0)
+                for line in (root / "pids.jsonl").read_text().splitlines():
+                    with pytest.raises(ProcessLookupError):
+                        os.kill(json.loads(line)["pid"], 0)
+            assert (root / "partial").read_text() == "unfinished native output\n"
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=5)
+            _kill_subreaper_fixture(root)
+            sibling.terminate()
+            sibling.wait(timeout=5)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux child-subreaper proof")
+@pytest.mark.parametrize(
+    "fault", ("post-spawn", "closed-streams", "ambiguous-cleanup-signal")
+)
+def test_task_subreaper_cancellation_preserves_task_publication(
+    tmp_path: Path, fault: str
+) -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; from pathlib import Path; "
+            "from tests.orchestration.run_coordinator.test_task import "
+            "_task_native_signal_child; "
+            "_task_native_signal_child(Path(sys.argv[1]), sys.argv[2], subreaper=True)",
+            str(tmp_path),
+            fault,
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert completed.returncode == 0, (completed.stdout, completed.stderr)
+
+
+def _task_subreaper_fault_child(root: Path, fault: str) -> None:
+    built = _task_fixture(root)
+    descendants = task._TaskChildren()
+    runners = task.default_task_ops(descendants=descendants)
+    built.definition["producer_argv"] = list(
+        controlled_python_argv(
+            sys.executable, "-c", _subreaper_native_script(), str(root), "fault-native"
+        )
+    )
+    _rewrite_task(built)
+    original_spawn = subprocess.Popen
+    original_check = descendants._check_owner
+    process = None
+
+    def spawn(*args: Any, **kwargs: Any) -> subprocess.Popen[bytes]:
+        nonlocal process
+        process = original_spawn(*args, **kwargs)
+        deadline = time.monotonic() + 10
+        while not (root / "ready").exists():
+            assert process.poll() is None and time.monotonic() < deadline
+            time.sleep(0.01)
+        if fault == "spawn-oserror":
+            raise OSError(errno.EIO, "injected post-fork launch fault")
+        if fault == "spawn-unexpected":
+            raise RuntimeError("injected post-fork launch fault")
+        return process
+
+    def check() -> None:
+        original_check()
+        if descendants.process is not None:
+            raise OSError("injected child observation fault")
+
+    subprocess.Popen = spawn
+    if fault == "observation":
+        descendants._check_owner = check
+    try:
+        with pytest.raises(task.TaskBoundaryError) as failure:
+            _execute_task(
+                built.plan,
+                ops=replace(
+                    _fixed_ops(),
+                    run_command=runners.run_command,
+                    run_semantic_all_pass=runners.run_semantic_all_pass,
+                ),
+            )
+        assert task._process_group_ambiguity(failure.value) is not None
+        assert process is not None and process.poll() is None
+        assert not descendants.empty and not built.plan.verified_task_path.exists()
+        assert Path(built.definition["outputs"][0]["working_path"]).parent.exists()
+        assert Path(built.definition["publication"]["locks"][0]).exists()
+        assert (root / "partial").exists()
+        (root / "blocked.json").write_text(json.dumps({"error": str(failure.value)}))
+    finally:
+        subprocess.Popen = original_spawn
+        descendants._check_owner = original_check
+        if process is not None and process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux child-subreaper proof")
+@pytest.mark.parametrize("fault", ("spawn-oserror", "spawn-unexpected", "observation"))
+def test_task_subreaper_faults_preserve_live_writer_state(
+    tmp_path: Path, fault: str
+) -> None:
+    root = _subreaper_evidence_root(tmp_path, fault)
+    completed = subprocess.run(
+        _subreaper_child_command("_task_subreaper_fault_child", root, fault),
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert completed.returncode == 0, (completed.stdout, completed.stderr)
+    assert (root / "blocked.json").is_file()
+
+
+def _subreaper_real_samtools() -> Path:
+    selected = os.environ.get("EMRYS_TEST_SAMTOOLS")
+    if selected is None:
+        pytest.skip("Real native proof requires explicit EMRYS_TEST_SAMTOOLS")
+    path = Path(selected)
+    assert path.is_absolute() and path.is_file() and os.access(path, os.X_OK)
+    return path.resolve()
+
+
+def _task_subreaper_real_child(root: Path, mode: str, threads: str) -> None:
+    samtools = _subreaper_real_samtools()
+    descendants = task._TaskChildren()
+    runner = task.default_task_ops(descendants=descendants).run_command
+    source = root / "input.sam"
+    script = REPO_ROOT / "src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh"
+    for phase in ("sort", "reuse") if mode == "success" else ("sort",):
+        work = root / phase / "work"
+        output = root / phase / "output"
+        work.mkdir(parents=True)
+        output.mkdir()
+        argv = (
+            "/bin/bash",
+            str(script),
+            "--sample-id",
+            "sample",
+            "--input-alignment",
+            str(source),
+            "--output-dir",
+            str(output),
+            "--threads",
+            threads,
+            "--samtools-bin",
+            str(samtools),
+        )
+        with (
+            (root / f"{phase}.stdout").open("wb") as stdout,
+            (root / f"{phase}.stderr").open("wb") as stderr,
+        ):
+            try:
+                result = runner(
+                    argv,
+                    root,
+                    {**os.environ, "EMRYS_TASK_WORK_DIR": str(work)},
+                    stdout.fileno(),
+                    stderr.fileno(),
+                )
+            except task.TaskBoundaryError as exc:
+                assert mode == "cancel" and "interrupted by signal 15" in str(exc)
+                assert descendants.empty
+                (root / "closed.json").write_text(
+                    json.dumps(
+                        {
+                            "error": str(exc),
+                            "outputs": sorted(
+                                str(p.relative_to(root))
+                                for p in (root / "sort").rglob("*")
+                                if p.is_file()
+                            ),
+                        }
+                    )
+                )
+                return
+        assert result.exit_code == 0 and descendants.empty
+        bam = output / "sample.sorted.bam"
+        assert bam.stat().st_size > 0
+        assert (output / "sample.sorted.bam.bai").stat().st_size > 0
+        if phase == "reuse":
+            assert bam.stat().st_ino == source.stat().st_ino
+        source = bam
+    (root / "closed.json").write_text(json.dumps({"success": True}))
+
+
+def _prepare_subreaper_sam(root: Path, samtools: Path) -> None:
+    with (root / "input.sam").open("w") as stream:
+        stream.write("@HD\tVN:1.6\tSO:unsorted\n@SQ\tSN:chr1\tLN:100\n")
+        for index in range(32768):
+            stream.write(
+                f"read{index}\t0\tchr1\t{90 - index % 90}\t60\t8M\t*\t0\t0\tACGTACGT\tIIIIIIII\n"
+            )
+    version = subprocess.run(
+        [str(samtools), "--version"], check=True, capture_output=True, text=True
+    )
+    (root / "samtools-version.txt").write_text(version.stdout)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux real native proof")
+@pytest.mark.parametrize("threads", (1, 2))
+def test_task_subreaper_real_canonical_success(tmp_path: Path, threads: int) -> None:
+    samtools = _subreaper_real_samtools()
+    root = _subreaper_evidence_root(tmp_path, f"real-success-{threads}")
+    _prepare_subreaper_sam(root, samtools)
+    completed = subprocess.run(
+        _subreaper_child_command(
+            "_task_subreaper_real_child", root, "success", str(threads)
+        ),
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert completed.returncode == 0, (completed.stdout, completed.stderr)
+    assert _record(root / "closed.json") == {"success": True}
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux real native proof")
+@pytest.mark.parametrize("threads", (1, 2))
+def test_task_subreaper_real_canonical_cancellation(
+    tmp_path: Path, threads: int
+) -> None:
+    samtools = _subreaper_real_samtools()
+    root = _subreaper_evidence_root(tmp_path, f"real-cancel-{threads}")
+    _prepare_subreaper_sam(root, samtools)
+    with (
+        (root / "supervisor.stdout").open("wb") as stdout,
+        (root / "supervisor.stderr").open("wb") as stderr,
+    ):
+        process = subprocess.Popen(
+            _subreaper_child_command(
+                "_task_subreaper_real_child", root, "cancel", str(threads)
+            ),
+            cwd=REPO_ROOT,
+            stdout=stdout,
+            stderr=stderr,
+        )
+        stopped_pid = None
+        stopped_descriptor = None
+        try:
+            deadline = time.monotonic() + 15
+            while stopped_pid is None:
+                assert process.poll() is None, (root / "supervisor.stderr").read_text()
+                assert time.monotonic() < deadline, "No live samtools sort observed"
+                pending = [process.pid]
+                while pending and stopped_pid is None:
+                    pid = pending.pop()
+                    try:
+                        pending.extend(
+                            int(child)
+                            for child in Path(f"/proc/{pid}/task/{pid}/children")
+                            .read_text()
+                            .split()
+                        )
+                        descriptor = os.pidfd_open(pid)
+                    except (ProcessLookupError, FileNotFoundError):
+                        continue
+                    try:
+                        executable = Path(f"/proc/{pid}/exe").resolve(strict=True)
+                        argv = Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
+                        if (
+                            executable == samtools
+                            and len(argv) > 1
+                            and argv[1] == b"sort"
+                        ):
+                            signal.pidfd_send_signal(descriptor, signal.SIGSTOP)
+                            stopped_pid = pid
+                            stopped_descriptor = descriptor
+                            (root / "observed-samtools.json").write_text(
+                                json.dumps(
+                                    {
+                                        "pid": pid,
+                                        "exe": str(executable),
+                                        "argv": [arg.decode() for arg in argv if arg],
+                                    }
+                                )
+                            )
+                    except (ProcessLookupError, FileNotFoundError):
+                        pass
+                    finally:
+                        if descriptor != stopped_descriptor:
+                            os.close(descriptor)
+                time.sleep(0.001)
+            os.kill(process.pid, signal.SIGTERM)
+            process.wait(timeout=15)
+            assert process.returncode == 0, (root / "supervisor.stderr").read_text()
+            assert "interrupted by signal 15" in _record(root / "closed.json")["error"]
+            with pytest.raises(ProcessLookupError):
+                os.kill(stopped_pid, 0)
+            assert not (root / "sort/output/sample.sorted.bam").exists()
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=5)
+            if stopped_descriptor is not None:
+                try:
+                    signal.pidfd_send_signal(stopped_descriptor, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                finally:
+                    os.close(stopped_descriptor)
+
+
+@pytest.mark.parametrize("observation", ("closed", "live", "busy", "leader-live"))
+def test_task_subreaper_requires_positive_wait_evidence(monkeypatch, observation):
+    descendants = task._TaskChildren.__new__(task._TaskChildren)
+    descendants.process = Mock(
+        pid=12345, returncode=None if observation == "leader-live" else 0
+    )
+    descendants.empty = False
+    descendants.children = Mock()
+    descendants.children.read_text.return_value = ""
+    descendants._check_owner = lambda: None
+    waits = []
+
+    def waitpid(pid, flags):
+        waits.append((pid, flags))
+        assert len(waits) <= 64, "reaping exceeded one bounded poll"
+        if observation == "closed":
+            raise ChildProcessError
+        return (12346, 0) if observation == "busy" else (0, 0)
+
+    monkeypatch.setattr(task.os, "waitpid", waitpid)
+    monkeypatch.setattr(
+        task.os, "kill", lambda *_args: pytest.fail("observation sent a signal")
+    )
+    ops = descendants.process_ops(
+        replace(
+            lifecycle.DEFAULT_PROCESS_GROUP_OPS, poll=lambda child: child.returncode
+        )
+    )
+    assert ops.poll(descendants.process) == descendants.process.returncode
+    assert descendants.empty == (observation == "closed")
+    assert ops.group_exists(12345) == (observation != "closed")
+    assert all(pid == -1 and flags & 0x40000000 for pid, flags in waits)
+    assert bool(waits) == (observation != "leader-live")
+
+
+@pytest.mark.parametrize("fault", ("wait", "read", "malformed", "owner", "signal"))
+def test_task_subreaper_observation_faults_cannot_authorize_cleanup(monkeypatch, fault):
+    descendants = task._TaskChildren.__new__(task._TaskChildren)
+    descendants.process = Mock(pid=12345, returncode=0)
+    descendants.empty = False
+    descendants.children = Mock()
+    descendants.children.read_text.return_value = (
+        "invalid" if fault == "malformed" else "12346"
+    )
+    descendants._check_owner = lambda: None
+    if fault == "owner":
+        descendants._check_owner = Mock(
+            side_effect=task.TaskProcessGroupAmbiguity("ownership changed")
+        )
+    if fault == "read":
+        descendants.children.read_text.side_effect = OSError("procfs unavailable")
+    monkeypatch.setattr(
+        task.os,
+        "waitpid",
+        Mock(side_effect=OSError("wait failed"))
+        if fault == "wait"
+        else lambda *_a: (0, 0),
+    )
+    sent = []
+
+    def signal_child(pid, signum):
+        sent.append((pid, signum))
+        raise PermissionError("child signal refused")
+
+    monkeypatch.setattr(task.os, "kill", signal_child)
+    ops = descendants.process_ops(
+        replace(
+            lifecycle.DEFAULT_PROCESS_GROUP_OPS, poll=lambda child: child.returncode
+        )
+    )
+    with pytest.raises(lifecycle.ProcessGroupAmbiguity):
+        lifecycle.quiesce_process_group(12345, descendants.process, ops)
+    assert not descendants.empty
+    assert sent == ([(12346, signal.SIGTERM)] if fault == "signal" else [])
+
+
+@pytest.mark.parametrize("children", ("live", "waitable"))
+def test_task_subreaper_refuses_existing_children_without_reaping(
+    monkeypatch, children
+):
+    descendants = task._TaskChildren.__new__(task._TaskChildren)
+    descendants.children = Mock()
+    descendants.children.read_text.return_value = "12346"
+    descendants._check_owner = lambda: None
+    marker = object()
+    descendants.process = marker
+    monkeypatch.setattr(
+        task.os, "waitid", lambda *_args: None if children == "live" else object()
+    )
+    monkeypatch.setattr(
+        task.os, "waitpid", lambda *_args: pytest.fail("reaped unrelated child")
+    )
+    monkeypatch.setattr(
+        task.os, "kill", lambda *_args: pytest.fail("signaled unrelated child")
+    )
+    with pytest.raises(task.TaskProcessGroupAmbiguity, match="preexisting child"):
+        descendants.prepare()
+    assert descendants.process is marker
+
+
+@pytest.mark.parametrize("ownership", ("pid", "thread", "sigchld"))
+def test_task_subreaper_refuses_changed_reaping_owner(monkeypatch, ownership):
+    descendants = task._TaskChildren.__new__(task._TaskChildren)
+    descendants.owner = os.getpid() + (ownership == "pid")
+    descendants.children = Mock()
+    descendants.children.parent.parent.iterdir.return_value = [
+        Path(str(os.getpid()))
+    ] + ([Path(str(os.getpid() + 1))] if ownership == "thread" else [])
+    monkeypatch.setattr(
+        task.signal,
+        "getsignal",
+        lambda _signal: signal.SIG_IGN if ownership == "sigchld" else signal.SIG_DFL,
+    )
+    monkeypatch.setattr(
+        task.os, "waitid", lambda *_args: pytest.fail("waited after ownership changed")
+    )
+    with pytest.raises(task.TaskProcessGroupAmbiguity, match="ownership changed"):
+        descendants.prepare()
+    descendants.children.read_text.assert_not_called()
+
+
+def test_task_subreaper_keeps_kill_escalation_for_later_adoptions(monkeypatch):
+    descendants = task._TaskChildren.__new__(task._TaskChildren)
+    descendants.process = Mock(pid=12345, returncode=0)
+    descendants.empty = False
+    descendants.children = Mock()
+    descendants.children.read_text.side_effect = ["12346", "12347", "12348"]
+    descendants._check_owner = lambda: None
+    monkeypatch.setattr(task.os, "waitpid", lambda *_args: (0, 0))
+    sent = []
+    monkeypatch.setattr(task.os, "kill", lambda pid, signum: sent.append((pid, signum)))
+    monkeypatch.setattr(
+        task.os, "killpg", lambda *_args: pytest.fail("stale process group signal")
+    )
+    ops = descendants.process_ops(
+        replace(
+            lifecycle.DEFAULT_PROCESS_GROUP_OPS, poll=lambda child: child.returncode
+        )
+    )
+    ops.signal_group(12345, signal.SIGKILL)
+    ops.signal_group(12345, signal.SIGTERM)
+    ops.poll(descendants.process)
+    assert sent == [(pid, signal.SIGKILL) for pid in (12346, 12347, 12348)]
+    assert not descendants.empty
 
 
 def _task_signal_publication_child(root: Path, fault: str) -> None:

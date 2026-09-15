@@ -593,6 +593,53 @@ all consume the same history. Existing blocked receipts remain ineligible.
 No speculative protocol versions, new mutable state or retry action are added
 by this design decision. CV-10 stays Open for this prerequisite and E09 evidence.
 
+**Selected descendant-containment prerequisite:** Use the existing fresh Linux
+Task worker as a [child subreaper](https://man7.org/linux/man-pages/man2/PR_SET_CHILD_SUBREAPER.2const.html).
+Linux reparents orphaned descendants to that
+worker even after a child creates a separate session. The existing native runner,
+signal controller and bounded TERM/KILL cleanup remain the owners; a dedicated
+worker supplies the stronger child observation and signaling effects. Inline
+callers and non-Linux workers retain their existing process-group boundary.
+
+The standard library can call the kernel's established `prctl` interface without
+a dependency. A cgroup would require a delegation contract absent from the
+current launcher; a PID namespace would require separately admitted namespace
+capability. A standalone init tool that exits with the main child does not by
+itself prove that all adopted children have stopped. This fills the capability
+gap in the existing Task owner without another supervisor executable, workflow
+rule, policy schema or recovery action.
+
+The stronger scope requires exclusive child-reaping ownership and normal
+SIGCHLD handling and the required `prctl`/`waitid` capabilities. It retains the
+main child's actual outcome and establishes `ECHILD` using a
+[wait that includes Linux clone children](https://man7.org/linux/man-pages/man2/waitpid.2.html).
+A zero nonblocking wait
+result means children remain. `/proc` child lists select signal targets; neither
+an empty list nor EOF establishes closure. The same bounded cleanup deadline
+covers adoption and escalation. Observation, signaling or reaping uncertainty
+preserves the existing ambiguity boundary.
+
+Linux process fixtures and the unchanged canonical BAM producer with the
+already-provisioned samtools are required before accepting this prerequisite.
+The managed golden path retains their exact-revision results and tiny outputs.
+The claim covers kernel descendant processes, not work delegated to a preexisting
+external service or remote process. These checks do not explain E09 or supply
+site cancellation evidence. Worker loss still supplies no positive closure:
+native work/locks may remain with a
+blocked receipt even when the outer Run lock can be released. No existing
+blocked Task becomes retryable, and history/abort/retry changes remain gated on
+this prerequisite's verified result.
+
+The implementation adds 162 net product lines in the existing Task owner.
+Fifteen focused unit protections and the existing lightweight runner checks
+pass locally, as do lint, format, documentation and dependency checks. Seventeen
+Linux/native cases await hosted execution. The four real samtools cases cover
+one/two-thread success, canonical hard-link reuse and cancellation after an
+observed real `sort` is deliberately stopped. That last fixture establishes
+bounded stopped-native escalation; it does not claim ordinary unpaused site
+cancellation or that output bytes existed before the stop. CI rejects skipped
+real-tool cases and retains the actual output roster.
+
 ### CV-11 Resource profile compatibility
 
 **Finding:** The selected smaller-memory node could not satisfy the retained

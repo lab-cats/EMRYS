@@ -853,6 +853,36 @@ jobs:
           }, indent=2) + "\n")
           PY
 
+      - name: Verify Task descendant containment with the selected samtools
+        shell: bash
+        run: |
+          set -euo pipefail
+          clean_clone="${{ steps.golden.outputs.clone }}"
+          evidence_root="${{ steps.golden.outputs.evidence }}"
+          export EMRYS_TEST_SAMTOOLS="${evidence_root}/project/runtime/managed/.pixi/envs/native/bin/samtools"
+          export EMRYS_TEST_NATIVE_EVIDENCE="${evidence_root}/native-containment"
+          test -x "${EMRYS_TEST_SAMTOOLS}"
+          install -d -m 0700 "${EMRYS_TEST_NATIVE_EVIDENCE}"
+          cd "${clean_clone}"
+          PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider \
+            tests/orchestration/run_coordinator/test_task.py -k subreaper \
+            --junitxml="${EMRYS_TEST_NATIVE_EVIDENCE}/tests.xml" \
+            2>&1 | tee "${evidence_root}/native-containment.log"
+          .venv/bin/python -I - "${EMRYS_TEST_NATIVE_EVIDENCE}/tests.xml" <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          cases = [
+              case for case in ET.parse(sys.argv[1]).iter("testcase")
+              if case.attrib["name"].startswith("test_task_subreaper_real_canonical_")
+          ]
+          assert len(cases) == 4, [case.attrib for case in cases]
+          assert all(
+              case.find(tag) is None
+              for case in cases for tag in ("skipped", "failure", "error")
+          ), "All four real samtools containment cases must execute successfully"
+          PY
+
       - name: Require the clean clone to remain unchanged
         if: always() && steps.golden.outcome == 'success'
         shell: bash
@@ -875,6 +905,7 @@ jobs:
             ${{ runner.temp }}/emrys-managed-golden/*.sha256
             ${{ runner.temp }}/emrys-managed-golden/doctor-*-measurement.json
             ${{ runner.temp }}/emrys-managed-golden/borrower-verification.json
+            ${{ runner.temp }}/emrys-managed-golden/native-containment
             ${{ runner.temp }}/emrys-managed-golden/project/project.yaml
             ${{ runner.temp }}/emrys-managed-golden/project/samples.tsv
             ${{ runner.temp }}/emrys-managed-golden/project/partitions.tsv
