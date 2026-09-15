@@ -3397,12 +3397,9 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
         status="blocked",
         blockers=["forged future binding"],
         message="forged future binding",
-        task_start_records=[
-            item
-            for item in second_outcome.receipt["task_start_records"]
-            if item["record"] == retried.start_reference
-        ],
+        task_start_records=second_outcome.receipt["task_start_records"],
     )
+    orchestration_contracts.validate_record("attempt-receipt", forged)
     first_outcome.receipt_path.write_bytes(
         orchestration_contracts.canonical_json_bytes(forged)
     )
