@@ -676,6 +676,15 @@ legacy standalone/offline parity or institutional terminal/NFS behavior.
 Those gaps and complete replacement validation remain under this card and
 `DASHBOARD-RETIRE-01`; no old dashboard surface or evidence is retired.
 
+**Legacy offline correction:** The existing `--offline` selector already avoided
+scheduler discovery, but snapshot and interactive refresh still queried Slurm.
+Both now share one selected-state owner: offline stays `UNKNOWN` and makes no
+scheduler query; online observation keeps its exact prior arguments. Existing
+regular-file/ownership admission and sanitized stream display remain in use.
+The full standalone suite passes 182 local tests, including both public offline
+modes and unchanged online refresh queries. This preserves the supported legacy
+surface without claiming complete replacement or institutional acceptance.
+
 ### CV-17 Project creation progress
 
 **Finding:** Actual-data initialization silently read large inputs for minutes

@@ -2274,6 +2274,16 @@ def snapshot(job_id, slurm, identity, model):
         print(line[0] if isinstance(line, tuple) else line)
 
 
+def selected_scheduler_state(args):
+    if args.offline:
+        return {
+            "state": "UNKNOWN",
+            "terminal": False,
+            "reason": "Offline; scheduler not queried",
+        }
+    return _scheduler.query_slurm(args.job_id, args.out, args.err)
+
+
 def dashboard(screen, args):
     try:
         curses.curs_set(0)
@@ -2313,7 +2323,7 @@ def dashboard(screen, args):
                 work_scroll = 0
                 active_signature = new_signature
             if refresh_slurm:
-                slurm = _scheduler.query_slurm(args.job_id, args.out, args.err)
+                slurm = selected_scheduler_state(args)
             last_sync = now
             force = False
         render(
@@ -2403,7 +2413,7 @@ def main(argv=None):
         err_cache.sync()
         snapshot(
             args.job_id,
-            _scheduler.query_slurm(args.job_id, args.out, args.err),
+            selected_scheduler_state(args),
             parse_identity(out_cache.text()),
             parse_workflow(err_cache.text()),
         )

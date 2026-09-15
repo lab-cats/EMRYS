@@ -557,6 +557,9 @@ duplicate accounting records, and selected stream paths; uncertainty appears
 as `UNKNOWN`. Its log interpretation does not replace current Run inspection
 or establish which retained request owns a reused job ID. Use `emrys inspect`
 and exact Slurm accounting/streams for status and completion.
+Its existing `--offline` mode requires an explicit job ID and both stream paths.
+Selection, snapshots and interactive refresh make no Slurm queries; scheduler
+state stays `UNKNOWN` while the same sanitized diagnostic streams remain usable.
 
 ## Slurm setup and submission
 
