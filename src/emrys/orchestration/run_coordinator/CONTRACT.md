@@ -302,7 +302,8 @@ requested Run scope for resume/report. It rechecks the closed request and raw
 response, then admits complete JSONL snapshots with matching envelope, opening
 job ID and one second-record token/profile/Project context. Exactly one match
 is required. The reader caps directory enumeration at 128 applications, each
-log at 1 MiB and aggregate log reads at 8 MiB. It rejects changing, noncanonical,
+log at 1 MiB and aggregate log reads at 8 MiB, plus one oversize-detection byte.
+It rejects changing, noncanonical,
 unowned, linked, truncated or ambiguous evidence rather than guessing from time.
 Default roster inspection performs no application-log scan.
 
@@ -311,12 +312,37 @@ Run and profile admission validates the candidate's immutable identity; Run or
 resume additionally admits the exact historical Attempt, its bound Project
 request snapshot, operation, workspace, Slurm ID and selected profile digest.
 The existing byte-reader injection enforces 4 MiB per authority file and
-16 MiB aggregate authority reads. Stable directory/file snapshots are checked
-again before returning. A failed candidate admission retains only the exact
+16 MiB aggregate authority reads, plus one oversize-detection byte. Stable
+directory/file snapshots are checked again before returning. A failed candidate admission retains only the exact
 log and recorded candidate; changed scanned evidence clears the association.
 The result does not admit the Attempt chain, locks, receipts, Tasks or Results,
 and cannot prove workflow entry, liveness, completion or recovery eligibility.
 The public view offers exact Run inspection for that broader evidence.
+
+Explicit `inspect RUN` also searches one application root, selected by the
+shared `--log-root` / `EMRYS_LOG_ROOT` / Project-default precedence. The root-only
+selector neither opens a writer nor changes a request's frozen log root;
+`--log-root` without an explicit Run or with `--submission` is refused before
+queries. An implicit Run picker and the ordinary roster perform no log search.
+Run contracts do not retain custom historical log roots.
+
+The same reader scans `run-pending` and the exact Run scope, sharing aggregate
+limits, stable namespace checks, JSONL preparation parsing and retained
+Run/Attempt admission with request inspection. It admits the selected Run once
+and each distinct historical Attempt once per scan. Run/resume logs bind the
+recorded operation, Project request and Attempt; standalone reporting binds
+only the Run. For Run/resume logs, recorded Slurm context, when present, must
+match the retained Attempt. All matches remain diagnostic associations,
+including multiple logs for one Attempt; no unique writer, newest log or current
+scheduler state follows.
+
+Malformed siblings or exhausted limits leave the scan unknown while preserving
+independently rechecked matches. Failed reads consume their reserved allowance;
+global snapshot drift or unexpected reader failure clears all matches. Missing
+roots and preparation events cannot supply guessed paths. Static and watch
+views share this result; explicit verification refresh rebuilds application
+streams, revokes lost associations and preserves independently admitted Task
+streams. Diagnostic read failure never grants or replaces scientific authority.
 
 `inspect --watch` keeps one selection fixed and uses the same pure Task,
 milestone, reporting and elapsed projection as static inspection. Existing

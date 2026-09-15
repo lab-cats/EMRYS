@@ -40,6 +40,10 @@ from emrys.libraries.application_logging import (
     render_failure_summary,
     resolve_log_controls,
 )
+from emrys.libraries.application_logging.controls import (
+    add_log_root_argument,
+    resolve_log_root,
+)
 from emrys.libraries.source_authority import admit_installed_package
 from emrys.libraries.validation.errors import ValidationError
 from emrys.libraries.validation.inputs import read_bytes
@@ -1395,6 +1399,7 @@ def configure_report_parser(parser: argparse.ArgumentParser) -> None:
 
 def configure_inspect_parser(parser: argparse.ArgumentParser) -> None:
     _add_run_selector(parser)
+    add_log_root_argument(parser)
     parser.add_argument(
         "--watch",
         action="store_true",
@@ -1982,6 +1987,14 @@ def inspect_from_args(
 ) -> int:
     try:
         submission_selector = getattr(arguments, "submission", None)
+        explicit_run = getattr(arguments, "run", None) is not None
+        cli_log_root = getattr(arguments, "log_root", None)
+        if cli_log_root is not None and (
+            submission_selector is not None or not explicit_run
+        ):
+            raise ControlError(
+                "--log-root requires a Run selector and cannot override --submission evidence"
+            )
         if (
             submission_selector is not None
             and getattr(arguments, "run", None) is not None
@@ -2026,10 +2039,19 @@ def inspect_from_args(
                 "Do not submit again solely because a Run is absent; retain the submission records."
             )
             return 0
+        log_root = (
+            None
+            if not explicit_run
+            else resolve_log_root(
+                cli_root=cli_log_root,
+                default_root=_project_path.parent / "logs" / "application",
+            )[0]
+        )
         if watching:
             return _inspection_presentation.watch(
                 _project_path,
                 run_root=run_root,
+                application_log_root=log_root,
                 inspect_run=inspection.inspect_run,
                 next_action=_next_supported_action,
                 review_actions=(
@@ -2037,6 +2059,13 @@ def inspect_from_args(
                 ),
             )
         observed = inspection.inspect_run(run_root)
+        applications = (
+            None
+            if log_root is None
+            else _submission_inspection.inspect_run_applications(
+                _project_path, run_root, log_root
+            )
+        )
         detail = getattr(arguments, "detail", "normal")
         milestones = _inspection_presentation.milestone_progress(
             observed.tasks,
@@ -2058,10 +2087,16 @@ def inspect_from_args(
         _inspection_presentation.PresentationError,
         onboarding.OnboardingError,
         ControlError,
+        LogControlError,
         slurm_submission.SlurmSubmissionError,
     ) as exc:
         return _control_failure(exc)
     print(f"Run: {inspection.human_run_name(run_root.name)}")
+    if applications is not None:
+        for line in _inspection_presentation.run_application_lines(
+            applications, detail=detail
+        ):
+            _print_safe(line)
     print(f"Run admission: {observed.integrity}")
     print(f"Run lock: {observed.lock_observation}")
     latest = observed.latest_attempt

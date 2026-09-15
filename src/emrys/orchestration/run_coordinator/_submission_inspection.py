@@ -124,28 +124,28 @@ class _Snapshots:
             if authority
             else _LOG_LIMIT
         )
-        remaining = (
-            _AUTHORITY_TOTAL_LIMIT - self.authority_bytes
-            if authority
-            else _LOG_TOTAL_LIMIT - self.log_bytes
-        )
+        counter = "authority_bytes" if authority else "log_bytes"
+        total_limit = _AUTHORITY_TOTAL_LIMIT if authority else _LOG_TOTAL_LIMIT
+        remaining = total_limit - getattr(self, counter)
         if remaining <= 0:
-            raise InspectionError("Selected-request aggregate byte limit exceeded")
+            raise InspectionError(
+                "Application-inspection aggregate byte limit exceeded"
+            )
+        allowance = min(limit, remaining) + (0 if prefix else 1)
+        # Failed reads expose no partial byte count; retain their full reservation.
+        setattr(self, counter, getattr(self, counter) + allowance)
         data, state = read_bytes_with_identity(
             path,
-            "Selected-request evidence",
+            "Application-inspection evidence",
             nonempty=False,
-            limit=min(limit, remaining) + (0 if prefix else 1),
+            limit=allowance,
         )
+        setattr(self, counter, getattr(self, counter) - allowance + len(data))
         self.remember(path, state)
         if not prefix and state.st_size > min(limit, remaining):
             raise InspectionError(
-                f"Selected-request evidence byte limit exceeded: {path}"
+                f"Application-inspection evidence byte limit exceeded: {path}"
             )
-        if authority:
-            self.authority_bytes += len(data)
-        else:
-            self.log_bytes += len(data)
         return data
 
     def authority(self, path: Path, root: Path, _label: str) -> bytes:
@@ -227,69 +227,185 @@ def _log_records(
     return records
 
 
-def _admit_candidate(
-    result: SubmissionApplicationObservation,
-    request: SubmissionRequestObservation,
-    snapshots: _Snapshots,
+def _application_log(
+    scope_root: Path, name: str, snapshots: _Snapshots
+) -> tuple[Path, str]:
+    if not re.fullmatch(r"application-[0-9a-f]{32}", name):
+        raise InspectionError("Application directory name is not canonical")
+    application_root = scope_root / name
+    children = snapshots.directory(application_root, limit=1)
+    if len(children) != 1 or children[0] not in (
+        "emrys-run.jsonl",
+        "emrys-resume.jsonl",
+        "emrys-report.jsonl",
+    ):
+        raise InspectionError(
+            "Application directory is incomplete or contains unexpected entries"
+        )
+    return application_root / children[0], children[0][6:-6]
+
+
+def _preparation(
+    data: bytes,
+    path: Path,
+    records: list[dict[str, Any]],
+    command: str,
+    scope: str,
+    project: Path,
 ) -> SubmissionApplicationObservation:
-    context = request.context
-    assert context is not None and result.recorded_run_id is not None
-    project = Path(str(context["project"]))
-    root = project.parent / "runs" / result.recorded_run_id
-    authority = admit_successor_run(root, read_bytes=snapshots.authority)
-    profile, _ = admit_canonical_record(
-        root / "contract/profile.json", root, "profile", read_bytes=snapshots.authority
+    event_name = "reporting_started" if command == "report" else "analysis_prepared"
+    prepared = [record for record in records if record["event"] == event_name]
+    if len(prepared) > 1:
+        raise InspectionError(
+            "Application log has conflicting preparation observations"
+        )
+    run_id = attempt_id = None
+    if prepared:
+        fields = prepared[0]["fields"]
+        if command == "report":
+            run_id = scope
+            if fields != {"run_root": str(project.parent / "runs" / run_id)}:
+                raise InspectionError("Recorded report Run differs from its scope")
+        else:
+            run_id, attempt_id = fields.get("run_id"), fields.get("workflow_attempt_id")
+            if (
+                set(fields) != {"run_id", "workflow_attempt_id"}
+                or not isinstance(run_id, str)
+                or not re.fullmatch(r"run-[0-9a-f]{64}", run_id)
+                or not isinstance(attempt_id, str)
+                or not re.fullmatch(
+                    r"workflow-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{32}", attempt_id
+                )
+                or (command == "resume" and run_id != scope)
+            ):
+                raise InspectionError(
+                    "Recorded preparation identity is malformed or differs"
+                )
+    return SubmissionApplicationObservation(
+        status="application-log-bound",
+        application_log=path,
+        application_log_sha256=hashlib.sha256(data).hexdigest(),
+        recorded_event=event_name if prepared else None,
+        recorded_run_id=run_id,
+        recorded_workflow_attempt_id=attempt_id,
     )
-    attempt = None
-    if result.recorded_workflow_attempt_id is not None:
-        attempt_root = root / "attempts" / result.recorded_workflow_attempt_id
-        attempt, _ = admit_canonical_record(
-            attempt_root / "attempt.json",
+
+
+def _submission_context(records: list[dict[str, Any]]) -> dict[str, Any] | None:
+    contexts = [record for record in records if record["event"] == "submission_context"]
+    if not contexts:
+        return None
+    if len(contexts) != 1:
+        raise InspectionError("Application log has conflicting submission context")
+    binding = contexts[0]
+    _validate_request_token(binding["fields"].get("request_token"))
+    if binding["fields"].get("request_token") is None or set(binding["fields"]) != {
+        "request_token",
+        "profile_binding_sha256",
+        "project_root",
+    }:
+        raise InspectionError("Application submission context fields differ")
+    digest = binding["fields"]["profile_binding_sha256"]
+    if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise InspectionError("Application submission profile binding is malformed")
+    return binding
+
+
+class _CandidateAdmission:
+    """Admit one selected Run and each named Attempt once during a stable scan."""
+
+    def __init__(self, project: Path, root: Path, snapshots: _Snapshots) -> None:
+        if root != project.parent / "runs" / root.name:
+            raise InspectionError("Selected Run is outside the Project workspace")
+        self.project, self.root, self.snapshots = project, root, snapshots
+        self.authority = admit_successor_run(root, read_bytes=snapshots.authority)
+        self.profile, _ = admit_canonical_record(
+            root / "contract/profile.json",
             root,
-            "workflow-attempt",
+            "profile",
             read_bytes=snapshots.authority,
         )
-        placement = attempt.get("placement", {})
-        if (
-            attempt["workflow_attempt_id"] != result.recorded_workflow_attempt_id
-            or attempt["workspace"] != str(project.parent)
-            or attempt["authored_paths"]["request"] != str(project)
-            or attempt["operation"]
-            != ("execute" if context["command"] == "run" else "resume")
-            or placement.get("kind") != "slurm"
-            or placement.get("scheduler_job_id") != request.recorded_job_id
-            or execution_profile_binding_sha256(
-                placement["effective_sha256"], placement["source"]["sha256"]
-            )
-            != context["profile_binding_sha256"]
-        ):
-            raise InspectionError(
-                "Recorded Attempt differs from the selected submission"
-            )
-        request_path = attempt_root / "request.yaml"
-        request_data = snapshots.authority(request_path, root, "Attempt request")
-        if attempt["request"] != {
-            "path": str(request_path),
-            "size_bytes": len(request_data),
-            "sha256": hashlib.sha256(request_data).hexdigest(),
-        }:
-            raise InspectionError("Recorded Attempt request snapshot differs")
-    validate_successor_run(
-        analysis=authority.analysis_revision,
-        plan=authority.execution_plan,
-        run=authority.run_binding,
-        profile=profile,
-        attempt=attempt,
-        resource_policy=None
-        if attempt is None
-        else attempt["workflow"]["resource_policy"],
-    )
-    return replace(
-        result,
-        status="run-associated" if attempt is None else "run-and-attempt-associated",
-        run_root=root,
-        workflow_attempt_id=result.recorded_workflow_attempt_id,
-    )
+        self.attempts: dict[str, dict[str, Any]] = {}
+        self.validate(None)
+
+    def validate(self, attempt: dict[str, Any] | None) -> None:
+        validate_successor_run(
+            analysis=self.authority.analysis_revision,
+            plan=self.authority.execution_plan,
+            run=self.authority.run_binding,
+            profile=self.profile,
+            attempt=attempt,
+            resource_policy=None
+            if attempt is None
+            else attempt["workflow"]["resource_policy"],
+        )
+
+    def admit(
+        self,
+        result: SubmissionApplicationObservation,
+        command: str,
+        *,
+        submission: dict[str, Any] | None = None,
+        job_id: str | None = None,
+    ) -> SubmissionApplicationObservation:
+        if result.recorded_run_id != self.root.name:
+            raise InspectionError("Recorded preparation differs from the selected Run")
+        attempt_id = result.recorded_workflow_attempt_id
+        if attempt_id is not None:
+            attempt = self.attempts.get(attempt_id)
+            if attempt is None:
+                attempt_root = self.root / "attempts" / attempt_id
+                attempt, _ = admit_canonical_record(
+                    attempt_root / "attempt.json",
+                    self.root,
+                    "workflow-attempt",
+                    read_bytes=self.snapshots.authority,
+                )
+                if (
+                    attempt["workflow_attempt_id"] != attempt_id
+                    or attempt["workspace"] != str(self.project.parent)
+                    or attempt["authored_paths"]["request"] != str(self.project)
+                ):
+                    raise InspectionError(
+                        "Recorded Attempt differs from the selected Project"
+                    )
+                request_path = attempt_root / "request.yaml"
+                data = self.snapshots.authority(
+                    request_path, self.root, "Attempt request"
+                )
+                if attempt["request"] != {
+                    "path": str(request_path),
+                    "size_bytes": len(data),
+                    "sha256": hashlib.sha256(data).hexdigest(),
+                }:
+                    raise InspectionError("Recorded Attempt request snapshot differs")
+                self.validate(attempt)
+                self.attempts[attempt_id] = attempt
+            if attempt["operation"] != ("execute" if command == "run" else "resume"):
+                raise InspectionError(
+                    "Recorded Attempt differs from the application command"
+                )
+            if submission is not None:
+                placement = attempt["placement"]
+                if (
+                    placement.get("kind") != "slurm"
+                    or placement.get("scheduler_job_id") != job_id
+                    or execution_profile_binding_sha256(
+                        placement["effective_sha256"], placement["source"]["sha256"]
+                    )
+                    != submission["profile_binding_sha256"]
+                ):
+                    raise InspectionError(
+                        "Recorded Attempt differs from the selected submission"
+                    )
+        return replace(
+            result,
+            status="run-associated"
+            if attempt_id is None
+            else "run-and-attempt-associated",
+            run_root=self.root,
+            workflow_attempt_id=attempt_id,
+        )
 
 
 def inspect_submission_application(
@@ -344,42 +460,14 @@ def inspect_submission_application(
         matches = []
         token = request.request_root.name.removeprefix("submission-")
         for name in entries:
-            if not re.fullmatch(r"application-[0-9a-f]{32}", name):
-                raise InspectionError("Application directory name is not canonical")
-            application_root = scope_root / name
-            children = snapshots.directory(application_root, limit=1)
-            if len(children) != 1 or children[0] not in (
-                "emrys-run.jsonl",
-                "emrys-resume.jsonl",
-                "emrys-report.jsonl",
-            ):
-                raise InspectionError(
-                    "Application directory is incomplete or contains unexpected entries"
-                )
-            path = application_root / f"emrys-{command}.jsonl"
-            if path.name not in children:
+            path, recorded_command = _application_log(scope_root, name, snapshots)
+            if recorded_command != command:
                 continue
             data = snapshots.read(path)
             records = _log_records(data, path, command, scope)
-            contexts = [
-                record for record in records if record["event"] == "submission_context"
-            ]
-            if not contexts:
+            binding = _submission_context(records)
+            if binding is None:
                 continue
-            if len(contexts) != 1:
-                raise InspectionError(
-                    "Application log has conflicting submission context"
-                )
-            binding = contexts[0]
-            _validate_request_token(binding["fields"].get("request_token"))
-            if binding["fields"].get("request_token") is None or set(
-                binding["fields"]
-            ) != {
-                "request_token",
-                "profile_binding_sha256",
-                "project_root",
-            }:
-                raise InspectionError("Application submission context fields differ")
             if binding["fields"].get("request_token") != token:
                 continue
             if (
@@ -396,53 +484,9 @@ def inspect_submission_application(
                 raise InspectionError(
                     "Application context differs from the selected submission"
                 )
-            event_name = (
-                "reporting_started" if command == "report" else "analysis_prepared"
-            )
-            prepared = [record for record in records if record["event"] == event_name]
-            if len(prepared) > 1:
-                raise InspectionError(
-                    "Application log has conflicting preparation observations"
-                )
-            run_id = attempt_id = None
-            if prepared:
-                fields = prepared[0]["fields"]
-                if command == "report":
-                    run_id = str(context["requested_run"])
-                    if fields != {
-                        "run_root": str(
-                            Path(str(context["project"])).parent / "runs" / run_id
-                        )
-                    }:
-                        raise InspectionError(
-                            "Recorded report Run differs from the request"
-                        )
-                else:
-                    run_id, attempt_id = (
-                        fields.get("run_id"),
-                        fields.get("workflow_attempt_id"),
-                    )
-                    if (
-                        set(fields) != {"run_id", "workflow_attempt_id"}
-                        or not isinstance(run_id, str)
-                        or not re.fullmatch(r"run-[0-9a-f]{64}", run_id)
-                        or not isinstance(attempt_id, str)
-                        or not re.fullmatch(
-                            r"workflow-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{32}", attempt_id
-                        )
-                        or (command == "resume" and run_id != context["requested_run"])
-                    ):
-                        raise InspectionError(
-                            "Recorded preparation identity is malformed or differs"
-                        )
             matches.append(
-                SubmissionApplicationObservation(
-                    status="application-log-bound",
-                    application_log=path,
-                    application_log_sha256=hashlib.sha256(data).hexdigest(),
-                    recorded_event=event_name if prepared else None,
-                    recorded_run_id=run_id,
-                    recorded_workflow_attempt_id=attempt_id,
+                _preparation(
+                    data, path, records, command, scope, Path(str(context["project"]))
                 )
             )
         if len(matches) != 1:
@@ -452,7 +496,16 @@ def inspect_submission_application(
         result = matches[0]
         if result.recorded_run_id is not None:
             try:
-                result = _admit_candidate(result, request, snapshots)
+                project = Path(str(context["project"]))
+                admission = _CandidateAdmission(
+                    project, project.parent / "runs" / result.recorded_run_id, snapshots
+                )
+                result = admission.admit(
+                    result,
+                    command,
+                    submission=dict(context),
+                    job_id=request.recorded_job_id,
+                )
             except _EVIDENCE_ERRORS as exc:
                 result = replace(
                     result,
@@ -465,3 +518,82 @@ def inspect_submission_application(
         return result
     except _EVIDENCE_ERRORS as exc:
         return SubmissionApplicationObservation(diagnostics=(_diagnostic(exc),))
+
+
+@dataclass(frozen=True, slots=True)
+class RunApplicationObservation:
+    """All admitted diagnostic associations found in one bounded root scan."""
+
+    log_root: Path
+    logs: tuple[SubmissionApplicationObservation, ...] = ()
+    status: str = "unknown"
+    diagnostics: tuple[str, ...] = ()
+
+
+def inspect_run_applications(
+    project: Path, run_root: Path, log_root: Path
+) -> RunApplicationObservation:
+    """Find historical Run diagnostics without selecting a latest log or owner."""
+    snapshots = _Snapshots()
+    matches, diagnostics = [], []
+    try:
+        admission = _CandidateAdmission(project, run_root, snapshots)
+        snapshots.remember(log_root, log_root.lstat())
+        remaining = _MAX_APPLICATIONS
+        for scope in ("pending", run_root.name):
+            scope_root = log_root / f"run-{scope}"
+            try:
+                scope_root.lstat()
+            except FileNotFoundError:
+                continue
+            try:
+                entries = snapshots.directory(scope_root, limit=max(1, remaining))
+                if len(entries) > remaining:
+                    raise InspectionError(
+                        "Aggregate application directory limit exceeded"
+                    )
+                remaining -= len(entries)
+            except _EVIDENCE_ERRORS as exc:
+                diagnostics.append(_diagnostic(exc))
+                break
+            for name in entries:
+                try:
+                    path, command = _application_log(scope_root, name, snapshots)
+                    if (command == "run") != (scope == "pending"):
+                        raise InspectionError(
+                            "Application command differs from its scope"
+                        )
+                    data = snapshots.read(path)
+                    records = _log_records(data, path, command, scope)
+                    result = _preparation(data, path, records, command, scope, project)
+                    if result.recorded_run_id == run_root.name:
+                        binding = _submission_context(records)
+                        if binding is not None and (
+                            binding is not records[1]
+                            or binding["console_detail"] != "durable_only"
+                            or binding["fields"]["project_root"] != str(project.parent)
+                        ):
+                            raise InspectionError(
+                                "Application context differs from the selected Project"
+                            )
+                        matches.append(
+                            admission.admit(
+                                result,
+                                command,
+                                submission=None
+                                if binding is None
+                                else binding["fields"],
+                                job_id=records[0]["fields"].get("slurm_job_id"),
+                            )
+                        )
+                except _EVIDENCE_ERRORS as exc:
+                    diagnostics.append(_diagnostic(exc))
+        snapshots.recheck()
+    except Exception as exc:
+        return RunApplicationObservation(log_root, diagnostics=(_diagnostic(exc),))
+    return RunApplicationObservation(
+        log_root,
+        tuple(matches),
+        "unknown" if diagnostics else "complete",
+        tuple(diagnostics),
+    )

@@ -47,6 +47,22 @@ recorded candidate stays distinct from an admitted Run. Missing, changing,
 ambiguous or oversized evidence stays unknown; it never selects the newest log.
 The printed Run-inspection command checks the broader workflow evidence.
 
+An explicit Run selection also discovers its recorded application logs:
+
+```bash
+emrys inspect RUN --project "$EMRYS_PROJECT_ROOT" --detail verbose
+emrys inspect RUN --project "$EMRYS_PROJECT_ROOT" --log-root /absolute/historical/log/root --watch
+```
+
+The search uses `--log-root`, then `EMRYS_LOG_ROOT`, then the selected Project's
+`logs/application` directory. Historical custom roots are not retained in Run
+contracts; supply the root used for those invocations. One search covers new-Run
+preparation and that exact Run's resume/report scope, preserving all admitted
+historical matches. A reporting-only log names a Run, not a scientific Attempt.
+Missing, malformed or bounded-out evidence leaves the scan unknown; zero matches
+does not mean no logs exist elsewhere. The selector creates no logs and cannot
+override a selected submission's frozen root. It requires an explicit Run.
+
 The ordinary roster makes no scheduler calls or application-log scans. These
 observations do not establish workflow entry, current progress, Run completion,
 native process absence or recovery eligibility. They do not authorize
@@ -83,6 +99,9 @@ read substantial scientific data; it runs initially and when requested. Screen
 painting performs no reads. Automatic refresh checks only the scheduler and
 selected diagnostic tail every 30 seconds. Read the observation dates: a
 previously verified snapshot is not current completion or recovery proof.
+For an explicit Run, refresh searches its selected log root again and removes
+application streams whose association is no longer admitted. Independent Task
+streams remain available. Screen/timer refresh does not rescan application logs.
 
 Stream tails show at most 64 KiB and 256 retained lines; the terminal may show
 fewer. Missing, changing, truncated or replaced streams are identified and

@@ -558,3 +558,385 @@ def test_python311_symlink_loop_error_is_an_unknown_observation(tmp_path, monkey
     result = reader.inspect_submission_application(request)
     assert result.status == "unknown" and result.application_log is None
     assert "cannot be resolved" in " ".join(result.diagnostics)
+
+
+def _discover(request, root):
+    return reader.inspect_run_applications(
+        Path(request.context["project"]),
+        root,
+        Path(request.context["application_log_root"]),
+    )
+
+
+def _prepared(root, attempt):
+    return {
+        "run_id": root.name,
+        "workflow_attempt_id": attempt["workflow_attempt_id"],
+    }
+
+
+@pytest.mark.parametrize("command", ["run", "resume", "report"])
+def test_run_discovery_admits_current_writer_without_submission_or_live_project(
+    tmp_path, monkeypatch, command
+):
+    import io
+
+    from emrys.libraries.application_logging import (
+        AttemptIdentity,
+        LogControls,
+        LogLevel,
+        event,
+        field,
+        open_attempt_log,
+    )
+
+    request, root, _attempt_path, attempt = _authority(tmp_path, command=command)
+    log_root = Path(request.context["application_log_root"])
+    application = open_attempt_log(
+        controls=LogControls(LogLevel.NORMAL, log_root, "default", "command_line"),
+        identity=AttemptIdentity(
+            "run",
+            "pending" if command == "run" else root.name,
+            "application-" + "b" * 32,
+            f"emrys-{command}",
+        ),
+        mode={"run": "execute", "resume": "resume", "report": "report"}[command],
+        component="orchestration",
+        stderr=io.StringIO(),
+    )
+    logger = application.logger(component="orchestration", phase="preflight")
+    logger.info(
+        "Preparation recorded.",
+        extra=event(
+            "reporting_started" if command == "report" else "analysis_prepared",
+            fields={
+                key: field(value)
+                for key, value in (
+                    {"run_root": root}
+                    if command == "report"
+                    else _prepared(root, attempt)
+                ).items()
+            },
+        ),
+    )
+    if command != "report":
+        logger.info("Automatic reporting started.", extra=event("reporting_started"))
+    application.terminal(event_name="fixture_finished", message="Fixture finished.")
+    # Historical association uses retained records, not current authored inputs.
+    Path(request.context["project"]).unlink()
+    (tmp_path / "selected.yaml").write_bytes(b"current placement has changed\n")
+    before = {
+        p: (p.read_bytes(), p.stat().st_mtime_ns)
+        for p in tmp_path.rglob("*")
+        if p.is_file()
+    }
+    reads = []
+    original = reader.read_bytes_with_identity
+
+    def read(path, *args, **kwargs):
+        reads.append(path)
+        assert path.is_relative_to(root) or path.is_relative_to(log_root)
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(reader, "read_bytes_with_identity", read)
+    result = _discover(request, root)
+    assert result.status == "complete" and result.diagnostics == ()
+    assert len(result.logs) == 1 and result.logs[0].application_log == application.path
+    assert result.logs[0].status == (
+        "run-associated" if command == "report" else "run-and-attempt-associated"
+    )
+    assert result.logs[0].workflow_attempt_id == (
+        None if command == "report" else attempt["workflow_attempt_id"]
+    )
+    assert len(reads) == len(set(reads))
+    assert {
+        p: (p.read_bytes(), p.stat().st_mtime_ns)
+        for p in tmp_path.rglob("*")
+        if p.is_file()
+    } == before
+    assert not (root / "results").exists()
+
+
+def test_run_discovery_retains_all_historical_and_duplicate_attempt_logs(
+    tmp_path, monkeypatch
+):
+    request, root, attempt_path, attempt = _authority(tmp_path)
+    first, first_records = _log(request, prepared=_prepared(root, attempt))
+    duplicate, _ = _log(request, suffix="c", prepared=_prepared(root, attempt))
+    later = json.loads(attempt_path.read_bytes())
+    later_id = "workflow-20260915T120000Z-" + "f" * 32
+    later.update(
+        workflow_attempt_id=later_id,
+        operation="resume",
+        supersedes_workflow_attempt_id=attempt["workflow_attempt_id"],
+    )
+    later["snakemake_argv"].extend(["--rerun-triggers", "input", "--ignore-incomplete"])
+    later_path = root / "attempts" / later_id / "attempt.json"
+    later_path.parent.mkdir()
+    later_request = later_path.with_name("request.yaml")
+    later_request.write_bytes(attempt_path.with_name("request.yaml").read_bytes())
+    later["request"]["path"] = str(later_request)
+    later_path.write_bytes(contracts.canonical_json_bytes(later))
+    resumed = replace(
+        request,
+        context={**request.context, "command": "resume", "requested_run": root.name},
+    )
+    second, _ = _log(resumed, suffix="d", prepared=_prepared(root, later))
+    report = replace(
+        request,
+        context={**request.context, "command": "report", "requested_run": root.name},
+    )
+    report_path, _ = _log(report, suffix="e", prepared={"run_root": str(root)})
+    # A terminal diagnostic outcome is not required and confers no Task/Run receipt.
+    first_records.append(
+        {
+            **first_records[-1],
+            "sequence": 4,
+            "monotonic_seconds": 4.0,
+            "phase": "terminal",
+            "event": "attempt_failed",
+            "fields": {},
+        }
+    )
+    _write_log(first, first_records)
+    reads = []
+    original = reader.read_bytes_with_identity
+
+    def read(path, *args, **kwargs):
+        reads.append(path)
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(reader, "read_bytes_with_identity", read)
+    result = _discover(request, root)
+    assert result.status == "complete" and result.diagnostics == ()
+    assert [item.application_log for item in result.logs] == [
+        first,
+        duplicate,
+        second,
+        report_path,
+    ]
+    assert [item.workflow_attempt_id for item in result.logs] == [
+        attempt["workflow_attempt_id"],
+        attempt["workflow_attempt_id"],
+        later_id,
+        None,
+    ]
+    assert len(reads) == len(set(reads)), "Each distinct frozen record is read once"
+    assert not attempt_path.with_name("attempt-receipt.json").exists()
+    # Selected-request identity remains strictly unique, despite Run discovery preserving both.
+    assert reader.inspect_submission_application(request).status == "unknown"
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "truncated",
+        "duplicate-prepared",
+        "wrong-project",
+        "wrong-workspace",
+        "wrong-operation",
+        "wrong-run",
+        "request-snapshot",
+        "missing-attempt",
+        "placement-profile",
+        "opening-job",
+        "unexpected-entry",
+        "symlink",
+        "log-limit",
+        "aggregate-limit",
+        "directory-limit",
+    ],
+)
+def test_run_discovery_keeps_stable_matches_but_reports_incomplete_scan(
+    tmp_path, monkeypatch, defect
+):
+    request, root, attempt_path, attempt = _authority(tmp_path)
+    first, _ = _log(request, prepared=_prepared(root, attempt))
+    bad, records = _log(request, suffix="c", prepared=_prepared(root, attempt))
+    # Apply semantic defects to a separate Attempt, preserving the first log's authority.
+    if defect in {
+        "wrong-project",
+        "wrong-workspace",
+        "wrong-operation",
+        "wrong-run",
+        "request-snapshot",
+        "missing-attempt",
+    }:
+        other_id = "workflow-20260915T120000Z-" + "e" * 32
+        other_path = root / "attempts" / other_id / "attempt.json"
+        other_path.parent.mkdir()
+        other = json.loads(attempt_path.read_bytes())
+        other["workflow_attempt_id"] = other_id
+        other_request = other_path.with_name("request.yaml")
+        other_request.write_bytes(attempt_path.with_name("request.yaml").read_bytes())
+        other["request"]["path"] = str(other_request)
+        records[-1]["fields"]["workflow_attempt_id"] = other_id
+        if defect == "wrong-project":
+            other["authored_paths"]["request"] = "/elsewhere/project.yaml"
+        elif defect == "wrong-workspace":
+            other["workspace"] = "/elsewhere"
+        elif defect == "wrong-operation":
+            other["operation"] = "resume"
+        elif defect == "wrong-run":
+            other["run_id"] = "run-" + "e" * 64
+        elif defect == "request-snapshot":
+            other_request.write_bytes(b"changed\n")
+        if defect != "missing-attempt":
+            other_path.write_bytes(contracts.canonical_json_bytes(other))
+    elif defect == "duplicate-prepared":
+        records.append({**records[-1], "sequence": 4, "monotonic_seconds": 4.0})
+    elif defect == "placement-profile":
+        records[1]["fields"]["profile_binding_sha256"] = "d" * 64
+    elif defect == "opening-job":
+        records[0]["fields"]["slurm_job_id"] = "700124"
+    _write_log(bad, records)
+    if defect == "truncated":
+        bad.write_bytes(bad.read_bytes()[:-1])
+    elif defect == "unexpected-entry":
+        bad.with_name("unexpected").touch()
+    elif defect == "symlink":
+        target = tmp_path / "copied-log"
+        target.write_bytes(bad.read_bytes())
+        bad.unlink()
+        bad.symlink_to(target)
+    elif defect == "log-limit":
+        monkeypatch.setattr(reader, "_LOG_LIMIT", first.stat().st_size)
+        bad.write_bytes(bad.read_bytes() + b" " * 100)
+    elif defect == "aggregate-limit":
+        monkeypatch.setattr(reader, "_LOG_TOTAL_LIMIT", first.stat().st_size)
+    elif defect == "directory-limit":
+        # The first scope fits; the second scope exceeds the shared application budget.
+        bad.unlink()
+        bad.parent.rmdir()
+        report = replace(
+            request,
+            context={
+                **request.context,
+                "command": "report",
+                "requested_run": root.name,
+            },
+        )
+        _log(report, suffix="d", prepared={"run_root": str(root)})
+        monkeypatch.setattr(reader, "_MAX_APPLICATIONS", 1)
+    result = _discover(request, root)
+    assert result.status == "unknown" and result.diagnostics
+    assert [item.application_log for item in result.logs] == [first]
+
+
+@pytest.mark.parametrize(
+    "defect", ["append", "replace-root", "replace-scope", "foreign-uid"]
+)
+def test_run_discovery_drift_invalidates_all_paths(tmp_path, monkeypatch, defect):
+    request, root, _attempt_path, attempt = _authority(tmp_path)
+    path, _ = _log(request, prepared=_prepared(root, attempt))
+    original = reader.read_bytes_with_identity
+
+    def read(selected, *args, **kwargs):
+        data, state = original(selected, *args, **kwargs)
+        if selected == path:
+            if defect == "append":
+                with path.open("ab") as stream:
+                    stream.write(b"{}\n")
+            elif defect in {"replace-root", "replace-scope"}:
+                replaced = (
+                    path.parent.parent
+                    if defect == "replace-scope"
+                    else path.parent.parent.parent
+                )
+                replaced.rename(replaced.with_name("moved"))
+                path.parent.mkdir(parents=True)
+                path.write_bytes(data)
+            else:
+                values = list(state)
+                values[4] += 1
+                state = os.stat_result(values)
+        return data, state
+
+    monkeypatch.setattr(reader, "read_bytes_with_identity", read)
+    result = _discover(request, root)
+    assert result.status == "unknown" and result.diagnostics and result.logs == ()
+
+
+def test_run_discovery_does_not_infer_association_from_scope_or_latest(tmp_path):
+    request, root, _attempt_path, attempt = _authority(tmp_path)
+    _log(request)  # A real preflight failure may lack preparation identity.
+    _log(
+        request,
+        suffix="c",
+        prepared={**_prepared(root, attempt), "run_id": "run-" + "e" * 64},
+    )
+    result = _discover(request, root)
+    assert (
+        result.status == "complete" and result.logs == () and result.diagnostics == ()
+    )
+    # An unrelated Run scope is never enumerated or selected as latest.
+    unrelated = Path(request.context["application_log_root"]) / ("run-run-" + "e" * 64)
+    unrelated.mkdir()
+    (unrelated / "malformed").touch()
+    assert _discover(request, root) == result
+
+
+@pytest.mark.parametrize("authority", [False, True])
+@pytest.mark.parametrize("failure", ["oversize", "after-read"])
+def test_rejected_siblings_cannot_repeat_reads_beyond_aggregate_budget(
+    tmp_path, monkeypatch, authority, failure
+):
+    monkeypatch.setattr(reader, "_AUTHORITY_LIMIT" if authority else "_LOG_LIMIT", 17)
+    monkeypatch.setattr(
+        reader, "_AUTHORITY_TOTAL_LIMIT" if authority else "_LOG_TOTAL_LIMIT", 32
+    )
+    paths = [tmp_path / str(index) for index in range(5)]
+    for path in paths:
+        path.write_bytes(b"x" * 100)
+    returned = []
+    original = reader.read_bytes_with_identity
+
+    def read(*args, **kwargs):
+        result = original(*args, **kwargs)
+        returned.append(len(result[0]))
+        if failure == "after-read":
+            raise reader.ValidationError("Injected drift after actual bounded read")
+        return result
+
+    monkeypatch.setattr(reader, "read_bytes_with_identity", read)
+    snapshots = reader._Snapshots()
+    for path in paths:
+        with pytest.raises((reader.InspectionError, reader.ValidationError)):
+            snapshots.read(path, authority=authority)
+    assert returned == [18, 15]
+    assert sum(returned) == 33  # The 32-byte budget plus one overflow sentinel.
+
+
+@pytest.mark.parametrize("digest", [None, [], "bad"])
+def test_report_discovery_rejects_malformed_optional_submission_context(
+    tmp_path, digest
+):
+    request, root, _attempt_path, _attempt = _authority(tmp_path, command="report")
+    path, records = _log(request, prepared={"run_root": str(root)})
+    records[1]["fields"]["profile_binding_sha256"] = digest
+    _write_log(path, records)
+    result = _discover(request, root)
+    assert result.status == "unknown" and result.diagnostics and result.logs == ()
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [RuntimeError("unexpected read failure"), KeyboardInterrupt(), SystemExit(7)],
+)
+def test_run_discovery_isolates_ordinary_errors_but_preserves_cancellation(
+    tmp_path, monkeypatch, failure
+):
+    def fail(*_args):
+        raise failure
+
+    monkeypatch.setattr(reader, "_CandidateAdmission", fail)
+    args = (tmp_path / "project.yaml", tmp_path / "runs/run", tmp_path / "logs")
+    if isinstance(failure, Exception):
+        observed = reader.inspect_run_applications(*args)
+        assert observed.logs == () and observed.status == "unknown"
+        assert observed.diagnostics == (str(failure),)
+    else:
+        with pytest.raises(type(failure)) as caught:
+            reader.inspect_run_applications(*args)
+        assert caught.value is failure
+    assert list(tmp_path.iterdir()) == []

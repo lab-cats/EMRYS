@@ -842,3 +842,145 @@ raise SystemExit(result)
             process.kill()
             process.wait()
         os.close(master)
+
+
+@pytest.mark.parametrize(
+    "refresh_result", ["unknown", "partial", "exception", "run-failure"]
+)
+def test_run_log_refresh_retains_all_matches_and_revokes_unadmitted_streams(
+    tmp_path, monkeypatch, refresh_result
+):
+    project, root, logs = tmp_path / "project.yaml", tmp_path / "run", tmp_path / "logs"
+    paths = (
+        logs / "application-a/emrys-run.jsonl",
+        logs / "application-b/emrys-report.jsonl",
+    )
+    for path in paths:
+        path.parent.mkdir(parents=True)
+        path.write_text("diagnostic only\n")
+    matches = tuple(
+        association.SubmissionApplicationObservation(
+            status="run-associated",
+            application_log=path,
+            run_root=root,
+            recorded_event="reporting_started" if index else "analysis_prepared",
+            workflow_attempt_id=None if index else "workflow-earlier",
+        )
+        for index, path in enumerate(paths)
+    )
+    calls = []
+    original = association.inspect_run_applications
+
+    def discover(selected_project, selected_run, selected_root):
+        assert (selected_project, selected_run, selected_root) == (project, root, logs)
+        calls.append("scan")
+        if len(calls) == 1 or refresh_result == "run-failure":
+            return association.RunApplicationObservation(logs, matches, "complete")
+        if refresh_result == "exception":
+
+            def failed(*_args):
+                raise RuntimeError("new reader unavailable\x1b[31m")
+
+            monkeypatch.setattr(association, "_CandidateAdmission", failed)
+            return original(selected_project, selected_run, selected_root)
+        return association.RunApplicationObservation(
+            logs,
+            matches[1:] if refresh_result == "partial" else (),
+            "unknown",
+            ("scan changed\nretain evidence",),
+        )
+
+    monkeypatch.setattr(association, "inspect_run_applications", discover)
+    monkeypatch.setattr(
+        slurm_submission,
+        "observe_submission_request",
+        lambda *_: pytest.fail("Run logs do not establish a scheduler binding"),
+    )
+
+    def inspect(selected_root):
+        if refresh_result == "run-failure" and len(calls) > 1:
+            raise OSError("Run authority unavailable")
+        return _run(selected_root)
+
+    initial = view.WatchSnapshot(
+        project,
+        run_root=root,
+        run_applications=association.RunApplicationObservation(logs),
+    )
+    selected = view.refresh_snapshot(
+        initial,
+        verify=True,
+        stream_index=0,
+        inspect_run=inspect,
+        next_action=lambda _: "Review",
+    )
+    assert [source.path for source in selected.streams[:2]] == list(paths)
+    task_sources = selected.streams[2:]
+    assert len(task_sources) == 2 and all(
+        "workflow-later" in str(item.path) for item in task_sources
+    )
+    for _ in range(3):
+        selected = view.refresh_snapshot(
+            selected,
+            verify=False,
+            stream_index=0,
+            inspect_run=lambda _: pytest.fail("Timer reverified Run"),
+            next_action=lambda _: pytest.fail("Timer replanned"),
+        )
+    assert calls == ["scan"]
+    text = view.render_snapshot(selected, now=NOW)
+    assert "Run diagnostic logs: 2 association(s); scan complete." in text
+    assert (
+        "Run log associations as of:" in text and "Application log search root:" in text
+    )
+    selected = view.refresh_snapshot(
+        selected,
+        verify=True,
+        stream_index=0,
+        inspect_run=inspect,
+        next_action=lambda _: "Review",
+    )
+    assert calls == ["scan", "scan"]
+    assert paths[0] not in [source.path for source in selected.streams]
+    assert (paths[1] in [source.path for source in selected.streams]) is (
+        refresh_result == "partial"
+    )
+    if refresh_result == "run-failure":
+        assert selected.streams == () and selected.observed is None
+        assert selected.application_at is None
+    else:
+        assert selected.streams[-2:] == task_sources
+        assert selected.application_at is not None and selected.observed is not None
+    assert selected.run_applications.status == "unknown"
+    assert "\x1b" not in view.render_snapshot(selected, now=NOW)
+
+
+def test_run_log_rendering_uses_only_the_collection_and_escapes_public_output(
+    tmp_path, monkeypatch
+):
+    item = association.SubmissionApplicationObservation(
+        status="run-associated",
+        application_log=tmp_path / "bad\x1b[31m.jsonl",
+        recorded_event="reporting_started",
+        run_root=tmp_path / "run",
+    )
+    collection = association.RunApplicationObservation(
+        tmp_path, (item,), "unknown", ("issue\nnext",)
+    )
+    snapshot = view.WatchSnapshot(
+        tmp_path, run_applications=collection, application_at=NOW
+    )
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Rendering performed a read or association scan")
+
+    monkeypatch.setattr(association, "inspect_run_applications", forbidden)
+    for name in ("stat", "lstat", "open", "resolve"):
+        monkeypatch.setattr(Path, name, forbidden)
+    normal = view.run_application_lines(collection)
+    verbose = view.run_application_lines(collection, detail="verbose")
+    assert str(item.application_log) not in "\n".join(normal)
+    assert str(item.application_log) in "\n".join(verbose)
+    assert "none (Run only)" in "\n".join(verbose)
+    text = view.render_snapshot(snapshot, now=NOW)
+    assert "\x1b" not in text and "issue\\nnext" in text
