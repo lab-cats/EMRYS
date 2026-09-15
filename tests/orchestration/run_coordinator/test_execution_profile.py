@@ -386,6 +386,38 @@ def test_builtin_source_digest_can_be_bound(tmp_path: Path) -> None:
     assert profile.binding_sha256 == expected
 
 
+@pytest.mark.parametrize("selected", (False, True))
+def test_byte_admission_matches_file_admission_without_reading(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, selected: bool
+) -> None:
+    source = _write_profile(
+        tmp_path / "profile.yaml",
+        {
+            "schema_version": execution_profile.SCHEMA_VERSION,
+            "placement": _slurm_placement(tmp_path),
+        },
+    )
+    defaults = execution_profile.DEFAULT_PROFILE_PATH.read_bytes()
+    data = source.read_bytes()
+    expected = load_execution_profile(source if selected else None)
+    monkeypatch.setattr(
+        execution_profile,
+        "read_bytes",
+        lambda *_args: pytest.fail("byte admission read a file"),
+    )
+    observed = execution_profile.admit_execution_profile_bytes(
+        defaults, source if selected else None, data if selected else None
+    )
+    assert observed == expected
+    assert not observed.computational_resources_explicit
+    assert (
+        observed.source_raw_sha256
+        == hashlib.sha256(data if selected else defaults).hexdigest()
+    )
+    with pytest.raises(ExecutionProfileError, match="supplied together"):
+        execution_profile.admit_execution_profile_bytes(defaults, source)
+
+
 def test_selected_profile_must_be_one_stable_real_file(tmp_path: Path) -> None:
     selected = _write_profile(
         tmp_path / "profile.yaml",

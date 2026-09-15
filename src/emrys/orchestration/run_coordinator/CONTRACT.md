@@ -227,6 +227,17 @@ the selected profile overrides them, and resource CLI values have highest
 precedence. Placement is Attempt-local provenance; the admitted scientific
 computation and task roster remain Run authority.
 
+`emrys profile create NAME` previews one named Project profile and writes only
+with `--execute`. It requires explicit built-in site or direct/Slurm placement,
+reuses existing resource flags, and admits the exact candidate bytes through
+the same parser and policy owner as file selection. It reads the Project
+definition and execution settings, not scientific inputs, runtime, or capacity.
+The existing canonical profile directory and absent destination are required;
+exclusive publication and final binding admission preserve existing profiles
+and reject changed parents or defaults. Partial publication after a failure is
+retained. Placement-only authoring remains a fragment, preserving resume policy;
+explicit resource overrides save the complete reviewed computational policy.
+
 Admission retains whether computational resources were explicitly authored;
 merged defaults cannot reconstruct that choice when resuming. Slurm resource
 selection in the parent process and Run planning in the compute process check

@@ -437,6 +437,13 @@ an invalid explicit selection stops with its diagnostic. Each invocation
 reviews its current profile, so retain the selected file unchanged between
 qualification and submission.
 
+To create that named profile without editing YAML, use
+`emrys profile create cohort --site viking` with your explicit allocation and
+workflow options, review its output, then repeat with `--execute`. Follow the
+[profile creation guide](configs/README.md#create-a-named-profile-without-writing-yaml)
+for the complete options and an illustrative example. Initial fixture settings
+are not a measured full-cohort preset.
+
 Keep the printed job number and log paths. From the same Project on the head
 node, check progress with:
 
