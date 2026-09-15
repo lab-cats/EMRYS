@@ -508,6 +508,7 @@ def test_plan_is_no_write_and_builds_exact_sbatch_argv(
             "SBATCH_FAKE": "ambient-flag",
             slurm_submission.DELEGATE_MARKER_ENV: "ambient-marker",
             slurm_submission.PROFILE_SHA256_ENV: "b" * 64,
+            slurm_submission.REQUEST_TOKEN_ENV: "ambient-token",
             "EMRYS_PRIVATE_SLURM_UNKNOWN": "ambient-private-value",
         },
         submitter_uid=1234,
@@ -535,7 +536,13 @@ def test_plan_is_no_write_and_builds_exact_sbatch_argv(
         f"{slurm_submission.DELEGATE_MARKER_ENV}="
         f"{slurm_submission.DELEGATE_MARKER},"
         f"{slurm_submission.PROFILE_SHA256_ENV}={'a' * 64},"
-        f"{slurm_submission.SUBMIT_UID_ENV}=1234,LOGNAME,USER,LNAME,USERNAME",
+        f"{slurm_submission.SUBMIT_UID_ENV}=1234,"
+        + (
+            f"{slurm_submission.REQUEST_TOKEN_ENV}={request_token},"
+            if request_token is not None
+            else ""
+        )
+        + "LOGNAME,USER,LNAME,USERNAME",
     )
     assert dict(plan.environment) == {"KEEP": "yes"}
     assert plan.stdout_pattern == log_dir / f"{stem}-%j.out"
@@ -543,6 +550,43 @@ def test_plan_is_no_write_and_builds_exact_sbatch_argv(
     assert plan.batch_script.startswith("#!/bin/bash\nset -euo pipefail\n")
     assert '/bin/rm -rf --one-file-system -- "$job_tmpdir"' in plan.batch_script
     assert "--wrap" not in plan.argv
+
+
+@pytest.mark.parametrize(
+    "context", ["direct", "legacy", "request", "orphan", "partial", "malformed", "uid"]
+)
+def test_optional_request_token_requires_admitted_private_delegate_context(
+    monkeypatch: pytest.MonkeyPatch, context: str
+) -> None:
+    values = {
+        slurm_submission.DELEGATE_MARKER_ENV: slurm_submission.DELEGATE_MARKER,
+        slurm_submission.PROFILE_SHA256_ENV: "a" * 64,
+        slurm_submission.SUBMIT_UID_ENV: str(os.getuid()),
+        slurm_submission.REQUEST_TOKEN_ENV: "b" * 32,
+    }
+    for key in values:
+        monkeypatch.delenv(key, raising=False)
+    if context == "direct":
+        values = {}
+    elif context == "legacy":
+        values.pop(slurm_submission.REQUEST_TOKEN_ENV)
+    elif context == "orphan":
+        values = {slurm_submission.REQUEST_TOKEN_ENV: "b" * 32}
+    elif context == "partial":
+        values.pop(slurm_submission.PROFILE_SHA256_ENV)
+    elif context == "malformed":
+        values[slurm_submission.REQUEST_TOKEN_ENV] = "B" * 32
+    elif context == "uid":
+        values[slurm_submission.SUBMIT_UID_ENV] = str(os.getuid() + 1)
+    for key, value in values.items():
+        monkeypatch.setenv(key, value)
+    if context in {"direct", "legacy", "request"}:
+        assert slurm_submission.delegate_binding() == (
+            None if context == "direct" else "a" * 64
+        )
+    else:
+        with pytest.raises(slurm_submission.SlurmSubmissionError):
+            slurm_submission.delegate_binding()
 
 
 @pytest.mark.parametrize("token", ["", "a" * 31, "A" * 32, "../unsafe", True])
@@ -921,9 +965,11 @@ def test_recorded_scheduler_early_stdin_close_preserves_rejection_and_job_identi
 
 
 @pytest.mark.parametrize("username_variable", ("LOGNAME", "USER", "LNAME", "USERNAME"))
+@pytest.mark.parametrize("request_token", [None, "b" * 32])
 def test_batch_script_checks_identity_loads_modules_and_cleans_private_scratch(
     tmp_path: Path,
     username_variable: str,
+    request_token: str | None,
 ) -> None:
     module_capture = tmp_path / "module calls.jsonl"
     module_init = tmp_path / "module init.sh"
@@ -948,6 +994,7 @@ def test_batch_script_checks_identity_loads_modules_and_cleans_private_scratch(
         "'ambient': os.environ.get('UNRELATED'), "
         "'delegate': os.environ['EMRYS_PRIVATE_SLURM_DELEGATE'], "
         "'profile': os.environ['EMRYS_PRIVATE_SLURM_PROFILE_SHA256'], "
+        "'request_token': os.environ.get('EMRYS_PRIVATE_SLURM_REQUEST_TOKEN'), "
         "'scratch': os.environ['TMPDIR'], "
         "'scratch_mode': stat.S_IMODE(os.stat(os.environ['TMPDIR']).st_mode)"
         "}), encoding='utf-8'); "
@@ -964,6 +1011,7 @@ def test_batch_script_checks_identity_loads_modules_and_cleans_private_scratch(
             "$(must-not-expand)",
         ),
         log_dir=tmp_path / "logs",
+        request_token=request_token,
         environment={
             username_variable: "login,name=$(must-not-expand)",
             "UNRELATED": "no",
@@ -991,8 +1039,54 @@ def test_batch_script_checks_identity_loads_modules_and_cleans_private_scratch(
     assert observed["ambient"] is None
     assert observed["delegate"] == slurm_submission.DELEGATE_MARKER
     assert observed["profile"] == "a" * 64
+    assert observed["request_token"] == request_token
     assert observed["scratch"].startswith(str(profile.placement.scratch_parent) + "/")
     assert observed["scratch_mode"] == 0o700
+    assert list(profile.placement.scratch_parent.iterdir()) == []
+
+
+@pytest.mark.parametrize("observed_token", [None, "c" * 32, "module-mutation"])
+def test_batch_rejects_missing_or_changed_request_before_modules_and_scratch(
+    tmp_path: Path, observed_token: str | None
+) -> None:
+    capture = tmp_path / "must-not-run"
+    module_capture = tmp_path / "must-not-load"
+    module_init = tmp_path / "module-init.sh"
+    module_init.write_text(
+        (
+            f"export {slurm_submission.REQUEST_TOKEN_ENV}={'c' * 32}\n"
+            if observed_token == "module-mutation"
+            else ""
+        )
+        + f"/usr/bin/touch {shlex.quote(str(module_capture))}\n"
+    )
+    profile = _profile(tmp_path, module_init=module_init)
+    plan = slurm_submission.plan_submission(
+        profile,
+        emrys_argv=("/usr/bin/touch", str(capture)),
+        log_dir=tmp_path / "logs",
+        request_token="b" * 32,
+    )
+    environment = _batch_environment(plan)
+    if observed_token is None:
+        environment.pop(slurm_submission.REQUEST_TOKEN_ENV)
+    elif observed_token != "module-mutation":
+        environment[slurm_submission.REQUEST_TOKEN_ENV] = observed_token
+    completed = subprocess.run(
+        ("/bin/bash",),
+        input=plan.batch_script,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode != 0
+    assert (
+        "readonly variable"
+        if observed_token == "module-mutation"
+        else "submission request token differs from the frozen plan"
+    ) in completed.stderr
+    assert not capture.exists() and not module_capture.exists()
     assert list(profile.placement.scratch_parent.iterdir()) == []
 
 

@@ -4194,6 +4194,110 @@ def test_public_slurm_errors_keep_control_exit_and_never_retry(
     assert not (project.parent / "logs/application").exists()
 
 
+@pytest.mark.parametrize("command", ["run", "resume", "report"])
+@pytest.mark.parametrize("request_token", [None, "b" * 32])
+def test_delegated_operation_records_request_before_preparation_in_one_unique_log(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    command: str,
+    request_token: str | None,
+) -> None:
+    from tests.orchestration.run_coordinator.test_slurm_submission import (
+        _batch_environment,
+    )
+
+    arguments = _scheduled_run_arguments(tmp_path, execute=True)
+    arguments.log_root = tmp_path / "custom application logs"
+    arguments.run = "run-" + "a" * 64
+    workspace = arguments.project.parent
+    run_root = workspace / "runs" / arguments.run
+    if command != "run":
+        run_root.mkdir(parents=True)
+    profile_path = Path(arguments.profile)
+    document = yaml.safe_load(profile_path.read_bytes())
+    document["resources"] = load_execution_profile().resource_policy.document()
+    profile_path.write_text(yaml.safe_dump(document))
+    profile = load_execution_profile(profile_path)
+    scheduler = control.slurm_submission
+    submission = scheduler.plan_submission(
+        profile,
+        emrys_argv=("emrys", command),
+        log_dir=workspace / "logs",
+        request_token=request_token,
+    )
+    for name in (
+        scheduler.DELEGATE_MARKER_ENV,
+        scheduler.PROFILE_SHA256_ENV,
+        scheduler.SUBMIT_UID_ENV,
+        scheduler.REQUEST_TOKEN_ENV,
+    ):
+        monkeypatch.delenv(name, raising=False)
+    for name, value in _batch_environment(submission, job_id="812345").items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.setattr(
+        scheduler,
+        "submit",
+        lambda *_args, **_kwargs: pytest.fail("delegate resubmitted"),
+    )
+    completed_paths: set[Path] = set()
+    identities: set[str] = set()
+
+    def admitted_log() -> None:
+        paths = set(arguments.log_root.rglob("*.jsonl")) - completed_paths
+        assert len(paths) == 1
+        path = paths.pop()
+        records = [json.loads(line) for line in path.read_text().splitlines()]
+        assert records[0]["event"] == "attempt_opened"
+        assert records[0]["fields"]["slurm_job_id"] == "812345"
+        expected_events = ["attempt_opened"]
+        if request_token is not None:
+            expected_events.append("submission_context")
+            assert records[1]["fields"] == {
+                "request_token": request_token,
+                "profile_binding_sha256": profile.binding_sha256,
+                "project_root": str(workspace),
+            }
+            assert records[1]["console_detail"] == "durable_only"
+        if command == "report":
+            expected_events.append("reporting_started")
+            assert records[-1]["fields"]["run_root"] == str(run_root)
+        assert [record["event"] for record in records] == expected_events
+        identities.add(records[0]["execution_attempt_id"])
+        completed_paths.add(path)
+
+    def preflight(*_args, **_kwargs):
+        admitted_log()
+        raise control.ControlError("fixture preparation failure")
+
+    def report(_root, *, execute, observe_generation_start):
+        assert execute and _root == run_root
+        observe_generation_start()
+        admitted_log()
+        raise reporting_operation.ReportingOperationError("fixture reporting failure")
+
+    monkeypatch.setattr(control.doctor, "diagnose_project", preflight)
+    monkeypatch.setattr(control.inspection, "inspect_run", preflight)
+    monkeypatch.setattr(reporting_operation, "run_reporting", report)
+    for _ in range(2):
+        assert getattr(control, f"{command}_from_args")(arguments) == (
+            1 if command == "report" else 2
+        )
+    assert len(completed_paths) == len(identities) == 2
+    assert all(path.parent.name in identities for path in completed_paths)
+    assert all(
+        json.loads(path.read_text().splitlines()[-1])["event"] == "attempt_failed"
+        for path in completed_paths
+    )
+    assert not (workspace / "logs").exists()
+    if command == "run":
+        assert not (workspace / "runs").exists()
+    else:
+        assert list(run_root.iterdir()) == []
+    if request_token is not None:
+        assert request_token not in capsys.readouterr().err
+
+
 def test_private_slurm_delegate_rejects_profile_drift_before_readiness(
     tmp_path: Path,
     capsys,

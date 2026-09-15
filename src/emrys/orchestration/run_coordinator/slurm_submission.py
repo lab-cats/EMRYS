@@ -36,6 +36,7 @@ if TYPE_CHECKING:
 DELEGATE_MARKER_ENV = "EMRYS_PRIVATE_SLURM_DELEGATE"
 PROFILE_SHA256_ENV = "EMRYS_PRIVATE_SLURM_PROFILE_SHA256"
 SUBMIT_UID_ENV = "EMRYS_PRIVATE_SLURM_SUBMIT_UID"
+REQUEST_TOKEN_ENV = "EMRYS_PRIVATE_SLURM_REQUEST_TOKEN"
 DELEGATE_MARKER = "emrys-slurm-delegate-v1"
 
 _DELEGATE_ENV_PREFIX = "EMRYS_PRIVATE_SLURM_"
@@ -48,11 +49,7 @@ class SlurmSubmissionError(RuntimeError):
 _REQUEST_CONTEXT_LIMIT = 64 * 1024
 
 
-def _scheduler_stream_patterns(
-    log_dir: Path, request_token: str | None = None
-) -> tuple[Path, Path]:
-    if "%" in os.fspath(log_dir):
-        raise SlurmSubmissionError("scheduler log directory must not contain '%'")
+def _validate_request_token(request_token: object) -> None:
     if request_token is not None and (
         not isinstance(request_token, str)
         or not re.fullmatch(r"[0-9a-f]{32}", request_token)
@@ -60,6 +57,14 @@ def _scheduler_stream_patterns(
         raise SlurmSubmissionError(
             "Submission request token must be 32 lowercase hex digits"
         )
+
+
+def _scheduler_stream_patterns(
+    log_dir: Path, request_token: str | None = None
+) -> tuple[Path, Path]:
+    if "%" in os.fspath(log_dir):
+        raise SlurmSubmissionError("scheduler log directory must not contain '%'")
+    _validate_request_token(request_token)
     stem = "emrys-local-pilot" + (f"-{request_token}" if request_token else "")
     return log_dir / f"{stem}-%j.out", log_dir / f"{stem}-%j.err"
 
@@ -371,7 +376,9 @@ def delegate_binding() -> str | None:
         os.environ.get(name)
         for name in (DELEGATE_MARKER_ENV, PROFILE_SHA256_ENV, SUBMIT_UID_ENV)
     )
-    if all(value is None for value in values):
+    request_token = os.environ.get(REQUEST_TOKEN_ENV)
+    _validate_request_token(request_token)
+    if request_token is None and all(value is None for value in values):
         return None
     if any(value is None for value in values):
         raise SlurmSubmissionError("Private Slurm delegate context is incomplete")
@@ -421,6 +428,7 @@ def _batch_script(
     modules: tuple[str, ...],
     profile_sha256: str,
     submitter_uid: int,
+    request_token: str | None,
 ) -> str:
     if modules and module_init is None:
         raise SlurmSubmissionError("modules require an explicit module init file")
@@ -462,6 +470,15 @@ def _batch_script(
             'die "submitter UID is invalid"',
             f'[[ "$(/usr/bin/id -u)" == "${{{SUBMIT_UID_ENV}}}" ]] || '
             'die "batch UID does not match the submitter"',
+            *(
+                (
+                    f'[[ "${{{REQUEST_TOKEN_ENV}:-}}" == {request_token} ]] || '
+                    'die "submission request token differs from the frozen plan"',
+                    f"readonly {REQUEST_TOKEN_ENV}",
+                )
+                if request_token is not None
+                else ()
+            ),
             "export PATH=/usr/bin:/bin",
             "umask 077",
             *module_lines,
@@ -556,7 +573,13 @@ def plan_submission(
             f"--error={stderr_pattern}",
             f"--export={DELEGATE_MARKER_ENV}={DELEGATE_MARKER},"
             f"{PROFILE_SHA256_ENV}={profile_sha256},"
-            f"{SUBMIT_UID_ENV}={uid},LOGNAME,USER,LNAME,USERNAME",
+            f"{SUBMIT_UID_ENV}={uid},"
+            + (
+                f"{REQUEST_TOKEN_ENV}={request_token},"
+                if request_token is not None
+                else ""
+            )
+            + "LOGNAME,USER,LNAME,USERNAME",
         )
     )
 
@@ -580,6 +603,7 @@ def plan_submission(
         modules=tuple(slurm_placement.modules),
         profile_sha256=profile_sha256,
         submitter_uid=uid,
+        request_token=request_token,
     )
     return SlurmSubmission(
         argv=tuple(argv),
@@ -755,6 +779,7 @@ __all__ = (
     "DELEGATE_MARKER_ENV",
     "PROFILE_SHA256_ENV",
     "SUBMIT_UID_ENV",
+    "REQUEST_TOKEN_ENV",
     "SlurmSubmission",
     "SlurmSubmissionError",
     "SubmissionRequestObservation",

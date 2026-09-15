@@ -28,6 +28,7 @@ from emrys.contracts.orchestration.application_model import (
 from emrys.libraries.application_logging import (
     ApplicationLogError,
     AttemptIdentity,
+    AttemptLog,
     LogControlError,
     LogControls,
     LogLevel,
@@ -889,6 +890,24 @@ def _schedule(
     return 0
 
 
+def _record_submission_context(attempt: AttemptLog, workspace: Path) -> None:
+    binding = slurm_submission.delegate_binding()
+    token = os.environ.get(slurm_submission.REQUEST_TOKEN_ENV)
+    if token is not None:
+        attempt.logger(component="orchestration", phase="initialization").info(
+            "Submission request context recorded.",
+            extra=event(
+                "submission_context",
+                detail="durable_only",
+                fields={
+                    "request_token": field(token),
+                    "profile_binding_sha256": field(binding),
+                    "project_root": field(workspace),
+                },
+            ),
+        )
+
+
 def _execute_plan(
     plan_source: AttemptPlan | PlanBuilder,
     *,
@@ -941,6 +960,7 @@ def _execute_plan(
         warning="WARNING: Application logging degraded; the authoritative Attempt "
         "receipt and lifecycle outcome remain controlling.",
     )
+    log_best_effort(lambda: _record_submission_context(attempt, workspace))
 
     def close_log_best_effort() -> None:
         with suppress(Exception):
@@ -1642,6 +1662,7 @@ def report_from_args(
                 component="reporting",
                 scheduler_environment=os.environ,
             )
+            _record_submission_context(attempt, workspace)
             attempt.logger(component="reporting", phase="execute").info(
                 "Generating downstream reports.",
                 extra=event("reporting_started", fields={"run_root": field(root)}),

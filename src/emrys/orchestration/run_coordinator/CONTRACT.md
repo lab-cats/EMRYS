@@ -224,6 +224,15 @@ The existing stdout response is the sole recorded scheduler response; there is
 no second job-ID/status file. These records do not prove that a Run was created,
 that a job still exists, or that cancellation or recovery is safe.
 
+Ordinary submission carries its frozen request token through the existing
+private batch delegate context. The shell checks it before site initialization
+and keeps it read-only; malformed or orphan token context is refused. The one
+workflow/report application log records a durable-only `submission_context`
+event with exact token, profile binding and Project root before preparation.
+Opening scheduler metadata and later candidate Run/Attempt events remain
+distinct diagnostics. This adds no application log to the submitter, no
+secondary state store, and no association or cancellation authority by itself.
+
 Project inspection without a Run selector enumerates all retained requests
 before the existing Run selection. It never chooses the newest request. The
 shared writer/reader validates the closed context and a 64 KiB canonical JSON
