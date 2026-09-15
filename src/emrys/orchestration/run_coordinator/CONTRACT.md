@@ -223,6 +223,20 @@ Run association or process absence. No scheduler query or file write occurs.
 A Project with no Runs still displays its request roster successfully;
 explicit Run selection retains its existing missing/ambiguous selection errors.
 
+`inspect --submission REQUEST` selects one exact retained directory name or
+absolute path, mutually exclusive with a Run selector. The ordinary roster
+does not query the scheduler. The selected request's v2 binding uses a shared
+stdlib-only scheduler owner: exact root ID, numeric UID, cluster and both frozen
+stream paths must agree in one complete metadata row. A successful empty queue
+query may fall back to duplicate-aware terminal accounting; a failed queue
+query cannot. Each of at most two commands has the existing ten-second timeout.
+Admitted replies are capped at 64 KiB; subprocess capture memory itself is not
+strictly bounded. Legacy, partial, mismatched, malformed, duplicate or unsupported
+metadata stays `UNKNOWN`. State, queue reason and accounting exit status are
+escaped observations, never Run association, scientific success or recovery
+authority. The existing dashboard uses the same extracted identity/accounting
+mechanics and still loads directly under isolated system Python.
+
 The existing dashboard's shared scheduler observer requires an exact canonical
 root job ID and current numeric UID. It rejects missing/mismatched/duplicate
 identity, including accounting duplicates, and never substitutes `USER` or

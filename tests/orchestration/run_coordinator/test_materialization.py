@@ -35,6 +35,8 @@ from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.contracts.scientific_evidence import step08
 from emrys.evidence.runtime_availability import inspector as runtime_inspector
 from emrys.evidence.runtime_availability.inspector import (
+    RuntimeBinding,
+    runtime_file_bindings,
     RuntimeInspection,
     RuntimeObservation,
     load_runtime_policy,
@@ -246,14 +248,14 @@ def _readiness(
     storage_receipt = tmp_path / "storage.qualified.json"
     storage_bytes = b"fixed storage qualification receipt\n"
     storage_receipt.write_bytes(storage_bytes)
-    storage_binding = doctor.RuntimeBinding(
+    storage_binding = RuntimeBinding(
         check_id="storage_qualification",
         path=storage_receipt,
         resolved_path=storage_receipt.resolve(strict=True),
         sha256=hashlib.sha256(storage_bytes).hexdigest(),
         observed="b" * 64,
     )
-    bindings = (*doctor.runtime_file_bindings(runtime_inspection), storage_binding)
+    bindings = (*runtime_file_bindings(runtime_inspection), storage_binding)
     readiness = doctor.DoctorResult(
         project=project,
         analysis=analysis,
@@ -1345,7 +1347,7 @@ def test_downstream_plan_preserves_admitted_sidecars_for_relocated_reference(
 def _runtime_admission_fixture(
     plan: materialization.AttemptPlan,
     monkeypatch: pytest.MonkeyPatch,
-) -> tuple[lifecycle.LifecycleRequest, doctor.RuntimeBinding]:
+) -> tuple[lifecycle.LifecycleRequest, RuntimeBinding]:
     ops = lifecycle.default_lifecycle_ops()
     admit_run(plan, ops=ops)
     request = plan.lifecycle_request
@@ -3528,6 +3530,114 @@ def test_oversized_submission_context_prevents_scheduler_invocation(
     } == before
 
 
+@pytest.mark.parametrize("state", ("pending", "completed", "unavailable", "legacy"))
+@pytest.mark.parametrize("selector_kind", ("name", "absolute"))
+def test_public_submission_selection_queries_only_the_exact_request(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    state: str,
+    selector_kind: str,
+) -> None:
+    from tests.orchestration.run_coordinator.test_slurm_submission import (
+        _request_record,
+    )
+
+    project = build(tmp_path / "project")
+    _, selected, context = _request_record(project.parent, stdout=b"700123;cluster-a\n")
+    _, other, _ = _request_record(project.parent, "b", stdout=b"700124\n")
+    if state != "legacy":
+        context["schema_version"] = "emrys.submission-request.v2"
+        for stream, suffix in (("stdout", "out"), ("stderr", "err")):
+            context[f"scheduler_{stream}_pattern"] = str(
+                selected.parent / f"emrys-local-pilot-{'a' * 32}-%j.{suffix}"
+            )
+        (selected / "request.json").write_bytes(
+            orchestration_contracts.canonical_json_bytes(context)
+        )
+    calls = []
+
+    def query(argv, **_kwargs):
+        calls.append(argv)
+        assert "700123" in argv and "700124" not in argv
+        assert "--clusters=cluster-a" in argv
+        if state == "unavailable":
+            return None
+        if state == "completed" and argv[0] == "squeue":
+            return b""
+        assert state != "legacy", "legacy diagnostic records cannot query a job"
+        fields = (
+            "700123",
+            str(os.getuid()),
+            "PENDING" if state == "pending" else "COMPLETED",
+            "cluster-a",
+            context["scheduler_stdout_pattern"].replace("%j", "700123"),
+            context["scheduler_stderr_pattern"].replace("%j", "700123"),
+            "Resources\x1b[31m" if state == "pending" else "0:0",
+        )
+        return ("|".join(fields) + "\n").encode()
+
+    monkeypatch.setattr(
+        control.slurm_submission.scheduler_observation, "command_bytes", query
+    )
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    before = {
+        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
+    }
+    assert (
+        control.inspect_from_args(parser.parse_args(["--project", str(project)])) == 0
+    )
+    roster = capsys.readouterr().out
+    assert str(selected) in roster and str(other) in roster and calls == []
+    monkeypatch.setattr(
+        control,
+        "_resolve_run_argument",
+        lambda _args: pytest.fail("request selection entered Run selection"),
+    )
+    selector = selected.name if selector_kind == "name" else str(selected)
+    assert (
+        control.inspect_from_args(
+            parser.parse_args(["--project", str(project), "--submission", selector])
+        )
+        == 0
+    )
+    output = capsys.readouterr().out
+    assert str(selected) in output and str(other) not in output
+    expected = {"pending": "PENDING", "completed": "COMPLETED"}.get(state, "UNKNOWN")
+    assert f"Scheduler observation: {expected}" in output
+    assert "Recorded scheduler stdout:" in output
+    assert "Recorded scheduler stderr:" in output
+    assert (
+        "do not establish Run completion or authorize cancellation or recovery"
+        in output
+    )
+    assert (
+        len(calls)
+        == {"pending": 1, "completed": 2, "unavailable": 1, "legacy": 0}[state]
+    )
+    if state == "pending":
+        assert r"Queue reason: Resources\x1b[31m" in output
+        assert "\x1b" not in output
+    if state == "completed":
+        assert "Scheduler exit status: 0:0" in output
+    assert {
+        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
+    } == before
+    calls.clear()
+    for extra in (
+        ("--submission", "submission-a"),
+        ("--submission", selector, "run-" + "a" * 64),
+    ):
+        assert (
+            control.inspect_from_args(
+                parser.parse_args(["--project", str(project), *extra])
+            )
+            == 2
+        )
+        assert calls == []
+
+
 @pytest.mark.parametrize(
     ("placement", "overrides", "message"),
     (
@@ -4824,7 +4934,7 @@ def _doubled_lifecycle_ops(
     def admit_runtime(
         attempt: Mapping[str, object],
         _request: lifecycle.LifecycleRequest,
-        storage_binding: doctor.RuntimeBinding | None,
+        storage_binding: RuntimeBinding | None,
         _initial_inspection: RuntimeInspection | None,
     ) -> None:
         assert attempt["execution_mode"] == "local-science-tools"

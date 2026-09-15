@@ -324,7 +324,7 @@ def test_request_context_retains_exact_requested_run(
 
 @pytest.mark.parametrize("command", ["run", "resume", "report"])
 def test_request_specific_streams_roundtrip_through_producer_and_reader(
-    tmp_path: Path, command: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: str
 ) -> None:
     project, root, context = _request_record(tmp_path)
     context.update(
@@ -351,6 +351,34 @@ def test_request_specific_streams_roundtrip_through_producer_and_reader(
     assert observed.context["scheduler_stdout_pattern"] == str(plan.stdout_pattern)
     assert observed.context["scheduler_stderr_pattern"] == str(plan.stderr_pattern)
     assert observed.context["requested_run"] == context["requested_run"]
+    monkeypatch.setattr(
+        slurm_submission.scheduler_observation,
+        "command_bytes",
+        lambda *_args, **_kwargs: (
+            f"700123|{os.getuid()}|RUNNING|alpha|{plan.stdout_pattern}|{plan.stderr_pattern}|None\n"
+        ).encode(),
+    )
+    state = slurm_submission.observe_submission_request(observed)
+    assert state["source"] == "squeue" and state["state"] == "RUNNING"
+
+
+@pytest.mark.parametrize("record", ["legacy", "partial", "unconfirmed"])
+def test_request_observation_requires_complete_unique_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, record: str
+) -> None:
+    project, root, _ = _request_record(tmp_path)
+    if record == "partial":
+        (root / "sbatch.stderr").unlink()
+    elif record == "unconfirmed":
+        (root / "sbatch.stdout").write_bytes(b"")
+    (request,) = slurm_submission.submission_requests(project)
+    monkeypatch.setattr(
+        slurm_submission.scheduler_observation,
+        "command_bytes",
+        lambda *_args, **_kwargs: pytest.fail("unbound request queried the scheduler"),
+    )
+    observed = slurm_submission.observe_submission_request(request)
+    assert observed["state"] == "UNKNOWN" and observed["diagnostic"]
 
 
 @pytest.mark.parametrize(

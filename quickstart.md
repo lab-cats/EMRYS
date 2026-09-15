@@ -189,6 +189,10 @@ available Run. A queued job has not created its Run yet; `Runs: none found at
 inspection time` does not mean you should submit again. The retained response
 alone does not prove the job's current state. Keep uncertain or partial records,
 wait and repeat `emrys inspect`; it does not start or change work.
+To check one exact request's queue state or accounting result, follow
+[submission inspection](docs/operations/RUNBOOK.md#retain-a-submission-before-its-run-exists).
+An `UNKNOWN` observation leaves the request unresolved; keep its records before
+considering another submission.
 Completion is confirmed by all four lines:
 
 ```text
