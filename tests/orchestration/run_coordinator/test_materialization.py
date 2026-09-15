@@ -6149,6 +6149,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         )
         assert other_row in public.stdout
         assert "REPORTING BLOCKER:" in public.stdout
+        assert "Run diagnostic logs: 2 association(s); scan complete." in public.stdout
         assert "Recovery available: no" in public.stdout
         assert "Preserve completed Results; do not rerun science." in public.stdout
         assert "Results:" not in public.stdout.splitlines()
@@ -6217,6 +6218,13 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     after = _verified_snapshot(run_root)
     assert all(after[path] == value for path, value in before.items())
 
+    application_paths = tuple(sorted((workspace / "logs/application").rglob("*.jsonl")))
+    assert {path.name for path in application_paths} == {
+        "emrys-run.jsonl",
+        "emrys-resume.jsonl",
+    }
+    assert len(application_paths) == 2
+
     inspect_arguments = argparse.Namespace(
         project=request,
         run=run_id,
@@ -6224,6 +6232,8 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     )
     assert control.inspect_from_args(inspect_arguments) == 0
     inspect_output = capsys.readouterr().out
+    assert "Run diagnostic logs: 2 association(s); scan complete." in inspect_output
+    assert all(str(path) not in inspect_output for path in application_paths)
     assert "Run admission: valid" in inspect_output
     assert "Run lock: no lock" in inspect_output
     assert "Attempt outcome: succeeded" in inspect_output
@@ -6246,6 +6256,9 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     inspect_arguments.detail = "verbose"
     assert control.inspect_from_args(inspect_arguments) == 0
     verbose_output = capsys.readouterr().out
+    assert all(str(path) in verbose_output for path in application_paths)
+    assert failed.latest_attempt["workflow_attempt_id"] in verbose_output
+    assert completed.latest_attempt["workflow_attempt_id"] in verbose_output
     assert f"Run root: {run_root}" in verbose_output
     assert (
         f"Analysis ID: {completed.authority.analysis_revision.analysis_revision_id}"
@@ -6718,3 +6731,135 @@ def test_borrowed_runtime_survives_run_and_resume_and_rejects_changed_donor(
         lifecycle._admit_runtime_context(
             first.attempt_record, first.lifecycle_request, storage, None
         )
+
+
+@pytest.mark.parametrize("selector", ["default", "environment", "cli"])
+def test_public_run_diagnostic_log_discovery_uses_exact_root_without_changing_authority(
+    tmp_path, monkeypatch, capsys, selector
+):
+    import io
+
+    plan = _plan(tmp_path)
+    observed = _failed_run(plan)
+    project, root = plan.run.analysis.source_path, plan.run_root
+    log_root = (
+        project.parent / "logs/application"
+        if selector == "default"
+        else tmp_path / "custom diagnostic logs"
+    )
+    monkeypatch.delenv("EMRYS_LOG_ROOT", raising=False)
+    if selector != "default":
+        monkeypatch.setenv(
+            "EMRYS_LOG_ROOT",
+            str(log_root if selector == "environment" else tmp_path / "ignored"),
+        )
+    application = control.open_attempt_log(
+        controls=LogControls(LogLevel.NORMAL, log_root, "default", "command_line"),
+        identity=control.AttemptIdentity(
+            "run", root.name, "application-" + "e" * 32, "emrys-report"
+        ),
+        mode="report",
+        component="orchestration",
+        stderr=io.StringIO(),
+    )
+    application.logger(component="reporting", phase="reporting").info(
+        "Synthetic diagnostic association; no report production.",
+        extra=control.event(
+            "reporting_started", fields={"run_root": control.field(root)}
+        ),
+    )
+    application.close()
+    before = {
+        path: (path.read_bytes(), path.stat().st_mtime_ns) if path.is_file() else None
+        for path in tmp_path.rglob("*")
+    }
+    calls = []
+    original = control._submission_inspection.inspect_run_applications
+
+    def discover(selected_project, selected_run, selected_root):
+        calls.append((selected_project, selected_run, selected_root))
+        return original(selected_project, selected_run, selected_root)
+
+    monkeypatch.setattr(
+        control._submission_inspection, "inspect_run_applications", discover
+    )
+    monkeypatch.setattr(
+        control, "open_attempt_log", lambda **_: pytest.fail("Inspection opened a log")
+    )
+    monkeypatch.setattr(
+        control.slurm_submission,
+        "observe_submission_request",
+        lambda *_: pytest.fail("Run selection queried the scheduler"),
+    )
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    assert (
+        control.inspect_from_args(parser.parse_args(["--project", str(project)])) == 0
+    )
+    assert calls == []
+    assert "Run diagnostic logs:" not in capsys.readouterr().out
+    argv = [root.name, "--project", str(project)]
+    if selector == "cli":
+        argv.extend(["--log-root", str(log_root)])
+    for detail in ("normal", "verbose"):
+        assert (
+            control.inspect_from_args(parser.parse_args([*argv, "--detail", detail]))
+            == 0
+        )
+        text = capsys.readouterr().out
+        assert "Run diagnostic logs: 1 association(s); scan complete." in text
+        assert f"Application log search root: {log_root}" in text
+        assert (str(application.path) in text) is (detail == "verbose")
+        assert (
+            "Scientific Results: incomplete" in text
+            and "Recovery available: yes" in text
+        )
+    monkeypatch.setattr(control.sys.stdin, "isatty", lambda: False)
+    monkeypatch.setattr(control.sys.stdout, "isatty", lambda: False)
+    assert control.inspect_from_args(parser.parse_args([*argv, "--watch"])) == 0
+    text = capsys.readouterr().out
+    assert "Run diagnostic logs: 1 association(s); scan complete." in text
+    assert (
+        str(application.path) in text
+        and "Current diagnostic bytes; content not verified" in text
+    )
+    assert calls == [(project, root, log_root)] * 3
+
+    def failed(*_args):
+        raise RuntimeError("diagnostic reader unavailable\x1b[31m")
+
+    monkeypatch.setattr(control._submission_inspection, "_CandidateAdmission", failed)
+    assert control.inspect_from_args(parser.parse_args(argv)) == 0
+    failed_text = capsys.readouterr().out
+    assert "Run diagnostic logs: 0 association(s); scan unknown." in failed_text
+    assert (
+        "Scientific Results: incomplete" in failed_text
+        and "Recovery available: yes" in failed_text
+    )
+    assert "\x1b" not in failed_text and str(application.path) not in failed_text
+    assert calls == [(project, root, log_root)] * 4
+    assert inspection.inspect_run(root) == observed
+    assert {
+        path: (path.read_bytes(), path.stat().st_mtime_ns) if path.is_file() else None
+        for path in tmp_path.rglob("*")
+    } == before
+
+
+@pytest.mark.parametrize("selection", [[], ["--submission", "submission-" + "a" * 32]])
+def test_inspect_log_root_requires_explicit_run_before_reads(
+    tmp_path, monkeypatch, capsys, selection
+):
+    def forbidden(*args, **kwargs):
+        pytest.fail("Invalid log selector performed I/O")
+
+    monkeypatch.setattr(control.onboarding, "project_definition_path", forbidden)
+    monkeypatch.setattr(control, "_resolve_run_argument", forbidden)
+    monkeypatch.setattr(
+        control.slurm_submission, "select_submission_request", forbidden
+    )
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    arguments = parser.parse_args(["--log-root", str(tmp_path / "absent"), *selection])
+    assert control.inspect_from_args(arguments) == 2
+    assert "--log-root requires a Run selector" in capsys.readouterr().err
+    assert list(tmp_path.iterdir()) == []

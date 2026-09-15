@@ -62,6 +62,10 @@ Interactive `--watch --actions` leaves the view for an ordinary CLI operation:
 report, and `s` previews stopping a selected request. Run handoffs use the
 default profile. All handlers run after terminal cleanup with fresh admission;
 report/stop previews do not execute, and no worker owns an operation or recovery.
+Explicit Run inspection/watch discovers all admitted application-log associations
+within the selected root, alongside Task streams. `--log-root` selects a
+historical custom root; no latest-file heuristic or scheduler inference is used.
+Default roster and implicit Run selection retain their no-scan behavior.
 
 The old CSU-oriented `dashboard.py` preview remains until a replacement is
 implemented and validated under `DASHBOARD-RETIRE-01`. `emrys inspect` stays the

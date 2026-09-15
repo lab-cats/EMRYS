@@ -218,6 +218,7 @@ class WatchSnapshot:
     request_at: datetime | None = None
     run_root: Path | None = None
     application: _submission_inspection.SubmissionApplicationObservation | None = None
+    run_applications: _submission_inspection.RunApplicationObservation | None = None
     application_at: datetime | None = None
     observed: RunInspection | None = None
     verified_at: datetime | None = None
@@ -227,6 +228,28 @@ class WatchSnapshot:
     scheduler_at: datetime | None = None
     streams: tuple[StreamSource, ...] = ()
     tail: StreamTail | None = None
+
+
+def run_application_lines(
+    observation: _submission_inspection.RunApplicationObservation,
+    *,
+    detail: str = "normal",
+) -> tuple[str, ...]:
+    """Render diagnostic associations without deriving application ownership."""
+    lines = [
+        f"Run diagnostic logs: {len(observation.logs)} association(s); scan {observation.status}.",
+        f"Application log search root: {observation.log_root}",
+    ]
+    if detail != "normal":
+        for item in observation.logs:
+            lines.extend(
+                (
+                    f"  {item.application_log}",
+                    f"    {item.status}; recorded {item.recorded_event}; Attempt: {item.workflow_attempt_id or 'none (Run only)'}",
+                )
+            )
+    lines.extend(f"  {value}" for value in observation.diagnostics[:2])
+    return tuple(lines)
 
 
 def task_stream_sources(
@@ -289,6 +312,15 @@ def _stream_sources(snapshot: WatchSnapshot) -> tuple[StreamSource, ...]:
                 Path(str(request.context["application_log_root"])),
             )
         )
+    if snapshot.run_applications is not None:
+        sources.extend(
+            StreamSource(
+                f"Application {item.application_log.parent.name} ({item.workflow_attempt_id or 'Run only'})",
+                item.application_log,
+                snapshot.run_applications.log_root,
+            )
+            for item in snapshot.run_applications.logs
+        )
     observed = snapshot.observed
     if observed is not None:
         selected_attempt = (
@@ -336,6 +368,16 @@ def refresh_snapshot(
                     application_at=datetime.now(UTC),
                     run_root=application.run_root,
                 )
+            elif snapshot.run_applications is not None:
+                snapshot = replace(
+                    snapshot,
+                    run_applications=_submission_inspection.inspect_run_applications(
+                        snapshot.project,
+                        snapshot.run_root,
+                        snapshot.run_applications.log_root,
+                    ),
+                    application_at=datetime.now(UTC),
+                )
             observed = (
                 None if snapshot.run_root is None else inspect_run(snapshot.run_root)
             )
@@ -358,8 +400,16 @@ def refresh_snapshot(
                 if snapshot.request is not None
                 else snapshot.application,
                 application_at=None
-                if snapshot.request is not None
+                if snapshot.request is not None or snapshot.run_applications is not None
                 else snapshot.application_at,
+                run_applications=None
+                if snapshot.run_applications is None
+                else replace(
+                    snapshot.run_applications,
+                    logs=(),
+                    status="unknown",
+                    diagnostics=(str(exc)[:4096],),
+                ),
                 verified_at=None,
                 verification_error=safe_text(str(exc)[:4096]),
                 next_action="Preserve retained evidence; inspect again when available.",
@@ -471,6 +521,11 @@ def render_snapshot(
                 f"Recorded preparation: {application.recorded_event}; candidate Run: {application.recorded_run_id or 'none'}"
             )
         lines.extend(f"  {value}" for value in application.diagnostics[:2])
+    if snapshot.run_applications is not None:
+        lines.append(
+            f"Run log associations as of: {snapshot.application_at or 'unavailable'}"
+        )
+        lines.extend(run_application_lines(snapshot.run_applications))
     observed = snapshot.observed
     lines.append(
         f"Run evidence as of: {snapshot.verified_at or 'unavailable'}; changes require r"
@@ -551,6 +606,7 @@ def watch(
     *,
     request: slurm_submission.SubmissionRequestObservation | None = None,
     run_root: Path | None = None,
+    application_log_root: Path | None = None,
     inspect_run: Callable[[Path], RunInspection],
     next_action: Callable[[RunInspection], str],
     review_actions: tuple[tuple[bytes, str, Callable[[], int]], ...] = (),
@@ -560,7 +616,16 @@ def watch(
     refresh = partial(
         refresh_snapshot, inspect_run=inspect_run, next_action=next_action
     )
-    initial = WatchSnapshot(project, request=request, run_root=run_root)
+    if application_log_root is not None and (request is not None or run_root is None):
+        raise PresentationError("A log search root requires an explicit Run selection")
+    initial = WatchSnapshot(
+        project,
+        request=request,
+        run_root=run_root,
+        run_applications=None
+        if application_log_root is None
+        else _submission_inspection.RunApplicationObservation(application_log_root),
+    )
     interactive = (
         sys.stdin.isatty() and sys.stdout.isatty() and os.environ.get("TERM") != "dumb"
     )

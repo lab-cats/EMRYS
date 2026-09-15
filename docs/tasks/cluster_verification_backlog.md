@@ -1078,6 +1078,25 @@ actual lifecycle/public cases require hosted CI. Institutional discovery,
 standalone/offline replacement and interpretation of native liveness remain
 separate acceptance.
 
+**Run-selected application discovery:** Explicit Run inspection and watch now
+share a bounded search of one default, environment-selected or explicit
+`--log-root` root. The request reader's canonical enumeration, preparation
+parsing and historical Run/Attempt admission serve both paths. Each scan admits
+the selected Run once and each distinct Attempt once, preserving all matching
+Run/resume/report logs. A standalone report is associated with the Run only.
+Custom historical roots are not retained in Run contracts and must be selected;
+the ordinary roster/implicit picker does not scan, and a selected request keeps
+its frozen root. No writer, product file, persistent index or schema is added.
+
+Stable global snapshots and shared aggregate limits bound both scopes. Partial
+malformed evidence remains unknown; independently rechecked matches may survive,
+but namespace drift clears them. Explicit watch refresh rebuilds sources and
+removes revoked associations while retaining independent Task streams; timer
+refresh never repeats discovery. Associations do not establish unique ownership,
+native liveness, completion or recovery. Focused reader/presentation checks pass;
+real writer/public-handler and historical resume/report cases require CI. Full
+standalone/offline replacement and institutional acceptance remain separate.
+
 ### CV-26 Repeated Doctor input reads
 
 **Finding:** A verification-only Doctor operation repeated Project/runtime
