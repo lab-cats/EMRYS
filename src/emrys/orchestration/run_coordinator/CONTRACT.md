@@ -716,6 +716,18 @@ raising interruption. Repeated signals cannot interrupt bounded TERM/KILL
 cleanup; child execution receives these signals unblocked. Closed stream pipes
 do not establish process completion.
 
+The fresh Linux Task CLI additionally enables child-subreaper behavior before
+entry and binds it explicitly to both native command runners. It requires one
+thread, no preexisting child and normal SIGCHLD handling. The same bounded
+cleanup loop signals unreaped direct children and reaps adopted descendants,
+including children that create separate sessions. This path uses fresh child
+identities instead of a numeric process-group target. A child worklist supplies
+signal targets only; closure requires the registered main child's outcome and
+`ECHILD` from a wait that includes Linux clone children. Observation, ownership,
+signaling or reaping failures remain typed ambiguity. Inline callers and
+non-Linux workers retain the process-group boundary. This proves no absence of
+work delegated to unrelated preexisting services or remote processes.
+
 The outer workflow gives native cleanup its bounded grace period. Any forced
 workflow SIGKILL, including a leader observed as killed externally, remains
 ambiguous even if the outer group is absent: a separately owned native session
@@ -723,8 +735,11 @@ may survive. Lifecycle retains the Run lock and publishes no Attempt receipt.
 Typed native-group ambiguity also dominates replacement exceptions during Task
 handler restoration. A short masked decision revokes native workspace cleanup
 authority before signals are unmasked; filesystem cleanup remains interruptible.
-These rules do not reconcile lost wrappers or prove the absence of a child
-that escaped its owned group.
+These rules do not reconcile a lost Task worker. If the surviving workflow exits
+normally with native blockers, lifecycle may release the Run lock and publish a
+blocked receipt while preserving native locks and workspaces. That receipt
+supplies no descendant-closure or postentry-retry authority. A worker that lacks
+the Linux subreaper boundary cannot prove absence outside its owned group.
 
 After every selected task is verified, the scientific Attempt receipt is
 published last. Application logging follows the separate logging contract and

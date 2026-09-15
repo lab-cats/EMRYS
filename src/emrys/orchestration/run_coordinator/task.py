@@ -19,7 +19,7 @@ import stat
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from functools import partial
 from operator import attrgetter
@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from emrys.orchestration.run_coordinator.lifecycle import (
+        ProcessGroupOps,
         TransactionSignalController,
     )
 
@@ -823,6 +824,128 @@ class _TaskStreamCapture:
                 )
 
 
+class _TaskChildren:
+    """Reap descendants only inside the fresh, single-threaded Linux Task CLI."""
+
+    def __init__(self) -> None:
+        try:
+            import ctypes
+        except ImportError as exc:
+            raise TaskBoundaryError(
+                "Linux Task child-subreaper capability failed"
+            ) from exc
+
+        self.owner = os.getpid()
+        self.children = Path(f"/proc/self/task/{self.owner}/children")
+        self.process: subprocess.Popen[bytes] | None = None
+        self.empty = False
+        self.prepare()
+        # Clear inherited SA_NOCLDWAIT as well as checking Python's disposition.
+        signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+        try:
+            prctl = ctypes.CDLL(None, use_errno=True).prctl
+            enabled = ctypes.c_int()
+            zero = ctypes.c_ulong(0)
+            if (
+                prctl(36, ctypes.c_ulong(1), zero, zero, zero) != 0
+                or prctl(37, ctypes.byref(enabled), zero, zero, zero) != 0
+                or enabled.value != 1
+            ):
+                raise TaskBoundaryError("Linux Task child-subreaper activation failed")
+        except (AttributeError, OSError) as exc:
+            raise TaskBoundaryError(
+                "Linux Task child-subreaper capability failed"
+            ) from exc
+
+    def _check_owner(self) -> None:
+        if (
+            os.getpid() != self.owner
+            or {item.name for item in self.children.parent.parent.iterdir()}
+            != {str(self.owner)}
+            or signal.getsignal(signal.SIGCHLD) != signal.SIG_DFL
+        ):
+            raise TaskProcessGroupAmbiguity("Task child-reaping ownership changed")
+
+    def prepare(self) -> None:
+        try:
+            self._check_owner()
+            self.children.read_text(encoding="ascii")
+            os.waitid(os.P_ALL, 0, os.WEXITED | os.WNOHANG | os.WNOWAIT | 0x40000000)
+        except ChildProcessError:
+            self.process = None
+            self.empty = False
+            return
+        except (AttributeError, OSError, ValueError) as exc:
+            raise TaskProcessGroupAmbiguity(
+                "Task child ownership could not be checked before native entry"
+            ) from exc
+        raise TaskProcessGroupAmbiguity("Task refuses preexisting child processes")
+
+    def process_ops(self, ops: ProcessGroupOps) -> ProcessGroupOps:
+        from emrys.orchestration.run_coordinator.lifecycle import ProcessGroupAmbiguity
+
+        cleanup_signal: int | None = None
+
+        def signal_children(process_group_id: int, signum: int) -> None:
+            nonlocal cleanup_signal
+            if cleanup_signal != signal.SIGKILL:
+                cleanup_signal = signum
+            signum = cleanup_signal
+            self._check_owner()
+            process = self.process
+            if process is None or process.pid != process_group_id:
+                raise TaskProcessGroupAmbiguity("Task native child was not registered")
+            # This is only a signal worklist: procfs can omit live children.
+            # No wait/poll may occur between this read and these signals.
+            children = self.children.read_text(encoding="ascii").split()
+            if any(
+                not child.isascii() or not child.isdecimal() or int(child) <= 0
+                for child in children
+            ):
+                raise TaskProcessGroupAmbiguity("Task child observation was invalid")
+            for child in children:
+                try:
+                    os.kill(int(child), signum)
+                except ProcessLookupError:
+                    pass
+
+        def poll(process: subprocess.Popen[bytes]) -> int | None:
+            try:
+                self._check_owner()
+                if process is not self.process:
+                    raise TaskProcessGroupAmbiguity(
+                        "Task native child identity changed"
+                    )
+                result = ops.poll(process)
+                if result is not None:
+                    self.empty = False
+                    # Leave a busy tree for the next bounded quiescer poll.
+                    for _ in range(64):
+                        try:
+                            # __WALL includes children with non-SIGCHLD exits.
+                            child, _status = os.waitpid(-1, os.WNOHANG | 0x40000000)
+                        except ChildProcessError:
+                            self.empty = True
+                            break
+                        if child == 0:
+                            self.empty = False
+                            break
+                if cleanup_signal is not None and not self.empty:
+                    signal_children(process.pid, cleanup_signal)
+                return result
+            except BaseException as exc:
+                raise ProcessGroupAmbiguity(
+                    "Task descendant absence could not be established"
+                ) from exc
+
+        return replace(
+            ops,
+            poll=poll,
+            signal_group=signal_children,
+            group_exists=lambda _process_group_id: not self.empty,
+        )
+
+
 def _run_native_command(
     argv: tuple[str, ...],
     cwd: Path,
@@ -831,6 +954,8 @@ def _run_native_command(
     stderr_descriptor: int = -1,
     *,
     signals: TransactionSignalController,
+    descendants: _TaskChildren | None = None,
+    process_group_ops: ProcessGroupOps | None = None,
 ) -> CommandResult:
     from emrys.orchestration.run_coordinator.lifecycle import (
         DEFAULT_PROCESS_GROUP_OPS,
@@ -841,6 +966,9 @@ def _run_native_command(
         raise TaskBoundaryError(
             "Task command execution requires both stream descriptors"
         )
+    selected_ops = process_group_ops or DEFAULT_PROCESS_GROUP_OPS
+    if descendants is not None:
+        descendants.prepare()
     try:
         process = subprocess.Popen(
             argv,
@@ -852,12 +980,22 @@ def _run_native_command(
             start_new_session=True,
         )
     except OSError as exc:
+        if descendants is not None:
+            descendants.prepare()
         message = f"Could not execute {argv[0]}: {exc}\n".encode(
             "utf-8", errors="backslashreplace"
         )
         exit_code = 127 if exc.errno == errno.ENOENT else 126
         _write_descriptor(stderr_descriptor, message, "task stderr log")
         return CommandResult(argv, exit_code)
+    except BaseException as exc:
+        if descendants is not None:
+            raise TaskProcessGroupAmbiguity(
+                "Native launch failed without a registered Task child"
+            ) from exc
+        raise
+    if descendants is not None:
+        descendants.process = process
     selector: selectors.BaseSelector | None = None
     group_quiesced = False
     try:
@@ -875,12 +1013,17 @@ def _run_native_command(
             selectors.EVENT_READ,
             (stderr_descriptor, "task stderr log"),
         )
-        while selector.get_map() or process.poll() is None:
+        while selector.get_map() or selected_ops.poll(process) is None:
             signals.raise_forwarding_error()
             if signals.first_signal is not None:
                 break
-            if process.poll() not in (None, 0) and not group_quiesced:
-                quiesce_process_group(process.pid, process, DEFAULT_PROCESS_GROUP_OPS)
+            observed_code = selected_ops.poll(process)
+            if (
+                observed_code is not None
+                and (descendants is not None or observed_code != 0)
+                and not group_quiesced
+            ):
+                quiesce_process_group(process.pid, process, selected_ops)
                 group_quiesced = True
             try:
                 ready = selector.select(timeout=0.1)
@@ -899,12 +1042,14 @@ def _run_native_command(
                 else:
                     selector.unregister(key.fileobj)
         return_code = (
-            process.poll() if signals.first_signal is not None else process.wait()
+            selected_ops.poll(process)
+            if signals.first_signal is not None
+            else process.wait()
         )
     finally:
         try:
             if not group_quiesced:
-                quiesce_process_group(process.pid, process, DEFAULT_PROCESS_GROUP_OPS)
+                quiesce_process_group(process.pid, process, selected_ops)
             signals.raise_forwarding_error()
             signals.clear_process_group(process.pid)
         finally:
@@ -930,6 +1075,8 @@ def _default_run_command(
     environment: Mapping[str, str] | None = None,
     stdout_descriptor: int = -1,
     stderr_descriptor: int = -1,
+    *,
+    descendants: _TaskChildren | None = None,
 ) -> CommandResult:
     from emrys.orchestration.run_coordinator.lifecycle import (
         DEFAULT_PROCESS_GROUP_OPS,
@@ -937,10 +1084,15 @@ def _default_run_command(
         TransactionSignalController,
     )
 
+    process_ops = (
+        DEFAULT_PROCESS_GROUP_OPS
+        if descendants is None
+        else descendants.process_ops(DEFAULT_PROCESS_GROUP_OPS)
+    )
     try:
         with TransactionSignalController(
             DEFAULT_SIGNAL_OPS,
-            DEFAULT_PROCESS_GROUP_OPS,
+            process_ops,
             watched_signals=_TASK_SIGNALS,
         ) as signals:
             result = _run_native_command(
@@ -950,6 +1102,8 @@ def _default_run_command(
                 stdout_descriptor,
                 stderr_descriptor,
                 signals=signals,
+                descendants=descendants,
+                process_group_ops=process_ops,
             )
     except BaseException as exc:
         ambiguity = _process_group_ambiguity(exc)
@@ -983,12 +1137,17 @@ def _publish_bytes(path: Path, data: bytes) -> None:
     publish_exclusive(path, data, TaskBoundaryError)
 
 
-def default_task_ops() -> TaskOps:
+def default_task_ops(*, descendants: _TaskChildren | None = None) -> TaskOps:
     """Construct the production effect boundary without a mutable global facade."""
 
+    runner = (
+        _default_run_command
+        if descendants is None
+        else partial(_default_run_command, descendants=descendants)
+    )
     return TaskOps(
-        run_command=_default_run_command,
-        run_semantic_all_pass=_default_run_command,
+        run_command=runner,
+        run_semantic_all_pass=runner,
         publish_bytes=_publish_bytes,
         now=lambda: datetime.now(UTC),
         admit_installed_package=_admit_installed_package,
@@ -2534,6 +2693,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             expected_sha256=arguments.attempt_sha256,
             machine_key=arguments.owner,
             scope_id=arguments.scope,
+            ops=default_task_ops(
+                descendants=_TaskChildren() if sys.platform == "linux" else None
+            ),
         )
     except (
         OSError,
