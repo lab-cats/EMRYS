@@ -8,10 +8,13 @@ import hashlib
 import json
 import multiprocessing
 import os
+import selectors
 import shutil
+import signal
 import subprocess
 import sys
 import threading
+import time
 import zlib
 from collections.abc import Mapping
 from dataclasses import replace
@@ -5523,6 +5526,253 @@ def _verified_snapshot(root: Path) -> dict[Path, tuple[bytes, int]]:
         path.relative_to(root): (path.read_bytes(), path.stat().st_mtime_ns)
         for path in verified.rglob("*.json")
     }
+
+
+def _public_native_cancellation_child(root: Path) -> None:
+    """Keep real Snakemake/Task processes; substitute only scientific effects/readiness."""
+    readiness, resources, project, workspace = _readiness(root / "case")
+    run_id = _run_candidate(readiness, resources).run_id
+    run_root = workspace / "runs" / run_id
+    owner = "emrys.stage.construct_canonical_BAM.v1"
+    scope = str(readiness.analysis.workflow_inputs["samples"]["rows"][0]["sample_id"])
+    gate = (owner, scope, root / "native-ready.fifo")
+    processes: list[subprocess.Popen[bytes]] = []
+    quiescence_checks: list[str] = []
+    real_build = control.build_attempt_plan
+    base = _doubled_lifecycle_ops(lifecycle.default_lifecycle_ops())
+
+    def spawn(argv, cwd, environment):
+        assert argv[argv.index("-m") + 1] == "snakemake"
+        process = base.process_group_ops.spawn(argv, cwd, environment)
+        processes.append(process)
+        (root / "workflow-processes.json").write_text(
+            json.dumps([item.pid for item in processes])
+        )
+        return process
+
+    def observe_phase(phase: str) -> None:
+        if phase in {
+            "before_lock_release",
+            "before_receipt_publication",
+        }:
+            native = json.loads((root / "native-ready.json").read_text())
+            assert native["parent_pgid"] == processes[0].pid
+            for pgid in (processes[0].pid, native["pgid"]):
+                with pytest.raises(ProcessLookupError):
+                    os.killpg(pgid, 0)
+            quiescence_checks.append(phase)
+
+    ops = replace(
+        base,
+        run_workflow=None,
+        process_group_ops=replace(base.process_group_ops, spawn=spawn),
+        observe_phase=observe_phase,
+    )
+    with pytest.MonkeyPatch.context() as patched:
+        patched.setattr(control.doctor, "diagnose_project", lambda *_a, **_k: readiness)
+        patched.setattr(
+            control.capacity, "observe_allocation", lambda: resources.allocation
+        )
+        patched.setattr(
+            control,
+            "build_attempt_plan",
+            lambda *a, **k: with_owner_doubles(real_build(*a, **k), native_gate=gate),
+        )
+        patched.setattr(control.lifecycle, "default_lifecycle_ops", lambda: ops)
+        arguments = argparse.Namespace(
+            project=project,
+            profile=None,
+            allocated_cores=1,
+            execute=True,
+            log_level="normal",
+            log_root=workspace / "logs/application",
+        )
+        assert control.run_from_args(arguments) == 1
+        assert quiescence_checks == [
+            "before_lock_release",
+            "before_receipt_publication",
+        ]
+        interrupted = inspection.inspect_run(run_root)
+        assert interrupted.integrity == "valid"
+        assert interrupted.attempt_outcome == "blocked"
+        assert interrupted.results_status == "blocked" and interrupted.results_blockers
+        assert not interrupted.recovery_available
+        assert interrupted.latest_receipt["status"] == "blocked"
+        assert interrupted.latest_receipt["termination_signal"] == signal.SIGTERM
+        first_id = interrupted.latest_attempt["workflow_attempt_id"]
+        first_attempt = run_root / "attempts" / first_id
+        assert (first_attempt / "released-run-lock.json").is_file()
+        assert (first_attempt / "attempt-receipt.json").is_file()
+        assert not (run_root / "locks/run.lock").exists()
+        target = next(
+            item
+            for item in interrupted.tasks
+            if (item.expected.machine_key, item.expected.scope_id) == (owner, scope)
+        )
+        assert target.state == "pending" and target.record is None
+        assert target.start_origin == first_id and target.start_reference is not None
+        assert not (run_root / "state/verified" / owner / f"{scope}.json").exists()
+        (terminal,) = target.terminal_attempts
+        assert terminal.record["status"] == "failed"
+        assert terminal.record["failure_message"] == "Task interrupted by signal 15"
+        planned = interrupted.latest_attempt["tasks"][owner][scope]
+        assert all(not Path(item["path"]).exists() for item in planned["outputs"])
+        assert all(not Path(path).exists() for path in planned["publication"]["locks"])
+        native = json.loads((root / "native-ready.json").read_text())
+        assert not Path(native["working_output"]).parent.exists()
+        assert not Path(native["work_directory"]).exists()
+        assert all(
+            record["start"] is None and record["verified"] is None
+            for record in interrupted.reporting_completion_records.values()
+        )
+
+        verified_before = _verified_snapshot(run_root)
+        assert verified_before
+        arguments.run = run_id
+        preview_namespace = sorted(workspace.rglob("*"))
+        preview_before = {
+            path: (path.read_bytes(), path.stat().st_mtime_ns)
+            for path in workspace.rglob("*")
+            if path.is_file()
+        }
+        # Closed failed post-entry evidence remains a blocker under today's model.
+        arguments.execute = False
+        assert control.resume_from_args(arguments) == 2
+        assert sorted(workspace.rglob("*")) == preview_namespace
+        assert {
+            path: (path.read_bytes(), path.stat().st_mtime_ns)
+            for path in workspace.rglob("*")
+            if path.is_file()
+        } == preview_before
+        arguments.execute = True
+        assert control.resume_from_args(arguments) == 2
+        after_files = {
+            path: (path.read_bytes(), path.stat().st_mtime_ns)
+            for path in workspace.rglob("*")
+            if path.is_file()
+        }
+        (refusal_log,) = after_files.keys() - preview_before.keys()
+        assert refusal_log.parent.parent == arguments.log_root / f"run-{run_id}"
+        assert refusal_log.parent.name.startswith("application-")
+        assert refusal_log.name == "emrys-resume.jsonl"
+        assert refusal_log.resolve(strict=True) == refusal_log
+        assert refusal_log.stat().st_uid == os.getuid()
+        assert refusal_log.stat().st_mode & 0o777 == 0o600
+        assert set(workspace.rglob("*")) == set(preview_namespace) | {
+            refusal_log,
+            refusal_log.parent,
+            refusal_log.parent.parent,
+        }
+        assert all(after_files[path] == value for path, value in preview_before.items())
+        data = refusal_log.read_bytes()
+        assert data.endswith(b"\n")
+        records = [json.loads(line) for line in data.splitlines()]
+        assert [record["event"] for record in records] == [
+            "attempt_opened",
+            "attempt_failed",
+        ]
+        for sequence, record in enumerate(records, start=1):
+            assert record["schema_version"] == "1.0.0"
+            assert record["sequence"] == sequence
+            assert record["entrypoint"] == "emrys-resume" and record["mode"] == "resume"
+            assert record["scope_kind"] == "run" and record["scope_id"] == run_id
+            assert record["execution_attempt_id"] == refusal_log.parent.name
+        assert records[0]["fields"]["log_level"] == "normal"
+        assert records[-1]["phase"] == "preflight"
+        assert records[-1]["message"] == "Analysis preflight failed."
+        assert len(processes) == 1
+        assert _verified_snapshot(run_root) == verified_before
+        (root / "cancellation-resume-refused.json").write_text(
+            json.dumps(
+                {
+                    "blocked_attempt": first_id,
+                    "quiescence_checks": quiescence_checks,
+                }
+            )
+        )
+
+
+def test_public_real_snakemake_native_cancellation_preserves_blocked_resume(
+    tmp_path: Path,
+) -> None:
+    ready_path = tmp_path / "native-ready.fifo"
+    os.mkfifo(ready_path, mode=0o600)
+    reader = os.open(ready_path, os.O_RDONLY | os.O_NONBLOCK)
+    writer = os.open(ready_path, os.O_WRONLY | os.O_NONBLOCK)
+    log_path = tmp_path / "cancellation-journey.log"
+    process = None
+    completed = False
+    try:
+        with log_path.open("wb") as stream:
+            process = subprocess.Popen(
+                [
+                    sys.executable,
+                    "-c",
+                    "from pathlib import Path; import sys; "
+                    "from tests.orchestration.run_coordinator.test_materialization import "
+                    "_public_native_cancellation_child; "
+                    "_public_native_cancellation_child(Path(sys.argv[1]))",
+                    str(tmp_path),
+                ],
+                cwd=REPO_ROOT,
+                env={**os.environ, "XDG_CACHE_HOME": str(tmp_path / "cache")},
+                stdout=stream,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+            with selectors.DefaultSelector() as selector:
+                selector.register(reader, selectors.EVENT_READ)
+                deadline = time.monotonic() + 120
+                while True:
+                    returncode = process.poll()
+                    assert returncode is None, (
+                        f"Run child exited {returncode} before native readiness.\n"
+                        f"{log_path.read_text()}"
+                    )
+                    remaining = deadline - time.monotonic()
+                    assert remaining > 0, (
+                        f"Native readiness deadline expired.\n{log_path.read_text()}"
+                    )
+                    if selector.select(timeout=min(0.1, remaining)):
+                        break
+                assert os.read(reader, 6) == b"ready\n"
+            native = json.loads(ready_path.with_suffix(".json").read_text())
+            assert native["pgid"] == native["pid"] != native["parent_pgid"]
+            assert native["parent_pgid"] != process.pid
+            assert os.getpgid(native["parent_pid"]) == native["parent_pgid"]
+            assert not set(native["blocked_signals"]) & task._TASK_SIGNALS
+            assert Path(native["working_output"]).is_file()
+            (run_root,) = (tmp_path / "case/project/runs").glob("run-*")
+            active = inspection.inspect_run(run_root)
+            assert active.lock_observation == "local live owner"
+            assert active.attempt_outcome == "running" and not active.recovery_available
+            assert any(
+                item.start_reference and item.record is None for item in active.tasks
+            )
+            assert os.getpgid(native["pid"]) == native["pgid"]
+            os.kill(process.pid, signal.SIGTERM)
+            assert process.wait(timeout=240) == 0, log_path.read_text()
+        assert (tmp_path / "cancellation-resume-refused.json").is_file()
+        completed = True
+    finally:
+        os.close(writer)
+        os.close(reader)
+        if process is not None and process.poll() is None:
+            os.kill(process.pid, signal.SIGTERM)
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
+        # Only this fixture's explicitly recorded sessions are eligible for cleanup.
+        if not completed:
+            groups_path = tmp_path / "workflow-processes.json"
+            groups = json.loads(groups_path.read_text()) if groups_path.exists() else []
+            native_path = ready_path.with_suffix(".json")
+            if native_path.exists():
+                groups.append(json.loads(native_path.read_text())["pgid"])
+            for pgid in groups:
+                lifecycle._signal_process_group(pgid, signal.SIGKILL)
 
 
 def test_public_adapter_executes_failure_and_byte_preserving_resume(
