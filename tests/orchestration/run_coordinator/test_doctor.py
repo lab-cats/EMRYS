@@ -228,6 +228,20 @@ def test_runtime_identity_binds_executables_packages_and_storage(
     assert by_name["r_edger"]["resolved_path"] == str(package)
     assert "identity_kind" not in by_name["r_edger"]
     assert by_name["storage_qualification"]["version"] == "site-1"
+    assert (
+        doctor.required_tool_identities(
+            replace(
+                inspection,
+                observations=tuple(
+                    replace(item, detail="version probe: elapsed_seconds=99.000")
+                    for item in inspection.observations
+                ),
+            ),
+            bindings=bindings,
+            python_executable=Path(sys.executable),
+        )
+        == identities
+    )
 
 
 def test_selected_package_tree_dependency_is_composed_and_content_bound(
@@ -754,7 +768,10 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
             observed="unavailable",
             detail="Executable was not found",
         ),
-        _check("python", "tool_version", sys.executable),
+        replace(
+            _check("python", "tool_version", sys.executable),
+            detail='version probe: elapsed_seconds=0.125; loader "note"\n\x1b[31m',
+        ),
         _check("renv_library", "path_visibility", str(tmp_path / "library")),
     )
     inspection = _inspection(tmp_path, observations, profile=profile)
@@ -857,6 +874,19 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
         assert "Execution  NOT ADMITTED" in output
         assert ('"expected": ".*"' in output) == (level != "normal")
         assert ("Executable was not found" in output) == (level != "normal")
+        assert ("elapsed_seconds=0.125" in output) == (level != "normal")
+        assert "\x1b[31m" not in output
+        if level != "normal":
+            prefix = "  'python': pass; "
+            (packet,) = [
+                line.removeprefix(prefix)
+                for line in output.splitlines()
+                if line.startswith(prefix)
+            ]
+            assert json.loads(packet) == {
+                "observed": observations[1].observed,
+                "detail": observations[1].detail,
+            }
         assert _snapshot(tmp_path) == before
 
 
@@ -1504,7 +1534,10 @@ def test_phase_timing_uses_only_open_maintenance_log_and_never_controls_repair(
 ) -> None:
     project = _project(tmp_path)
     plan = replace(_plan(project), runtime=None)
-    ready = _result(project, ready=True)
+    inspection = _inspection(
+        tmp_path, (_check("python", "tool_version", sys.executable),)
+    )
+    ready = _result(project, ready=True, inspection=inspection)
     records: list[str] = []
     _patch_logging(monkeypatch, plan, records)
     open_log = doctor.open_attempt_log
@@ -1533,6 +1566,7 @@ def test_phase_timing_uses_only_open_maintenance_log_and_never_controls_repair(
     monkeypatch.setattr(doctor, "diagnose_project", lambda *_args, **_kwargs: ready)
     timing = doctor._DoctorTiming()
     timing.observe("Inspecting the Project and runtime", 0.125, "complete")
+    timing.observe_runtime(inspection, phase="diagnosis")
     assert records == [] and log_attempts == []
     if failed_readmission:
         with pytest.raises(doctor.DoctorRepairError, match="readmission refused"):
@@ -1574,6 +1608,50 @@ def test_phase_timing_uses_only_open_maintenance_log_and_never_controls_repair(
         assert observations[-1]["outcome"] == (
             "interrupted or failed" if failed_readmission else "complete"
         )
+    assert [
+        item["phase"] for item in events if item["event"] == "runtime_check_passed"
+    ] == (
+        []
+        if log_error is not None
+        else ["diagnosis", *([] if failed_readmission else ["project_readiness"])]
+    )
+
+
+@pytest.mark.parametrize("interrupted", (False, True))
+def test_pass_observation_failure_does_not_replace_readiness_or_interruption(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, interrupted: bool
+) -> None:
+    project = _project(tmp_path)
+    result = _result(
+        project,
+        ready=True,
+        inspection=_inspection(
+            tmp_path, (_check("python", "tool_version", sys.executable),)
+        ),
+    )
+    original = KeyboardInterrupt("probe observation interrupted")
+
+    def fail_packet(*_args: object) -> dict[str, object]:
+        raise original if interrupted else OSError("probe observation unavailable")
+
+    monkeypatch.setattr(doctor, "_runtime_observation_fields", fail_packet)
+    monkeypatch.setattr(doctor, "diagnose_project", lambda *_args, **_kwargs: result)
+    monkeypatch.setattr(
+        doctor,
+        "open_attempt_log",
+        lambda **_kwargs: pytest.fail("diagnosis opened a log"),
+    )
+    parser = argparse.ArgumentParser()
+    doctor.configure_parser(parser)
+    arguments = parser.parse_args(["--project", str(project.source_path)])
+    before = _snapshot(tmp_path)
+    if interrupted:
+        with pytest.raises(KeyboardInterrupt) as failure:
+            doctor.doctor_from_args(arguments)
+        assert failure.value is original
+    else:
+        assert doctor.doctor_from_args(arguments) == 0
+    assert _snapshot(tmp_path) == before
 
 
 @pytest.mark.parametrize("changed", ("profile", "package", "settings"))
@@ -1635,7 +1713,9 @@ def test_repair_readmission_rejects_a_redirected_runtime_before_writing(
     assert not (external / "managed").exists()
 
 
-@pytest.mark.parametrize("timing_fault", (None, "write", "interrupt"))
+@pytest.mark.parametrize(
+    "timing_fault", (None, "write", "interrupt", "probe_write", "probe_interrupt")
+)
 @pytest.mark.parametrize("retained_inventory", (False, True))
 def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     tmp_path: Path,
@@ -1716,6 +1796,7 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
 
     candidate = _inspection(
         tmp_path,
+        (_check("python", "tool_version", sys.executable),),
         profile=runtime.profile,
         profile_bytes=b"admitted runtime\n",
     )
@@ -1739,6 +1820,7 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     write = log_storage._write
     timing_writes: list[str] = []
     timing_boundaries: list[tuple[int, tuple[Path, ...], bool]] = []
+    probe_boundaries: list[tuple[int, tuple[Path, ...], bool]] = []
     original = KeyboardInterrupt("timing write interrupted")
 
     def write_observed(descriptor: int, payload: bytes) -> int:
@@ -1756,11 +1838,23 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
                 raise OSError(errno.ENOSPC, "timing write full")
             if timing_fault == "interrupt":
                 raise original
+        if document["event"] == "runtime_check_passed":
+            probe_boundaries.append(
+                (
+                    len(commands),
+                    tuple(requalified),
+                    (runtime.managed_root.parent / "maintenance.lock").exists(),
+                )
+            )
+            if timing_fault == "probe_write":
+                raise OSError(errno.ENOSPC, "probe observation write full")
+            if timing_fault == "probe_interrupt":
+                raise original
         return write(descriptor, payload)
 
     monkeypatch.setattr(log_storage, "_write", write_observed)
     timing = doctor._DoctorTiming()
-    if timing_fault == "interrupt":
+    if timing_fault in {"interrupt", "probe_interrupt"}:
         with pytest.raises(KeyboardInterrupt) as failure:
             doctor._execute_repair(plan, controls=_controls(project), timing=timing)
         assert failure.value is original
@@ -1791,7 +1885,9 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
         assert runtime.profile.stat().st_ino == original_profile.st_ino
     assert records[0] == "opened"
     assert ("terminal" in records) == (timing_fault is None)
-    assert ("interrupted" in records) == (timing_fault == "interrupt")
+    assert ("interrupted" in records) == (
+        timing_fault in {"interrupt", "probe_interrupt"}
+    )
     assert records[-1] == "closed"
     assert not list((runtime.managed_root / "cache").glob("repair-*"))
     output = capsys.readouterr().err
@@ -1822,7 +1918,8 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
         "Discovering and verifying the installed runtime",
         "Checking Project readiness",
     ]
-    assert timing_writes == (phases if timing_fault is None else phases[:1])
+    phase_fault = timing_fault in {"write", "interrupt"}
+    assert timing_writes == (phases[:1] if phase_fault else phases)
     assert timing_boundaries == [(2, (project.source_path,), False)] * len(
         timing_writes
     )
@@ -1830,7 +1927,13 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
         item["fields"]["phase_name"]
         for item in events
         if item["event"] == "doctor_phase_timing"
-    ] == (phases if timing_fault is None else [])
+    ] == ([] if phase_fault else phases)
+    assert probe_boundaries == [(2, (project.source_path,), False)] * (
+        0 if phase_fault else 2 if timing_fault is None else 1
+    )
+    assert [
+        item["phase"] for item in events if item["event"] == "runtime_check_passed"
+    ] == (["runtime_discovery", "project_readiness"] if timing_fault is None else [])
     assert [
         (item["event"], item["message"])
         for item in events
@@ -1840,7 +1943,7 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
         if timing_fault is None
         else []
     )
-    if timing_fault == "interrupt":
+    if timing_fault in {"interrupt", "probe_interrupt"}:
         assert events[-1]["event"] == "attempt_interrupted"
     assert (
         next(
@@ -1979,6 +2082,11 @@ def test_repair_retains_failed_candidate_probe_after_managers_succeed(
     assert fields["host"] == doctor.platform.node()
     assert fields["inventory"] == str(managed.parent / "runtime.tsv")
     assert len(fields["inventory_sha256"]) == 64
+    passes = [item for item in records if item["event"] == "runtime_check_passed"]
+    assert passes and all(item["phase"] == "runtime_discovery" for item in passes)
+    passed = {item["fields"]["check_id"]: item["fields"] for item in passes}
+    assert failed_check not in passed
+    assert "version probe: elapsed_seconds=" in passed["python"]["detail"]
     assert not any(item["event"] == "runtime_profile_admitted" for item in records)
     output = capsys.readouterr().err
     assert str(log_path) in output
@@ -2264,7 +2372,9 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     profile_path.parent.mkdir(parents=True, exist_ok=True)
     profile_path.write_bytes(execution_profile.project_default_profile_bytes("viking"))
     execution = execution_profile.load_execution_profile(profile_path)
-    inspection = _inspection(tmp_path)
+    inspection = _inspection(
+        tmp_path, (_check("python", "tool_version", sys.executable),)
+    )
     ready = replace(
         _result(project, ready=True, inspection=inspection), execution_profile=execution
     )
@@ -2475,6 +2585,26 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     if failure is None:
         assert waits[0]["outcome"] == "complete"
         assert "Doctor invocation timing (delegated compute," in output
+        passed = [item for item in events if item["event"] == "runtime_check_passed"]
+        assert [item["phase"] for item in passed] == [
+            "diagnosis",
+            "project_readiness",
+            "head_requalification",
+            "head_final_readiness",
+        ]
+        for item in passed:
+            assert item["fields"] == {
+                "check_id": "python",
+                "target": sys.executable,
+                "status": "pass",
+                "expected": ".*",
+                "observed": "1.0",
+                "detail": "qualified",
+                "host": doctor.platform.node(),
+                "inventory": str(inspection.profile_path),
+                "inventory_sha256": inspection.profile_sha256,
+                "execution_context": "head/local",
+            }
     assert "Doctor invocation timing (head/local," in output
     assert "Waiting for Slurm runtime and storage checks" not in output
     assert "EMRYS Doctor verification plan" in output

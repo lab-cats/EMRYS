@@ -174,6 +174,8 @@ def test_snakemake_startup_is_isolated_and_reports_failure(
         assert result.status == "pass"
         assert result.observed == "9.25.1"
         assert "minimal local Snakemake startup passed" in result.detail
+        assert "version probe: elapsed_seconds=0.250;" in result.detail
+        assert "startup passed: elapsed_seconds=0.500;" in result.detail
     else:
         assert result.status == "fail"
         assert result.observed == "startup diagnostic"
@@ -358,6 +360,12 @@ def test_python_hash_probe_uses_the_controlled_python_prefix() -> None:
     )
 
     assert results[0].status == "pass"
+    assert results[0].observed == HASH_EXPECTED
+    assert (
+        "SHA-256 tiny known-payload utility probe (not runtime-file hashing)"
+        in results[0].detail
+    )
+    assert "elapsed_seconds=0.125; timeout_seconds=30" in results[0].detail
     assert calls == [
         (
             [
@@ -661,7 +669,10 @@ def test_picard_version_probe_accepts_only_its_exact_exit_one_contract(
 
     assert passed.status == "pass"
     assert passed.observed == "Version:3.1.1"
-    assert passed.detail == f"Resolved executable: {java}"
+    assert passed.detail == (
+        f"Resolved executable: {java}; version probe: "
+        "elapsed_seconds=0.250; timeout_seconds=30"
+    )
     assert observed_argv == [
         (str(java), "-jar", str(jar), "MarkDuplicates", "--version")
     ]

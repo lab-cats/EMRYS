@@ -137,6 +137,16 @@ Ordinary observation failures leave work, receipts and exits controlling;
 process-control exceptions retain cancellation semantics. These timings do not
 measure read bytes, process-tree memory or scientific performance.
 
+The same collector retains passing runtime diagnostics at each actual fresh
+Doctor inspection/discovery return. It shares the failure diagnostic field
+projection and flushes `runtime_check_passed` packets after phase timings at the
+same outcome boundary. A returned Slurm result is not captured again as a new
+observation. Packets retain their actual Doctor phase and execution context;
+their log timestamp is the later flush time. Head maintenance retains its own
+observations without treating delegated compute checks as head observations.
+Verbose/debug diagnosis prints escaped passing details without creating a log.
+Existing immediate failure diagnostics and qualification identities are unchanged.
+
 Managed repair opens its diagnostic log before acquiring the private durable
 `runtime/maintenance.lock` claim, then re-admits the plan before manager work.
 The shared ownership primitive pins a canonical no-follow parent, synchronizes

@@ -656,6 +656,12 @@ not create a log. Compute observations stay distinct from head observations.
 overhead. It cannot by itself tell you how long the job spent queued. Keep the
 complete diagnostics when investigating slow verification; these timings do not
 justify removing input reads or changing resource requests.
+Maintenance logs also retain `runtime_check_passed` details for their actual
+Doctor phases, buffered until the operation outcome. Verbose/debug diagnosis
+shows escaped passing details, including available subprocess durations.
+Separate Snakemake version/startup times from content hashing; the SHA-256
+utility check measures only its known test payload. These observations still
+do not attribute runtime-file bytes, physical I/O or memory.
 
 Institutional R restoration below requires the installed EMRYS R guard and
 permission to install packages. The [engineering guide](ENGINEERING_CONVENTIONS.md#dependencies-and-environments)
