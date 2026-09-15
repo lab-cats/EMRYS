@@ -3414,7 +3414,7 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
     monkeypatch.setattr(
         control.slurm_submission,
         "submit",
-        lambda submission: submissions.append(submission) or "812345",
+        lambda submission, **_kwargs: submissions.append(submission) or "812345",
     )
     monkeypatch.setattr(
         control.doctor,
@@ -3436,6 +3436,11 @@ def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
     else:
         assert len(submissions) == 1
         assert captured.out.startswith("JOB_ID=812345\n")
+        (request_path,) = (first.workspace / "logs").glob("submission-*/request.json")
+        request = json.loads(request_path.read_bytes())
+        assert request["command"] == "resume"
+        assert request["requested_run"] == first.run.run_id
+        assert request["project"] == str(first.run.analysis.source_path)
         selected_profile = load_execution_profile(config_path=Path(arguments.profile))
         inherited_profile = replace(
             selected_profile,
@@ -3502,7 +3507,7 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
     monkeypatch.setattr(
         control.slurm_submission,
         "submit",
-        lambda _plan: pytest.fail("dry-run submitted a scheduler job"),
+        lambda _plan, **_kwargs: pytest.fail("dry-run submitted a scheduler job"),
     )
     monkeypatch.setattr(
         control.doctor,
@@ -3567,6 +3572,7 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     execute: bool,
 ) -> None:
     arguments = _scheduled_run_arguments(tmp_path, execute=execute)
+    arguments.log_root = tmp_path / "custom application logs"
     arguments.analysis = "" if execute else "sensitivity"
     arguments.through = "analysis" if execute else "processing"
     arguments.from_processing_run = "run-" + "a" * 64 if execute else None
@@ -3577,7 +3583,24 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     submissions = []
     admitted = load_execution_profile(config_path=Path(arguments.profile))
 
-    def submit(plan):
+    def submit(plan, *, record_path):
+        context = json.loads(record_path.with_name("request.json").read_bytes())
+        assert context["schema_version"] == "emrys.submission-request.v1"
+        assert context["command"] == "run"
+        assert context["project"] == str(arguments.project)
+        assert context["requested_run"] is None
+        assert context["analysis"] == arguments.analysis
+        assert context["application_log_root"] == str(
+            control._resolve_controls(arguments, workspace).root
+        )
+        assert context["profile_binding_sha256"] == admitted.binding_sha256
+        assert context["submitter_uid"] == os.getuid()
+        assert datetime.fromisoformat(context["created_at"]).tzinfo is not None
+        assert "--execute" in context["emrys_argv"]
+        assert context["scheduler_stdout_pattern"] == str(plan.stdout_pattern)
+        assert context["scheduler_stderr_pattern"] == str(plan.stderr_pattern)
+        record_path.write_bytes(b"812345\n")
+        record_path.with_suffix(".stderr").write_bytes(b"")
         submissions.append(plan)
         return "812345"
 
@@ -3619,7 +3642,16 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
         assert " --through processing " in submissions[0].batch_script
         assert " --from-processing-run " not in submissions[0].batch_script
     assert " --execute --no-report" in submissions[0].batch_script
-    assert list((workspace / "logs").iterdir()) == []
+    request_roots = list((workspace / "logs").iterdir())
+    assert len(request_roots) == 1
+    assert request_roots[0].name.startswith("submission-")
+    assert request_roots[0].stat().st_mode & 0o777 == 0o700
+    assert (request_roots[0] / "request.json").stat().st_mode & 0o777 == 0o600
+    assert sorted(path.name for path in request_roots[0].iterdir()) == [
+        "request.json",
+        "sbatch.stderr",
+        "sbatch.stdout",
+    ]
     assert "Execution placement: Slurm" in captured.err
     assert all(line in captured.err for line in admitted.submission_summary())
     if not execute:
@@ -3627,6 +3659,76 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
             admitted.submission_summary()[-1]
         ) < captured.err.index("Execute this plan?")
     assert ("Execute this plan? [y/N]" in captured.err) is not execute
+    assert not arguments.log_root.exists()
+
+
+@pytest.mark.parametrize(
+    "failure",
+    (
+        "collision",
+        "context_open",
+        "context_fsync",
+        "request_directory_fsync",
+        "logs_directory_fsync",
+    ),
+)
+def test_submission_request_failure_preserves_partial_evidence_before_sbatch(
+    tmp_path: Path, capsys, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    arguments = _scheduled_run_arguments(tmp_path, execute=True)
+    request_root = arguments.project.parent / "logs" / ("submission-" + "a" * 32)
+    monkeypatch.setattr(control.uuid, "uuid4", lambda: SimpleNamespace(hex="a" * 32))
+    if failure == "collision":
+        request_root.mkdir(parents=True)
+        (request_root / "preserved").write_bytes(b"prior request evidence")
+    elif failure == "context_open":
+
+        def reject_open(*_args, **_kwargs):
+            raise OSError("context open refused")
+
+        monkeypatch.setattr(control, "open", reject_open, raising=False)
+    elif failure == "context_fsync":
+
+        def reject_fsync(_descriptor):
+            raise OSError("context fsync refused")
+
+        monkeypatch.setattr(control.os, "fsync", reject_fsync)
+    else:
+        synchronized = []
+
+        def synchronize(path):
+            synchronized.append(path)
+            if path == (
+                request_root
+                if failure == "request_directory_fsync"
+                else request_root.parent
+            ):
+                raise OSError("directory fsync refused")
+
+        monkeypatch.setattr(control.onboarding, "_fsync_directory", synchronize)
+    monkeypatch.setattr(
+        control.slurm_submission,
+        "submit",
+        lambda *_args, **_kwargs: pytest.fail("record failure reached sbatch"),
+    )
+    assert control.run_from_args(arguments) == 2
+    assert "sbatch was not invoked" in capsys.readouterr().err
+    assert request_root.is_dir()
+    if failure == "collision":
+        assert (request_root / "preserved").read_bytes() == b"prior request evidence"
+    elif failure == "context_open":
+        assert list(request_root.iterdir()) == []
+    else:
+        assert (
+            json.loads((request_root / "request.json").read_bytes())["command"] == "run"
+        )
+        if failure.endswith("directory_fsync"):
+            assert synchronized == (
+                [request_root]
+                if failure == "request_directory_fsync"
+                else [request_root, request_root.parent]
+            )
+    assert not (arguments.project.parent / "logs/application").exists()
 
 
 @pytest.mark.parametrize("command", ("run", "resume", "report"))
@@ -3678,13 +3780,26 @@ def test_public_slurm_errors_keep_control_exit_and_never_retry(
         monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, profile.binding_sha256)
         monkeypatch.setenv(scheduler.SUBMIT_UID_ENV, str(os.getuid()))
         monkeypatch.setenv("SLURM_JOB_ID", "0")
-    submissions = []
+    submitted = root / "submitted"
+    rejector = root / "sbatch"
+    rejector.write_text(
+        f"#!{sys.executable}\n"
+        "import os, pathlib\n"
+        "os.close(0)\n"
+        f"with pathlib.Path({str(submitted)!r}).open('ab') as stream: stream.write(b'once\\n')\n"
+        "os.write(2, b'sbatch: invalid account\\n\\x1b[31m')\n"
+        "raise SystemExit(23)\n"
+    )
+    rejector.chmod(0o700)
+    original_plan = scheduler.plan_submission
 
-    def reject(argv, **_kwargs):
-        submissions.append(argv)
-        return subprocess.CompletedProcess(argv, 1, "", "scheduler rejected\n\x1b[31m")
+    def plan_rejected(*args, **kwargs):
+        planned = original_plan(*args, **kwargs, sbatch=str(rejector))
+        return replace(
+            planned, batch_script=planned.batch_script + "# padding\n" * 100_000
+        )
 
-    monkeypatch.setattr(scheduler.subprocess, "run", reject)
+    monkeypatch.setattr(scheduler, "plan_submission", plan_rejected)
     monkeypatch.setattr(
         control.doctor,
         "diagnose_project",
@@ -3708,7 +3823,14 @@ def test_public_slurm_errors_keep_control_exit_and_never_retry(
     }
     assert expected[failure] in output.err
     assert "\x1b" not in output.err
-    assert len(submissions) == (1 if failure == "submission" else 0)
+    if failure == "submission":
+        assert submitted.read_bytes() == b"once\n"
+        assert "sbatch exited with 23" in output.err
+        assert "invalid account" in output.err
+        (request_path,) = (project.parent / "logs").glob("submission-*/sbatch.stderr")
+        assert request_path.read_bytes() == b"sbatch: invalid account\n\x1b[31m"
+    else:
+        assert not submitted.exists()
     assert not (project.parent / "logs/application").exists()
 
 
@@ -4134,7 +4256,9 @@ def test_standalone_report_uses_project_slurm_placement(
     scheduler = control.slurm_submission
     monkeypatch.setattr(reporting_operation, "run_reporting", report)
     monkeypatch.setattr(
-        scheduler, "submit", lambda plan: submissions.append(plan) or "812345"
+        scheduler,
+        "submit",
+        lambda plan, **_kwargs: submissions.append(plan) or "812345",
     )
     argv = [run_root.name, "--project", str(project)]
     if profile_selection != "default":
@@ -4155,6 +4279,11 @@ def test_standalone_report_uses_project_slurm_placement(
     assert control.report_from_args(parser.parse_args([*argv, "--execute"])) == 0
     assert calls == [False] and len(submissions) == 1
     submitted = submissions[0]
+    (request_path,) = (tmp_path / "logs").glob("submission-*/request.json")
+    request = json.loads(request_path.read_bytes())
+    assert request["command"] == "report"
+    assert request["requested_run"] == run_root.name
+    assert request["project"] == str(project)
     assert {
         "--account=viking-users",
         "--partition=long",
