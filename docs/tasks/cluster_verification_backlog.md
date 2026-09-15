@@ -841,8 +841,9 @@ checks selected stream paths on refresh, and reports unavailable proof as
 username-environment matching and duplicate first-row accounting parsing while
 preserving standalone loading and existing bounded discovery/stream handling.
 Job-ID/UID/path agreement is not request/cluster identity or recovery proof;
-the current inspection path below integrates retained requests. Legacy
-dashboard parity remains under `DASHBOARD-RETIRE-01`. The standalone dashboard suite
+the current inspection path below integrates retained requests. Institutional
+dashboard validation and coordinated retirement remain under
+`DASHBOARD-RETIRE-01`. The standalone dashboard suite
 passes 66 local tests; after duplicate-query changes all 50 affected cases pass.
 Actual scheduler/site verification remains pending.
 
@@ -906,8 +907,8 @@ Public selected-request cases
 cover one-request query cost, default no-query behavior, unavailable/legacy
 observations, exact selection, escaped reason text and no writes; these new
 application cases passed standard CI after the fixture correction. CV-20 is
-Verification pending for the startup-outcome checks below and institutional
-scheduler, reconnect and preparation observations.
+Verification pending for institutional scheduler, reconnect and preparation
+observations.
 Neither retained context nor a terminal
 scheduler record grants scientific completion, cancellation or recovery authority.
 
@@ -920,7 +921,8 @@ identity, custom roots and direct/legacy/Doctor behavior remain intact. The
 event is diagnostic; a later reader must still reject ambiguous or incomplete
 logs and independently admit candidate Runs/Attempts before association.
 Transport fixtures exercise actual safe Bash propagation, invalid/orphan
-context and module mutation; public early-log fixtures require hosted CI.
+context and module mutation; public early-log fixtures passed the final
+startup-outcome CI below.
 
 **Selected application/Run association slice:** Exact-request inspection scans
 only the retained command-specific application scope, with bounded directory,
@@ -937,7 +939,8 @@ is association evidence only: no chain, lock, receipt, Task or Results admission
 is implied. Shared directory enumeration gains an optional bound and profile
 binding retains one formatter for equivalent digest inputs. Focused fixtures
 cover actual log-writer compatibility, identities, limits, malformed/ambiguous
-records and snapshot changes; full candidate and public fixtures require CI.
+records and snapshot changes; full candidate and public fixtures passed the final
+startup-outcome CI below.
 Institutional reconnect/queued/preparation observations remain pending.
 
 **Recorded startup outcomes:** Selected-request inspection and watch now preserve
@@ -950,8 +953,13 @@ Preparation candidates and independently admitted Run/Attempt identities remain
 separate from the application outcome, with no new reads, records or recovery
 authority. Real-writer and public-handler regressions cover failure before and
 after preparation, interruption, unchanged admission and escaped presentation.
-Final hosted validation and institutional reconnect/queued/preparation evidence
-remain required.
+The complete standard suite passed for product
+`7b8db426020dd3b501ac3fdbe68aa315e68f4c69`
+([CI 34977917662](https://github.com/lab-cats/EMRYS/actions/runs/34977917662)):
+all 14 standard jobs succeeded, including installed-provider Run association,
+all Python shards, coverage and the managed golden path; four configured lanes
+were skipped. Institutional reconnect/queued/preparation evidence remains
+required. Recorded application failure does not establish a scientific outcome.
 
 ### CV-21 Reporting in progress and visibility
 
