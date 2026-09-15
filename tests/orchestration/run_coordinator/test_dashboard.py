@@ -34,6 +34,21 @@ def _make_logs(log_dir: Path, job_id: int = JOB_ID) -> tuple[Path, Path]:
     return stdout, stderr
 
 
+def _accounting_replies(monkeypatch, *replies: str) -> list[list[str]]:
+    calls = []
+    responses = iter(replies)
+
+    def command(argv: list[str], timeout: int = 10) -> str:
+        assert argv[0] == "sacct"
+        calls.append(argv)
+        return next(responses)
+
+    monkeypatch.setenv("USER", "2609214")
+    monkeypatch.setattr(dashboard._scheduler, "slurm_job_metadata", lambda _: None)
+    monkeypatch.setattr(dashboard._scheduler, "command_text", command)
+    return calls
+
+
 @pytest.mark.parametrize("matching_token", [True, False])
 def test_request_specific_scheduler_stream_pair_admission(
     tmp_path: Path, matching_token: bool
@@ -1341,51 +1356,15 @@ def test_live_selection_rejects_unproven_identity_without_accounting_fallback(
     assert calls[0][0] == "scontrol"
 
 
-def test_explicit_job_and_log_dir_use_terminal_accounting_fallback(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    stdout, stderr = _make_logs(tmp_path / "logs")
-    monkeypatch.setenv("USER", "2609214")
-    monkeypatch.setattr(dashboard._scheduler, "slurm_job_metadata", lambda job_id: None)
-
-    def fake_command(argv: list[str], timeout: int = 10) -> str:
-        del timeout
-        assert argv[0] == "sacct"
-        if ",StdOut,StdErr" in argv[-1]:
-            return ""
-        return (
-            f"{JOB_ID}|emrys-real-run|COMPLETED+|2609214|{os.getuid()}||||\n"
-            f"{JOB_ID}.batch|batch|COMPLETED|2609214|{os.getuid()}"
-        )
-
-    monkeypatch.setattr(dashboard._scheduler, "command_text", fake_command)
-
-    assert dashboard.resolve_selection(JOB_ID, str(tmp_path / "logs")) == {
-        "job_id": JOB_ID,
-        "log_dir": str(tmp_path / "logs"),
-        "out": str(stdout),
-        "err": str(stderr),
-        "selection_source": "sacct+explicit-log-dir",
-    }
-
-
 def test_explicit_completed_job_uses_exact_accounting_streams_without_log_dir(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     stdout, stderr = _make_logs(tmp_path / "logs")
-    monkeypatch.setenv("USER", "2609214")
-    monkeypatch.setattr(dashboard._scheduler, "slurm_job_metadata", lambda job_id: None)
-    calls: list[list[str]] = []
-
-    def fake_command(argv: list[str], timeout: int = 10) -> str:
-        del timeout
-        calls.append(argv)
-        assert argv[0] == "sacct"
-        return f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}|{stdout}|{stderr}||||"
-
-    monkeypatch.setattr(dashboard._scheduler, "command_text", fake_command)
+    calls = _accounting_replies(
+        monkeypatch,
+        f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}|{stdout}|{stderr}||||",
+    )
 
     assert dashboard.resolve_selection(JOB_ID) == {
         "job_id": JOB_ID,
@@ -1406,41 +1385,37 @@ def test_explicit_log_dir_must_agree_with_exact_accounting_streams(
     stdout, stderr = _make_logs(tmp_path / "scheduler-logs")
     requested = tmp_path / "requested-logs"
     requested.mkdir()
-    monkeypatch.setenv("USER", "2609214")
-    monkeypatch.setattr(dashboard._scheduler, "slurm_job_metadata", lambda job_id: None)
-    calls = 0
-
-    def fake_command(argv: list[str], timeout: int = 10) -> str:
-        nonlocal calls
-        del argv, timeout
-        calls += 1
-        return f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}|{stdout}|{stderr}||||"
-
-    monkeypatch.setattr(dashboard._scheduler, "command_text", fake_command)
+    calls = _accounting_replies(
+        monkeypatch,
+        f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}|{stdout}|{stderr}||||",
+    )
 
     with pytest.raises(dashboard._scheduler.DiscoveryError, match="LOG_DIR disagrees"):
         dashboard.resolve_selection(JOB_ID, str(requested))
-    assert calls == 1
+    assert len(calls) == 1
 
 
+@pytest.mark.parametrize(
+    "accounting",
+    [
+        pytest.param(
+            f"{JOB_ID}|emrys-real-run|COMPLETED+|2609214|{os.getuid()}||||\n"
+            f"{JOB_ID}.batch|batch|COMPLETED|2609214|{os.getuid()}",
+            id="completed-plus-with-batch",
+        ),
+        pytest.param(
+            f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}||||",
+            id="completed",
+        ),
+    ],
+)
 def test_exact_accounting_uses_one_basic_fallback_when_stream_fields_unavailable(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    accounting: str,
 ) -> None:
     stdout, stderr = _make_logs(tmp_path / "logs")
-    monkeypatch.setenv("USER", "2609214")
-    monkeypatch.setattr(dashboard._scheduler, "slurm_job_metadata", lambda job_id: None)
-    formats: list[str] = []
-
-    def fake_command(argv: list[str], timeout: int = 10) -> str:
-        del timeout
-        format_value = argv[-1]
-        formats.append(format_value)
-        if ",StdOut,StdErr" in format_value:
-            return ""
-        return f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}||||"
-
-    monkeypatch.setattr(dashboard._scheduler, "command_text", fake_command)
+    calls = _accounting_replies(monkeypatch, "", accounting)
 
     assert dashboard.resolve_selection(JOB_ID, str(tmp_path / "logs")) == {
         "job_id": JOB_ID,
@@ -1449,7 +1424,7 @@ def test_exact_accounting_uses_one_basic_fallback_when_stream_fields_unavailable
         "err": str(stderr),
         "selection_source": "sacct+explicit-log-dir",
     }
-    assert formats == [
+    assert [argv[-1] for argv in calls] == [
         "--format=JobIDRaw,JobName,State,User,UID,StdOut,StdErr,ExitCode,Elapsed,AllocCPUS,NodeList",
         "--format=JobIDRaw,JobName,State,User,UID,ExitCode,Elapsed,AllocCPUS,NodeList",
     ]
@@ -1458,16 +1433,11 @@ def test_exact_accounting_uses_one_basic_fallback_when_stream_fields_unavailable
 def test_explicit_job_without_log_dir_fails_if_accounting_has_no_stream_paths(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("USER", "2609214")
-    monkeypatch.setattr(dashboard._scheduler, "slurm_job_metadata", lambda job_id: None)
-
-    def fake_command(argv: list[str], timeout: int = 10) -> str:
-        del timeout
-        if ",StdOut,StdErr" in argv[-1]:
-            return ""
-        return f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}||||"
-
-    monkeypatch.setattr(dashboard._scheduler, "command_text", fake_command)
+    _accounting_replies(
+        monkeypatch,
+        "",
+        f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}||||",
+    )
 
     with pytest.raises(
         dashboard._scheduler.DiscoveryError, match="pass LOG_DIR explicitly"
@@ -1504,13 +1474,7 @@ def test_historical_accounting_fallback_rejects_unproven_records(
     message: str,
 ) -> None:
     _make_logs(tmp_path / "logs")
-    monkeypatch.setenv("USER", "2609214")
-    monkeypatch.setattr(dashboard._scheduler, "slurm_job_metadata", lambda job_id: None)
-    monkeypatch.setattr(
-        dashboard._scheduler,
-        "command_text",
-        lambda argv, timeout=10: "" if ",StdOut,StdErr" in argv[-1] else accounting,
-    )
+    _accounting_replies(monkeypatch, "", accounting)
 
     with pytest.raises(dashboard._scheduler.DiscoveryError, match=message):
         dashboard.resolve_selection(JOB_ID, str(tmp_path / "logs"))
