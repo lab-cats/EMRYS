@@ -48,11 +48,15 @@ ADAPTER_REGISTRY = build_adapter_registry(
 
 
 def child_command(helper, root: Path, *arguments: str, **options) -> list[str]:
+    # Pytest may import these sibling test modules under their short names.
+    module = (
+        f"tests.orchestration.run_coordinator.{helper.__module__.rsplit('.', 1)[-1]}"
+    )
     return [
         sys.executable,
         "-c",
         "import sys; from pathlib import Path; "
-        f"from {helper.__module__} import {helper.__name__}; "
+        f"from {module} import {helper.__name__}; "
         f"{helper.__name__}(Path(sys.argv[1]), *sys.argv[2:], **{options!r})",
         str(root),
         *arguments,
