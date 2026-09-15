@@ -69,6 +69,36 @@ cancellation, startup, reuse, and inspection outcomes.
 CV-03 adds transport-failure cases that preserve a single submission, confirmed
 or uncertain job identity, and the existing retained transcripts.
 
+**Hosted reuse slice:** After the existing managed golden path verifies the
+donor's scientific Run and reports, the same job creates a separate synthetic
+borrower. It inspects the borrower before any Run, exercises no-write reuse
+preview, seals/selects the donor through the public runtime command, and runs
+the borrower's verification-only Doctor operation. The retained application
+log must show readiness with no package-manager work, and the borrower must
+have its own semantically admitted direct storage receipt. Its inventory must
+bind the exact donor seal and selected Python; no borrower scientific Run is
+created by this slice.
+
+The comparison preserves donor non-managed file bytes and the complete
+namespace/stable metadata except the explicitly created seal and directory
+timestamps. Existing Doctor admission checks the fixed native/R content roster;
+this does not claim a complete transitive environment hash. Explicit artifact
+paths retain both Projects' diagnostics and qualification evidence without
+uploading managed tools or caches. The original donor science/report oracle and
+clean-checkout check remain intact. Local workflow-contract and syntax checks
+pass; the actual Ubuntu journey requires hosted CI.
+
+**Coverage boundary:** Owner fixtures cover missing memory declarations, site
+rejection responses, qualification faults and reporting transaction boundaries.
+Real isolated processes cover Snakemake startup/login lookup and native signal
+handling. These are not the corresponding institutional combinations. Existing
+public failed-resume fixtures use scientific owner doubles; the separately
+selected real-Slurm journey covers a pre-Task failed attempt and resume. Active
+native cancellation through Snakemake, restricted Slurm export combined with
+missing UID lookup, absent/rejected site memory policy, and live inspection
+during execution/reporting still need complete hosted or institutional journeys.
+CV-01 remains Open.
+
 ### CV-02 Individual qualification diagnostics
 
 **Finding:** Generic qualification failure required manual reconstruction of
