@@ -3906,17 +3906,12 @@ def test_public_submission_selection_queries_only_the_exact_request(
     )
 
     project = build(tmp_path / "project")
-    _, selected, context = _request_record(project.parent, stdout=b"700123;cluster-a\n")
+    _, selected, context = _request_record(
+        project.parent,
+        stdout=b"700123;cluster-a\n",
+        version="v1" if state == "legacy" else "v2",
+    )
     _, other, _ = _request_record(project.parent, "b", stdout=b"700124\n")
-    if state != "legacy":
-        context["schema_version"] = "emrys.submission-request.v2"
-        for stream, suffix in (("stdout", "out"), ("stderr", "err")):
-            context[f"scheduler_{stream}_pattern"] = str(
-                selected.parent / f"emrys-local-pilot-{'a' * 32}-%j.{suffix}"
-            )
-        (selected / "request.json").write_bytes(
-            orchestration_contracts.canonical_json_bytes(context)
-        )
     calls = []
     terminal = state in {"completed", "failed", "cancelled"}
     scheduler_exit = {"failed": "7:0", "cancelled": "0:15"}.get(state, "0:0")
@@ -4821,25 +4816,16 @@ def test_delegated_operation_records_request_before_preparation_in_one_unique_lo
     )
     request = None
     if request_token is not None:
-        _, request_root, context = _request_record(
-            workspace, request_token[0], stdout=b"812345\n"
-        )
-        context.update(
-            schema_version="emrys.submission-request.v3",
+        _request_record(
+            workspace,
+            request_token[0],
+            stdout=b"812345\n",
+            version="v3",
             command=command,
             project=str(arguments.project),
             requested_run=None if command == "run" else arguments.run,
             application_log_root=str(arguments.log_root),
             profile_binding_sha256=profile.binding_sha256,
-            scheduler_stdout_pattern=str(submission.stdout_pattern),
-            scheduler_stderr_pattern=str(submission.stderr_pattern),
-            scheduler_job_name=submission.job_name,
-        )
-        context = scheduler.validate_request_context(
-            context, arguments.project, request_root
-        )
-        (request_root / "request.json").write_bytes(
-            orchestration_contracts.canonical_json_bytes(context)
         )
         (request,) = scheduler.submission_requests(arguments.project)
     for name in (

@@ -27,27 +27,18 @@ from tests.orchestration.run_coordinator.test_slurm_submission import _request_r
 def _request(
     tmp_path: Path, command: str = "run", run_id: str | None = None, *, version="v2"
 ):
-    project, root, context = _request_record(tmp_path)
     profile = admit_execution_profile_bytes(
         DEFAULT_PROFILE_PATH.read_bytes(),
         tmp_path / "selected.yaml",
         project_default_profile_bytes(site="viking"),
     )
-    context.update(
-        schema_version=f"emrys.submission-request.{version}",
+    project, _, _ = _request_record(
+        tmp_path,
+        version=version,
         command=command,
         requested_run=run_id,
         profile_binding_sha256=profile.binding_sha256,
-        scheduler_stdout_pattern=str(
-            root.parent / f"emrys-local-pilot-{'a' * 32}-%j.out"
-        ),
-        scheduler_stderr_pattern=str(
-            root.parent / f"emrys-local-pilot-{'a' * 32}-%j.err"
-        ),
     )
-    if version == "v3":
-        context["scheduler_job_name"] = slurm_submission._scheduler_job_name("a" * 32)
-    (root / "request.json").write_bytes(contracts.canonical_json_bytes(context))
     return slurm_submission.submission_requests(project)[0], profile
 
 
