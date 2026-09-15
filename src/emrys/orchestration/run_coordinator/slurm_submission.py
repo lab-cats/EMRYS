@@ -5,21 +5,26 @@ from __future__ import annotations
 import os
 import re
 import shlex
+import shutil
+import stat
 import subprocess
 import sys
-from collections.abc import Callable, Mapping, Sequence
-from contextlib import suppress
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+from operator import attrgetter
 from types import MappingProxyType
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, BinaryIO, cast
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.libraries.validation.errors import ValidationError
 from emrys.libraries.validation.inputs import (
     directory_entries_with_identity,
     read_bytes_with_identity,
+    require_executable,
+    sha256_with_identity,
 )
 from emrys.orchestration.run_coordinator.resource_policy import (
     is_canonical_slurm_job_id,
@@ -228,6 +233,232 @@ def observe_submission_request(
             if context["schema_version"] == "emrys.submission-request.v3"
             else None
         ),
+    )
+
+
+def select_submission_request(
+    project: Path, selector: str
+) -> SubmissionRequestObservation:
+    """Select one exact retained request, never a job ID or newest entry."""
+    selected = tuple(
+        request
+        for request in submission_requests(project)
+        if selector in (request.request_root.name, str(request.request_root))
+    )
+    if len(selected) != 1:
+        raise SlurmSubmissionError(
+            "Submission selector must identify one exact retained request"
+        )
+    return selected[0]
+
+
+@dataclass(frozen=True, slots=True)
+class SlurmStopPlan:
+    request: SubmissionRequestObservation
+    observation: Mapping[str, object]
+    argv: tuple[str, ...]
+    environment: Mapping[str, str] = field(repr=False)
+    client_version: str | None
+    client_binding: tuple[object, ...] | None = field(repr=False)
+
+
+@dataclass(frozen=True, slots=True)
+class SlurmStopResult:
+    """Transport and scheduler observations, never proof of stopped native work."""
+
+    invocation_attempted: bool
+    returncode: int | None
+    observation: Mapping[str, object]
+    diagnostic: str | None
+    stdout_excerpt: bytes = field(repr=False, default=b"")
+    stderr_excerpt: bytes = field(repr=False, default=b"")
+
+
+def _stop_client_binding(path: Path) -> tuple[object, ...]:
+    require_executable(path, "scancel client")
+    digest, state = sha256_with_identity(path, "scancel client")
+    return (digest,) + tuple(
+        getattr(state, name)
+        for name in (
+            "st_dev",
+            "st_ino",
+            "st_mode",
+            "st_uid",
+            "st_size",
+            "st_mtime_ns",
+            "st_ctime_ns",
+        )
+    )
+
+
+def plan_stop(project: Path, selector: str) -> SlurmStopPlan:
+    """Read an exact v3 request and positively admit controller-filter support."""
+    request = select_submission_request(project, selector)
+    if (
+        request.record_status != "recorded-response"
+        or request.context is None
+        or request.context["schema_version"] != "emrys.submission-request.v3"
+    ):
+        raise SlurmSubmissionError("Stop requires one complete v3 submission request")
+    observation = MappingProxyType(observe_submission_request(request))
+    if observation["state"] == "UNKNOWN":
+        raise SlurmSubmissionError(
+            f"Stop identity is unconfirmed: {observation['diagnostic']}"
+        )
+    environment = MappingProxyType(
+        {
+            key: value
+            for key, value in os.environ.items()
+            if key != "SLURM_CLUSTERS" and not key.startswith("SCANCEL_")
+        }
+    )
+    if observation["terminal"]:
+        return SlurmStopPlan(request, observation, (), environment, None, None)
+    if observation["source"] != "squeue":
+        raise SlurmSubmissionError("Stop requires a current controller observation")
+    try:
+        selected = shutil.which("scancel")
+        if selected is None:
+            raise SlurmSubmissionError("scancel client is unavailable")
+        try:
+            client = Path(selected).resolve(strict=True)
+        except RuntimeError as exc:
+            raise SlurmSubmissionError(
+                "scancel client path cannot be resolved"
+            ) from exc
+        binding = _stop_client_binding(client)
+        completed = subprocess.run(
+            (str(client), "--version"),
+            env=dict(environment),
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
+        version = re.fullmatch(
+            rb"slurm ([0-9]{2})\.([0-9]{2})\.(0|[1-9][0-9]{0,3})\n?", completed.stdout
+        )
+        if (
+            completed.returncode != 0
+            or version is None
+            or tuple(map(int, version.groups())) < (23, 11, 6)
+        ):
+            raise SlurmSubmissionError(
+                "Stop requires a confirmed scancel release >=23.11.6"
+            )
+        if _stop_client_binding(client) != binding:
+            raise SlurmSubmissionError(
+                "scancel client changed during version admission"
+            )
+    except (OSError, ValidationError, subprocess.TimeoutExpired) as exc:
+        raise SlurmSubmissionError(
+            f"Could not admit scancel client: {str(exc)[:4096]!a}"
+        ) from exc
+    argv = (
+        str(client),
+        "--ctld",
+        f"--clusters={observation['cluster']}",
+        f"--name={request.context['scheduler_job_name']}",
+        "--me",
+        str(request.recorded_job_id),
+    )
+    return SlurmStopPlan(
+        request, observation, argv, environment, version[0].decode().strip(), binding
+    )
+
+
+def _observe_stop(plan: SlurmStopPlan) -> dict[str, object]:
+    context = plan.request.context
+    assert context is not None
+    return scheduler_observation.observe_job(
+        plan.request.recorded_job_id,
+        context["scheduler_stdout_pattern"],
+        context["scheduler_stderr_pattern"],
+        plan.observation["cluster"],
+        job_name=context["scheduler_job_name"],
+    )
+
+
+def stop(
+    plan: SlurmStopPlan, *, record_path: Path, record_intent: Callable[[], None]
+) -> SlurmStopResult:
+    """Issue at most one filtered controller request and observe again, without retry."""
+    context = plan.request.context
+    assert context is not None
+    attempted = False
+    returncode = None
+    diagnostic = None
+    stdout = stderr = b""
+    try:
+        if (
+            select_submission_request(
+                Path(str(context["project"])), str(plan.request.request_root)
+            )
+            != plan.request
+        ):
+            raise SlurmSubmissionError("Submission request changed after stop planning")
+        observed = _observe_stop(plan)
+        if observed["state"] == "UNKNOWN":
+            raise SlurmSubmissionError(
+                f"Stop identity is unconfirmed: {observed['diagnostic']}"
+            )
+        if observed["terminal"]:
+            return SlurmStopResult(False, None, MappingProxyType(observed), None)
+        if not plan.argv:
+            raise SlurmSubmissionError(
+                "Scheduler state changed after terminal observation; plan again"
+            )
+        with _recorded_streams(record_path) as (output, errors, verify):
+            verify(True)
+            record_intent()
+            if _stop_client_binding(Path(plan.argv[0])) != plan.client_binding:
+                raise SlurmSubmissionError("scancel client changed after stop planning")
+            try:
+                verify()
+                attempted = True
+                completed = subprocess.run(
+                    plan.argv,
+                    env=dict(plan.environment),
+                    stdin=subprocess.DEVNULL,
+                    stdout=output,
+                    stderr=errors,
+                    timeout=10,
+                    check=False,
+                )
+                returncode = completed.returncode
+            finally:
+                # Preserve process-control exceptions; a partial record never authorizes retry.
+                active_error = sys.exc_info()[0] is not None
+                retention_error = None
+                for stream in (output, errors):
+                    try:
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                    except OSError as exc:
+                        retention_error = retention_error or exc
+                try:
+                    output.seek(0)
+                    errors.seek(0)
+                    stdout, stderr = output.read(4096), errors.read(4096)
+                except OSError as exc:
+                    retention_error = retention_error or exc
+                if retention_error is not None and not active_error:
+                    raise retention_error
+    except (OSError, ValidationError, subprocess.TimeoutExpired) as exc:
+        if not attempted:
+            raise SlurmSubmissionError(
+                f"Could not prepare stop: {str(exc)[:4096]!a}"
+            ) from exc
+        diagnostic = (
+            f"Stop invocation or record retention is unconfirmed: {str(exc)[:4096]!a}"
+        )
+    return SlurmStopResult(
+        attempted,
+        returncode,
+        MappingProxyType(_observe_stop(plan)),
+        diagnostic,
+        stdout,
+        stderr,
     )
 
 
@@ -636,6 +867,84 @@ def plan_submission(
     )
 
 
+@contextmanager
+def _recorded_streams(
+    record: Path,
+) -> Iterator[tuple[BinaryIO, BinaryIO, Callable[..., None]]]:
+    """Keep two exclusive transcript files bound to their admitted directory."""
+    identity = attrgetter("st_dev", "st_ino", "st_mode", "st_uid", "st_gid")
+    directory = os.open(
+        record.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+    )
+    original_error: BaseException | None = None
+    try:
+        parent = identity(os.fstat(directory))
+
+        def verify_parent() -> None:
+            try:
+                canonical = record.parent.resolve(strict=True)
+            except RuntimeError as exc:
+                raise OSError("Transcript parent cannot be resolved") from exc
+            if (
+                canonical != record.parent
+                or parent[3] != os.getuid()
+                or identity(os.fstat(directory)) != parent
+                or identity(record.parent.lstat()) != parent
+            ):
+                raise OSError(
+                    "Transcript parent changed or is not canonical and current-owned"
+                )
+
+        verify_parent()
+
+        def private_opener(path: str, flags: int) -> int:
+            return os.open(
+                Path(path).name, flags | os.O_NOFOLLOW, 0o600, dir_fd=directory
+            )
+
+        with (
+            open(record, "xb+", opener=private_opener) as output,
+            open(record.with_suffix(".stderr"), "xb+", opener=private_opener) as errors,
+        ):
+            streams = (output, errors)
+            paths = (record, record.with_suffix(".stderr"))
+            admitted = tuple(identity(os.fstat(stream.fileno())) for stream in streams)
+
+            def verify(synchronize: bool = False) -> None:
+                verify_parent()
+                for stream, path, expected in zip(
+                    streams, paths, admitted, strict=True
+                ):
+                    if (
+                        not stat.S_ISREG(expected[2])
+                        or expected[3] != os.getuid()
+                        or identity(os.fstat(stream.fileno())) != expected
+                        or identity(path.lstat()) != expected
+                    ):
+                        raise OSError("Transcript file changed after admission")
+                if synchronize:
+                    os.fsync(directory)
+                    verify()
+
+            try:
+                yield output, errors, verify
+            except BaseException as exc:
+                original_error = exc
+                raise
+            else:
+                verify()
+    except OSError:
+        if original_error is not None:
+            raise original_error
+        raise
+    finally:
+        try:
+            os.close(directory)
+        except OSError:
+            if original_error is None:
+                raise
+
+
 def submit(
     submission: SlurmSubmission,
     *,
@@ -666,27 +975,15 @@ def submit(
         else:
             error_record = record.with_suffix(".stderr")
 
-            def private_opener(path: str, flags: int) -> int:
-                return os.open(path, flags, 0o600)
-
-            with (
-                open(record, "xb+", opener=private_opener) as output,
-                open(error_record, "xb+", opener=private_opener) as errors,
-            ):
+            with _recorded_streams(record) as (output, errors, verify):
                 operation = "synchronize submission directory"
-                directory = os.open(
-                    record.parent,
-                    os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
-                )
-                try:
-                    os.fsync(directory)
-                finally:
-                    os.close(directory)
+                verify(True)
                 print(
                     f"Slurm submission records: {record}, {error_record}",
                     file=sys.stderr,
                 )
                 operation = "invoke sbatch"
+                verify()
                 with subprocess.Popen(
                     (
                         *submission.argv,
@@ -804,9 +1101,14 @@ __all__ = (
     "REQUEST_TOKEN_ENV",
     "SlurmSubmission",
     "SlurmSubmissionError",
+    "SlurmStopPlan",
+    "SlurmStopResult",
     "SubmissionRequestObservation",
     "observe_submission_request",
     "plan_submission",
+    "plan_stop",
+    "select_submission_request",
+    "stop",
     "submission_requests",
     "submit",
     "validate_request_context",

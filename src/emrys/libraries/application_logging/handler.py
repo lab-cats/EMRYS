@@ -260,6 +260,25 @@ class AttemptLog:
             state="ready",
         )
 
+    def intent(
+        self,
+        *,
+        event_name: str,
+        message: str,
+        fields: Mapping[str, object] | None = None,
+    ) -> None:
+        """Durably record a required external-action intent while keeping the log open."""
+        _require_unreserved(event_name)
+        self._transition(
+            event_name,
+            message,
+            phase="intent",
+            fields=fields,
+            allowed={"open"},
+            sync="intent",
+            detail="durable_only",
+        )
+
     def receipt_committed(self) -> None:
         self._handler.acquire()
         try:

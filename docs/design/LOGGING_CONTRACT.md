@@ -9,8 +9,9 @@ defines which owners may import it.
 
 ## Ownership and adoption
 
-One executing `run` or `resume`, independently generated report, or confirmed
-`doctor --repair` operation owns one application attempt. Automatic reporting
+One executing `run` or `resume`, independently generated report, confirmed
+`doctor --repair`, or admitted `stop --execute` operation owns one application
+attempt. Automatic reporting
 continues in its Run attempt rather than opening another log. The Slurm
 submission transport and delegated tasks own none; the compute-side Run owns
 the attempt. Automatic Doctor compute checks write scheduler streams under the
@@ -41,6 +42,8 @@ open or append to the operation log.
   a Project root, it is `<repository-root>/logs/application`, derived from
   source/package identity rather than caller CWD. An explicit root is
   absolute.
+  Stop defaults to the exact submitted request's retained application-log root;
+  explicit command-line and environment controls retain their precedence.
 - A valid dry-run creates no log. Levels change console output only, never probes,
   child flags, computation, artifacts, validation, locking, publication,
   rollback, cleanup, or exits.
@@ -74,6 +77,9 @@ opens it only after confirmation and before lifecycle admission. Doctor opens
 one `maintenance` attempt after repair confirmation and before its first
 filesystem or package-manager mutation. A Slurm submitter opens none; the
 compute delegate opens the Run attempt inside the allocation.
+Stop opens one `maintenance` attempt scoped to the exact submission request
+after target/client admission and explicit execution intent. Already-terminal
+targets need no cancellation or new application log.
 
 The owner assigns `scope_kind` (`run`, `sample`, `cohort`, `reference`,
 `review`, `validation`, or `maintenance`), `scope_id`,
@@ -132,6 +138,10 @@ log, emits one fixed degradation warning, and disables further writes. Logging
 failure never changes workflow execution, receipt bytes or status, rollback,
 recovery, locks, or exit. Catchable signals receive a best-effort event, flush,
 and established child cleanup; uncatchable loss may leave only a partial log.
+Stop has a required pre-mutation intent boundary: a write or synchronization
+failure there refuses the external scheduler command. A logging failure after
+the command leaves its result unconfirmed; it cannot change Run evidence or
+authorize a repeated cancellation.
 
 After an attempted operation fails, stderr ends with a bounded summary naming:
 
@@ -164,6 +174,15 @@ confirmation time, and is not appended to an already closed terminal log.
 These measurements cannot substitute for readiness or change receipt authority.
 
 ## Scheduler distinction
+
+An approved exact-request stop uses one maintenance application log and raw
+`scancel.stdout`/`scancel.stderr` siblings. Before cancellation, the logger's
+nonterminal intent boundary writes and synchronizes the exact target, admitted
+client and arguments while leaving the log open. A failed intent write or sync
+prevents the command. The shared transport owns exclusive raw stream creation,
+directory pinning and synchronization; partial output is retained on failure.
+The terminal diagnostic records transport and scheduler observations without
+claiming native quiescence or recovery eligibility. Preview opens no log.
 
 Slurm compatibility streams live under `<project-root>/logs` as
 `emrys-local-pilot-<request-uuid>-%j.out` and

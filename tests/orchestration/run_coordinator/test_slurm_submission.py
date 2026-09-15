@@ -61,6 +61,521 @@ def _request_record(
     return project, root, context
 
 
+def _stop_fixture(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    version: bytes = b"slurm 23.11.6\n",
+    version_status: int = 0,
+    stop_status: int = 0,
+) -> SimpleNamespace:
+    project, root, context = _request_record(tmp_path, stdout=b"700123;alpha\n")
+    name = "emrys-local-pilot-" + "a" * 32
+    context.update(
+        schema_version="emrys.submission-request.v3",
+        scheduler_job_name=name,
+        scheduler_stdout_pattern=str(tmp_path / "logs" / f"{name}-%j.out"),
+        scheduler_stderr_pattern=str(tmp_path / "logs" / f"{name}-%j.err"),
+    )
+    (root / "request.json").write_bytes(
+        slurm_submission.orchestration_contracts.canonical_json_bytes(context)
+    )
+    client = tmp_path / "scancel"
+    marker = tmp_path / "mutations"
+    stdout, stderr = (
+        b"reply\xff\n",
+        b"controller diagnostic\xfe\n" + b"x" * 4096 + b"tail",
+    )
+    client.write_text(
+        f"#!{sys.executable}\n"
+        "import json, os, pathlib, sys\n"
+        "if sys.argv[1:] == ['--version']:\n"
+        f" sys.stdout.buffer.write({version!r}); raise SystemExit({version_status})\n"
+        f"with pathlib.Path({str(marker)!r}).open('ab') as stream:\n"
+        " stream.write(json.dumps({'argv': sys.argv, 'env': dict(os.environ)}).encode()+b'\\n')\n"
+        f"os.write(1, {stdout!r}); os.write(2, {stderr!r})\n"
+        f"raise SystemExit({stop_status})\n"
+    )
+    client.chmod(0o700)
+    monkeypatch.setattr(slurm_submission.shutil, "which", lambda _name: str(client))
+    replies: list[str | None] = ["RUNNING", "RUNNING", "CANCELLED"]
+    queries: list[tuple[str, ...]] = []
+
+    def observe(argv: list[str], **_kwargs: object) -> bytes | None:
+        queries.append(tuple(argv))
+        state = replies.pop(0) if len(replies) > 1 else replies[0]
+        if state is None:
+            return None
+        return (
+            f"700123|{os.getuid()}|{state}|alpha|"
+            f"{context['scheduler_stdout_pattern']}|{context['scheduler_stderr_pattern']}|None|{name}\n"
+        ).encode()
+
+    monkeypatch.setattr(
+        slurm_submission.scheduler_observation, "command_bytes", observe
+    )
+    output = tmp_path / "stop-attempt" / "scancel.stdout"
+    output.parent.mkdir()
+    return SimpleNamespace(
+        project=project,
+        root=root,
+        context=context,
+        client=client,
+        marker=marker,
+        replies=replies,
+        queries=queries,
+        output=output,
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+
+@pytest.mark.parametrize(
+    "version,status,accepted",
+    [
+        (b"slurm 23.02.7\n", 0, False),
+        (b"slurm 23.11.5\n", 0, False),
+        (b"slurm 23.11.6\n", 0, True),
+        (b"slurm 24.05.1\n", 0, True),
+        (b"slurm 23.11.6\n", 1, False),
+        (b"slurm 23.11.6-rc1\n", 0, False),
+        (b"slurm 23.11.6\nextra\n", 0, False),
+        (b"slurm 23.11\n", 0, False),
+        (b"\xff", 0, False),
+    ],
+)
+def test_stop_preview_requires_supported_client_without_writing_or_mutating(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    version: bytes,
+    status: int,
+    accepted: bool,
+) -> None:
+    fixture = _stop_fixture(
+        tmp_path, monkeypatch, version=version, version_status=status
+    )
+    before = {path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
+    if accepted:
+        plan = slurm_submission.plan_stop(fixture.project, fixture.root.name)
+        assert plan.client_version == version.decode().strip()
+        assert plan.argv == (
+            str(fixture.client),
+            "--ctld",
+            "--clusters=alpha",
+            f"--name={fixture.context['scheduler_job_name']}",
+            "--me",
+            "700123",
+        )
+    else:
+        with pytest.raises(slurm_submission.SlurmSubmissionError, match=">=23.11.6"):
+            slurm_submission.plan_stop(fixture.project, fixture.root.name)
+    assert not fixture.marker.exists()
+    assert {
+        path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()
+    } == before
+
+
+@pytest.mark.parametrize(
+    "failure", ("missing", "permissions", "changed", "timeout", "symlink-loop")
+)
+def test_stop_client_admission_failure_never_invokes_mutation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    fixture = _stop_fixture(tmp_path, monkeypatch)
+    if failure == "missing":
+        monkeypatch.setattr(slurm_submission.shutil, "which", lambda _name: None)
+    elif failure == "permissions":
+        fixture.client.chmod(0o600)
+    elif failure == "symlink-loop":
+        fixture.client.unlink()
+        fixture.client.symlink_to(fixture.client.name)
+    else:
+        run = slurm_submission.subprocess.run
+
+        def version_probe(*args: object, **kwargs: object) -> object:
+            assert args[0] == (str(fixture.client), "--version")
+            if failure == "timeout":
+                raise subprocess.TimeoutExpired(args[0], 10)
+            result = run(*args, **kwargs)
+            fixture.client.write_text(fixture.client.read_text() + "# replaced\n")
+            return result
+
+        monkeypatch.setattr(slurm_submission.subprocess, "run", version_probe)
+    with pytest.raises(slurm_submission.SlurmSubmissionError):
+        slurm_submission.plan_stop(fixture.project, fixture.root.name)
+    assert not fixture.marker.exists() and not fixture.output.exists()
+
+
+def test_already_terminal_stop_needs_no_client_and_retains_no_new_records(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fixture = _stop_fixture(tmp_path, monkeypatch)
+    fixture.replies[:] = ["COMPLETED"]
+    monkeypatch.setattr(
+        slurm_submission.shutil,
+        "which",
+        lambda _name: pytest.fail("terminal stop looked up a client"),
+    )
+    monkeypatch.setattr(
+        slurm_submission.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail("terminal stop invoked a client"),
+    )
+    plan = slurm_submission.plan_stop(fixture.project, fixture.root.name)
+    assert plan.argv == () and plan.client_version is None
+    result = slurm_submission.stop(
+        plan, record_path=fixture.output, record_intent=lambda: None
+    )
+    assert not result.invocation_attempted and result.returncode is None
+    assert result.observation["state"] == "COMPLETED"
+    assert not fixture.output.exists() and not fixture.marker.exists()
+    assert len(fixture.queries) == 2
+
+
+@pytest.mark.parametrize(
+    "defect",
+    ("v1", "v2", "partial", "selector", "name", "uid", "cluster", "unavailable"),
+)
+def test_stop_refuses_unproven_request_identity_before_client_invocation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    defect: str,
+) -> None:
+    fixture = _stop_fixture(tmp_path, monkeypatch)
+    selector = fixture.root.name
+    if defect == "partial":
+        (fixture.root / "sbatch.stderr").unlink()
+    elif defect == "selector":
+        selector = "700123"
+    elif defect in {"v1", "v2"}:
+        fixture.context["schema_version"] = f"emrys.submission-request.{defect}"
+        del fixture.context["scheduler_job_name"]
+        if defect == "v1":
+            for stream, extension in (("stdout", "out"), ("stderr", "err")):
+                fixture.context[f"scheduler_{stream}_pattern"] = str(
+                    tmp_path / "logs" / f"emrys-local-pilot-%j.{extension}"
+                )
+        (fixture.root / "request.json").write_bytes(
+            slurm_submission.orchestration_contracts.canonical_json_bytes(
+                fixture.context
+            )
+        )
+    else:
+        observed = slurm_submission.scheduler_observation.command_bytes
+
+        def wrong_identity(*args: object, **kwargs: object) -> bytes | None:
+            reply = observed(*args, **kwargs)
+            if defect == "unavailable":
+                return None
+            assert reply is not None
+            if defect == "name":
+                return reply.replace(
+                    fixture.context["scheduler_job_name"].encode(), b"other-job"
+                )
+            if defect == "uid":
+                return reply.replace(
+                    f"|{os.getuid()}|".encode(), f"|{os.getuid() + 1}|".encode()
+                )
+            return reply.replace(b"|alpha|", b"|other-cluster|")
+
+        monkeypatch.setattr(
+            slurm_submission.scheduler_observation, "command_bytes", wrong_identity
+        )
+    monkeypatch.setattr(
+        slurm_submission.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail("inadmissible stop invoked client"),
+    )
+    with pytest.raises(slurm_submission.SlurmSubmissionError):
+        slurm_submission.plan_stop(fixture.project, selector)
+    assert not fixture.marker.exists() and not fixture.output.exists()
+
+
+@pytest.mark.parametrize(
+    "status,post_state", [(0, "CANCELLED"), (0, "RUNNING"), (0, None), (7, "RUNNING")]
+)
+def test_stop_retains_raw_diagnostics_and_observes_after_exact_single_invocation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    status: int,
+    post_state: str | None,
+) -> None:
+    fixture = _stop_fixture(tmp_path, monkeypatch, stop_status=status)
+    fixture.replies[:] = ["RUNNING", "RUNNING", post_state]
+    monkeypatch.setenv("SCANCEL_SIGNAL", "KILL")
+    monkeypatch.setenv("SCANCEL_USER", "another-user")
+    monkeypatch.setenv("SLURM_CLUSTERS", "all")
+    monkeypatch.setenv("USER", "not-the-owner")
+    monkeypatch.setenv("SLURM_CONF", "/site/slurm.conf")
+    plan = slurm_submission.plan_stop(fixture.project, str(fixture.root))
+    result = slurm_submission.stop(
+        plan, record_path=fixture.output, record_intent=lambda: None
+    )
+    assert result.invocation_attempted and result.returncode == status
+    assert result.observation["state"] == (post_state or "UNKNOWN")
+    assert result.observation["terminal"] == (post_state == "CANCELLED")
+    assert result.diagnostic is None
+    calls = fixture.marker.read_text().splitlines()
+    assert len(calls) == 1
+    call = json.loads(calls[0])
+    assert call["argv"] == list(plan.argv)
+    assert not any(
+        key.startswith("SCANCEL_") or key == "SLURM_CLUSTERS" for key in call["env"]
+    )
+    assert call["env"]["SLURM_CONF"] == "/site/slurm.conf"
+    assert len(fixture.queries) == 3
+    assert all("--clusters=alpha" in query for query in fixture.queries)
+    assert fixture.output.read_bytes() == fixture.stdout
+    assert fixture.output.with_suffix(".stderr").read_bytes() == fixture.stderr
+    assert (
+        result.stdout_excerpt == fixture.stdout
+        and result.stderr_excerpt == fixture.stderr[:4096]
+    )
+    assert stat.S_IMODE(fixture.output.stat().st_mode) == 0o600
+    assert stat.S_IMODE(fixture.output.with_suffix(".stderr").stat().st_mode) == 0o600
+
+
+@pytest.mark.parametrize("changed", ("request", "client", "scheduler", "terminal"))
+def test_stop_readmission_prevents_changed_or_already_terminal_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    changed: str,
+) -> None:
+    fixture = _stop_fixture(tmp_path, monkeypatch)
+    plan = slurm_submission.plan_stop(fixture.project, fixture.root.name)
+    if changed == "request":
+        fixture.context["analysis"] = "different"
+        (fixture.root / "request.json").write_bytes(
+            slurm_submission.orchestration_contracts.canonical_json_bytes(
+                fixture.context
+            )
+        )
+    elif changed == "client":
+        fixture.client.write_text(fixture.client.read_text() + "# changed\n")
+    elif changed == "scheduler":
+        fixture.replies[:] = [None]
+    else:
+        fixture.replies[:] = ["COMPLETED"]
+    if changed == "terminal":
+        result = slurm_submission.stop(
+            plan, record_path=fixture.output, record_intent=lambda: None
+        )
+        assert not result.invocation_attempted and result.returncode is None
+        assert result.observation["terminal"]
+    else:
+        with pytest.raises(slurm_submission.SlurmSubmissionError):
+            slurm_submission.stop(
+                plan, record_path=fixture.output, record_intent=lambda: None
+            )
+    assert not fixture.marker.exists()
+
+
+@pytest.mark.parametrize(
+    "failure", ("stdout", "stderr", "directory", "synchronize", "timeout", "interrupt")
+)
+def test_stop_record_and_transport_failure_preserves_evidence_without_retry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+) -> None:
+    fixture = _stop_fixture(tmp_path, monkeypatch)
+    plan = slurm_submission.plan_stop(fixture.project, fixture.root.name)
+    if failure in {"stdout", "stderr"}:
+        path = (
+            fixture.output
+            if failure == "stdout"
+            else fixture.output.with_suffix(".stderr")
+        )
+        path.write_bytes(b"preserve\n")
+    elif failure in {"directory", "synchronize"}:
+        synchronize = os.fsync
+
+        def failed_sync(descriptor: int) -> None:
+            if stat.S_ISDIR(os.fstat(descriptor).st_mode) == (failure == "directory"):
+                raise OSError("record sync failed")
+            synchronize(descriptor)
+
+        monkeypatch.setattr(slurm_submission.os, "fsync", failed_sync)
+    else:
+        run = slurm_submission.subprocess.run
+
+        def failed_run(*args: object, **kwargs: object) -> None:
+            run(*args, **kwargs)
+            if failure == "interrupt":
+                raise KeyboardInterrupt("operator interrupted")
+            raise subprocess.TimeoutExpired(plan.argv, 10)
+
+        monkeypatch.setattr(slurm_submission.subprocess, "run", failed_run)
+    if failure in {"stdout", "stderr", "directory", "interrupt"}:
+        with pytest.raises(
+            KeyboardInterrupt
+            if failure == "interrupt"
+            else slurm_submission.SlurmSubmissionError
+        ):
+            slurm_submission.stop(
+                plan, record_path=fixture.output, record_intent=lambda: None
+            )
+    else:
+        result = slurm_submission.stop(
+            plan, record_path=fixture.output, record_intent=lambda: None
+        )
+        assert result.invocation_attempted and result.diagnostic
+        assert result.observation["terminal"]
+        assert result.returncode == (0 if failure == "synchronize" else None)
+        assert result.stdout_excerpt == fixture.stdout
+    attempted = failure in {"synchronize", "timeout", "interrupt"}
+    assert fixture.marker.exists() == attempted
+    assert len(fixture.queries) == (3 if failure in {"synchronize", "timeout"} else 2)
+    if attempted:
+        assert len(fixture.marker.read_text().splitlines()) == 1
+        assert fixture.output.read_bytes() == fixture.stdout
+        assert fixture.output.with_suffix(".stderr").read_bytes() == fixture.stderr
+    if failure in {"stdout", "stderr"}:
+        assert path.read_bytes() == b"preserve\n"
+
+
+@pytest.mark.parametrize("transport", ("stop", "ordinary", "waited"))
+@pytest.mark.parametrize("boundary", ("before-launch", "after-launch"))
+def test_recorded_transport_pins_parent_across_real_directory_replacement(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, transport: str, boundary: str
+) -> None:
+    fixture = _stop_fixture(tmp_path, monkeypatch)
+    retained = tmp_path / "retained-transcripts"
+    replaced = False
+
+    def replace_parent() -> None:
+        nonlocal replaced
+        if not replaced:
+            replaced = True
+            fixture.output.parent.rename(retained)
+            fixture.output.parent.mkdir()
+
+    if transport == "stop":
+        plan = slurm_submission.plan_stop(fixture.project, fixture.root.name)
+    else:
+        fixture.client.write_text(
+            f"#!{sys.executable}\n"
+            "import os, pathlib, sys\n"
+            "sys.stdin.read()\n"
+            f"pathlib.Path({str(fixture.marker)!r}).write_text('once\\n')\n"
+            "os.write(1, b'700123;alpha\\n'); os.write(2, b'retained stderr\\n')\n"
+        )
+        plan = slurm_submission.plan_submission(
+            _profile(tmp_path),
+            emrys_argv=("emrys", "doctor"),
+            log_dir=tmp_path,
+            sbatch=str(fixture.client),
+        )
+    if boundary == "before-launch":
+        synchronize = os.fsync
+
+        def sync_and_replace(descriptor: int) -> None:
+            synchronize(descriptor)
+            if stat.S_ISDIR(os.fstat(descriptor).st_mode):
+                replace_parent()
+
+        monkeypatch.setattr(slurm_submission.os, "fsync", sync_and_replace)
+    else:
+        wait = slurm_submission.subprocess.Popen.wait
+
+        def wait_and_replace(process: object, *args: object, **kwargs: object) -> int:
+            status = wait(process, *args, **kwargs)
+            replace_parent()
+            return status
+
+        monkeypatch.setattr(slurm_submission.subprocess.Popen, "wait", wait_and_replace)
+    if transport == "stop" and boundary == "after-launch":
+        result = slurm_submission.stop(
+            plan, record_path=fixture.output, record_intent=lambda: None
+        )
+        assert result.invocation_attempted and result.diagnostic
+    else:
+        with pytest.raises(
+            slurm_submission.SlurmSubmissionError, match="Transcript parent changed"
+        ):
+            if transport == "stop":
+                slurm_submission.stop(
+                    plan, record_path=fixture.output, record_intent=lambda: None
+                )
+            else:
+                slurm_submission.submit(
+                    plan,
+                    **{
+                        "wait_record"
+                        if transport == "waited"
+                        else "record_path": fixture.output
+                    },
+                )
+    assert replaced and not fixture.output.exists()
+    assert fixture.marker.exists() == (boundary == "after-launch")
+    assert (retained / fixture.output.name).read_bytes() == (
+        b""
+        if boundary == "before-launch"
+        else fixture.stdout
+        if transport == "stop"
+        else b"700123;alpha\n"
+    )
+
+
+@pytest.mark.parametrize("change", ("intent-failure", "parent", "client"))
+def test_stop_requires_intent_inside_pins_and_rechecks_before_invocation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    fixture = _stop_fixture(tmp_path, monkeypatch)
+    plan = slurm_submission.plan_stop(fixture.project, fixture.root.name)
+    calls = []
+    original = RuntimeError("required intent failed")
+
+    def intent() -> None:
+        calls.append("intent")
+        assert (
+            fixture.output.exists() and fixture.output.with_suffix(".stderr").exists()
+        )
+        if change == "intent-failure":
+            raise original
+        if change == "parent":
+            fixture.output.parent.rename(tmp_path / "retained-attempt")
+            fixture.output.parent.mkdir()
+        else:
+            fixture.client.write_text(
+                fixture.client.read_text() + "# changed after intent\n"
+            )
+
+    with pytest.raises(RuntimeError) as caught:
+        slurm_submission.stop(plan, record_path=fixture.output, record_intent=intent)
+    if change == "intent-failure":
+        assert caught.value is original
+    else:
+        assert isinstance(caught.value, slurm_submission.SlurmSubmissionError)
+    assert calls == ["intent"] and len(fixture.queries) == 2
+    assert not fixture.marker.exists()
+
+
+def test_recorded_stop_refuses_replaced_file_before_launch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fixture = _stop_fixture(tmp_path, monkeypatch)
+    plan = slurm_submission.plan_stop(fixture.project, fixture.root.name)
+    synchronize = os.fsync
+
+    def sync_and_replace(descriptor: int) -> None:
+        synchronize(descriptor)
+        if stat.S_ISDIR(os.fstat(descriptor).st_mode):
+            fixture.output.rename(fixture.output.with_suffix(".retained"))
+            fixture.output.write_bytes(b"replacement\n")
+
+    monkeypatch.setattr(slurm_submission.os, "fsync", sync_and_replace)
+    with pytest.raises(
+        slurm_submission.SlurmSubmissionError, match="Transcript file changed"
+    ):
+        slurm_submission.stop(
+            plan, record_path=fixture.output, record_intent=lambda: None
+        )
+    assert not fixture.marker.exists()
+    assert fixture.output.read_bytes() == b"replacement\n"
+    assert fixture.output.with_suffix(".retained").read_bytes() == b""
+
+
 def test_submission_requests_keep_all_retained_responses_without_scheduler_or_writes(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

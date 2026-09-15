@@ -59,6 +59,36 @@ the most recently modified directory as the intended request. Retain every
 partial request; its presence alone is neither completion evidence nor recovery
 authority.
 
+## Stop one exact Slurm request
+
+Use the exact retained request printed by Run, resume or report, with the
+Project that submitted it. Preview first:
+
+```bash
+emrys stop --project "$EMRYS_PROJECT_ROOT" --submission "submission-EXACT_TOKEN"
+```
+
+Review the Project, request, numeric owner, cluster, root job ID, token-specific
+job name and current scheduler observation. Add `--execute` to issue the
+displayed stop request. Preview creates no log or cancellation records.
+Only complete v3 requests are eligible; older records remain inspectable.
+EMRYS requires a confirmed `scancel` release of at least 23.11.6 so the
+controller applies owner, name and job-ID filters together. An unsupported
+client or uncertain target refuses before cancellation.
+
+Execution retains a synchronized intent and raw `scancel.stdout`/`scancel.stderr`
+beside the printed maintenance log. It rechecks the request, exact scheduler
+identity and client before issuing one whole-job cancellation, then observes
+the scheduler again. There is no retry or fallback to cancellation by job ID
+alone. A timeout or interrupted client can leave the request outcome uncertain;
+retain the printed records and inspect that exact submission before acting again.
+
+A processed cancellation request is not proof that every native process stopped.
+A matching terminal scheduler observation is still separate from EMRYS recovery
+eligibility. Inspect the associated Run and use its supported resume action only
+when its retained evidence admits recovery. Missing terminal records, ambiguous
+locks and partial outputs remain preserved; stop never removes or repairs them.
+
 Use the [quickstart](../../quickstart.md) for Viking installation, a first
 synthetic Project and your own study. For other setup needs, start with
 [a chosen release or commit](#install-a-chosen-release-or-commit) or
