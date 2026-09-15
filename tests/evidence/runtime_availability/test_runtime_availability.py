@@ -1199,3 +1199,345 @@ def test_profile_symlink_is_rejected(tmp_path: Path) -> None:
     link.symlink_to(profile)
     with pytest.raises(inspector.RuntimeInspectionError, match="non-symlink"):
         inspector.load_runtime_profile_contract(link, tmp_path)
+
+
+def _managed_seal_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    runtime = tmp_path / "donor/runtime"
+    managed = runtime / "managed"
+    managed.mkdir(parents=True)
+    choices = {key: managed / key for key in CHOICE_IDS}
+    choices["python"] = Path(sys.executable)
+    choices["renv_library"].mkdir()
+    for key, path in choices.items():
+        if key not in {"python", "renv_library"}:
+            path.write_bytes(f"fixed {key}\n".encode())
+            path.chmod(0o755)
+    data = inspector.runtime_profile_bytes(choices)
+    checks = inspector.runtime_profile_checks(data, tmp_path)
+    for check in checks:
+        if check.check_type == "r_namespace":
+            package = choices["renv_library"] / check.target
+            package.mkdir()
+            (package / "DESCRIPTION").write_text(
+                f"Package: {check.target}\nVersion: 1.0\n"
+            )
+
+    def observe(checks, *, environment):
+        return tuple(
+            RuntimeObservation(
+                check,
+                "pass",
+                f"fixed {check.check_id}",
+                "fresh probe",
+                (
+                    Path(
+                        environment.get("RENV_LIBRARY")
+                        or environment["EMRYS_RENV_LIBRARY"]
+                    )
+                    / check.target
+                ).resolve()
+                if check.check_type == "r_namespace"
+                else None,
+            )
+            for check in checks
+        )
+
+    monkeypatch.setattr(inspector, "run_checks", observe)
+    inspection = inspector.inspect_runtime_profile_bytes(
+        data,
+        runtime / "runtime.tsv",
+        checks=checks,
+        environment={"RENV_LIBRARY": str(choices["renv_library"])},
+    )
+    return runtime / "shared.json", inspection
+
+
+def _borrowed_inspection(seal: Path, tmp_path: Path):
+    data = inspector.shared_runtime_profile_bytes(
+        seal, seal.read_bytes(), Path(sys.executable)
+    )
+    checks = inspector.runtime_profile_checks(data, tmp_path)
+    library = next(check.target for check in checks if check.check_id == "renv_library")
+    return inspector.inspect_runtime_profile_bytes(
+        data,
+        tmp_path / "borrower/runtime.tsv",
+        checks=checks,
+        environment={"RENV_LIBRARY": library},
+    )
+
+
+@pytest.mark.parametrize("defect", ("empty", "missing", "failed"))
+def test_sealing_requires_complete_fresh_passing_observations(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, defect: str
+) -> None:
+    seal, original = _managed_seal_fixture(tmp_path, monkeypatch)
+    observations = original.observations
+    if defect == "empty":
+        observations = ()
+    elif defect == "missing":
+        observations = observations[:-1]
+    else:
+        observations = (
+            replace(observations[0], status="fail"),
+            *observations[1:],
+        )
+    with pytest.raises(inspector.RuntimeInspectionError, match="every probe|roster"):
+        inspector.runtime_seal_bytes(replace(original, observations=observations), seal)
+    assert not seal.exists()
+
+
+@pytest.mark.parametrize("external", (False, True))
+def test_seal_requires_native_symlink_targets_inside_managed_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, external: bool
+) -> None:
+    seal, original = _managed_seal_fixture(tmp_path, monkeypatch)
+    native = seal.parent / "managed/star"
+    target = (tmp_path if external else native.parent) / "star-target"
+    native.rename(target)
+    native.symlink_to(target)
+    if external:
+        with pytest.raises(inspector.RuntimeInspectionError, match="escaped"):
+            inspector.runtime_seal_bytes(original, seal)
+    else:
+        seal.write_bytes(inspector.runtime_seal_bytes(original, seal))
+        assert inspector.runtime_file_bindings(_borrowed_inspection(seal, tmp_path))
+
+
+@pytest.mark.parametrize("mode", ("borrowed", "donor"))
+@pytest.mark.parametrize("changed", ("native", "r_package", "version"))
+def test_seal_rejects_changed_content_even_when_version_probes_pass(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: str,
+    changed: str,
+) -> None:
+    seal, original = _managed_seal_fixture(tmp_path, monkeypatch)
+    seal.write_bytes(inspector.runtime_seal_bytes(original, seal))
+    selected = _borrowed_inspection(seal, tmp_path) if mode == "borrowed" else original
+    options = {} if mode == "borrowed" else {"donor_seal": seal}
+    assert inspector.runtime_file_bindings(selected, **options)
+    target = next(
+        item
+        for item in selected.observations
+        if item.check.check_id
+        == ("star" if changed != "r_package" else "r_variant_annotation")
+    )
+    if changed == "version":
+        selected = replace(
+            selected,
+            observations=tuple(
+                replace(item, observed="changed version") if item is target else item
+                for item in selected.observations
+            ),
+        )
+    elif changed == "native":
+        Path(target.check.target).write_bytes(
+            b"different implementation, same version\n"
+        )
+    else:
+        assert target.resolved_path is not None
+        (target.resolved_path / "DESCRIPTION").write_text(
+            "different package bytes, same version\n"
+        )
+    assert selected.required_ready
+    with pytest.raises(
+        inspector.RuntimeInspectionError, match="content or version changed"
+    ):
+        inspector.runtime_file_bindings(selected, **options)
+
+
+def test_shared_selector_retains_exact_reference_and_borrower_python_and_r_project(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seal, original = _managed_seal_fixture(tmp_path, monkeypatch)
+    seal.write_bytes(inspector.runtime_seal_bytes(original, seal))
+    borrower_python = tmp_path / "borrower-python"
+    borrower_python.write_bytes(b"separate borrower interpreter\n")
+    data = inspector.shared_runtime_profile_bytes(
+        seal, seal.read_bytes(), borrower_python
+    )
+    retained = tmp_path / "run/contract/runtime-profiles/attempt.tsv"
+    retained.parent.mkdir(parents=True)
+    retained.write_bytes(data)
+    loaded, checks = inspector.load_runtime_profile_contract(
+        retained, tmp_path / "borrower-package"
+    )
+    assert loaded == data
+    by_id = {check.check_id: check for check in checks}
+    assert all(
+        by_id[key].target == str(borrower_python) for key in inspector.PYTHON_CHECK_IDS
+    )
+    assert by_id["renv_project"].target == str(tmp_path / "borrower-package")
+    assert by_id["star"].target == str(seal.parent / "managed/star")
+    seal.write_bytes(seal.read_bytes() + b"\n")
+    with pytest.raises(inspector.RuntimeInspectionError, match="SHA-256"):
+        inspector.load_runtime_profile_contract(retained, tmp_path)
+
+
+@pytest.mark.parametrize(
+    "defect",
+    ("missing", "claim", "trailing_row", "extra_column", "bad_sha", "unknown_header"),
+)
+def test_shared_selector_fails_closed_without_a_complete_unclaimed_seal(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    defect: str,
+) -> None:
+    seal, original = _managed_seal_fixture(tmp_path, monkeypatch)
+    data = inspector.runtime_seal_bytes(original, seal)
+    seal.write_bytes(data)
+    selection = inspector.shared_runtime_profile_bytes(seal, data, Path(sys.executable))
+    if defect == "missing":
+        seal.unlink()
+    elif defect == "claim":
+        (seal.parent / "maintenance.lock").write_bytes(b"incomplete owner\n")
+    elif defect == "trailing_row":
+        selection += selection.splitlines(keepends=True)[1]
+    elif defect == "extra_column":
+        selection = selection.rstrip(b"\n") + b"\textra\n"
+    elif defect == "bad_sha":
+        selection = (
+            selection.splitlines()[0]
+            + b"\n"
+            + str(seal).encode()
+            + b"\tbad\t"
+            + sys.executable.encode()
+            + b"\n"
+        )
+    else:
+        selection = selection.replace(b"seal_path", b"unknown")
+    with pytest.raises(inspector.RuntimeInspectionError):
+        inspector.runtime_profile_checks(selection, tmp_path)
+
+
+@pytest.mark.parametrize(
+    "defect",
+    (
+        "extra",
+        "bool_version",
+        "missing_binding",
+        "kind",
+        "duplicate_binding",
+        "digest",
+        "noncanonical",
+        "oversize",
+        "symlink",
+    ),
+)
+def test_seal_closed_record_and_stable_file_admission(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    defect: str,
+) -> None:
+    from emrys.contracts.orchestration import api as contracts
+
+    seal, original = _managed_seal_fixture(tmp_path, monkeypatch)
+    record = json.loads(inspector.runtime_seal_bytes(original, seal))
+    if defect == "extra":
+        record["status"] = "passed"
+    elif defect == "bool_version":
+        record["schema_version"] = True
+    elif defect == "missing_binding":
+        record["bindings"].pop()
+    elif defect == "kind":
+        record["bindings"][0]["identity_kind"] = "package_tree"
+    elif defect == "duplicate_binding":
+        record["bindings"][1] = record["bindings"][0]
+    elif defect == "digest":
+        record["bindings"][0]["sha256"] = "not-a-digest"
+    data = contracts.canonical_json_bytes(record)
+    if defect == "noncanonical":
+        data += b"\n"
+    if defect == "oversize":
+        data += b" " * (64 * 1024)
+    if defect == "symlink":
+        target = tmp_path / "external-seal"
+        target.write_bytes(data)
+        seal.symlink_to(target)
+    else:
+        seal.write_bytes(data)
+    with pytest.raises(inspector.RuntimeInspectionError):
+        inspector.load_runtime_seal(seal)
+
+
+@pytest.mark.parametrize("external", (False, True))
+def test_seal_accepts_only_managed_contained_r_package_symlink_targets(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    external: bool,
+) -> None:
+    seal, original = _managed_seal_fixture(tmp_path, monkeypatch)
+    observed = next(
+        item
+        for item in original.observations
+        if item.check.check_id == "r_variant_annotation"
+    )
+    package = observed.resolved_path
+    assert package is not None
+    target = (
+        tmp_path / "external-package"
+        if external
+        else seal.parent / "managed/package-cache"
+    )
+    package.rename(target)
+    package.symlink_to(target, target_is_directory=True)
+    original = replace(
+        original,
+        observations=tuple(
+            replace(item, resolved_path=target) if item is observed else item
+            for item in original.observations
+        ),
+    )
+    if external:
+        with pytest.raises(inspector.RuntimeInspectionError, match="escaped"):
+            inspector.runtime_seal_bytes(original, seal)
+    else:
+        seal.write_bytes(inspector.runtime_seal_bytes(original, seal))
+        assert inspector.runtime_file_bindings(_borrowed_inspection(seal, tmp_path))
+
+
+@pytest.mark.parametrize("inside", (False, True))
+def test_extra_analysis_dependencies_are_freshly_bound_without_extending_seal(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    inside: bool,
+) -> None:
+    seal, original = _managed_seal_fixture(tmp_path, monkeypatch)
+    seal.write_bytes(inspector.runtime_seal_bytes(original, seal))
+    borrowed = _borrowed_inspection(seal, tmp_path)
+    resource = (seal.parent / "managed" if inside else tmp_path) / "extra-resource"
+    resource.write_bytes(b"new module resource\n")
+    check = RuntimeCheck(
+        "extra_resource",
+        "path_visibility",
+        str(resource),
+        ("file_readable",),
+        "readable",
+    )
+    borrowed = replace(
+        borrowed,
+        observations=(
+            *borrowed.observations,
+            RuntimeObservation(check, "pass", "readable", "fresh"),
+        ),
+    )
+    if inside:
+        with pytest.raises(inspector.RuntimeInspectionError, match="not covered"):
+            inspector.runtime_file_bindings(
+                borrowed, explicit_file_ids=frozenset({check.check_id})
+            )
+    else:
+        bindings = inspector.runtime_file_bindings(
+            borrowed, explicit_file_ids=frozenset({check.check_id})
+        )
+        first = next(item for item in bindings if item.check_id == check.check_id)
+        resource.write_bytes(b"changed independent resource\n")
+        next_binding = next(
+            item
+            for item in inspector.runtime_file_bindings(
+                borrowed, explicit_file_ids=frozenset({check.check_id})
+            )
+            if item.check_id == check.check_id
+        )
+        assert first.sha256 != next_binding.sha256

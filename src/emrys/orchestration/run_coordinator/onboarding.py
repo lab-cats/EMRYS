@@ -9,8 +9,10 @@ import re
 import shlex
 import stat
 import sys
+import hashlib
+import uuid
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import yaml
@@ -24,9 +26,19 @@ from emrys.evidence.runtime_availability.inspector import (
     inspect_runtime_profile_bytes,
     runtime_profile_checks,
     runtime_profile_bytes,
+    load_runtime_profile_contract,
+    load_runtime_seal,
+    runtime_profile_choices,
+    runtime_file_bindings,
+    runtime_seal_bytes,
+    shared_runtime_profile_bytes,
 )
 from emrys.libraries.application_logging import phase_progress
-from emrys.libraries.exclusive_publication import publish_exclusive
+from emrys.libraries.exclusive_publication import (
+    acquire_lock,
+    publish_exclusive,
+    release_lock,
+)
 from emrys.libraries.process_environment import command_flags, guarded_r_environment
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.libraries.references.contigs import (
@@ -1388,8 +1400,91 @@ def publish_runtime_profile(inspection: RuntimeInspection) -> None:
     )
 
 
+def reuse_runtime_profile(
+    *, project: Path, donor: Path, execute: bool
+) -> RuntimeInspection:
+    """Seal an owned donor once and freshly qualify one explicit borrower selection."""
+    package_root = _absolute(source_root())
+    borrower = validate_project(project, root=package_root).project
+    source = validate_project(donor, root=package_root).project
+    destination = project_runtime_directory(borrower, writable=execute) / "runtime.tsv"
+    runtime = project_runtime_directory(source, writable=False)
+    seal_path = runtime / "shared.json"
+    if borrower.source_path == source.source_path:
+        raise OnboardingError("Runtime reuse requires a distinct borrower Project")
+    if os.path.lexists(destination):
+        raise OnboardingError(
+            f"runtime inventory already exists and was preserved: {destination}"
+        )
+
+    def inspect(data: bytes) -> RuntimeInspection:
+        checks = runtime_profile_checks(data, package_root)
+        library = next(
+            Path(check.target) for check in checks if check.check_id == "renv_library"
+        )
+        result = inspect_runtime_profile_bytes(
+            data,
+            destination,
+            checks=checks,
+            environment=guarded_r_environment(package_root, library),
+        )
+        if not result.required_ready:
+            raise RuntimeDiscoveryError(
+                "Required runtime checks did not pass for reuse"
+            )
+        return result
+
+    if os.path.lexists(seal_path):
+        seal_data = load_runtime_seal(seal_path).data
+    else:
+        claim_path = runtime / "maintenance.lock"
+        if os.path.lexists(claim_path):
+            raise OnboardingError(
+                f"Runtime maintenance claim is unresolved: {claim_path}"
+            )
+        ownership = None
+        payload = f"emrys-runtime-seal:{uuid.uuid4().hex}\n".encode("ascii")
+        if execute:
+            project_runtime_directory(source)
+            ownership = acquire_lock(
+                claim_path, payload, OnboardingError, retain_on_failure=True
+            )
+        # Failed or interrupted preparation/publication deliberately retains the claim.
+        data, _checks = load_runtime_profile_contract(
+            runtime / "runtime.tsv", package_root
+        )
+        choices = runtime_profile_choices(data)
+        choices["python"] = Path(sys.executable)
+        candidate = inspect(runtime_profile_bytes(choices))
+        seal_data = runtime_seal_bytes(candidate, seal_path)
+        reference = shared_runtime_profile_bytes(
+            seal_path, seal_data, Path(sys.executable)
+        )
+        if not execute:
+            return replace(
+                candidate,
+                profile_bytes=reference,
+                profile_sha256=hashlib.sha256(reference).hexdigest(),
+            )
+        publish_exclusive(seal_path, seal_data, OnboardingError)
+        assert ownership is not None
+        release_lock(claim_path, ownership, payload, OnboardingError)
+    reference = shared_runtime_profile_bytes(seal_path, seal_data, Path(sys.executable))
+    inspection = inspect(reference)
+    runtime_file_bindings(inspection)
+    if execute:
+        project_runtime_directory(borrower)
+        publish_runtime_profile(inspection)
+    return inspection
+
+
 def configure_runtime_discovery_parser(parser: argparse.ArgumentParser) -> None:
     add_project_argument(parser)
+    parser.add_argument(
+        "--from-project",
+        metavar="DONOR",
+        help="Reuse a managed donor runtime; --execute permanently seals its native/R content before selection.",
+    )
     parser.add_argument(
         "--execute",
         action="store_true",
@@ -1412,9 +1507,21 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
     """Discover, probe, and optionally admit the active Project runtime."""
 
     try:
-        inspection = discover_runtime_profile(
-            project=project_definition_path(arguments.project)
-        )
+        donor = getattr(arguments, "from_project", None)
+        if donor is None:
+            inspection = discover_runtime_profile(
+                project=project_definition_path(arguments.project)
+            )
+        else:
+            inspection = reuse_runtime_profile(
+                project=project_definition_path(arguments.project),
+                donor=project_definition_path(donor),
+                execute=arguments.execute,
+            )
+            print(
+                f"Donor seal: {project_definition_path(donor).parent / 'runtime/shared.json'}"
+            )
+            print("A donor seal is permanent and disables its managed runtime repair.")
         _print_runtime_inventory(inspection)
         print(f"Inventory: {inspection.profile_path}")
         if not inspection.required_ready:
@@ -1423,7 +1530,8 @@ def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
         if not arguments.execute:
             print("Dry-run complete; no files were written.")
             return 0
-        publish_runtime_profile(inspection)
+        if donor is None:
+            publish_runtime_profile(inspection)
         print("Runtime inventory admitted.")
         return 0
     except RuntimeDiscoveryError as exc:
@@ -1452,6 +1560,7 @@ __all__ = (
     "configure_validation_parser",
     "discover_runtime_from_args",
     "discover_runtime_profile",
+    "reuse_runtime_profile",
     "init_manifests_from_args",
     "init_project_from_args",
     "project_runtime_directory",

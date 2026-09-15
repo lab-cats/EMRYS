@@ -123,9 +123,23 @@ directory synchronization after release can leave no claim pathname but still
 reports failure. Existing claims block another managed repair; age, host or PID
 absence never clears them. Verification-only plans do not acquire a claim.
 Reporting uses the same primitive with its existing owned-partial cleanup
-policy. This maintenance exclusion does not freeze runtime content or establish
+policy. This maintenance exclusion alone does not freeze runtime content or establish
 cross-Project sharing; an immutable expected-content seal and fresh borrower
 qualification remain necessary.
+
+Explicit `runtime discover --from-project DONOR` supplies that sharing route.
+Preview probes and prepares an expected-content seal without publication;
+`--execute` claims the donor, rechecks its inventory/content, exclusively
+publishes `runtime/shared.json`, releases the exact claim, freshly checks the
+borrower selection and exclusively publishes the borrower's inventory. An
+already sealed donor is read-only. Failure preserves surviving claims/seals;
+borrower publication failure cannot undo a donor seal. Donor managed repair
+refuses any seal object at planning and re-admission, including a stale plan
+under its maintenance claim. Verification-only operations remain available.
+The [runtime owner](../../evidence/runtime_availability/README.md#sealed-managed-runtime-reuse)
+defines the closed seal/selector formats and fixed-content boundary. The exact
+selector is retained through Run/Attempt inventories; borrower admission still
+checks its own Python/package, Analysis, storage, and allocation contexts.
 
 Doctor's domain summary distinguishes absent default runtime inventory
 (`NOT PREPARED`), inspected runtime check failures (`CHECKS FAILED`), unqualified
