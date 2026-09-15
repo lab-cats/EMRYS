@@ -6,7 +6,7 @@ The [campaign](cluster_verification_campaign.md) defines scope, evidence
 E01–E12, delivery boundaries, and closure. Created **2026-09-14** from the
 operator's combined failures, usability findings, and design proposals.
 
-P0–P3 preserve the supplied priorities. All cards begin **Open**: prior fixes
+P0–P3 preserve the supplied priorities. All cards began **Open**: prior fixes
 and observed successes are context, not closure of these remaining outcomes.
 Use the main matrix's status meanings. Recording a card accepts the finding
 for tracking; it does not authorize a new command, recovery rule, installation,
@@ -17,7 +17,7 @@ cluster action, evidence promotion, or product-growth exception.
 | ID | Priority | Status | Outcome |
 | --- | --- | --- | --- |
 | [CV-01](#cv-01-managed-golden-path-coverage) | P0 | Open | Managed golden path covers the cluster-discovered cases. |
-| [CV-02](#cv-02-individual-qualification-diagnostics) | P0 | Open | Retain and surface each failed qualification check. |
+| [CV-02](#cv-02-individual-qualification-diagnostics) | P0 | Verification pending | Retain and surface each failed qualification check. |
 | [CV-03](#cv-03-scheduler-and-execution-failure-messages) | P0 | Open | Separate submission, queue, execution, and finalization failures. |
 | [CV-04](#cv-04-workflow-startup-readiness) | P0 | Open | Readiness exercises minimal actual Snakemake startup. |
 | [CV-05](#cv-05-reuse-versus-repeated-repair-work) | P0 | Open | Explain reused state, repeated checks, and new repair work. |
@@ -61,6 +61,12 @@ do not declare the suite complete from a success-only run.
 each affected owner supplies fault cases. Depends on selected cards below;
 test design begins alongside them. Coordinate `HARNESS-01` and `QUAL-02`.
 
+**Selected coverage:** CV-02 adds native/R qualification failure and
+compute-only/head requalification diagnostics to the existing focused tests.
+Injected manager/scheduler faults are simulations. They do not complete the
+managed golden path, establish an institutional result, or cover the remaining
+cancellation, startup, reuse, and inspection outcomes.
+
 ### CV-02 Individual qualification diagnostics
 
 **Finding:** Generic qualification failure required manual reconstruction of
@@ -72,6 +78,24 @@ available after exit. Reproduce a single native failure, R namespace failure,
 and compute-only failure through the public flow.
 **Owners/dependencies:** Doctor, runtime inspection, application logging;
 coordinate CV-03, CV-04, CV-12, and CV-25.
+
+**Selected implementation:** Preserve the existing runtime observations through
+Doctor discovery, compute qualification, and head requalification, using the
+existing maintenance log and scheduler stderr. Retain actual/expected process
+exit status and R loader errors in the runtime probe owner. The repeated Doctor
+failure projection is consolidated; probes remain read-only and the logging
+library retains ownership of durable records. No new product file, dependency,
+schema, receipt, or recovery rule is introduced. The approved exception permits
+at most 100 net added product lines for the missing diagnostics; test and
+documentation changes are accounted separately.
+
+**Verification:** The focused runtime-probe suite passes locally (39 cases,
+including an actual R 4.6.1 loader failure); changed Python files pass Ruff and
+format checks. Doctor's public-flow regressions and the documentation validator
+require the locked CI environment; the available local environment lacks their
+dependencies. Delivery CI must retain the result at its exact revision.
+Institutional acceptance remains pending. CV-12's original cause remains
+unresolved; these diagnostics do not reconstruct its missing observations.
 
 ### CV-03 Scheduler and execution failure messages
 

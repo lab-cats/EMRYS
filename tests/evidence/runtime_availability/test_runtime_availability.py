@@ -1,6 +1,7 @@
 import csv
 import json
 import os
+import shutil
 import subprocess
 import sys
 from collections.abc import Mapping, Sequence
@@ -327,7 +328,9 @@ def test_tool_probe_normalizes_launch_and_version_failures(
     launch_failure = run_checks([check], environment={})[0]
     assert launch_failure.status == "fail"
     assert launch_failure.observed == "injected launch failure"
-    assert launch_failure.detail == "Version probe failed"
+    assert launch_failure.detail == (
+        "Version probe failed; exit_status=127; expected_exit_status=0"
+    )
 
     mismatch = run_checks(
         [check],
@@ -341,7 +344,9 @@ def test_tool_probe_normalizes_launch_and_version_failures(
     )[0]
     assert mismatch.status == "fail"
     assert mismatch.observed == "unexpected"
-    assert mismatch.detail == "Version output did not match expected regex"
+    assert mismatch.detail == (
+        "Version output did not match expected regex; exit_status=0; expected_exit_status=0"
+    )
 
 
 @pytest.mark.parametrize(
@@ -472,7 +477,11 @@ def test_picard_version_probe_accepts_only_its_exact_exit_one_contract(
             environment={},
         )[0]
         assert rejected.status == "fail"
-        assert rejected.detail == "Version probe failed"
+        assert rejected.observed == "Version:3.1.1"
+        expected_code = 1 if changed.check_type == "tool_version_exit_1" else 0
+        assert rejected.detail == (
+            f"Version probe failed; exit_status={code}; expected_exit_status={expected_code}"
+        )
 
     wrong_output = run_checks(
         [picard],
@@ -485,7 +494,9 @@ def test_picard_version_probe_accepts_only_its_exact_exit_one_contract(
         environment={},
     )[0]
     assert wrong_output.status == "fail"
-    assert wrong_output.detail == "Version output did not match expected regex"
+    assert wrong_output.detail == (
+        "Version output did not match expected regex; exit_status=1; expected_exit_status=1"
+    )
 
 
 @pytest.mark.parametrize(
@@ -521,8 +532,10 @@ def test_namespace_and_hash_probes_reject_missing_executables_without_running(
     assert result.detail == expected_detail
 
 
+@pytest.mark.parametrize("output", ["", "hash backend failed"])
 def test_python_hash_probe_reports_command_and_digest_failures(
     tmp_path: Path,
+    output: str,
 ) -> None:
     executable = tmp_path / "python"
     executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
@@ -544,14 +557,16 @@ def test_python_hash_probe_reports_command_and_digest_failures(
     ) -> tuple[int, str, float, bool]:
         calls.append((argv, stdin))
         assert timeout_seconds == TOOL_PROBE_TIMEOUT_SECONDS
-        return 23, "", 0.5, False
+        return 23, output, 0.5, False
 
     result = run_checks([check], command_runner=fail, environment={})[0]
 
     assert calls[0][1] == HASH_PAYLOAD
     assert result.status == "fail"
-    assert result.observed == "exit 23"
-    assert result.detail == "SHA-256 probe failed"
+    assert result.observed == (output or "exit 23")
+    assert result.detail == (
+        "SHA-256 probe failed; exit_status=23; expected_exit_status=0"
+    )
 
     mismatch = run_checks(
         [check],
@@ -565,7 +580,9 @@ def test_python_hash_probe_reports_command_and_digest_failures(
     )[0]
     assert mismatch.status == "fail"
     assert mismatch.observed == "not-a-digest"
-    assert mismatch.detail == "SHA-256 digest mismatch"
+    assert mismatch.detail == (
+        "SHA-256 digest mismatch; exit_status=0; expected_exit_status=0"
+    )
 
 
 def test_guarded_r_namespace_probe_binds_startup_and_selected_library(
@@ -624,7 +641,7 @@ def test_guarded_r_namespace_probe_binds_startup_and_selected_library(
     assert "find.package" in argv[6]
     assert (
         "tryCatch(suppressWarnings(loadNamespace(p, lib.loc=lib)), "
-        "error=function(e) NULL)" in argv[6]
+        "error=function(e) {message(conditionMessage(e)); NULL})" in argv[6]
     )
     assert "identical(expected, declared)" not in argv[6]
     assert "identical(pkg, expected)" in argv[6]
@@ -684,6 +701,7 @@ def test_guarded_r_namespace_rejects_missing_or_malformed_root_identity(
     assert result.resolved_path is None
     assert result.detail == (
         "R namespace probe did not report its exact canonical root; "
+        "exit_status=0; expected_exit_status=0; "
         "elapsed_seconds=0.500; "
         f"timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
     )
@@ -762,7 +780,8 @@ def test_r_namespace_real_exit_124_is_not_misclassified_as_timeout(
     assert result.status == "fail"
     assert result.observed == "real child exit"
     assert result.detail == (
-        f"R namespace probe failed; elapsed_seconds=0.250; timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
+        "R namespace probe failed; exit_status=124; expected_exit_status=0; "
+        f"elapsed_seconds=0.250; timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
     )
 
 
@@ -799,6 +818,7 @@ def test_r_namespace_keeps_strict_version_output_matching(tmp_path: Path) -> Non
     assert result.observed == contaminated
     assert result.detail == (
         "Namespace version did not match expected regex; "
+        "exit_status=0; expected_exit_status=0; "
         "elapsed_seconds=0.000; "
         f"timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
     )
@@ -812,10 +832,12 @@ def test_r_namespace_keeps_strict_version_output_matching(tmp_path: Path) -> Non
         (44, "R namespace did not resolve to its exact selected package root"),
     ],
 )
+@pytest.mark.parametrize("output", ["", "namespace dependency unavailable"])
 def test_r_namespace_failure_detail_distinguishes_library_selection(
     tmp_path: Path,
     code: int,
     expected_detail: str,
+    output: str,
 ) -> None:
     fake = tmp_path / "Rscript"
     fake.write_text("#!/bin/sh\nexit 42\n", encoding="utf-8")
@@ -837,17 +859,58 @@ def test_r_namespace_failure_detail_distinguishes_library_selection(
         environment=environment,
         command_runner=lambda _argv, _stdin, _environment, _timeout: (
             code,
-            "",
+            output,
             0.0,
             False,
         ),
     )[0]
 
     assert result.status == "fail"
+    assert result.observed == (output or f"exit {code}")
     assert result.detail == (
-        f"{expected_detail}; elapsed_seconds=0.000; "
+        f"{expected_detail}; exit_status={code}; expected_exit_status=0; "
+        "elapsed_seconds=0.000; "
         f"timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
     )
+
+
+def test_r_namespace_retains_real_loader_error_without_installing(
+    tmp_path: Path,
+) -> None:
+    rscript = shutil.which("Rscript")
+    if rscript is None:
+        pytest.skip("Rscript is required for the real namespace loader fault")
+    library = tmp_path / "library"
+    package = library / "BrokenPackage"
+    package.mkdir(parents=True)
+    (package / "DESCRIPTION").write_text(
+        "Package: BrokenPackage\nVersion: 1.0.0\n", encoding="utf-8"
+    )
+    (package / "NAMESPACE").write_text(
+        "importFrom(utils, emrys_cv02_missing_export)\n", encoding="utf-8"
+    )
+    check = RuntimeCheck(
+        "r_broken", "r_namespace", "BrokenPackage", (rscript,), r"^1[.]0[.]0$"
+    )
+
+    result = run_checks(
+        [check],
+        environment={
+            "PATH": os.defpath,
+            "HOME": str(tmp_path),
+            "TMPDIR": str(tmp_path),
+            "R_PROFILE_USER": os.devnull,
+            "R_LIBS_USER": str(library),
+            "R_LIBS_SITE": "",
+            "EMRYS_RENV_LIBRARY": str(library),
+        },
+    )[0]
+
+    assert result.status == "fail"
+    assert "emrys_cv02_missing_export" in result.observed
+    assert result.observed != "exit 42"
+    assert "exit_status=42; expected_exit_status=0" in result.detail
+    assert result.resolved_path is None
 
 
 def test_direct_inspection_uses_explicit_probe_environment(tmp_path: Path) -> None:

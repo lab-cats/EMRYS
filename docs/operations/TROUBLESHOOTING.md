@@ -121,6 +121,16 @@ never installs dependencies.
 inventories. Use Doctor to inspect the admitted runtime; replacing it requires
 an explicit migration/recovery decision, not deletion followed by rediscovery.
 
+**Runtime qualification failed after installation.** Read the exact maintenance
+log printed as `diagnostics:`. Its `runtime_check_failed` records identify the
+check, target, expected and observed result, exit/error details, host, inventory
+digest, and phase. For automatic compute qualification, use the exact job's
+stderr path printed at submission; those checks retain their details there
+without a second maintenance log. Package installation success does not imply
+runtime qualification. Preserve these logs before retrying. For a new read-only
+diagnosis, `emrys doctor --log-level verbose` shows individual failed checks;
+it observes the current environment and cannot reconstruct an older failure.
+
 ### Watching Doctor's installation log
 
 Doctor shows installation stages and elapsed time. Package-manager output is

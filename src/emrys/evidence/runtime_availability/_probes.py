@@ -134,11 +134,18 @@ def _probe_tool(
         )
     if code != expected_code:
         return RuntimeObservation(
-            check, "fail", output or f"exit {code}", "Version probe failed"
+            check,
+            "fail",
+            output or f"exit {code}",
+            f"Version probe failed; exit_status={code}; expected_exit_status={expected_code}",
         )
     if re.search(check.expected, output) is None:
         return RuntimeObservation(
-            check, "fail", output, "Version output did not match expected regex"
+            check,
+            "fail",
+            output,
+            "Version output did not match expected regex; "
+            f"exit_status={code}; expected_exit_status={expected_code}",
         )
     return RuntimeObservation(
         check, "pass", output, f"Resolved executable: {executable}"
@@ -161,14 +168,15 @@ def _probe_r_namespace(
         "libs <- normalizePath(.libPaths(), winslash='/', mustWork=TRUE); "
         "if (length(libs) < 1L || !identical(libs[[1L]], lib)) quit(status=43); "
         "pkg <- tryCatch(find.package(p, lib.loc=lib, quiet=TRUE), "
-        "error=function(e) ''); if (!nzchar(pkg)) quit(status=42); "
+        "error=function(e) {message(conditionMessage(e)); ''}); "
+        "if (!nzchar(pkg)) quit(status=42); "
         "declared <- file.path(lib, p); "
         "expected <- normalizePath(declared, winslash='/', "
         "mustWork=TRUE); "
         "pkg <- normalizePath(pkg, winslash='/', mustWork=TRUE); "
         "if (!identical(pkg, expected)) quit(status=44); "
         "ns <- tryCatch(suppressWarnings(loadNamespace(p, lib.loc=lib)), "
-        "error=function(e) NULL); "
+        "error=function(e) {message(conditionMessage(e)); NULL}); "
         "if (is.null(ns)) quit(status=42); "
         "where <- normalizePath(getNamespaceInfo(ns, 'path'), winslash='/', "
         "mustWork=TRUE); "
@@ -202,7 +210,10 @@ def _probe_r_namespace(
             43: "R did not select the admitted library first",
             44: "R namespace did not resolve to its exact selected package root",
         }
-        detail = f"{details.get(code, 'R namespace probe failed')}; {elapsed_detail}"
+        detail = (
+            f"{details.get(code, 'R namespace probe failed')}; "
+            f"exit_status={code}; expected_exit_status=0; {elapsed_detail}"
+        )
         return RuntimeObservation(check, "fail", output or f"exit {code}", detail)
     parsed = _guarded_namespace_output(output)
     if parsed is None:
@@ -211,7 +222,7 @@ def _probe_r_namespace(
             "fail",
             output,
             "R namespace probe did not report its exact canonical root; "
-            + elapsed_detail,
+            f"exit_status={code}; expected_exit_status=0; " + elapsed_detail,
         )
     version_output, resolved_root = parsed
     if re.fullmatch(check.expected, version_output) is None:
@@ -219,7 +230,8 @@ def _probe_r_namespace(
             check,
             "fail",
             version_output,
-            "Namespace version did not match expected regex; " + elapsed_detail,
+            "Namespace version did not match expected regex; "
+            f"exit_status={code}; expected_exit_status=0; " + elapsed_detail,
         )
     detail = f"Resolved R package root: {resolved_root}; {elapsed_detail}"
     return RuntimeObservation(
@@ -265,11 +277,17 @@ def _probe_hash_utility(
         )
     if code != 0:
         return RuntimeObservation(
-            check, "fail", output or f"exit {code}", "SHA-256 probe failed"
+            check,
+            "fail",
+            output or f"exit {code}",
+            f"SHA-256 probe failed; exit_status={code}; expected_exit_status=0",
         )
     if observed != HASH_EXPECTED:
         return RuntimeObservation(
-            check, "fail", observed or "empty", "SHA-256 digest mismatch"
+            check,
+            "fail",
+            observed or "empty",
+            f"SHA-256 digest mismatch; exit_status={code}; expected_exit_status=0",
         )
     return RuntimeObservation(
         check, "pass", observed, f"Resolved executable: {executable}"
