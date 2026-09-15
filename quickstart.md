@@ -100,15 +100,19 @@ do not need to look up those values or provide them again.
 emrys doctor --repair
 ```
 
-Doctor explains the setup it will perform. Answer `y` to begin. **Allow roughly
+Doctor names the planned actions: **repair and verification** when package-manager
+work is needed, or **verification** when the selected runtime already passes.
+Answer `y` to begin the displayed plan. **Allow roughly
 5–15 minutes for first setup; downloads, compilation and queue waits can make
 it longer.** The progress display names the current stage and shows elapsed
 time. Complete installation output is retained at the printed log location.
 For optional detail while setup runs, see
 [watching the installation log](docs/operations/TROUBLESHOOTING.md#watching-doctors-installation-log).
 
-Doctor installs the tools on the head node, submits the required compute-node
-checks, and confirms that the study's storage works across both nodes. Keep
+When needed, Doctor checks/updates the tools on the head node; Pixi and renv
+report which packages they reuse or change in the retained package output.
+Doctor then submits the required compute-node checks and confirms that the
+study's storage works across both nodes. Keep
 this command running until it reports `EMRYS is ready.` All of the scheduler
 and storage setup is handled by EMRYS.
 
@@ -116,6 +120,12 @@ On a fresh Project, Doctor may initially mark Runtime and Storage as `FAIL`
 because they have not been prepared yet. The repair that follows is intended
 to resolve those findings. Downloads and R-package compilation take most of
 the first setup; a later stage may wait for Slurm to start its checks.
+
+A verification-only plan reuses the selected runtime without invoking package
+managers. It repeats current input/runtime checks and, for Slurm, compute checks
+and head-node finalization because earlier success cannot establish that those
+files and environments are still unchanged. Elapsed time for the Slurm stage
+includes both queue waiting and compute work.
 
 Doctor changes only the Project-owned tools and preparation records. It does
 not obtain your scientific inputs, change your study design or repair Results.

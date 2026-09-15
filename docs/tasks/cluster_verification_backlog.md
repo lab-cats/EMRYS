@@ -34,7 +34,7 @@ cluster action, evidence promotion, or product-growth exception.
 | [CV-16](#cv-16-monitoring-dashboard) | P1 | Open | Restore an integrated view of scheduler, progress, and logs. |
 | [CV-17](#cv-17-project-creation-progress) | P1 | Open | Explain lengthy input validation during Project creation. |
 | [CV-18](#cv-18-safe-emrys-stop) | P1 | Open | Provide an operator stop action with safe recovery semantics. |
-| [CV-19](#cv-19-verification-and-repair-vocabulary) | P1 | Open | Name verification-only work accurately. |
+| [CV-19](#cv-19-verification-and-repair-vocabulary) | P1 | Verification pending | Name verification-only work accurately. |
 | [CV-20](#cv-20-submission-state-before-run-creation) | P1 | Open | Show queued and preparing jobs before a Run exists. |
 | [CV-21](#cv-21-reporting-in-progress-and-visibility) | P1 | Open | Distinguish unfinished report publication from failed reporting. |
 | [CV-22](#cv-22-complete-submission-preview) | P1 | Open | Show effective placement and computational limits before approval. |
@@ -91,9 +91,11 @@ documentation changes are accounted separately.
 
 **Verification:** The focused runtime-probe suite passes locally (39 cases,
 including an actual R 4.6.1 loader failure); changed Python files pass Ruff and
-format checks. Doctor's public-flow regressions and the documentation validator
-require the locked CI environment; the available local environment lacks their
-dependencies. Delivery CI must retain the result at its exact revision.
+format checks. [Phase 1 CI](https://github.com/lab-cats/EMRYS/actions/runs/34914521139)
+passed at `805d9abdb9ea5584dc1d1d81dfb1b71c75c8f168`, including Doctor's
+public-flow regressions, the documentation validator, all Python 3.14 shards
+and coverage policy, Python 3.11 compatibility, and managed golden path.
+Scheduled/manual lanes retain their separate selection and evidence limits.
 Institutional acceptance remains pending. CV-12's original cause remains
 unresolved; these diagnostics do not reconstruct its missing observations.
 
@@ -298,6 +300,20 @@ Verification-only work explains what is rechecked and why; installation or
 correction remains identifiable as repair. Cover already-ready, unprepared,
 failed-check, and mixed-action plans without changing their authority.
 **Owners/dependencies:** Doctor and shared presentation; CV-05/13.
+
+**Selected implementation:** Doctor derives verification versus repair and
+verification from the planned package-manager actions, and carries each manager
+action's display label alongside its exact command/environment. Preview and
+execution share those labels; duplicate plan construction is consolidated.
+The quickstart explains repeated checks and retained package-manager reuse
+evidence. No public command, check ID, log mode/event ID, receipt, dependency,
+or recovery rule changes. CV-05's queue-time attribution and CV-13's setup-state
+classification remain open; missing storage evidence is not assumed harmless.
+
+**Verification:** Focused regressions cover verification-only and package-action
+plans, confirmation/refusal, progress, failures, and preserved no-write preview.
+Doctor regressions require the locked CI environment. Institutional operator
+acceptance remains pending.
 
 ### CV-20 Submission state before Run creation
 
