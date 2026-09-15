@@ -79,6 +79,16 @@ head-node evidence. A prior storage receipt alone does not qualify a changed
 runtime. Each automatic repair has one maintenance log; its compute checks
 retain scheduler streams without opening another application attempt.
 
+Failed runtime checks retain their identity, target, expected/observed values,
+probe detail, host, inventory digest, and qualification phase before a repair
+aborts. Head-side discovery and requalification write `runtime_check_failed`
+events to the existing maintenance log; normal output names failed checks and
+that exact log path. Automatic compute failures write JSON-escaped details to
+the parent's scheduler stderr even when the failure prevents qualification
+binding. Read-only diagnosis creates no log; verbose/debug output includes the
+same detail. Diagnostic persistence remains best-effort and cannot admit a
+failed inventory or change qualification exits.
+
 For direct placement, `run` and `resume` construct and display one frozen plan,
 then ask once before executing that same object. Refusal, EOF, interruption, or
 noninteractive omission of `--execute` writes nothing, submits nothing, and

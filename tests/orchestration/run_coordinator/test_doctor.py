@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import sys
 from dataclasses import replace
 from functools import partial
@@ -17,6 +18,7 @@ from emrys import analyses
 from emrys.analyses.paired_cmh_candidate_ranking import analysis_module_v1
 from emrys import reporting
 from emrys.evidence.runtime_availability import inspector as runtime_inspector
+from emrys.evidence.runtime_availability._probes import R_NAMESPACE_ROOT_OUTPUT_MARKER
 from emrys.evidence.runtime_availability._profile_contract import CHOICE_IDS
 from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
@@ -161,6 +163,13 @@ def _snapshot(root: Path) -> dict[str, bytes]:
         for path in root.rglob("*")
         if path.is_file()
     }
+
+
+def _repair_log(project: ProjectAdmission) -> tuple[Path, list[dict[str, Any]]]:
+    (path,) = (project.source_path.parent / "logs/application").glob(
+        "**/emrys-doctor.jsonl"
+    )
+    return path, [json.loads(line) for line in path.read_text().splitlines()]
 
 
 def test_runtime_identity_binds_executables_packages_and_storage(
@@ -484,6 +493,7 @@ def test_foundation_readiness_requires_reporter_only_when_enabled(
 def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
     storage_ready: bool,
 ) -> None:
     project = _project(tmp_path)
@@ -497,6 +507,7 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
             _check("bash", "tool_version", "/bin/bash"),
             status="fail",
             observed="unavailable",
+            detail="Executable was not found",
         ),
         _check("python", "tool_version", sys.executable),
         _check("renv_library", "path_visibility", str(tmp_path / "library")),
@@ -576,6 +587,28 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
     if storage_ready:
         assert result.bindings[-1] == doctor.storage_runtime_binding(qualified)
     assert _snapshot(tmp_path) == before
+    monkeypatch.setattr(doctor, "diagnose_project", lambda *_args, **_kwargs: result)
+    monkeypatch.setattr(
+        doctor,
+        "open_attempt_log",
+        lambda **_kwargs: pytest.fail("diagnosis opened an application log"),
+    )
+    parser = argparse.ArgumentParser()
+    doctor.configure_parser(parser)
+    for level in ("normal", "verbose", "debug"):
+        assert (
+            doctor.doctor_from_args(
+                parser.parse_args(
+                    ["--project", str(project.source_path), "--log-level", level]
+                )
+            )
+            == 1
+        )
+        output = capsys.readouterr().err
+        assert "BLOCKER: bash: fail (unavailable)" in output
+        assert ('"expected": ".*"' in output) == (level != "normal")
+        assert ("Executable was not found" in output) == (level != "normal")
+        assert _snapshot(tmp_path) == before
 
 
 @pytest.mark.parametrize(
@@ -1146,6 +1179,135 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     )
 
 
+@pytest.mark.parametrize("failed_check", ("star", "r_variant_annotation"))
+def test_repair_retains_failed_candidate_probe_after_managers_succeed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    failed_check: str,
+) -> None:
+    project = _project(tmp_path)
+    _patch_foundations(monkeypatch, project)
+    managed = project.source_path.parent / "runtime/managed"
+    native = managed / ".pixi/envs/native/bin"
+    library = managed / "renv/library/R-4.6/x86_64-pc-linux-gnu"
+    pixi = tmp_path / "pixi"
+    pixi.write_bytes(b"synthetic package manager\n")
+    pixi.chmod(0o755)
+    monkeypatch.setattr(doctor, "_manager", lambda _name: pixi)
+    monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
+    namespaces = {
+        item.target: item.expected.removeprefix("^")
+        .removesuffix("$")
+        .replace("[.]", ".")
+        for item in runtime_inspector.load_runtime_policy()
+        if item.check_type == "r_namespace"
+    }
+    versions = {
+        "bash": "GNU bash, version 5.2",
+        "STAR": "2.7.11b",
+        "samtools": "samtools 1.19.2",
+        "java": 'openjdk version "17.0.1"',
+        "gatk": "The Genome Analysis Toolkit (GATK) v4.6.1.0",
+        "bcftools": "bcftools 1.21",
+        "infer_experiment.py": "infer_experiment.py 5.0.4",
+        "gunzip": "gzip 1.12",
+        "Rscript": "Rscript (R) version 4.6.1",
+    }
+    observed = 'loader: "libmissing.so" could not be loaded'
+    commands: list[tuple[str, ...]] = []
+
+    def run(argv: list[str] | tuple[str, ...], **kwargs: Any) -> Any:
+        executable = Path(argv[0])
+        if executable == pixi:
+            commands.append(tuple(argv))
+            kwargs["stdout"].write(b"package-manager succeeded\n")
+            if "install" in argv:
+                for command in doctor.onboarding.PATH_TOOL_COMMANDS.values():
+                    path = native / command
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(b"synthetic native executable\n")
+                    path.chmod(0o755)
+                rscript = managed / ".pixi/envs/r/bin/Rscript"
+                rscript.parent.mkdir(parents=True)
+                rscript.write_bytes(b"synthetic R executable\n")
+                rscript.chmod(0o755)
+                jar = managed / ".pixi/envs/native/share/picard-slim-3.1.1-0/picard.jar"
+                jar.parent.mkdir(parents=True)
+                jar.write_bytes(b"synthetic jar\n")
+            else:
+                for name in ("renv", *namespaces):
+                    package = library / name
+                    package.mkdir(parents=True)
+                    (package / "DESCRIPTION").write_text(f"Package: {name}\n")
+            return SimpleNamespace(returncode=0)
+        code = 0
+        if executable == Path(sys.executable):
+            output = (
+                hashlib.sha256(kwargs["input"]).hexdigest()
+                if kwargs.get("input") is not None
+                else "9.25.1"
+                if "snakemake" in argv
+                else "Python 3.14.0"
+            )
+        elif executable.name == "Rscript" and "-e" in argv:
+            package = argv[-2]
+            output = (
+                namespaces[package]
+                + R_NAMESPACE_ROOT_OUTPUT_MARKER
+                + str(library / package).encode().hex()
+            )
+            if (
+                failed_check == "r_variant_annotation"
+                and package == "VariantAnnotation"
+            ):
+                code, output = 42, observed
+        elif "-jar" in argv:
+            code, output = 1, "Version:3.1.1"
+        else:
+            output = versions[executable.name]
+            if failed_check == "star" and executable.name == "STAR":
+                code, output = 7, observed
+        return SimpleNamespace(returncode=code, stdout=output.encode())
+
+    monkeypatch.setattr(doctor.subprocess, "run", run)
+    parser = argparse.ArgumentParser()
+    doctor.configure_parser(parser)
+    status = doctor.doctor_from_args(
+        parser.parse_args(
+            ["--project", str(project.source_path), "--repair", "--execute"]
+        )
+    )
+
+    assert status == 1
+    assert len(commands) == 2 and "install" in commands[0] and "run" in commands[1]
+    assert not (managed.parent / "runtime.tsv").exists()
+    log_path, records = _repair_log(project)
+    (failure,) = [item for item in records if item["event"] == "runtime_check_failed"]
+    assert failure["phase"] == "runtime_discovery"
+    fields = failure["fields"]
+    assert fields["check_id"] == failed_check
+    assert fields["target"] == (
+        str(native / "STAR") if failed_check == "star" else "VariantAnnotation"
+    )
+    assert fields["status"] == "fail"
+    assert fields["observed"] == observed
+    assert (
+        "exit_status=" + ("7" if failed_check == "star" else "42") in fields["detail"]
+    )
+    assert fields["expected"] == next(
+        item.expected
+        for item in runtime_inspector.load_runtime_policy()
+        if item.check_id == failed_check
+    )
+    assert fields["host"] == doctor.platform.node()
+    assert fields["inventory"] == str(managed.parent / "runtime.tsv")
+    assert len(fields["inventory_sha256"]) == 64
+    assert not any(item["event"] == "runtime_profile_admitted" for item in records)
+    assert str(log_path) in capsys.readouterr().err
+
+
 def test_repair_refuses_a_discovered_executable_symlink_outside_managed_root(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -1294,11 +1456,12 @@ def test_log_open_failure_prevents_the_first_repair_write(
 
 
 @pytest.mark.parametrize(
-    "failure", (None, "scheduler", "runtime", "profile", "finalize")
+    "failure", (None, "scheduler", "runtime", "head_runtime", "profile", "finalize")
 )
 def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
     failure: str | None,
 ) -> None:
     from emrys.orchestration.run_coordinator import execution_profile, slurm_submission
@@ -1326,6 +1489,12 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         doctor, "observe_allocation", lambda: AllocationCapacity(4, 8192, "slurm")
     )
     state = {"compute": False, "probes": 0, "jobs": 0}
+    failed_probe = replace(
+        _check("star", "tool_version", str(tmp_path / "STAR")),
+        status="fail",
+        observed='loader: "missing"\nsecond line',
+        detail="Version probe failed; exit_status=7; expected_exit_status=0",
+    )
     run_compute = qualification._run_compute
     qualify_head = qualification.qualify_head
 
@@ -1347,8 +1516,14 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
             )
         else:
             result = ready
-        if state["compute"] and failure == "runtime":
-            result = replace(result, runtime_ready=False)
+        if (state["compute"] and failure == "runtime") or (
+            not state["compute"] and state["jobs"] and failure == "head_runtime"
+        ):
+            result = replace(
+                result,
+                runtime_ready=False,
+                inspection=replace(inspection, observations=(failed_probe,)),
+            )
         if state["compute"] and failure == "profile":
             result = replace(
                 result, inspection=replace(inspection, profile_sha256="f" * 64)
@@ -1405,6 +1580,36 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     expected_status = 0 if failure is None else 130 if failure == "finalize" else 1
     assert doctor.doctor_from_args(arguments) == expected_status
     assert records.count("opened") == 1
+    if failure in {"runtime", "head_runtime"}:
+        log_path, events = _repair_log(project)
+        diagnostics = [
+            item for item in events if item["event"] == "runtime_check_failed"
+        ]
+        output = capsys.readouterr().err
+        assert str(log_path) in output
+        if failure == "runtime":
+            assert diagnostics == []
+            prefix = "Runtime check failed (compute_runtime): "
+            (payload,) = [
+                line.removeprefix(prefix)
+                for line in output.splitlines()
+                if line.startswith(prefix)
+            ]
+            fields = json.loads(payload)
+            assert r"\n" in payload
+        else:
+            (diagnostic,) = diagnostics
+            assert diagnostic["phase"] == "head_requalification"
+            fields = diagnostic["fields"]
+        assert fields["check_id"] == failed_probe.check.check_id
+        assert fields["target"] == failed_probe.check.target
+        assert fields["status"] == failed_probe.status
+        assert fields["expected"] == failed_probe.check.expected
+        assert fields["observed"] == failed_probe.observed
+        assert fields["detail"] == failed_probe.detail
+        assert fields["host"] == doctor.platform.node()
+        assert fields["inventory"] == str(inspection.profile_path)
+        assert fields["inventory_sha256"] == inspection.profile_sha256
     if failure in {None, "finalize"}:
         compute = next(
             (project.source_path.parent.parent / qualification.EVIDENCE_DIRECTORY).glob(
@@ -1419,7 +1624,8 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         assert compute.read_bytes() == original
         qualification.admit_final_qualification(project.source_path.parent, fasta)
     else:
-        assert state["probes"] == 0 and "failed" in records
+        assert state["probes"] == (1 if failure == "head_runtime" else 0)
+        assert "failed" in records
         with pytest.raises(qualification.StorageQualificationError):
             qualification.admit_final_qualification(project.source_path.parent, fasta)
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import platform
 import shutil
@@ -1071,6 +1072,50 @@ def _stderr(message: str, *, style: str | None = None) -> None:
     console_print(message, style=style)
 
 
+def _record_runtime_failures(
+    inspection: RuntimeInspection | None,
+    *,
+    phase: str,
+    attempt: AttemptLog | None = None,
+) -> None:
+    """Retain failed observations in the existing maintenance or scheduler stream."""
+    if inspection is None:
+        return
+    for item in inspection.observations:
+        if item.status == "pass":
+            continue
+        values = {
+            "check_id": item.check.check_id,
+            "target": item.check.target,
+            "status": item.status,
+            "expected": item.check.expected,
+            "observed": item.observed,
+            "detail": item.detail,
+            "host": platform.node(),
+            "inventory": str(inspection.profile_path),
+            "inventory_sha256": inspection.profile_sha256,
+        }
+        if attempt is None:
+            _stderr(
+                f"Runtime check failed ({phase}): {json.dumps(values, ensure_ascii=True)}"
+            )
+        else:
+            attempt.best_effort(
+                lambda: attempt.logger(component="maintenance", phase=phase).warning(
+                    "Runtime check failed.",
+                    extra=event(
+                        "runtime_check_failed",
+                        detail="durable_only",
+                        fields={key: field(value) for key, value in values.items()},
+                    ),
+                ),
+                warning="WARNING: runtime diagnostics could not be retained in the maintenance log.",
+            )
+            _stderr(
+                f"Runtime check {item.check.check_id!r} failed ({phase}); diagnostics: {attempt.path}"
+            )
+
+
 def _print_result(result: DoctorResult, detail: LogLevel) -> None:
     _stderr("EMRYS Doctor", style="bold blue")
     _stderr(f"  Project    PASS  {result.project.source_path.parent}", style="green")
@@ -1095,9 +1140,11 @@ def _print_result(result: DoctorResult, detail: LogLevel) -> None:
             _stderr(f"Runtime inventory: {result.inspection.profile_path}")
             _stderr(f"Runtime inventory SHA-256: {result.inspection.profile_sha256}")
             for observation in result.inspection.observations:
-                _stderr(
-                    f"  {observation.check.check_id}: {observation.status} ({observation.observed})"
-                )
+                if observation.status == "pass":
+                    _stderr(
+                        f"  {observation.check.check_id}: pass ({observation.observed})"
+                    )
+            _record_runtime_failures(result.inspection, phase="diagnosis")
     if detail is LogLevel.DEBUG:
         for binding in result.bindings:
             _stderr(
@@ -1260,6 +1307,9 @@ def _qualify_slurm(
         observed = diagnose_project(
             plan.project.source_path, analysis_name=plan.analysis_name
         )
+    _record_runtime_failures(
+        observed.inspection, phase="head_requalification", attempt=attempt
+    )
     if _qualification_binding(observed) != binding:
         raise DoctorRepairError(
             "Project, package, or runtime changed during compute qualification"
@@ -1406,6 +1456,9 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                     root=plan.installed_package.root,
                     python_executable=Path(sys.executable),
                 )
+            _record_runtime_failures(
+                candidate, phase="runtime_discovery", attempt=attempt
+            )
             if not _profile_is_managed(
                 tuple(item.check for item in candidate.observations),
                 runtime,
@@ -1444,10 +1497,16 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
             final = diagnose_project(
                 plan.project.source_path, analysis_name=plan.analysis_name
             )
+        _record_runtime_failures(
+            final.inspection, phase="project_readiness", attempt=attempt
+        )
         if plan.execution is not None and isinstance(
             plan.execution.placement, SlurmPlacement
         ):
             final = _qualify_slurm(plan, final, attempt, controls)
+            _record_runtime_failures(
+                final.inspection, phase="project_readiness", attempt=attempt
+            )
             if plan.compute:
                 record(
                     lambda: attempt.terminal(
@@ -1498,7 +1557,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                 fields={"error": field(error)},
             )
         )
-        raise DoctorRepairError(str(exc)) from exc
+        raise DoctorRepairError(f"{exc}; diagnostics: {attempt.path}") from exc
     finally:
         with suppress(Exception):
             attempt.close()
@@ -1551,6 +1610,7 @@ def doctor_from_args(arguments: argparse.Namespace) -> int:
             )
         delegated = slurm_submission.delegate_binding() is not None
         if delegated:
+            _record_runtime_failures(result.inspection, phase="compute_runtime")
             if not compute or not expected or result.execution_profile is None:
                 raise DoctorInputError(
                     "Private Doctor delegation requires compute input bindings"

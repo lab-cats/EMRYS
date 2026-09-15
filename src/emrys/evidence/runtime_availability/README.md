@@ -26,6 +26,13 @@ probing uses the selected Python interpreter; executable paths are absolute.
 Custom analysis dependencies still support executables, R namespaces, files
 and package trees through these same checks.
 
+Non-timeout process failures retain reported and expected exit status alongside
+bounded output in their observation detail. Launch errors keep the existing
+normalized status 127. R namespace load errors retain the loader's
+message. Missing launchers remain `unavailable`; a timeout or failed assertion
+is not reported as a missing executable. These diagnostics change neither the
+required checks nor their pass/fail authority.
+
 Use [Doctor and runtime discovery](../../../../docs/operations/RUNBOOK.md) for
 Project readiness. The standalone runtime-report command and its TSV publisher
 are retired. Existing reports, locks, temporary files, and predecessor files
