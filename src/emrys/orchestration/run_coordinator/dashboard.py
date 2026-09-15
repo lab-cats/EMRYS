@@ -2213,283 +2213,6 @@ def render_header(screen, job_id, view, attrs):
     )
 
 
-def render_overview(
-    screen,
-    job_id,
-    slurm,
-    identity,
-    model,
-    refresh_seconds,
-    last_sync,
-    work_scroll,
-    stream_status=None,
-):
-    screen.erase()
-    height, width = screen.getmaxyx()
-    attrs = render.attrs
-    now = time.time()
-    if height < 20 or width < 72:
-        safe_add(screen, 0, 0, "EMRYS LIVE DASHBOARD v4.9", attrs["title"])
-        safe_add(
-            screen,
-            2,
-            0,
-            "Terminal is too small (%dx%d). Resize to at least 72x20."
-            % (width, height),
-            attrs["yellow"],
-        )
-        screen.refresh()
-        return
-
-    render_header(screen, job_id, "overview", attrs)
-
-    top_y = 1
-    top_h = 6
-    draw_box(
-        screen,
-        top_y,
-        1,
-        top_h,
-        width - 2,
-        "RUN OVERVIEW",
-        overview_lines(slurm, identity, model, width - 6),
-        attrs,
-    )
-
-    main_y = top_y + top_h
-    footer_y = height - 1 - (stream_status is not None)
-    main_h = footer_y - main_y
-    if width >= 140 and main_h >= 38:
-        gap = 1
-        left_w = (width - 3) // 2
-        right_x = 1 + left_w + gap
-        right_w = width - right_x - 1
-        upper_h = max(19, main_h // 2)
-        upper_h = min(upper_h, main_h - 8)
-        lower_h = main_h - upper_h
-
-        draw_box(
-            screen,
-            main_y,
-            1,
-            upper_h,
-            left_w,
-            "PIPELINE",
-            pipeline_lines(model, now, left_w - 4, include_summary=False),
-            attrs,
-        )
-        draw_box(
-            screen,
-            main_y,
-            right_x,
-            upper_h,
-            right_w,
-            "CURRENT WORK",
-            current_lines(
-                model,
-                identity,
-                now,
-                right_w - 4,
-                include_active=False,
-            ),
-            attrs,
-            scroll=work_scroll,
-            scrollable=True,
-        )
-        draw_box(
-            screen,
-            main_y + upper_h,
-            1,
-            lower_h,
-            left_w,
-            "SAMPLE LANES",
-            sample_lane_lines(model, now, left_w - 4),
-            attrs,
-        )
-        activity_title, activity = provenance_activity_lines(
-            slurm, identity, model, now, right_w - 4
-        )
-        draw_box(
-            screen,
-            main_y + upper_h,
-            right_x,
-            lower_h,
-            right_w,
-            activity_title,
-            activity,
-            attrs,
-        )
-    else:
-        pipeline_h = min(19, max(10, main_h // 2))
-        draw_box(
-            screen,
-            main_y,
-            1,
-            pipeline_h,
-            width - 2,
-            "PIPELINE",
-            pipeline_lines(model, now, width - 6, include_summary=False),
-            attrs,
-        )
-        remaining_h = main_h - pipeline_h
-        draw_box(
-            screen,
-            main_y + pipeline_h,
-            1,
-            remaining_h,
-            width - 2,
-            "CURRENT WORK",
-            current_lines(
-                model,
-                identity,
-                now,
-                width - 6,
-                include_active=False,
-            ),
-            attrs,
-            scroll=work_scroll,
-            scrollable=True,
-        )
-
-    render_footer(
-        screen, footer_y, width, attrs, refresh_seconds, last_sync, stream_status
-    )
-    screen.refresh()
-
-
-def render_details(
-    screen,
-    job_id,
-    slurm,
-    identity,
-    model,
-    refresh_seconds,
-    last_sync,
-    work_scroll,
-    stream_status=None,
-):
-    screen.erase()
-    height, width = screen.getmaxyx()
-    attrs = render.attrs
-    now = time.time()
-    if height < 20 or width < 72:
-        safe_add(screen, 0, 0, "EMRYS LIVE DASHBOARD v4.9", attrs["title"])
-        safe_add(
-            screen,
-            2,
-            0,
-            "Terminal is too small (%dx%d). Resize to at least 72x20."
-            % (width, height),
-            attrs["yellow"],
-        )
-        screen.refresh()
-        return
-
-    render_header(screen, job_id, "details", attrs)
-    top_y = 1
-    top_h = min(8, max(6, height // 6))
-    draw_box(
-        screen,
-        top_y,
-        1,
-        top_h,
-        width - 2,
-        "JOB, RESOURCES & RUN IDENTITY",
-        job_lines(slurm, identity, width - 6, attrs),
-        attrs,
-    )
-
-    main_y = top_y + top_h
-    footer_y = height - 1 - (stream_status is not None)
-    main_h = footer_y - main_y
-    if width >= 140 and main_h >= 24:
-        gap = 1
-        left_w = min(86, max(70, int((width - 3) * 0.44)))
-        right_x = 1 + left_w + gap
-        right_w = width - right_x - 1
-
-        pipeline_h = max(22, int(main_h * 0.62))
-        pipeline_h = min(pipeline_h, main_h - 5)
-        activity_h = main_h - pipeline_h
-        draw_box(
-            screen,
-            main_y,
-            1,
-            pipeline_h,
-            left_w,
-            "PIPELINE",
-            pipeline_lines(model, now, left_w - 4),
-            attrs,
-        )
-        activity_title, activity = activity_lines(model, slurm, identity, now)
-        draw_box(
-            screen,
-            main_y + pipeline_h,
-            1,
-            activity_h,
-            left_w,
-            activity_title,
-            activity,
-            attrs,
-        )
-
-        current_h = max(12, int(main_h * 0.50))
-        current_h = min(current_h, main_h - 8)
-        sample_h = main_h - current_h
-        draw_box(
-            screen,
-            main_y,
-            right_x,
-            current_h,
-            right_w,
-            "CURRENT WORK DETAILS",
-            current_lines(model, identity, now, right_w - 4),
-            attrs,
-            scroll=work_scroll,
-            scrollable=True,
-        )
-        draw_box(
-            screen,
-            main_y + current_h,
-            right_x,
-            sample_h,
-            right_w,
-            "SAMPLE DETAILS",
-            sample_lines(model, now, right_w - 4),
-            attrs,
-        )
-    else:
-        pipeline_h = min(22, max(10, main_h // 2))
-        draw_box(
-            screen,
-            main_y,
-            1,
-            pipeline_h,
-            width - 2,
-            "PIPELINE",
-            pipeline_lines(model, now, width - 6),
-            attrs,
-        )
-        remaining_h = main_h - pipeline_h
-        draw_box(
-            screen,
-            main_y + pipeline_h,
-            1,
-            remaining_h,
-            width - 2,
-            "CURRENT WORK DETAILS",
-            current_lines(model, identity, now, width - 6),
-            attrs,
-            scroll=work_scroll,
-            scrollable=True,
-        )
-
-    render_footer(
-        screen, footer_y, width, attrs, refresh_seconds, last_sync, stream_status
-    )
-    screen.refresh()
-
-
 def render_footer(screen, row, width, attrs, refresh_seconds, last_sync, stream_status):
     if stream_status is not None:
         safe_add(screen, row, 1, stream_status, attrs["yellow"], width - 2)
@@ -2518,30 +2241,148 @@ def render(
     work_scroll,
     stream_status=None,
 ):
-    if view == "details":
-        render_details(
+    screen.erase()
+    height, width = screen.getmaxyx()
+    attrs = render.attrs
+    now = time.time()
+    if height < 20 or width < 72:
+        safe_add(screen, 0, 0, "EMRYS LIVE DASHBOARD v4.9", attrs["title"])
+        safe_add(
             screen,
-            job_id,
-            slurm,
-            identity,
-            model,
-            refresh_seconds,
-            last_sync,
-            work_scroll,
-            stream_status,
+            2,
+            0,
+            "Terminal is too small (%dx%d). Resize to at least 72x20."
+            % (width, height),
+            attrs["yellow"],
         )
+        screen.refresh()
+        return
+
+    details = view == "details"
+    render_header(screen, job_id, "details" if details else "overview", attrs)
+
+    def panel(y, x, h, w, title, lines, *, scrollable=False):
+        draw_box(
+            screen,
+            y,
+            x,
+            h,
+            w,
+            title,
+            lines,
+            attrs,
+            scroll=work_scroll if scrollable else 0,
+            scrollable=scrollable,
+        )
+
+    top_h = min(8, max(6, height // 6)) if details else 6
+    panel(
+        1,
+        1,
+        top_h,
+        width - 2,
+        "JOB, RESOURCES & RUN IDENTITY" if details else "RUN OVERVIEW",
+        job_lines(slurm, identity, width - 6, attrs)
+        if details
+        else overview_lines(slurm, identity, model, width - 6),
+    )
+    main_y = 1 + top_h
+    footer_y = height - 1 - (stream_status is not None)
+    main_h = footer_y - main_y
+    current_title = "CURRENT WORK DETAILS" if details else "CURRENT WORK"
+    if width >= 140 and main_h >= (24 if details else 38):
+        left_w = (
+            min(86, max(70, int((width - 3) * 0.44))) if details else (width - 3) // 2
+        )
+        right_x = 2 + left_w
+        right_w = width - right_x - 1
+        pipeline_h = (
+            min(max(22, int(main_h * 0.62)), main_h - 5)
+            if details
+            else min(max(19, main_h // 2), main_h - 8)
+        )
+        current_h = (
+            min(max(12, int(main_h * 0.50)), main_h - 8) if details else pipeline_h
+        )
+        panel(
+            main_y,
+            1,
+            pipeline_h,
+            left_w,
+            "PIPELINE",
+            pipeline_lines(model, now, left_w - 4, include_summary=details),
+        )
+        if details:
+            title, lines = activity_lines(model, slurm, identity, now)
+            panel(
+                main_y + pipeline_h,
+                1,
+                main_h - pipeline_h,
+                left_w,
+                title,
+                lines,
+            )
+        panel(
+            main_y,
+            right_x,
+            current_h,
+            right_w,
+            current_title,
+            current_lines(model, identity, now, right_w - 4, include_active=details),
+            scrollable=True,
+        )
+        if details:
+            panel(
+                main_y + current_h,
+                right_x,
+                main_h - current_h,
+                right_w,
+                "SAMPLE DETAILS",
+                sample_lines(model, now, right_w - 4),
+            )
+        else:
+            panel(
+                main_y + pipeline_h,
+                1,
+                main_h - pipeline_h,
+                left_w,
+                "SAMPLE LANES",
+                sample_lane_lines(model, now, left_w - 4),
+            )
+            title, lines = provenance_activity_lines(
+                slurm, identity, model, now, right_w - 4
+            )
+            panel(
+                main_y + current_h,
+                right_x,
+                main_h - current_h,
+                right_w,
+                title,
+                lines,
+            )
     else:
-        render_overview(
-            screen,
-            job_id,
-            slurm,
-            identity,
-            model,
-            refresh_seconds,
-            last_sync,
-            work_scroll,
-            stream_status,
+        pipeline_h = min(22 if details else 19, max(10, main_h // 2))
+        panel(
+            main_y,
+            1,
+            pipeline_h,
+            width - 2,
+            "PIPELINE",
+            pipeline_lines(model, now, width - 6, include_summary=details),
         )
+        panel(
+            main_y + pipeline_h,
+            1,
+            main_h - pipeline_h,
+            width - 2,
+            current_title,
+            current_lines(model, identity, now, width - 6, include_active=details),
+            scrollable=True,
+        )
+    render_footer(
+        screen, footer_y, width, attrs, refresh_seconds, last_sync, stream_status
+    )
+    screen.refresh()
 
 
 def snapshot(job_id, slurm, identity, model):
