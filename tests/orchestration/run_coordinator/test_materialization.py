@@ -35,8 +35,6 @@ from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.contracts.scientific_evidence import step08
 from emrys.evidence.runtime_availability import inspector as runtime_inspector
 from emrys.evidence.runtime_availability.inspector import (
-    RuntimeBinding,
-    runtime_file_bindings,
     RuntimeInspection,
     RuntimeObservation,
     load_runtime_policy,
@@ -248,14 +246,14 @@ def _readiness(
     storage_receipt = tmp_path / "storage.qualified.json"
     storage_bytes = b"fixed storage qualification receipt\n"
     storage_receipt.write_bytes(storage_bytes)
-    storage_binding = RuntimeBinding(
+    storage_binding = doctor.RuntimeBinding(
         check_id="storage_qualification",
         path=storage_receipt,
         resolved_path=storage_receipt.resolve(strict=True),
         sha256=hashlib.sha256(storage_bytes).hexdigest(),
         observed="b" * 64,
     )
-    bindings = (*runtime_file_bindings(runtime_inspection), storage_binding)
+    bindings = (*doctor.runtime_file_bindings(runtime_inspection), storage_binding)
     readiness = doctor.DoctorResult(
         project=project,
         analysis=analysis,
@@ -1347,7 +1345,7 @@ def test_downstream_plan_preserves_admitted_sidecars_for_relocated_reference(
 def _runtime_admission_fixture(
     plan: materialization.AttemptPlan,
     monkeypatch: pytest.MonkeyPatch,
-) -> tuple[lifecycle.LifecycleRequest, RuntimeBinding]:
+) -> tuple[lifecycle.LifecycleRequest, doctor.RuntimeBinding]:
     ops = lifecycle.default_lifecycle_ops()
     admit_run(plan, ops=ops)
     request = plan.lifecycle_request
