@@ -1851,7 +1851,8 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         if state["finalized"]:
             if failure == "final_project":
                 result = replace(
-                    result, project=replace(project, source_sha256="d" * 64)
+                    result,
+                    project=replace(project, source_bytes=project.source_bytes + b"\n"),
                 )
             elif failure == "final_package":
                 result = replace(
