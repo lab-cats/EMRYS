@@ -99,6 +99,22 @@ missing UID lookup, absent/rejected site memory policy, and live inspection
 during execution/reporting still need complete hosted or institutional journeys.
 CV-01 remains Open.
 
+**Real-backend cancellation boundary:** The existing public materialization
+harness now includes real Snakemake, Task-wrapper and separate native process
+groups. A FIFO readiness handshake follows a native fixture's partial output;
+only then does the test signal the isolated public Run process. Production
+signal forwarding, native escalation and workflow grace periods remain in use.
+The fixture checks group absence before lock release and receipt publication,
+retained failed Task/start/log evidence, cleaned owned work and the current
+blocked receipt. Scientific effects and readiness remain explicit test doubles.
+
+Resume preview must refuse without writes. Execution-mode refusal may retain
+its normal failed application log, while the Run and all earlier evidence stay
+unchanged. The existing successful between-Task failure/resume case remains a
+separate defense. Static and standalone native-gate checks pass; full integration
+requires CI. This does not establish actual scientific-tool or Slurm/site
+cancellation, or make a postentry Task retryable.
+
 ### CV-02 Individual qualification diagnostics
 
 **Finding:** Generic qualification failure required manual reconstruction of
@@ -423,6 +439,23 @@ Ruff, formatting and whitespace checks pass. These source-derived protections
 do not establish E09's cause or real Snakemake/Slurm cancellation behavior.
 Lost wrappers, escaped descendants and explicit safe reconciliation remain
 open. No task or Run becomes recoverable solely because an outer group stopped.
+
+**Established source constraint:** A Task with admitted entry and no verified
+result remains blocked after clean native cancellation. Task re-entry refuses
+its fixed start/verified paths, Snakefile admission rejects the incomplete
+entered scope, and receipt validation requires every start to be verified for
+a nonblocked outcome. Receipt history also permits only one start per logical
+Task scope. Control and lifecycle retain these predicates before resume.
+The CV-01 real-backend fixture protects this boundary; a released lock or clean
+writer shutdown alone is insufficient recovery evidence.
+
+Same-input `run` resolves to the same content-derived Run ID and refuses its
+non-pristine destination. Processing reuse accepts only a complete successful
+source. Neither is an implicit postentry retry route. Supporting that route
+requires a versioned start/history and abort-closure model that preserves prior
+references, proves owned cleanup and unchanged inputs, freezes exact retry
+intent, and rechecks it under the Run lock. Existing blocked evidence must not
+be silently migrated or reclassified. That recovery design remains Open.
 
 ### CV-11 Resource profile compatibility
 
