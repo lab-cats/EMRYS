@@ -422,7 +422,10 @@ inputs rather than copying them into the Project.
 
 ### Prepare, run and open your study's reports
 
-On the head node, prepare this Project:
+On the head node, prepare this Project. To reuse another Project's managed tools,
+first follow [sealed runtime reuse](docs/operations/RUNBOOK.md#reuse-a-sealed-managed-runtime)
+before this Project has an inventory. That optional operation permanently
+disables managed repair of the donor; this Project still needs its own checks.
 
 ```bash
 emrys doctor --repair

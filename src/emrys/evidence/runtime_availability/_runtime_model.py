@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 RESULT_STATUSES = {"pass", "fail"}
 VERSION_TEXT_LIMIT = 4096
@@ -46,3 +47,15 @@ def _fail(message: str) -> None:
 
 def _single_line(value: str) -> str:
     return " ".join(value.replace("\x00", "").split())
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeBinding:
+    """One exact path-and-content binding admitted from the runtime inventory."""
+
+    check_id: str
+    path: Path
+    resolved_path: Path
+    sha256: str
+    observed: str
+    identity_kind: Literal["file", "package_tree"] | None = None

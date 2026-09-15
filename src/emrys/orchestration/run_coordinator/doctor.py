@@ -23,11 +23,14 @@ from emrys import analyses as analysis_modules
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import AnalysisRevision
 from emrys.evidence.runtime_availability.inspector import (
+    PYTHON_CHECK_IDS,
+    RuntimeBinding,
     RuntimeCheck,
     RuntimeInspection,
     RuntimeInspectionError,
     inspect_runtime_profile_bytes,
     load_runtime_profile_contract,
+    runtime_file_bindings,
 )
 from emrys.evidence.storage_inventory import qualification as storage_qualification
 from emrys.libraries.application_logging import (
@@ -44,10 +47,6 @@ from emrys.libraries.application_logging import (
     open_attempt_log,
     phase_progress,
     resolve_log_controls,
-)
-from emrys.libraries.installed_package_identity import (
-    InstalledPackageIdentityError,
-    installed_package_tree_identity,
 )
 from emrys.libraries.exclusive_publication import (
     acquire_lock,
@@ -91,7 +90,6 @@ DESCRIPTION = (
 )
 
 StorageRequirement = Literal["direct", "slurm"]
-PYTHON_CHECK_IDS = frozenset({"python", "snakemake", "sha256_python"})
 
 
 class DoctorInputError(RuntimeError):
@@ -100,18 +98,6 @@ class DoctorInputError(RuntimeError):
 
 class DoctorRepairError(RuntimeError):
     """The managed-runtime repair cannot proceed or did not complete."""
-
-
-@dataclass(frozen=True, slots=True)
-class RuntimeBinding:
-    """One exact path-and-content binding admitted from the runtime inventory."""
-
-    check_id: str
-    path: Path
-    resolved_path: Path
-    sha256: str
-    observed: str
-    identity_kind: Literal["file", "package_tree"] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -329,100 +315,6 @@ def _module_dependency_checks(
     )
 
 
-def runtime_file_bindings(
-    inspection: RuntimeInspection,
-    *,
-    package_tree_ids: frozenset[str] = frozenset(),
-    explicit_file_ids: frozenset[str] = frozenset(),
-) -> tuple[RuntimeBinding, ...]:
-    """Bind executable/jar bytes and exact installed R package trees."""
-
-    bindings: list[RuntimeBinding] = []
-    renv_library = next(
-        Path(item.check.target)
-        for item in inspection.observations
-        if item.check.check_id == "renv_library"
-    )
-    for observation in inspection.observations:
-        check = observation.check
-        if observation.status != "pass" or check.check_id in {
-            "renv_project",
-            "renv_library",
-        }:
-            continue
-        if check.check_type == "r_namespace" or check.check_id in package_tree_ids:
-            try:
-                root = (
-                    renv_library / check.target
-                    if check.check_type == "r_namespace"
-                    else Path(check.target)
-                )
-                resolved_root = root.resolve(strict=True)
-                identity = installed_package_tree_identity(resolved_root)
-                confirmed_root = root.resolve(strict=True)
-            except (OSError, InstalledPackageIdentityError) as exc:
-                raise DoctorInputError(
-                    f"Could not bind runtime package tree {check.check_id}: {exc}"
-                ) from exc
-            expected_root = (
-                observation.resolved_path
-                if check.check_type == "r_namespace"
-                else Path(check.target)
-            )
-            if (
-                expected_root is None
-                or identity.root != expected_root
-                or confirmed_root != resolved_root
-            ):
-                raise DoctorInputError(
-                    f"Runtime package-tree root changed: {check.check_id}"
-                )
-            bindings.append(
-                RuntimeBinding(
-                    check.check_id,
-                    identity.root,
-                    identity.root,
-                    identity.sha256,
-                    observation.observed,
-                    ("package_tree" if check.check_id in package_tree_ids else None),
-                )
-            )
-            continue
-        path = Path(check.target)
-        try:
-            resolved = path.resolve(strict=True)
-            state = path.lstat()
-        except OSError as exc:
-            raise DoctorInputError(
-                f"Could not bind runtime file {check.check_id}: {exc}"
-            ) from exc
-        if check.check_id in explicit_file_ids and (
-            stat.S_ISLNK(state.st_mode)
-            or not stat.S_ISREG(state.st_mode)
-            or resolved != path
-        ):
-            raise DoctorInputError(
-                f"Analysis dependency must be a canonical real file: {check.check_id}"
-            )
-        try:
-            data = resolved.read_bytes()
-        except OSError as exc:
-            raise DoctorInputError(
-                f"Could not bind runtime file {check.check_id}: {exc}"
-            ) from exc
-        bindings.append(
-            RuntimeBinding(
-                check.check_id,
-                path,
-                resolved,
-                hashlib.sha256(data).hexdigest(),
-                observation.observed,
-                "file" if check.check_id in explicit_file_ids else None,
-            )
-        )
-    return tuple(bindings)
-
-
 def diagnose_project(
     project_path: str | Path,
     workspace: str | Path | None = None,
@@ -588,14 +480,20 @@ def diagnose_project(
                 "with their package manager, then rerun Doctor; managed repair "
                 "restores only the fixed EMRYS runtime."
             )
-        bindings = (
-            *runtime_file_bindings(
+        donor_seal = onboarding.runtime_profile_path(project).parent / "shared.json"
+        try:
+            runtime_bindings = runtime_file_bindings(
                 inspection,
                 package_tree_ids=package_tree_ids,
                 explicit_file_ids=explicit_file_ids,
-            ),
-            *bindings,
-        )
+                donor_seal=donor_seal
+                if profile_path == onboarding.runtime_profile_path(project)
+                and os.path.lexists(donor_seal)
+                else None,
+            )
+        except RuntimeInspectionError as exc:
+            raise DoctorInputError(str(exc)) from exc
+        bindings = (*runtime_bindings, *bindings)
         runtime_ready = python_ready and not failed
     if execution_error is not None:
         selection = "default" if execution_profile is None else "selected"
@@ -701,6 +599,13 @@ def _file_sha256(path: Path) -> str:
         ) from exc
 
 
+def _refuse_sealed_repair(runtime: Path) -> None:
+    if os.path.lexists(runtime / "shared.json"):
+        raise DoctorRepairError(
+            f"Runtime is permanently sealed; repair refused: {runtime / 'shared.json'}"
+        )
+
+
 def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
     if result.installed_package is None:
         raise DoctorRepairError("Doctor requires an admitted installed EMRYS package")
@@ -778,6 +683,7 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
         r_settings_bytes = (_PACKAGE_ROOT / "renv/settings.json").read_bytes()
     except (OSError, onboarding.OnboardingError) as exc:
         raise DoctorRepairError(str(exc)) from exc
+    _refuse_sealed_repair(runtime)
     managed = runtime / "managed"
     if os.path.lexists(runtime / "maintenance.lock"):
         raise DoctorRepairError(
@@ -825,6 +731,8 @@ def _readmit_repair_plan(
     *,
     before_storage: bool,
 ) -> None:
+    if plan.runtime is not None:
+        _refuse_sealed_repair(plan.runtime.managed_root.parent)
     try:
         installed_package = admit_installed_package(root=plan.installed_package.root)
         project = onboarding.validate_project(
@@ -1430,6 +1338,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
                 raise DoctorRepairError(
                     "Doctor runtime parent changed before maintenance"
                 )
+            _refuse_sealed_repair(runtime_root)
             claim_path = runtime_root / "maintenance.lock"
             payload = f"emrys-doctor:{uuid.uuid4().hex}\n".encode("ascii")
             ownership = acquire_lock(
@@ -1773,11 +1682,9 @@ __all__ = (
     "DoctorInputError",
     "DoctorRepairError",
     "DoctorResult",
-    "RuntimeBinding",
     "configure_parser",
     "diagnose_project",
     "doctor_from_args",
     "required_tool_identities",
-    "runtime_file_bindings",
     "storage_runtime_binding",
 )

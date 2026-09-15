@@ -35,6 +35,8 @@ from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.contracts.scientific_evidence import step08
 from emrys.evidence.runtime_availability import inspector as runtime_inspector
 from emrys.evidence.runtime_availability.inspector import (
+    RuntimeBinding,
+    runtime_file_bindings,
     RuntimeInspection,
     RuntimeObservation,
     load_runtime_policy,
@@ -246,14 +248,14 @@ def _readiness(
     storage_receipt = tmp_path / "storage.qualified.json"
     storage_bytes = b"fixed storage qualification receipt\n"
     storage_receipt.write_bytes(storage_bytes)
-    storage_binding = doctor.RuntimeBinding(
+    storage_binding = RuntimeBinding(
         check_id="storage_qualification",
         path=storage_receipt,
         resolved_path=storage_receipt.resolve(strict=True),
         sha256=hashlib.sha256(storage_bytes).hexdigest(),
         observed="b" * 64,
     )
-    bindings = (*doctor.runtime_file_bindings(runtime_inspection), storage_binding)
+    bindings = (*runtime_file_bindings(runtime_inspection), storage_binding)
     readiness = doctor.DoctorResult(
         project=project,
         analysis=analysis,
@@ -1345,7 +1347,7 @@ def test_downstream_plan_preserves_admitted_sidecars_for_relocated_reference(
 def _runtime_admission_fixture(
     plan: materialization.AttemptPlan,
     monkeypatch: pytest.MonkeyPatch,
-) -> tuple[lifecycle.LifecycleRequest, doctor.RuntimeBinding]:
+) -> tuple[lifecycle.LifecycleRequest, RuntimeBinding]:
     ops = lifecycle.default_lifecycle_ops()
     admit_run(plan, ops=ops)
     request = plan.lifecycle_request
@@ -5477,3 +5479,81 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     assert (
         "not at an admissible between-task resume boundary" in capsys.readouterr().err
     )
+
+
+@pytest.mark.parametrize("changed", ("native", "r_package", "seal"))
+def test_borrowed_runtime_survives_run_and_resume_and_rejects_changed_donor(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    changed: str,
+) -> None:
+    from emrys.evidence.storage_inventory.qualification import QualifiedStorage
+    from tests.evidence.runtime_availability.test_runtime_availability import (
+        _managed_seal_fixture,
+    )
+
+    readiness, resources, request, workspace = _readiness(tmp_path / "borrower")
+    seal, donor_inspection = _managed_seal_fixture(tmp_path / "shared", monkeypatch)
+    seal.write_bytes(runtime_inspector.runtime_seal_bytes(donor_inspection, seal))
+    reference = runtime_inspector.shared_runtime_profile_bytes(
+        seal, seal.read_bytes(), Path(sys.executable)
+    )
+    current_profile = onboarding.runtime_profile_path(request)
+    current_profile.write_bytes(reference)
+    storage = next(
+        item for item in readiness.bindings if item.check_id == "storage_qualification"
+    )
+    monkeypatch.setattr(
+        doctor.storage_qualification,
+        "admit_direct_requirement",
+        lambda *_args: QualifiedStorage(storage.path, storage.sha256, storage.observed),
+    )
+    monkeypatch.setattr(
+        control.capacity, "observe_allocation", lambda: resources.allocation
+    )
+    execution = load_execution_profile(
+        config_path=workspace / "runtime/profiles/default.yaml"
+    )
+    first = control._plan_run(request, execution_profile=execution)
+    assert first.readiness.inspection.profile_bytes == reference
+    assert not first.run_root.exists()
+    observed = _failed_run(first)
+    assert observed.recovery_available
+    retained = next(
+        Path(str(item["path"]))
+        for item in first.attempt_record["required_tools"]
+        if item["name"] == "runtime_profile"
+    )
+    assert retained.read_bytes() == reference
+    lifecycle._admit_runtime_context(
+        first.attempt_record, first.lifecycle_request, storage, None
+    )
+    current_profile.unlink()
+    second = control._plan_resume(first.run_root, execution_profile=execution)
+    assert second.run.run_id == first.run.run_id
+    assert second.readiness.inspection.profile_path == retained
+    assert second.readiness.inspection.profile_bytes == reference
+    next_profile = next(
+        Path(str(item["path"]))
+        for item in second.attempt_record["required_tools"]
+        if item["name"] == "runtime_profile"
+    )
+    assert next_profile != retained
+    assert (
+        next(item.data for item in second.attempt_files if item.path == next_profile)
+        == reference
+    )
+    if changed == "native":
+        (seal.parent / "managed/star").write_bytes(b"changed tool, same version\n")
+    elif changed == "r_package":
+        (seal.parent / "managed/renv_library/VariantAnnotation/DESCRIPTION").write_text(
+            "same version, changed package\n"
+        )
+    else:
+        seal.unlink()
+    with pytest.raises(control.ControlError):
+        control._plan_resume(first.run_root, execution_profile=execution)
+    with pytest.raises(lifecycle.LifecycleError):
+        lifecycle._admit_runtime_context(
+            first.attempt_record, first.lifecycle_request, storage, None
+        )

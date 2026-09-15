@@ -30,9 +30,11 @@ from types import FrameType
 from typing import TYPE_CHECKING, Any, Iterator, Literal
 
 if TYPE_CHECKING:
-    from emrys.evidence.runtime_availability.inspector import RuntimeInspection
+    from emrys.evidence.runtime_availability.inspector import (
+        RuntimeBinding,
+        RuntimeInspection,
+    )
     from emrys.evidence.storage_inventory.qualification import QualifiedStorage
-    from emrys.orchestration.run_coordinator.doctor import RuntimeBinding
 
 try:
     import fcntl as _fcntl
@@ -1232,6 +1234,7 @@ def _admit_runtime_context(
     from emrys.evidence.runtime_availability.inspector import (  # noqa: PLC0415
         RuntimeInspectionError,
         inspect_runtime_profile_bytes,
+        runtime_file_bindings,
         runtime_profile_checks,
     )
     from emrys.orchestration.run_coordinator import doctor  # noqa: PLC0415
@@ -1315,7 +1318,7 @@ def _admit_runtime_context(
         expected_tools = doctor.required_tool_identities(
             runtime_inspection,
             bindings=(
-                *doctor.runtime_file_bindings(
+                *runtime_file_bindings(
                     runtime_inspection,
                     package_tree_ids=package_tree_ids,
                     explicit_file_ids=explicit_file_ids,
@@ -1325,7 +1328,7 @@ def _admit_runtime_context(
             python_executable=request.python_executable,
             runtime_profile_path=profile_path,
         )
-    except doctor.DoctorInputError as exc:
+    except (RuntimeInspectionError, doctor.DoctorInputError) as exc:
         raise LifecycleError(
             f"Could not project re-observed runtime identities: {exc}"
         ) from exc

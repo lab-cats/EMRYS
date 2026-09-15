@@ -505,6 +505,42 @@ completion. Keep the source commit, command, inputs, job ID, accounting,
 streams, outputs, validation records, and receipts tied to the same Attempt.
 See [Troubleshooting](TROUBLESHOOTING.md) before retry or cleanup.
 
+## Reuse a sealed managed runtime
+
+Use this optional path after creating a new borrower Project and before it has
+`runtime/runtime.tsv`. Select a prepared donor Project owned by the same UID.
+Its managed tool paths and R package trees must be inside its own canonical
+`runtime/managed` directory and visible from the borrower's intended nodes.
+Keep both Project locations stable. An existing borrower inventory is preserved.
+
+```bash
+emrys runtime discover --project /absolute/borrower/project.yaml --from-project /absolute/donor/project.yaml
+```
+
+Review the observed tools and printed donor seal path. This previews without
+writing. The next command permanently disables EMRYS-managed repair of the
+donor runtime; it installs nothing and creates the borrower's inventory only
+after the donor seal and fresh checks succeed:
+
+```bash
+emrys runtime discover --project /absolute/borrower/project.yaml --from-project /absolute/donor/project.yaml --execute
+emrys doctor --project /absolute/borrower/project.yaml --repair
+```
+
+Doctor still qualifies the borrower's Project/storage and selected placement;
+inspect its plan before confirming. Reuse does not copy storage receipts or
+qualify every eligible node. Python/EMRYS and Analysis dependencies retain
+their independent requirements. Continue only after borrower readiness passes.
+
+Keep the donor's `runtime/shared.json` and managed installation with every
+dependent Run. The seal covers fixed executable/jar bytes and required R package
+trees; it does not freeze the full environment or transitive libraries. Avoid
+external upgrades, removal, moves or edits. Changed or inaccessible content
+blocks reuse/Run/resume. A failed selection may have sealed the donor already;
+retain any seal and `maintenance.lock` and consult the maintainer. There is no
+unseal or automatic cleanup operation. To use another runtime, prepare a new
+Project and make an explicit selection rather than editing a retained selector.
+
 ## Dependency maintenance
 
 Institutional R restoration below requires the installed EMRYS R guard and

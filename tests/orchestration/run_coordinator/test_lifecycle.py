@@ -26,6 +26,7 @@ import pytest
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.evidence.runtime_availability.inspector import (
+    RuntimeBinding,
     RuntimeCheck,
     RuntimeInspection,
     RuntimeObservation,
@@ -134,7 +135,7 @@ def test_storage_readmission_uses_normalized_reference_identity(
     )
 
     assert calls == [(workspace, normalized_fasta)]
-    assert binding == doctor.RuntimeBinding(
+    assert binding == RuntimeBinding(
         check_id="storage_qualification",
         path=receipt,
         resolved_path=receipt.resolve(strict=True),
@@ -396,7 +397,7 @@ class Harness:
         self,
         _attempt: dict[str, Any],
         _request: lifecycle.LifecycleRequest,
-        _storage_binding: doctor.RuntimeBinding | None,
+        _storage_binding: RuntimeBinding | None,
         _initial_inspection: RuntimeInspection | None,
     ) -> None:
         self.runtime_admissions += 1
@@ -2649,7 +2650,7 @@ def test_lying_runtime_authority_fails_before_attempt_publication(
     def reject(
         _attempt: dict[str, Any],
         _request: lifecycle.LifecycleRequest,
-        _storage_binding: doctor.RuntimeBinding | None,
+        _storage_binding: RuntimeBinding | None,
         _initial_inspection: RuntimeInspection | None,
     ) -> None:
         raise lifecycle.LifecycleError("declared checkout differs from observed")

@@ -276,9 +276,33 @@ replacement, redirected parents, failed acquisition/release and real process
 termination. Doctor fixtures cover log-open failure, claim-before-manager,
 retained failure/interruption, requalification, and release-before-success;
 public Doctor/reporting execution requires CI in the current local environment.
-This slice adds no share seal, borrower selection, runtime-reader exclusion,
-or cleanup command. CV-08 remains Open for immutable expected-content binding,
-supported two-Project reuse and compute-node accessibility evidence.
+Those maintenance checks alone do not establish safe sharing.
+
+**Implemented sealed selection:** `runtime discover --from-project DONOR`
+previews current probes and fixed content; `--execute` exclusively seals the
+managed donor before publishing an absent borrower inventory. The closed seal
+and three-column selector bind donor location, exact digest and borrower Python.
+Selected native/R paths must remain inside the donor managed root. Doctor,
+Run/resume and retained Attempt profiles use one runtime content-binding owner;
+fresh fixed-content comparisons reject drift. Managed repair refuses a sealed
+donor even with malformed/missing inventories or a stale plan. Interrupted or
+failed publication preserves surviving claims/seals, and borrower failure does
+not undo a seal. There is no unseal or cleanup command.
+
+The 462 net product lines use six existing files and consolidate binding from
+Doctor into runtime evidence, replacing all affected callers. Stable streaming
+hashing and installed-package-tree identity reuse existing owners. New closed
+seal/selector formats fill the expected-content gap that path inventories and
+package managers cannot supply alone; no dependency or product file is added.
+The baseline covers fixed executable/jar bytes and required R package trees,
+not the entire environment, shared libraries or transitive dependencies.
+
+**Verification:** Thirty-one focused seal/selector tests pass locally, as does
+the source dependency gate. Public two-Project preview/publication, failure and
+stale-repair fixtures plus planned Run/resume and direct lifecycle admission
+await CI. These use synthetic runtime/failed-Run fixtures, not scientific
+execution. CV-08 remains Open for hosted/institutional acceptance, compute-node
+accessibility and the complete managed journey.
 
 ### CV-09 Qualification scope and placement
 

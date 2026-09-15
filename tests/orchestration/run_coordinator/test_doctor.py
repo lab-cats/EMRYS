@@ -205,7 +205,7 @@ def test_runtime_identity_binds_executables_packages_and_storage(
         )
     )
 
-    bindings = (*doctor.runtime_file_bindings(inspection), storage)
+    bindings = (*runtime_inspector.runtime_file_bindings(inspection), storage)
     identities = doctor.required_tool_identities(
         inspection,
         bindings=bindings,
@@ -281,7 +281,7 @@ def test_selected_package_tree_dependency_is_composed_and_content_bound(
             ),
         ),
     )
-    (binding,) = doctor.runtime_file_bindings(
+    (binding,) = runtime_inspector.runtime_file_bindings(
         inspection,
         package_tree_ids=package_tree_ids,
     )
@@ -299,9 +299,12 @@ def test_selected_package_tree_dependency_is_composed_and_content_bound(
     assert package_tree_ids == {"collaborator_assets", "collaborator_r"}
     assert explicit_file_ids == {"collaborator_file", "collaborator_tool"}
     assert binding.identity_kind == "package_tree"
-    assert binding.sha256 == doctor.installed_package_tree_identity(package).sha256
+    assert (
+        binding.sha256
+        == runtime_inspector.installed_package_tree_identity(package).sha256
+    )
 
-    (file_binding,) = doctor.runtime_file_bindings(
+    (file_binding,) = runtime_inspector.runtime_file_bindings(
         _inspection(
             tmp_path,
             (
@@ -315,8 +318,10 @@ def test_selected_package_tree_dependency_is_composed_and_content_bound(
 
     linked_tool = tmp_path / "linked-tool"
     linked_tool.symlink_to(tool)
-    with pytest.raises(doctor.DoctorInputError, match="canonical real file"):
-        doctor.runtime_file_bindings(
+    with pytest.raises(
+        runtime_inspector.RuntimeInspectionError, match="canonical real file"
+    ):
+        runtime_inspector.runtime_file_bindings(
             _inspection(
                 tmp_path,
                 (
@@ -344,7 +349,7 @@ def test_runtime_package_binding_rechecks_a_symlink_after_hashing(
     library.mkdir()
     selected = library / "edgeR"
     selected.symlink_to(first, target_is_directory=True)
-    real_identity = doctor.installed_package_tree_identity
+    real_identity = runtime_inspector.installed_package_tree_identity
 
     def retarget_after_hash(path: Path):
         identity = real_identity(path)
@@ -353,13 +358,15 @@ def test_runtime_package_binding_rechecks_a_symlink_after_hashing(
         return identity
 
     monkeypatch.setattr(
-        doctor,
+        runtime_inspector,
         "installed_package_tree_identity",
         retarget_after_hash,
     )
 
-    with pytest.raises(doctor.DoctorInputError, match="package-tree root changed"):
-        doctor.runtime_file_bindings(
+    with pytest.raises(
+        runtime_inspector.RuntimeInspectionError, match="package-tree root changed"
+    ):
+        runtime_inspector.runtime_file_bindings(
             _inspection(
                 tmp_path,
                 (
@@ -2261,3 +2268,72 @@ def test_malformed_project_is_a_usage_error(
 
     assert status == 2
     assert "malformed Project" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("inventory", ("missing", "damaged"))
+def test_sealed_donor_repair_refuses_even_without_an_admissible_inventory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    inventory: str,
+) -> None:
+    project = _project(tmp_path)
+    runtime = project.source_path.parent / "runtime"
+    seal = runtime / "shared.json"
+    seal.write_bytes(b"even malformed seal evidence must be preserved\n")
+    if inventory == "damaged":
+        (runtime / "runtime.tsv").write_bytes(b"damaged inventory\n")
+    monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(
+        doctor,
+        "_manager",
+        lambda _name: pytest.fail("sealed donor admitted a package manager"),
+    )
+    before = _snapshot(tmp_path)
+    with pytest.raises(doctor.DoctorRepairError, match="permanently sealed"):
+        doctor._build_repair_plan(_result(project, ready=False))
+    assert _snapshot(tmp_path) == before
+
+
+def test_repair_plan_predating_seal_refuses_before_managed_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = _project(tmp_path)
+    plan = _plan(project)
+    seal = project.source_path.parent / "runtime/shared.json"
+    seal.write_bytes(b"immutable seal\n")
+    records: list[str] = []
+    _patch_logging(monkeypatch, plan, records)
+    with pytest.raises(doctor.DoctorRepairError, match="permanently sealed"):
+        doctor._execute_repair(plan, controls=_controls(project))
+    assert seal.read_bytes() == b"immutable seal\n"
+    assert not _runtime(plan).managed_root.exists()
+    assert not (seal.parent / "maintenance.lock").exists()
+    assert records == ["opened", "failed", "closed"]
+
+
+def test_repair_readmission_rechecks_seal_while_holding_its_claim(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = _project(tmp_path)
+    plan = _plan(project)
+    runtime = project.source_path.parent / "runtime"
+    acquire = doctor.acquire_lock
+    original_readmission = doctor._readmit_repair_plan
+    records: list[str] = []
+    _patch_logging(monkeypatch, plan, records)
+    monkeypatch.setattr(doctor, "_readmit_repair_plan", original_readmission)
+
+    def seal_after_acquisition(path, payload, error_type, **kwargs):
+        owned = acquire(path, payload, error_type, **kwargs)
+        (runtime / "shared.json").write_bytes(b"seal appeared after preview\n")
+        return owned
+
+    monkeypatch.setattr(doctor, "acquire_lock", seal_after_acquisition)
+    with pytest.raises(doctor.DoctorRepairError, match="permanently sealed"):
+        doctor._execute_repair(plan, controls=_controls(project))
+    assert (runtime / "maintenance.lock").exists()
+    assert not _runtime(plan).managed_root.exists()
+    assert records == ["opened", "failed", "closed"]

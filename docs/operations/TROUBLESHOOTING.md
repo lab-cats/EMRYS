@@ -127,6 +127,15 @@ error still reports failure, even if the pathname is already absent.
 Verification without package work does not acquire this claim and is not proof
 that the runtime is safe to modify or share.
 
+**Sealed runtime refused.** Keep `runtime/shared.json`, its donor installation,
+the borrower inventory, and any `maintenance.lock`. A seal permanently disables
+EMRYS-managed donor repair; there is no unseal or automatic cleanup command.
+Selection can fail after sealing and before borrower publication. Missing or
+changed fixed tool/package content, unresolved claims and unavailable donor
+paths block admission. Do not edit the recorded digest, copy qualification
+receipts or remove the seal to bypass this check. Resolve the cause with the
+maintainer; use a separately prepared Project for a different runtime.
+
 **Runtime inventory already exists.** Discovery preserves even identical-looking
 inventories. Use Doctor to inspect the admitted runtime; replacing it requires
 an explicit migration/recovery decision, not deletion followed by rediscovery.

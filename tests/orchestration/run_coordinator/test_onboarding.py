@@ -1833,3 +1833,145 @@ def test_runtime_publication_rejects_a_swapped_project_parent(
         onboarding.publish_runtime_profile(inspection)
 
     assert not (redirected / "runtime.tsv").exists()
+
+
+def _reuse_projects(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    from tests.evidence.runtime_availability.test_runtime_availability import (
+        _managed_seal_fixture,
+    )
+
+    donor = _project_with_owned_runtime(tmp_path / "donor")
+    borrower = _project_with_owned_runtime(tmp_path / "borrower")
+    seal, inspection = _managed_seal_fixture(tmp_path, monkeypatch)
+    (donor.parent / "runtime/runtime.tsv").write_bytes(inspection.profile_bytes)
+    monkeypatch.setattr(
+        doctor.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail(
+            "runtime reuse launched a package manager or unmocked probe"
+        ),
+    )
+    return donor, borrower, seal, inspection
+
+
+def test_runtime_reuse_previews_then_seals_and_selects_without_installation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from emrys.evidence.runtime_availability import inspector
+
+    donor, borrower, seal, original = _reuse_projects(tmp_path, monkeypatch)
+    calls = []
+    observe = inspector.run_checks
+
+    def fresh(checks, *, environment):
+        calls.append(tuple(checks))
+        return observe(checks, environment=environment)
+
+    monkeypatch.setattr(inspector, "run_checks", fresh)
+    before = {path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
+    arguments = argparse.Namespace(project=borrower, from_project=donor, execute=False)
+    assert onboarding.discover_runtime_from_args(arguments) == 0
+    assert "Dry-run complete" in capsys.readouterr().out
+    assert before == {
+        path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()
+    }
+    assert len(calls) == 1
+    arguments.execute = True
+    assert onboarding.discover_runtime_from_args(arguments) == 0
+    selected = borrower.parent / "runtime/runtime.tsv"
+    assert selected.read_bytes().startswith(b"seal_path\tseal_sha256\tpython\n")
+    assert len(calls) == 3
+    assert (donor.parent / "runtime/runtime.tsv").read_bytes() == original.profile_bytes
+    assert not (seal.parent / "maintenance.lock").exists()
+    assert inspector.load_runtime_seal(seal).data == seal.read_bytes()
+    another = _project_with_owned_runtime(tmp_path / "another-borrower")
+    identity = seal.stat()
+    onboarding.reuse_runtime_profile(project=another, donor=donor, execute=True)
+    assert len(calls) == 4
+    assert seal.stat() == identity
+    assert (
+        another.parent / "runtime/runtime.tsv"
+    ).read_bytes() == selected.read_bytes()
+    with pytest.raises(onboarding.OnboardingError, match="already exists"):
+        onboarding.reuse_runtime_profile(project=borrower, donor=donor, execute=True)
+    assert len(calls) == 4
+
+
+@pytest.mark.parametrize("failure", ("before_seal", "after_seal", "borrower"))
+@pytest.mark.parametrize("error_type", (OSError, KeyboardInterrupt))
+def test_runtime_reuse_publication_failure_preserves_seal_and_claim_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+    error_type: type[BaseException],
+) -> None:
+    donor, borrower, seal, _original = _reuse_projects(tmp_path, monkeypatch)
+    publish = onboarding.publish_exclusive
+
+    def fail(path, data, publication_error_type, **kwargs):
+        if path == seal and failure == "before_seal":
+            raise error_type("injected seal publication failure")
+        if path != seal and failure == "borrower":
+            raise error_type("injected borrower publication failure")
+        publish(path, data, publication_error_type, **kwargs)
+        if path == seal and failure == "after_seal":
+            raise error_type("injected post-publication failure")
+
+    monkeypatch.setattr(onboarding, "publish_exclusive", fail)
+    with pytest.raises(error_type, match="injected"):
+        onboarding.reuse_runtime_profile(project=borrower, donor=donor, execute=True)
+    assert seal.exists() is (failure != "before_seal")
+    assert (seal.parent / "maintenance.lock").exists() is (failure != "borrower")
+    assert not (borrower.parent / "runtime/runtime.tsv").exists()
+
+
+@pytest.mark.parametrize("sealed", (False, True))
+def test_runtime_reuse_refuses_outstanding_donor_claim_before_any_probe(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    sealed: bool,
+) -> None:
+    from emrys.evidence.runtime_availability import inspector
+
+    donor, borrower, seal, original = _reuse_projects(tmp_path, monkeypatch)
+    if sealed:
+        seal.write_bytes(inspector.runtime_seal_bytes(original, seal))
+    claim = seal.parent / "maintenance.lock"
+    claim.write_bytes(b"unresolved owner\n")
+    monkeypatch.setattr(
+        inspector,
+        "run_checks",
+        lambda *_args, **_kwargs: pytest.fail("claimed donor was probed"),
+    )
+    with pytest.raises(
+        (onboarding.OnboardingError, inspector.RuntimeInspectionError), match="claim"
+    ):
+        onboarding.reuse_runtime_profile(project=borrower, donor=donor, execute=True)
+    assert claim.read_bytes() == b"unresolved owner\n"
+    assert not (borrower.parent / "runtime/runtime.tsv").exists()
+
+
+def test_runtime_reuse_rechecks_content_after_seal_publication(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from emrys.evidence.runtime_availability import inspector
+
+    donor, borrower, seal, _original = _reuse_projects(tmp_path, monkeypatch)
+    publish = onboarding.publish_exclusive
+
+    def mutate_after_seal(path, data, error_type, **kwargs):
+        publish(path, data, error_type, **kwargs)
+        if path == seal:
+            (seal.parent / "managed/star").write_bytes(b"same version, changed bytes\n")
+
+    monkeypatch.setattr(onboarding, "publish_exclusive", mutate_after_seal)
+    with pytest.raises(
+        inspector.RuntimeInspectionError, match="content or version changed"
+    ):
+        onboarding.reuse_runtime_profile(project=borrower, donor=donor, execute=True)
+    assert seal.exists()
+    assert not (seal.parent / "maintenance.lock").exists()
+    assert not (borrower.parent / "runtime/runtime.tsv").exists()
