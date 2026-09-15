@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import copy
 import hashlib
 import json
 import multiprocessing
@@ -549,7 +550,7 @@ def test_plan_is_no_write_and_projects_exact_worker_roster(
     records = _task_records(plan)
     assert len(records) == 35
     assert len({record["machine_key"] for record in records}) == 14
-    assert plan.attempt_record["schema_version"] == "emrys.workflow-attempt.v3"
+    assert plan.attempt_record["schema_version"] == "emrys.workflow-attempt.v4"
     assert plan.attempt_path not in {item.path for item in plan.attempt_files}
     assert not any(
         "dispatch" in item.path.parts or "workflow-configs" in item.path.parts
@@ -5518,7 +5519,7 @@ def test_next_supported_action_uses_separated_status_domains() -> None:
                 reporting_status=reporting,
                 recovery_available=recovery,
                 latest_receipt={
-                    "schema_version": "emrys.attempt-receipt.v2",
+                    "schema_version": "emrys.attempt-receipt.v3",
                     "status": receipt,
                 },
                 run_root=Path.cwd() / "runs" / ("run-" + "a" * 64),
@@ -5822,7 +5823,7 @@ def _public_native_cancellation_child(root: Path) -> None:
         }:
             native = json.loads((root / "native-ready.json").read_text())
             assert native["parent_pgid"] == processes[0].pid
-            for pgid in (processes[0].pid, native["pgid"]):
+            for pgid in (*(process.pid for process in processes), native["pgid"]):
                 with pytest.raises(ProcessLookupError):
                     os.killpg(pgid, 0)
             quiescence_checks.append(phase)
@@ -5841,7 +5842,10 @@ def _public_native_cancellation_child(root: Path) -> None:
         patched.setattr(
             control,
             "build_attempt_plan",
-            lambda *a, **k: with_owner_doubles(real_build(*a, **k), native_gate=gate),
+            lambda *a, **k: with_owner_doubles(
+                real_build(*a, **k),
+                native_gate=gate if k["operation"] == "execute" else None,
+            ),
         )
         patched.setattr(control.lifecycle, "default_lifecycle_ops", lambda: ops)
         arguments = argparse.Namespace(
@@ -5859,10 +5863,13 @@ def _public_native_cancellation_child(root: Path) -> None:
         ]
         interrupted = inspection.inspect_run(run_root)
         assert interrupted.integrity == "valid"
-        assert interrupted.attempt_outcome == "blocked"
-        assert interrupted.results_status == "blocked" and interrupted.results_blockers
-        assert not interrupted.recovery_available
-        assert interrupted.latest_receipt["status"] == "blocked"
+        assert interrupted.attempt_outcome == "interrupted"
+        assert (
+            interrupted.results_status == "incomplete"
+            and not interrupted.results_blockers
+        )
+        assert interrupted.recovery_available
+        assert interrupted.latest_receipt["status"] == "interrupted"
         assert interrupted.latest_receipt["termination_signal"] == signal.SIGTERM
         first_id = interrupted.latest_attempt["workflow_attempt_id"]
         first_attempt = run_root / "attempts" / first_id
@@ -5879,6 +5886,8 @@ def _public_native_cancellation_child(root: Path) -> None:
         assert not (run_root / "state/verified" / owner / f"{scope}.json").exists()
         (terminal,) = target.terminal_attempts
         assert terminal.record["status"] == "failed"
+        assert terminal.record["abort_closure"] == "linux-task-prepublication.v1"
+        assert target.retry_task_attempt_record == terminal.record_reference
         assert terminal.record["failure_message"] == "Task interrupted by signal 15"
         planned = interrupted.latest_attempt["tasks"][owner][scope]
         assert all(not Path(item["path"]).exists() for item in planned["outputs"])
@@ -5900,9 +5909,8 @@ def _public_native_cancellation_child(root: Path) -> None:
             for path in workspace.rglob("*")
             if path.is_file()
         }
-        # Closed failed post-entry evidence remains a blocker under today's model.
         arguments.execute = False
-        assert control.resume_from_args(arguments) == 2
+        assert control.resume_from_args(arguments) == 0
         assert sorted(workspace.rglob("*")) == preview_namespace
         assert {
             path: (path.read_bytes(), path.stat().st_mtime_ns)
@@ -5910,54 +5918,86 @@ def _public_native_cancellation_child(root: Path) -> None:
             if path.is_file()
         } == preview_before
         arguments.execute = True
-        assert control.resume_from_args(arguments) == 2
-        after_files = {
-            path: (path.read_bytes(), path.stat().st_mtime_ns)
-            for path in workspace.rglob("*")
-            if path.is_file()
-        }
-        (refusal_log,) = after_files.keys() - preview_before.keys()
-        assert refusal_log.parent.parent == arguments.log_root / f"run-{run_id}"
-        assert refusal_log.parent.name.startswith("application-")
-        assert refusal_log.name == "emrys-resume.jsonl"
-        assert refusal_log.resolve(strict=True) == refusal_log
-        assert refusal_log.stat().st_uid == os.getuid()
-        assert refusal_log.stat().st_mode & 0o777 == 0o600
-        assert set(workspace.rglob("*")) == set(preview_namespace) | {
-            refusal_log,
-            refusal_log.parent,
-            refusal_log.parent.parent,
-        }
-        assert all(after_files[path] == value for path, value in preview_before.items())
-        data = refusal_log.read_bytes()
-        assert data.endswith(b"\n")
-        records = [json.loads(line) for line in data.splitlines()]
-        assert [record["event"] for record in records] == [
-            "attempt_opened",
-            "attempt_failed",
+        assert control.resume_from_args(arguments) == 0
+        completed = inspection.inspect_run(run_root)
+        assert (
+            completed.integrity,
+            completed.attempt_outcome,
+            completed.results_status,
+        ) == ("valid", "succeeded", "complete")
+        assert not completed.recovery_available
+        assert len(processes) == 2
+        assert quiescence_checks == [
+            "before_lock_release",
+            "before_receipt_publication",
+            "before_lock_release",
+            "before_receipt_publication",
         ]
-        for sequence, record in enumerate(records, start=1):
-            assert record["schema_version"] == "1.0.0"
-            assert record["sequence"] == sequence
-            assert record["entrypoint"] == "emrys-resume" and record["mode"] == "resume"
-            assert record["scope_kind"] == "run" and record["scope_id"] == run_id
-            assert record["execution_attempt_id"] == refusal_log.parent.name
-        assert records[0]["fields"]["log_level"] == "normal"
-        assert records[-1]["phase"] == "preflight"
-        assert records[-1]["message"] == "Analysis preflight failed."
-        assert len(processes) == 1
-        assert _verified_snapshot(run_root) == verified_before
-        (root / "cancellation-resume-refused.json").write_text(
+        retained_roots = (
+            run_root / "contract",
+            first_attempt,
+            run_root / "state/verified",
+            *(
+                run_root / binding["path"]
+                for item in interrupted.tasks
+                if item.record is not None
+                for binding in (
+                    *item.record["outputs"],
+                    item.record["validation_report"],
+                )
+            ),
+        )
+        # Snakemake updates its own incomplete-job metadata during retry. The
+        # prior EMRYS records, logs, input projections and verified outputs stay exact.
+        assert all(
+            (path.read_bytes(), path.stat().st_mtime_ns) == value
+            for path, value in preview_before.items()
+            if any(
+                path == retained or retained in path.parents
+                for retained in retained_roots
+            )
+        )
+        verified_after = _verified_snapshot(run_root)
+        assert all(
+            verified_after[path] == value for path, value in verified_before.items()
+        )
+        retried = next(
+            item
+            for item in completed.tasks
+            if (item.expected.machine_key, item.expected.scope_id) == (owner, scope)
+        )
+        assert len(retried.terminal_attempts) == 2
+        assert retried.terminal_attempts[0] == terminal
+        assert retried.terminal_attempts[1].record["status"] == "succeeded"
+        assert (
+            retried.terminal_attempts[1].record["task_start_record"]
+            != terminal.record["task_start_record"]
+        )
+        assert (
+            completed.latest_attempt["tasks"][owner][scope]["retry_task_attempt_record"]
+            == terminal.record_reference
+        )
+        assert (
+            len(completed.latest_receipt["task_start_records"])
+            == len(completed.tasks) + 1
+        )
+        (root / "cancellation-resume-completed.json").write_text(
             json.dumps(
                 {
-                    "blocked_attempt": first_id,
+                    "interrupted_attempt": first_id,
+                    "completed_attempt": completed.latest_attempt[
+                        "workflow_attempt_id"
+                    ],
                     "quiescence_checks": quiescence_checks,
                 }
             )
         )
 
 
-def test_public_real_snakemake_native_cancellation_preserves_blocked_resume(
+@pytest.mark.skipif(
+    sys.platform != "linux", reason="Task retry requires Linux descendant closure"
+)
+def test_public_real_snakemake_native_cancellation_resumes_after_closed_abort(
     tmp_path: Path,
 ) -> None:
     ready_path = tmp_path / "native-ready.fifo"
@@ -6017,8 +6057,9 @@ def test_public_real_snakemake_native_cancellation_preserves_blocked_resume(
             )
             assert os.getpgid(native["pid"]) == native["pgid"]
             os.kill(process.pid, signal.SIGTERM)
-            assert process.wait(timeout=240) == 0, log_path.read_text()
-        assert (tmp_path / "cancellation-resume-refused.json").is_file()
+            # This now includes a complete resumed pipeline and report production.
+            assert process.wait(timeout=300) == 0, log_path.read_text()
+        assert (tmp_path / "cancellation-resume-completed.json").is_file()
         completed = True
     finally:
         os.close(writer)
@@ -6533,7 +6574,7 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
     selected_manifests = tuple(
         target_root.glob("contract/workflow-inputs/*/samples.tsv")
     )
-    assert len(selected_manifests) == 2
+    assert len(selected_manifests) == 1
     assert {path.read_bytes() for path in selected_manifests} == {predecessor_manifest}
     assert all(
         step08.validate_sample_manifest(path)[1] == selected_ids
@@ -6681,9 +6722,7 @@ def test_public_downstream_run_reuses_processing_without_mutating_its_source(
         )
         == 2
     )
-    assert (
-        "not at an admissible between-task resume boundary" in capsys.readouterr().err
-    )
+    assert "not at an admissible closed-task resume boundary" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("changed", ("native", "r_package", "seal"))
@@ -6894,3 +6933,398 @@ def test_inspect_log_root_requires_explicit_run_before_reads(
     assert control.inspect_from_args(arguments) == 2
     assert "--log-root requires a Run selector" in capsys.readouterr().err
     assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "closed",
+        "changed-input",
+        "second-closed",
+        "stale-reference",
+        "unclosed",
+        "active",
+        "verified",
+        "retained",
+        "preentry",
+        "late-start-in-old-receipt",
+    ),
+)
+def test_retry_history_keeps_old_closure_separate_from_current_readiness(
+    tmp_path, monkeypatch, case
+):
+    from emrys.orchestration.run_coordinator import _inspection_evidence as evidence
+    from emrys.orchestration.run_coordinator import _inspection_attempts as histories
+    from emrys.orchestration.run_coordinator import task
+    from emrys.orchestration.run_coordinator._inspection_admission import ExpectedTask
+
+    expected = ExpectedTask("fixture.owner", "00a", "reference", "reference")
+    marker = tmp_path / "state/verified/fixture.owner/reference.json"
+    marker_reference = {"path": str(marker.relative_to(tmp_path)), "sha256": "e" * 64}
+
+    def reference(origin, filename):
+        return {
+            "path": f"attempts/{origin}/tasks/fixture.owner/reference/{filename}",
+            "sha256": origin * 64,
+        }
+
+    def entry(origin, *, outcome="abort"):
+        start_ref = (
+            None if outcome == "preentry" else reference(origin, "task-start.json")
+        )
+        start = (
+            None
+            if start_ref is None
+            else {
+                "workflow_attempt_id": origin,
+                "workflow_attempt_record": {
+                    "path": f"attempts/{origin}/attempt.json",
+                    "sha256": origin * 64,
+                },
+            }
+        )
+        record = {
+            "workflow_attempt_id": origin,
+            "task_start_record": start_ref,
+            "status": "succeeded" if outcome == "verified" else "failed",
+            "abort_closure": "linux-task-prepublication.v1"
+            if outcome == "abort"
+            else None,
+        }
+        terminal = (
+            None
+            if outcome == "unclosed"
+            else histories.TaskAttemptObservation(
+                record, reference(origin, "task-attempt.json")
+            )
+        )
+        return histories.TaskHistoryEntry(expected, origin, start, start_ref, terminal)
+
+    def attempt(origin, retry=None, retained=None):
+        definition = (
+            {"retry_task_attempt_record": retry}
+            if retained is None
+            else {"workflow_attempt_record": retained}
+        )
+        return {
+            "workflow_attempt_id": origin,
+            "tasks": {expected.machine_key: {expected.scope_id: definition}},
+        }
+
+    first = entry(
+        "a",
+        outcome="preentry"
+        if case == "preentry"
+        else "unclosed"
+        if case in {"unclosed", "active"}
+        else "abort",
+    )
+    entries = [first]
+    attempts = [attempt("a")]
+    verified = None
+    if case in {
+        "second-closed",
+        "stale-reference",
+        "verified",
+        "retained",
+        "late-start-in-old-receipt",
+    }:
+        second = entry(
+            "b",
+            outcome="abort"
+            if case in {"second-closed", "stale-reference"}
+            else "verified",
+        )
+        entries.append(second)
+        attempts.append(attempt("b", first.terminal.record_reference))
+        if case == "stale-reference":
+            attempts.append(attempt("c", first.terminal.record_reference))
+        elif case != "second-closed":
+            verified = second.terminal.record
+            marker.parent.mkdir(parents=True)
+            marker.touch()
+            if case == "retained":
+                attempts.append(
+                    attempt(
+                        "c", retained=second.start_record["workflow_attempt_record"]
+                    )
+                )
+    elif case == "preentry":
+        attempts.append(attempt("b"))
+
+    fresh = []
+
+    def recheck(**kwargs):
+        fresh.append(kwargs["record_reference"])
+        if case == "changed-input":
+            raise task.TaskBoundaryError("original input changed")
+        if verified is not None:
+            pytest.fail(
+                "Historical abort cannot require absent finals after successful retry"
+            )
+
+    monkeypatch.setattr(evidence, "expected_tasks", lambda *_: (expected,))
+    monkeypatch.setattr(evidence, "verified_tree_blockers", lambda *_: ())
+    monkeypatch.setattr(
+        evidence,
+        "inspect_attempt_task_trees",
+        lambda *_args, **_kwargs: (tuple(entries), ()),
+    )
+    monkeypatch.setattr(evidence, "_record_reference", lambda *_: marker_reference)
+    monkeypatch.setattr(
+        task, "validate_verified_task", lambda *_args, **_kwargs: verified
+    )
+    monkeypatch.setattr(task, "recheck_aborted_task", recheck)
+    observed = evidence.inspect_task_evidence(
+        tmp_path,
+        {},
+        {},
+        attempts,
+        receipts={},
+        authority=object(),
+        allow_incomplete_origin="a" if case == "active" else None,
+    )
+    inspected = observed.tasks[0]
+    assert len(inspected.terminal_attempts) == sum(
+        entry.terminal is not None for entry in entries
+    )
+    assert len(observed.task_start_records) == sum(
+        entry.start_reference is not None for entry in entries
+    )
+    if case in {"changed-input", "stale-reference", "unclosed"}:
+        assert inspected.state == "blocked" and observed.results_blockers
+        assert inspected.retry_task_attempt_record is None
+    elif verified is not None:
+        assert inspected.state == "verified" and not observed.results_blockers
+        assert fresh == []
+        projections = (
+            (
+                "task_start_records",
+                tuple(
+                    (item["workflow_attempt_id"], item)
+                    for item in observed.task_start_records
+                ),
+                "starts",
+            ),
+            (
+                "task_attempt_records",
+                tuple(
+                    (item["workflow_attempt_id"], item)
+                    for item in observed.task_attempt_records
+                ),
+                "results",
+            ),
+            ("verified_tasks", (("b", observed.verified_tasks[0]),), "verified"),
+        )
+        old = {
+            "status": "failed",
+            "task_start_records": list(observed.task_start_records[:1]),
+            "task_attempt_records": list(observed.task_attempt_records[:1]),
+            "verified_tasks": [],
+        }
+        if case == "late-start-in-old-receipt":
+            old["task_start_records"] = list(observed.task_start_records)
+        integrity, results = evidence._receipt_evidence_blockers(
+            attempts, {"a": old}, projections, observed.tasks
+        )
+        assert not integrity
+        assert bool(results) == (case == "late-start-in-old-receipt")
+    else:
+        assert inspected.state == "pending" and not observed.results_blockers
+        if case in {"closed", "second-closed"}:
+            assert (
+                inspected.retry_task_attempt_record
+                == entries[-1].terminal.record_reference
+            )
+            assert fresh == [inspected.retry_task_attempt_record]
+        else:
+            assert inspected.retry_task_attempt_record is None and fresh == []
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "entered",
+        "preentry",
+        "active",
+        "unterminated",
+        "foreign",
+        "symlink",
+        "selected-scope",
+        "changed-start",
+        "malformed-terminal",
+    ),
+)
+def test_task_history_scanner_closes_exact_current_scope_files(
+    tmp_path, monkeypatch, case
+):
+    from emrys.contracts.orchestration import api as contracts
+    from emrys.orchestration.run_coordinator import _inspection_attempts as histories
+    from emrys.orchestration.run_coordinator import task
+    from emrys.orchestration.run_coordinator._inspection_admission import ExpectedTask
+
+    expected = ExpectedTask("fixture.owner", "00a", "reference", "reference")
+    other = ExpectedTask("fixture.owner", "00a", "reference", "other")
+    root = tmp_path / "attempts/a/tasks/fixture.owner/reference"
+    root.mkdir(parents=True)
+    start = {"workflow_attempt_id": "a"}
+    start_reference = {
+        "path": str((root / "task-start.json").relative_to(tmp_path)),
+        "sha256": contracts.canonical_sha256(start),
+    }
+    if case != "preentry":
+        (root / "task-start.json").write_text("start")
+    terminal = {"task_start_record": None if case == "preentry" else start_reference}
+    if case not in {"active", "unterminated"}:
+        for name in ("task-attempt.json", "stdout.log", "stderr.log"):
+            (root / name).write_text(name)
+    if case == "foreign":
+        (root / "unknown.json").touch()
+    if case == "symlink":
+        (root / "stdout.log").unlink()
+        (root / "stdout.log").symlink_to(root / "stderr.log")
+    if case == "selected-scope":
+        other_root = root.parent / "other"
+        other_root.mkdir()
+        (other_root / "task-start.json").touch()
+    attempts = [
+        {
+            "workflow_attempt_id": "a",
+            "tasks": {
+                "fixture.owner": {
+                    "reference": {"retry_task_attempt_record": None},
+                    "other": {"retry_task_attempt_record": None},
+                }
+            },
+        }
+    ]
+    monkeypatch.setattr(histories, "expected_tasks", lambda *_: (expected, other))
+    monkeypatch.setattr(task, "validate_task_start", lambda *_args, **_kwargs: start)
+    monkeypatch.setattr(
+        histories,
+        "_record_reference",
+        lambda *_: (
+            {**start_reference, "sha256": "f" * 64}
+            if case == "changed-start"
+            else start_reference
+        ),
+    )
+    monkeypatch.setattr(
+        task,
+        "_admit_task_attempt",
+        lambda **_kwargs: (
+            (_ for _ in ()).throw(task.TaskBoundaryError("malformed terminal"))
+            if case == "malformed-terminal"
+            else (terminal, {"path": "result", "sha256": "a" * 64})
+        ),
+    )
+    entries, blockers = histories.inspect_attempt_task_trees(
+        tmp_path,
+        {},
+        {},
+        attempts,
+        authority=object(),
+        allow_incomplete_origin="a" if case == "active" else None,
+        selected_task=(expected.machine_key, expected.scope_id)
+        if case == "selected-scope"
+        else None,
+    )
+    assert bool(blockers) == (
+        case
+        in {"unterminated", "foreign", "symlink", "changed-start", "malformed-terminal"}
+    )
+    if case in {"unterminated", "foreign", "symlink", "malformed-terminal"}:
+        assert len(entries) == 1
+        assert entries[0].start_reference == start_reference
+        assert entries[0].terminal is None
+    if not blockers:
+        assert len(entries) == 1
+        assert entries[0].expected == expected
+        assert (entries[0].terminal is None) == (case == "active")
+        assert (entries[0].start_record is None) == (case == "preentry")
+
+
+@pytest.mark.parametrize("tamper", (None, "omit", "repoint"))
+def test_selected_task_admission_rechecks_receipt_projection(
+    tmp_path, monkeypatch, tamper
+):
+    from emrys.orchestration.run_coordinator import _inspection_evidence as evidence
+    from emrys.orchestration.run_coordinator import _inspection_attempts as histories
+    from emrys.orchestration.run_coordinator import task
+    from emrys.orchestration.run_coordinator._inspection_admission import ExpectedTask
+
+    expected = ExpectedTask("fixture.owner", "00a", "reference", "reference")
+    scope = expected.scope
+    start = {
+        "path": "attempts/a/tasks/fixture.owner/reference/task-start.json",
+        "sha256": "a" * 64,
+    }
+    terminal = {
+        "path": "attempts/a/tasks/fixture.owner/reference/task-attempt.json",
+        "sha256": "b" * 64,
+    }
+    result = {
+        "workflow_attempt_id": "a",
+        "task_start_record": start,
+        "abort_closure": "linux-task-prepublication.v1",
+        "status": "failed",
+    }
+    entry = histories.TaskHistoryEntry(
+        expected,
+        "a",
+        {"workflow_attempt_id": "a"},
+        start,
+        histories.TaskAttemptObservation(result, terminal),
+    )
+
+    def projection(reference):
+        return {
+            "workflow_attempt_id": "a",
+            "machine_key": expected.machine_key,
+            "scope": scope,
+            "record": reference,
+        }
+
+    receipt = {
+        "status": "failed",
+        "task_start_records": [projection(start)],
+        "task_attempt_records": [projection(terminal)],
+        "verified_tasks": [],
+    }
+    if tamper == "omit":
+        receipt["task_attempt_records"] = []
+    elif tamper == "repoint":
+        receipt["task_attempt_records"][0]["record"] = {**terminal, "sha256": "f" * 64}
+    # Other scopes are validated by the full caller, without rehashing their
+    # output trees at each parallel Task entry.
+    for field in ("task_start_records", "task_attempt_records", "verified_tasks"):
+        other = copy.deepcopy(projection(terminal))
+        other["machine_key"] = "other.owner"
+        receipt[field].append(other)
+    monkeypatch.setattr(evidence, "expected_tasks", lambda *_: (expected,))
+    monkeypatch.setattr(
+        evidence, "inspect_attempt_task_trees", lambda *_a, **_k: ((entry,), ())
+    )
+    monkeypatch.setattr(task, "recheck_aborted_task", lambda **_k: None)
+    observed = evidence.inspect_task_evidence(
+        tmp_path,
+        {},
+        {},
+        [
+            {
+                "workflow_attempt_id": "a",
+                "tasks": {
+                    expected.machine_key: {
+                        expected.scope_id: {"retry_task_attempt_record": None}
+                    }
+                },
+            }
+        ],
+        receipts={"a": receipt},
+        authority=object(),
+        selected_task=(expected.machine_key, expected.scope_id),
+    )
+    assert not observed.integrity_blockers
+    assert bool(observed.results_blockers) == (tamper is not None)
+    if tamper is not None:
+        assert "cumulative Task attempts" in observed.results_blockers[0]

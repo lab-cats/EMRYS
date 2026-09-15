@@ -231,26 +231,21 @@ def _terminalize_active_attempt(
     expected = inspection.expected_tasks(
         inspection.admit_successor_run(built.run_root), built.profile
     )
-    starts = []
-    for item in sorted(
-        expected,
-        key=lambda value: (value.machine_key, value.scope_type, value.scope_id),
-    ):
-        path = (
-            built.run_root
-            / "state"
-            / "task-starts"
-            / item.machine_key
-            / f"{item.scope_id}.json"
-        )
-        if path.is_file() and not path.is_symlink():
-            starts.append(
-                {
-                    "machine_key": item.machine_key,
-                    "scope": item.scope,
-                    "record": _reference(path, built.run_root),
-                }
-            )
+    scopes = {(item.machine_key, item.scope_id): item.scope for item in expected}
+
+    def task_records(name: str) -> list[dict[str, Any]]:
+        return [
+            {
+                "workflow_attempt_id": path.parents[3].name,
+                "machine_key": path.parents[1].name,
+                "scope": scopes[path.parents[1].name, path.parent.name],
+                "record": _reference(path, built.run_root),
+            }
+            for path in sorted(built.run_root.glob(f"attempts/*/tasks/*/*/{name}"))
+        ]
+
+    starts = task_records("task-start.json")
+    terminals = task_records("task-attempt.json")
     verified = []
     for item in expected:
         path = (
@@ -269,7 +264,7 @@ def _terminalize_active_attempt(
                 }
             )
     receipt = {
-        "schema_version": "emrys.attempt-receipt.v2",
+        "schema_version": "emrys.attempt-receipt.v3",
         "run_id": attempt["run_id"],
         "execution_contract_sha256": attempt["execution_contract_sha256"],
         "profile_sha256": attempt["profile_sha256"],
@@ -280,7 +275,7 @@ def _terminalize_active_attempt(
         "finished_at": finished_at,
         "snakemake_exit_code": 1,
         "termination_signal": None,
-        "preentry_task_attempt_records": [],
+        "task_attempt_records": terminals,
         "task_start_records": starts,
         "verified_tasks": verified,
         "blockers": [],
@@ -854,10 +849,8 @@ def _task_definition(
         if row is not validation_row and row["adapter"] != "step00c_reference_fasta_v1"
     )
     validation_report = resolved(validation_row)
-    task_start = run_root / "state" / "task-starts" / machine_key / f"{scope_id}.json"
     verified = run_root / "state" / "verified" / machine_key / f"{scope_id}.json"
     for parent in {
-        task_start.parent,
         verified.parent,
         validation_report.parent,
         *(
@@ -925,6 +918,7 @@ def _task_definition(
         "task_attempt_id": _task_attempt_id(index),
         "owner_run_token": f"test-owner-{index:03d}",
         "scope_type": str(task["scope_type"]),
+        "retry_task_attempt_record": None,
         "producer_argv": producer,
         "validator_argv": validator,
         "inputs": input_declarations,
@@ -1021,7 +1015,7 @@ def build(
     storage_receipt = root / "storage.qualified.json"
     storage_receipt.write_bytes(b"bounded no-science storage qualification\n")
     attempt = {
-        "schema_version": "emrys.workflow-attempt.v3",
+        "schema_version": "emrys.workflow-attempt.v4",
         "run_id": execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(execution_bytes).hexdigest(),
         "profile_sha256": hashlib.sha256(profile_snapshot.read_bytes()).hexdigest(),

@@ -79,6 +79,125 @@ def test_successor_lifecycle_requires_symbolic_resource_policy() -> None:
 
 
 @pytest.mark.parametrize(
+    ("boundary", "change"),
+    (
+        ("locked", None),
+        ("outer", "omit"),
+        ("outer", "repoint"),
+        ("locked", "omit"),
+        ("locked", "repoint"),
+        ("locked", "history"),
+    ),
+)
+def test_resume_preflights_recheck_exact_pending_retry_references(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, boundary: str, change: str | None
+) -> None:
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+
+    reference = {
+        "path": "attempts/previous/tasks/owner/retry/task-attempt.json",
+        "sha256": "a" * 64,
+    }
+    previous = {
+        "workflow_attempt_id": "previous",
+        "run_id": "run-fixture",
+        "execution_contract_sha256": "b" * 64,
+        "profile_sha256": "c" * 64,
+        "execution_mode": "local-science-tools",
+        "executor": "snakemake",
+    }
+    attempt = {
+        **previous,
+        "workflow_attempt_id": "next",
+        "supersedes_workflow_attempt_id": "previous",
+        "tasks": {
+            "owner": {
+                "retry": {"retry_task_attempt_record": dict(reference)},
+                "unentered": {"retry_task_attempt_record": None},
+                "verified": {
+                    "workflow_attempt_record": {
+                        "path": "attempts/previous/attempt.json",
+                        "sha256": "d" * 64,
+                    }
+                },
+            }
+        },
+    }
+
+    def scope(name, state, retry=None):
+        return SimpleNamespace(
+            expected=SimpleNamespace(machine_key="owner", scope_id=name),
+            state=state,
+            retry_task_attempt_record=retry,
+        )
+
+    observed = SimpleNamespace(
+        recovery_available=True,
+        latest_attempt=previous,
+        latest_receipt={"status": "interrupted"},
+        tasks=(
+            scope("retry", "pending", reference),
+            scope("unentered", "pending"),
+            scope("verified", "verified"),
+        ),
+    )
+    locks, observations = [], []
+
+    def inspect_run(root, *, ops, allowed_next_attempt=None):
+        assert root == tmp_path
+        observations.append(allowed_next_attempt)
+        return observed
+
+    monkeypatch.setattr(inspection, "state_tree_blockers", lambda _root: ())
+    monkeypatch.setattr(
+        inspection,
+        "lock_tree_blockers",
+        lambda _root, *, expected_run_lock: locks.append(expected_run_lock) or (),
+    )
+    monkeypatch.setattr(
+        inspection,
+        "inspect_attempt_tree",
+        lambda _root: ((tmp_path / "attempts/previous",), ()),
+    )
+    monkeypatch.setattr(inspection, "inspect_run", inspect_run)
+    ops = SimpleNamespace(
+        host_name=lambda: "fixture",
+        process_is_alive=lambda _pid: False,
+        validate_reporting_receipt=lambda *_a, **_k: None,
+    )
+
+    def mutate():
+        changed = {**reference, "sha256": "e" * 64}
+        if change == "history":
+            observed.tasks[0].retry_task_attempt_record = changed
+        else:
+            attempt["tasks"]["owner"]["retry"]["retry_task_attempt_record"] = (
+                None if change == "omit" else changed
+            )
+
+    if boundary == "outer":
+        mutate()
+    failure = lambda: pytest.raises(
+        lifecycle.LifecycleError, match="exact admitted history"
+    )
+    with failure() if boundary == "outer" else nullcontext():
+        lifecycle._operation_preflight("resume", tmp_path, attempt, ops)
+    if boundary == "outer":
+        assert locks == [False] and observations == [None]
+        return
+    if change is not None:
+        mutate()
+    with failure() if change is not None else nullcontext():
+        lifecycle._under_lock_attempt_preflight(
+            SimpleNamespace(operation="resume"), tmp_path, attempt, ops
+        )
+    assert locks == [False, True]
+    assert observations[0] is None and observations[1] is attempt
+    assert not tuple(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize(
     ("run_suffix", "source_suffix", "allowed"),
     [
         ("same", "same", False),
@@ -1200,7 +1319,7 @@ def _materialize_start_only(
     task_root = plan.task_attempt_path.parent
     task_root.mkdir(parents=True, exist_ok=True)
     start = {
-        "schema_version": "emrys.task-start.v2",
+        "schema_version": "emrys.task-start.v3",
         "run_id": built.execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(
             (built.run_root / "contract" / "run.json").read_bytes()
@@ -1218,6 +1337,12 @@ def _materialize_start_only(
             built.run_root, attempt, require_active=True
         ),
         "created_at": "2026-08-12T12:01:00Z",
+        "inputs": [
+            _bound("workflow_attempt", plan.path),
+            _bound("execution_contract", plan.execution_path),
+            _bound("workflow_profile", plan.profile_path),
+            *(_bound(item.role, item.path) for item in plan.inputs),
+        ],
     }
     orchestration_contracts.validate_record("task-start", start)
     start_path.write_bytes(orchestration_contracts.canonical_json_bytes(start))
@@ -1240,7 +1365,8 @@ def _materialize_preentry_failure(
     stdout.write_bytes(stdout_data)
     stderr.write_bytes(stderr_data)
     record = {
-        "schema_version": "emrys.task-attempt.v3",
+        "schema_version": "emrys.task-attempt.v4",
+        "abort_closure": None,
         "run_id": built.execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(
             (built.run_root / "contract" / "run.json").read_bytes()
@@ -1331,7 +1457,7 @@ def _materialize_verified(
         task_start_path = plan.task_start_path
         task_start_path.parent.mkdir(parents=True, exist_ok=True)
         start = {
-            "schema_version": "emrys.task-start.v2",
+            "schema_version": "emrys.task-start.v3",
             "run_id": built.execution["run_id"],
             "execution_contract_sha256": execution_hash,
             "profile_sha256": profile_hash,
@@ -1345,6 +1471,12 @@ def _materialize_verified(
                 built.run_root, workflow_attempt, require_active=True
             ),
             "created_at": "2026-08-12T12:01:00Z",
+            "inputs": [
+                _bound("workflow_attempt", plan.path),
+                _bound("execution_contract", plan.execution_path),
+                _bound("workflow_profile", plan.profile_path),
+                *(_bound(item.role, item.path) for item in plan.inputs),
+            ],
         }
         orchestration_contracts.validate_record("task-start", start)
         start_bytes = orchestration_contracts.canonical_json_bytes(start)
@@ -1358,7 +1490,8 @@ def _materialize_verified(
         (task_root / "stderr.log").write_bytes(b"fixture owner stderr\n")
         report_reference = _record_reference(report_path, built.run_root)
         task_attempt = {
-            "schema_version": "emrys.task-attempt.v3",
+            "schema_version": "emrys.task-attempt.v4",
+            "abort_closure": None,
             "run_id": built.execution["run_id"],
             "execution_contract_sha256": execution_hash,
             "profile_sha256": profile_hash,
@@ -1382,7 +1515,7 @@ def _materialize_verified(
             "stdout_log": _record_reference(task_root / "stdout.log", built.run_root),
             "stderr_log": _record_reference(task_root / "stderr.log", built.run_root),
             "failure_message": None,
-            "inputs": [_bound("fixture_input", input_path)],
+            "inputs": start["inputs"],
             "outputs": [_bound(output.role, output.path) for output in plan.outputs],
         }
         orchestration_contracts.validate_record("task-attempt", task_attempt)
@@ -1406,12 +1539,13 @@ def _attempt_tasks(
         for scope_id in by_scope:
             verified = built.verified_root / machine / f"{scope_id}.json"
             if verified.is_file() and not verified.is_symlink():
+                marker = orchestration_contracts.load_record(verified, "verified-task")
+                terminal = orchestration_contracts.load_record(
+                    built.run_root / marker["task_attempt_record"]["path"],
+                    "task-attempt",
+                )
                 start = orchestration_contracts.load_record(
-                    built.run_root
-                    / "state"
-                    / "task-starts"
-                    / machine
-                    / f"{scope_id}.json",
+                    built.run_root / terminal["task_start_record"]["path"],
                     "task-start",
                 )
                 by_scope[scope_id] = {
@@ -1436,7 +1570,7 @@ def _attempt(
         built.root
     )
     return {
-        "schema_version": "emrys.workflow-attempt.v3",
+        "schema_version": "emrys.workflow-attempt.v4",
         "run_id": built.execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(execution_bytes).hexdigest(),
         "profile_sha256": hashlib.sha256(profile_bytes).hexdigest(),
@@ -1573,7 +1707,7 @@ def test_success_publishes_receipt_last_and_inspection_ignores_engine_metadata(
     outcome = _run_attempt(built.request, ops=built.ops())
 
     assert outcome.receipt["status"] == "succeeded"
-    assert outcome.receipt["schema_version"] == "emrys.attempt-receipt.v2"
+    assert outcome.receipt["schema_version"] == "emrys.attempt-receipt.v3"
     assert "reporting_completion_records" not in outcome.receipt
     assert "local_pipeline_complete" not in outcome.receipt
     expected_task_count = len(
@@ -1858,7 +1992,7 @@ def test_complete_results_do_not_replace_latest_scientific_attempt_outcome() -> 
     assert (
         inspection._attempt_outcome(
             latest={"workflow_attempt_id": "latest"},
-            receipt={"schema_version": "emrys.attempt-receipt.v2", "status": "failed"},
+            receipt={"schema_version": "emrys.attempt-receipt.v3", "status": "failed"},
             running=False,
             integrity_blockers=(),
             results_status="complete",
@@ -1878,7 +2012,7 @@ def test_rederived_results_blocker_does_not_block_run_integrity_by_wording(
         attempt_outcome="blocked",
         latest_attempt={"workflow_attempt_id": "latest"},
         latest_receipt={
-            "schema_version": "emrys.attempt-receipt.v2",
+            "schema_version": "emrys.attempt-receipt.v3",
             "status": "blocked",
             "blockers": ["Could not admit task-start record"],
         },
@@ -2060,13 +2194,16 @@ def test_terminal_task_observation_does_not_admit_unverified_results(
         if (item.expected.machine_key, item.expected.scope_id)
         == (plan.machine_key, plan.scope["scope_id"])
     )
-    assert inspected.state == "pending" and inspected.record is None
+    assert inspected.state == ("pending" if malformed_start else "blocked")
+    assert inspected.record is None
     assert inspected.record_reference is None
     terminal_reference = _record_reference(plan.task_attempt_path, plan.run_root)
     if malformed_start:
         assert inspected.start_reference is None
         assert inspected.terminal_attempts == ()
-        assert any("Could not close task-start" in item for item in observed.blockers)
+        assert any(
+            "Could not close attempt task state" in item for item in observed.blockers
+        )
     else:
         assert inspected.start_reference is not None
         assert len(inspected.terminal_attempts) == 1
@@ -2810,7 +2947,12 @@ def test_live_owned_incomplete_start_is_running_then_terminally_blocked(
                 )
                 output = capsys.readouterr().out
                 assert output.count("Scientific task observations:") == 1
-                assert "  Started; completion unverified: 1" in output
+                observation = (
+                    "Started; completion unverified"
+                    if state.attempt_outcome == "running"
+                    else "Verification not admitted"
+                )
+                assert f"  {observation}: 1" in output
                 assert f"Scientific Results: {state.results_status}" in output
                 assert f"Run lock: {state.lock_observation}" in output
                 assert "Recovery available: no" in output
@@ -3026,7 +3168,9 @@ def test_task_start_crash_and_damage_remain_blocked(
         ),
     )
     assert observed.results_status == "blocked"
-    assert any("task-start" in blocker for blocker in observed.blockers)
+    assert any(
+        "Could not close attempt task state" in blocker for blocker in observed.blockers
+    )
     assert {
         control._inspection_presentation.task_observation(item)
         for item in observed.tasks
@@ -3306,7 +3450,10 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
         first.request, ops=replace(first.ops(), run_workflow=partial_workflow)
     )
     assert first_outcome.receipt["status"] == "failed"
-    assert len(first_outcome.receipt["preentry_task_attempt_records"]) == 1
+    task_count = sum(
+        len(scopes) for scopes in _attempt_record(first.request)["tasks"].values()
+    )
+    assert len(first_outcome.receipt["task_attempt_records"]) == task_count
     assert inspection.inspect_run(
         first.built.run_root,
         ops=inspection.InspectionOps(
@@ -3329,7 +3476,7 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
     first.materialize_complete = True
     second_outcome = _run_attempt(first.request, ops=first.ops())
     assert second_outcome.receipt["status"] == "succeeded"
-    assert len(second_outcome.receipt["preentry_task_attempt_records"]) == 1
+    assert len(second_outcome.receipt["task_attempt_records"]) == task_count + 1
     complete_observation = inspection.inspect_run(
         first.built.run_root,
         ops=inspection.InspectionOps(
@@ -3401,7 +3548,7 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
         first_outcome.receipt_path, "attempt-receipt"
     )
     omitted = copy.deepcopy(original_first_receipt)
-    omitted["preentry_task_attempt_records"] = []
+    omitted["task_attempt_records"] = []
     first_outcome.receipt_path.write_bytes(
         orchestration_contracts.canonical_json_bytes(omitted)
     )
@@ -3415,7 +3562,7 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
     )
     assert omitted_observation.results_status == "blocked"
     assert any(
-        "cumulative preentry evidence" in blocker
+        "cumulative Task attempts" in blocker
         for blocker in omitted_observation.blockers
     )
     first_outcome.receipt_path.write_bytes(

@@ -39,7 +39,6 @@ from emrys.orchestration.run_coordinator._inspection_admission import (
     expected_tasks,
     lock_tree_blockers,
     state_tree_blockers,
-    task_start_tree_blockers,
     verified_tree_blockers,
 )
 from emrys.orchestration.run_coordinator._inspection_attempts import (
@@ -53,6 +52,7 @@ from emrys.orchestration.run_coordinator._inspection_evidence import (
     TaskInspection,
     ValidatedReportingReceipt,
     inspect_evidence,
+    inspect_task_evidence,
 )
 
 AttemptOutcome = Literal[
@@ -523,7 +523,7 @@ def admit_processing_source(run_root: Path) -> ProcessingSourceAdmission:
         or state.reporting_status != "not applicable"
         or receipt is None
         or attempt is None
-        or receipt.get("schema_version") != "emrys.attempt-receipt.v2"
+        or receipt.get("schema_version") != "emrys.attempt-receipt.v3"
         or receipt.get("status") != "succeeded"
     ):
         raise InspectionError(
@@ -640,7 +640,7 @@ __all__ = (
     "inspect_run",
     "lock_tree_blockers",
     "state_tree_blockers",
-    "task_start_tree_blockers",
+    "inspect_task_evidence",
     "verified_tree_blockers",
     "validate_processing_source",
 )

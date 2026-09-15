@@ -647,7 +647,7 @@ whose prepared state became stale while waiting exits before these writes and
 leaves no new Attempt residue.
 
 `attempts/<workflow-attempt-id>/attempt.json` is the sole immutable execution
-manifest (`emrys.workflow-attempt.v3`). It contains shared runtime and workflow
+manifest (`emrys.workflow-attempt.v4`). It contains shared runtime and workflow
 settings once, plus task definitions keyed by owner and scope. Each definition
 binds exact worker and validator commands, inputs, outputs, publication controls,
 and its validation report. Fixed internal paths are derived from the Run,
@@ -657,8 +657,10 @@ not produced.
 On resume, a verified task refers directly to its original Attempt manifest and
 selects the original owner and scope. References cannot form chains, and reused
 definitions cannot execute as new work. Pending definitions belong to the new
-Attempt; retained Step 07 work keeps its original selected-sample manifest and
-content binding. A changed plan requires a new Run; resume creates a new Attempt
+Attempt and freeze a nullable `retry_task_attempt_record`: null for an unentered
+scope, otherwise the exact latest positive abort for that scope. Retained Step
+07 work and retries keep the original selected-sample manifest path and bytes;
+resume never recreates missing historical inputs. A changed plan requires a new Run; resume creates a new Attempt
 without changing any predecessor.
 
 Graph construction shares decoded original manifests across task definitions.
@@ -668,13 +670,16 @@ mutable cache. The [recorded scale probe](../../../../docs/history/validation-ev
 shows that fewer planning files can increase per-task decoding cost; it does
 not establish a workflow speedup.
 
-Immediately before producer entry, the task publishes an immutable start record
-binding its original manifest's path and exact hash. Its stdout and
+Immediately before producer entry, the task publishes `emrys.task-start.v3` at
+`attempts/<workflow-attempt-id>/tasks/<owner>/<scope>/task-start.json`, binding
+its original manifest, Run lock and complete input snapshots. Every retry has
+its own start; the aggregate `state/task-starts` path is no longer admitted.
+Its stdout and
 stderr files are create-exclusive, no-follow, drained through EOF, byte- and
 order-preserving within each stream, synchronized, hash-bound, and revalidated.
 No ordering between streams is claimed.
 
-A task publishes one immutable terminal attempt (`emrys.task-attempt.v3`)
+A task publishes one immutable terminal attempt (`emrys.task-attempt.v4`)
 containing its status, commands, input/output identities, validation report,
 and log references. Scientific receipt files are ordinary declared outputs,
 covered by the same content checks and publication rules as other results.
@@ -685,6 +690,36 @@ retain its exact bound diagnostics without marking the scope entered, so a
 later Attempt may retry it. Unexpected interruption after stream creation may
 leave partial diagnostics but no terminal or verified record. Log presence or
 content never establishes success.
+
+A failed entered Task may record `abort_closure: linux-task-prepublication.v1`
+only when the fresh Linux worker positively reaps every command descendant,
+no native publication invocation has begun, original input bytes and directory
+membership remain unchanged, all native destinations/output directories,
+validation reports and verified markers are absent, and existing owned cleanup
+and directory synchronization succeed. Reused preexisting FAI/DICT pairs do not
+qualify. The proof rechecks input identities and origin authority before and
+after cleanup and immediately before terminal publication. Hashing and
+revalidation remain interruptible; only the existing exclusive record write
+masks Task signals. Failed proof leaves the closure field null. Ambiguous
+writer state continues to preserve owned work and locks.
+
+The same history owner admits all per-Attempt starts and terminal results,
+checks frozen retry references in supersession order, and projects both complete
+histories into `emrys.attempt-receipt.v3`. A nonblocked receipt requires every
+entered Task to have a positive abort or a verified result. Historical closure
+admission does not require outputs to remain absent after a successful retry;
+fresh resume planning separately checks current inputs, destinations and
+residue. Lifecycle repeats the frozen plan under the Run lock, the backend
+admits the complete history, and a resuming Task reuses the same history policy
+for its own scope before entry. A stale or omitted retry reference is refused.
+
+This requires trusted workers to keep relevant computation and writes within
+their descendants and supplied owned paths, without preexisting-service or
+remote delegation, as required by the [provider contract](../../analyses/README.md).
+Structural admission is not a filesystem or network sandbox. Worker loss,
+missing workflow finalization, blocked receipts, postpublication failures and
+old record formats remain ineligible. A durable Task abort without a complete
+terminal workflow receipt does not authorize resume.
 
 Snakemake schedules only verified-task targets. Native artifacts, validation
 reports, receipts, streams, and recovery evidence are not disposable engine
@@ -791,13 +826,13 @@ Worker contracts own their scientific checks, formats, and provenance rules.
 
 ## Resume, inspection, Results, and reporting
 
-Only a failed or interrupted scientific between-task boundary is automatically
-resumable. Resume must preserve the same Run, source, Execution Plan, profile,
-backend, execution mode, and ordered tool identities. Every entered task must
-have a complete succeeded-attempt/verified chain; every retryable unentered
-scope must lack a start record. Successful processing Runs are complete, and
-blocked ambiguity requires explicit reconciliation rather than inference or
-cleanup.
+A failed or interrupted scientific Attempt is resumable only after all entered
+Tasks have verified results or positive prepublication abort closure. Resume
+preserves the same Run, source, Execution Plan, profile, backend, execution mode
+and ordered tool identities. An unentered scope has no start; an entered pending
+scope binds its latest closed abort and freshly satisfies retry readiness.
+Successful processing Runs are complete. Missing finalization or blocked
+ambiguity remains preserved and ineligible for automatic retry.
 
 Inspection is read-only. It admits the immutable record chain, live lock,
 receipts, verified content, Results, reporting, and recovery state without
@@ -877,8 +912,7 @@ EMRYS Run.
 | Location | Durable contents |
 | --- | --- |
 | `contract/` | Immutable Analysis, Execution Plan, Run, profile, runtime, and reporting inputs. |
-| `attempts/<workflow-attempt-id>/` | One immutable Attempt manifest, task results and streams, and receipt published last. |
-| `state/task-starts/` | Immutable producer-entry records. |
+| `attempts/<workflow-attempt-id>/` | One immutable Attempt manifest, per-Task starts/results/streams, and receipt published last. |
 | `state/verified/` | Path/hash references to successful terminal task attempts. |
 | `state/reporting/` | Start and verified records for reporting transactions. |
 | `results/` | Sole scientist-facing Results authority; modules declare final paths beneath it. |

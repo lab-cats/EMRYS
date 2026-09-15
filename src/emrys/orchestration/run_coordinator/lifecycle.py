@@ -1573,6 +1573,29 @@ def _admit_request(
     )
 
 
+def _require_frozen_retries(
+    attempt: Mapping[str, Any], observed: inspection.RunInspection
+) -> None:
+    expected = {
+        (
+            item.expected.machine_key,
+            item.expected.scope_id,
+        ): item.retry_task_attempt_record
+        for item in observed.tasks
+        if item.state == "pending"
+    }
+    frozen = {
+        (owner, scope): entry["retry_task_attempt_record"]
+        for owner, scopes in attempt["tasks"].items()
+        for scope, entry in scopes.items()
+        if "workflow_attempt_record" not in entry
+    }
+    if frozen != expected:
+        raise LifecycleError(
+            "Resume task retries differ from the exact admitted history"
+        )
+
+
 def _operation_preflight(
     operation: Operation,
     root: Path,
@@ -1609,7 +1632,7 @@ def _operation_preflight(
     )
     if not observed.recovery_available:
         raise LifecycleError(
-            "Resume requires an independently revalidated between-task boundary: "
+            "Resume requires an independently revalidated closed-task boundary: "
             + "; ".join(
                 observed.blockers
                 or (
@@ -1629,6 +1652,7 @@ def _operation_preflight(
     for field in inspection.attempt_fields():
         if attempt[field] != latest[field]:
             raise LifecycleError(f"Resume attempt is incompatible on {field}")
+    _require_frozen_retries(attempt, observed)
 
 
 def _under_lock_attempt_preflight(
@@ -1674,7 +1698,7 @@ def _under_lock_attempt_preflight(
         or observed.latest_receipt is None
     ):
         raise LifecycleError(
-            "Resume lost its revalidated between-task boundary under lock: "
+            "Resume lost its revalidated closed-task boundary under lock: "
             + "; ".join(
                 observed.blockers
                 or (
@@ -1690,6 +1714,7 @@ def _under_lock_attempt_preflight(
     for field in inspection.attempt_fields():
         if attempt[field] != observed.latest_attempt[field]:
             raise LifecycleError(f"Resume became incompatible on {field}")
+    _require_frozen_retries(attempt, observed)
 
 
 def _terminal_receipt(
@@ -1701,7 +1726,7 @@ def _terminal_receipt(
     lock_bytes: bytes,
     status: str,
     result: WorkflowResult | None,
-    preentry_tasks: list[dict[str, Any]],
+    terminal_tasks: list[dict[str, Any]],
     task_starts: list[dict[str, Any]],
     verified: list[dict[str, Any]],
     blockers: Sequence[str],
@@ -1709,7 +1734,7 @@ def _terminal_receipt(
     now: datetime,
 ) -> dict[str, Any]:
     receipt = {
-        "schema_version": "emrys.attempt-receipt.v2",
+        "schema_version": "emrys.attempt-receipt.v3",
         "run_id": attempt["run_id"],
         "execution_contract_sha256": attempt["execution_contract_sha256"],
         "profile_sha256": attempt["profile_sha256"],
@@ -1723,7 +1748,7 @@ def _terminal_receipt(
         "finished_at": _timestamp(now),
         "snakemake_exit_code": None if result is None else result.exit_code,
         "termination_signal": None if result is None else result.termination_signal,
-        "preentry_task_attempt_records": preentry_tasks,
+        "task_attempt_records": terminal_tasks,
         "task_start_records": task_starts,
         "verified_tasks": verified,
         "blockers": list(dict.fromkeys(blockers)),
@@ -1866,7 +1891,7 @@ def _run_attempt_locked(
     )
     verified = list(evidence.verified_tasks)
     task_starts = list(evidence.task_start_records)
-    preentry_tasks = list(evidence.preentry_task_attempt_records)
+    terminal_tasks = list(evidence.task_attempt_records)
     missing = list(evidence.missing_tasks)
     blockers = [
         *inspection.state_tree_blockers(root),
@@ -1999,7 +2024,7 @@ def _run_attempt_locked(
         )
         verified = list(evidence.verified_tasks)
         task_starts = list(evidence.task_start_records)
-        preentry_tasks = list(evidence.preentry_task_attempt_records)
+        terminal_tasks = list(evidence.task_attempt_records)
         missing = list(evidence.missing_tasks)
         blockers = [
             *runtime_blockers,
@@ -2085,7 +2110,7 @@ def _run_attempt_locked(
         lock_bytes=lock_bytes,
         status=status,
         result=result,
-        preentry_tasks=preentry_tasks,
+        terminal_tasks=terminal_tasks,
         task_starts=task_starts,
         verified=verified,
         blockers=blockers,
@@ -2109,7 +2134,7 @@ def _run_attempt_locked(
                     lock_bytes=lock_bytes,
                     status="interrupted",
                     result=result,
-                    preentry_tasks=preentry_tasks,
+                    terminal_tasks=terminal_tasks,
                     task_starts=task_starts,
                     verified=verified,
                     blockers=blockers,

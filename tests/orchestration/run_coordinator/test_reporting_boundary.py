@@ -115,7 +115,7 @@ def _terminalize_attempt(run_root: Path, attempt_path: Path) -> None:
         "record": _reference(attempt_path, run_root),
     }
     terminal = {
-        "schema_version": "emrys.attempt-receipt.v2",
+        "schema_version": "emrys.attempt-receipt.v3",
         "run_id": attempt["run_id"],
         "execution_contract_sha256": attempt["execution_contract_sha256"],
         "profile_sha256": attempt["profile_sha256"],
@@ -126,8 +126,12 @@ def _terminalize_attempt(run_root: Path, attempt_path: Path) -> None:
         "finished_at": "2026-08-12T15:00:00Z",
         "snakemake_exit_code": 0,
         "termination_signal": None,
-        "preentry_task_attempt_records": [],
-        "task_start_records": [task_evidence],
+        "task_attempt_records": [
+            {"workflow_attempt_id": attempt["workflow_attempt_id"], **task_evidence}
+        ],
+        "task_start_records": [
+            {"workflow_attempt_id": attempt["workflow_attempt_id"], **task_evidence}
+        ],
         "verified_tasks": [task_evidence],
         "blockers": [],
         "message": None,

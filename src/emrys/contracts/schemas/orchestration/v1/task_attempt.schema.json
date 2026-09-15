@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:emrys:schema:orchestration:task-attempt:v3",
-  "title": "EMRYS immutable terminal task result v3",
+  "$id": "urn:emrys:schema:orchestration:task-attempt:v4",
+  "title": "EMRYS immutable terminal task result v4",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -27,11 +27,12 @@
     "stderr_log",
     "failure_message",
     "inputs",
-    "outputs"
+    "outputs",
+    "abort_closure"
   ],
   "properties": {
     "schema_version": {
-      "const": "emrys.task-attempt.v3"
+      "const": "emrys.task-attempt.v4"
     },
     "run_id": {
       "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/run_id"
@@ -130,6 +131,12 @@
       "items": {
         "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/bound_file"
       }
+    },
+    "abort_closure": {
+      "enum": [
+        null,
+        "linux-task-prepublication.v1"
+      ]
     }
   },
   "allOf": [
@@ -209,6 +216,43 @@
           },
           "failure_message": {
             "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/non_empty_string"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "abort_closure": {
+            "const": "linux-task-prepublication.v1"
+          }
+        },
+        "required": [
+          "abort_closure"
+        ]
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "const": "failed"
+          },
+          "task_start_record": {
+            "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
+          },
+          "stable_inputs_rechecked": {
+            "const": true
+          },
+          "outputs": {
+            "maxItems": 0
+          },
+          "validation_report": {
+            "type": "null"
+          },
+          "failure_message": {
+            "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/non_empty_string"
+          },
+          "inputs": {
+            "minItems": 3
           }
         }
       }

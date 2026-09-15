@@ -43,7 +43,7 @@ real-Slurm lane nor an institutional walkthrough.
 | Novice setup, qualification, resource selection and report access | CV-02/04/06/07/09/11/13/14/17/19/22/27: exercise the maintained RUNBOOK on one exact installed revision; retain selected profile/runtime and report identities. Visual review is separate. |
 | Scheduler, monitoring, cancellation and reuse at Viking | CV-01/03/08/15/16/18/20 and `SITE-PARITY-01`: retain exact request/Run/Attempt bindings, cross-node observations, queued/preparation/reconnect behavior and two-Project compute accessibility. |
 | Historical unexplained failures | CV-12/E01, CV-21/E06 and CV-10/E09: recover original diagnostics or a discriminating reproduction; newer successful checks cannot identify those causes. |
-| Postentry Task retry | CV-10: qualify the production writer boundary, then implement one complete history/abort/retry contract across all consumers. Existing blocked receipts remain ineligible. |
+| Postentry Task retry | CV-10: current-version closed-abort retry has hosted acceptance evidence; institutional cancellation and missing-finalization evidence remain. Existing blocked receipts remain ineligible. |
 | Doctor performance | CV-26 and the optimization campaign: use retained invocation counters and CV-05's accounting observations for comparable site setup/retry measurements; preserve fresh admission checks until an equivalent replacement has measured benefit. |
 | Optional interface and retirement | CV-23 keeps cleanup Deferred; CV-24 retains explicit new-analysis selection in the CLI; `DASHBOARD-RETIRE-01` owns institutional replacement validation and coordinated standalone entry-point/caller/name retirement. |
 
@@ -146,15 +146,17 @@ groups. A FIFO readiness handshake follows a native fixture's partial output;
 only then does the test signal the isolated public Run process. Production
 signal forwarding, native escalation and workflow grace periods remain in use.
 The fixture checks group absence before lock release and receipt publication,
-retained failed Task/start/log evidence, cleaned owned work and the current
-blocked receipt. Scientific effects and readiness remain explicit test doubles.
+retained failed Task/start/log evidence and cleaned owned work. With CV-10's
+current Linux abort contract, it also checks a positively closed interrupted
+receipt, read-only resume preview and successful execution in a new Attempt.
+Earlier records and verified outputs remain unchanged. Scientific effects and
+readiness remain explicit test doubles; actual-tool descendant containment is
+verified separately under CV-10.
 
-Resume preview must refuse without writes. Execution-mode refusal may retain
-its normal failed application log, while the Run and all earlier evidence stay
-unchanged. The existing successful between-Task failure/resume case remains a
-separate defense. Full integration passed the combined standard CI above.
-This does not establish actual scientific-tool or Slurm/site
-cancellation, or make a postentry Task retryable.
+The successful between-Task failure/resume case remains a separate defense.
+Both public journeys passed the final CV-10 standard CI recorded below. Missing
+finalization or unclosed Task evidence still prevents resume. This does not
+establish Slurm/site cancellation or recover historical interrupted Runs.
 
 The existing public failed-Run/resume journey also checks real report producer
 publication boundaries through separate public inspection processes, as recorded
@@ -548,52 +550,26 @@ the preserved lock/no-receipt boundary; their execution passed standard CI.
 Ruff, formatting and whitespace checks pass. These source-derived protections
 do not establish E09's cause or actual Slurm cancellation behavior. CV-01 adds
 the separately bounded real-Snakemake/native-fixture observation.
-Lost wrappers, escaped descendants and explicit safe reconciliation remain
-open. No task or Run becomes recoverable solely because an outer group stopped.
+Missing finalization and institutional cancellation evidence remain open. No
+Task or Run becomes recoverable solely because an outer group stopped.
 
-**Established source constraint:** A Task with admitted entry and no verified
-result remains blocked after clean native cancellation. Task re-entry refuses
-its fixed start/verified paths, Snakefile admission rejects the incomplete
-entered scope, and receipt validation requires every start to be verified for
-a nonblocked outcome. Receipt history also permits only one start per logical
-Task scope. Control and lifecycle retain these predicates before resume.
-The CV-01 real-backend fixture protects this boundary; a released lock or clean
-writer shutdown alone is insufficient recovery evidence.
+**Supported recovery boundary:** The earlier fixed-start contract blocked every
+entered Task without verified success, including clean cancellation. The
+accepted Linux descendant prerequisite below now supports one complete
+replacement across planning, Task entry, history inspection, backend admission,
+receipts, reuse, reporting and presentation. An entered Task is retryable only
+with a finalized, positively closed prepublication abort and unchanged current
+inputs. Run identity and prior evidence stay immutable.
 
-Same-input `run` resolves to the same content-derived Run ID and refuses its
-non-pristine destination. Processing reuse accepts only a complete successful
-source. Neither is an implicit postentry retry route. Supporting that route
-requires a versioned start/history and abort-closure model that preserves prior
-references, proves owned cleanup and unchanged inputs, freezes exact retry
-intent, and rechecks it under the Run lock. Existing blocked evidence must not
-be silently migrated or reclassified. That recovery design remains Open.
+Same-input `run` still resolves to the same content-derived Run ID and refuses
+its non-pristine destination. Processing reuse still requires a complete
+successful source. `resume` is the existing explicit retry route; there is no
+new recovery command or mutable recovery state. Old record versions and blocked
+receipts are refused unchanged. Lost worker evidence, missing workflow
+finalization and E09 are not reconstructed from a released lock or clean process
+group.
 
-**Retry prerequisite decision:** Do not add recovery schemas or relax these
-predicates before qualifying an exact production writer boundary. Current
-group quiescence proves the registered process group is empty; a detached
-descendant can belong to another group. Run-local output placement alone does
-not prove that every writer has stopped. The canonical BAM shell uses
-foreground samtools calls and the outer launcher uses `exec`, but executable
-hashes, inherited utility paths and loader/plugin dependencies do not establish
-a closed set of writers. Existing fake-samtools tests and the substituted
-native producer in CV-01 do not supply actual samtools containment evidence.
-
-A future supported class needs enforceable descendant containment or an exact
-audited non-detaching launcher/tool/environment contract with real cancellation
-evidence. Only then should one complete change introduce immutable per-Attempt
-start history, positive abort closure before any native output publication,
-and exact frozen retry references. Closure must establish reaped native execution, unchanged
-inputs and directory membership, owned cleanup and absent final destinations;
-every entered concurrent Task must independently close or verify. Historical
-admission must preserve those recorded facts after a later retry creates outputs,
-while preview freshly checks retry readiness and entry repeats it under the
-Run lock.
-Processing reuse, reporting, receipts, backend admission and presentation must
-all consume the same history. Existing blocked receipts remain ineligible.
-No speculative protocol versions, new mutable state or retry action are added
-by this design decision. CV-10 stays Open for this prerequisite and E09 evidence.
-
-**Selected descendant-containment prerequisite:** Use the existing fresh Linux
+**Accepted descendant-containment prerequisite:** Use the existing fresh Linux
 Task worker as a [child subreaper](https://man7.org/linux/man-pages/man2/PR_SET_CHILD_SUBREAPER.2const.html).
 Linux reparents orphaned descendants to that
 worker even after a child creates a separate session. The existing native runner,
@@ -620,15 +596,15 @@ covers adoption and escalation. Observation, signaling or reaping uncertainty
 preserves the existing ambiguity boundary.
 
 Linux process fixtures and the unchanged canonical BAM producer with the
-already-provisioned samtools are required before accepting this prerequisite.
+already-provisioned samtools supply the retained prerequisite evidence below.
 The managed golden path retains their exact-revision results and tiny outputs.
 The claim covers kernel descendant processes, not work delegated to a preexisting
 external service or remote process. These checks do not explain E09 or supply
 site cancellation evidence. Worker loss still supplies no positive closure:
 native work/locks may remain with a
 blocked receipt even when the outer Run lock can be released. No existing
-blocked Task becomes retryable, and history/abort/retry changes remain gated on
-this prerequisite's verified result.
+blocked Task becomes retryable; the new protocol uses this verified capability
+only in fresh Linux Task workers.
 
 The implementation adds 162 net product lines in the existing Task owner.
 Fifteen focused unit protections and the existing lightweight runner checks
@@ -662,6 +638,68 @@ could otherwise leave that file at the Run root. The central producer launch
 replaces that behavior for all current owners without per-tool launch flags,
 new directories or additional product lines. This is output-placement policy,
 not a filesystem sandbox or new retry authority.
+
+**Implemented closed-abort retry:** Task starts now live inside their original
+Attempt's task tree (`task-start.v3`) and bind the complete original input
+snapshot. A failed `task-attempt.v4` can record the single positive closure
+`linux-task-prepublication.v1` only after the fresh Linux worker proves every
+native descendant reaped, unchanged input bytes/identities and directory
+membership, untouched publication destinations, owned cleanup and successful
+directory synchronization. Publication is tracked before its first invocation;
+rollback never restores retry eligibility. Expensive proof remains interruptible.
+Worker loss, uncertain child state, incomplete cleanup, reused sidecars and
+postpublication failures cannot earn closure.
+
+The existing inspection owner admits all starts and terminal attempts in
+supersession order. `attempt-receipt.v3` binds their cumulative exact references,
+and every entered concurrent Task must close or verify before resume is offered.
+`workflow-attempt.v4` freezes each new Task's exact latest abort reference;
+planning, locked lifecycle admission, backend admission and Task entry reuse
+the same history policy. Retained verified work keeps its original origin.
+Selected-sample projections keep their original path and bytes without copying
+or recreating missing historical evidence. Historical abort admission remains
+valid after a successful retry publishes outputs; current retry readiness
+separately checks unchanged inputs, empty destinations and absent owned residue.
+
+The supported provider contract requires workers to keep writes in their owned
+paths and work within descendant processes. Kernel closure does not cover
+preexisting services or remote delegation, and structural admission is not a
+sandbox. Inline/non-Linux execution retains its earlier boundary and cannot
+publish this positive closure.
+
+Local focused checks cover current record shapes, historical versus current
+readiness, damaged or incomplete task trees, selected-scope receipt drift,
+interruptible proof and descendant observation. At product
+`79d45fb8a974d34572aca5da1ec22a4e4cdbac74`, the real-Snakemake cancellation →
+read-only preview → successful resume journey passed in 238.76 seconds in
+[CI job 104486782385](https://github.com/lab-cats/EMRYS/actions/runs/35000308100/job/104486782385).
+It preserves prior EMRYS records, logs, selected inputs and verified outputs
+while creating a new Attempt; Snakemake's own incomplete-job metadata may change.
+
+The managed golden job passed all 47 selected containment cases with zero skips,
+including all ten abort-proof modes and four real samtools cases. Only the fully
+closed abort mode earned positive closure; the nine refused modes retained null
+closure. The real-tool cancellation cases retain the stopped-sort/empty-output
+limits described above. This tested PR merge
+`3aa865b1c42d710f40b2a698045db2eed9438bcf`, containing that product head and
+base `13cd68750e4223431a594478804795905bfe9154`. The retained
+[artifact 10410455801](https://github.com/lab-cats/EMRYS/actions/runs/35000308100/artifacts/10410455801)
+has SHA-256 `a8b0e166cd0d1b5f1a898cd8abb32eb91b2b418582ea2342ed7926ba1fd0f258`.
+
+That initial complete suite failed four older fixture assumptions about Task
+labels, retained origins and immutable resource policy. Their corrections keep
+the refusal checks and construct valid predecessor/Run bindings; no recovery
+predicate was relaxed. Final product head
+`a947b8fca04eb052c3829e897f255b046b002087` passed all 14 standard jobs, with
+four configured skips, in
+[CI 35002451860](https://github.com/lab-cats/EMRYS/actions/runs/35002451860).
+The strengthened public cancellation/resume journey passed in 282.22 seconds;
+all 47 native cases passed without skips. Final
+[artifact 10411245477](https://github.com/lab-cats/EMRYS/actions/runs/35002451860/artifacts/10411245477)
+has SHA-256 `7f691245b22bf4b24cd479745b041adfdcc9d11b662f0455ff1ceebde6d16985`.
+CV-10 remains Open for institutional cancellation acceptance and E09's missing finalization/diagnostic
+evidence. This change does not recover the historical interrupted Run or
+establish its cause.
 
 ### CV-11 Resource profile compatibility
 
@@ -1558,11 +1596,15 @@ cached admission or weaker fresh checks.
 The temporary scheduling, sampling and comparison apparatus and its prototype
 fixtures are retired; canonical donor/borrower counters and native-containment
 checks remain. No product optimization or evidence deletion occurs. The original
-and follow-up automatic PR suites had an unrelated prototype fixture failure
+and follow-up automatic PR suites had a prototype-only fixture failure
 (immediate SIGKILL observation, then a 0.2-second fixture startup timeout).
 Those failed suites are not promoted to passing evidence; the selected real
 experiment passed independently with its 600-second trial bound. Retirement
-requires fresh standard CI. CV-26 remains Open for the complete comparable
+head `13cd68750e4223431a594478804795905bfe9154` then passed all 14 standard
+jobs, with four configured skips, in
+[CI 34998873917](https://github.com/lab-cats/EMRYS/actions/runs/34998873917).
+That combined run also validates the retained producer-workspace prerequisite.
+CV-26 remains Open for the complete comparable
 institutional operation/queue measurements and E11 attribution; this experiment
 and its adoption decision are finished.
 
