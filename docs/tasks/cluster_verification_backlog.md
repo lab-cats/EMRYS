@@ -508,6 +508,12 @@ only after the replacement is validated under `DASHBOARD-RETIRE-01`.
 **Owners/dependencies:** Run coordinator presentation and existing dashboard;
 CV-15/20/21/25. Action execution is the separate CV-24 proposal.
 
+**Implemented evidence projection:** CV-15 supplies Task evidence counts;
+CV-25 adds admitted terminal outcomes and exact retained logs to the same
+inspection snapshot. CV-20 supplies exact selected-request scheduler state.
+These are shared CLI observations for a future integrated view; the existing
+dashboard remains in place until its complete replacement acceptance is met.
+
 ### CV-17 Project creation progress
 
 **Finding:** Actual-data initialization silently read large inputs for minutes
@@ -751,6 +757,26 @@ functions or a guessed latest log. Coordinate the old Slurm-name retirement
 through `DASHBOARD-RETIRE-01` instead of independently renaming streams.
 **Owners/dependencies:** Application logging, submission, inspection/dashboard;
 CV-02/03/16/20.
+
+**Implemented Task-log slice:** Normal inspection counts admitted terminal
+Task attempts; verbose/debug output shows their recorded outcome, original
+Attempt, and content-bound record/stdout/stderr paths. Existing Task-tree
+admission supplies records without another log scan. Postentry observations
+must match an already admitted start reference and originating Attempt;
+preentry failures preserve the existing ordering rule across later starts.
+All output uses the existing terminal escaping. Recorded success cannot replace
+verified Task evidence, complete Results or authorize recovery. Earlier failed
+attempts remain visible alongside later success, without a guessed latest log.
+The 63 net product lines reuse the existing admission and escaping owners;
+there are no new product files, schemas, commands or dependencies.
+
+**Verification:** Fixtures cover failed preentry/postentry records, recorded
+success without scientific verification, retry history, absent terminal records,
+malformed scope/start references, wrong-Attempt starts, and changed/truncated
+logs. Public normal/verbose/debug rendering uses one snapshot, escapes diagnostic
+text, preserves evidence and retains Results/recovery refusal. Static checks
+pass; application fixtures require hosted CI. Startup/application/reporting
+stream association and the integrated dashboard remain open.
 
 ### CV-26 Repeated Doctor input reads
 

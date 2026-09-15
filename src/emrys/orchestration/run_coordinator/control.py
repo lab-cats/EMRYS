@@ -1844,6 +1844,16 @@ def inspect_from_args(
             _task_observation(task) for task in observed.tasks
         ).items():
             print(f"  {label}: {count}")
+    terminal_attempts = tuple(
+        terminal for task in observed.tasks for terminal in task.terminal_attempts
+    )
+    print(f"Recorded Task attempts: {len(terminal_attempts)}")
+    if terminal_attempts:
+        print("Recorded outcomes do not establish verified scientific completion.")
+        if detail == "normal":
+            print(
+                "Use --detail verbose for recorded outcomes and content-bound log paths."
+            )
     print(f"Scientific Results: {observed.results_status}")
     print(f"Reporting admission: {observed.reporting_status}")
     if observed.reporting_status != "not applicable":
@@ -1879,6 +1889,22 @@ def inspect_from_args(
                 f"Execution: {latest['executor']}/{latest['execution_mode']} "
                 f"placement={placement_kind} scheduler_job_id={scheduler_job_id}"
             )
+    if detail != "normal" and terminal_attempts:
+        print("Recorded Task outcomes and logs:")
+        for terminal in terminal_attempts:
+            record = terminal.record
+            _print_safe(
+                f"  TASK {record['machine_key']}/{record['scope']['scope_id']}: "
+                f"recorded {record['status']}; Attempt {record['workflow_attempt_id']}"
+            )
+            for label, reference in (
+                ("record", terminal.record_reference),
+                ("stdout", record["stdout_log"]),
+                ("stderr", record["stderr_log"]),
+            ):
+                _print_safe(f"    {label}: {observed.run_root / reference['path']}")
+            if record["failure_message"] is not None:
+                _print_safe(f"    failure: {record['failure_message']}")
     if detail == "debug":
         authority = observed.authority
         print("Run authority records:")

@@ -1273,7 +1273,10 @@ def _materialize_preentry_failure(
 
 
 def _materialize_verified(
-    built: workflow_fixture.WorkflowFixture, attempt_path: Path
+    built: workflow_fixture.WorkflowFixture,
+    attempt_path: Path,
+    *,
+    skip: tuple[str, str] | None = None,
 ) -> None:
     execution_hash = hashlib.sha256(
         (built.run_root / "contract" / "run.json").read_bytes()
@@ -1290,6 +1293,8 @@ def _materialize_verified(
     ):
         machine = expected.machine_key
         scope_id = expected.scope_id
+        if (machine, scope_id) == skip:
+            continue
         marker = built.verified_root / machine / f"{scope_id}.json"
         if marker.is_file() and not marker.is_symlink():
             continue
@@ -1985,6 +1990,152 @@ def test_verified_mutation_blocks(tmp_path: Path) -> None:
     assert observed.results_status == "blocked" and not observed.recovery_available
 
 
+@pytest.mark.parametrize("recorded_status", ("failed", "succeeded"))
+@pytest.mark.parametrize("malformed_start", (False, True))
+def test_terminal_task_observation_does_not_admit_unverified_results(
+    tmp_path: Path,
+    recorded_status: str,
+    malformed_start: bool,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    built = _build_harness(tmp_path, result=lifecycle.WorkflowResult(9, None))
+    built.materialize_complete = True
+    plans = []
+
+    def without_verification(
+        argv: tuple[str, ...], cwd: Path
+    ) -> lifecycle.WorkflowResult:
+        result = built.run_workflow(argv, cwd)
+        attempt_id = str(_attempt_record(built.request)["workflow_attempt_id"])
+        attempt_path = built.built.run_root / "attempts" / attempt_id / "attempt.json"
+        _expected, plan = _first_task_context(built.built, attempt_path)
+        plans.append(plan)
+        record = orchestration_contracts.load_record(
+            plan.task_attempt_path, "task-attempt"
+        )
+        record["status"] = recorded_status
+        record["failure_message"] = (
+            "fixture postentry failure\x1b[31m" if recorded_status == "failed" else None
+        )
+        orchestration_contracts.validate_record("task-attempt", record)
+        plan.task_attempt_path.write_bytes(
+            orchestration_contracts.canonical_json_bytes(record)
+        )
+        plan.verified_task_path.unlink()
+        return result
+
+    outcome = _run_attempt(
+        built.request, ops=replace(built.ops(), run_workflow=without_verification)
+    )
+    plan = plans[0]
+    if malformed_start:
+        record = orchestration_contracts.load_record(
+            plan.task_attempt_path, "task-attempt"
+        )
+        start_path = plan.run_root / record["task_start_record"]["path"]
+        start_path.write_bytes(b'{"malformed":true}')
+        record["task_start_record"] = _record_reference(start_path, plan.run_root)
+        orchestration_contracts.validate_record("task-attempt", record)
+        plan.task_attempt_path.write_bytes(
+            orchestration_contracts.canonical_json_bytes(record)
+        )
+    before = {
+        path: path.read_bytes()
+        for path in built.built.run_root.rglob("*")
+        if path.is_file()
+    }
+    observed = inspection.inspect_run(
+        built.built.run_root,
+        ops=inspection.InspectionOps(
+            lambda: "fixture-host", lambda _pid: True, built.validate_reporting
+        ),
+    )
+    inspected = next(
+        item
+        for item in observed.tasks
+        if (item.expected.machine_key, item.expected.scope_id)
+        == (plan.machine_key, plan.scope["scope_id"])
+    )
+    assert inspected.state == "pending" and inspected.record is None
+    assert inspected.record_reference is None
+    terminal_reference = _record_reference(plan.task_attempt_path, plan.run_root)
+    if malformed_start:
+        assert inspected.start_reference is None
+        assert inspected.terminal_attempts == ()
+        assert any("Could not close task-start" in item for item in observed.blockers)
+    else:
+        assert inspected.start_reference is not None
+        assert len(inspected.terminal_attempts) == 1
+        terminal = inspected.terminal_attempts[0]
+        assert terminal.record["status"] == recorded_status
+        assert terminal.record_reference == terminal_reference
+        assert terminal.record["stdout_log"] == _record_reference(
+            plan.stdout_path, plan.run_root
+        )
+        assert terminal.record["stderr_log"] == _record_reference(
+            plan.stderr_path, plan.run_root
+        )
+    assert observed.results_status == "blocked" and not observed.recovery_available
+    assert outcome.receipt["status"] == "blocked"
+    assert not any(
+        item["record"] == terminal_reference
+        for item in outcome.receipt["verified_tasks"]
+    )
+    snapshots = []
+
+    def snapshot(root):
+        snapshots.append(root)
+        return observed
+
+    monkeypatch.setattr(control.inspection, "inspect_run", snapshot)
+    monkeypatch.setattr(
+        control,
+        "_resolve_run_argument",
+        lambda _args: (built.request.request_source_path, plan.run_root),
+    )
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    capsys.readouterr()
+    for detail in ("normal", "verbose", "debug"):
+        assert (
+            control.inspect_from_args(
+                parser.parse_args([plan.run_root.name, "--detail", detail])
+            )
+            == 0
+        )
+        output = capsys.readouterr().out
+        assert "Recorded Task attempts:" in output
+        assert (
+            "Recorded outcomes do not establish verified scientific completion."
+            in output
+        )
+        assert "Scientific Results: blocked" in output
+        assert "Recovery available: no" in output
+        if detail == "normal":
+            assert "Use --detail verbose" in output
+            assert "Recorded Task outcomes and logs:" not in output
+        elif malformed_start:
+            assert f"    record: {plan.task_attempt_path}" not in output
+        else:
+            assert (
+                f"recorded {recorded_status}; Attempt {terminal.record['workflow_attempt_id']}"
+                in output
+            )
+            assert f"    record: {plan.task_attempt_path}" in output
+            assert f"    stdout: {plan.stdout_path}" in output
+            assert f"    stderr: {plan.stderr_path}" in output
+            if recorded_status == "failed":
+                assert "fixture postentry failure\\x1b[31m" in output
+        assert "\x1b" not in output
+    assert snapshots == [plan.run_root] * 3
+    assert {
+        path: path.read_bytes()
+        for path in built.built.run_root.rglob("*")
+        if path.is_file()
+    } == before
+
+
 @pytest.mark.parametrize("shape", ["unexpected_owner", "deep_path", "symlink_marker"])
 def test_verified_tree_residue_blocks_lifecycle_and_inspection(
     tmp_path: Path,
@@ -2673,6 +2824,7 @@ def test_live_owned_incomplete_start_is_running_then_terminally_blocked(
     assert built.live_observation.attempt_outcome == "running"
     assert built.live_observation.lock_observation == "local live owner"
     assert not built.live_observation.recovery_available
+    assert all(not item.terminal_attempts for item in built.live_observation.tasks)
     assert outcome.receipt["status"] == "blocked"
     assert len(outcome.receipt["task_start_records"]) == 1
 
@@ -2882,6 +3034,16 @@ def test_historical_task_tree_is_recursively_closed(
     assert observed.results_status == "blocked"
     assert not observed.recovery_available
     assert any("task" in blocker.lower() for blocker in observed.blockers)
+    affected = next(
+        item
+        for item in observed.tasks
+        if (item.expected.machine_key, item.expected.scope_id)
+        == (scope_root.parent.name, scope_root.name)
+    )
+    assert affected.terminal_attempts == ()
+    assert any(
+        item.terminal_attempts for item in observed.tasks if item is not affected
+    )
 
 
 def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
@@ -2936,6 +3098,26 @@ def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
 
     observed = inspection.inspect_run(first.built.run_root, ops=inspect_ops)
     assert observed.recovery_available
+    terminals = [
+        terminal for item in observed.tasks for terminal in item.terminal_attempts
+    ]
+    assert len(terminals) == 1
+    terminal = terminals[0]
+    assert (
+        terminal.record["status"] == "failed"
+        and terminal.record["task_start_record"] is None
+    )
+    assert terminal.record_reference == _record_reference(
+        task_attempt, first.built.run_root
+    )
+    assert terminal.record["stdout_log"] == {
+        "path": stdout_path.relative_to(first.built.run_root).as_posix(),
+        "sha256": hashlib.sha256(stdout_data).hexdigest(),
+    }
+    assert terminal.record["stderr_log"] == {
+        "path": stderr_path.relative_to(first.built.run_root).as_posix(),
+        "sha256": hashlib.sha256(stderr_data).hexdigest(),
+    }
     for path, expected_size in (
         (stdout_path, len(stdout_data)),
         (stderr_path, len(stderr_data)),
@@ -3024,6 +3206,13 @@ def test_task_log_mutation_blocks_completed_run_inspection(
         "SHA-256 no longer matches" in blocker and file_name.split(".")[0] in blocker
         for blocker in observed.blockers
     )
+    affected = next(
+        item
+        for item in observed.tasks
+        if (item.expected.machine_key, item.expected.scope_id)
+        == (log_path.parent.parent.name, log_path.parent.name)
+    )
+    assert affected.terminal_attempts == ()
 
 
 @pytest.mark.parametrize("file_name", ["stdout.log", "stderr.log"])
@@ -3057,6 +3246,7 @@ def test_preentry_task_log_mutation_blocks_resume(
     )
     assert observed.results_status == "blocked"
     assert observed.recovery_available is False
+    assert all(not item.terminal_attempts for item in observed.tasks)
     assert any(
         "SHA-256 no longer matches" in blocker and file_name.split(".")[0] in blocker
         for blocker in observed.blockers
@@ -3068,7 +3258,20 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
         tmp_path, result=lifecycle.WorkflowResult(23, None, "preentry failure")
     )
     first.materialize_preentry_failure = True
-    first_outcome = _run_attempt(first.request, ops=first.ops())
+
+    def partial_workflow(argv: tuple[str, ...], cwd: Path) -> lifecycle.WorkflowResult:
+        result = first.run_workflow(argv, cwd)
+        attempt_id = str(_attempt_record(first.request)["workflow_attempt_id"])
+        attempt_path = first.built.run_root / "attempts" / attempt_id / "attempt.json"
+        expected, _plan = _first_task_context(first.built, attempt_path)
+        _materialize_verified(
+            first.built, attempt_path, skip=(expected.machine_key, expected.scope_id)
+        )
+        return result
+
+    first_outcome = _run_attempt(
+        first.request, ops=replace(first.ops(), run_workflow=partial_workflow)
+    )
     assert first_outcome.receipt["status"] == "failed"
     assert len(first_outcome.receipt["preentry_task_attempt_records"]) == 1
     assert inspection.inspect_run(
@@ -3111,6 +3314,55 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
     ) == ("valid", "succeeded", "complete", "incomplete", False), (
         complete_observation.blockers
     )
+    retried = next(
+        item for item in complete_observation.tasks if len(item.terminal_attempts) == 2
+    )
+    assert [
+        item.record["workflow_attempt_id"] for item in retried.terminal_attempts
+    ] == [first_id, second_id]
+    assert [item.record["status"] for item in retried.terminal_attempts] == [
+        "failed",
+        "succeeded",
+    ]
+    reused = [item for item in complete_observation.tasks if item is not retried]
+    assert reused and all(len(item.terminal_attempts) == 1 for item in reused)
+    assert all(
+        item.terminal_attempts[0].record["workflow_attempt_id"] == first_id
+        for item in reused
+    )
+    for item in complete_observation.tasks:
+        for terminal in item.terminal_attempts:
+            assert terminal.record_reference == _record_reference(
+                first.built.run_root / terminal.record_reference["path"],
+                first.built.run_root,
+            )
+
+    historical = retried.terminal_attempts[0]
+    historical_path = first.built.run_root / historical.record_reference["path"]
+    historical_bytes = historical_path.read_bytes()
+    wrong_start = copy.deepcopy(historical.record)
+    wrong_start["task_start_record"] = retried.start_reference
+    orchestration_contracts.validate_record("task-attempt", wrong_start)
+    historical_path.write_bytes(
+        orchestration_contracts.canonical_json_bytes(wrong_start)
+    )
+    wrong_origin = inspection.inspect_run(
+        first.built.run_root,
+        ops=inspection.InspectionOps(
+            lambda: "fixture-host", lambda _pid: True, first.validate_reporting
+        ),
+    )
+    affected = next(
+        item for item in wrong_origin.tasks if item.expected == retried.expected
+    )
+    assert affected.start_origin == second_id
+    assert affected.start_reference == retried.start_reference
+    assert [
+        item.record["workflow_attempt_id"] for item in affected.terminal_attempts
+    ] == [second_id]
+    assert wrong_origin.results_status == "blocked"
+    assert wrong_origin.blockers and not wrong_origin.recovery_available
+    historical_path.write_bytes(historical_bytes)
 
     original_first_receipt = orchestration_contracts.load_record(
         first_outcome.receipt_path, "attempt-receipt"
@@ -3144,7 +3396,11 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
         status="blocked",
         blockers=["forged future binding"],
         message="forged future binding",
-        task_start_records=[second_outcome.receipt["task_start_records"][0]],
+        task_start_records=[
+            item
+            for item in second_outcome.receipt["task_start_records"]
+            if item["record"] == retried.start_reference
+        ],
     )
     first_outcome.receipt_path.write_bytes(
         orchestration_contracts.canonical_json_bytes(forged)

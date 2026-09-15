@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Literal
 
@@ -19,6 +19,7 @@ from emrys.orchestration.run_coordinator._inspection_admission import (
     verified_tree_blockers,
 )
 from emrys.orchestration.run_coordinator._inspection_attempts import (
+    TaskAttemptObservation,
     inspect_attempt_task_trees,
 )
 from emrys.orchestration.run_coordinator.reporting_boundary import (
@@ -42,6 +43,7 @@ class TaskInspection:
     record_reference: dict[str, str] | None
     start_origin: str | None = None
     start_reference: dict[str, str] | None = None
+    terminal_attempts: tuple[TaskAttemptObservation, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,13 +249,35 @@ def inspect_evidence(
         authority=authority,
         allow_incomplete_origin=allow_incomplete_origin,
     )
-    preentry_tasks, task_tree_blockers = inspect_attempt_task_trees(
+    preentry_tasks, terminal_attempts, task_tree_blockers = inspect_attempt_task_trees(
         root,
         execution,
         profile,
         attempts,
         allow_incomplete_origin=allow_incomplete_origin,
         authority=authority,
+    )
+    attempts_by_scope: dict[tuple[str, str], list[TaskAttemptObservation]] = {}
+    for observation in terminal_attempts:
+        record = observation.record
+        key = str(record["machine_key"]), str(record["scope"]["scope_id"])
+        attempts_by_scope.setdefault(key, []).append(observation)
+    tasks = tuple(
+        replace(
+            item,
+            terminal_attempts=tuple(
+                observation
+                for observation in attempts_by_scope.get(
+                    (item.expected.machine_key, item.expected.scope_id), ()
+                )
+                if observation.record["task_start_record"] is None
+                or (
+                    item.start_origin == observation.record["workflow_attempt_id"]
+                    and item.start_reference == observation.record["task_start_record"]
+                )
+            ),
+        )
+        for item in tasks
     )
     reporting, reporting_blockers, locations = inspect_reporting_ledger(
         root,

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import re
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -34,6 +35,14 @@ _ATTEMPT_CHILD_NAMES = frozenset(
         "tasks",
     }
 )
+
+
+@dataclass(frozen=True, slots=True)
+class TaskAttemptObservation:
+    """One admitted terminal record and its exact reference, without Results authority."""
+
+    record: dict[str, Any]
+    record_reference: dict[str, str]
 
 
 def inspect_attempt_tree(root: Path) -> tuple[tuple[Path, ...], tuple[str, ...]]:
@@ -300,7 +309,7 @@ def inspect_attempt_task_trees(
     *,
     allow_incomplete_origin: str | None = None,
     authority: SuccessorRunAuthority | None = None,
-) -> tuple[list[dict[str, Any]], list[str]]:
+) -> tuple[list[dict[str, Any]], tuple[TaskAttemptObservation, ...], list[str]]:
     from emrys.orchestration.run_coordinator import task  # noqa: PLC0415
 
     """Close all task trees from earlier Attempts and bind exact preentry diagnostics."""
@@ -314,6 +323,7 @@ def inspect_attempt_task_trees(
         for index, attempt in enumerate(attempts)
     }
     preentry: list[dict[str, Any]] = []
+    observations: list[TaskAttemptObservation] = []
     blockers: list[str] = []
     for attempt in attempts:
         identifier = str(attempt["workflow_attempt_id"])
@@ -393,6 +403,9 @@ def inspect_attempt_task_trees(
                                 "record": record_reference,
                             }
                         )
+                    observations.append(
+                        TaskAttemptObservation(record, record_reference)
+                    )
                 except Exception as exc:
                     blockers.append(
                         f"Could not close attempt task state {scope_path}: {exc}"
@@ -405,4 +418,4 @@ def inspect_attempt_task_trees(
             item["scope"]["scope_id"],
         )
     )
-    return preentry, blockers
+    return preentry, tuple(observations), blockers

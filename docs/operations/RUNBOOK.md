@@ -293,8 +293,12 @@ for cluster submission.
 
 `emrys inspect` reads the sole Run or offers a terminal picker. To select one
 explicitly, use its two-word name, full ID, or unique ID prefix; EMRYS never
-assumes latest. `--detail verbose` adds Run/Attempt identities and reporting
-transactions; `--detail debug` adds paths, hashes, receipts, and task commands.
+assumes latest. `--detail verbose` adds Run/Attempt identities and admitted
+terminal Task records with their original Attempt, recorded outcome, and exact
+stdout/stderr paths. Failed retries remain visible in Attempt-chain order per
+Task. Recorded success alone does not establish verified scientific completion.
+Missing, changed or malformed log evidence stays blocked; preserve it for
+diagnosis. `--detail debug` also adds authority hashes, receipts and task commands.
 Planning, execution, and Doctor instead use `--log-level verbose` or `debug`.
 For failed or interrupted Runs, follow [resume and recovery](TROUBLESHOOTING.md#run-and-reporting-state).
 
