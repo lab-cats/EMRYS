@@ -395,6 +395,22 @@ stale/ambiguous ownership, and terminal-without-finalization cases. Scheduler
 evidence may inform display but cannot replace transaction integrity checks.
 **Owners/dependencies:** Inspection/lifecycle and presentation; CV-10/16/20.
 
+**Implemented observation slice:** Normal inspection now reports Run admission
+separately from the derived lock observation and shows the recorded host/job
+only for a structurally admitted owner. An exact remote lock is labeled
+`remote ownership unverified`; it remains blocked and non-resumable. Invalid
+namespace/binding, dead local owner, live local owner, and no lock remain
+distinct. This uses the existing lock read and does not query remote hosts or
+infer scheduler liveness. Unfinished task evidence retains its strict blockers;
+separating its progress observations remains coordinated with CV-16/21, so
+CV-15 remains Open.
+
+**Verification:** Lifecycle fixtures inspect during actual admitted Attempt
+execution, including remote/dead/invalid locks and terminal retained locks;
+public normal/verbose output retains the uncertainty and blockers without
+mutating evidence or probing an unbound PID. Static checks pass; application
+tests and institutional cross-node observations remain pending.
+
 ### CV-16 Monitoring dashboard
 
 **Finding:** The operator needed separate scheduler panes, manual tails, and

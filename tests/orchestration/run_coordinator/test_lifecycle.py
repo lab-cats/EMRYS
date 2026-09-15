@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import argparse
 import fcntl
 import hashlib
 import json
@@ -33,6 +34,7 @@ from emrys.libraries.installed_package_identity import installed_package_tree_id
 from emrys.libraries.validation import inputs as validation_inputs
 from emrys.orchestration.run_coordinator import (
     _inspection_attempts,
+    control,
     doctor,
     inspection,
     lifecycle,
@@ -1681,9 +1683,24 @@ def test_clean_failure_and_interruption_are_resume_available(
         ),
     )
     assert observed.attempt_outcome == expected
+    assert observed.lock_observation == "no lock"
     assert observed.results_status == "incomplete"
     assert observed.reporting_status == "incomplete"
     assert observed.recovery_available
+
+    outcome.lock_path.write_bytes(
+        outcome.attempt_path.with_name("released-run-lock.json").read_bytes()
+    )
+    retained = inspection.inspect_run(
+        built.built.run_root,
+        ops=inspection.InspectionOps(
+            lambda: "fixture-host", lambda _pid: True, built.validate_reporting
+        ),
+    )
+    assert retained.lock_observation == "invalid or ambiguous lock"
+    assert retained.integrity == "blocked"
+    assert "Terminal workflow attempt retained its run lock" in retained.blockers
+    assert not retained.recovery_available
 
 
 def test_complete_results_do_not_replace_latest_scientific_attempt_outcome() -> None:
@@ -2434,6 +2451,7 @@ def test_live_owned_incomplete_start_is_running_then_terminally_blocked(
 
     assert built.live_observation is not None
     assert built.live_observation.attempt_outcome == "running"
+    assert built.live_observation.lock_observation == "local live owner"
     assert not built.live_observation.recovery_available
     assert outcome.receipt["status"] == "blocked"
     assert len(outcome.receipt["task_start_records"]) == 1
@@ -2449,6 +2467,123 @@ def test_live_owned_incomplete_start_is_running_then_terminally_blocked(
     assert observed.integrity == "valid"
     assert observed.attempt_outcome == "blocked"
     assert observed.results_status == "blocked"
+
+
+@pytest.mark.parametrize(
+    ("condition", "expected", "process_checks"),
+    (
+        ("local", "local live owner", 1),
+        ("remote", "remote ownership unverified", 0),
+        ("dead", "local process not live", 1),
+        ("malformed", "invalid or ambiguous lock", 0),
+        ("mismatched", "invalid or ambiguous lock", 0),
+        ("namespace", "invalid or ambiguous lock", 0),
+    ),
+)
+def test_live_lock_observation_preserves_admission_and_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    condition: str,
+    expected: str,
+    process_checks: int,
+) -> None:
+    built = _build_harness(tmp_path, result=lifecycle.WorkflowResult(9, None))
+    root = built.built.run_root
+    lock = root / "locks/run.lock"
+    foreign = root / "locks/foreign.lock"
+    observed_states = []
+    checked_processes = []
+    lock_reads = []
+    read_counts = []
+    displays = []
+    original_admit = inspection.admit_canonical_record
+
+    def admit_record(path, *args, **kwargs):
+        if path == lock:
+            lock_reads.append(path)
+        return original_admit(path, *args, **kwargs)
+
+    monkeypatch.setattr(inspection, "admit_canonical_record", admit_record)
+
+    def inspect_during_workflow(argv, cwd):
+        original_bytes = lock.read_bytes()
+        if condition == "malformed":
+            lock.write_bytes(b"malformed fixture lock\n")
+        elif condition == "mismatched":
+            record = json.loads(original_bytes)
+            record["process_id"] = 9999
+            lock.write_bytes(orchestration_contracts.canonical_json_bytes(record))
+        elif condition == "namespace":
+            foreign.write_bytes(b"ambiguous fixture lock\n")
+        before = {path: path.read_bytes() for path in root.rglob("*") if path.is_file()}
+        inspect_ops = inspection.InspectionOps(
+            lambda: "head-node" if condition == "remote" else "fixture-host",
+            lambda pid: checked_processes.append(pid) is None and condition != "dead",
+            built.validate_reporting,
+        )
+        previous_reads = len(lock_reads)
+        observed_states.append(inspection.inspect_run(root, ops=inspect_ops))
+        read_counts.append(len(lock_reads) - previous_reads)
+        with monkeypatch.context() as public:
+            public.setattr(inspection, "default_inspection_ops", lambda: inspect_ops)
+            public.setattr(
+                control,
+                "_resolve_run_argument",
+                lambda _arguments: (built.request.request_source_path, root),
+            )
+            for detail in ("normal", "verbose"):
+                capsys.readouterr()
+                previous_reads = len(lock_reads)
+                assert (
+                    control.inspect_from_args(
+                        argparse.Namespace(
+                            project=built.request.request_source_path,
+                            run=root.name,
+                            detail=detail,
+                        )
+                    )
+                    == 0
+                )
+                displays.append(capsys.readouterr().out)
+                read_counts.append(len(lock_reads) - previous_reads)
+        assert {
+            path: path.read_bytes() for path in root.rglob("*") if path.is_file()
+        } == before
+        if condition in {"malformed", "mismatched"}:
+            lock.write_bytes(original_bytes)
+        elif condition == "namespace":
+            foreign.unlink()
+        return built.run_workflow(argv, cwd)
+
+    _run_attempt(
+        built.request, ops=replace(built.ops(), run_workflow=inspect_during_workflow)
+    )
+    observed = observed_states[0]
+    assert observed.lock_observation == expected
+    assert observed.attempt_outcome == (
+        "running" if condition == "local" else "blocked"
+    )
+    assert observed.integrity == ("valid" if condition == "local" else "blocked")
+    assert not observed.recovery_available
+    assert len(checked_processes) == process_checks * 3
+    assert read_counts == [0 if condition == "namespace" else 1] * 3
+    for display in displays:
+        assert f"Run lock: {expected}" in display
+        assert f"Run admission: {observed.integrity}" in display
+        assert f"Attempt outcome: {observed.attempt_outcome}" in display
+        assert "Recovery available: no" in display
+        if condition in {"local", "remote", "dead"}:
+            assert "Recorded lock host: fixture-host; scheduler job: none" in display
+        else:
+            assert "Recorded lock host:" not in display
+        if condition != "local":
+            assert "Do not resume." in display
+    if condition == "remote":
+        assert (
+            "Run lock host is not this host; live ownership is unproved"
+            in observed.blockers
+        )
 
 
 def test_task_start_crash_and_deletion_remain_blocked(tmp_path: Path) -> None:

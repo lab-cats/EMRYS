@@ -4703,6 +4703,8 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     )
     assert control.inspect_from_args(inspect_arguments) == 0
     inspect_output = capsys.readouterr().out
+    assert "Run admission: valid" in inspect_output
+    assert "Run lock: no lock" in inspect_output
     assert "Attempt outcome: succeeded" in inspect_output
     assert "Scientific Results: complete" in inspect_output
     assert "Reporting: complete" in inspect_output

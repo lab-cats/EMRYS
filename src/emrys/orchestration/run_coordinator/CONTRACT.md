@@ -453,10 +453,19 @@ Inspection reports four independent states:
 
 | Subject | Possible states |
 | --- | --- |
-| Run integrity | `valid`, `blocked` |
+| Run admission | `valid`, `blocked` |
 | Attempt | `not_started`, `running`, `succeeded`, `failed`, `interrupted`, `blocked` |
 | Scientific Results | `incomplete`, `complete`, `blocked` |
 | Reporting | `not applicable`, `incomplete`, `complete`, `blocked` |
+
+The independent Run-lock observation distinguishes no lock, a local live owner,
+remote ownership unverified, a local process that is not live, and invalid or
+ambiguous lock state. Host/process observations follow structural lock/Attempt
+binding admission; an unbound PID is never probed as an owner. Admitted owner
+observations show the recorded host and scheduler ID, without treating those
+records as proof of current remote liveness. Remote/ambiguous/dead ownership
+continues to block Run admission and recovery. Inspection does not contact a
+remote host, remove locks, or infer scientific success from scheduler state.
 
 Recovery availability is a separate fact. A successful processing-only Run has complete Results for its
 plan and reporting is not applicable.

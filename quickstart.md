@@ -189,7 +189,7 @@ does not mean you should submit again. Wait and repeat `emrys inspect`; it
 does not start or change work. Completion is confirmed by all four lines:
 
 ```text
-Run integrity: valid
+Run admission: valid
 Attempt outcome: succeeded
 Scientific Results: complete
 Reporting: complete
@@ -246,6 +246,7 @@ report generation; issue the commands below from the head node.
 | What inspection reports | What to do |
 | --- | --- |
 | Work is still running | Wait and inspect again. Do not submit another Run or resume active work. |
+| Run lock says `remote ownership unverified` | The recorded owner is on another host. Keep its host/job details and inspect again; this observation does not prove the job stopped or authorize recovery. |
 | Computation failed or was interrupted, with `Recovery available: yes` | Run `emrys resume`, review its plan and answer `y` for the supported retry. It checks completed work before reusing it and records a new Attempt for the same Run. |
 | Scientific Results are complete, but reports are missing and generation is unblocked | Run `emrys report` to check the proposed reporting work, then `emrys report --execute` to submit it. Inspect again when it finishes. Completed scientific work does not need to be repeated. |
 | A state is blocked, or reporting refuses partial files | Stop and retain the inspection output and printed logs for the EMRYS maintainer. Do not delete files, remove locks or force a retry. |

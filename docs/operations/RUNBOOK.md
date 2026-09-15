@@ -265,7 +265,7 @@ For failed or interrupted Runs, follow [resume and recovery](TROUBLESHOOTING.md#
 
 ### Inspect and open reports
 
-A successful full Run shows `Run integrity: valid`, `Attempt outcome: succeeded`,
+A successful full Run shows `Run admission: valid`, `Attempt outcome: succeeded`,
 `Scientific Results: complete`, and `Reporting: complete`. Open the printed
 `Scientific report` for candidate results and `Evidence report` for execution
 and provenance. Linked machine-readable tables contain the complete data;
@@ -301,7 +301,7 @@ existing profile; direct execution requires a permitted compute host.
    ```
 
    Replace `RUN` with its name, full ID, or unique ID prefix. Continue after
-   inspection shows valid integrity, a succeeded Attempt, complete Scientific
+   inspection shows valid Run admission, a succeeded Attempt, complete Scientific
    Results, and complete Reporting. Copy the printed report paths; their common
    `results/` ancestor is the directory to transfer. Do not choose a directory
    by modification time or copy a bundle still being published.
