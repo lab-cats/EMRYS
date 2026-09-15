@@ -9,11 +9,13 @@ from tests.tools import source_dependencies as dependencies
 REPO_ROOT = Path(__file__).resolve().parents[3]
 LOGGING_NAMESPACE = "emrys.libraries.application_logging"
 
-# Add exact packaged-Python importer modules only in an approved LOG-05 slice.
+# Add exact packaged-Python importers only in an approved owner slice.
+# CV-17 admits onboarding's elapsed-time presenter, not an application log.
 APPROVED_PRODUCTION_IMPORTERS = frozenset(
     {
         "emrys.orchestration.run_coordinator.control",
         "emrys.orchestration.run_coordinator.doctor",
+        "emrys.orchestration.run_coordinator.onboarding",
     }
 )
 
@@ -44,5 +46,5 @@ def test_application_logging_production_import_roster_is_exact() -> None:
     assert not unexpected and not stale, (
         "application-logging production-import roster changed; "
         f"unapproved={unexpected or 'none'}; stale={stale or 'none'}. "
-        "Production imports require an approved LOG-05 slice."
+        "Production imports require an approved owner slice."
     )
