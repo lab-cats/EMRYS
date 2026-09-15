@@ -683,6 +683,17 @@ application cases await CI. CV-20 remains Open for admitted Run/log association
 and institutional scheduler acceptance. Neither retained context nor a terminal
 scheduler record grants scientific completion, cancellation or recovery authority.
 
+**Implemented application-log producer prerequisite:** Ordinary Run/resume/report
+delegates carry the frozen request token in their existing private context and
+record it with exact profile/Project binding immediately after opening their
+one application log. Batch admission checks the token before modules/scratch
+and preserves it through module initialization. Random application-attempt
+identity, custom roots and direct/legacy/Doctor behavior remain intact. The
+event is diagnostic; a later reader must still reject ambiguous or incomplete
+logs and independently admit candidate Runs/Attempts before association.
+Transport fixtures exercise actual safe Bash propagation, invalid/orphan
+context and module mutation; public early-log fixtures require hosted CI.
+
 ### CV-21 Reporting in progress and visibility
 
 **Finding:** Missing reporting receipts briefly appeared as failures and later

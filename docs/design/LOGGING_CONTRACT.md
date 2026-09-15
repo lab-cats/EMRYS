@@ -163,3 +163,15 @@ application logs. Submission dry-run creates neither those paths nor an
 application log. The compute delegate receives the resolved controls, opens
 the operation's one application attempt, records scheduler identity only as
 correlation metadata, and projects human output to scheduler stderr.
+
+Ordinary token-bound delegates also emit `submission_context` immediately after
+opening that same application log and before workflow preparation or reporting
+startup. Its durable-only fields are the frozen `request_token`,
+`profile_binding_sha256` and `project_root`. The existing opening event supplies
+the entrypoint and scheduler correlation; later `analysis_prepared` or
+`reporting_started` events supply candidate Run/Attempt identities. The token
+uses the existing private delegate export, is checked against the frozen batch
+script before site initialization, and stays read-only through module setup.
+It does not replace random application-attempt identity. Direct, legacy and
+Doctor paths do not invent a request token. These diagnostic events prepare
+exact log association; they neither establish a Run nor prove its completion.
