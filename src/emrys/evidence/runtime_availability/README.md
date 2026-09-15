@@ -51,3 +51,33 @@ remain operator evidence; retirement does not authorize their cleanup.
 The [owner tests](../../../../tests/evidence/runtime_availability/test_runtime_availability.py)
 cover path-choice admission and probe behavior. These observations establish the
 checks performed, not successful workflow execution or scientific validity.
+
+## What qualification establishes
+
+The inventory selects exact tool paths. A managed inventory points to the
+Project-managed installation; a site/user inventory selects its own admitted
+paths. A different default executable elsewhere on a node's `PATH` is not a
+replacement for the selected target. The batch environment and explicit module
+setup still matter to loading those selected executables and namespaces.
+
+| Boundary | Evidence checked | Limit |
+| --- | --- | --- |
+| Doctor diagnosis | Current Project/Analysis and installed EMRYS, selected inventory, required probes, runtime file/package identities, and relevant storage receipt | A passing diagnosis is a current readiness observation, not a completed workflow. |
+| Slurm compute qualification | Bound Project/package/runtime under the actual allocation; required probes and shared-storage compute checks | A version probe alone does not prove every possible native code path or shared-library dependency. Snakemake startup and R namespace loading exercise their actual startup paths. |
+| Head finalization | The checked bindings, retained compute storage observations, and final readiness | A prior receipt does not make changed inputs or tools trusted. |
+| Run/Attempt execution | Actual allocation capacity, selected runtime/Analysis policy, installed package and content identities, executable permissions, storage binding; rechecks at existing lifecycle boundaries | Success still requires every task and report's own evidence. Qualification does not estimate workload demand. |
+
+Slurm eligibility is not a universal hostname pin. The selected placement may
+explicitly request nodes; otherwise the scheduler chooses. Each eligible node
+must expose the required paths and pass the actual checks. Device numbers may
+differ between nodes when the stronger shared-storage identities match.
+Direct single-host storage evidence is different: it binds the current host
+and numeric UID/GID and cannot substitute for Slurm's two-phase qualification.
+
+Managed repair currently targets x86-64 Linux. Other site environments require
+their own supported runtime selection. Loader errors, unavailable targets,
+failed checks, changed bound content, or incompatible storage stop admission;
+the operator retains diagnostics rather than copying qualification receipts or
+forcing a previously successful hostname. The probe roster is not a complete
+binary-compatibility certificate for every tool path. Institutional workload
+and cross-node acceptance remain separate evidence.

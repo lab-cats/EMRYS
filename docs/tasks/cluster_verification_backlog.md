@@ -273,6 +273,19 @@ universal qualification or a required pin. Show user pins accurately.
 **Owners/dependencies:** Doctor, runtime inspection, placement, Run preflight;
 CV-04, CV-07, CV-11, CV-22.
 
+**Implemented scope guidance:** Runtime ownership now documents the actual
+diagnosis, compute, head-finalization, and execution boundaries, exact selected
+tools versus system defaults, explicit pins versus scheduler eligibility, and
+direct-host versus two-phase storage evidence. The guide states the x86-64
+Linux managed-repair boundary and the limits of version/startup/namespace
+probes; it does not claim complete binary compatibility from version strings.
+Existing code rejects changed content, permissions, failed loaders/probes, and
+incompatible storage at its admission boundaries. This documentation slice was
+checked against those owners and existing direct/Slurm storage, runtime-change,
+and capacity regression cases; it adds no new execution or installation.
+CV-09 remains Open for institutional compatible-node/incompatible-runtime
+acceptance and any concrete incompatibility gaps that evidence identifies.
+
 ### CV-10 External cancellation and recovery
 
 **Finding:** Slurm cancellation left a nonterminal Run with unfinished task

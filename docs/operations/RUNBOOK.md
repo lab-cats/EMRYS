@@ -401,6 +401,15 @@ runtime and storage checks through Slurm and finishes the storage check on the
 head node. It retains the existing qualification evidence. A successful repair
 means these checks passed; it does not establish scientific completion.
 
+Qualification covers the selected inventory's exact tools, not every tool
+installed on the node. A different system default is not itself a reason to
+cancel a healthy job that is using the admitted targets. Read the
+[qualification scope](../../src/emrys/evidence/runtime_availability/README.md#what-qualification-establishes)
+for the checks at each boundary and their limits. Slurm may choose another
+eligible node unless the profile requests a pin; that node still must pass
+runtime, allocation, and storage admission. Single-host direct storage evidence
+does not replace shared-storage qualification.
+
 Slurm runs the complete Analysis and its reports on one compute node. Normal
 Run, resume and report execution use the Project's default profile. Inspecting
 results and previewing reports remain local read-only operations. Keep the
