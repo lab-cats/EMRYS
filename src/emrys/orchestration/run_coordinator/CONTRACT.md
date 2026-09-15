@@ -308,6 +308,33 @@ The result does not admit the Attempt chain, locks, receipts, Tasks or Results,
 and cannot prove workflow entry, liveness, completion or recovery eligibility.
 The public view offers exact Run inspection for that broader evidence.
 
+`inspect --watch` keeps one selection fixed and uses the same pure Task,
+milestone, reporting and elapsed projection as static inspection. Existing
+Run admission runs initially and on explicit verification refresh; its date
+and any failure remain visible. Application association is also dated and is
+distinct from the Run's latest Attempt. A timer cannot promote historical
+evidence to current progress or recovery eligibility. Run-only views cannot
+derive current scheduler identity from an unbound recorded job ID.
+
+One daemon worker performs read-only refreshes, with at most one active and
+one coalesced pending request. Painting from memory performs no I/O. Automatic
+30-second refresh uses only strict scheduler observation and one diagnostic
+stream suffix; explicit refresh rechecks association and full Run evidence.
+Once the view opens, quitting restores the terminal without waiting on blocked
+refresh reads. Initial selection remains synchronous. Noninteractive/dumb
+terminals produce one plain snapshot; watch has one layout independent of the
+static `--detail` setting. No operational
+action, persistent cache or additional log is created.
+
+Diagnostic suffixes use the existing no-follow byte reader with 64 KiB and
+256-line bounds. Directory, UID and descriptor/path checks reject unsafe or
+changing streams. Rotation/truncation clears previous content rather than
+concatenating generations. Current tail bytes are unverified diagnostics even
+when the path came from a previously admitted content reference. Available
+Task tails come from admitted terminal records; active native-log discovery
+remains incomplete. Legacy standalone dashboard/discovery/accounting and
+offline paths remain until complete replacement validation.
+
 The existing dashboard's shared scheduler observer requires an exact canonical
 root job ID and current numeric UID. It rejects missing/mismatched/duplicate
 identity, including accounting duplicates, and never substitutes `USER` or

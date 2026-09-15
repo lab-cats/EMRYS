@@ -12,7 +12,7 @@ from collections import Counter
 from collections.abc import Callable, Mapping
 from contextlib import suppress
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
 from typing import Any, TextIO
@@ -22,7 +22,6 @@ from simple_term_menu import TerminalMenu
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.artifact_inventory import validate_processing_graph
 from emrys.contracts.orchestration.application_model import (
-    PROCESSING_STEP_IDS,
     execution_plan_boundary,
 )
 from emrys.libraries.application_logging import (
@@ -45,6 +44,7 @@ from emrys.libraries.source_authority import admit_installed_package
 from emrys.libraries.validation.errors import ValidationError
 from emrys.libraries.validation.inputs import read_bytes
 from emrys.orchestration.run_coordinator import (
+    _inspection_presentation,
     _submission_inspection,
     capacity,
     doctor,
@@ -95,13 +95,6 @@ STOP_DESCRIPTION = (
 REPORT_DESCRIPTION = (
     "Plan, generate, or reuse the fixed reports for one completed immutable Run. "
     "Dry-run is the default and reporting never creates a scientific Attempt."
-)
-_MILESTONE_STEPS = (
-    ("Preparation", ("00a", "00b", "00c")),
-    ("Alignment and sample processing", ("01", "02", "04", "05", "06")),
-    ("QC evidence", ("02b", "03")),
-    ("Candidate evidence", ("07", "08")),
-    ("Statistical/context processing", ("09", "10")),
 )
 
 
@@ -1403,6 +1396,11 @@ def configure_report_parser(parser: argparse.ArgumentParser) -> None:
 def configure_inspect_parser(parser: argparse.ArgumentParser) -> None:
     _add_run_selector(parser)
     parser.add_argument(
+        "--watch",
+        action="store_true",
+        help="Watch the exact selection read-only; r refreshes Run verification. Nonterminal output is one snapshot.",
+    )
+    parser.add_argument(
         "--submission",
         metavar="REQUEST",
         help="Inspect one exact request directory name or absolute path and query its scheduler state; excludes a Run selector.",
@@ -1411,7 +1409,7 @@ def configure_inspect_parser(parser: argparse.ArgumentParser) -> None:
         "--detail",
         choices=("normal", "verbose", "debug"),
         default="normal",
-        help="Select concise, operational, or exact retained-record detail.",
+        help="Select static inspection detail; --watch uses a fixed layout.",
     )
 
 
@@ -1429,92 +1427,8 @@ def configure_stop_parser(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _progress_state(tasks: tuple[inspection.TaskInspection, ...]) -> str:
-    if not tasks:
-        return "not applicable"
-    if any(task.state == "blocked" for task in tasks):
-        return "blocked"
-    if all(task.state == "verified" for task in tasks):
-        return "complete"
-    return "incomplete"
-
-
-def _task_observation(task: inspection.TaskInspection) -> str:
-    if task.state == "verified":
-        return "Verified complete"
-    if task.state == "blocked":
-        return "Verification not admitted"
-    if task.start_reference is not None:
-        return "Started; completion unverified"
-    return "No admitted start"
-
-
-def _milestone_progress(
-    tasks: tuple[inspection.TaskInspection, ...],
-    *,
-    processing_source_state: str | None = None,
-) -> tuple[tuple[str, str, int, int], ...]:
-    known_steps = {step for _label, steps in _MILESTONE_STEPS for step in steps}
-    unknown = sorted({task.expected.step_id for task in tasks} - known_steps)
-    if unknown:
-        raise ControlError(
-            "Inspected task Steps have no public milestone: " + ", ".join(unknown)
-        )
-    result = []
-    for label, steps in _MILESTONE_STEPS:
-        members = tuple(task for task in tasks if task.expected.step_id in steps)
-        state = (
-            processing_source_state
-            if processing_source_state is not None
-            and not members
-            and set(steps).issubset(PROCESSING_STEP_IDS)
-            else _progress_state(members)
-        )
-        result.append(
-            (
-                label,
-                state,
-                sum(task.state == "verified" for task in members),
-                len(members),
-            )
-        )
-    return tuple(result)
-
-
-def _attempt_elapsed_line(
-    observed: inspection.RunInspection,
-) -> str:
-    attempt = observed.latest_attempt
-    if attempt is None:
-        return "Attempt elapsed: unavailable — no Attempt"
-    label = "Current" if observed.attempt_outcome == "running" else "Latest"
-    try:
-        started = datetime.fromisoformat(
-            str(attempt["created_at"]).replace("Z", "+00:00")
-        )
-        if observed.attempt_outcome == "running":
-            finished = datetime.now(UTC)
-        elif observed.latest_receipt is not None:
-            finished = datetime.fromisoformat(
-                str(observed.latest_receipt["finished_at"]).replace("Z", "+00:00")
-            )
-        else:
-            return f"{label} Attempt elapsed: unavailable — no terminal receipt"
-        if finished < started:
-            raise ValueError("negative Attempt duration")
-        seconds = int((finished - started).total_seconds())
-    except (KeyError, TypeError, ValueError):
-        return f"{label} Attempt elapsed: unavailable — invalid timestamp boundary"
-    if started.tzinfo is None or finished.tzinfo is None:
-        return f"{label} Attempt elapsed: unavailable — invalid timestamp boundary"
-    return f"{label} Attempt elapsed: {timedelta(seconds=seconds)}"
-
-
 def _print_safe(value: object, *, file: TextIO | None = None) -> None:
-    rendered = "".join(
-        character if character.isprintable() else ascii(character)[1:-1]
-        for character in str(value)
-    )
+    rendered = _inspection_presentation.safe_text(value)
     if file is sys.stderr:
         console_print(rendered, style="red")
     else:
@@ -2029,11 +1943,23 @@ def inspect_from_args(
             and getattr(arguments, "run", None) is not None
         ):
             raise ControlError("Select a submission or a Run, not both")
+        watching = getattr(arguments, "watch", False)
         if getattr(arguments, "run", None) is None:
             project = onboarding.project_definition_path(
                 getattr(arguments, "project", None)
             )
-            _print_submission_roster(project, submission_selector)
+            if watching and submission_selector is not None:
+                request = slurm_submission.select_submission_request(
+                    project, submission_selector
+                )
+                return _inspection_presentation.watch(
+                    project,
+                    request=request,
+                    inspect_run=inspection.inspect_run,
+                    next_action=_next_supported_action,
+                )
+            if not watching:
+                _print_submission_roster(project, submission_selector)
             if submission_selector is not None:
                 return 0
         try:
@@ -2044,9 +1970,16 @@ def inspect_from_args(
                 "Do not submit again solely because a Run is absent; retain the submission records."
             )
             return 0
+        if watching:
+            return _inspection_presentation.watch(
+                _project_path,
+                run_root=run_root,
+                inspect_run=inspection.inspect_run,
+                next_action=_next_supported_action,
+            )
         observed = inspection.inspect_run(run_root)
         detail = getattr(arguments, "detail", "normal")
-        milestones = _milestone_progress(
+        milestones = _inspection_presentation.milestone_progress(
             observed.tasks,
             processing_source_state=(
                 None
@@ -2056,13 +1989,14 @@ def inspect_from_args(
                 else "blocked"
             ),
         )
-        elapsed = _attempt_elapsed_line(observed)
+        elapsed = _inspection_presentation.attempt_elapsed_line(observed)
         result_lines = _verified_report_location_lines(
             observed.verified_report_locations
         )
     except (
         OSError,
         inspection.InspectionError,
+        _inspection_presentation.PresentationError,
         onboarding.OnboardingError,
         ControlError,
         slurm_submission.SlurmSubmissionError,
@@ -2101,7 +2035,7 @@ def inspect_from_args(
     if observed.tasks:
         print("Scientific task observations:")
         for label, count in Counter(
-            _task_observation(task) for task in observed.tasks
+            _inspection_presentation.task_observation(task) for task in observed.tasks
         ).items():
             print(f"  {label}: {count}")
     terminal_attempts = tuple(
@@ -2119,13 +2053,7 @@ def inspect_from_args(
     if observed.reporting_status != "not applicable":
         print("Reporting transactions:")
         for kind, records in observed.reporting_completion_records.items():
-            state = (
-                "Verified complete"
-                if records["verified"] is not None
-                else "Started; completion unverified"
-                if records["start"] is not None
-                else "No admitted start"
-            )
+            state = _inspection_presentation.reporting_observation(records)
             print(f"  {kind}: {state}")
     receipt = observed.latest_receipt
     if detail != "normal":
@@ -2202,7 +2130,9 @@ def inspect_from_args(
         print("Task records:")
         for task in observed.tasks:
             identity = f"{task.expected.machine_key}/{task.expected.scope_id}"
-            task_detail = f"  TASK {identity}: {_task_observation(task)}"
+            task_detail = (
+                f"  TASK {identity}: {_inspection_presentation.task_observation(task)}"
+            )
             if task.start_reference is not None:
                 task_detail += (
                     f"; start={observed.run_root / task.start_reference['path']}"
