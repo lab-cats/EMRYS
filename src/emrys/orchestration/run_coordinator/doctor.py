@@ -1404,7 +1404,8 @@ def _qualify_slurm(
         with progress("Slurm submission-to-return wait"):
             job_id = slurm_submission.submit(
                 submission,
-                wait_record=attempt.path.parent / "slurm-submit.stdout",
+                record_path=attempt.path.parent / "slurm-submit.stdout",
+                wait=True,
                 on_submitted=announce,
             )
     except slurm_submission.SlurmSubmissionError:

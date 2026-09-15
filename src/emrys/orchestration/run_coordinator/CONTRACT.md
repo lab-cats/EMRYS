@@ -269,8 +269,9 @@ keep distinct stream destinations even if Slurm reuses a job number. Legacy
 v1 contexts remain readable diagnostic records, but their shared `%j` paths do
 not supply request identity. Doctor's private qualification streams are unchanged.
 
-The shared transport opens private raw `sbatch.stdout`/`sbatch.stderr` files and
-synchronizes their directory before launch. Ordinary submission does not add
+The shared transport requires a transcript destination, opens private raw
+`sbatch.stdout`/`sbatch.stderr` files, and synchronizes their directory before
+launch. Ordinary submission does not add
 `--wait`; Doctor retains its waited first-response/callback ordering. Early
 stdin closure still collects scheduler exit/error detail. An interrupted,
 malformed, rejected, or unconfirmed response remains retained without retry.
