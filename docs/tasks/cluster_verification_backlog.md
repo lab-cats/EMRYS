@@ -38,7 +38,7 @@ cluster action, evidence promotion, or product-growth exception.
 | [CV-20](#cv-20-submission-state-before-run-creation) | P1 | Open | Show queued and preparing jobs before a Run exists. |
 | [CV-21](#cv-21-reporting-in-progress-and-visibility) | P1 | Open | Distinguish unfinished report publication from failed reporting. |
 | [CV-22](#cv-22-complete-submission-preview) | P1 | Verification pending | Show effective placement and computational limits before approval. |
-| [CV-23](#cv-23-safe-project-or-artifact-cleanup) | P2 | Open | Decide and scope safe cleanup of unused owned state. |
+| [CV-23](#cv-23-safe-project-or-artifact-cleanup) | P2 | Deferred | Decide and scope safe cleanup of unused owned state. |
 | [CV-24](#cv-24-run-center-actions) | P2 | Open | Explore a dashboard that invokes supported CLI operations. |
 | [CV-25](#cv-25-log-discovery-and-readable-output) | P2 | Open | Find the correct logs without memorizing scheduler IDs. |
 | [CV-26](#cv-26-repeated-doctor-input-reads) | P2 | Open | Measure and remove redundant reads within Doctor. |
@@ -877,6 +877,29 @@ a success receipt. Any evidence deletion retains its separate explicit
 authority. This is not a revival of retired storage-capacity/retention planning.
 **Owners/dependencies:** Project/runtime/lifecycle owners; CV-08/10. Design
 selection and product implementation remain separate from this recorded idea.
+
+**Selected design disposition:** Defer a general cleanup preview or deletion
+command. Source review identified no retained candidate class for which current
+owners can establish both exclusive ownership and absence of references. Keep
+the existing cleanup of temporary state owned by the executing transaction;
+this decision identifies no actual storage candidate and claims no space saving.
+
+| Candidate class | Existing authority and unresolved consequence |
+| --- | --- |
+| Runs, older Attempts and scientific artifacts | Run inspection admits processing reuse through an exact Run, Attempt and receipt. Removing older evidence can invalidate a later Run. |
+| Native outputs, staging, locks and reporting partials | Task and reporting owners clean their own transaction state using captured ownership. Retained leftovers do not establish that ownership, native quiescence or safe rollback. |
+| Managed runtimes and caches | Runtime reuse permits borrower Projects outside the donor. Permanent seals have no reverse borrower catalog or unseal operation; R package links also prevent treating caches as disposable. |
+| Qualification probes and receipts | Qualification owns its immediate cleanup and explicitly retains evidence after cleanup failure. Leftover probes are not automatically abandoned. |
+| Inputs, references and sidecars | Project normalization admits declared paths without establishing exclusive ownership or enumerating external consumers. |
+| Submission and application records | Request and association inspection consume these records. Age, scheduler disappearance and missing success receipts do not establish disposability. |
+
+Reopen implementation for a specific owner-backed candidate class with complete
+reference and consequence rules. An incomplete search must report unknown,
+never unused. Reuse existing inspection and ownership primitives instead of a
+second status cache, retention registry or generic cleanup engine. Native and
+reporting cleanup remain separate where their process-lifetime and publication
+guarantees differ. Any later evidence deletion keeps its separate explicit
+authority. No product change or deletion is part of this design disposition.
 
 ### CV-24 Run center actions
 
