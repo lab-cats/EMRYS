@@ -3697,11 +3697,6 @@ def test_public_application_correlation_scans_only_selected_request_and_escapes_
     monkeypatch.setattr(
         control.slurm_submission, "observe_submission_request", observe_scheduler
     )
-    monkeypatch.setattr(
-        control,
-        "_resolve_run_argument",
-        lambda *_a: pytest.fail("request inspection entered Run picker"),
-    )
     parser = argparse.ArgumentParser()
     control.configure_inspect_parser(parser)
     before = {
@@ -3713,6 +3708,11 @@ def test_public_application_correlation_scans_only_selected_request_and_escapes_
     roster = capsys.readouterr().out
     assert str(selected.request_root) in roster and str(other) in roster
     assert calls == scheduler_calls == []
+    monkeypatch.setattr(
+        control,
+        "_resolve_run_argument",
+        lambda *_a: pytest.fail("request inspection entered Run picker"),
+    )
     selector = (
         selected.request_root.name
         if selector_kind == "name"
