@@ -375,7 +375,7 @@ def slurm_accounting_metadata(job_id):
             continue
         rows = [line.split("|") for line in output.splitlines()]
         roots = [row for row in rows if JOB_ID_RE.fullmatch(row[0].strip())]
-        if len(roots) != 1 or len(roots[0]) < 5 + len(streams):
+        if len(roots) != 1 or len(roots[0]) != len(names):
             raise DiscoveryError(
                 "Slurm accounting did not return one exact root record for job %s"
                 % job_id

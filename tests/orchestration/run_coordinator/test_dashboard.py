@@ -477,7 +477,7 @@ def test_explicit_job_and_log_dir_use_terminal_accounting_fallback(
         if ",StdOut,StdErr" in argv[-1]:
             return ""
         return (
-            f"{JOB_ID}|emrys-real-run|COMPLETED+|2609214|{os.getuid()}\n"
+            f"{JOB_ID}|emrys-real-run|COMPLETED+|2609214|{os.getuid()}||||\n"
             f"{JOB_ID}.batch|batch|COMPLETED|2609214|{os.getuid()}"
         )
 
@@ -505,9 +505,7 @@ def test_explicit_completed_job_uses_exact_accounting_streams_without_log_dir(
         del timeout
         calls.append(argv)
         assert argv[0] == "sacct"
-        return (
-            f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}|{stdout}|{stderr}"
-        )
+        return f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}|{stdout}|{stderr}||||"
 
     monkeypatch.setattr(dashboard, "command_text", fake_command)
 
@@ -538,9 +536,7 @@ def test_explicit_log_dir_must_agree_with_exact_accounting_streams(
         nonlocal calls
         del argv, timeout
         calls += 1
-        return (
-            f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}|{stdout}|{stderr}"
-        )
+        return f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}|{stdout}|{stderr}||||"
 
     monkeypatch.setattr(dashboard, "command_text", fake_command)
 
@@ -564,7 +560,7 @@ def test_exact_accounting_uses_one_basic_fallback_when_stream_fields_unavailable
         formats.append(format_value)
         if ",StdOut,StdErr" in format_value:
             return ""
-        return f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}"
+        return f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}||||"
 
     monkeypatch.setattr(dashboard, "command_text", fake_command)
 
@@ -591,7 +587,7 @@ def test_explicit_job_without_log_dir_fails_if_accounting_has_no_stream_paths(
         del timeout
         if ",StdOut,StdErr" in argv[-1]:
             return ""
-        return f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}"
+        return f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}||||"
 
     monkeypatch.setattr(dashboard, "command_text", fake_command)
 
@@ -603,18 +599,18 @@ def test_explicit_job_without_log_dir_fails_if_accounting_has_no_stream_paths(
     ("accounting", "message"),
     [
         (
-            f"{JOB_ID}|emrys-real-run|RUNNING|2609214|{os.getuid()}",
+            f"{JOB_ID}|emrys-real-run|RUNNING|2609214|{os.getuid()}||||",
             "is not terminal",
         ),
         (
-            f"{JOB_ID}|emrys-real-run|COMPLETED|someone-else|999999",
+            f"{JOB_ID}|emrys-real-run|COMPLETED|someone-else|999999||||",
             "is not owned",
         ),
         (
             "\n".join(
                 [
-                    f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}",
-                    f"{JOB_ID}|duplicate|COMPLETED|2609214|{os.getuid()}",
+                    f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}||||",
+                    f"{JOB_ID}|duplicate|COMPLETED|2609214|{os.getuid()}||||",
                 ]
             ),
             "did not return one exact root record",
@@ -1118,6 +1114,26 @@ def test_scheduler_observation_rechecks_selected_stream_paths(
     assert result["terminal"] is (not live and paths == "match")
     if not live and paths == "match":
         assert result["exit_code"] == "0:0"
+
+
+@pytest.mark.parametrize("basic", [True, False])
+def test_accounting_identity_prefix_without_requested_trailing_fields_is_unknown(
+    monkeypatch: pytest.MonkeyPatch,
+    basic: bool,
+) -> None:
+    calls = []
+
+    def command(argv: list[str], timeout: int = 10) -> str:
+        calls.append(argv)
+        if argv[0] == "squeue" or (basic and ",StdOut,StdErr" in argv[-1]):
+            return ""
+        return f"{JOB_ID}|emrys-run|COMPLETED|user|{os.getuid()}" + (
+            "" if basic else "||"
+        )
+
+    monkeypatch.setattr(dashboard, "command_text", command)
+    assert dashboard.query_slurm(JOB_ID) == {"terminal": False, "state": "UNKNOWN"}
+    assert len(calls) == (3 if basic else 2)
 
 
 @pytest.mark.parametrize(
