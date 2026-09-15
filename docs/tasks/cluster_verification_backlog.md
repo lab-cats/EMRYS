@@ -457,6 +457,31 @@ references, proves owned cleanup and unchanged inputs, freezes exact retry
 intent, and rechecks it under the Run lock. Existing blocked evidence must not
 be silently migrated or reclassified. That recovery design remains Open.
 
+**Retry prerequisite decision:** Do not add recovery schemas or relax these
+predicates before qualifying an exact production writer boundary. Current
+group quiescence proves the registered process group is empty; a detached
+descendant can belong to another group. Run-local output placement alone does
+not prove that every writer has stopped. The canonical BAM shell uses
+foreground samtools calls and the outer launcher uses `exec`, but executable
+hashes, inherited utility paths and loader/plugin dependencies do not establish
+a closed set of writers. Existing fake-samtools tests and the substituted
+native producer in CV-01 do not supply actual samtools containment evidence.
+
+A future supported class needs enforceable descendant containment or an exact
+audited non-detaching launcher/tool/environment contract with real cancellation
+evidence. Only then should one complete change introduce immutable per-Attempt
+start history, positive abort closure before any native output publication,
+and exact frozen retry references. Closure must establish reaped native execution, unchanged
+inputs and directory membership, owned cleanup and absent final destinations;
+every entered concurrent Task must independently close or verify. Historical
+admission must preserve those recorded facts after a later retry creates outputs,
+while preview freshly checks retry readiness and entry repeats it under the
+Run lock.
+Processing reuse, reporting, receipts, backend admission and presentation must
+all consume the same history. Existing blocked receipts remain ineligible.
+No speculative protocol versions, new mutable state or retry action are added
+by this design decision. CV-10 stays Open for this prerequisite and E09 evidence.
+
 ### CV-11 Resource profile compatibility
 
 **Finding:** The selected smaller-memory node could not satisfy the retained
