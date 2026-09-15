@@ -260,6 +260,26 @@ Use existing admission and established package managers; no new cache/service
 is assumed. Do not hard-link or copy trust receipts as a substitute for checks.
 **Owners/dependencies:** Doctor, runtime discovery/inspection; CV-01/09/23.
 
+**Implemented maintenance prerequisite:** Managed Doctor repair acquires a
+durable `runtime/maintenance.lock` after diagnostic-log admission and before
+plan re-admission or manager work. Existing claims block competing/retried
+repair. Failure/interruption preserves acquired claims; successful completion
+releases the exact owner before success logging. A release directory-sync
+failure is reported even if unlink already removed the pathname. Verification
+without package work does not acquire a claim. The existing reporting claim
+and exclusive-writer mechanics move to their neutral publication owner with
+all callers migrated and reporting's owned-partial cleanup policy preserved.
+
+**Verification and remaining scope:** Twenty neutral tests pass locally,
+covering short writes, ordered file/directory synchronization, contention,
+replacement, redirected parents, failed acquisition/release and real process
+termination. Doctor fixtures cover log-open failure, claim-before-manager,
+retained failure/interruption, requalification, and release-before-success;
+public Doctor/reporting execution requires CI in the current local environment.
+This slice adds no share seal, borrower selection, runtime-reader exclusion,
+or cleanup command. CV-08 remains Open for immutable expected-content binding,
+supported two-Project reuse and compute-node accessibility evidence.
+
 ### CV-09 Qualification scope and placement
 
 **Finding:** The operator could not tell what qualification covered or whether

@@ -113,6 +113,20 @@ not install packages or treat a prior successful check as current evidence.
 Existing CLI flags, maintenance log modes/event IDs, refusals, and exits remain
 unchanged. Slurm-stage elapsed time includes queue waiting and compute work.
 
+Managed repair opens its diagnostic log before acquiring the private durable
+`runtime/maintenance.lock` claim, then re-admits the plan before manager work.
+The shared ownership primitive pins a canonical no-follow parent, synchronizes
+the claim and directory, and checks exact ownership/content before release.
+Doctor retains claims on failed/interrupted acquisition or repair. It releases
+only after successful requalification and before recording success. A failed
+directory synchronization after release can leave no claim pathname but still
+reports failure. Existing claims block another managed repair; age, host or PID
+absence never clears them. Verification-only plans do not acquire a claim.
+Reporting uses the same primitive with its existing owned-partial cleanup
+policy. This maintenance exclusion does not freeze runtime content or establish
+cross-Project sharing; an immutable expected-content seal and fresh borrower
+qualification remain necessary.
+
 Doctor's domain summary distinguishes absent default runtime inventory
 (`NOT PREPARED`), inspected runtime check failures (`CHECKS FAILED`), unqualified
 storage (`NOT QUALIFIED`), and an inadmissible execution profile (`NOT ADMITTED`).

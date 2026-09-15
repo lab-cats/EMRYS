@@ -49,7 +49,11 @@ from emrys.libraries.installed_package_identity import (
     InstalledPackageIdentityError,
     installed_package_tree_identity,
 )
-from emrys.libraries.exclusive_publication import publish_exclusive
+from emrys.libraries.exclusive_publication import (
+    acquire_lock,
+    publish_exclusive,
+    release_lock,
+)
 from emrys.libraries.process_environment import (
     guarded_r_environment,
     guarded_rscript_argv,
@@ -775,6 +779,11 @@ def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
     except (OSError, onboarding.OnboardingError) as exc:
         raise DoctorRepairError(str(exc)) from exc
     managed = runtime / "managed"
+    if os.path.lexists(runtime / "maintenance.lock"):
+        raise DoctorRepairError(
+            f"Runtime maintenance claim already exists: {runtime / 'maintenance.lock'}; "
+            "preserved for explicit reconciliation"
+        )
     profile = runtime / "runtime.tsv"
     profile_bytes: bytes | None = None
     profile_checks: tuple[RuntimeCheck, ...] = ()
@@ -1191,6 +1200,12 @@ def _print_repair_plan(plan: _RepairPlan) -> None:
     if plan.runtime is not None:
         runtime = plan.runtime
         _stderr(f"  Managed runtime: {runtime.managed_root}")
+        _stderr(
+            f"  Maintenance claim: {runtime.managed_root.parent / 'maintenance.lock'}"
+        )
+        _stderr(
+            "  A retained claim blocks further repair; release errors require reconciliation."
+        )
         _stderr(f"  Pixi: {runtime.pixi}")
         actions.extend(label for label, *_ in _repair_actions(plan))
     if plan.execution is not None and isinstance(
@@ -1407,7 +1422,20 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
             }
         )
     emit("repair_started", f"Project {plan.operation} started.", **started)
+    claim: tuple[Path, os.stat_result, bytes] | None = None
     try:
+        if plan.runtime is not None:
+            runtime_root = onboarding.project_runtime_directory(plan.project)
+            if runtime_root != plan.runtime.managed_root.parent:
+                raise DoctorRepairError(
+                    "Doctor runtime parent changed before maintenance"
+                )
+            claim_path = runtime_root / "maintenance.lock"
+            payload = f"emrys-doctor:{uuid.uuid4().hex}\n".encode("ascii")
+            ownership = acquire_lock(
+                claim_path, payload, DoctorRepairError, retain_on_failure=True
+            )
+            claim = claim_path, ownership, payload
         with phase_progress("Verifying the approved plan inputs"):
             _readmit_repair_plan(plan, before_storage=True)
         if plan.storage is not None:
@@ -1531,6 +1559,7 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
         _record_runtime_failures(
             final.inspection, phase="project_readiness", attempt=attempt
         )
+        compute_checked = False
         if plan.execution is not None and isinstance(
             plan.execution.placement, SlurmPlacement
         ):
@@ -1538,27 +1567,31 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
             _record_runtime_failures(
                 final.inspection, phase="project_readiness", attempt=attempt
             )
-            if plan.compute:
-                record(
-                    lambda: attempt.terminal(
-                        event_name="repair_compute_checked",
-                        message="Compute runtime and storage checks passed; head finalization follows.",
-                    )
-                )
-                return final
-        if not final.ready:
+            compute_checked = plan.compute
+        if not compute_checked and not final.ready:
             raise DoctorRepairError("Project remained not ready after verification")
-        record(
-            lambda: attempt.terminal(
-                event_name="repair_requalified",
-                message=f"Project {plan.operation} completed.",
-                fields={
-                    "ready": field(final.ready, console=True),
-                    "storage_ready": field(final.storage_ready),
-                    "runtime_ready": field(final.runtime_ready),
-                },
+        if claim is not None:
+            release_lock(*claim, DoctorRepairError)
+            claim = None
+        if compute_checked:
+            record(
+                lambda: attempt.terminal(
+                    event_name="repair_compute_checked",
+                    message="Compute runtime and storage checks passed; head finalization follows.",
+                )
             )
-        )
+        else:
+            record(
+                lambda: attempt.terminal(
+                    event_name="repair_requalified",
+                    message=f"Project {plan.operation} completed.",
+                    fields={
+                        "ready": field(final.ready, console=True),
+                        "storage_ready": field(final.storage_ready),
+                        "runtime_ready": field(final.runtime_ready),
+                    },
+                )
+            )
         return final
     except KeyboardInterrupt:
         record(
@@ -1590,6 +1623,11 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
         )
         raise DoctorRepairError(f"{exc}; diagnostics: {attempt.path}") from exc
     finally:
+        with suppress(Exception):
+            if claim is not None and os.path.lexists(claim[0]):
+                _stderr(
+                    f"Runtime maintenance claim remains for explicit reconciliation: {claim[0]}"
+                )
         with suppress(Exception):
             attempt.close()
 

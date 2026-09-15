@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from emrys.libraries.source_authority import admit_installed_package
+from emrys.libraries import exclusive_publication
 from emrys.reporting import _files, _signals
 
 from .context import recheck_evidence_context
@@ -142,7 +143,7 @@ def publish_report(context: ReportContext) -> None:
 
     try:
         handlers = _signals.install(ReportRenderError, "Report", "report publication")
-        ownership = _files.acquire_lock(
+        ownership = exclusive_publication.acquire_lock(
             context.lock_path, lock_payload, ReportRenderError
         )
         assert_directory()
@@ -155,7 +156,7 @@ def publish_report(context: ReportContext) -> None:
         projected = output_bytes(context)
         staged_paths = tuple(stage / path.name for path in context.stable_paths)
         for path, payload in zip(staged_paths, projected, strict=True):
-            _files.write_bytes_exclusive(path, payload)
+            exclusive_publication.write_bytes_exclusive(path, payload)
         validate_projected_outputs(context, staged_paths, projected)
         _recheck_inputs(context)
         assert_directory()
@@ -203,7 +204,7 @@ def publish_report(context: ReportContext) -> None:
             recovery_required = True
             with contextlib.suppress(OSError, ReportRenderError):
                 assert_directory()
-                _files.write_bytes_exclusive(
+                exclusive_publication.write_bytes_exclusive(
                     recovery,
                     (
                         "Report rollback was incomplete.\n"
@@ -237,7 +238,7 @@ def publish_report(context: ReportContext) -> None:
         if ownership is not None and not recovery_required and not cleanup_errors:
             try:
                 assert_directory()
-                _files.release_lock(
+                exclusive_publication.release_lock(
                     context.lock_path, ownership, lock_payload, ReportRenderError
                 )
             except BaseException as exc:
@@ -250,7 +251,7 @@ def publish_report(context: ReportContext) -> None:
         if cleanup_errors:
             with contextlib.suppress(OSError, ReportRenderError):
                 assert_directory()
-                _files.write_bytes_exclusive(
+                exclusive_publication.write_bytes_exclusive(
                     recovery,
                     (
                         "Report cleanup was incomplete.\n"

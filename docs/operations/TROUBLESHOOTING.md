@@ -117,6 +117,16 @@ Do not clear caches/libraries wholesale, modify a shared library, or relock
 during diagnosis. A stale lock requires manifest/lock review; workflow execution
 never installs dependencies.
 
+**Runtime maintenance claim remains.** `runtime/maintenance.lock` blocks another
+managed repair after interrupted or failed work. Keep it with the runtime and
+Doctor log. A missing process, elapsed time, or cancelled job does not establish
+that package-manager descendants stopped; do not delete the claim to retry.
+Resolve ownership and partial installation with the maintainer. Successful
+repair releases its exact claim before reporting success; a release durability
+error still reports failure, even if the pathname is already absent.
+Verification without package work does not acquire this claim and is not proof
+that the runtime is safe to modify or share.
+
 **Runtime inventory already exists.** Discovery preserves even identical-looking
 inventories. Use Doctor to inspect the admitted runtime; replacing it requires
 an explicit migration/recovery decision, not deletion followed by rediscovery.

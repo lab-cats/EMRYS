@@ -613,7 +613,7 @@ def test_real_artifact_publisher_failure_stops_reporting_after_start(
         "publish_verified",
         lambda **_kwargs: pytest.fail("failed producer cannot publish completion"),
     )
-    real_write = publication._files.write_bytes_exclusive
+    real_write = publication.exclusive_publication.write_bytes_exclusive
     failed = False
 
     def fail_after_staged_projection(path: Path, payload: bytes, *, mode: int) -> None:
@@ -628,7 +628,9 @@ def test_real_artifact_publisher_failure_stops_reporting_after_start(
             raise OSError("injected staged artifact-index failure")
 
     monkeypatch.setattr(
-        publication._files, "write_bytes_exclusive", fail_after_staged_projection
+        publication.exclusive_publication,
+        "write_bytes_exclusive",
+        fail_after_staged_projection,
     )
 
     with pytest.raises(
