@@ -42,7 +42,7 @@ cluster action, evidence promotion, or product-growth exception.
 | [CV-24](#cv-24-run-center-actions) | P2 | Open | Explore a dashboard that invokes supported CLI operations. |
 | [CV-25](#cv-25-log-discovery-and-readable-output) | P2 | Open | Find the correct logs without memorizing scheduler IDs. |
 | [CV-26](#cv-26-repeated-doctor-input-reads) | P2 | Open | Measure and remove redundant reads within Doctor. |
-| [CV-27](#cv-27-terminal-only-report-access) | P3 | Open | Retrieve portable reports from a terminal-based workflow. |
+| [CV-27](#cv-27-terminal-only-report-access) | P3 | Verification pending | Retrieve portable reports from a terminal-based workflow. |
 
 ## P0 outcomes
 
@@ -404,6 +404,19 @@ service should be required for the normal path. Verify the copied bundle and
 record visual review separately; keep original evidence accessible.
 **Owners/dependencies:** Reporting, quickstart/runbook; CV-25. Coordinate
 existing `REPORT-01` through `REPORT-03` visual acceptance rather than duplicating it.
+
+**Selected implementation:** The [Runbook](../operations/RUNBOOK.md#retrieve-reports-from-a-terminal)
+now gives exact Run selection, complete `results/` transfer through existing
+SSH/rsync, a read-only content comparison, and local HTML navigation. The
+quickstart links to this one procedure. No product code, dependency, server,
+hosting service, or EMRYS command is added. Existing reporting owns portable
+relative links; established transfer tools own copying and comparison.
+
+**Verification:** The documented copy/comparison commands are exercised on a
+tiny local directory fixture, including a changed file that comparison detects.
+This verifies command mechanics, not a Viking transfer or a generated report.
+Operator transfer and visual acceptance remain pending; `REPORT-01` through
+`REPORT-03` keep their existing visual-review authority.
 
 ## Earlier observations and coverage reconciliation
 
