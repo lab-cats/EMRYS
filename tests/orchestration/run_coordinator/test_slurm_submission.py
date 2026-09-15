@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import os
 import shlex
+import stat
 import subprocess
 import sys
+import time
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -294,7 +296,19 @@ def test_submit_rejects_failed_or_ambiguous_scheduler_results(
         assert str(plan.stderr_pattern).replace("%j", "812345") in diagnostic
 
 
-@pytest.mark.parametrize("failure", ("invoke", "waited_invoke", "records"))
+@pytest.mark.parametrize(
+    "failure",
+    (
+        "invoke",
+        "waited_invoke",
+        "records",
+        "recorded_invoke",
+        "recorded_collision",
+        "stderr_collision",
+        "recorded_directory",
+        "waited_directory",
+    ),
+)
 def test_submission_io_failure_preserves_cause_and_does_not_retry(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str
 ) -> None:
@@ -305,8 +319,10 @@ def test_submission_io_failure_preserves_cause_and_does_not_retry(
         sbatch=str(tmp_path / "missing-sbatch"),
     )
     transcript = None if failure == "invoke" else tmp_path / "submission.stdout"
-    if failure == "records":
+    if failure in {"records", "recorded_collision"}:
         transcript.write_bytes(b"preserved submission\n")
+    if failure == "stderr_collision":
+        transcript.with_suffix(".stderr").write_bytes(b"preserved stderr\n")
     attempts = []
     real_popen = slurm_submission.subprocess.Popen
 
@@ -315,19 +331,178 @@ def test_submission_io_failure_preserves_cause_and_does_not_retry(
         return real_popen(*args, **kwargs)
 
     monkeypatch.setattr(slurm_submission.subprocess, "Popen", popen)
+    if failure.endswith("directory"):
+
+        def fail_sync(descriptor):
+            assert stat.S_ISDIR(os.fstat(descriptor).st_mode)
+            raise OSError("submission directory fsync failed")
+
+        monkeypatch.setattr(slurm_submission.os, "fsync", fail_sync)
     operation = (
-        "prepare submission records" if failure == "records" else "invoke sbatch"
+        "synchronize submission directory"
+        if failure.endswith("directory")
+        else "prepare submission records"
+        if failure in {"records", "recorded_collision", "stderr_collision"}
+        else "invoke sbatch"
     )
     with pytest.raises(
         slurm_submission.SlurmSubmissionError, match=f"Could not {operation}"
     ) as caught:
-        slurm_submission.submit(plan, wait_record=transcript)
+        slurm_submission.submit(
+            plan,
+            **{
+                "record_path"
+                if failure.startswith("recorded") or failure == "stderr_collision"
+                else "wait_record": transcript
+            },
+        )
     assert "job ID unconfirmed" in str(caught.value)
     assert isinstance(caught.value.__cause__, OSError)
     assert ascii(str(caught.value.__cause__)) in str(caught.value)
-    assert len(attempts) == (0 if failure == "records" else 1)
-    if failure == "records":
+    assert len(attempts) == (
+        0
+        if failure
+        in {
+            "records",
+            "recorded_collision",
+            "stderr_collision",
+            "recorded_directory",
+            "waited_directory",
+        }
+        else 1
+    )
+    if failure in {"records", "recorded_collision"}:
         assert transcript.read_bytes() == b"preserved submission\n"
+    if failure == "stderr_collision":
+        assert transcript.read_bytes() == b""
+        assert transcript.with_suffix(".stderr").read_bytes() == b"preserved stderr\n"
+    if failure.endswith("directory"):
+        assert transcript.read_bytes() == b""
+        assert transcript.with_suffix(".stderr").read_bytes() == b""
+
+
+@pytest.mark.parametrize(
+    "outcome",
+    ("accepted", "failed", "rejected", "ambiguous", "invalid_bytes", "interrupted"),
+)
+def test_recorded_submission_retains_raw_responses_without_waiting_for_the_job(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outcome: str
+) -> None:
+    marker = tmp_path / "invocations"
+    stdout = {
+        "rejected": b"",
+        "ambiguous": b"614999\n615000\n",
+        "invalid_bytes": b"unparseable\xffpartial",
+    }.get(outcome, b"614999;cluster\n")
+    stderr = b"scheduler diagnostic\xff\n" + b"x" * 4096 + b"raw tail"
+    scheduler = tmp_path / "sbatch"
+    scheduler.write_text(
+        f"#!{sys.executable}\n"
+        "import os, pathlib, sys, time\n"
+        "assert '--wait' not in sys.argv\n"
+        "assert sys.stdin.read().startswith('#!/bin/bash')\n"
+        f"os.write(1, {stdout!r}); os.write(2, {stderr!r})\n"
+        f"with pathlib.Path({str(marker)!r}).open('ab') as stream: stream.write(b'once\\n')\n"
+        f"if {outcome == 'interrupted'}: time.sleep(10)\n"
+        f"raise SystemExit({2 if outcome in {'failed', 'rejected'} else 0})\n"
+    )
+    scheduler.chmod(0o700)
+    submission = slurm_submission.plan_submission(
+        _profile(tmp_path),
+        emrys_argv=("emrys", "run"),
+        log_dir=tmp_path,
+        sbatch=str(scheduler),
+        environment={},
+    )
+    transcript = tmp_path / "sbatch.stdout"
+    if outcome == "interrupted":
+        real_wait = slurm_submission.subprocess.Popen.wait
+        interrupted = False
+
+        def interrupt_wait(process, *args, **kwargs):
+            nonlocal interrupted
+            if not interrupted:
+                interrupted = True
+                deadline = time.monotonic() + 3
+                while not marker.exists() and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                assert marker.exists()
+                raise KeyboardInterrupt
+            return real_wait(process, *args, **kwargs)
+
+        monkeypatch.setattr(slurm_submission.subprocess.Popen, "wait", interrupt_wait)
+    if outcome == "accepted":
+        assert slurm_submission.submit(submission, record_path=transcript) == "614999"
+    else:
+        error = (
+            KeyboardInterrupt
+            if outcome == "interrupted"
+            else slurm_submission.SlurmSubmissionError
+        )
+        with pytest.raises(error) as caught:
+            slurm_submission.submit(submission, record_path=transcript)
+        if outcome != "interrupted":
+            assert "raw tail" not in str(caught.value)
+            assert "scheduler diagnostic" in str(caught.value)
+            assert (
+                "accepted job 614999" in str(caught.value)
+                if outcome == "failed"
+                else "unconfirmed" in str(caught.value)
+            )
+    assert marker.read_bytes() == b"once\n"
+    assert transcript.read_bytes() == stdout
+    assert transcript.with_suffix(".stderr").read_bytes() == stderr
+    assert transcript.stat().st_mode & 0o777 == 0o600
+    assert transcript.with_suffix(".stderr").stat().st_mode & 0o777 == 0o600
+
+
+@pytest.mark.parametrize("accepted", (False, True))
+@pytest.mark.parametrize("waited", (False, True))
+def test_recorded_scheduler_early_stdin_close_preserves_rejection_and_job_identity(
+    tmp_path: Path, accepted: bool, waited: bool
+) -> None:
+    scheduler = tmp_path / "sbatch"
+    marker = tmp_path / "invocations"
+    stdout = b"614999;fixture\n" if accepted else b""
+    stderr = b"sbatch: invalid account\n"
+    scheduler.write_text(
+        f"#!{sys.executable}\n"
+        "import os, pathlib\n"
+        "os.close(0)\n"
+        f"with pathlib.Path({str(marker)!r}).open('ab') as stream: stream.write(b'once\\n')\n"
+        f"os.write(1, {stdout!r}); os.write(2, {stderr!r})\n"
+        "raise SystemExit(23)\n"
+    )
+    scheduler.chmod(0o700)
+    submission = replace(
+        slurm_submission.plan_submission(
+            _profile(tmp_path),
+            emrys_argv=("emrys", "run"),
+            log_dir=tmp_path,
+            sbatch=str(scheduler),
+            environment={},
+        ),
+        batch_script="#!/bin/bash\n" + "# padding\n" * 100_000,
+    )
+    transcript = tmp_path / "sbatch.stdout"
+    received = []
+    with pytest.raises(slurm_submission.SlurmSubmissionError) as caught:
+        slurm_submission.submit(
+            submission,
+            **{"wait_record" if waited else "record_path": transcript},
+            on_submitted=received.append,
+        )
+    assert "sbatch exited with 23" in str(caught.value)
+    assert "invalid account" in str(caught.value)
+    assert (
+        "accepted job 614999" in str(caught.value)
+        if accepted
+        else "job ID unconfirmed" in str(caught.value)
+    )
+    assert received == (["614999"] if accepted else [])
+    assert transcript.read_bytes() == stdout
+    assert transcript.with_suffix(".stderr").read_bytes() == stderr
+    assert marker.read_bytes() == b"once\n"
 
 
 @pytest.mark.parametrize("username_variable", ("LOGNAME", "USER", "LNAME", "USERNAME"))
@@ -461,7 +636,7 @@ def test_waited_submission_announces_job_before_wait_and_retains_diagnostics(
     )
     scheduler.write_text(
         f"#!{sys.executable}\n"
-        "import pathlib, sys, time\n"
+        "import os, pathlib, sys, time\n"
         "assert '--wait' in sys.argv\n"
         "assert sys.stdin.read().startswith('#!/bin/bash')\n"
         f"with pathlib.Path({str(submitted)!r}).open('ab') as handle: handle.write(b'submit\\n')\n"
@@ -470,6 +645,8 @@ def test_waited_submission_announces_job_before_wait_and_retains_diagnostics(
         "print('614999;fixture', flush=True)\n"
         f"while not pathlib.Path({str(release)!r}).exists(): time.sleep(0.01)\n"
         f"if {outcome in {'ambiguous', 'wait_failure'}}: print('extra output', flush=True)\n"
+        f"if {outcome == 'success'}:\n"
+        " os.close(1); time.sleep(0.05); os.write(2, b'late stderr after stdout closed')\n"
         f"raise SystemExit({1 if outcome == 'failed' else 0})\n",
     )
     scheduler.chmod(0o700)
@@ -481,9 +658,23 @@ def test_waited_submission_announces_job_before_wait_and_retains_diagnostics(
     )
     transcript = tmp_path / "submission.stdout"
     received: list[str] = []
+    synchronized_stderr_sizes = []
+    real_fsync = slurm_submission.os.fsync
+
+    def fsync(descriptor):
+        state = os.fstat(descriptor)
+        stderr_state = transcript.with_suffix(".stderr").stat()
+        if (state.st_dev, state.st_ino) == (stderr_state.st_dev, stderr_state.st_ino):
+            synchronized_stderr_sizes.append(state.st_size)
+        real_fsync(descriptor)
+
+    monkeypatch.setattr(slurm_submission.os, "fsync", fsync)
     if outcome == "record_failure":
 
         def fail_fsync(_descriptor: int) -> None:
+            if stat.S_ISDIR(os.fstat(_descriptor).st_mode):
+                real_fsync(_descriptor)
+                return
             raise OSError("fixture fsync failed")
 
         monkeypatch.setattr(slurm_submission.os, "fsync", fail_fsync)
@@ -553,6 +744,11 @@ def test_waited_submission_announces_job_before_wait_and_retains_diagnostics(
     assert transcript.read_text() == expected_stdout + (
         "extra output\n" if outcome in {"ambiguous", "wait_failure"} else ""
     )
-    assert transcript.with_suffix(".stderr").read_bytes() == detail
+    expected_stderr = detail + (
+        b"late stderr after stdout closed" if outcome == "success" else b""
+    )
+    assert transcript.with_suffix(".stderr").read_bytes() == expected_stderr
+    if outcome == "success":
+        assert synchronized_stderr_sizes[-1] == len(expected_stderr)
     assert transcript.stat().st_mode & 0o777 == 0o600
     assert transcript.with_suffix(".stderr").stat().st_mode & 0o777 == 0o600

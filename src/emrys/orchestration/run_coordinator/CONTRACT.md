@@ -161,6 +161,25 @@ remain errors and never trigger automatic resubmission. Doctor retains its
 existing private submission transcripts; Run/resume/report preserve the shared
 transport error at their public failure boundary without repeated translation.
 
+After approval and before ordinary Run/resume/report submission, Control creates
+one private `logs/submission-<uuid>/` request directory. Its immutable
+`request.json` uses `emrys.submission-request.v1` and retains UTC creation time,
+numeric submitter UID, command, absolute Project, requested Run/Analysis,
+resolved application-log root, profile binding, exact delegate arguments, and
+scheduler stream patterns. This is correlation context, not a Run/Attempt or
+current scheduler-status record. The context and containing directory entries
+are synchronized before invoking `sbatch`; failure preserves partial records
+and prevents that invocation.
+
+The shared transport opens private raw `sbatch.stdout`/`sbatch.stderr` files and
+synchronizes their directory before launch. Ordinary submission does not add
+`--wait`; Doctor retains its waited first-response/callback ordering. Early
+stdin closure still collects scheduler exit/error detail. An interrupted,
+malformed, rejected, or unconfirmed response remains retained without retry.
+The existing stdout response is the sole recorded scheduler response; there is
+no second job-ID/status file. These records do not prove that a Run was created,
+that a job still exists, or that cancellation or recovery is safe.
+
 ## Profiles and immutable planning
 
 Allocation observation preserves CPU affinity and declared Slurm CPU limits.

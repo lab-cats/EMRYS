@@ -810,15 +810,16 @@ def _schedule(
             "Slurm CPUs per task cannot be lower than workflow cores: "
             f"{placement.cpus_per_task} < {effective_workflow_cores}"
         )
+    delegate_argv = _delegate_argv(
+        command,
+        arguments,
+        profile,
+        controls,
+        overrides,
+    )
     submission = slurm_submission.plan_submission(
         profile,
-        emrys_argv=_delegate_argv(
-            command,
-            arguments,
-            profile,
-            controls,
-            overrides,
-        ),
+        emrys_argv=delegate_argv,
         log_dir=_absolute(workspace) / "logs",
     )
     console_print(f"Project: {workspace.name!a}", style="bold")
@@ -843,8 +844,43 @@ def _schedule(
         _print_no_write("scheduler or workspace")
         return 0
     _admit_workspace_location(workspace)
-    _prepare_scheduler_log_dir(workspace)
-    job_id = slurm_submission.submit(submission)
+    request_root = (
+        _prepare_scheduler_log_dir(workspace) / f"submission-{uuid.uuid4().hex}"
+    )
+    try:
+        request_root.mkdir(mode=0o700)
+        context = {
+            "schema_version": "emrys.submission-request.v1",
+            "created_at": datetime.now(UTC).isoformat(),
+            "submitter_uid": os.getuid(),
+            "command": command,
+            "project": str(_absolute(arguments.project)),
+            "requested_run": None if command == "run" else arguments.run,
+            "analysis": getattr(arguments, "analysis", None),
+            "application_log_root": str(controls.root),
+            "profile_binding_sha256": profile.binding_sha256,
+            "emrys_argv": list(delegate_argv),
+            "scheduler_stdout_pattern": str(submission.stdout_pattern),
+            "scheduler_stderr_pattern": str(submission.stderr_pattern),
+        }
+        with open(
+            request_root / "request.json",
+            "xb",
+            opener=lambda path, flags: os.open(path, flags, 0o600),
+        ) as stream:
+            stream.write(orchestration_contracts.canonical_json_bytes(context))
+            stream.flush()
+            os.fsync(stream.fileno())
+        onboarding._fsync_directory(request_root)
+        onboarding._fsync_directory(request_root.parent)
+    except OSError as exc:
+        raise ControlError(
+            f"Could not prepare submission request {request_root}; sbatch was not invoked: {exc}"
+        ) from exc
+    console_print(f"Submission request: {request_root}")
+    job_id = slurm_submission.submit(
+        submission, record_path=request_root / "sbatch.stdout"
+    )
     print(f"JOB_ID={job_id}")
     print(f"OUT={str(submission.stdout_pattern).replace('%j', job_id)}")
     print(f"ERR={str(submission.stderr_pattern).replace('%j', job_id)}")

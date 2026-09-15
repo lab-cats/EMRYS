@@ -1,5 +1,20 @@
 # Runbook
 
+## Retain a submission before its Run exists
+
+Run, resume, and report print an exact `Submission request:` directory after
+approval. Keep that directory along with the printed job and stream paths.
+`request.json` records the command, Project, selected profile binding, and
+application-log location; `sbatch.stdout` and `sbatch.stderr` preserve the raw
+scheduler response. These records can exist while no Run has been created.
+
+An empty or malformed response does not prove that submission was rejected.
+If acceptance is uncertain or the client was interrupted, resolve the exact
+request with the scheduler and its logs before submitting again. Do not choose
+the most recently modified directory as the intended request. Retain every
+partial request; its presence alone is neither completion evidence nor recovery
+authority. Project inspection's submission roster is a separate campaign slice.
+
 Use the [quickstart](../../quickstart.md) for Viking installation, a first
 synthetic Project and your own study. For other setup needs, start with
 [a chosen release or commit](#install-a-chosen-release-or-commit) or

@@ -7,6 +7,7 @@ import shlex
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
@@ -265,14 +266,18 @@ def submit(
     submission: SlurmSubmission,
     *,
     wait_record: Path | None = None,
+    record_path: Path | None = None,
     on_submitted: Callable[[str], None] | None = None,
 ) -> str:
     """Submit one planned script in one subprocess call and return its job ID."""
 
+    if wait_record is not None and record_path is not None:
+        raise SlurmSubmissionError("Select one submission record path")
+    record = wait_record if wait_record is not None else record_path
     job_id = None
-    operation = "invoke sbatch" if wait_record is None else "prepare submission records"
+    operation = "invoke sbatch" if record is None else "prepare submission records"
     try:
-        if wait_record is None:
+        if record is None:
             completed = subprocess.run(
                 submission.argv,
                 input=submission.batch_script,
@@ -285,39 +290,67 @@ def submit(
             stdout, stderr = completed.stdout, completed.stderr
             job_id = _submitted_job_id(stdout, stderr=stderr) if stdout else None
         else:
-            error_record = wait_record.with_suffix(".stderr")
+            error_record = record.with_suffix(".stderr")
 
             def private_opener(path: str, flags: int) -> int:
                 return os.open(path, flags, 0o600)
 
             with (
-                open(wait_record, "x+", opener=private_opener) as output,
+                open(record, "xb+", opener=private_opener) as output,
                 open(error_record, "xb+", opener=private_opener) as errors,
             ):
+                operation = "synchronize submission directory"
+                directory = os.open(
+                    record.parent,
+                    os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+                )
+                try:
+                    os.fsync(directory)
+                finally:
+                    os.close(directory)
                 print(
-                    f"Slurm submission records: {wait_record}, {error_record}",
+                    f"Slurm submission records: {record}, {error_record}",
                     file=sys.stderr,
                 )
                 operation = "invoke sbatch"
                 with subprocess.Popen(
-                    (*submission.argv, "--wait"),
+                    (
+                        *submission.argv,
+                        *(("--wait",) if wait_record is not None else ()),
+                    ),
                     env=dict(submission.environment),
-                    text=True,
-                    errors="replace",
                     stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
+                    stdout=subprocess.PIPE if wait_record is not None else output,
                     stderr=errors,
                 ) as process:
                     operation = "communicate with sbatch"
                     try:
-                        process.stdin.write(submission.batch_script)
-                        process.stdin.close()
-                        first = process.stdout.readline()
+                        with suppress(BrokenPipeError):
+                            process.stdin.write(submission.batch_script.encode())
+                        with suppress(BrokenPipeError):
+                            process.stdin.close()
+                        if wait_record is not None:
+                            first = process.stdout.readline()
+                        else:
+                            operation = "wait for sbatch"
+                            process.wait()
+                            output.seek(0)
+                            first = output.read()
+                            errors.seek(0)
+                            stderr = errors.read(4096).decode("utf-8", "replace")
                         try:
-                            job_id = _submitted_job_id(first) if first else None
+                            job_id = (
+                                _submitted_job_id(
+                                    first.decode("utf-8", "replace"),
+                                    stderr=stderr if wait_record is None else None,
+                                )
+                                if first
+                                else None
+                            )
                         finally:
                             operation = "retain submission records"
-                            output.write(first)
+                            if wait_record is not None:
+                                output.write(first)
                             output.flush()
                             os.fsync(output.fileno())
                         if job_id:
@@ -329,13 +362,17 @@ def submit(
                             if on_submitted is not None:
                                 on_submitted(job_id)
                         operation = "wait for sbatch"
-                        rest = process.stdout.read()
+                        rest = process.stdout.read() if wait_record is not None else b""
                         operation = "retain submission records"
                         output.write(rest)
-                        stdout = first + rest
+                        output.flush()
+                        os.fsync(output.fileno())
+                        stdout = (first + rest).decode("utf-8", "replace")
                         completed = process
                         operation = "wait for sbatch"
                         process.wait()
+                        operation = "retain submission records"
+                        os.fsync(errors.fileno())
                         operation = "read submission records"
                         errors.seek(0)
                         stderr = errors.read(4096).decode("utf-8", "replace")

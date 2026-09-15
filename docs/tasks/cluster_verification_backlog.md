@@ -440,6 +440,25 @@ of any submission. Preserve the rule against duplicate submission on uncertainty
 **Owners/dependencies:** Submission/control, inspection/presentation/logging;
 CV-03/15/16/18/25.
 
+**Selected first slice:** Ordinary Run/resume/report now retain a private,
+create-absent request context and raw scheduler responses after approval,
+including failures and interruption before Run creation. The context includes
+exact Project/command/profile and custom application-log location for later
+reconnection. Directory synchronization precedes launch; early stdin closure
+retains scheduler rejection details. The existing recorded transport serves
+both ordinary and waited Doctor submissions without duplicate job-ID state,
+automatic retry, or a premature application Attempt. Product growth is 73 net
+lines under the user's minimum necessary expansion approval; no product file
+is added.
+
+**Verification and remaining scope:** Tiny real subprocess tests cover accepted,
+rejected, malformed, invalid-byte, interrupted, and early-stdin-close responses;
+directory/file failures prevent launch and Doctor callback ordering is retained.
+Focused transport checks pass locally; public Control and full checks run in CI.
+Exact request enumeration, strict scheduler observation, and admitted Run/log
+association remain separate slices, so CV-20 remains Open. The retained context
+alone grants no activity, completion, cancellation, or recovery claim.
+
 ### CV-21 Reporting in progress and visibility
 
 **Finding:** Missing reporting receipts briefly appeared as failures and later
