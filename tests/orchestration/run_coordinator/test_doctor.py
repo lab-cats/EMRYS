@@ -1217,9 +1217,13 @@ def test_repair_retains_failed_candidate_probe_after_managers_succeed(
     }
     observed = 'loader: "libmissing.so" could not be loaded'
     commands: list[tuple[str, ...]] = []
+    real_subprocess_run = doctor.subprocess.run
 
     def run(argv: list[str] | tuple[str, ...], **kwargs: Any) -> Any:
         executable = Path(argv[0])
+        if executable == Path("/bin/sh"):
+            assert tuple(argv) == ("/bin/sh", "-c", "command -v java")
+            return real_subprocess_run(argv, **kwargs)
         if executable == pixi:
             commands.append(tuple(argv))
             kwargs["stdout"].write(b"package-manager succeeded\n")
