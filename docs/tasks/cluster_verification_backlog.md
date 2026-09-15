@@ -337,6 +337,21 @@ second scheduler authority.
 preflight; this card owns the broader heterogeneous-capacity and UX acceptance.
 Coordinate execution profiles/capacity, CV-07/09/22, and optimization discussion 3.
 
+**Implemented declaration-fit slice:** The existing computational-resource
+owner now checks only known relationships before allocation and supplies the
+same predicates to actual capacity resolution. Impossible thread/concurrency
+and known memory totals fail early; symbolic memory remains retained, and
+explicit correcting overrides apply first. This adds no capacity query,
+reservation assumption, automatic reduction, or new policy owner. Placement-only
+resume still selects its retained policy before any future reservation check.
+
+**Verification:** Resource/profile tests pass locally (54 cases), including
+early refusal, correcting overrides, symbolic retention, immutable predecessor
+policy, and an allocation-dependent memory boundary. Broader contract tests
+require installed Analysis entry-point metadata unavailable locally. Explicit
+reservation comparison and institutional heterogeneous-node acceptance remain
+separate, so CV-11 remains Open.
+
 ### CV-12 Unexplained initial runtime qualification failure
 
 **Finding:** The first repaired runtime failed qualification after successful

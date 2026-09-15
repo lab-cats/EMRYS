@@ -244,6 +244,16 @@ the selected profile overrides them, and resource CLI values have highest
 precedence. Placement is Attempt-local provenance; the admitted scientific
 computation and task roster remain Run authority.
 
+Profile admission rejects provably impossible declared relationships before
+allocation: stage concurrency times threads cannot exceed workflow cores;
+known stage memory totals cannot exceed known workflow memory; multiple
+concurrent tasks cannot each claim the entire workflow memory budget. The
+existing computational-resource owner enforces these same predicates during
+actual allocation resolution. Explicit CLI corrections apply before relationship
+checks. `allocation` and `workflow` aliases remain symbolic in retained policy;
+unknown capacity is neither guessed nor materialized into a Run. This early
+declaration check does not equate scheduler reservations with observed capacity.
+
 `emrys profile create NAME` previews one named Project profile and writes only
 with `--execute`. It requires explicit built-in site or direct/Slurm placement,
 reuses existing resource flags, and admits the exact candidate bytes through

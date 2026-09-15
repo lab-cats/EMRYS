@@ -164,6 +164,36 @@ def test_placement_only_profile_does_not_change_resource_policy(
     assert scheduled.sha256 != direct.sha256
 
 
+@pytest.mark.parametrize(
+    ("resources", "overrides"),
+    (
+        ({"workflow_cores": 2}, ResourceOverrides(workflow_cores=4)),
+        ({"step_threads": {"00a": 5}}, ResourceOverrides(step_threads=(("00a", 4),))),
+    ),
+)
+def test_profile_relationships_are_checked_after_explicit_correcting_overrides(
+    tmp_path: Path, resources: dict[str, object], overrides: ResourceOverrides
+) -> None:
+    source = _write_profile(
+        tmp_path / "profile.yaml",
+        {
+            "schema_version": execution_profile.SCHEMA_VERSION,
+            "resources": {"schema_version": RESOURCE_SCHEMA_VERSION, **resources},
+        },
+    )
+    before = source.read_bytes()
+    with pytest.raises(ExecutionProfileError, match="concurrency x threads"):
+        load_execution_profile(source)
+
+    profile = load_execution_profile(source, resource_overrides=overrides)
+
+    assert profile.resource_policy.declaration.workflow_cores == 4
+    assert dict(profile.resource_policy.declaration.step_threads)["00a"] == 4
+    assert profile.resource_policy.override_labels == overrides.labels()
+    assert profile.source_raw_sha256 == hashlib.sha256(before).hexdigest()
+    assert source.read_bytes() == before
+
+
 @pytest.mark.parametrize("scheduled", (False, True))
 @pytest.mark.parametrize("explicit", (False, True))
 def test_submission_summary_keeps_requests_limits_and_unknown_capacity_distinct(

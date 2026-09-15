@@ -320,6 +320,7 @@ def admit_resource_policy(
     config_path: Path | None = None,
     config_sha256: str | None = None,
     override_labels: tuple[str, ...] = (),
+    overrides: ResourceOverrides = ResourceOverrides(),
 ) -> ResourcePolicy:
     """Admit one complete symbolic policy without observing an allocation."""
 
@@ -331,6 +332,7 @@ def admit_resource_policy(
     stage_concurrency = _closed_map(value, "stage_concurrency", REPEATABLE_STAGE_IDS)
     step_threads = _closed_map(value, "step_threads", THREAD_CAPABLE_STAGE_IDS)
     stage_memory = _closed_map(value, "stage_memory_mb", STAGE_IDS)
+    _apply_overrides(value, overrides)
     try:
         workflow_cores = int(value["workflow_cores"])
         configured_workflow_memory = value["workflow_memory_mb"]
@@ -358,12 +360,18 @@ def admit_resource_policy(
         ),
         stage_memory_mb=tuple((key, declared_stage_memory[key]) for key in STAGE_IDS),
     )
+    try:
+        resolve_computational_resources(declaration.identity_document())
+    except orchestration_contracts.ContractValidationError as exc:
+        raise ResourceConfigError(str(exc)) from exc
     return ResourcePolicy(
         declaration=declaration,
         default_sha256=default_sha256,
         config_path=config_path,
         config_sha256=config_sha256,
-        override_labels=override_labels,
+        override_labels=tuple(dict.fromkeys((*override_labels, *overrides.labels())))
+        if overrides.labels()
+        else override_labels,
     )
 
 
@@ -434,19 +442,13 @@ def resume_resource_policy(
 ) -> ResourcePolicy:
     """Re-admit a predecessor policy and explicit overrides without allocation."""
 
-    document = predecessor_policy.document()
-    default_sha256 = predecessor_policy.default_sha256
-    config_path = predecessor_policy.config_path
-    config_sha256 = predecessor_policy.config_sha256
-    prior_labels = predecessor_policy.override_labels
-    _apply_overrides(document, overrides)
-    combined_labels = tuple(dict.fromkeys((*prior_labels, *overrides.labels())))
     return admit_resource_policy(
-        document,
-        default_sha256=default_sha256,
-        config_path=config_path,
-        config_sha256=config_sha256,
-        override_labels=combined_labels,
+        predecessor_policy.document(),
+        default_sha256=predecessor_policy.default_sha256,
+        config_path=predecessor_policy.config_path,
+        config_sha256=predecessor_policy.config_sha256,
+        override_labels=tuple(dict.fromkeys(predecessor_policy.override_labels)),
+        overrides=overrides,
     )
 
 

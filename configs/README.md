@@ -207,6 +207,13 @@ computational policy unspecified: a new Run uses packaged defaults and a
 resumed Run retains its immutable policy. To change computation, create a new
 Run. A larger reservation does not itself increase workflow or stage limits.
 
+Impossible declared relationships fail during profile admission, before an
+allocation: for example, three tasks with four threads each cannot fit an
+eight-core workflow budget. Memory checks apply where the declared values
+prove a conflict; symbolic `allocation`/`workflow` values remain symbolic until
+actual allocation admission. An explicit CLI correction is applied before
+these relationship checks. EMRYS does not silently lower an allowance.
+
 The four-CPU initial Viking placement serves a bounded fixture, not a promise
 that a full cohort will fit or run efficiently. Qualification uses the selected
 allocation request, so choosing a large request can also increase queue time.

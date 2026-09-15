@@ -10,6 +10,9 @@ from typing import Any
 import pytest
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.application_model import (
+    resolve_computational_resources,
+)
 from emrys.orchestration.run_coordinator.resource_policy import (
     REPEATABLE_STAGE_IDS,
     STAGE_IDS,
@@ -79,6 +82,11 @@ def test_symbolic_declaration_is_allocation_independent_and_persistable() -> Non
     second = resolve_resource_policy(policy, _allocation(memory_mb=32_768))
 
     assert policy.document() == _document()
+    numeric_workflow = {
+        **policy.declaration.identity_document(),
+        "workflow_memory_mb": 4096,
+    }
+    assert resolve_computational_resources(numeric_workflow) == numeric_workflow
     assert policy.declaration == first.declaration == second.declaration
     assert first.declaration.workflow_memory_mb == "allocation"
     assert set(dict(first.declaration.stage_memory_mb).values()) == {"workflow"}
@@ -201,14 +209,6 @@ def test_persisted_policy_rejects_missing_symbolic_fields_and_tampering() -> Non
             "Workflow memory exceeds observed allocation",
         ),
         (
-            _allocation(cores=4),
-            ResourceOverrides(
-                stage_concurrency=(("01", 2),),
-                step_threads=(("01", 3),),
-            ),
-            "concurrency x threads exceeds workflow cores",
-        ),
-        (
             _allocation(memory_mb=4096),
             ResourceOverrides(
                 stage_concurrency=(("01", 2),),
@@ -231,6 +231,73 @@ def test_resolution_rejects_invalid_resource_relationships(
 
 
 @pytest.mark.parametrize(
+    ("overrides", "message"),
+    (
+        (ResourceOverrides(step_threads=(("00a", 5),)), "concurrency x threads"),
+        (
+            ResourceOverrides(
+                stage_concurrency=(("01", 2),), step_threads=(("01", 3),)
+            ),
+            "concurrency x threads",
+        ),
+        (
+            ResourceOverrides(
+                workflow_memory_mb=4096,
+                stage_concurrency=(("01", 2),),
+                step_threads=(("01", 1),),
+                stage_memory_mb=(("01", 3072),),
+            ),
+            "concurrency x memory",
+        ),
+        (
+            ResourceOverrides(
+                stage_concurrency=(("01", 2),), step_threads=(("01", 1),)
+            ),
+            "2 x workflow > workflow",
+        ),
+        (
+            ResourceOverrides(
+                workflow_memory_mb=4096, stage_memory_mb=(("00a", 4097),)
+            ),
+            "concurrency x memory",
+        ),
+    ),
+)
+def test_admission_and_resume_reject_impossible_declared_limits_without_allocation(
+    overrides: ResourceOverrides, message: str
+) -> None:
+    document = _document()
+    predecessor = _policy(document)
+    with pytest.raises(ResourceConfigError, match=message):
+        admit_resource_policy(
+            document, default_sha256=DEFAULT_SHA256, overrides=overrides
+        )
+    with pytest.raises(ResourceConfigError, match=message):
+        resume_resource_policy(predecessor, overrides=overrides)
+    assert document == predecessor.document() == _document()
+
+
+def test_numeric_stage_memory_stays_unresolved_until_allocation_is_known() -> None:
+    policy = resume_resource_policy(
+        _policy(),
+        overrides=ResourceOverrides(
+            stage_concurrency=(("01", 2),),
+            step_threads=(("01", 2),),
+            stage_memory_mb=(("01", 2048),),
+        ),
+    )
+    before = policy.document()
+    assert policy.declaration.workflow_memory_mb == "allocation"
+    assert dict(policy.declaration.stage_memory_mb)["00a"] == "workflow"
+    resolved = resolve_resource_policy(policy, _allocation(memory_mb=4096))
+    assert resolved.workflow_memory_mb == 4096
+    assert dict(resolved.stage_memory_mb)["01"] == 2048
+    with pytest.raises(ResourceConfigError, match="concurrency x memory"):
+        resolve_resource_policy(policy, _allocation(memory_mb=4095))
+    assert policy.document() == before
+
+
+@pytest.mark.parametrize(
     ("mutate", "message"),
     (
         (lambda record: record.__setitem__("unknown", 1), "Additional properties"),
@@ -241,6 +308,10 @@ def test_resolution_rejects_invalid_resource_relationships(
         ),
         (
             lambda record: record["stage_concurrency"].pop("07"),
+            "Resolved stage_concurrency keys",
+        ),
+        (
+            lambda record: record.pop("stage_concurrency"),
             "Resolved stage_concurrency keys",
         ),
         (

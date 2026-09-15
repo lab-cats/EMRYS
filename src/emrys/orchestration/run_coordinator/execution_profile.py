@@ -20,7 +20,6 @@ from emrys.orchestration.run_coordinator.resource_policy import (
     ResourcePolicy,
     admit_resource_policy,
     is_canonical_slurm_job_id,
-    resume_resource_policy,
 )
 
 SCHEMA_VERSION = "emrys.execution-profile.v1"
@@ -394,8 +393,8 @@ def admit_execution_profile_bytes(
             default_sha256=default_resource_sha256,
             config_path=resource_config_path,
             config_sha256=resource_config_sha256,
+            overrides=resource_overrides,
         )
-        policy = resume_resource_policy(policy, overrides=resource_overrides)
     except ResourceConfigError as exc:
         raise ExecutionProfileError(str(exc)) from exc
 
