@@ -5938,7 +5938,7 @@ def _public_native_cancellation_child(root: Path) -> None:
             first_attempt,
             run_root / "state/verified",
             *(
-                Path(binding["path"])
+                run_root / binding["path"]
                 for item in interrupted.tasks
                 if item.record is not None
                 for binding in (
@@ -6057,7 +6057,8 @@ def test_public_real_snakemake_native_cancellation_resumes_after_closed_abort(
             )
             assert os.getpgid(native["pid"]) == native["pgid"]
             os.kill(process.pid, signal.SIGTERM)
-            assert process.wait(timeout=240) == 0, log_path.read_text()
+            # This now includes a complete resumed pipeline and report production.
+            assert process.wait(timeout=300) == 0, log_path.read_text()
         assert (tmp_path / "cancellation-resume-completed.json").is_file()
         completed = True
     finally:

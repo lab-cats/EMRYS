@@ -2947,7 +2947,12 @@ def test_live_owned_incomplete_start_is_running_then_terminally_blocked(
                 )
                 output = capsys.readouterr().out
                 assert output.count("Scientific task observations:") == 1
-                assert "  Started; completion unverified: 1" in output
+                observation = (
+                    "Started; completion unverified"
+                    if state.attempt_outcome == "running"
+                    else "Verification not admitted"
+                )
+                assert f"  {observation}: 1" in output
                 assert f"Scientific Results: {state.results_status}" in output
                 assert f"Run lock: {state.lock_observation}" in output
                 assert "Recovery available: no" in output

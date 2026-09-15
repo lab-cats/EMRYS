@@ -43,7 +43,7 @@ real-Slurm lane nor an institutional walkthrough.
 | Novice setup, qualification, resource selection and report access | CV-02/04/06/07/09/11/13/14/17/19/22/27: exercise the maintained RUNBOOK on one exact installed revision; retain selected profile/runtime and report identities. Visual review is separate. |
 | Scheduler, monitoring, cancellation and reuse at Viking | CV-01/03/08/15/16/18/20 and `SITE-PARITY-01`: retain exact request/Run/Attempt bindings, cross-node observations, queued/preparation/reconnect behavior and two-Project compute accessibility. |
 | Historical unexplained failures | CV-12/E01, CV-21/E06 and CV-10/E09: recover original diagnostics or a discriminating reproduction; newer successful checks cannot identify those causes. |
-| Postentry Task retry | CV-10: validate the implemented history/abort/retry contract in installed Linux CI, then collect institutional cancellation evidence. Existing blocked receipts remain ineligible. |
+| Postentry Task retry | CV-10: current-version closed-abort retry has hosted acceptance evidence; institutional cancellation and missing-finalization evidence remain. Existing blocked receipts remain ineligible. |
 | Doctor performance | CV-26 and the optimization campaign: use retained invocation counters and CV-05's accounting observations for comparable site setup/retry measurements; preserve fresh admission checks until an equivalent replacement has measured benefit. |
 | Optional interface and retirement | CV-23 keeps cleanup Deferred; CV-24 retains explicit new-analysis selection in the CLI; `DASHBOARD-RETIRE-01` owns institutional replacement validation and coordinated standalone entry-point/caller/name retirement. |
 
@@ -667,13 +667,31 @@ publish this positive closure.
 
 Local focused checks cover current record shapes, historical versus current
 readiness, damaged or incomplete task trees, selected-scope receipt drift,
-interruptible proof and descendant observation. Full Task abort cases and the
-real-Snakemake cancellation/resume journey require installed Linux CI. The
-journey preserves prior EMRYS records, logs, selected inputs and verified outputs
+interruptible proof and descendant observation. At product
+`79d45fb8a974d34572aca5da1ec22a4e4cdbac74`, the real-Snakemake cancellation →
+read-only preview → successful resume journey passed in 238.76 seconds in
+[CI job 104486782385](https://github.com/lab-cats/EMRYS/actions/runs/35000308100/job/104486782385).
+It preserves prior EMRYS records, logs, selected inputs and verified outputs
 while creating a new Attempt; Snakemake's own incomplete-job metadata may change.
-CV-10 remains Open for that integration evidence, institutional cancellation
-acceptance and E09's missing finalization/diagnostic evidence. This change does
-not recover the historical interrupted Run or establish its cause.
+
+The managed golden job passed all 47 selected containment cases with zero skips,
+including all ten abort-proof modes and four real samtools cases. Only the fully
+closed abort mode earned positive closure; the nine refused modes retained null
+closure. The real-tool cancellation cases retain the stopped-sort/empty-output
+limits described above. This tested PR merge
+`3aa865b1c42d710f40b2a698045db2eed9438bcf`, containing that product head and
+base `13cd68750e4223431a594478804795905bfe9154`. The retained
+[artifact 10410455801](https://github.com/lab-cats/EMRYS/actions/runs/35000308100/artifacts/10410455801)
+has SHA-256 `a8b0e166cd0d1b5f1a898cd8abb32eb91b2b418582ea2342ed7926ba1fd0f258`.
+
+That initial complete suite failed four older fixture assumptions about Task
+labels, retained origins and immutable resource policy. Their corrections keep
+the refusal checks and construct valid predecessor/Run bindings; no recovery
+predicate was relaxed. The standard-suite follow-up is recorded in
+[PR #248](https://github.com/lab-cats/EMRYS/pull/248). CV-10 remains Open for
+institutional cancellation acceptance and E09's missing finalization/diagnostic
+evidence. This change does not recover the historical interrupted Run or
+establish its cause.
 
 ### CV-11 Resource profile compatibility
 
@@ -1570,11 +1588,15 @@ cached admission or weaker fresh checks.
 The temporary scheduling, sampling and comparison apparatus and its prototype
 fixtures are retired; canonical donor/borrower counters and native-containment
 checks remain. No product optimization or evidence deletion occurs. The original
-and follow-up automatic PR suites had an unrelated prototype fixture failure
+and follow-up automatic PR suites had a prototype-only fixture failure
 (immediate SIGKILL observation, then a 0.2-second fixture startup timeout).
 Those failed suites are not promoted to passing evidence; the selected real
 experiment passed independently with its 600-second trial bound. Retirement
-requires fresh standard CI. CV-26 remains Open for the complete comparable
+head `13cd68750e4223431a594478804795905bfe9154` then passed all 14 standard
+jobs, with four configured skips, in
+[CI 34998873917](https://github.com/lab-cats/EMRYS/actions/runs/34998873917).
+That combined run also validates the retained producer-workspace prerequisite.
+CV-26 remains Open for the complete comparable
 institutional operation/queue measurements and E11 attribution; this experiment
 and its adoption decision are finished.
 
