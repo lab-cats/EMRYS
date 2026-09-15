@@ -97,7 +97,12 @@ that exact log path. Automatic compute failures write JSON-escaped details to
 the parent's scheduler stderr even when the failure prevents qualification
 binding. Read-only diagnosis creates no log; verbose/debug output includes the
 same detail. Diagnostic persistence remains best-effort and cannot admit a
-failed inventory or change qualification exits.
+failed inventory or change qualification exits. The existing required Snakemake
+check also performs bounded empty-workflow startup in private disposable scratch,
+using the selected interpreter in the calling environment. It runs no study
+task and changes no Project/Run state. Thus head diagnosis, compute qualification,
+and execution preflight exercise backend initialization at their own boundaries;
+a successful head check alone does not establish compute-node readiness.
 
 For direct placement, `run` and `resume` construct and display one frozen plan,
 then ask once before executing that same object. Refusal, EOF, interruption, or

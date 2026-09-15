@@ -66,6 +66,211 @@ def tool_row(
     ]
 
 
+def snakemake_check() -> RuntimeCheck:
+    return replace(
+        next(
+            check
+            for check in inspector.load_runtime_policy()
+            if check.check_id == "snakemake"
+        ),
+        target=sys.executable,
+        probe_args=tuple(
+            controlled_python_argv(sys.executable, "-m", "snakemake", "--version")[1:]
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("code", "output", "timed_out"),
+    [(7, "9.25.1", False), (0, "wrong version", False), (124, "", True)],
+)
+def test_snakemake_version_failure_prevents_startup(
+    tmp_path: Path, code: int, output: str, timed_out: bool
+) -> None:
+    calls = []
+
+    def run(argv, _stdin, _environment, _timeout):
+        calls.append(argv)
+        return code, output, 0.5, timed_out
+
+    check = snakemake_check()
+    result = run_checks(
+        [check], environment={"TMPDIR": str(tmp_path)}, command_runner=run
+    )[0]
+
+    assert result.status == "fail"
+    assert result.detail.startswith("Version")
+    assert calls == [[sys.executable, *check.probe_args]]
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize(
+    ("code", "timed_out"), [(0, False), (7, False), (124, False), (124, True)]
+)
+def test_snakemake_startup_is_isolated_and_reports_failure(
+    tmp_path: Path, code: int, timed_out: bool
+) -> None:
+    environment = {
+        "TMPDIR": str(tmp_path),
+        "HOME": str(tmp_path / "operator-home"),
+        "XDG_CACHE_HOME": str(tmp_path / "operator-cache"),
+        "USER": "operator",
+        "SNAKEMAKE_PROFILE": "operator-profile",
+    }
+    original = dict(environment)
+    scratch_paths = []
+
+    def run(argv, stdin, selected_environment, timeout):
+        assert stdin is None
+        assert timeout == TOOL_PROBE_TIMEOUT_SECONDS
+        if "--version" in argv:
+            assert selected_environment == original
+            return 0, "9.25.1", 0.25, False
+        scratch = Path(selected_environment["TMPDIR"])
+        scratch_paths.append(scratch)
+        assert scratch.parent == tmp_path
+        assert scratch.is_dir()
+        assert selected_environment == {
+            **original,
+            "HOME": str(scratch),
+            "TMPDIR": str(scratch),
+            "XDG_CACHE_HOME": str(scratch / "cache"),
+        }
+        assert argv == [
+            *controlled_python_argv(sys.executable, "-m", "snakemake"),
+            "--snakefile",
+            os.devnull,
+            "--profile",
+            "none",
+            "--workflow-profile",
+            "none",
+            "--directory",
+            str(scratch),
+            "--executor",
+            "local",
+            "--scheduler",
+            "greedy",
+            "--cores",
+            "1",
+            "--runtime-source-cache-path",
+            str(scratch / "source-cache"),
+            "--nocolor",
+        ]
+        (scratch / "cache").mkdir()
+        (scratch / "cache" / "startup-marker").write_text("temporary")
+        return code, "startup diagnostic", 0.5, timed_out
+
+    check = snakemake_check()
+    result = run_checks([check], environment=environment, command_runner=run)[0]
+
+    assert result.check == check
+    assert environment == original
+    assert len(scratch_paths) == 1
+    assert not scratch_paths[0].exists()
+    assert not list(tmp_path.iterdir())
+    assert "elapsed_seconds=0.500" in result.detail
+    assert f"timeout_seconds={TOOL_PROBE_TIMEOUT_SECONDS}" in result.detail
+    if code == 0:
+        assert result.status == "pass"
+        assert result.observed == "9.25.1"
+        assert "minimal local Snakemake startup passed" in result.detail
+    else:
+        assert result.status == "fail"
+        assert result.observed == "startup diagnostic"
+        assert "expected_exit_status=0" in result.detail
+        if timed_out:
+            assert "Snakemake startup timed out" in result.detail
+            assert "; exit_status=" not in result.detail
+        else:
+            assert f"Snakemake startup failed; exit_status={code}" in result.detail
+
+
+def test_snakemake_startup_temporary_state_failure_is_an_observation(
+    tmp_path: Path,
+) -> None:
+    calls = []
+
+    def run(argv, _stdin, _environment, _timeout):
+        calls.append(argv)
+        return 0, "9.25.1", 0.25, False
+
+    check = snakemake_check()
+    result = run_checks(
+        [check],
+        environment={"TMPDIR": str(tmp_path / "missing")},
+        command_runner=run,
+    )[0]
+
+    assert result.status == "fail"
+    assert result.observed == "unavailable"
+    assert "Snakemake startup temporary state failed:" in result.detail
+    assert calls == [[sys.executable, *check.probe_args]]
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize(
+    "login_variable", ["normal", None, "LOGNAME", "USER", "LNAME", "USERNAME"]
+)
+def test_real_snakemake_startup_exercises_login_identity(
+    tmp_path: Path, login_variable: str | None
+) -> None:
+    environment = {
+        "PATH": os.defpath,
+        "HOME": str(tmp_path / "operator-home"),
+        "TMPDIR": str(tmp_path),
+        "XDG_CACHE_HOME": str(tmp_path / "operator-cache"),
+        "SNAKEMAKE_PROFILE": str(tmp_path / "nonexistent-profile"),
+    }
+    if login_variable:
+        environment["USER" if login_variable == "normal" else login_variable] = (
+            "emrys-test"
+        )
+    results = []
+    startup_directories = []
+
+    def run(argv, stdin, selected_environment, timeout):
+        if "--directory" in argv:
+            startup_directories.append(Path(argv[argv.index("--directory") + 1]))
+        if login_variable != "normal":
+            module_index = argv.index("-m")
+            assert argv[module_index + 1] == "snakemake"
+            argv = [
+                *argv[:module_index],
+                "-c",
+                "from unittest.mock import patch\n"
+                "with patch('pwd.getpwuid', side_effect=KeyError('uid unavailable')):\n"
+                " from snakemake.cli import main\n"
+                " main()\n",
+                *argv[module_index + 2 :],
+            ]
+        outcome = runtime_probes._run_command(
+            argv, stdin, selected_environment, timeout
+        )
+        results.append(outcome)
+        return outcome
+
+    result = run_checks(
+        [snakemake_check()], environment=environment, command_runner=run
+    )[0]
+
+    assert len(results) == 2
+    assert results[0][0] == 0
+    assert results[0][1] == "9.25.1"
+    assert len(startup_directories) == 1
+    assert not startup_directories[0].exists()
+    assert not list(tmp_path.iterdir())
+    if login_variable is None:
+        assert result.status == "fail"
+        assert "No username set in the environment" in result.observed
+        assert "Snakemake startup failed; exit_status=1" in result.detail
+    else:
+        assert result.status == "pass"
+        assert result.observed == "9.25.1"
+        assert "Nothing to be done" in results[1][1]
+        assert "user: emrys-test" in results[1][1].lower()
+        assert "minimal local Snakemake startup passed" in result.detail
+
+
 def test_missing_tool_and_version_mismatch_are_failures(tmp_path: Path) -> None:
     mismatch = tool_row("mismatch")
     mismatch[4] = "^definitely-not-python$"

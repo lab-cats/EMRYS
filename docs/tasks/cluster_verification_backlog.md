@@ -19,7 +19,7 @@ cluster action, evidence promotion, or product-growth exception.
 | [CV-01](#cv-01-managed-golden-path-coverage) | P0 | Open | Managed golden path covers the cluster-discovered cases. |
 | [CV-02](#cv-02-individual-qualification-diagnostics) | P0 | Verification pending | Retain and surface each failed qualification check. |
 | [CV-03](#cv-03-scheduler-and-execution-failure-messages) | P0 | Open | Separate submission, queue, execution, and finalization failures. |
-| [CV-04](#cv-04-workflow-startup-readiness) | P0 | Open | Readiness exercises minimal actual Snakemake startup. |
+| [CV-04](#cv-04-workflow-startup-readiness) | P0 | Verification pending | Readiness exercises minimal actual Snakemake startup. |
 | [CV-05](#cv-05-reuse-versus-repeated-repair-work) | P0 | Open | Explain reused state, repeated checks, and new repair work. |
 | [CV-06](#cv-06-actual-data-onboarding) | P0 | Open | Provide a novice actual-data setup path. |
 | [CV-07](#cv-07-site-and-workload-profile-selection) | P0 | Open | Replace manual Viking resource-profile construction. |
@@ -138,6 +138,22 @@ without running the study. Cover the restricted environment and absent passwd
 entry. State the check's limits: successful startup is not complete science.
 Keep package installation in explicit maintenance and avoid a second backend.
 **Owners/dependencies:** Doctor, runtime inspection, workflow owner; CV-01/02.
+
+**Selected implementation:** Extend the existing required Snakemake observation
+with bounded empty-workflow startup after version admission. The selected
+interpreter starts the real backend with local execution, one core, disabled
+ambient profiles, and private disposable scratch. No study task, installation,
+new check ID, receipt, schema, or backend is added. Existing probe diagnostics
+and Doctor failure propagation retain startup failures at each host boundary.
+The approved growth cap is 50 net product lines in the existing probe owner.
+
+**Verification:** All 53 focused runtime tests pass locally, including six
+actual Snakemake 9.25.1 startup cases with Python 3.14.5: ordinary startup,
+unavailable UID lookup, and each supported login-name variable. Separate cases
+exercise timeout, startup, and scratch failures. Public Doctor qualification
+regressions run in CI.
+These local runtime and simulated qualification checks do not establish an
+institutional result or scientific completion; those evidence limits remain.
 
 ### CV-05 Reuse versus repeated repair work
 

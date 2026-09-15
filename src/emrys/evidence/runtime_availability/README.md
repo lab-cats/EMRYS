@@ -1,7 +1,7 @@
 # Runtime availability
 
 This owner checks the tools and files needed by a Project. Runtime discovery,
-Doctor, and execution use the same probes for tool versions, R packages,
+Doctor, and execution use the same probes for tool versions, backend startup, R packages,
 SHA-256 support, and path visibility. The coordinator owns readiness decisions
 and the Project runtime inventory; this owner returns observations.
 
@@ -25,6 +25,16 @@ packages must resolve to the selected library's exact package roots. SHA-256
 probing uses the selected Python interpreter; executable paths are absolute.
 Custom analysis dependencies still support executables, R namespaces, files
 and package trees through these same checks.
+
+After its version matches, the existing `snakemake` check starts the selected
+Python/Snakemake with an empty workflow, the local executor, one core, and a
+30-second limit. This exercises backend initialization, including its username
+lookup, without running a study task. Ambient profiles are disabled. The probe
+uses a private temporary directory for its work, home, and caches and removes
+that scratch on exit; it writes no Project or Run state. Scratch failures,
+startup errors, and timeouts fail the same required check, with bounded detail.
+Successful version and startup checks still do not prove that a study will run
+or that its scientific results are valid.
 
 Non-timeout process failures retain reported and expected exit status alongside
 bounded output in their observation detail. Launch errors keep the existing
