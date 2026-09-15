@@ -667,6 +667,7 @@ def test_run_discovery_retains_all_historical_and_duplicate_attempt_logs(
     later_id = "workflow-20260915T120000Z-" + "f" * 32
     later.update(
         workflow_attempt_id=later_id,
+        created_at="2026-09-15T12:00:00Z",
         operation="resume",
         supersedes_workflow_attempt_id=attempt["workflow_attempt_id"],
     )
@@ -676,6 +677,7 @@ def test_run_discovery_retains_all_historical_and_duplicate_attempt_logs(
     later_request = later_path.with_name("request.yaml")
     later_request.write_bytes(attempt_path.with_name("request.yaml").read_bytes())
     later["request"]["path"] = str(later_request)
+    contracts.validate_record("workflow-attempt", later)
     later_path.write_bytes(contracts.canonical_json_bytes(later))
     resumed = replace(
         request,
@@ -708,7 +710,7 @@ def test_run_discovery_retains_all_historical_and_duplicate_attempt_logs(
 
     monkeypatch.setattr(reader, "read_bytes_with_identity", read)
     result = _discover(request, root)
-    assert result.status == "complete" and result.diagnostics == ()
+    assert result.status == "complete" and result.diagnostics == (), result.diagnostics
     assert [item.application_log for item in result.logs] == [
         first,
         duplicate,
@@ -767,9 +769,11 @@ def test_run_discovery_keeps_stable_matches_but_reports_incomplete_scan(
         other_path.parent.mkdir()
         other = json.loads(attempt_path.read_bytes())
         other["workflow_attempt_id"] = other_id
+        other["created_at"] = "2026-09-15T12:00:00Z"
         other_request = other_path.with_name("request.yaml")
         other_request.write_bytes(attempt_path.with_name("request.yaml").read_bytes())
         other["request"]["path"] = str(other_request)
+        contracts.validate_record("workflow-attempt", other)
         records[-1]["fields"]["workflow_attempt_id"] = other_id
         if defect == "wrong-project":
             other["authored_paths"]["request"] = "/elsewhere/project.yaml"
@@ -777,6 +781,11 @@ def test_run_discovery_keeps_stable_matches_but_reports_incomplete_scan(
             other["workspace"] = "/elsewhere"
         elif defect == "wrong-operation":
             other["operation"] = "resume"
+            other["supersedes_workflow_attempt_id"] = attempt["workflow_attempt_id"]
+            other["snakemake_argv"].extend(
+                ["--rerun-triggers", "input", "--ignore-incomplete"]
+            )
+            contracts.validate_record("workflow-attempt", other)
         elif defect == "wrong-run":
             other["run_id"] = "run-" + "e" * 64
         elif defect == "request-snapshot":
@@ -821,6 +830,15 @@ def test_run_discovery_keeps_stable_matches_but_reports_incomplete_scan(
     result = _discover(request, root)
     assert result.status == "unknown" and result.diagnostics
     assert [item.application_log for item in result.logs] == [first]
+    expected_diagnostic = {
+        "wrong-project": "Recorded Attempt differs from the selected Project",
+        "wrong-workspace": "Recorded Attempt differs from the selected Project",
+        "wrong-operation": "Recorded Attempt differs from the application command",
+        "wrong-run": "Attempt Run ID differs",
+        "request-snapshot": "Recorded Attempt request snapshot differs",
+    }.get(defect)
+    if expected_diagnostic is not None:
+        assert any(expected_diagnostic in item for item in result.diagnostics)
 
 
 @pytest.mark.parametrize(
