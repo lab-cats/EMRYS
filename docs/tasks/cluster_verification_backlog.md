@@ -15,14 +15,15 @@ cluster action, evidence promotion, or product-growth exception.
 ## Verified scope and remaining evidence
 
 The combined standard suite passed for product
-`b0482d6a6db2098ab352ac8b08476b82454a2ce1`
-([CI 34976503453](https://github.com/lab-cats/EMRYS/actions/runs/34976503453)):
+`917ad7b210402dc3d17c32849d1f7bc028a08e60`
+([CI 34983415214](https://github.com/lab-cats/EMRYS/actions/runs/34983415214)):
 14 jobs succeeded, including all Python 3.14 shards and coverage policy, Python
 3.11 compatibility, public/PTY regressions, and the managed golden path. Four
 configured lanes were skipped. This includes Run-log discovery, invocation
-counters, offline correction and complete dashboard functional parity. It
-supersedes their earlier local-environment notes that application or PTY checks
-still required CI. Later product changes require their own applicable checks.
+counters, offline correction, complete dashboard functional parity, recorded
+startup outcomes and Doctor setup/queue-time guidance. It supersedes their
+earlier local-environment notes that application or PTY checks still required CI.
+Later product changes require their own applicable checks.
 
 The covered journey includes donor science/reporting and borrower runtime
 selection/verification, actual Snakemake startup, real-backend/native-fixture
@@ -37,7 +38,7 @@ real-Slurm lane nor an institutional walkthrough.
 | Scheduler, monitoring, cancellation and reuse at Viking | CV-01/03/08/15/16/18/20 and `SITE-PARITY-01`: retain exact request/Run/Attempt bindings, cross-node observations, queued/preparation/reconnect behavior and two-Project compute accessibility. |
 | Historical unexplained failures | CV-12/E01, CV-21/E06 and CV-10/E09: recover original diagnostics or a discriminating reproduction; newer successful checks cannot identify those causes. |
 | Postentry Task retry | CV-10: qualify the production writer boundary, then implement one complete history/abort/retry contract across all consumers. Existing blocked receipts remain ineligible. |
-| Doctor performance | CV-05/26 and the optimization campaign: obtain invocation counters, comparable setup/retry observations and isolated queue attribution; preserve fresh admission checks until an equivalent replacement has measured benefit. |
+| Doctor performance | CV-26 and the optimization campaign: use retained invocation counters and CV-05's accounting observations for comparable site setup/retry measurements; preserve fresh admission checks until an equivalent replacement has measured benefit. |
 | Optional interface and retirement | CV-23 keeps cleanup Deferred; CV-24 retains explicit new-analysis selection in the CLI; `DASHBOARD-RETIRE-01` owns institutional replacement validation and coordinated standalone entry-point/caller/name retirement. |
 
 All card acceptance below remains authoritative. No institutional execution,
@@ -53,7 +54,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-02](#cv-02-individual-qualification-diagnostics) | P0 | Verification pending | Retain and surface each failed qualification check. |
 | [CV-03](#cv-03-scheduler-and-execution-failure-messages) | P0 | Open | Separate submission, queue, execution, and finalization failures. |
 | [CV-04](#cv-04-workflow-startup-readiness) | P0 | Verification pending | Readiness exercises minimal actual Snakemake startup. |
-| [CV-05](#cv-05-reuse-versus-repeated-repair-work) | P0 | Open | Explain reused state, repeated checks, and new repair work. |
+| [CV-05](#cv-05-reuse-versus-repeated-repair-work) | P0 | Completed | Explain reused state, repeated checks, and new repair work. |
 | [CV-06](#cv-06-actual-data-onboarding) | P0 | Verification pending | Provide a novice actual-data setup path. |
 | [CV-07](#cv-07-site-and-workload-profile-selection) | P0 | Verification pending | Replace manual Viking resource-profile construction. |
 | [CV-08](#cv-08-compatible-runtime-reuse) | P0 | Open | Reuse an existing compatible managed runtime across Projects. |
@@ -306,9 +307,15 @@ a promised setup deadline. Actual package reuse remains the package manager's
 report, and every required fresh check remains. Existing owners plus standard
 library date parsing close the timing capability gap without a parallel parser,
 new product file, command, dependency, persistent schema or mutable recovery state.
-Focused timing/transport checks pass; final public Doctor execution and combined
-standard CI remain required for this slice. Site setup/retry duration measurement
-and performance changes remain under CV-26.
+The complete standard CI above passed all 14 standard jobs with four configured
+skips, including the expanded 22-case public Doctor fixture, all Python shards
+and coverage, and donor setup/borrower verification in the managed golden path.
+The optional timing cases preserve success, failure, interruption, exact stream
+binding and receipt/revalidation behavior while separating query latency from
+the waited submission timer. CV-05 is Completed for this hosted software
+acceptance. The scheduler records in these tests are controlled fixtures, not
+live Slurm measurements; comparable site setup/retry duration measurement and
+performance changes remain under CV-26.
 
 ### CV-06 Actual-data onboarding
 
@@ -835,12 +842,12 @@ execution share those labels; duplicate plan construction is consolidated.
 The quickstart explains repeated checks and retained package-manager reuse
 evidence. No public command, check ID, log mode/event ID, receipt, dependency,
 or recovery rule changes. CV-13 supplies setup-state classification; its operator
-acceptance and CV-05's queue-time attribution remain open. Missing storage
-evidence is not assumed harmless.
+acceptance remains pending. CV-05 supplies tested accounting timing and
+setup/retry guidance. Missing storage evidence is not assumed harmless.
 
 **Verification:** Focused regressions cover verification-only and package-action
 plans, confirmation/refusal, progress, failures, and preserved no-write preview.
-Doctor regressions require the locked CI environment. Institutional operator
+Doctor regressions passed the combined standard CI above. Institutional operator
 acceptance remains pending.
 
 ### CV-20 Submission state before Run creation
