@@ -5881,10 +5881,8 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         )
         # A separate public reader observes the real publisher paused at this boundary.
         public = subprocess.run(
-            (
+            controlled_python_argv(
                 sys.executable,
-                "-I",
-                "-B",
                 "-m",
                 "emrys",
                 "inspect",
