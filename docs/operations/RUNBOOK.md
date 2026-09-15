@@ -248,10 +248,9 @@ A successful full Run shows `Run integrity: valid`, `Attempt outcome: succeeded`
 and provenance. Linked machine-readable tables contain the complete data;
 reports do not establish biological conclusions or validate editing sites.
 
-For the built-in Analysis, transfer the complete Run `results/` directory using
-an institution-approved method, preserving its structure so HTML and table links
-work. These files may contain study data. Open the copied HTML locally; retain
-the complete canonical Run at its original location for provenance and recovery.
+For the built-in Analysis, copy the complete Run `results/` directory, preserving
+its structure so HTML and table links work. Use your institution's file-transfer
+application or the [terminal procedure below](#retrieve-reports-from-a-terminal).
 A collaborator Analysis may have different transfer requirements.
 
 When scientific Results are complete but reporting was skipped, inspect first,
@@ -269,6 +268,64 @@ create another scientific Attempt. Generation follows the Project's default
 execution profile: Slurm placement submits it to a compute node, while direct
 placement executes on the current host. Use `--profile NAME` to select another
 existing profile; direct execution requires a permitted compute host.
+
+### Retrieve reports from a terminal
+
+1. On the cluster head node, select the exact completed Run from its Project:
+
+   ```bash
+   emrys inspect RUN --detail debug
+   ```
+
+   Replace `RUN` with its name, full ID, or unique ID prefix. Continue after
+   inspection shows valid integrity, a succeeded Attempt, complete Scientific
+   Results, and complete Reporting. Copy the printed report paths; their common
+   `results/` ancestor is the directory to transfer. Do not choose a directory
+   by modification time or copy a bundle still being published.
+
+2. Open a terminal **on your own computer**. The example uses SSH and rsync 3
+   on both computers; use your institution's transfer application if unavailable.
+   Set the approved login/transfer host and the exact remote results path, then
+   copy into a new local directory:
+
+   ```bash
+   report_host='YOUR_LOGIN@YOUR_TRANSFER_HOST'
+   report_results='/absolute/Project/runs/RUN_ID/results'
+   report_copy=$(mktemp -d "$HOME/emrys-report.XXXXXX")
+   rsync --protect-args -rlt -- "$report_host:$report_results/" \
+     "${report_copy:?Create the local report directory first}/"
+   ```
+
+   Replace both example values. The trailing slash copies the directory's
+   contents without flattening its folders. The files may contain study data;
+   use an approved computer and destination. If transfer fails, keep the paths
+   and error; rerun the same transfer after resolving the cause.
+
+3. Compare file contents with the original without changing either copy:
+
+   ```bash
+   rsync --protect-args -rlcni -- "$report_host:$report_results/" \
+     "${report_copy:?Create the local report directory first}/"
+   printf 'Local results: %s\n' "$report_copy"
+   ```
+
+   A successful comparison prints no file changes. Any listed missing/changed
+   file or error means the copy is not yet verified; resolve it and compare
+   again. This uses rsync's [checksum and dry-run options](https://download.samba.org/pub/rsync/rsync.1).
+   It checks transfer consistency, not Run integrity or scientific validity.
+
+4. In that local directory, open
+   `reports/RUN_ID/RUN_ID.scientific_report.html` and
+   `reports/RUN_ID/RUN_ID.evidence_report.html` in your browser. Replace `RUN_ID`
+   with the inspected full ID. Follow the links between reports and to candidate
+   tables; retain the complete copied tree. No web server or tunnel is needed.
+
+Keep the original Project, complete Run, inputs, runtime, and logs available for
+inspection and recovery. The copied reports retain those original provenance
+paths; the results copy is not a relocated executable Project. Record visual
+review separately, including Run identity, report names, and any broken links
+or unreadable figures. Copying and opening the files does not complete visual
+acceptance or biological review.
 
 ### Reusable processing
 

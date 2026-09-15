@@ -166,6 +166,9 @@ recovery.
 Inspection prints the report paths. In your usual CSU file-transfer application,
 copy the Run's complete `results` directory to your computer. Keep its folders
 together so links to tables and other report files continue to work.
+For a terminal-only transfer with a checksum comparison, follow the
+[report retrieval procedure](docs/operations/RUNBOOK.md#retrieve-reports-from-a-terminal)
+from a terminal on your own computer.
 
 On Viking, the reports sit within this layout. Use the actual paths printed
 by inspection; `<PROJECT>` and `<RUN_ID>` below explain the folder structure:
