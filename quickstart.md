@@ -200,6 +200,10 @@ To check one exact request's queue state or accounting result, follow
 [submission inspection](docs/operations/RUNBOOK.md#retain-a-submission-before-its-run-exists).
 An `UNKNOWN` observation leaves the request unresolved; keep its records before
 considering another submission.
+For one terminal view of scheduler observations, dated Task evidence and logs,
+use [inspection watch](docs/operations/RUNBOOK.md#watch-one-fixed-selection).
+Press `r` there to verify progress again and `q` to leave; leaving the view does
+not stop a job. Read the evidence dates before relying on a displayed result.
 Completion is confirmed by all four lines:
 
 ```text

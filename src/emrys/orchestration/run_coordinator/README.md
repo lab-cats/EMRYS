@@ -30,6 +30,7 @@ changing it. Synthetic dataset choices belong in the [quickstart](../../../../qu
 | Build task commands, dependencies, and their recorded plan | `materialization.py`, `run_implementation.py` |
 | Run Snakemake and record Attempt success, interruption, or failure | `lifecycle.py`, `task.py` |
 | Read and validate Run state and identify supported recovery | `inspection.py`, `_inspection_evidence.py` |
+| Present dated inspection evidence and a read-only terminal watch | `_inspection_presentation.py` |
 | Start reporting after computation or on request | `reporting_operation.py`, `reporting_boundary.py` |
 | Submit the same execution backend to one Slurm allocation | `slurm_submission.py` |
 
@@ -48,6 +49,14 @@ follow the selected Project profile.
 [the profile contract](CONTRACT.md#profiles-and-immutable-planning) defines resource selection.
 
 ## Frozen dashboard and replacement
+
+`emrys inspect --watch` adds an installed-package view of one exact selection.
+It shares static inspection's milestone, Task and elapsed presentation and
+uses existing scheduler, application-association and Run admission owners.
+Automatic refresh reads scheduler diagnostics and a bounded stream tail;
+scientific evidence is dated and reverified explicitly. Operational actions
+remain in the ordinary CLI. This first view does not retire the standalone
+dashboard or establish institutional replacement acceptance.
 
 The old CSU-oriented `dashboard.py` preview remains until a replacement is
 implemented and validated under `DASHBOARD-RETIRE-01`. `emrys inspect` stays the

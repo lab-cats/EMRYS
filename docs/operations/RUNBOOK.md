@@ -59,6 +59,46 @@ the most recently modified directory as the intended request. Retain every
 partial request; its presence alone is neither completion evidence nor recovery
 authority.
 
+## Watch one fixed selection
+
+Add `--watch` to inspection for an integrated terminal view. A submitted request
+works before a Run exists:
+
+```bash
+emrys inspect --project "$EMRYS_PROJECT_ROOT" --submission "submission-EXACT_TOKEN" --watch
+```
+
+You can also select an exact Run with `emrys inspect RUN --watch`. A Run's
+recorded job number alone does not establish current scheduler identity, so
+select its retained request when scheduler observations are needed.
+
+The view combines scheduler state, dated Run/Task/milestone and reporting
+evidence, elapsed-time context, one diagnostic stream and the last supported
+action. It keeps the selected request's historical Attempt distinct from the
+Run's latest Attempt. It never switches to the newest job or log on reconnect.
+
+Use `r` to recheck application association and fully verify the selected Run,
+Tab to change stream, `j`/`k` to scroll, and `q` to quit. Full verification can
+read substantial scientific data; it runs initially and when requested. Screen
+painting performs no reads. Automatic refresh checks only the scheduler and
+selected diagnostic tail every 30 seconds. Read the observation dates: a
+previously verified snapshot is not current completion or recovery proof.
+
+Stream tails show at most 64 KiB and 256 retained lines; the terminal may show
+fewer. Missing, changing, truncated or replaced streams are identified and
+terminal controls are escaped. Appended diagnostic bytes do not inherit an
+earlier log digest's authority. The available Task streams come from admitted
+terminal Task records; this is not a complete active-native-log roster.
+Redirected output or a noninteractive terminal produces one plain snapshot.
+The view runs no operational action and creates no logs or state. A stalled
+filesystem read can delay refresh; after the view opens, quitting does not wait
+for that reader. Initial Project/Run/request selection still performs ordinary
+synchronous reads before the view opens. `--detail` controls static inspection;
+watch uses one fixed layout.
+
+The existing standalone dashboard remains supported while its full replacement
+is validated, including legacy discovery, accounting and offline stream access.
+
 ## Stop one exact Slurm request
 
 Use the exact retained request printed by Run, resume or report, with the

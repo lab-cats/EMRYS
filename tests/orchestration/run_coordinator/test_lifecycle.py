@@ -1620,9 +1620,10 @@ def test_success_publishes_receipt_last_and_inspection_ignores_engine_metadata(
     assert observed.attempt_outcome == "succeeded"
     assert observed.results_status == "complete"
     assert observed.reporting_status == "incomplete"
-    assert {control._task_observation(item) for item in observed.tasks} == {
-        "Verified complete"
-    }
+    assert {
+        control._inspection_presentation.task_observation(item)
+        for item in observed.tasks
+    } == {"Verified complete"}
 
 
 def test_application_event_observer_exceptions_cannot_alter_receipt(
@@ -1986,7 +1987,8 @@ def test_verified_mutation_blocks(tmp_path: Path) -> None:
         ),
     )
     assert "Verification not admitted" in {
-        control._task_observation(item) for item in observed.tasks
+        control._inspection_presentation.task_observation(item)
+        for item in observed.tasks
     }
     assert observed.results_status == "blocked" and not observed.recovery_available
 
@@ -2997,9 +2999,10 @@ def test_task_start_crash_and_damage_remain_blocked(
     )
     assert observed.results_status == "blocked"
     assert any("task-start" in blocker for blocker in observed.blockers)
-    assert {control._task_observation(item) for item in observed.tasks} == {
-        "No admitted start"
-    }
+    assert {
+        control._inspection_presentation.task_observation(item)
+        for item in observed.tasks
+    } == {"No admitted start"}
 
 
 @pytest.mark.parametrize("tamper", ["extra", "deep", "symlink"])

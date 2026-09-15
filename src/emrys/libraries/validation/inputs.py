@@ -67,11 +67,19 @@ def read_bytes_with_identity(
 ) -> tuple[bytes, os.stat_result]:
     """Read stable bytes, optionally bounded, with the bound descriptor identity."""
 
-    if limit is not None and (
-        isinstance(limit, bool) or not isinstance(limit, int) or limit < 1
-    ):
-        raise ValueError("read limit must be a positive integer")
     data, state = _read_file(path, label, nonempty=nonempty, limit=limit)
+    assert isinstance(data, bytes)
+    return data, state
+
+
+def read_suffix_with_identity(
+    path: Path, label: str, length: int
+) -> tuple[bytes, os.stat_result]:
+    """Read at most length trailing bytes through one stable no-follow binding."""
+
+    if length is None:
+        raise ValueError("read limit must be a positive integer")
+    data, state = _read_file(path, label, nonempty=False, limit=length, from_end=True)
     assert isinstance(data, bytes)
     return data, state
 
@@ -152,9 +160,12 @@ def _read_file(
     limit: int | None = None,
     nonempty: bool = True,
     digest_only: bool = False,
+    from_end: bool = False,
 ) -> tuple[bytes | str, os.stat_result]:
-    """Read a stable complete file or fixed prefix from one bound descriptor."""
+    """Read a stable complete file or bounded range from one bound descriptor."""
 
+    if limit is not None and (type(limit) is not int or limit < 1):
+        raise ValueError("read limit must be a positive integer")
     no_follow = getattr(os, "O_NOFOLLOW", None)
     if no_follow is None:
         fail(f"{label} cannot be admitted without symbolic-link protection: {path}")
@@ -169,6 +180,9 @@ def _read_file(
         if nonempty and before.st_size == 0:
             fail(f"{label} must be nonempty: {path}")
         _require_descriptor_path_binding(path, before, label)
+        if from_end:
+            assert limit is not None
+            os.lseek(descriptor, max(0, before.st_size - limit), os.SEEK_SET)
         chunks: list[bytes] = []
         digest = hashlib.sha256() if digest_only else None
         observed_size = 0

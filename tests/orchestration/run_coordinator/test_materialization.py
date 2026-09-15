@@ -3840,6 +3840,120 @@ def test_public_submission_selection_queries_only_the_exact_request(
         assert calls == []
 
 
+@pytest.mark.parametrize("selector_kind", ("name", "absolute"))
+def test_public_watch_selected_request_is_one_read_only_nonterminal_snapshot(
+    tmp_path, monkeypatch, capsys, selector_kind
+):
+    from tests.orchestration.run_coordinator.test_submission_inspection import _request
+
+    project = build(tmp_path / "project")
+    request, _profile = _request(project.parent, version="v3")
+    context = request.context
+    calls = []
+
+    def query(argv, **kwargs):
+        calls.append(argv)
+        return (
+            "|".join(
+                (
+                    request.recorded_job_id,
+                    str(os.getuid()),
+                    "PENDING",
+                    "local",
+                    context["scheduler_stdout_pattern"].replace(
+                        "%j", request.recorded_job_id
+                    ),
+                    context["scheduler_stderr_pattern"].replace(
+                        "%j", request.recorded_job_id
+                    ),
+                    "Resources\x1b[31m",
+                    context["scheduler_job_name"],
+                )
+            )
+            + "\n"
+        ).encode()
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("watch must not enter workflow, create a log, or choose a Run")
+
+    monkeypatch.setattr(
+        control.slurm_submission.scheduler_observation, "command_bytes", query
+    )
+    monkeypatch.setattr(control, "_resolve_run_argument", forbidden)
+    monkeypatch.setattr(control, "open_attempt_log", forbidden)
+    monkeypatch.setattr(control._inspection_presentation, "RefreshWorker", forbidden)
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    assert "--watch" in parser.format_help()
+    selector = (
+        request.request_root.name
+        if selector_kind == "name"
+        else str(request.request_root)
+    )
+    before = {
+        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
+    }
+    argv = ["--project", str(project), "--submission", selector, "--watch"]
+    assert control.inspect_from_args(parser.parse_args(argv)) == 0
+    output = capsys.readouterr().out
+    assert output.count("EMRYS inspection") == 1
+    assert "Retained submissions:" not in output
+    assert "Scheduler: PENDING" in output
+    assert "Resources\\x1b[31m" in output and "\x1b" not in output
+    assert "Application association as of" in output
+    assert len(calls) == 1
+    assert {
+        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
+    } == before
+    calls.clear()
+    assert control.inspect_from_args(parser.parse_args([*argv, "run-" + "a" * 64])) == 2
+    assert not calls
+
+
+@pytest.mark.parametrize("explicit", (False, True))
+def test_public_watch_run_uses_existing_selection_and_one_scientific_snapshot(
+    tmp_path, monkeypatch, capsys, explicit
+):
+    from tests.orchestration.run_coordinator.test_inspection_presentation import _run
+
+    project = build(tmp_path / "project")
+    root = project.parent / "runs" / ("run-" + "a" * 64)
+    root.mkdir(parents=True)
+    calls = []
+
+    def inspect(path):
+        calls.append(path)
+        return _run(path)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail(
+            "Run-only watch must not invent submission identity or create a log"
+        )
+
+    monkeypatch.setattr(control.inspection, "inspect_run", inspect)
+    monkeypatch.setattr(
+        control.slurm_submission, "observe_submission_request", forbidden
+    )
+    monkeypatch.setattr(
+        control._submission_inspection, "inspect_submission_application", forbidden
+    )
+    monkeypatch.setattr(control, "open_attempt_log", forbidden)
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    before = {
+        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
+    }
+    argv = ["--project", str(project), "--watch", *([root.name] if explicit else [])]
+    assert control.inspect_from_args(parser.parse_args(argv)) == 0
+    assert calls == [root]
+    output = capsys.readouterr().out
+    assert "Run evidence as of:" in output and "Scheduler: UNKNOWN" in output
+    assert "No exact submission selected" in output
+    assert {
+        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
+    } == before
+
+
 @pytest.mark.parametrize("state", ["unknown", "candidate", "admitted"])
 @pytest.mark.parametrize("selector_kind", ["name", "absolute"])
 def test_public_application_correlation_scans_only_selected_request_and_escapes_evidence(
@@ -5212,7 +5326,9 @@ def _status_task(
 
 def test_status_milestones_partition_steps_and_derive_persisted_progress() -> None:
     declared_steps = [
-        step_id for _label, steps in control._MILESTONE_STEPS for step_id in steps
+        step_id
+        for _label, steps in control._inspection_presentation._MILESTONE_STEPS
+        for step_id in steps
     ]
     assert len(declared_steps) == len(set(declared_steps)) == 14
     assert set(declared_steps) == {
@@ -5231,7 +5347,7 @@ def test_status_milestones_partition_steps_and_derive_persisted_progress() -> No
         "09",
         "10",
     }
-    progress = control._milestone_progress(
+    progress = control._inspection_presentation.milestone_progress(
         (
             *(_status_task(step, "verified") for step in ("00a", "00b", "00c")),
             _status_task("01", "verified"),
@@ -5262,16 +5378,16 @@ def test_attempt_elapsed_uses_only_current_or_latest_attempt(
         def now(cls, tz=None):
             return current[0]
 
-    monkeypatch.setattr(control, "datetime", FixedDateTime)
+    monkeypatch.setattr(control._inspection_presentation, "datetime", FixedDateTime)
 
     assert (
-        control._attempt_elapsed_line(
+        control._inspection_presentation.attempt_elapsed_line(
             SimpleNamespace(latest_attempt=None, attempt_outcome="not_started"),
         )
         == "Attempt elapsed: unavailable — no Attempt"
     )
     assert (
-        control._attempt_elapsed_line(
+        control._inspection_presentation.attempt_elapsed_line(
             SimpleNamespace(
                 latest_attempt=latest,
                 latest_receipt=None,
@@ -5281,7 +5397,7 @@ def test_attempt_elapsed_uses_only_current_or_latest_attempt(
         == "Current Attempt elapsed: 0:01:30"
     )
     assert (
-        control._attempt_elapsed_line(
+        control._inspection_presentation.attempt_elapsed_line(
             SimpleNamespace(
                 latest_attempt={
                     **latest,
@@ -5294,12 +5410,15 @@ def test_attempt_elapsed_uses_only_current_or_latest_attempt(
         == "Latest Attempt elapsed: 0:02:00"
     )
     current[0] = datetime(2026, 8, 12, 19, 59, 59, 200_000, tzinfo=UTC)
-    assert "invalid timestamp boundary" in control._attempt_elapsed_line(
-        SimpleNamespace(
-            latest_attempt=latest,
-            latest_receipt=None,
-            attempt_outcome="running",
-        ),
+    assert (
+        "invalid timestamp boundary"
+        in control._inspection_presentation.attempt_elapsed_line(
+            SimpleNamespace(
+                latest_attempt=latest,
+                latest_receipt=None,
+                attempt_outcome="running",
+            ),
+        )
     )
 
 

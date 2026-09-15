@@ -553,6 +553,24 @@ inspection snapshot. CV-20 supplies exact selected-request scheduler state.
 These are shared CLI observations for a future integrated view; the existing
 dashboard remains in place until its complete replacement acceptance is met.
 
+**Selected watch slice:** `inspect --watch` holds one exact Project/request/Run
+selection and presents scheduler observations, dated scientific and reporting
+evidence, elapsed context, bounded sanitized tails and next supported actions.
+Shared presentation replaces duplicate milestone/Task/elapsed projection across
+static and watch output. The initial and explicit refresh perform existing full
+Run admission; screen painting performs no reads and automatic refresh only
+checks scheduler state and the selected diagnostic tail. One daemon reader
+coalesces refresh requests so quitting does not await stalled filesystem I/O.
+Observation dates and historical Attempt identity remain explicit.
+
+The existing input owner supplies bounded suffix reads with stable no-follow
+identity checks. Replaced/truncated streams do not inherit previous bytes or
+digest authority. No command execution, automatic resubmission or recovery
+action is added. The first view does not cover full active-native-log discovery,
+legacy standalone/offline parity or institutional terminal/NFS behavior.
+Those gaps and complete replacement validation remain under this card and
+`DASHBOARD-RETIRE-01`; no old dashboard surface or evidence is retired.
+
 ### CV-17 Project creation progress
 
 **Finding:** Actual-data initialization silently read large inputs for minutes
