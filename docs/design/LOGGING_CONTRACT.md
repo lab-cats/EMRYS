@@ -172,6 +172,12 @@ it stops after a failed sink and creates no second log.
 Complete invocation time is printed after return/exception, including operator
 confirmation time, and is not appended to an already closed terminal log.
 These measurements cannot substitute for readiness or change receipt authority.
+The same flush may emit durable-only `runtime_check_passed` packets collected
+at actual Doctor inspection/discovery returns. They use the existing runtime
+diagnostic fields plus execution context and the actual phase. Event timestamps
+describe emission after work; they do not date the earlier probe. Failure
+diagnostics keep their existing immediate path, and returned observations are
+not recaptured as fresh checks.
 
 ## Scheduler distinction
 

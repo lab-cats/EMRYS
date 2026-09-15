@@ -1040,6 +1040,22 @@ hasher, persistent cache or product state is added. Reconsider the candidate
 only after full-operation phase/byte measurements show a material cost and an
 equivalent identity-preserving replacement demonstrates a measured benefit.
 
+**Successful-probe diagnostic slice:** Reuse the probe runner's existing elapsed
+values and the invocation collector to retain passing runtime details at actual
+Doctor inspection/discovery returns. One field projection serves passed and
+failed diagnostics. Passing packets flush with existing phase timings after
+controlling work and the claim-release decision; failures keep their immediate
+diagnostics. A returned Slurm observation is not recorded again as a fresh check,
+and head and delegated compute evidence remain distinct. Log timestamps date
+the deferred emission. Verbose/debug diagnosis exposes escaped passing details.
+
+Tool version and Snakemake startup durations are separate. SHA-256 utility
+timing covers its tiny test payload; it does not measure executable/jar or R-tree
+hashing. Existing qualification identities, reads, probes, clocks and log owners
+remain unchanged. Focused runtime tests pass; public Doctor phase, identity,
+failure and observation-degradation fixtures require hosted CI. Full byte/I/O/
+memory attribution and institutional before/after evidence remain Open.
+
 ## P3 outcome
 
 ### CV-27 Terminal-only report access

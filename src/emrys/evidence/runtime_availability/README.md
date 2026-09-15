@@ -43,6 +43,9 @@ normalized status 127. R namespace load errors retain the loader's
 message. Missing launchers remain `unavailable`; a timeout or failed assertion
 is not reported as a missing executable. These diagnostics change neither the
 required checks nor their pass/fail authority.
+Successful tool observations also retain the existing subprocess elapsed time.
+Snakemake version and empty-workflow startup durations are labelled separately.
+The SHA-256 utility probe times its tiny known payload, not runtime-file hashing.
 
 Use [Doctor and runtime discovery](../../../../docs/operations/RUNBOOK.md) for
 Project readiness. The standalone runtime-report command and its TSV publisher

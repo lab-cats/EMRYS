@@ -149,7 +149,10 @@ def _probe_tool(
             "Version output did not match expected regex; "
             f"exit_status={code}; expected_exit_status={expected_code}",
         )
-    detail = f"Resolved executable: {executable}"
+    detail = (
+        f"Resolved executable: {executable}; version probe: "
+        f"{_timing_detail(elapsed, TOOL_PROBE_TIMEOUT_SECONDS)}"
+    )
     if check.check_id == "snakemake":
         try:
             with tempfile.TemporaryDirectory(
@@ -195,7 +198,7 @@ def _probe_tool(
                 startup_output or reason,
                 f"Snakemake startup {reason}; expected_exit_status=0; {startup_detail}",
             )
-        detail += f"; minimal local Snakemake startup passed; {startup_detail}"
+        detail += f"; minimal local Snakemake startup passed: {startup_detail}"
     return RuntimeObservation(check, "pass", output, detail)
 
 
@@ -337,7 +340,11 @@ def _probe_hash_utility(
             f"SHA-256 digest mismatch; exit_status={code}; expected_exit_status=0",
         )
     return RuntimeObservation(
-        check, "pass", observed, f"Resolved executable: {executable}"
+        check,
+        "pass",
+        observed,
+        f"Resolved executable: {executable}; SHA-256 tiny known-payload utility probe "
+        f"(not runtime-file hashing): {_timing_detail(elapsed, TOOL_PROBE_TIMEOUT_SECONDS)}",
     )
 
 

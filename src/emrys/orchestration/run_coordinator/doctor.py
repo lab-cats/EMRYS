@@ -30,6 +30,7 @@ from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
     RuntimeInspection,
     RuntimeInspectionError,
+    RuntimeObservation,
     inspect_runtime_profile_bytes,
     load_runtime_profile_contract,
     runtime_file_bindings,
@@ -109,11 +110,23 @@ class _DoctorTiming:
         self.context = "head/local"
         self.detail = LogLevel.NORMAL
         self.phases: list[dict[str, object]] = []
+        self.runtime_probes: list[tuple[str, dict[str, object]]] = []
         self.flushed = False
 
     def observe(self, name: str, elapsed: float | None, outcome: str) -> None:
         values = {"phase_name": name, "elapsed_seconds": elapsed, "outcome": outcome}
         self.phases.append(values)
+
+    def observe_runtime(
+        self, inspection: RuntimeInspection | None, *, phase: str
+    ) -> None:
+        with suppress(Exception):
+            if inspection is not None:
+                self.runtime_probes.extend(
+                    (phase, _runtime_observation_fields(inspection, item))
+                    for item in inspection.observations
+                    if item.status == "pass"
+                )
 
     def flush(self, record: Callable[..., bool]) -> None:
         if self.flushed:
@@ -127,7 +140,16 @@ class _DoctorTiming:
                     execution_context=self.context,
                     **values,
                 ):
-                    break
+                    return
+            for phase, values in self.runtime_probes:
+                if not record(
+                    "runtime_check_passed",
+                    "Runtime check passed at the recorded Doctor phase.",
+                    phase=phase,
+                    execution_context=self.context,
+                    **values,
+                ):
+                    return
 
     def finish(self, elapsed: float | None, status: int | None) -> None:
         if self.detail in {LogLevel.VERBOSE, LogLevel.DEBUG}:
@@ -1054,6 +1076,22 @@ def _stderr(message: str, *, style: str | None = None) -> None:
     console_print(message, style=style)
 
 
+def _runtime_observation_fields(
+    inspection: RuntimeInspection, item: RuntimeObservation
+) -> dict[str, object]:
+    return {
+        "check_id": item.check.check_id,
+        "target": item.check.target,
+        "status": item.status,
+        "expected": item.check.expected,
+        "observed": item.observed,
+        "detail": item.detail,
+        "host": platform.node(),
+        "inventory": str(inspection.profile_path),
+        "inventory_sha256": inspection.profile_sha256,
+    }
+
+
 def _record_runtime_failures(
     inspection: RuntimeInspection | None,
     *,
@@ -1066,17 +1104,7 @@ def _record_runtime_failures(
     for item in inspection.observations:
         if item.status == "pass":
             continue
-        values = {
-            "check_id": item.check.check_id,
-            "target": item.check.target,
-            "status": item.status,
-            "expected": item.check.expected,
-            "observed": item.observed,
-            "detail": item.detail,
-            "host": platform.node(),
-            "inventory": str(inspection.profile_path),
-            "inventory_sha256": inspection.profile_sha256,
-        }
+        values = _runtime_observation_fields(inspection, item)
         if attempt is None:
             _stderr(
                 f"Runtime check failed ({phase}): {json.dumps(values, ensure_ascii=True)}"
@@ -1128,7 +1156,14 @@ def _print_result(result: DoctorResult, detail: LogLevel) -> None:
             for observation in result.inspection.observations:
                 if observation.status == "pass":
                     _stderr(
-                        f"  {observation.check.check_id}: pass ({observation.observed})"
+                        f"  {observation.check.check_id!r}: pass; "
+                        + json.dumps(
+                            {
+                                "observed": observation.observed,
+                                "detail": observation.detail,
+                            },
+                            ensure_ascii=True,
+                        )
                     )
             _record_runtime_failures(result.inspection, phase="diagnosis")
     if detail is LogLevel.DEBUG:
@@ -1305,6 +1340,8 @@ def _qualify_slurm(
             analysis_name=plan.analysis_name,
             execution_profile=execution.source_path,
         )
+    if timing is not None:
+        timing.observe_runtime(observed.inspection, phase="head_requalification")
     _record_runtime_failures(
         observed.inspection, phase="head_requalification", attempt=attempt
     )
@@ -1325,6 +1362,8 @@ def _qualify_slurm(
             analysis_name=plan.analysis_name,
             execution_profile=execution.source_path,
         )
+    if timing is not None:
+        timing.observe_runtime(final.inspection, phase="head_final_readiness")
     if final.execution_profile != execution:
         raise DoctorRepairError(
             f"Execution profile changed during head finalization after Slurm job {job_id}"
@@ -1356,21 +1395,24 @@ def _execute_repair(
         raise DoctorRepairError(
             f"could not open Doctor log before mutation: {exc}"
         ) from exc
-    logger = attempt.logger(component="maintenance", phase="repair")
     record = partial(
         attempt.best_effort,
         warning="WARNING: Doctor logging degraded; requalification remains controlling.",
     )
 
-    def emit(name: str, message: str, **values: object) -> bool:
+    def emit(
+        name: str, message: str, *, phase: str = "repair", **values: object
+    ) -> bool:
         return record(
-            lambda: logger.info(
+            lambda: attempt.logger(component="maintenance", phase=phase).info(
                 message,
                 extra=event(
                     name,
                     fields={key: field(value) for key, value in values.items()},
                     detail="durable_only"
-                    if name.startswith(("package_manager_", "doctor_phase_"))
+                    if name.startswith(
+                        ("package_manager_", "doctor_phase_", "runtime_check_")
+                    )
                     else "normal",
                 ),
             )
@@ -1491,6 +1533,8 @@ def _execute_repair(
                     root=plan.installed_package.root,
                     python_executable=Path(sys.executable),
                 )
+            if timing is not None:
+                timing.observe_runtime(candidate, phase="runtime_discovery")
             _record_runtime_failures(
                 candidate, phase="runtime_discovery", attempt=attempt
             )
@@ -1536,6 +1580,8 @@ def _execute_repair(
                 if plan.execution
                 else None,
             )
+        if timing is not None:
+            timing.observe_runtime(final.inspection, phase="project_readiness")
         _record_runtime_failures(
             final.inspection, phase="project_readiness", attempt=attempt
         )
@@ -1684,6 +1730,9 @@ def _doctor_from_args(arguments: argparse.Namespace, timing: _DoctorTiming) -> i
                 analysis_name=arguments.analysis,
                 execution_profile=getattr(arguments, "profile", None),
             )
+        timing.observe_runtime(
+            result.inspection, phase="compute_runtime" if compute else "diagnosis"
+        )
         delegated = slurm_submission.delegate_binding() is not None
         if delegated:
             _record_runtime_failures(result.inspection, phase="compute_runtime")
