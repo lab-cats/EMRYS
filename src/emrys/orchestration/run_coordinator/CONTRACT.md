@@ -188,6 +188,19 @@ The existing stdout response is the sole recorded scheduler response; there is
 no second job-ID/status file. These records do not prove that a Run was created,
 that a job still exists, or that cancellation or recovery is safe.
 
+Project inspection without a Run selector enumerates all retained requests
+before the existing Run selection. It never chooses the newest request. The
+shared writer/reader validates the closed context and a 64 KiB canonical JSON
+limit; the reader requires canonical, current-UID-owned directories/files and
+stable bounded reads. Missing, malformed, oversized or changing records remain
+partial/unconfirmed observations or explicit read failures. It reads at most
+4096 stderr bytes and admits only a bounded, newline-terminated canonical
+response as a recorded job/cluster. Metadata and excerpts are terminal-escaped.
+Neither the response nor record timestamps establish acceptance, current state,
+Run association or process absence. No scheduler query or file write occurs.
+A Project with no Runs still displays its request roster successfully;
+explicit Run selection retains its existing missing/ambiguous selection errors.
+
 The existing dashboard's shared scheduler observer requires an exact canonical
 root job ID and current numeric UID. It rejects missing/mismatched/duplicate
 identity, including accounting duplicates, and never substitutes `USER` or

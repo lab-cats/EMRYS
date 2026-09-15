@@ -3,16 +3,24 @@
 from __future__ import annotations
 
 import os
+import re
 import shlex
 import subprocess
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, cast
 
+from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.libraries.validation.errors import ValidationError
+from emrys.libraries.validation.inputs import (
+    directory_entries_with_identity,
+    read_bytes_with_identity,
+)
 from emrys.orchestration.run_coordinator.resource_policy import (
     is_canonical_slurm_job_id,
 )
@@ -34,6 +42,273 @@ _DELEGATE_ENV_PREFIX = "EMRYS_PRIVATE_SLURM_"
 
 class SlurmSubmissionError(RuntimeError):
     """One private Slurm submission could not be planned or completed."""
+
+
+_REQUEST_CONTEXT_LIMIT = 64 * 1024
+
+
+def validate_request_context(
+    context: Mapping[str, object], project: Path
+) -> dict[str, object]:
+    """Admit the existing v1 diagnostic context shared by its writer and reader."""
+    fields = {
+        "schema_version",
+        "created_at",
+        "submitter_uid",
+        "command",
+        "project",
+        "requested_run",
+        "analysis",
+        "application_log_root",
+        "profile_binding_sha256",
+        "emrys_argv",
+        "scheduler_stdout_pattern",
+        "scheduler_stderr_pattern",
+    }
+    if set(context) != fields:
+        raise SlurmSubmissionError("Submission request context fields differ from v1")
+    if (
+        context["schema_version"] != "emrys.submission-request.v1"
+        or type(context["submitter_uid"]) is not int
+        or context["submitter_uid"] != os.getuid()
+        or context["project"] != str(project)
+        or context["command"] not in ("run", "resume", "report")
+    ):
+        raise SlurmSubmissionError(
+            "Submission request version, UID, Project or command differs"
+        )
+    for name in ("project", "application_log_root"):
+        value = context[name]
+        if (
+            not isinstance(value, str)
+            or not value
+            or "\0" in value
+            or not Path(value).is_absolute()
+            or os.path.abspath(value) != value
+        ):
+            raise SlurmSubmissionError(
+                f"Submission {name} must be an absolute normalized path"
+            )
+    created = context["created_at"]
+    try:
+        if (
+            not isinstance(created, str)
+            or datetime.fromisoformat(created).tzinfo != UTC
+        ):
+            raise ValueError("UTC timestamp required")
+    except ValueError as exc:
+        raise SlurmSubmissionError(
+            "Submission creation time is not a UTC timestamp"
+        ) from exc
+    digest = context["profile_binding_sha256"]
+    requested = context["requested_run"]
+    analysis = context["analysis"]
+    argv = context["emrys_argv"]
+    if (
+        not isinstance(digest, str)
+        or not re.fullmatch(r"[0-9a-f]{64}", digest)
+        or (context["command"] == "run" and requested is not None)
+        or (
+            context["command"] != "run"
+            and (
+                not isinstance(requested, str)
+                or not re.fullmatch(r"run-[0-9a-f]{64}", requested)
+            )
+        )
+        or (analysis is not None and not isinstance(analysis, str))
+        or not isinstance(argv, list)
+        or not argv
+        or any(not isinstance(item, str) or "\0" in item for item in argv)
+    ):
+        raise SlurmSubmissionError(
+            "Submission Run, analysis, profile binding or argv is malformed"
+        )
+    for stream, suffix in (("stdout", "out"), ("stderr", "err")):
+        expected = project.parent / "logs" / f"emrys-local-pilot-%j.{suffix}"
+        if context[f"scheduler_{stream}_pattern"] != str(expected):
+            raise SlurmSubmissionError(
+                "Submission scheduler paths differ from the Project"
+            )
+    admitted = dict(context)
+    if (
+        len(orchestration_contracts.canonical_json_bytes(admitted))
+        > _REQUEST_CONTEXT_LIMIT
+    ):
+        raise SlurmSubmissionError(
+            "Submission request.json exceeds the 64 KiB observation limit"
+        )
+    return admitted
+
+
+@dataclass(frozen=True, slots=True)
+class SubmissionRequestObservation:
+    """Retained diagnostic evidence, never scheduler acceptance or current state."""
+
+    request_root: Path
+    record_status: str
+    context: Mapping[str, object] | None = field(repr=False)
+    recorded_job_id: str | None
+    recorded_cluster: str | None
+    diagnostics: tuple[str, ...]
+    stderr_excerpt: bytes = field(repr=False, default=b"")
+
+
+def submission_requests(project: Path) -> tuple[SubmissionRequestObservation, ...]:
+    """Read every scoped request without writes, scheduler calls or newest selection."""
+    log_root = project.parent / "logs"
+
+    def directory(path: Path) -> tuple[tuple[str, ...], os.stat_result]:
+        if (
+            not path.is_absolute()
+            or path.is_symlink()
+            or path.resolve(strict=True) != path
+        ):
+            raise SlurmSubmissionError(f"Submission directory is not canonical: {path}")
+        entries, identity = directory_entries_with_identity(
+            path, "Submission directory"
+        )
+        if identity.st_uid != os.getuid():
+            raise SlurmSubmissionError(
+                f"Submission directory is not owned by current UID: {path}"
+            )
+        return entries, identity
+
+    def read(path: Path, limit: int) -> tuple[bytes, int]:
+        data, identity = read_bytes_with_identity(
+            path, "Submission record", nonempty=False, limit=limit
+        )
+        if identity.st_uid != os.getuid():
+            raise SlurmSubmissionError(
+                f"Submission record is not owned by current UID: {path}"
+            )
+        return data, identity.st_size
+
+    def same_directory(before: os.stat_result, after: os.stat_result) -> bool:
+        return all(
+            getattr(before, name) == getattr(after, name)
+            for name in (
+                "st_dev",
+                "st_ino",
+                "st_mode",
+                "st_uid",
+                "st_mtime_ns",
+                "st_ctime_ns",
+            )
+        )
+
+    try:
+        if project.resolve(strict=True) != project or not project.is_file():
+            raise SlurmSubmissionError("Project definition must be one canonical file")
+        directory(project.parent)
+        try:
+            log_root.lstat()
+        except FileNotFoundError:
+            return ()
+        entries, root_identity = directory(log_root)
+    except (OSError, ValidationError) as exc:
+        raise SlurmSubmissionError(str(exc)) from exc
+    observations = []
+    for name in entries:
+        if not name.startswith("submission-"):
+            continue
+        request_root = log_root / name
+        context = None
+        recorded_job_id = recorded_cluster = None
+        stderr = b""
+        diagnostics = []
+        status = "malformed"
+        try:
+            if not re.fullmatch(r"submission-[0-9a-f]{32}", name):
+                raise SlurmSubmissionError(
+                    "Submission request directory name is not canonical"
+                )
+            children, identity = directory(request_root)
+            expected = {"request.json", "sbatch.stdout", "sbatch.stderr"}
+            if set(children) - expected:
+                raise SlurmSubmissionError(
+                    "Submission request directory contains unexpected entries"
+                )
+            status = "partial" if set(children) != expected else "unconfirmed"
+            if "request.json" not in children:
+                raise SlurmSubmissionError("Submission request.json is missing")
+            data, size = read(request_root / "request.json", _REQUEST_CONTEXT_LIMIT + 1)
+            if size > _REQUEST_CONTEXT_LIMIT:
+                raise SlurmSubmissionError(
+                    "Submission request.json exceeds the 64 KiB observation limit"
+                )
+            parsed = orchestration_contracts.load_json_object_bytes(
+                data, "Submission request"
+            )
+            context = validate_request_context(parsed, project)
+            if orchestration_contracts.canonical_json_bytes(context) != data:
+                raise SlurmSubmissionError(
+                    "Submission request.json is not canonical JSON"
+                )
+            context = MappingProxyType(
+                {**context, "emrys_argv": tuple(context["emrys_argv"])}
+            )
+            if "sbatch.stderr" in children:
+                stderr, size = read(request_root / "sbatch.stderr", 4096)
+                if size > len(stderr):
+                    diagnostics.append(
+                        "Retained stderr excerpt is limited to 4096 bytes"
+                    )
+            if "sbatch.stdout" not in children:
+                diagnostics.append("Submission response is missing; job ID unconfirmed")
+            else:
+                data, size = read(request_root / "sbatch.stdout", 4097)
+                if size > 4096:
+                    diagnostics.append(
+                        "Submission response exceeds 4096 bytes; job ID unconfirmed"
+                    )
+                elif not data.endswith(b"\n"):
+                    diagnostics.append(
+                        "Submission response is empty or unterminated; job ID unconfirmed"
+                    )
+                else:
+                    try:
+                        response = data.decode("utf-8")
+                        recorded_job_id, recorded_cluster = _submitted_response(
+                            response
+                        )
+                        if status != "partial":
+                            status = "recorded-response"
+                    except (UnicodeError, SlurmSubmissionError):
+                        diagnostics.append(
+                            "Submission response is empty or malformed; job ID unconfirmed"
+                        )
+            _, after = directory(request_root)
+            if not same_directory(identity, after):
+                raise SlurmSubmissionError(
+                    "Submission request directory changed while read"
+                )
+            if status == "partial":
+                diagnostics.append("Submission request has missing record files")
+        except (OSError, ValidationError, ValueError, SlurmSubmissionError) as exc:
+            diagnostics.append(str(exc)[:4096])
+            context = None
+            stderr = b""
+            recorded_job_id = recorded_cluster = None
+            if status != "partial":
+                status = "malformed"
+        observations.append(
+            SubmissionRequestObservation(
+                request_root,
+                status,
+                context,
+                recorded_job_id,
+                recorded_cluster,
+                tuple(diagnostics),
+                stderr,
+            )
+        )
+    try:
+        _, after = directory(log_root)
+        if not same_directory(root_identity, after):
+            raise SlurmSubmissionError("Submission request roster changed while read")
+    except (OSError, ValidationError) as exc:
+        raise SlurmSubmissionError(str(exc)) from exc
+    return tuple(observations)
 
 
 def delegate_binding() -> str | None:
@@ -289,7 +564,7 @@ def submit(
                 check=False,
             )
             stdout, stderr = completed.stdout, completed.stderr
-            job_id = _submitted_job_id(stdout, stderr=stderr) if stdout else None
+            job_id = _submitted_response(stdout, stderr=stderr)[0] if stdout else None
         else:
             error_record = record.with_suffix(".stderr")
 
@@ -341,10 +616,10 @@ def submit(
                             stderr = errors.read(4096).decode("utf-8", "replace")
                         try:
                             job_id = (
-                                _submitted_job_id(
+                                _submitted_response(
                                     first.decode("utf-8", "replace"),
                                     stderr=stderr if wait_record is None else None,
-                                )
+                                )[0]
                                 if first
                                 else None
                             )
@@ -401,12 +676,12 @@ def submit(
             f"Slurm {subject}: sbatch exited with {completed.returncode}; "
             f"logs={logs!a}; stderr excerpt={stderr[:4096]!a}"
         )
-    return _submitted_job_id(stdout, job_id, stderr)
+    return _submitted_response(stdout, job_id, stderr)[0]
 
 
-def _submitted_job_id(
+def _submitted_response(
     stdout: str, confirmed: str | None = None, stderr: str | None = None
-) -> str:
+) -> tuple[str, str | None]:
 
     lines = stdout.splitlines()
     fields = lines[0].split(";") if len(lines) == 1 else ()
@@ -420,7 +695,7 @@ def _submitted_job_id(
             f"Invalid sbatch response; job ID {confirmed or 'unconfirmed'}; "
             f"stdout excerpt={stdout[:4096]!a}{detail}"
         )
-    return fields[0]
+    return fields[0], fields[1] if len(fields) == 2 else None
 
 
 __all__ = (
@@ -430,6 +705,9 @@ __all__ = (
     "SUBMIT_UID_ENV",
     "SlurmSubmission",
     "SlurmSubmissionError",
+    "SubmissionRequestObservation",
     "plan_submission",
+    "submission_requests",
     "submit",
+    "validate_request_context",
 )

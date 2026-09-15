@@ -11,10 +11,315 @@ import sys
 import time
 from dataclasses import dataclass, replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from emrys.orchestration.run_coordinator import slurm_submission
+
+
+def _request_record(
+    tmp_path: Path,
+    token: str = "a",
+    *,
+    stdout: bytes = b"700123\n",
+    stderr: bytes = b"",
+) -> tuple[Path, Path, dict[str, object]]:
+    project = tmp_path / "project.yaml"
+    project.touch(exist_ok=True)
+    root = tmp_path / "logs" / ("submission-" + token * 32)
+    root.mkdir(parents=True)
+    context = {
+        "schema_version": "emrys.submission-request.v1",
+        "created_at": "2026-09-15T12:00:00+00:00",
+        "submitter_uid": os.getuid(),
+        "command": "run",
+        "project": str(project),
+        "requested_run": None,
+        "analysis": None,
+        "application_log_root": str(tmp_path / "custom application logs"),
+        "profile_binding_sha256": "f" * 64,
+        "emrys_argv": [
+            sys.executable,
+            "-X",
+            "pycache_prefix=/dev/null",
+            "-I",
+            "-m",
+            "emrys",
+            "run",
+            "--project",
+            str(project),
+        ],
+        "scheduler_stdout_pattern": str(tmp_path / "logs" / "emrys-local-pilot-%j.out"),
+        "scheduler_stderr_pattern": str(tmp_path / "logs" / "emrys-local-pilot-%j.err"),
+    }
+    (root / "request.json").write_bytes(
+        slurm_submission.orchestration_contracts.canonical_json_bytes(context)
+    )
+    (root / "sbatch.stdout").write_bytes(stdout)
+    (root / "sbatch.stderr").write_bytes(stderr)
+    return project, root, context
+
+
+def test_submission_requests_keep_all_retained_responses_without_scheduler_or_writes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project, first, context = _request_record(
+        tmp_path, stdout=b"700123;other-cluster\n", stderr=b"reason:\xff\n"
+    )
+    _, second, _ = _request_record(tmp_path, "b")
+    before = {path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
+    monkeypatch.setattr(
+        slurm_submission.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail("discovery invoked a subprocess"),
+    )
+    observations = slurm_submission.submission_requests(project)
+    assert [item.request_root for item in observations] == [first, second]
+    assert [item.recorded_job_id for item in observations] == ["700123", "700123"]
+    assert [item.recorded_cluster for item in observations] == ["other-cluster", None]
+    assert all(item.record_status == "recorded-response" for item in observations)
+    assert (
+        observations[0].context["application_log_root"]
+        == context["application_log_root"]
+    )
+    assert observations[0].stderr_excerpt == b"reason:\xff\n"
+    assert isinstance(observations[0].context["emrys_argv"], tuple)
+    assert {
+        path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()
+    } == before
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        b"",
+        b"70012",
+        b"0\n",
+        b"0700123\n",
+        b"700123\n700124\n",
+        b"700123;\n",
+        b"700123;bad;cluster\n",
+        b"\xff\n",
+        b"7" * 4097 + b"\n",
+    ],
+)
+def test_submission_request_preserves_unconfirmed_response(
+    tmp_path: Path,
+    response: bytes,
+) -> None:
+    project, _, _ = _request_record(tmp_path, stdout=response)
+    (observed,) = slurm_submission.submission_requests(project)
+    assert observed.record_status == "unconfirmed"
+    assert observed.context is not None
+    assert observed.recorded_job_id is None
+    assert "unconfirmed" in " ".join(observed.diagnostics)
+
+
+@pytest.mark.parametrize("missing", ["request.json", "sbatch.stdout", "sbatch.stderr"])
+def test_submission_request_retains_partial_record_identity(
+    tmp_path: Path,
+    missing: str,
+) -> None:
+    project, root, _ = _request_record(tmp_path)
+    (root / missing).unlink()
+    (observed,) = slurm_submission.submission_requests(project)
+    assert observed.request_root == root
+    assert observed.record_status == "partial"
+    assert observed.recorded_job_id == (
+        "700123" if missing == "sbatch.stderr" else None
+    )
+    assert observed.diagnostics
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "extra-field",
+        "uid",
+        "project",
+        "run",
+        "version",
+        "timestamp",
+        "path",
+        "argv",
+        "duplicate-json",
+        "noncanonical-json",
+        "oversized",
+    ],
+)
+def test_submission_request_rejects_malformed_context(
+    tmp_path: Path,
+    defect: str,
+) -> None:
+    project, root, context = _request_record(tmp_path)
+    changes = {
+        "extra-field": {"future": True},
+        "uid": {"submitter_uid": os.getuid() + 1},
+        "project": {"project": str(tmp_path / "other.yaml")},
+        "run": {"requested_run": "run-" + "e" * 64},
+        "version": {"schema_version": "v2"},
+        "timestamp": {"created_at": "2026-09-15T12:00:00"},
+        "path": {"scheduler_stdout_pattern": "/other/%j.out"},
+        "argv": {"emrys_argv": []},
+    }
+    context.update(changes.get(defect, {}))
+    data = slurm_submission.orchestration_contracts.canonical_json_bytes(context)
+    if defect == "duplicate-json":
+        data = b'{"command":"run",' + data[1:]
+    elif defect == "noncanonical-json":
+        data += b"\n"
+    elif defect == "oversized":
+        data += b" " * 65537
+    (root / "request.json").write_bytes(data)
+    (observed,) = slurm_submission.submission_requests(project)
+    assert observed.record_status == "malformed"
+    assert observed.context is None and observed.recorded_job_id is None
+    assert observed.diagnostics
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "name",
+        "directory-symlink",
+        "directory-loop",
+        "file-symlink",
+        "unexpected-entry",
+        "directory-owner",
+        "file-owner",
+    ],
+)
+def test_submission_request_rejects_unowned_or_noncanonical_entries(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    defect: str,
+) -> None:
+    project, root, _ = _request_record(tmp_path)
+    if defect == "name":
+        root.rename(root.with_name("submission-not-a-uuid"))
+    elif defect in {"directory-symlink", "directory-loop"}:
+        held = tmp_path / "held"
+        root.rename(held)
+        root.symlink_to(
+            held if defect == "directory-symlink" else root.name,
+            target_is_directory=True,
+        )
+    elif defect == "file-symlink":
+        (root / "sbatch.stdout").unlink()
+        (root / "sbatch.stdout").symlink_to(project)
+    elif defect == "unexpected-entry":
+        (root / "extra").touch()
+    elif defect == "directory-owner":
+        original = slurm_submission.directory_entries_with_identity
+
+        def unowned_directory(path: Path, label: str):
+            entries, identity = original(path, label)
+            return entries, SimpleNamespace(
+                st_uid=os.getuid() + 1
+            ) if path == root else identity
+
+        monkeypatch.setattr(
+            slurm_submission, "directory_entries_with_identity", unowned_directory
+        )
+    else:
+        original = slurm_submission.read_bytes_with_identity
+
+        def unowned_file(*args, **kwargs):
+            data, _ = original(*args, **kwargs)
+            return data, SimpleNamespace(st_uid=os.getuid() + 1)
+
+        monkeypatch.setattr(slurm_submission, "read_bytes_with_identity", unowned_file)
+    (observed,) = slurm_submission.submission_requests(project)
+    assert observed.record_status == "malformed"
+    assert observed.context is None and observed.recorded_job_id is None
+
+
+def test_submission_request_bounds_stderr_and_refuses_roster_replacement(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project, _, _ = _request_record(tmp_path, stderr=b"e" * 8192)
+    (observed,) = slurm_submission.submission_requests(project)
+    assert observed.record_status == "recorded-response"
+    assert observed.stderr_excerpt == b"e" * 4096
+    original = slurm_submission.read_bytes_with_identity
+
+    def replace_roster(*args, **kwargs):
+        result = original(*args, **kwargs)
+        (tmp_path / "logs" / "changed").touch()
+        return result
+
+    monkeypatch.setattr(slurm_submission, "read_bytes_with_identity", replace_roster)
+    with pytest.raises(slurm_submission.SlurmSubmissionError, match="roster changed"):
+        slurm_submission.submission_requests(project)
+
+
+def test_submission_request_empty_roster_does_not_create_logs(tmp_path: Path) -> None:
+    project = tmp_path / "project.yaml"
+    project.touch()
+    assert slurm_submission.submission_requests(project) == ()
+    assert not (tmp_path / "logs").exists()
+
+
+def test_request_context_preserves_empty_analysis(tmp_path: Path) -> None:
+    project, root, context = _request_record(tmp_path)
+    context["analysis"] = ""
+    context["emrys_argv"].extend(("--analysis", ""))
+    admitted = slurm_submission.validate_request_context(context, project)
+    (root / "request.json").write_bytes(
+        slurm_submission.orchestration_contracts.canonical_json_bytes(admitted)
+    )
+    (observed,) = slurm_submission.submission_requests(project)
+    assert observed.record_status == "recorded-response"
+    assert observed.context["analysis"] == ""
+    assert observed.context["emrys_argv"][-2:] == ("--analysis", "")
+
+
+@pytest.mark.parametrize("extra_bytes", [0, 1])
+def test_request_context_writer_and_reader_share_serialized_byte_limit(
+    tmp_path: Path, extra_bytes: int
+) -> None:
+    project, root, context = _request_record(tmp_path)
+    context["emrys_argv"].append("é")
+    size = len(slurm_submission.orchestration_contracts.canonical_json_bytes(context))
+    context["emrys_argv"][-1] += "x" * (65536 - size + extra_bytes)
+    data = slurm_submission.orchestration_contracts.canonical_json_bytes(context)
+    assert len(data) == 65536 + extra_bytes
+    if extra_bytes:
+        with pytest.raises(slurm_submission.SlurmSubmissionError, match="64 KiB"):
+            slurm_submission.validate_request_context(context, project)
+    else:
+        assert slurm_submission.validate_request_context(context, project) == context
+    (root / "request.json").write_bytes(data)
+    (observed,) = slurm_submission.submission_requests(project)
+    assert observed.record_status == (
+        "malformed" if extra_bytes else "recorded-response"
+    )
+    if extra_bytes:
+        assert observed.context is None
+        assert "64 KiB" in " ".join(observed.diagnostics)
+    else:
+        assert observed.context["emrys_argv"] == tuple(context["emrys_argv"])
+
+
+@pytest.mark.parametrize("command", ["resume", "report"])
+def test_request_context_retains_exact_requested_run(
+    tmp_path: Path,
+    command: str,
+) -> None:
+    project, root, context = _request_record(tmp_path)
+    run_id = "run-" + "e" * 64
+    context.update(command=command, requested_run=run_id)
+    context["emrys_argv"][6:7] = [command, run_id]
+    admitted = slurm_submission.validate_request_context(context, project)
+    (root / "request.json").write_bytes(
+        slurm_submission.orchestration_contracts.canonical_json_bytes(admitted)
+    )
+    (observed,) = slurm_submission.submission_requests(project)
+    assert observed.context["requested_run"] == run_id
+    assert observed.context["command"] == command
 
 
 @dataclass(frozen=True, slots=True)

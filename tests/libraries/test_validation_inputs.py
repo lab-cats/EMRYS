@@ -41,19 +41,23 @@ READERS = pytest.mark.parametrize(
 )
 
 
+@pytest.mark.parametrize("content", [b"", b"bound-prefix-and-unread-tail"])
 def test_read_bytes_with_identity_returns_bound_file_and_allows_declared_empty(
     tmp_path: Path,
+    content: bytes,
 ) -> None:
     source = tmp_path / "empty.lock"
-    source.touch()
+    source.write_bytes(content)
 
     data, identity = INPUTS.read_bytes_with_identity(
         source,
         "Empty lock",
         nonempty=False,
+        limit=5,
     )
 
-    assert data == b""
+    assert data == content[:5]
+    assert identity.st_size == len(content)
     assert (identity.st_dev, identity.st_ino) == (
         source.stat().st_dev,
         source.stat().st_ino,
@@ -272,7 +276,7 @@ def test_read_prefix_rejects_symlinks_and_invalid_lengths(tmp_path: Path) -> Non
 
     with pytest.raises(REPORT.ValidationError, match="regular non-symlink"):
         INPUTS.read_prefix(link, "Linked prefix fixture", 4)
-    for invalid in (True, 0, -1):
+    for invalid in (None, True, 0, -1):
         with pytest.raises(ValueError, match="positive integer"):
             INPUTS.read_prefix(source, "Invalid prefix fixture", invalid)
 

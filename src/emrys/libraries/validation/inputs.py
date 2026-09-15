@@ -63,10 +63,15 @@ def read_bytes_with_identity(
     label: str,
     *,
     nonempty: bool = True,
+    limit: int | None = None,
 ) -> tuple[bytes, os.stat_result]:
-    """Read stable bytes and return the bound descriptor identity."""
+    """Read stable bytes, optionally bounded, with the bound descriptor identity."""
 
-    data, state = _read_file(path, label, nonempty=nonempty)
+    if limit is not None and (
+        isinstance(limit, bool) or not isinstance(limit, int) or limit < 1
+    ):
+        raise ValueError("read limit must be a positive integer")
+    data, state = _read_file(path, label, nonempty=nonempty, limit=limit)
     assert isinstance(data, bytes)
     return data, state
 
@@ -120,11 +125,9 @@ def directory_entries_with_identity(
 
 def read_prefix(path: Path, label: str, length: int) -> bytes:
     """Read at most ``length`` bytes through a stable, no-follow binding."""
-    if isinstance(length, bool) or not isinstance(length, int) or length < 1:
+    if length is None:
         raise ValueError("prefix length must be a positive integer")
-    data, _state = _read_file(path, label, limit=length)
-    assert isinstance(data, bytes)
-    return data
+    return read_bytes_with_identity(path, label, limit=length)[0]
 
 
 def _read_file(

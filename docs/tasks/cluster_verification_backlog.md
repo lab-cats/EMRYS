@@ -556,13 +556,28 @@ automatic retry, or a premature application Attempt. Product growth is 73 net
 lines under the user's minimum necessary expansion approval; no product file
 is added.
 
+**Implemented discovery slice:** `emrys inspect` without a Run selector lists
+every retained request before existing Run selection, including when no Run
+exists. It shows recorded context and response job/cluster, bounded escaped
+stderr, and partial/malformed/unconfirmed observations without scheduler calls
+or writes. Unavailable directories are errors rather than empty rosters. The
+writer and bounded reader share closed-context admission and a 64 KiB limit;
+directory/file ownership, canonical paths, stable reads, strict response
+parsing and immutable returned context prevent guessing from arbitrary files.
+No newest-request selection, acceptance inference or Run association is added.
+
 **Verification and remaining scope:** Tiny real subprocess tests cover accepted,
 rejected, malformed, invalid-byte, interrupted, and early-stdin-close responses;
 directory/file failures prevent launch and Doctor callback ordering is retained.
-Focused transport checks pass locally; public Control and full checks run in CI.
-Exact request enumeration, strict scheduler observation, and admitted Run/log
-association remain separate slices, so CV-20 remains Open. The retained context
-alone grants no activity, completion, cancellation, or recovery claim.
+The transport/shared-input suites pass 107 local tests, including exact size
+boundaries, empty Analysis preservation, malformed/partial records, symlinks,
+owner mismatches and changed directories. Public fixtures cover zero/multiple
+requests before any Run, an existing Run, escaped output, unavailable logs,
+writer-reader roundtrips, and oversized context preventing submission; these
+application fixtures and full checks run in CI. Exact request-to-job binding,
+current scheduler state and admitted Run/log association remain separate slices,
+so CV-20 remains Open. Retained context alone grants no activity, completion,
+cancellation, or recovery claim.
 
 ### CV-21 Reporting in progress and visibility
 
