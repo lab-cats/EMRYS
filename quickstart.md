@@ -132,6 +132,11 @@ For optional detail while setup runs, see
 
 When needed, Doctor checks/updates the tools on the head node; Pixi and renv
 report which packages they reuse or change in the retained package output.
+The plan's `Runtime work` line distinguishes a currently verified runtime,
+preparing a missing managed inventory, and checking/updating tools selected by
+a retained inventory. A missing inventory can follow an interrupted setup;
+it does not mean all tools must be installed again. The manager output at
+`package-output.log` records actual package reuse and changes.
 Doctor then submits the required compute-node checks and confirms that the
 study's storage works across both nodes. Keep
 this command running until it reports `EMRYS is ready.` All of the scheduler
@@ -155,6 +160,8 @@ managers. It repeats current input/runtime checks and, for Slurm, compute checks
 and head-node finalization because earlier success cannot establish that those
 files and environments are still unchanged. Elapsed time for the Slurm stage
 includes both queue waiting and compute work.
+For precise phase times, use `--log-level verbose`; the full invocation time
+also includes time spent waiting for your confirmation.
 
 Doctor changes only the Project-owned tools and preparation records. It does
 not obtain your scientific inputs, change your study design or repair Results.

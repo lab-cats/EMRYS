@@ -865,8 +865,24 @@ def test_runtime_diagnosis_preserves_combined_diagnostics_and_binding_order(
     ((False, False, 1), (True, False, 2), (False, True, 1)),
 )
 @pytest.mark.parametrize(
-    ("runtime_required", "operation"),
-    ((False, "verification"), (True, "repair and verification")),
+    ("runtime_state", "operation", "runtime_work"),
+    (
+        (
+            "verified",
+            "verification",
+            "Selected runtime passed current checks; no package-manager work is needed.",
+        ),
+        (
+            "inventory_absent",
+            "repair and verification",
+            "Prepare a managed runtime inventory; package managers check any retained tools and caches.",
+        ),
+        (
+            "inventory_retained",
+            "repair and verification",
+            "Check/update tools selected by the retained managed runtime inventory.",
+        ),
+    ),
 )
 def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
     tmp_path: Path,
@@ -875,8 +891,9 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
     execute: bool,
     repair: bool,
     expected_status: int,
-    runtime_required: bool,
+    runtime_state: str,
     operation: str,
+    runtime_work: str,
 ) -> None:
     project = _project(tmp_path)
     result = _result(project, ready=False)
@@ -886,8 +903,25 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
     )
 
     plan = replace(plan, execution=load_execution_profile())
+    runtime_required = runtime_state != "verified"
     if not runtime_required:
         plan = replace(plan, runtime=None)
+        result = replace(
+            result,
+            runtime_ready=True,
+            storage_ready=False,
+            blockers=("storage is not qualified",),
+        )
+    else:
+        runtime = _runtime(plan)
+        cache = runtime.managed_root / "cache/pixi/retained-package"
+        cache.parent.mkdir(parents=True)
+        cache.write_bytes(b"retained cache; usability not inferred\n")
+        if runtime_state == "inventory_retained":
+            plan = replace(
+                plan, runtime=replace(runtime, profile_bytes=b"retained inventory\n")
+            )
+            runtime.profile.write_bytes(b"retained inventory\n")
     monkeypatch.setattr(doctor, "diagnose_project", lambda *_args, **_kwargs: result)
     monkeypatch.setattr(doctor, "_build_repair_plan", lambda _result: plan)
     monkeypatch.setattr(
@@ -932,6 +966,12 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
     assert "Doctor phase timing" not in output.err
     if repair:
         assert f"EMRYS Doctor {operation} plan" in output.err
+        assert f"Runtime work: {runtime_work}" in output.err
+        assert (
+            "Package-manager output records which packages are reused, installed, or changed."
+            in output.err
+        ) == runtime_required
+        assert "first setup" not in output.err
         assert "Execution placement: Direct" in output.err
         assert "Workflow CPU ceiling: 4;" in output.err
         assert f"Apply this {operation} plan? [y/N]" in output.err
@@ -1262,6 +1302,7 @@ def test_managed_repair_refuses_external_dependency_installation(
 def test_storage_only_repair_preserves_ready_site_runtime_and_skips_managers(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     from emrys.evidence.storage_inventory import qualification
 
@@ -1337,6 +1378,19 @@ def test_storage_only_repair_preserves_ready_site_runtime_and_skips_managers(
     assert records[0] == "opened"
     assert "terminal" in records
     _log_path, events = _repair_log(project)
+    output = capsys.readouterr().err
+    assert (
+        "Runtime work: Selected runtime passed current checks; no package-manager work is needed."
+        in output
+    )
+    started = next(
+        item["fields"] for item in events if item["event"] == "repair_started"
+    )
+    assert (
+        started["runtime_work"]
+        == "Selected runtime passed current checks; no package-manager work is needed."
+    )
+    assert "package_output" not in started
     assert [
         (item["event"], item["message"])
         for item in events
@@ -1582,11 +1636,13 @@ def test_repair_readmission_rejects_a_redirected_runtime_before_writing(
 
 
 @pytest.mark.parametrize("timing_fault", (None, "write", "interrupt"))
+@pytest.mark.parametrize("retained_inventory", (False, True))
 def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     timing_fault: str | None,
+    retained_inventory: bool,
 ) -> None:
     from emrys.evidence.storage_inventory import qualification
     from emrys.libraries.application_logging import storage as log_storage
@@ -1615,6 +1671,11 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
         ),
     )
     runtime = _runtime(plan)
+    if retained_inventory:
+        runtime = replace(runtime, profile_bytes=b"admitted runtime\n")
+        plan = replace(plan, runtime=runtime)
+        runtime.profile.write_bytes(runtime.profile_bytes)
+    original_profile = runtime.profile.stat() if retained_inventory else None
     records: list[str] = []
     commands: list[tuple[str, ...]] = []
     _patch_logging(monkeypatch, plan, records)
@@ -1726,15 +1787,33 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
         plan.storage.reference_fasta,
     )
     assert runtime.profile.read_bytes() == b"admitted runtime\n"
+    if original_profile is not None:
+        assert runtime.profile.stat().st_ino == original_profile.st_ino
     assert records[0] == "opened"
     assert ("terminal" in records) == (timing_fault is None)
     assert ("interrupted" in records) == (timing_fault == "interrupt")
     assert records[-1] == "closed"
     assert not list((runtime.managed_root / "cache").glob("repair-*"))
     output = capsys.readouterr().err
+    summary = (
+        "Check/update tools selected by the retained managed runtime inventory."
+        if retained_inventory
+        else "Prepare a managed runtime inventory; package managers check any retained tools and caches."
+    )
+    assert f"Runtime work: {summary}" in output
+    assert (
+        "Package-manager output records which packages are reused, installed, or changed."
+        in output
+    )
+    assert "first setup" not in output
     assert "Checking/updating native tools and R" in output
     assert "Checking/restoring R packages" in output
     _log_path, events = _repair_log(project)
+    started = next(
+        item["fields"] for item in events if item["event"] == "repair_started"
+    )
+    assert started["runtime_work"].startswith(summary)
+    assert started["package_output"] == str(_log_path.parent / "package-output.log")
     phases = [
         "Verifying the approved plan inputs",
         "Qualifying single-host storage",
