@@ -589,6 +589,36 @@ def test_yaml_extensions_are_rejected(
         admit_project(request, fixture.profile())
 
 
+@pytest.mark.parametrize("change", ("legacy", "unknown_field"))
+def test_unsupported_project_format_keeps_diagnostics_and_guides_setup(
+    tmp_path: Path,
+    change: str,
+) -> None:
+    project = fixture.build(tmp_path / "preserved-bundle")
+    definition = yaml.safe_load(project.read_text(encoding="utf-8"))
+    if change == "legacy":
+        definition["schema_version"] = "emrys.request.v3"
+    else:
+        definition["unrecognized_study_setting"] = "preserve this choice"
+    project.write_text(yaml.safe_dump(definition), encoding="utf-8")
+    before = {path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()}
+    with pytest.raises(contracts.ContractValidationError) as original:
+        contracts.validate_record("project", definition)
+
+    with pytest.raises(contracts.ContractValidationError) as rejected:
+        admit_project(project, fixture.profile())
+
+    message = str(rejected.value)
+    assert message.startswith(f"{original.value}\n")
+    assert "Project setup accepts emrys.project.v1" in message
+    assert "Preserve the original bundle" in message
+    assert "emrys init NAME" in message
+    assert "Legacy fields are not translated" in message
+    assert {
+        path: path.read_bytes() for path in tmp_path.rglob("*") if path.is_file()
+    } == before
+
+
 @pytest.mark.parametrize(
     "unsafe",
     (

@@ -148,6 +148,21 @@ Partitions must not overlap. Begin with a small declared region when verifying
 an unfamiliar runtime. Zero candidates and a header-only VCF may be valid when
 the declared transaction reconciles.
 
+## Reusing an existing study definition
+
+Operate a current Project in place with `emrys validate --project /absolute/path/project.yaml`
+and the same `--project` selection on Doctor and Run. Named `emrys init NAME`
+provides guided creation: omit `--execute`, review its admitted study summary,
+then copy its quoted creation command to retain every answer without repeating
+the questions. Referenced inputs are freshly checked on that second invocation.
+
+Legacy bundles are preserved, not translated automatically. Unsupported fields
+retain their schema diagnostics and point to guided setup or correction of a
+current definition. Confirm biological assignments and scientific settings with
+the study owner. Do not copy only a Project YAML into a new directory: relative
+FASTQ paths in a sample manifest resolve from the Project root, even when the
+manifest path itself is absolute. A move can therefore change their meaning.
+
 ## Execution profile
 
 Execution settings are separate from scientific inputs. The

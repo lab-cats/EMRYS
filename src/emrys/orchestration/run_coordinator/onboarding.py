@@ -6,6 +6,7 @@ import argparse
 import gzip
 import os
 import re
+import shlex
 import stat
 import sys
 from collections.abc import Callable, Iterator, Mapping, Sequence
@@ -26,7 +27,8 @@ from emrys.evidence.runtime_availability.inspector import (
 )
 from emrys.libraries.application_logging import phase_progress
 from emrys.libraries.exclusive_publication import publish_exclusive
-from emrys.libraries.process_environment import guarded_r_environment
+from emrys.libraries.process_environment import command_flags, guarded_r_environment
+from emrys.libraries.source_authority import controlled_python_argv
 from emrys.libraries.references.contigs import (
     ReferenceContigError,
     parse_fasta_lines,
@@ -474,6 +476,76 @@ def _project_yaml(answers: Mapping[str, object]) -> bytes:
     return yaml.safe_dump(document, sort_keys=False).encode("utf-8")
 
 
+def _print_project_preview(
+    project: ProjectAdmission,
+    answers: Mapping[str, object],
+    site: str | None,
+) -> None:
+    """Review named init's admitted built-in Analysis and replay its answers."""
+
+    analysis = project.select_analysis()
+    source = analysis.workflow_inputs
+
+    def location(label: str, snapshot: Mapping[str, object]) -> None:
+        print(f"  {label}: {snapshot['path']!r}; SHA-256: {snapshot['sha256']}")
+
+    print("Review the study interpretation before creating the Project:")
+    print(f"  Analysis: {analysis.name}")
+    print(f"  Site: {site or 'none (direct placement)'}")
+    for name in ("samples", "partitions"):
+        location(f"{name} manifest", source[name]["manifest"])
+    for name in ("fasta", "gtf"):
+        location(f"reference {name}", source["reference"][name])
+    print("Sample assignments (pairing groups are explicitly supplied):")
+    for sample in source["samples"]["rows"]:
+        print(
+            f"  {sample['sample_id']}: condition={sample['condition']}; "
+            f"pairing group={sample['replicate']}; strandedness={sample['strandedness']}"
+        )
+        for mate in ("r1_fastq", "r2_fastq"):
+            location(mate, sample[mate])
+    for partition in source["partitions"]["rows"]:
+        print(
+            f"  Partition {partition['partition_id']}: {partition['selector_type']} "
+            f"{partition['selector_value']!r}"
+        )
+        if partition["selector_file"] is not None:
+            print(
+                f"    format={partition['selector_format']}; "
+                f"compression={partition['selector_compression']}; "
+                f"SHA-256: {partition['selector_file']['sha256']}"
+            )
+    settings = {
+        **source["reference"]["star_index"],
+        **source["analysis"]["policy"]["configuration"],
+    }
+    print("Scientific settings:")
+    print(f"  target change: {settings['rna_ref']}>{settings['rna_alt']}")
+    for name, value in settings.items():
+        if name not in {"rna_ref", "rna_alt"}:
+            print(f"  {name.replace('_', ' ')}: {'none' if value is None else value}")
+    flags = command_flags(
+        *(
+            (name.replace("_", "-"), value)
+            for name, value in {**answers, "site": site}.items()
+            if value is not None
+        )
+    )
+    replay = controlled_python_argv(
+        sys.executable,
+        "-m",
+        "emrys",
+        "init",
+        project.source_path.parent.name,
+        *flags,
+        "--execute",
+    )
+    print("After review, copy this command to create without repeating the questions.")
+    print("This Python environment will recheck inputs; preview does not freeze them.")
+    parent = shlex.quote(str(project.source_path.parent.parent))
+    print(f"cd {parent} && {shlex.join(replay)}")
+
+
 def init_project_from_args(arguments: argparse.Namespace) -> int:
     """Plan or create one validated Project root around existing inputs."""
 
@@ -507,6 +579,7 @@ def init_project_from_args(arguments: argparse.Namespace) -> int:
         print("Owned directories: logs, runs, runtime")
         print("Referenced inputs remain in place; setup copies no input files.")
         if not arguments.execute:
+            _print_project_preview(preview, answers, getattr(arguments, "site", None))
             print("Dry-run complete; no files were written.")
             return 0
         publish_create_absent_tree(
