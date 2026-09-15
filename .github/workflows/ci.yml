@@ -490,12 +490,19 @@ jobs:
           """CI-only observation of one instrumented public-module invocation."""
 
           import json
+          import math
           import os
           import resource
+          import re
+          import signal
+          import subprocess
+          import threading
+          from concurrent.futures import ThreadPoolExecutor
+          from dataclasses import asdict
           import runpy
           import sys
           import time
-          from contextlib import suppress
+          from contextlib import contextmanager, suppress
           from pathlib import Path
 
 
@@ -535,7 +542,9 @@ jobs:
                   return None
 
 
-          def read_observer(original, counters, *, package=False):
+          def read_observer(original, counters, *, package=False, counter_lock=None):
+              counter_lock = counter_lock or threading.Lock()
+
               def observed(*args, **kwargs):
                   mode = (
                       "package_payload"
@@ -547,27 +556,28 @@ jobs:
                       else "bytes"
                   )
                   try:
-                      bucket = counters.setdefault(
-                          mode,
-                          {
-                              "completed_calls": 0,
-                              "failed_calls": 0,
-                              "completed_bytes": 0,
-                              "elapsed_seconds": 0.0,
-                              "failed_partial_bytes": None,
-                          },
-                      )
+                      with counter_lock:
+                          bucket = counters.setdefault(
+                              mode,
+                              {
+                                  "completed_calls": 0,
+                                  "failed_calls": 0,
+                                  "completed_bytes": 0,
+                                  "elapsed_seconds": 0.0,
+                                  "failed_partial_bytes": None,
+                              },
+                          )
                   except Exception:
                       return original(*args, **kwargs)
                   started = clock()
                   try:
                       result = original(*args, **kwargs)
                   except BaseException:
-                      with suppress(Exception):
+                      with suppress(Exception), counter_lock:
                           bucket["failed_calls"] += 1
                       raise
                   else:
-                      with suppress(Exception):
+                      with suppress(Exception), counter_lock:
                           size = (
                               len(result)
                               if package
@@ -582,7 +592,7 @@ jobs:
                       return result
                   finally:
                       finished = clock()
-                      with suppress(Exception):
+                      with suppress(Exception), counter_lock:
                           if started is None or finished is None:
                               bucket["elapsed_seconds"] = None
                           elif bucket["elapsed_seconds"] is not None:
@@ -591,10 +601,364 @@ jobs:
               return observed
 
 
-          def measure(output, role, arguments):
+          @contextmanager
+          def namespace_concurrency(workers, *, observe=False):
+              """Experimental scheduling only; production parsers and subprocess.run remain."""
+              metrics = {
+                  "workers": workers,
+                  "r_launches": 0,
+                  "maximum_active_r_children": 0,
+                  "admissions": [],
+                  "observation_failures": 0,
+                  "cleanup_failures": 0,
+              }
+              if workers == 1 and not observe:
+                  yield metrics
+                  return
+              if workers not in (1, 2):
+                  raise ValueError("The CI candidate is bounded to two R namespace workers")
+              from emrys.evidence.runtime_availability import _probes, inspector
+
+              original_checks, original_probes = inspector.run_checks, _probes.PROBES
+              original_popen = subprocess.Popen
+              active, r_children, launch_lock = set(), set(), threading.Lock()
+              stopped = False
+
+              class TrackedPopen(original_popen):
+                  def __init__(self, *args, **kwargs):
+                      with launch_lock:
+                          if stopped:
+                              raise RuntimeError("Namespace experiment interrupted before launch")
+                          super().__init__(*args, **kwargs)
+                          active.add(self)
+                          if threading.current_thread().name.startswith("emrys-cv26-r"):
+                              r_children.add(self)
+                              metrics["r_launches"] += 1
+                              metrics["maximum_active_r_children"] = max(
+                                  metrics["maximum_active_r_children"], len(r_children)
+                              )
+
+                  def __exit__(self, *args):
+                      try:
+                          return super().__exit__(*args)
+                      finally:
+                          with launch_lock:
+                              active.discard(self)
+                              r_children.discard(self)
+
+              def stop_children():
+                  nonlocal stopped
+                  with launch_lock:
+                      stopped = True
+                      for child in tuple(active):
+                          try:
+                              child.kill()
+                          except Exception:
+                              metrics["cleanup_failures"] += 1
+
+              def concurrent_checks(checks, **kwargs):
+                  # Preserve the complete check roster for GATK's existing Java lookup.
+                  checks = tuple(checks)
+                  groups, position = {}, 0
+                  while position < len(checks):
+                      end = position
+                      while end < len(checks) and checks[end].check_type == "r_namespace":
+                          end += 1
+                      if end > position:
+                          groups[id(checks[position])] = checks[position:end]
+                      position = max(end, position + 1)
+                  pending = {}
+                  executor = ThreadPoolExecutor(
+                      max_workers=workers, thread_name_prefix="emrys-cv26-r"
+                  )
+
+                  def namespace(check, environment, runner):
+                      if id(check) in groups:
+                          for item in groups[id(check)]:
+                              pending[id(item)] = executor.submit(
+                                  original_probes["r_namespace"], item, environment, runner
+                              )
+                      return pending.pop(id(check)).result()
+
+                  _probes.PROBES = {**original_probes, "r_namespace": namespace}
+                  try:
+                      return original_checks(checks, **kwargs)
+                  except BaseException:
+                      stop_children()
+                      raise
+                  finally:
+                      executor.shutdown(wait=True, cancel_futures=True)
+                      _probes.PROBES = original_probes
+
+              def observed_checks(checks, **kwargs):
+                  results = (concurrent_checks if workers == 2 else original_checks)(
+                      checks, **kwargs
+                  )
+                  if observe:
+                      try:
+                          metrics["admissions"].append(
+                              [
+                                  {
+                                      "check": asdict(item.check),
+                                      "status": item.status,
+                                      "observed": item.observed,
+                                      "detail": item.detail,
+                                      "resolved_path": str(item.resolved_path)
+                                      if item.resolved_path is not None
+                                      else None,
+                                  }
+                                  for item in results
+                              ]
+                          )
+                      except Exception:
+                          metrics["observation_failures"] += 1
+                  return results
+
+              inspector.run_checks = observed_checks
+              if workers == 2:
+                  subprocess.Popen = TrackedPopen
+              interrupted = False
+              try:
+                  yield metrics
+              except BaseException as exc:
+                  interrupted = not (
+                      isinstance(exc, SystemExit)
+                      and (exc.code is None or isinstance(exc.code, int) and exc.code == 0)
+                  )
+                  raise
+              finally:
+                  # Every subprocess.run context has already killed/waited on its child.
+                  inspector.run_checks, subprocess.Popen = original_checks, original_popen
+                  _probes.PROBES = original_probes
+                  if active and not interrupted:
+                      raise RuntimeError("Namespace experiment retained unreaped direct children")
+
+
+          class ProcessTreeSamples:
+              """Sample resident-set sums; these are not exact peaks or unique memory."""
+
+              def __init__(self):
+                  import psutil  # Already locked through the workflow's Snakemake dependency.
+
+                  self.psutil, self.root = psutil, psutil.Process()
+                  self.stop = threading.Event()
+                  self.values = {
+                      "interval_seconds": 0.05,
+                      "samples": 0,
+                      "incomplete_samples": 0,
+                      "peak_sampled_rss_bytes": 0,
+                      "peak_sampled_descendant_rss_bytes": 0,
+                      "maximum_sampled_descendants": 0,
+                      "processes": {},
+                      "scope": "root plus observed recursive descendants; shared pages can be counted repeatedly; short-lived processes and peaks can be missed; CPU samples are cumulative lifetime lower bounds, including pre-timer startup; includes observer overhead",
+                  }
+                  self.thread = threading.Thread(target=self.observe, daemon=True)
+
+              def observe(self):
+                  while True:
+                      rss, descendant_rss, count = 0, 0, 0
+                      try:
+                          processes = [self.root, *self.root.children(recursive=True)]
+                          for process in processes:
+                              try:
+                                  with process.oneshot():
+                                      identity = f"{process.pid}:{process.create_time()}"
+                                      memory = process.memory_info().rss
+                                      cpu = process.cpu_times()
+                                  previous = self.values["processes"].setdefault(
+                                      identity,
+                                      {"peak_sampled_rss_bytes": 0, "sampled_cpu_seconds": 0},
+                                  )
+                                  previous["peak_sampled_rss_bytes"] = max(
+                                      previous["peak_sampled_rss_bytes"], memory
+                                  )
+                                  previous["sampled_cpu_seconds"] = max(
+                                      previous["sampled_cpu_seconds"], cpu.user + cpu.system
+                                  )
+                                  rss += memory
+                                  if process != self.root:
+                                      descendant_rss += memory
+                                      count += 1
+                              except self.psutil.Error:
+                                  self.values["incomplete_samples"] += 1
+                          self.values["samples"] += 1
+                          self.values["peak_sampled_rss_bytes"] = max(
+                              self.values["peak_sampled_rss_bytes"], rss
+                          )
+                          self.values["peak_sampled_descendant_rss_bytes"] = max(
+                              self.values["peak_sampled_descendant_rss_bytes"], descendant_rss
+                          )
+                          self.values["maximum_sampled_descendants"] = max(
+                              self.values["maximum_sampled_descendants"], count
+                          )
+                      except Exception:
+                          self.values["incomplete_samples"] += 1
+                      if self.stop.wait(self.values["interval_seconds"]):
+                          return
+
+              def finish(self):
+                  self.stop.set()
+                  self.thread.join(timeout=5)
+                  if self.thread.is_alive():
+                      raise RuntimeError("Process-tree sampler did not stop")
+                  return self.values
+
+
+          def supervised_trial(command, output, *, timeout_seconds=600):
+              """Bound a Linux CI trial while its unreaped leader pins the process-group ID."""
+              import psutil
+
+              if signal.getsignal(signal.SIGCHLD) != signal.SIG_DFL:
+                  raise RuntimeError("Doctor trial requires default SIGCHLD ownership")
+              with Path(output).open("xb") as stream:
+                  process = subprocess.Popen(
+                      command, stdout=stream, stderr=subprocess.STDOUT, start_new_session=True
+                  )
+                  cleanup = True
+                  try:
+                      deadline = time.monotonic() + timeout_seconds
+                      # WNOWAIT keeps the exited leader unreaped until ownership is settled.
+                      while (
+                          os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOWAIT | os.WNOHANG)
+                          is None
+                      ):
+                          if time.monotonic() >= deadline:
+                              raise subprocess.TimeoutExpired(command, timeout_seconds)
+                          time.sleep(0.02)
+                      for member in psutil.process_iter(["pid"]):
+                          if member.pid != process.pid:
+                              try:
+                                  if os.getpgid(member.pid) == process.pid:
+                                      raise RuntimeError(
+                                          "Doctor experiment left process-group members alive"
+                                      )
+                              except ProcessLookupError:
+                                  pass
+                      # The group is empty apart from the pinned, exited leader. Do not signal it.
+                      cleanup = False
+                      status = process.wait(timeout=5)
+                      if status:
+                          raise RuntimeError(f"Doctor experiment exited {status}; see {output}")
+                  finally:
+                      if cleanup:
+                          # Revalidate wait ownership; ECHILD/uncertainty forbids a numeric signal.
+                          os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOWAIT | os.WNOHANG)
+                          with suppress(ProcessLookupError):
+                              os.killpg(process.pid, signal.SIGKILL)
+                          process.wait(timeout=5)
+
+
+          def compare_borrower(evidence):
+              """Compare four complete steady-ready diagnoses, not setup or repair."""
+              evidence = Path(evidence)
+              borrower = evidence / "borrower"
+
+              def snapshot():
+                  # Tiny synthetic borrower only; these reads are outside trial timing.
+                  result = []
+                  for path in (borrower, *sorted(borrower.rglob("*"))):
+                      state = path.lstat()
+                      stable = tuple(
+                          getattr(state, field)
+                          for field in (
+                              "st_dev",
+                              "st_ino",
+                              "st_mode",
+                              "st_uid",
+                              "st_gid",
+                              "st_size",
+                              "st_mtime_ns",
+                              "st_ctime_ns",
+                          )
+                      )
+                      result.append(
+                          (
+                              str(path.relative_to(borrower)),
+                              stable,
+                              str(path.readlink()) if path.is_symlink() else None,
+                              path.read_bytes()
+                              if not path.is_symlink() and path.is_file()
+                              else None,
+                          )
+                      )
+                  return result
+
+              frozen = snapshot()
+              signatures, measurements = [], []
+              for number, workers in enumerate((1, 2, 2, 1), 1):
+                  role = f"comparison_{number}_workers_{workers}"
+                  measurement = evidence / f"doctor-{role}-measurement.json"
+                  assert snapshot() == frozen
+                  supervised_trial(
+                      [
+                          sys.executable,
+                          "-X",
+                          "pycache_prefix=/dev/null",
+                          "-I",
+                          __file__,
+                          "--trial",
+                          str(measurement),
+                          role,
+                          str(workers),
+                          "doctor",
+                          "--project",
+                          str(borrower),
+                      ],
+                      evidence / f"doctor-{role}.log",
+                  )
+                  assert snapshot() == frozen
+                  result = json.loads(measurement.read_text())
+                  assert result["exit_status"] == 0
+                  elapsed = result.get("elapsed_seconds")
+                  assert (
+                      type(elapsed) in (int, float)
+                      and math.isfinite(elapsed)
+                      and elapsed > 0
+                  ), "A complete comparison requires a valid invocation duration"
+                  assert result["process_tree"]["samples"] > 0
+                  observed = result["namespace_execution"]
+                  assert observed["admissions"]
+                  assert observed["observation_failures"] == observed["cleanup_failures"] == 0
+                  # Elapsed values alone differ; preserve complete ordered checks, roots,
+                  # status, output, library/version policy and every fresh admission.
+                  signatures.append(
+                      re.sub(
+                          r"elapsed_seconds=[0-9]+[.][0-9]+",
+                          "elapsed_seconds=<observed>",
+                          json.dumps(observed["admissions"], sort_keys=True),
+                      )
+                  )
+                  if workers == 2:
+                      assert observed["r_launches"] > 0
+                      assert observed["maximum_active_r_children"] == 2
+                  measurements.append(result)
+              assert all(signature == signatures[0] for signature in signatures)
+              with (evidence / "doctor-comparison-measurement.json").open("x") as stream:
+                  json.dump(
+                      {
+                          "scope": "Four complete instrumented hosted steady-ready read-only Doctor diagnoses in AB/BA order; no setup/repair savings, production adoption, arbitrary descendant containment, Slurm/NFS or speedup claim; caches uncontrolled",
+                          "order": [1, 2, 2, 1],
+                          "checkout_sha": os.environ.get("GITHUB_SHA"),
+                          "matching_ordered_observations": True,
+                          "trials": measurements,
+                      },
+                      stream,
+                      sort_keys=True,
+                      indent=2,
+                  )
+                  stream.write("\n")
+
+
+          def measure(output, role, arguments, *, workers=1, sample_tree=False):
               # Sample before EMRYS imports; no initial reads/hashes are repeated.
               started, before, io_before = clock(), usage(), io_usage()
               counters, originals = {}, []
+              counter_lock = threading.Lock()
+              sampler, namespace_execution = None, None
+              if sample_tree:
+                  with suppress(Exception):
+                      sampler = ProcessTreeSamples()
+                      sampler.thread.start()
               previous_argv = sys.argv
               status, exception = None, None
               try:
@@ -607,9 +971,16 @@ jobs:
                   ):
                       original = getattr(module, name)
                       originals.append((module, name, original))
-                      setattr(module, name, read_observer(original, counters, package=package))
+                      setattr(
+                          module,
+                          name,
+                          read_observer(
+                              original, counters, package=package, counter_lock=counter_lock
+                          ),
+                      )
                   sys.argv = ["emrys", *arguments]
-                  runpy.run_module("emrys", run_name="__main__", alter_sys=True)
+                  with namespace_concurrency(workers, observe=sample_tree) as namespace_execution:
+                      runpy.run_module("emrys", run_name="__main__", alter_sys=True)
                   status = 0
               except BaseException as exc:
                   exception = type(exc).__name__
@@ -619,6 +990,10 @@ jobs:
                       )
                   raise
               finally:
+                  process_tree = None
+                  if sampler is not None:
+                      with suppress(Exception):
+                          process_tree = sampler.finish()
                   finished, after, io_after = clock(), usage(), io_usage()
                   for module, name, original in originals:
                       setattr(module, name, original)
@@ -638,6 +1013,8 @@ jobs:
                           "schema_version": "emrys.ci-doctor-measurement.v1",
                           "scope": "instrumented public-module invocation; not console-bootstrap timing",
                           "role": role,
+                          "namespace_execution": namespace_execution,
+                          "process_tree": process_tree,
                           "checkout_sha": os.environ.get("GITHUB_SHA"),
                           "python_version": sys.version.split()[0],
                           "platform": sys.platform,
@@ -676,7 +1053,19 @@ jobs:
 
 
           if __name__ == "__main__":
-              measure(sys.argv[1], sys.argv[2], sys.argv[3:])
+              if sys.argv[1] == "--compare":
+                  compare_borrower(sys.argv[2])
+              elif sys.argv[1] == "--trial":
+                  measure(
+                      sys.argv[2],
+                      sys.argv[3],
+                      sys.argv[5:],
+                      workers=int(sys.argv[4]),
+                      sample_tree=True,
+                  )
+              else:
+                  measure(sys.argv[1], sys.argv[2], sys.argv[3:])
+
           PY
           git clone --no-hardlinks "${GITHUB_WORKSPACE}" "${clean_clone}"
           git -C "${clean_clone}" checkout --detach "${GITHUB_SHA}"
@@ -852,6 +1241,16 @@ jobs:
               "borrower_receipt_sha256": receipts[1].receipt_sha256,
           }, indent=2) + "\n")
           PY
+
+          # Normal PRs run fixture guards only; explicitly select the real trial.
+          if [[ "${{ github.event_name }}" == workflow_dispatch &&
+                "${{ inputs.managed_runtime_golden_path }}" == true ]]; then
+            "${clean_clone}/.venv/bin/python" -X pycache_prefix=/dev/null -I \
+              "${evidence_root}/measure-doctor.py" --compare "${evidence_root}"
+            snapshot_donor comparison
+            cmp "${evidence_root}/donor-before.namespace.tsv" "${evidence_root}/donor-comparison.namespace.tsv"
+            cmp "${evidence_root}/donor-before.sha256" "${evidence_root}/donor-comparison.sha256"
+          fi
 
       - name: Verify Task descendant containment with the selected samtools
         shell: bash

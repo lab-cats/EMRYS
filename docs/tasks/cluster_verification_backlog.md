@@ -1492,6 +1492,37 @@ This observation supports retaining the deferred digest-cache decision;
 equivalent fresh-probe semantics and representative site/queue measurements
 remain prerequisites to a performance change. It does not resolve E11.
 
+**Selected steady-ready experiment:** The existing CI measurement driver now
+supports four complete read-only Doctor diagnoses of one already-qualified
+borrower, in serial/two-worker/two-worker/serial order. Each namespace check
+keeps its own fresh Rscript process, original arguments, environment, timeout
+and parser. The canonical full probe roster and result order remain in use;
+only the CI candidate schedules each contiguous R group concurrently. There is
+no product optimization, digest reuse or new dependency. The existing manually
+selected managed-runtime lane runs the comparison; normal PRs run its fixture
+protections and ordinary managed journey.
+
+Repeated repair on this borrower would return after diagnosis, so this measures
+steady-ready diagnosis rather than the earlier two-boundary verification repair.
+Each trial must preserve borrower bytes and stable filesystem identity/metadata,
+pass the donor-preservation checks and retain identical ordered observations
+apart from elapsed values. Missing/invalid invocation duration, failed admission,
+cleanup uncertainty or an observed surviving group invalidates comparison.
+The trial supervisor retains its leader until signaling ownership is settled;
+its process listing is not kernel descendant-closure proof.
+
+The already-locked psutil supplies sampled root/descendant RSS and CPU alongside
+the existing invocation counters. Sampled sums are neither unique memory nor
+exact peaks; short-lived processes and samples may be missed. Logical-read and
+block-accounting limitations remain, and host/cache state is uncontrolled.
+No setup, repair, institutional or physical-I/O saving is inferred. Local
+workflow/experiment fixtures and static checks pass; Linux, installed-parser
+and actual R comparisons require CI. Retain the exact trial artifacts and
+decision, then remove this temporary scheduling/comparison apparatus in the
+adoption or rejection slice as described in the
+[workflow guide](../../.github/workflows/README.md#doctor-namespace-concurrency-experiment).
+CV-26 remains Open pending valid measurements and that disposition.
+
 ## P3 outcome
 
 ### CV-27 Terminal-only report access
