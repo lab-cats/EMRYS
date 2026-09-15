@@ -583,12 +583,12 @@ Specialist commands validate existing outputs, reconcile reference provenance
 owner-validation report because validator exit zero alone does not establish
 semantic success.
 
-The legacy CSU dashboard remains a separate operational view pending validated
-replacement. Its scheduler observer checks numeric ownership, exact root IDs,
-duplicate accounting records, and selected stream paths; uncertainty appears
-as `UNKNOWN`. Its log interpretation does not replace current Run inspection
-or establish which retained request owns a reused job ID. Use `emrys inspect`
-and exact Slurm accounting/streams for status and completion.
+The installed dashboard shares the legacy selection, scheduler and diagnostic
+presentation owners. The original CSU entry point remains supported until
+institutional validation and coordinated retirement. Shared observation checks
+numeric ownership, exact root IDs, duplicate accounting records and selected
+stream paths; uncertainty appears as `UNKNOWN`. Log interpretation does not
+replace Run inspection or establish which retained request owns a reused job ID.
 Its existing `--offline` mode requires an explicit job ID and both stream paths.
 Selection, snapshots and interactive refresh make no Slurm queries; scheduler
 state stays `UNKNOWN` while the same sanitized diagnostic streams remain usable.
