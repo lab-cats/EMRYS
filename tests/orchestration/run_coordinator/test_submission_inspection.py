@@ -150,6 +150,9 @@ def _authority(tmp_path: Path, *, command="run"):
     attempt["workflow"]["resource_policy"] = resources
     if command == "resume":
         attempt["operation"] = "resume"
+        attempt["snakemake_argv"].extend(
+            ["--rerun-triggers", "input", "--ignore-incomplete"]
+        )
         attempt["supersedes_workflow_attempt_id"] = (
             "workflow-20260811T120000Z-" + "e" * 32
         )
