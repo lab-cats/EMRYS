@@ -25,6 +25,12 @@ startup outcomes and Doctor setup/queue-time guidance. It supersedes their
 earlier local-environment notes that application or PTY checks still required CI.
 Later product changes require their own applicable checks.
 
+CV-03's scheduler failure-phase acceptance additionally passed all 14 standard
+jobs, with four configured skips, at
+`45c63ca749e3ee73029cc111f79b8016ce9c772e`
+([CI 34991470527](https://github.com/lab-cats/EMRYS/actions/runs/34991470527)).
+This includes the public Doctor and selected-request accounting cases below.
+
 The covered journey includes donor science/reporting and borrower runtime
 selection/verification, actual Snakemake startup, real-backend/native-fixture
 cancellation, and public inspection around real report producers. Scientific
@@ -52,7 +58,7 @@ no supplied terminal scientific/reporting evidence.
 | --- | --- | --- | --- |
 | [CV-01](#cv-01-managed-golden-path-coverage) | P0 | Open | Managed golden path covers the cluster-discovered cases. |
 | [CV-02](#cv-02-individual-qualification-diagnostics) | P0 | Verification pending | Retain and surface each failed qualification check. |
-| [CV-03](#cv-03-scheduler-and-execution-failure-messages) | P0 | Open | Separate submission, queue, execution, and finalization failures. |
+| [CV-03](#cv-03-scheduler-and-execution-failure-messages) | P0 | Verification pending | Separate submission, queue, execution, and finalization failures. |
 | [CV-04](#cv-04-workflow-startup-readiness) | P0 | Verification pending | Readiness exercises minimal actual Snakemake startup. |
 | [CV-05](#cv-05-reuse-versus-repeated-repair-work) | P0 | Completed | Explain reused state, repeated checks, and new repair work. |
 | [CV-06](#cv-06-actual-data-onboarding) | P0 | Verification pending | Provide a novice actual-data setup path. |
@@ -222,11 +228,11 @@ existing transport and Control owners; tests and documentation are separate.
 **Verification and remaining scope:** Focused transport tests exercise real
 tiny subprocess fixtures and injected scheduler responses, including nonzero
 waited jobs, malformed responses, transcript failures, escaped diagnostics,
-and exactly one submission. Public Control regressions run in CI. These are
+and exactly one submission. Public Control regressions passed CI. These are
 simulations, not scheduler or institutional proof. CV-20 now supplies strictly
 bound queue/accounting observations and CV-18 supplies the exact-request stop
-path. Their actual queued/cancelled site acceptance remains open, so CV-03
-remains Open.
+path. Their actual queued/cancelled site acceptance remains open; the software
+acceptance result is recorded below.
 
 **Implemented head-finalization slice:** After an accepted qualification job,
 head storage errors retain that job ID and the escaped storage/OS cause with
@@ -235,7 +241,7 @@ published evidence is retained. The final already-admitted observation also
 rejects changed Project/package/runtime bindings without another read.
 Existing Doctor fixtures cover retained-probe corruption, cleanup failure after
 receipt publication, and final input drift with one submission and no success
-event. Static checks pass; behavioral execution requires hosted CI.
+event. Static checks and hosted behavioral execution pass.
 
 **Six-phase acceptance audit:** Existing transport, selected-request inspection,
 stop and Doctor owners cover the required phases through their public flows:
@@ -255,8 +261,10 @@ normal output. The same summary now displays state, source and scheduler exit
 status. No additional query, parser, formatter owner, command, schema or recovery
 authority is needed. Public fixtures distinguish `FAILED`, `CANCELLED` and
 `UNKNOWN`, and retain the original transport failure even if accounting says
-`COMPLETED`. Full hosted execution remains required for this change; actual
-queued/cancelled site acceptance remains separate.
+`COMPLETED`. The full standard CI above passed, including the expanded public
+Doctor and selected-request fixtures using the actual accounting parser.
+CV-03 is Verification pending for exact-revision queued/cancelled site acceptance;
+software coverage does not establish live Slurm behavior.
 
 ### CV-04 Workflow startup readiness
 
