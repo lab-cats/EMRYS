@@ -189,3 +189,13 @@ script before site initialization, and stays read-only through module setup.
 It does not replace random application-attempt identity. Direct, legacy and
 Doctor paths do not invent a request token. These diagnostic events prepare
 exact log association; they neither establish a Run nor prove its completion.
+
+Selected-request inspection admits a bounded, complete snapshot of exactly one
+matching application log from its retained root and command scope. It displays
+the path and snapshot digest separately from recorded candidate identities.
+Independent Run/Attempt contract admission is required before associating those
+identities; the log alone cannot prove workflow entry or scientific completion.
+Missing, changing, malformed or ambiguous logs remain unknown. The ordinary
+request roster does not scan application logs, and inspection never creates or
+repairs a log. Limits and candidate admission belong to the
+[coordinator contract](../../src/emrys/orchestration/run_coordinator/CONTRACT.md).

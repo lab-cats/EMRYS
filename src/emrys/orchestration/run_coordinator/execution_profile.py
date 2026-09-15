@@ -45,6 +45,15 @@ class ExecutionProfileError(ValueError):
     """One execution-profile source or resolved value is inadmissible."""
 
 
+def execution_profile_binding_sha256(
+    effective_sha256: str, source_raw_sha256: str
+) -> str:
+    """Bind effective profile semantics to the exact selected source bytes."""
+    return hashlib.sha256(
+        f"{effective_sha256}\0{source_raw_sha256}".encode()
+    ).hexdigest()
+
+
 def add_site_argument(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--site",
@@ -265,9 +274,7 @@ class ExecutionProfile:
     def binding_sha256(self) -> str:
         """Bind effective semantics to the exact selected source bytes."""
 
-        return hashlib.sha256(
-            f"{self.sha256}\0{self.source_raw_sha256}".encode()
-        ).hexdigest()
+        return execution_profile_binding_sha256(self.sha256, self.source_raw_sha256)
 
     def attempt_placement(self, slurm_job_id: str | None = None) -> dict[str, Any]:
         """Project closed Attempt-local placement provenance."""

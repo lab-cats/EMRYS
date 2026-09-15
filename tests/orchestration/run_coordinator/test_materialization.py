@@ -3609,7 +3609,7 @@ def test_public_submission_selection_queries_only_the_exact_request(
     assert "Recorded scheduler stdout:" in output
     assert "Recorded scheduler stderr:" in output
     assert (
-        "do not establish Run completion or authorize cancellation or recovery"
+        "do not establish workflow entry, Run completion or recovery eligibility"
         in output
     )
     assert (
@@ -3636,6 +3636,106 @@ def test_public_submission_selection_queries_only_the_exact_request(
             == 2
         )
         assert calls == []
+
+
+@pytest.mark.parametrize("state", ["unknown", "candidate", "admitted"])
+@pytest.mark.parametrize("selector_kind", ["name", "absolute"])
+def test_public_application_correlation_scans_only_selected_request_and_escapes_evidence(
+    tmp_path,
+    monkeypatch,
+    capsys,
+    state,
+    selector_kind,
+):
+    from tests.orchestration.run_coordinator.test_submission_inspection import _request
+    from tests.orchestration.run_coordinator.test_slurm_submission import (
+        _request_record,
+    )
+
+    project = build(tmp_path / "project")
+    selected, _ = _request(project.parent, version="v3")
+    _, other, _ = _request_record(project.parent, "b")
+    calls = []
+    scheduler_calls = []
+    run_root = project.parent / "runs" / ("run-" + "d" * 64)
+    values = {"diagnostics": ("recorded issue\nsecond line\x1b[31m",)}
+    if state != "unknown":
+        values.update(
+            status="application-log-bound",
+            application_log=tmp_path / "log\x1b[31m.jsonl",
+            application_log_sha256="f" * 64,
+            recorded_event="analysis_prepared",
+            recorded_run_id=run_root.name,
+            recorded_workflow_attempt_id="recorded\nAttempt",
+        )
+    if state == "admitted":
+        values.update(
+            status="run-and-attempt-associated",
+            run_root=run_root,
+            workflow_attempt_id="workflow-20260915T120000Z-" + "e" * 32,
+        )
+    observation = control._submission_inspection.SubmissionApplicationObservation(
+        **values
+    )
+
+    def inspect_application(request):
+        calls.append(request.request_root)
+        assert request.request_root == selected.request_root
+        return observation
+
+    def observe_scheduler(request):
+        scheduler_calls.append(request.request_root)
+        return control.slurm_submission.scheduler_observation.unknown_observation(
+            "fixture queue unavailable"
+        )
+
+    monkeypatch.setattr(
+        control._submission_inspection,
+        "inspect_submission_application",
+        inspect_application,
+    )
+    monkeypatch.setattr(
+        control.slurm_submission, "observe_submission_request", observe_scheduler
+    )
+    monkeypatch.setattr(
+        control,
+        "_resolve_run_argument",
+        lambda *_a: pytest.fail("request inspection entered Run picker"),
+    )
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    before = {
+        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
+    }
+    assert (
+        control.inspect_from_args(parser.parse_args(["--project", str(project)])) == 0
+    )
+    roster = capsys.readouterr().out
+    assert str(selected.request_root) in roster and str(other) in roster
+    assert calls == scheduler_calls == []
+    selector = (
+        selected.request_root.name
+        if selector_kind == "name"
+        else str(selected.request_root)
+    )
+    assert (
+        control.inspect_from_args(
+            parser.parse_args(["--project", str(project), "--submission", selector])
+        )
+        == 0
+    )
+    output = capsys.readouterr().out
+    assert calls == scheduler_calls == [selected.request_root]
+    assert r"recorded issue\nsecond line\x1b[31m" in output and "\x1b" not in output
+    assert ("Preparation recorded:" in output) is (state != "unknown")
+    assert ("Admitted Run:" in output) is (state == "admitted")
+    assert ("Admitted Attempt record:" in output) is (state == "admitted")
+    if state != "unknown":
+        assert r"log\x1b[31m.jsonl" in output and r"Attempt=recorded\nAttempt" in output
+        assert "Log snapshot SHA-256: " + "f" * 64 in output
+    assert {
+        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
+    } == before
 
 
 @pytest.mark.parametrize(
@@ -4208,6 +4308,10 @@ def test_delegated_operation_records_request_before_preparation_in_one_unique_lo
 ) -> None:
     from tests.orchestration.run_coordinator.test_slurm_submission import (
         _batch_environment,
+        _request_record,
+    )
+    from emrys.orchestration.run_coordinator._submission_inspection import (
+        inspect_submission_application,
     )
 
     arguments = _scheduled_run_arguments(tmp_path, execute=True)
@@ -4229,6 +4333,29 @@ def test_delegated_operation_records_request_before_preparation_in_one_unique_lo
         log_dir=workspace / "logs",
         request_token=request_token,
     )
+    request = None
+    if request_token is not None:
+        _, request_root, context = _request_record(
+            workspace, request_token[0], stdout=b"812345\n"
+        )
+        context.update(
+            schema_version="emrys.submission-request.v3",
+            command=command,
+            project=str(arguments.project),
+            requested_run=None if command == "run" else arguments.run,
+            application_log_root=str(arguments.log_root),
+            profile_binding_sha256=profile.binding_sha256,
+            scheduler_stdout_pattern=str(submission.stdout_pattern),
+            scheduler_stderr_pattern=str(submission.stderr_pattern),
+            scheduler_job_name=submission.job_name,
+        )
+        context = scheduler.validate_request_context(
+            context, arguments.project, request_root
+        )
+        (request_root / "request.json").write_bytes(
+            orchestration_contracts.canonical_json_bytes(context)
+        )
+        (request,) = scheduler.submission_requests(arguments.project)
     for name in (
         scheduler.DELEGATE_MARKER_ENV,
         scheduler.PROFILE_SHA256_ENV,
@@ -4266,6 +4393,13 @@ def test_delegated_operation_records_request_before_preparation_in_one_unique_lo
             expected_events.append("reporting_started")
             assert records[-1]["fields"]["run_root"] == str(run_root)
         assert [record["event"] for record in records] == expected_events
+        if request is not None:
+            correlated = inspect_submission_application(request)
+            assert correlated.status == (
+                "unknown" if completed_paths else "application-log-bound"
+            )
+            assert correlated.application_log == (None if completed_paths else path)
+            assert correlated.run_root is correlated.workflow_attempt_id is None
         identities.add(records[0]["execution_attempt_id"])
         completed_paths.add(path)
 
@@ -4292,7 +4426,10 @@ def test_delegated_operation_records_request_before_preparation_in_one_unique_lo
         json.loads(path.read_text().splitlines()[-1])["event"] == "attempt_failed"
         for path in completed_paths
     )
-    assert not (workspace / "logs").exists()
+    if request is None:
+        assert not (workspace / "logs").exists()
+    else:
+        assert tuple((workspace / "logs").iterdir()) == (request.request_root,)
     if command == "run":
         assert not (workspace / "runs").exists()
     else:

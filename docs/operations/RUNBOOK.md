@@ -33,15 +33,24 @@ This selects a submission instead of a Run. It prints the recorded scheduler
 stream paths and queries only that request: one `squeue` call and, only after
 a successful empty queue reply, at most one `sacct` call. Each has a ten-second
 timeout. A v2 request requires an exact job ID, current numeric UID, cluster
-and both request-specific stream paths. The output reports state and queue
+and both request-specific stream paths; v3 also checks the token-specific job
+name. The output reports state and queue
 reason or accounting exit status when admitted. Unsupported fields, missing
 proof, duplicate records or query failure produce `UNKNOWN`. Legacy v1 or
 incomplete request records stay unknown without scheduler calls.
 
-The ordinary roster makes no scheduler calls. Scheduler observations describe
-the returned metadata only; they do not establish Run completion, identify
-the resulting Run, prove native process absence or authorize cancellation,
-lock removal or recovery.
+Selected inspection also searches the request's retained application-log root
+and command scope for one exact matching log. It shows that log and its snapshot
+digest, any recorded preparation or reporting start, and an admitted Run/Attempt
+when their retained contracts agree with the request. If admission fails, a
+recorded candidate stays distinct from an admitted Run. Missing, changing,
+ambiguous or oversized evidence stays unknown; it never selects the newest log.
+The printed Run-inspection command checks the broader workflow evidence.
+
+The ordinary roster makes no scheduler calls or application-log scans. These
+observations do not establish workflow entry, current progress, Run completion,
+native process absence or recovery eligibility. They do not authorize
+cancellation or lock removal.
 
 An empty or malformed response does not prove that submission was rejected.
 If acceptance is uncertain or the client was interrupted, resolve the exact

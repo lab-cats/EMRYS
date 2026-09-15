@@ -697,8 +697,9 @@ passed afterward, including array/heterogeneous IDs and exact untrimmed paths.
 Public selected-request cases
 cover one-request query cost, default no-query behavior, unavailable/legacy
 observations, exact selection, escaped reason text and no writes; these new
-application cases await CI. CV-20 remains Open for admitted Run/log association
-and institutional scheduler acceptance. Neither retained context nor a terminal
+application cases passed standard CI after the fixture correction. CV-20 remains
+Open for integrated monitoring and institutional scheduler acceptance.
+Neither retained context nor a terminal
 scheduler record grants scientific completion, cancellation or recovery authority.
 
 **Implemented application-log producer prerequisite:** Ordinary Run/resume/report
@@ -711,6 +712,24 @@ event is diagnostic; a later reader must still reject ambiguous or incomplete
 logs and independently admit candidate Runs/Attempts before association.
 Transport fixtures exercise actual safe Bash propagation, invalid/orphan
 context and module mutation; public early-log fixtures require hosted CI.
+
+**Selected application/Run association slice:** Exact-request inspection scans
+only the retained command-specific application scope, with bounded directory,
+log and authority reads. Stable, canonical, current-UID-owned evidence must
+bind the request token, Project/profile, scheduler ID and one complete log.
+Multiple matches, malformed records, drift or exhausted limits remain unknown;
+the default roster scans no application logs. Public output keeps the bound log
+and recorded preparation separate from admitted Run/Attempt identity and offers
+the exact Run-inspection command.
+
+Existing Run/profile/Attempt admission checks the named candidate without
+walking unrelated Attempts or scientific outputs. A historical Attempt record
+is association evidence only: no chain, lock, receipt, Task or Results admission
+is implied. Shared directory enumeration gains an optional bound and profile
+binding retains one formatter for equivalent digest inputs. Focused fixtures
+cover actual log-writer compatibility, identities, limits, malformed/ambiguous
+records and snapshot changes; full candidate and public fixtures require CI.
+Institutional reconnect/queued/preparation observations remain pending.
 
 ### CV-21 Reporting in progress and visibility
 

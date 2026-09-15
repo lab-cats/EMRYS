@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 from collections.abc import Callable
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -112,6 +113,63 @@ def test_directory_entries_requires_no_follow_support(
 
     with pytest.raises(REPORT.ValidationError, match="symbolic-link protection"):
         INPUTS.directory_entries_with_identity(tmp_path, "Directory")
+
+
+@pytest.mark.parametrize("count", (3, 10))
+def test_directory_entry_limit_stops_enumeration_and_closes_iterator(
+    tmp_path, monkeypatch, count
+):
+    for index in range(count):
+        (tmp_path / str(index)).touch()
+    original = INPUTS.os.scandir
+    observed = []
+    closed = []
+
+    @contextmanager
+    def scan(descriptor):
+        try:
+            with original(descriptor) as entries:
+
+                def limited():
+                    for entry in entries:
+                        observed.append(entry.name)
+                        yield entry
+
+                yield limited()
+        finally:
+            closed.append(True)
+
+    monkeypatch.setattr(INPUTS.os, "scandir", scan)
+    if count == 3:
+        entries, _ = INPUTS.directory_entries_with_identity(
+            tmp_path, "Bounded directory", limit=3
+        )
+        assert entries == ("0", "1", "2")
+    else:
+        with pytest.raises(REPORT.ValidationError, match="3-entry inspection limit"):
+            INPUTS.directory_entries_with_identity(
+                tmp_path, "Bounded directory", limit=3
+            )
+    assert len(observed) == min(count, 4)
+    assert closed == [True]
+
+
+def test_bounded_directory_still_rejects_replacement(tmp_path, monkeypatch):
+    directory = tmp_path / "directory"
+    directory.mkdir()
+    (directory / "one").touch()
+    original = INPUTS.os.scandir
+
+    @contextmanager
+    def scan(descriptor):
+        with original(descriptor) as entries:
+            yield entries
+        directory.rename(tmp_path / "old")
+        directory.mkdir()
+
+    monkeypatch.setattr(INPUTS.os, "scandir", scan)
+    with pytest.raises(REPORT.ValidationError, match="changed while inspected"):
+        INPUTS.directory_entries_with_identity(directory, "Bounded directory", limit=2)
 
 
 def test_directory_entries_rejects_path_replacement_during_inspection(

@@ -92,9 +92,13 @@ def sha256_with_identity(
 def directory_entries_with_identity(
     path: Path,
     label: str,
+    *,
+    limit: int | None = None,
 ) -> tuple[tuple[str, ...], os.stat_result]:
     """List one stable real directory through a no-follow descriptor."""
 
+    if limit is not None and (type(limit) is not int or limit < 1):
+        raise ValueError("directory entry limit must be a positive integer")
     no_follow = getattr(os, "O_NOFOLLOW", None)
     if no_follow is None:
         fail(f"{label} cannot be admitted without symbolic-link protection: {path}")
@@ -106,7 +110,18 @@ def directory_entries_with_identity(
         before = os.fstat(descriptor)
         if stat.S_ISLNK(before.st_mode) or not stat.S_ISDIR(before.st_mode):
             fail(f"{label} must be a real directory: {path}")
-        entries = tuple(sorted(os.listdir(descriptor)))
+        if limit is None:
+            entries = tuple(sorted(os.listdir(descriptor)))
+        else:
+            names = []
+            with os.scandir(descriptor) as items:
+                for item in items:
+                    if len(names) == limit:
+                        fail(
+                            f"{label} exceeds the {limit}-entry inspection limit: {path}"
+                        )
+                    names.append(item.name)
+            entries = tuple(sorted(names))
         after = os.fstat(descriptor)
         current = os.stat(path, follow_symlinks=False)
     except OSError as exc:
