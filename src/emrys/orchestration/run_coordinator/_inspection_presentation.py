@@ -767,7 +767,7 @@ def render_dashboard(
         time.monotonic()
         - max(0, (datetime.now(UTC) - snapshot.trace_at).total_seconds())
         if snapshot.trace_at is not None
-        else 0,
+        else None,
         view,
         scroll,
     )

@@ -385,6 +385,10 @@ replacement/truncation. Each stream has at most one bounded-wait daemon read;
 closing cannot admit another read or publish a late result. Full-history memory
 is proportional to consumed trace bytes. Initial selection remains synchronous;
 quitting the opened view does not wait for blocked reads.
+Search-only directory access is sufficient on macOS and Linux; no directory
+listing permission is required. Both installed and standalone views retain actual
+trace observation dates and label pending or unavailable reads. A standalone
+snapshot with an incomplete stream read prints its diagnostics and exits 1.
 
 Legacy overview/detail navigation uses `1`/`o`, `2`/`d` and Tab; arrows, `j`/`k`,
 Page Up/Down and Home/`g` scroll. `3`/`v` selects dated evidence/logs and `[`/`]`

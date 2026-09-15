@@ -829,6 +829,27 @@ def test_stream_cache_refuses_relative_and_symlinked_ancestor_paths(
         assert not cache.sync() and cache.text() == ""
 
 
+@pytest.mark.parametrize("restricted", ["ancestor", "log-directory"])
+def test_stream_cache_reads_through_search_only_directories(
+    tmp_path: Path, restricted: str
+) -> None:
+    ancestor = tmp_path / "search-only"
+    ancestor.mkdir()
+    stdout, stderr = _make_logs(ancestor / "logs")
+    directory = ancestor if restricted == "ancestor" else stdout.parent
+    directory.chmod(0o111)
+    cache = dashboard.StreamCache(stdout)
+    try:
+        assert stdout.read_bytes() == b"stdout\n"
+        selected = dashboard.validate_log_selection(JOB_ID, str(stdout), str(stderr))
+        assert selected["out"] == str(stdout)
+        assert cache.sync() and cache.text() == "stdout\n"
+        assert cache.observed_at is not None and not cache.pending
+    finally:
+        cache.close()
+        directory.chmod(0o700)
+
+
 def test_stream_cache_refuses_foreign_file_inside_owned_directory(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -2103,6 +2124,118 @@ def test_offline_public_modes_read_exact_streams_without_scheduler_queries(
     else:
         assert screen.refreshes == 2
     assert {path: path.read_bytes() for path in before} == before
+
+
+@pytest.mark.parametrize("failure", ["pending", "unavailable"])
+def test_standalone_snapshot_reports_incomplete_stream_reads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys, failure: str
+) -> None:
+    stdout, stderr = _make_logs(tmp_path / "logs")
+    release = threading.Event()
+    caches = []
+    cache_type, read_stream = dashboard.StreamCache, dashboard._read_stream
+
+    class RecordedCache(cache_type):
+        def __init__(self, path):
+            super().__init__(path)
+            caches.append(self)
+
+    def unavailable(*arguments):
+        if failure == "unavailable":
+            raise OSError("fixture read unavailable")
+        assert release.wait(5)
+        return read_stream(*arguments)
+
+    monkeypatch.setattr(dashboard, "StreamCache", RecordedCache)
+    monkeypatch.setattr(dashboard, "_read_stream", unavailable)
+    monkeypatch.setattr(dashboard, "_STREAM_WAIT_SECONDS", 0.01)
+    started = time.monotonic()
+    try:
+        assert (
+            dashboard.main(
+                [
+                    str(JOB_ID),
+                    "--offline",
+                    "--out",
+                    str(stdout),
+                    "--err",
+                    str(stderr),
+                    "--snapshot",
+                ]
+            )
+            == 1
+        )
+        assert time.monotonic() - started < 1
+        output = capsys.readouterr().out
+        assert "Trace unavailable" in output
+        assert f"out {failure}; err {failure}" in output
+        assert "Parsed log progress is unverified diagnostic context." in output
+        assert (
+            "Read pending" in output
+            if failure == "pending"
+            else "fixture read unavailable" in output
+        )
+        assert all(not cache.sync() for cache in caches)
+    finally:
+        release.set()
+        for cache in caches:
+            if cache._reader is not None:
+                cache._reader.join(2)
+
+
+def test_standalone_pending_refresh_dates_retained_history(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stdout, stderr = _make_logs(tmp_path / "logs")
+    stdout.write_text(f"Run ID: {RUN_ID}\n")
+    release = threading.Event()
+    caches, rendered = [], []
+    cache_type, read_stream = dashboard.StreamCache, dashboard._read_stream
+    clock = [1_800_000_000.0]
+    blocked = [False]
+
+    class RecordedCache(cache_type):
+        def __init__(self, path):
+            super().__init__(path)
+            caches.append(self)
+
+    def delayed(*arguments):
+        if blocked[0]:
+            assert release.wait(5)
+        return read_stream(*arguments)
+
+    def render(*arguments):
+        rendered.append((arguments[3], arguments[6], arguments[9]))
+        if len(rendered) == 1:
+            clock[0] += 60
+            blocked[0] = True
+            monkeypatch.setattr(dashboard, "_STREAM_WAIT_SECONDS", 0.01)
+            with stdout.open("a") as stream:
+                stream.write("Run ID: later-unread-run\n")
+
+    monkeypatch.setattr(dashboard, "StreamCache", RecordedCache)
+    monkeypatch.setattr(dashboard, "_read_stream", delayed)
+    monkeypatch.setattr(dashboard.time, "time", lambda: clock[0])
+    monkeypatch.setattr(dashboard, "render", render)
+    monkeypatch.setattr(dashboard, "init_colors", dict)
+    monkeypatch.setattr(dashboard.curses, "curs_set", lambda *_args: None)
+    args = SimpleNamespace(
+        job_id=JOB_ID, out=str(stdout), err=str(stderr), refresh=30, offline=True
+    )
+    try:
+        dashboard.dashboard(_FakeScreen(keys=[ord("r"), ord("q")]), args)
+        assert len(rendered) == 2
+        assert rendered[0][0]["run_id"] == rendered[1][0]["run_id"] == RUN_ID
+        assert "out current; err current" in rendered[0][2]
+        assert "out pending; err pending" in rendered[1][2]
+        assert rendered[0][2].split(" | ")[0] == rendered[1][2].split(" | ")[0]
+        assert time.monotonic() - rendered[1][1] >= 59
+        assert all(not cache.sync() for cache in caches)
+    finally:
+        release.set()
+        for cache in caches:
+            if cache._reader is not None:
+                cache._reader.join(2)
 
 
 @pytest.mark.parametrize("usage", ["complete", "unavailable"])

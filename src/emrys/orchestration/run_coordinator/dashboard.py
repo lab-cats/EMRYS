@@ -260,7 +260,9 @@ def _read_stream(path, offset, previous):
         raise ValueError("Stream path must be absolute and canonical")
     descriptors = []
     directories = []
-    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_NONBLOCK
+    # Pin directories without requiring permission to list their entries.
+    access = getattr(os, "O_SEARCH", getattr(os, "O_PATH", os.O_RDONLY))
+    directory_flags = access | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_NONBLOCK
     try:
         parent = os.open(os.sep, directory_flags)
         descriptors.append(parent)
@@ -2212,7 +2214,15 @@ def render_header(screen, job_id, view, attrs):
 
 
 def render_overview(
-    screen, job_id, slurm, identity, model, refresh_seconds, last_sync, work_scroll
+    screen,
+    job_id,
+    slurm,
+    identity,
+    model,
+    refresh_seconds,
+    last_sync,
+    work_scroll,
+    stream_status=None,
 ):
     screen.erase()
     height, width = screen.getmaxyx()
@@ -2247,7 +2257,7 @@ def render_overview(
     )
 
     main_y = top_y + top_h
-    footer_y = height - 1
+    footer_y = height - 1 - (stream_status is not None)
     main_h = footer_y - main_y
     if width >= 140 and main_h >= 38:
         gap = 1
@@ -2341,17 +2351,22 @@ def render_overview(
             scrollable=True,
         )
 
-    age = max(0, int(time.monotonic() - last_sync))
-    footer = (
-        "[Up/Down/PgUp/PgDn] scroll work  [Tab] switch  [r] refresh  [q] quit | NFS-light %ss (%ss ago)"
-        % (refresh_seconds, age)
+    render_footer(
+        screen, footer_y, width, attrs, refresh_seconds, last_sync, stream_status
     )
-    safe_add(screen, footer_y, 1, footer, attrs["dim"], width - 2)
     screen.refresh()
 
 
 def render_details(
-    screen, job_id, slurm, identity, model, refresh_seconds, last_sync, work_scroll
+    screen,
+    job_id,
+    slurm,
+    identity,
+    model,
+    refresh_seconds,
+    last_sync,
+    work_scroll,
+    stream_status=None,
 ):
     screen.erase()
     height, width = screen.getmaxyx()
@@ -2385,7 +2400,7 @@ def render_details(
     )
 
     main_y = top_y + top_h
-    footer_y = height - 1
+    footer_y = height - 1 - (stream_status is not None)
     main_h = footer_y - main_y
     if width >= 140 and main_h >= 24:
         gap = 1
@@ -2469,13 +2484,26 @@ def render_details(
             scrollable=True,
         )
 
-    age = max(0, int(time.monotonic() - last_sync))
+    render_footer(
+        screen, footer_y, width, attrs, refresh_seconds, last_sync, stream_status
+    )
+    screen.refresh()
+
+
+def render_footer(screen, row, width, attrs, refresh_seconds, last_sync, stream_status):
+    if stream_status is not None:
+        safe_add(screen, row, 1, stream_status, attrs["yellow"], width - 2)
+        row += 1
+    age = (
+        "unavailable"
+        if last_sync is None
+        else "%ss ago" % max(0, int(time.monotonic() - last_sync))
+    )
     footer = (
-        "[Up/Down/PgUp/PgDn] scroll work  [Tab] switch  [r] refresh  [q] quit | NFS-light %ss (%ss ago)"
+        "[Up/Down/PgUp/PgDn] scroll work  [Tab] switch  [r] refresh  [q] quit | NFS-light %ss (%s)"
         % (refresh_seconds, age)
     )
-    safe_add(screen, footer_y, 1, footer, attrs["dim"], width - 2)
-    screen.refresh()
+    safe_add(screen, row, 1, footer, attrs["dim"], width - 2)
 
 
 def render(
@@ -2488,6 +2516,7 @@ def render(
     last_sync,
     view,
     work_scroll,
+    stream_status=None,
 ):
     if view == "details":
         render_details(
@@ -2499,6 +2528,7 @@ def render(
             refresh_seconds,
             last_sync,
             work_scroll,
+            stream_status,
         )
     else:
         render_overview(
@@ -2510,6 +2540,7 @@ def render(
             refresh_seconds,
             last_sync,
             work_scroll,
+            stream_status,
         )
 
 
@@ -2542,6 +2573,28 @@ def selected_scheduler_state(args):
     return _scheduler.query_slurm(args.job_id, args.out, args.err)
 
 
+def stream_cache_status(out_cache, err_cache):
+    caches = (out_cache, err_cache)
+    dates = [cache.observed_at for cache in caches if cache.observed_at is not None]
+    observed_at = min(dates) if len(dates) == 2 else None
+    stamp = (
+        "unavailable"
+        if observed_at is None
+        else dt.datetime.fromtimestamp(observed_at, dt.timezone.utc).strftime(
+            "%Y-%m-%d %H:%M:%SZ"
+        )
+    )
+    states = [
+        "pending"
+        if cache.pending or cache.diagnostic.startswith("Read pending")
+        else "unavailable"
+        if cache.observed_at is None
+        else "current"
+        for cache in caches
+    ]
+    return observed_at, "Trace %s | out %s; err %s" % (stamp, *states)
+
+
 def dashboard(screen, args):
     try:
         curses.curs_set(0)
@@ -2556,71 +2609,84 @@ def dashboard(screen, args):
     slurm = {"state": "QUERYING", "terminal": False}
     identity = {}
     model = parse_workflow("")
-    last_sync = -args.refresh
+    last_refresh = -args.refresh
+    last_sync = None
+    stream_status = "Trace unavailable"
     force = True
     view = "overview"
     work_scroll = 0
     active_signature = ()
 
-    while True:
-        now = time.monotonic()
-        if force or now - last_sync >= args.refresh:
-            refresh_slurm = force or not slurm.get("terminal")
-            out_cache.sync()
-            err_cache.sync()
-            identity = parse_identity(out_cache.text())
-            model = parse_workflow(err_cache.text())
-            new_signature = tuple(
-                sorted(
-                    (job_id, info.get("stage"), info.get("wildcards"))
-                    for job_id, info in model["active"].items()
-                    if info.get("stage") != "FINAL"
+    try:
+        while True:
+            now = time.monotonic()
+            if force or now - last_refresh >= args.refresh:
+                refresh_slurm = force or not slurm.get("terminal")
+                out_cache.sync()
+                err_cache.sync()
+                observed_at, stream_status = stream_cache_status(out_cache, err_cache)
+                last_sync = (
+                    None
+                    if observed_at is None
+                    else time.monotonic() - max(0, time.time() - observed_at)
                 )
+                identity = parse_identity(out_cache.text())
+                model = parse_workflow(err_cache.text())
+                new_signature = tuple(
+                    sorted(
+                        (job_id, info.get("stage"), info.get("wildcards"))
+                        for job_id, info in model["active"].items()
+                        if info.get("stage") != "FINAL"
+                    )
+                )
+                if new_signature != active_signature:
+                    work_scroll = 0
+                    active_signature = new_signature
+                if refresh_slurm:
+                    slurm = selected_scheduler_state(args)
+                last_refresh = now
+                force = False
+            render(
+                screen,
+                args.job_id,
+                slurm,
+                identity,
+                model,
+                args.refresh,
+                last_sync,
+                view,
+                work_scroll,
+                stream_status,
             )
-            if new_signature != active_signature:
+            key = screen.getch()
+            if key in (ord("q"), ord("Q")):
+                return
+            if key in (ord("1"), ord("o"), ord("O")):
+                view = "overview"
+            elif key in (ord("2"), ord("d"), ord("D")):
+                view = "details"
+            elif key == 9:
+                view = "details" if view == "overview" else "overview"
+            elif key in (ord("r"), ord("R")):
+                force = True
+            elif key in (curses.KEY_UP, ord("k"), ord("K")):
+                work_scroll = max(0, work_scroll - 1)
+            elif key in (curses.KEY_DOWN, ord("j"), ord("J")):
+                work_scroll += 1
+            elif key == curses.KEY_PPAGE:
+                work_scroll = max(0, work_scroll - 6)
+            elif key == curses.KEY_NPAGE:
+                work_scroll += 6
+            elif key in (curses.KEY_HOME, ord("g")):
                 work_scroll = 0
-                active_signature = new_signature
-            if refresh_slurm:
-                slurm = selected_scheduler_state(args)
-            last_sync = now
-            force = False
-        render(
-            screen,
-            args.job_id,
-            slurm,
-            identity,
-            model,
-            args.refresh,
-            last_sync,
-            view,
-            work_scroll,
-        )
-        key = screen.getch()
-        if key in (ord("q"), ord("Q")):
-            return
-        if key in (ord("1"), ord("o"), ord("O")):
-            view = "overview"
-        elif key in (ord("2"), ord("d"), ord("D")):
-            view = "details"
-        elif key == 9:
-            view = "details" if view == "overview" else "overview"
-        elif key in (ord("r"), ord("R")):
-            force = True
-        elif key in (curses.KEY_UP, ord("k"), ord("K")):
-            work_scroll = max(0, work_scroll - 1)
-        elif key in (curses.KEY_DOWN, ord("j"), ord("J")):
-            work_scroll += 1
-        elif key == curses.KEY_PPAGE:
-            work_scroll = max(0, work_scroll - 6)
-        elif key == curses.KEY_NPAGE:
-            work_scroll += 6
-        elif key in (curses.KEY_HOME, ord("g")):
-            work_scroll = 0
-        elif key == curses.KEY_RESIZE:
-            screen.erase()
-        if slurm.get("terminal"):
-            # Keep the completion summary visible until the operator exits.
-            pass
+            elif key == curses.KEY_RESIZE:
+                screen.erase()
+            if slurm.get("terminal"):
+                # Keep the completion summary visible until the operator exits.
+                pass
+    finally:
+        out_cache.close()
+        err_cache.close()
 
 
 def parse_args(argv):
@@ -2667,15 +2733,22 @@ def main(argv=None):
     if args.snapshot:
         out_cache = StreamCache(args.out)
         err_cache = StreamCache(args.err)
-        out_cache.sync()
-        err_cache.sync()
-        snapshot(
-            args.job_id,
-            selected_scheduler_state(args),
-            parse_identity(out_cache.text()),
-            parse_workflow(err_cache.text()),
-        )
-        return 0
+        try:
+            ready = (out_cache.sync(), err_cache.sync())
+            print(stream_cache_status(out_cache, err_cache)[1])
+            print("Parsed log progress is unverified diagnostic context.")
+            print("stdout: " + out_cache.diagnostic)
+            print("stderr: " + err_cache.diagnostic)
+            snapshot(
+                args.job_id,
+                selected_scheduler_state(args),
+                parse_identity(out_cache.text()),
+                parse_workflow(err_cache.text()),
+            )
+            return 0 if all(ready) else 1
+        finally:
+            out_cache.close()
+            err_cache.close()
     try:
         curses.wrapper(dashboard, args)
     except KeyboardInterrupt:

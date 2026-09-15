@@ -1188,6 +1188,14 @@ def test_parity_views_preserve_panels_styles_and_literal_log_text(
     assert "control1" in details.plain and "12 CPUs" in details.plain
     assert "run-<literal>\\x1b[31m" in details.plain and "\x1b" not in details.plain
     assert any(span.style == "bold yellow" for span in overview.spans)
+    undated = view.render_dashboard(
+        replace(snapshot, trace_at=None),
+        height=56,
+        width=160,
+        view="details",
+        scroll=0,
+    )
+    assert "NFS-light 30s (unavailable)" in undated.plain
     for width, height in ((100, 30), (60, 10)):
         text = view.render_dashboard(
             snapshot, height=height, width=width, view="details", scroll=6
