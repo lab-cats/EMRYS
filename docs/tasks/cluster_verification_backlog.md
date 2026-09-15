@@ -1304,8 +1304,55 @@ The instrumented public-module scope includes imports and observer overhead,
 not identical console-bootstrap timing. It supplies no cold-cache, institutional
 queue or before/after optimization evidence. Twenty eligible local harness and
 workflow tests pass; the controlled public-parser test and actual donor/borrower
-measurements require hosted CI. No product files, commands, dependencies,
-runtime identity rules or product schemas change. CV-26 remains Open.
+measurements passed hosted CI, as recorded below. No product files, commands,
+dependencies, runtime identity rules or product schemas change. CV-26 remains Open.
+
+**Retained invocation counters:**
+[CI 34944690812](https://github.com/lab-cats/EMRYS/actions/runs/34944690812)
+passed all 14 standard jobs, with four configured skips, at PR head
+`0c2759d7479ea4a33c365f5beb3bd6d48c0f7519`. Managed job `104301191364`
+uploaded artifact `10387257383` (`emrys-managed-golden-1`), 6,825,885 bytes.
+The downloaded archive matches SHA-256
+`1ee51845e853ef983022b639b996d51cad8ec8b7beb46b1c3d382b8e521b7e44`.
+Both measurement records identify actual checkout
+`20897a7cb8e4b2549e4a456142af2c971744bcb7`, whose verified parents are the
+base `cea7b60f1dd4164c8f8e61266f73bccbb2024caa` and that exact PR head.
+Both controlled public invocations exited zero under Python 3.14.7.
+
+| Measurement | Donor setup | Borrower verification |
+| --- | ---: | ---: |
+| Invocation wall seconds | 168.319256 | 110.727837 |
+| Self CPU seconds | 4.209327 | 4.138431 |
+| Waited-child CPU seconds | 205.620768 | 121.208439 |
+| Self RSS high-water, KiB | 128,464 | 132,116 |
+| Largest waited-child RSS high-water, KiB | 1,176,504 | 1,176,296 |
+| Selected-owner completed bytes / calls | 237,833,169 / 2,330 | 457,049,108 / 2,779 |
+| Selected-owner read seconds | 0.174186 | 0.254114 |
+| Kernel `rchar` delta, bytes | 1,851,383,535 | 1,691,378,756 |
+| Kernel `read_bytes` delta | 49,762,304 | 0 |
+| Kernel `write_bytes` delta | 3,853,074,432 | 397,312 |
+
+All selected-owner calls succeeded. Their timed reads cover 0.10% and 0.23% of
+invocation wall time, but exclude package hashing after payload reads and the
+other gaps above. Rounded child-probe wall sums are 108.180 and 106.558 seconds;
+R namespace calls contribute 86.684 and 86.087 seconds. Borrower probes account
+for 96.23% of its invocation wall time, without package-manager events. Donor
+native/R manager phases add 35.151161 and 20.666390 seconds. These different
+workloads are not an optimization before/after comparison.
+
+The retained post-Run donor namespace has 7,686,327,159 managed regular-path
+bytes, including environments and caches. This sums path sizes, counts hard
+links repeatedly and does not follow symlinks; it is not allocated disk usage
+or reclaimable space. The retained donor namespace and non-managed content
+comparisons exclude the new permanent seal and directory timestamps; they
+remain identical before preview, after preview and after borrower verification.
+
+The borrower read substantial logical data while its block-backed read counter
+stayed zero. Cache/host state is uncontrolled, and no physical-I/O absence,
+per-probe CPU/RSS attribution, production latency cause or speedup follows.
+This observation supports retaining the deferred digest-cache decision;
+equivalent fresh-probe semantics and representative site/queue measurements
+remain prerequisites to a performance change. It does not resolve E11.
 
 ## P3 outcome
 
