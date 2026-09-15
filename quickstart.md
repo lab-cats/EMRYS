@@ -208,6 +208,11 @@ currently running. `No admitted start` can mean absent or invalid records; read
 the printed blockers before choosing an action. These counts do not override
 the completion lines or recovery decision.
 
+For retained Task outcomes and their exact stdout/stderr paths, add
+`--detail verbose` to inspection. Each row names its original Attempt, including
+failed retries. A recorded `succeeded` outcome still needs verified scientific
+completion. Missing or changed log evidence remains a blocker; keep the files.
+
 Keep the original Project, inputs, runtime, logs and complete Run so
 the computation remains inspectable. An unsuccessful inspection prints the
 problem and the next supported action; retain that output before attempting

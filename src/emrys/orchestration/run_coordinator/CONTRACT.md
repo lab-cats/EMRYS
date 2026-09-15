@@ -570,6 +570,18 @@ admitted start can reflect missing or invalid evidence, so it never establishes
 that work did not run. These observations add no file reads and change no
 Run/Results blockers, recovery decisions or verified-content checks.
 
+The same snapshot retains diagnostic terminal Task-attempt observations from
+each admitted Attempt tree, in chain order per Task scope. These require the
+existing record and exact log-content checks; a postentry observation must also
+match the already admitted start reference and its originating Attempt. Failed
+preentry records keep the existing later-start ordering guard. Missing, changed
+or malformed records/logs are excluded, with their existing blockers preserved.
+Normal output counts these recorded attempts. Verbose/debug output shows their
+recorded outcome, original Attempt, record path and content-bound stdout/stderr
+paths, with escaped diagnostics. A recorded `succeeded` outcome alone cannot
+admit verified scientific completion, Results or recovery. The projection adds
+no log reads and does not replace verified Task records or receipt authority.
+
 Recovery availability is a separate fact. A successful processing-only Run has complete Results for its
 plan and reporting is not applicable.
 
