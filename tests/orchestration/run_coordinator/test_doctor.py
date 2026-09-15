@@ -1511,7 +1511,8 @@ def test_log_open_failure_prevents_the_first_repair_write(
 
 
 @pytest.mark.parametrize(
-    "failure", (None, "scheduler", "runtime", "head_runtime", "profile", "finalize")
+    "failure",
+    (None, "scheduler", "runtime", "startup", "head_runtime", "profile", "finalize"),
 )
 def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     tmp_path: Path,
@@ -1550,6 +1551,13 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         observed='loader: "missing"\nsecond line',
         detail="Version probe failed; exit_status=7; expected_exit_status=0",
     )
+    if failure == "startup":
+        failed_probe = replace(
+            _check("snakemake", "tool_version", sys.executable),
+            status="fail",
+            observed="No username set in the environment",
+            detail="Snakemake startup failed; exit_status=1; expected_exit_status=0",
+        )
     run_compute = qualification._run_compute
     qualify_head = qualification.qualify_head
 
@@ -1571,7 +1579,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
             )
         else:
             result = ready
-        if (state["compute"] and failure == "runtime") or (
+        if (state["compute"] and failure in {"runtime", "startup"}) or (
             not state["compute"] and state["jobs"] and failure == "head_runtime"
         ):
             result = replace(
@@ -1649,12 +1657,12 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         assert "Verification interrupted;" in output
     else:
         assert "VERIFICATION FAILED:" in output
-    if failure in {"runtime", "head_runtime"}:
+    if failure in {"runtime", "startup", "head_runtime"}:
         diagnostics = [
             item for item in events if item["event"] == "runtime_check_failed"
         ]
         assert str(log_path) in output
-        if failure == "runtime":
+        if failure in {"runtime", "startup"}:
             assert diagnostics == []
             prefix = "Runtime check failed (compute_runtime): "
             (payload,) = [
@@ -1663,7 +1671,8 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
                 if line.startswith(prefix)
             ]
             fields = json.loads(payload)
-            assert r"\n" in payload
+            if failure == "runtime":
+                assert r"\n" in payload
         else:
             (diagnostic,) = diagnostics
             assert diagnostic["phase"] == "head_requalification"

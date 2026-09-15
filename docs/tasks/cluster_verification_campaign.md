@@ -17,13 +17,13 @@ a second card-status list.
 
 ## Scope and authority
 
-The user approved creating this campaign and recording the findings while
-the actual-data Run continues. This documentation slice changes no product
-code, cluster files, execution profile, active Run, runtime, or scientific
-setting. Select and approve bounded implementation slices under the
-[development workflow](../operations/WORKFLOW.md) before implementing cards.
-Publication of this documentation does not select a product implementation
-slice or authorize merging subsequent fixes.
+The user approved implementing this backlog as bounded slices, with a separate
+stacked PR for each slice, and approved the minimum product expansion necessary
+without repeated approval pauses. Follow the
+[development workflow](../operations/WORKFLOW.md): audit existing owners,
+document each selected outcome and its accounting, and preserve its evidence
+limits. This development authority does not authorize merging, cluster
+execution, changing the active installation, or deleting retained evidence.
 
 Priorities are the operator's P0 through P3 ordering. The duplicate question
 about Doctor starting over is consolidated into CV-05: a retry reused native
@@ -35,9 +35,9 @@ qualification failure. Earlier unranked onboarding/output observations are
 mapped to related cards in the backlog without inventing new priorities.
 
 Proposed spellings such as `emrys stop JOB_ID`, cleanup commands, and a Run
-center are requirements to investigate, not approved CLI or architecture
-decisions. Preserve the existing CLI operations and authorities when designing
-their user interfaces. Snakemake remains the execution backend; Slurm provides
+center remain design inputs. Select and record the smallest complete interface
+after auditing the existing CLI operations and authorities. Snakemake remains
+the execution backend; Slurm provides
 placement. A Run remains immutable. Scheduler state and display convenience
 do not authorize lock removal, output adoption, or evidence fabrication.
 
@@ -87,8 +87,8 @@ that one previously successful hostname is the only valid placement.
 
 ## Delivery approach
 
-Priorities guide selection rather than authorizing an execution stack. A
-useful dependency order is:
+Priorities guide selection within the approved development stack. A useful
+dependency order is:
 
 1. Characterize the unexplained qualification failure and cancellation state;
    define the required diagnostic and recovery outcomes.

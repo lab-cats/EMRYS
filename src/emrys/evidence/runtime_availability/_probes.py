@@ -1,4 +1,4 @@
-"""Read-only availability probes for runtime-preflight evidence."""
+"""Runtime availability probes that leave Projects and Runs unchanged."""
 
 from __future__ import annotations
 
@@ -6,12 +6,14 @@ import os
 import re
 import stat
 import subprocess
+import tempfile
 import time
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from emrys.libraries.process_environment import (
     ProcessEnvironmentError,
+    command_flags,
     gatk_subprocess_environment,
     guarded_rscript_argv,
 )
@@ -147,9 +149,54 @@ def _probe_tool(
             "Version output did not match expected regex; "
             f"exit_status={code}; expected_exit_status={expected_code}",
         )
-    return RuntimeObservation(
-        check, "pass", output, f"Resolved executable: {executable}"
-    )
+    detail = f"Resolved executable: {executable}"
+    if check.check_id == "snakemake":
+        try:
+            with tempfile.TemporaryDirectory(
+                prefix="emrys-snakemake-", dir=environment.get("TMPDIR")
+            ) as scratch:
+                code, startup_output, elapsed, timed_out = run_command(
+                    [
+                        *controlled_python_argv(executable, "-m", "snakemake"),
+                        *command_flags(
+                            ("snakefile", os.devnull),
+                            ("profile", "none"),
+                            ("workflow-profile", "none"),
+                            ("directory", scratch),
+                            ("executor", "local"),
+                            ("scheduler", "greedy"),
+                            ("cores", 1),
+                            ("runtime-source-cache-path", f"{scratch}/source-cache"),
+                        ),
+                        "--nocolor",
+                    ],
+                    None,
+                    {
+                        **environment,
+                        "HOME": scratch,
+                        "TMPDIR": scratch,
+                        "XDG_CACHE_HOME": f"{scratch}/cache",
+                    },
+                    TOOL_PROBE_TIMEOUT_SECONDS,
+                )
+        except OSError as exc:
+            return RuntimeObservation(
+                check,
+                "fail",
+                "unavailable",
+                "Snakemake startup temporary state failed: " + _single_line(str(exc)),
+            )
+        startup_detail = _timing_detail(elapsed, TOOL_PROBE_TIMEOUT_SECONDS)
+        if timed_out or code != 0:
+            reason = "timed out" if timed_out else f"failed; exit_status={code}"
+            return RuntimeObservation(
+                check,
+                "fail",
+                startup_output or reason,
+                f"Snakemake startup {reason}; expected_exit_status=0; {startup_detail}",
+            )
+        detail += f"; minimal local Snakemake startup passed; {startup_detail}"
+    return RuntimeObservation(check, "pass", output, detail)
 
 
 def _probe_r_namespace(
