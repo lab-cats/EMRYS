@@ -632,13 +632,36 @@ this prerequisite's verified result.
 
 The implementation adds 162 net product lines in the existing Task owner.
 Fifteen focused unit protections and the existing lightweight runner checks
-pass locally, as do lint, format, documentation and dependency checks. Seventeen
-Linux/native cases await hosted execution. The four real samtools cases cover
+passed locally, as did lint, format, documentation and dependency checks. All 32
+selected cases, including the 17 Linux/native cases, then passed with no skips in
+[CI 34993805649](https://github.com/lab-cats/EMRYS/actions/runs/34993805649).
+All 14 standard jobs passed, with four configured skips. The native job tested
+merge `f28a829ca894674f4e17d9e6f4bf618b7296ea1e`, containing PR head
+`21992c732b44392cfe63528633a0e147b7979f85` and base
+`94a13fbea639d769fb22b1e443ccdb78b536fdd7`.
+The retained [artifact 10407865575](https://github.com/lab-cats/EMRYS/actions/runs/34993805649/artifacts/10407865575)
+has SHA-256 `8e53347a597b2f6b081e9c965ab5259d6621674d2e1af3009a44ae0d1151bb3a`.
+The four real samtools cases cover
 one/two-thread success, canonical hard-link reuse and cancellation after an
 observed real `sort` is deliberately stopped. That last fixture establishes
 bounded stopped-native escalation; it does not claim ordinary unpaused site
 cancellation or that output bytes existed before the stop. CI rejects skipped
-real-tool cases and retains the actual output roster.
+real-tool cases and retains the actual output roster. Both real cancellation
+rosters were empty; the synthetic descendant cases retained partial bytes.
+Worker-loss evidence correctly retained no positive closure marker. This accepts
+the bounded descendant-containment prerequisite, not the recovery protocol or
+institutional cancellation behavior.
+
+**Producer workspace prerequisite:** Producers now run with the existing owned
+Task scratch directory as their working directory. Frozen file arguments stay
+absolute; validators and semantic all-pass retain the Run-root working directory.
+This contains incidental relative files in the same owned cleanup boundary.
+In particular, locked STAR 2.7.11b [defaults its initial log prefix to `./`](https://github.com/alexdobin/STAR/blob/2.7.11b/source/parametersDefault)
+before [genome generation moves the log into the index directory](https://github.com/alexdobin/STAR/blob/2.7.11b/source/Genome_genomeGenerate.cpp); early cancellation
+could otherwise leave that file at the Run root. The central producer launch
+replaces that behavior for all current owners without per-tool launch flags,
+new directories or additional product lines. This is output-placement policy,
+not a filesystem sandbox or new retry authority.
 
 ### CV-11 Resource profile compatibility
 

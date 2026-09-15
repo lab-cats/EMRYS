@@ -2409,7 +2409,7 @@ def _run_task(
             producer_environment["TMPDIR"] = str(work_directory)
             producer = ops.run_command(
                 backend.producer_argv,
-                dispatch.run_root,
+                work_directory,
                 producer_environment,
                 *stream_descriptors,
             )

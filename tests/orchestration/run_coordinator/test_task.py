@@ -623,6 +623,64 @@ def test_success_publishes_schema_valid_content_bound_records(tmp_path: Path) ->
     assert verified_path.read_bytes() == predecessor
 
 
+@pytest.mark.parametrize("producer_fails", (False, True))
+def test_producer_relative_files_stay_in_owned_scratch(
+    tmp_path: Path, producer_fails: bool
+) -> None:
+    built = _task_fixture(tmp_path)
+    if producer_fails:
+        built.definition["producer_argv"].extend(["--fail-after", "1"])
+    built.definition["producer_argv"] = list(
+        controlled_python_argv(
+            sys.executable,
+            "-c",
+            "import os, pathlib, sys; "
+            "pathlib.Path('incidental.log').write_bytes(b'producer scratch'); "
+            "os.execv(sys.argv[1], sys.argv[1:])",
+            *built.definition["producer_argv"],
+        )
+    )
+    _rewrite_task(built)
+    defaults = _fixed_ops()
+    producer_argv = tuple(built.definition["producer_argv"])
+    working = Path(built.definition["outputs"][0]["working_path"]).parent
+    scratch = working.with_name(working.name + ".scratch")
+    phases = []
+
+    def command(argv, cwd, environment, *descriptors):
+        phase = "producer" if argv == producer_argv else "validator"
+        phases.append(phase)
+        assert cwd == (scratch if phase == "producer" else built.run_root)
+        result = defaults.run_command(argv, cwd, environment, *descriptors)
+        if phase == "producer":
+            assert (
+                environment["EMRYS_TASK_WORK_DIR"]
+                == environment["TMPDIR"]
+                == str(scratch)
+            )
+            assert (scratch / "incidental.log").read_bytes() == b"producer scratch"
+            assert not (built.run_root / "incidental.log").exists()
+        return result
+
+    def semantic(argv, cwd, environment, *descriptors):
+        phases.append("semantic")
+        assert cwd == built.run_root
+        return defaults.run_semantic_all_pass(argv, cwd, environment, *descriptors)
+
+    ops = replace(defaults, run_command=command, run_semantic_all_pass=semantic)
+    if producer_fails:
+        with pytest.raises(task.TaskBoundaryError, match="Producer command exited"):
+            _execute_task(built.plan, ops=ops)
+        assert phases == ["producer"]
+    else:
+        _execute_task(built.plan, ops=ops)
+        assert phases == ["producer", "validator", "semantic"]
+        _validate_verified(built)
+    assert not working.exists()
+    assert not scratch.exists()
+    assert not (built.run_root / "incidental.log").exists()
+
+
 def test_stream_capture_preserves_exact_opaque_bytes_and_per_stream_order(
     tmp_path: Path,
 ) -> None:

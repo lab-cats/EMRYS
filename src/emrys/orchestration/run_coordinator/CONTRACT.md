@@ -759,7 +759,10 @@ normalization with Project and BED12 validation.
 1. Recheck the plan, lock, inputs, and existing destinations; record entry and
    open the task streams. Task definitions bind final/working paths, publication
    order, locks, recovery locations, and complete directory inputs.
-2. Create the workspace and run the producer. Stop and reap its process group
+2. Create the workspace and run the producer with that owned scratch directory
+   as its working directory, so incidental relative files share its cleanup
+   boundary. Frozen file arguments remain absolute. Validators and semantic
+   all-pass keep the Run-root working directory. Stop and reap native execution
    before cleanup. Working files share the destination filesystem, allowing
    publication by links without copying large outputs.
 3. Validate and publish. Preprocessing (Step `08`) and paired CMH (Step `09`)
