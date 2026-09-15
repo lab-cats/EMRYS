@@ -59,13 +59,17 @@ def _validate_request_token(request_token: object) -> None:
         )
 
 
+def _scheduler_job_name(request_token: str | None) -> str:
+    _validate_request_token(request_token)
+    return "emrys-local-pilot" + (f"-{request_token}" if request_token else "")
+
+
 def _scheduler_stream_patterns(
     log_dir: Path, request_token: str | None = None
 ) -> tuple[Path, Path]:
     if "%" in os.fspath(log_dir):
         raise SlurmSubmissionError("scheduler log directory must not contain '%'")
-    _validate_request_token(request_token)
-    stem = "emrys-local-pilot" + (f"-{request_token}" if request_token else "")
+    stem = _scheduler_job_name(request_token)
     return log_dir / f"{stem}-%j.out", log_dir / f"{stem}-%j.err"
 
 
@@ -87,11 +91,17 @@ def validate_request_context(
         "scheduler_stdout_pattern",
         "scheduler_stderr_pattern",
     }
+    if context.get("schema_version") == "emrys.submission-request.v3":
+        fields.add("scheduler_job_name")
     if set(context) != fields:
         raise SlurmSubmissionError("Submission request context fields differ")
     if (
         context["schema_version"]
-        not in ("emrys.submission-request.v1", "emrys.submission-request.v2")
+        not in (
+            "emrys.submission-request.v1",
+            "emrys.submission-request.v2",
+            "emrys.submission-request.v3",
+        )
         or type(context["submitter_uid"]) is not int
         or context["submitter_uid"] != os.getuid()
         or context["project"] != str(project)
@@ -147,7 +157,7 @@ def validate_request_context(
             "Submission Run, analysis, profile binding or argv is malformed"
         )
     token = None
-    if context["schema_version"] == "emrys.submission-request.v2":
+    if context["schema_version"] != "emrys.submission-request.v1":
         if (
             request_root is None
             or request_root.parent != project.parent / "logs"
@@ -157,6 +167,10 @@ def validate_request_context(
                 "Submission request root differs from the Project"
             )
         token = request_root.name.removeprefix("submission-")
+    if context["schema_version"] == "emrys.submission-request.v3" and context[
+        "scheduler_job_name"
+    ] != _scheduler_job_name(token):
+        raise SlurmSubmissionError("Submission scheduler name differs from its token")
     for stream, expected in zip(
         ("stdout", "stderr"),
         _scheduler_stream_patterns(project.parent / "logs", token),
@@ -193,12 +207,13 @@ class SubmissionRequestObservation:
 def observe_submission_request(
     request: SubmissionRequestObservation,
 ) -> dict[str, object]:
-    """Bind a retained v2 request to scheduler metadata without Run or recovery claims."""
+    """Bind retained request identity to metadata without Run or recovery claims."""
     context = request.context
     if (
         request.record_status != "recorded-response"
         or context is None
-        or context["schema_version"] != "emrys.submission-request.v2"
+        or context["schema_version"]
+        not in ("emrys.submission-request.v2", "emrys.submission-request.v3")
     ):
         return scheduler_observation.unknown_observation(
             "Complete request-specific stream identity is unavailable"
@@ -208,6 +223,11 @@ def observe_submission_request(
         context["scheduler_stdout_pattern"],
         context["scheduler_stderr_pattern"],
         request.recorded_cluster,
+        job_name=(
+            context["scheduler_job_name"]
+            if context["schema_version"] == "emrys.submission-request.v3"
+            else None
+        ),
     )
 
 
@@ -418,6 +438,7 @@ class SlurmSubmission:
     environment: Mapping[str, str] = field(repr=False, compare=False)
     stdout_pattern: Path
     stderr_pattern: Path
+    job_name: str
 
 
 def _batch_script(
@@ -568,7 +589,7 @@ def plan_submission(
     argv.extend(
         (
             f"--time={slurm_placement.time}",
-            "--job-name=emrys-local-pilot",
+            f"--job-name={_scheduler_job_name(request_token)}",
             f"--output={stdout_pattern}",
             f"--error={stderr_pattern}",
             f"--export={DELEGATE_MARKER_ENV}={DELEGATE_MARKER},"
@@ -611,6 +632,7 @@ def plan_submission(
         environment=scrubbed_environment,
         stdout_pattern=stdout_pattern,
         stderr_pattern=stderr_pattern,
+        job_name=_scheduler_job_name(request_token),
     )
 
 

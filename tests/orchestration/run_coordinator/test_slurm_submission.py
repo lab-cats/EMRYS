@@ -323,12 +323,13 @@ def test_request_context_retains_exact_requested_run(
 
 
 @pytest.mark.parametrize("command", ["run", "resume", "report"])
+@pytest.mark.parametrize("version", ["v2", "v3"])
 def test_request_specific_streams_roundtrip_through_producer_and_reader(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: str, version: str
 ) -> None:
     project, root, context = _request_record(tmp_path)
     context.update(
-        schema_version="emrys.submission-request.v2",
+        schema_version=f"emrys.submission-request.{version}",
         command=command,
         requested_run=None if command == "run" else "run-" + "e" * 64,
     )
@@ -342,6 +343,9 @@ def test_request_specific_streams_roundtrip_through_producer_and_reader(
         scheduler_stdout_pattern=str(plan.stdout_pattern),
         scheduler_stderr_pattern=str(plan.stderr_pattern),
     )
+    if version == "v3":
+        context["scheduler_job_name"] = plan.job_name
+        assert f"--job-name={plan.job_name}" in plan.argv
     admitted = slurm_submission.validate_request_context(context, project, root)
     (root / "request.json").write_bytes(
         slurm_submission.orchestration_contracts.canonical_json_bytes(admitted)
@@ -355,11 +359,65 @@ def test_request_specific_streams_roundtrip_through_producer_and_reader(
         slurm_submission.scheduler_observation,
         "command_bytes",
         lambda *_args, **_kwargs: (
-            f"700123|{os.getuid()}|RUNNING|alpha|{plan.stdout_pattern}|{plan.stderr_pattern}|None\n"
+            f"700123|{os.getuid()}|RUNNING|alpha|{plan.stdout_pattern}|{plan.stderr_pattern}|None"
+            + (f"|{plan.job_name}" if version == "v3" else "")
+            + "\n"
         ).encode(),
     )
     state = slurm_submission.observe_submission_request(observed)
     assert state["source"] == "squeue" and state["state"] == "RUNNING"
+    assert state.get("job_name") == (plan.job_name if version == "v3" else None)
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "missing",
+        "wrong-token",
+        "legacy-name",
+        "empty",
+        "wrong-type",
+        "extra",
+        "v1",
+        "v2",
+    ],
+)
+def test_v3_request_name_is_closed_and_bound_to_its_request_token(
+    tmp_path: Path, defect: str
+) -> None:
+    project, root, context = _request_record(tmp_path)
+    plan = slurm_submission.plan_submission(
+        _profile(tmp_path),
+        emrys_argv=("emrys", "run"),
+        log_dir=project.parent / "logs",
+        request_token="a" * 32,
+    )
+    context.update(
+        schema_version="emrys.submission-request.v3",
+        scheduler_job_name=plan.job_name,
+        scheduler_stdout_pattern=str(plan.stdout_pattern),
+        scheduler_stderr_pattern=str(plan.stderr_pattern),
+    )
+    if defect == "missing":
+        del context["scheduler_job_name"]
+    elif defect == "extra":
+        context["cancellable"] = True
+    elif defect in ("v1", "v2"):
+        context["schema_version"] = f"emrys.submission-request.{defect}"
+    else:
+        context["scheduler_job_name"] = {
+            "wrong-token": plan.job_name.replace("a" * 32, "b" * 32),
+            "legacy-name": "emrys-local-pilot",
+            "empty": "",
+            "wrong-type": [plan.job_name],
+        }[defect]
+    with pytest.raises(slurm_submission.SlurmSubmissionError):
+        slurm_submission.validate_request_context(context, project, root)
+    (root / "request.json").write_bytes(
+        slurm_submission.orchestration_contracts.canonical_json_bytes(context)
+    )
+    (observed,) = slurm_submission.submission_requests(project)
+    assert observed.context is None and observed.record_status == "malformed"
 
 
 @pytest.mark.parametrize("record", ["legacy", "partial", "unconfirmed"])
@@ -529,7 +587,7 @@ def test_plan_is_no_write_and_builds_exact_sbatch_argv(
         "--exclusive",
         "--nodelist=node-[01-02]",
         "--time=02:30:00",
-        "--job-name=emrys-local-pilot",
+        f"--job-name={stem}",
         f"--output={log_dir}/{stem}-%j.out",
         f"--error={log_dir}/{stem}-%j.err",
         "--export="
@@ -547,6 +605,7 @@ def test_plan_is_no_write_and_builds_exact_sbatch_argv(
     assert dict(plan.environment) == {"KEEP": "yes"}
     assert plan.stdout_pattern == log_dir / f"{stem}-%j.out"
     assert plan.stderr_pattern == log_dir / f"{stem}-%j.err"
+    assert plan.job_name == stem
     assert plan.batch_script.startswith("#!/bin/bash\nset -euo pipefail\n")
     assert '/bin/rm -rf --one-file-system -- "$job_tmpdir"' in plan.batch_script
     assert "--wrap" not in plan.argv

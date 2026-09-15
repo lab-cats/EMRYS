@@ -572,6 +572,24 @@ stop must not promise resume when task evidence is ambiguous. Cover stopping
 before Run creation and during a native task. Reuse CV-10 recovery mechanics.
 **Owners/dependencies:** CLI/control, Slurm transport, lifecycle; CV-10/20.
 
+**Selected identity prerequisite:** Ordinary requests retain a token-specific
+scheduler job name in closed v3 context. Planning, validation and selected
+observation bind the same name alongside numeric owner, root job ID, cluster
+and exact stream paths. Older v1/v2 records keep read-only inspection and gain
+no cancellation authority. Existing dashboard discovery remains compatible.
+This prepares safe target selection; it does not execute cancellation.
+
+**Stop design boundary:** Select an exact retained request with Project context,
+rather than a bare reusable job ID. Cancellation must apply owner/name/ID
+filters together at the controller; observing stream paths before ID-only
+cancellation leaves a reuse race. Slurm added that `scancel --ctld` behavior in
+[23.11.6](https://raw.githubusercontent.com/SchedMD/slurm/slurm-23-11-10-1/NEWS).
+Older or unconfirmed clients must refuse before any mutating command. Even a
+successful command means only that the request was processed; independently
+admitted Run receipts/locks still decide completion and recovery. Exact client
+admission, preview/recheck, durable diagnostics and public stop remain separate
+implementation work; actual cluster cancellation retains its own authority.
+
 ### CV-19 Verification and repair vocabulary
 
 **Finding:** Doctor printed READY, then asked to apply a repair consisting only
