@@ -4145,6 +4145,8 @@ def test_public_application_correlation_scans_only_selected_request_and_escapes_
             recorded_event="analysis_prepared",
             recorded_run_id=run_root.name,
             recorded_workflow_attempt_id="recorded\nAttempt",
+            recorded_outcome="attempt_failed",
+            recorded_outcome_phase="preflight\nother\x1b[31m",
         )
     if state == "admitted":
         values.update(
@@ -4206,11 +4208,13 @@ def test_public_application_correlation_scans_only_selected_request_and_escapes_
     assert calls == scheduler_calls == [selected.request_root]
     assert r"recorded issue\nsecond line\x1b[31m" in output and "\x1b" not in output
     assert ("Preparation recorded:" in output) is (state != "unknown")
+    assert ("Recorded application outcome:" in output) is (state != "unknown")
     assert ("Admitted Run:" in output) is (state == "admitted")
     assert ("Admitted Attempt record:" in output) is (state == "admitted")
     if state != "unknown":
         assert r"log\x1b[31m.jsonl" in output and r"Attempt=recorded\nAttempt" in output
         assert "Log snapshot SHA-256: " + "f" * 64 in output
+        assert r"attempt_failed; phase: preflight\nother\x1b[31m" in output
     assert {
         path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
     } == before
@@ -4878,6 +4882,9 @@ def test_delegated_operation_records_request_before_preparation_in_one_unique_lo
             )
             assert correlated.application_log == (None if completed_paths else path)
             assert correlated.run_root is correlated.workflow_attempt_id is None
+            assert (
+                correlated.recorded_outcome is correlated.recorded_outcome_phase is None
+            )
         identities.add(records[0]["execution_attempt_id"])
         completed_paths.add(path)
 
@@ -4898,6 +4905,22 @@ def test_delegated_operation_records_request_before_preparation_in_one_unique_lo
         assert getattr(control, f"{command}_from_args")(arguments) == (
             1 if command == "report" else 2
         )
+        if request is not None:
+            correlated = inspect_submission_application(request)
+            if len(completed_paths) == 1:
+                assert correlated.status == "application-log-bound"
+                assert correlated.recorded_outcome == "attempt_failed"
+                assert correlated.recorded_outcome_phase == (
+                    "reporting" if command == "report" else "preflight"
+                )
+                assert correlated.run_root is correlated.workflow_attempt_id is None
+            else:
+                assert correlated.status == "unknown"
+                assert (
+                    correlated.recorded_outcome
+                    is correlated.recorded_outcome_phase
+                    is None
+                )
     assert len(completed_paths) == len(identities) == 2
     assert all(path.parent.name in identities for path in completed_paths)
     assert all(

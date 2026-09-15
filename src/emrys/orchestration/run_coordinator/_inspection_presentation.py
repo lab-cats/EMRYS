@@ -235,6 +235,17 @@ class WatchSnapshot:
     trace_diagnostics: tuple[str, ...] = ()
 
 
+def application_outcome_lines(
+    observation: _submission_inspection.SubmissionApplicationObservation,
+) -> tuple[str, ...]:
+    """Describe recorded diagnostics without projecting Run or scheduler outcome."""
+    if observation.recorded_outcome is None:
+        return ()
+    return (
+        f"Recorded application outcome: {observation.recorded_outcome}; phase: {observation.recorded_outcome_phase or 'unavailable'}",
+    )
+
+
 def run_application_lines(
     observation: _submission_inspection.RunApplicationObservation,
     *,
@@ -245,14 +256,15 @@ def run_application_lines(
         f"Run diagnostic logs: {len(observation.logs)} association(s); scan {observation.status}.",
         f"Application log search root: {observation.log_root}",
     ]
-    if detail != "normal":
-        for item in observation.logs:
-            lines.extend(
-                (
-                    f"  {item.application_log}",
-                    f"    {item.status}; recorded {item.recorded_event}; Attempt: {item.workflow_attempt_id or 'none (Run only)'}",
-                )
+    for item in observation.logs:
+        outcome = application_outcome_lines(item)
+        if detail != "normal" or outcome:
+            lines.append(f"  {item.application_log}")
+        if detail != "normal":
+            lines.append(
+                f"    {item.status}; recorded {item.recorded_event}; Attempt: {item.workflow_attempt_id or 'none (Run only)'}"
             )
+        lines.extend(f"    {line}" for line in outcome)
     lines.extend(f"  {value}" for value in observation.diagnostics[:2])
     return tuple(lines)
 
@@ -618,6 +630,7 @@ def render_snapshot(
             lines.append(
                 f"Recorded preparation: {application.recorded_event}; candidate Run: {application.recorded_run_id or 'none'}"
             )
+        lines.extend(application_outcome_lines(application))
         lines.extend(f"  {value}" for value in application.diagnostics[:2])
     if snapshot.run_applications is not None:
         lines.append(

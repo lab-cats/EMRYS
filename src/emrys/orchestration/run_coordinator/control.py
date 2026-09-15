@@ -1762,6 +1762,8 @@ def _print_submission_roster(project: Path, selector: str | None = None) -> None
                     f"    {label}: Run={application.recorded_run_id}; "
                     f"Attempt={application.recorded_workflow_attempt_id or 'not applicable'}"
                 )
+            for line in _inspection_presentation.application_outcome_lines(application):
+                _print_safe(f"    {line}")
             if application.run_root is not None:
                 _print_safe(f"    Admitted Run: {application.run_root}")
                 if application.workflow_attempt_id is not None:

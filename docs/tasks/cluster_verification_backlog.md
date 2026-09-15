@@ -68,7 +68,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-17](#cv-17-project-creation-progress) | P1 | Verification pending | Explain lengthy input validation during Project creation. |
 | [CV-18](#cv-18-safe-emrys-stop) | P1 | Open | Provide an operator stop action with safe recovery semantics. |
 | [CV-19](#cv-19-verification-and-repair-vocabulary) | P1 | Verification pending | Name verification-only work accurately. |
-| [CV-20](#cv-20-submission-state-before-run-creation) | P1 | Open | Show queued and preparing jobs before a Run exists. |
+| [CV-20](#cv-20-submission-state-before-run-creation) | P1 | Verification pending | Show queued and preparing jobs before a Run exists. |
 | [CV-21](#cv-21-reporting-in-progress-and-visibility) | P1 | Open | Distinguish unfinished report publication from failed reporting. |
 | [CV-22](#cv-22-complete-submission-preview) | P1 | Verification pending | Show effective placement and computational limits before approval. |
 | [CV-23](#cv-23-safe-project-or-artifact-cleanup) | P2 | Deferred | Decide and scope safe cleanup of unused owned state. |
@@ -907,8 +907,9 @@ passed afterward, including array/heterogeneous IDs and exact untrimmed paths.
 Public selected-request cases
 cover one-request query cost, default no-query behavior, unavailable/legacy
 observations, exact selection, escaped reason text and no writes; these new
-application cases passed standard CI after the fixture correction. CV-20 remains
-Open for institutional scheduler and integrated-monitoring acceptance.
+application cases passed standard CI after the fixture correction. CV-20 is
+Verification pending for institutional scheduler, reconnect and preparation
+observations.
 Neither retained context nor a terminal
 scheduler record grants scientific completion, cancellation or recovery authority.
 
@@ -921,7 +922,8 @@ identity, custom roots and direct/legacy/Doctor behavior remain intact. The
 event is diagnostic; a later reader must still reject ambiguous or incomplete
 logs and independently admit candidate Runs/Attempts before association.
 Transport fixtures exercise actual safe Bash propagation, invalid/orphan
-context and module mutation; public early-log fixtures require hosted CI.
+context and module mutation; public early-log fixtures passed the final
+startup-outcome CI below.
 
 **Selected application/Run association slice:** Exact-request inspection scans
 only the retained command-specific application scope, with bounded directory,
@@ -938,8 +940,27 @@ is association evidence only: no chain, lock, receipt, Task or Results admission
 is implied. Shared directory enumeration gains an optional bound and profile
 binding retains one formatter for equivalent digest inputs. Focused fixtures
 cover actual log-writer compatibility, identities, limits, malformed/ambiguous
-records and snapshot changes; full candidate and public fixtures require CI.
+records and snapshot changes; full candidate and public fixtures passed the final
+startup-outcome CI below.
 Institutional reconnect/queued/preparation observations remain pending.
+
+**Recorded startup outcomes:** Selected-request inspection and watch now preserve
+the final admitted application failure or interruption and its recorded phase,
+including a preflight failure before a Run exists. Run-log rows use the same
+pure formatter. Open logs retain no recorded outcome; missing, ambiguous,
+malformed or changing evidence remains unknown. A recorded interruption keeps
+its `interrupt` phase instead of guessing that it occurred during preflight.
+Preparation candidates and independently admitted Run/Attempt identities remain
+separate from the application outcome, with no new reads, records or recovery
+authority. Real-writer and public-handler regressions cover failure before and
+after preparation, interruption, unchanged admission and escaped presentation.
+The complete standard suite passed for product
+`7b8db426020dd3b501ac3fdbe68aa315e68f4c69`
+([CI 34977917662](https://github.com/lab-cats/EMRYS/actions/runs/34977917662)):
+all 14 standard jobs succeeded, including installed-provider Run association,
+all Python shards, coverage and the managed golden path; four configured lanes
+were skipped. Institutional reconnect/queued/preparation evidence remains
+required. Recorded application failure does not establish a scientific outcome.
 
 ### CV-21 Reporting in progress and visibility
 

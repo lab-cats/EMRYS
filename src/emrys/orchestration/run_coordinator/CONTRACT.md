@@ -307,6 +307,14 @@ It rejects changing, noncanonical,
 unowned, linked, truncated or ambiguous evidence rather than guessing from time.
 Default roster inspection performs no application-log scan.
 
+The final admitted `attempt_failed` or `attempt_interrupted` event supplies a
+recorded application outcome and its exact phase to static inspection, watch and
+Run-log rows. An unfinished log has no recorded outcome. The reader uses the
+same admitted bytes and preserves preparation candidates and independent Run
+admission; a recorded application failure is neither a Run-state transition nor
+recovery authority. In particular, an interruption's recorded `interrupt` phase
+does not establish whether preparation or workflow execution had begun.
+
 Preparation/reporting-start events supply recorded candidates only. Existing
 Run and profile admission validates the candidate's immutable identity; Run or
 resume additionally admits the exact historical Attempt, its bound Project

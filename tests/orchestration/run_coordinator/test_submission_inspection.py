@@ -193,7 +193,79 @@ def test_early_context_binds_one_custom_log_without_run_or_terminal_event(
         result.run_root is result.workflow_attempt_id is result.recorded_run_id is None
     )
     assert result.diagnostics == ()
+    assert result.recorded_outcome is result.recorded_outcome_phase is None
     assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before
+
+
+@pytest.mark.parametrize("command", ["run", "resume"])
+@pytest.mark.parametrize("outcome", ["failed", "interrupted"])
+def test_current_writer_preparation_failure_is_recorded_without_run_authority(
+    tmp_path, command, outcome
+):
+    import io
+
+    from emrys.libraries.application_logging import (
+        AttemptIdentity,
+        LogControls,
+        LogLevel,
+        event,
+        field,
+        open_attempt_log,
+    )
+
+    request, _ = _request(
+        tmp_path, command, None if command == "run" else "run-" + "d" * 64
+    )
+    context = request.context
+    application = open_attempt_log(
+        controls=LogControls(
+            LogLevel.NORMAL,
+            Path(context["application_log_root"]),
+            "default",
+            "command_line",
+        ),
+        identity=AttemptIdentity(
+            "run",
+            "pending" if command == "run" else context["requested_run"],
+            "application-" + "b" * 32,
+            f"emrys-{command}",
+        ),
+        mode="execute" if command == "run" else "resume",
+        component="orchestration",
+        scheduler_environment={"SLURM_JOB_ID": "700123"},
+        stderr=io.StringIO(),
+    )
+    application.logger(component="orchestration", phase="preflight").info(
+        "Request context recorded.",
+        extra=event(
+            "submission_context",
+            detail="durable_only",
+            fields={
+                "request_token": field("a" * 32),
+                "project_root": field(Path(context["project"]).parent),
+                "profile_binding_sha256": field(context["profile_binding_sha256"]),
+            },
+        ),
+    )
+    before = reader.inspect_submission_application(request)
+    assert before.status == "application-log-bound"
+    assert before.recorded_outcome is before.recorded_outcome_phase is None
+    if outcome == "failed":
+        application.fail(phase="preflight", message="Preparation failed.")
+    else:
+        assert application.interrupt_best_effort(message="Preparation interrupted.")
+    retained = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    after = reader.inspect_submission_application(request)
+    assert after.status == before.status and after.application_log == application.path
+    assert after.recorded_outcome == f"attempt_{outcome}"
+    assert after.recorded_outcome_phase == (
+        "preflight" if outcome == "failed" else "interrupt"
+    )
+    assert after.recorded_event is after.recorded_run_id is None
+    assert after.run_root is after.workflow_attempt_id is None
+    assert after.diagnostics == ()
+    assert not (tmp_path / "runs").exists()
+    assert {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == retained
 
 
 @pytest.mark.parametrize("command", ["run", "resume", "report"])
@@ -302,6 +374,7 @@ def test_recorded_preparation_cannot_replace_independent_run_and_attempt_admissi
         "duplicate-context",
         "missing-token",
         "post-terminal",
+        "terminal-phase",
         "oversized-number",
         "deep-json",
         "unknown-field",
@@ -362,6 +435,10 @@ def test_malformed_or_ambiguous_scope_cannot_bind_application(tmp_path, defect):
         elif defect == "post-terminal":
             records.append({**records[1], "sequence": 3, "event": "attempt_failed"})
             records.append({**records[1], "sequence": 4, "event": "after_failure"})
+        elif defect == "terminal-phase":
+            records.append(
+                {**records[1], "sequence": 3, "event": "attempt_failed", "phase": None}
+            )
         elif defect == "oversized-number":
             records[1]["monotonic_seconds"] = 10**1000
         elif defect == "unknown-field":
@@ -390,6 +467,7 @@ def test_malformed_or_ambiguous_scope_cannot_bind_application(tmp_path, defect):
         result.status == "unknown" and result.application_log is result.run_root is None
     )
     assert result.diagnostics
+    assert result.recorded_outcome is result.recorded_outcome_phase is None
 
 
 @pytest.mark.parametrize(
@@ -576,8 +654,9 @@ def _prepared(root, attempt):
 
 
 @pytest.mark.parametrize("command", ["run", "resume", "report"])
+@pytest.mark.parametrize("outcome", ["completed", "failed", "interrupted"])
 def test_run_discovery_admits_current_writer_without_submission_or_live_project(
-    tmp_path, monkeypatch, command
+    tmp_path, monkeypatch, command, outcome
 ):
     import io
 
@@ -621,7 +700,12 @@ def test_run_discovery_admits_current_writer_without_submission_or_live_project(
     )
     if command != "report":
         logger.info("Automatic reporting started.", extra=event("reporting_started"))
-    application.terminal(event_name="fixture_finished", message="Fixture finished.")
+    if outcome == "failed":
+        application.fail(phase="execution", message="Fixture failed.")
+    elif outcome == "interrupted":
+        assert application.interrupt_best_effort(message="Fixture interrupted.")
+    else:
+        application.terminal(event_name="fixture_finished", message="Fixture finished.")
     # Historical association uses retained records, not current authored inputs.
     Path(request.context["project"]).unlink()
     (tmp_path / "selected.yaml").write_bytes(b"current placement has changed\n")
@@ -647,6 +731,17 @@ def test_run_discovery_admits_current_writer_without_submission_or_live_project(
     )
     assert result.logs[0].workflow_attempt_id == (
         None if command == "report" else attempt["workflow_attempt_id"]
+    )
+    assert result.logs[0].recorded_outcome == (
+        None if outcome == "completed" else f"attempt_{outcome}"
+    )
+    assert (
+        result.logs[0].recorded_outcome_phase
+        == {
+            "completed": None,
+            "failed": "execution",
+            "interrupted": "interrupt",
+        }[outcome]
     )
     assert len(reads) == len(set(reads))
     assert {
