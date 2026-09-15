@@ -951,113 +951,97 @@ def _recorded_streams(
 def submit(
     submission: SlurmSubmission,
     *,
-    wait_record: Path | None = None,
-    record_path: Path | None = None,
+    record_path: Path,
+    wait: bool = False,
     on_submitted: Callable[[str, str | None], None] | None = None,
 ) -> str:
-    """Submit one planned script in one subprocess call and return its job ID."""
+    """Retain transcripts for one submission, optionally waiting for the job."""
 
-    if wait_record is not None and record_path is not None:
-        raise SlurmSubmissionError("Select one submission record path")
-    record = wait_record if wait_record is not None else record_path
     job_id = None
-    operation = "invoke sbatch" if record is None else "prepare submission records"
+    operation = "prepare submission records"
     try:
-        if record is None:
-            completed = subprocess.run(
-                submission.argv,
-                input=submission.batch_script,
-                env=dict(submission.environment),
-                text=True,
-                errors="replace",
-                capture_output=True,
-                check=False,
-            )
-            stdout, stderr = completed.stdout, completed.stderr
-            job_id = _submitted_response(stdout, stderr=stderr)[0] if stdout else None
-        else:
-            error_record = record.with_suffix(".stderr")
+        error_record = record_path.with_suffix(".stderr")
 
-            with _recorded_streams(record) as (output, errors, verify):
-                operation = "synchronize submission directory"
-                verify(True)
-                print(
-                    f"Slurm submission records: {record}, {error_record}",
-                    file=sys.stderr,
-                )
-                operation = "invoke sbatch"
-                verify()
-                with subprocess.Popen(
-                    (
-                        *submission.argv,
-                        *(("--wait",) if wait_record is not None else ()),
-                    ),
-                    env=dict(submission.environment),
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE if wait_record is not None else output,
-                    stderr=errors,
-                ) as process:
-                    operation = "communicate with sbatch"
-                    try:
-                        with suppress(BrokenPipeError):
-                            process.stdin.write(submission.batch_script.encode())
-                        with suppress(BrokenPipeError):
-                            process.stdin.close()
-                        if wait_record is not None:
-                            first = process.stdout.readline()
-                        else:
-                            operation = "wait for sbatch"
-                            process.wait()
-                            output.seek(0)
-                            first = output.read()
-                            errors.seek(0)
-                            stderr = errors.read(4096).decode("utf-8", "replace")
-                        try:
-                            job_id, cluster = (
-                                _submitted_response(
-                                    first.decode("utf-8", "replace"),
-                                    stderr=stderr if wait_record is None else None,
-                                )
-                                if first
-                                else (None, None)
-                            )
-                        finally:
-                            operation = "retain submission records"
-                            if wait_record is not None:
-                                output.write(first)
-                            output.flush()
-                            os.fsync(output.fileno())
-                        if job_id:
-                            print(
-                                f"Slurm job {job_id}; logs: {str(submission.stdout_pattern).replace('%j', job_id)}, {str(submission.stderr_pattern).replace('%j', job_id)}",
-                                file=sys.stderr,
-                                flush=True,
-                            )
-                            if on_submitted is not None:
-                                on_submitted(job_id, cluster)
-                        operation = "wait for sbatch"
-                        rest = process.stdout.read() if wait_record is not None else b""
-                        operation = "retain submission records"
-                        output.write(rest)
-                        output.flush()
-                        os.fsync(output.fileno())
-                        stdout = (first + rest).decode("utf-8", "replace")
-                        completed = process
+        with _recorded_streams(record_path) as (output, errors, verify):
+            operation = "synchronize submission directory"
+            verify(True)
+            print(
+                f"Slurm submission records: {record_path}, {error_record}",
+                file=sys.stderr,
+            )
+            operation = "invoke sbatch"
+            verify()
+            with subprocess.Popen(
+                (
+                    *submission.argv,
+                    *(("--wait",) if wait else ()),
+                ),
+                env=dict(submission.environment),
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE if wait else output,
+                stderr=errors,
+            ) as process:
+                operation = "communicate with sbatch"
+                try:
+                    with suppress(BrokenPipeError):
+                        process.stdin.write(submission.batch_script.encode())
+                    with suppress(BrokenPipeError):
+                        process.stdin.close()
+                    if wait:
+                        first = process.stdout.readline()
+                    else:
                         operation = "wait for sbatch"
                         process.wait()
-                        operation = "retain submission records"
-                        os.fsync(errors.fileno())
-                        operation = "read submission records"
+                        output.seek(0)
+                        first = output.read()
                         errors.seek(0)
                         stderr = errors.read(4096).decode("utf-8", "replace")
-                    except BaseException:
-                        process.terminate()
-                        try:
-                            process.wait(timeout=5)
-                        except subprocess.TimeoutExpired:
-                            process.kill()
-                            process.wait()
-                        raise
+                    try:
+                        job_id, cluster = (
+                            _submitted_response(
+                                first.decode("utf-8", "replace"),
+                                stderr=stderr if not wait else None,
+                            )
+                            if first
+                            else (None, None)
+                        )
+                    finally:
+                        operation = "retain submission records"
+                        if wait:
+                            output.write(first)
+                        output.flush()
+                        os.fsync(output.fileno())
+                    if job_id:
+                        print(
+                            f"Slurm job {job_id}; logs: {str(submission.stdout_pattern).replace('%j', job_id)}, {str(submission.stderr_pattern).replace('%j', job_id)}",
+                            file=sys.stderr,
+                            flush=True,
+                        )
+                        if on_submitted is not None:
+                            on_submitted(job_id, cluster)
+                    operation = "wait for sbatch"
+                    rest = process.stdout.read() if wait else b""
+                    operation = "retain submission records"
+                    output.write(rest)
+                    output.flush()
+                    os.fsync(output.fileno())
+                    stdout = (first + rest).decode("utf-8", "replace")
+                    completed = process
+                    operation = "wait for sbatch"
+                    process.wait()
+                    operation = "retain submission records"
+                    os.fsync(errors.fileno())
+                    operation = "read submission records"
+                    errors.seek(0)
+                    stderr = errors.read(4096).decode("utf-8", "replace")
+                except BaseException:
+                    process.terminate()
+                    try:
+                        process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait()
+                    raise
     except OSError as exc:
         raise SlurmSubmissionError(
             f"Could not {operation}; job ID {job_id or 'unconfirmed'}: {str(exc)[:4096]!a}"

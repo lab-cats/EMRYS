@@ -2684,6 +2684,8 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
 
     def submit(submission: object, **kwargs: Any) -> str:
         nonlocal elapsed
+        assert kwargs["wait"] is True
+        assert kwargs["record_path"].name == "slurm-submit.stdout"
         state["jobs"] += 1
         elapsed += 5.0
         if failure == "scheduler_unconfirmed":
