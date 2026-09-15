@@ -68,7 +68,7 @@ no supplied terminal scientific/reporting evidence.
 | [CV-17](#cv-17-project-creation-progress) | P1 | Verification pending | Explain lengthy input validation during Project creation. |
 | [CV-18](#cv-18-safe-emrys-stop) | P1 | Open | Provide an operator stop action with safe recovery semantics. |
 | [CV-19](#cv-19-verification-and-repair-vocabulary) | P1 | Verification pending | Name verification-only work accurately. |
-| [CV-20](#cv-20-submission-state-before-run-creation) | P1 | Open | Show queued and preparing jobs before a Run exists. |
+| [CV-20](#cv-20-submission-state-before-run-creation) | P1 | Verification pending | Show queued and preparing jobs before a Run exists. |
 | [CV-21](#cv-21-reporting-in-progress-and-visibility) | P1 | Open | Distinguish unfinished report publication from failed reporting. |
 | [CV-22](#cv-22-complete-submission-preview) | P1 | Verification pending | Show effective placement and computational limits before approval. |
 | [CV-23](#cv-23-safe-project-or-artifact-cleanup) | P2 | Deferred | Decide and scope safe cleanup of unused owned state. |
@@ -905,8 +905,9 @@ passed afterward, including array/heterogeneous IDs and exact untrimmed paths.
 Public selected-request cases
 cover one-request query cost, default no-query behavior, unavailable/legacy
 observations, exact selection, escaped reason text and no writes; these new
-application cases passed standard CI after the fixture correction. CV-20 remains
-Open for institutional scheduler and integrated-monitoring acceptance.
+application cases passed standard CI after the fixture correction. CV-20 is
+Verification pending for the startup-outcome checks below and institutional
+scheduler, reconnect and preparation observations.
 Neither retained context nor a terminal
 scheduler record grants scientific completion, cancellation or recovery authority.
 
@@ -938,6 +939,19 @@ binding retains one formatter for equivalent digest inputs. Focused fixtures
 cover actual log-writer compatibility, identities, limits, malformed/ambiguous
 records and snapshot changes; full candidate and public fixtures require CI.
 Institutional reconnect/queued/preparation observations remain pending.
+
+**Recorded startup outcomes:** Selected-request inspection and watch now preserve
+the final admitted application failure or interruption and its recorded phase,
+including a preflight failure before a Run exists. Run-log rows use the same
+pure formatter. Open logs retain no recorded outcome; missing, ambiguous,
+malformed or changing evidence remains unknown. A recorded interruption keeps
+its `interrupt` phase instead of guessing that it occurred during preflight.
+Preparation candidates and independently admitted Run/Attempt identities remain
+separate from the application outcome, with no new reads, records or recovery
+authority. Real-writer and public-handler regressions cover failure before and
+after preparation, interruption, unchanged admission and escaped presentation.
+Final hosted validation and institutional reconnect/queued/preparation evidence
+remain required.
 
 ### CV-21 Reporting in progress and visibility
 

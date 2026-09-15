@@ -77,6 +77,8 @@ class SubmissionApplicationObservation:
     application_log: Path | None = None
     application_log_sha256: str | None = None
     recorded_event: str | None = None
+    recorded_outcome: str | None = None
+    recorded_outcome_phase: str | None = None
     recorded_run_id: str | None = None
     recorded_workflow_attempt_id: str | None = None
     run_root: Path | None = None
@@ -281,11 +283,15 @@ def _preparation(
                 raise InspectionError(
                     "Recorded preparation identity is malformed or differs"
                 )
+    outcome = records[-1]
+    failed = outcome["event"] in {"attempt_failed", "attempt_interrupted"}
     return SubmissionApplicationObservation(
         status="application-log-bound",
         application_log=path,
         application_log_sha256=hashlib.sha256(data).hexdigest(),
         recorded_event=event_name if prepared else None,
+        recorded_outcome=outcome["event"] if failed else None,
+        recorded_outcome_phase=outcome["phase"] if failed else None,
         recorded_run_id=run_id,
         recorded_workflow_attempt_id=attempt_id,
     )

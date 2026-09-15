@@ -73,6 +73,53 @@ def _request(root):
     )
 
 
+@pytest.mark.parametrize("outcome", [None, "attempt_failed", "attempt_interrupted"])
+def test_recorded_application_outcomes_are_dated_escaped_diagnostics_in_all_views(
+    tmp_path, monkeypatch, outcome
+):
+    application = association.SubmissionApplicationObservation(
+        status="run-and-attempt-associated",
+        application_log=tmp_path / "retained.jsonl",
+        recorded_event="analysis_prepared",
+        recorded_outcome=outcome,
+        recorded_outcome_phase="preflight\nother\x1b[31m" if outcome else None,
+        recorded_run_id="run-recorded",
+        run_root=tmp_path / "run-recorded",
+        workflow_attempt_id="workflow-earlier",
+    )
+    logs = association.RunApplicationObservation(tmp_path, (application,), "complete")
+
+    def forbidden(*_args, **_kwargs):
+        pytest.fail("Outcome rendering cannot read or re-admit evidence")
+
+    for name in ("stat", "lstat", "open", "resolve"):
+        monkeypatch.setattr(Path, name, forbidden)
+    for selected in (
+        {"application": application},
+        {"run_applications": logs},
+    ):
+        text = view.render_snapshot(
+            view.WatchSnapshot(
+                tmp_path / "project.yaml", application_at=NOW, **selected
+            ),
+            now=NOW + timedelta(hours=1),
+        )
+        assert str(NOW) in text
+        assert ("Recorded application outcome:" in text) is (outcome is not None)
+        if outcome:
+            assert f"Recorded application outcome: {outcome}" in text
+            assert r"phase: preflight\nother\x1b[31m" in text and "\x1b" not in text
+    for detail in ("normal", "verbose", "debug"):
+        lines = view.run_application_lines(logs, detail=detail)
+        assert any("Recorded application outcome:" in line for line in lines) is (
+            outcome is not None
+        )
+        if outcome:
+            assert f"  {application.application_log}" in lines
+    assert application.status == "run-and-attempt-associated"
+    assert application.workflow_attempt_id == "workflow-earlier"
+
+
 @pytest.mark.parametrize("missing", ("origin", "reference", "both"))
 def test_task_streams_require_both_admitted_start_fields(
     tmp_path, monkeypatch, missing
