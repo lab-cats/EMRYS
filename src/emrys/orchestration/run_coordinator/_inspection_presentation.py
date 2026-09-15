@@ -1,4 +1,4 @@
-"""Read-only inspection presentation; dated evidence, never execution authority."""
+"""Dated inspection presentation and explicit handoff to CLI-owned actions."""
 
 from __future__ import annotations
 
@@ -514,6 +514,13 @@ def render_snapshot(
     return "\n".join(safe_text(line) for line in lines)
 
 
+def require_action_terminal() -> None:
+    if not all(stream.isatty() for stream in (sys.stdin, sys.stdout, sys.stderr)) or (
+        os.environ.get("TERM") == "dumb"
+    ):
+        raise PresentationError("Actions require an interactive Run-only watch")
+
+
 def watch(
     project: Path,
     *,
@@ -521,6 +528,7 @@ def watch(
     run_root: Path | None = None,
     inspect_run: Callable[[Path], RunInspection],
     next_action: Callable[[RunInspection], str],
+    review_resume: Callable[[], int] | None = None,
 ) -> int:
     from functools import partial
 
@@ -528,11 +536,14 @@ def watch(
         refresh_snapshot, inspect_run=inspect_run, next_action=next_action
     )
     initial = WatchSnapshot(project, request=request, run_root=run_root)
-    if (
-        not sys.stdin.isatty()
-        or not sys.stdout.isatty()
-        or os.environ.get("TERM") == "dumb"
-    ):
+    interactive = (
+        sys.stdin.isatty() and sys.stdout.isatty() and os.environ.get("TERM") != "dumb"
+    )
+    if review_resume is not None:
+        require_action_terminal()
+        if request is not None or run_root is None:
+            raise PresentationError("Actions require an interactive Run-only watch")
+    if not interactive:
         print(
             render_snapshot(
                 refresh(initial, verify=True, stream_index=0),
@@ -573,6 +584,8 @@ def watch(
                 snapshot = worker.snapshot
                 text = render_snapshot(snapshot, now=datetime.now(UTC))
                 controls = "q quit | r verify/associate again | Tab stream | j/k scroll"
+                if review_resume is not None:
+                    controls += " | p leave view and review resume plan"
                 if worker.busy or worker.pending is not None:
                     controls += (
                         "\nRefresh in progress; displayed observations are dated"
@@ -586,6 +599,8 @@ def watch(
                     key = os.read(descriptor, 1)
                     if key in (b"q", b"Q", b"\x04", b""):
                         return 0
+                    if key in (b"p", b"P") and review_resume is not None:
+                        break
                     if key in (b"r", b"R", b"\t"):
                         if key == b"\t":
                             stream_index += 1
@@ -597,3 +612,7 @@ def watch(
     finally:
         worker.close()
         termios.tcsetattr(descriptor, termios.TCSADRAIN, original)
+    # An active daemon read may finish, but no queued refresh or cached evidence
+    # participates in the CLI operation. Its owner admits and confirms a new plan.
+    assert review_resume is not None
+    return review_resume()

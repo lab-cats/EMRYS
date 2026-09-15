@@ -57,6 +57,9 @@ Automatic refresh reads scheduler diagnostics and a bounded stream tail;
 scientific evidence is dated and reverified explicitly. Operational actions
 remain in the ordinary CLI. This first view does not retire the standalone
 dashboard or establish institutional replacement acceptance.
+Interactive Run-selected `--watch --actions` can leave the view to review the
+ordinary resume plan. It invokes the same Control preview and confirmation
+after terminal cleanup; no worker executes an operation or owns recovery.
 
 The old CSU-oriented `dashboard.py` preview remains until a replacement is
 implemented and validated under `DASHBOARD-RETIRE-01`. `emrys inspect` stays the

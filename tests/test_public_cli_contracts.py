@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import re
@@ -543,9 +544,110 @@ def test_installed_emrys_commands_are_isolated_and_cwd_independent(
         )
     if command in (("doctor",), ("run",), ("resume",)):
         assert "--runtime-profile" not in help_result.stdout
+    if command == ("inspect",):
+        assert "--actions" in help_result.stdout
+        assert "--watch" in help_result.stdout
+        assert "--execute" not in help_result.stdout
     assert parse_failure.returncode != 0
     assert expected_usage in parse_failure.stderr
     assert "foreign emrys package imported" not in help_result.stderr
+    assert relative_snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize("enabled", (False, True))
+def test_watch_resume_handoff_uses_exact_selection_and_ordinary_parser_defaults(
+    tmp_path, monkeypatch, enabled
+):
+    from emrys.orchestration.run_coordinator import control
+
+    project = tmp_path / "project.yaml"
+    run_root = tmp_path / "runs" / ("run-" + "a" * 64)
+    calls = []
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        monkeypatch.setattr(stream, "isatty", lambda: True)
+    monkeypatch.setenv("TERM", "xterm")
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    arguments = parser.parse_args(
+        ["human-name", "--watch", *(["--actions"] if enabled else [])]
+    )
+    # Inspection options and mutable caller input must not become execution flags.
+    arguments.execute = True
+    monkeypatch.setattr(control, "_resolve_run_argument", lambda _: (project, run_root))
+
+    def resume(selected):
+        calls.append(selected)
+        assert Path(selected.project) == project
+        assert selected.run == run_root.name
+        assert selected.execute is False
+        assert selected.profile is None and selected.no_report is False
+        assert selected.log_level is None and selected.log_root is None
+        assert not hasattr(selected, "watch") and not hasattr(selected, "actions")
+        return 17
+
+    def watch(selected_project, *, run_root, review_resume, **kwargs):
+        assert selected_project == project
+        assert run_root.name == "run-" + "a" * 64
+        assert (review_resume is not None) is enabled
+        arguments.project = tmp_path / "different-project.yaml"
+        arguments.run = "different-run"
+        return 0 if review_resume is None else review_resume()
+
+    monkeypatch.setattr(control, "resume_from_args", resume)
+    monkeypatch.setattr(control._inspection_presentation, "watch", watch)
+    before = relative_snapshot(tmp_path)
+    assert control.inspect_from_args(arguments) == (17 if enabled else 0)
+    assert len(calls) == int(enabled)
+    assert relative_snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize(
+    "options", (("--actions",), ("--watch", "--actions", "--submission", "exact"))
+)
+def test_watch_actions_reject_invalid_selection_before_project_or_run_reads(
+    tmp_path, monkeypatch, capsys, options
+):
+    from emrys.orchestration.run_coordinator import control
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Invalid action mode must not select a Project or Run")
+
+    monkeypatch.setattr(control.onboarding, "project_definition_path", forbidden)
+    monkeypatch.setattr(control, "_resolve_run_argument", forbidden)
+    monkeypatch.setattr(control, "resume_from_args", forbidden)
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    before = relative_snapshot(tmp_path)
+    assert control.inspect_from_args(parser.parse_args(options)) == CLI_USAGE_ERROR
+    assert "--actions requires Run-only --watch" in capsys.readouterr().err
+    assert relative_snapshot(tmp_path) == before
+
+
+def test_watch_actions_reject_noninteractive_mode_without_observation_or_execution(
+    tmp_path, monkeypatch, capsys
+):
+    from emrys.orchestration.run_coordinator import control
+
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Noninteractive actions must not read Run evidence or execute")
+
+    monkeypatch.setattr(control, "_resolve_run_argument", forbidden)
+    monkeypatch.setattr(control.onboarding, "project_definition_path", forbidden)
+    monkeypatch.setattr(control._inspection_presentation, "RefreshWorker", forbidden)
+    monkeypatch.setattr(control.inspection, "inspect_run", forbidden)
+    monkeypatch.setattr(control, "resume_from_args", forbidden)
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    before = relative_snapshot(tmp_path)
+    assert (
+        control.inspect_from_args(
+            parser.parse_args(["exact-run", "--watch", "--actions"])
+        )
+        == CLI_USAGE_ERROR
+    )
+    assert "interactive Run-only watch" in capsys.readouterr().err
     assert relative_snapshot(tmp_path) == before
 
 

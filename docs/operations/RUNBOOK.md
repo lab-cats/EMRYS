@@ -90,7 +90,7 @@ terminal controls are escaped. Appended diagnostic bytes do not inherit an
 earlier log digest's authority. The available Task streams come from admitted
 terminal Task records; this is not a complete active-native-log roster.
 Redirected output or a noninteractive terminal produces one plain snapshot.
-The view runs no operational action and creates no logs or state. A stalled
+Ordinary watch runs no operational action and creates no logs or state. A stalled
 filesystem read can delay refresh; after the view opens, quitting does not wait
 for that reader. Initial Project/Run/request selection still performs ordinary
 synchronous reads before the view opens. `--detail` controls static inspection;
@@ -98,6 +98,26 @@ watch uses one fixed layout.
 
 The existing standalone dashboard remains supported while its full replacement
 is validated, including legacy discovery, accounting and offline stream access.
+
+### Review a resume plan from watch
+
+For an interactive view of one exact Run, opt in to the resume-plan shortcut:
+
+```bash
+emrys inspect RUN --project "$EMRYS_PROJECT_ROOT" --watch --actions
+```
+
+Press `p` to leave the view and open the ordinary resume preview and confirmation.
+The command freshly checks the selected Run; the dated watch snapshot does not
+authorize recovery. Decline the confirmation to leave without starting work.
+Request-selected and noninteractive action modes are refused.
+
+The terminal is restored before the resume handler runs. A read already in
+progress may finish in the background, but its result is discarded. The command
+returns the resume handler's result and does not reopen watch. Slurm follows the
+existing submission preview: scientific resume admission happens on compute,
+so a concurrent resume can make an allocation unnecessary without bypassing
+recovery checks. Use the ordinary CLI for other operations.
 
 ## Stop one exact Slurm request
 

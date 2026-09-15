@@ -323,8 +323,22 @@ stream suffix; explicit refresh rechecks association and full Run evidence.
 Once the view opens, quitting restores the terminal without waiting on blocked
 refresh reads. Initial selection remains synchronous. Noninteractive/dumb
 terminals produce one plain snapshot; watch has one layout independent of the
-static `--detail` setting. No operational
-action, persistent cache or additional log is created.
+static `--detail` setting. Ordinary watch creates no operational action,
+persistent cache or additional log.
+
+Interactive Run-selected `--watch --actions` adds an explicit resume-plan
+handoff. The presentation closes its worker, discards pending refreshes, leaves
+the alternate screen and restores the terminal before invoking the existing
+Control resume handler once on the main thread. An active read may finish,
+but no resulting snapshot is consumed and no refresh is restarted. There is
+no automatic return to watch or concurrent action loop.
+
+Only the exact resolved Project and Run are captured. Ordinary resume parser
+defaults, fresh planning, preview/confirmation, lifecycle locking and recovery
+admission remain authoritative; cached inspection never supplies a plan or
+predecessor. Slurm retains its existing compute-side scientific admission and
+possible unnecessary allocation under a concurrent resume. Request-selected
+and noninteractive action modes are refused.
 
 Diagnostic suffixes use the existing no-follow byte reader with 64 KiB and
 256-line bounds. Directory, UID and descriptor/path checks reject unsafe or

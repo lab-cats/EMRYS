@@ -1398,7 +1398,12 @@ def configure_inspect_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--watch",
         action="store_true",
-        help="Watch the exact selection read-only; r refreshes Run verification. Nonterminal output is one snapshot.",
+        help="Watch the exact selection; r refreshes Run verification. Read-only unless --actions is selected.",
+    )
+    parser.add_argument(
+        "--actions",
+        action="store_true",
+        help="Enable p in interactive Run watch to leave the view and review the ordinary resume plan and confirmation.",
     )
     parser.add_argument(
         "--submission",
@@ -1944,6 +1949,11 @@ def inspect_from_args(
         ):
             raise ControlError("Select a submission or a Run, not both")
         watching = getattr(arguments, "watch", False)
+        actions = getattr(arguments, "actions", False)
+        if actions and (not watching or submission_selector is not None):
+            raise ControlError("--actions requires Run-only --watch")
+        if actions:
+            _inspection_presentation.require_action_terminal()
         if getattr(arguments, "run", None) is None:
             project = onboarding.project_definition_path(
                 getattr(arguments, "project", None)
@@ -1971,11 +1981,20 @@ def inspect_from_args(
             )
             return 0
         if watching:
+            review_resume = None
+            if actions:
+                parser = argparse.ArgumentParser(prog="emrys resume")
+                configure_resume_parser(parser)
+                resume_arguments = parser.parse_args(
+                    ["--project", str(_project_path), run_root.name]
+                )
+                review_resume = partial(resume_from_args, resume_arguments)
             return _inspection_presentation.watch(
                 _project_path,
                 run_root=run_root,
                 inspect_run=inspection.inspect_run,
                 next_action=_next_supported_action,
+                review_resume=review_resume,
             )
         observed = inspection.inspect_run(run_root)
         detail = getattr(arguments, "detail", "normal")
