@@ -30,8 +30,11 @@ NOW = datetime(2026, 9, 15, 12, 0, tzinfo=UTC)
 
 def _run(root):
     task = SimpleNamespace(
-        expected=SimpleNamespace(step_id="00a"),
+        expected=SimpleNamespace(
+            step_id="00a", machine_key="fixture.owner", scope_id="reference"
+        ),
         state="pending",
+        start_origin="workflow-later",
         start_reference={"path": "start.json"},
         terminal_attempts=(),
     )
@@ -67,6 +70,123 @@ def _request(root):
         None,
         (),
     )
+
+
+@pytest.mark.parametrize("missing", ("origin", "reference", "both"))
+def test_task_streams_require_both_admitted_start_fields(
+    tmp_path, monkeypatch, missing
+):
+    observed = _run(tmp_path / "run")
+    started = observed.tasks[0]
+    if missing in {"origin", "both"}:
+        started.start_origin = None
+    if missing in {"reference", "both"}:
+        started.start_reference = None
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Stream projection must not read or infer start evidence")
+
+    for name in ("stat", "lstat", "open", "resolve"):
+        monkeypatch.setattr(Path, name, forbidden)
+    assert view.task_stream_sources(observed) == ()
+
+
+@pytest.mark.parametrize(
+    "selection", (None, "workflow-earlier", "workflow-later", "absent")
+)
+def test_task_streams_preserve_preentry_history_and_exact_start_origin_without_reads(
+    tmp_path, monkeypatch, selection
+):
+    observed = _run(tmp_path / "run")
+    started = observed.tasks[0]
+    old_root = Path("attempts/workflow-earlier/tasks/fixture.owner/reference")
+    started.terminal_attempts = (
+        SimpleNamespace(
+            record={
+                "workflow_attempt_id": "workflow-earlier",
+                "machine_key": "fixture.owner",
+                "scope": {"scope_id": "reference"},
+                "status": "failed",
+                "task_start_record": None,
+                "stderr_log": {"path": str(old_root / "stderr.log")},
+                "stdout_log": {"path": str(old_root / "stdout.log")},
+            }
+        ),
+    )
+    expected = []
+    for origin in ("workflow-earlier", "workflow-later"):
+        if selection is None or selection == origin:
+            expected.extend(
+                observed.run_root
+                / "attempts"
+                / origin
+                / "tasks"
+                / "fixture.owner"
+                / "reference"
+                / name
+                for name in ("stderr.log", "stdout.log")
+            )
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Projection must not read logs, current Attempt, or dispatch")
+
+    for name in ("stat", "lstat", "open", "resolve"):
+        monkeypatch.setattr(Path, name, forbidden)
+    sources = view.task_stream_sources(observed, selected_attempt=selection)
+    assert [source.path for source in sources] == expected
+    assert all(source.root == observed.run_root for source in sources)
+    for source in sources:
+        assert (
+            "recorded failed"
+            if "workflow-earlier" in str(source.path)
+            else "expected diagnostic from admitted start"
+        ) in source.label
+    snapshot = view.WatchSnapshot(
+        tmp_path / "project.yaml",
+        observed=observed,
+        application=None
+        if selection is None
+        else association.SubmissionApplicationObservation(
+            status="run-and-attempt-associated", workflow_attempt_id=selection
+        ),
+    )
+    assert view._stream_sources(snapshot) == sources
+
+
+def test_task_streams_deduplicate_started_paths_against_terminal_references(tmp_path):
+    observed = _run(tmp_path / "run")
+    started = observed.tasks[0]
+    root = "attempts/workflow-later/tasks/fixture.owner/reference"
+    started.terminal_attempts = (
+        SimpleNamespace(
+            record={
+                "workflow_attempt_id": "workflow-later",
+                "machine_key": "fixture.owner",
+                "scope": {"scope_id": "reference"},
+                "status": "failed",
+                "task_start_record": started.start_reference,
+                "stderr_log": {"path": root + "/stderr.log"},
+                "stdout_log": {"path": root + "/stdout.log"},
+            }
+        ),
+    )
+    sources = view.task_stream_sources(observed)
+    assert len(sources) == 2
+    assert all("recorded failed" in source.label for source in sources)
+
+
+def test_started_task_streams_remain_expected_and_use_current_unverified_tail(tmp_path):
+    observed = _run(tmp_path / "run")
+    source = view.task_stream_sources(observed)[0]
+    assert "expected diagnostic from admitted start" in source.label
+    missing = view.read_tail(source)
+    assert missing.text == "" and missing.diagnostic.startswith("Unavailable:")
+    source.path.parent.mkdir(parents=True)
+    source.path.write_bytes(b"producer diagnostic\\x00\n")
+    tail = view.read_tail(source, missing)
+    assert "content not verified" in tail.diagnostic
+    assert "producer diagnostic" in tail.text
+    assert observed.tasks[0].state == "pending"
 
 
 def test_refresh_keeps_selected_request_and_only_reverifies_when_explicit(

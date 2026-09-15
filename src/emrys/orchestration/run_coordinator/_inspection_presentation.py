@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 from emrys.contracts.orchestration.application_model import PROCESSING_STEP_IDS
 from emrys.libraries.validation.inputs import read_suffix_with_identity
 from . import _submission_inspection, slurm_submission
+from .task import task_attempt_root
 
 if TYPE_CHECKING:
     from .inspection import RunInspection, TaskInspection
@@ -228,6 +229,46 @@ class WatchSnapshot:
     tail: StreamTail | None = None
 
 
+def task_stream_sources(
+    observed: RunInspection, *, selected_attempt: str | None = None
+) -> tuple[StreamSource, ...]:
+    """Project admitted terminal references and expected started-Task paths only."""
+    sources = {}
+    for task in observed.tasks:
+        for terminal in task.terminal_attempts:
+            record = terminal.record
+            if (
+                selected_attempt is not None
+                and record["workflow_attempt_id"] != selected_attempt
+            ):
+                continue
+            label = f"Task {record['machine_key']}/{record['scope']['scope_id']} ({record['workflow_attempt_id']}; recorded {record['status']})"
+            for kind in ("stderr", "stdout"):
+                path = observed.run_root / record[kind + "_log"]["path"]
+                sources.setdefault(
+                    path, StreamSource(label + " " + kind, path, observed.run_root)
+                )
+        if (
+            task.start_origin is None
+            or task.start_reference is None
+            or (selected_attempt is not None and task.start_origin != selected_attempt)
+        ):
+            continue
+        root = task_attempt_root(
+            observed.run_root,
+            task.start_origin,
+            task.expected.machine_key,
+            task.expected.scope_id,
+        )
+        label = f"Task {task.expected.machine_key}/{task.expected.scope_id} ({task.start_origin}; expected diagnostic from admitted start)"
+        for kind in ("stderr", "stdout"):
+            path = root / (kind + ".log")
+            sources.setdefault(
+                path, StreamSource(label + " " + kind, path, observed.run_root)
+            )
+    return tuple(sources.values())
+
+
 def _stream_sources(snapshot: WatchSnapshot) -> tuple[StreamSource, ...]:
     sources = []
     request = snapshot.request
@@ -253,23 +294,7 @@ def _stream_sources(snapshot: WatchSnapshot) -> tuple[StreamSource, ...]:
         selected_attempt = (
             None if application is None else application.workflow_attempt_id
         )
-        for task in observed.tasks:
-            for terminal in task.terminal_attempts:
-                record = terminal.record
-                if (
-                    selected_attempt is not None
-                    and record["workflow_attempt_id"] != selected_attempt
-                ):
-                    continue
-                label = f"Task {record['machine_key']}/{record['scope']['scope_id']} ({record['workflow_attempt_id']})"
-                for kind in ("stderr", "stdout"):
-                    sources.append(
-                        StreamSource(
-                            label + " " + kind,
-                            observed.run_root / record[kind + "_log"]["path"],
-                            observed.run_root,
-                        )
-                    )
+        sources.extend(task_stream_sources(observed, selected_attempt=selected_attempt))
     return tuple(sources)
 
 

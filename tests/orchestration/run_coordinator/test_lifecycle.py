@@ -2763,6 +2763,22 @@ def test_live_owned_incomplete_start_is_running_then_terminally_blocked(
     def display(state: inspection.RunInspection) -> None:
         before = {path: path.read_bytes() for path in root.rglob("*") if path.is_file()}
         calls = []
+        started = next(item for item in state.tasks if item.start_reference is not None)
+        expected_root = (
+            root
+            / "attempts"
+            / started.start_origin
+            / "tasks"
+            / started.expected.machine_key
+            / started.expected.scope_id
+        )
+        expected_paths = (expected_root / "stderr.log", expected_root / "stdout.log")
+        streams = control._inspection_presentation.task_stream_sources(state)
+        assert tuple(source.path for source in streams) == expected_paths
+        assert all(
+            "expected diagnostic from admitted start" in source.label
+            for source in streams
+        )
 
         def snapshot(selected: Path) -> inspection.RunInspection:
             assert selected == root
@@ -2790,6 +2806,10 @@ def test_live_owned_incomplete_start_is_running_then_terminally_blocked(
                 assert f"Scientific Results: {state.results_status}" in output
                 assert f"Run lock: {state.lock_observation}" in output
                 assert "Recovery available: no" in output
+                for path in expected_paths:
+                    assert (str(path) in output) is (detail != "normal")
+                if detail != "normal":
+                    assert "paths do not establish existence or liveness" in output
                 if state.attempt_outcome == "blocked":
                     assert "Do not resume." in output
                     assert "RESULTS BLOCKER:" in output
@@ -3003,6 +3023,7 @@ def test_task_start_crash_and_damage_remain_blocked(
         control._inspection_presentation.task_observation(item)
         for item in observed.tasks
     } == {"No admitted start"}
+    assert control._inspection_presentation.task_stream_sources(observed) == ()
 
 
 @pytest.mark.parametrize("tamper", ["extra", "deep", "symlink"])
