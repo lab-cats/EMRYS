@@ -29,7 +29,7 @@ cluster action, evidence promotion, or product-growth exception.
 | [CV-11](#cv-11-resource-profile-compatibility) | P0 | Open | Detect and explain resource profiles that cannot fit a node. |
 | [CV-12](#cv-12-unexplained-initial-runtime-qualification-failure) | P0 | Open | Establish the original runtime-qualification failure's cause. |
 | [CV-13](#cv-13-expected-setup-versus-blockers) | P1 | Open | Distinguish expected initial setup needs from failures. |
-| [CV-14](#cv-14-project-directory-layout) | P1 | Open | Give Projects a clear home outside the source checkout. |
+| [CV-14](#cv-14-project-directory-layout) | P1 | Verification pending | Give Projects a clear home outside the source checkout. |
 | [CV-15](#cv-15-cross-node-active-run-status) | P1 | Open | Show remote active state without implying proven corruption. |
 | [CV-16](#cv-16-monitoring-dashboard) | P1 | Open | Restore an integrated view of scheduler, progress, and logs. |
 | [CV-17](#cv-17-project-creation-progress) | P1 | Open | Explain lengthy input validation during Project creation. |
@@ -246,6 +246,20 @@ destination selection. Respect existing directories and symlink/path rules;
 do not automatically move old Projects or break runtime/input references.
 Cover invocation from a checkout and from the Projects parent.
 **Owners/dependencies:** Onboarding, quickstart; CV-06/08.
+
+**Selected implementation:** The quickstart and Runbook use one chosen durable
+Projects parent, separate from the checkout, for synthetic and own-data setup
+and reconnection. Existing `init NAME` selects its parent through the current
+directory; synthetic initialization retains absolute `--output-dir` selection.
+Both reuse existing canonical-parent/absent-child admission. Existing Projects
+remain at their original paths. The shell variable is a walkthrough convenience,
+not a new application registry or path contract; no product change is needed.
+
+**Verification:** Existing public onboarding tests exercise synthetic creation
+from the checkout and Projects parent, and own-data creation beneath the chosen
+parent. They preserve no-write preview, input references and bytes, no copied
+reads, and existing-destination refusal. Focused execution and documentation
+checks run in the locked CI environment; operator walkthrough remains pending.
 
 ### CV-15 Cross-node active Run status
 

@@ -70,11 +70,12 @@ the tiny synthetic exercise is not a full-study capacity estimate.
 Use Bash with Git and curl available, permission and network access for package
 downloads, and separate writable source and durable Project locations. Install
 the tools and locked command with [the procedure above](#install-a-chosen-release-or-commit).
-Keep that environment active. Choose an absent Project directory beneath an
-existing writable parent outside the checkout, using its full physical path:
+Keep that environment active. Select a durable parent using
+[Choose a Projects home](../../quickstart.md#choose-a-projects-home), then use
+an absent child for the supplied study:
 
 ```bash
-export EMRYS_PROJECT_ROOT="/absolute/durable/path/emrys-smoke"
+export EMRYS_PROJECT_ROOT="${EMRYS_PROJECTS_ROOT:?Choose a Projects home first}/emrys-smoke"
 emrys init synthetic --output-dir "$EMRYS_PROJECT_ROOT" --execute
 cd "$EMRYS_PROJECT_ROOT"
 emrys validate
@@ -127,6 +128,12 @@ for incomplete Runs rather than deleting their files.
 Follow the [quickstart's own-data continuation](../../quickstart.md#7-create-a-project-for-your-own-data)
 for the complete Viking sequence: prepare study inputs, create the Project,
 run Doctor, submit the study, inspect it and open the reports.
+The ordinary `emrys init NAME` creates beneath the current directory, so first
+enter the chosen physical Projects parent. Synthetic `--output-dir` may select
+an external absolute destination while your terminal is in the checkout.
+These routes share the same absent-child and canonical-parent checks; neither
+moves or adopts an existing Project. Use `--project /absolute/Project/project.yaml`
+with Project-aware commands when working from another directory.
 
 For studies with additional input requirements:
 
