@@ -2062,7 +2062,7 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
 
     arguments = argparse.Namespace(
         project=plan.run.analysis.source_path,
-        run=plan.run.run_id,
+        run=None,
         detail="normal",
     )
     inspection_bytes = {
@@ -2070,6 +2070,7 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     }
     assert control.inspect_from_args(arguments) == 0
     normal = capsys.readouterr().out
+    assert normal.index("Retained submissions:") < normal.index("Run:")
     assert normal.count(f"Run: {inspection.human_run_name(plan.run.run_id)}") == 1
     assert "Run ID:" not in normal
     assert "Analysis ID:" not in normal
@@ -3406,6 +3407,116 @@ def _scheduled_run_arguments(tmp_path: Path, *, execute: bool) -> argparse.Names
     )
 
 
+@pytest.mark.parametrize("records", ("none", "several", "unavailable"))
+def test_public_inspect_retains_submission_observations_before_any_run(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    records: str,
+) -> None:
+    from tests.orchestration.run_coordinator.test_slurm_submission import (
+        _request_record,
+    )
+
+    project = build(tmp_path / "project")
+    if records == "several":
+        _, first, _ = _request_record(
+            project.parent,
+            stdout=b"700123;cluster-other\n",
+            stderr=b"reason:\x1b[31m\xff\n",
+        )
+        _, second, _ = _request_record(project.parent, "b", stdout=b"")
+        _, partial, _ = _request_record(project.parent, "c")
+        (partial / "request.json").unlink()
+        malformed = project.parent / "logs/submission-invalid"
+        malformed.mkdir()
+    elif records == "unavailable":
+        (project.parent / "logs").write_bytes(b"not a directory\n")
+    before = {
+        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
+    }
+    monkeypatch.setattr(
+        control.slurm_submission.subprocess,
+        "run",
+        lambda *_args, **_kwargs: pytest.fail("inspection invoked a subprocess"),
+    )
+    parser = argparse.ArgumentParser()
+    control.configure_inspect_parser(parser)
+    arguments = parser.parse_args(["--project", str(project)])
+    assert control.inspect_from_args(arguments) == (
+        2 if records == "unavailable" else 0
+    )
+    captured = capsys.readouterr()
+    if records == "unavailable":
+        assert "emrys: error:" in captured.err
+        assert "Runs: none found" not in captured.out
+    else:
+        assert "Retained submissions:" in captured.out
+        assert "Runs: none found at inspection time." in captured.out
+        assert "Do not submit again solely because a Run is absent" in captured.out
+        if records == "none":
+            assert (
+                "None found; this does not establish that no job was submitted."
+                in captured.out
+            )
+        else:
+            for path in (first, second, partial, malformed):
+                assert f"Request: {path}" in captured.out
+            assert (
+                "Recorded response job ID: 700123; cluster: cluster-other"
+                in captured.out
+            )
+            assert "Recorded response job ID: unconfirmed" in captured.out
+            assert "Records: partial" in captured.out
+            assert "Records: malformed" in captured.out
+            assert (
+                "Current scheduler state and Run association are not established"
+                in captured.out
+            )
+            assert r"reason:\x1b[31m" in captured.out
+            assert "\x1b" not in captured.out
+    assert {
+        path: path.read_bytes() for path in project.parent.rglob("*") if path.is_file()
+    } == before
+    assert (
+        control.inspect_from_args(
+            parser.parse_args(["run-" + "a" * 64, "--project", str(project)])
+        )
+        == 2
+    )
+    assert "Retained submissions:" not in capsys.readouterr().out
+
+
+def test_oversized_submission_context_prevents_scheduler_invocation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    arguments = _scheduled_run_arguments(tmp_path, execute=True)
+    arguments.analysis = "a" * 40000
+    monkeypatch.setattr(
+        control.slurm_submission,
+        "submit",
+        lambda *_args, **_kwargs: pytest.fail("oversized context submitted a job"),
+    )
+    before = {
+        path: path.read_bytes()
+        for path in arguments.project.parent.rglob("*")
+        if path.is_file()
+    }
+    assert control.run_from_args(arguments) == 2
+    assert "64 KiB" in capsys.readouterr().err
+    (request,) = control.slurm_submission.submission_requests(arguments.project)
+    assert request.record_status == "partial"
+    assert request.recorded_job_id is None
+    assert not (request.request_root / "request.json").exists()
+    assert {
+        path: path.read_bytes()
+        for path in arguments.project.parent.rglob("*")
+        if path.is_file()
+    } == before
+
+
 @pytest.mark.parametrize(
     ("placement", "overrides", "message"),
     (
@@ -3712,6 +3823,10 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
         "sbatch.stderr",
         "sbatch.stdout",
     ]
+    (retained,) = control.slurm_submission.submission_requests(arguments.project)
+    assert retained.record_status == "recorded-response"
+    assert retained.recorded_job_id == "812345"
+    assert retained.context["analysis"] == arguments.analysis
     assert "Execution placement: Slurm" in captured.err
     assert all(line in captured.err for line in admitted.submission_summary())
     if not execute:

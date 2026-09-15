@@ -83,7 +83,9 @@ from emrys.orchestration.run_coordinator import slurm_submission
 
 RUN_DESCRIPTION = "Plan an immutable Run; confirm or use --execute. Installs nothing."
 RESUME_DESCRIPTION = "Plan a safe resume, then confirm or use --execute for automation."
-INSPECT_DESCRIPTION = "Derive one Run state from immutable EMRYS records without reading or repairing Snakemake metadata."
+INSPECT_DESCRIPTION = (
+    "Show retained Project submissions and inspect one Run without changing state."
+)
 REPORT_DESCRIPTION = (
     "Plan, generate, or reuse the fixed reports for one completed immutable Run. "
     "Dry-run is the default and reporting never creates a scientific Attempt."
@@ -107,6 +109,10 @@ class ControlError(RuntimeError):
 
 class _RunSelectionCancelled(ControlError):
     """The operator left the read-only Run picker without selecting a Run."""
+
+
+class _NoProjectRuns(ControlError):
+    """The Project has no selectable Run at the time of inspection."""
 
 
 _CONTROL_ERRORS = (
@@ -150,7 +156,7 @@ def _select_project_run(
     if selector is not None:
         return inspection.resolve_run_root(run_roots, selector)
     if not run_roots:
-        raise ControlError(f"Project has no Runs: {project_path.parent}")
+        raise _NoProjectRuns(f"Project has no Runs: {project_path.parent}")
     if len(run_roots) == 1:
         return run_roots[0]
     names = tuple(inspection.human_run_name(root.name) for root in run_roots)
@@ -854,6 +860,9 @@ def _schedule(
             "scheduler_stdout_pattern": str(submission.stdout_pattern),
             "scheduler_stderr_pattern": str(submission.stderr_pattern),
         }
+        context = slurm_submission.validate_request_context(
+            context, _absolute(arguments.project)
+        )
         with open(
             request_root / "request.json",
             "xb",
@@ -1664,11 +1673,55 @@ def report_from_args(
     return 0
 
 
+def _print_submission_roster(project: Path) -> None:
+    requests = slurm_submission.submission_requests(project)
+    print("Retained submissions:")
+    if not requests:
+        print("  None found; this does not establish that no job was submitted.")
+        return
+    for request in requests:
+        _print_safe(f"  Request: {request.request_root}")
+        print(f"    Records: {request.record_status.replace('-', ' ')}")
+        if request.context is not None:
+            context = request.context
+            _print_safe(
+                f"    Command: {context['command']}; recorded time: {context['created_at']}; "
+                f"requested Run: {context['requested_run'] or 'new Run'}"
+            )
+            _print_safe(f"    Application logs: {context['application_log_root']}")
+        _print_safe(
+            f"    Recorded response job ID: {request.recorded_job_id or 'unconfirmed'}; "
+            f"cluster: {request.recorded_cluster or 'not recorded'}"
+        )
+        if request.stderr_excerpt:
+            _print_safe(
+                "    Scheduler stderr excerpt: "
+                + request.stderr_excerpt.decode("utf-8", "replace")
+            )
+        for diagnostic in request.diagnostics:
+            _print_safe(f"    Observation: {diagnostic}")
+    print(
+        "Current scheduler state and Run association are not established by these records."
+    )
+
+
 def inspect_from_args(
     arguments: argparse.Namespace,
 ) -> int:
     try:
-        _project_path, run_root = _resolve_run_argument(arguments)
+        if getattr(arguments, "run", None) is None:
+            project = onboarding.project_definition_path(
+                getattr(arguments, "project", None)
+            )
+            _print_submission_roster(project)
+        try:
+            _project_path, run_root = _resolve_run_argument(arguments)
+        except _NoProjectRuns:
+            print("Runs: none found at inspection time.")
+            print(
+                "Do not submit again solely because a Run is absent; retain the submission records."
+            )
+            return 0
         observed = inspection.inspect_run(run_root)
         detail = getattr(arguments, "detail", "normal")
         milestones = _milestone_progress(
@@ -1690,6 +1743,7 @@ def inspect_from_args(
         inspection.InspectionError,
         onboarding.OnboardingError,
         ControlError,
+        slurm_submission.SlurmSubmissionError,
     ) as exc:
         return _control_failure(exc)
     print(f"Run: {inspection.human_run_name(run_root.name)}")

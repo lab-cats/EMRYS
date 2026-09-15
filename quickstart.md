@@ -183,10 +183,13 @@ Check the Run from the head node:
 emrys inspect
 ```
 
-The Run becomes available when Slurm starts the job; a queued submission has
-not created it yet. An inspection finding no Run immediately after submission
-does not mean you should submit again. Wait and repeat `emrys inspect`; it
-does not start or change work. Completion is confirmed by all four lines:
+Inspection first lists retained submission requests, including their exact
+directories, recorded response job IDs and diagnostics. It then selects an
+available Run. A queued job has not created its Run yet; `Runs: none found at
+inspection time` does not mean you should submit again. The retained response
+alone does not prove the job's current state. Keep uncertain or partial records,
+wait and repeat `emrys inspect`; it does not start or change work.
+Completion is confirmed by all four lines:
 
 ```text
 Run admission: valid
@@ -452,8 +455,10 @@ node, check progress with:
 emrys inspect
 ```
 
-A queued job has not created its Run yet. Once it starts, repeat inspection
-until the four completion lines shown in step 4 appear. Inspection prints both
+A queued job has not created its Run yet. Keep the retained submission request
+shown by inspection; an absent Run does not authorize another submission. Once
+the Run appears, repeat inspection until the four completion lines shown in
+step 4 appear. Inspection prints both
 report paths. Copy this Run's complete `results` directory to your computer
 and open its Scientific and Evidence reports using the instructions in step 5.
 

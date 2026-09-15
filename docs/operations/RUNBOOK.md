@@ -8,12 +8,24 @@ approval. Keep that directory along with the printed job and stream paths.
 application-log location; `sbatch.stdout` and `sbatch.stderr` preserve the raw
 scheduler response. These records can exist while no Run has been created.
 
+From the Project, run `emrys inspect` to list every retained request before
+selecting a Run. The roster prints each exact directory, recorded command/time,
+requested Run, application-log root, response job/cluster, and a bounded stderr
+excerpt when readable. `partial`, `malformed`, or `unconfirmed` records remain
+visible. An explicit `emrys inspect RUN` selects that Run directly.
+
+`Runs: none found at inspection time` is a successful read-only observation.
+It does not establish rejection, startup failure, or absence of a queued job.
+A recorded job ID is historical response data; this roster does not query the
+scheduler or associate that request with a Run. An unavailable log directory
+is an inspection error, not an empty roster.
+
 An empty or malformed response does not prove that submission was rejected.
 If acceptance is uncertain or the client was interrupted, resolve the exact
 request with the scheduler and its logs before submitting again. Do not choose
 the most recently modified directory as the intended request. Retain every
 partial request; its presence alone is neither completion evidence nor recovery
-authority. Project inspection's submission roster is a separate campaign slice.
+authority.
 
 Use the [quickstart](../../quickstart.md) for Viking installation, a first
 synthetic Project and your own study. For other setup needs, start with
