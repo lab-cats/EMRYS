@@ -18,6 +18,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 from emrys.contracts.artifacts import api as contracts
 from emrys.libraries.alignments import orientation as alignment_orientation
+from emrys.libraries import exclusive_publication
 from emrys.reporting import _files
 
 from .models import (
@@ -315,8 +316,14 @@ def stat_source(
                 "changed_during_hash",
                 link_target,
             )
-        before_identity = (*_files.stat_identity(stat_result), link_target)
-        after_identity = (*_files.stat_identity(post_hash_stat), post_hash_link)
+        before_identity = (
+            *exclusive_publication.stat_identity(stat_result),
+            link_target,
+        )
+        after_identity = (
+            *exclusive_publication.stat_identity(post_hash_stat),
+            post_hash_link,
+        )
         if before_identity != after_identity:
             return SourceSnapshot(
                 "unknown",

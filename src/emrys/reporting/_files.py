@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import NoReturn
 
+from emrys.libraries.exclusive_publication import stat_identity
+
 
 @dataclass(frozen=True)
 class FileSnapshot:
@@ -20,17 +22,6 @@ class FileSnapshot:
     size_bytes: int
     mtime_ns: int
     ctime_ns: int
-
-
-def stat_identity(value: os.stat_result) -> tuple[int, int, int, int, int]:
-    """Return every stat field used to detect replacement or mutation."""
-    return (
-        value.st_dev,
-        value.st_ino,
-        value.st_size,
-        value.st_mtime_ns,
-        value.st_ctime_ns,
-    )
 
 
 def stable_snapshot(
@@ -82,95 +73,12 @@ def reject_symlink_components(
             fail(f"{label} must not traverse a symbolic link: {current}")
 
 
-def _write_durable(descriptor: int, payload: bytes) -> None:
-    while payload:
-        written = os.write(descriptor, payload)
-        if written <= 0:
-            raise OSError("Publication write made no progress")
-        payload = payload[written:]
-    os.fsync(descriptor)
-
-
-def write_bytes_exclusive(path: Path, payload: bytes, *, mode: int = 0o600) -> None:
-    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
-    try:
-        _write_durable(descriptor, payload)
-    finally:
-        os.close(descriptor)
-
-
 def fsync_path(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
         os.fsync(descriptor)
     finally:
         os.close(descriptor)
-
-
-def acquire_lock(
-    path: Path, payload: bytes, error_type: type[Exception]
-) -> os.stat_result:
-    try:
-        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    except FileExistsError as exc:
-        raise error_type(f"Publication lock already exists: {path}") from exc
-    except OSError as exc:
-        raise error_type(f"Could not acquire publication lock {path}: {exc}") from exc
-    owned: os.stat_result | None = None
-    try:
-        owned = os.fstat(descriptor)
-        _write_durable(descriptor, payload)
-        return os.fstat(descriptor)
-    except BaseException as original:
-        try:
-            if owned is None:
-                owned = os.fstat(descriptor)
-            current = path.lstat()
-            if (current.st_dev, current.st_ino) != (owned.st_dev, owned.st_ino):
-                raise error_type(f"Publication lock changed identity: {path}")
-            path.unlink()
-        except (OSError, error_type) as cleanup:
-            raise error_type(
-                "Publication lock acquisition was interrupted and owned cleanup "
-                f"could not be proved: {cleanup}"
-            ) from original
-        if isinstance(original, OSError):
-            raise error_type(
-                f"Could not write publication lock {path}: {original}"
-            ) from original
-        raise
-    finally:
-        os.close(descriptor)
-
-
-def release_lock(
-    path: Path, owned: os.stat_result, payload: bytes, error_type: type[Exception]
-) -> None:
-    try:
-        if path.resolve(strict=True) != path:
-            raise error_type(f"Owned publication lock path changed: {path}")
-        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
-        try:
-            with os.fdopen(descriptor, "rb", closefd=False) as stream:
-                before = os.fstat(descriptor)
-                content = stream.read()
-                after = os.fstat(descriptor)
-            current = path.lstat()
-            if (
-                not stat.S_ISREG(before.st_mode)
-                or (before.st_dev, before.st_ino) != (owned.st_dev, owned.st_ino)
-                or stat_identity(before) != stat_identity(after)
-                or stat_identity(before) != stat_identity(current)
-                or content != payload
-            ):
-                raise error_type(f"Owned lock identity or content changed: {path}")
-            path.unlink()
-        finally:
-            os.close(descriptor)
-    except OSError as exc:
-        raise error_type(
-            f"Could not release owned publication lock {path}: {exc}"
-        ) from exc
 
 
 def remove_owned_stage(

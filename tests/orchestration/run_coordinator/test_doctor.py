@@ -929,6 +929,7 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
             "Checking/updating native tools and R" in output.err
         ) == runtime_required
         assert ("Checking/restoring R packages" in output.err) == runtime_required
+        assert ("Maintenance claim:" in output.err) == runtime_required
 
 
 def test_diagnosis_resolves_shared_log_controls_without_opening_a_log(
@@ -1051,6 +1052,25 @@ def test_managed_repair_accepts_missing_library_and_binds_base_profile(
     assert plan.runtime is not None
     assert plan.runtime.profile_bytes == base_bytes
     assert not missing_library.exists()
+
+
+def test_retained_maintenance_claim_blocks_repair_but_not_verification_planning(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = _project(tmp_path)
+    claim = project.source_path.parent / "runtime/maintenance.lock"
+    claim.write_bytes(b"interrupted owner\n")
+    monkeypatch.setattr(doctor.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(doctor.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(
+        doctor, "_manager", lambda _name: pytest.fail("existing claim admitted manager")
+    )
+    before = _snapshot(tmp_path)
+    with pytest.raises(doctor.DoctorRepairError, match="claim already exists"):
+        doctor._build_repair_plan(_result(project, ready=False))
+    plan = doctor._build_repair_plan(_result(project, ready=True))
+    assert plan.runtime is None
+    assert _snapshot(tmp_path) == before
 
 
 @pytest.mark.parametrize("check_id", ("collaborator_tool", "snakemake"))
@@ -1177,6 +1197,7 @@ def test_storage_only_repair_preserves_ready_site_runtime_and_skips_managers(
     monkeypatch.setattr(doctor, "diagnose_project", diagnose)
 
     assert doctor._execute_repair(plan, controls=_controls(project)) is ready
+    assert not (project.source_path.parent / "runtime/maintenance.lock").exists()
     assert profile.read_bytes() == b"site runtime\n"
     assert records[0] == "opened"
     assert "terminal" in records
@@ -1382,6 +1403,11 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     def run_manager(argv: tuple[str, ...], **_kwargs: object) -> Any:
         if Path(argv[0]) == Path(sys.executable):
             return real_subprocess_run(argv, **_kwargs)
+        assert (
+            (runtime.managed_root.parent / "maintenance.lock")
+            .read_bytes()
+            .startswith(b"emrys-doctor:")
+        )
         commands.append(tuple(argv))
         environment = _kwargs["env"]
         temporary = Path(environment["TMPDIR"])
@@ -1433,6 +1459,7 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     observed = doctor._execute_repair(plan, controls=_controls(project))
 
     assert observed is final
+    assert not (runtime.managed_root.parent / "maintenance.lock").exists()
     assert [Path(argv[0]).name for argv in commands] == ["pixi", "pixi"]
     assert "install" in commands[0]
     assert "run" in commands[1] and "--environment" in commands[1]
@@ -1670,9 +1697,13 @@ def test_repair_records_manager_failure_or_interruption(
     plan = _plan(project)
     runtime = _runtime(plan)
     records: list[str] = []
+    real_open_log = doctor.open_attempt_log
     _patch_logging(monkeypatch, plan, records)
+    manager_calls = 0
 
     def fail_manager(*_args: object, **_kwargs: object) -> Any:
+        nonlocal manager_calls
+        manager_calls += 1
         if failure == "interrupt":
             raise KeyboardInterrupt
         return SimpleNamespace(returncode=9)
@@ -1687,6 +1718,14 @@ def test_repair_records_manager_failure_or_interruption(
     assert "terminal" not in records
     assert records[-1] == "closed"
     assert not runtime.profile.exists()
+    claim = runtime.managed_root.parent / "maintenance.lock"
+    retained = claim.read_bytes()
+    assert retained.startswith(b"emrys-doctor:")
+    monkeypatch.setattr(doctor, "open_attempt_log", real_open_log)
+    with pytest.raises(doctor.DoctorRepairError, match="lock already exists"):
+        doctor._execute_repair(plan, controls=_controls(project))
+    assert claim.read_bytes() == retained
+    assert manager_calls == 1
 
 
 def test_repair_records_failed_final_requalification(
@@ -1728,6 +1767,7 @@ def test_repair_records_failed_final_requalification(
     assert "failed" in records
     assert "terminal" not in records
     assert records[-1] == "closed"
+    assert (runtime.managed_root.parent / "maintenance.lock").exists()
 
 
 def test_log_open_failure_prevents_the_first_repair_write(
@@ -1749,6 +1789,81 @@ def test_log_open_failure_prevents_the_first_repair_write(
         doctor._execute_repair(plan, controls=_controls(project))
 
     assert not runtime.managed_root.exists()
+    assert not (runtime.managed_root.parent / "maintenance.lock").exists()
+
+
+@pytest.mark.parametrize("parent_state", ("missing", "symlink"))
+def test_repair_claim_refuses_unadmitted_runtime_parent_before_mutation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, parent_state: str
+) -> None:
+    project = _project(tmp_path)
+    plan = _plan(project)
+    parent = _runtime(plan).managed_root.parent
+    saved = parent.with_name("saved-runtime")
+    parent.rename(saved)
+    if parent_state == "symlink":
+        parent.symlink_to(saved, target_is_directory=True)
+    records: list[str] = []
+    _patch_logging(monkeypatch, plan, records)
+    with pytest.raises(doctor.DoctorRepairError, match="runtime directory"):
+        doctor._execute_repair(plan, controls=_controls(project))
+    assert not (saved / "maintenance.lock").exists()
+    assert not (saved / "managed").exists()
+    assert records == ["opened", "failed", "closed"]
+
+
+def test_repair_success_cannot_release_a_replaced_maintenance_claim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = _project(tmp_path)
+    plan = _plan(project)
+    runtime = _runtime(plan)
+    claim = runtime.managed_root.parent / "maintenance.lock"
+    ready = _result(project, ready=True)
+    records: list[str] = []
+    _patch_logging(monkeypatch, plan, records)
+    monkeypatch.setattr(doctor, "_repair_actions", lambda _plan: ())
+    monkeypatch.setattr(doctor, "_managed_discovery_environment", lambda _plan: {})
+    monkeypatch.setattr(
+        doctor.onboarding,
+        "discover_runtime_profile",
+        lambda **_kwargs: _inspection(tmp_path, profile=runtime.profile),
+    )
+
+    def replace_claim(*_args: object, **_kwargs: object) -> doctor.DoctorResult:
+        claim.rename(claim.with_suffix(".retained"))
+        claim.write_bytes(b"another owner\n")
+        return ready
+
+    monkeypatch.setattr(doctor, "diagnose_project", replace_claim)
+    with pytest.raises(doctor.DoctorRepairError, match="identity or content changed"):
+        doctor._execute_repair(plan, controls=_controls(project))
+    assert claim.read_bytes() == b"another owner\n"
+    assert records == ["opened", "failed", "closed"]
+
+
+def test_failed_maintenance_claim_acquisition_retains_partial_before_repair(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from emrys.libraries import exclusive_publication
+
+    project = _project(tmp_path)
+    plan = _plan(project)
+    claim = _runtime(plan).managed_root.parent / "maintenance.lock"
+
+    def fail_write(_descriptor: int, _payload: bytes) -> int:
+        raise OSError("claim write failed")
+
+    monkeypatch.setattr(exclusive_publication, "_write_durable", fail_write)
+    monkeypatch.setattr(
+        doctor,
+        "_readmit_repair_plan",
+        lambda *_args, **_kwargs: pytest.fail("failed acquisition applied repair"),
+    )
+    with pytest.raises(doctor.DoctorRepairError, match="claim write failed"):
+        doctor._execute_repair(plan, controls=_controls(project))
+    assert claim.read_bytes() == b""
+    assert not _runtime(plan).managed_root.exists()
 
 
 @pytest.mark.parametrize(
