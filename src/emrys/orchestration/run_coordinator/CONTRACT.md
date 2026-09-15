@@ -79,6 +79,14 @@ head-node evidence. A prior storage receipt alone does not qualify a changed
 runtime. Each automatic repair has one maintenance log; its compute checks
 retain scheduler streams without opening another application attempt.
 
+Head storage finalization failures name the accepted qualification job and retain
+the escaped storage or operating-system cause in the existing maintenance log.
+Interruption remains an interruption. Published compute/final storage evidence
+is preserved after a failure. The final readiness observation must still match
+the confirmed execution profile and admitted Project/package/runtime binding;
+newly changed but individually admissible inputs cannot turn this invocation
+into successful verification.
+
 Named Project initialization displays input hashing, compatibility checking,
 and post-publication verification through the existing elapsed-time presenter.
 It explains the complete input reads before they begin. Preview runs only the

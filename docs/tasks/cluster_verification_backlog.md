@@ -125,9 +125,17 @@ existing transport and Control owners; tests and documentation are separate.
 tiny subprocess fixtures and injected scheduler responses, including nonzero
 waited jobs, malformed responses, transcript failures, escaped diagnostics,
 and exactly one submission. Public Control regressions run in CI. These are
-simulations, not scheduler or institutional proof. Queue reasons, confirmed
-cancellation, and head-finalization failure classification remain open, so
-CV-03 remains Open after this bounded slice.
+simulations, not scheduler or institutional proof. Queue reasons and confirmed
+cancellation remain open, so CV-03 remains Open.
+
+**Implemented head-finalization slice:** After an accepted qualification job,
+head storage errors retain that job ID and the escaped storage/OS cause with
+the existing maintenance-log path. Interruptions keep their existing behavior;
+published evidence is retained. The final already-admitted observation also
+rejects changed Project/package/runtime bindings without another read.
+Existing Doctor fixtures cover retained-probe corruption, cleanup failure after
+receipt publication, and final input drift with one submission and no success
+event. Static checks pass; behavioral execution requires hosted CI.
 
 ### CV-04 Workflow startup readiness
 

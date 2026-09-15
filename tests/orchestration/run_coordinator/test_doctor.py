@@ -1724,6 +1724,11 @@ def test_log_open_failure_prevents_the_first_repair_write(
         ("execution_before", "named"),
         ("execution_after", "absolute"),
         ("execution_final", "named"),
+        ("head_final_error", None),
+        ("head_final_io", None),
+        ("final_project", None),
+        ("final_package", None),
+        ("final_inventory", None),
     ),
 )
 def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
@@ -1760,7 +1765,7 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     monkeypatch.setattr(
         doctor, "observe_allocation", lambda: AllocationCapacity(4, 8192, "slurm")
     )
-    state = {"compute": False, "probes": 0, "jobs": 0}
+    state = {"compute": False, "probes": 0, "jobs": 0, "finalized": False}
     failed_probe = replace(
         _check("star", "tool_version", str(tmp_path / "STAR")),
         status="fail",
@@ -1781,10 +1786,34 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     def finalize(*args: Path) -> QualifiedStorage:
         if failure == "finalize" and state["jobs"] == 1:
             raise KeyboardInterrupt
+        if failure == "head_final_error":
+            retained = next(
+                (
+                    project.source_path.parent.parent / qualification.EVIDENCE_DIRECTORY
+                ).glob("*.compute.json")
+            )
+            probe_root = Path(
+                json.loads(retained.read_text())["roots"][0]["probe_directory"]
+            )
+            (probe_root / "visible.bin").write_bytes(b"changed retained probe\n")
         qualified = qualify_head(*args)
+        state["finalized"] = True
         if failure == "execution_final":
             profile_path.write_bytes(profile_path.read_bytes() + b"\n")
         return qualified
+
+    unlink = Path.unlink
+
+    def fail_cleanup(path: Path, *args: Any, **kwargs: Any) -> None:
+        if (
+            failure == "head_final_io"
+            and not state["compute"]
+            and path.name == "fsync-source.bin"
+        ):
+            raise OSError('head cleanup "denied"\n\x1b[31m')
+        unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "unlink", fail_cleanup)
 
     def probe(*args: Path) -> Path:
         state["probes"] += 1
@@ -1819,6 +1848,22 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
             result = replace(
                 result, inspection=replace(inspection, profile_sha256="f" * 64)
             )
+        if state["finalized"]:
+            if failure == "final_project":
+                result = replace(
+                    result, project=replace(project, source_sha256="d" * 64)
+                )
+            elif failure == "final_package":
+                result = replace(
+                    result,
+                    installed_package=replace(
+                        ready.installed_package, content_sha256="d" * 64
+                    ),
+                )
+            elif failure == "final_inventory":
+                result = replace(
+                    result, inspection=replace(inspection, profile_sha256="d" * 64)
+                )
         return replace(result, execution_profile=selected)
 
     monkeypatch.setattr(qualification, "_run_compute", probe)
@@ -1925,6 +1970,21 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
         assert changed.binding_sha256 != execution.binding_sha256
         assert "repair_requalified" not in {item["event"] for item in events}
         qualification.admit_final_qualification(project.source_path.parent, fasta)
+    if failure in {"head_final_error", "head_final_io"}:
+        assert "Head storage finalization failed after Slurm job 614999:" in output
+        assert str(log_path) in output
+        assert state["jobs"] == 1
+        assert "repair_requalified" not in {item["event"] for item in events}
+        if failure == "head_final_error":
+            assert "Retained visible-file hash differs:" in output
+        else:
+            assert r'head cleanup "denied"\n\x1b[31m' in output
+            assert "\x1b[31m" not in output
+    if failure in {"final_project", "final_package", "final_inventory"}:
+        assert "Project, package, or runtime changed during head finalization" in output
+        assert len(selected_sources) == 5
+        assert state["jobs"] == 1
+        assert "repair_requalified" not in {item["event"] for item in events}
     if failure is None:
         assert len(selected_sources) == 5
         assert selected_sources[0] == selector
@@ -1987,11 +2047,29 @@ def test_head_doctor_qualifies_slurm_with_one_log_and_preserves_receipts(
     else:
         assert state["probes"] == (
             1
-            if failure in {"head_runtime", "execution_after", "execution_final"}
+            if failure
+            in {
+                "head_runtime",
+                "execution_after",
+                "execution_final",
+                "head_final_error",
+                "head_final_io",
+                "final_project",
+                "final_package",
+                "final_inventory",
+            }
             else 0
         )
         assert "failed" in records
-        if failure != "execution_final":
+        if failure in {
+            "execution_final",
+            "head_final_io",
+            "final_project",
+            "final_package",
+            "final_inventory",
+        }:
+            qualification.admit_final_qualification(project.source_path.parent, fasta)
+        else:
             with pytest.raises(qualification.StorageQualificationError):
                 qualification.admit_final_qualification(
                     project.source_path.parent, fasta
